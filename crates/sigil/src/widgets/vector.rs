@@ -1,12 +1,9 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-
 use std::rc::Rc;
 
 use crate::kernel::{
-    Cx, ImageRaster, ImageSource, IntoNode, NodeId, ThemedImage, container, image,
+    Cx, ImageRaster, ImageSource, IntoNode, NodeId, ThemedImage, cached_image, container, image,
 };
-use crate::layout::prelude::LayoutStyle;
+use crate::layout::LayoutStyle;
 use crate::style::{Rgba8, Theme, Token};
 use tiny_skia::{FillRule, Paint, Pixmap, Transform};
 
@@ -74,19 +71,12 @@ pub struct PathNode {
     cmds: Vec<PathCmd>,
     fill: Option<PathFill>,
     stroke: Option<(PathColor, f32)>,
-    layout: Option<crate::layout::prelude::LayoutStyle>,
+    layout: Option<crate::layout::LayoutStyle>,
     scale: u8,
     non_scaling: bool,
 }
 
 type RasterSize = (u32, u32, f32);
-
-thread_local! {
-    static RASTER: RefCell<HashMap<u64, ImageSource>> = RefCell::new(HashMap::new());
-}
-
-const RASTER_CAP: usize = 256;
-const RASTER_BYTES: usize = 64 << 20;
 
 #[must_use]
 pub const fn path(width: u32, height: u32) -> PathNode {
@@ -282,20 +272,10 @@ impl PathNode {
             mix(&mut key, byte);
         }
         key::mix_f32(&mut key, size.2);
-        if let Some(hit) = RASTER.with(|map| map.borrow().get(&key).cloned()) {
-            return Some(hit);
-        }
-        crate::profile::count(crate::profile::Counter::PathRaster);
-        let source = self.paint(fill, stroke, size)?;
-        RASTER.with(|map| {
-            let mut map = map.borrow_mut();
-            let held: usize = map.values().map(|held| held.rgba().len()).sum();
-            if map.len() >= RASTER_CAP || held + source.rgba().len() > RASTER_BYTES {
-                map.clear();
-            }
-            map.insert(key, source.clone());
-        });
-        Some(source)
+        cached_image(key, || {
+            crate::profile::count(crate::profile::Counter::PathRaster);
+            self.paint(fill, stroke, size)
+        })
     }
 
     #[allow(

@@ -18,7 +18,7 @@ feature `terminal`, which adds crossterm.
 | `renderer` | wgpu, `CommandScene`, emit cache, layer pool. |
 | `shell` | winit window and event loop. |
 | `a11y` | AccessKit projection. |
-| `tasks` | Tokio runtime, `spawn`, `dispatch_to_owner`, `Status`. |
+| `tasks` | Tokio runtime, `task`, `spawn`, `signal_writer`, `on_message`, `Status`. |
 | `animation` and `animation_runtime` | Transitions; `config(id)` for presets. |
 | `app` | `run`, `Host`, frame loop, menu, tray, dialogs, clipboard, audio, pty. |
 | `widgets` | The widget catalog. No window, no GPU. |

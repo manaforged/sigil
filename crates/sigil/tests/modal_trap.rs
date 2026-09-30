@@ -10,7 +10,9 @@ mod input;
 mod widget_support;
 
 use input::{key_down, pointer_down};
-use sigil::hal::PhysicalKey;
+use sigil::events::EventRouter;
+use sigil::events::PhysicalKey;
+use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
 use widget_support::compute;
 

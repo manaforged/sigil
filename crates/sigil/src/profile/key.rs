@@ -164,6 +164,8 @@ named!(Counter {
     LayoutDirtyNodes => "layout.dirty.n",
     LayoutResizedNodes => "layout.resized.n",
     LayoutRoots => "layout.roots",
+    LayoutOverlay => "layout.overlay",
+    LayoutIntrinsicMiss => "layout.intrinsic.miss",
     TextMeasure => "text.measure",
     PathRaster => "path.raster",
     TuiFrames => "tui.frames",

@@ -231,7 +231,10 @@ fn source_order_reuses_identity_list_when_len_holds() {
 
         state.toggle_sort("name");
         let sorted = state.visible().peek();
-        assert!(!Rc::ptr_eq(&first, &sorted), "sort allocates a permutation");
+        assert!(
+            Rc::ptr_eq(&first, &sorted),
+            "a sort that keeps the order keeps the list and does not notify"
+        );
         assert_eq!(visible_names(&state), ["w", "x", "y", "z"]);
 
         state.toggle_sort("name");

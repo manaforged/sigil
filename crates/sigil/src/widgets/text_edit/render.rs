@@ -1,8 +1,9 @@
 use crate::animation_runtime::presets;
-use crate::events::prelude::{ModifiersState, NodeEventsExt, PointerEvent};
-use crate::hal::{HitPosition, Point, TextAffinity};
+use crate::events::{ModifiersState, NodeEventsExt, PointerEvent};
+use crate::geometry::Point;
+use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, fragment, text};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow};
+use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow};
 use crate::layout::{TextStyleCapture, with_text_geometry};
 use crate::reactive::{Signal, derived, effect};
 use crate::style::{
@@ -10,7 +11,7 @@ use crate::style::{
     StyleAtom, StyleOverlay, StyleVariant, TextStyle, Token, TransitionId, space,
 };
 
-use crate::layout::prelude::Position;
+use crate::layout::Position;
 use crate::widgets::interaction::InteractionState;
 
 use super::super::shared::binary_style_state;
@@ -77,6 +78,7 @@ pub(super) fn build_base_node(
         .stateful_style(edit_variant(chrome), user_overlay, move || {
             edit_state(interaction, disabled)
         })
+        .seal_style()
         .child(edit_inner(displayed, runtime, interaction))
 }
 

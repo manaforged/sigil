@@ -51,13 +51,12 @@ Keep state that must survive a patch outside the root closure:
 
 ```rust,no_run
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
 
 fn main() -> sigil::AppResult<()> {
     Runtime::scope("app", || {
         let count = signal(0_i32);
-        sigil::run(AppConfig::new("Counter"), move |cx: &mut Cx| {
-            cx.add(counter(count))
-        })
+        sigil::run(AppConfig::new("Counter"), move || counter(count))
     })
 }
 
@@ -72,9 +71,9 @@ fn counter(count: Signal<i32>) -> NodeBuilder {
 Change the `"Count: {}"` text and save. The label changes and the count
 stays.
 
-With `hot` on, a closure root must be `Fn` and `'static`. A `move`
-closure that copies signals is both. A node root such as
-`sigil::root(node)` mounts once and does not patch.
+The root passed to `run` is `Fn` and `'static` in every build, so hot
+reload needs no change to it. A `move` closure that copies signals is
+both.
 
 ## Embed hosts
 

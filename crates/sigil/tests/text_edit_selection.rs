@@ -4,7 +4,11 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::hal::{KeyEventInit, PhysicalKey};
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{KeyEventInit, PhysicalKey};
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 
@@ -77,7 +81,8 @@ fn shift_select_across_lines_highlights_each_covered_line() {
     });
 }
 
-use sigil::hal::{MouseButton, MouseButtons, Point, PointerEventInit};
+use sigil::events::{MouseButton, MouseButtons, PointerEventInit};
+use sigil::geometry::Point;
 
 fn pt(x: f32, y: f32, phase: PointerPhase, buttons: MouseButtons) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {

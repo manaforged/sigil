@@ -1,4 +1,7 @@
 use super::*;
+use sigil::events::EventRouter;
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 
 #[test]
 fn checkbox_click_flips_signal() {

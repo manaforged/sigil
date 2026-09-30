@@ -1,4 +1,4 @@
-use crate::style::builder_ext::parse_classes;
+use crate::style::class_parse::parse_classes;
 use crate::style::parse_class_string;
 
 #[test]

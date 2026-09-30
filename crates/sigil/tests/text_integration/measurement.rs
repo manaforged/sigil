@@ -153,7 +153,7 @@ fn baseline_is_half_leading_plus_real_ascent() {
     const FONT_SIZE: f32 = 16.0;
     const LINE_HEIGHT: f32 = 32.0;
 
-    let bytes = std::fs::read("assets/text/fonts/FiraSans-Regular.ttf").unwrap();
+    let bytes = sigil_fonts::FIRA_SANS_REGULAR.to_vec();
     let font = FontRef::new(&bytes).unwrap();
     let m = font.metrics(Size::new(FONT_SIZE), LocationRef::default());
     let (ascent, descent) = (m.ascent, -m.descent);

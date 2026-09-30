@@ -8,8 +8,14 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use sigil::hal::{KeyEventInit, PhysicalKey};
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{KeyEventInit, PhysicalKey};
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
+use sigil::widgets::RadioGroupBuilder;
 use widget_support::compute;
 
 const VIEWPORT: Size = Size::fixed(320.0, 240.0);

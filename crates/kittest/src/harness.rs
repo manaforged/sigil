@@ -1,8 +1,13 @@
 use std::time::{Duration, Instant};
 
-use sigil::app::{AccessibilityTree, FrameHooks, TreeRoot};
+use sigil::Host;
+use sigil::app::{AccessibilityTree, FrameHooks};
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
 use sigil::reactive::{__test_clear_clock, __test_set_clock, Owner, next_interval_deadline};
+use sigil::tasks::AsyncRuntime;
 use sigil::terminal::Screen;
 
 use crate::Error;
@@ -16,8 +21,9 @@ pub use query::{Node, Query};
 pub use snapshot::SNAPSHOT_MAX_DELTA_PCT;
 
 const FRAME_DT: f32 = 1.0 / 60.0;
+const POLL: Duration = Duration::from_millis(5);
 
-type Pending = Box<dyn FnOnce(&mut Cx) -> NodeId>;
+type Pending = Box<dyn FnOnce(&mut Host)>;
 
 enum Surface {
     Cells {
@@ -48,20 +54,24 @@ pub struct Harness {
     host: Host,
     router: EventRouter,
     surface: Surface,
+    tasks: AsyncRuntime,
 }
 
 impl Harness {
     #[must_use]
-    pub fn new(tree: impl TreeRoot + 'static) -> Self {
+    pub fn new(app: impl IntoNode + 'static) -> Self {
         let clock = Instant::now();
         __test_set_clock(clock);
+        let tasks = AsyncRuntime::new().unwrap_or_else(|err| fail(err));
+        tasks.install_current();
         Self {
             clock,
             owner: Owner::new("sigil-kittest-harness", None),
-            pending: Some(Box::new(move |cx| tree.install(cx))),
+            pending: Some(Box::new(move |host: &mut Host| host.mount(app))),
             host: Host::cells(),
             router: EventRouter::new(),
             surface: Self::cells(80, 24),
+            tasks,
         }
     }
 
@@ -92,13 +102,14 @@ impl Harness {
     fn live(&mut self) -> &mut Self {
         if let Some(tree) = self.pending.take() {
             let (owner, host) = (self.owner, &mut self.host);
-            owner.with(|| host.build(tree));
+            owner.with(|| tree(host));
             self.frames(Vec::new()).unwrap_or_else(|err| fail(err));
         }
         self
     }
 
     fn frame(&mut self, events: Vec<ShellEvent>) -> Result<(), Error> {
+        let _ = self.tasks.pump();
         let owner = self.owner;
         owner.with(|| self.paint(events))
     }
@@ -158,6 +169,29 @@ impl Harness {
             self.frame(Vec::new()).unwrap_or_else(|err| fail(err));
         }
         self.settle()
+    }
+
+    #[track_caller]
+    fn wait_for<T>(
+        &mut self,
+        what: &dyn std::fmt::Display,
+        mut find: impl FnMut(&mut Self) -> Option<T>,
+    ) -> T {
+        let start = Instant::now();
+        loop {
+            if let Some(found) = find(self) {
+                return found;
+            }
+            if start.elapsed() > crate::EXPECT_TIMEOUT {
+                let tree = self.accessibility_snapshot();
+                fail(format!(
+                    "no {what} within {:?}\n{tree}",
+                    crate::EXPECT_TIMEOUT
+                ));
+            }
+            std::thread::sleep(POLL);
+            self.settle();
+        }
     }
 
     #[must_use]

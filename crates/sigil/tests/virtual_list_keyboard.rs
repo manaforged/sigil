@@ -8,7 +8,10 @@
 mod input;
 
 use input::key_down;
-use sigil::hal::PhysicalKey;
+use sigil::events::EventRouter;
+use sigil::events::PhysicalKey;
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::widgets::virtual_list;
 use sigil_kittest::stub_text_measure;

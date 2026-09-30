@@ -10,7 +10,11 @@ mod input;
 mod widget_support;
 
 use input::pointer_move;
-use sigil::hal::{KeyEventInit, PhysicalKey, Point, PointerEventInit};
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{KeyEventInit, PhysicalKey, PointerEventInit};
+use sigil::geometry::Point;
+use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, StrokeAlign, emit_scene};
 use sigil::style::scale::ScaleRole;

@@ -35,17 +35,15 @@ also works.
 # mod terminal_only {
 use sigil::prelude::*;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let count = signal(0_i32);
-    let list = container()
+    container()
         .focusable(true)
+        .autofocus()
         .key(LogicalKey::character("j"), move |_| count.update(|n| *n += 1))
         .key(LogicalKey::character("k"), move |_| count.update(|n| *n -= 1))
         .key(Key::Escape, |_| sigil::request_exit())
-        .child(text(derived(move || format!("row {}", count.get()))));
-    let id = cx.add(list);
-    request_focus(id);
-    id
+        .child(text(derived(move || format!("row {}", count.get()))))
 }
 
 fn main() -> AppResult<()> {
@@ -70,14 +68,12 @@ input has focus, so typing `q` into a field does not quit.
 # mod terminal_only {
 use sigil::prelude::*;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let name = signal(String::new());
-    cx.add(
-        container()
-            .shortcut(LogicalKey::character("q"), |_| sigil::request_exit())
-            .shortcut(Shortcut::ctrl(LogicalKey::character("n")), move |_| name.set(String::new()))
-            .child(text_field(name)),
-    )
+    container()
+        .shortcut(LogicalKey::character("q"), |_| sigil::request_exit())
+        .shortcut(Shortcut::ctrl(LogicalKey::character("n")), move |_| name.set(String::new()))
+        .child(text_field(name))
 }
 
 fn main() -> AppResult<()> {
@@ -96,14 +92,14 @@ spaces.
 ```rust,no_run
 use sigil::prelude::*;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let body = signal(String::new());
-    cx.add(container().child(text_edit(body)).key_capture_any(move |event: &mut KeyEvent| {
+    container().child(text_edit(body)).key_capture_any(move |event: &mut KeyEvent| {
         if event.key == LogicalKey::named(Key::Tab) {
             body.update(|text| text.push_str("  "));
             event.stop_propagation();
         }
-    }))
+    })
 }
 
 fn main() -> AppResult<()> {
@@ -122,11 +118,11 @@ frame, on the window and on the terminal host.
 ```rust,no_run
 use sigil::prelude::*;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let dark = signal(false);
-    cx.add(container().child(toggle(dark)).child(button("Apply").activate(move || {
+    container().child(toggle(dark)).child(button("Apply").activate(move || {
         set_theme(if dark.get() { Theme::dark() } else { Theme::light() });
-    })))
+    }))
 }
 
 fn main() -> AppResult<()> {
@@ -140,6 +136,7 @@ or `#rrggbbaa`. `parse_theme` returns `None` if the document is not
 valid.
 
 ```rust,no_run
+use sigil::app::parse_theme;
 use sigil::prelude::*;
 
 const SOURCE: &str = r##"
@@ -150,11 +147,11 @@ accent = "#3c59e7"
 surface = "#101014"
 "##;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     if let Some(theme) = parse_theme(SOURCE) {
         set_theme(theme);
     }
-    cx.add(text("Custom theme"))
+    text("Custom theme")
 }
 
 fn main() -> AppResult<()> {
@@ -168,14 +165,15 @@ life of the tree. `AppConfig::theme_file(path)` loads and watches a
 file without code in the tree.
 
 ```rust,no_run
+use sigil::reactive::on_cleanup;
 use sigil::prelude::*;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     match watch_theme("theme.toml") {
         Ok(watcher) => on_cleanup(move || drop(watcher)),
         Err(err) => eprintln!("theme watch failed: {err}"),
     }
-    cx.add(text("Edit theme.toml"))
+    text("Edit theme.toml")
 }
 
 fn main() -> AppResult<()> {
@@ -191,12 +189,10 @@ atoms, so a misspelled token does not compile.
 use sigil::prelude::*;
 use sigil::style::Token;
 
-fn tree(cx: &mut Cx) -> NodeId {
-    cx.add(
-        container()
-            .class([Token::SurfaceSubtle.bg(), Token::Border.border()])
-            .child(text("Panel").class(Token::OnSurfaceMuted.text())),
-    )
+fn tree() -> impl IntoNode {
+    container()
+        .class([Token::SurfaceSubtle.bg(), Token::Border.border()])
+        .child(text("Panel").class(Token::OnSurfaceMuted.text()))
 }
 
 fn main() -> AppResult<()> {
@@ -237,9 +233,10 @@ units in a tree that runs on both hosts. See [Units](units.md).
 ```rust,no_run
 # #[cfg(feature = "terminal")]
 # mod terminal_only {
+use sigil::layout::TrackSize;
 use sigil::prelude::*;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let header = container()
         .layout(LayoutStyle::flex_row().height(rows(1.0)).gap(cols(1.0)).fill_width())
         .child(text("Title"))
@@ -252,7 +249,7 @@ fn tree(cx: &mut Cx) -> NodeId {
     let body = container()
         .layout(LayoutStyle::flex_column().grow(1.0).padding(cols(2.0)).max_width(em(40.0)))
         .child(grid);
-    cx.add(container().layout(LayoutStyle::flex_column().fill()).child(header).child(body))
+    container().layout(LayoutStyle::flex_column().fill()).child(header).child(body)
 }
 
 fn main() -> AppResult<()> {
@@ -268,12 +265,14 @@ it to get columns and rows. Read it in a `derived` or a
 `children_reactive` closure to adapt the tree to the size.
 
 ```rust,no_run
+use sigil::app::is_grid;
+use sigil::app::viewport_size;
 use sigil::prelude::*;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let size = viewport_size();
     let wide = derived(move || size.get().width > if is_grid() { 100.0 } else { 900.0 });
-    cx.add(text(derived(move || if wide.get() { "two columns".to_string() } else { "one column".to_string() })))
+    text(derived(move || if wide.get() { "two columns".to_string() } else { "one column".to_string() }))
 }
 
 fn main() -> AppResult<()> {
@@ -295,7 +294,7 @@ avoid a clone.
 use sigil::prelude::*;
 use std::time::Duration;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let transcript = signal(String::new());
     let writer = signal_writer(transcript);
     let _done = spawn(async move {
@@ -305,7 +304,7 @@ fn tree(cx: &mut Cx) -> NodeId {
         }
         Ok::<(), ScheduleError>(())
     });
-    cx.add(text(move || transcript.with(|text| format!("{} bytes: {text}", text.len()))))
+    text(move || transcript.with(|text| format!("{} bytes: {text}", text.len())))
 }
 
 fn main() -> AppResult<()> {
@@ -326,14 +325,14 @@ For one result, `spawn` runs a future and returns a
 ```rust,no_run
 use sigil::prelude::*;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let answer = spawn(async { Ok::<_, String>(6 * 7) });
-    cx.add(text(derived(move || match answer.get() {
-        Status::Pending => "working".to_string(),
+    text(derived(move || match answer.get() {
+        Status::Idle | Status::Pending => "working".to_string(),
         Status::Ok(value) => format!("answer: {value}"),
         Status::Err(err) => format!("error: {err}"),
         Status::Panicked(msg) => format!("panic: {msg}"),
-    })))
+    }))
 }
 
 fn main() -> AppResult<()> {
@@ -341,7 +340,17 @@ fn main() -> AppResult<()> {
 }
 ```
 
-`post(f)` runs any `Send` closure on the UI thread.
+### Load on demand
+
+For work the user starts, such as a Load button, `task` builds a new
+future on each `run()`. The status starts `Status::Idle`. `run()` sets
+`Status::Pending` and aborts the run it replaces; a result from a
+replaced run is dropped, so a slow first load cannot overwrite a newer
+one.
+
+```rust,ignore
+{{#include ../../crates/sigil/examples/story-07-async.rs}}
+```
 
 ### Stream a measured transcript
 
@@ -356,6 +365,7 @@ thread for each message. A send wakes the event loop, so the app does
 not poll.
 
 ```rust,no_run
+use sigil::tasks::on_message;
 use sigil::prelude::*;
 use std::rc::Rc;
 
@@ -364,7 +374,7 @@ enum Event {
     Chunk(String),
 }
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let messages: Signal<Rc<Vec<String>>> = signal(Rc::new(Vec::new()));
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     on_message(rx, move |event| {
@@ -383,12 +393,11 @@ fn tree(cx: &mut Cx) -> NodeId {
             drop(tx.send(Event::Chunk(word.into())));
         }
     });
-    let list = virtual_list(messages, |_, text: &String| markdown(signal(text.clone())))
+    virtual_list(messages, |_, text: &String| markdown(signal(text.clone())))
         .measured()
         .estimate(rows(2.0))
         .viewport_fill()
-        .auto_pin_to_bottom(true);
-    cx.add(list)
+        .auto_pin_to_bottom(true)
 }
 
 fn main() -> AppResult<()> {
@@ -405,7 +414,7 @@ again when the view is back at the bottom.
 use sigil::prelude::*;
 use std::rc::Rc;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let messages: Signal<Rc<Vec<String>>> = signal(Rc::new(Vec::new()));
     let tail = derived(move || messages.get().len().saturating_sub(1));
     let (scroll, max) = (signal(0.0_f32), signal(0.0_f32));
@@ -420,7 +429,7 @@ fn tree(cx: &mut Cx) -> NodeId {
         .key(Key::PageUp, move |_| scroll.set((scroll.peek() - page).clamp(0.0, max.peek())))
         .key(Key::PageDown, move |_| scroll.set((scroll.peek() + page).clamp(0.0, max.peek())))
         .key(Key::End, move |_| scroll.set(max.peek()));
-    cx.add(root.child(list))
+    root.child(list)
 }
 ```
 
@@ -437,9 +446,10 @@ value. `untrack` does not help here: it stops the subscription of a
 read, not the notification of a write.
 
 ```rust,no_run
+use sigil::reactive::defer;
 use sigil::prelude::*;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let request: Signal<Option<String>> = signal(None);
     let log = signal(String::new());
     effect(move || {
@@ -449,7 +459,7 @@ fn tree(cx: &mut Cx) -> NodeId {
         }
     });
     request.set(Some("first".into()));
-    cx.add(text(log))
+    text(log)
 }
 ```
 
@@ -465,7 +475,7 @@ interval stops when its owner is disposed, or when you call
 use sigil::prelude::*;
 use std::time::Duration;
 
-fn tree(cx: &mut Cx) -> NodeId {
+fn tree() -> impl IntoNode {
     let left = signal(25 * 60_u32);
     let running = signal(true);
     let _tick: IntervalId = interval(Duration::from_secs(1), move || {
@@ -473,11 +483,9 @@ fn tree(cx: &mut Cx) -> NodeId {
             left.update(|s| *s -= 1);
         }
     });
-    cx.add(
-        container()
-            .child(text(derived(move || format!("{:02}:{:02}", left.get() / 60, left.get() % 60))))
-            .child(button("Pause").activate(move || running.update(|r| *r = !*r))),
-    )
+    container()
+        .child(text(derived(move || format!("{:02}:{:02}", left.get() / 60, left.get() % 60))))
+        .child(button("Pause").activate(move || running.update(|r| *r = !*r)))
 }
 
 fn main() -> AppResult<()> {
@@ -517,12 +525,10 @@ fn edit() {
     }
 }
 
-fn tree(cx: &mut Cx) -> NodeId {
-    cx.add(
-        container()
-            .child(button("Edit").activate(edit))
-            .child(button("Quit").activate(sigil::request_exit)),
-    )
+fn tree() -> impl IntoNode {
+    container()
+        .child(button("Edit").activate(edit))
+        .child(button("Quit").activate(sigil::request_exit))
 }
 
 fn main() -> AppResult<()> {
@@ -552,17 +558,21 @@ An embed host does this itself:
 name its types.
 
 ```rust,no_run
+use sigil::kernel::NodeId;
 use sigil::prelude::*;
+use sigil::events::EventRouter;
+use sigil::Host;
+use sigil::reactive::Runtime;
 
 fn main() {
     Runtime::scope("a11y", || {
         let mut host = Host::new();
         let mut router = EventRouter::new();
-        host.build(|cx| cx.add(button("Save").activate(|| println!("saved"))));
+        host.mount(|| button("Save").activate(|| println!("saved")));
         if host.layout((320.0, 200.0)).is_err() {
             return;
         }
-        let update: sigil::AccessibilityTree = host.accessibility_tree(&router);
+        let update: sigil::app::AccessibilityTree = host.accessibility_tree(&router);
         let Some(target) = update.nodes.first().map(|(id, _)| *id) else { return };
         let request = accesskit::ActionRequest {
             action: accesskit::Action::Click,
@@ -578,3 +588,41 @@ fn main() {
 Give each control a name that a screen reader can say. Widgets take
 the name from their label. For a bare container, set
 `.role(Role::...)` and `.label("...")`.
+
+## Tasks in an embed
+
+`sigil::run` owns the task runtime. An embed host creates one on its UI
+thread with `AsyncRuntime::new()`, installs it with `install_current()`,
+and calls `pump()` before each `Host::frame`. `pump` applies the
+results that finished, so `task`, `spawn`, and `signal_writer` work as
+they do under `sigil::run`. `set_waker` wakes the host's event loop
+when a result arrives.
+
+```rust,no_run
+use sigil::app::FrameHooks;
+use sigil::prelude::*;
+use sigil::events::EventRouter;
+use sigil::Host;
+use sigil::reactive::Runtime;
+use sigil::tasks::AsyncRuntime;
+
+fn main() -> std::io::Result<()> {
+    Runtime::scope("embed", || {
+        let mut tasks = AsyncRuntime::new()?;
+        tasks.install_current();
+        let mut host = Host::new();
+        let mut router = EventRouter::new();
+        host.mount(|| {
+            let load = task(|| async { Ok::<_, String>("ready".to_owned()) });
+            load.run();
+            text(move || match load.status() {
+                Status::Ok(value) => value,
+                _ => "loading".to_owned(),
+            })
+        });
+        tasks.pump();
+        drop(host.frame(&mut router, (320.0, 200.0), 1.0 / 60.0, FrameHooks::default()));
+        Ok(())
+    })
+}
+```

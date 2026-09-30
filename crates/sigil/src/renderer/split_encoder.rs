@@ -5,12 +5,14 @@ use crate::renderer::decoration_paint::DecorationInstance;
 use crate::renderer::frame_upload::{UploadBuffers, UploadedRange};
 use crate::renderer::layer_composite::LayerInstance;
 use crate::renderer::raster_paint::RasterInstance;
+use crate::renderer::renderer::record_clear;
 use crate::renderer::scene_command::SceneCommand;
 use crate::renderer::scene_instance::{
     FillInstance, GpuStop, MAX_GRADIENT_STOPS, RectInstance, SceneUniforms, ShadowInstance,
 };
 use crate::renderer::slug::SLUG_INSTANCE_BYTES;
 use crate::renderer::sprite_paint::SpriteInstance;
+use crate::style::Color;
 
 pub(crate) const MAX_PASSES_PER_SUBMISSION: u32 = 1_024;
 
@@ -19,6 +21,7 @@ pub(crate) struct SplitEncoder {
     queue: wgpu::Queue,
     pass: Option<wgpu::RenderPass<'static>>,
     target: Option<wgpu::TextureView>,
+    pending_clear: Option<(wgpu::TextureView, Color)>,
     encoder: wgpu::CommandEncoder,
     passes: u32,
     uploads: UploadBuffers,
@@ -37,6 +40,7 @@ impl SplitEncoder {
             queue: queue.clone(),
             pass: None,
             target: None,
+            pending_clear: None,
             encoder,
             passes: 0,
             uploads: UploadBuffers::default(),
@@ -135,10 +139,56 @@ impl SplitEncoder {
         }
     }
 
+    pub(crate) fn clear(&mut self, view: &wgpu::TextureView, color: Color) {
+        self.flush_clear();
+        drop(self.pass.take());
+        self.target = None;
+        self.pending_clear = Some((view.clone(), color));
+    }
+
+    fn flush_clear(&mut self) {
+        if let Some((view, color)) = self.pending_clear.take() {
+            drop(self.pass.take());
+            self.target = None;
+            self.passes += 1;
+            record_clear(&mut self.encoder, &view, color);
+        }
+    }
+
+    fn take_fold(&mut self, desc: &wgpu::RenderPassDescriptor<'_>) -> Option<Color> {
+        let first = desc.color_attachments.first().and_then(Option::as_ref);
+        let folds = matches!(
+            (&self.pending_clear, first),
+            (Some((view, _)), Some(attachment)) if *view == *attachment.view
+        );
+        if folds {
+            return self.pending_clear.take().map(|(_, color)| color);
+        }
+        self.flush_clear();
+        None
+    }
+
+    fn open_cleared(
+        &mut self,
+        desc: &wgpu::RenderPassDescriptor<'_>,
+        color: Color,
+    ) -> wgpu::RenderPass<'static> {
+        let mut attachments = desc.color_attachments.to_vec();
+        if let Some(Some(first)) = attachments.first_mut()
+            && first.ops.load == wgpu::LoadOp::Load
+        {
+            first.ops.load = wgpu::LoadOp::Clear(clear_value(color));
+        }
+        let mut cleared = desc.clone();
+        cleared.color_attachments = &attachments;
+        self.encoder.begin_render_pass(&cleared).forget_lifetime()
+    }
+
     pub(crate) fn begin_render_pass(
         &mut self,
         desc: &wgpu::RenderPassDescriptor<'_>,
     ) -> &mut wgpu::RenderPass<'static> {
+        let fold = self.take_fold(desc);
         let target = reusable_target(desc);
         let load = desc
             .color_attachments
@@ -146,6 +196,7 @@ impl SplitEncoder {
             .and_then(Option::as_ref)
             .is_some_and(|attachment| attachment.ops.load == wgpu::LoadOp::Load);
         if load
+            && fold.is_none()
             && let Some(target) = target
             && Some(target) == self.target.as_ref()
         {
@@ -171,11 +222,15 @@ impl SplitEncoder {
             self.passes = 1;
         }
         self.target = target.cloned();
-        self.pass = Some(self.encoder.begin_render_pass(desc).forget_lifetime());
+        self.pass = Some(match fold {
+            Some(color) => self.open_cleared(desc, color),
+            None => self.encoder.begin_render_pass(desc).forget_lifetime(),
+        });
         self.pass.as_mut().expect("render pass just started")
     }
 
     pub(crate) fn submit(mut self) -> UploadBuffers {
+        self.flush_clear();
         drop(self.pass.take());
         self.flush();
         self.queue.submit(core::iter::once(self.encoder.finish()));
@@ -184,6 +239,7 @@ impl SplitEncoder {
     }
 
     pub(crate) fn into_inner(mut self) -> wgpu::CommandEncoder {
+        self.flush_clear();
         drop(self.pass.take());
         self.flush();
         self.encoder
@@ -193,6 +249,15 @@ impl SplitEncoder {
         self.uploads.vertices.flush(&self.queue);
         self.uploads.uniforms.flush(&self.queue);
         self.uploads.storage.flush(&self.queue);
+    }
+}
+
+pub(crate) fn clear_value(color: Color) -> wgpu::Color {
+    wgpu::Color {
+        r: f64::from(color.r),
+        g: f64::from(color.g),
+        b: f64::from(color.b),
+        a: f64::from(color.a),
     }
 }
 

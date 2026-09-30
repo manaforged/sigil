@@ -1,7 +1,12 @@
 #![allow(clippy::unwrap_used)]
 
 use super::dropdown;
-use crate::hal::KeyEventInit;
+use crate::Host;
+use crate::events::EventRouter;
+use crate::events::KeyEventInit;
+use crate::events::PhysicalKey;
+use crate::events::PointerEventInit;
+use crate::events::ShellEvent;
 use crate::prelude::*;
 use crate::reactive::Runtime;
 
@@ -12,18 +17,16 @@ fn dropdown_selection_wins_over_controls_beneath_the_popup() {
         let changed = signal(0);
         let underneath = signal(0);
         let mut host = Host::new();
-        host.build(|cx| {
-            cx.add(
-                container()
-                    .layout(LayoutStyle::flex_column().fill())
-                    .child(
-                        dropdown(selected, vec!["First".into(), "Second".into()])
-                            .change(move |value| changed.set(value)),
-                    )
-                    .child(button("Underneath").height(160.0).activate(move || {
-                        underneath.set(underneath.peek() + 1);
-                    })),
-            )
+        host.mount(move || {
+            container()
+                .layout(LayoutStyle::flex_column().fill())
+                .child(
+                    dropdown(selected, vec!["First".into(), "Second".into()])
+                        .change(move |value| changed.set(value)),
+                )
+                .child(button("Underneath").height(160.0).activate(move || {
+                    underneath.set(underneath.peek() + 1);
+                }))
         });
         host.layout((400.0, 300.0)).unwrap();
         let mut router = EventRouter::new();
@@ -61,11 +64,9 @@ fn clicking_a_scrollable_dropdown_commits_the_visible_option() {
         let changed = signal(String::new());
         let options = ["Choose", "US", "Canada", "Mexico", "FR", "DE", "JP"];
         let mut host = Host::new();
-        host.build(|cx| {
-            cx.add(
-                dropdown(selected, options.map(str::to_owned).to_vec())
-                    .change(move |index| changed.set(options.get(index).unwrap().to_string())),
-            )
+        host.mount(move || {
+            dropdown(selected, options.map(str::to_owned).to_vec())
+                .change(move |index| changed.set(options.get(index).unwrap().to_string()))
         });
         host.layout((400.0, 300.0)).unwrap();
         let mut router = EventRouter::new();
@@ -113,12 +114,10 @@ fn escape_closes_the_menu_then_reaches_the_surrounding_dialog() {
     Runtime::scope("dropdown-escape", || {
         let dismissed = signal(false);
         let mut host = Host::new();
-        host.build(|cx| {
-            cx.add(
-                container()
-                    .key(Key::Escape, move |_| dismissed.set(true))
-                    .child(dropdown(signal(0), vec!["First".into(), "Second".into()])),
-            )
+        host.mount(move || {
+            container()
+                .key(Key::Escape, move |_| dismissed.set(true))
+                .child(dropdown(signal(0), vec!["First".into(), "Second".into()]))
         });
         host.layout((400.0, 300.0)).unwrap();
         let mut router = EventRouter::new();

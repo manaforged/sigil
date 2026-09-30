@@ -10,32 +10,33 @@ use allocation_counter as _;
 #[cfg(test)]
 use criterion as _;
 
-pub mod animator_overlay;
-pub mod atom;
-pub mod binding;
-pub mod builder_ext;
-pub mod engine;
-pub mod focus_ring;
+pub(crate) mod animator_overlay;
+pub(crate) mod atom;
+pub(crate) mod binding;
+pub(crate) mod builder_ext;
+pub(crate) mod class_parse;
+pub(crate) mod engine;
+pub(crate) mod focus_ring;
 mod grid;
-pub mod merge;
-pub mod metrics;
-pub mod overlay;
+pub(crate) mod merge;
+pub(crate) mod metrics;
+pub(crate) mod overlay;
 pub mod palette;
-pub mod parser;
-pub mod reactive;
-pub mod resolve;
+pub(crate) mod parser;
+pub(crate) mod reactive;
+pub(crate) mod resolve;
 pub mod scale;
-pub mod size;
-pub mod state;
-pub mod struct_api;
-pub mod styled;
+pub(crate) mod size;
+pub(crate) mod state;
+pub(crate) mod struct_api;
+pub(crate) mod styled;
 pub(crate) mod text_identity;
-pub mod text_style;
-pub mod theme;
-pub mod token;
-pub mod tone;
+pub(crate) mod text_style;
+pub(crate) mod theme;
+pub(crate) mod token;
+pub(crate) mod tone;
 pub mod variant;
-pub mod variant_kit;
+pub(crate) mod variant_kit;
 
 pub use animator_overlay::{AnimatorOverlay, ColorAtomKind, NumericAtomKind};
 pub use atom::{
@@ -44,7 +45,8 @@ pub use atom::{
     SPACING_STEP, StyleAtom, TextDecoration, TransitionId,
 };
 pub use binding::{ReactiveStateSlot, ReactiveStyleAtoms, StyleBinding};
-pub use builder_ext::{ClassSource, NodeStyleExt, parse_classes};
+pub use builder_ext::{ClassSource, NodeStyleExt};
+pub use class_parse::parse_classes;
 pub use engine::StyleEngine;
 pub use focus_ring::FocusRing;
 pub use grid::grid;
@@ -73,7 +75,7 @@ pub use styled::{
 pub use text_style::{
     StyledTextEngine, TextFace, TextLineHeight, TextRun, TextRuns, TextStyle, is_typography_atom,
 };
-pub use theme::{Theme, ThemeBuilder, ThemeValue, TokenLayer, TokenTable};
+pub use theme::{Theme, ThemeBuilder, ThemeValue, TokenLayer, TokenTable, font_family_hint};
 pub use token::{ColorKey, Token};
 pub use tone::{Tone, ToneContext};
 pub use variant_kit::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT};
@@ -85,15 +87,4 @@ pub const SELECTION_FILL: Rgba8 = Rgba8 {
     a: 130,
 };
 
-pub mod prelude {
-    pub use crate::style::{
-        AlignKind, ClassSource, ColorAtom, ColorAtomKind, ColorOrToken, ComponentId, Dimension,
-        DisplayKind, FlexDir, FocusRing, JustifyKind, LengthPercentage, MillisU16, NodeStyleExt,
-        NodeStyledBuilder, ParseError, Px, ReactiveStyleAtoms, RenderStyle, Rgba8, SPACING_STEP,
-        Size, StateSlot, StateStyle, StateStyleBuilder, Style, StyleAccess, StyleAtom,
-        StyleBinding, StyleEngine, StyleReactiveEffect, StyleState, StyleVariant, Styleable,
-        Styled, StyledTextEngine, TextLineHeight, TextStyle, Theme, ThemeBuilder, ThemeValue,
-        Token, TransitionId, merge_classes, merge_warning_count, merge_warning_count_for_component,
-        parse_class_string, parse_classes,
-    };
-}
+pub use crate::hal::geometry::Color;

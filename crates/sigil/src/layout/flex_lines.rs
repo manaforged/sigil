@@ -69,10 +69,11 @@ impl FlexItem {
                 .flatten()
         });
         let m = edges.margin.or_zero();
+        let fluid = ctx.axes.row && style.flex_grow <= 0.0 && ctx.solver.fills_width(node);
         Self {
             id: node.id(),
             order: style.order,
-            flex_grow: style.flex_grow,
+            flex_grow: if fluid { 1.0 } else { style.flex_grow },
             flex_shrink: style.flex_shrink,
             flex_basis_resolved: basis,
             main_size: basis,

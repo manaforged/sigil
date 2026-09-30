@@ -3,7 +3,7 @@
 use super::*;
 use crate::text::shaper::Shaper;
 
-const FIRA: &[u8] = include_bytes!("../../assets/text/fonts/FiraSans-Regular.ttf");
+const FIRA: &[u8] = sigil_fonts::FIRA_SANS_REGULAR;
 
 fn font() -> Font {
     Font::from_bytes(FIRA.to_vec(), 0).unwrap()

@@ -2,7 +2,7 @@ use std::panic::AssertUnwindSafe;
 use std::path::Path;
 
 use serde_json::{Map, Value, json};
-use sigil::prelude::*;
+use sigil::layout::LayoutError;
 use sigil::tasks::AsyncRuntime;
 use sigil_kittest::InteractionMode;
 
@@ -180,7 +180,7 @@ impl Export<'_> {
                 });
             window.insert(look.tag().to_owned(), logged(&stem, shot));
         }
-        let tree = move |cx: &mut Cx| cx.add(build(drive));
+        let tree = move || build(drive);
         let cells = capture.cells(self.catalog.cell);
         let focus = drive == State::Focused;
         let mut terminal = Map::new();
@@ -246,7 +246,7 @@ impl Export<'_> {
             let shot = self
                 .shots
                 .pair(self.out, &stem, self.catalog.crop_pad, |scale| {
-                    capture::paint(move || app, look, view, scale)
+                    capture::paint(app, look, view, scale)
                 });
             if let Value::Object(mut fields) = logged(&stem, shot) {
                 fields.insert("host".into(), json!(HostKind::Window));

@@ -7,12 +7,17 @@
 #[path = "events_support/input.rs"]
 mod input;
 
+use sigil::events::{PhysicalKey, ScrollDelta, ScrollEvent, ScrollPhase};
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil_kittest::FixedMeasure;
 use std::cell::Cell;
 use std::rc::Rc;
 
 use input::pointer_down;
-use sigil::hal::{KeyEventInit, Point, ScrollEventInit};
+use sigil::events::ShellEvent;
+use sigil::events::{KeyEventInit, ScrollEventInit};
+use sigil::geometry::Point;
 use sigil::prelude::*;
 
 const TEXT_MEASURE: FixedMeasure = FixedMeasure {

@@ -13,8 +13,13 @@ wasm-bindgen --target web --out-dir web \
   target/wasm32-unknown-unknown/release/examples/hello-counter.wasm
 ```
 
-Use the `wasm-bindgen` CLI version that `Cargo.lock` pins. Any example
-builds without changes. Load the module from a page and serve the
+The `wasm-bindgen` CLI must match the version that `Cargo.lock` pins:
+
+```bash
+cargo install wasm-bindgen-cli --version "$(cargo pkgid wasm-bindgen | cut -d@ -f2)"
+```
+
+Any example builds without changes. Load the module from a page and serve the
 directory over HTTP:
 
 ```html
@@ -33,8 +38,8 @@ use sigil::prelude::*;
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("App").canvas("app"), app_tree)
 }
-# fn app_tree(cx: &mut Cx) -> NodeId {
-#     cx.add(text("app"))
+# fn app_tree() -> impl IntoNode {
+#     text("app")
 # }
 ```
 
@@ -92,7 +97,8 @@ Text in the loaded script shows empty boxes until the signal turns
   pass to the canvas unchanged.
 - No system fonts. Scripts outside the bundled faces draw as empty
   boxes until `load_font_url` loads a face that covers them.
-- `spawn` and `sleep` futures do not run. The async runtime has no
-  browser executor.
+- Tasks run on the page's one thread. `task`, `spawn`, and `sleep`
+  work, and `sleep` waits on `setTimeout`, but a future that computes
+  without awaiting freezes the page until it returns.
 - No WebGL. A browser without WebGPU uses the CPU renderer.
 - No accessibility tree. AccessKit has no browser adapter.

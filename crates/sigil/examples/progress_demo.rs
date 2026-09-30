@@ -6,17 +6,20 @@
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - progress demo", 800, 400), build)
+    sigil::run(
+        AppConfig::new("Sigil - progress demo").size(800, 400),
+        build,
+    )
 }
 
-fn build(cx: &mut Cx) -> NodeId {
+fn build() -> impl IntoNode {
     let det = signal(60.0_f32);
     let phase = signal(0.0_f32);
     effect(move || {
         let next = (phase.get() + 0.005) % 1.0;
         phase.set(next);
     });
-    cx.add(root(det, phase))
+    root(det, phase)
 }
 
 fn root(det: Signal<f32>, phase: Signal<f32>) -> NodeBuilder {

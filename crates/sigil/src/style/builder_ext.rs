@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
-
 use super::presence::install_presence;
 use crate::animation_runtime::AnimationConfig;
 use crate::kernel::{Node, NodeBuilder, TextBuilder};
@@ -10,10 +7,11 @@ use smallvec::SmallVec;
 use std::cell::Cell;
 use std::rc::Rc;
 
+use crate::style::merge::SlotSet;
 use crate::style::{
     FocusRing, NumericAtomKind, ReactiveStateSlot, StateSlot, Style, StyleAtom, StyleBinding,
     StyleOverlay, StyleReactiveEffect, StyleState, StyleVariant, Theme, Tone, ToneContext,
-    merge_classes, parse_class_string, parser::ParseError,
+    merge_classes, parse_classes,
 };
 
 static EMPTY_ATOMS: &[StyleAtom] = &[];
@@ -126,6 +124,16 @@ pub trait NodeStyleExt {
     }
 }
 
+impl NodeBuilder {
+    pub(crate) fn seal_style(self) -> Self {
+        self.mutate(|node| {
+            if let Some(binding) = node.get_extension_mut_untracked::<StyleBinding>() {
+                binding.seal();
+            }
+        })
+    }
+}
+
 impl NodeStyleExt for NodeBuilder {
     fn class(self, source: impl Into<ClassSource>) -> Self {
         let source = source.into();
@@ -133,7 +141,7 @@ impl NodeStyleExt for NodeBuilder {
     }
 
     fn style(self, style: Style) -> Self {
-        self.class(style)
+        crate::style::styled::node::attach_style(self, style)
     }
 
     fn theme(self, theme: Theme) -> Self {
@@ -175,6 +183,10 @@ impl NodeStyleExt for TextBuilder {
     }
 
     fn style(self, style: Style) -> Self {
+        debug_assert!(
+            !style.has_state_overlays(),
+            "text has no pointer state; put state styles on the container around it"
+        );
         self.class(style)
     }
 
@@ -249,6 +261,7 @@ fn install_class(node: &mut Node, source: ClassSource) {
     if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
         let existing = binding.all_atoms();
         let incoming_atoms = incoming.all_atoms();
+        binding.note_user(SlotSet::of(&incoming_atoms));
         let merged = merge_classes(&existing, &incoming_atoms, 0);
         binding.replace_owned(smallvec16(merged));
         return;
@@ -301,69 +314,6 @@ fn binding_from_source(source: ClassSource) -> StyleBinding {
     }
 }
 
-pub fn parse_classes(input: &'static str) -> &'static [StyleAtom] {
-    static CACHE: OnceLock<Mutex<HashMap<&'static str, &'static [StyleAtom]>>> = OnceLock::new();
-
-    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    let Ok(mut cache) = cache.lock() else {
-        return parse_and_leak(input);
-    };
-    if let Some(atoms) = cache.get(input).copied() {
-        return atoms;
-    }
-    let atoms = parse_and_leak(input);
-    cache.insert(input, atoms);
-    atoms
-}
-
-fn parse_and_leak(input: &'static str) -> &'static [StyleAtom] {
-    let mut atoms: SmallVec<[StyleAtom; 16]> = SmallVec::new();
-    for token in input.split(' ').filter(|token| !token.is_empty()) {
-        match parse_class_string(token) {
-            Ok(parsed) => atoms.extend(parsed),
-            Err(err) => diagnostic::class_parse(input, &err),
-        }
-    }
-    Box::leak(atoms.into_vec().into_boxed_slice())
-}
-
 fn smallvec16(atoms: SmallVec<[StyleAtom; 32]>) -> SmallVec<[StyleAtom; 16]> {
     atoms.into_iter().collect()
-}
-
-pub(crate) mod diagnostic {
-    #![cfg_attr(debug_assertions, allow(clippy::panic))]
-
-    use super::ParseError;
-    use crate::style::merge::bump_unknown_class_count;
-
-    #[cfg(debug_assertions)]
-    #[cold]
-    #[track_caller]
-    pub(crate) fn class_parse(input: &str, err: &ParseError) {
-        bump_unknown_class_count();
-        panic!("invalid class in \"{input}\": {err}");
-    }
-
-    #[cfg(not(debug_assertions))]
-    #[cold]
-    pub(crate) fn class_parse(input: &str, err: &ParseError) {
-        use std::collections::HashSet;
-        use std::sync::{Mutex, OnceLock};
-
-        static WARNED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
-        bump_unknown_class_count();
-        let first = WARNED
-            .get_or_init(Mutex::default)
-            .lock()
-            .map_or(true, |mut seen| seen.insert(err.to_string()));
-        if first {
-            tracing::warn!(
-                target: "sigil_style::class",
-                input,
-                error = %err,
-                "unknown class token ignored",
-            );
-        }
-    }
 }

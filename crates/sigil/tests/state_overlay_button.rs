@@ -10,7 +10,11 @@ mod input;
 mod widget_support;
 
 use input::pointer_move;
-use sigil::hal::{Point, PointerEventInit};
+use sigil::events::EventRouter;
+use sigil::events::PointerEventInit;
+use sigil::events::ShellEvent;
+use sigil::geometry::Point;
+use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::style::Tone;
 use sigil::style::scale::{ruby_light, slate_light};

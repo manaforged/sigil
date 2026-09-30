@@ -108,7 +108,7 @@ fn ui_tasks_share_the_host_runtime_and_leave_it_running() {
             std::future::pending(),
         );
         drop(runtime);
-        assert!(std::panic::catch_unwind(sigil::tasks::dispatcher).is_err());
+        assert!(!sigil::tasks::installed());
         assert!(
             spin_until(Duration::from_secs(2), || ui_task.is_finished()),
             "dropping the UI runtime cancels its pending task"

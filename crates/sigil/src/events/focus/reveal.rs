@@ -1,4 +1,4 @@
-use crate::kernel::{Cx, NodeId};
+use crate::kernel::{Cx, Node, NodeId, TopLayer};
 use crate::layout::LayoutEngine;
 use crate::reactive::Signal;
 
@@ -14,7 +14,7 @@ pub(crate) fn reveal_focus(cx: &Cx, layout: &LayoutEngine, target: NodeId) {
     };
     let mut top = rect.origin.y;
     let mut bottom = top + rect.height;
-    let mut current = cx.parent(target);
+    let mut current = layer_parent(cx, target);
     while let Some(id) = current {
         if let Some(reveal) = cx
             .get(id)
@@ -34,8 +34,14 @@ pub(crate) fn reveal_focus(cx: &Cx, layout: &LayoutEngine, target: NodeId) {
             top -= after - before;
             bottom -= after - before;
         }
-        current = cx.parent(id);
+        current = layer_parent(cx, id);
     }
+}
+
+fn layer_parent(cx: &Cx, id: NodeId) -> Option<NodeId> {
+    cx.get(id)
+        .filter(|node| node.get_extension::<TopLayer>().is_none())
+        .and_then(Node::parent)
 }
 
 fn overflow(top: f32, bottom: f32, view_top: f32, view_bottom: f32) -> f32 {

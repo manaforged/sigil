@@ -2,11 +2,12 @@
 
 use super::*;
 use crate::events::EventRouter;
-use crate::hal::{
-    KeyEvent, KeyEventInit, KeyPhase, LogicalKey, LogicalSize, ModifiersState, MouseButton,
-    MouseButtons, PhysicalKey, Point, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
-    ShellEvent, Size,
+use crate::events::{
+    KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
+    PhysicalKey, PointerEvent, PointerEventInit, PointerKind, PointerPhase, ShellEvent,
 };
+use crate::geometry::{LogicalSize, Point, Size};
+use crate::kernel::IntoNode;
 use crate::kernel::{AccessibleName, Cx, Role};
 use crate::layout::{LayoutEngine, TextMeasure};
 use crate::reactive::Runtime;

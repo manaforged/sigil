@@ -32,26 +32,9 @@ pub(super) fn apply_style_overlay(
         return;
     };
 
-    let pad = intent.data().padding;
-
-    let keep_pad = pad
-        != crate::layout::style_data::Rect::splat(crate::layout::style_data::LengthPercentage::Px(
-            0.0,
-        ));
-
-    apply_style_atoms(binding.static_slice(), intent);
-
-    apply_style_atoms(binding.dynamic_slice(), intent);
-
-    for reactive in binding.reactive_channels() {
-        apply_style_atoms(reactive, intent);
+    for atom in binding.cascade() {
+        apply_style_atoms(&[atom], intent);
     }
-
-    if keep_pad {
-        intent.data_mut().padding = pad;
-    }
-
-    apply_style_atoms(binding.state_overlay_atoms(), intent);
     if let Some(overlay) = binding.animator_overlay() {
         if let Some(value) = overlay.value_for(NumericAtomKind::Gap) {
             *intent = intent.clone().gap(value.max(0.0));

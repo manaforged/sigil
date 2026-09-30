@@ -16,7 +16,10 @@ mod input;
 mod widget_support;
 
 use input::type_char;
-use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
+use sigil::events::EventRouter;
+use sigil::events::PhysicalKey;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::{CaretGeometry, LayoutEngine, LayoutResult, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
 use sigil::style::TextStyle;
 use sigil_kittest::stub_text_measure;
@@ -32,7 +35,7 @@ impl TextGeometry for StubGeometry {
         text: &str,
         _style: &TextStyle,
         _width: Option<f32>,
-        point: sigil::hal::Point,
+        point: sigil::geometry::Point,
     ) -> sigil::hal::HitPosition {
         sigil::hal::HitPosition {
             byte_index: ((point.x / 10.0).round().max(0.0) as usize).min(text.len()),
@@ -60,7 +63,7 @@ impl TextGeometry for StubGeometry {
         _style: &TextStyle,
         _width: Option<f32>,
         _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
-    ) -> Vec<sigil::hal::Rect> {
+    ) -> Vec<sigil::geometry::Rect> {
         Vec::new()
     }
 }

@@ -4,10 +4,15 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::events::EventRouter;
+use sigil::events::PhysicalKey;
+use sigil::events::ShellEvent;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 
-fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil::hal::Rect> {
+fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil::geometry::Rect> {
     emit_scene(cx, root)
         .commands
         .iter()
@@ -71,7 +76,8 @@ fn caret_sits_on_the_line_its_offset_is_on() {
     });
 }
 
-use sigil::hal::{KeyEventInit, MouseButton, MouseButtons, Point, PointerEventInit};
+use sigil::events::{KeyEventInit, MouseButton, MouseButtons, PointerEventInit};
+use sigil::geometry::Point;
 
 fn click_at(cx: &mut Cx, layout: &LayoutEngine, router: &mut EventRouter, x: f32, y: f32) {
     router.route(

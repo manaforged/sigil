@@ -7,8 +7,15 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use sigil::hal::{MouseButton, MouseButtons, Point, PointerEventInit};
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{MouseButton, MouseButtons, PointerEventInit};
+use sigil::geometry::Point;
+use sigil::kernel::AccessibleName;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
 use sigil::scene::{SceneCommand, StrokeAlign, emit_scene};
 use sigil_kittest::stub_text_measure;
 use widget_support::compute;
@@ -86,11 +93,8 @@ fn glyph_runs(cx: &mut Cx, root: NodeId) -> usize {
         .count()
 }
 
-fn dropdown_fixture(cx: &mut Cx) -> NodeId {
-    cx.add(dropdown(
-        signal(0_usize),
-        vec!["Alpha".to_owned(), "Beta".to_owned()],
-    ))
+fn dropdown_fixture() -> impl IntoNode {
+    dropdown(signal(0_usize), vec!["Alpha".to_owned(), "Beta".to_owned()])
 }
 
 fn assert_single_bordered_trigger(cx: &Cx, root: NodeId, layout: &LayoutEngine) {
@@ -136,7 +140,7 @@ fn assert_single_bordered_trigger(cx: &Cx, root: NodeId, layout: &LayoutEngine) 
 fn border_click_toggles_popup_open_and_closed() {
     sigil::reactive::Runtime::scope("dd-border-click", || {
         let mut cx = Cx::new_root();
-        let root = dropdown_fixture(&mut cx);
+        let root = cx.add(dropdown_fixture);
         let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);
 
@@ -202,9 +206,9 @@ fn reactive_disable_vetoes_arrow_down_open() {
         router.route(
             &mut cx,
             &layout,
-            ShellEvent::Key(KeyEvent::new(sigil::hal::KeyEventInit {
+            ShellEvent::Key(KeyEvent::new(sigil::events::KeyEventInit {
                 key: Key::ArrowDown.into(),
-                physical: sigil::hal::PhysicalKey::ArrowDown,
+                physical: sigil::events::PhysicalKey::ArrowDown,
                 modifiers: ModifiersState::empty(),
                 repeat: false,
                 phase: KeyPhase::Down,
@@ -228,7 +232,7 @@ fn mid_gesture_disable_vetoes_interior_release() {
 fn interior_click_toggles_exactly_once() {
     sigil::reactive::Runtime::scope("dd-interior-click", || {
         let mut cx = Cx::new_root();
-        let root = dropdown_fixture(&mut cx);
+        let root = cx.add(dropdown_fixture);
         let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);
 

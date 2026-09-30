@@ -19,3 +19,23 @@ fn content_id_is_stable_and_distinguishes_pixels() {
     assert_eq!(a, same);
     assert_ne!(a, different);
 }
+
+#[test]
+fn cached_image_builds_each_key_once() {
+    use std::cell::Cell;
+    let builds = Cell::new(0);
+    let make = || {
+        builds.set(builds.get() + 1);
+        ImageSource::from_rgba8(1, 1, vec![1, 2, 3, 255])
+    };
+    let key = 0x5eed_u64;
+    let first = cached_image(key, make);
+    let again = cached_image(key, || {
+        builds.set(builds.get() + 1);
+        None
+    });
+    assert_eq!(builds.get(), 1, "a cached key does not build again");
+    assert_eq!(first, again);
+    let _ = cached_image(key + 1, make);
+    assert_eq!(builds.get(), 2, "a new key builds");
+}

@@ -36,7 +36,7 @@ pub use interval::{IntervalId, cancel_interval, interval, next_interval_deadline
 pub use owner::{Owner, OwnerId, is_live, on_cleanup, owner_by_id};
 pub use phase::DrawPhase;
 pub use runtime::Runtime;
-pub use signal::SendableSignal;
+pub(crate) use signal::SendableSignal;
 pub use signal::{Signal, signal};
 pub use source::Reactive;
 

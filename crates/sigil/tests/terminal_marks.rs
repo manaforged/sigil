@@ -5,6 +5,7 @@
 #![allow(clippy::expect_used)]
 
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
 
 fn inked(frame: &str) -> usize {
     frame
@@ -16,22 +17,20 @@ fn inked(frame: &str) -> usize {
 #[test]
 fn a_thin_stroke_survives_the_sextant_fallback() {
     let frame = sigil::terminal::present(
-        |cx: &mut Cx| {
-            cx.add(
-                path(400, 200)
-                    .move_to(0.0, 100.0)
-                    .line_to(400.0, 100.0)
-                    .stroke(
-                        Rgba8 {
-                            r: 200,
-                            g: 60,
-                            b: 60,
-                            a: 255,
-                        },
-                        2.0,
-                    )
-                    .layout(LayoutStyle::block().width(cols(60.0)).height(rows(6.0))),
-            )
+        || {
+            path(400, 200)
+                .move_to(0.0, 100.0)
+                .line_to(400.0, 100.0)
+                .stroke(
+                    Rgba8 {
+                        r: 200,
+                        g: 60,
+                        b: 60,
+                        a: 255,
+                    },
+                    2.0,
+                )
+                .layout(LayoutStyle::block().width(cols(60.0)).height(rows(6.0)))
         },
         80,
         8,
@@ -45,17 +44,15 @@ fn first_ink(tone: Option<Tone>) -> Option<sigil::terminal::Ink> {
     let mut host = sigil::Host::cells();
     let mut router = sigil::events::EventRouter::new();
     Runtime::scope("progress-tone", || {
-        host.build(|cx: &mut Cx| {
+        host.mount(move || {
             let bar = progress(signal(1.0), 1.0).height(1.0);
             let bar = match tone {
                 Some(tone) => bar.tone(tone),
                 None => bar,
             };
-            cx.add(
-                container()
-                    .layout(LayoutStyle::block().width(cols(20.0)))
-                    .child(bar),
-            )
+            container()
+                .layout(LayoutStyle::block().width(cols(20.0)))
+                .child(bar)
         });
         let grid = sigil::terminal::step(&mut host, &mut router, [], 30, 3).expect("layout");
         grid.get(0, 0).map(|cell| cell.fg)

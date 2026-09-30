@@ -2,10 +2,10 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::prelude::{NodeEventsExt, PointerEvent};
+use crate::events::{NodeEventsExt, PointerEvent};
 use crate::kernel::{NodeBuilder, Role, TextContent, container};
 use crate::layout::TextStyleCapture;
-use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived};
 use crate::style::{
     ColorAtom, NodeStyleExt, ReactiveStateSlot, Rgba8, StateSlot, StyleAtom, StyleOverlay,
@@ -79,6 +79,7 @@ pub(super) fn build_base_node(
         .class(TEXT_FIELD_ANIM_BASE)
         .style_reactive(channel)
         .state_overlay(overlay, slot_cell)
+        .seal_style()
         .pointer_up(move |event| pointer_up(event, interaction))
         .child(field_inner(runtime, interaction, displayed, width, height))
 }
@@ -103,7 +104,7 @@ fn field_style_channel(
 pub(super) fn field_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill_width()
-        .min_size(0.0, crate::layout::prelude::Dimension::Auto)
+        .min_size(0.0, crate::layout::Dimension::Auto)
         .align_items(AlignItems::Center)
 }
 

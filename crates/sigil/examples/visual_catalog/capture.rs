@@ -1,8 +1,13 @@
-use sigil::hal::{
-    ModifiersState, MouseButton, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind,
+use sigil::Host;
+use sigil::events::EventRouter;
+use sigil::events::{
+    ModifiersState, MouseButton, MouseButtons, PointerEvent, PointerEventInit, PointerKind,
     PointerPhase, ShellEvent,
 };
+use sigil::geometry::Point;
+use sigil::layout::LayoutError;
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
 use sigil::style::Token;
 use sigil::terminal::{Cell, Grid, Ink};
 use sigil_kittest::{InteractionMode, capture_widget_scaled_focus_descendant, real_text_measure};
@@ -55,14 +60,12 @@ pub(crate) fn paint<N: IntoNode + 'static>(
 ) -> super::shots::Capture {
     let theme = look.theme();
     let pad = view.pad;
-    let frame = move |cx: &mut Cx| {
-        cx.add(
-            container()
-                .theme(theme)
-                .class("bg-surface")
-                .layout(LayoutStyle::flex_column().fill().padding(pad))
-                .child(child()),
-        )
+    let frame = move || {
+        container()
+            .theme(theme)
+            .class("bg-surface")
+            .layout(LayoutStyle::flex_column().fill().padding(pad))
+            .child(child())
     };
     let extra = (2.0 * pad) as u32;
     capture_widget_scaled_focus_descendant(
@@ -96,12 +99,12 @@ pub(crate) fn grid(tree: impl IntoNode + 'static, run: Run<'_>) -> Result<Cells,
     Runtime::scope("visual-catalog-terminal", || {
         let mut host = Host::cells();
         let mut router = EventRouter::new();
-        host.mount(
+        host.mount(move || {
             container()
                 .theme(run.look.theme())
                 .layout(LayoutStyle::flex_column().fill())
-                .child(tree),
-        );
+                .child(tree)
+        });
         host.layout((f32::from(cols) * Host::CELL, f32::from(rows) * Host::CELL))?;
         if run.focus {
             host.repair_focus(&mut router);

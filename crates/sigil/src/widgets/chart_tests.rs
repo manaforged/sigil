@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
 
 use super::*;
+use crate::Host;
 use crate::kernel::{IntoNode, container};
-use crate::prelude::Host;
 use crate::reactive::Runtime;
 
 #[test]
@@ -46,15 +46,13 @@ fn line_chart_builds() {
 fn narrow_chart_dates_keep_the_day_digits_visible() {
     Runtime::scope("chart-compact-dates", || {
         let mut host = Host::new();
-        host.build(|cx| {
-            cx.add(
-                container()
-                    .layout(LayoutStyle::flex_column())
-                    .child(chart([1.0; 7]).width(300.0).labels([
-                        "Sep 20", "Sep 21", "Sep 22", "Sep 23", "Sep 24", "Sep 25", "Sep 26",
-                    ]))
-                    .child(text("26").nowrap().class("text-xs")),
-            )
+        host.mount(move || {
+            container()
+                .layout(LayoutStyle::flex_column())
+                .child(chart([1.0; 7]).width(300.0).labels([
+                    "Sep 20", "Sep 21", "Sep 22", "Sep 23", "Sep 24", "Sep 25", "Sep 26",
+                ]))
+                .child(text("26").nowrap().class("text-xs"))
         });
         host.layout((400.0, 300.0)).unwrap();
         let scene = host.scene((400.0, 300.0)).unwrap();

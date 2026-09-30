@@ -9,15 +9,21 @@
     clippy::too_many_lines
 )]
 
-use sigil::hal::{Key, ShellEvent};
-use sigil::kernel::{Cx, NodeId, container, text};
+use sigil::events::{Key, ShellEvent};
+use sigil::kernel::IntoNode;
+use sigil::kernel::{container, text};
 use sigil::prelude::{LayoutBuilderExt, NodeStyleExt};
 use sigil::reactive::{derived, signal};
 use sigil::widgets::button;
 
 use sigil::terminal::{key_down, present as try_present};
 
-fn present(tree: impl sigil::TreeRoot, cols: u16, rows: u16, events: &[ShellEvent]) -> String {
+fn present<N: IntoNode>(
+    tree: impl Fn() -> N + 'static,
+    cols: u16,
+    rows: u16,
+    events: &[ShellEvent],
+) -> String {
     try_present(tree, cols, rows, events).expect("layout")
 }
 
@@ -31,16 +37,14 @@ fn step(
     sigil::terminal::step(host, router, events, cols, rows).expect("layout")
 }
 
-fn counter(cx: &mut Cx) -> NodeId {
+fn counter() -> impl IntoNode {
     let count = signal(0_i32);
     let label = derived(move || format!("Count: {}", count.get()));
-    cx.add(
-        container()
-            .child(text(label))
-            .child(button("Increment").activate(move || {
-                count.set(count.peek() + 1);
-            })),
-    )
+    container()
+        .child(text(label))
+        .child(button("Increment").activate(move || {
+            count.set(count.peek() + 1);
+        }))
 }
 
 #[path = "terminal_host/frames.rs"]

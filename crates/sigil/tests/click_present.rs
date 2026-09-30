@@ -5,6 +5,7 @@ use std::time::Instant;
 use sigil::Host;
 use sigil::prelude::*;
 use sigil::profile::FRAME_BUDGET_NS;
+use sigil::reactive::Runtime;
 
 const SAMPLES: usize = 64;
 
@@ -14,17 +15,15 @@ fn increment_layout_emit_under_frame_budget() {
         let count = signal(0_i32);
         let label = derived(move || format!("Count: {}", count.get()));
         let mut host = Host::new();
-        host.build(|cx| {
-            cx.add(
-                container()
-                    .layout(
-                        LayoutStyle::flex_column()
-                            .fixed_size(480.0, 240.0)
-                            .gap(16.0),
-                    )
-                    .child(text(label))
-                    .child(text("Increment")),
-            )
+        host.mount(move || {
+            container()
+                .layout(
+                    LayoutStyle::flex_column()
+                        .fixed_size(480.0, 240.0)
+                        .gap(16.0),
+                )
+                .child(text(label))
+                .child(text("Increment"))
         });
         let viewport = (480.0, 240.0);
         drop(host.scene(viewport).unwrap());

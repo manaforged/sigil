@@ -11,12 +11,9 @@ pub(crate) fn apply_text_binding(
     binding: &StyleBinding,
     style: &mut TextStyle,
 ) {
-    engine.apply_text(binding.static_slice(), style);
-    engine.apply_text(binding.dynamic_slice(), style);
-    for reactive in binding.reactive_channels() {
-        engine.apply_text(reactive, style);
+    for atom in binding.cascade() {
+        engine.apply_text(&[atom], style);
     }
-    engine.apply_text(binding.state_overlay_atoms(), style);
     if let Some(overlay) = binding.animator_overlay() {
         StyleEngine::overlay_text(overlay, style);
     }

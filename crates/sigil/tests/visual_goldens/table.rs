@@ -65,7 +65,7 @@ fn table_golden_view() -> NodeBuilder {
 #[test]
 fn table_default() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(table_golden_view()),
+        table_golden_view,
         InteractionMode::Default,
         [320, 172],
         (1.0, 1.0),
@@ -76,21 +76,19 @@ fn table_default() {
 #[test]
 fn table_selected() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let state = table_golden_state();
             state.select_only(1);
-            cx.add(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
-                    .class("bg-surface")
-                    .child(
-                        table(state)
-                            .row_height(24.0)
-                            .header_height(28.0)
-                            .viewport_width(320.0)
-                            .viewport_height(144.0),
-                    ),
-            )
+            container()
+                .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
+                .class("bg-surface")
+                .child(
+                    table(state)
+                        .row_height(24.0)
+                        .header_height(28.0)
+                        .viewport_width(320.0)
+                        .viewport_height(144.0),
+                )
         },
         InteractionMode::Default,
         [320, 172],
@@ -102,21 +100,19 @@ fn table_selected() {
 #[test]
 fn table_sorted() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let state = table_golden_state();
             state.toggle_sort("name");
-            cx.add(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
-                    .class("bg-surface")
-                    .child(
-                        table(state)
-                            .row_height(24.0)
-                            .header_height(28.0)
-                            .viewport_width(320.0)
-                            .viewport_height(144.0),
-                    ),
-            )
+            container()
+                .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
+                .class("bg-surface")
+                .child(
+                    table(state)
+                        .row_height(24.0)
+                        .header_height(28.0)
+                        .viewport_width(320.0)
+                        .viewport_height(144.0),
+                )
         },
         InteractionMode::Default,
         [320, 172],

@@ -5,9 +5,10 @@ use smallvec::SmallVec;
 
 use crate::animation_runtime::style::StyleAnimator;
 use crate::reactive::Signal;
+use crate::style::merge::SlotSet;
 use crate::style::{
     AnimatorOverlay, ColorAtomKind, NumericAtomKind, Rgba8, StateSlot, StyleAtom, StyleOverlay,
-    Theme, Tone,
+    Theme, Tone, merge_classes,
 };
 
 pub type ReactiveStateSlot = Rc<Cell<StateSlot>>;
@@ -22,6 +23,8 @@ pub struct StyleBinding {
     state_overlay: Option<Box<StyleOverlay>>,
     animated_values: SmallVec<[(NumericAtomKind, Signal<f32>); 2]>,
     state_overlay_slot: Option<ReactiveStateSlot>,
+    widget_channels: Option<usize>,
+    user_slots: SlotSet,
 }
 
 impl core::fmt::Debug for StyleBinding {
@@ -37,6 +40,8 @@ impl core::fmt::Debug for StyleBinding {
             .field("animated_values", &self.animated_values)
             .field("state_overlay", &self.state_overlay.is_some())
             .field("state_overlay_slot", &self.state_overlay_slot.is_some())
+            .field("widget_channels", &self.widget_channels)
+            .field("user_slots", &self.user_slots)
             .finish()
     }
 }
@@ -51,6 +56,8 @@ impl Default for StyleBinding {
             state_overlay: None,
             animated_values: SmallVec::new(),
             state_overlay_slot: None,
+            widget_channels: None,
+            user_slots: SlotSet::EMPTY,
         }
     }
 }
@@ -117,21 +124,62 @@ impl StyleBinding {
     }
 
     pub(crate) fn has_transition(&self) -> bool {
-        self.static_atoms
-            .iter()
-            .chain(&self.dynamic_atoms)
-            .chain(self.state_overlay_atoms())
-            .copied()
-            .chain(self.reactive_channels().flatten().copied())
+        self.cascade()
             .any(|atom| matches!(atom, StyleAtom::Transition(_)))
     }
 
     #[must_use]
     pub fn hides(&self) -> bool {
         let none = StyleAtom::Display(crate::style::DisplayKind::None);
-        self.static_slice().contains(&none)
-            || self.dynamic_slice().contains(&none)
-            || self.reactive_contains(&none)
+        self.cascade().any(|atom| atom == none)
+    }
+
+    pub fn cascade(&self) -> impl Iterator<Item = StyleAtom> + '_ {
+        self.static_atoms
+            .iter()
+            .chain(&self.dynamic_atoms)
+            .copied()
+            .chain(self.live_atoms())
+            .chain(self.state_overlay_atoms().iter().copied())
+    }
+
+    fn live_atoms(&self) -> impl Iterator<Item = StyleAtom> + '_ {
+        let user = self.user_slots;
+        let widget_channels = self.widget_channels.unwrap_or(0);
+        self.reactive_channels
+            .iter()
+            .enumerate()
+            .flat_map(move |(index, channel)| {
+                let masked = index < widget_channels && !user.is_empty();
+                channel
+                    .get()
+                    .iter()
+                    .copied()
+                    .filter(move |atom| !(masked && SlotSet::atom(*atom).overlaps(user)))
+            })
+    }
+
+    pub(crate) fn seal(&mut self) {
+        if self.widget_channels.is_none() {
+            self.widget_channels = Some(self.reactive_channels.len());
+        }
+    }
+
+    pub(crate) const fn note_user(&mut self, slots: SlotSet) {
+        if self.widget_channels.is_some() {
+            self.user_slots = self.user_slots.union(slots);
+        }
+    }
+
+    pub(crate) fn strip(&mut self, slots: SlotSet) {
+        if slots.is_empty() || !SlotSet::of(&self.all_atoms()).overlaps(slots) {
+            return;
+        }
+        let kept = merge_classes(&[], &self.all_atoms(), 0)
+            .into_iter()
+            .filter(|atom| !SlotSet::atom(*atom).overlaps(slots))
+            .collect();
+        self.replace_owned(kept);
     }
 
     #[must_use]
@@ -166,11 +214,7 @@ impl StyleBinding {
     }
 
     pub(crate) fn update_animations(&self, theme: &Theme, tone: Tone, inherited_text: Rgba8) {
-        let mut atoms = self.all_atoms();
-        for channel in self.reactive_channels() {
-            atoms.extend_from_slice(channel);
-        }
-        atoms.extend_from_slice(self.state_overlay_atoms());
+        let atoms: SmallVec<[StyleAtom; 32]> = self.cascade().collect();
         if self.attached_animators.get().is_none()
             && let Some(animator) = StyleAnimator::new(&atoms)
         {
@@ -206,7 +250,14 @@ impl StyleBinding {
     }
 
     pub fn set_state_overlay(&mut self, overlay: StyleOverlay, slot: ReactiveStateSlot) {
-        self.state_overlay = Some(Box::new(overlay));
+        let merged = match self.state_overlay.take() {
+            Some(mut existing) => {
+                existing.merge(&overlay);
+                existing
+            }
+            None => Box::new(overlay),
+        };
+        self.state_overlay = Some(merged);
         self.state_overlay_slot = Some(slot);
     }
 
@@ -237,6 +288,8 @@ impl PartialEq for StyleBinding {
         self.static_atoms == other.static_atoms
             && self.dynamic_atoms == other.dynamic_atoms
             && reactive_eq
+            && self.widget_channels == other.widget_channels
+            && self.user_slots == other.user_slots
     }
 }
 

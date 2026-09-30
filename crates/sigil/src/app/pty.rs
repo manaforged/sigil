@@ -4,7 +4,7 @@ use crate::reactive::Signal;
 use crate::reactive::signal;
 use std::sync::mpsc;
 
-use crate::app::{AppResult, Error};
+use crate::{AppResult, Error};
 
 pub struct Session {
     pub lines: Signal<Vec<String>>,
@@ -62,11 +62,12 @@ fn spawn_pty_inner(program: &str) -> AppResult<Session> {
     use std::io::Write;
     use std::thread;
 
-    use crate::tasks::{OwnerHandle, dispatcher};
+    use crate::tasks::OwnerHandle;
     use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 
     let owner = OwnerHandle::current().ok_or_else(|| Error::task(NoOwner))?;
-    let dispatcher = dispatcher();
+    let dispatcher = crate::tasks::current::dispatcher()
+        .expect("Session::spawn requires AsyncRuntime::install_current");
     let pty = native_pty_system();
     let pair = pty
         .openpty(PtySize {
@@ -123,7 +124,7 @@ fn pty_err(err: impl std::fmt::Display) -> Error {
 )]
 fn read_rows(
     mut reader: Box<dyn std::io::Read + Send>,
-    dispatcher: crate::tasks::Dispatcher,
+    dispatcher: crate::tasks::runtime::Dispatcher,
     owner: crate::tasks::OwnerHandle,
     painted: crate::reactive::SendableSignal<Vec<String>>,
 ) {
@@ -148,7 +149,7 @@ fn read_rows(
         }
         drop(slot);
         let pending = std::sync::Arc::clone(&pending);
-        crate::tasks::dispatch_to_owner(&dispatcher, owner, move || {
+        crate::tasks::dispatch::dispatch_to_owner(&dispatcher, owner, move || {
             let latest = pending.lock().ok().and_then(|mut held| held.take());
             if let Some(screen) = latest {
                 painted.into_signal().set(screen);

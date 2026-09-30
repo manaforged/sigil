@@ -2,14 +2,16 @@ use core::fmt;
 
 use smallvec::SmallVec;
 
-use crate::style::{
-    Dimension, DisplayKind, Elevation, FlexDir, FlexWrapKind, OverflowKind, Px, StateSlot,
-    StyleAtom, TextDecoration,
-};
+use crate::style::{OverflowKind, Px, StateSlot, StyleAtom};
 
 mod atoms;
+mod keywords;
 
 use atoms::{parse_prefixed_token, push_border_side_atoms, shadow_atom};
+use keywords::{
+    parse_display_token, parse_font_token, parse_shape_token, parse_size_token, parse_text_token,
+    parse_tracking_token,
+};
 
 const STRUCTURAL_TOKENS: [&str; 81] = [
     "p-16",
@@ -182,77 +184,15 @@ fn parse_token(token: &str) -> Result<StyleAtom, ParseError> {
     if malformed_theme_token(token) {
         return Err(unknown(token));
     }
-    match token {
-        "flex" => return Ok(StyleAtom::Display(DisplayKind::Flex)),
-        "block" => return Ok(StyleAtom::Display(DisplayKind::Block)),
-        "grid" => return Ok(StyleAtom::Display(DisplayKind::Grid)),
-        "hidden" => return Ok(StyleAtom::Display(DisplayKind::None)),
-        "flex-row" => return Ok(StyleAtom::FlexDirection(FlexDir::Row)),
-        "flex-col" => return Ok(StyleAtom::FlexDirection(FlexDir::Column)),
-        "flex-row-reverse" => return Ok(StyleAtom::FlexDirection(FlexDir::RowReverse)),
-        "flex-col-reverse" => return Ok(StyleAtom::FlexDirection(FlexDir::ColumnReverse)),
-        "flex-wrap" => return Ok(StyleAtom::FlexWrap(FlexWrapKind::Wrap)),
-        "flex-nowrap" => return Ok(StyleAtom::FlexWrap(FlexWrapKind::NoWrap)),
-        "w-full" => return Ok(StyleAtom::Width(Dimension::Full)),
-        "h-full" => return Ok(StyleAtom::Height(Dimension::Full)),
-        "w-auto" => return Ok(StyleAtom::Width(Dimension::Auto)),
-        "h-auto" => return Ok(StyleAtom::Height(Dimension::Auto)),
-        "rounded" => return Ok(StyleAtom::BorderRadius(Px(4))),
-        "rounded-sm" => return Ok(StyleAtom::BorderRadius(Px(2))),
-        "rounded-md" => return Ok(StyleAtom::BorderRadius(Px(6))),
-        "rounded-lg" => return Ok(StyleAtom::BorderRadius(Px(8))),
-        "rounded-full" => return Ok(StyleAtom::BorderRadius(Px(9_999))),
-        "text-xs" => return Ok(StyleAtom::FontSize(Px(12))),
-        "text-sm" => return Ok(StyleAtom::FontSize(Px(14))),
-        "text-base" => return Ok(StyleAtom::FontSize(Px(16))),
-        "text-lg" => return Ok(StyleAtom::FontSize(Px(18))),
-        "text-xl" => return Ok(StyleAtom::FontSize(Px(20))),
-        "grow" => return Ok(StyleAtom::FlexGrow(1000)),
-        "grow-0" => return Ok(StyleAtom::FlexGrow(0)),
-        "shrink" => return Ok(StyleAtom::FlexShrink(1000)),
-        "shrink-0" => return Ok(StyleAtom::FlexShrink(0)),
-        "underline" => return Ok(StyleAtom::TextDecoration(TextDecoration::Underline)),
-        "line-through" => return Ok(StyleAtom::TextDecoration(TextDecoration::LineThrough)),
-        "no-underline" => return Ok(StyleAtom::TextDecoration(TextDecoration::None)),
-        "border" => return Ok(StyleAtom::BorderWidth(Px(1))),
-        "shadow" => return Ok(StyleAtom::Shadow(Elevation::Base)),
-        _ => {}
-    }
-    parse_font_token(token)
+    parse_display_token(token)
+        .or_else(|| parse_size_token(token))
+        .or_else(|| parse_shape_token(token))
+        .or_else(|| parse_text_token(token))
+        .or_else(|| parse_font_token(token))
         .or_else(|| parse_tracking_token(token))
         .or_else(|| shadow_atom(token))
         .or_else(|| parse_prefixed_token(token))
         .ok_or_else(|| unknown(token))
-}
-
-fn parse_font_token(token: &str) -> Option<StyleAtom> {
-    match token {
-        "font-normal" => Some(StyleAtom::FontWeight(400)),
-        "font-medium" => Some(StyleAtom::FontWeight(500)),
-        "font-semibold" => Some(StyleAtom::FontWeight(600)),
-        "font-bold" => Some(StyleAtom::FontWeight(700)),
-        "italic" => Some(StyleAtom::FontItalic(true)),
-        "not-italic" => Some(StyleAtom::FontItalic(false)),
-        "font-sans" => Some(StyleAtom::FontFamily("sans")),
-        "font-mono" => Some(StyleAtom::FontFamily("mono")),
-        "font-serif" => Some(StyleAtom::FontFamily("serif")),
-        "font-icon" => Some(StyleAtom::FontFamily("icon")),
-        "font-display" => Some(StyleAtom::FontFamily("display")),
-        _ => None,
-    }
-}
-
-fn parse_tracking_token(token: &str) -> Option<StyleAtom> {
-    match token {
-        "tabular-nums" => Some(StyleAtom::TabularNums(true)),
-        "tracking-tighter" => Some(StyleAtom::LetterSpacing(-50)),
-        "tracking-tight" => Some(StyleAtom::LetterSpacing(-25)),
-        "tracking-normal" => Some(StyleAtom::LetterSpacing(0)),
-        "tracking-wide" => Some(StyleAtom::LetterSpacing(25)),
-        "tracking-wider" => Some(StyleAtom::LetterSpacing(50)),
-        "tracking-widest" => Some(StyleAtom::LetterSpacing(100)),
-        _ => None,
-    }
 }
 
 fn push_overflow_atoms(

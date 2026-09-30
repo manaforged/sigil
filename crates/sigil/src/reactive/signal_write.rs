@@ -133,7 +133,7 @@ impl<T: PartialEq + 'static> Signal<T> {
 
 impl<T: PartialEq + 'static> Signal<T> {
     #[track_caller]
-    pub fn try_set(self, value: T) -> bool {
+    pub(crate) fn try_set(self, value: T) -> bool {
         let writable = self.is_writable();
         if writable {
             self.set(value);
@@ -144,7 +144,7 @@ impl<T: PartialEq + 'static> Signal<T> {
 
 impl<T: 'static> Signal<T> {
     #[track_caller]
-    pub fn try_set_always(self, value: T) -> bool {
+    pub(crate) fn try_set_always(self, value: T) -> bool {
         let writable = self.is_writable();
         if writable {
             self.set_always(value);
@@ -164,7 +164,7 @@ impl<T: 'static> Signal<T> {
 impl<T: 'static> Signal<T> {
     #[inline]
     #[track_caller]
-    pub fn set_always(self, value: T) {
+    pub(crate) fn set_always(self, value: T) {
         let caller = Location::caller();
         let (old, subscribers) = with_rt(|rt| {
             crate::reactive::phase::assert_paint_safe(rt, "Signal::set_always");

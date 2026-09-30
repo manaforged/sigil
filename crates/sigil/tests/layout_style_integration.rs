@@ -7,11 +7,10 @@
 #[path = "layout_stub/mod.rs"]
 mod stub;
 
-use sigil::kernel::TextContent;
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
-use sigil::style::NodeStyleExt;
-use sigil::style::{TextLineHeight, TextStyle};
+use sigil::geometry::{LogicalSize, Size};
+use sigil::kernel::{TextContent, *};
+use sigil::layout::*;
+use sigil::style::{NodeStyleExt, TextLineHeight, TextStyle};
 
 use stub::{first_child, layout_rect, stub_engine};
 
@@ -37,26 +36,34 @@ fn p_4_applies_sixteen_px_padding() {
     assert_eq!(rect.height, 18.0);
 }
 
-#[test]
-fn layout_style_padding_wins_over_class() {
+fn padded_child_origin(root: NodeBuilder) -> f32 {
     let mut cx = Cx::new_root();
-    let root = cx.add(
-        container()
-            .layout(LayoutStyle::block().fixed_size(100.0, 50.0).padding(24.0))
-            .class("p-16")
-            .child(container().class("w-full h-full")),
-    );
+    let root = cx.add(root.child(container().class("w-full h-full")));
     let child = first_child(&cx, root);
-
     stub_engine()
         .compute(&mut cx, root, Size::fixed(100.0, 50.0))
         .expect("compute succeeds");
+    layout_rect(&cx, child).origin.x
+}
 
-    let rect = layout_rect(&cx, child);
-    assert_eq!(rect.origin.x, 24.0);
-    assert_eq!(rect.origin.y, 24.0);
-    assert_eq!(rect.width, 52.0);
-    assert_eq!(rect.height, 2.0);
+#[test]
+fn a_class_written_after_layout_wins() {
+    let origin = padded_child_origin(
+        container()
+            .layout(LayoutStyle::block().fixed_size(100.0, 50.0).padding(24.0))
+            .class("p-16"),
+    );
+    assert_eq!(origin, 16.0);
+}
+
+#[test]
+fn a_layout_written_after_class_wins() {
+    let origin = padded_child_origin(
+        container()
+            .class("p-16")
+            .layout(LayoutStyle::block().fixed_size(100.0, 50.0).padding(24.0)),
+    );
+    assert_eq!(origin, 24.0);
 }
 
 #[test]

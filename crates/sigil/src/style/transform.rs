@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 
 use super::{AnimatorOverlay, NumericAtomKind, Style, StyleAtom, StyleBinding};
 
@@ -156,14 +156,7 @@ impl Transform2D {
 
     pub(crate) fn for_binding(binding: &StyleBinding) -> Self {
         let mut transform = Self::IDENTITY;
-        for atom in binding
-            .static_slice()
-            .iter()
-            .chain(binding.dynamic_slice())
-            .copied()
-            .chain(binding.reactive_channels().flatten().copied())
-            .chain(binding.state_overlay_atoms().iter().copied())
-        {
+        for atom in binding.cascade() {
             if let StyleAtom::Transform(value) = atom {
                 transform = value;
             }

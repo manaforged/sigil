@@ -2,7 +2,7 @@ use crate::layout::LayoutError;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::{ComputedBox, NodeRef};
 use crate::layout::resolve::{NodeEdges, clamp, dim_to_border_box};
-use crate::layout::style_data::{Dimension, Display, Position, Size, StyleData};
+use crate::layout::style_data::{Dimension, Display, Position, Size};
 
 use super::placement::PlacedItem;
 use super::sizing::item_min_max_main;
@@ -50,7 +50,7 @@ pub(crate) fn layout_item_subtree(
         return Ok(());
     }
     let style = node.style();
-    let (assigned_w, assigned_h) = assigned_size(ctx, style, w, h);
+    let (assigned_w, assigned_h) = assigned_size(ctx, node, w, h);
     match style.display {
         Display::Flex => {
             let axes = Axis2::for_direction(style.flex_direction);
@@ -178,14 +178,17 @@ pub(super) fn write_container(
 
 fn assigned_size(
     ctx: &FlexCtx<'_, '_>,
-    style: &StyleData,
+    node: NodeRef<'_>,
     w: f32,
     h: f32,
 ) -> (Option<f32>, Option<f32>) {
+    let style = node.style();
     let probing = ctx.suppress_stretch;
     let assigned_w = (!probing
-        && (style.size.width != Dimension::Auto || (style.flex_grow > 0.0 && ctx.axes.row)))
-        .then_some(w);
+        && (style.size.width != Dimension::Auto
+            || (style.flex_grow > 0.0 && ctx.axes.row)
+            || ctx.solver.fills_width(node)))
+    .then_some(w);
     let in_flow = style.position != Position::Absolute;
     let assigned_h = (!probing
         && (style.size.height != Dimension::Auto

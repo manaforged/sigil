@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use accesskit::{NodeId as AkNodeId, Role, Toggled};
-use sigil::hal::{Point, Rect};
+use accesskit::{Action, NodeId as AkNodeId, Role, Toggled};
+use sigil::geometry::{Point, Rect};
 
 use super::Harness;
 
@@ -18,6 +18,7 @@ pub struct Node {
     selected: Option<bool>,
     expanded: Option<bool>,
     disabled: bool,
+    control: bool,
 }
 
 impl Node {
@@ -199,6 +200,32 @@ impl Harness {
             .into_iter()
             .find(Node::is_focused)
     }
+
+    #[track_caller]
+    pub fn expect_text(&mut self, text: &str) -> &mut Self {
+        let query = Query::text(text);
+        self.wait_for(&query, |ui| ui.query(&query));
+        self
+    }
+
+    #[track_caller]
+    pub(super) fn labelled(&mut self, label: &str) -> Option<Node> {
+        let found = self.find_all(&Query::text(label));
+        let controls: Vec<&Node> = found.iter().filter(|node| node.control).collect();
+        match (controls.as_slice(), found.as_slice()) {
+            ([control], _) => Some((*control).clone()),
+            ([], [only]) => Some(only.clone()),
+            ([], []) => None,
+            _ => {
+                let tree = self.accessibility_snapshot();
+                super::fail(format!(
+                    "{label:?} names {} controls and {} nodes\n{tree}",
+                    controls.len(),
+                    found.len()
+                ))
+            }
+        }
+    }
 }
 
 fn project(
@@ -220,6 +247,7 @@ fn project(
         selected: node.is_selected(),
         expanded: node.is_expanded(),
         disabled: node.is_disabled(),
+        control: node.supports_action(Action::Click) || node.supports_action(Action::SetValue),
     }
 }
 

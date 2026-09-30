@@ -26,25 +26,24 @@ A complete reactive counter (example `hello-counter`):
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - hello-counter", 480, 240), app_tree)
+    sigil::run(AppConfig::new("Sigil - hello-counter").size(480, 240), app_tree)
 }
 
-fn app_tree(cx: &mut Cx) -> NodeId {
+fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
-    cx.add(
-        container()
-            .layout(LayoutStyle::flex_column().gap(16.0))
-            .class("p-32 bg-surface")
-            .child(text(move || format!("Count: {}", count.get())))
-            .child(button("Increment").primary().activate(move || count.update(|n| *n += 1))),
-    )
+    column()
+        .class("p-32 bg-surface")
+        .child(text(move || format!("Count: {}", count.get())))
+        .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
 }
 ```
 
 The moving parts:
 
-- `sigil::run((title, width, height), app_tree)` opens a window and
-  drives the frame loop. `app_tree` builds the node tree once.
+- `sigil::run(config, app_tree)` opens a window and drives the frame
+  loop. The config is a title, such as `"Counter"`, or an `AppConfig`
+  that also sets the size or the host. `app_tree` builds the node tree
+  once.
 - `signal(0)` creates a reactive cell. Signals are `Copy`; pass them
   into closures freely.
 - `text(move || ...)` takes a closure. The closure re-runs when a
@@ -56,9 +55,9 @@ The moving parts:
   writes signals. `count.update(...)` changes the value in place;
   `count.get()` reads with subscription and `count.peek()` without.
 
-Widget helpers implement `IntoNode`; type a layout helper as
-`impl IntoNode`. `run` takes a closure, `text`, `container`, or
-`root(button("Go"))`.
+A component is a function that returns `impl IntoNode`; signals it
+creates belong to it. `run` takes the root component:
+`run("Go", || button("Go"))`.
 
 ## Lists and conditions
 
@@ -116,7 +115,10 @@ Class strings still parse token names at runtime.
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
-use sigil::style::{BORDER_WIDTH, Radius, StyleAtom, Token};
+use sigil::style::BORDER_WIDTH;
+use sigil::style::Radius;
+use sigil::style::StyleAtom;
+use sigil::style::Token;
 
 container()
     .class("p-16")
@@ -169,7 +171,7 @@ launch in the window and on the terminal. Then it starts one
 `watch_theme` watcher. If the watcher cannot start, the theme still
 loads. Edits re-apply on the next frame, and writes in quick succession
 coalesce into one reload. For manual control,
-`sigil::watch_theme(path)` returns a `ThemeWatcher` guard that re-parses
+`sigil::app::watch_theme(path)` returns a `ThemeWatcher` guard that re-parses
 the file and calls `set_theme` on the UI thread until dropped; call it
 inside the app tree so the reload can reach the UI thread.
 
@@ -200,7 +202,7 @@ out of the box.
 
 - Widgets: `button`, `icon_button`, `text_field`, `text_edit`,
   `modal` / `sheet`, `virtual_list`, `table`, `card`, `avatar`,
-  `sidebar`. Alerts are `sigil::dialog::message` / `confirm`; they return a
+  `sidebar`. Alerts are `sigil::app::dialog::message` / `confirm`; they return a
   signal and do not block.
 - Architecture: [Overview](arch/overview.md),
   [State](arch/state.md), [Painting](arch/painting.md),

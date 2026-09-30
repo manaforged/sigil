@@ -4,18 +4,19 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 use web_time::Instant;
 
-use crate::app::{AppResult, Error};
 use crate::reactive::Owner;
-use crate::tasks::{Dispatcher, OwnerHandle, dispatch_to_owner};
+use crate::tasks::OwnerHandle;
+use crate::tasks::dispatch::dispatch_to_owner;
+use crate::tasks::runtime::Dispatcher;
+use crate::{AppResult, Error};
 
 const DEBOUNCE: Duration = Duration::from_millis(75);
 const MAX_DEBOUNCE: Duration = Duration::from_secs(1);
 
 pub fn watch_theme(path: impl Into<PathBuf>) -> AppResult<ThemeWatcher> {
-    if !crate::tasks::installed() {
+    let Some(dispatcher) = crate::tasks::current::dispatcher() else {
         return Err(Error::task(NoRuntime));
-    }
-    let dispatcher = crate::tasks::dispatcher();
+    };
     let owner = Owner::new("sigil::watch_theme", None);
     let target = OwnerHandle::from_id(owner.id());
     let path = path.into();

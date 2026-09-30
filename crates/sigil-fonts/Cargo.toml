@@ -1,0 +1,18 @@
+[package]
+name = "sigil-fonts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "OFL-1.1"
+repository.workspace = true
+authors.workspace = true
+description = "The fonts Sigil draws with by default: Fira Sans, Cascadia Mono, and a Noto Color Emoji subset."
+keywords = ["fonts", "ui", "sigil"]
+categories = ["gui"]
+include = ["src/**", "fonts/**", "/Cargo.toml"]
+
+[lib]
+name = "sigil_fonts"
+
+[lints]
+workspace = true

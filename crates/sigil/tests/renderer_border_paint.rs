@@ -8,8 +8,8 @@
 #[allow(dead_code)]
 mod support;
 
-use sigil::hal::Size;
-use sigil::kernel::{Cx, prelude::*};
+use sigil::geometry::Size;
+use sigil::kernel::*;
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle};
 use sigil::scene::{SceneCommand, StrokeAlign, StrokeStyle, emit_scene};
 use sigil::style::{NodeStyleExt, Theme};
@@ -52,12 +52,10 @@ fn border_class_emits_inside_stroke_command() {
 #[test]
 fn border_paints_edge_and_leaves_interior() {
     let img = capture(
-        |cx| {
-            cx.add(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(SIZE as f32, SIZE as f32))
-                    .class("bg-surface border-4 border-accent"),
-            )
+        || {
+            container()
+                .layout(LayoutStyle::block().fixed_size(SIZE as f32, SIZE as f32))
+                .class("bg-surface border-4 border-accent")
         },
         [SIZE, SIZE],
     );
@@ -84,16 +82,14 @@ fn border_paints_edge_and_leaves_interior() {
 #[test]
 fn border_without_background_shows_parent_through_interior() {
     let img = capture(
-        |cx| {
+        || {
             let bordered = container()
                 .layout(LayoutStyle::block().fixed_size(48.0, 48.0))
                 .class("border-4 border-accent");
-            cx.add(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(SIZE as f32, SIZE as f32))
-                    .class("bg-surface-hover")
-                    .child(bordered),
-            )
+            container()
+                .layout(LayoutStyle::block().fixed_size(SIZE as f32, SIZE as f32))
+                .class("bg-surface-hover")
+                .child(bordered)
         },
         [SIZE, SIZE],
     );

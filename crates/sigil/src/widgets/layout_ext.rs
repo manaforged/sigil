@@ -6,7 +6,6 @@ pub struct LayoutOverrides {
     width: Option<f32>,
     height: Option<f32>,
     grow: Option<f32>,
-    padding: Option<f32>,
 }
 
 impl LayoutOverrides {
@@ -17,7 +16,6 @@ impl LayoutOverrides {
             width: None,
             height: None,
             grow: None,
-            padding: None,
         }
     }
 
@@ -37,10 +35,6 @@ impl LayoutOverrides {
         self.grow = Some(factor);
     }
 
-    pub const fn padding(&mut self, px: f32) {
-        self.padding = Some(px);
-    }
-
     #[must_use]
     pub const fn width_hint(&self) -> Option<f32> {
         self.width
@@ -53,7 +47,10 @@ impl LayoutOverrides {
 
     #[must_use]
     pub fn apply(self, base: LayoutStyle) -> LayoutStyle {
-        let mut style = self.full.unwrap_or(base);
+        let mut style = base;
+        if let Some(full) = &self.full {
+            style.merge(full);
+        }
         if let Some(width) = self.width {
             style = style.width(width);
             if let crate::layout::Dimension::Px(floor) = style.0.min_size.width
@@ -68,9 +65,6 @@ impl LayoutOverrides {
         }
         if let Some(grow) = self.grow {
             style = style.grow(grow);
-        }
-        if let Some(padding) = self.padding {
-            style = style.padding(padding);
         }
         style
     }
@@ -100,12 +94,6 @@ pub trait WidgetLayoutExt: Sized {
     #[must_use]
     fn grow(mut self, factor: f32) -> Self {
         LayoutOverrides::grow(self.layout_overrides_mut(), factor);
-        self
-    }
-
-    #[must_use]
-    fn padding(mut self, px: f32) -> Self {
-        LayoutOverrides::padding(self.layout_overrides_mut(), px);
         self
     }
 }

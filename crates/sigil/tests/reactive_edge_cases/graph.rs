@@ -138,7 +138,7 @@ fn set_with_same_value_does_not_fire_effects() {
         n.set(7);
         n.set(7);
         assert_eq!(runs.get(), 1, "equal sets are no-ops");
-        n.set_always(7);
-        assert_eq!(runs.get(), 2, "set_always always fires");
+        n.update(|v| *v = 7);
+        assert_eq!(runs.get(), 2, "update always fires");
     });
 }

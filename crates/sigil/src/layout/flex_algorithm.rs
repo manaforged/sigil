@@ -77,6 +77,10 @@ pub(crate) fn layout_root(
     node: NodeRef<'_>,
     origin: Position2,
 ) -> Result<(), LayoutError> {
+    let ctx = &FlexCtx {
+        assigned_w: ctx.assigned_w.or_else(|| filled_width(ctx, node)),
+        ..*ctx
+    };
     let style = node.style();
     let edges = NodeEdges::build(style, ctx.cb.w);
     let m = edges.margin.or_zero();
@@ -133,6 +137,17 @@ fn main_is_definite(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
         ctx.assigned_h
     };
     assigned_main.is_some() || !matches!(size_main, Dimension::Auto)
+}
+
+fn filled_width(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>) -> Option<f32> {
+    let definite = matches!(
+        ctx.solver.scope().available().w,
+        crate::layout::forest::SpaceConstraint::Definite(_)
+    );
+    (!ctx.suppress_stretch && definite && ctx.solver.fills_width(node)).then(|| {
+        let m = NodeEdges::build(node.style(), ctx.cb.w).margin.or_zero();
+        (ctx.cb.w - m.left - m.right).max(0.0)
+    })
 }
 
 fn content_main_size(

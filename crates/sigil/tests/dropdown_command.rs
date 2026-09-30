@@ -7,7 +7,11 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use sigil::hal::KeyEventInit;
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{KeyEventInit, PhysicalKey};
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil_kittest::stub_text_measure;
 use widget_support::{compute, rect_colors};

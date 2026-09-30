@@ -1,6 +1,6 @@
 use super::*;
 
-const FIRA: &[u8] = include_bytes!("../../assets/text/fonts/FiraSans-Regular.ttf");
+const FIRA: &[u8] = sigil_fonts::FIRA_SANS_REGULAR;
 
 fn mask(glyph_id: u32, physical_px: f32, bin: u8) -> Option<GlyphMask> {
     Hinters::default().rasterize(

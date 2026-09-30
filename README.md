@@ -34,9 +34,11 @@ No mobile host.
 
 ## Install
 
+Sigil is not on crates.io yet. Add the Git dependency:
+
 ```toml
 [dependencies]
-sigil-ui = "0.1"
+sigil-ui = { git = "https://github.com/manaforged/sigil" }
 ```
 
 The package is `sigil-ui` because the `sigil` name is taken on
@@ -47,15 +49,18 @@ For a terminal-only program:
 
 ```toml
 [dependencies]
-sigil-ui = { version = "0.1", default-features = false, features = ["terminal"] }
+sigil-ui = { git = "https://github.com/manaforged/sigil", default-features = false, features = ["terminal"] }
 ```
 
-To pack and sign release builds, add `sigil-sign`:
+To pack release builds, install the `sigil-pack` tool:
 
-```toml
-[dependencies]
-sigil-sign = "0.1"
+```bash
+cargo install --git https://github.com/manaforged/sigil sigil-sign
 ```
+
+To sign packages from your own code, add
+`sigil-sign = { git = "https://github.com/manaforged/sigil" }`; see
+[Signing](docs/guide/signing.md).
 
 ## Usage
 
@@ -63,18 +68,15 @@ sigil-sign = "0.1"
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - hello-counter", 480, 240), app_tree)
+    sigil::run(AppConfig::new("Sigil - hello-counter").size(480, 240), app_tree)
 }
 
-fn app_tree(cx: &mut Cx) -> NodeId {
+fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
-    cx.add(
-        container()
-            .layout(LayoutStyle::flex_column().gap(16.0))
-            .class("p-32 bg-surface")
-            .child(text(move || format!("Count: {}", count.get())))
-            .child(button("Increment").primary().activate(move || count.update(|n| *n += 1))),
-    )
+    column()
+        .class("p-32 bg-surface")
+        .child(text(move || format!("Count: {}", count.get())))
+        .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
 }
 ```
 
@@ -99,9 +101,9 @@ feature. `desktop` is the default. `terminal` adds the terminal host.
 - Headless machines run the terminal host and the test suite. The
   window host needs a GPU adapter, unless `SIGIL_BACKEND=cpu` selects
   the CPU renderer. `auto` is the default; `wgpu` requires an adapter.
-- No mobile host. The web host has no IME, no system fonts, no
-  clipboard paste, no task executor, and no accessibility tree; see
-  [Web host](docs/guide/web.md).
+- No mobile host. The web host has no system fonts, no clipboard
+  paste, and no accessibility tree, and it runs tasks on the page's
+  one thread; see [Web host](docs/guide/web.md).
 - The terminal host has no IME, no rounded corners, and no shadows.
   Images render through the terminal graphics protocol on Kitty,
   Ghostty, WezTerm, Konsole, iTerm2, Warp, and Sixel terminals. Other

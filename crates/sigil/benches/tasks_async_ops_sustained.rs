@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use criterion::Criterion;
 use sigil::hal::Scheduler;
 use sigil::reactive::{Runtime, signal};
-use sigil::tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner, spawn_to_signal};
+use sigil::tasks::{AsyncRuntime, OwnerHandle, signal_writer, spawn};
 
 use super::spin_until;
 
@@ -59,10 +59,9 @@ fn run_frame_loop(scheduler: &mut AsyncRuntime, total_frames: u32) -> (Duration,
 
 fn run_one_sustained_iteration() -> Duration {
     let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
+    scheduler.install_current();
     let handle = OwnerHandle::current().expect("inside a reactive scope");
-    let dispatcher = scheduler.dispatcher();
-    let tick = signal(0_u64);
-    let tick_sendable = tick.into_sendable();
+    let tick = signal_writer(signal(0_u64));
 
     let stop = Arc::new(AtomicBool::new(false));
     let stop_writer = Arc::clone(&stop);
@@ -79,11 +78,9 @@ fn run_one_sustained_iteration() -> Duration {
                 }
             }
             counter = counter.wrapping_add(1);
-            let dispatcher = dispatcher.clone();
-            dispatch_to_owner(&dispatcher, handle, move || {
-                let s = tick_sendable.into_signal();
-                s.set(counter);
-            });
+            if tick.set(counter).is_err() {
+                return;
+            }
             next_at += period;
         }
     });
@@ -100,25 +97,28 @@ fn run_one_sustained_iteration() -> Duration {
     sum
 }
 
-pub fn bench_spawn_to_signal_smoke_latency(c: &mut Criterion) {
-    c.bench_function("spawn_to_signal_smoke_latency", |b| {
-        Runtime::scope("bench_spawn_to_signal", || {
+pub fn bench_spawn_smoke_latency(c: &mut Criterion) {
+    c.bench_function("spawn_smoke_latency", |b| {
+        Runtime::scope("bench_spawn", || {
             let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
-            let handle = OwnerHandle::current().expect("inside a reactive scope");
-            b.iter(|| {
-                let sig = spawn_to_signal::<u32, &'static str, _>(&scheduler, handle, async {
-                    Ok(42_u32)
+            let woke = Arc::new(AtomicBool::new(false));
+            {
+                let woke = Arc::clone(&woke);
+                scheduler.set_waker(move || {
+                    woke.store(true, Ordering::Release);
                 });
-                let pending = || scheduler.pending_count() >= 1;
+            }
+            scheduler.install_current();
+            b.iter(|| {
+                woke.store(false, Ordering::Release);
+                let status = spawn(async { Ok::<u32, &'static str>(42) });
                 assert!(
-                    spin_until(Duration::from_millis(100), pending),
-                    "spawn_to_signal did not enqueue within 100ms"
+                    spin_until(Duration::from_millis(100), || woke.load(Ordering::Acquire)),
+                    "spawn did not dispatch within 100ms"
                 );
                 let drained = scheduler.drain();
                 black_box(drained);
-                let v = sig.get();
-                assert!(v.is_ok(), "signal should resolve to Ok");
-                black_box(v);
+                assert!(status.get().is_ok(), "status should resolve to Ok");
             });
         });
     });

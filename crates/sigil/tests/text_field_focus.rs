@@ -7,7 +7,10 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use sigil::hal::KeyEventInit;
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{KeyEventInit, PhysicalKey};
+use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
 use widget_support::compute;
 

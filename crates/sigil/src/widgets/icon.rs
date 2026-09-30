@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::kernel::TextContent;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
-use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 #[cfg(feature = "scene")]
 use crate::style::Token;
 use crate::style::Tone;
@@ -124,7 +124,7 @@ impl IconBuilder {
             .map_or(Role::GenericContainer, |_| Role::Image);
         let container_node = container()
             .role(role)
-            .layout(self.layout_overrides.apply(icon_layout(extent)))
+            .with(self.layout_overrides.apply(icon_layout(extent)))
             .tone(self.tone);
         let mut container_node = match self.glyph {
             Glyph::Text(glyph) => container_node.child(

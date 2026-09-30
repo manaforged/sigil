@@ -1,13 +1,67 @@
-use crate::hal::{Dim, Size};
+use crate::geometry::{Dim, Size};
 use crate::kernel::{Cx, NodeId};
 use smallvec::SmallVec;
 
 use crate::layout::forest::{AvailableSpace, SpaceConstraint};
 use crate::layout::{LayoutError, LayoutResult};
 
-use super::LayoutEngine;
+use super::{LayoutEngine, note_full};
+
+#[derive(Clone, Copy)]
+pub(super) enum Pass<'a> {
+    Remeasure,
+    Full {
+        mirrored: bool,
+        dirty: &'a [NodeId],
+    },
+    Incremental {
+        structural: bool,
+        dirty: &'a [NodeId],
+    },
+}
+
+impl<'a> Pass<'a> {
+    pub(super) const fn changed(
+        dirty: &'a [NodeId],
+        majority: bool,
+        mirrored: bool,
+        structural: bool,
+    ) -> Self {
+        if majority || dirty.is_empty() {
+            Self::Full { mirrored, dirty }
+        } else {
+            Self::Incremental { structural, dirty }
+        }
+    }
+}
 
 impl LayoutEngine {
+    pub(super) fn solve_pass(
+        &mut self,
+        cx: &mut Cx,
+        root: NodeId,
+        available: Size,
+        pass: Pass<'_>,
+    ) -> Result<SmallVec<[NodeId; 8]>, LayoutError> {
+        match pass {
+            Pass::Remeasure => {
+                crate::profile::count(crate::profile::Counter::LayoutResize);
+                self.remeasure_and_publish(cx, root, available)?;
+            }
+            Pass::Full { mirrored, dirty } => {
+                note_full(mirrored, dirty);
+                self.full_sync_and_measure(cx, root, available)?;
+            }
+            Pass::Incremental { structural, dirty } => {
+                crate::profile::count(crate::profile::Counter::LayoutIncr);
+                let roots =
+                    self.incremental_sync_and_measure(cx, dirty, root, available, structural)?;
+                return Ok(roots.into_iter().collect());
+            }
+        }
+        Ok(smallvec::smallvec![root])
+    }
+
     fn compute_mirror(&mut self, root: NodeId, available: Size) -> Result<(), LayoutError> {
         let root_handle = self.handle(root)?;
         self.drive
@@ -23,6 +77,7 @@ impl LayoutEngine {
     ) -> Result<(), LayoutError> {
         {
             let _solve = crate::profile::span(crate::profile::Phase::LayoutSolve);
+            self.drive.clear_intrinsic();
             self.compute_mirror(root, available)?;
         }
         let mut ids = SmallVec::<[_; 32]>::new();
@@ -45,6 +100,7 @@ impl LayoutEngine {
         }
         {
             let _solve = crate::profile::span(crate::profile::Phase::LayoutSolve);
+            self.drive.clear_intrinsic();
             self.compute_mirror(root, available)?;
         }
 

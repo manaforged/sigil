@@ -1,4 +1,4 @@
-use crate::hal::{Dim, Size};
+use crate::geometry::{Dim, Size};
 use crate::kernel::{Cx, NodeId, NodeType};
 use ahash::AHashSet;
 use smallvec::SmallVec;
@@ -21,7 +21,7 @@ impl LayoutEngine {
         root: NodeId,
         available: Size,
         structural: bool,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<Vec<NodeId>, LayoutError> {
         let roots = {
             let _dirty = crate::profile::span(crate::profile::Phase::LayoutDirty);
             self.dirty_roots(cx, dirty, root, structural)?
@@ -31,10 +31,10 @@ impl LayoutEngine {
             self.solve_roots(&roots, root, available)?;
         }
         let _attach = crate::profile::span(crate::profile::Phase::LayoutAttach);
-        for subroot in roots {
+        for subroot in roots.iter().copied() {
             self.attach_subtree_results(cx, subroot)?;
         }
-        Ok(())
+        Ok(roots)
     }
 
     fn dirty_roots(
@@ -71,6 +71,11 @@ impl LayoutEngine {
             crate::profile::Counter::LayoutResizedNodes,
             resized.len() as u64,
         );
+        for id in &resized {
+            if let Ok(handle) = self.handle(*id) {
+                self.drive.invalidate(handle);
+            }
+        }
         let roots = self.containment_roots(cx, &resized, root, &repositioned);
         crate::profile::count_add(crate::profile::Counter::LayoutRoots, roots.len() as u64);
         Ok(roots)
@@ -143,7 +148,9 @@ impl LayoutEngine {
         cx.visit_preorder(id, |node, _| ids.push(node));
         for node in ids {
             self.published_result.remove(node.key());
-            if let Some(kernel) = cx.get_mut_untracked(node) {
+            if let Some(kernel) = cx.get_mut_untracked(node)
+                && kernel.get_extension::<LayoutResult>().is_some()
+            {
                 let _ = kernel.remove_extension::<LayoutResult>();
             }
         }
@@ -181,7 +188,7 @@ impl LayoutEngine {
         &mut self,
         cx: &mut Cx,
         dirty: &mut Vec<NodeId>,
-    ) -> Result<usize, LayoutError> {
+    ) -> Result<Vec<NodeId>, LayoutError> {
         let moved: Vec<NodeId> = dirty
             .iter()
             .copied()
@@ -192,7 +199,7 @@ impl LayoutEngine {
             crate::profile::count(crate::profile::Counter::LayoutTranslate);
             self.translate(cx, id)?;
         }
-        Ok(moved.len())
+        Ok(moved)
     }
 
     fn translate(&mut self, cx: &mut Cx, id: NodeId) -> Result<(), LayoutError> {

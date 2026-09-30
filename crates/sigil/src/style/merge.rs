@@ -7,6 +7,9 @@ use crate::style::{Px, StyleAtom};
 
 pub type ComponentId = u64;
 
+mod slots;
+pub(crate) use slots::SlotSet;
+
 #[must_use]
 pub fn merge_classes(
     defaults: &[StyleAtom],
@@ -258,7 +261,7 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum ResolvedSlot {
+pub(crate) enum ResolvedSlot {
     PaddingTop,
     PaddingRight,
     PaddingBottom,

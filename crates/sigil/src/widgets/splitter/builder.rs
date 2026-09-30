@@ -1,5 +1,5 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::style::{BORDER_WIDTH, Fill, NodeStyleExt, StateVariants, StyleAtom, Token};
 
 use super::super::interactive::interactive;
@@ -166,7 +166,7 @@ impl SplitterBuilder {
             }
         }
 
-        root.layout(self.layout_overrides.apply(root_layout))
+        root.with(self.layout_overrides.apply(root_layout))
     }
 }
 

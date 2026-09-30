@@ -1,5 +1,5 @@
 use crate::kernel::NodeBuilder;
-use crate::layout::prelude::{Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
+use crate::layout::{Dimension, LayoutStyle, Overflow};
 
 use super::super::layout_ext::LayoutOverrides;
 
@@ -29,5 +29,5 @@ pub(super) fn apply_viewport_overrides(
             None => with_height,
         }
     };
-    root.layout(overrides.clone().apply(base))
+    root.with(overrides.clone().apply(base))
 }

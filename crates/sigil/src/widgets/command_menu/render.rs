@@ -1,6 +1,6 @@
-use crate::events::prelude::{Key, NodeEventsExt};
+use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{Metrics, NodeStyleExt, Size, Style, space};
 
@@ -158,7 +158,7 @@ fn build_level_panel(
     } else {
         layout.width(popup::PANEL_WIDTH)
     };
-    let mut panel = popup::surface(Role::Menu).layout(layout);
+    let mut panel = popup::surface(Role::Menu).with(layout);
     for (idx, entry) in level.entries.iter().enumerate() {
         panel = panel.child(build_row(entry, idx, cursor, active));
     }

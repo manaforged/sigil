@@ -14,14 +14,16 @@ button("Increment").activate(move || count.set(count.peek() + 1));
 
 `get` subscribes the current effect or derived. `peek` reads without
 subscribing. Event handlers use `peek`; derived values use `get`. A
-`set` with an equal value does not notify (`PartialEq`). Use
-`set_always` to wake subscribers without a value change.
+`set` with an equal value does not notify (`PartialEq`). `update`
+always notifies, so `update(|v| *v = next)` wakes subscribers without
+a value change and writes a type that is not `PartialEq`.
 
 | Function | Job |
 | --- | --- |
 | `signal(v)` | Create a cell |
 | `derived(\|\| ...)` | Memoized read; notify only when the result changes |
 | `effect(\|\| ...)` | Side effect that re-runs on its `get` dependencies |
+| `task(make)` | Async work on demand → `Task`; `run()`, `status()` |
 | `spawn(fut)` | Background future → `Signal<Status<T, E>>` |
 | `batch(\|\| ...)` | Coalesce writes into one run |
 
@@ -46,7 +48,8 @@ owner's slots go away.
 
 `on_cleanup(|| { ... })` registers cleanup for the current owner.
 `EventChannel::subscribe` registers the same hook in an active scope.
-`spawn` registers an abort on the current owner.
+`spawn` registers an abort on the current owner. `Task::run`
+registers one on the owner that created the task.
 
 A `Signal` is a `Copy` arena key. After dispose, `get` and `set` panic
 with a stale-handle message. `peek` and `get` do not revive a disposed
@@ -62,12 +65,18 @@ message. `panic_message(payload)` returns that text for any panic
 payload. A cancelled task does not write `Err`; the signal stays
 `Pending` and the task drops.
 
+`task(make)` returns a `Copy` `Task` whose status starts
+`Status::Idle`. Each `run()` writes `Pending`, aborts the previous run,
+and spawns `make()`. A result writes only if no later run has started,
+so a replaced run's result drops even when it was already queued.
+
 Background work must not touch the arena. It holds an `OwnerHandle`,
 which carries identity only and is `Send + Sync`. Completions post a
 closure through the dispatcher. The closure runs on the main thread
 with that owner current, or it is dropped if the owner is gone.
 
-`dispatch_to_owner` posts a `FnOnce()` to the main thread. Use it when
-a worker already exists and only needs to write signals. Use `spawn`
-when you have a future. `signal_writer(signal)` keeps the current owner
-and lets a worker write repeatedly.
+Use `task` for work that runs on demand and may run again, and
+`spawn` for a future that starts now and owns state it cannot rebuild.
+A worker that already exists writes through `signal_writer(signal)`,
+which keeps the current owner and lets the worker write repeatedly, or
+sends on a channel that `on_message` drains on the main thread.

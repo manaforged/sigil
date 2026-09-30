@@ -14,7 +14,7 @@ use std::time::Duration;
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::Host;
 use sigil::events::EventRouter;
-use sigil::kernel::{Cx, NodeId, container, text};
+use sigil::kernel::{container, text};
 use sigil::reactive::Runtime;
 use sigil::style::{Tone, grid};
 use sigil::terminal::{ColorDepth, Grid, step as try_step};
@@ -29,7 +29,7 @@ const VIEW: (f32, f32) = (960.0, 320.0);
 fn step(
     host: &mut Host,
     router: &mut EventRouter,
-    events: impl IntoIterator<Item = sigil::hal::ShellEvent>,
+    events: impl IntoIterator<Item = sigil::events::ShellEvent>,
     cols: u16,
     rows: u16,
 ) -> Grid {
@@ -89,15 +89,13 @@ fn columns() -> Vec<TableColumn<Row>> {
 
 fn mount(host: &mut Host, n: u32) {
     let data = rows(n);
-    host.mount(move |cx: &mut Cx| -> NodeId {
+    host.mount(move || {
         let state = TableState::new(data.clone(), columns());
-        cx.add(
-            container().child(
-                table(state)
-                    .row_height(CELL)
-                    .header_height(CELL)
-                    .viewport_height(f32::from(ROWS) * CELL),
-            ),
+        container().child(
+            table(state)
+                .row_height(CELL)
+                .header_height(CELL)
+                .viewport_height(f32::from(ROWS) * CELL),
         )
     });
 }
@@ -134,14 +132,12 @@ fn frame(c: &mut Criterion) {
             let mut screen = sigil::terminal::Screen::new(COLS, ROWS);
             let state = TableState::new(rows(200), columns());
             let mounted = state.clone();
-            host.mount(move |cx: &mut Cx| -> NodeId {
-                cx.add(
-                    container().child(
-                        table(mounted.clone())
-                            .row_height(CELL)
-                            .header_height(CELL)
-                            .viewport_height(f32::from(ROWS) * CELL),
-                    ),
+            host.mount(move || {
+                container().child(
+                    table(mounted.clone())
+                        .row_height(CELL)
+                        .header_height(CELL)
+                        .viewport_height(f32::from(ROWS) * CELL),
                 )
             });
             let mut sink = io::sink();

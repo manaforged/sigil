@@ -1,4 +1,4 @@
-use crate::hal::Rect;
+use crate::geometry::Rect;
 
 use crate::renderer::blur_paint::{PassCtx, PassSrc};
 use crate::renderer::error::RendererError;
@@ -11,8 +11,8 @@ use crate::renderer::scene_command::walk::{
 use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Transform};
 use crate::renderer::scene_instance::LAYER_FORMAT;
 use crate::renderer::scene_paint::PaintCtx;
-use crate::renderer::split_encoder::SplitEncoder;
 use crate::scene::corner_radii::CornerRadii;
+use crate::style::Color;
 
 use super::Target;
 use super::geometry::{local_rect, physical_extent};
@@ -114,7 +114,7 @@ pub(super) fn open_layer(
         .acquire(ctx.device, extent.0, extent.1, LAYER_FORMAT)
         .map_err(RendererError::Layer)?;
     ctx.stats.record_offscreen(extent.0, extent.1);
-    clear_view(ctx.encoder, &handle.view);
+    ctx.encoder.clear(&handle.view, Color::TRANSPARENT);
     let parent_format = std::mem::replace(&mut ctx.format, LAYER_FORMAT);
     let target = Target {
         view: handle.view.clone(),
@@ -209,23 +209,4 @@ pub(super) fn composite_layer(ctx: &mut WalkCtx<'_>, target: &Target, layer: Lay
         .as_mut()
         .expect("layer pool acquired the texture")
         .release(layer.handle);
-}
-
-fn clear_view(encoder: &mut SplitEncoder, view: &wgpu::TextureView) {
-    let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("sigil-renderer layer clear pass"),
-        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-            view,
-            depth_slice: None,
-            resolve_target: None,
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                store: wgpu::StoreOp::Store,
-            },
-        })],
-        depth_stencil_attachment: None,
-        timestamp_writes: None,
-        occlusion_query_set: None,
-        multiview_mask: None,
-    });
 }

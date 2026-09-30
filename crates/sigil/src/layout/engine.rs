@@ -1,8 +1,9 @@
-use crate::hal::Size;
+use crate::geometry::Size;
 use crate::kernel::{Cx, NodeId};
 use crate::style::{StyleBinding, TextStyle};
 use ahash::AHashSet;
 use slotmap::SecondaryMap;
+use smallvec::SmallVec;
 use std::collections::BTreeSet;
 
 use crate::layout::cache_key::{
@@ -12,6 +13,7 @@ use crate::layout::cache_key::{
 use crate::layout::engine_drive::{LayoutDrive, NodeHandle};
 use crate::layout::text_style::InheritedText;
 use crate::layout::{LayoutError, LayoutResult, TextMeasure};
+use measure::Pass;
 
 pub struct LayoutEngine {
     drive: LayoutDrive,
@@ -128,25 +130,23 @@ impl LayoutEngine {
         let resized = self.resized(cache_key);
         let mirror_current = dirty.is_empty() && self.same_inputs(cache_key);
         self.seed_reactive_dirty(cx, &mut dirty, mirrored, mirror_current);
-        if !resized && mirrored && self.translate_moved(cx, &mut dirty)? > 0 && dirty.is_empty() {
-            self.measure_viewport_overlays(cx, root, available)?;
-            self.finish(cx, cache_key);
-            return Ok(());
+        let mut solved = SmallVec::<[NodeId; 8]>::new();
+        if !resized && mirrored {
+            solved.extend(self.translate_moved(cx, &mut dirty)?);
+            if !solved.is_empty() && dirty.is_empty() {
+                self.measure_viewport_overlays(cx, root, available, &solved)?;
+                self.finish(cx, cache_key);
+                return Ok(());
+            }
         }
-        let broadcast =
-            resized || !mirrored || dirty.is_empty() || dirty.len() >= live_count.max(1) / 2;
-        if mirror_current {
-            crate::profile::count(crate::profile::Counter::LayoutResize);
-            self.remeasure_and_publish(cx, root, available)?;
-        } else if broadcast {
-            note_full(mirrored, &dirty);
-            self.full_sync_and_measure(cx, root, available)?;
+        let majority = resized || !mirrored || dirty.len() >= live_count.max(1) / 2;
+        let pass = if mirror_current {
+            Pass::Remeasure
         } else {
-            crate::profile::count(crate::profile::Counter::LayoutIncr);
-            self.incremental_sync_and_measure(cx, &dirty, root, available, structural)?;
-        }
-
-        self.measure_viewport_overlays(cx, root, available)?;
+            Pass::changed(&dirty, majority, mirrored, structural)
+        };
+        solved.extend(self.solve_pass(cx, root, available, pass)?);
+        self.measure_viewport_overlays(cx, root, available, &solved)?;
         self.finish(cx, cache_key);
         Ok(())
     }

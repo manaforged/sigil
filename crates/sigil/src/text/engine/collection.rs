@@ -183,31 +183,31 @@ impl FontCollection {
 }
 
 fn load_sans_font() -> Font {
-    const BYTES: &[u8] = include_bytes!("../../../assets/text/fonts/FiraSans-Regular.ttf");
+    const BYTES: &[u8] = sigil_fonts::FIRA_SANS_REGULAR;
     Font::from_bytes(BYTES.to_vec(), 0)
         .expect("bundled FiraSans-Regular.ttf must parse — fixture validated at G1.3")
 }
 
 fn load_sans_medium_font() -> Font {
-    const BYTES: &[u8] = include_bytes!("../../../assets/text/fonts/FiraSans-Medium.ttf");
+    const BYTES: &[u8] = sigil_fonts::FIRA_SANS_MEDIUM;
     Font::from_bytes(BYTES.to_vec(), 0)
         .expect("bundled FiraSans-Medium.ttf must parse — fixture validated with Regular")
 }
 
 fn load_sans_semibold_font() -> Font {
-    const BYTES: &[u8] = include_bytes!("../../../assets/text/fonts/FiraSans-SemiBold.ttf");
+    const BYTES: &[u8] = sigil_fonts::FIRA_SANS_SEMIBOLD;
     Font::from_bytes(BYTES.to_vec(), 0)
         .expect("bundled FiraSans-SemiBold.ttf must parse — fixture validated with Regular")
 }
 
 fn load_emoji_font() -> Font {
-    const BYTES: &[u8] = include_bytes!("../../../assets/text/fonts/NotoColorEmoji-subset.ttf");
+    const BYTES: &[u8] = sigil_fonts::NOTO_COLOR_EMOJI_SUBSET;
     Font::from_bytes(BYTES.to_vec(), 0)
         .expect("bundled NotoColorEmoji-subset.ttf must parse — validated in color_glyph tests")
 }
 
 fn load_mono_font() -> Font {
-    const BYTES: &[u8] = include_bytes!("../../../assets/text/fonts/CascadiaMono-Regular.ttf");
+    const BYTES: &[u8] = sigil_fonts::CASCADIA_MONO_REGULAR;
     Font::from_bytes(BYTES.to_vec(), 0).expect("bundled CascadiaMono-Regular.ttf must parse")
 }
 

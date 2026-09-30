@@ -118,6 +118,14 @@ impl LayoutDrive {
         self.forest.count()
     }
 
+    pub(crate) fn invalidate(&self, node: NodeHandle) {
+        self.forest.invalidate(node.0);
+    }
+
+    pub(crate) fn clear_intrinsic(&self) {
+        self.forest.clear_intrinsic();
+    }
+
     pub(crate) fn font_generation(&self) -> u64 {
         self.text.font_generation()
     }

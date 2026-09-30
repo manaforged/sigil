@@ -4,7 +4,12 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::hal::{KeyEventInit, Point, PointerEventInit};
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{KeyEventInit, PhysicalKey, PointerEventInit};
+use sigil::geometry::Point;
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil_kittest::FixedMeasure;
 

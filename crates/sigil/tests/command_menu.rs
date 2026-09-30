@@ -9,13 +9,18 @@
 #[path = "events_support/input.rs"]
 mod input;
 
-use sigil::hal::PhysicalKey;
+use sigil::events::EventRouter;
+use sigil::events::PhysicalKey;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
+use sigil::widgets::CommandMenuBuilder;
 
 use input::key_down;
-use sigil_kittest::stub_text_measure;
 use sigil_kittest::{
     InteractionMode, assert_rendered_matches_golden, golden_path, render_widget_to_png_stub,
+    stub_text_measure,
 };
 
 const VIEWPORT: (f32, f32) = (420.0, 260.0);
@@ -234,7 +239,7 @@ fn navigate(cx: &mut Cx, root: NodeId, keys: &[(Key, PhysicalKey)]) {
 #[test]
 fn command_menu_open() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(sample_menu(|_| {})()),
+        || sample_menu(|_| {})(),
         InteractionMode::Default,
         [432, 128],
         (1.0, 1.0),
@@ -245,7 +250,7 @@ fn command_menu_open() {
 #[test]
 fn command_menu_nested() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        sigil_kittest::WithCx(|cx: &mut sigil::kernel::Cx| {
             let root = cx.add(sample_menu(|_| {})());
             navigate(
                 cx,
@@ -256,7 +261,7 @@ fn command_menu_nested() {
                 ],
             );
             root
-        },
+        }),
         InteractionMode::Default,
         [432, 128],
         (1.0, 1.0),
@@ -267,7 +272,7 @@ fn command_menu_nested() {
 #[test]
 fn command_menu_disabled_item() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        sigil_kittest::WithCx(|cx: &mut sigil::kernel::Cx| {
             let root = cx.add(sample_menu(|_| {})());
             navigate(
                 cx,
@@ -278,7 +283,7 @@ fn command_menu_disabled_item() {
                 ],
             );
             root
-        },
+        }),
         InteractionMode::Default,
         [432, 128],
         (1.0, 1.0),

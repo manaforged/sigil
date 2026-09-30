@@ -1,6 +1,8 @@
-use crate::events::prelude::{Key, ModifiersState, MouseButton, NodeEventsExt, PointerEvent};
+use std::sync::Arc;
+
+use crate::events::{Key, ModifiersState, MouseButton, NodeEventsExt, PointerEvent};
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
-use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle, Overflow};
+use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived};
 use crate::style::{NodeStyleExt, StateStyle, StyleAtom, StyleVariant, Token};
 
@@ -11,7 +13,36 @@ use super::chrome::{ContextKind, TableChrome};
 use super::columns::{CellSpec, flex_cell};
 use super::hscroll::HScroll;
 use super::select;
-use super::state::TableState;
+use super::state::{RowEq, TableState};
+
+struct RowValue<Row> {
+    rows: Arc<Vec<Row>>,
+    index: usize,
+    eq: Option<RowEq<Row>>,
+}
+
+impl<Row> Clone for RowValue<Row> {
+    fn clone(&self) -> Self {
+        Self {
+            rows: Arc::clone(&self.rows),
+            index: self.index,
+            eq: self.eq.clone(),
+        }
+    }
+}
+
+impl<Row> PartialEq for RowValue<Row> {
+    fn eq(&self, other: &Self) -> bool {
+        if Arc::ptr_eq(&self.rows, &other.rows) {
+            return true;
+        }
+        match (self.rows.get(self.index), other.rows.get(other.index)) {
+            (None, None) => true,
+            (Some(a), Some(b)) => self.eq.as_ref().is_some_and(|eq| eq(a, b)),
+            _ => false,
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub(super) struct RowSpec {
@@ -71,10 +102,17 @@ fn build_row<Row: 'static>(
     }
     let selection = state.selection();
     let is_selected = derived(move || selection.get().contains(&row_index));
+    let rows = state.rows();
+    let eq = state.row_eq_fn();
+    let row_value = derived(move || RowValue {
+        rows: rows.get(),
+        index: row_index as usize,
+        eq: eq.clone(),
+    });
     let state_cells = state.clone();
     let track = container()
         .layout(track_layout(row_height))
-        .children_reactive(move || row_cells(&state_cells, spec, row_index));
+        .children_reactive(move || row_cells(&state_cells, spec, row_index, &row_value.get()));
     let cells = container()
         .role(Role::Row)
         .label(format!("row {}", visible_pos + 1))
@@ -143,10 +181,10 @@ fn row_cells<Row: 'static>(
     state: &TableState<Row>,
     spec: RowSpec,
     row_index: u32,
+    value: &RowValue<Row>,
 ) -> Vec<NodeBuilder> {
     let layout = state.column_layout().get();
-    let live_rows = state.rows().get();
-    let Some(live_row) = live_rows.get(row_index as usize) else {
+    let Some(live_row) = value.rows.get(value.index) else {
         return Vec::new();
     };
     let offset = usize::from(spec.select);

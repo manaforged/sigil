@@ -129,14 +129,20 @@ pub trait Flex: StyleAccess {
     }
 
     #[must_use]
-    fn flex_grow(mut self, value: u16) -> Self {
-        self.style_mut().push_atom(StyleAtom::FlexGrow(value));
+    fn flex_grow(mut self, factor: f32) -> Self {
+        self.style_mut()
+            .push_atom(StyleAtom::FlexGrow(crate::style::atom::factor_units(
+                factor,
+            )));
         self
     }
 
     #[must_use]
-    fn shrink(mut self, value: u16) -> Self {
-        self.style_mut().push_atom(StyleAtom::FlexShrink(value));
+    fn shrink(mut self, factor: f32) -> Self {
+        self.style_mut()
+            .push_atom(StyleAtom::FlexShrink(crate::style::atom::factor_units(
+                factor,
+            )));
         self
     }
 }

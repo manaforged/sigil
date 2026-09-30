@@ -82,7 +82,7 @@ Key options:
   bottom. If the user scrolls up, the view stays, also when a new row
   moves the target. The list follows again after the view returns to
   the bottom. A target write with no new rows always scrolls to the
-  target row, so `target.set_always(last)` jumps to the tail.
+  target row, so `target.update(|row| *row = last)` jumps to the tail.
 - `.keyboard(bool)` — keyboard is on by default: Arrow Up/Down move
   the focused row, PageUp/PageDown move a page, Home/End jump to the
   ends. A page uses the row tops, so `.measured()` lists page by the
@@ -170,7 +170,7 @@ the node when the data changes.
 
 ## Rows and key-value pairs
 
-The row helpers live in [Chrome](chrome.md#patterns) and fill a data
+The row helpers live in [Chrome](chrome.md#small-composites) and fill a data
 view:
 
 - `list_row(selected, title, detail)` and `list_row_with(selected,

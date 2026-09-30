@@ -1,5 +1,5 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom};
 
@@ -49,7 +49,7 @@ impl SegmentedBuilder {
         let inner = (self.height - 6.0).max(16.0);
         let mut node = container()
             .role(Role::RadioGroup)
-            .layout(
+            .with(
                 self.layout_overrides.apply(
                     LayoutStyle::flex_row()
                         .height(self.height)

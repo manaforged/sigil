@@ -4,35 +4,22 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::app::{AppConfig, PanicPolicy};
+use sigil::AppConfig;
+use sigil::app::PanicPolicy;
 
 #[test]
-fn from_unit_uses_defaults() {
-    let cfg: AppConfig = ().into();
-    assert_eq!(cfg.title(), "Sigil");
+fn a_title_keeps_the_defaults() {
+    let cfg: AppConfig = "Demo".into();
+    assert_eq!(cfg.title(), "Demo");
     assert_eq!(cfg.window_size(), (720, 480));
     assert!(!cfg.exits_on_esc());
     assert_eq!(cfg.on_panic(), PanicPolicy::Isolate);
 }
 
 #[test]
-fn from_str_keeps_defaults_for_size() {
-    let cfg: AppConfig = "Demo".into();
-    assert_eq!(cfg.title(), "Demo");
-    assert_eq!(cfg.window_size(), (720, 480));
-}
-
-#[test]
 fn from_string_works_too() {
     let cfg: AppConfig = String::from("Owned").into();
     assert_eq!(cfg.title(), "Owned");
-}
-
-#[test]
-fn from_str_size_tuple_overrides_size() {
-    let cfg: AppConfig = ("Big", 1920, 1080).into();
-    assert_eq!(cfg.title(), "Big");
-    assert_eq!(cfg.window_size(), (1920, 1080));
 }
 
 #[test]
@@ -50,14 +37,4 @@ fn builder_chain_overrides_individual_fields() {
 #[test]
 fn default_panic_policy_is_isolate() {
     assert_eq!(PanicPolicy::default(), PanicPolicy::Isolate);
-}
-
-#[test]
-fn default_app_config_matches_unit_into() {
-    let from_default = AppConfig::default();
-    let from_unit: AppConfig = ().into();
-    assert_eq!(from_default.title(), from_unit.title());
-    assert_eq!(from_default.window_size(), from_unit.window_size());
-    assert_eq!(from_default.exits_on_esc(), from_unit.exits_on_esc());
-    assert_eq!(from_default.on_panic(), from_unit.on_panic());
 }

@@ -8,10 +8,10 @@
 
 use sigil::kernel::container;
 use sigil::style::{
-    ColorAtom, ColorOrToken, Dimension, Fill, Flex, Geometry, OverflowKind, Rgba8, Sizing, Spacing,
-    StateStyleBuilder, StateVariants, StyleAtom, Styleable, Typography, Visual,
+    ColorAtom, ColorKey, ColorOrToken, Dimension, Fill, Flex, Geometry, OverflowKind, Rgba8,
+    Sizing, Spacing, StateStyleBuilder, StateVariants, StyleAtom, Styleable, Token, Typography,
+    Visual,
 };
-use sigil::style::{ColorKey, Token};
 
 fn styled() -> sigil::style::NodeStyledBuilder {
     container().styled()
@@ -287,8 +287,8 @@ fn flex_layout_methods_emit_correct_atoms() {
         .items_center()
         .justify_between()
         .gap(8)
-        .flex_grow(1000)
-        .shrink(500);
+        .flex_grow(1.0)
+        .shrink(0.5);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 7);
     assert_eq!(
@@ -322,13 +322,13 @@ fn empty_builder_has_empty_style() {
 }
 
 #[test]
-fn trap1_flex_grow_writes_atom_and_grow_is_gone() {
-    let b = styled().flex_grow(2);
+fn flex_grow_takes_a_factor_like_every_other_grow() {
+    let b = styled().flex_grow(2.0);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 1);
-    assert_eq!(atoms[0], StyleAtom::FlexGrow(2));
+    assert_eq!(atoms[0], StyleAtom::FlexGrow(2000));
 
-    let b2 = styled().flex_grow(1000);
+    let b2 = styled().flex_grow(1.0);
     assert_eq!(b2.style().as_atoms()[0], StyleAtom::FlexGrow(1000));
 }
 

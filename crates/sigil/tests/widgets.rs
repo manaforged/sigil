@@ -16,11 +16,15 @@ mod widget_support;
 #[path = "events_support/input.rs"]
 mod input;
 
+use sigil::events::PhysicalKey;
+use sigil::kernel::{Cx, NodeId};
 use sigil_kittest::CharMeasure;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use sigil::hal::{KeyEventInit, Point, PointerEventInit};
+use sigil::events::ShellEvent;
+use sigil::events::{KeyEventInit, PointerEventInit};
+use sigil::geometry::Point;
 use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
@@ -53,7 +57,7 @@ impl TextGeometry for StubGeometry {
         text: &str,
         _style: &TextStyle,
         _width: Option<f32>,
-        point: sigil::hal::Point,
+        point: sigil::geometry::Point,
     ) -> sigil::hal::HitPosition {
         sigil::hal::HitPosition {
             byte_index: ((point.x / 10.0).round().max(0.0) as usize).min(text.len()),
@@ -82,7 +86,7 @@ impl TextGeometry for StubGeometry {
         _style: &TextStyle,
         _width: Option<f32>,
         _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
-    ) -> Vec<sigil::hal::Rect> {
+    ) -> Vec<sigil::geometry::Rect> {
         Vec::new()
     }
 }

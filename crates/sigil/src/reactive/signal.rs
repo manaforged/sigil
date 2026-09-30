@@ -29,7 +29,7 @@ impl<T: 'static> Signal<T> {
     }
 
     #[must_use]
-    pub fn into_sendable(self) -> SendableSignal<T> {
+    pub(crate) fn into_sendable(self) -> SendableSignal<T> {
         SendableSignal {
             index: self.key.index_for_sendable(),
             generation: self.key.generation_for_sendable(),
@@ -39,7 +39,7 @@ impl<T: 'static> Signal<T> {
     }
 }
 
-pub struct SendableSignal<T: 'static> {
+pub(crate) struct SendableSignal<T: 'static> {
     index: u32,
     generation: u32,
     runtime_id: u64,
@@ -69,7 +69,7 @@ impl<T: 'static> core::fmt::Debug for SendableSignal<T> {
 impl<T: 'static> SendableSignal<T> {
     #[must_use]
     #[track_caller]
-    pub fn into_signal(self) -> Signal<T> {
+    pub(crate) fn into_signal(self) -> Signal<T> {
         let current = runtime_id();
         assert!(
             current == self.runtime_id,
@@ -171,7 +171,7 @@ impl<T: Clone + 'static> Signal<T> {
 
     #[inline]
     #[must_use]
-    pub fn try_peek(self) -> Option<T> {
+    pub(crate) fn try_peek(self) -> Option<T> {
         with_rt(|rt| {
             let slot = rt.signals.get(self.key)?;
             if slot
@@ -214,7 +214,7 @@ fn track_key(rt: &mut RuntimeState, key: SignalKey) {
 
 impl<T: 'static> Signal<T> {
     #[track_caller]
-    pub fn track(self) {
+    pub(crate) fn track(self) {
         let caller = Location::caller();
         with_rt(|rt| {
             if rt.signals.get(self.key).is_none() {
@@ -249,3 +249,7 @@ impl<T: 'static> Signal<T> {
 const _: () = {
     let _ = core::mem::size_of::<EffectKey>();
 };
+
+#[cfg(test)]
+#[path = "sendable_tests.rs"]
+mod sendable_tests;

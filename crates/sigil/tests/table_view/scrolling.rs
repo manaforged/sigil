@@ -1,4 +1,8 @@
 use super::*;
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{ScrollDelta, ScrollEvent, ScrollPhase};
+use sigil::kernel::Cx;
 
 #[test]
 fn quick_filter_keeps_keyboard_row_count_live() {

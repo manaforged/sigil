@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use crate::events::prelude::NodeEventsExt;
+use crate::events::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::PopupSide;
-use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Owner, OwnerId, Signal, signal};
 use crate::style::{
     BORDER_WIDTH, Fill, Metrics, NodeStyleExt, Radius, Size, StateVariants, Style, StyleAccess,
@@ -72,7 +72,7 @@ impl MenuBarBuilder {
         let mut bar = container()
             .role(Role::GenericContainer)
             .label("Menu bar")
-            .layout(self.layout_overrides.apply(bar_layout()))
+            .with(self.layout_overrides.apply(bar_layout()))
             .class(BAR_SURFACE);
 
         if !self.style_accumulator.is_empty() {

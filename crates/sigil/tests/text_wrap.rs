@@ -4,11 +4,19 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::kernel::Cx;
+use sigil::kernel::TextBuilder;
+use sigil::layout::LayoutEngine;
+use sigil::layout::TextMeasure;
 use sigil::prelude::*;
 
 struct CharText;
 impl TextMeasure for CharText {
-    fn measure(&self, content: &TextContent, space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+    fn measure(
+        &self,
+        content: &TextContent,
+        space: sigil::geometry::Size,
+    ) -> sigil::geometry::LogicalSize {
         let text = match content {
             TextContent::Static(s) => s.clone(),
             TextContent::Reactive(sig) => sig.peek(),
@@ -18,13 +26,13 @@ impl TextMeasure for CharText {
         #[allow(clippy::cast_precision_loss)]
         let natural = text.chars().count() as f32 * char_w;
         match space.width {
-            sigil::hal::Dim::Fixed(w) if w > 0.0 && natural > w => {
+            sigil::geometry::Dim::Fixed(w) if w > 0.0 && natural > w => {
                 let per_line = (w / char_w).floor().max(1.0);
                 #[allow(clippy::cast_precision_loss)]
                 let lines = (text.chars().count() as f32 / per_line).ceil();
-                sigil::hal::LogicalSize::new(w, lines * 16.0)
+                sigil::geometry::LogicalSize::new(w, lines * 16.0)
             }
-            _ => sigil::hal::LogicalSize::new(natural, 16.0),
+            _ => sigil::geometry::LogicalSize::new(natural, 16.0),
         }
     }
 }
@@ -110,8 +118,8 @@ fn wrapped_text_stays_within_its_container_width() {
 
 const LONGER_THAN_VIEWPORT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
-fn row_cell_rect(style: LayoutStyle) -> sigil::hal::Rect {
-    let mut rect = sigil::hal::Rect::new(sigil::hal::Point::new(0.0, 0.0), -1.0, -1.0);
+fn row_cell_rect(style: LayoutStyle) -> sigil::geometry::Rect {
+    let mut rect = sigil::geometry::Rect::new(sigil::geometry::Point::new(0.0, 0.0), -1.0, -1.0);
     sigil::reactive::Runtime::scope("text-wrap-off-viewport", || {
         let mut cx = Cx::new_root();
         let cell = text(LONGER_THAN_VIEWPORT)

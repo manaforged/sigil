@@ -11,7 +11,10 @@ mod widget_support;
 mod input;
 
 use input::key_down;
-use sigil::hal::PhysicalKey;
+use sigil::events::EventRouter;
+use sigil::events::PhysicalKey;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil_kittest::stub_text_measure;
 use widget_support::assert_approx;

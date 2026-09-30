@@ -1,9 +1,6 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
+#![allow(clippy::panic, clippy::expect_used)]
 
-use sigil::reactive::{Runtime, signal};
+use crate::reactive::{Runtime, signal};
 
 #[test]
 fn sendable_signal_rehydration_on_correct_runtime_works() {

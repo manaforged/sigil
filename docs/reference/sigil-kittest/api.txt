@@ -164,21 +164,23 @@ pub fn sigil_kittest::Harness::accessibility_snapshot(&mut self) -> alloc::strin
 pub fn sigil_kittest::Harness::accessibility_tree(&mut self) -> sigil::app::embed::AccessibilityTree
 pub fn sigil_kittest::Harness::advance(&mut self, by: core::time::Duration) -> &mut Self
 pub fn sigil_kittest::Harness::host(&mut self) -> (&mut sigil::app::embed::Host, &mut sigil::events::router::EventRouter)
-pub fn sigil_kittest::Harness::new(tree: impl sigil::app::tree_root::TreeRoot + 'static) -> Self
+pub fn sigil_kittest::Harness::new(app: impl sigil::kernel::component::IntoNode + 'static) -> Self
 pub fn sigil_kittest::Harness::pixels(self, width: u32, height: u32) -> Self
 pub fn sigil_kittest::Harness::send(&mut self, events: impl core::iter::traits::collect::IntoIterator<Item = sigil::hal::events::ShellEvent>) -> &mut Self
 pub fn sigil_kittest::Harness::settle(&mut self) -> &mut Self
 pub fn sigil_kittest::Harness::size(self, cols: u16, rows: u16) -> Self
 pub fn sigil_kittest::Harness::text(&mut self) -> alloc::string::String
-pub fn sigil_kittest::Harness::click(&mut self, target: &impl sigil_kittest::Target) -> &mut Self
-pub fn sigil_kittest::Harness::drag(&mut self, from: &impl sigil_kittest::Target, to: &impl sigil_kittest::Target) -> &mut Self
+pub fn sigil_kittest::Harness::click(&mut self, target: &impl sigil_kittest::Target + ?core::marker::Sized) -> &mut Self
+pub fn sigil_kittest::Harness::drag(&mut self, from: &impl sigil_kittest::Target + ?core::marker::Sized, to: &impl sigil_kittest::Target + ?core::marker::Sized) -> &mut Self
 pub fn sigil_kittest::Harness::focus_next(&mut self) -> &mut Self
 pub fn sigil_kittest::Harness::focus_previous(&mut self) -> &mut Self
-pub fn sigil_kittest::Harness::hover(&mut self, target: &impl sigil_kittest::Target) -> &mut Self
+pub fn sigil_kittest::Harness::hover(&mut self, target: &impl sigil_kittest::Target + ?core::marker::Sized) -> &mut Self
 pub fn sigil_kittest::Harness::press(&mut self, key: impl core::convert::Into<sigil::hal::events::LogicalKey>) -> &mut Self
 pub fn sigil_kittest::Harness::press_with(&mut self, key: impl core::convert::Into<sigil::hal::events::LogicalKey>, modifiers: keyboard_types::modifiers::Modifiers) -> &mut Self
-pub fn sigil_kittest::Harness::scroll(&mut self, target: &impl sigil_kittest::Target, lines: f32) -> &mut Self
+pub fn sigil_kittest::Harness::scroll(&mut self, target: &impl sigil_kittest::Target + ?core::marker::Sized, lines: f32) -> &mut Self
+pub fn sigil_kittest::Harness::type_into(&mut self, label: &str, text: &str) -> &mut Self
 pub fn sigil_kittest::Harness::type_text(&mut self, text: &str) -> &mut Self
+pub fn sigil_kittest::Harness::expect_text(&mut self, text: &str) -> &mut Self
 pub fn sigil_kittest::Harness::find_all(&mut self, query: &sigil_kittest::Query) -> alloc::vec::Vec<sigil_kittest::Node>
 pub fn sigil_kittest::Harness::focused(&mut self) -> core::option::Option<sigil_kittest::Node>
 pub fn sigil_kittest::Harness::get(&mut self, query: &sigil_kittest::Query) -> sigil_kittest::Node
@@ -217,27 +219,31 @@ impl core::clone::Clone for sigil_kittest::Query
 impl core::default::Default for sigil_kittest::Query
 impl core::fmt::Debug for sigil_kittest::Query
 impl core::fmt::Display for sigil_kittest::Query
+pub struct sigil_kittest::WithCx<F>(pub F)
+impl<F> sigil::kernel::component::IntoNode for sigil_kittest::WithCx<F> where F: core::ops::function::FnOnce(&mut sigil::kernel::cx::Cx) -> sigil::kernel::id::NodeId
+pub const sigil_kittest::EXPECT_TIMEOUT: core::time::Duration
 pub const sigil_kittest::FILMSTRIP_GAP_PX: u32
 pub const sigil_kittest::SETTLE_SAFETY_CAP: u32
 pub const sigil_kittest::SNAPSHOT_MAX_DELTA_PCT: f32
 pub trait sigil_kittest::Target
-pub fn sigil_kittest::Target::point(&self) -> sigil::hal::geometry::Point
+pub fn sigil_kittest::Target::point(&self, ui: &mut sigil_kittest::Harness) -> sigil::hal::geometry::Point
 impl sigil_kittest::Target for sigil::hal::geometry::Point
+impl sigil_kittest::Target for str
 pub fn sigil_kittest::assert_goldens_differ_in(manifest_dir: &str, name_a: &str, name_b: &str)
 pub fn sigil_kittest::assert_png_matches_golden(actual: &image::images::buffer::RgbaImage, golden: &std::path::Path, max_delta_pct: f32)
 pub fn sigil_kittest::assert_rendered_matches_golden(rendered: sigil_kittest::Rendered, golden: &std::path::Path, max_delta_pct: f32)
 pub fn sigil_kittest::assert_text_matches_golden(actual: &str, golden: &std::path::Path)
-pub fn sigil_kittest::capture_filmstrip(build: impl core::ops::function::Fn(&mut sigil::kernel::cx::Cx) -> sigil::kernel::id::NodeId, size_px: [u32; 2], hit_point: (f32, f32), frame_count: u32, dt: f32, text_measure: impl core::ops::function::Fn() -> alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> sigil_kittest::Rendered
-pub fn sigil_kittest::capture_widget_scaled_focus_descendant(build: impl core::ops::function::FnOnce(&mut sigil::kernel::cx::Cx) -> sigil::kernel::id::NodeId, mode: sigil_kittest::InteractionMode, logical_size_px: [u32; 2], scale: f32, hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> core::result::Result<core::option::Option<sigil_kittest::Captured>, sigil_kittest::Error>
+pub fn sigil_kittest::capture_filmstrip<N: sigil::kernel::component::IntoNode>(build: impl core::ops::function::Fn() -> N, size_px: [u32; 2], hit_point: (f32, f32), frame_count: u32, dt: f32, text_measure: impl core::ops::function::Fn() -> alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> sigil_kittest::Rendered
+pub fn sigil_kittest::capture_widget_scaled_focus_descendant(build: impl sigil::kernel::component::IntoNode, mode: sigil_kittest::InteractionMode, logical_size_px: [u32; 2], scale: f32, hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> core::result::Result<core::option::Option<sigil_kittest::Captured>, sigil_kittest::Error>
 pub fn sigil_kittest::golden_path_in(manifest_dir: &str, stem: &str) -> std::path::PathBuf
 pub fn sigil_kittest::real_text_measure() -> alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>
 pub fn sigil_kittest::regen_enabled() -> bool
 pub fn sigil_kittest::regen_mode() -> core::option::Option<sigil_kittest::Regen>
-pub fn sigil_kittest::render_widget_to_png(build: impl core::ops::function::FnOnce(&mut sigil::kernel::cx::Cx) -> sigil::kernel::id::NodeId, mode: sigil_kittest::InteractionMode, size_px: [u32; 2], hit_point: (f32, f32)) -> sigil_kittest::Rendered
-pub fn sigil_kittest::render_widget_to_png_focus_descendant(build: impl core::ops::function::FnOnce(&mut sigil::kernel::cx::Cx) -> sigil::kernel::id::NodeId, mode: sigil_kittest::InteractionMode, size_px: [u32; 2], hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> sigil_kittest::Rendered
-pub fn sigil_kittest::render_widget_to_png_scaled(build: impl core::ops::function::FnOnce(&mut sigil::kernel::cx::Cx) -> sigil::kernel::id::NodeId, mode: sigil_kittest::InteractionMode, logical_size_px: [u32; 2], scale: f32, hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> sigil_kittest::Rendered
-pub fn sigil_kittest::render_widget_to_png_scaled_focus_descendant(build: impl core::ops::function::FnOnce(&mut sigil::kernel::cx::Cx) -> sigil::kernel::id::NodeId, mode: sigil_kittest::InteractionMode, logical_size_px: [u32; 2], scale: f32, hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> sigil_kittest::Rendered
-pub fn sigil_kittest::render_widget_to_png_stub(build: impl core::ops::function::FnOnce(&mut sigil::kernel::cx::Cx) -> sigil::kernel::id::NodeId, mode: sigil_kittest::InteractionMode, size_px: [u32; 2], hit_point: (f32, f32)) -> sigil_kittest::Rendered
-pub fn sigil_kittest::render_widget_to_png_with(build: impl core::ops::function::FnOnce(&mut sigil::kernel::cx::Cx) -> sigil::kernel::id::NodeId, mode: sigil_kittest::InteractionMode, size_px: [u32; 2], hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> sigil_kittest::Rendered
+pub fn sigil_kittest::render_widget_to_png(build: impl sigil::kernel::component::IntoNode, mode: sigil_kittest::InteractionMode, size_px: [u32; 2], hit_point: (f32, f32)) -> sigil_kittest::Rendered
+pub fn sigil_kittest::render_widget_to_png_focus_descendant(build: impl sigil::kernel::component::IntoNode, mode: sigil_kittest::InteractionMode, size_px: [u32; 2], hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> sigil_kittest::Rendered
+pub fn sigil_kittest::render_widget_to_png_scaled(build: impl sigil::kernel::component::IntoNode, mode: sigil_kittest::InteractionMode, logical_size_px: [u32; 2], scale: f32, hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> sigil_kittest::Rendered
+pub fn sigil_kittest::render_widget_to_png_scaled_focus_descendant(build: impl sigil::kernel::component::IntoNode, mode: sigil_kittest::InteractionMode, logical_size_px: [u32; 2], scale: f32, hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> sigil_kittest::Rendered
+pub fn sigil_kittest::render_widget_to_png_stub(build: impl sigil::kernel::component::IntoNode, mode: sigil_kittest::InteractionMode, size_px: [u32; 2], hit_point: (f32, f32)) -> sigil_kittest::Rendered
+pub fn sigil_kittest::render_widget_to_png_with(build: impl sigil::kernel::component::IntoNode, mode: sigil_kittest::InteractionMode, size_px: [u32; 2], hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> sigil_kittest::Rendered
 pub fn sigil_kittest::stub_text_measure() -> alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>
 pub type sigil_kittest::Rendered = core::result::Result<core::option::Option<image::images::buffer::RgbaImage>, sigil_kittest::Error>

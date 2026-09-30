@@ -1,7 +1,5 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use std::cell::Cell;
-
 use crate::kernel::{NodeId, TextContent};
 use crate::style::TextStyle;
 use smallvec::SmallVec;
@@ -10,11 +8,16 @@ use smallvec::SmallVec;
 use crate::layout::TextMeasure;
 use crate::layout::{LayoutError, StyleData};
 
+mod box_cell;
 mod default_style;
+mod intrinsic;
 mod measure;
 mod text_memo;
 
+pub(crate) use box_cell::BoxCell;
 use default_style::DEFAULT_STYLE;
+pub(crate) use intrinsic::IntrinsicKey;
+use intrinsic::IntrinsicMemo;
 pub(crate) use measure::{AvailableSpace, MeasureScope, SpaceConstraint};
 use text_memo::TextMemo;
 #[cfg(test)]
@@ -42,6 +45,7 @@ pub(crate) struct LayoutNode {
     style: StyleData,
     text: Option<LayoutText>,
     children: SmallVec<[LocalId; 4]>,
+    parent: Option<LocalId>,
     tag: u32,
     alive: bool,
 }
@@ -82,40 +86,6 @@ pub(crate) struct ComputedBox {
     pub(crate) h: f32,
 }
 
-#[derive(Debug, Default)]
-pub(crate) struct BoxCell {
-    cb: Cell<ComputedBox>,
-    frame: Cell<u32>,
-}
-
-impl BoxCell {
-    #[must_use]
-    pub(crate) const fn new(cb: ComputedBox) -> Self {
-        Self {
-            cb: Cell::new(cb),
-            frame: Cell::new(0),
-        }
-    }
-
-    pub(crate) const fn get(&self) -> ComputedBox {
-        self.cb.get()
-    }
-
-    pub(crate) const fn frame(&self) -> u32 {
-        self.frame.get()
-    }
-
-    pub(crate) fn write(&self, cb: ComputedBox, frame: u32) {
-        self.cb.set(cb);
-        self.frame.set(frame);
-    }
-
-    pub(crate) fn reset(&self) {
-        self.cb.set(ComputedBox::default());
-        self.frame.set(0);
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct LayoutForest {
     nodes: Vec<LayoutNode>,
@@ -123,6 +93,7 @@ pub(crate) struct LayoutForest {
     free: Vec<LocalId>,
     frame: u32,
     text_memo: std::cell::RefCell<TextMemo>,
+    intrinsic: Vec<IntrinsicMemo>,
 }
 
 impl Default for LayoutForest {
@@ -140,6 +111,7 @@ impl LayoutForest {
             free: Vec::new(),
             frame: 1,
             text_memo: std::cell::RefCell::new(TextMemo::default()),
+            intrinsic: Vec::new(),
         }
     }
 
@@ -165,6 +137,7 @@ impl LayoutForest {
                 style: crate::layout::units::resolve_style(style),
                 text: None,
                 children: SmallVec::new(),
+                parent: None,
                 tag: slot.tag,
                 alive: true,
             };
@@ -178,6 +151,7 @@ impl LayoutForest {
                 .get_mut(idx)
                 .expect("free-list slot points inside boxes slab");
             box_slot.reset();
+            self.forget(idx);
             return slot;
         }
         let index = u32::try_from(self.nodes.len()).expect("forest slab exceeds u32::MAX");
@@ -187,10 +161,12 @@ impl LayoutForest {
             style: crate::layout::units::resolve_style(style),
             text: None,
             children: SmallVec::new(),
+            parent: None,
             tag: 0,
             alive: true,
         });
         self.boxes.push(BoxCell::new(ComputedBox::default()));
+        self.intrinsic.push(IntrinsicMemo::default());
         id
     }
 
@@ -206,7 +182,9 @@ impl LayoutForest {
         entry.kernel = None;
         entry.style = StyleData::default();
         entry.text = None;
+        entry.parent = None;
         entry.tag = next_tag;
+        self.forget(slot);
         self.free.push(LocalId {
             index: id.index,
             tag: next_tag,
@@ -223,6 +201,8 @@ impl LayoutForest {
             .get_mut(slot)
             .expect("slot() validated the parent index is in-bounds");
         entry.children.push(child);
+        self.adopt(parent, &[child]);
+        self.invalidate(parent);
         Ok(())
     }
 
@@ -244,6 +224,8 @@ impl LayoutForest {
         }
         entry.children.clear();
         entry.children.extend_from_slice(children);
+        self.adopt(parent, children);
+        self.invalidate(parent);
         Ok(())
     }
 
@@ -253,7 +235,11 @@ impl LayoutForest {
             .nodes
             .get_mut(slot)
             .expect("slot() validated the index is in-bounds");
-        entry.style = crate::layout::units::resolve_style(style);
+        let resolved = crate::layout::units::resolve_style(style);
+        if entry.style != resolved {
+            entry.style = resolved;
+            self.invalidate(id);
+        }
         Ok(())
     }
 
@@ -267,7 +253,15 @@ impl LayoutForest {
             .nodes
             .get_mut(slot)
             .expect("slot() validated the index is in-bounds");
+        let same = match (&entry.text, &text) {
+            (Some(old), Some(new)) => old.same_source(new),
+            (None, None) => true,
+            _ => false,
+        };
         entry.text = text;
+        if !same {
+            self.invalidate(id);
+        }
         Ok(())
     }
 

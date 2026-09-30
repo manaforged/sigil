@@ -1,4 +1,6 @@
 use super::*;
+use sigil::events::EventRouter;
+use sigil::kernel::{Cx, NodeId};
 
 fn check_table(state: TableState<Item>) -> impl IntoNode {
     table(state)

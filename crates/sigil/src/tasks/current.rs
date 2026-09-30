@@ -1,13 +1,10 @@
 use std::cell::RefCell;
-use std::future::Future;
 
 use crate::reactive::Signal;
 
 use crate::tasks::dispatch::SignalWriter;
-use crate::tasks::dispatch::spawn_with;
 use crate::tasks::handle::OwnerHandle;
 use crate::tasks::runtime::{Dispatcher, SpawnParts};
-use crate::tasks::status::Status;
 
 thread_local! {
     static HOST: RefCell<Option<SpawnParts>> = const { RefCell::new(None) };
@@ -34,15 +31,8 @@ pub fn installed() -> bool {
     HOST.with(|slot| slot.borrow().is_some())
 }
 
-#[must_use]
-pub fn dispatcher() -> Dispatcher {
-    HOST.with(|slot| {
-        slot.borrow()
-            .as_ref()
-            .expect("dispatcher() requires AsyncRuntime::install_current")
-            .dispatcher
-            .clone()
-    })
+pub(crate) fn dispatcher() -> Option<Dispatcher> {
+    HOST.with(|slot| slot.borrow().as_ref().map(|parts| parts.dispatcher.clone()))
 }
 
 pub(crate) fn scope_parts(caller: &'static str) -> Option<(OwnerHandle, SpawnParts)> {
@@ -61,28 +51,6 @@ pub(crate) fn scope_parts(caller: &'static str) -> Option<(OwnerHandle, SpawnPar
     parts.map(|parts| (owner, parts))
 }
 
-#[track_caller]
-pub fn post(f: impl FnOnce() + Send + 'static) {
-    if let Some((owner, parts)) = scope_parts("post") {
-        crate::tasks::dispatch::dispatch_to_owner(&parts.dispatcher, owner, f);
-    }
-}
-
-#[must_use]
-#[track_caller]
-pub fn spawn<T, E, F>(future: F) -> Signal<Status<T, E>>
-where
-    T: Send + 'static,
-    E: Send + 'static,
-    F: Future<Output = Result<T, E>> + Send + 'static,
-{
-    if let Some((owner, parts)) = scope_parts("spawn") {
-        return spawn_with(&parts, owner, future);
-    }
-    drop(future);
-    crate::reactive::signal(Status::Pending)
-}
-
 #[must_use]
 #[track_caller]
 pub fn signal_writer<T>(signal: Signal<T>) -> SignalWriter<T>
@@ -90,12 +58,36 @@ where
     T: Send + 'static,
 {
     let owner = OwnerHandle::current().expect("signal_writer() called outside a reactive scope");
-    HOST.with(|slot| {
-        let parts = slot
-            .borrow()
-            .as_ref()
-            .expect("signal_writer() requires AsyncRuntime::install_current")
-            .clone();
-        SignalWriter::new(parts.dispatcher, owner, signal)
-    })
+    let dispatcher = dispatcher().expect("signal_writer() requires AsyncRuntime::install_current");
+    SignalWriter::new(dispatcher, owner, signal)
+}
+
+pub(crate) fn host_parts(caller: &'static str) -> Option<SpawnParts> {
+    let parts = HOST.with(|slot| slot.borrow().clone());
+    if parts.is_none() {
+        tracing::warn!(
+            target: "sigil::tasks",
+            caller,
+            "called before AsyncRuntime::install_current; dropped the work"
+        );
+    }
+    parts
+}
+
+#[must_use]
+#[track_caller]
+pub fn spawn<T, E, F>(future: F) -> Signal<crate::tasks::Status<T, E>>
+where
+    T: Send + 'static,
+    E: Send + 'static,
+    F: std::future::Future<Output = Result<T, E>> + Send + 'static,
+{
+    let status = crate::reactive::signal(crate::tasks::Status::Pending);
+    if let Some((owner, parts)) = scope_parts("spawn") {
+        let target = status.into_sendable();
+        let _handle = crate::tasks::dispatch::spawn_into(&parts, owner, future, move |done| {
+            target.into_signal().try_set_always(done);
+        });
+    }
+    status
 }

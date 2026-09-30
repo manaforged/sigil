@@ -18,7 +18,7 @@ pub(crate) struct DispatchMessage {
 }
 
 #[derive(Clone)]
-pub struct Dispatcher {
+pub(crate) struct Dispatcher {
     pub(crate) tx: UnboundedSender<DispatchMessage>,
     pub(crate) waker: Arc<dyn Fn() + Send + Sync + 'static>,
 }
@@ -117,11 +117,6 @@ impl AsyncRuntime {
 
     pub fn pump(&mut self) -> usize {
         Scheduler::drain(self)
-    }
-
-    #[must_use]
-    pub fn dispatcher(&self) -> Dispatcher {
-        self.parts.dispatcher.clone()
     }
 
     pub(crate) fn spawn_parts(&self) -> SpawnParts {

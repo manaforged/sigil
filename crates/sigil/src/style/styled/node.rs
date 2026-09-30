@@ -53,7 +53,7 @@ impl crate::kernel::IntoNode for NodeStyledBuilder {
     }
 }
 
-fn attach_style(builder: NodeBuilder, style: Style) -> NodeBuilder {
+pub(crate) fn attach_style(builder: NodeBuilder, style: Style) -> NodeBuilder {
     if style.is_empty() {
         return builder;
     }

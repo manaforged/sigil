@@ -1,4 +1,5 @@
 use super::*;
+use sigil::events::EventRouter;
 
 #[test]
 fn plain_click_and_right_click_never_start_a_session() {

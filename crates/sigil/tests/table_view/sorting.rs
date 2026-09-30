@@ -1,4 +1,6 @@
 use super::*;
+use sigil::events::EventRouter;
+use sigil::kernel::Cx;
 
 #[test]
 fn header_click_cycles_sort_and_reorders_rows() {

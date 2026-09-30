@@ -98,14 +98,7 @@ pub const fn is_typography_atom(atom: crate::style::StyleAtom) -> bool {
 impl TextStyle {
     #[must_use]
     pub fn layered_over_binding(base: &Self, binding: &crate::style::StyleBinding) -> Option<Self> {
-        let base_has = [binding.static_slice(), binding.dynamic_slice()]
-            .iter()
-            .any(|slice| slice.iter().any(|atom| is_typography_atom(*atom)));
-        let reactive_has = binding
-            .reactive_channels()
-            .any(|slice| slice.iter().any(|atom| is_typography_atom(*atom)));
-        if !(base_has
-            || reactive_has
+        if !(binding.cascade().any(is_typography_atom)
             || binding.animator_overlay().is_some_and(|overlay| {
                 overlay
                     .value_for(crate::style::NumericAtomKind::FontSize)
@@ -113,21 +106,14 @@ impl TextStyle {
                     || overlay
                         .value_for(crate::style::NumericAtomKind::LineHeight)
                         .is_some()
-            })
-            || binding
-                .state_overlay_atoms()
-                .iter()
-                .any(|atom| is_typography_atom(*atom)))
+            }))
         {
             return None;
         }
         let mut layered = base.clone();
-        crate::style::engine::apply_text_atoms(binding.static_slice(), &mut layered);
-        crate::style::engine::apply_text_atoms(binding.dynamic_slice(), &mut layered);
-        for reactive in binding.reactive_channels() {
-            crate::style::engine::apply_text_atoms(reactive, &mut layered);
+        for atom in binding.cascade() {
+            crate::style::engine::apply_text_atoms(&[atom], &mut layered);
         }
-        crate::style::engine::apply_text_atoms(binding.state_overlay_atoms(), &mut layered);
         if let Some(overlay) = binding.animator_overlay() {
             crate::style::StyleEngine::overlay_text(overlay, &mut layered);
         }

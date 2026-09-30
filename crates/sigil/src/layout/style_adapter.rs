@@ -257,12 +257,14 @@ fn set_justify_content(layout: &mut LayoutStyle, justify: JustifyKind) {
 }
 
 fn set_flex_grow(layout: &mut LayoutStyle, grow: u16) {
-    mutate_layout(layout, |style| style.flex_grow = f32::from(grow) / 1000.0);
+    mutate_layout(layout, |style| {
+        style.flex_grow = f32::from(grow) / crate::style::atom::FACTOR_SCALE;
+    });
 }
 
 fn set_flex_shrink(layout: &mut LayoutStyle, shrink: u16) {
     mutate_layout(layout, |style| {
-        style.flex_shrink = f32::from(shrink) / 1000.0;
+        style.flex_shrink = f32::from(shrink) / crate::style::atom::FACTOR_SCALE;
     });
 }
 

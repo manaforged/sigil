@@ -3,6 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
+use sigil::widgets::ModalBuilder;
 use std::time::Duration;
 
 use sigil::prelude::*;
@@ -87,7 +88,7 @@ fn settings(timer: Timer, open: Signal<bool>) -> ModalBuilder {
         .footer(button("Close").activate(move || open.set(false)))
 }
 
-pub(crate) fn app_tree(cx: &mut Cx) -> NodeId {
+pub(crate) fn app_tree() -> impl IntoNode {
     let timer = Timer {
         work_min: signal(25),
         break_min: signal(5),
@@ -113,23 +114,21 @@ pub(crate) fn app_tree(cx: &mut Cx) -> NodeId {
     let count = derived(move || format!("Sessions: {}", timer.sessions.get()));
     let space = Shortcut::plain(LogicalKey::character(" "));
     let r = Shortcut::plain(LogicalKey::character("r"));
-    cx.add(
-        container()
-            .layout(
-                LayoutStyle::flex_column()
-                    .fill()
-                    .gap(rows(1.0))
-                    .padding(em(1.0)),
-            )
-            .shortcut(space, move |_| timer.toggle())
-            .shortcut(r, move |_| timer.reset())
-            .shortcut(LogicalKey::character("s"), move |_| settings_open.set(true))
-            .shortcut(LogicalKey::character("q"), |_| sigil::request_exit())
-            .child(text(phase))
-            .child(text(clock).class("text-xl"))
-            .child(text(count))
-            .child(controls(timer, settings_open))
-            .child(text("space start/pause  r reset  s settings  q quit"))
-            .child(settings(timer, settings_open)),
-    )
+    container()
+        .layout(
+            LayoutStyle::flex_column()
+                .fill()
+                .gap(rows(1.0))
+                .padding(em(1.0)),
+        )
+        .shortcut(space, move |_| timer.toggle())
+        .shortcut(r, move |_| timer.reset())
+        .shortcut(LogicalKey::character("s"), move |_| settings_open.set(true))
+        .shortcut(LogicalKey::character("q"), |_| sigil::request_exit())
+        .child(text(phase))
+        .child(text(clock).class("text-xl"))
+        .child(text(count))
+        .child(controls(timer, settings_open))
+        .child(text("space start/pause  r reset  s settings  q quit"))
+        .child(settings(timer, settings_open))
 }

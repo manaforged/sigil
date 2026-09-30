@@ -27,6 +27,8 @@ pub struct ColumnLayout {
     pub widths: HashMap<&'static str, f32>,
 }
 
+pub(super) type RowEq<Row> = Rc<dyn Fn(&Row, &Row) -> bool>;
+
 type Remap<Row> =
     Rc<dyn Fn(&[Row], &[Row], &HashSet<u32>, Option<u32>) -> (HashSet<u32>, Option<u32>)>;
 
@@ -40,6 +42,7 @@ pub struct TableState<Row: 'static> {
     visible: Signal<Rc<Vec<u32>>>,
     layout: Signal<Rc<ColumnLayout>>,
     remap: Option<Remap<Row>>,
+    row_eq: Option<RowEq<Row>>,
 }
 
 impl<Row: 'static> Clone for TableState<Row> {
@@ -54,6 +57,7 @@ impl<Row: 'static> Clone for TableState<Row> {
             visible: self.visible,
             layout: self.layout,
             remap: self.remap.clone(),
+            row_eq: self.row_eq.clone(),
         }
     }
 }
@@ -79,9 +83,7 @@ impl<Row: 'static> TableState<Row> {
                 compute_visible(&live_rows, &derive_columns, key, &query, previous.as_ref())
             };
             previous = (key.is_some() && query.is_empty()).then(|| Rc::clone(&indices));
-            if !Rc::ptr_eq(&visible.peek(), &indices) {
-                visible.set_always(indices);
-            }
+            visible.set(indices);
         });
         let order = (0..columns.len()).collect();
         Self {
@@ -98,7 +100,18 @@ impl<Row: 'static> TableState<Row> {
                 widths: HashMap::new(),
             })),
             remap: None,
+            row_eq: None,
         }
+    }
+
+    #[must_use]
+    pub fn row_eq(mut self, eq: impl Fn(&Row, &Row) -> bool + 'static) -> Self {
+        self.row_eq = Some(Rc::new(eq));
+        self
+    }
+
+    pub(super) fn row_eq_fn(&self) -> Option<RowEq<Row>> {
+        self.row_eq.clone()
     }
 
     #[must_use]
@@ -109,6 +122,9 @@ impl<Row: 'static> TableState<Row> {
     pub fn replace_rows(&self, rows: impl Into<Arc<Vec<Row>>>) {
         let rows = rows.into();
         let previous = self.rows.peek();
+        if Arc::ptr_eq(&previous, &rows) {
+            return;
+        }
         #[allow(
             clippy::cast_possible_truncation,
             reason = "values are bounded to the target range before the cast"
@@ -131,7 +147,9 @@ impl<Row: 'static> TableState<Row> {
             },
         );
         self.rows.set_always(rows);
-        self.selection.set(Rc::new(selected));
+        if *self.selection.peek() != selected {
+            self.selection.set(Rc::new(selected));
+        }
         self.select_anchor.set(anchor);
     }
 

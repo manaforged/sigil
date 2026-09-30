@@ -6,11 +6,11 @@
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - panel demo", 800, 600), build)
+    sigil::run(AppConfig::new("Sigil - panel demo").size(800, 600), build)
 }
 
-fn build(cx: &mut Cx) -> NodeId {
-    cx.add(root())
+fn build() -> impl IntoNode {
+    root()
 }
 
 fn root() -> NodeBuilder {

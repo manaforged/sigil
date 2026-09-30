@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
-use crate::events::prelude::{KeyEvent, PointerEvent};
+use crate::events::{KeyEvent, PointerEvent};
 use crate::kernel::NodeBuilder;
-use crate::layout::prelude::LayoutStyle;
+use crate::layout::LayoutStyle;
 use crate::reactive::{Signal, derived};
 use crate::style::{
     BORDER_WIDTH, DISABLED_OPACITY, ICON_SIZE, NodeStyleExt, Radius, StateStyle, StyleAtom,
@@ -159,9 +159,11 @@ pub(crate) fn state_surface(
     disabled: Option<Signal<bool>>,
     overlay: StyleOverlay,
 ) -> NodeBuilder {
-    disabled_a11y(node, disabled).stateful_style(CONTROL_VARIANT, overlay, move || {
-        reactive_style_state(interaction, disabled)
-    })
+    disabled_a11y(node, disabled)
+        .stateful_style(CONTROL_VARIANT, overlay, move || {
+            reactive_style_state(interaction, disabled)
+        })
+        .seal_style()
 }
 
 pub(crate) fn disabled_a11y(node: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {

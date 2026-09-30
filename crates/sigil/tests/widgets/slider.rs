@@ -1,4 +1,8 @@
 use super::*;
+use sigil::events::EventRouter;
+use sigil::events::PhysicalKey;
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 
 #[test]
 fn slider_click_jumps_to_position() {

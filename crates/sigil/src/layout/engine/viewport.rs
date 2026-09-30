@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::hal::{Dim, Rect, Size};
+use crate::geometry::{Dim, Rect, Size};
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutError;
 use crate::layout::snap;
@@ -39,10 +39,15 @@ impl LayoutEngine {
         cx: &mut Cx,
         root: NodeId,
         available: Size,
+        solved: &[NodeId],
     ) -> Result<(), LayoutError> {
         let mut found = Found::default();
         collect(cx, root, &mut found);
         for id in found.overlays {
+            if !self.overlay_stale(cx, id, solved) {
+                continue;
+            }
+            crate::profile::count(crate::profile::Counter::LayoutOverlay);
             self.drive
                 .measure_keep_frame(self.handle(id)?, to_available_space(available))?;
             self.attach_subtree_results(cx, id)?;
@@ -55,6 +60,16 @@ impl LayoutEngine {
             self.place_popup(cx, id, popup, (width, height));
         }
         Ok(())
+    }
+
+    fn overlay_stale(&self, cx: &Cx, id: NodeId, solved: &[NodeId]) -> bool {
+        !self.published_result.contains_key(id.key())
+            || cx
+                .get(id)
+                .is_some_and(|node| node.get_extension::<Popup>().is_some())
+            || solved
+                .iter()
+                .any(|&subroot| subroot != id && is_ancestor(cx, subroot, id))
     }
 
     fn place_popup(&mut self, cx: &mut Cx, id: NodeId, popup: Popup, viewport: (f32, f32)) {
@@ -152,6 +167,17 @@ fn side_y(anchor: Rect, height: f32, popup: Popup, (limit, margin): (f32, f32)) 
 
 fn clamp_axis(value: f32, size: f32, limit: f32, gap: f32) -> f32 {
     value.min(limit - size - gap).max(gap.min(value).max(0.0))
+}
+
+fn is_ancestor(cx: &Cx, ancestor: NodeId, id: NodeId) -> bool {
+    let mut current = cx.parent(id);
+    while let Some(parent) = current {
+        if parent == ancestor {
+            return true;
+        }
+        current = cx.parent(parent);
+    }
+    false
 }
 
 fn collect(cx: &Cx, id: NodeId, found: &mut Found) {

@@ -23,17 +23,14 @@ pub(crate) fn thumb_metrics(extent: f32, viewport_height: f32) -> (f32, f32) {
     (thumb_h, (height - thumb_h).max(0.0))
 }
 
-pub(super) fn content_atoms((offset, height): (i16, i16)) -> &'static [StyleAtom] {
+pub(super) fn content_atoms(height: i16) -> &'static [StyleAtom] {
     static CACHE: Cache = OnceLock::new();
-    atoms(&CACHE, (offset, height), || {
-        vec![
-            StyleAtom::MarginTop(Px(offset.wrapping_neg())),
-            StyleAtom::Height(Dimension::Px(Px(height))),
-        ]
+    atoms(&CACHE, (0, height), || {
+        vec![StyleAtom::Height(Dimension::Px(Px(height)))]
     })
 }
 
-pub(super) fn thumb_atoms((height, offset): (i16, i16), thick: bool) -> &'static [StyleAtom] {
+pub(super) fn thumb_atoms(height: i16, thick: bool) -> &'static [StyleAtom] {
     static THIN: Cache = OnceLock::new();
     static THICK: Cache = OnceLock::new();
     let (cache, width) = if thick {
@@ -41,10 +38,9 @@ pub(super) fn thumb_atoms((height, offset): (i16, i16), thick: bool) -> &'static
     } else {
         (&THIN, THUMB_REST_WIDTH)
     };
-    atoms(cache, (height, offset), || {
+    atoms(cache, (height, 0), || {
         vec![
             StyleAtom::Height(Dimension::Px(Px(height))),
-            StyleAtom::MarginTop(Px(offset)),
             StyleAtom::Width(Dimension::Px(Px(to_i16(width)))),
             StyleAtom::MarginLeft(Px(to_i16((SCROLLBAR_WIDTH - width) / 2.0))),
         ]

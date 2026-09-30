@@ -1,5 +1,5 @@
-use crate::hal::Color;
 use crate::profile::count;
+use crate::style::Color;
 
 use super::WgpuRenderer;
 #[cfg(not(target_arch = "wasm32"))]
@@ -10,7 +10,7 @@ use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::layer_pool::LayerHandle;
 use crate::renderer::scene_command::CommandScene;
 use crate::renderer::scene_command::walk::{WalkCtx, walk_command_scene};
-use crate::renderer::split_encoder::SplitEncoder;
+use crate::renderer::split_encoder::{SplitEncoder, clear_value};
 use crate::renderer::surface::WgpuSurface;
 
 #[derive(Debug)]
@@ -60,12 +60,7 @@ pub(crate) fn record_clear(
             depth_slice: None,
             resolve_target: None,
             ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color {
-                    r: f64::from(color.r),
-                    g: f64::from(color.g),
-                    b: f64::from(color.b),
-                    a: f64::from(color.a),
-                }),
+                load: wgpu::LoadOp::Clear(clear_value(color)),
                 store: wgpu::StoreOp::Store,
             },
         })],
@@ -164,7 +159,7 @@ pub(super) fn render_command_scene_surface(
     ready: &mut ReadyState,
     surface: &WgpuSurface,
     scene: &CommandScene,
-    clear_color: crate::hal::Color,
+    clear_color: crate::style::Color,
     viewport: (f32, f32),
     stats: &mut FrameStats,
 ) -> Result<(), RendererError> {
@@ -173,14 +168,14 @@ pub(super) fn render_command_scene_surface(
     };
     let device = ready.device.clone();
     let queue = ready.queue.clone();
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+    let encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("sigil-renderer surface frame encoder"),
     });
-    record_clear(&mut encoder, &view, clear_color);
     let mut retained = Vec::new();
     let scale = surface_text_scale(surface, viewport);
     let format = surface.config.format;
     let mut encoder = SplitEncoder::new(&device, &queue, encoder);
+    encoder.clear(&view, clear_color);
     encoder.reuse_uploads(&mut ready.uploads);
     walk_screen(
         ready,
@@ -205,22 +200,29 @@ pub(super) fn render_command_scene_surface(
     Ok(())
 }
 
+fn clear_screen(split: &mut SplitEncoder, target: &ScreenSubmission<'_>) {
+    if let Some(color) = target.clear {
+        split.clear(target.view, color);
+    }
+}
+
 impl WgpuRenderer {
     pub fn submit_screen(
         &mut self,
         target: &ScreenSubmission<'_>,
         scene: &CommandScene,
     ) -> Result<(), RendererError> {
-        let mut encoder = target
+        let encoder = target
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("sigil-renderer submit_screen encoder"),
             });
-        if let Err(error) = self.prepare_screen(target, &mut encoder) {
+        if let Err(error) = self.prepare_screen(target) {
             target.queue.submit(core::iter::once(encoder.finish()));
             return Err(error);
         }
         let mut split = SplitEncoder::new(target.device, target.queue, encoder);
+        clear_screen(&mut split, target);
         if let DeviceState::Ready(ready) = &mut self.state
             && ready.device == *target.device
         {
@@ -244,7 +246,7 @@ impl WgpuRenderer {
         scene: &CommandScene,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), RendererError> {
-        self.prepare_screen(target, encoder)?;
+        self.prepare_screen(target)?;
         let real = std::mem::replace(
             encoder,
             target
@@ -254,6 +256,7 @@ impl WgpuRenderer {
                 }),
         );
         let mut split = SplitEncoder::new(target.device, target.queue, real);
+        clear_screen(&mut split, target);
         let result = self.walk_screen_commands(target, scene, &mut split);
         *encoder = split.into_inner();
         #[cfg(not(target_arch = "wasm32"))]
@@ -263,17 +266,10 @@ impl WgpuRenderer {
         result
     }
 
-    fn prepare_screen(
-        &mut self,
-        target: &ScreenSubmission<'_>,
-        encoder: &mut wgpu::CommandEncoder,
-    ) -> Result<(), RendererError> {
+    fn prepare_screen(&mut self, target: &ScreenSubmission<'_>) -> Result<(), RendererError> {
         self.last_frame_stats = FrameStats::default();
         if target.viewport.0 <= 0.0 || target.viewport.1 <= 0.0 {
             return Err(RendererError::InvalidViewport);
-        }
-        if let Some(color) = target.clear {
-            record_clear(encoder, target.view, color);
         }
         self.recycle_transients();
         Ok(())

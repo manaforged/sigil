@@ -1,6 +1,6 @@
 use super::*;
 use crate::layout::style_data::{
-    Display, FlexDirection, LengthPercentage, LengthPercentageAuto, Overflow,
+    Dimension, Display, FlexDirection, LengthPercentage, LengthPercentageAuto, Overflow,
 };
 
 #[test]

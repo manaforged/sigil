@@ -60,7 +60,7 @@ impl Script {
     }
 }
 
-const FIRA_REGULAR: &[u8] = include_bytes!("../../../assets/text/fonts/FiraSans-Regular.ttf");
+const FIRA_REGULAR: &[u8] = sigil_fonts::FIRA_SANS_REGULAR;
 const FIRA_BOLD: &[u8] = include_bytes!("../../../tests/fixtures/text/FiraSans-Bold.ttf");
 const FIRA_ITALIC: &[u8] = include_bytes!("../../../tests/fixtures/text/FiraSans-Italic.ttf");
 const NOTO_CJK: &[u8] = include_bytes!("../../../tests/fixtures/text/NotoSansCJKjp-subset.otf");

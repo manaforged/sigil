@@ -1,4 +1,5 @@
-use sigil::hal::{LogicalKey, ModifiersState, Point};
+use sigil::events::{LogicalKey, ModifiersState};
+use sigil::geometry::Point;
 
 use super::{Harness, Node};
 use crate::input;
@@ -6,18 +7,18 @@ use crate::input;
 const DRAG_STEPS: u16 = 4;
 
 pub trait Target {
-    fn point(&self) -> Point;
+    fn point(&self, ui: &mut Harness) -> Point;
 }
 
 impl Target for Point {
-    fn point(&self) -> Point {
+    fn point(&self, _: &mut Harness) -> Point {
         *self
     }
 }
 
 impl Target for Node {
     #[track_caller]
-    fn point(&self) -> Point {
+    fn point(&self, _: &mut Harness) -> Point {
         self.center().unwrap_or_else(|| {
             super::fail(format!(
                 "node {:?} {:?} has no bounds",
@@ -28,22 +29,31 @@ impl Target for Node {
     }
 }
 
+impl Target for str {
+    #[track_caller]
+    fn point(&self, ui: &mut Harness) -> Point {
+        let what = format!("control named {self:?}");
+        let node = ui.wait_for(&what, |ui| ui.labelled(self));
+        node.point(ui)
+    }
+}
+
 impl Harness {
     #[track_caller]
-    pub fn click(&mut self, target: &impl Target) -> &mut Self {
-        let at = target.point();
+    pub fn click(&mut self, target: &(impl Target + ?Sized)) -> &mut Self {
+        let at = target.point(self);
         self.send(input::click(at.x, at.y))
     }
 
     #[track_caller]
-    pub fn hover(&mut self, target: &impl Target) -> &mut Self {
-        let at = target.point();
+    pub fn hover(&mut self, target: &(impl Target + ?Sized)) -> &mut Self {
+        let at = target.point(self);
         self.send([input::pointer_move(at.x, at.y)])
     }
 
     #[track_caller]
-    pub fn scroll(&mut self, target: &impl Target, lines: f32) -> &mut Self {
-        let at = target.point();
+    pub fn scroll(&mut self, target: &(impl Target + ?Sized), lines: f32) -> &mut Self {
+        let at = target.point(self);
         self.send([
             input::pointer_move(at.x, at.y),
             input::scroll_lines(at.x, at.y, lines),
@@ -51,8 +61,12 @@ impl Harness {
     }
 
     #[track_caller]
-    pub fn drag(&mut self, from: &impl Target, to: &impl Target) -> &mut Self {
-        let (from, to) = (from.point(), to.point());
+    pub fn drag(
+        &mut self,
+        from: &(impl Target + ?Sized),
+        to: &(impl Target + ?Sized),
+    ) -> &mut Self {
+        let (from, to) = (from.point(self), to.point(self));
         let mut events = vec![
             input::pointer_move(from.x, from.y),
             input::pointer_down(from.x, from.y),
@@ -86,6 +100,11 @@ impl Harness {
     #[track_caller]
     pub fn type_text(&mut self, text: &str) -> &mut Self {
         self.send(input::type_text(text))
+    }
+
+    #[track_caller]
+    pub fn type_into(&mut self, label: &str, text: &str) -> &mut Self {
+        self.click(label).type_text(text)
     }
 
     #[track_caller]

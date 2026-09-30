@@ -7,10 +7,13 @@
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - dropdown demo", 400, 200), build)
+    sigil::run(
+        AppConfig::new("Sigil - dropdown demo").size(400, 200),
+        build,
+    )
 }
 
-fn build(cx: &mut Cx) -> NodeId {
+fn build() -> impl IntoNode {
     let selected = signal(0_usize);
     let options = vec![
         "Rust".to_owned(),
@@ -18,7 +21,7 @@ fn build(cx: &mut Cx) -> NodeId {
         "Zig".to_owned(),
         "C++".to_owned(),
     ];
-    cx.add(dropdown(selected, options).change(move |index| {
+    dropdown(selected, options).change(move |index| {
         println!("selected index: {index}");
-    }))
+    })
 }

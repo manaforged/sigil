@@ -212,7 +212,9 @@ fn bench_selection(c: &mut Criterion) {
                     );
                     cx.flush_reactive_children();
                     b.iter(|| {
-                        state.selection().set_always(Rc::clone(&selected));
+                        state
+                            .selection()
+                            .update(|value| *value = Rc::clone(&selected));
                         black_box(cx.get(root));
                     });
                 });

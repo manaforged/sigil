@@ -4,26 +4,22 @@ use sigil::prelude::*;
 
 use crate::{Harness, Query};
 
-fn counter(cx: &mut Cx) -> NodeId {
+fn counter() -> impl IntoNode {
     let count = signal(0_i32);
     let label = derived(move || format!("Count: {}", count.get()));
-    cx.add(
-        container()
-            .child(text(label))
-            .child(button("Increment").activate(move || count.set(count.peek() + 1))),
-    )
+    container()
+        .child(text(label))
+        .child(button("Increment").activate(move || count.set(count.peek() + 1)))
 }
 
-fn form(cx: &mut Cx) -> NodeId {
+fn form() -> impl IntoNode {
     let name = signal(String::new());
     let agree = signal(false);
-    cx.add(
-        container()
-            .layout(LayoutStyle::flex_column())
-            .child(field("Name", text_field(name)))
-            .child(checkbox(agree).label("Agree"))
-            .child(button("Save")),
-    )
+    container()
+        .layout(LayoutStyle::flex_column())
+        .child(field("Name", text_field(name)))
+        .child(checkbox(agree).label("Agree"))
+        .child(button("Save"))
 }
 
 #[test]
@@ -75,10 +71,10 @@ fn focus_next_walks_the_tab_order() {
 
 #[test]
 fn advance_fires_intervals_on_the_virtual_clock() {
-    let ticks = |cx: &mut Cx| {
+    let ticks = || {
         let n = signal(0_u32);
         interval(Duration::from_secs(1), move || n.set(n.peek() + 1));
-        cx.add(text(derived(move || format!("ticks {}", n.get()))))
+        text(derived(move || format!("ticks {}", n.get())))
     };
     let mut ui = Harness::new(ticks).size(20, 2);
     assert!(ui.text().contains("ticks 0"), "{}", ui.text());
@@ -106,4 +102,41 @@ fn pixel_harness_renders_at_its_size() {
         return;
     };
     assert_eq!(image.dimensions(), (160, 60));
+}
+
+#[test]
+fn a_label_finds_the_control_it_names() {
+    let mut ui = Harness::new(form).size(40, 12);
+    ui.type_into("Name", "Ada").click("Agree");
+    assert_eq!(ui.get_by_role(Role::TextInput, "Name").value(), Some("Ada"));
+    assert_eq!(
+        ui.get_by_role(Role::CheckBox, "Agree").is_checked(),
+        Some(true)
+    );
+}
+
+#[test]
+#[should_panic(expected = "names 2 controls")]
+fn a_label_on_two_controls_fails() {
+    let mut ui = Harness::new(|| container().child(button("Delete")).child(button("Delete")));
+    ui.click("Delete");
+}
+
+#[test]
+fn expect_text_waits_for_a_task() {
+    let mut ui = Harness::new(|| {
+        let load = task(|| async {
+            sigil::tasks::sleep(Duration::from_millis(200)).await;
+            Ok::<_, String>("done".to_owned())
+        });
+        container()
+            .child(button("Load").activate(move || load.run()))
+            .child(text(move || match load.status() {
+                Status::Ok(value) => value,
+                _ => String::new(),
+            }))
+    });
+    ui.click("Load");
+    assert!(ui.query(&Query::text("done")).is_none());
+    ui.expect_text("done");
 }

@@ -1,4 +1,5 @@
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
 
 fn main() -> sigil::AppResult<()> {
     let terminal = std::env::args().any(|arg| arg == "--terminal");
@@ -6,7 +7,7 @@ fn main() -> sigil::AppResult<()> {
     let config = if terminal { config.terminal() } else { config };
     Runtime::scope("hot-counter", || {
         let count = signal(0_i32);
-        sigil::run(config, move |cx: &mut Cx| cx.add(counter(count)))
+        sigil::run(config, move || counter(count))
     })
 }
 

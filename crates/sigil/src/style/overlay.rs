@@ -68,6 +68,20 @@ impl StyleOverlay {
         &self.disabled
     }
 
+    pub(crate) fn merge(&mut self, other: &Self) {
+        for (into, from) in [
+            (&mut self.rest, &other.rest),
+            (&mut self.hover, &other.hover),
+            (&mut self.focus, &other.focus),
+            (&mut self.pressed, &other.pressed),
+            (&mut self.disabled, &other.disabled),
+        ] {
+            *into = crate::style::merge_classes(into, from, 0)
+                .into_iter()
+                .collect();
+        }
+    }
+
     #[must_use]
     pub fn atoms_for(&self, slot: StateSlot) -> &[StyleAtom] {
         match slot {

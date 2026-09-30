@@ -5,9 +5,9 @@ use std::time::Duration;
 use crate::animation_runtime::presets;
 use crate::events::focus_from_keyboard;
 use crate::events::mutate_handlers;
-use crate::events::prelude::{Key, NodeEventsExt};
+use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TopLayer, container, text};
-use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::layout::{Popup, PopupSide, ViewportOverlay};
 use crate::reactive::{IntervalId, Signal, cancel_interval, interval, signal};
 use crate::style::{
@@ -86,7 +86,7 @@ impl TooltipBuilder {
 
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
-        self.mutators.push(Box::new(move |node| node.style(style)));
+        self.style_accumulator.merge(style);
         self
     }
 

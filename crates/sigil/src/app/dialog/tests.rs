@@ -3,7 +3,7 @@ use super::*;
 fn resolved<T: Clone>(picked: Signal<Status<T, Infallible>>) -> Option<T> {
     picked.with(|status| match status {
         Status::Ok(value) => Some(value.clone()),
-        Status::Pending | Status::Err(_) | Status::Panicked(_) => None,
+        Status::Idle | Status::Pending | Status::Err(_) | Status::Panicked(_) => None,
     })
 }
 
@@ -57,7 +57,7 @@ fn mocked_confirm_does_not_open_a_native_alert() {
 #[cfg(feature = "terminal")]
 #[test]
 fn terminal_picker_filters_and_picks_with_the_keyboard() {
-    use crate::hal::Key;
+    use crate::events::Key;
     use crate::terminal::{key_down, step};
     let dir = std::env::temp_dir().join(format!("sigil-picker-{}", std::process::id()));
     std::fs::create_dir_all(dir.join("sub")).expect("temp dir");
@@ -68,15 +68,15 @@ fn terminal_picker_filters_and_picks_with_the_keyboard() {
         let slot = std::rc::Rc::new(std::cell::RefCell::new(None));
         let writer = std::rc::Rc::clone(&slot);
         let root = dir.clone();
-        let mut host = crate::app::Host::cells();
-        host.mount(move |cx: &mut crate::kernel::Cx| {
+        let mut host = crate::Host::cells();
+        host.mount(move || {
             *writer.borrow_mut() = Some(
                 FileDialog::new()
                     .directory(&root)
                     .filter("CSV", &["csv"])
                     .open_file(),
             );
-            cx.add(crate::kernel::text("root"))
+            crate::kernel::text("root")
         });
         let mut router = crate::events::EventRouter::new();
         let listing = step(&mut host, &mut router, [], 60, 20)

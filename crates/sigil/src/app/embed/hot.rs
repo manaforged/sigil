@@ -2,9 +2,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Once, Weak};
 
 use crate::events::EventRouter;
-use crate::kernel::{AccessibleName, Cx, Node, NodeId};
+use crate::kernel::{AccessibleName, Cx, IntoNode, Node, NodeId};
 use crate::reactive::{OwnerId, Runtime};
-use crate::tasks::{Dispatcher, OwnerHandle, dispatch_to_owner};
+use crate::tasks::OwnerHandle;
+use crate::tasks::dispatch::dispatch_to_owner;
+use crate::tasks::runtime::Dispatcher;
 
 use super::Host;
 
@@ -20,16 +22,19 @@ pub(crate) struct HotRoot {
 }
 
 impl HotRoot {
-    fn new<F>(root: F, owner: OwnerId) -> Self
+    fn new<F, N>(root: F, owner: OwnerId) -> Self
     where
-        F: Fn(&mut Cx) -> NodeId + 'static,
+        F: Fn() -> N + 'static,
+        N: IntoNode,
     {
         let patched = Arc::new(AtomicBool::new(false));
-        let dispatcher = crate::tasks::installed().then(crate::tasks::dispatcher);
+        let dispatcher = crate::tasks::current::dispatcher();
         let handler = on_patch(Arc::downgrade(&patched), dispatcher, owner);
         subsecond::register_handler(Arc::clone(&handler));
         Self {
-            build: Box::new(move |cx| subsecond::HotFn::current(call_root::<F>).call((&root, cx))),
+            build: Box::new(move |cx| {
+                subsecond::HotFn::current(call_root::<F, N>).call((&root, cx))
+            }),
             patched,
             #[cfg(test)]
             handler,
@@ -45,8 +50,8 @@ impl HotRoot {
     }
 }
 
-fn call_root<F: Fn(&mut Cx) -> NodeId>(root: &F, cx: &mut Cx) -> NodeId {
-    root(cx)
+fn call_root<F: Fn() -> N, N: IntoNode>(root: &F, cx: &mut Cx) -> NodeId {
+    cx.add(root)
 }
 
 fn on_patch(
@@ -75,9 +80,10 @@ fn connect_devserver() {
 }
 
 impl Host {
-    pub fn mount_hot<F>(&mut self, root: F)
+    pub fn mount_hot<F, N>(&mut self, root: F)
     where
-        F: Fn(&mut Cx) -> NodeId + 'static,
+        F: Fn() -> N + 'static,
+        N: IntoNode,
     {
         connect_devserver();
         let mut hot = HotRoot::new(root, self.cx.root_owner());

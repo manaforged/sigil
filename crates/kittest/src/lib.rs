@@ -1,4 +1,5 @@
-use sigil::layout::TextMeasure;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::prelude::*;
 use sigil::scene::emit_scene;
 
@@ -8,11 +9,13 @@ pub use compare::{
     assert_goldens_differ_in, assert_png_matches_golden, assert_rendered_matches_golden,
     assert_text_matches_golden, golden_path_in,
 };
+pub use with_cx::WithCx;
 mod error;
 pub use error::Error;
 pub mod gpu;
 use gpu::{render_scene_to_image, shared_device};
 mod harness;
+mod with_cx;
 pub use harness::{Harness, Node, Query, SNAPSHOT_MAX_DELTA_PCT, Target};
 pub mod input;
 mod interaction;
@@ -24,6 +27,8 @@ use interaction::drive_state;
 pub use measure::{CharMeasure, FixedMeasure};
 
 pub const SETTLE_SAFETY_CAP: u32 = 600;
+
+pub const EXPECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 
 pub type Rendered = Result<Option<image::RgbaImage>, Error>;
 
@@ -62,8 +67,8 @@ pub const FILMSTRIP_GAP_PX: u32 = 4;
     clippy::too_many_arguments,
     reason = "a filmstrip needs the widget, its size, the hit point, the frame count, the step, and the text measure"
 )]
-pub fn capture_filmstrip(
-    build: impl Fn(&mut Cx) -> NodeId,
+pub fn capture_filmstrip<N: IntoNode>(
+    build: impl Fn() -> N,
     size_px: [u32; 2],
     hit_point: (f32, f32),
     frame_count: u32,
@@ -157,7 +162,7 @@ macro_rules! assert_goldens_differ {
 }
 
 pub fn render_widget_to_png(
-    build: impl FnOnce(&mut Cx) -> NodeId,
+    build: impl IntoNode,
     mode: InteractionMode,
     size_px: [u32; 2],
     hit_point: (f32, f32),
@@ -166,7 +171,7 @@ pub fn render_widget_to_png(
 }
 
 pub fn render_widget_to_png_stub(
-    build: impl FnOnce(&mut Cx) -> NodeId,
+    build: impl IntoNode,
     mode: InteractionMode,
     size_px: [u32; 2],
     hit_point: (f32, f32),
@@ -175,7 +180,7 @@ pub fn render_widget_to_png_stub(
 }
 
 pub fn render_widget_to_png_with(
-    build: impl FnOnce(&mut Cx) -> NodeId,
+    build: impl IntoNode,
     mode: InteractionMode,
     size_px: [u32; 2],
     hit_point: (f32, f32),
@@ -190,7 +195,7 @@ pub fn render_widget_to_png_with(
     reason = "a scaled render needs the logical size and the scale beside the render inputs"
 )]
 pub fn render_widget_to_png_scaled(
-    build: impl FnOnce(&mut Cx) -> NodeId,
+    build: impl IntoNode,
     mode: InteractionMode,
     logical_size_px: [u32; 2],
     scale: f32,
@@ -206,7 +211,7 @@ pub fn render_widget_to_png_scaled(
     reason = "a scaled render needs the logical size and the scale beside the render inputs"
 )]
 pub fn render_widget_to_png_scaled_focus_descendant(
-    build: impl FnOnce(&mut Cx) -> NodeId,
+    build: impl IntoNode,
     mode: InteractionMode,
     logical_size_px: [u32; 2],
     scale: f32,
@@ -226,7 +231,7 @@ pub fn render_widget_to_png_scaled_focus_descendant(
 
 pub struct Captured {
     pub image: image::RgbaImage,
-    pub top_layer: Option<sigil::hal::Rect>,
+    pub top_layer: Option<sigil::geometry::Rect>,
 }
 
 #[allow(
@@ -234,7 +239,7 @@ pub struct Captured {
     reason = "a scaled render needs the logical size and the scale beside the render inputs"
 )]
 pub fn capture_widget_scaled_focus_descendant(
-    build: impl FnOnce(&mut Cx) -> NodeId,
+    build: impl IntoNode,
     mode: InteractionMode,
     logical_size_px: [u32; 2],
     scale: f32,
@@ -257,7 +262,7 @@ fn focus_descendant(cx: &Cx, root: NodeId) -> NodeId {
 }
 
 pub fn render_widget_to_png_focus_descendant(
-    build: impl FnOnce(&mut Cx) -> NodeId,
+    build: impl IntoNode,
     mode: InteractionMode,
     size_px: [u32; 2],
     hit_point: (f32, f32),
@@ -310,7 +315,7 @@ fn physical_extent(logical: u32, scale: f32) -> u32 {
     reason = "every public render entry point funnels its inputs through this function"
 )]
 fn render_core(
-    build: impl FnOnce(&mut Cx) -> NodeId,
+    build: impl IntoNode,
     mode: InteractionMode,
     target: RenderTarget,
     hit_point: (f32, f32),
@@ -326,7 +331,7 @@ fn render_core(
     reason = "every public render entry point funnels its inputs through this function"
 )]
 fn capture_core(
-    build: impl FnOnce(&mut Cx) -> NodeId,
+    build: impl IntoNode,
     mode: InteractionMode,
     target: RenderTarget,
     hit_point: (f32, f32),
@@ -335,7 +340,7 @@ fn capture_core(
 ) -> Result<Option<Captured>, Error> {
     sigil::reactive::Runtime::scope("sigil-visual-golden", || {
         let mut cx = Cx::new_root();
-        let root = build(&mut cx);
+        let root = cx.add(build);
         let focus = focus_target(&cx, root);
         let [viewport_w, viewport_h] = target.logical;
         let viewport = Size::fixed(viewport_w, viewport_h);
@@ -350,7 +355,11 @@ fn capture_core(
         relayout(&mut cx, &mut layout)?;
         interaction::advance(mode, || relayout(&mut cx, &mut layout))?;
         let scene = emit_scene(&cx, root);
-        let frame = sigil::hal::Rect::new(sigil::hal::Point::new(0.0, 0.0), viewport_w, viewport_h);
+        let frame = sigil::geometry::Rect::new(
+            sigil::geometry::Point::new(0.0, 0.0),
+            viewport_w,
+            viewport_h,
+        );
         let top_layer = bounds::top_layer(&cx, &layout, root, frame);
         let Some((device, queue)) = shared_device()? else {
             return Ok(None);
@@ -368,7 +377,7 @@ fn capture_core(
 
 fn find_first_focusable(cx: &Cx, id: NodeId) -> Option<NodeId> {
     let node = cx.get(id)?;
-    if node.a11y.focusable {
+    if node.a11y.focusable && node.a11y.tab_stop.is_none_or(|stop| stop.peek()) {
         return Some(id);
     }
     node.children()

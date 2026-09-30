@@ -4,9 +4,12 @@
 )]
 
 use sigil::prelude::*;
+use sigil::widgets::{
+    ButtonBuilder, CheckboxBuilder, RadioGroupBuilder, SliderBuilder, ToggleBuilder,
+};
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - controls", 480, 360), build)
+    sigil::run(AppConfig::new("Sigil - controls").size(480, 360), build)
 }
 
 fn button_demo() -> NodeBuilder {
@@ -47,16 +50,14 @@ fn slider_demo() -> SliderBuilder {
     slider(volume, 0.0..=100.0).step(5.0).label("Volume")
 }
 
-fn build(cx: &mut Cx) -> NodeId {
-    cx.add(
-        container()
-            .role(Role::Main)
-            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
-            .child(button_demo())
-            .child(icon_button_demo())
-            .child(checkbox_demo())
-            .child(toggle_demo())
-            .child(radio_group_demo())
-            .child(slider_demo()),
-    )
+fn build() -> impl IntoNode {
+    container()
+        .role(Role::Main)
+        .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+        .child(button_demo())
+        .child(icon_button_demo())
+        .child(checkbox_demo())
+        .child(toggle_demo())
+        .child(radio_group_demo())
+        .child(slider_demo())
 }

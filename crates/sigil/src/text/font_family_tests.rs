@@ -1,6 +1,6 @@
 use super::*;
 
-const REGULAR: &[u8] = include_bytes!("../../assets/text/fonts/FiraSans-Regular.ttf");
+const REGULAR: &[u8] = sigil_fonts::FIRA_SANS_REGULAR;
 const BOLD: &[u8] = include_bytes!("../../tests/fixtures/text/FiraSans-Bold.ttf");
 
 #[test]

@@ -1,8 +1,6 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
-use crate::layout::prelude::{
-    AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows,
-};
 use crate::layout::snap::CellForm;
+use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::style::{NodeStyleExt, Size, StyleAccess};
 use crate::style::{Px, StyleAtom, Tone};
 
@@ -43,7 +41,7 @@ impl DotBuilder {
                 .pick()(self.tone, self.size);
         node = node
             .role(Role::GenericContainer)
-            .layout(self.layout_overrides.apply(layout));
+            .with(self.layout_overrides.apply(layout));
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }

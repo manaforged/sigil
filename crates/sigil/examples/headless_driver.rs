@@ -1,8 +1,13 @@
 #![allow(clippy::print_stdout)]
 #![allow(clippy::cast_possible_truncation)]
 
+use sigil::Host;
 use sigil::a11y::snapshot;
+use sigil::events::EventRouter;
+use sigil::events::PointerEventInit;
+use sigil::events::ShellEvent;
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
 use sigil::scene::{CommandScene, SceneCommand};
 
 const fn pointer(phase: PointerPhase, x: f32, y: f32) -> ShellEvent {
@@ -47,19 +52,17 @@ fn main() {
         let count = signal(0_i32);
         let label_text = derived(move || format!("Count: {}", count.get()));
         let mut host = Host::new();
-        host.build(|cx| {
-            cx.add(
-                container()
-                    .layout(
-                        LayoutStyle::flex_column()
-                            .fixed_size(480.0, 240.0)
-                            .gap(16.0),
-                    )
-                    .child(text(label_text))
-                    .child(button("Increment").activate(move || {
-                        count.set(count.peek() + 1);
-                    })),
-            )
+        host.mount(move || {
+            container()
+                .layout(
+                    LayoutStyle::flex_column()
+                        .fixed_size(480.0, 240.0)
+                        .gap(16.0),
+                )
+                .child(text(label_text))
+                .child(button("Increment").activate(move || {
+                    count.set(count.peek() + 1);
+                }))
         });
         let mut router = EventRouter::new();
         let viewport = (480.0, 240.0);

@@ -1,4 +1,7 @@
 use super::*;
+use sigil::events::EventRouter;
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 
 #[test]
 fn text_field_typing_updates_signal() {

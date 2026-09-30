@@ -6,7 +6,7 @@ use super::{
 };
 use crate::text::glyph::GlyphId;
 
-const FIRA_REGULAR: &[u8] = include_bytes!("../../../assets/text/fonts/FiraSans-Regular.ttf");
+const FIRA_REGULAR: &[u8] = sigil_fonts::FIRA_SANS_REGULAR;
 const NOTO_HEBREW: &[u8] =
     include_bytes!("../../../tests/fixtures/text/NotoSansHebrew-Regular.ttf");
 

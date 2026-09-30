@@ -1,4 +1,6 @@
 use super::*;
+use sigil::events::EventRouter;
+use sigil::kernel::Cx;
 
 #[test]
 fn target_highlight_is_reactive_and_clears_on_move_away() {

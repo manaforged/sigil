@@ -27,7 +27,7 @@ use sigil_kittest::{InteractionMode, assert_png_matches_golden, golden_path, ren
 #[test]
 fn button_default() -> Result<(), sigil_kittest::Error> {
     let Some(img) = render_widget_to_png(
-        |cx| cx.add(button("Save")),
+        || button("Save"),
         InteractionMode::Default,
         [200, 60],
         (10.0, 10.0),
@@ -146,11 +146,11 @@ custom render paths.
 
 <!-- truesight:surface sigil-kittest -->
 
-187 public items (17 types, 53 functions, 59 methods, 30 fields, 18 variants, 8 constants, 2 macros) at 187 paths; 0 are re-export aliases. 44 trait impl lines, 6 inherent impl lines. 6 modules, 0 re-export only.
+191 public items (18 types, 53 functions, 61 methods, 30 fields, 18 variants, 9 constants, 2 macros) at 191 paths; 0 are re-export aliases. 46 trait impl lines, 6 inherent impl lines. 6 modules, 0 re-export only.
 
 | Module | Items | Types | Functions | Methods | Aliases |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `sigil_kittest` | 112 | 11 | 17 | 45 | 0 |
+| `sigil_kittest` | 116 | 12 | 17 | 47 | 0 |
 | `sigil_kittest::gpu` | 16 | 2 | 9 | 0 | 0 |
 | `sigil_kittest::input` | 15 | 0 | 15 | 0 | 0 |
 | `sigil_kittest::parity` | 16 | 2 | 5 | 0 | 0 |

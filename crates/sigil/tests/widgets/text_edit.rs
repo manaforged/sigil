@@ -1,4 +1,8 @@
 use super::*;
+use sigil::events::EventRouter;
+use sigil::events::PhysicalKey;
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 
 #[test]
 fn text_field_shift_arrow_selects_and_cut_clears_value() {

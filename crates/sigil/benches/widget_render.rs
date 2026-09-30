@@ -12,18 +12,23 @@
     clippy::too_many_arguments
 )]
 
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use pollster::FutureExt;
-use sigil::hal::{
-    Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,
-    PointerPhase, ShellEvent,
+use sigil::events::EventRouter;
+use sigil::events::{
+    ModifiersState, MouseButton, MouseButtons, PointerEventInit, PointerKind, PointerPhase,
+    ShellEvent,
 };
+use sigil::geometry::Point;
 use sigil::prelude::*;
 use sigil::reactive::{Runtime, signal};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{CommandScene, emit_scene};
+use sigil::style::Color;
 use sigil_kittest::FixedMeasure;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -147,14 +152,14 @@ fn render_one(
     queue: &wgpu::Queue,
     renderer: &mut WgpuRenderer,
     view: &wgpu::TextureView,
-    build: &dyn Fn(&mut Cx) -> NodeId,
+    build: fn() -> Box<dyn IntoNode>,
     mode: Mode,
     size_px: (f32, f32),
     hit: (f32, f32),
 ) {
     Runtime::scope("widget-render-bench", || {
         let mut cx = Cx::new_root();
-        let root = build(&mut cx);
+        let root = cx.add(build);
 
         let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
@@ -199,38 +204,35 @@ struct Widget {
     name: &'static str,
     size_px: (u32, u32),
     hit: (f32, f32),
-    build: fn(&mut Cx) -> NodeId,
+    build: fn() -> Box<dyn IntoNode>,
 }
 
-fn build_button(cx: &mut Cx) -> NodeId {
-    cx.add(button("Save"))
+fn build_button() -> impl IntoNode {
+    button("Save")
 }
 
-fn build_checkbox(cx: &mut Cx) -> NodeId {
+fn build_checkbox() -> impl IntoNode {
     let checked = signal(false);
-    cx.add(checkbox(checked).class("bg-surface rounded-sm"))
+    checkbox(checked).class("bg-surface rounded-sm")
 }
 
-fn build_slider(cx: &mut Cx) -> NodeId {
+fn build_slider() -> impl IntoNode {
     let v = signal(50.0_f32);
-    cx.add(slider(v, 0.0..=100.0))
+    slider(v, 0.0..=100.0)
 }
 
-fn build_dropdown(cx: &mut Cx) -> NodeId {
+fn build_dropdown() -> impl IntoNode {
     let sel = signal(0_usize);
-    cx.add(dropdown(
-        sel,
-        vec!["Easy".into(), "Normal".into(), "Hard".into()],
-    ))
+    dropdown(sel, vec!["Easy".into(), "Normal".into(), "Hard".into()])
 }
 
-fn build_progress(cx: &mut Cx) -> NodeId {
+fn build_progress() -> impl IntoNode {
     let v = signal(50.0_f32);
-    cx.add(progress(v, 100.0).height(24.0))
+    progress(v, 100.0).height(24.0)
 }
 
-fn build_panel(cx: &mut Cx) -> NodeId {
-    cx.add(panel().title("Settings"))
+fn build_panel() -> impl IntoNode {
+    panel().title("Settings")
 }
 
 const WIDGETS: &[Widget] = &[
@@ -238,37 +240,37 @@ const WIDGETS: &[Widget] = &[
         name: "button",
         size_px: (160, 56),
         hit: (74.0, 22.0),
-        build: build_button,
+        build: || sigil::kernel::node(build_button()),
     },
     Widget {
         name: "checkbox",
         size_px: (36, 36),
         hit: (16.0, 16.0),
-        build: build_checkbox,
+        build: || sigil::kernel::node(build_checkbox()),
     },
     Widget {
         name: "slider",
         size_px: (192, 36),
         hit: (90.0, 14.0),
-        build: build_slider,
+        build: || sigil::kernel::node(build_slider()),
     },
     Widget {
         name: "dropdown",
         size_px: (212, 52),
         hit: (90.0, 22.0),
-        build: build_dropdown,
+        build: || sigil::kernel::node(build_dropdown()),
     },
     Widget {
         name: "progress",
         size_px: (244, 32),
         hit: (1.0, 1.0),
-        build: build_progress,
+        build: || sigil::kernel::node(build_progress()),
     },
     Widget {
         name: "panel",
         size_px: (340, 92),
         hit: (1.0, 1.0),
-        build: build_panel,
+        build: || sigil::kernel::node(build_panel()),
     },
 ];
 
@@ -288,7 +290,7 @@ fn bench_widget_render(c: &mut Criterion) {
         let (tex_w, tex_h) = w.size_px;
         let (_capture, view) = make_capture(&device, tex_w, tex_h);
         let size_f = (tex_w as f32, tex_h as f32);
-        let build_ref: &dyn Fn(&mut Cx) -> NodeId = &w.build;
+        let build_ref = w.build;
 
         for mode in [Mode::Default, Mode::Hover] {
             group.bench_function(format!("{}_{}", w.name, mode.tag()), |b| {

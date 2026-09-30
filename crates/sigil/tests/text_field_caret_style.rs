@@ -4,9 +4,13 @@
 )]
 #![allow(clippy::expect_used)]
 
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 use std::rc::Rc;
 
-use sigil::hal::{HitPosition, Rect, TextAffinity};
+use sigil::events::EventRouter;
+use sigil::geometry::Rect;
+use sigil::hal::{HitPosition, TextAffinity};
 use sigil::layout::{TextGeometry, set_text_geometry};
 use sigil::prelude::*;
 use sigil::scene::{CommandScene, SceneCommand, emit_scene};

@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn button_default() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(button("Save")),
+        || button("Save"),
         InteractionMode::Default,
         [160, 56],
         (24.0, 16.0),
@@ -14,7 +14,7 @@ fn button_default() {
 #[test]
 fn button_solid_default() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(button("Save").primary()),
+        || button("Save").primary(),
         InteractionMode::Default,
         [160, 56],
         (24.0, 16.0),
@@ -25,7 +25,7 @@ fn button_solid_default() {
 #[test]
 fn button_hover() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(button("Save")),
+        || button("Save"),
         InteractionMode::Hover,
         [160, 56],
         (24.0, 16.0),
@@ -36,7 +36,7 @@ fn button_hover() {
 #[test]
 fn button_pressed() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(button("Save")),
+        || button("Save"),
         InteractionMode::Pressed,
         [160, 56],
         (24.0, 16.0),
@@ -47,7 +47,7 @@ fn button_pressed() {
 #[test]
 fn button_focused() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(button("Save")),
+        || button("Save"),
         InteractionMode::Focused,
         [160, 56],
         (24.0, 16.0),
@@ -58,7 +58,7 @@ fn button_focused() {
 #[test]
 fn button_disabled() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(button("Save").enabled(false)),
+        || button("Save").enabled(false),
         InteractionMode::Disabled,
         [160, 56],
         (24.0, 16.0),
@@ -69,9 +69,9 @@ fn button_disabled() {
 #[test]
 fn checkbox_checked() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let checked = signal(true);
-            cx.add(checkbox(checked).class("bg-surface rounded-sm"))
+            checkbox(checked).class("bg-surface rounded-sm")
         },
         InteractionMode::Default,
         [36, 36],
@@ -83,9 +83,9 @@ fn checkbox_checked() {
 #[test]
 fn checkbox_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let checked = signal(false);
-            cx.add(checkbox(checked).class("bg-surface rounded-sm"))
+            checkbox(checked).class("bg-surface rounded-sm")
         },
         InteractionMode::Default,
         [36, 36],
@@ -97,9 +97,9 @@ fn checkbox_default() {
 #[test]
 fn checkbox_hover() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let checked = signal(false);
-            cx.add(checkbox(checked).class("bg-surface rounded-sm"))
+            checkbox(checked).class("bg-surface rounded-sm")
         },
         InteractionMode::Hover,
         [36, 36],
@@ -111,9 +111,9 @@ fn checkbox_hover() {
 #[test]
 fn checkbox_pressed() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let checked = signal(false);
-            cx.add(checkbox(checked).class("bg-surface rounded-sm"))
+            checkbox(checked).class("bg-surface rounded-sm")
         },
         InteractionMode::Pressed,
         [36, 36],
@@ -125,9 +125,9 @@ fn checkbox_pressed() {
 #[test]
 fn checkbox_focused() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let checked = signal(false);
-            cx.add(checkbox(checked).class("bg-surface rounded-sm"))
+            checkbox(checked).class("bg-surface rounded-sm")
         },
         InteractionMode::Focused,
         [36, 36],
@@ -139,14 +139,12 @@ fn checkbox_focused() {
 #[test]
 fn checkbox_disabled() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let checked = signal(false);
             let dis = signal(true);
-            cx.add(
-                checkbox(checked)
-                    .class("bg-surface rounded-sm")
-                    .disabled(dis),
-            )
+            checkbox(checked)
+                .class("bg-surface rounded-sm")
+                .disabled(dis)
         },
         InteractionMode::Disabled,
         [36, 36],
@@ -158,9 +156,9 @@ fn checkbox_disabled() {
 #[test]
 fn slider_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(50.0_f32);
-            cx.add(slider(v, 0.0..=100.0))
+            slider(v, 0.0..=100.0)
         },
         InteractionMode::Default,
         [192, 36],
@@ -172,9 +170,9 @@ fn slider_default() {
 #[test]
 fn slider_hover() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(50.0_f32);
-            cx.add(slider(v, 0.0..=100.0))
+            slider(v, 0.0..=100.0)
         },
         InteractionMode::Hover,
         [192, 36],
@@ -186,9 +184,9 @@ fn slider_hover() {
 #[test]
 fn slider_pressed() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(50.0_f32);
-            cx.add(slider(v, 0.0..=100.0))
+            slider(v, 0.0..=100.0)
         },
         InteractionMode::Pressed,
         [192, 36],
@@ -200,9 +198,9 @@ fn slider_pressed() {
 #[test]
 fn slider_focused() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(50.0_f32);
-            cx.add(slider(v, 0.0..=100.0))
+            slider(v, 0.0..=100.0)
         },
         InteractionMode::Focused,
         [192, 36],
@@ -214,10 +212,10 @@ fn slider_focused() {
 #[test]
 fn slider_disabled() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(50.0_f32);
             let dis = signal(true);
-            cx.add(slider(v, 0.0..=100.0).disabled(dis))
+            slider(v, 0.0..=100.0).disabled(dis)
         },
         InteractionMode::Disabled,
         [192, 36],

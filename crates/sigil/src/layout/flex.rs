@@ -6,29 +6,54 @@ use ahash::AHashMap;
 
 use crate::layout::LayoutError;
 use crate::layout::flex_algorithm::{Axis2, FlexCtx, layout_root};
-use crate::layout::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-struct IntrinsicKey {
-    id: LocalId,
-    main: u32,
-    cross: u32,
-    along_main: bool,
-}
+use crate::layout::forest::{ComputedBox, IntrinsicKey, LocalId, MeasureScope, NodeRef};
+use crate::layout::style_data::{Dimension, Display, FlexDirection, Position};
 
 pub(crate) struct FlexSolver<'a> {
     scope: MeasureScope<'a>,
-    intrinsic: RefCell<AHashMap<IntrinsicKey, f32>>,
     intrinsic_stores: Cell<u32>,
+    fills: RefCell<AHashMap<LocalId, bool>>,
 }
 
 impl<'a> FlexSolver<'a> {
     pub(crate) fn new(scope: MeasureScope<'a>) -> Self {
         Self {
             scope,
-            intrinsic: RefCell::new(AHashMap::new()),
             intrinsic_stores: Cell::new(0),
+            fills: RefCell::new(AHashMap::new()),
         }
+    }
+
+    pub(crate) fn fills_width(&self, node: NodeRef<'_>) -> bool {
+        let style = node.style();
+        if style.size.width != Dimension::Auto
+            || matches!(style.display, Display::Grid | Display::None)
+        {
+            return false;
+        }
+        if let Some(known) = self.fills.borrow().get(&node.id()).copied() {
+            return known;
+        }
+        let forest = self.scope.forest();
+        let row = matches!(style.display, Display::Flex)
+            && matches!(
+                style.flex_direction,
+                FlexDirection::Row | FlexDirection::RowReverse
+            );
+        let fills = node
+            .children()
+            .iter()
+            .filter_map(|id| forest.refer(*id))
+            .any(|child| {
+                let child_style = child.style();
+                child_style.display != Display::None
+                    && child_style.position != Position::Absolute
+                    && (child_style.size.width == Dimension::Fill
+                        || (row && child_style.flex_grow > 0.0)
+                        || self.fills_width(child))
+            });
+        self.fills.borrow_mut().insert(node.id(), fills);
+        fills
     }
 
     pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), LayoutError> {
@@ -100,13 +125,9 @@ impl<'a> FlexSolver<'a> {
         cb_cross: f32,
         along_main: bool,
     ) -> Option<f32> {
-        let key = IntrinsicKey {
-            id,
-            main: cb_main.to_bits(),
-            cross: cb_cross.to_bits(),
-            along_main,
-        };
-        self.intrinsic.borrow().get(&key).copied()
+        self.scope
+            .forest()
+            .intrinsic_get(id, self.intrinsic_key(cb_main, cb_cross, along_main))
     }
 
     #[allow(clippy::too_many_arguments, reason = "memo key is five fields")]
@@ -118,15 +139,20 @@ impl<'a> FlexSolver<'a> {
         along_main: bool,
         extent: f32,
     ) {
-        let key = IntrinsicKey {
-            id,
-            main: cb_main.to_bits(),
-            cross: cb_cross.to_bits(),
-            along_main,
-        };
-        self.intrinsic.borrow_mut().insert(key, extent);
+        let key = self.intrinsic_key(cb_main, cb_cross, along_main);
+        self.scope.forest().intrinsic_put(id, key, extent);
+        crate::profile::count(crate::profile::Counter::LayoutIntrinsicMiss);
         self.intrinsic_stores
             .set(self.intrinsic_stores.get().saturating_add(1));
+    }
+
+    fn intrinsic_key(&self, cb_main: f32, cb_cross: f32, along_main: bool) -> IntrinsicKey {
+        IntrinsicKey::new(
+            (cb_main, cb_cross),
+            along_main,
+            self.scope.available(),
+            self.scope.text().font_generation(),
+        )
     }
 
     #[cfg(test)]

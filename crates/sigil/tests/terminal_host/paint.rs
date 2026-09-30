@@ -22,9 +22,9 @@ fn progress_paints_a_block_bar() {
     use sigil::reactive::signal;
     use sigil::widgets::progress;
     let grid = present(
-        |cx: &mut Cx| {
+        || {
             let value = signal(0.6_f32);
-            cx.add(progress(value, 1.0))
+            progress(value, 1.0)
         },
         40,
         8,
@@ -32,9 +32,9 @@ fn progress_paints_a_block_bar() {
     );
     let filled = grid.matches('█').count();
     let empty = present(
-        |cx: &mut Cx| {
+        || {
             let value = signal(0.0_f32);
-            cx.add(progress(value, 1.0))
+            progress(value, 1.0)
         },
         40,
         8,
@@ -43,9 +43,9 @@ fn progress_paints_a_block_bar() {
     .matches('█')
     .count();
     let full = present(
-        |cx: &mut Cx| {
+        || {
             let value = signal(1.0_f32);
-            cx.add(progress(value, 1.0))
+            progress(value, 1.0)
         },
         40,
         8,
@@ -62,12 +62,7 @@ fn progress_paints_a_block_bar() {
 #[test]
 fn chart_bars_use_the_same_block_fill() {
     use sigil::widgets::chart;
-    let grid = present(
-        |cx: &mut Cx| cx.add(chart([1.0, 3.0, 2.0]).bar()),
-        40,
-        16,
-        &[],
-    );
+    let grid = present(|| chart([1.0, 3.0, 2.0]).bar(), 40, 16, &[]);
     assert!(grid.contains('█'), "expected chart bars in:\n{grid}");
 }
 
@@ -76,9 +71,9 @@ fn mermaid_fence_paints_boxes() {
     use sigil::reactive::signal;
     use sigil::widgets::markdown;
     let grid = present(
-        |cx: &mut Cx| {
+        || {
             let src = signal("```mermaid\ngraph TD\nA[Go] --> B[Stop]\n```".to_string());
-            cx.add(markdown(src))
+            markdown(src)
         },
         40,
         16,
@@ -100,7 +95,7 @@ fn a_chip_cell_paints_on_its_own_row() {
     }
 
     let grid = present(
-        |cx: &mut Cx| {
+        || {
             let rows = vec![Row { name: "aaa" }, Row { name: "bbb" }];
             let state = TableState::new(
                 rows,
@@ -113,13 +108,11 @@ fn a_chip_cell_paints_on_its_own_row() {
                         .cell(|row: &Row| badge(row.name, Tone::Neutral)),
                 ],
             );
-            cx.add(
-                container().child(text("heading")).child(
-                    table(state)
-                        .row_height(8.0)
-                        .header_height(8.0)
-                        .viewport_height(64.0),
-                ),
+            container().child(text("heading")).child(
+                table(state)
+                    .row_height(8.0)
+                    .header_height(8.0)
+                    .viewport_height(64.0),
             )
         },
         60,
@@ -147,7 +140,7 @@ fn a_wide_cell_clips_at_the_column_edge() {
     struct Row;
 
     let grid = present(
-        |cx: &mut Cx| {
+        || {
             let state = TableState::new(
                 vec![Row],
                 vec![
@@ -159,12 +152,10 @@ fn a_wide_cell_clips_at_the_column_edge() {
                         .cell(|_: &Row| text("tail").nowrap()),
                 ],
             );
-            cx.add(
-                table(state)
-                    .row_height(8.0)
-                    .header_height(8.0)
-                    .viewport_height(32.0),
-            )
+            table(state)
+                .row_height(8.0)
+                .header_height(8.0)
+                .viewport_height(32.0)
         },
         60,
         10,
@@ -186,7 +177,7 @@ fn a_wide_cell_clips_at_the_column_edge() {
 
 #[test]
 fn a_button_surface_is_not_a_block_slab() {
-    let grid = present(|cx: &mut Cx| cx.add(button("Go")), 30, 8, &[]);
+    let grid = present(|| button("Go"), 30, 8, &[]);
     assert!(grid.contains("Go"), "expected the label in:\n{grid}");
     assert!(
         !grid.contains('\u{2588}'),
@@ -197,13 +188,11 @@ fn a_button_surface_is_not_a_block_slab() {
 #[test]
 fn a_control_stands_one_line_tall() {
     let grid = present(
-        |cx: &mut Cx| {
-            cx.add(
-                container()
-                    .layout(sigil::layout::LayoutStyle::flex_column())
-                    .child(button("One"))
-                    .child(button("Two")),
-            )
+        || {
+            container()
+                .layout(sigil::layout::LayoutStyle::flex_column())
+                .child(button("One"))
+                .child(button("Two"))
         },
         30,
         10,
@@ -235,7 +224,7 @@ fn a_filled_table_keeps_its_header_off_row_one() {
     }
 
     let grid = present(
-        |cx: &mut Cx| {
+        || {
             let state = TableState::new(
                 vec![Row { name: "aaa" }, Row { name: "bbb" }],
                 vec![
@@ -244,12 +233,10 @@ fn a_filled_table_keeps_its_header_off_row_one() {
                         .cell(|row: &Row| text(row.name).nowrap()),
                 ],
             );
-            cx.add(
-                table(state)
-                    .row_height(8.0)
-                    .header_height(8.0)
-                    .viewport_fill(),
-            )
+            table(state)
+                .row_height(8.0)
+                .header_height(8.0)
+                .viewport_fill()
         },
         40,
         12,
@@ -283,7 +270,7 @@ fn a_timer_comes_due_on_the_frame_clock() {
     sigil::reactive::Runtime::scope("timer", || {
         let mut host = Host::cells();
         let mut router = EventRouter::new();
-        host.mount(|cx: &mut Cx| cx.add(text("tick")));
+        host.mount(move || text("tick"));
         sigil::reactive::__test_set_clock(Instant::now());
         sigil::reactive::interval(Duration::from_millis(99), move || {
             counter.set(counter.get() + 1);
@@ -310,7 +297,7 @@ fn a_wide_glyph_keeps_the_next_column() {
     }
 
     let grid = present(
-        |cx: &mut Cx| {
+        || {
             let state = TableState::new(
                 vec![
                     Row {
@@ -331,12 +318,10 @@ fn a_wide_glyph_keeps_the_next_column() {
                         .cell(|row: &Row| text(row.tail).nowrap()),
                 ],
             );
-            cx.add(
-                table(state)
-                    .row_height(8.0)
-                    .header_height(8.0)
-                    .viewport_height(32.0),
-            )
+            table(state)
+                .row_height(8.0)
+                .header_height(8.0)
+                .viewport_height(32.0)
         },
         40,
         10,
@@ -366,8 +351,8 @@ fn a_wide_glyph_keeps_the_next_column() {
 
 #[test]
 fn a_combining_mark_keeps_its_base() {
-    let marked = present(|cx: &mut Cx| cx.add(text("cafe\u{301}|")), 20, 3, &[]);
-    let plain = present(|cx: &mut Cx| cx.add(text("cafe|")), 20, 3, &[]);
+    let marked = present(|| text("cafe\u{301}|"), 20, 3, &[]);
+    let plain = present(|| text("cafe|"), 20, 3, &[]);
     let bar = |grid: &str| -> Option<usize> {
         grid.lines().next().and_then(|line| {
             let mut col = 0;

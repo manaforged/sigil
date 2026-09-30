@@ -5,16 +5,16 @@ mod async_ops_sustained;
 
 use std::hint::black_box;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use async_ops_sustained::{
-    bench_spawn_to_signal_smoke_latency, bench_sustained_cross_thread_writes_1k_per_sec,
+    bench_spawn_smoke_latency, bench_sustained_cross_thread_writes_1k_per_sec,
 };
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use sigil::hal::Scheduler;
 use sigil::reactive::{Runtime, effect, signal};
-use sigil::tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner};
+use sigil::tasks::{AsyncRuntime, OwnerHandle, signal_writer};
 
 pub(crate) fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
     let start = Instant::now();
@@ -42,9 +42,9 @@ fn bench_enqueue_main_latency(c: &mut Criterion) {
     });
 }
 
-fn bench_dispatch_to_owner_roundtrip_single(c: &mut Criterion) {
-    c.bench_function("dispatch_to_owner_roundtrip_single", |b| {
-        Runtime::scope("bench_dispatch_roundtrip", || {
+fn bench_signal_writer_roundtrip_single(c: &mut Criterion) {
+    c.bench_function("signal_writer_roundtrip_single", |b| {
+        Runtime::scope("bench_writer_roundtrip", || {
             let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
             let handle = OwnerHandle::current().expect("inside a reactive scope");
             let woke = Arc::new(AtomicBool::new(false));
@@ -54,16 +54,14 @@ fn bench_dispatch_to_owner_roundtrip_single(c: &mut Criterion) {
                     woke.store(true, Ordering::Release);
                 });
             }
-            let dispatcher = scheduler.dispatcher();
-            let observed = Arc::new(AtomicUsize::new(0));
+            scheduler.install_current();
+            let observed = signal(0_usize);
+            let writer = signal_writer(observed);
             b.iter(|| {
                 woke.store(false, Ordering::Release);
-                let dispatcher_cb = dispatcher.clone();
-                let observed_cb = Arc::clone(&observed);
+                let writer = writer.clone();
                 scheduler.spawn(handle, async move {
-                    dispatch_to_owner(&dispatcher_cb, handle, move || {
-                        observed_cb.fetch_add(1, Ordering::Relaxed);
-                    });
+                    writer.update(|n| *n += 1).expect("dispatcher open");
                 });
                 assert!(
                     spin_until(Duration::from_millis(50), || woke.load(Ordering::Acquire)),
@@ -73,7 +71,7 @@ fn bench_dispatch_to_owner_roundtrip_single(c: &mut Criterion) {
                 black_box(drained);
             });
             assert!(
-                observed.load(Ordering::Relaxed) > 0,
+                observed.get() > 0,
                 "expected at least one roundtrip to land"
             );
         });
@@ -144,33 +142,17 @@ fn bench_drain_100_callbacks_each_writing_signal(c: &mut Criterion) {
                     black_box(s.get());
                 });
             }
-            let scheduler_cell =
-                std::cell::RefCell::new(AsyncRuntime::new().expect("build tokio runtime"));
-            let handle = OwnerHandle::current().expect("inside a reactive scope");
-            let signals_snapshot = signals;
+            let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
+            scheduler.install_current();
+            let writers: Vec<_> = signals.into_iter().map(signal_writer).collect();
             b.iter_batched(
                 || {
-                    let sched = scheduler_cell.borrow();
-                    for (i, sig) in signals_snapshot.iter().copied().enumerate() {
-                        let sendable = sig.into_sendable();
+                    for (i, writer) in writers.iter().enumerate() {
                         let value = i32::try_from(i).expect("loop bound fits in i32");
-                        sched
-                            .enqueue_main(
-                                handle,
-                                Box::new(move || {
-                                    let s = sendable.into_signal();
-                                    s.set(value);
-                                }),
-                            )
-                            .expect("pre-enqueue");
+                        writer.set(value).expect("pre-enqueue");
                     }
-                    drop(sched);
                 },
-                |()| {
-                    let mut sched = scheduler_cell.borrow_mut();
-                    let drained = sched.drain();
-                    black_box(drained);
-                },
+                |()| black_box(scheduler.drain()),
                 BatchSize::SmallInput,
             );
         });
@@ -180,11 +162,11 @@ fn bench_drain_100_callbacks_each_writing_signal(c: &mut Criterion) {
 criterion_group!(
     benches,
     bench_enqueue_main_latency,
-    bench_dispatch_to_owner_roundtrip_single,
+    bench_signal_writer_roundtrip_single,
     bench_drain_100_empty_callbacks,
     bench_drain_1000_empty_callbacks,
     bench_drain_100_callbacks_each_writing_signal,
     bench_sustained_cross_thread_writes_1k_per_sec,
-    bench_spawn_to_signal_smoke_latency,
+    bench_spawn_smoke_latency,
 );
 criterion_main!(benches);

@@ -1,6 +1,8 @@
 #![allow(clippy::print_stdout)]
 
+use sigil::Host;
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
 use sigil::scene::SceneCommand;
 
 fn main() {
@@ -8,20 +10,18 @@ fn main() {
         let count = signal(0_i32);
         let label_text = derived(move || format!("Count: {}", count.get()));
         let mut host = Host::new();
-        host.build(|cx| {
-            cx.add(
-                container()
-                    .layout(
-                        LayoutStyle::flex_column()
-                            .fixed_size(480.0, 240.0)
-                            .gap(16.0),
-                    )
-                    .child(text(label_text))
-                    .child(button("Increment").primary().activate(move || {
-                        count.set(count.peek() + 1);
-                    }))
-                    .child(surface(1)),
-            )
+        host.mount(move || {
+            container()
+                .layout(
+                    LayoutStyle::flex_column()
+                        .fixed_size(480.0, 240.0)
+                        .gap(16.0),
+                )
+                .child(text(label_text))
+                .child(button("Increment").primary().activate(move || {
+                    count.set(count.peek() + 1);
+                }))
+                .child(surface(1))
         });
         count.set(1);
         let scene = match host.scene((480.0, 240.0)) {

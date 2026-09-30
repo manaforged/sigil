@@ -65,13 +65,13 @@ allow = [
     # library use only; a downstream consumer's proprietary code is not contaminated by
     # MPL-2.0 linkage per MPL-2.0 §3.3).
     "MPL-2.0",
-    # SIL Open Font License: the bundled fonts under assets/text/fonts.
-    "OFL-1.1",
     "Unicode-3.0",
     "Zlib",
 ]
 confidence-threshold = 0.93
-exceptions = []
+exceptions = [
+    { allow = ["OFL-1.1"], crate = "sigil-fonts" },
+]
 
 [licenses.private]
 ignore = true

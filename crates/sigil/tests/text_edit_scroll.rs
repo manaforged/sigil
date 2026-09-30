@@ -4,10 +4,13 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::events::EventRouter;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 
-fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil::hal::Rect> {
+fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil::geometry::Rect> {
     emit_scene(cx, root)
         .commands
         .iter()

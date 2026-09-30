@@ -4,6 +4,7 @@
 )]
 
 use sigil::prelude::*;
+use sigil::widgets::{PanelBuilder, TableBuilder};
 
 struct Order {
     id: &'static str,
@@ -12,7 +13,7 @@ struct Order {
 }
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - dashboard", 960, 600), app)
+    sigil::run(AppConfig::new("Sigil - dashboard").size(960, 600), app)
 }
 
 fn kpi(title: &'static str, value: &'static str, trend: &'static str, tone: Tone) -> NodeBuilder {
@@ -118,8 +119,8 @@ fn work_area() -> NodeBuilder {
         )
 }
 
-pub(crate) fn app(cx: &mut Cx) -> NodeId {
-    cx.add(app_shell(
+pub(crate) fn app() -> impl IntoNode {
+    app_shell(
         top_bar(),
         work_area(),
         status_bar([
@@ -128,5 +129,5 @@ pub(crate) fn app(cx: &mut Cx) -> NodeId {
             text("EUR").nowrap(),
         ]),
         None::<NodeBuilder>,
-    ))
+    )
 }

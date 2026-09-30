@@ -4,10 +4,10 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::Axis;
+use sigil::widgets::{Axis, InteractiveBuilder};
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - plumbing", 560, 480), build)
+    sigil::run(AppConfig::new("Sigil - plumbing").size(560, 480), build)
 }
 
 fn interactive_demo() -> InteractiveBuilder {
@@ -51,14 +51,12 @@ fn terminal_demo() -> NodeBuilder {
     })
 }
 
-fn build(cx: &mut Cx) -> NodeId {
-    cx.add(
-        container()
-            .role(Role::Main)
-            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
-            .child(interactive_demo())
-            .child(axis_drag_demo())
-            .child(drag_ghost_demo())
-            .child(terminal_demo()),
-    )
+fn build() -> impl IntoNode {
+    container()
+        .role(Role::Main)
+        .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+        .child(interactive_demo())
+        .child(axis_drag_demo())
+        .child(drag_ghost_demo())
+        .child(terminal_demo())
 }

@@ -5,7 +5,7 @@ mod tests;
 mod block;
 mod block_collapse;
 mod block_size;
-pub mod builder_ext;
+pub(crate) mod builder_ext;
 mod cache_key;
 mod engine;
 pub(crate) mod engine_drive;
@@ -19,8 +19,7 @@ mod grid;
 mod grid_tracks;
 mod intent;
 mod measure;
-pub mod prelude;
-pub mod reactive_position;
+pub(crate) mod reactive_position;
 mod resolve;
 mod result;
 pub(crate) mod snap;
@@ -32,7 +31,7 @@ pub(crate) mod text_geometry;
 mod text_style;
 mod units;
 
-pub use builder_ext::LayoutBuilderExt;
+pub use builder_ext::{LayoutBuilderExt, column, row};
 pub use engine::LayoutEngine;
 pub(crate) use engine::{Popup, PopupSide, ViewportOverlay};
 #[cfg(any(test, feature = "kittest"))]

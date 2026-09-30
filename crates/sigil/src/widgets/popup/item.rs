@@ -1,5 +1,5 @@
 use crate::kernel::{IntoNode, NodeBuilder, container, text};
-use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
+use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::Signal;
 use crate::style::{
     DisplayKind, Metrics, NodeStyleExt, Radius, Size, StyleAtom, Token, Tone, space,
@@ -132,11 +132,12 @@ pub(crate) fn chevron(direction: ChevronDirection, size: f32) -> impl IntoNode {
 }
 
 #[must_use]
-pub(crate) fn footer(actions: Vec<Box<dyn IntoNode>>) -> NodeBuilder {
+pub(crate) fn footer(actions: Vec<Box<dyn IntoNode>>, inset_end: f32) -> NodeBuilder {
     let mut row = container().layout(
         LayoutStyle::flex_row()
             .fill_width()
             .shrink(0.0)
+            .padding_right(inset_end)
             .gap(space(2))
             .align_items(AlignItems::Center)
             .justify_content(JustifyContent::End),

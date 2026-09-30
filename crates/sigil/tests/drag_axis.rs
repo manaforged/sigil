@@ -8,8 +8,13 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use sigil::hal::{Point, PointerEventInit};
+use sigil::events::EventRouter;
+use sigil::events::PointerEventInit;
+use sigil::events::ShellEvent;
+use sigil::geometry::Point;
+use sigil::kernel::Cx;
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
 use widget_support::compute;
 
 const ROW_H: f32 = 20.0;

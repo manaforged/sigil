@@ -15,6 +15,10 @@ mod input;
 mod widget_support;
 
 use input::ime_event;
+use sigil::events::EventRouter;
+use sigil::events::ImeEvent;
+use sigil::events::ShellEvent;
+use sigil::kernel::{Cx, NodeId};
 use sigil::kernel::{NodeType, TextContent};
 use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
@@ -31,7 +35,7 @@ impl TextGeometry for StubGeometry {
         text: &str,
         _style: &TextStyle,
         _width: Option<f32>,
-        point: sigil::hal::Point,
+        point: sigil::geometry::Point,
     ) -> sigil::hal::HitPosition {
         sigil::hal::HitPosition {
             byte_index: ((point.x / 10.0).round().max(0.0) as usize).min(text.len()),
@@ -60,7 +64,7 @@ impl TextGeometry for StubGeometry {
         _style: &TextStyle,
         _width: Option<f32>,
         _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
-    ) -> Vec<sigil::hal::Rect> {
+    ) -> Vec<sigil::geometry::Rect> {
         Vec::new()
     }
 }
@@ -268,9 +272,9 @@ fn displayed_text(cx: &Cx, root: NodeId) -> String {
 }
 
 fn arrow_left() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(sigil::hal::KeyEventInit {
+    ShellEvent::Key(KeyEvent::new(sigil::events::KeyEventInit {
         key: Key::ArrowLeft.into(),
-        physical: sigil::hal::PhysicalKey::ArrowLeft,
+        physical: sigil::events::PhysicalKey::ArrowLeft,
         modifiers: ModifiersState::empty(),
         repeat: false,
         phase: KeyPhase::Down,
@@ -279,9 +283,9 @@ fn arrow_left() -> ShellEvent {
 }
 
 fn backspace() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(sigil::hal::KeyEventInit {
+    ShellEvent::Key(KeyEvent::new(sigil::events::KeyEventInit {
         key: Key::Backspace.into(),
-        physical: sigil::hal::PhysicalKey::Backspace,
+        physical: sigil::events::PhysicalKey::Backspace,
         modifiers: ModifiersState::empty(),
         repeat: false,
         phase: KeyPhase::Down,

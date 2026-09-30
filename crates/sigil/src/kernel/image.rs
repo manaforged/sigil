@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use accesskit::Role;
@@ -252,3 +254,29 @@ impl IntoNode for ImageBuilder {
 #[cfg(test)]
 #[path = "image_tests.rs"]
 mod tests;
+
+const CACHE_CAP: usize = 256;
+const CACHE_BYTES: usize = 64 << 20;
+
+thread_local! {
+    static CACHE: RefCell<HashMap<u64, ImageSource>> = RefCell::new(HashMap::new());
+}
+
+pub(crate) fn cached_image(
+    key: u64,
+    make: impl FnOnce() -> Option<ImageSource>,
+) -> Option<ImageSource> {
+    if let Some(hit) = CACHE.with(|map| map.borrow().get(&key).cloned()) {
+        return Some(hit);
+    }
+    let source = make()?;
+    CACHE.with(|map| {
+        let mut map = map.borrow_mut();
+        let held: usize = map.values().map(|held| held.rgba().len()).sum();
+        if map.len() >= CACHE_CAP || held + source.rgba().len() > CACHE_BYTES {
+            map.clear();
+        }
+        map.insert(key, source.clone());
+    });
+    Some(source)
+}

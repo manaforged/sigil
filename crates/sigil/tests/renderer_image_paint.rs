@@ -20,20 +20,16 @@ const SIZE: u32 = 32;
 #[test]
 fn transparent_parent_hides_its_image_and_preserves_visible_siblings() {
     let img = capture(
-        |cx| {
-            cx.add(
-                container()
-                    .layout(LayoutStyle::flex_row().fixed_size(32.0, 16.0))
-                    .child(
-                        container()
-                            .layout(LayoutStyle::block().fixed_size(16.0, 16.0))
-                            .style(Style::new().opacity(0.0))
-                            .child(image(quadrant_image())),
-                    )
-                    .child(
-                        image(quadrant_image()).layout(LayoutStyle::block().fixed_size(16.0, 16.0)),
-                    ),
-            )
+        || {
+            container()
+                .layout(LayoutStyle::flex_row().fixed_size(32.0, 16.0))
+                .child(
+                    container()
+                        .layout(LayoutStyle::block().fixed_size(16.0, 16.0))
+                        .style(Style::new().opacity(0.0))
+                        .child(image(quadrant_image())),
+                )
+                .child(image(quadrant_image()).layout(LayoutStyle::block().fixed_size(16.0, 16.0)))
         },
         [32, 16],
     );
@@ -62,7 +58,7 @@ fn quadrant_image() -> ImageSource {
 fn image_node_emits_an_image_command_carrying_its_pixels() {
     let mut cx = sigil::kernel::Cx::new_root();
     let root = cx.add(image(quadrant_image()));
-    let engine_size = sigil::hal::Size::fixed(SIZE as f32, SIZE as f32);
+    let engine_size = sigil::geometry::Size::fixed(SIZE as f32, SIZE as f32);
     let mut engine =
         sigil::layout::LayoutEngine::with_text_measure(Box::new(support::TEXT_MEASURE));
     engine.compute(&mut cx, root, engine_size).expect("layout");
@@ -84,13 +80,13 @@ fn image_node_emits_an_image_command_carrying_its_pixels() {
 fn contain_letterboxes_a_wide_image_in_a_square_box() {
     let src = ImageSource::from_rgba8(40, 20, [255, 0, 0, 255].repeat(40 * 20)).unwrap();
     let img = capture(
-        |cx| {
+        sigil_kittest::WithCx(|cx: &mut sigil::kernel::Cx| {
             let id = cx.add(image(src).fit(ObjectFit::Contain));
             if let Some(node) = cx.get_mut(id) {
                 node.attach(LayoutStyle::block().fixed_size(SIZE as f32, SIZE as f32));
             }
             id
-        },
+        }),
         [SIZE, SIZE],
     );
 
@@ -123,7 +119,7 @@ fn contain_letterboxes_a_wide_image_in_a_square_box() {
 
 #[test]
 fn image_samples_its_texture_with_correct_orientation() {
-    let img = capture(|cx| cx.add(image(quadrant_image())), [SIZE, SIZE]);
+    let img = capture(|| image(quadrant_image()), [SIZE, SIZE]);
     let lo = SIZE / 4;
     let hi = 3 * SIZE / 4;
     let checks = [
@@ -159,19 +155,21 @@ fn twenty_four_distinct_images_all_paint() {
         })
         .collect();
     let img = capture(
-        |cx| {
+        || {
             let mut row = container().layout(LayoutStyle::flex_row().fixed_size(192.0, 8.0));
             for source in &swatches {
                 let source = source.clone();
-                row = row.child(move |child_cx: &mut sigil::kernel::Cx| {
-                    let id = child_cx.add(image(source));
-                    if let Some(node) = child_cx.get_mut(id) {
-                        node.attach(LayoutStyle::block().fixed_size(8.0, 8.0).shrink(0.0));
-                    }
-                    id
-                });
+                row = row.child(sigil_kittest::WithCx(
+                    move |child_cx: &mut sigil::kernel::Cx| {
+                        let id = child_cx.add(image(source));
+                        if let Some(node) = child_cx.get_mut(id) {
+                            node.attach(LayoutStyle::block().fixed_size(8.0, 8.0).shrink(0.0));
+                        }
+                        id
+                    },
+                ));
             }
-            cx.add(row)
+            row
         },
         [192, 8],
     );
@@ -191,15 +189,15 @@ fn twenty_four_distinct_images_all_paint() {
 fn overflow_hidden_scissors_image_pixels() {
     let source = ImageSource::from_rgba8(32, 32, [255, 0, 0, 255].repeat(32 * 32)).unwrap();
     let img = capture(
-        |cx| {
-            let child = move |child_cx: &mut sigil::kernel::Cx| {
+        || {
+            let child = sigil_kittest::WithCx(move |child_cx: &mut sigil::kernel::Cx| {
                 let id = child_cx.add(image(source));
                 let _ = child_cx
                     .get_mut(id)
                     .unwrap()
                     .attach(LayoutStyle::block().fixed_size(32.0, 32.0));
                 id
-            };
+            });
             let clipped = container()
                 .layout(
                     LayoutStyle::block()
@@ -208,11 +206,9 @@ fn overflow_hidden_scissors_image_pixels() {
                         .overflow_y(Overflow::Hidden),
                 )
                 .child(child);
-            cx.add(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(32.0, 32.0).padding(8.0))
-                    .child(clipped),
-            )
+            container()
+                .layout(LayoutStyle::block().fixed_size(32.0, 32.0).padding(8.0))
+                .child(clipped)
         },
         [32, 32],
     );
@@ -232,7 +228,7 @@ fn overflow_hidden_scissors_image_pixels() {
 #[test]
 fn image_alpha_blends_color_and_coverage() {
     let img = capture(
-        |cx| {
+        || {
             let mut row = container()
                 .layout(LayoutStyle::flex_row().fixed_size(40.0, 8.0))
                 .style(Style::new().bg(sigil::style::Rgba8 {
@@ -247,7 +243,7 @@ fn image_alpha_blends_color_and_coverage() {
                     image(source).layout(LayoutStyle::block().fixed_size(8.0, 8.0).shrink(0.0)),
                 );
             }
-            cx.add(row)
+            row
         },
         [40, 8],
     );

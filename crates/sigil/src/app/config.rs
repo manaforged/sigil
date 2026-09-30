@@ -48,7 +48,7 @@ pub struct AppConfig {
     pub(crate) panic_policy: PanicPolicy,
     pub(crate) overlay: bool,
     pub(crate) frameless: bool,
-    pub(crate) anchor: Option<crate::hal::Anchor>,
+    pub(crate) anchor: Option<crate::app::Anchor>,
     pub(crate) theme_file: Option<std::path::PathBuf>,
     pub(crate) user_zoom: f32,
     pub(crate) host: crate::kernel::HostMode,
@@ -57,7 +57,7 @@ pub struct AppConfig {
     pub(crate) inline: bool,
     pub(crate) frame_interval: std::time::Duration,
     pub(crate) reduced_motion: Option<bool>,
-    pub(crate) click: Option<crate::hal::ClickConfig>,
+    pub(crate) click: Option<crate::events::ClickConfig>,
     pub(crate) task_workers: crate::tasks::TaskWorkers,
     #[cfg(feature = "terminal")]
     pub(crate) terminal_hooks: TerminalHooks,
@@ -143,7 +143,7 @@ impl AppConfig {
     }
 
     #[must_use]
-    pub const fn anchor(mut self, anchor: crate::hal::Anchor) -> Self {
+    pub const fn anchor(mut self, anchor: crate::app::Anchor) -> Self {
         self.anchor = Some(anchor);
         self
     }
@@ -231,7 +231,7 @@ impl AppConfig {
     }
 
     #[must_use]
-    pub const fn click(mut self, click: crate::hal::ClickConfig) -> Self {
+    pub const fn click(mut self, click: crate::events::ClickConfig) -> Self {
         self.click = Some(click);
         self
     }
@@ -263,18 +263,6 @@ impl AppConfig {
     }
 }
 
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self::new("Sigil")
-    }
-}
-
-impl From<()> for AppConfig {
-    fn from((): ()) -> Self {
-        Self::default()
-    }
-}
-
 impl From<&str> for AppConfig {
     fn from(title: &str) -> Self {
         Self::new(title)
@@ -284,17 +272,5 @@ impl From<&str> for AppConfig {
 impl From<String> for AppConfig {
     fn from(title: String) -> Self {
         Self::new(title)
-    }
-}
-
-impl From<(&str, u32, u32)> for AppConfig {
-    fn from((title, width, height): (&str, u32, u32)) -> Self {
-        Self::new(title).size(width, height)
-    }
-}
-
-impl From<(String, u32, u32)> for AppConfig {
-    fn from((title, width, height): (String, u32, u32)) -> Self {
-        Self::new(title).size(width, height)
     }
 }

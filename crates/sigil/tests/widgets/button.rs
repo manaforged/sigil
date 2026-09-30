@@ -1,4 +1,8 @@
 use super::*;
+use sigil::events::EventRouter;
+use sigil::kernel::Cx;
+use sigil::kernel::NodeType;
+use sigil::layout::LayoutEngine;
 
 #[test]
 fn button_label_accepts_a_signal() {

@@ -1,4 +1,9 @@
 use super::*;
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{ScrollDelta, ScrollEvent, ScrollPhase};
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 
 fn wide_state() -> TableState<Item> {
     TableState::new(

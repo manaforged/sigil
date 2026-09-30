@@ -9,27 +9,15 @@ use skrifa::{FontRef, MetadataProvider};
 use super::capture::Look;
 
 const FONTS: &[(&str, &[u8])] = &[
-    (
-        "FiraSans-Regular.ttf",
-        include_bytes!("../../assets/text/fonts/FiraSans-Regular.ttf"),
-    ),
-    (
-        "FiraSans-Medium.ttf",
-        include_bytes!("../../assets/text/fonts/FiraSans-Medium.ttf"),
-    ),
-    (
-        "FiraSans-SemiBold.ttf",
-        include_bytes!("../../assets/text/fonts/FiraSans-SemiBold.ttf"),
-    ),
+    ("FiraSans-Regular.ttf", sigil_fonts::FIRA_SANS_REGULAR),
+    ("FiraSans-Medium.ttf", sigil_fonts::FIRA_SANS_MEDIUM),
+    ("FiraSans-SemiBold.ttf", sigil_fonts::FIRA_SANS_SEMIBOLD),
     (
         "CascadiaMono-Regular.ttf",
-        include_bytes!("../../assets/text/fonts/CascadiaMono-Regular.ttf"),
+        sigil_fonts::CASCADIA_MONO_REGULAR,
     ),
 ];
-const LICENCE: (&str, &[u8]) = (
-    "LICENSE-OFL.txt",
-    include_bytes!("../../assets/text/fonts/LICENSE-OFL.txt"),
-);
+const LICENCE: (&str, &[u8]) = ("LICENSE-OFL.txt", sigil_fonts::LICENSE);
 const RADII: [(&str, Radius); 4] = [
     ("sm", Radius::Sm),
     ("md", Radius::Md),

@@ -39,7 +39,7 @@ impl Style {
         for token in input.split(' ').filter(|token| !token.is_empty()) {
             match parse_stateful_token(token) {
                 Ok(parsed) => self.absorb_token(parsed),
-                Err(err) => crate::style::builder_ext::diagnostic::class_parse(input, &err),
+                Err(err) => crate::style::class_parse::diagnostic::class_parse(input, &err),
             }
         }
         self
@@ -124,6 +124,20 @@ impl Style {
             std::mem::take(&mut self.pressed_atoms),
             std::mem::take(&mut self.disabled_atoms),
         )
+    }
+
+    pub(crate) fn merge(&mut self, other: Self) {
+        let mut overlay = self.take_state_overlay();
+        let mut other = other;
+        overlay.merge(&other.take_state_overlay());
+        self.atoms = crate::style::merge_classes(&self.atoms, &other.atoms, 0)
+            .into_iter()
+            .collect();
+        self.rest_atoms = overlay.rest().iter().copied().collect();
+        self.hover_atoms = overlay.hover().iter().copied().collect();
+        self.focus_atoms = overlay.focus().iter().copied().collect();
+        self.pressed_atoms = overlay.pressed().iter().copied().collect();
+        self.disabled_atoms = overlay.disabled().iter().copied().collect();
     }
 
     pub(crate) fn push_atom(&mut self, atom: StyleAtom) {
@@ -311,8 +325,8 @@ impl Style {
     }
 
     #[must_use]
-    pub fn flex_grow(self, grow: u16) -> Self {
-        self.push(StyleAtom::FlexGrow(grow))
+    pub fn flex_grow(self, grow: f32) -> Self {
+        self.push(StyleAtom::FlexGrow(crate::style::atom::factor_units(grow)))
     }
 
     #[must_use]
@@ -326,8 +340,10 @@ impl Style {
     }
 
     #[must_use]
-    pub fn flex_shrink(self, shrink: u16) -> Self {
-        self.push(StyleAtom::FlexShrink(shrink))
+    pub fn flex_shrink(self, shrink: f32) -> Self {
+        self.push(StyleAtom::FlexShrink(crate::style::atom::factor_units(
+            shrink,
+        )))
     }
 
     fn push(mut self, atom: StyleAtom) -> Self {

@@ -7,12 +7,16 @@
 #[path = "events_support/input.rs"]
 mod input;
 
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use input::{pointer_down, scroll_lines};
-use sigil::hal::{KeyEventInit, PhysicalKey};
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{KeyEventInit, PhysicalKey};
 use sigil::prelude::*;
 use sigil::widgets::{SelectionMode, virtual_list};
 use sigil_kittest::stub_text_measure;

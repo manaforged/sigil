@@ -11,7 +11,12 @@ mod input;
 mod widget_support;
 
 use input::key_down;
-use sigil::hal::{PhysicalKey, Point, PointerEventInit, ScrollEventInit};
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{PhysicalKey, PointerEventInit, ScrollEventInit};
+use sigil::geometry::Point;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::widgets::{SortDir, SortKey, TableState};
@@ -119,6 +124,8 @@ mod checkboxes;
 mod columns;
 #[path = "table_view/horizontal.rs"]
 mod horizontal;
+#[path = "table_view/rebuild.rs"]
+mod rebuild;
 #[path = "table_view/scrolling.rs"]
 mod scrolling;
 #[path = "table_view/sorting.rs"]

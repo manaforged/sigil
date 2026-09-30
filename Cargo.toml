@@ -2,11 +2,12 @@
 resolver = "3"
 members = [
     "crates/sigil",
+    "crates/sigil-fonts",
     "crates/sign",
     "crates/kittest",
 ]
 exclude = ["fuzz"]
-default-members = ["crates/sigil", "crates/sign"]
+default-members = ["crates/sigil", "crates/sigil-fonts", "crates/sign"]
 
 [workspace.package]
 version = "0.1.0"
@@ -112,6 +113,7 @@ toml = { version = "1", default-features = false, features = ["parse", "serde"] 
 # to keep the transitive surface narrow.
 arboard = { version = "3", default-features = false }
 sigil-ui = { path = "crates/sigil", version = "0.1.0" }
+sigil-fonts = { path = "crates/sigil-fonts", version = "0.1.0" }
 sigil-sign = { path = "crates/sign", version = "0.1.0" }
 minisign = "0.7"
 base64 = "0.22"

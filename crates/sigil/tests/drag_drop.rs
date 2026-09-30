@@ -8,10 +8,15 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil::hal::{Point, PointerEventInit};
+use sigil::events::EventRouter;
+use sigil::events::PointerEventInit;
+use sigil::events::ShellEvent;
+use sigil::geometry::Point;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 use widget_support::{compute, rect_colors};
@@ -79,7 +84,7 @@ fn demo_tree(
     };
     let count_down = {
         let downs = Rc::clone(downs);
-        move |_: &mut sigil::hal::PointerEvent| *downs.borrow_mut() += 1
+        move |_: &mut sigil::events::PointerEvent| *downs.borrow_mut() += 1
     };
     container()
         .layout(LayoutStyle::flex_row().fixed_size(WIDTH, HEIGHT))

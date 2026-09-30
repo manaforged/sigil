@@ -2,25 +2,26 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::prelude::{Key, NodeEventsExt};
+use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{
     AccessibleName, Cx, FocusScopeKind, IntoNode, Live, NodeBuilder, Role, TextContent, TopLayer,
     container, queue_announcement,
 };
 use crate::layout::ViewportOverlay;
-use crate::layout::prelude::{
+use crate::layout::snap;
+use crate::layout::{
     AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow, Position,
 };
-use crate::layout::snap;
 use crate::reactive::{Signal, effect_named, signal};
 use crate::style::{
-    DisplayKind, FocusRing, NodeStyleExt, Style, StyleAccess, StyleAtom, Token, TransitionId, space,
+    DisplayKind, NodeStyleExt, Style, StyleAccess, StyleAtom, Token, TransitionId, space,
 };
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::popup::{self, footer};
+use super::super::scroll::contain_scroll;
 use super::escape::{close_top_escape_modal, register_escape_modal};
-use super::parts::{CloseControl, dialog_body, dialog_header};
+use super::parts::{BODY_GUTTER, CloseControl, dialog_body, dialog_header};
 
 const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
 
@@ -151,8 +152,9 @@ impl ModalBuilder {
     fn into_node_builder(self) -> NodeBuilder {
         let show = self.show;
         let root_name = accessible_name(self.title.as_ref());
+        let body_scroll = signal(0.0_f32);
 
-        install_open_announcement(show, self.title.clone());
+        install_open_effects(show, self.title.clone(), body_scroll);
         if self.escape_closes {
             register_escape_modal(show);
         }
@@ -163,6 +165,7 @@ impl ModalBuilder {
             title: self.title,
             children: self.children,
             actions: self.actions,
+            body_scroll,
             style_accumulator: self.style_accumulator,
             trap: self.trap,
             close_button: self.close_button,
@@ -170,15 +173,17 @@ impl ModalBuilder {
             layout_overrides: self.layout_overrides,
         });
 
-        let mut root = container()
-            .role(Role::GenericContainer)
-            .label(root_name)
-            .with(TopLayer)
-            .with(ViewportOverlay)
-            .layout(root_layout(self.side))
-            .style_reactive(move || show_display(show))
-            .child(backdrop)
-            .child(dialog);
+        let mut root = contain_scroll(
+            container()
+                .role(Role::GenericContainer)
+                .label(root_name)
+                .with(TopLayer)
+                .with(ViewportOverlay)
+                .layout(root_layout(self.side))
+                .style_reactive(move || show_display(show))
+                .child(backdrop)
+                .child(dialog),
+        );
         if self.escape_closes {
             root = root.key(Key::Escape, |ev| {
                 if close_top_escape_modal() {
@@ -197,12 +202,13 @@ impl WidgetLayoutExt for ModalBuilder {
     }
 }
 
-fn install_open_announcement(show: Signal<bool>, title: Option<TextContent>) {
+fn install_open_effects(show: Signal<bool>, title: Option<TextContent>, body_scroll: Signal<f32>) {
     let prev = Rc::new(Cell::new(true));
-    effect_named("sigil::modal::open_announce", move || {
+    effect_named("sigil::modal::open", move || {
         let open_now = show.get();
         let was_open = prev.replace(open_now);
         if open_now && !was_open {
+            body_scroll.set(0.0);
             let name = title
                 .as_ref()
                 .map_or_else(|| String::from("Dialog"), TextContent::resolve);
@@ -276,6 +282,7 @@ struct DialogSpec {
     title: Option<TextContent>,
     children: Vec<Box<dyn IntoNode>>,
     actions: Vec<Box<dyn IntoNode>>,
+    body_scroll: Signal<f32>,
     style_accumulator: Style,
     trap: bool,
     close_button: CloseControl,
@@ -289,6 +296,7 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
         title,
         children,
         actions,
+        body_scroll,
         style_accumulator,
         trap,
         close_button,
@@ -296,17 +304,15 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
         layout_overrides,
     } = spec;
     let title_label = accessible_name(title.as_ref());
-    let ring_visible = signal(false);
+    let tab_stop = signal(false);
 
     let mut dialog = popup::surface(Role::Dialog)
         .label(title_label)
         .focusable(true)
-        .layout(layout_overrides.apply(dialog_layout(side)))
+        .mutate(move |node| node.a11y.tab_stop = Some(tab_stop))
+        .with(layout_overrides.apply(dialog_layout(side)))
         .class(DIALOG_BASE)
-        .style_reactive(move || show_display(show))
-        .focus_ring(FocusRing::new(ring_visible))
-        .focus_in(move || ring_visible.set(crate::events::focus_from_keyboard()))
-        .focus_out(move || ring_visible.set(false));
+        .style_reactive(move || show_display(show));
     if trap {
         dialog = dialog.mutate(|node| {
             node.a11y.focus_scope = Some(FocusScopeKind::Modal);
@@ -319,9 +325,9 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
             (close_button == CloseControl::Shown).then_some(show),
         ));
     }
-    dialog = dialog.child(dialog_body(children));
+    dialog = dialog.child(dialog_body(children, body_scroll));
     if !actions.is_empty() {
-        dialog = dialog.child(footer(actions));
+        dialog = dialog.child(footer(actions, BODY_GUTTER));
     }
 
     if !style_accumulator.is_empty() {
@@ -334,8 +340,10 @@ const SHEET_WIDTH: f32 = 360.0;
 const SHEET_HEIGHT: f32 = 320.0;
 
 fn dialog_layout(side: Option<Side>) -> LayoutStyle {
+    let padding_x = snap::line(DIALOG_PADDING);
     let base = LayoutStyle::flex_column()
-        .padding_x(snap::line(DIALOG_PADDING))
+        .padding_x(padding_x)
+        .padding_right((padding_x - BODY_GUTTER).max(0.0))
         .padding_y(snap::detail(DIALOG_PADDING))
         .overflow_y(snap::CellForm::new(Overflow::Visible, Overflow::Hidden).pick())
         .gap(space(2))

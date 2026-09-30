@@ -4,7 +4,11 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::hal::{KeyEvent, KeyEventInit, KeyPhase, PhysicalKey};
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{KeyEvent, KeyEventInit, KeyPhase, PhysicalKey};
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 
 const POPUP_VISIBLE_H: f32 = 6.0 * 28.0;

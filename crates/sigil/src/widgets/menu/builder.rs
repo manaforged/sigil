@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use crate::events::prelude::{NodeEventsExt, PointerEvent};
+use crate::events::{NodeEventsExt, PointerEvent};
 use crate::kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, container};
 use crate::layout::PopupSide;
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Owner, OwnerId, Signal};
 use crate::style::{DisplayKind, NodeStyleExt, Style, StyleAccess, StyleAtom};
 
@@ -139,7 +139,7 @@ impl MenuBuilder {
         let mut panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
             .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Popup))
             .label(menu_label)
-            .layout(self.layout_overrides.apply(placement))
+            .with(self.layout_overrides.apply(placement))
             .style_reactive(move || open_display(open))
             .pointer_down(PointerEvent::stop_propagation);
         if !self.style_accumulator.is_empty() {
