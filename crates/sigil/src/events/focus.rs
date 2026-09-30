@@ -16,8 +16,8 @@ mod targets;
 mod request;
 mod reveal;
 
+pub(crate) use request::{focus_on_trigger, take_focus_requests, take_reveal_requests};
 pub use request::{request_focus, request_reveal};
-pub(crate) use request::{take_focus_requests, take_reveal_requests};
 pub(crate) use reveal::{ScrollReveal, reveal_focus};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

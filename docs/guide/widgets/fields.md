@@ -52,9 +52,10 @@ the accessibility tree for the IME candidate window.
 the text_field surface plus newlines, vertical caret movement, and
 word/line editing commands.
 
-- `.placeholder()`, `.disabled()`, `.change(Fn(&str))`, and
-  `.clipboard()` work as in `text_field`. `.submit(Fn(&str))` runs on
-  Ctrl+Enter — plain Enter inserts a newline.
+- `.placeholder()`, `.disabled()`, `.change(Fn(&str))`,
+  `.clipboard()`, `.autofocus()`, and `.focus_when(Signal<u64>)` work
+  as in `text_field`. `.submit(Fn(&str))` runs on Ctrl+Enter — plain
+  Enter inserts a newline.
 - `.caret_position(Signal<usize>)` — bind the caret as a byte offset.
 - `.caret_visible()` — accessor for the caret visibility signal.
 - `.content_padding(horizontal, vertical)` — inner padding in px.
