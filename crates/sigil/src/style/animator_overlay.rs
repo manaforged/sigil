@@ -68,6 +68,17 @@ pub trait AnimatorOverlay {
 
     fn value_for_color(&self, kind: ColorAtomKind) -> Option<Rgba8>;
 
+    fn visit_layout_values(&self, visit: &mut dyn FnMut(NumericAtomKind, f32)) {
+        for kind in NumericAtomKind::ALL
+            .into_iter()
+            .filter(|kind| kind.affects_layout())
+        {
+            if let Some(value) = self.value_for(kind) {
+                visit(kind, value);
+            }
+        }
+    }
+
     fn retarget_to_slot(&mut self, slot: StateSlot, base: &[StyleAtom]);
 
     fn update(

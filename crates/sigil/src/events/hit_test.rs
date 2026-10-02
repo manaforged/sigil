@@ -71,6 +71,7 @@ impl HitTestCache {
         if self.cx_generation == cx_generation && self.layout_generation == layout_generation {
             return;
         }
+        let _refresh = crate::profile::span(crate::profile::Phase::HitRefresh);
         self.items.clear();
         self.transforms.clear();
         let ctx = EmitCtx { cx, layout };

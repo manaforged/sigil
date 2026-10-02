@@ -28,6 +28,7 @@ pub struct Cx {
     scale: Scale,
     host_mode: HostMode,
     pub(crate) live_region: Option<NodeId>,
+    pub(crate) top_layer_memo: super::top_layer::TopLayerMemo,
 }
 
 impl Cx {
@@ -45,6 +46,7 @@ impl Cx {
             mutation_generation: 0,
             scale: Scale::ONE,
             host_mode: HostMode::default(),
+            top_layer_memo: std::cell::RefCell::new(None),
             live_region: None,
         }
     }

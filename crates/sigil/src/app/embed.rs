@@ -120,6 +120,7 @@ impl Host {
 
     pub(crate) fn publish_viewport(&self, viewport: (f32, f32)) {
         self.env.publish_viewport(viewport);
+        self.env.publish_scale(self.cx.scale().factor());
     }
 
     #[must_use]

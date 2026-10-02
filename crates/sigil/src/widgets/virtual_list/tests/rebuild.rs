@@ -135,3 +135,66 @@ fn scrolled_rows_land_at_their_document_position() {
         }
     });
 }
+
+struct ZeroMeasure;
+
+impl crate::layout::TextMeasure for ZeroMeasure {
+    fn measure(
+        &self,
+        _content: &crate::kernel::TextContent,
+        _space: crate::geometry::Size,
+    ) -> crate::geometry::LogicalSize {
+        crate::geometry::LogicalSize::new(0.0, 0.0)
+    }
+}
+
+#[test]
+fn small_scroll_steps_rebuild_the_window_rarely_and_keep_rows_mounted() {
+    use crate::geometry::Size;
+    use crate::layout::LayoutBuilderExt;
+    use crate::layout::LayoutEngine;
+    use std::cell::Cell;
+
+    Runtime::scope("sigil-virtual-list-hysteresis", || {
+        let items = signal((0..200u32).collect::<Vec<_>>());
+        let scroll_y = signal(0.0_f32);
+        let built = Rc::new(Cell::new(0_u32));
+        let count = Rc::clone(&built);
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            virtual_list_bind(items, move |index, _| {
+                count.set(count.get() + 1);
+                container()
+                    .layout(crate::layout::LayoutStyle::block().fixed_size(800.0, 64.0))
+                    .label(format!("row {index}"))
+            })
+            .key_by(|index, _| index as u64)
+            .scroll_bind(scroll_y)
+            .row_height(64.0)
+            .viewport_height(480.0)
+            .viewport_width(800.0),
+        );
+        let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroMeasure));
+        let size = Size::fixed(800.0, 480.0);
+        layout.compute(&mut cx, root, size).expect("layout");
+        let mut rebuilds = 0;
+        for tick in 1..=60_u32 {
+            let before = built.get();
+            scroll_y.set(tick as f32 * 40.0);
+            layout.compute(&mut cx, root, size).expect("layout");
+            if built.get() > before {
+                rebuilds += 1;
+            }
+            let expected = (tick as f32 * 40.0 / 64.0).floor() as usize;
+            assert_eq!(
+                top_row(&cx, &layout, root),
+                Some(expected),
+                "tick {tick}: the visible top row stays mounted"
+            );
+        }
+        assert!(
+            rebuilds <= 8,
+            "60 small scroll steps rebuilt the mounted window {rebuilds} times"
+        );
+    });
+}

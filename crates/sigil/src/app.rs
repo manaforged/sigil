@@ -57,7 +57,7 @@ pub use exit::{clear_exit, take_exit};
 pub use frame::{
     FrameHooks, FrameInfo, FrameInputHook, FrameLayoutHook, FrameOutput, FramePaintHook,
 };
-pub use host_env::{HostCaps, is_grid, viewport_size};
+pub use host_env::{HostCaps, display_scale, is_grid, viewport_size};
 #[cfg(feature = "desktop")]
 pub(crate) use launch::launch;
 #[cfg(feature = "desktop")]

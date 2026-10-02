@@ -5,7 +5,7 @@ use std::hash::{Hash as _, Hasher as _};
 
 use crate::geometry::{Dim, Size};
 use crate::kernel::{Cx, Node, NodeId, NodeType, TextContent};
-use crate::style::{NumericAtomKind, StyleBinding};
+use crate::style::StyleBinding;
 use ahash::AHasher;
 use slotmap::DefaultKey;
 use smallvec::SmallVec;
@@ -117,7 +117,26 @@ pub(crate) fn reactive_layout_signature(cx: &Cx, ids: &BTreeSet<DefaultKey>) -> 
     hasher.finish()
 }
 
+fn interaction_hash(binding: &StyleBinding) -> u64 {
+    let mut hasher = AHasher::default();
+    std::mem::discriminant(&binding.interaction_slot()).hash(&mut hasher);
+    for atom in binding.cascade() {
+        atom.hash(&mut hasher);
+    }
+    hasher.finish()
+}
+
+pub(crate) fn animation_signature(node: &Node) -> Option<u64> {
+    let binding = node.get_extension::<StyleBinding>()?;
+    (binding.animator_overlay().is_some() || binding.has_transition())
+        .then(|| interaction_hash(binding))
+}
+
 pub(crate) fn reactive_seed_signature(node: &Node) -> u64 {
+    seed_signature(node, None)
+}
+
+pub(crate) fn seed_signature(node: &Node, interaction: Option<u64>) -> u64 {
     let mut hasher = AHasher::default();
     hash_unversioned_layout(node, &mut hasher);
     if let Some(binding) = node.get_extension::<StyleBinding>() {
@@ -125,6 +144,11 @@ pub(crate) fn reactive_seed_signature(node: &Node) -> u64 {
             for atom in reactive {
                 atom.hash(&mut hasher);
             }
+        }
+        if binding.animator_overlay().is_some() || binding.state_overlay().is_some() {
+            interaction
+                .unwrap_or_else(|| interaction_hash(binding))
+                .hash(&mut hasher);
         }
     }
     hasher.finish()
@@ -145,15 +169,10 @@ pub(crate) fn hash_unversioned_layout(node: &Node, hasher: &mut AHasher) -> bool
             }
         }
         if let Some(overlay) = binding.animator_overlay() {
-            for kind in NumericAtomKind::ALL
-                .into_iter()
-                .filter(|kind| kind.affects_layout())
-            {
-                if let Some(value) = overlay.value_for(kind) {
-                    kind.hash(hasher);
-                    value.to_bits().hash(hasher);
-                }
-            }
+            overlay.visit_layout_values(&mut |kind, value| {
+                kind.hash(hasher);
+                value.to_bits().hash(hasher);
+            });
         }
         binding.hides()
     });

@@ -79,6 +79,29 @@ impl StyleAnimator {
 }
 
 impl AnimatorOverlay for StyleAnimator {
+    fn visit_layout_values(&self, visit: &mut dyn FnMut(NumericAtomKind, f32)) {
+        let state = self.state.borrow();
+        if !state.enabled {
+            return;
+        }
+        let Some(previous) = state.previous.as_ref() else {
+            return;
+        };
+        for entry in &state.numeric {
+            if !entry.kind.affects_layout()
+                || previous
+                    .numeric
+                    .get(entry.kind as usize)
+                    .is_none_or(Option::is_none)
+            {
+                continue;
+            }
+            if let Some(value) = entry.signal.try_peek() {
+                visit(entry.kind, value);
+            }
+        }
+    }
+
     fn value_for(&self, kind: NumericAtomKind) -> Option<f32> {
         let state = self.state.borrow();
         if !state.enabled || state.previous?.numeric.get(kind as usize)?.is_none() {

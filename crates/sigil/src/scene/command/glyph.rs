@@ -160,16 +160,20 @@ impl PartialEq for GlyphRun {
     fn eq(&self, other: &Self) -> bool {
         self.rect == other.rect
             && self.node == other.node
-            && self.shared.text == other.shared.text
-            && self.shared.color == other.shared.color
-            && self.shared.style == other.shared.style
-            && self.shared.opacity == other.shared.opacity
-            && self.shared.flow == other.shared.flow
-            && self.shared.tone == other.shared.tone
-            && self.shared.inks == other.shared.inks
-            && self.shared.positioned_glyphs == other.shared.positioned_glyphs
-            && same_paragraph(&self.shared, &other.shared)
+            && (Rc::ptr_eq(&self.shared, &other.shared) || same_shared(&self.shared, &other.shared))
     }
+}
+
+fn same_shared(this: &SharedGlyph, other: &SharedGlyph) -> bool {
+    this.text == other.text
+        && this.color == other.color
+        && this.style == other.style
+        && this.opacity == other.opacity
+        && this.flow == other.flow
+        && this.tone == other.tone
+        && this.inks == other.inks
+        && this.positioned_glyphs == other.positioned_glyphs
+        && same_paragraph(this, other)
 }
 
 #[derive(Clone, Debug, PartialEq)]

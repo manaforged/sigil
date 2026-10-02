@@ -178,6 +178,17 @@ impl RowHeights<'_> {
     }
 }
 
+pub(super) const fn covers(
+    mounted: VisibleWindow,
+    visible: VisibleWindow,
+    margin: usize,
+    total: usize,
+) -> bool {
+    let top = mounted.first == 0 || visible.first >= mounted.first.saturating_add(margin);
+    let bottom = mounted.end >= total || visible.end.saturating_add(margin) <= mounted.end;
+    mounted.end <= total && top && bottom
+}
+
 fn finite_scroll_y(scroll_y: f32) -> f32 {
     if scroll_y.is_finite() {
         scroll_y.max(0.0)

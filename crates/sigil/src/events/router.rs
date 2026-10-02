@@ -24,6 +24,7 @@ pub struct EventRouter {
     last_pointer: Option<PointerEvent>,
     shortcuts: ShortcutIndex,
     hit_cache: HitTestCache,
+    hover_seen: Option<(u64, u64, (u32, u32))>,
 }
 
 impl EventRouter {
@@ -214,6 +215,14 @@ impl EventRouter {
         let Some(pointer) = self.last_pointer.clone() else {
             return;
         };
+        let seen = (
+            cx.mutation_generation(),
+            layout.generation(),
+            (pointer.position.x.to_bits(), pointer.position.y.to_bits()),
+        );
+        if self.hover_seen.replace(seen) == Some(seen) {
+            return;
+        }
         let Some(path) = self.hit_cache.hit_path(cx, layout, pointer.position) else {
             self.clear_hover(cx, &pointer);
             return;

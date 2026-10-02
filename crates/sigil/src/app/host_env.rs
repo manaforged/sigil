@@ -8,6 +8,8 @@ use crate::reactive::{Owner, OwnerId, Signal, owner_by_id, signal};
 thread_local! {
     static VIEWPORT: Cell<Option<Signal<LogicalSize>>> = const { Cell::new(None) };
     static DETACHED: Cell<Option<Signal<LogicalSize>>> = const { Cell::new(None) };
+    static SCALE: Cell<Option<Signal<f32>>> = const { Cell::new(None) };
+    static DETACHED_SCALE: Cell<Option<Signal<f32>>> = const { Cell::new(None) };
     static CAPS: Cell<HostCaps> = const { Cell::new(HostCaps::window()) };
 }
 
@@ -52,6 +54,23 @@ fn detached_viewport() -> Signal<LogicalSize> {
 }
 
 #[must_use]
+#[track_caller]
+pub fn display_scale() -> Signal<f32> {
+    SCALE.with(Cell::get).unwrap_or_else(detached_scale)
+}
+
+fn detached_scale() -> Signal<f32> {
+    DETACHED_SCALE.with(|slot| {
+        slot.get().unwrap_or_else(|| {
+            let owner = Owner::new("sigil::detached_scale", None);
+            let scale = owner.with(|| signal(1.0));
+            slot.set(Some(scale));
+            scale
+        })
+    })
+}
+
+#[must_use]
 pub fn is_grid() -> bool {
     crate::style::cell_size().is_some()
 }
@@ -62,6 +81,7 @@ pub(super) struct HostEnv {
     pub(super) exit: Rc<Cell<bool>>,
     focus_source: Rc<Cell<bool>>,
     viewport: Signal<LogicalSize>,
+    scale: Signal<f32>,
     pub(super) caps: HostCaps,
 }
 
@@ -71,6 +91,7 @@ pub(crate) struct EnvGuard {
     exit: Option<Rc<Cell<bool>>>,
     focus_source: Option<Rc<Cell<bool>>>,
     viewport: Option<Signal<LogicalSize>>,
+    scale: Option<Signal<f32>>,
     caps: HostCaps,
 }
 
@@ -81,20 +102,25 @@ impl Drop for EnvGuard {
         let _ = crate::app::exit::swap_target(self.exit.take());
         let _ = crate::events::focus::swap_focus_source(self.focus_source.take());
         VIEWPORT.with(|slot| slot.set(self.viewport.take()));
+        SCALE.with(|slot| slot.set(self.scale.take()));
         CAPS.with(|slot| slot.set(self.caps));
     }
 }
 
 impl HostEnv {
     pub(super) fn new(cell: f32, geometry: Rc<dyn TextGeometry>, owner: OwnerId) -> Self {
-        let mut viewport = None;
-        owner_by_id(owner, || viewport = Some(signal(LogicalSize::default())));
+        let mut signals = None;
+        owner_by_id(owner, || {
+            signals = Some((signal(LogicalSize::default()), signal(1.0)));
+        });
+        let (viewport, scale) = signals.expect("host root owner is live");
         Self {
             cell,
             geometry,
             exit: Rc::new(Cell::new(false)),
             focus_source: Rc::new(Cell::new(true)),
-            viewport: viewport.expect("host root owner is live"),
+            viewport,
+            scale,
             caps: HostCaps::window(),
         }
     }
@@ -108,6 +134,7 @@ impl HostEnv {
                 &self.focus_source,
             ))),
             viewport: VIEWPORT.with(|slot| slot.replace(Some(self.viewport))),
+            scale: SCALE.with(|slot| slot.replace(Some(self.scale))),
             caps: CAPS.with(|slot| slot.replace(self.caps)),
         }
     }
@@ -115,4 +142,14 @@ impl HostEnv {
     pub(super) fn publish_viewport(&self, viewport: (f32, f32)) {
         self.viewport.set(LogicalSize::new(viewport.0, viewport.1));
     }
+
+    pub(super) fn publish_scale(&self, scale: f32) {
+        if self.scale.peek().to_bits() != scale.to_bits() {
+            self.scale.set(scale);
+        }
+    }
 }
+
+#[cfg(test)]
+#[path = "host_env_tests.rs"]
+mod tests;

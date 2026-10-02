@@ -28,26 +28,27 @@ pub(super) fn defer_top_layer<'t>(
 
 fn find_top_layer<'t>(cx: &'t Cx, node: &Node) -> Vec<(NodeId, Path<'t>)> {
     let mut found = Vec::new();
-    let mut stack: SmallVec<[(NodeId, usize); 32]> =
-        node.children().iter().rev().map(|id| (*id, 0)).collect();
-    let mut path = Path::new();
-    while let Some((id, depth)) = stack.pop() {
-        path.truncate(depth);
-        let Some(child) = cx.get(id) else {
-            continue;
-        };
-        if is_top_layer(child) {
-            found.push((id, path.clone()));
-        } else if !child.children().is_empty() && !skips_paint(child) {
-            path.push((id, child));
-            stack.extend(
-                child
-                    .children()
-                    .iter()
-                    .rev()
-                    .map(|grandchild| (*grandchild, depth + 1)),
-            );
+    for id in cx.top_layers().iter().copied() {
+        if let Some(path) = path_under(cx, node, id) {
+            found.push((id, path));
         }
     }
     found
+}
+
+fn path_under<'t>(cx: &'t Cx, node: &Node, id: NodeId) -> Option<Path<'t>> {
+    let mut path = Path::new();
+    let mut current = cx.parent(id)?;
+    loop {
+        let step = cx.get(current)?;
+        if core::ptr::eq(step, node) {
+            path.reverse();
+            return Some(path);
+        }
+        if is_top_layer(step) || skips_paint(step) {
+            return None;
+        }
+        path.push((current, step));
+        current = cx.parent(current)?;
+    }
 }
