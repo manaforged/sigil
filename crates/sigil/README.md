@@ -140,7 +140,7 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 
 <!-- truesight:surface sigil-ui -->
 
-3239 public items (437 types, 252 functions, 1224 methods, 514 fields, 756 variants, 56 constants) at 3734 paths; 495 are re-export aliases. 1800 trait impl lines, 201 inherent impl lines. 36 modules, 1 re-export only.
+3294 public items (439 types, 257 functions, 1228 methods, 520 fields, 790 variants, 60 constants) at 3789 paths; 495 are re-export aliases. 1813 trait impl lines, 202 inherent impl lines. 36 modules, 1 re-export only.
 
 | Module | Items | Types | Functions | Methods | Aliases |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -149,7 +149,7 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 | `sigil::animation` | 76 | 9 | 0 | 33 | 0 |
 | `sigil::animation_runtime` | 52 | 8 | 8 | 23 | 0 |
 | `sigil::animation_runtime::presets` | 8 | 0 | 0 | 0 | 0 |
-| `sigil::app` | 115 | 23 | 16 | 11 | 0 |
+| `sigil::app` | 116 | 23 | 17 | 11 | 0 |
 | `sigil::app::dialog` | 15 | 2 | 5 | 8 | 0 |
 | `sigil::app::menu` | 2 | 0 | 2 | 0 | 0 |
 | `sigil::app::tray` | 2 | 0 | 2 | 0 | 0 |
@@ -160,17 +160,17 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 | `sigil::hal` | 62 | 24 | 0 | 25 | 0 |
 | `sigil::icons` | 12 | 3 | 0 | 2 | 0 |
 | `sigil::icons::builtin` | 9 | 0 | 0 | 0 | 0 |
-| `sigil::kernel` | 197 | 21 | 10 | 104 | 0 |
+| `sigil::kernel` | 198 | 21 | 10 | 105 | 0 |
 | `sigil::layout` | 225 | 30 | 5 | 93 | 0 |
 | `sigil::prelude` (re-export only) | 0 | 0 | 0 | 0 | 495 |
-| `sigil::profile` | 162 | 11 | 15 | 12 | 0 |
+| `sigil::profile` | 213 | 13 | 19 | 13 | 0 |
 | `sigil::reactive` | 51 | 9 | 14 | 24 | 0 |
 | `sigil::reactive::debug` | 2 | 0 | 2 | 0 | 0 |
-| `sigil::renderer` | 55 | 9 | 1 | 19 | 0 |
+| `sigil::renderer` | 56 | 9 | 1 | 20 | 0 |
 | `sigil::renderer::capture` | 6 | 1 | 2 | 0 | 0 |
 | `sigil::scene` | 251 | 36 | 3 | 52 | 0 |
 | `sigil::shell` | 25 | 5 | 0 | 15 | 0 |
-| `sigil::style` | 588 | 61 | 10 | 173 | 0 |
+| `sigil::style` | 589 | 61 | 10 | 174 | 0 |
 | `sigil::style::palette` | 19 | 1 | 0 | 12 | 0 |
 | `sigil::style::scale` | 27 | 2 | 14 | 3 | 0 |
 | `sigil::style::variant` | 12 | 3 | 0 | 1 | 0 |

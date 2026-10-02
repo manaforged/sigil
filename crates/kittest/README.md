@@ -133,6 +133,22 @@ available.
 
 The offscreen target clears to opaque black.
 
+## Profile a scenario
+
+`Harness::gpu(width, height, scale)` paints each frame through the GPU
+renderer and waits for the GPU. Every harness frame is a profile frame,
+so `sigil::profile::summary()` reports layout, emit, submit, and GPU time,
+plus a `why` section that names the nodes, layers, and repaints behind
+the cost.
+
+```sh
+cargo bench -p sigil-kittest --bench frame_scenarios
+SIGIL_SCENARIO=modal_table_scroll cargo bench -p sigil-kittest --bench frame_scenarios
+```
+
+The scenarios are `page_scroll`, `modal_table_scroll`, and `hover_sweep`.
+`SIGIL_PROFILE_BUDGET_MS` sets the frame budget (default 8.33 ms).
+
 ## Raw captures
 
 For renderer tests that inspect pixels, `gpu::render_capture` renders a
@@ -146,11 +162,11 @@ custom render paths.
 
 <!-- truesight:surface sigil-kittest -->
 
-191 public items (18 types, 53 functions, 61 methods, 30 fields, 18 variants, 9 constants, 2 macros) at 191 paths; 0 are re-export aliases. 46 trait impl lines, 6 inherent impl lines. 6 modules, 0 re-export only.
+192 public items (18 types, 53 functions, 62 methods, 30 fields, 18 variants, 9 constants, 2 macros) at 192 paths; 0 are re-export aliases. 46 trait impl lines, 6 inherent impl lines. 6 modules, 0 re-export only.
 
 | Module | Items | Types | Functions | Methods | Aliases |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `sigil_kittest` | 116 | 12 | 17 | 47 | 0 |
+| `sigil_kittest` | 117 | 12 | 17 | 48 | 0 |
 | `sigil_kittest::gpu` | 16 | 2 | 9 | 0 | 0 |
 | `sigil_kittest::input` | 15 | 0 | 15 | 0 | 0 |
 | `sigil_kittest::parity` | 16 | 2 | 5 | 0 | 0 |

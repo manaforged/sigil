@@ -163,6 +163,7 @@ impl sigil_kittest::Harness
 pub fn sigil_kittest::Harness::accessibility_snapshot(&mut self) -> alloc::string::String
 pub fn sigil_kittest::Harness::accessibility_tree(&mut self) -> sigil::app::embed::AccessibilityTree
 pub fn sigil_kittest::Harness::advance(&mut self, by: core::time::Duration) -> &mut Self
+pub fn sigil_kittest::Harness::gpu(self, width: u32, height: u32, scale: f32) -> Self
 pub fn sigil_kittest::Harness::host(&mut self) -> (&mut sigil::app::embed::Host, &mut sigil::events::router::EventRouter)
 pub fn sigil_kittest::Harness::new(app: impl sigil::kernel::component::IntoNode + 'static) -> Self
 pub fn sigil_kittest::Harness::pixels(self, width: u32, height: u32) -> Self

@@ -459,6 +459,7 @@ impl core::marker::StructuralPartialEq for sigil::app::WindowOpts
 pub fn sigil::app::cell_text_lines(text: &str, max_cells: usize) -> alloc::vec::Vec<(usize, usize)>
 pub fn sigil::app::cell_width(text: &str) -> usize
 pub fn sigil::app::clear_exit()
+pub fn sigil::app::display_scale() -> sigil::reactive::Signal<f32>
 pub fn sigil::app::is_grid() -> bool
 pub fn sigil::app::open(target: impl core::convert::AsRef<std::ffi::os_str::OsStr>) -> sigil::AppResult<()>
 pub fn sigil::app::parse_theme(input: &str) -> core::option::Option<sigil::style::Theme>
@@ -491,7 +492,7 @@ pub struct sigil::bidi::ParagraphBidi<'a>
 impl<'a> sigil::bidi::ParagraphBidi<'a>
 pub fn sigil::bidi::ParagraphBidi<'a>::levels(&self) -> smallvec::SmallVec<[u8; 64]>
 pub fn sigil::bidi::ParagraphBidi<'a>::new(text: &'a str) -> Self
-pub fn sigil::bidi::ParagraphBidi<'a>::visual_order_for_line(&self, line_start: usize, line_end: usize, segment_ends: &[u32]) -> alloc::vec::Vec<usize>
+pub fn sigil::bidi::ParagraphBidi<'a>::visual_order_for_line(&self, line_start: usize, line_end: usize, segment_ends: &[u32]) -> smallvec::SmallVec<[usize; 16]>
 pub fn sigil::bidi::ParagraphBidi<'a>::visual_step(&self, caret: usize, right: bool) -> sigil::bidi::Step
 pub fn sigil::bidi::paragraph_levels(input: &str) -> smallvec::SmallVec<[u8; 64]>
 pub fn sigil::bidi::visual_order(levels: &[u8]) -> alloc::vec::Vec<usize>
@@ -1223,6 +1224,7 @@ pub fn sigil::kernel::Cx::roots(&self) -> &[sigil::kernel::NodeId]
 pub const fn sigil::kernel::Cx::scale(&self) -> sigil::geometry::Scale
 pub fn sigil::kernel::Cx::set_scale(&mut self, scale: sigil::geometry::Scale)
 pub fn sigil::kernel::Cx::visit_preorder(&self, root: sigil::kernel::NodeId, visit: impl core::ops::function::FnMut(sigil::kernel::NodeId, &sigil::kernel::Node))
+pub fn sigil::kernel::Cx::describe(&self, id: sigil::kernel::NodeId) -> alloc::string::String
 pub fn sigil::kernel::Cx::dump_tree(&self, root: sigil::kernel::NodeId) -> alloc::string::String
 pub fn sigil::kernel::Cx::flush_announcements(&mut self)
 pub fn sigil::kernel::Cx::flush_reactive_children(&mut self)
@@ -1420,7 +1422,7 @@ pub fn sigil::kernel::for_each<T, K, N>(items: sigil::reactive::Signal<alloc::ve
 pub fn sigil::kernel::fragment() -> sigil::kernel::NodeBuilder
 pub fn sigil::kernel::image(source: sigil::kernel::ImageSource) -> sigil::kernel::ImageBuilder
 pub fn sigil::kernel::node(child: impl sigil::kernel::IntoNode + 'static) -> alloc::boxed::Box<dyn sigil::kernel::IntoNode>
-pub fn sigil::kernel::schedule_keyed_rebuild<K, N>(parent: sigil::kernel::NodeId, prior: alloc::rc::Rc<core::cell::RefCell<alloc::vec::Vec<(K, sigil::kernel::NodeId)>>>, incoming: alloc::vec::Vec<(K, N)>) where K: core::clone::Clone + core::cmp::Eq + core::hash::Hash + 'static, N: sigil::kernel::IntoNode + 'static
+pub fn sigil::kernel::schedule_keyed_rebuild<K, N>(parent: sigil::kernel::NodeId, prior: alloc::rc::Rc<core::cell::RefCell<alloc::vec::Vec<(K, sigil::kernel::NodeId)>>>, incoming: alloc::vec::Vec<(K, core::option::Option<N>)>) where K: core::clone::Clone + core::cmp::Eq + core::hash::Hash + 'static, N: sigil::kernel::IntoNode + 'static
 pub fn sigil::kernel::show<A, B>(cond: impl sigil::reactive::Reactive<bool>, then: impl core::ops::function::Fn() -> A + 'static, otherwise: impl core::ops::function::Fn() -> B + 'static) -> sigil::kernel::NodeBuilder where A: sigil::kernel::IntoNode + 'static, B: sigil::kernel::IntoNode + 'static
 pub fn sigil::kernel::text(source: impl core::convert::Into<sigil::kernel::TextContent>) -> sigil::kernel::TextBuilder
 pub mod sigil::layout
@@ -2771,6 +2773,9 @@ pub sigil::profile::Counter::AllocSpriteBindGroups
 pub sigil::profile::Counter::AllocUploadBuffers
 pub sigil::profile::Counter::AllocUploadBytes
 pub sigil::profile::Counter::BuildProfile
+pub sigil::profile::Counter::EmitNodes
+pub sigil::profile::Counter::EmitReplays
+pub sigil::profile::Counter::GpuBatches
 pub sigil::profile::Counter::GpuCompositePipelines
 pub sigil::profile::Counter::GpuGlyphs
 pub sigil::profile::Counter::GpuLayerCacheBudgetBytes
@@ -2780,6 +2785,9 @@ pub sigil::profile::Counter::GpuLayerPixels
 pub sigil::profile::Counter::GpuLayerReuses
 pub sigil::profile::Counter::GpuLayers
 pub sigil::profile::Counter::GpuPassReuses
+pub sigil::profile::Counter::GpuPlanFull
+pub sigil::profile::Counter::GpuPlanRegions
+pub sigil::profile::Counter::GpuPlanUnchanged
 pub sigil::profile::Counter::GpuRects
 pub sigil::profile::Counter::GpuRedrawnPixels
 pub sigil::profile::Counter::GpuRenderPasses
@@ -2787,11 +2795,14 @@ pub sigil::profile::Counter::GpuSharedUploadBytes
 pub sigil::profile::Counter::GpuSharedUploadWrites
 pub sigil::profile::Counter::GpuSplitSubmissions
 pub sigil::profile::Counter::GpuSprites
+pub sigil::profile::Counter::GpuTimedPasses
 pub sigil::profile::Counter::GpuUploadBuffers
 pub sigil::profile::Counter::GpuUploadBytes
 pub sigil::profile::Counter::GpuUploadCapacityBytes
 pub sigil::profile::Counter::GpuUploadWrites
+pub sigil::profile::Counter::LayoutDirtyKernel
 pub sigil::profile::Counter::LayoutDirtyNodes
+pub sigil::profile::Counter::LayoutDirtySeed
 pub sigil::profile::Counter::LayoutFull
 pub sigil::profile::Counter::LayoutFullMajority
 pub sigil::profile::Counter::LayoutFullNoDirty
@@ -2804,6 +2815,7 @@ pub sigil::profile::Counter::LayoutOverlay
 pub sigil::profile::Counter::LayoutResize
 pub sigil::profile::Counter::LayoutResizedNodes
 pub sigil::profile::Counter::LayoutRoots
+pub sigil::profile::Counter::LayoutSolvedNodes
 pub sigil::profile::Counter::LayoutTranslate
 pub sigil::profile::Counter::PathRaster
 pub sigil::profile::Counter::RenderFrames
@@ -2813,7 +2825,10 @@ pub sigil::profile::Counter::SceneGlyphs
 pub sigil::profile::Counter::SceneImages
 pub sigil::profile::Counter::SceneRects
 pub sigil::profile::Counter::SceneReplay
+pub sigil::profile::Counter::TextAtlasCompactions
+pub sigil::profile::Counter::TextAtlasMisses
 pub sigil::profile::Counter::TextMeasure
+pub sigil::profile::Counter::TextOutlineMisses
 pub sigil::profile::Counter::TuiBytes
 pub sigil::profile::Counter::TuiDirty
 pub sigil::profile::Counter::TuiEvents
@@ -2859,20 +2874,52 @@ impl core::fmt::Display for sigil::profile::FallbackCause
 impl core::hash::Hash for sigil::profile::FallbackCause
 impl core::marker::Copy for sigil::profile::FallbackCause
 impl core::marker::StructuralPartialEq for sigil::profile::FallbackCause
+#[non_exhaustive] pub enum sigil::profile::Hotspot
+pub sigil::profile::Hotspot::EmitResolved
+pub sigil::profile::Hotspot::GpuFullRepaint
+pub sigil::profile::Hotspot::GpuLayer
+pub sigil::profile::Hotspot::LayoutDirtyKernel
+pub sigil::profile::Hotspot::LayoutDirtySeed
+pub sigil::profile::Hotspot::LayoutResized
+pub sigil::profile::Hotspot::LayoutRoot
+pub sigil::profile::Hotspot::RowRebuild
+impl sigil::profile::Hotspot
+pub const fn sigil::profile::Hotspot::name(self) -> &'static str
+impl core::clone::Clone for sigil::profile::Hotspot
+impl core::cmp::Eq for sigil::profile::Hotspot
+impl core::cmp::PartialEq for sigil::profile::Hotspot
+impl core::fmt::Debug for sigil::profile::Hotspot
+impl core::fmt::Display for sigil::profile::Hotspot
+impl core::hash::Hash for sigil::profile::Hotspot
+impl core::marker::Copy for sigil::profile::Hotspot
+impl core::marker::StructuralPartialEq for sigil::profile::Hotspot
 #[non_exhaustive] pub enum sigil::profile::Phase
 pub sigil::profile::Phase::A11y
 pub sigil::profile::Phase::AppUpdate
 pub sigil::profile::Phase::Effect
 pub sigil::profile::Phase::Emit
+pub sigil::profile::Phase::Gpu
+pub sigil::profile::Phase::GpuWait
+pub sigil::profile::Phase::HitRefresh
 pub sigil::profile::Phase::Layout
 pub sigil::profile::Phase::LayoutAttach
+pub sigil::profile::Phase::LayoutChildren
 pub sigil::profile::Phase::LayoutDirty
+pub sigil::profile::Phase::LayoutFinish
+pub sigil::profile::Phase::LayoutOverlays
+pub sigil::profile::Phase::LayoutPrepare
+pub sigil::profile::Phase::LayoutSeed
 pub sigil::profile::Phase::LayoutSig
 pub sigil::profile::Phase::LayoutSolve
 pub sigil::profile::Phase::LayoutSync
+pub sigil::profile::Phase::LayoutTranslate
 pub sigil::profile::Phase::Paint
 pub sigil::profile::Phase::RenderCompositePipeline
 pub sigil::profile::Phase::RenderCpu
+pub sigil::profile::Phase::RenderEncode
+pub sigil::profile::Phase::RenderPlan
+pub sigil::profile::Phase::RenderRetain
+pub sigil::profile::Phase::RenderSubmit
 pub sigil::profile::Phase::TuiPaint
 pub sigil::profile::Phase::TuiPresent
 pub sigil::profile::Phase::TuiRaster
@@ -2889,6 +2936,15 @@ impl core::fmt::Display for sigil::profile::Phase
 impl core::hash::Hash for sigil::profile::Phase
 impl core::marker::Copy for sigil::profile::Phase
 impl core::marker::StructuralPartialEq for sigil::profile::Phase
+pub struct sigil::profile::Attribution
+pub sigil::profile::Attribution::count: u64
+pub sigil::profile::Attribution::hotspot: sigil::profile::Hotspot
+pub sigil::profile::Attribution::subject: alloc::string::String
+impl core::clone::Clone for sigil::profile::Attribution
+impl core::cmp::Eq for sigil::profile::Attribution
+impl core::cmp::PartialEq for sigil::profile::Attribution
+impl core::fmt::Debug for sigil::profile::Attribution
+impl core::marker::StructuralPartialEq for sigil::profile::Attribution
 pub struct sigil::profile::BackendStatus
 pub sigil::profile::BackendStatus::fallback: sigil::profile::FallbackCause
 pub sigil::profile::BackendStatus::kind: sigil::profile::BackendKind
@@ -2905,6 +2961,9 @@ pub struct sigil::profile::Frame
 pub sigil::profile::Frame::backend: core::option::Option<sigil::profile::BackendStatus>
 pub sigil::profile::Frame::cause: sigil::profile::Cause
 pub sigil::profile::Frame::counts: alloc::vec::Vec<sigil::profile::CounterValue>
+pub sigil::profile::Frame::end_us: u64
+pub sigil::profile::Frame::gpu_passes: alloc::vec::Vec<(&'static str, u64)>
+pub sigil::profile::Frame::hot: alloc::vec::Vec<sigil::profile::Attribution>
 pub sigil::profile::Frame::index: u32
 pub sigil::profile::Frame::phases: alloc::vec::Vec<sigil::profile::PhaseTime>
 pub sigil::profile::Frame::wall_ns: u64
@@ -2917,8 +2976,13 @@ impl core::default::Default for sigil::profile::Frame
 impl core::fmt::Debug for sigil::profile::Frame
 pub struct sigil::profile::Span
 impl core::ops::drop::Drop for sigil::profile::Span
+pub const sigil::profile::BUDGET_ENV: &str
+pub const sigil::profile::DEFAULT_BUDGET_MS: f64
 pub const sigil::profile::FRAME_BUDGET_NS: u64
 pub const sigil::profile::INTERACT_BUDGET_NS: u64
+pub const sigil::profile::MAX_SUBJECTS: usize
+pub const sigil::profile::OTHER_SUBJECT: &str
+pub fn sigil::profile::attribute(hotspot: sigil::profile::Hotspot, n: u64, subject: impl core::ops::function::FnOnce() -> alloc::string::String)
 pub fn sigil::profile::begin_frame(backend: sigil::profile::BackendStatus)
 pub fn sigil::profile::count(counter: sigil::profile::Counter)
 pub fn sigil::profile::count_add(counter: sigil::profile::Counter, n: u64)
@@ -2927,9 +2991,12 @@ pub fn sigil::profile::dump(path: impl core::convert::AsRef<std::path::Path>) ->
 pub fn sigil::profile::dump_if_enabled()
 pub fn sigil::profile::enable()
 pub fn sigil::profile::enabled() -> bool
+pub fn sigil::profile::frame_budget_ns() -> u64
 pub fn sigil::profile::frames() -> alloc::vec::Vec<sigil::profile::Frame>
 pub fn sigil::profile::gauge(counter: sigil::profile::Counter, value: u64)
+pub fn sigil::profile::gpu_pass(label: &'static str, ns: u64)
 pub fn sigil::profile::interact(cause: sigil::profile::Cause)
+pub fn sigil::profile::note_input(event: &sigil::events::ShellEvent)
 pub fn sigil::profile::reset()
 pub fn sigil::profile::span(phase: sigil::profile::Phase) -> sigil::profile::Span
 pub fn sigil::profile::summary() -> alloc::string::String
@@ -3087,6 +3154,7 @@ pub fn sigil::renderer::WgpuRenderer::prepare_compositing(&mut self, format: wgp
 pub fn sigil::renderer::WgpuRenderer::queue(&self) -> core::option::Option<&wgpu::api::queue::Queue>
 pub fn sigil::renderer::WgpuRenderer::render_command_scene(&mut self, surface: &mut sigil::renderer::WgpuSurface, scene: &sigil::scene::CommandScene, clear_color: sigil::style::Color, viewport: (f32, f32)) -> core::result::Result<(), sigil::renderer::RendererError>
 pub const fn sigil::renderer::WgpuRenderer::set_transparent(&mut self, transparent: bool)
+pub fn sigil::renderer::WgpuRenderer::drain_gpu_timings(&mut self)
 pub fn sigil::renderer::WgpuRenderer::record_screen(&mut self, target: &sigil::renderer::ScreenSubmission<'_>, scene: &sigil::scene::CommandScene, encoder: &mut wgpu::api::command_encoder::CommandEncoder) -> core::result::Result<(), sigil::renderer::RendererError>
 pub fn sigil::renderer::WgpuRenderer::submit_screen(&mut self, target: &sigil::renderer::ScreenSubmission<'_>, scene: &sigil::scene::CommandScene) -> core::result::Result<(), sigil::renderer::RendererError>
 pub fn sigil::renderer::WgpuRenderer::render_command_scene_offscreen(&mut self, target: sigil::renderer::OffscreenTarget<'_>, scene: &sigil::scene::CommandScene, clear_color: sigil::style::Color) -> core::result::Result<(), sigil::renderer::RendererError>
@@ -4478,6 +4546,7 @@ pub fn sigil::style::AnimatorOverlay::retarget_to_slot(&mut self, slot: sigil::s
 pub fn sigil::style::AnimatorOverlay::update(&self, _atoms: &[sigil::style::StyleAtom], _theme: &sigil::style::Theme, _tone: sigil::style::Tone, _inherited_text: sigil::style::Rgba8)
 pub fn sigil::style::AnimatorOverlay::value_for(&self, kind: sigil::style::NumericAtomKind) -> core::option::Option<f32>
 pub fn sigil::style::AnimatorOverlay::value_for_color(&self, kind: sigil::style::ColorAtomKind) -> core::option::Option<sigil::style::Rgba8>
+pub fn sigil::style::AnimatorOverlay::visit_layout_values(&self, visit: &mut dyn core::ops::function::FnMut(sigil::style::NumericAtomKind, f32))
 pub trait sigil::style::NodeStyleExt
 pub fn sigil::style::NodeStyleExt::animate(self, kind: sigil::style::NumericAtomKind, value: sigil::reactive::Signal<f32>) -> Self
 pub fn sigil::style::NodeStyleExt::focus_ring(self, ring: sigil::style::FocusRing) -> Self

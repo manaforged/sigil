@@ -14,6 +14,6 @@
     "panic": { "lint": "clippy::panic", "max": 4 },
     "unwrap_used": { "lint": "clippy::unwrap_used", "max": 0 },
     "indexing_slicing": { "lint": "clippy::indexing_slicing", "max": 5 },
-    "expect_call": { "pattern": "\\.expect\\(", "max": 89 }
+    "expect_call": { "pattern": "\\.expect\\(", "max": 88 }
   }
 }
