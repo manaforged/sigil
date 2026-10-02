@@ -113,7 +113,7 @@ feature. `desktop` is the default. `terminal` adds the terminal host.
   you pass untrusted documents to the markdown, HTML, or SVG parsers.
 - `sigil-pack macos` ad-hoc codesigns unless you pass a signing
   identity. Ad-hoc signing is not Developer ID or notarization.
-- A form can show a doubled label after save and reopen (issue #5).
+- A form can show a doubled label after save and reopen (issue #1).
 
 ## API health
 
