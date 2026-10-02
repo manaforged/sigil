@@ -42,6 +42,13 @@ named!(Phase {
     LayoutSync => "layout.sync",
     LayoutSig => "layout.sig",
     LayoutDirty => "layout.dirty",
+    LayoutChildren => "layout.children",
+    LayoutPrepare => "layout.prepare",
+    LayoutTranslate => "layout.translate",
+    LayoutOverlays => "layout.overlays",
+    LayoutSeed => "layout.seed",
+    LayoutFinish => "layout.finish",
+    HitRefresh => "hit.refresh",
     Emit => "emit",
     Paint => "paint",
     RenderCpu => "render.cpu",
@@ -52,6 +59,12 @@ named!(Phase {
     TuiWrite => "tui.write",
     TuiPresent => "tui.present",
     AppUpdate => "app.update",
+    Gpu => "gpu",
+    GpuWait => "gpu.wait",
+    RenderPlan => "render.plan",
+    RenderEncode => "render.encode",
+    RenderRetain => "render.retain",
+    RenderSubmit => "render.submit",
 });
 
 impl Phase {
@@ -63,11 +76,24 @@ impl Phase {
             | Self::LayoutAttach
             | Self::LayoutSync
             | Self::LayoutSig
-            | Self::LayoutDirty => Category::Layout,
+            | Self::LayoutDirty
+            | Self::LayoutChildren
+            | Self::LayoutPrepare
+            | Self::LayoutTranslate
+            | Self::LayoutOverlays
+            | Self::LayoutSeed
+            | Self::LayoutFinish => Category::Layout,
             Self::Emit | Self::Paint => Category::Paint,
-            Self::RenderCpu | Self::RenderCompositePipeline => Category::Render,
+            Self::RenderCpu
+            | Self::RenderCompositePipeline
+            | Self::Gpu
+            | Self::GpuWait
+            | Self::RenderPlan
+            | Self::RenderEncode
+            | Self::RenderRetain
+            | Self::RenderSubmit => Category::Render,
             Self::A11y => Category::A11y,
-            Self::Effect => Category::Reactive,
+            Self::Effect | Self::HitRefresh => Category::Reactive,
             Self::TuiPaint
             | Self::TuiRaster
             | Self::TuiWrite
@@ -183,6 +209,30 @@ named!(Counter {
     WorkloadFps => "workload.fps",
     WorkloadScenario => "workload.scenario",
     BuildProfile => "build.profile",
+    LayoutDirtyKernel => "layout.dirty.kernel",
+    LayoutDirtySeed => "layout.dirty.seed",
+    LayoutSolvedNodes => "layout.solved.n",
+    EmitNodes => "emit.nodes",
+    EmitReplays => "emit.replays",
+    GpuPlanFull => "gpu.plan.full",
+    GpuPlanRegions => "gpu.plan.regions",
+    GpuPlanUnchanged => "gpu.plan.unchanged",
+    GpuTimedPasses => "gpu.timed_passes",
+    GpuBatches => "gpu.batches",
+    TextAtlasMisses => "text.atlas.misses",
+    TextAtlasCompactions => "text.atlas.compactions",
+    TextOutlineMisses => "text.outline.misses",
+});
+
+named!(Hotspot {
+    LayoutDirtyKernel => "layout.dirty.kernel",
+    LayoutDirtySeed => "layout.dirty.seed",
+    LayoutResized => "layout.resized",
+    LayoutRoot => "layout.root",
+    EmitResolved => "emit.resolved",
+    GpuLayer => "gpu.layer",
+    GpuFullRepaint => "gpu.full_repaint",
+    RowRebuild => "widget.row_rebuild",
 });
 
 named!(BackendKind {

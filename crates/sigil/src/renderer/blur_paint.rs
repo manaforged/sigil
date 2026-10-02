@@ -145,22 +145,25 @@ impl BlurPipeline {
         let instance_buf = make_instance_buffer(ctx.device, &instance);
         let tex_bg =
             make_texture_bind_group(ctx.device, &self.texture_layout, src.view, &self.sampler);
-        let pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("sigil-renderer blur pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: dst.view,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        });
+        let pass = ctx.encoder.begin_render_pass(
+            "sigil-renderer blur pass",
+            &wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: dst.view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            },
+        );
         pass.set_pipeline(&self.box_pipeline);
         pass.set_bind_group(0, &uniform_bg, &[]);
         pass.set_bind_group(1, &tex_bg, &[]);

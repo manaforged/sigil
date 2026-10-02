@@ -269,3 +269,30 @@ fn children_keyed_live_text_is_node_owned() {
         assert!(cx.get(kept).is_some(), "node-owned derived stays live");
     });
 }
+
+#[test]
+fn keyed_rebuild_keeps_mounted_rows_passed_without_a_node() {
+    Runtime::scope("sigil_kernel_keyed_rebuild_keep", || {
+        let mut cx = Cx::new_root();
+        let parent = cx.add(container());
+        let prior = Rc::new(std::cell::RefCell::new(Vec::<(u32, NodeId)>::new()));
+        sigil::kernel::schedule_keyed_rebuild(
+            parent,
+            Rc::clone(&prior),
+            vec![(1, Some(text("one"))), (2, Some(text("two")))],
+        );
+        cx.flush_reactive_children();
+        let [one, two] = child_ids(&cx, parent).try_into().expect("two rows");
+        sigil::kernel::schedule_keyed_rebuild(
+            parent,
+            Rc::clone(&prior),
+            vec![(2, None), (3, Some(text("three"))), (9, None)],
+        );
+        cx.flush_reactive_children();
+        let [kept, three] = child_ids(&cx, parent).try_into().expect("kept and new row");
+        assert_eq!(kept, two);
+        assert_eq!(text_value(&cx, kept), "two");
+        assert_eq!(text_value(&cx, three), "three");
+        assert!(cx.get(one).is_none(), "the missing key unmounts");
+    });
+}

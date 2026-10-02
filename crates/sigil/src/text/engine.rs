@@ -1,25 +1,30 @@
 #![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::sync::Arc;
+
+use ahash::AHashMap;
 
 use crate::hal::{ParagraphMetrics, TextEngine};
 use crate::style::{StyledTextEngine, TextLineHeight, TextStyle};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::bidi;
+use crate::text::FaceSpec;
 use crate::text::cache::ParagraphCache;
 use crate::text::config::TextConfig;
 use crate::text::error::TextError;
-use crate::text::paragraph::{Paragraph, TextMetrics};
-use crate::text::shaper::{FeatureTag, Shaper, Style};
+use crate::text::paragraph::{FaceTable, Paragraph, TextMetrics, face_table};
 #[cfg(test)]
-use crate::text::shaper::{Font, Script};
+use crate::text::shaper::Script;
+use crate::text::shaper::{FeatureTag, Font, Shaper, Style};
+use smallvec::SmallVec;
 
 mod lines;
 mod shape;
 mod spans;
 
-use lines::{LineStrut, break_lines};
+use lines::{LineFit, LineStrut, break_lines};
 use shape::char_script;
 #[cfg(any(test, debug_assertions))]
 use shape::script_name;
@@ -35,7 +40,15 @@ pub struct OwnedTextEngine {
     font_epoch: Cell<u64>,
     config: TextConfig,
     cache: RefCell<ParagraphCache>,
+    chains: RefCell<AHashMap<ChainKey, Arc<[Font]>>>,
+    face_tables: RefCell<AHashMap<FaceKey, FaceTable>>,
 }
+
+type FaceKey = (u32, SmallVec<[(u64, u16, u32); 8]>);
+
+const FACE_TABLES_CAP: usize = 1_024;
+
+type ChainKey = (u64, u16, ChainScripts);
 
 impl OwnedTextEngine {
     #[must_use]
@@ -46,6 +59,8 @@ impl OwnedTextEngine {
             font_epoch: Cell::new(0),
             config,
             cache: RefCell::new(ParagraphCache::new()),
+            chains: RefCell::new(AHashMap::new()),
+            face_tables: RefCell::new(AHashMap::new()),
         }
     }
 
@@ -70,6 +85,8 @@ impl OwnedTextEngine {
     fn fonts_changed(&self) {
         self.font_epoch.set(self.font_epoch.get().wrapping_add(1));
         self.cache.borrow_mut().clear();
+        self.chains.borrow_mut().clear();
+        self.face_tables.borrow_mut().clear();
     }
 
     #[must_use]
@@ -89,13 +106,14 @@ impl OwnedTextEngine {
         style: &TextStyle,
     ) -> Result<Paragraph, TextError> {
         self.refresh_fonts();
-        if let Some(cached) = self.cache.borrow().get(text, max_width, style) {
-            return Ok(cached.clone());
+        if let Some(cached) = self.cached_paragraph(text, max_width, style) {
+            return Ok(cached);
         }
-        let para = self.build_paragraph(text, max_width, style);
+        let (para, fit) = self.build_paragraph(text, max_width, style);
+        let key = if fit.wrapped { max_width } else { None };
         self.cache
             .borrow_mut()
-            .insert(text, max_width, style, para.clone());
+            .insert(text, key, style, (para.clone(), fit.width));
         Ok(para)
     }
 
@@ -183,30 +201,97 @@ impl OwnedTextEngine {
         Ok(())
     }
 
-    fn build_paragraph(&self, text: &str, max_width: Option<f32>, style: &TextStyle) -> Paragraph {
+    fn chain(
+        &self,
+        fonts: &FontCollection,
+        primary: &Font,
+        weight: u16,
+        scripts: &ChainScripts,
+    ) -> Arc<[Font]> {
+        let key = (primary.id(), weight, scripts.clone());
+        if let Some(hit) = self.chains.borrow().get(&key) {
+            return Arc::clone(hit);
+        }
+        let chain: Arc<[Font]> = fonts.chain_for(primary, weight, scripts).into();
+        self.chains.borrow_mut().insert(key, Arc::clone(&chain));
+        chain
+    }
+
+    fn face_table(&self, faces: &[FaceSpec], size_px: f32) -> FaceTable {
+        let key: FaceKey = (
+            size_px.to_bits(),
+            faces
+                .iter()
+                .map(|face| (face.font.id(), face.weight, face.skew.to_bits()))
+                .collect(),
+        );
+        if let Some(hit) = self.face_tables.borrow().get(&key) {
+            return Rc::clone(hit);
+        }
+        let table = face_table(faces, size_px);
+        let mut tables = self.face_tables.borrow_mut();
+        if tables.len() >= FACE_TABLES_CAP {
+            tables.clear();
+        }
+        tables.insert(key, Rc::clone(&table));
+        table
+    }
+
+    fn cached_paragraph(
+        &self,
+        text: &str,
+        max_width: Option<f32>,
+        style: &TextStyle,
+    ) -> Option<Paragraph> {
+        let cache = self.cache.borrow();
+        if let Some((cached, _)) = cache.get(text, max_width, style) {
+            return Some(cached.clone());
+        }
+        let limit = max_width?;
+        cache
+            .get(text, None, style)
+            .filter(|(_, width)| {
+                LineFit {
+                    wrapped: false,
+                    width: *width,
+                }
+                .fits(limit)
+            })
+            .map(|(unbounded, _)| unbounded.clone())
+    }
+
+    fn build_paragraph(
+        &self,
+        text: &str,
+        max_width: Option<f32>,
+        style: &TextStyle,
+    ) -> (Paragraph, LineFit) {
         let fonts = self.fonts.borrow();
         let primary = fonts.select_weight(&style.font_family, style.font_weight);
         let shaper = Shaper::new(primary);
         let shaper_style = to_shaper_style(style);
         let strut = LineStrut::from_shaper(&shaper, &shaper_style, resolve_line_height(style));
         let paragraph_bidi = bidi::ParagraphBidi::new(text);
-        let (spans, faces) = style_spans(&fonts, text, style, &shaper_style);
+        let scripts = chain_scripts(text);
+        let mut chain_of = |face: &Font, weight: u16| self.chain(&fonts, face, weight, &scripts);
+        let (spans, faces) = style_spans(&fonts, text, style, &shaper_style, &mut chain_of);
         let runs = shape_spans(&spans, text, &paragraph_bidi);
         let min_content_hint = runs
             .iter()
             .filter(|s| !s.is_break_opportunity)
             .map(|s| s.advance)
             .fold(0.0_f32, f32::max);
-        let lines = break_lines(&runs, max_width, strut, &paragraph_bidi);
-        Paragraph::new(
+        let (lines, fit) = break_lines(&runs, max_width, strut, &paragraph_bidi);
+        let paragraph = Paragraph::new(
             lines,
             TextMetrics {
                 font_size: shaper_style.size_px,
                 line_height: strut.line_height,
             },
-            &faces,
+            self.face_table(&faces, shaper_style.size_px),
             min_content_hint,
-        )
+        );
+        (paragraph, fit)
     }
 }
 
@@ -275,3 +360,4 @@ mod tests;
 
 mod collection;
 pub use collection::FontCollection;
+use collection::{ChainScripts, chain_scripts};

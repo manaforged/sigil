@@ -2,15 +2,18 @@ use crate::hal::RenderedGlyph;
 use crate::style::Color;
 
 use crate::renderer::glyph_place::{GlyphMode, plan_glyph_run};
-use crate::renderer::raster_paint::{RasterDrawParams, RasterTextPipeline};
+use crate::renderer::raster_paint::{
+    RasterDrawParams, RasterFrame, RasterGroup, RasterInstance, RasterTextPipeline,
+};
 use crate::renderer::scene_command::walk::{QueuedGlyphs, Walk, transform_rect};
 use crate::renderer::scene_command::{
     DrawGlyphRun, DrawImage, DrawSprite, GlyphRun, SpriteKind, SpriteSource,
 };
 use crate::renderer::scene_instance::BlendSpace;
 use crate::renderer::scene_paint::PaintCtx;
-use crate::renderer::slug::{DrawParams, QueuedRun, RunFrame, SlugTextPipeline};
+use crate::renderer::slug::{DrawParams, GlyphInstance, QueuedRun, RunFrame, SlugTextPipeline};
 use crate::renderer::sprite_paint::{SpritePaint, SpritePipeline};
+use crate::text::Paragraph;
 
 impl Walk<'_> {
     pub(super) fn draw_sprite(&mut self, draw: &DrawSprite) {
@@ -101,18 +104,38 @@ impl Walk<'_> {
         let space = BlendSpace::from_format(self.ctx.format);
         let color = glyph_run_color(run, self.state.current_opacity(), space);
         let origin = (run.rect.origin.x, run.rect.origin.y);
-        let leftover = match plan.mode {
-            GlyphMode::Mask => self.raster_pass(run, origin, color, clip),
-            GlyphMode::Outline => None,
+        let (raster, leftover) = match plan.mode {
+            GlyphMode::Mask => self.place_mask(run, paragraph, origin, color),
+            GlyphMode::Outline => (Vec::new(), None),
         };
-        let glyphs: &[RenderedGlyph] = match leftover.as_deref() {
-            Some([]) => return,
-            Some(slice) => slice,
-            None => run.positioned_glyphs(),
+        let glyphs: &[RenderedGlyph] = leftover
+            .as_deref()
+            .unwrap_or_else(|| run.positioned_glyphs());
+        let instances = if glyphs.is_empty() {
+            Vec::new()
+        } else {
+            self.outline_instances(glyphs, paragraph, (origin, transform), (color, clip))
         };
+        if raster.is_empty() && instances.is_empty() {
+            return;
+        }
+        self.ctx.pending.glyphs.push(QueuedGlyphs {
+            run: QueuedRun { instances, clip },
+            raster,
+            bounds,
+        });
+    }
+
+    fn outline_instances(
+        &mut self,
+        glyphs: &[RenderedGlyph],
+        paragraph: &Paragraph,
+        (origin, transform): ((f32, f32), crate::renderer::scene_command::Transform),
+        (color, clip): (Color, Option<crate::geometry::Rect>),
+    ) -> Vec<GlyphInstance> {
         let ctx = &mut self.ctx;
         let pipeline = slug_pipeline_for(ctx.slug_pipelines, ctx.device, ctx.format);
-        let instances = pipeline.instances_for(
+        pipeline.instances_for(
             glyphs,
             &DrawParams {
                 device: ctx.device,
@@ -128,41 +151,28 @@ impl Walk<'_> {
                 color: Some(color),
                 clip,
             },
-        );
-        self.ctx.pending.glyphs.push(QueuedGlyphs {
-            run: QueuedRun { instances, clip },
-            bounds,
-        });
+        )
     }
 
-    fn raster_pass(
+    fn place_mask(
         &mut self,
         run: &GlyphRun,
+        paragraph: &Paragraph,
         origin: (f32, f32),
         color: Color,
-        clip: Option<crate::geometry::Rect>,
-    ) -> Option<Vec<RenderedGlyph>> {
-        let paragraph = run.paragraph()?;
-        self.finish();
-        let glyphs = run.positioned_glyphs();
+    ) -> (Vec<RasterInstance>, Option<Vec<RenderedGlyph>>) {
         let ctx = &mut self.ctx;
         let pipeline = raster_pipeline_for(ctx.raster_pipelines, ctx.device, ctx.format);
-        Some(pipeline.record_paragraph(
-            ctx.encoder,
-            &RasterDrawParams {
-                device: ctx.device,
-                queue: ctx.queue,
-                view: ctx.view,
-                surface_width: ctx.viewport.0,
-                surface_height: ctx.viewport.1,
-                scale: ctx.scale,
-                paragraph,
-                glyphs,
-                origin,
-                color,
-                clip,
-            },
-        ))
+        let (raster, leftover) = pipeline.place_paragraph(&RasterDrawParams {
+            device: ctx.device,
+            queue: ctx.queue,
+            scale: ctx.scale,
+            paragraph,
+            glyphs: run.positioned_glyphs(),
+            origin,
+            color,
+        });
+        (raster, Some(leftover))
     }
 
     pub(super) fn flush_glyphs(&mut self) {
@@ -170,11 +180,17 @@ impl Walk<'_> {
             return;
         }
         self.flush_shapes();
+        self.flush_raster();
         let ctx = &mut self.ctx;
         let pending = &mut *ctx.pending;
-        pending
-            .runs
-            .extend(pending.glyphs.drain(..).map(|queued| queued.run));
+        pending.runs.extend(
+            pending
+                .glyphs
+                .drain(..)
+                .map(|queued| queued.run)
+                .filter(|run| !run.instances.is_empty()),
+        );
+        ctx.stats.text_draws += ctx.pending.runs.len();
         let pipeline = slug_pipeline_for(ctx.slug_pipelines, ctx.device, ctx.format);
         pipeline.record_runs_in_frame(
             &mut *ctx.encoder,
@@ -189,6 +205,48 @@ impl Walk<'_> {
             Some(&mut *ctx.stats),
         );
         ctx.pending.runs.clear();
+    }
+
+    fn flush_raster(&mut self) {
+        let ctx = &mut self.ctx;
+        let pending = &mut *ctx.pending;
+        pending.raster.clear();
+        pending.raster_groups.clear();
+        for queued in &mut pending.glyphs {
+            if queued.raster.is_empty() {
+                continue;
+            }
+            let start = u32::try_from(pending.raster.len()).unwrap_or(u32::MAX);
+            pending.raster.append(&mut queued.raster);
+            let end = u32::try_from(pending.raster.len()).unwrap_or(u32::MAX);
+            let clip = queued.run.clip;
+            match pending.raster_groups.last_mut() {
+                Some(group) if group.clip == clip && group.range.end == start => {
+                    group.range.end = end;
+                }
+                _ => pending.raster_groups.push(RasterGroup {
+                    clip,
+                    range: start..end,
+                }),
+            }
+        }
+        if pending.raster.is_empty() {
+            return;
+        }
+        ctx.stats.text_draws += pending.raster_groups.len();
+        let pipeline = raster_pipeline_for(ctx.raster_pipelines, ctx.device, ctx.format);
+        pipeline.draw_batch(
+            &mut *ctx.encoder,
+            &RasterFrame {
+                device: ctx.device,
+                view: ctx.view,
+                surface_width: ctx.viewport.0,
+                surface_height: ctx.viewport.1,
+                scale: ctx.scale,
+            },
+            &mut pending.raster,
+            &pending.raster_groups,
+        );
     }
 }
 

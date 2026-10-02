@@ -1,7 +1,9 @@
 use smallvec::SmallVec;
 
+mod reason;
 mod regions;
 
+pub(crate) use reason::{FullReason, note_plan};
 use regions::regions;
 
 use crate::animation_runtime::linear_channel_to_srgb;
@@ -39,7 +41,7 @@ pub(crate) struct Retained {
 pub(crate) enum Plan {
     Unchanged,
     Regions(Regions),
-    Full,
+    Full(FullReason),
 }
 
 pub(crate) type Regions = SmallVec<[Rect; MAX_REGIONS]>;
@@ -50,8 +52,14 @@ impl Retained {
     }
 
     pub(crate) fn plan(&self, key: &FrameKey, scene: &CommandScene) -> Plan {
-        if self.key != *key || key.clear.a < 1.0 {
-            return Plan::Full;
+        if key.clear.a < 1.0 {
+            return Plan::Full(FullReason::TranslucentClear);
+        }
+        if self.key.viewport != key.viewport {
+            return Plan::Full(FullReason::ViewportResized);
+        }
+        if self.key != *key {
+            return Plan::Full(FullReason::KeyChanged);
         }
         let area = Rect::new(Point::new(0.0, 0.0), key.viewport.0, key.viewport.1);
         scene_damage(&self.scene, scene, area, key.scale)
@@ -68,7 +76,7 @@ pub(crate) fn scene_damage(
     if after.iter().any(
         |command| matches!(command, SceneCommand::PushLayer(scope) if !local_effect(scope.effect)),
     ) {
-        return Plan::Full;
+        return Plan::Full(FullReason::NonLocalLayerEffect);
     }
     let prefix = before.iter().zip(after).take_while(|(a, b)| a == b).count();
     if prefix == before.len() && prefix == after.len() {
@@ -85,7 +93,7 @@ pub(crate) fn scene_damage(
     let (old, new) = align(before, after, prefix, suffix);
     let changed_count = old.iter().chain(&new).filter(|mark| **mark).count();
     if after.len() >= MIN_SHARE_SCENE && changed_count * MAX_CHANGED_SHARE > after.len() * 2 {
-        return Plan::Full;
+        return Plan::Full(FullReason::ChangedShare);
     }
     let mut inks: SmallVec<[Rect; 16]> = SmallVec::new();
     for (commands, marks) in [(before, &old), (after, &new)] {
@@ -95,7 +103,7 @@ pub(crate) fn scene_damage(
             .map_or(0, |last| last + 1);
         let changed = |index: usize| marks.get(index).copied().unwrap_or(false);
         if changed_ink(commands, end, &changed, (area, scale), &mut inks).is_none() {
-            return Plan::Full;
+            return Plan::Full(FullReason::UnboundedChange);
         }
     }
     regions(&inks, area, scale)

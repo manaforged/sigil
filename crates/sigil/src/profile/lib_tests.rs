@@ -1,12 +1,9 @@
-use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::sync::MutexGuard;
 
 use super::*;
 
 fn lock() -> MutexGuard<'static, ()> {
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| Mutex::new(()))
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
+    exclusive()
 }
 
 #[test]
@@ -155,4 +152,47 @@ fn app_workload_keys_record_under_their_names() {
     assert_eq!(Counter::WorkloadFps.name(), "workload.fps");
     assert_eq!(Counter::BuildProfile.name(), "build.profile");
     disable();
+}
+
+#[test]
+fn summary_names_who_caused_the_cost_and_the_gpu_passes() {
+    let _gate = lock();
+    enable();
+    reset();
+    for _ in 0..2 {
+        begin_frame(BackendStatus {
+            kind: BackendKind::Gpu,
+            fallback: FallbackCause::None,
+        });
+        attribute(Hotspot::LayoutDirtySeed, 1, || {
+            "Button \"Start\"".to_owned()
+        });
+        attribute(Hotspot::LayoutDirtySeed, 1, || {
+            "Button \"Start\"".to_owned()
+        });
+        gpu_pass("scene paint pass", 2_000_000);
+        tick_frame();
+    }
+    let last = frames().last().cloned().expect("frame");
+    assert_eq!(
+        last.hot,
+        vec![Attribution {
+            hotspot: Hotspot::LayoutDirtySeed,
+            subject: "Button \"Start\"".to_owned(),
+            count: 2,
+        }],
+        "the same subject merges within a frame"
+    );
+    let report = summary();
+    disable();
+    assert!(report.contains("budget 8.33ms"), "{report}");
+    assert!(
+        report.contains("layout.dirty.seed")
+            && report.contains("Button \"Start\" \u{d7}2/frame (2 frames)"),
+        "{report}"
+    );
+    assert!(
+        report.contains("gpu passes") && report.contains("scene paint pass"),
+        "{report}"
+    );
 }

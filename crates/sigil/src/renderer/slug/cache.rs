@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use ahash::{AHashMap, AHashSet};
 
 use super::bands::BandData;
 use crate::hal::RenderedGlyph;
@@ -30,14 +30,16 @@ pub(super) struct CachedGlyph {
 }
 
 pub(super) struct GlyphCache {
-    map: HashMap<GlyphKey, CachedGlyph>,
+    map: AHashMap<GlyphKey, CachedGlyph>,
+    empty: AHashSet<GlyphKey>,
     generation: u64,
 }
 
 impl GlyphCache {
     pub(super) fn new() -> Self {
         Self {
-            map: HashMap::new(),
+            map: AHashMap::new(),
+            empty: AHashSet::new(),
             generation: 0,
         }
     }
@@ -51,7 +53,11 @@ impl GlyphCache {
     }
 
     pub(super) fn contains(&self, key: &GlyphKey) -> bool {
-        self.map.contains_key(key)
+        self.map.contains_key(key) || self.empty.contains(key)
+    }
+
+    pub(super) fn mark_empty(&mut self, key: GlyphKey) {
+        self.empty.insert(key);
     }
 
     pub(super) fn insert(&mut self, key: GlyphKey, band_data: BandData) {

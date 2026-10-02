@@ -1,18 +1,21 @@
 use std::time::{Duration, Instant};
 
 use sigil::Host;
-use sigil::app::{AccessibilityTree, FrameHooks};
+use sigil::app::{AccessibilityTree, FrameHooks, FrameInfo, FramePaintHook};
 use sigil::events::EventRouter;
 use sigil::events::ShellEvent;
 use sigil::prelude::*;
+use sigil::profile::{self, BackendKind, BackendStatus, FallbackCause};
 use sigil::reactive::Runtime;
 use sigil::reactive::{__test_clear_clock, __test_set_clock, Owner, next_interval_deadline};
 use sigil::tasks::AsyncRuntime;
 use sigil::terminal::Screen;
 
 use crate::Error;
+use gpu_surface::{GPU_STATUS, GpuSurface};
 
 mod actions;
+mod gpu_surface;
 mod query;
 mod snapshot;
 
@@ -32,7 +35,9 @@ enum Surface {
     },
     Pixels {
         size: (u32, u32),
+        fallback: FallbackCause,
     },
+    Gpu(Box<GpuSurface>),
 }
 
 impl Surface {
@@ -42,7 +47,19 @@ impl Surface {
                 f32::from(size.0) * Host::CELL,
                 f32::from(size.1) * Host::CELL,
             ),
-            Self::Pixels { size } => (crate::extent_f32(size.0), crate::extent_f32(size.1)),
+            Self::Pixels { size, .. } => (crate::extent_f32(size.0), crate::extent_f32(size.1)),
+            Self::Gpu(gpu) => gpu.viewport,
+        }
+    }
+
+    const fn backend(&self) -> BackendStatus {
+        match self {
+            Self::Cells { .. } => BackendStatus::TERMINAL,
+            Self::Pixels { fallback, .. } => BackendStatus {
+                kind: BackendKind::Cpu,
+                fallback: *fallback,
+            },
+            Self::Gpu(_) => GPU_STATUS,
         }
     }
 }
@@ -94,7 +111,23 @@ impl Harness {
         self.host = Host::new();
         self.surface = Surface::Pixels {
             size: (width, height),
+            fallback: FallbackCause::None,
         };
+        self
+    }
+
+    #[must_use]
+    pub fn gpu(mut self, width: u32, height: u32, scale: f32) -> Self {
+        self.host = Host::new();
+        if let Some(gpu) = GpuSurface::open(width, height, scale).unwrap_or_else(|err| fail(err)) {
+            self.surface = Surface::Gpu(Box::new(gpu));
+        } else {
+            eprintln!("sigil-kittest: no GPU adapter; gpu surface falls back to pixels");
+            self.surface = Surface::Pixels {
+                size: (width, height),
+                fallback: FallbackCause::NoAdapter,
+            };
+        }
         self
     }
 
@@ -111,7 +144,10 @@ impl Harness {
     fn frame(&mut self, events: Vec<ShellEvent>) -> Result<(), Error> {
         let _ = self.tasks.pump();
         let owner = self.owner;
-        owner.with(|| self.paint(events))
+        profile::begin_frame(self.surface.backend());
+        let painted = owner.with(|| self.paint(events));
+        profile::tick_frame();
+        painted
     }
 
     fn paint(&mut self, events: Vec<ShellEvent>) -> Result<(), Error> {
@@ -119,21 +155,27 @@ impl Harness {
             Surface::Cells { screen, size } => screen
                 .frame(&mut self.host, &mut self.router, events, *size)
                 .map(|_| ()),
-            Surface::Pixels { size } => {
+            Surface::Pixels { size, .. } => {
                 let viewport = (crate::extent_f32(size.0), crate::extent_f32(size.1));
-                let hooks = FrameHooks {
-                    input: Some(Box::new(
-                        move |host: &mut Host, router: &mut EventRouter| {
-                            for event in events {
-                                host.route(router, event);
-                            }
-                        },
-                    )),
-                    ..FrameHooks::default()
-                };
                 self.host
-                    .frame(&mut self.router, viewport, FRAME_DT, hooks)
+                    .frame(&mut self.router, viewport, FRAME_DT, hooks(events, None))
                     .layout
+            }
+            Surface::Gpu(gpu) => {
+                let viewport = gpu.viewport;
+                let paint: FramePaintHook<'_> =
+                    Box::new(|host: &mut Host, _: &mut EventRouter, _: &FrameInfo| gpu.paint(host));
+                let layout = self
+                    .host
+                    .frame(
+                        &mut self.router,
+                        viewport,
+                        FRAME_DT,
+                        hooks(events, Some(paint)),
+                    )
+                    .layout;
+                gpu.take_error()?;
+                layout
             }
         };
         layout.map_err(|err| Error::Layout(err.to_string()))
@@ -227,6 +269,22 @@ impl Harness {
 #[allow(clippy::panic, reason = "a harness step that fails fails the test")]
 pub(crate) fn fail(message: impl std::fmt::Display) -> ! {
     panic!("{message}")
+}
+
+fn hooks(events: Vec<ShellEvent>, paint: Option<FramePaintHook<'_>>) -> FrameHooks<'_> {
+    FrameHooks {
+        input: Some(Box::new(
+            move |host: &mut Host, router: &mut EventRouter| {
+                let _effect = sigil::profile::span(sigil::profile::Phase::Effect);
+                for event in events {
+                    sigil::profile::note_input(&event);
+                    host.route(router, event);
+                }
+            },
+        )),
+        paint,
+        ..FrameHooks::default()
+    }
 }
 
 fn busy() -> bool {

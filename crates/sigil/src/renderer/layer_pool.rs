@@ -4,6 +4,7 @@ use wgpu::TextureUsages;
 use crate::profile::{count, count_add, enabled, gauge};
 
 const DIM_ALIGN: u32 = 16;
+const BUDGET_SCREENS: u64 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayerError {
@@ -37,11 +38,15 @@ impl LayerPool {
     }
 
     pub(crate) fn prepare(&mut self, texture: &wgpu::Texture) {
-        let budget = Self::bytes((texture.width(), texture.height()), texture.format());
+        let budget = Self::budget_for_target((texture.width(), texture.height()));
         self.budget = Some(budget);
         self.trim(budget);
         gauge(crate::profile::Counter::GpuLayerCacheBudgetBytes, budget);
         self.record_profile();
+    }
+
+    pub(crate) fn budget_for_target(extent: (u32, u32)) -> u64 {
+        Self::bytes(extent, crate::renderer::scene_instance::LAYER_FORMAT) * BUDGET_SCREENS
     }
 
     pub(crate) fn bytes(extent: (u32, u32), format: wgpu::TextureFormat) -> u64 {

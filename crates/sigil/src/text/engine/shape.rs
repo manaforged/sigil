@@ -1,3 +1,4 @@
+use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::text::glyph::GlyphRun;
@@ -21,7 +22,7 @@ pub(super) struct ShapedSegment {
 }
 
 pub(super) fn mark_break_opportunities(text: &str, segments: &mut [ShapedSegment]) {
-    let mut allowed = vec![false; text.len().saturating_add(1)];
+    let mut allowed = SmallVec::<[bool; 128]>::from_elem(false, text.len().saturating_add(1));
     for (index, opportunity) in unicode_linebreak::linebreaks(text) {
         if matches!(opportunity, unicode_linebreak::BreakOpportunity::Allowed)
             && let Some(slot) = allowed.get_mut(index)
@@ -163,8 +164,8 @@ struct FaceSpan {
     face_slot: u16,
 }
 
-fn coalesce_face_spans(chain: &[Font], fragment: &str) -> Vec<FaceSpan> {
-    let mut spans: Vec<FaceSpan> = Vec::new();
+fn coalesce_face_spans(chain: &[Font], fragment: &str) -> SmallVec<[FaceSpan; 4]> {
+    let mut spans = SmallVec::<[FaceSpan; 4]>::new();
     for (offset, cluster) in fragment.grapheme_indices(true) {
         let (face_slot, _) = select_face(chain, cluster);
         let end = offset + cluster.len();

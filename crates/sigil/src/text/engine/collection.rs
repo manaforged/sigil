@@ -3,6 +3,7 @@ use crate::text::error::TextError;
 use crate::text::font_family::FontFamily;
 use crate::text::fonts::DefaultFontSource;
 use crate::text::shaper::{Font, Script};
+use smallvec::SmallVec;
 
 const OBLIQUE_SKEW: f32 = 0.2;
 
@@ -148,17 +149,15 @@ impl FontCollection {
 
     #[must_use]
     pub(crate) fn fallback_chain(&self, primary: &Font, weight: u16, text: &str) -> Vec<Font> {
+        self.chain_for(primary, weight, &chain_scripts(text))
+    }
+
+    #[must_use]
+    pub(crate) fn chain_for(&self, primary: &Font, weight: u16, scripts: &[Script]) -> Vec<Font> {
         let mut chain: Vec<Font> = vec![primary.clone()];
-        let mut scripts: Vec<Script> = Vec::new();
-        for script in text.chars().map(super::char_script) {
-            if !crate::text::script_fonts::candidates(script).is_empty()
-                && !scripts.contains(&script)
-            {
-                scripts.push(script);
-            }
-        }
         let system: Vec<Font> = scripts
-            .into_iter()
+            .iter()
+            .copied()
             .flat_map(crate::text::system_fonts::script_fallbacks)
             .collect();
         let candidates = [
@@ -180,6 +179,18 @@ impl FontCollection {
         }
         chain
     }
+}
+
+pub(crate) type ChainScripts = SmallVec<[Script; 4]>;
+
+pub(crate) fn chain_scripts(text: &str) -> ChainScripts {
+    let mut scripts = ChainScripts::new();
+    for script in text.chars().map(super::char_script) {
+        if !crate::text::script_fonts::candidates(script).is_empty() && !scripts.contains(&script) {
+            scripts.push(script);
+        }
+    }
+    scripts
 }
 
 fn load_sans_font() -> Font {

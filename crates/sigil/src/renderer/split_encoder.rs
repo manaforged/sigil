@@ -1,3 +1,5 @@
+mod timing;
+
 use std::mem::replace;
 
 use crate::profile::count;
@@ -14,6 +16,8 @@ use crate::renderer::slug::SLUG_INSTANCE_BYTES;
 use crate::renderer::sprite_paint::SpriteInstance;
 use crate::style::Color;
 
+pub(crate) use timing::GpuTimer;
+
 pub(crate) const MAX_PASSES_PER_SUBMISSION: u32 = 1_024;
 
 pub(crate) struct SplitEncoder {
@@ -27,6 +31,7 @@ pub(crate) struct SplitEncoder {
     uploads: UploadBuffers,
     uniform_alignment: u64,
     storage_alignment: u64,
+    timer: Option<GpuTimer>,
 }
 
 impl SplitEncoder {
@@ -46,6 +51,20 @@ impl SplitEncoder {
             uploads: UploadBuffers::default(),
             uniform_alignment: u64::from(device.limits().min_uniform_buffer_offset_alignment),
             storage_alignment: u64::from(device.limits().min_storage_buffer_offset_alignment),
+            timer: None,
+        }
+    }
+
+    pub(crate) fn time_passes(&mut self, timer: &mut Option<GpuTimer>) {
+        if !crate::profile::enabled() || !GpuTimer::supported(&self.device) {
+            return;
+        }
+        let mut owned = timer.take().unwrap_or_default();
+        if owned.begin(&self.device, &self.queue) {
+            owned.mark_start(&self.device, &mut self.encoder);
+            self.timer = Some(owned);
+        } else {
+            *timer = Some(owned);
         }
     }
 
@@ -168,24 +187,9 @@ impl SplitEncoder {
         None
     }
 
-    fn open_cleared(
-        &mut self,
-        desc: &wgpu::RenderPassDescriptor<'_>,
-        color: Color,
-    ) -> wgpu::RenderPass<'static> {
-        let mut attachments = desc.color_attachments.to_vec();
-        if let Some(Some(first)) = attachments.first_mut()
-            && first.ops.load == wgpu::LoadOp::Load
-        {
-            first.ops.load = wgpu::LoadOp::Clear(clear_value(color));
-        }
-        let mut cleared = desc.clone();
-        cleared.color_attachments = &attachments;
-        self.encoder.begin_render_pass(&cleared).forget_lifetime()
-    }
-
     pub(crate) fn begin_render_pass(
         &mut self,
+        label: &'static str,
         desc: &wgpu::RenderPassDescriptor<'_>,
     ) -> &mut wgpu::RenderPass<'static> {
         let fold = self.take_fold(desc);
@@ -222,10 +226,9 @@ impl SplitEncoder {
             self.passes = 1;
         }
         self.target = target.cloned();
-        self.pass = Some(match fold {
-            Some(color) => self.open_cleared(desc, color),
-            None => self.encoder.begin_render_pass(desc).forget_lifetime(),
-        });
+        let timed = self.timer.as_mut().and_then(|timer| timer.next(label));
+        let labelled = timed_desc(desc, label, timed.as_ref());
+        self.pass = Some(open_pass(&mut self.encoder, &labelled, fold));
         self.pass.as_mut().expect("render pass just started")
     }
 
@@ -240,13 +243,26 @@ impl SplitEncoder {
         );
     }
 
-    pub(crate) fn submit(mut self) -> UploadBuffers {
+    pub(crate) fn submit(mut self) -> (UploadBuffers, Option<GpuTimer>) {
         self.flush_clear();
         drop(self.pass.take());
         self.flush();
+        if let Some(timer) = self.timer.as_mut() {
+            timer.terminate(&self.device, &mut self.encoder);
+        }
         self.queue.submit(core::iter::once(self.encoder.finish()));
+        if let Some(timer) = self.timer.as_mut() {
+            let mut resolve = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("sigil-renderer timestamp resolve"),
+                });
+            timer.resolve(&self.device, &mut resolve);
+            self.queue.submit(core::iter::once(resolve.finish()));
+            timer.submitted();
+        }
         self.uploads.reset();
-        self.uploads
+        (self.uploads, self.timer)
     }
 
     pub(crate) fn into_inner(mut self) -> wgpu::CommandEncoder {
@@ -261,6 +277,40 @@ impl SplitEncoder {
         self.uploads.uniforms.flush(&self.queue);
         self.uploads.storage.flush(&self.queue);
     }
+}
+
+fn timed_desc<'a>(
+    desc: &wgpu::RenderPassDescriptor<'a>,
+    label: &'static str,
+    timed: Option<&'a (wgpu::QuerySet, u32)>,
+) -> wgpu::RenderPassDescriptor<'a> {
+    let mut labelled = desc.clone();
+    labelled.label = Some(label);
+    labelled.timestamp_writes = timed.map(|(queries, index)| wgpu::RenderPassTimestampWrites {
+        query_set: queries,
+        beginning_of_pass_write_index: Some(*index),
+        end_of_pass_write_index: None,
+    });
+    labelled
+}
+
+fn open_pass(
+    encoder: &mut wgpu::CommandEncoder,
+    desc: &wgpu::RenderPassDescriptor<'_>,
+    fold: Option<Color>,
+) -> wgpu::RenderPass<'static> {
+    let Some(color) = fold else {
+        return encoder.begin_render_pass(desc).forget_lifetime();
+    };
+    let mut attachments = desc.color_attachments.to_vec();
+    if let Some(Some(first)) = attachments.first_mut()
+        && first.ops.load == wgpu::LoadOp::Load
+    {
+        first.ops.load = wgpu::LoadOp::Clear(clear_value(color));
+    }
+    let mut cleared = desc.clone();
+    cleared.color_attachments = &attachments;
+    encoder.begin_render_pass(&cleared).forget_lifetime()
 }
 
 pub(crate) fn clear_value(color: Color) -> wgpu::Color {

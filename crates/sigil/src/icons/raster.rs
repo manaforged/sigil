@@ -1,10 +1,9 @@
-use smallvec::SmallVec;
-
 use crate::icons::bands::{BandBuffer, NUM_BANDS};
 use crate::icons::parser::ViewBox;
 use crate::icons::quadratic::QuadCurve;
 
 const SS: u32 = 4;
+const CROSSING_CODES: u32 = 0x2E74;
 
 pub(super) fn rasterize(
     band_buf: &BandBuffer,
@@ -71,46 +70,48 @@ fn y_to_band(vy: f32, buf: &BandBuffer, view_box: ViewBox) -> usize {
 fn winding_number(vx: f32, vy: f32, band: &[QuadCurve]) -> i32 {
     let mut winding = 0_i32;
     for curve in band {
-        for param in quad_y_roots(vy, curve) {
-            if quad_eval_x(param, curve) > vx {
-                let dy = quad_dy_dt(param, curve);
-                if dy > 0.0 {
-                    winding += 1;
-                } else if dy < 0.0 {
-                    winding -= 1;
-                }
-            }
+        let crossing = crossing_code(vy, curve);
+        if crossing == 0 {
+            continue;
+        }
+        let (first, second) = quad_y_roots(vy, curve);
+        if crossing & 1 != 0 && quad_eval_x(first, curve) > vx {
+            winding += 1;
+        }
+        if crossing > 1 && quad_eval_x(second, curve) > vx {
+            winding -= 1;
         }
     }
     winding
 }
 
-fn quad_y_roots(vy: f32, curve: &QuadCurve) -> SmallVec<[f32; 2]> {
-    let (y0, y1, y2) = (curve.start.1, curve.control.1, curve.end.1);
+fn crossing_code(vy: f32, curve: &QuadCurve) -> u32 {
+    let above = |y: f32| u32::from(y > vy);
+    let shift =
+        (above(curve.start.1) << 1) | (above(curve.control.1) << 2) | (above(curve.end.1) << 3);
+    (CROSSING_CODES >> shift) & 3
+}
+
+fn quad_y_roots(vy: f32, curve: &QuadCurve) -> (f32, f32) {
+    let y0 = curve.start.1 - vy;
+    let y1 = curve.control.1 - vy;
+    let y2 = curve.end.1 - vy;
     let coeff_a = 2.0_f32.mul_add(-y1, y0) + y2;
-    let coeff_b = 2.0 * (y1 - y0);
-    let coeff_c = y0 - vy;
-    let mut roots = SmallVec::<[f32; 2]>::new();
-    if coeff_a.abs() < 1e-6 {
-        if coeff_b.abs() > 1e-6 {
-            let root = -coeff_c / coeff_b;
-            if (0.0..=1.0).contains(&root) {
-                roots.push(root);
-            }
-        }
+    let coeff_b = y0 - y1;
+    let root = coeff_b.mul_add(coeff_b, -coeff_a * y0).max(0.0).sqrt();
+    let far = if coeff_b >= 0.0 {
+        coeff_b + root
     } else {
-        let discriminant = (4.0 * coeff_a).mul_add(-coeff_c, coeff_b * coeff_b);
-        if discriminant >= 0.0 {
-            let sq = discriminant.sqrt();
-            for &sign in &[-1.0_f32, 1.0] {
-                let root = sign.mul_add(sq, -coeff_b) / (2.0 * coeff_a);
-                if (0.0..=1.0).contains(&root) {
-                    roots.push(root);
-                }
-            }
-        }
-    }
-    roots
+        coeff_b - root
+    };
+    let near = y0 / if far == 0.0 { 1.0 } else { far };
+    let wide = far / if coeff_a == 0.0 { 1.0 } else { coeff_a };
+    let (first, second) = if coeff_b >= 0.0 {
+        (near, wide)
+    } else {
+        (wide, near)
+    };
+    (first.clamp(0.0, 1.0), second.clamp(0.0, 1.0))
 }
 
 fn quad_eval_x(param: f32, curve: &QuadCurve) -> f32 {
@@ -119,12 +120,6 @@ fn quad_eval_x(param: f32, curve: &QuadCurve) -> f32 {
         curve.start.0,
         (2.0 * inv * param).mul_add(curve.control.0, param * param * curve.end.0),
     )
-}
-
-fn quad_dy_dt(param: f32, curve: &QuadCurve) -> f32 {
-    let (y0, y1, y2) = (curve.start.1, curve.control.1, curve.end.1);
-    let curvature = 2.0_f32.mul_add(-y1, y0) + y2;
-    2.0 * curvature.mul_add(param, y1 - y0)
 }
 
 fn box_filter(src: &[u8], src_w: u32, out_w: u32, out_h: u32) -> Vec<u8> {

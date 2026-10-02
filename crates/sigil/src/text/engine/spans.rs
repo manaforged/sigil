@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use smallvec::SmallVec;
+
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::bidi;
@@ -15,7 +19,7 @@ use super::shape::{
 pub(super) struct ShapeSpan {
     pub(super) start: usize,
     pub(super) end: usize,
-    pub(super) chain: Vec<Font>,
+    pub(super) chain: Arc<[Font]>,
     pub(super) style: Style,
     pub(super) slot: u16,
 }
@@ -30,7 +34,7 @@ pub(super) fn shape_segments(
     let span = ShapeSpan {
         start: 0,
         end: text.len(),
-        chain: chain.to_vec(),
+        chain: Arc::from(chain),
         style: style.clone(),
         slot: 0,
     };
@@ -46,7 +50,7 @@ pub(super) fn shape_spans(
         return Vec::new();
     }
     let levels = paragraph_bidi.levels();
-    let mut out: Vec<ShapedSegment> = Vec::new();
+    let mut out: Vec<ShapedSegment> = Vec::with_capacity(text.len().min(32));
     for (word_start, fragment) in text.split_word_bound_indices() {
         if fragment.is_empty() {
             continue;
@@ -100,9 +104,9 @@ fn hard_break(start: usize, len: usize) -> ShapedSegment {
 
 type Piece<'a> = (usize, usize, &'a str, u16, bool);
 
-fn pieces<'a>(text: &str, style: &'a TextStyle) -> Vec<Piece<'a>> {
+fn pieces<'a>(text: &str, style: &'a TextStyle) -> SmallVec<[Piece<'a>; 4]> {
     let base = (style.font_family.as_str(), style.font_weight, style.italic);
-    let mut out = Vec::new();
+    let mut out = SmallVec::new();
     let mut at = 0;
     for run in style.runs.iter().flat_map(|runs| runs.0.iter()) {
         let start = run.start.min(text.len());
@@ -128,17 +132,18 @@ fn pieces<'a>(text: &str, style: &'a TextStyle) -> Vec<Piece<'a>> {
     out
 }
 
-type Chain<'a> = (&'a str, u16, bool, u16, Vec<Font>);
+type Chain<'a> = (&'a str, u16, bool, u16, Arc<[Font]>);
 
 pub(super) fn style_spans(
     fonts: &FontCollection,
     text: &str,
     style: &TextStyle,
     shaper: &Style,
-) -> (Vec<ShapeSpan>, Vec<FaceSpec>) {
-    let mut chains: Vec<Chain<'_>> = Vec::new();
-    let mut faces: Vec<FaceSpec> = Vec::new();
-    let mut spans = Vec::new();
+    chain_of: &mut impl FnMut(&Font, u16) -> Arc<[Font]>,
+) -> (SmallVec<[ShapeSpan; 2]>, SmallVec<[FaceSpec; 8]>) {
+    let mut chains = SmallVec::<[Chain<'_>; 2]>::new();
+    let mut faces = SmallVec::<[FaceSpec; 8]>::new();
+    let mut spans = SmallVec::<[ShapeSpan; 2]>::new();
     for (start, end, family, weight, italic) in pieces(text, style) {
         let known = chains
             .iter()
@@ -146,7 +151,7 @@ pub(super) fn style_spans(
             .map(|entry| (entry.3, entry.4.clone()));
         let (slot, chain) = known.unwrap_or_else(|| {
             let (primary, skew) = fonts.select_face(family, weight, italic);
-            let chain = fonts.fallback_chain(primary, weight, text);
+            let chain = chain_of(primary, weight);
             let slot = u16::try_from(faces.len()).unwrap_or(u16::MAX);
             faces.extend(chain.iter().map(|font| FaceSpec {
                 font: font.clone(),

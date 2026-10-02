@@ -28,20 +28,18 @@ pub(crate) fn to_quads(paths: &[SvgPath]) -> Result<Vec<QuadCurve>, BakeError> {
     const TOLERANCE: f32 = 0.5;
     let mut quads: Vec<QuadCurve> = Vec::new();
     let mut cursor = (0.0_f32, 0.0_f32);
+    let mut start = cursor;
 
     for path in paths {
         for seg in &path.segments {
             match *seg {
                 PathSegment::MoveTo(p) => {
+                    close(&mut quads, cursor, start);
                     cursor = (p.x, p.y);
+                    start = cursor;
                 }
                 PathSegment::LineTo(p) => {
-                    let mid = (f32::midpoint(cursor.0, p.x), f32::midpoint(cursor.1, p.y));
-                    quads.push(QuadCurve {
-                        start: cursor,
-                        control: mid,
-                        end: (p.x, p.y),
-                    });
+                    quads.push(line(cursor, (p.x, p.y)));
                     cursor = (p.x, p.y);
                 }
                 PathSegment::QuadTo(ctrl, end) => {
@@ -64,9 +62,14 @@ pub(crate) fn to_quads(paths: &[SvgPath]) -> Result<Vec<QuadCurve>, BakeError> {
                     });
                     cursor = (end.x, end.y);
                 }
-                PathSegment::Close => {}
+                PathSegment::Close => {
+                    close(&mut quads, cursor, start);
+                    cursor = start;
+                }
             }
         }
+        close(&mut quads, cursor, start);
+        cursor = start;
     }
 
     let count = u32::try_from(quads.len()).unwrap_or(u32::MAX);
@@ -74,6 +77,20 @@ pub(crate) fn to_quads(paths: &[SvgPath]) -> Result<Vec<QuadCurve>, BakeError> {
         return Err(BakeError::TooManySegments(count));
     }
     Ok(quads)
+}
+
+const fn line(from: (f32, f32), to: (f32, f32)) -> QuadCurve {
+    QuadCurve {
+        start: from,
+        control: (f32::midpoint(from.0, to.0), f32::midpoint(from.1, to.1)),
+        end: to,
+    }
+}
+
+fn close(quads: &mut Vec<QuadCurve>, cursor: (f32, f32), start: (f32, f32)) {
+    if cursor != start {
+        quads.push(line(cursor, start));
+    }
 }
 
 #[cfg(any(test, feature = "kittest"))]

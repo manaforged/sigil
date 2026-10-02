@@ -97,8 +97,8 @@ pub const fn is_typography_atom(atom: crate::style::StyleAtom) -> bool {
 
 impl TextStyle {
     #[must_use]
-    pub fn layered_over_binding(base: &Self, binding: &crate::style::StyleBinding) -> Option<Self> {
-        if !(binding.cascade().any(is_typography_atom)
+    pub(crate) fn binding_layers_text(binding: &crate::style::StyleBinding) -> bool {
+        binding.cascade().any(is_typography_atom)
             || binding.animator_overlay().is_some_and(|overlay| {
                 overlay
                     .value_for(crate::style::NumericAtomKind::FontSize)
@@ -106,8 +106,11 @@ impl TextStyle {
                     || overlay
                         .value_for(crate::style::NumericAtomKind::LineHeight)
                         .is_some()
-            }))
-        {
+            })
+    }
+
+    pub fn layered_over_binding(base: &Self, binding: &crate::style::StyleBinding) -> Option<Self> {
+        if !Self::binding_layers_text(binding) {
             return None;
         }
         let mut layered = base.clone();

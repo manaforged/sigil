@@ -51,7 +51,7 @@ pub(crate) fn shape_full(
         Direction::LeftToRight
     };
 
-    let mut buffer = UnicodeBuffer::new();
+    let mut buffer = SCRATCH.with_borrow_mut(Option::take).unwrap_or_default();
     buffer.push_str(segment.text);
     buffer.set_direction(direction);
     buffer.set_script(hr_script);
@@ -71,10 +71,17 @@ pub(crate) fn shape_full(
         .features(&features);
     let glyphs_buf = hr_shaper.shape(buffer, options);
     if glyphs_buf.is_empty() {
+        recycle(glyphs_buf);
         return None;
     }
 
-    let skrifa_font = FontRef::from_index(bytes.as_slice(), font.face_index()).ok()?;
+    let run = scaled_run(&glyphs_buf, bytes.as_slice(), style, font);
+    recycle(glyphs_buf);
+    run
+}
+
+fn scaled_run(glyphs: &GlyphBuffer, bytes: &[u8], style: &Style, font: &Font) -> Option<GlyphRun> {
+    let skrifa_font = FontRef::from_index(bytes, font.face_index()).ok()?;
     let size = Size::new(style.size_px.max(1.0));
     let location = font.location(style.weight, style.size_px);
     let face_metrics = skrifa_font.metrics(size, LocationRef::new(location.coords()));
@@ -84,8 +91,11 @@ pub(crate) fn shape_full(
     } else {
         1.0
     };
+    Some(build_glyph_run(glyphs, scale, &face_metrics))
+}
 
-    Some(build_glyph_run(&glyphs_buf, scale, &face_metrics))
+fn recycle(glyphs: GlyphBuffer) {
+    SCRATCH.with_borrow_mut(|slot| *slot = Some(glyphs.clear()));
 }
 
 fn shaper_instance(font_ref: &HrFontRef<'_>, style: &Style, font: &Font) -> ShaperInstance {
@@ -109,6 +119,7 @@ struct Key {
 }
 
 thread_local! {
+    static SCRATCH: RefCell<Option<UnicodeBuffer>> = const { RefCell::new(None) };
     static PLANS: RefCell<HashMap<Key, Rc<ShapePlan>>> = RefCell::new(HashMap::new());
 }
 

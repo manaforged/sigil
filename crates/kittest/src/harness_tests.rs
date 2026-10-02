@@ -140,3 +140,22 @@ fn expect_text_waits_for_a_task() {
     assert!(ui.query(&Query::text("done")).is_none());
     ui.expect_text("done");
 }
+
+#[test]
+fn harness_frames_are_profiled_with_layout_time() {
+    let mut ui = Harness::new(counter).pixels(320, 200);
+    ui.settle();
+    sigil::profile::enable();
+    sigil::profile::reset();
+    ui.click("Increment");
+    let frames = sigil::profile::frames();
+    sigil::profile::disable();
+    assert!(!frames.is_empty(), "harness frames must reach the profiler");
+    assert!(
+        frames.iter().any(|frame| frame
+            .phases
+            .iter()
+            .any(|(phase, _)| *phase == sigil::profile::Phase::Layout)),
+        "a profiled frame reports its layout time"
+    );
+}

@@ -12,7 +12,7 @@ fn manifest_dir() -> String {
 
 impl Harness {
     pub fn image(&mut self) -> Rendered {
-        let Surface::Pixels { size } = self.live().surface else {
+        let Surface::Pixels { size, .. } = self.live().surface else {
             return Err(Error::Render(
                 "image needs a pixel harness; call .pixels(width, height)".to_owned(),
             ));

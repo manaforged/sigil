@@ -28,3 +28,7 @@ wgpu = { workspace = true }
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "frame_scenarios"
+harness = false

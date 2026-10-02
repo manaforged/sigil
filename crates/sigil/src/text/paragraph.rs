@@ -178,7 +178,7 @@ pub(crate) struct TextMetrics {
     pub line_height: f32,
 }
 
-struct FaceEntry {
+pub(crate) struct FaceEntry {
     bytes: Arc<Vec<u8>>,
     index: u32,
     id: u64,
@@ -187,6 +187,15 @@ struct FaceEntry {
 }
 
 const OBLIQUE_ID: u64 = 1 << 63;
+
+pub(crate) type FaceTable = Rc<[FaceEntry]>;
+
+pub(crate) fn face_table(faces: &[FaceSpec], size_px: f32) -> FaceTable {
+    faces
+        .iter()
+        .map(|face| FaceEntry::new(face, size_px))
+        .collect()
+}
 
 impl FaceEntry {
     fn new(face: &FaceSpec, size_px: f32) -> Self {
@@ -212,7 +221,7 @@ struct ParagraphInner {
     lines: Vec<LayoutLine>,
     font_size: f32,
     line_height: f32,
-    fonts: Vec<FaceEntry>,
+    fonts: FaceTable,
     min_content_hint: f32,
     content_widths: Cell<Option<ContentWidths>>,
     ink: OnceCell<Option<Rect>>,
@@ -227,13 +236,9 @@ impl Paragraph {
     pub(crate) fn new(
         lines: Vec<LayoutLine>,
         metrics: TextMetrics,
-        faces: &[FaceSpec],
+        fonts: FaceTable,
         min_content_hint: f32,
     ) -> Self {
-        let fonts: Vec<FaceEntry> = faces
-            .iter()
-            .map(|face| FaceEntry::new(face, metrics.font_size))
-            .collect();
         Self {
             inner: Rc::new(ParagraphInner {
                 lines,

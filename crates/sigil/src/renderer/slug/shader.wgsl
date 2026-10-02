@@ -13,6 +13,7 @@ const BANDS:           u32 = 16u;
 const MAX_CURVES:      u32 = 32u;
 const FLOATS_PER_BAND: u32 = 193u;
 const HBAND_FLOATS:    u32 = BANDS * FLOATS_PER_BAND;
+const CROSSING_CODES:  u32 = 0x2E74u;
 
 struct VertexOutput {
     @builtin(position)              clip_pos:     vec4<f32>,
@@ -68,12 +69,13 @@ fn edge_coverage(edge_x: f32, sample_x: f32, width: f32) -> f32 {
     return clamp((edge_x - sample_x) * width + 0.5, 0.0, 1.0);
 }
 
-fn root_hit(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p: vec2<f32>, px: vec2<f32>, t: f32, hit: ptr<function, RayHit>) {
+fn root_hit(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p: vec2<f32>, px: vec2<f32>, root: f32, winding: f32, hit: ptr<function, RayHit>) {
+    let t  = clamp(root, 0.0, 1.0);
     let mt = 1.0 - t;
     let bx = mt * mt * p0.x + 2.0 * mt * t * p1.x + t * t * p2.x;
     let d  = ((2.0 * t - 2.0) * p0 + (2.0 - 4.0 * t) * p1 + 2.0 * t * p2) * px;
     let dy = d.y;
-    (*hit).cov += edge_coverage(bx, p.x, px.x) * sign(dy);
+    (*hit).cov += edge_coverage(bx, p.x, px.x) * winding;
     let dist = abs(bx - p.x) * px.x;
     if dist < (*hit).dist {
         (*hit).dist   = dist;
@@ -82,32 +84,27 @@ fn root_hit(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p: vec2<f32>, px: vec2<
 }
 
 fn quad_coverage(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p: vec2<f32>, px: vec2<f32>, hit: ptr<function, RayHit>) {
-    let a = p0.y - 2.0 * p1.y + p2.y;
-    let b = 2.0 * (p1.y - p0.y);
-    let c = p0.y - p.y;
+    let y0 = p0.y - p.y;
+    let y1 = p1.y - p.y;
+    let y2 = p2.y - p.y;
+    let shift = select(0u, 2u, y0 > 0.0) + select(0u, 4u, y1 > 0.0) + select(0u, 8u, y2 > 0.0);
+    let code  = (CROSSING_CODES >> shift) & 3u;
+    if code == 0u { return; }
 
-    if abs(a) < 1e-6 {
-        if abs(b) > 1e-6 {
-            let t = -c / b;
-            if t >= 0.0 && t < 1.0 {
-                root_hit(p0, p1, p2, p, px, t, hit);
-            }
-        }
-        return;
+    let a    = y0 - 2.0 * y1 + y2;
+    let b    = y0 - y1;
+    let d    = sqrt(max(b * b - a * y0, 0.0));
+    let far  = select(b - d, b + d, b >= 0.0);
+    let near = y0 / select(far, 1.0, far == 0.0);
+    let wide = far / select(a, 1.0, a == 0.0);
+    let t1   = select(wide, near, b >= 0.0);
+    let t2   = select(near, wide, b >= 0.0);
+
+    if (code & 1u) != 0u {
+        root_hit(p0, p1, p2, p, px, t1, 1.0, hit);
     }
-
-    let disc = b * b - 4.0 * a * c;
-    if disc < 0.0 { return; }
-    let sq    = sqrt(disc);
-    let inv2a = 0.5 / a;
-
-    let t1 = (-b - sq) * inv2a;
-    if t1 >= 0.0 && t1 < 1.0 {
-        root_hit(p0, p1, p2, p, px, t1, hit);
-    }
-    let t2 = (-b + sq) * inv2a;
-    if t2 >= 0.0 && t2 < 1.0 {
-        root_hit(p0, p1, p2, p, px, t2, hit);
+    if code > 1u {
+        root_hit(p0, p1, p2, p, px, t2, -1.0, hit);
     }
 }
 

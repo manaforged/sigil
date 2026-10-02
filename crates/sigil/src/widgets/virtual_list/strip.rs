@@ -10,9 +10,10 @@ use crate::reactive::{Signal, derived, effect_named, signal as signal_of};
 use super::measure::{Measure, Tops, row_key_of};
 use super::render::{WidthSpec, place_row, with_selection};
 use super::selection::SelectionRuntime;
-use super::window::{RowHeights, VisibleWindow, page_rows, strip_height, visible_window};
+use super::window::{RowHeights, VisibleWindow, covers, page_rows, strip_height, visible_window};
 
 type MountedRows = RefCell<Vec<(u64, NodeId)>>;
+type KeyedRow = (u64, Option<Box<dyn IntoNode>>);
 
 pub(super) struct BoundStrip<T, R> {
     pub render: Rc<R>,
@@ -46,7 +47,7 @@ where
     let mut strip = container()
         .layout(strip_layout(&spec))
         .position_reactive(pos);
-    for (_, row) in first {
+    for row in first.into_iter().filter_map(|(_, row)| row) {
         strip = strip.child(row);
     }
     strip.on_added(move |cx, parent| {
@@ -150,6 +151,9 @@ where
         if self.primed.replace(false) {
             return;
         }
+        if !stale && keeps_window(self.signal, y, &self.spec, self.window.get()) {
+            return;
+        }
         let next = mounted_window(self.signal, y, &self.spec);
         if !stale && next == self.window.get() {
             return;
@@ -167,11 +171,12 @@ where
     }
 }
 
-fn mounted_window<S, T, R>(
+fn raw_window<S, T, R>(
     signal: Signal<S>,
     scroll_y: f32,
     spec: &BoundStrip<T, R>,
-) -> VisibleWindow
+    overscan: usize,
+) -> (VisibleWindow, usize)
 where
     S: Deref + Clone + 'static,
     S::Target: AsRef<[T]>,
@@ -181,7 +186,7 @@ where
     let window = spec.tops.map_or_else(
         || {
             let heights = RowHeights::fixed(slice.len(), spec.row_height);
-            visible_window(scroll_y, heights, spec.viewport_height, spec.overscan)
+            visible_window(scroll_y, heights, spec.viewport_height, overscan)
         },
         |tops| {
             let tops = tops.peek();
@@ -189,19 +194,43 @@ where
                 scroll_y,
                 RowHeights::Tops(&tops),
                 spec.viewport_height,
-                spec.overscan,
+                overscan,
             )
         },
     );
+    (window, slice.len())
+}
+
+fn mounted_window<S, T, R>(
+    signal: Signal<S>,
+    scroll_y: f32,
+    spec: &BoundStrip<T, R>,
+) -> VisibleWindow
+where
+    S: Deref + Clone + 'static,
+    S::Target: AsRef<[T]>,
+{
+    let (window, total) = raw_window(signal, scroll_y, spec, spec.overscan);
     let block = mount_block(spec.viewport_height, spec.row_height);
     VisibleWindow {
         first: window.first / block * block,
-        end: window
-            .end
-            .div_ceil(block)
-            .saturating_mul(block)
-            .min(slice.len()),
+        end: window.end.div_ceil(block).saturating_mul(block).min(total),
     }
+}
+
+fn keeps_window<S, T, R>(
+    signal: Signal<S>,
+    scroll_y: f32,
+    spec: &BoundStrip<T, R>,
+    mounted: VisibleWindow,
+) -> bool
+where
+    S: Deref + Clone + 'static,
+    S::Target: AsRef<[T]>,
+{
+    let (visible, total) = raw_window(signal, scroll_y, spec, 0);
+    let margin = mount_block(spec.viewport_height, spec.row_height);
+    covers(mounted, visible, margin, total)
 }
 
 const MOUNT_BLOCKS_PER_PAGE: usize = 4;
@@ -216,7 +245,7 @@ fn keyed_rows<S, T, R>(
     spec: &BoundStrip<T, R>,
     generation: u64,
     mounted: Option<&MountedRows>,
-) -> Vec<(u64, Box<dyn IntoNode>)>
+) -> Vec<KeyedRow>
 where
     S: Deref + Clone + 'static,
     S::Target: AsRef<[T]>,
@@ -236,13 +265,13 @@ where
         );
         let kept = mounted.is_some_and(|mounted| mounted.borrow().iter().any(|(k, _)| *k == key));
         if kept {
-            rows.push((key, node(container())));
+            rows.push((key, None));
             continue;
         }
         let cache_key = row_key_of(spec.row_key.as_ref(), index, item);
         rows.push((
             key,
-            node(deferred_row(items.clone(), index, cache_key, spec)),
+            Some(node(deferred_row(items.clone(), index, cache_key, spec))),
         ));
     }
     rows

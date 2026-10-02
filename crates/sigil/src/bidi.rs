@@ -106,7 +106,7 @@ impl<'a> ParagraphBidi<'a> {
         line_start: usize,
         line_end: usize,
         segment_ends: &[u32],
-    ) -> Vec<usize> {
+    ) -> SmallVec<[usize; 16]> {
         if segment_ends.len() <= 1 {
             return (0..segment_ends.len()).collect();
         }
@@ -126,7 +126,7 @@ impl<'a> ParagraphBidi<'a> {
                     .map_or(0, unicode_bidi::Level::number)
             })
             .collect();
-        visual_order(&levels)
+        SmallVec::from_vec(visual_order(&levels))
     }
 }
 

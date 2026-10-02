@@ -954,6 +954,7 @@ Public items outside the prelude. Import them by path.
 | `kernel::announce` | `fn announce(text: impl Into<String>)` | Queue a polite screen-reader announcement; the next frame posts it to the live region. |
 | `kernel::announce_assertive` | `fn announce_assertive(text: impl Into<String>)` | Queue an assertive announcement that interrupts the screen reader. |
 | `kernel::Cx::dump_tree` | `fn dump_tree(&self, root: NodeId) -> String` | Indented text of the node tree below `root`, for debugging. |
+| `kernel::Cx::describe` | `fn describe(&self, id: NodeId) -> String` | A short label for one node: its role, then its accessible name, its text, or the nearest named ancestor. Profiler attributions use it. |
 | `reactive::debug::dump_owner_tree` | `fn dump_owner_tree() -> String` | Indented text of every reactive owner with its name and source location, for debugging leaks. |
 | `reactive::debug::dump_subtree` | `fn dump_subtree(owner: OwnerId) -> String` | `dump_owner_tree` for one owner and its children. |
 | `animation::Spring::with_epsilons` | `fn with_epsilons(self, value: f32, velocity: f32) -> Self` | Rest thresholds of a spring. Both must be positive; it panics otherwise. |
@@ -1035,6 +1036,7 @@ Public items outside the prelude. Import them by path.
 | `app::DefaultTextMeasure` | `struct DefaultTextMeasure`; `fn new() -> Self` | `TextMeasure` implementation backed by the thread text engine. Layout uses it to size text nodes. |
 | `app::is_grid` | `fn is_grid() -> bool` | `true` on a cell grid (terminal) host. |
 | `app::viewport_size` | `fn viewport_size() -> Signal<LogicalSize>` | The viewport size in logical px. A terminal cell is `Host::CELL` px. |
+| `app::display_scale` | `fn display_scale() -> Signal<f32>` | Physical pixels per logical px of the window, user zoom included. It is 1.0 outside a host. Size raster work such as image decodes with it. |
 | `app::set_theme` | `fn set_theme(theme: Theme)` | Replace the active theme at the next frame. |
 | `app::parse_theme` | `fn parse_theme(input: &str) -> Option<Theme>` | Parse a theme TOML document. |
 | `app::watch_theme` | `fn watch_theme(path: impl Into<PathBuf>) -> AppResult<ThemeWatcher>` | Reload a theme file when it changes. |
@@ -1061,6 +1063,7 @@ Public items outside the prelude. Import them by path.
 | `app::HostCaps` | `struct HostCaps` | Same as `sigil::app::HostCaps`. |
 | `app::is_grid` | `fn is_grid() -> bool` | Same as `sigil::app::is_grid`. |
 | `app::viewport_size` | `fn viewport_size() -> Signal<LogicalSize>` | Same as `sigil::app::viewport_size`. |
+| `app::display_scale` | `fn display_scale() -> Signal<f32>` | Same as `sigil::app::display_scale`. |
 | `app::parse_theme` | `fn parse_theme(input: &str) -> Option<Theme>` | Same as `sigil::app::parse_theme`. |
 | `app::Player` | `struct Player` | Same as `sigil::app::Player` (feature `audio`). |
 | `app::Session` | `struct Session` | Same as `sigil::app::Session` (feature `pty`). |
@@ -1174,7 +1177,7 @@ fn main() -> AppResult<()> {
 | --- | --- | --- |
 | `kernel::Live`, `kernel::SortDirection` | re-exports of `accesskit::Live`, `accesskit::SortDirection` | AccessKit values for live-region politeness and column sort state in accessibility props. |
 | `kernel::HostMode` | `enum HostMode { Pixel, Cell }` | Tells widgets whether the host lays out in pixels (window) or in terminal cells. Default is `Pixel`. |
-| `kernel::schedule_keyed_rebuild` | `fn schedule_keyed_rebuild<K: Clone + Eq + Hash + 'static, N: IntoNode + 'static>(parent: NodeId, prior: Rc<RefCell<Vec<(K, NodeId)>>>, incoming: Vec<(K, N)>)` | Queues a keyed reconcile of the children of `parent`. Children with a known key keep their node; new keys mount and missing keys unmount. |
+| `kernel::schedule_keyed_rebuild` | `fn schedule_keyed_rebuild<K: Clone + Eq + Hash + 'static, N: IntoNode + 'static>(parent: NodeId, prior: Rc<RefCell<Vec<(K, NodeId)>>>, incoming: Vec<(K, Option<N>)>)` | Queues a keyed reconcile of the children of `parent`. Children with a known key keep their node; new keys mount and missing keys unmount. Pass `None` for a key that is already mounted to keep it without building a node. |
 | `kernel::FocusScopeKind` | `enum FocusScopeKind { Modal, Popup, Inert }` | Kind of focus scope on a node: a modal traps focus, a popup closes on focus loss, and inert content takes no focus. |
 | `kernel::TextCursor` | `struct TextCursor { caret: Signal<usize>, anchor: Signal<Option<usize>> }` | Caret and selection anchor of an editable text node, exported to accessibility. |
 | `kernel::Node` | `struct Node` | A node in the tree, as `NodeBuilder::mutate` sees it. |
@@ -1218,18 +1221,23 @@ fn main() -> AppResult<()> {
 | Name | Signature | Purpose |
 | --- | --- | --- |
 | `profile::Category` | `enum Category { Layout, Paint, Render, A11y, Reactive, App }` (`name()`) | Groups profile phases by subsystem for reports and the frame HUD. |
-| `profile::Phase` | `enum Phase { Effect, Layout, LayoutSolve, ..., Paint, RenderCpu, A11y, TuiPaint, TuiRaster, TuiWrite, TuiPresent }` (`name()`, `category()`) | Names one timed stage of a frame. `category()` returns its `Category`. |
+| `profile::Phase` | `enum Phase { Effect, Layout, LayoutSolve, ..., Paint, RenderCpu, A11y, TuiPaint, TuiRaster, TuiWrite, TuiPresent, Gpu, GpuWait, RenderPlan, RenderEncode, RenderRetain, RenderSubmit }` (`name()`, `category()`) | Names one timed stage of a frame. `category()` returns its `Category`. `Gpu` is GPU execution time from timestamp queries; `GpuWait` is time a headless host blocks on the GPU. The `Render*` phases split renderer CPU time into the damage plan, command encoding, the retained scene copy, and the queue submit. |
 | `profile::Counter`, `profile::Cause`, `profile::BackendKind`, `profile::FallbackCause` | `#[non_exhaustive] enum` with `name() -> &'static str` | Name a per-frame counter, the event that caused a frame, the active renderer backend, and why the host fell back from the GPU backend. |
 | `profile::BackendStatus` | `struct BackendStatus { kind: BackendKind, fallback: FallbackCause }`; `const TERMINAL` | Records which backend renders the frame and the fallback cause, if any. |
 | `profile::PhaseTime`, `profile::CounterValue` | `type PhaseTime = (Phase, u64)`; `type CounterValue = (Counter, u64)` | Pair a phase with its time in nanoseconds, and a counter with its value. |
 | `profile::Span` | `struct Span` (drop guard) | Measures one phase from creation until drop. Create it with `profile::span`. |
-| `profile::Frame` | `struct Frame { index: u32, cause: Cause, wall_ns: u64, phases: Vec<PhaseTime>, counts: Vec<CounterValue>, backend: Option<BackendStatus> }`; `counter`, `total_ns`, `hottest` | Holds the recorded timings and counters of one frame. |
-| `profile::FRAME_BUDGET_NS`, `profile::INTERACT_BUDGET_NS` | `const FRAME_BUDGET_NS: u64 = 16_670_000`; `const INTERACT_BUDGET_NS: u64 = 200_000_000` | Set the frame time budget (60 Hz) and the input-to-frame latency budget that reports compare against. |
+| `profile::Frame` | `struct Frame { index: u32, cause: Cause, wall_ns: u64, end_us: u64, phases: Vec<PhaseTime>, counts: Vec<CounterValue>, hot: Vec<Attribution>, gpu_passes: Vec<(&'static str, u64)>, backend: Option<BackendStatus> }`; `counter`, `total_ns`, `hottest` | Holds the recorded timings, counters, attributions, and GPU pass times of one frame. |
+| `profile::FRAME_BUDGET_NS`, `profile::INTERACT_BUDGET_NS` | `const FRAME_BUDGET_NS: u64 = 16_670_000`; `const INTERACT_BUDGET_NS: u64 = 200_000_000` | The 60 Hz frame budget and the input-to-frame latency budget. Reports compare frames against `frame_budget_ns`. |
+| `profile::frame_budget_ns`, `profile::BUDGET_ENV`, `profile::DEFAULT_BUDGET_MS` | `fn frame_budget_ns() -> u64`; `const BUDGET_ENV: &str = "SIGIL_PROFILE_BUDGET_MS"`; `const DEFAULT_BUDGET_MS: f64 = 8.33` | The frame budget that reports use: `SIGIL_PROFILE_BUDGET_MS` in milliseconds, or 8.33 ms (120 Hz). It is read once. |
+| `profile::Hotspot`, `profile::Attribution` | `#[non_exhaustive] enum Hotspot { LayoutDirtyKernel, LayoutDirtySeed, LayoutResized, LayoutRoot, EmitResolved, GpuLayer, GpuFullRepaint, RowRebuild }` (`name()`); `struct Attribution { hotspot: Hotspot, subject: String, count: u64 }` | Name what caused a cost and who caused it. The summary's `why` section lists the top subjects per hotspot. |
+| `profile::attribute`, `profile::MAX_SUBJECTS`, `profile::OTHER_SUBJECT` | `fn attribute(hotspot: Hotspot, n: u64, subject: impl FnOnce() -> String)`; `const MAX_SUBJECTS: usize = 64`; `const OTHER_SUBJECT: &str = "(other)"` | Add `n` to `subject` under `hotspot` in the current frame. `subject` runs only while profiling is on. Past `MAX_SUBJECTS` distinct subjects per hotspot, new ones count under `OTHER_SUBJECT`. |
+| `profile::gpu_pass` | `fn gpu_pass(label: &'static str, ns: u64)` | Add GPU execution time for one render pass to the current frame and to `Phase::Gpu`. The renderer calls it from timestamp queries. |
 | `profile::enable`, `profile::disable`, `profile::enabled`, `profile::reset` | `fn enable()`; `fn disable()`; `fn enabled() -> bool`; `fn reset()` | Turn frame recording on or off, query it, and clear recorded frames. |
 | `profile::begin_frame`, `profile::tick_frame` | `fn begin_frame(backend: BackendStatus)`; `fn tick_frame()` | Open a new recorded frame with its backend status, and close the current frame. Hosts call these once per frame. |
 | `profile::span` | `fn span(phase: Phase) -> Span` | Starts timing `phase` in the current frame. |
 | `profile::count`, `profile::count_add`, `profile::gauge` | `fn count(counter: Counter)`; `fn count_add(counter: Counter, n: u64)`; `fn gauge(counter: Counter, value: u64)` | Add one or `n` to a counter, or set it to a value, in the current frame. |
 | `profile::interact` | `fn interact(cause: Cause)` | Marks the next frame as caused by `cause` so the report can measure input latency. |
+| `profile::note_input` | `fn note_input(event: &ShellEvent)` | Marks the current frame with the cause that matches an input event: pointer press, hover, key, scroll, IME, or resize. Hosts and the test harness call it for each routed event. The summary breaks each cause down by phase. |
 | `profile::dump`, `profile::dump_if_enabled` | `fn dump(path: impl AsRef<Path>) -> io::Result<()>`; `fn dump_if_enabled()` | Write recorded frames as a Chrome trace file and print a summary. `dump_if_enabled` writes to the path set by the environment, if any. |
 | `profile::frames`, `profile::summary` | `fn frames() -> Vec<Frame>`; `fn summary() -> String` | Return the recorded frames, and a text summary of them. |
 
@@ -1256,6 +1264,7 @@ fn main() -> AppResult<()> {
 | Name | Signature | Purpose |
 | --- | --- | --- |
 | `renderer::WgpuRenderer` | `struct WgpuRenderer; fn new() -> Result<Self, RendererError>; fn render_command_scene(&mut self, surface: &mut WgpuSurface, scene: &CommandScene, clear_color: Color, viewport: (f32, f32)) -> Result<(), RendererError>; fn render_command_scene_offscreen(&mut self, target: OffscreenTarget<'_>, scene: &CommandScene, clear_color: Color) -> Result<(), RendererError>; fn device/queue/instance` | The GPU renderer. It draws a `CommandScene` to a window surface or an offscreen texture and rebuilds the device after device loss. |
+| `renderer::WgpuRenderer::drain_gpu_timings` | `fn drain_gpu_timings(&mut self)` | Report finished GPU timestamp results to the profiler. A headless caller calls it after a blocking `device.poll` to get GPU pass times in the same frame. |
 | `renderer::WgpuSurface` | `struct WgpuSurface; const fn size(&self) -> PhysicalSize; const fn format(&self) -> wgpu::TextureFormat` | A configured GPU window surface that `WgpuRenderer` presents to. |
 | `renderer::CpuRenderer`, `renderer::CpuSurface` | `struct CpuRenderer; fn new() -> Self; fn render(&mut self, scene: &CommandScene, clear: Color, viewport: (f32, f32), size: PhysicalSize) -> Result<Pixmap, RendererError>; fn render_command_scene(&mut self, surface: &mut CpuSurface, scene, clear, viewport) -> Result<(), RendererError>`; `CpuSurface::size(&self) -> PhysicalSize` | The software renderer (feature `cpu`, selected by `SIGIL_BACKEND=cpu`). It draws the same `CommandScene` to a pixmap or a window buffer. |
 | `renderer::OffscreenTarget` | `struct OffscreenTarget<'a> { device: &wgpu::Device, queue: &wgpu::Queue, view: &wgpu::TextureView, format: wgpu::TextureFormat, viewport: (f32, f32), scale: f32 }` | A caller-owned texture target for `WgpuRenderer::render_command_scene_offscreen`. |
@@ -1571,6 +1580,7 @@ Package `sigil-kittest`, library `sigil_kittest`. Guide: [Testing](guide/testing
 | Name | Signature | Purpose |
 | --- | --- | --- |
 | `sigil_kittest::Harness` | `Harness::new(app: impl IntoNode + 'static) -> Harness`; `.size(cols: u16, rows: u16)`; `.pixels(width: u32, height: u32)` | Mounts a tree on a headless host with a task runtime installed. `size` uses the terminal cell host (default 80×24); `pixels` uses the window host and renders offscreen through wgpu. Each frame applies finished task results. |
+| `Harness::gpu` | `fn gpu(self, width: u32, height: u32, scale: f32) -> Self` | Paint every frame through the GPU renderer into an offscreen texture at `scale` and wait for the GPU, so profiles include emit, submit, and GPU time. Without a GPU adapter it falls back to `pixels`. Every harness frame is a profile frame. |
 | `Harness::send`, `Harness::settle`, `Harness::advance` | `fn send(&mut self, events: impl IntoIterator<Item = ShellEvent>) -> &mut Self`; `fn settle(&mut self) -> &mut Self`; `fn advance(&mut self, by: Duration) -> &mut Self` | Route events through `Host::frame` and run frames until no signal write or animation is pending (at most `SETTLE_SAFETY_CAP` frames). `advance` moves the virtual interval clock and runs 1/60 s frames across `by`. |
 | `Harness::click`, `hover`, `scroll`, `drag` | `fn click(&mut self, target: &(impl Target + ?Sized)) -> &mut Self`; `fn scroll(&mut self, target: &(impl Target + ?Sized), lines: f32)`; `fn drag(&mut self, from: &(impl Target + ?Sized), to: &(impl Target + ?Sized))` | Pointer actions at the centre of a labelled control, a `Node`, or a `Point` (layout points). A label waits up to `EXPECT_TIMEOUT` for its control. Each action settles. |
 | `Harness::press`, `press_with`, `type_text`, `type_into`, `focus_next`, `focus_previous` | `fn press(&mut self, key: impl Into<LogicalKey>) -> &mut Self`; `fn press_with(&mut self, key, modifiers: ModifiersState)`; `fn type_text(&mut self, text: &str)`; `fn type_into(&mut self, label: &str, text: &str)` | Key down and up, one key per character, or Tab and Shift+Tab. `type_into` clicks the control with that label, then types. Each action settles. |

@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use crate::bidi;
 use crate::text::paragraph::{LayoutLine, SegmentAppend};
 use crate::text::shaper::{Shaper, Style};
@@ -23,25 +25,42 @@ impl LineStrut {
 }
 
 struct PendingLine<'a> {
-    segs: Vec<&'a ShapedSegment>,
+    segs: SmallVec<[&'a ShapedSegment; 16]>,
     width: f32,
+    peak: f32,
 }
 
 impl<'a> PendingLine<'a> {
-    const fn new() -> Self {
+    fn new() -> Self {
         Self {
-            segs: Vec::new(),
+            segs: SmallVec::new(),
             width: 0.0,
+            peak: 0.0,
         }
     }
 
-    const fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.segs.is_empty()
     }
 
     fn push(&mut self, seg: &'a ShapedSegment) {
         self.width += seg.advance;
+        self.peak = self.peak.max(self.width);
         self.segs.push(seg);
+    }
+}
+
+const WRAP_SLACK: f32 = 1e-3;
+
+#[derive(Clone, Copy, Default)]
+pub(super) struct LineFit {
+    pub(super) wrapped: bool,
+    pub(super) width: f32,
+}
+
+impl LineFit {
+    pub(super) fn fits(self, limit: f32) -> bool {
+        self.width - limit <= WRAP_SLACK
     }
 }
 
@@ -50,24 +69,28 @@ pub(super) fn break_lines(
     max_width: Option<f32>,
     strut: LineStrut,
     paragraph_bidi: &bidi::ParagraphBidi<'_>,
-) -> Vec<LayoutLine> {
+) -> (Vec<LayoutLine>, LineFit) {
     if segments.is_empty() {
         let mut line = LayoutLine::empty(0, strut.line_height);
         line.set_empty_byte_position(0);
         line.set_baseline_to(strut.line_height, strut.ascent, strut.descent);
-        return vec![line];
+        return (vec![line], LineFit::default());
     }
     let mut lines: Vec<LayoutLine> = Vec::new();
     let mut pending = PendingLine::new();
     let mut cursor: u32 = 0;
+    let mut fit = LineFit::default();
     for seg in segments {
         if seg.is_hard_break {
+            fit.width = fit.width.max(pending.peak);
             push_visual_line(&mut lines, &pending, strut, paragraph_bidi, cursor);
             pending = PendingLine::new();
             cursor = seg.end;
             continue;
         }
         if should_wrap(&pending, seg, max_width) {
+            fit.wrapped = true;
+            fit.width = fit.width.max(pending.peak);
             push_visual_line(&mut lines, &pending, strut, paragraph_bidi, cursor);
             pending = PendingLine::new();
             cursor = seg.start;
@@ -77,8 +100,9 @@ pub(super) fn break_lines(
         }
         pending.push(seg);
     }
+    fit.width = fit.width.max(pending.peak);
     push_visual_line(&mut lines, &pending, strut, paragraph_bidi, cursor);
-    lines
+    (lines, fit)
 }
 
 fn should_wrap(pending: &PendingLine<'_>, seg: &ShapedSegment, max_width: Option<f32>) -> bool {
@@ -91,7 +115,7 @@ fn should_wrap(pending: &PendingLine<'_>, seg: &ShapedSegment, max_width: Option
     if pending.is_empty() {
         return false;
     }
-    pending.width + seg.advance > limit
+    pending.width + seg.advance - limit > WRAP_SLACK
 }
 
 fn push_visual_line(
@@ -110,7 +134,7 @@ fn push_visual_line(
             line.set_empty_byte_position(empty_line_byte);
             (empty_line_byte, empty_line_byte)
         };
-    let segment_ends: Vec<u32> = pending.segs.iter().map(|s| s.end).collect();
+    let segment_ends: SmallVec<[u32; 16]> = pending.segs.iter().map(|s| s.end).collect();
     let order =
         paragraph_bidi.visual_order_for_line(line_start as usize, line_end as usize, &segment_ends);
     for logical_idx in order {

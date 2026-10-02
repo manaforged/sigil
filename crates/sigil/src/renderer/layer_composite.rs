@@ -187,22 +187,25 @@ fn draw(
         .textures
         .get(texture)
         .expect("layer texture initialized");
-    let pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("sigil-renderer layer composite pass"),
-        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-            view: ctx.view,
-            depth_slice: None,
-            resolve_target: None,
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Load,
-                store: wgpu::StoreOp::Store,
-            },
-        })],
-        depth_stencil_attachment: None,
-        timestamp_writes: None,
-        occlusion_query_set: None,
-        multiview_mask: None,
-    });
+    let pass = ctx.encoder.begin_render_pass(
+        "sigil-renderer layer composite pass",
+        &wgpu::RenderPassDescriptor {
+            label: None,
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: ctx.view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        },
+    );
     if !apply(pass, ctx.clip, ctx.scale, ctx.viewport) {
         return;
     }

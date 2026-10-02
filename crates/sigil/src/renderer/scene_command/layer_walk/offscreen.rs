@@ -29,7 +29,49 @@ pub(super) struct Layer {
     transform: Transform,
 }
 
+#[derive(Clone, Copy)]
+enum LayerReason {
+    RoundedClip,
+    Opacity,
+    OpacityGroup,
+    Blur,
+    Transform,
+    Other,
+}
+
+impl LayerReason {
+    const fn name(self) -> &'static str {
+        match self {
+            Self::RoundedClip => "rounded clip",
+            Self::Opacity => "opacity",
+            Self::OpacityGroup => "opacity group",
+            Self::Blur => "blur",
+            Self::Transform => "transform",
+            Self::Other => "other",
+        }
+    }
+
+    fn note(self, (width, height): (u32, u32)) {
+        crate::profile::attribute(
+            crate::profile::Hotspot::GpuLayer,
+            u64::from(width) * u64::from(height),
+            || format!("{} {width}x{height}", self.name()),
+        );
+    }
+
+    fn of(scope: &LayerScope) -> Self {
+        match scope.effect {
+            LayerEffect::Transform(_) => Self::Transform,
+            LayerEffect::LayerBlur { .. } => Self::Blur,
+            LayerEffect::Identity if scope.clip_radii != CornerRadii::ZERO => Self::RoundedClip,
+            LayerEffect::Identity if scope.opacity < 1.0 => Self::Opacity,
+            LayerEffect::Identity => Self::Other,
+        }
+    }
+}
+
 pub(super) struct LayerPlan {
+    reason: LayerReason,
     dest: Rect,
     state: SceneState,
     round: Rect,
@@ -51,6 +93,7 @@ pub(super) fn layer_plan(scope: LayerScope, target: &Target, scale: f32) -> Opti
             .state
             .transform_frame(&scope, effect, target.bounds, scale)?;
         return Some(LayerPlan {
+            reason: LayerReason::Transform,
             dest: frame.bounds,
             state: SceneState::new(Some(frame.bounds), frame.content, 1.0),
             round: frame.scope.clip,
@@ -63,6 +106,7 @@ pub(super) fn layer_plan(scope: LayerScope, target: &Target, scale: f32) -> Opti
     let bounds = target.state.layer_bounds(&scope, target.bounds)?;
     let transform = target.state.current_transform();
     Some(LayerPlan {
+        reason: LayerReason::of(&scope),
         dest: SceneState::layer_region(bounds, target.bounds, scale),
         state: SceneState::new(Some(bounds), transform, 1.0),
         round: transform_rect(transform, scope.clip),
@@ -84,6 +128,7 @@ pub(super) fn group_plan(
 ) -> Option<LayerPlan> {
     let bounds = target.state.draw_bounds(commands, target.bounds, scale)?;
     Some(LayerPlan {
+        reason: LayerReason::OpacityGroup,
         dest: bounds,
         state: target.state.group_state(bounds),
         round: bounds,
@@ -99,6 +144,7 @@ pub(super) fn open_layer(
     plan: LayerPlan,
 ) -> Result<(OpenLayer, Target), RendererError> {
     let LayerPlan {
+        reason,
         dest,
         state,
         round,
@@ -114,6 +160,7 @@ pub(super) fn open_layer(
         .acquire(ctx.device, extent.0, extent.1, LAYER_FORMAT)
         .map_err(RendererError::Layer)?;
     ctx.stats.record_offscreen(extent.0, extent.1);
+    reason.note(extent);
     ctx.encoder.clear(&handle.view, Color::TRANSPARENT);
     let parent_format = std::mem::replace(&mut ctx.format, LAYER_FORMAT);
     let target = Target {

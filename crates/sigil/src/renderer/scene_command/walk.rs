@@ -8,7 +8,7 @@ use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::frame_upload::{FrameUploads, UploadCapacities};
 use crate::renderer::layer_composite::LayerCompositePipeline;
 use crate::renderer::layer_pool::{LayerHandle, LayerPool};
-use crate::renderer::raster_paint::RasterTextPipeline;
+use crate::renderer::raster_paint::{RasterGroup, RasterInstance, RasterTextPipeline};
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::{CommandScene, SceneCommand, Transform};
 use crate::renderer::scene_instance::{FillInstance, GpuStop, RectInstance, ShadowInstance};
@@ -53,6 +53,8 @@ pub(crate) struct WalkPending {
     pub(super) decorations: Vec<DecorationInstance>,
     pub(super) glyphs: Vec<QueuedGlyphs>,
     pub(super) runs: Vec<QueuedRun>,
+    pub(super) raster: Vec<RasterInstance>,
+    pub(super) raster_groups: Vec<RasterGroup>,
 }
 
 impl WalkPending {
@@ -64,6 +66,8 @@ impl WalkPending {
         self.decorations.clear();
         self.glyphs.clear();
         self.runs.clear();
+        self.raster.clear();
+        self.raster_groups.clear();
     }
 }
 
@@ -111,6 +115,7 @@ enum Shape {
 
 pub(crate) struct QueuedGlyphs {
     pub(super) run: QueuedRun,
+    pub(super) raster: Vec<RasterInstance>,
     pub(super) bounds: Rect,
 }
 

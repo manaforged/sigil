@@ -37,7 +37,7 @@ pub struct Font {
     data: Arc<Vec<u8>>,
     index: u32,
     id: u64,
-    variations: variations::VariationModel,
+    variations: Arc<variations::VariationModel>,
     #[cfg(feature = "shaping-complex")]
     tables: Arc<OnceLock<ShaperData>>,
 }
@@ -61,7 +61,7 @@ impl Font {
 
     pub(crate) fn from_shared(data: Arc<Vec<u8>>, index: u32) -> Result<Self, ShaperError> {
         let font_ref = FontRef::from_index(&data, index).map_err(|_| ShaperError::InvalidFont)?;
-        let variations = variations::VariationModel::new(&font_ref);
+        let variations = Arc::new(variations::VariationModel::new(&font_ref));
         Ok(Self {
             data,
             index,

@@ -47,7 +47,8 @@ fn visual_order_for_line_diverges_from_paragraph_wide_reorder_at_a_wrap_point() 
     let paragraph_wide_order = visual_order(&raw_levels);
 
     assert_ne!(
-        line_aware, paragraph_wide_order,
+        line_aware.as_slice(),
+        paragraph_wide_order.as_slice(),
         "line-aware L1 reorder must differ from the paragraph-wide-levels \
          reorder at this wrap point — got {line_aware:?} for both",
     );

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::geometry::{Point, Rect};
-use crate::renderer::damage::{self, FrameKey, Plan, Retained};
+use crate::renderer::damage::{self, FrameKey, FullReason, Plan, Retained};
 use crate::renderer::device_state::ReadyState;
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
@@ -52,28 +52,50 @@ pub(crate) fn render_surface(
         format: surface.config.format,
     };
     recording.encoder.reuse_uploads(&mut ready.uploads);
+    recording.encoder.time_passes(&mut ready.gpu_timer);
     let back = (request.clear.a >= 1.0)
         .then(|| backbuffer(&ready.device, surface))
         .flatten();
+    let encode = crate::profile::span(crate::profile::Phase::RenderEncode);
     let result = if let Some(back) = back {
         draw_retained(ready, &mut recording, &back, &frame.texture, request)
     } else {
         *recording.retained = None;
-        draw(ready, &mut recording, &view, request, &Plan::Full)
+        let reason = if request.clear.a < 1.0 {
+            FullReason::TranslucentClear
+        } else {
+            FullReason::NoBackbuffer
+        };
+        draw(ready, &mut recording, &view, request, &Plan::Full(reason))
     };
     let Recording {
         encoder: split,
         layers,
         ..
     } = recording;
-    ready.uploads = Some(split.submit());
+    drop(encode);
+    let _submit = crate::profile::span(crate::profile::Phase::RenderSubmit);
+    finish(ready, split, frame, layers);
+    result
+}
+
+fn finish(
+    ready: &mut ReadyState,
+    split: SplitEncoder,
+    frame: wgpu::SurfaceTexture,
+    layers: Vec<LayerHandle>,
+) {
+    let (uploads, timer) = split.submit();
+    ready.uploads = Some(uploads);
+    if timer.is_some() {
+        ready.gpu_timer = timer;
+    }
     ready.queue.present(frame);
     if let Some(pool) = ready.layer_pool.as_mut() {
         for handle in layers {
             pool.release(handle);
         }
     }
-    result
 }
 
 fn draw_retained(
@@ -93,7 +115,9 @@ fn draw_retained(
     let plan = recording
         .retained
         .as_ref()
-        .map_or(Plan::Full, |previous| previous.plan(&key, request.scene));
+        .map_or(Plan::Full(FullReason::FirstFrame), |previous| {
+            previous.plan(&key, request.scene)
+        });
     let drawn = draw(ready, recording, &view, request, &plan);
     recording.encoder.copy_texture(back, screen);
     *recording.retained = Some(Retained::new(key, request.scene.clone()));
@@ -108,6 +132,7 @@ fn draw(
     plan: &Plan,
 ) -> Result<(), RendererError> {
     let scale = recording.scale;
+    damage::note_plan(plan);
     let (scene, redrawn) = match plan {
         Plan::Unchanged => return Ok(()),
         Plan::Regions(regions) => (
@@ -117,7 +142,7 @@ fn draw(
                 .map(|region| physical_pixels(*region, scale))
                 .sum(),
         ),
-        Plan::Full => {
+        Plan::Full(_) => {
             recording.encoder.clear(view, request.clear);
             let full = Rect::new(Point::new(0.0, 0.0), request.viewport.0, request.viewport.1);
             (Cow::Borrowed(request.scene), physical_pixels(full, scale))

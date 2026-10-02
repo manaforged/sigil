@@ -3,11 +3,11 @@ use crate::kernel::{Cx, NodeId, NodeType};
 use ahash::AHashSet;
 use smallvec::SmallVec;
 
-use crate::layout::style_data::{Dimension, Display};
+use crate::layout::style_data::{Dimension, Display, LengthPercentage, StyleData};
 use crate::layout::{LayoutError, LayoutResult, LayoutStyle};
 
-use super::LayoutEngine;
 use super::measure::to_available_space;
+use super::{LayoutEngine, TextProbe, attribution};
 
 impl LayoutEngine {
     #[allow(
@@ -37,7 +37,7 @@ impl LayoutEngine {
         Ok(roots)
     }
 
-    fn dirty_roots(
+    pub(super) fn dirty_roots(
         &mut self,
         cx: &mut Cx,
         dirty: &[NodeId],
@@ -78,6 +78,8 @@ impl LayoutEngine {
         }
         let roots = self.containment_roots(cx, &resized, root, &repositioned);
         crate::profile::count_add(crate::profile::Counter::LayoutRoots, roots.len() as u64);
+        attribution::note_resized(cx, &resized);
+        attribution::note_roots(cx, &roots, &resized);
         Ok(roots)
     }
 
@@ -102,37 +104,47 @@ impl LayoutEngine {
         Ok(())
     }
 
-    fn text_kept_size(&mut self, cx: &Cx, id: NodeId) -> bool {
-        let Some(node) = cx.get(id) else {
+    pub(super) fn text_kept_size(&mut self, cx: &Cx, id: NodeId) -> bool {
+        let Some(size) = self.text_size(cx, id) else {
             return false;
         };
-        if !matches!(node.kind, NodeType::Text { .. }) || !node.children().is_empty() {
-            return false;
+        self.text_sizes.insert(id.key(), size) == Some(size)
+    }
+
+    pub(super) fn remember_text_size(&mut self, cx: &Cx, id: NodeId) {
+        if self.text_sizes.contains_key(id.key()) {
+            return;
         }
-        let Ok(handle) = self.handle(id) else {
-            return false;
+        if let Some(size) = self.text_size(cx, id) {
+            self.text_sizes.insert(id.key(), size);
+        }
+    }
+
+    fn text_size(&mut self, cx: &Cx, id: NodeId) -> Option<TextProbe> {
+        let node = cx.get(id)?;
+        let NodeType::Text { wrap, .. } = node.kind else {
+            return None;
         };
-        let unbounded = Size {
-            width: Dim::MaxContent,
+        if !node.children().is_empty() {
+            return None;
+        }
+        let handle = self.handle(id).ok()?;
+        let saved = self.drive.stored_box(handle);
+        let probe = saved
+            .filter(|_| wrap && self.drive.style_for(handle).is_some_and(width_is_own))
+            .map(|cb| cb.w);
+        let space = Size {
+            width: probe.map_or(Dim::MaxContent, Dim::Fixed),
             height: Dim::MaxContent,
         };
-        let saved = self.drive.stored_box(handle);
-        if self
-            .drive
-            .measure_with_constraints(handle, to_available_space(unbounded))
-            .is_err()
-        {
-            return false;
-        }
+        self.drive
+            .measure_with_constraints(handle, to_available_space(space))
+            .ok()?;
         let measured = self.drive.computed_box(handle);
         if let Some(saved) = saved {
             drop(self.drive.write_box(handle, saved));
         }
-        let Some(cb) = measured else {
-            return false;
-        };
-        let size = (cb.w.to_bits(), cb.h.to_bits());
-        self.text_sizes.insert(id.key(), size) == Some(size)
+        measured.map(|cb| (probe.map(f32::to_bits), cb.w.to_bits(), cb.h.to_bits()))
     }
 
     fn clear_hidden(&mut self, cx: &mut Cx, id: NodeId) {
@@ -189,6 +201,7 @@ impl LayoutEngine {
         cx: &mut Cx,
         dirty: &mut Vec<NodeId>,
     ) -> Result<Vec<NodeId>, LayoutError> {
+        let _translate = crate::profile::span(crate::profile::Phase::LayoutTranslate);
         let moved: Vec<NodeId> = dirty
             .iter()
             .copied()
@@ -289,4 +302,19 @@ impl LayoutEngine {
         };
         definite(style.data().size.width) && definite(style.data().size.height)
     }
+}
+
+fn width_is_own(style: &StyleData) -> bool {
+    let fixed = |edge: LengthPercentage| !matches!(edge, LengthPercentage::Percent(_));
+    [style.size.width, style.min_size.width, style.max_size.width]
+        .into_iter()
+        .all(|dim| !matches!(dim, Dimension::Percent(_)))
+        && [
+            style.padding.left,
+            style.padding.right,
+            style.border.left,
+            style.border.right,
+        ]
+        .into_iter()
+        .all(fixed)
 }

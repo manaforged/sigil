@@ -49,7 +49,7 @@ impl LayoutEngine {
                 self.remeasure_and_publish(cx, root, available)?;
             }
             Pass::Full { mirrored, dirty } => {
-                note_full(mirrored, dirty);
+                note_full(cx, root, mirrored, dirty);
                 self.full_sync_and_measure(cx, root, available)?;
             }
             Pass::Incremental { structural, dirty } => {

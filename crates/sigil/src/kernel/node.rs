@@ -125,11 +125,13 @@ pub struct NodeExtensions {
 impl NodeExtensions {
     pub fn attach<T: 'static>(&mut self, value: T) -> Option<T> {
         let tid = TypeId::of::<T>();
-        for entry in &mut self.entries {
-            if entry.0 == tid {
-                let previous = core::mem::replace(&mut entry.1, Box::new(value));
-                return Self::downcast_box::<T>(previous);
-            }
+        if let Some(slot) = self
+            .entries
+            .iter_mut()
+            .find(|entry| entry.0 == tid)
+            .and_then(|entry| entry.1.downcast_mut::<T>())
+        {
+            return Some(core::mem::replace(slot, value));
         }
         self.entries.push((tid, Box::new(value)));
         None

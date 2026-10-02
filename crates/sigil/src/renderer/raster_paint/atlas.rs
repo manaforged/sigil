@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use ahash::{AHashMap, AHashSet};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use crate::renderer::cache_limits::CacheLimits;
@@ -73,7 +73,8 @@ pub(super) struct RasterAtlas {
     grown: bool,
     frame: u64,
     compact_pending: bool,
-    cache: HashMap<RasterKey, CachedMask>,
+    cache: AHashMap<RasterKey, CachedMask>,
+    blank: AHashSet<RasterKey>,
 }
 
 impl RasterAtlas {
@@ -90,12 +91,21 @@ impl RasterAtlas {
             grown: false,
             frame: 0,
             compact_pending: false,
-            cache: HashMap::new(),
+            cache: AHashMap::new(),
+            blank: AHashSet::new(),
         }
     }
 
     pub(super) const fn view(&self) -> &wgpu::TextureView {
         &self.view
+    }
+
+    pub(super) fn is_blank(&self, key: &RasterKey) -> bool {
+        self.blank.contains(key)
+    }
+
+    pub(super) fn mark_blank(&mut self, key: RasterKey) {
+        self.blank.insert(key);
     }
 
     pub(super) fn get(&mut self, key: &RasterKey) -> Option<Placement> {
@@ -107,6 +117,7 @@ impl RasterAtlas {
     pub(super) fn begin_frame(&mut self, queue: &wgpu::Queue) {
         self.frame += 1;
         if self.compact_pending {
+            crate::profile::count(crate::profile::Counter::TextAtlasCompactions);
             self.compact_pending = false;
             self.evict_stale();
             self.repack(queue);
@@ -147,6 +158,7 @@ impl RasterAtlas {
         key: RasterKey,
         mask: GlyphMask,
     ) -> Option<Placement> {
+        crate::profile::count(crate::profile::Counter::TextAtlasMisses);
         let rect = self.alloc_or_grow(device, queue, mask.width, mask.height)?;
         upload(queue, &self.texture, rect, &mask.data);
         let cached = CachedMask {

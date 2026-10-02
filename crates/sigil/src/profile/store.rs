@@ -8,6 +8,7 @@ use web_time::Instant;
 
 use serde_json::{Value, json};
 
+use crate::profile::attr::Attribution;
 use crate::profile::event::Event;
 use crate::profile::key::{
     BackendStatus, Cause, Counter, CounterValue, Phase, PhaseTime, accumulate,
@@ -40,6 +41,9 @@ pub struct Frame {
     pub phases: Vec<PhaseTime>,
     pub counts: Vec<CounterValue>,
     pub backend: Option<BackendStatus>,
+    pub hot: Vec<Attribution>,
+    pub gpu_passes: Vec<(&'static str, u64)>,
+    pub end_us: u64,
 }
 
 impl Default for Frame {
@@ -51,6 +55,9 @@ impl Default for Frame {
             phases: Vec::new(),
             counts: Vec::new(),
             backend: None,
+            hot: Vec::new(),
+            gpu_passes: Vec::new(),
+            end_us: 0,
         }
     }
 }
@@ -228,6 +235,13 @@ pub(crate) fn gauge(counter: Counter, value: u64) {
     });
 }
 
+pub(crate) fn with_open(f: impl FnOnce(&mut Frame)) {
+    if !enabled() {
+        return;
+    }
+    STORE.with(|cell| f(&mut cell.borrow_mut().open));
+}
+
 pub(crate) fn interact(cause: Cause) {
     if !enabled() {
         return;
@@ -307,6 +321,7 @@ fn close_open_inner(store: &mut Store, warn: bool) {
         );
     }
     frame.index = store.next_index;
+    frame.end_us = end_us;
     frame.wall_ns = store.open_start.take().map_or(0, |start| {
         u64::try_from(start.elapsed().as_nanos()).unwrap_or(0)
     });
@@ -374,7 +389,7 @@ pub(crate) fn metadata() -> Value {
             "dropped_events": store.dropped_events,
             "frame_capacity": MAX_FRAMES,
             "event_capacity": MAX_EVENTS,
-            "timing": "CPU wall time; GPU execution is not measured"
+            "timing": "CPU wall time; GPU execution from timestamp queries when available"
         })
     })
 }

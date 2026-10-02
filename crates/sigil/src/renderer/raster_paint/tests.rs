@@ -75,23 +75,6 @@ fn try_headless_device() -> Option<(wgpu::Device, wgpu::Queue)> {
     Some((device, queue))
 }
 
-fn capture_texture(device: &wgpu::Device) -> wgpu::Texture {
-    device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("raster-paint-test capture"),
-        size: wgpu::Extent3d {
-            width: 128,
-            height: 48,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
-    })
-}
-
 fn find_fallback_glyph<'a>(
     paragraph: &Paragraph,
     glyphs: &'a [RenderedGlyph],
@@ -122,27 +105,20 @@ fn fallback_face_glyph_lands_in_atlas_not_leftover() {
     let fallback_glyph = find_fallback_glyph(&paragraph, &glyphs);
 
     let mut pipeline = RasterTextPipeline::new(&device, wgpu::TextureFormat::Rgba8UnormSrgb);
-    let texture = capture_texture(&device);
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("raster-paint-test encoder"),
     });
     let params = RasterDrawParams {
         device: &device,
         queue: &queue,
-        view: &view,
-        surface_width: 128.0,
-        surface_height: 48.0,
         scale: 1.0,
         paragraph: &paragraph,
         glyphs: &glyphs,
         origin: (0.0, 0.0),
         color: Color::WHITE,
-        clip: None,
     };
-    let mut encoder = crate::renderer::split_encoder::SplitEncoder::new(&device, &queue, encoder);
-    let leftover = pipeline.record_paragraph(&mut encoder, &params);
-    queue.submit(core::iter::once(encoder.into_inner().finish()));
+    let (_, leftover) = pipeline.place_paragraph(&params);
+    queue.submit(core::iter::once(encoder.finish()));
 
     assert!(
         !leftover
@@ -165,5 +141,40 @@ fn fallback_face_glyph_lands_in_atlas_not_leftover() {
     assert!(
         pipeline.atlas.get(&key).is_some(),
         "the fallback-face glyph must be present in the raster atlas cache",
+    );
+}
+
+#[allow(clippy::print_stdout)]
+#[test]
+fn every_glyph_is_cached_or_known_blank_after_one_placement() {
+    let Some((device, queue)) = try_headless_device() else {
+        println!("no adapter — skipping every_glyph_is_cached_or_known_blank_after_one_placement");
+        return;
+    };
+    let paragraph = mixed_face_paragraph();
+    let glyphs = paragraph.rendered_glyphs();
+    let mut pipeline = RasterTextPipeline::new(&device, wgpu::TextureFormat::Rgba8UnormSrgb);
+    let params = RasterDrawParams {
+        device: &device,
+        queue: &queue,
+        scale: 1.0,
+        paragraph: &paragraph,
+        glyphs: &glyphs,
+        origin: (0.0, 0.0),
+        color: Color::WHITE,
+    };
+    let _ = pipeline.place_paragraph(&params);
+    let unknown: Vec<u32> = glyphs
+        .iter()
+        .filter(|glyph| {
+            let (bin, _) = subpixel_quantize((params.origin.0 + glyph.x) * params.scale);
+            let key = RasterKey::new(glyph, glyph.size * params.scale, bin);
+            pipeline.atlas.get(&key).is_none() && !pipeline.atlas.is_blank(&key)
+        })
+        .map(|glyph| glyph.glyph_id)
+        .collect();
+    assert!(
+        unknown.is_empty(),
+        "glyphs {unknown:?} would be rasterized again on the next frame"
     );
 }

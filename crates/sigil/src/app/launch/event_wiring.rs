@@ -1,5 +1,5 @@
 use crate::events::EventRouter;
-use crate::events::{Key, KeyPhase, PointerPhase, ShellEvent, WindowEvent};
+use crate::events::{Key, KeyPhase, ShellEvent, WindowEvent};
 use crate::geometry::{PhysicalSize, Scale};
 use crate::hal::Shell as _;
 use crate::kernel::Cx;
@@ -107,7 +107,7 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
         exit_requested,
     } = ctx;
     for event in shell.drain_events() {
-        note_input(&event);
+        crate::profile::note_input(&event);
         if let ShellEvent::Window(window_event) = &event {
             let mut window_ctx = WindowEventCtx {
                 cx,
@@ -142,28 +142,6 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
     }
     if *exit_requested {
         shell.request_exit();
-    }
-}
-
-fn note_input(event: &ShellEvent) {
-    if !crate::profile::enabled() {
-        return;
-    }
-    match event {
-        ShellEvent::Pointer(pointer) => match pointer.phase {
-            PointerPhase::Down | PointerPhase::Up => {
-                crate::profile::interact(Cause::Pointer);
-            }
-            PointerPhase::Move => crate::profile::interact(Cause::Hover),
-            PointerPhase::Enter | PointerPhase::Leave | PointerPhase::Cancel => {}
-        },
-        ShellEvent::Key(_) => crate::profile::interact(Cause::Key),
-        ShellEvent::Scroll(_) => crate::profile::interact(Cause::Scroll),
-        ShellEvent::Ime(_) => crate::profile::interact(Cause::Ime),
-        ShellEvent::Window(WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged(_)) => {
-            crate::profile::interact(Cause::Resize);
-        }
-        ShellEvent::Window(_) | ShellEvent::FileDrop(_) => {}
     }
 }
 

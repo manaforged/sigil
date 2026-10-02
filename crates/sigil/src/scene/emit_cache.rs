@@ -1,10 +1,12 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use std::hash::{Hash as _, Hasher as _};
 
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Node, NodeId, NodeType, TextContent};
+use crate::style::text_identity::DiscreteTextStyle;
 use crate::style::{Rgba8, StyleBinding, TextStyle, Theme};
 use ahash::AHasher;
 
@@ -21,8 +23,66 @@ struct Entry {
     cmds: Vec<SceneCommand>,
 }
 
+struct Layered {
+    base: Rc<TextStyle>,
+    atoms: u64,
+    style: Rc<TextStyle>,
+}
+
 thread_local! {
     static CACHE: RefCell<HashMap<(u64, NodeId), Entry>> = RefCell::new(HashMap::new());
+    static LAYERED: RefCell<HashMap<u64, Layered>> = RefCell::new(HashMap::new());
+}
+
+pub(crate) fn layered_text(base: &Rc<TextStyle>, binding: &StyleBinding) -> Rc<TextStyle> {
+    let atoms = typography_key(binding);
+    let key = DiscreteTextStyle::identity(base) ^ atoms;
+    let hit = LAYERED.with_borrow(|cache| {
+        cache
+            .get(&key)
+            .filter(|entry| {
+                entry.atoms == atoms && (Rc::ptr_eq(&entry.base, base) || *entry.base == **base)
+            })
+            .map(|entry| Rc::clone(&entry.style))
+    });
+    if let Some(style) = hit {
+        return style;
+    }
+    let style =
+        Rc::new(TextStyle::layered_over_binding(base, binding).unwrap_or_else(|| (**base).clone()));
+    LAYERED.with_borrow_mut(|cache| {
+        if cache.len() >= CAP {
+            cache.clear();
+        }
+        cache.insert(
+            key,
+            Layered {
+                base: Rc::clone(base),
+                atoms,
+                style: Rc::clone(&style),
+            },
+        );
+    });
+    style
+}
+
+fn typography_key(binding: &StyleBinding) -> u64 {
+    let mut hasher = AHasher::default();
+    for atom in binding
+        .cascade()
+        .filter(|atom| crate::style::is_typography_atom(*atom))
+    {
+        atom.hash(&mut hasher);
+    }
+    if let Some(overlay) = binding.animator_overlay() {
+        for kind in [
+            crate::style::NumericAtomKind::FontSize,
+            crate::style::NumericAtomKind::LineHeight,
+        ] {
+            overlay.value_for(kind).map(f32::to_bits).hash(&mut hasher);
+        }
+    }
+    hasher.finish()
 }
 
 pub(crate) fn replay(
@@ -44,6 +104,7 @@ pub(crate) fn replay(
         {
             return false;
         }
+        crate::profile::count(crate::profile::Counter::EmitReplays);
         let (dx, dy) = origin_delta(entry.rect, rect);
         if dx == 0.0 && dy == 0.0 {
             scene.extend_commands(entry.cmds.iter().cloned());

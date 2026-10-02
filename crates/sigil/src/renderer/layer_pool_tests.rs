@@ -24,3 +24,13 @@ fn pool_starts_empty() {
 fn max_entries_constant() {
     assert_eq!(LayerPool::MAX_ENTRIES, 4);
 }
+
+#[test]
+fn a_full_screen_layer_fits_the_cache_budget() {
+    let screen = (3200, 2000);
+    let layer = LayerPool::bytes(screen, crate::renderer::scene_instance::LAYER_FORMAT);
+    assert!(
+        layer <= LayerPool::budget_for_target(screen),
+        "a full-screen layer must be retained between frames, not reallocated"
+    );
+}

@@ -11,7 +11,7 @@ use crate::reactive::{Owner, OwnerId, is_live, on_cleanup};
 
 type RebuildFn = Box<dyn FnMut(&mut Cx)>;
 type PriorNodes = SmallVec<[NodeId; 4]>;
-type KeyedIncoming<K> = Vec<(K, Box<dyn ErasedComponent>)>;
+type KeyedIncoming<K> = Vec<(K, Option<Box<dyn ErasedComponent>>)>;
 type KeyedMount<K> = (
     Vec<(K, NodeId)>,
     SmallVec<[NodeId; 4]>,
@@ -117,7 +117,7 @@ where
         let generation = generation_owner();
         let incoming: KeyedIncoming<K> = generation.with(|| {
             f().into_iter()
-                .map(|(key, child)| (key, Box::new(child) as Box<dyn ErasedComponent>))
+                .map(|(key, child)| (key, Some(Box::new(child) as Box<dyn ErasedComponent>)))
                 .collect()
         });
         let prior = Rc::clone(&prior);
@@ -163,14 +163,19 @@ fn apply_positional(
 pub fn schedule_keyed_rebuild<K, N>(
     parent: NodeId,
     prior: Rc<RefCell<Vec<(K, NodeId)>>>,
-    incoming: Vec<(K, N)>,
+    incoming: Vec<(K, Option<N>)>,
 ) where
     K: Clone + Eq + Hash + 'static,
     N: IntoNode + 'static,
 {
     let incoming: KeyedIncoming<K> = incoming
         .into_iter()
-        .map(|(key, child)| (key, Box::new(child) as Box<dyn ErasedComponent>))
+        .map(|(key, child)| {
+            (
+                key,
+                child.map(|child| Box::new(child) as Box<dyn ErasedComponent>),
+            )
+        })
         .collect();
     let mut slot = Some(incoming);
     let mut generation = GenerationGuard(None);
@@ -278,7 +283,9 @@ fn mount_keyed<K: Clone + Eq + Hash>(
         if !seen.insert(key.clone()) {
             continue;
         }
-        let (id, mounted) = take_or_mount(cx, parent, live.remove(&key), builder);
+        let Some((id, mounted)) = take_or_mount(cx, parent, live.remove(&key), builder) else {
+            continue;
+        };
         if mounted {
             fresh.push(id);
         }
@@ -292,11 +299,11 @@ fn take_or_mount(
     cx: &mut Cx,
     parent: NodeId,
     existing: Option<NodeId>,
-    builder: Box<dyn ErasedComponent>,
-) -> (NodeId, bool) {
+    builder: Option<Box<dyn ErasedComponent>>,
+) -> Option<(NodeId, bool)> {
     match existing {
-        Some(id) if cx.nodes.get(id.key()).is_some() => (id, false),
-        _ => (cx.add_boxed_child(parent, builder), true),
+        Some(id) if cx.nodes.get(id.key()).is_some() => Some((id, false)),
+        _ => builder.map(|builder| (cx.add_boxed_child(parent, builder), true)),
     }
 }
 

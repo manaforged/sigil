@@ -61,7 +61,10 @@ impl Host {
         self.publish_viewport(viewport);
         let exit = take_exit();
         Runtime::begin_layout();
-        let layout = self.settle_layout(viewport);
+        let layout = {
+            let _layout = crate::profile::span(crate::profile::Phase::Layout);
+            self.settle_layout(viewport)
+        };
         let layout_ok = layout.is_ok();
         if layout_ok {
             self.apply_focus_requests(router);

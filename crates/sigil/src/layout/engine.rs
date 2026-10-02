@@ -1,19 +1,21 @@
 use crate::geometry::Size;
 use crate::kernel::{Cx, NodeId};
-use crate::style::{StyleBinding, TextStyle};
+use crate::style::TextStyle;
 use ahash::AHashSet;
 use slotmap::SecondaryMap;
 use smallvec::SmallVec;
 use std::collections::BTreeSet;
 
 use crate::layout::cache_key::{
-    AvailableKey, CacheDecision, LayoutCacheKey, has_unversioned_layout, layout_input_signature,
-    reactive_layout_signature, reactive_seed_signature,
+    LayoutCacheKey, has_unversioned_layout, reactive_layout_signature, reactive_seed_signature,
 };
 use crate::layout::engine_drive::{LayoutDrive, NodeHandle};
 use crate::layout::text_style::InheritedText;
 use crate::layout::{LayoutError, LayoutResult, TextMeasure};
+use cache::take_cache_miss;
 use measure::Pass;
+
+type TextProbe = (Option<u32>, u32, u32);
 
 pub struct LayoutEngine {
     drive: LayoutDrive,
@@ -26,7 +28,8 @@ pub struct LayoutEngine {
     cached_key: Option<LayoutCacheKey>,
     reactive_layout: BTreeSet<slotmap::DefaultKey>,
     positions: SecondaryMap<slotmap::DefaultKey, (f32, f32)>,
-    text_sizes: SecondaryMap<slotmap::DefaultKey, (u32, u32)>,
+    text_sizes: SecondaryMap<slotmap::DefaultKey, TextProbe>,
+    prepared: SecondaryMap<slotmap::DefaultKey, u64>,
     reactive_sigs: SecondaryMap<slotmap::DefaultKey, u64>,
     steady: AHashSet<NodeId>,
     restyled: AHashSet<NodeId>,
@@ -49,6 +52,7 @@ impl LayoutEngine {
             reactive_layout: BTreeSet::new(),
             positions: SecondaryMap::new(),
             text_sizes: SecondaryMap::new(),
+            prepared: SecondaryMap::new(),
             reactive_sigs: SecondaryMap::new(),
             steady: AHashSet::new(),
             restyled: AHashSet::new(),
@@ -105,10 +109,11 @@ impl LayoutEngine {
         if cx.get(root).is_none() {
             return Err(LayoutError::NodeMissing(root));
         }
-        cx.flush_reactive_children();
-        for key in &self.reactive_layout {
-            crate::animation_runtime::style::prepare(cx, NodeId::from_key(*key));
+        {
+            let _children = crate::profile::span(crate::profile::Phase::LayoutChildren);
+            cx.flush_reactive_children();
         }
+        self.prepare_animations(cx, root);
         let Some(cache_key) = take_cache_miss(cx, self.resolve_cache_key(cx, root, available))
         else {
             return Ok(());
@@ -129,13 +134,14 @@ impl LayoutEngine {
 
         let resized = self.resized(cache_key);
         let mirror_current = dirty.is_empty() && self.same_inputs(cache_key);
+        let kernel_len = dirty.len();
         self.seed_reactive_dirty(cx, &mut dirty, mirrored, mirror_current);
+        attribution::note_dirty(cx, &dirty, kernel_len);
         let mut solved = SmallVec::<[NodeId; 8]>::new();
         if !resized && mirrored {
             solved.extend(self.translate_moved(cx, &mut dirty)?);
             if !solved.is_empty() && dirty.is_empty() {
-                self.measure_viewport_overlays(cx, root, available, &solved)?;
-                self.finish(cx, cache_key);
+                self.finish_translated(cx, (root, available), &solved, cache_key)?;
                 return Ok(());
             }
         }
@@ -167,18 +173,45 @@ impl LayoutEngine {
         })
     }
 
+    fn finish_translated(
+        &mut self,
+        cx: &mut Cx,
+        (root, available): (NodeId, Size),
+        solved: &[NodeId],
+        cache_key: LayoutCacheKey,
+    ) -> Result<(), LayoutError> {
+        {
+            let _overlays = crate::profile::span(crate::profile::Phase::LayoutOverlays);
+            self.measure_viewport_overlays(cx, root, available, solved)?;
+        }
+        self.finish(cx, cache_key);
+        Ok(())
+    }
+
     fn finish(&mut self, cx: &mut Cx, cache_key: LayoutCacheKey) {
+        let _finish = crate::profile::span(crate::profile::Phase::LayoutFinish);
         cx.clear_dirty();
-        self.generation = self.generation.wrapping_add(1);
-        self.cached_key = self
+        let unsized_labels: SmallVec<[NodeId; 8]> = self
             .reactive_layout
             .iter()
-            .all(|key| {
+            .filter(|key| !self.text_sizes.contains_key(**key))
+            .map(|key| NodeId::from_key(*key))
+            .filter(|id| {
+                cx.get(*id)
+                    .is_some_and(|node| matches!(node.kind, crate::kernel::NodeType::Text { .. }))
+            })
+            .collect();
+        for id in unsized_labels {
+            self.remember_text_size(cx, id);
+        }
+        self.generation = self.generation.wrapping_add(1);
+        let settled = !self.republished
+            || self.reactive_layout.iter().all(|key| {
                 cx.get(NodeId::from_key(*key)).is_some_and(|node| {
                     self.reactive_sigs.get(*key).copied() == Some(reactive_seed_signature(node))
                 })
-            })
-            .then_some(cache_key);
+            });
+        self.cached_key = settled.then_some(cache_key);
         let _sig = crate::profile::span(crate::profile::Phase::LayoutSig);
         self.last_reactive_sig = reactive_layout_signature(cx, &self.reactive_layout);
     }
@@ -219,51 +252,6 @@ impl LayoutEngine {
         self.drive.remove(handle)
     }
 
-    fn resolve_cache_key(&self, cx: &Cx, root: NodeId, available: Size) -> CacheDecision {
-        let cx_instance = cx.instance_id();
-        let cx_generation = cx.mutation_generation();
-        let available_key = AvailableKey::from_size(available);
-        let scale_bits = cx.scale().factor().to_bits();
-        let fonts = self.drive.font_generation();
-        let key = |input_signature| LayoutCacheKey {
-            cx_instance,
-            root,
-            available: available_key,
-            scale_bits,
-            fonts,
-            cx_generation,
-            input_signature,
-        };
-        if let Some(prev) = self.cached_key
-            && prev.cx_instance == cx_instance
-            && prev.root == root
-            && prev.available == available_key
-            && prev.scale_bits == scale_bits
-            && prev.fonts == fonts
-        {
-            if cx.has_specific_dirty() {
-                return CacheDecision::Miss(key(prev.input_signature));
-            }
-            if prev.cx_generation == cx_generation
-                && reactive_layout_signature(cx, &self.reactive_layout) == self.last_reactive_sig
-            {
-                return CacheDecision::Hit;
-            }
-        }
-        let signature = layout_input_signature(cx, root);
-        if self.cached_key.is_some_and(|prev| {
-            prev.cx_instance == cx_instance
-                && prev.root == root
-                && prev.available == available_key
-                && prev.scale_bits == scale_bits
-                && prev.fonts == fonts
-                && prev.input_signature == signature
-        }) {
-            return CacheDecision::Hit;
-        }
-        CacheDecision::Miss(key(signature))
-    }
-
     fn reset_mirror(&mut self) {
         self.synced_version.clear();
         self.synced_text_sig.clear();
@@ -273,38 +261,9 @@ impl LayoutEngine {
         self.reactive_layout.clear();
         self.positions.clear();
         self.text_sizes.clear();
+        self.prepared.clear();
         self.reactive_sigs.clear();
         self.last_reactive_sig = 0;
-    }
-
-    fn seed_reactive_dirty(
-        &mut self,
-        cx: &Cx,
-        dirty: &mut Vec<NodeId>,
-        mirrored: bool,
-        mirror_current: bool,
-    ) {
-        self.steady.clear();
-        if !mirrored || mirror_current {
-            return;
-        }
-        for key in self.reactive_layout.iter().copied() {
-            let id = NodeId::from_key(key);
-            let Some(node) = cx.get(id) else {
-                continue;
-            };
-            let sig = reactive_seed_signature(node);
-            let unchanged = self.reactive_sigs.insert(key, sig) == Some(sig);
-            if unchanged && self.synced_version.get(key).copied() == Some(node.version()) {
-                self.steady.insert(id);
-            }
-            if unchanged && !animated(node) {
-                continue;
-            }
-            if !dirty.contains(&id) {
-                dirty.push(id);
-            }
-        }
     }
 
     fn track_reactive(&mut self, id: NodeId, node: &crate::kernel::Node) {
@@ -329,20 +288,8 @@ impl LayoutEngine {
     }
 }
 
-fn take_cache_miss(cx: &mut Cx, decision: CacheDecision) -> Option<LayoutCacheKey> {
-    match decision {
-        CacheDecision::Hit => {
-            crate::profile::count(crate::profile::Counter::LayoutHit);
-            cx.clear_dirty();
-            None
-        }
-        CacheDecision::Miss(key) => {
-            crate::profile::count(crate::profile::Counter::LayoutMiss);
-            Some(key)
-        }
-    }
-}
-
+mod attribution;
+mod cache;
 mod incremental;
 mod measure;
 mod overlays;
@@ -351,21 +298,17 @@ mod viewport;
 
 pub(crate) use viewport::{Popup, PopupSide, ViewportOverlay};
 
-fn animated(node: &crate::kernel::Node) -> bool {
-    node.get_extension::<StyleBinding>().is_some_and(|binding| {
-        binding.animator_overlay().is_some() || binding.state_overlay().is_some()
-    })
-}
-
-fn note_full(mirrored: bool, dirty: &[NodeId]) {
+fn note_full(cx: &Cx, root: NodeId, mirrored: bool, dirty: &[NodeId]) {
     crate::profile::count(crate::profile::Counter::LayoutFull);
-    crate::profile::count(if !mirrored {
+    let reason = if !mirrored {
         crate::profile::Counter::LayoutFullUnmirrored
     } else if dirty.is_empty() {
         crate::profile::Counter::LayoutFullNoDirty
     } else {
         crate::profile::Counter::LayoutFullMajority
-    });
+    };
+    crate::profile::count(reason);
+    attribution::note_full_root(cx, root, reason);
 }
 
 #[cfg(test)]

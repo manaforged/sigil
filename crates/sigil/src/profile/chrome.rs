@@ -29,6 +29,7 @@ pub(crate) fn write(path: &Path) -> io::Result<()> {
                 "wall_ns": frame.total_ns(),
                 "phases_ns": named(&frame.phases, Phase::name),
                 "counts": named(&frame.counts, Counter::name),
+                "gpu_passes_ns": frame.gpu_passes,
                 "backend": frame.backend.map(|status| status.to_string())
             }),
         )?;
@@ -53,8 +54,26 @@ pub(crate) fn write(path: &Path) -> io::Result<()> {
         write!(out, ",")?;
         value(&mut out, &event_value(event))?;
     }
+    write_attributions(&mut out)?;
     writeln!(out, "]}}")?;
     out.flush()
+}
+
+fn write_attributions(out: &mut BufWriter<File>) -> io::Result<()> {
+    for frame in store::frames() {
+        for hot in &frame.hot {
+            write!(out, ",")?;
+            value(
+                out,
+                &json!({
+                    "name": hot.hotspot.name(), "cat": "why", "ph": "i", "s": "t",
+                    "ts": frame.end_us, "pid": 1, "tid": 1,
+                    "args": {"hotspot": hot.hotspot.name(), "subject": hot.subject, "count": hot.count}
+                }),
+            )?;
+        }
+    }
+    Ok(())
 }
 
 fn value(out: &mut BufWriter<File>, value: &Value) -> io::Result<()> {

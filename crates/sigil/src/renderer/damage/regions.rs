@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use super::{AA_MARGIN, MAX_REGION_SHARE, MAX_REGIONS, Plan, Regions};
+use super::{AA_MARGIN, FullReason, MAX_REGION_SHARE, MAX_REGIONS, Plan, Regions};
 use crate::geometry::Rect;
 use crate::renderer::scene_command::state::snap_out;
 use crate::renderer::scene_command::walk::intersect_rect;
@@ -23,7 +23,7 @@ pub(super) fn regions(inks: &[Rect], area: Rect, scale: f32) -> Plan {
     };
     let covered: f32 = merged.iter().map(|rect| rect.width * rect.height).sum();
     if covered > area.width * area.height * MAX_REGION_SHARE {
-        return Plan::Full;
+        return Plan::Full(FullReason::RegionShare);
     }
     Plan::Regions(merged)
 }

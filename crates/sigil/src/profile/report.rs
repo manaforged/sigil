@@ -2,15 +2,21 @@ use std::fmt::Write as _;
 
 use std::fmt::Display;
 
+use crate::profile::attr::budget_ns;
 use crate::profile::key::{Cause, Counter, Phase};
-use crate::profile::store::{self, FRAME_BUDGET_NS, Frame, INTERACT_BUDGET_NS};
+
+use crate::profile::report_why::{write_bottlenecks, write_gpu_passes, write_why};
+use crate::profile::store::{self, Frame};
+
+const CAUSE_PHASES: usize = 7;
 
 pub(crate) fn summary() -> String {
     let frames = store::frames();
     if frames.is_empty() {
         return String::from("sigil-profile: no frames");
     }
-    let mut out = String::from("sigil-profile  (ms)\n");
+    let budget = budget_ns();
+    let mut out = format!("sigil-profile  (ms, budget {:.2}ms)\n", ns_ms(budget));
     let _ = writeln!(
         out,
         "{:<14} {:>8} {:>8} {:>8} {:>8}",
@@ -23,14 +29,16 @@ pub(crate) fn summary() -> String {
         out.push_str("\ncounts\n");
         write_count_rows(&mut out, &frames);
     }
-    write_bottlenecks(&mut out, &frames);
+    write_gpu_passes(&mut out, &frames);
+    write_why(&mut out, &frames);
+    write_bottlenecks(&mut out, &frames, budget);
     let over = frames
         .iter()
-        .filter(|frame| frame.total_ns() > FRAME_BUDGET_NS)
+        .filter(|frame| frame.total_ns() > budget)
         .count();
     let _ = write!(out, "{} frames", frames.len());
     if over > 0 {
-        let _ = write!(out, ", {over} over 16.67ms");
+        let _ = write!(out, ", {over} over {:.2}ms", ns_ms(budget));
     }
     out.push('\n');
     out
@@ -95,7 +103,40 @@ fn write_interact_rows(out: &mut String, frames: &[Frame]) {
             pct(&sorted, 95),
             sorted.last().copied().unwrap_or(0.0),
         );
+        write_cause_phases(out, frames, name);
     }
+}
+
+fn write_cause_phases(out: &mut String, frames: &[Frame], cause: Cause) {
+    let picked: Vec<&Frame> = frames.iter().filter(|frame| frame.cause == cause).collect();
+    let mut phases: Vec<(Phase, f64)> = Vec::new();
+    for frame in &picked {
+        for (phase, _) in &frame.phases {
+            if !phases.iter().any(|(seen, _)| seen == phase) {
+                phases.push((*phase, 0.0));
+            }
+        }
+    }
+    for (phase, p50) in &mut phases {
+        let mut samples: Vec<f64> = picked
+            .iter()
+            .map(|frame| value_ms(&frame.phases, *phase))
+            .collect();
+        samples.sort_by(f64::total_cmp);
+        *p50 = pct(&samples, 50);
+    }
+    phases.retain(|(_, p50)| *p50 > 0.0);
+    phases.sort_by(|a, b| b.1.total_cmp(&a.1));
+    let mut cpu: Vec<f64> = picked
+        .iter()
+        .map(|frame| ns_ms(frame.total_ns()) - value_ms(&frame.phases, Phase::GpuWait))
+        .collect();
+    cpu.sort_by(f64::total_cmp);
+    let _ = write!(out, "  p50 cpu {:.3} |", pct(&cpu, 50));
+    for (phase, p50) in phases.iter().take(CAUSE_PHASES) {
+        let _ = write!(out, " {phase} {p50:.3}");
+    }
+    out.push('\n');
 }
 
 fn write_count_rows(out: &mut String, frames: &[Frame]) {
@@ -133,41 +174,6 @@ fn write_total_row(out: &mut String, frames: &[Frame]) {
     );
 }
 
-fn write_bottlenecks(out: &mut String, frames: &[Frame]) {
-    let slow: Vec<&Frame> = frames
-        .iter()
-        .filter(|frame| frame.total_ns() > FRAME_BUDGET_NS)
-        .collect();
-    if slow.is_empty() {
-        return;
-    }
-    out.push_str("\nbottlenecks (over 16.67ms)\n");
-    for frame in slow.iter().take(12) {
-        let (hot, hot_ns) = frame
-            .hottest()
-            .map_or(("", 0), |(phase, ns)| (phase.name(), ns));
-        let _ = writeln!(
-            out,
-            "  #{:<4} {:<10} {:>7.1}ms  {hot}={:.1}  cmds={}",
-            frame.index,
-            frame.cause,
-            ns_ms(frame.total_ns()),
-            ns_ms(hot_ns),
-            frame.counter(Counter::SceneCmds)
-        );
-    }
-    let inp = frames
-        .iter()
-        .filter(|frame| frame.cause != Cause::Idle && frame.total_ns() > INTERACT_BUDGET_NS)
-        .count();
-    if inp > 0 {
-        let _ = writeln!(
-            out,
-            "  {inp} interactions over 200ms (Chrome INP; native bar is 16.67ms)"
-        );
-    }
-}
-
 fn collect_names<K: Copy + PartialEq>(frames: &[Frame], pick: Pick<K>) -> Vec<K> {
     let mut names = Vec::new();
     for frame in frames {
@@ -191,11 +197,11 @@ fn value_u64<K: Copy + PartialEq>(list: &[(K, u64)], name: K) -> u64 {
 }
 
 #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
-fn ns_ms(ns: u64) -> f64 {
+pub(super) fn ns_ms(ns: u64) -> f64 {
     ns as f64 / 1_000_000.0
 }
 
-fn pct(sorted: &[f64], p: usize) -> f64 {
+pub(super) fn pct(sorted: &[f64], p: usize) -> f64 {
     if sorted.is_empty() {
         return 0.0;
     }

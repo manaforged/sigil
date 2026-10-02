@@ -189,22 +189,25 @@ impl SlugTextPipeline {
         let uploaded = stats.and_then(|stats| FrameUploads::upload(encoder, &all, stats));
         let range = uploaded.unwrap_or_else(|| encoder.upload(&all));
         let bind_group = make_bind_group(encoder, frame, &self.bgl, self.atlas.buffer());
-        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("slug-pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: frame.view,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        });
+        let pass = encoder.begin_render_pass(
+            "slug-pass",
+            &wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: frame.view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            },
+        );
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
         pass.set_vertex_buffer(0, self.quad_vb.slice(..));
@@ -237,6 +240,10 @@ impl SlugTextPipeline {
         if missing.is_empty() {
             return;
         }
+        crate::profile::count_add(
+            crate::profile::Counter::TextOutlineMisses,
+            missing.values().map(|indices| indices.len() as u64).sum(),
+        );
         let cache = &mut self.cache;
         para.for_each_font(|font_id, bytes, font_index| {
             let Some(indices) = missing.get(&(font_id, font_index)) else {
@@ -245,10 +252,9 @@ impl SlugTextPipeline {
             for &i in indices {
                 let Some(g) = glyphs.get(i) else { continue };
                 let key = GlyphKey::of(g);
-                if let Some(data) =
-                    preprocess_glyph(bytes, font_index, g.glyph_id, &g.variation_coords, g.skew)
-                {
-                    cache.insert(key, data);
+                match preprocess_glyph(bytes, font_index, g.glyph_id, &g.variation_coords, g.skew) {
+                    Some(data) => cache.insert(key, data),
+                    None => cache.mark_empty(key),
                 }
             }
         });

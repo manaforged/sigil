@@ -25,7 +25,7 @@ fn same_text_same_style_returns_cached_entry() {
     let mut cache = ParagraphCache::new();
     let style = style_at(16.0);
     let p = make_paragraph("Hello", &style);
-    cache.insert("Hello", None, &style, p);
+    cache.insert("Hello", None, &style, (p, 0.0));
 
     let hit = cache.get("Hello", None, &style);
     assert!(hit.is_some(), "identical key must hit the cache");
@@ -37,7 +37,7 @@ fn different_style_misses_even_when_text_matches() {
     let style_a = style_at(16.0);
     let style_b = style_at(32.0);
     let p = make_paragraph("Hello", &style_a);
-    cache.insert("Hello", None, &style_a, p);
+    cache.insert("Hello", None, &style_a, (p, 0.0));
 
     let hit = cache.get("Hello", None, &style_b);
     assert!(
@@ -51,11 +51,11 @@ fn collision_on_same_hashed_key_returns_miss_not_stale_layout() {
     let mut cache = ParagraphCache::new();
     let style = style_at(16.0);
     let p_a = make_paragraph("text-A", &style);
-    cache.insert("text-A", None, &style, p_a);
+    cache.insert("text-A", None, &style, (p_a, 0.0));
 
     let key = ParagraphCache::key("text-A", None, &style);
     if let Some(entry) = cache.map.get_mut(&key) {
-        entry.text = String::from("text-B");
+        entry.text = "text-B".into();
     }
 
     let hit_a = cache.get("text-A", None, &style);
@@ -70,7 +70,7 @@ fn different_text_misses_even_when_style_matches() {
     let mut cache = ParagraphCache::new();
     let style = style_at(16.0);
     let p = make_paragraph("Hello", &style);
-    cache.insert("Hello", None, &style, p);
+    cache.insert("Hello", None, &style, (p, 0.0));
 
     let hit = cache.get("World", None, &style);
     assert!(hit.is_none(), "different text must miss the cache");
@@ -82,9 +82,9 @@ fn cached_paragraph_metrics_are_identical_on_hit() {
     let style = style_at(16.0);
     let p = make_paragraph("Typography", &style);
     let original_width = p.width();
-    cache.insert("Typography", None, &style, p);
+    cache.insert("Typography", None, &style, (p, 0.0));
 
-    let hit = cache.get("Typography", None, &style).unwrap();
+    let (hit, _) = cache.get("Typography", None, &style).unwrap();
     assert!((hit.width() - original_width).abs() < f32::EPSILON);
 }
 
@@ -96,13 +96,13 @@ fn near_equal_widths_keep_separate_entries() {
         "Hello",
         Some(100.2),
         &style,
-        make_paragraph("Hello", &style),
+        (make_paragraph("Hello", &style), 0.0),
     );
     cache.insert(
         "Hello",
         Some(100.4),
         &style,
-        make_paragraph("Hello", &style),
+        (make_paragraph("Hello", &style), 0.0),
     );
     assert!(cache.get("Hello", Some(100.2), &style).is_some());
     assert!(cache.get("Hello", Some(100.4), &style).is_some());

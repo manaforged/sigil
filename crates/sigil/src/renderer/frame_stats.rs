@@ -1,5 +1,4 @@
 #![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
-#[cfg(feature = "desktop")]
 use crate::profile::{count_add, enabled};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -15,6 +14,7 @@ pub struct FrameStats {
     pub decoration_batches: usize,
     pub decoration_instances: usize,
     pub glyph_runs: usize,
+    pub text_draws: usize,
     pub sprite_draws: usize,
     pub offscreen_layers: usize,
     pub offscreen_pixels: u64,
@@ -26,7 +26,16 @@ pub struct FrameStats {
 }
 
 impl FrameStats {
-    #[cfg(feature = "desktop")]
+    #[must_use]
+    pub const fn batches(self) -> u64 {
+        (self.rectangle_batches
+            + self.fill_batches
+            + self.shadow_batches
+            + self.decoration_batches
+            + self.text_draws
+            + self.sprite_draws) as u64
+    }
+
     pub fn record_profile(self) {
         if !enabled() {
             return;
@@ -74,6 +83,7 @@ impl FrameStats {
                 self.redrawn_pixels,
             ),
             (crate::profile::Counter::RenderFrames, 1),
+            (crate::profile::Counter::GpuBatches, self.batches()),
         ] {
             count_add(name, value);
         }

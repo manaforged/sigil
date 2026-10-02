@@ -76,6 +76,7 @@ fn push_subtree<'t>(
     let Some(node) = walk.cx.get(id) else {
         return;
     };
+    crate::profile::count(crate::profile::Counter::EmitNodes);
     if skips_paint(node) {
         return;
     }
@@ -123,6 +124,12 @@ fn push_contents<'t>(
         let selected = paint.selected.is_some();
         let key = (walk.cx.instance_id(), id);
         if selected || !emit_cache::replay(walk.scene, key, node, rect, inherit) {
+            if crate::profile::enabled() {
+                let cx = walk.cx;
+                crate::profile::attribute(crate::profile::Hotspot::EmitResolved, 1, || {
+                    cx.describe(id)
+                });
+            }
             let start = walk.scene.command_len();
             push_focus_ring(walk.scene, id, node, rect, &paint);
             push_node(walk.scene, id, node, rect, &paint);
@@ -254,12 +261,16 @@ fn child_inherited<'t>(
     inherited: &Inherited<'t>,
     style: &RenderStyle,
 ) -> Inherited<'t> {
-    let layered_text = node
+    let text_style = node
         .get_extension::<StyleBinding>()
-        .and_then(|binding| TextStyle::layered_over_binding(&inherited.text_style, binding));
+        .filter(|binding| TextStyle::binding_layers_text(binding))
+        .map_or_else(
+            || Rc::clone(&inherited.text_style),
+            |binding| emit_cache::layered_text(&inherited.text_style, binding),
+        );
     Inherited {
         theme: node.get_extension::<Theme>().unwrap_or(inherited.theme),
         text_color: style.text_color.or(inherited.text_color),
-        text_style: layered_text.map_or_else(|| Rc::clone(&inherited.text_style), Rc::new),
+        text_style,
     }
 }

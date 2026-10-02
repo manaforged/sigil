@@ -14,6 +14,7 @@ use crate::renderer::scene_command::walk::WalkPending;
 use crate::renderer::scene_paint::ScenePipeline;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::SlugTextPipeline;
+use crate::renderer::split_encoder::GpuTimer;
 use crate::renderer::sprite_paint::SpritePipeline;
 #[cfg(not(target_arch = "wasm32"))]
 use pollster::FutureExt as _;
@@ -42,6 +43,7 @@ pub(crate) struct ReadyState {
     pub(crate) layer_pool: Option<LayerPool>,
     pub(crate) pending: WalkPending,
     pub(crate) uploads: Option<UploadBuffers>,
+    pub(crate) gpu_timer: Option<GpuTimer>,
     lost: Arc<AtomicBool>,
     #[cfg(feature = "desktop")]
     forced_fallback: bool,
@@ -69,6 +71,7 @@ impl ReadyState {
             layer_pool: Some(LayerPool::new()),
             pending: WalkPending::default(),
             uploads: None,
+            gpu_timer: None,
             lost,
             #[cfg(feature = "desktop")]
             forced_fallback,
@@ -291,7 +294,7 @@ async fn request_adapter_and_device(
     let (device, queue) = adapter
         .request_device(&wgpu::DeviceDescriptor {
             label: Some("sigil-renderer device"),
-            required_features: wgpu::Features::empty(),
+            required_features: adapter.features() & wgpu::Features::TIMESTAMP_QUERY,
             required_limits: renderer_limits(adapter.limits()),
             experimental_features: wgpu::ExperimentalFeatures::disabled(),
             memory_hints: wgpu::MemoryHints::Performance,
