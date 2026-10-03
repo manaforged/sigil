@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use crate::style::{Dimension, Px, StyleAtom};
+use crate::style::{Dimension, Metrics, Px, StyleAtom};
 
 use super::{SCROLLBAR_WIDTH, THUMB_MIN_HEIGHT, THUMB_REST_WIDTH, to_i16};
 
@@ -33,7 +33,7 @@ pub(super) fn content_atoms(height: i16) -> &'static [StyleAtom] {
 pub(super) fn thumb_atoms(height: i16, thick: bool) -> &'static [StyleAtom] {
     static THIN: Cache = OnceLock::new();
     static THICK: Cache = OnceLock::new();
-    let (cache, width) = if thick {
+    let (cache, width) = if thick || Metrics::current().is_grid() {
         (&THICK, SCROLLBAR_WIDTH)
     } else {
         (&THIN, THUMB_REST_WIDTH)
@@ -85,3 +85,7 @@ fn atoms(
     }
     leaked
 }
+
+#[cfg(test)]
+#[path = "geometry_tests.rs"]
+mod tests;
