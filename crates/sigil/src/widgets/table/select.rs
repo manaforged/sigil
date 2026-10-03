@@ -136,3 +136,25 @@ fn toggle_all<Row: 'static>(state: &TableState<Row>) {
     }
     state.selection().set(Rc::new(set));
 }
+
+impl<Row: 'static> TableState<Row> {
+    pub fn select_by(&self, delta: i32) {
+        let visible = self.visible().peek();
+        let Some(last) = visible.len().checked_sub(1) else {
+            return;
+        };
+        let step = usize::try_from(delta.unsigned_abs()).unwrap_or(usize::MAX);
+        let current = self
+            .anchor()
+            .and_then(|row| visible.iter().position(|&index| index == row));
+        let target = match current {
+            Some(at) if delta < 0 => at.saturating_sub(step),
+            Some(at) => at.saturating_add(step).min(last),
+            None if delta < 0 => last,
+            None => 0,
+        };
+        if let Some(&row) = visible.get(target) {
+            self.select_only(row);
+        }
+    }
+}

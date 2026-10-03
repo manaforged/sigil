@@ -1,5 +1,5 @@
 use crate::events::NodeEventsExt;
-use crate::kernel::{NodeBuilder, Role, container};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
 
 use super::selection::SelectionRuntime;
@@ -28,7 +28,7 @@ pub(super) fn place_row(
     index: usize,
     row_height: f32,
     width: WidthSpec,
-    row: NodeBuilder,
+    row: impl IntoNode + 'static,
     selection: SelectionRuntime,
 ) -> NodeBuilder {
     let slot = container()

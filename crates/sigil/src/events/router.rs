@@ -120,7 +120,7 @@ impl EventRouter {
         if self.focus.holds_live_focus(cx) {
             return;
         }
-        crate::events::note_focus_source(true);
+        crate::events::note_focus_source(crate::style::cell_size().is_some());
         self.focus.focus_first(cx, layout);
     }
 

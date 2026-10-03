@@ -32,6 +32,7 @@
 | [`TransitionId`](#transitionid) | struct |  |
 | [`ColorAtom`](#coloratom) | enum |  |
 | [`ColorOrToken`](#colorortoken) | enum |  |
+| [`ControlSize`](#controlsize) | enum |  |
 | [`Elevation`](#elevation) | enum |  |
 | [`FontFamily`](#fontfamily) | enum |  |
 | [`Radius`](#radius) | enum |  |
@@ -49,7 +50,6 @@
 | [`LengthPercentage`](#lengthpercentage) | enum |  |
 | [`NumericAtomKind`](#numericatomkind) | enum |  |
 | [`OverflowKind`](#overflowkind) | enum |  |
-| [`Size`](#size) | enum |  |
 | [`StateSlot`](#stateslot) | enum |  |
 | [`StyleAtom`](#styleatom) | enum |  |
 | [`TextDecoration`](#textdecoration) | enum |  |
@@ -60,12 +60,9 @@
 | [`Paint`](#paint) | trait |  |
 | [`StateVariants`](#statevariants) | trait |  |
 | [`StyledTextEngine`](#styledtextengine) | trait |  |
-| [`bump_unknown_class_count`](#bump_unknown_class_count) | fn |  |
 | [`font_family_hint`](#font_family_hint) | fn |  |
 | [`grid`](#grid) | fn |  |
 | [`is_typography_atom`](#is_typography_atom) | fn |  |
-| [`merge_warning_count`](#merge_warning_count) | fn |  |
-| [`merge_warning_count_for_component`](#merge_warning_count_for_component) | fn |  |
 | [`render_style_for`](#render_style_for) | fn |  |
 | [`space`](#space) | fn |  |
 | [`text_style_for`](#text_style_for) | fn |  |
@@ -160,13 +157,13 @@
 | <code>with_theme_tokens(self, tokens: &amp;Map&lt;&amp;'static str, <a href="#themevalue">ThemeValue</a>&gt;) -&gt; Self</code> |  |
 | <code>with_token(self, name: &amp;str, value: <a href="#themevalue">ThemeValue</a>) -&gt; Self</code> |  |
 | <code>console_dark() -&gt; Self</code> |  |
-| <code>control_height(&amp;self, size: <a href="#size">Size</a>) -&gt; <a href="#dimension">Dimension</a></code> |  |
-| <code>control_width(&amp;self, size: <a href="#size">Size</a>) -&gt; <a href="#dimension">Dimension</a></code> |  |
+| <code>control_height(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="#dimension">Dimension</a></code> |  |
+| <code>control_width(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="#dimension">Dimension</a></code> |  |
 | <code>from_palette(palette: <a href="sigil-style-palette.html#palette">Palette</a>, variant: <a href="sigil-style-variant.html#variant">Variant</a>) -&gt; Self</code> |  |
-| <code>gap(&amp;self, size: <a href="#size">Size</a>) -&gt; <a href="#lengthpercentage">LengthPercentage</a></code> |  |
+| <code>gap(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="#lengthpercentage">LengthPercentage</a></code> |  |
 | <code>normal() -&gt; Self</code> |  |
-| <code>padding(&amp;self, size: <a href="#size">Size</a>) -&gt; <a href="#lengthpercentage">LengthPercentage</a></code> |  |
-| <code>const radius(&amp;self, size: <a href="#size">Size</a>) -&gt; <a href="#lengthpercentage">LengthPercentage</a></code> |  |
+| <code>padding(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="#lengthpercentage">LengthPercentage</a></code> |  |
+| <code>const radius(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="#lengthpercentage">LengthPercentage</a></code> |  |
 | <code>terminal() -&gt; Self</code> |  |
 | <code>dark() -&gt; Self</code> |  |
 | <code>light() -&gt; Self</code> |  |
@@ -263,14 +260,14 @@
 
 | Method | Description |
 | --- | --- |
-| <code>control_height(self, size: <a href="#size">Size</a>) -&gt; f32</code> |  |
-| <code>const control_width(self, size: <a href="#size">Size</a>) -&gt; f32</code> |  |
+| <code>control_height(self, size: <a href="#controlsize">ControlSize</a>) -&gt; f32</code> |  |
+| <code>const control_width(self, size: <a href="#controlsize">ControlSize</a>) -&gt; f32</code> |  |
 | <code>current() -&gt; Self</code> |  |
-| <code>gap(self, size: <a href="#size">Size</a>) -&gt; f32</code> |  |
+| <code>gap(self, size: <a href="#controlsize">ControlSize</a>) -&gt; f32</code> |  |
 | <code>icon_size(self) -&gt; f32</code> |  |
 | <code>const is_grid(self) -&gt; bool</code> |  |
 | <code>overlay_padding(self) -&gt; f32</code> |  |
-| <code>padding(self, size: <a href="#size">Size</a>) -&gt; f32</code> |  |
+| <code>padding(self, size: <a href="#controlsize">ControlSize</a>) -&gt; f32</code> |  |
 | <code>const radius(self, radius: <a href="#radius">Radius</a>) -&gt; <a href="#px">Px</a></code> |  |
 | <code>const ring_offset(self) -&gt; f32</code> |  |
 | <code>const ring_width(self) -&gt; f32</code> |  |
@@ -598,6 +595,20 @@
 **Trait implementations:** <code>From&lt;<a href="#coloratom">ColorAtom</a>&gt;</code>, <code>From&lt;<a href="#token">Token</a>&gt;</code>, <code>From&lt;<a href="#rgba8">Rgba8</a>&gt;</code>, <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
+### `ControlSize`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Compact</code> |  |
+| <code>Default</code> |  |
+| <code>Grow</code> |  |
+| <code>Wide</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
 ### `Elevation`
 
 **Variants**
@@ -802,7 +813,7 @@
 | <code>Success</code> |  |
 | <code>Warn</code> |  |
 
-**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>, <code><a href="sigil-reactive.html#reactive">Reactive</a>&lt;<a href="#tone">Tone</a>&gt;</code>
 
 
 ### `AlignKind`
@@ -981,20 +992,6 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
-### `Size`
-
-**Variants**
-
-| Variant | Description |
-| --- | --- |
-| <code>Compact</code> |  |
-| <code>Default</code> |  |
-| <code>Grow</code> |  |
-| <code>Wide</code> |  |
-
-**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
-
-
 ### `StateSlot`
 
 **Variants**
@@ -1154,11 +1151,11 @@
 | --- | --- |
 | <code>animate(self, kind: <a href="#numericatomkind">NumericAtomKind</a>, value: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;) -&gt; Self</code> |  |
 | <code>focus_ring(self, ring: <a href="#focusring">FocusRing</a>) -&gt; Self</code> |  |
-| <code>paint_when&lt;F&gt;(self, signal: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;, paint: F) -&gt; Self where F: FnOnce(<a href="#statestylebuilder">StateStyleBuilder</a>) -&gt; <a href="#statestylebuilder">StateStyleBuilder</a></code> |  |
+| <code>paint_when&lt;F&gt;(self, active: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;, paint: F) -&gt; Self where F: FnOnce(<a href="#statestylebuilder">StateStyleBuilder</a>) -&gt; <a href="#statestylebuilder">StateStyleBuilder</a></code> |  |
 | <code>presence(self, shown: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;, config: <a href="sigil-animation_runtime.html#animationconfig">AnimationConfig</a>) -&gt; Self</code> |  |
 | <code>theme(self, theme: <a href="#theme">Theme</a>) -&gt; Self</code> |  |
 | <code>tone(self, tone: <a href="#tone">Tone</a>) -&gt; Self</code> |  |
-| <code>visible_when(self, signal: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;) -&gt; Self</code> |  |
+| <code>visible_when(self, shown: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
 
 
 ### `Paint`
@@ -1178,10 +1175,10 @@
 | <code>duration(self, duration: <a href="#millisu16">MillisU16</a>) -&gt; Self</code> |  |
 | <code>font_family(self, family: <a href="#fontfamily">FontFamily</a>) -&gt; Self</code> |  |
 | <code>font_italic(self, italic: bool) -&gt; Self</code> |  |
-| <code>font_size(self, px: i16) -&gt; Self</code> |  |
+| <code>font_size(self, px: f32) -&gt; Self</code> |  |
 | <code>font_weight(self, weight: u16) -&gt; Self</code> |  |
 | <code>letter_spacing_em(self, em: f32) -&gt; Self</code> |  |
-| <code>line_height(self, px: i16) -&gt; Self</code> |  |
+| <code>line_height_px(self, px: f32) -&gt; Self</code> |  |
 | <code>line_through(self) -&gt; Self</code> |  |
 | <code>opacity(self, value: f32) -&gt; Self</code> |  |
 | <code>rounded(self, radius: <a href="#radius">Radius</a>) -&gt; Self</code> |  |
@@ -1218,11 +1215,6 @@
 
 ## Functions
 
-### `bump_unknown_class_count`
-
-<pre>pub fn <a href="#bump_unknown_class_count">bump_unknown_class_count</a>()</pre>
-
-
 ### `font_family_hint`
 
 <pre>pub const fn <a href="#font_family_hint">font_family_hint</a>(variant: <a href="sigil-style-variant.html#variant">Variant</a>) -&gt; <a href="sigil-style-variant.html#fontfamilyhint">FontFamilyHint</a></pre>
@@ -1236,16 +1228,6 @@
 ### `is_typography_atom`
 
 <pre>pub const fn <a href="#is_typography_atom">is_typography_atom</a>(atom: <a href="#styleatom">StyleAtom</a>) -&gt; bool</pre>
-
-
-### `merge_warning_count`
-
-<pre>pub fn <a href="#merge_warning_count">merge_warning_count</a>() -&gt; usize</pre>
-
-
-### `merge_warning_count_for_component`
-
-<pre>pub fn <a href="#merge_warning_count_for_component">merge_warning_count_for_component</a>(component_id: <a href="#componentid">ComponentId</a>) -&gt; usize</pre>
 
 
 ### `render_style_for`

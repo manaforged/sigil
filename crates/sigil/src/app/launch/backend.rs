@@ -285,7 +285,7 @@ pub(super) fn inspect_shot(
     let Some((cx, _, root)) = app.tree() else {
         return Err("no mounted tree".into());
     };
-    let scene = crate::app::embed::emit_viewport_scene(cx, root, viewport);
+    let scene = super::scene_cache::window_scene(cx, root, viewport, !renderer.is_transparent());
     let Some(surface) = surface.as_mut() else {
         return Err("window surface is not initialized yet".into());
     };

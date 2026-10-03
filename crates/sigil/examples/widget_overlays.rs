@@ -49,7 +49,7 @@ fn menu_demo() -> NodeBuilder {
         .child(
             menu(open)
                 .label("More")
-                .item(MenuItem::new("Rename").select(|| {}))
+                .item(MenuItem::new("Rename").activate(|| {}))
                 .item(MenuItem::new("Archive").disabled(true)),
         )
 }
@@ -59,13 +59,13 @@ fn menu_bar_demo() -> MenuBarBuilder {
         .menu(
             "File",
             [
-                MenuItem::new("Open").shortcut("Ctrl+O").select(|| {}),
-                MenuItem::new("Quit").shortcut("Ctrl+Q").select(|| {}),
+                MenuItem::new("Open").shortcut("Ctrl+O").activate(|| {}),
+                MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {}),
             ],
         )
         .menu(
             "Edit",
-            [MenuItem::new("Undo").shortcut("Ctrl+Z").select(|| {})],
+            [MenuItem::new("Undo").shortcut("Ctrl+Z").activate(|| {})],
         )
 }
 

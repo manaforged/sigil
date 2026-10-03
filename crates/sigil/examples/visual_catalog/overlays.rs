@@ -22,7 +22,7 @@ fn menu_row(state: State) -> NodeBuilder {
         menu(shown(state))
             .label("Edit")
             .anchor(16.0, 16.0)
-            .item(MenuItem::new("Undo").shortcut("Ctrl+Z").select(|| {}))
+            .item(MenuItem::new("Undo").shortcut("Ctrl+Z").activate(|| {}))
             .item(MenuItem::new("Redo").disabled(true))
             .separator()
             .item(MenuItem::new("Share").submenu(true)),

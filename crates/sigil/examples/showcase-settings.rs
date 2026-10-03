@@ -9,7 +9,7 @@ fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - settings").size(880, 600), app)
 }
 
-fn navigation() -> NodeBuilder {
+fn navigation() -> sigil::widgets::SidebarBuilder {
     sidebar(
         container()
             .layout(LayoutStyle::flex_column())

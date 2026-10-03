@@ -1,5 +1,8 @@
 use std::cmp::Ordering;
+use std::collections::HashSet;
 use std::rc::Rc;
+
+use crate::reactive::Signal;
 
 use super::columns::TableColumn;
 use super::state::{SortDir, SortKey};
@@ -113,4 +116,28 @@ fn filtered_indices<Row>(
         .filter(|(_, row)| filters.iter().any(|matches| matches(row, quick_filter)))
         .map(|(index, _)| index as u32)
         .collect()
+}
+
+pub(super) fn retain_visible(
+    visible: &[u32],
+    selection: Signal<Rc<HashSet<u32>>>,
+    anchor: Signal<Option<u32>>,
+) {
+    let selected = selection.peek();
+    if selected.is_empty() {
+        return;
+    }
+    let shown: HashSet<u32> = visible.iter().copied().collect();
+    if selected.iter().all(|row| shown.contains(row)) {
+        return;
+    }
+    let kept: HashSet<u32> = selected
+        .iter()
+        .copied()
+        .filter(|row| shown.contains(row))
+        .collect();
+    selection.set(Rc::new(kept));
+    if anchor.peek().is_some_and(|row| !shown.contains(&row)) {
+        anchor.set(None);
+    }
 }

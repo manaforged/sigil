@@ -1,6 +1,7 @@
-use crate::kernel::{NodeBuilder, Role, container, text};
+use crate::kernel::{NodeBuilder, Role, container, fragment, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::reactive::Reactive;
 
 mod canvas;
 mod flow;
@@ -14,13 +15,16 @@ mod sequence;
 mod strokes;
 
 #[must_use]
-pub fn mermaid(source: impl Into<String>) -> NodeBuilder {
-    let source = source.into();
-    let lines = draw(&source);
+pub fn mermaid(source: impl Reactive<String>) -> NodeBuilder {
+    fragment().children_reactive(move || [figure(&source.read())])
+}
+
+pub(crate) fn figure(source: &str) -> NodeBuilder {
+    let lines = draw(source);
     let col = container()
         .role(Role::Figure)
-        .label(diagram_name(&source))
-        .description(bound_source(&source).trim_end().to_string())
+        .label(diagram_name(source))
+        .description(bound_source(source).trim_end().to_string())
         .layout(LayoutStyle::flex_column().fill_width())
         .class("font-mono text-sm");
     let form =

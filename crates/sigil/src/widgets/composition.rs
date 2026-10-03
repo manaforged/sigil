@@ -1,6 +1,6 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols};
-use crate::style::{BORDER_WIDTH, Metrics, Size, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, ControlSize, Metrics, StyleAtom, Token, space};
 
 pub(crate) const STATUS_BAR_HEIGHT: f32 = space(7);
 const STATUS_BAR_GAP: f32 = space(3);
@@ -58,7 +58,7 @@ pub fn kv_row(label: impl Into<TextContent>, value: impl IntoNode + 'static) -> 
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .min_size(0.0, Metrics::current().control_height(Size::Default))
+                .min_size(0.0, Metrics::current().control_height(ControlSize::Default))
                 .gap(KV_ROW_GAP)
                 .align_items(AlignItems::Center),
         )

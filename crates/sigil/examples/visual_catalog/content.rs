@@ -8,7 +8,6 @@ pub(crate) const BUILDERS: &[(&str, Build)] = &[
     ("section_label", section_row),
     ("icon", icon_row),
     ("chip", chip_row),
-    ("badge", badge_row),
     ("dot", dot_row),
     ("avatar", avatar_row),
     ("path", path_row),
@@ -45,10 +44,6 @@ fn icon_row(_state: State) -> NodeBuilder {
 
 fn chip_row(_state: State) -> NodeBuilder {
     node(chip("Stable", Tone::Success))
-}
-
-fn badge_row(_state: State) -> NodeBuilder {
-    node(badge("4", Tone::Error))
 }
 
 fn dot_row(_state: State) -> NodeBuilder {

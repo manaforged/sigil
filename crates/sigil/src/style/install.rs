@@ -69,6 +69,7 @@ fn debug_assert_not_fragment(node: &Node, op: &'static str) {
 pub(super) fn install_theme(node: &mut Node, theme: Theme) {
     debug_assert_not_fragment(node, "theme");
     let _previous = node.attach(theme);
+    crate::scene::emit_cache::theme_changed();
 }
 
 pub(super) fn install_focus_ring(node: &mut Node, ring: FocusRing) {

@@ -21,7 +21,8 @@ pub struct FrameOutput {
     pub layout: Result<(), LayoutError>,
 }
 
-pub type FrameInputHook<'a> = Box<dyn FnOnce(&mut Host, &mut EventRouter) + 'a>;
+pub type FrameInputHook<'a> =
+    Box<dyn FnOnce(&mut Host, &mut EventRouter) -> Option<(f32, f32)> + 'a>;
 
 pub type FrameLayoutHook<'a> = Box<dyn FnOnce(&mut Host, &mut EventRouter) + 'a>;
 
@@ -38,19 +39,19 @@ impl Host {
     pub fn frame(
         &mut self,
         router: &mut EventRouter,
-        viewport: (f32, f32),
+        mut viewport: (f32, f32),
         dt: f32,
         hooks: FrameHooks<'_>,
     ) -> FrameOutput {
         #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
         self.remount_patched(router);
         let _env = self.enter();
-        self.apply_pending_theme();
         Runtime::begin_effect();
-        if let Some(input) = hooks.input {
-            input(self, router);
+        if let Some(next) = hooks.input.and_then(|input| input(self, router)) {
+            viewport = next;
         }
         crate::reactive::run_dispatch_deferred();
+        self.apply_pending_theme();
         #[cfg(feature = "dialog")]
         self.sync_dialogs();
         let intervals = tick_intervals();

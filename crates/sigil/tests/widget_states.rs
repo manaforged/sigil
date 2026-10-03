@@ -82,11 +82,11 @@ fn button_focused_is_focusable() {
 fn button_disabled_is_not_focusable() {
     sigil::reactive::Runtime::scope("c4-button-disabled", || {
         let mut cx = Cx::new_root();
-        let root = cx.add(button("OK").enabled(false));
-        compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
-        assert!(!node.a11y.hittable);
+        let root = cx.add(button("OK").disabled(true));
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+        let mut router = EventRouter::new();
+        assert!(!router.is_focus_target(&cx, &layout, root));
+        assert!(!router.is_click_target(&cx, &layout, root));
     });
 }
 

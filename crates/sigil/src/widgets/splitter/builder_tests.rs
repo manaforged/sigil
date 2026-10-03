@@ -3,7 +3,7 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, container};
 use crate::reactive::Runtime;
 
-use super::{SplitterOrientation, splitter};
+use super::{Orientation, splitter};
 use crate::geometry::{LogicalSize, Size};
 use crate::kernel::TextContent;
 use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
@@ -22,7 +22,7 @@ fn fixed_pane_and_handle_keep_their_width_with_filling_content() {
     Runtime::scope("splitter-fixed-pane", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
-            splitter(SplitterOrientation::Horizontal)
+            splitter(Orientation::Horizontal)
                 .pane(container().layout(LayoutStyle::flex_column().fill()))
                 .initial(224.0)
                 .min(180.0)
@@ -51,7 +51,7 @@ fn fixed_pane_and_handle_keep_their_width_with_filling_content() {
 }
 
 fn two_pane() -> impl IntoNode {
-    splitter(SplitterOrientation::Horizontal)
+    splitter(Orientation::Horizontal)
         .child(container(), 120.0)
         .child(container(), 200.0)
 }
@@ -68,7 +68,7 @@ fn helper_returns_into_node() {
 #[test]
 fn splitter_converts_to_node_builder() {
     Runtime::scope("splitter-from", || {
-        let node: NodeBuilder = splitter(SplitterOrientation::Horizontal)
+        let node: NodeBuilder = splitter(Orientation::Horizontal)
             .child(container(), 120.0)
             .child(container(), 200.0)
             .into();
@@ -81,7 +81,7 @@ fn splitter_converts_to_node_builder() {
 #[test]
 fn pane_builder_converts_to_node_builder() {
     Runtime::scope("pane-from", || {
-        let node: NodeBuilder = splitter(SplitterOrientation::Horizontal)
+        let node: NodeBuilder = splitter(Orientation::Horizontal)
             .pane(container())
             .initial(120.0)
             .pane(container())

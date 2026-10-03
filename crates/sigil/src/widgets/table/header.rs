@@ -5,7 +5,7 @@ use crate::events::{Key, LogicalKey, MouseButton, NodeEventsExt, Shortcut};
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived};
-use crate::style::{FocusRing, NodeStyleExt, StyleAtom, Token, space};
+use crate::style::{NodeStyleExt, StyleAtom, Token, space};
 
 use super::super::drag::{Axis, axis_drag};
 use super::super::interaction::InteractionState;
@@ -138,7 +138,7 @@ fn cell_states(cell: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder
     let interaction = InteractionState::new(true);
     interaction
         .observe_style(row_states(cell, disabled))
-        .focus_ring(FocusRing::new(interaction.focus_visible()).offset(RING_INSET))
+        .focus_ring(interaction.focus_ring().offset(RING_INSET))
 }
 
 fn header_cell<Row: 'static>(

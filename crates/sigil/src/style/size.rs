@@ -1,7 +1,7 @@
 use crate::style::{Dimension, Px};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Size {
+pub enum ControlSize {
     Compact,
     Default,
     Wide,

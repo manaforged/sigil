@@ -15,7 +15,7 @@ fn chip_demo() -> ChipBuilder {
 }
 
 fn badge_demo() -> ChipBuilder {
-    badge("3", Tone::Error)
+    chip("3", Tone::Error)
 }
 
 fn dot_demo() -> DotBuilder {

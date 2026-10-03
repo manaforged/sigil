@@ -97,7 +97,7 @@ fn top_bar() -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row().gap(cols(2.0)).padding(cols(1.0)))
         .child(section_label("Store dashboard"))
-        .child(badge("Live", Tone::Success))
+        .child(chip("Live", Tone::Success))
         .child(avatar("TG"))
 }
 

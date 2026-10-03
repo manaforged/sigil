@@ -39,7 +39,8 @@ impl EventRouter {
             return;
         }
         crate::events::note_focus_source(true);
-        if route_tab_key(&mut self.focus, cx, layout, &event) {
+        if is_tab_navigation(&event) {
+            self.route_tab(cx, layout, &mut event);
             return;
         }
         self.focus.focus_active_scope(cx, layout);
@@ -55,6 +56,22 @@ impl EventRouter {
         dispatch_key_path(cx, &path, event);
     }
 
+    fn route_tab(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: &mut KeyEvent) {
+        let path = self
+            .focus
+            .focus()
+            .filter(|id| visible(cx, *id))
+            .map(|focused| path_to_node(cx, focused))
+            .unwrap_or_default();
+        if run_phase(cx, path.iter().copied(), event, true) {
+            return;
+        }
+        if route_tab_key(&mut self.focus, cx, layout, event) {
+            return;
+        }
+        run_phase(cx, path.iter().rev().copied(), event, false);
+    }
+
     fn focused_accepts_text(&self, cx: &Cx) -> bool {
         self.focus
             .focus()
@@ -65,18 +82,25 @@ impl EventRouter {
 }
 
 fn dispatch_key_path(cx: &Cx, path: &[NodeId], event: &mut KeyEvent) {
+    if run_phase(cx, path.iter().copied(), event, true) {
+        return;
+    }
+    run_phase(cx, path.iter().rev().copied(), event, false);
+}
+
+fn run_phase(
+    cx: &Cx,
+    path: impl Iterator<Item = NodeId>,
+    event: &mut KeyEvent,
+    capture: bool,
+) -> bool {
     for id in path {
-        invoke_key(cx, *id, event, true);
+        invoke_key(cx, id, event, capture);
         if event.propagation_stopped() {
-            return;
+            return true;
         }
     }
-    for id in path.iter().rev().copied() {
-        invoke_key(cx, id, event, false);
-        if event.propagation_stopped() {
-            return;
-        }
-    }
+    false
 }
 
 fn invoke_key(cx: &Cx, id: NodeId, event: &mut KeyEvent, capture: bool) -> bool {
@@ -156,13 +180,17 @@ fn collect_shortcuts(cx: &Cx, id: NodeId, entries: &mut SmallVec<[(Shortcut, Nod
     }
 }
 
+fn is_tab_navigation(event: &KeyEvent) -> bool {
+    event.key == LogicalKey::Named(Key::Tab) && !event.modifiers.ctrl() && !event.modifiers.alt()
+}
+
 fn route_tab_key(
     focus: &mut FocusManager,
     cx: &mut Cx,
     layout: &LayoutEngine,
     event: &KeyEvent,
 ) -> bool {
-    if event.key != LogicalKey::Named(Key::Tab) || event.modifiers.ctrl() || event.modifiers.alt() {
+    if !is_tab_navigation(event) {
         return false;
     }
     if event.modifiers.shift() {

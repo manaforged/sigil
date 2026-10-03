@@ -21,14 +21,15 @@ pub fn request_exit() {
 }
 
 #[must_use]
-pub fn take_exit() -> bool {
+pub(crate) fn take_exit() -> bool {
     if let Some(cell) = TARGET.with(|slot| slot.borrow().clone()) {
         return cell.replace(false);
     }
     FALLBACK.swap(false, Ordering::SeqCst)
 }
 
-pub fn clear_exit() {
+#[cfg(any(test, feature = "desktop", feature = "terminal"))]
+pub(crate) fn clear_exit() {
     if let Some(cell) = TARGET.with(|slot| slot.borrow().clone()) {
         cell.set(false);
     }

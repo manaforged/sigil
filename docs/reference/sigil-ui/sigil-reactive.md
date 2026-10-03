@@ -18,12 +18,9 @@
 | [`effect`](#effect) | fn |  |
 | [`effect_named`](#effect_named) | fn |  |
 | [`interval`](#interval) | fn |  |
-| [`is_live`](#is_live) | fn |  |
 | [`next_interval_deadline`](#next_interval_deadline) | fn |  |
 | [`on_cleanup`](#on_cleanup) | fn |  |
-| [`owner_by_id`](#owner_by_id) | fn |  |
 | [`signal`](#signal-1) | fn |  |
-| [`tick_intervals`](#tick_intervals) | fn |  |
 | [`untrack`](#untrack) | fn |  |
 
 ## Structs
@@ -132,6 +129,8 @@
 | <code>into_signal(self) -&gt; <a href="#signal">Signal</a>&lt;T&gt; where Self: Sized, T: Clone + PartialEq + 'static</code> |  |
 | <code>read(&amp;self) -&gt; T</code> |  |
 
+**Trait implementations:** <code><a href="#reactive">Reactive</a>&lt;Vec&lt;T&gt;&gt;</code>
+
 
 ## Functions
 
@@ -170,11 +169,6 @@
 <pre>pub fn <a href="#interval">interval</a>(period: Duration, callback: impl Fn() + 'static) -&gt; <a href="#intervalid">IntervalId</a></pre>
 
 
-### `is_live`
-
-<pre>pub fn <a href="#is_live">is_live</a>(id: <a href="#ownerid">OwnerId</a>) -&gt; bool</pre>
-
-
 ### `next_interval_deadline`
 
 <pre>pub fn <a href="#next_interval_deadline">next_interval_deadline</a>() -&gt; Option&lt;Instant&gt;</pre>
@@ -185,19 +179,9 @@
 <pre>pub fn <a href="#on_cleanup">on_cleanup</a>(f: impl FnOnce() + 'static)</pre>
 
 
-### `owner_by_id`
-
-<pre>pub fn <a href="#owner_by_id">owner_by_id</a>(id: <a href="#ownerid">OwnerId</a>, f: impl FnOnce()) -&gt; bool</pre>
-
-
 ### `signal`
 
 <pre>pub fn <a href="#signal-1">signal</a>&lt;T: 'static&gt;(initial: T) -&gt; <a href="#signal">Signal</a>&lt;T&gt;</pre>
-
-
-### `tick_intervals`
-
-<pre>pub fn <a href="#tick_intervals">tick_intervals</a>() -&gt; usize</pre>
 
 
 ### `untrack`

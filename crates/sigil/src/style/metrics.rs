@@ -1,4 +1,4 @@
-use crate::style::{Elevation, Px, SPACING_STEP, Size, StyleAtom};
+use crate::style::{ControlSize, Elevation, Px, SPACING_STEP, StyleAtom};
 
 pub const BORDER_WIDTH: Px = Px(1);
 pub const DISABLED_OPACITY: u16 = 5_000;
@@ -55,38 +55,38 @@ impl Metrics {
     }
 
     #[must_use]
-    pub fn control_height(self, size: Size) -> f32 {
+    pub fn control_height(self, size: ControlSize) -> f32 {
         self.cell_or(match size {
-            Size::Compact => space(5) + 2.0,
-            Size::Default => space(7),
-            Size::Wide | Size::Grow => space(9),
+            ControlSize::Compact => space(5) + 2.0,
+            ControlSize::Default => space(7),
+            ControlSize::Wide | ControlSize::Grow => space(9),
         })
     }
 
     #[must_use]
-    pub const fn control_width(self, size: Size) -> f32 {
+    pub const fn control_width(self, size: ControlSize) -> f32 {
         match size {
-            Size::Compact => space(6),
-            Size::Default => space(8),
-            Size::Wide | Size::Grow => space(37),
+            ControlSize::Compact => space(6),
+            ControlSize::Default => space(8),
+            ControlSize::Wide | ControlSize::Grow => space(37),
         }
     }
 
     #[must_use]
-    pub fn padding(self, size: Size) -> f32 {
+    pub fn padding(self, size: ControlSize) -> f32 {
         self.cell_or(match size {
-            Size::Compact => space(1) + 2.0,
-            Size::Default => space(2) + 2.0,
-            Size::Wide | Size::Grow => space(3) + 2.0,
+            ControlSize::Compact => space(1) + 2.0,
+            ControlSize::Default => space(2) + 2.0,
+            ControlSize::Wide | ControlSize::Grow => space(3) + 2.0,
         })
     }
 
     #[must_use]
-    pub fn gap(self, size: Size) -> f32 {
+    pub fn gap(self, size: ControlSize) -> f32 {
         self.cell_or(match size {
-            Size::Compact => space(1),
-            Size::Default => space(2),
-            Size::Wide | Size::Grow => space(3),
+            ControlSize::Compact => space(1),
+            ControlSize::Default => space(2),
+            ControlSize::Wide | ControlSize::Grow => space(3),
         })
     }
 

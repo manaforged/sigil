@@ -57,11 +57,6 @@ pub fn chip(label: impl Into<TextContent>, tone: Tone) -> ChipBuilder {
     ChipBuilder::new(label, tone)
 }
 
-#[must_use]
-pub fn badge(label: impl Into<TextContent>, tone: Tone) -> ChipBuilder {
-    ChipBuilder::new(label, tone)
-}
-
 #[cfg(test)]
 #[path = "chip_tests.rs"]
 mod tests;

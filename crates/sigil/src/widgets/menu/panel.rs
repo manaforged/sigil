@@ -5,7 +5,7 @@ use crate::kernel::{NodeBuilder, Role};
 use crate::layout::PopupSide;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::reactive::{OwnerId, Signal, derived, is_live, owner_by_id, signal};
-use crate::style::{Metrics, Size};
+use crate::style::{ControlSize, Metrics};
 
 use super::super::listbox::{ListModel, listbox};
 use super::super::popup::{self, ItemSlots, item_row};
@@ -56,7 +56,7 @@ impl ListModel for MenuModel {
 }
 
 pub(super) fn panel_height(rows: &[Row]) -> f32 {
-    let item = Metrics::current().control_height(Size::Default);
+    let item = Metrics::current().control_height(ControlSize::Default);
     popup::panel_height(rows.iter().map(|row| match row {
         Row::Item(_) => item,
         Row::Separator => popup::separator_height(),
@@ -111,12 +111,12 @@ fn commit_fn(rows: Rc<Vec<Row>>, close: Rc<dyn Fn()>, host: Option<OwnerId>) -> 
         if item.disabled {
             return;
         }
-        if let Some(select) = &item.select {
+        if let Some(on_activate) = &item.on_activate {
             match host {
                 Some(host) if is_live(host) => {
-                    owner_by_id(host, || select());
+                    owner_by_id(host, || on_activate());
                 }
-                _ => select(),
+                _ => on_activate(),
             }
         }
         close();

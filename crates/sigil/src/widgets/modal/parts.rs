@@ -2,7 +2,7 @@ use crate::kernel::{IntoNode, NodeBuilder, TextContent, container, text};
 use crate::layout::snap;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{Paint, Size, Token, space};
+use crate::style::{ControlSize, Paint, Token, space};
 
 use super::super::button::icon_button;
 use super::super::scroll::{SCROLLBAR_WIDTH, scroll};
@@ -39,7 +39,7 @@ pub(super) fn dialog_header(title: TextContent, close: Option<Signal<bool>>) -> 
         Some(show) => row.child(
             icon_button(CLOSE_GLYPH, move || show.set(false))
                 .accessible("Close")
-                .size(Size::Compact),
+                .size(ControlSize::Compact),
         ),
         None => row,
     }

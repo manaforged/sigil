@@ -179,7 +179,7 @@ fn encode_opacity(value: f32) -> u16 {
     clippy::cast_possible_truncation,
     reason = "value is clamped to 0..=i16::MAX before the cast — fits losslessly in i16"
 )]
-fn encode_px(value: f32) -> Px {
+pub(crate) fn encode_px(value: f32) -> Px {
     let clamped = value.round().clamp(0.0, f32::from(i16::MAX));
     Px(clamped as i16)
 }

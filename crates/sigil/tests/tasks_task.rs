@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use sigil::reactive::{Owner, Runtime};
-use sigil::tasks::{AsyncRuntime, Status, task};
+use sigil::tasks::{AsyncRuntime, Status, task, task_with};
 use tokio::sync::Notify;
 
 fn spin_until(mut cond: impl FnMut() -> bool) -> bool {
@@ -113,5 +113,59 @@ fn disposing_the_owner_aborts_a_pending_run() {
             spin_until(|| dropped.load(Ordering::Acquire)),
             "the pending run outlived its owner"
         );
+    });
+}
+
+#[test]
+fn cancel_returns_a_pending_task_to_idle_and_drops_the_late_result() {
+    Runtime::scope("task-cancel", || {
+        let (mut runtime, _woke) = runtime();
+        let gate = Arc::new(Notify::new());
+        let load = task({
+            let gate = Arc::clone(&gate);
+            move || {
+                let gate = Arc::clone(&gate);
+                async move {
+                    gate.notified().await;
+                    Ok::<u32, String>(7)
+                }
+            }
+        });
+        load.run();
+        assert!(load.status().is_pending());
+
+        load.cancel();
+        gate.notify_one();
+        std::thread::sleep(Duration::from_millis(50));
+        runtime.pump();
+
+        assert!(matches!(load.status(), Status::Idle));
+    });
+}
+
+#[test]
+fn blocking_work_returns_its_value_through_a_task() {
+    Runtime::scope("task-blocking", || {
+        let (mut runtime, woke) = runtime();
+        let load = task(|| async {
+            let total = sigil::tasks::blocking(|| (1..=10).sum::<u32>()).await;
+            Ok::<u32, String>(total)
+        });
+        load.run();
+        wait_for_result(&woke);
+        runtime.pump();
+        assert!(matches!(load.status(), Status::Ok(55)));
+    });
+}
+
+#[test]
+fn run_with_passes_its_argument_to_the_run() {
+    Runtime::scope("task-with", || {
+        let (mut runtime, woke) = runtime();
+        let double = task_with(|n: u32| async move { Ok::<u32, String>(n * 2) });
+        double.run_with(21);
+        wait_for_result(&woke);
+        runtime.pump();
+        assert!(matches!(double.status(), Status::Ok(42)));
     });
 }

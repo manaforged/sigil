@@ -14,7 +14,7 @@ pub fn column() -> NodeBuilder {
 }
 
 fn default_gap() -> f32 {
-    Metrics::current().gap(crate::style::Size::Default)
+    Metrics::current().gap(crate::style::ControlSize::Default)
 }
 
 pub trait LayoutBuilderExt {

@@ -8,7 +8,7 @@ mod ime;
 mod render;
 
 pub(crate) use buffer::TextEdit;
-pub use builder::{TextEditBuilder, text_edit};
+pub use builder::{SubmitKey, TextEditBuilder, text_edit};
 pub use handlers::{FocusCaret, TextEditState};
 pub(in crate::widgets) use handlers::{
     KeyProfile, LineStep, TextEditRuntime, attach_a11y_edit, clipboard_keys, commit, edit_keys,

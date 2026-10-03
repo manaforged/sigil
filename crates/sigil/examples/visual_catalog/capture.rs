@@ -20,6 +20,8 @@ use super::catalog::Settle;
 use super::spec::State;
 use super::tokens::hex;
 
+const DT: f32 = 1.0 / 60.0;
+
 #[derive(Clone, Copy)]
 pub(crate) enum Look {
     Light,
@@ -234,4 +236,20 @@ pub(crate) fn escape(text: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+pub(crate) const fn mode(state: State, drag: [f32; 2]) -> InteractionMode {
+    match state {
+        State::Dragged => InteractionMode::Dragged {
+            dx: drag[0],
+            dy: drag[1],
+        },
+        State::Hover => InteractionMode::HoverAfterFrames { frames: 60, dt: DT },
+        State::Pressed => InteractionMode::PressedAfterFrames { frames: 60, dt: DT },
+        State::Focused => InteractionMode::FocusedAfterFrames { frames: 60, dt: DT },
+        State::Open => InteractionMode::Clicked,
+        State::Default | State::Disabled | State::Shown | State::Invalid | State::Selected => {
+            InteractionMode::Default
+        }
+    }
 }

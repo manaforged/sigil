@@ -4,7 +4,7 @@ use crate::layout::PopupSide;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived, signal};
-use crate::style::{Metrics, Size, space};
+use crate::style::{ControlSize, Metrics, space};
 
 use super::layout_ext::WidgetLayoutExt;
 use super::listbox::{ListModel, listbox, scrolled};
@@ -260,7 +260,7 @@ fn popup_host(state: Combobox) -> NodeBuilder {
     reason = "row counts are small; sub-unit precision is irrelevant at render scale"
 )]
 fn rows_height(count: usize) -> f32 {
-    count as f32 * Metrics::current().control_height(Size::Default)
+    count as f32 * Metrics::current().control_height(ControlSize::Default)
 }
 
 fn build_popup(state: Combobox, matches: Vec<(usize, String)>) -> NodeBuilder {

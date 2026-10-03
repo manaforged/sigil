@@ -82,7 +82,7 @@ fn nav_row(page: Signal<usize>, index: usize, name: &'static str) -> NodeBuilder
         )
         .rounded(Radius::Md)
         .paint_when(active, |s| s.bg(Token::Accent4))
-        .child(text(name).nowrap().font_size(14))
+        .child(text(name).nowrap().font_size(14.0))
         .pointer_up(move |_| page.set(index))
 }
 
@@ -150,7 +150,7 @@ fn controls_page() -> NodeBuilder {
                 .primary()
                 .activate(move || clicks.set(clicks.peek() + 1)),
             icon_button("⟲", move || clicks.set(0)).accessible("Reset clicks"),
-            button("Disabled").enabled(false),
+            button("Disabled").disabled(true),
         ))
         .child(section_label("Toggles"))
         .child(row2(
@@ -267,7 +267,7 @@ fn content_page() -> NodeBuilder {
         .child(row3(
             icon("★").tone(Tone::Warn).label("Star"),
             chip("stable", Tone::Success),
-            badge("4", Tone::Error),
+            chip("4", Tone::Error),
         ))
         .child(row3(dot(Tone::Success), dot(Tone::Warn), dot(Tone::Error)))
         .child(section_label("Chart"))
@@ -309,7 +309,7 @@ fn documents_page() -> NodeBuilder {
         .child(
             diff(PATCH)
                 .path("src/app.rs")
-                .layout(DiffLayout::Unified)
+                .view(DiffView::Unified)
                 .max_rows(24),
         )
         .child(section_label("Mermaid"))
@@ -324,8 +324,8 @@ fn chrome_page() -> NodeBuilder {
         .child(menu_bar().menu(
             "File",
             [
-                MenuItem::new("New").select(|| {}),
-                MenuItem::new("Quit").shortcut("Ctrl+Q").select(|| {}),
+                MenuItem::new("New").activate(|| {}),
+                MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {}),
             ],
         ))
         .child(section_label("Panel and card"))
@@ -342,7 +342,7 @@ fn chrome_page() -> NodeBuilder {
         )
         .child(section_label("Splitter"))
         .child(
-            splitter(SplitterOrientation::Horizontal)
+            splitter(Orientation::Horizontal)
                 .child(card(text("Navigation").nowrap()), 180.0)
                 .child(card(text("Content").nowrap()), 280.0)
                 .height(140.0),

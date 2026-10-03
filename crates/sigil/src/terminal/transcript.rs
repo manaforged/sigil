@@ -10,7 +10,7 @@ pub(crate) struct Transcript {
     out: Option<File>,
     tree: String,
     rows: Vec<String>,
-    live: HashMap<AkNodeId, String>,
+    live: Option<HashMap<AkNodeId, String>>,
 }
 
 #[derive(Default)]
@@ -34,7 +34,7 @@ impl Transcript {
                 .and_then(|value| open(&value)),
             tree: String::new(),
             rows: Vec::new(),
-            live: HashMap::new(),
+            live: None,
         }
     }
 
@@ -53,12 +53,14 @@ impl Transcript {
             if node.live().is_none_or(|politeness| politeness == Live::Off) {
                 continue;
             }
-            if self.live.get(id).map(String::as_str) != Some(label) {
+            if let Some(seen) = &self.live
+                && seen.get(id).map(String::as_str) != Some(label)
+            {
                 spoken.push(label.to_string());
             }
             live.insert(*id, label.to_string());
         }
-        self.live = live;
+        self.live = Some(live);
         Reading { focus, spoken }
     }
 

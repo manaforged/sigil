@@ -82,7 +82,7 @@ fn slider_row(state: State) -> NodeBuilder {
 }
 
 fn interactive_row(state: State) -> NodeBuilder {
-    interactive(node(text("Interactive row").nowrap().font_size(14)))
+    interactive(node(text("Interactive row").nowrap().font_size(14.0)))
         .focusable(true)
         .rounded(Radius::Md)
         .disabled(off(state))

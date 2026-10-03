@@ -48,7 +48,7 @@ fn wrapped_label_inside_modal_band_wraps() {
                                     .child(
                                         text(body.clone())
                                             .wrap()
-                                            .font_size(12)
+                                            .font_size(12.0)
                                             .layout(LayoutStyle::block().fill_width()),
                                     ),
                             ),

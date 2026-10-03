@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Owner, OwnerId, Signal, signal};
-use crate::style::{Metrics, NodeStyleExt, Size};
+use crate::style::{ControlSize, Metrics, NodeStyleExt};
 
 use super::super::layout_ext::WidgetLayoutExt;
 use super::super::menu::PANEL_INSET;
@@ -106,7 +106,7 @@ pub(super) fn context_overlay<Row: 'static>(
             }
             let (left, top, width, height) = chrome.bounds.get();
             let menu_width = width.min(200.0);
-            let item_height = Metrics::current().control_height(Size::Default);
+            let item_height = Metrics::current().control_height(ControlSize::Default);
             let menu_height = items
                 .iter()
                 .fold(PANEL_INSET * 2.0, |total, _| total + item_height);
@@ -138,31 +138,33 @@ fn header_menu<Row: 'static>(state: &TableState<Row>, id: &'static str) -> Vec<M
     if sortable {
         let asc = state.clone();
         let desc = state.clone();
-        items.push(MenuItem::new("Sort ascending").select(move || {
+        items.push(MenuItem::new("Sort ascending").activate(move || {
             asc.sort(id, SortDir::Ascending);
         }));
-        items.push(MenuItem::new("Sort descending").select(move || {
+        items.push(MenuItem::new("Sort descending").activate(move || {
             desc.sort(id, SortDir::Descending);
         }));
     }
     let hide = state.clone();
-    items.push(MenuItem::new("Hide column").select(move || hide.hide_column(id)));
+    items.push(MenuItem::new("Hide column").activate(move || hide.hide_column(id)));
     let autosize = state.clone();
-    items.push(MenuItem::new("Autosize").select(move || autosize.clear_column_width(id)));
+    items.push(MenuItem::new("Autosize").activate(move || autosize.clear_column_width(id)));
     if let Some(from) = visual {
         if from > 0 {
             let left = state.clone();
-            items.push(MenuItem::new("Move left").select(move || left.move_column(from, from - 1)));
+            items.push(
+                MenuItem::new("Move left").activate(move || left.move_column(from, from - 1)),
+            );
         }
         if from + 1 < order.len() {
             let right = state.clone();
             items.push(
-                MenuItem::new("Move right").select(move || right.move_column(from, from + 1)),
+                MenuItem::new("Move right").activate(move || right.move_column(from, from + 1)),
             );
         }
     }
     let show = state.clone();
-    items.push(MenuItem::new("Show all columns").select(move || show.show_all_columns()));
+    items.push(MenuItem::new("Show all columns").activate(move || show.show_all_columns()));
     items
 }
 

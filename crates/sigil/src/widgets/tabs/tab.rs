@@ -20,6 +20,7 @@ use crate::layout::snap::CellForm;
 const TAB_PADDING_X: f32 = space(3);
 const CLOSE_AFFORDANCE_WIDTH: f32 = space(4);
 const LINE_STRIP: CellForm<f32> = CellForm::new(STRIP_HEIGHT, space(4));
+const CLOSE_GAP: CellForm<f32> = CellForm::new(space(1), 0.0);
 
 pub(super) fn line_strip_height() -> f32 {
     LINE_STRIP.pick()
@@ -107,6 +108,7 @@ fn tab_layout(chrome: StripChrome) -> LayoutStyle {
             TAB_HEIGHT
         })
         .padding_x(TAB_PADDING_X)
+        .gap(CLOSE_GAP.pick())
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center)
 }

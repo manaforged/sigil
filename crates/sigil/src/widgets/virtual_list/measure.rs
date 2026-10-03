@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 use std::rc::Rc;
 
-use crate::kernel::{NodeBuilder, container};
+use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::LayoutReactiveExt;
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived, effect, signal};
@@ -93,7 +93,12 @@ impl Measure {
         }
     }
 
-    pub(super) fn slot(&self, key: u64, width: WidthSpec, row: NodeBuilder) -> NodeBuilder {
+    pub(super) fn slot(
+        &self,
+        key: u64,
+        width: WidthSpec,
+        row: impl IntoNode + 'static,
+    ) -> NodeBuilder {
         let size = signal((0.0_f32, 0.0_f32));
         let measure = self.clone();
         effect(move || measure.record(key, size.get()));

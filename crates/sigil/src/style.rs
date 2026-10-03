@@ -57,10 +57,8 @@ pub use font_family::FontFamily;
 pub use grid::grid;
 pub(crate) use grid::{cell_size, swap_cell};
 pub(crate) use merge::merge_classes;
-pub use merge::{
-    ComponentId, bump_unknown_class_count, merge_warning_count, merge_warning_count_for_component,
-    unknown_class_warning_count,
-};
+pub(crate) use merge::merge_warning_count_for_component;
+pub use merge::{ComponentId, unknown_class_warning_count};
 pub use metrics::{
     BORDER_WIDTH, DISABLED_OPACITY, ICON_SIZE, Metrics, OVERLAY_SHADOW, Radius, space,
 };
@@ -74,7 +72,7 @@ pub use reactive::StyleReactiveEffect;
 #[cfg(any(test, feature = "kittest"))]
 pub use resolve::unsupported_style_warning_count_for;
 pub use resolve::{render_style_for, text_style_for};
-pub use size::{LengthPercentage, Size};
+pub use size::{ControlSize, LengthPercentage};
 pub use state::{StateSlot, StateStyle, StyleState, StyleVariant};
 pub(crate) use struct_api::Style;
 pub(crate) use styled::node::attach_style;

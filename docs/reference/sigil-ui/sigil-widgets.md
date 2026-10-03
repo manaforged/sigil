@@ -28,6 +28,7 @@
 | [`RadioGroupBuilder`](#radiogroupbuilder) | struct |  |
 | [`ScrollBuilder`](#scrollbuilder) | struct |  |
 | [`SegmentedBuilder`](#segmentedbuilder) | struct |  |
+| [`SidebarBuilder`](#sidebarbuilder) | struct |  |
 | [`SliderBuilder`](#sliderbuilder) | struct |  |
 | [`SparklineBuilder`](#sparklinebuilder) | struct |  |
 | [`SplitterBuilder`](#splitterbuilder) | struct |  |
@@ -45,6 +46,7 @@
 | [`DragState`](#dragstate) | struct |  |
 | [`ListRowSlots`](#listrowslots) | struct |  |
 | [`MenuItem`](#menuitem) | struct |  |
+| [`SortKey`](#sortkey) | struct |  |
 | [`TableColumn`](#tablecolumn) | struct |  |
 | [`TableState`](#tablestate) | struct |  |
 | [`ToastQueue`](#toastqueue) | struct |  |
@@ -55,18 +57,18 @@
 | [`HlSpan`](#hlspan) | struct |  |
 | [`ListColumn`](#listcolumn) | struct |  |
 | [`SelectionState`](#selectionstate) | struct |  |
-| [`SortKey`](#sortkey) | struct |  |
 | [`SubmenuBuilder`](#submenubuilder) | struct |  |
 | [`TextEditState`](#texteditstate) | struct |  |
 | [`ToastEntry`](#toastentry) | struct |  |
 | [`ColWidth`](#colwidth) | enum |  |
 | [`Density`](#density) | enum |  |
-| [`DiffLayout`](#difflayout) | enum |  |
+| [`DiffView`](#diffview) | enum |  |
 | [`Disclosure`](#disclosure) | enum |  |
 | [`Orientation`](#orientation) | enum |  |
 | [`SelectionMode`](#selectionmode) | enum |  |
 | [`Side`](#side) | enum |  |
-| [`SplitterOrientation`](#splitterorientation) | enum |  |
+| [`SortDir`](#sortdir) | enum |  |
+| [`SubmitKey`](#submitkey) | enum |  |
 | [`PathColor`](#pathcolor) | enum |  |
 | [`Axis`](#axis) | enum |  |
 | [`ChangeKind`](#changekind) | enum |  |
@@ -78,7 +80,6 @@
 | [`PathFill`](#pathfill) | enum |  |
 | [`RowTone`](#rowtone) | enum |  |
 | [`ScrollAnchor`](#scrollanchor) | enum |  |
-| [`SortDir`](#sortdir) | enum |  |
 | [`SparkFill`](#sparkfill) | enum |  |
 | [`SparkMark`](#sparkmark) | enum |  |
 | [`ToastLevel`](#toastlevel) | enum |  |
@@ -87,10 +88,10 @@
 | [`Identifiable`](#identifiable) | trait |  |
 | [`IntoList`](#intolist) | trait |  |
 | [`NumericKind`](#numerickind) | trait |  |
+| [`RowRender`](#rowrender) | trait |  |
 | [`app_shell`](#app_shell) | fn |  |
 | [`avatar`](#avatar) | fn |  |
 | [`axis_drag`](#axis_drag) | fn |  |
-| [`badge`](#badge) | fn |  |
 | [`button`](#button) | fn |  |
 | [`card`](#card) | fn |  |
 | [`chart`](#chart) | fn |  |
@@ -148,7 +149,6 @@
 | [`segmented`](#segmented) | fn |  |
 | [`sheet`](#sheet) | fn |  |
 | [`sidebar`](#sidebar) | fn |  |
-| [`sidebar_width`](#sidebar_width) | fn |  |
 | [`slider`](#slider) | fn |  |
 | [`spacer`](#spacer) | fn |  |
 | [`sparkline`](#sparkline) | fn |  |
@@ -188,7 +188,6 @@
 | <code>activate(self, activate: impl Fn() + 'static) -&gt; Self</code> |  |
 | <code>const destructive(self) -&gt; Self</code> |  |
 | <code>disabled(self, disabled: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
-| <code>const enabled(self, yes: bool) -&gt; Self</code> |  |
 | <code>const ghost(self) -&gt; Self</code> |  |
 | <code>icon_svg(self, svg: impl Into&lt;Rc&lt;str&gt;&gt;) -&gt; Self</code> |  |
 | <code>const neutral(self) -&gt; Self</code> |  |
@@ -196,12 +195,11 @@
 | <code>const outline(self) -&gt; Self</code> |  |
 | <code>const pending(self, pending: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;) -&gt; Self</code> |  |
 | <code>const primary(self) -&gt; Self</code> |  |
-| <code>size(self, size: <a href="sigil-style.html#size">Size</a>) -&gt; Self</code> |  |
+| <code>size(self, size: <a href="sigil-style.html#controlsize">ControlSize</a>) -&gt; Self</code> |  |
 | <code>const soft(self) -&gt; Self</code> |  |
 | <code>const solid(self) -&gt; Self</code> |  |
 | <code>theme(self, theme: <a href="sigil-style.html#theme">Theme</a>) -&gt; Self</code> |  |
 | <code>const tone(self, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
-| <code>const width(self, width: f32) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 
@@ -213,12 +211,10 @@
 | Method | Description |
 | --- | --- |
 | <code>const bar(self) -&gt; Self</code> |  |
-| <code>const height(self, px: f32) -&gt; Self</code> |  |
 | <code>labels(self, labels: impl IntoIterator&lt;Item = impl Into&lt;String&gt;&gt;) -&gt; Self</code> |  |
 | <code>const line(self) -&gt; Self</code> |  |
-| <code>series(self, name: impl Into&lt;String&gt;, values: impl IntoIterator&lt;Item = f32&gt;, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
+| <code>series(self, name: impl Into&lt;String&gt;, values: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;Vec&lt;f32&gt;&gt;, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
 | <code>tone(self, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
-| <code>const width(self, px: f32) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 
@@ -249,8 +245,7 @@
 | <code>activate(self, activate: impl Fn() + 'static) -&gt; Self</code> |  |
 | <code>into_node_builder(self) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></code> |  |
 | <code>layout(self, layout: <a href="sigil-layout.html#layoutstyle">LayoutStyle</a>) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></code> |  |
-| <code>const tone(self, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
-| <code>const tone_signal(self, tone: <a href="sigil-reactive.html#signal">Signal</a>&lt;<a href="sigil-style.html#tone">Tone</a>&gt;) -&gt; Self</code> |  |
+| <code>tone(self, tone: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;<a href="sigil-style.html#tone">Tone</a>&gt;) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>
 
@@ -279,7 +274,7 @@
 | Method | Description |
 | --- | --- |
 | <code>disabled(self, disabled: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
-| <code>const invalid_when(self, invalid: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;) -&gt; Self</code> |  |
+| <code>invalid_when(self, invalid: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="#fieldcontrol">FieldControl</a></code>
 
@@ -293,8 +288,9 @@
 | <code>cancel(self, cb: impl Fn() + 'static) -&gt; Self</code> |  |
 | <code>disabled(self, label: impl Into&lt;String&gt;) -&gt; Self</code> |  |
 | <code>item(self, label: impl Into&lt;String&gt;, action: impl Fn() + 'static) -&gt; Self</code> |  |
-| <code>select(self, cb: impl Fn(&amp;str) + 'static) -&gt; Self</code> |  |
+| <code>placeholder(self, text: impl Into&lt;String&gt;) -&gt; Self</code> |  |
 | <code>submenu(self, label: impl Into&lt;String&gt;, build: impl FnOnce(<a href="#submenubuilder">SubmenuBuilder</a>) -&gt; <a href="#submenubuilder">SubmenuBuilder</a>) -&gt; Self</code> |  |
+| <code>submit(self, cb: impl Fn(&amp;str) + 'static) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>, <code>Default</code>
 
@@ -306,7 +302,7 @@
 | Method | Description |
 | --- | --- |
 | <code>disabled(self, disabled: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
-| <code>const invalid_when(self, invalid: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;) -&gt; Self</code> |  |
+| <code>invalid_when(self, invalid: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
 | <code>text_field(self) -&gt; <a href="#textfieldbuilder">TextFieldBuilder</a></code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>
@@ -318,11 +314,11 @@
 
 | Method | Description |
 | --- | --- |
-| <code>choose(self, pick: impl Fn(<a href="#difflayout">DiffLayout</a>) + 'static) -&gt; Self</code> |  |
-| <code>const layout(self, layout: <a href="#difflayout">DiffLayout</a>) -&gt; Self</code> |  |
+| <code>change(self, on_change: impl Fn(<a href="#diffview">DiffView</a>) + 'static) -&gt; Self</code> |  |
 | <code>const max_rows(self, rows: usize) -&gt; Self</code> |  |
 | <code>path(self, path: impl Into&lt;String&gt;) -&gt; Self</code> |  |
 | <code>status(self, status: impl Into&lt;String&gt;) -&gt; Self</code> |  |
+| <code>const view(self, view: <a href="#diffview">DiffView</a>) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 
@@ -334,7 +330,7 @@
 | Method | Description |
 | --- | --- |
 | <code>new(tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
-| <code>const size(self, size: <a href="sigil-style.html#size">Size</a>) -&gt; Self</code> |  |
+| <code>const size(self, size: <a href="sigil-style.html#controlsize">ControlSize</a>) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 
@@ -388,7 +384,7 @@
 | <code>label(self, label: impl Into&lt;String&gt;) -&gt; Self</code> |  |
 | <code>new(glyph: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;) -&gt; Self</code> |  |
 | <code>const px(self, px: f32) -&gt; Self</code> |  |
-| <code>const size(self, size: <a href="sigil-style.html#size">Size</a>) -&gt; Self</code> |  |
+| <code>const size(self, size: <a href="sigil-style.html#controlsize">ControlSize</a>) -&gt; Self</code> |  |
 | <code>const strong(self) -&gt; Self</code> |  |
 | <code>const tone(self, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
 
@@ -535,7 +531,6 @@
 
 | Method | Description |
 | --- | --- |
-| <code>const height(self, px: f32) -&gt; Self</code> |  |
 | <code>const indeterminate(self) -&gt; Self</code> |  |
 | <code>label(self, name: impl Into&lt;<a href="sigil-kernel.html#accessiblename">AccessibleName</a>&gt;) -&gt; Self</code> |  |
 | <code>new(value: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;, max: f32) -&gt; Self</code> |  |
@@ -572,12 +567,11 @@
 
 | Method | Description |
 | --- | --- |
-| <code>const auto_pin_to_bottom(self, on: bool) -&gt; Self</code> |  |
 | <code>extent(self, extent: impl <a href="#scroll">IntoScrollExtent</a>) -&gt; Self</code> |  |
 | <code>const fill(self) -&gt; Self</code> |  |
 | <code>const fit(self) -&gt; Self</code> |  |
+| <code>const follow_end(self, on: bool) -&gt; Self</code> |  |
 | <code>const scroll_bind(self, scroll_y: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;) -&gt; Self</code> |  |
-| <code>const scroll_to_end(self) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 
@@ -588,8 +582,18 @@
 
 | Method | Description |
 | --- | --- |
-| <code>const height(self, height: f32) -&gt; Self</code> |  |
 | <code>label(self, name: impl Into&lt;String&gt;) -&gt; Self</code> |  |
+
+**Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
+
+
+### `SidebarBuilder`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>const resizable(self, min: f32, max: f32) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 
@@ -661,7 +665,7 @@
 | <code>into_container(self) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></code> |  |
 | <code>const justify_list(self, justify: <a href="sigil-layout.html#justifycontent">JustifyContent</a>) -&gt; Self</code> |  |
 | <code>label(self, label: impl Into&lt;String&gt;) -&gt; Self</code> |  |
-| <code>labels(self, labels: impl IntoIterator&lt;Item = impl Into&lt;String&gt;&gt;) -&gt; Self</code> |  |
+| <code>labels&lt;S&gt;(self, labels: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;Vec&lt;S&gt;&gt;) -&gt; Self where S: Into&lt;String&gt; + 'static</code> |  |
 | <code>const line(self) -&gt; Self</code> |  |
 | <code>const order(self, signal: <a href="sigil-reactive.html#signal">Signal</a>&lt;Vec&lt;usize&gt;&gt;) -&gt; Self</code> |  |
 | <code>const pill(self) -&gt; Self</code> |  |
@@ -691,6 +695,7 @@
 | <code>placeholder(self, text: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;) -&gt; Self</code> |  |
 | <code>state(self, state: <a href="#texteditstate">TextEditState</a>) -&gt; Self</code> |  |
 | <code>submit(self, f: impl Fn(&amp;str) + 'static) -&gt; Self</code> |  |
+| <code>const submit_on(self, key: <a href="#submitkey">SubmitKey</a>) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 
@@ -709,7 +714,7 @@
 | <code>disabled(self, flag: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
 | <code>const focus_caret(self, at: <a href="#focuscaret">FocusCaret</a>) -&gt; Self</code> |  |
 | <code>const focus_when(self, trigger: <a href="sigil-reactive.html#signal">Signal</a>&lt;u64&gt;) -&gt; Self</code> |  |
-| <code>const invalid_when(self, invalid: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;) -&gt; Self</code> |  |
+| <code>invalid_when(self, invalid: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
 | <code>new(value: <a href="sigil-reactive.html#signal">Signal</a>&lt;String&gt;) -&gt; Self</code> |  |
 | <code>const password(self) -&gt; Self</code> |  |
 | <code>placeholder(self, text: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;) -&gt; Self</code> |  |
@@ -793,10 +798,11 @@
 
 | Method | Description |
 | --- | --- |
-| <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::auto_pin_to_bottom(self, on: bool) -&gt; Self</code> |  |
+| <code>pub fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::change(self, f: impl Fn(usize) + 'static) -&gt; Self</code> |  |
+| <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::cursor(self, cursor: <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;) -&gt; Self</code> |  |
 | <code>pub fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::estimate(self, length: impl <a href="sigil-layout.html#intopx">IntoPx</a>) -&gt; Self</code> |  |
-| <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::focused_row_bind(self, focused_row: <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;) -&gt; Self</code> |  |
-| <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::follow(self, target: <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;) -&gt; Self</code> |  |
+| <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::follow_end(self, on: bool) -&gt; Self</code> |  |
+| <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::follow_row(self, target: <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;) -&gt; Self</code> |  |
 | <code>pub fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::identified(self) -&gt; Self where T: <a href="#identifiable">Identifiable</a></code> |  |
 | <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::initial_scroll(self, anchor: <a href="#scrollanchor">ScrollAnchor</a>) -&gt; Self</code> |  |
 | <code>pub fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::item_height(self, f: impl Fn(usize, &amp;T) -&gt; f32 + 'static) -&gt; Self</code> |  |
@@ -807,9 +813,7 @@
 | <code>pub fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::row_height(self, length: impl <a href="sigil-layout.html#intopx">IntoPx</a>) -&gt; Self</code> |  |
 | <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::scroll_bind(self, scroll_y: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;) -&gt; Self</code> |  |
 | <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::scroll_into_view(self, index: usize) -&gt; Self</code> |  |
-| <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::scroll_to_end(self) -&gt; Self</code> |  |
 | <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::scroll_x_bind(self, scroll_x: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;, max: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;, width: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;) -&gt; Self</code> |  |
-| <code>pub fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::select(self, f: impl Fn(usize) + 'static) -&gt; Self</code> |  |
 | <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::selection(self, mode: <a href="#selectionmode">SelectionMode</a>) -&gt; Self</code> |  |
 | <code>pub fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::selection_state(&amp;mut self) -&gt; <a href="sigil-reactive.html#signal">Signal</a>&lt;<a href="#selectionstate">SelectionState</a>&gt;</code> |  |
 | <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::shrink_to_content(self) -&gt; Self</code> |  |
@@ -820,7 +824,7 @@
 | <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::max_scroll_bind(self, max_scroll: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;) -&gt; Self</code> |  |
 | <code>pub const fn <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;::scrollbar(self, on: bool) -&gt; Self</code> |  |
 
-**Trait implementations:** <code><a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> + 'static&gt; <a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> + 'static&gt; <a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
+**Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 
 
 ### `NumberFieldBuilder`
@@ -830,7 +834,7 @@
 | Method | Description |
 | --- | --- |
 | <code>pub fn <a href="#numberfieldbuilder">NumberFieldBuilder</a>&lt;T&gt;::disabled(self, disabled: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
-| <code>pub const fn <a href="#numberfieldbuilder">NumberFieldBuilder</a>&lt;T&gt;::invalid_when(self, invalid: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;) -&gt; Self</code> |  |
+| <code>pub fn <a href="#numberfieldbuilder">NumberFieldBuilder</a>&lt;T&gt;::invalid_when(self, invalid: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
 | <code>pub fn <a href="#numberfieldbuilder">NumberFieldBuilder</a>&lt;T&gt;::text_field(self) -&gt; <a href="#textfieldbuilder">TextFieldBuilder</a></code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="#fieldcontrol">FieldControl</a></code>
@@ -923,9 +927,9 @@
 
 | Method | Description |
 | --- | --- |
+| <code>activate(self, on_activate: impl Fn() + 'static) -&gt; Self</code> |  |
 | <code>const disabled(self, yes: bool) -&gt; Self</code> |  |
 | <code>new(label: impl Into&lt;String&gt;) -&gt; Self</code> |  |
-| <code>select(self, select: impl Fn() + 'static) -&gt; Self</code> |  |
 | <code>shortcut(self, hint: impl Into&lt;String&gt;) -&gt; Self</code> |  |
 | <code>const submenu(self, yes: bool) -&gt; Self</code> |  |
 
@@ -939,6 +943,18 @@
 | <code>submenu_indicator: bool</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Debug</code>
+
+
+### `SortKey`
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>column: &amp;'static str</code> |  |
+| <code>dir: <a href="#sortdir">SortDir</a></code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `TableColumn`
@@ -998,6 +1014,9 @@
 | <code>pub fn <a href="#tablestate">TableState</a>&lt;Row&gt;::toggle_sort(&amp;self, column: &amp;'static str)</code> |  |
 | <code>pub const fn <a href="#tablestate">TableState</a>&lt;Row&gt;::visible(&amp;self) -&gt; <a href="sigil-reactive.html#signal">Signal</a>&lt;Rc&lt;Vec&lt;u32&gt;&gt;&gt;</code> |  |
 | <code>pub fn <a href="#tablestate">TableState</a>&lt;Row&gt;::visible_columns(&amp;self) -&gt; Vec&lt;(usize, &amp;<a href="#tablecolumn">TableColumn</a>&lt;Row&gt;)&gt;</code> |  |
+| <code>pub fn <a href="#tablestate">TableState</a>&lt;Row&gt;::cycle_sort(&amp;self)</code> |  |
+| <code>pub fn <a href="#tablestate">TableState</a>&lt;Row&gt;::reverse_sort(&amp;self)</code> |  |
+| <code>pub fn <a href="#tablestate">TableState</a>&lt;Row&gt;::select_by(&amp;self, delta: i32)</code> |  |
 | <code>pub fn <a href="#tablestate">TableState</a>&lt;Row&gt;::identified(rows: Vec&lt;Row&gt;, columns: Vec&lt;<a href="#tablecolumn">TableColumn</a>&lt;Row&gt;&gt;) -&gt; Self</code> |  |
 
 **Trait implementations:** <code>Clone</code>
@@ -1121,18 +1140,6 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
 
 
-### `SortKey`
-
-**Fields**
-
-| Field | Description |
-| --- | --- |
-| <code>column: &amp;'static str</code> |  |
-| <code>dir: <a href="#sortdir">SortDir</a></code> |  |
-
-**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
-
-
 ### `SubmenuBuilder`
 
 **Methods**
@@ -1200,7 +1207,7 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
-### `DiffLayout`
+### `DiffView`
 
 **Methods**
 
@@ -1271,16 +1278,28 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
-### `SplitterOrientation`
+### `SortDir`
 
 **Variants**
 
 | Variant | Description |
 | --- | --- |
-| <code>Horizontal</code> |  |
-| <code>Vertical</code> |  |
+| <code>Ascending</code> |  |
+| <code>Descending</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
+### `SubmitKey`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>CtrlEnter</code> |  |
+| <code>Enter</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `PathColor`
@@ -1437,18 +1456,6 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
-### `SortDir`
-
-**Variants**
-
-| Variant | Description |
-| --- | --- |
-| <code>Ascending</code> |  |
-| <code>Descending</code> |  |
-
-**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
-
-
 ### `SparkFill`
 
 **Variants**
@@ -1511,7 +1518,7 @@
 
 | Method | Description |
 | --- | --- |
-| <code>invalid_when(self, invalid: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;) -&gt; Self</code> |  |
+| <code>invalid_when(self, invalid: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
 
 
 ### `Identifiable`
@@ -1544,6 +1551,16 @@
 | <code>render(self) -&gt; String</code> |  |
 
 
+### `RowRender`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>type Row: <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static</code> |  |
+| <code>row(&amp;self, index: usize, item: &amp;T) -&gt; Self::Row</code> |  |
+
+
 ## Functions
 
 ### `app_shell`
@@ -1561,11 +1578,6 @@
 <pre>pub fn <a href="#axis_drag">axis_drag</a>&lt;S&gt;(node: <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a>, axis: <a href="#axis">Axis</a>, snapshot: impl Fn() -&gt; S + 'static, on_delta: impl Fn(S, f32) + 'static, on_end: impl Fn() + 'static) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> where S: Clone + 'static</pre>
 
 
-### `badge`
-
-<pre>pub fn <a href="#badge">badge</a>(label: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; <a href="#chipbuilder">ChipBuilder</a></pre>
-
-
 ### `button`
 
 <pre>pub fn <a href="#button">button</a>(label: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;) -&gt; <a href="#buttonbuilder">ButtonBuilder</a></pre>
@@ -1578,7 +1590,7 @@
 
 ### `chart`
 
-<pre>pub fn <a href="#chart">chart</a>(values: impl IntoIterator&lt;Item = f32&gt;) -&gt; <a href="#chartbuilder">ChartBuilder</a></pre>
+<pre>pub fn <a href="#chart">chart</a>(values: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;Vec&lt;f32&gt;&gt;) -&gt; <a href="#chartbuilder">ChartBuilder</a></pre>
 
 
 ### `checkbox`
@@ -1623,7 +1635,7 @@
 
 ### `diff`
 
-<pre>pub fn <a href="#diff">diff</a>(patch: impl Into&lt;String&gt;) -&gt; <a href="#diffbuilder">DiffBuilder</a></pre>
+<pre>pub fn <a href="#diff">diff</a>(patch: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;String&gt;) -&gt; <a href="#diffbuilder">DiffBuilder</a></pre>
 
 
 ### `divider_horizontal`
@@ -1783,7 +1795,7 @@
 
 ### `mermaid`
 
-<pre>pub fn <a href="#mermaid">mermaid</a>(source: impl Into&lt;String&gt;) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
+<pre>pub fn <a href="#mermaid">mermaid</a>(source: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;String&gt;) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
 
 
 ### `modal`
@@ -1838,7 +1850,7 @@
 
 ### `segmented`
 
-<pre>pub const fn <a href="#segmented">segmented</a>(active: <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;, labels: Vec&lt;String&gt;) -&gt; <a href="#segmentedbuilder">SegmentedBuilder</a></pre>
+<pre>pub fn <a href="#segmented">segmented</a>(active: <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;, labels: Vec&lt;String&gt;) -&gt; <a href="#segmentedbuilder">SegmentedBuilder</a></pre>
 
 
 ### `sheet`
@@ -1848,12 +1860,7 @@
 
 ### `sidebar`
 
-<pre>pub fn <a href="#sidebar">sidebar</a>(child: impl <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
-
-
-### `sidebar_width`
-
-<pre>pub fn <a href="#sidebar_width">sidebar_width</a>(width: impl <a href="sigil-layout.html#intopx">IntoPx</a>, child: impl <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
+<pre>pub fn <a href="#sidebar">sidebar</a>(child: impl <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static) -&gt; <a href="#sidebarbuilder">SidebarBuilder</a></pre>
 
 
 ### `slider`
@@ -1868,7 +1875,7 @@
 
 ### `sparkline`
 
-<pre>pub fn <a href="#sparkline">sparkline</a>(values: impl IntoIterator&lt;Item = f32&gt;) -&gt; <a href="#sparklinebuilder">SparklineBuilder</a></pre>
+<pre>pub fn <a href="#sparkline">sparkline</a>(values: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;Vec&lt;f32&gt;&gt;) -&gt; <a href="#sparklinebuilder">SparklineBuilder</a></pre>
 
 
 ### `spinner`
@@ -1883,7 +1890,7 @@
 
 ### `splitter`
 
-<pre>pub const fn <a href="#splitter">splitter</a>(orientation: <a href="#splitterorientation">SplitterOrientation</a>) -&gt; <a href="#splitterbuilder">SplitterBuilder</a></pre>
+<pre>pub fn <a href="#splitter">splitter</a>(orientation: <a href="#orientation">Orientation</a>) -&gt; <a href="#splitterbuilder">SplitterBuilder</a></pre>
 
 
 ### `status_bar`
@@ -1948,12 +1955,12 @@
 
 ### `virtual_list`
 
-<pre>pub fn <a href="#virtual_list">virtual_list</a>&lt;T, R, I&gt;(items: I, render: R) -&gt; <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt; where T: 'static, R: Fn(usize, &amp;T) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> + 'static, I: <a href="#intolist">IntoList</a>&lt;T, R&gt;</pre>
+<pre>pub fn <a href="#virtual_list">virtual_list</a>&lt;T, R, N, I&gt;(items: I, render: R) -&gt; <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt; where T: 'static, R: Fn(usize, &amp;T) -&gt; N + 'static, N: <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static, I: <a href="#intolist">IntoList</a>&lt;T, R&gt;</pre>
 
 
 ### `virtual_list_bind`
 
-<pre>pub fn <a href="#virtual_list_bind">virtual_list_bind</a>&lt;S, T, R&gt;(items: <a href="sigil-reactive.html#signal">Signal</a>&lt;S&gt;, render: R) -&gt; <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt; where S: Deref + Clone + 'static, &lt;S as Deref&gt;::Target: AsRef&lt;[T]&gt;, T: 'static, R: Fn(usize, &amp;T) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> + 'static</pre>
+<pre>pub fn <a href="#virtual_list_bind">virtual_list_bind</a>&lt;S, T, R, N&gt;(items: <a href="sigil-reactive.html#signal">Signal</a>&lt;S&gt;, render: R) -&gt; <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt; where S: Deref + Clone + 'static, &lt;S as Deref&gt;::Target: AsRef&lt;[T]&gt;, T: 'static, R: Fn(usize, &amp;T) -&gt; N + 'static, N: <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static</pre>
 
 
 ## Type aliases

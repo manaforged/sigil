@@ -5,7 +5,7 @@ markdown = ["README.md"]
 [[crate]]
 package = "sigil-ui"
 prelude = "sigil::prelude"
-prelude-budget = 174
+prelude-budget = 179
 docs = ["docs/api.md"]
 doc-sections = { "Prelude" = "prelude", "Crate root" = "" }
 journey-prefix = "story-"

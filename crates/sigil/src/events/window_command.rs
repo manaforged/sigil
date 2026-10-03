@@ -11,7 +11,7 @@ pub fn request_window_command(command: WindowCommand) {
 }
 
 #[must_use]
-pub fn take_window_commands() -> Vec<WindowCommand> {
+pub(crate) fn take_window_commands() -> Vec<WindowCommand> {
     PENDING.with(|cell| core::mem::take(&mut *cell.borrow_mut()))
 }
 

@@ -19,6 +19,7 @@ The framework repository includes the small examples used in this guide.
 
 - [Quickstart](quickstart.md) — install, first app, three hosts
 - [Widgets](widgets.md) — the widget set
+- [GUI and TUI](hosts.md) — what each host owns, and how to split host code
 - [Terminal host](terminal.md) — the character-grid host
 - [Signing](signing.md) — sign an update package
 - [Packing](packing.md) — build a macOS or Windows app bundle

@@ -3,7 +3,9 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, cols};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived, effect, signal};
-use crate::style::{BORDER_WIDTH, Metrics, Paint, Radius, Rgba8, Size, StyleAtom, Token, space};
+use crate::style::{
+    BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Rgba8, StyleAtom, Token, space,
+};
 
 use super::layout_ext::WidgetLayoutExt;
 use super::shared::disabled_look;
@@ -32,8 +34,8 @@ impl ColorFieldBuilder {
     }
 
     #[must_use]
-    pub const fn invalid_when(mut self, invalid: Signal<bool>) -> Self {
-        self.invalid = Some(invalid);
+    pub fn invalid_when(mut self, invalid: impl crate::reactive::Reactive<bool>) -> Self {
+        self.invalid = Some(invalid.into_signal());
         self
     }
 
@@ -88,7 +90,7 @@ impl IntoNode for ColorFieldBuilder {
 }
 
 fn swatch(value: Signal<Rgba8>) -> NodeBuilder {
-    let extent = Metrics::current().control_height(Size::Default);
+    let extent = Metrics::current().control_height(ControlSize::Default);
     let (width, chrome) = CellForm::new(
         (Dimension::Px(extent), SWATCH_CHROME),
         (cols(2.0).into(), NO_CHROME),

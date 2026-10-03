@@ -36,7 +36,7 @@ pub(super) struct EnsureSurfaceCtx<'a> {
     pub(super) cx: &'a mut Cx,
     pub(super) renderer: &'a mut Backend,
     pub(super) surface: &'a mut Option<Surface>,
-    pub(super) viewport: &'a (f32, f32),
+    pub(super) viewport: &'a mut (f32, f32),
     pub(super) user_zoom: f32,
 }
 
@@ -64,6 +64,11 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
 
     let scale = scale_from_f64(window.scale_factor() * f64::from(user_zoom));
     cx.set_scale(scale);
+    let inner = window.inner_size();
+    if inner.width > 0 && inner.height > 0 {
+        let physical = clamp_physical_size(PhysicalSize::new(inner.width, inner.height));
+        set_viewport(viewport, scale.to_logical(physical));
+    }
     let logical = logical_size_from_viewport(*viewport);
 
     let new_surface = renderer.create_surface(Arc::clone(window), scale.to_physical(logical))?;

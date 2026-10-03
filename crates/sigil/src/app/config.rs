@@ -6,6 +6,7 @@ pub enum PanicPolicy {
     Abort,
 }
 
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Resize {
     Free,
@@ -46,13 +47,20 @@ pub struct AppConfig {
     pub(crate) size: (u32, u32),
     pub(crate) quit: QuitKeys,
     pub(crate) panic_policy: PanicPolicy,
+    #[cfg(feature = "desktop")]
     pub(crate) overlay: bool,
+    #[cfg(feature = "desktop")]
     pub(crate) frameless: bool,
+    #[cfg(feature = "desktop")]
     pub(crate) anchor: Option<crate::app::Anchor>,
     pub(crate) theme_file: Option<std::path::PathBuf>,
+    #[cfg(feature = "desktop")]
     pub(crate) user_zoom: f32,
+    #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub(crate) host: crate::kernel::HostMode,
+    #[cfg(feature = "desktop")]
     pub(crate) min_size: Option<(u32, u32)>,
+    #[cfg(feature = "desktop")]
     pub(crate) resize: Resize,
     pub(crate) inline: bool,
     pub(crate) frame_interval: std::time::Duration,
@@ -65,6 +73,7 @@ pub struct AppConfig {
     pub(crate) terminal_access: crate::terminal::Access,
     #[cfg(feature = "terminal")]
     pub(crate) mouse_tracking: Option<crate::terminal::MouseTracking>,
+    #[cfg(feature = "desktop")]
     #[cfg_attr(
         not(target_arch = "wasm32"),
         allow(dead_code, reason = "only the browser host binds a canvas")
@@ -83,13 +92,22 @@ impl AppConfig {
                 ctrl_c: true,
             },
             panic_policy: PanicPolicy::default(),
+            #[cfg(feature = "desktop")]
             overlay: false,
+            #[cfg(feature = "desktop")]
             frameless: false,
+            #[cfg(feature = "desktop")]
             anchor: None,
             theme_file: None,
+            #[cfg(feature = "desktop")]
             user_zoom: 1.0,
+            #[cfg(feature = "desktop")]
             host: crate::kernel::HostMode::Pixel,
+            #[cfg(all(feature = "terminal", not(feature = "desktop")))]
+            host: crate::kernel::HostMode::Cell,
+            #[cfg(feature = "desktop")]
             min_size: None,
+            #[cfg(feature = "desktop")]
             resize: Resize::Free,
             inline: false,
             frame_interval: FRAME_INTERVAL,
@@ -102,6 +120,7 @@ impl AppConfig {
             terminal_access: crate::terminal::Access::default(),
             #[cfg(feature = "terminal")]
             mouse_tracking: None,
+            #[cfg(feature = "desktop")]
             canvas: None,
         }
     }
@@ -130,18 +149,21 @@ impl AppConfig {
         self
     }
 
+    #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn overlay(mut self, yes: bool) -> Self {
         self.overlay = yes;
         self
     }
 
+    #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn frameless(mut self, yes: bool) -> Self {
         self.frameless = yes;
         self
     }
 
+    #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn anchor(mut self, anchor: crate::app::Anchor) -> Self {
         self.anchor = Some(anchor);
@@ -154,12 +176,14 @@ impl AppConfig {
         self
     }
 
+    #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn window(mut self) -> Self {
         self.host = crate::kernel::HostMode::Pixel;
         self
     }
 
+    #[cfg(feature = "desktop")]
     #[must_use]
     pub fn canvas(mut self, id: impl Into<String>) -> Self {
         self.canvas = Some(id.into());
@@ -200,18 +224,21 @@ impl AppConfig {
         self
     }
 
+    #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn user_zoom(mut self, zoom: f32) -> Self {
         self.user_zoom = zoom;
         self
     }
 
+    #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn min_size(mut self, width: u32, height: u32) -> Self {
         self.min_size = Some((width, height));
         self
     }
 
+    #[cfg(feature = "desktop")]
     #[must_use]
     pub const fn resizable(mut self, yes: bool) -> Self {
         self.resize = if yes { Resize::Free } else { Resize::Fixed };

@@ -137,7 +137,7 @@ fn account(prefs: Prefs) -> NodeBuilder {
     let languages = LANGUAGES.iter().map(|s| String::from(*s)).collect();
     container()
         .layout(page_layout())
-        .child(text("Account").font_size(18))
+        .child(text("Account").font_size(18.0))
         .child(
             container()
                 .layout(
@@ -171,7 +171,7 @@ fn appearance(prefs: Prefs) -> NodeBuilder {
     let scale_text = derived(move || format!("Interface scale: {:.0}%", prefs.scale.get()));
     container()
         .layout(page_layout())
-        .child(text("Appearance").font_size(18))
+        .child(text("Appearance").font_size(18.0))
         .child(toggle(prefs.dark).label("Dark theme"))
         .child(checkbox(prefs.compact).label("Compact rows"))
         .child(field(
@@ -184,7 +184,7 @@ fn notifications(prefs: Prefs) -> NodeBuilder {
     let volume_text = derived(move || format!("Alert volume: {:.0}", prefs.volume.get()));
     container()
         .layout(page_layout())
-        .child(text("Notifications").font_size(18))
+        .child(text("Notifications").font_size(18.0))
         .child(toggle(prefs.notify_email).label("Email digests"))
         .child(toggle(prefs.notify_push).label("Push notifications"))
         .child(field(

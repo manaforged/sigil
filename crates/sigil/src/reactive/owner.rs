@@ -93,12 +93,12 @@ impl Owner {
 }
 
 #[must_use]
-pub fn is_live(id: OwnerId) -> bool {
+pub(crate) fn is_live(id: OwnerId) -> bool {
     with_rt(|rt| rt.owners.contains(id.0))
 }
 
 #[track_caller]
-pub fn owner_by_id(id: OwnerId, f: impl FnOnce()) -> bool {
+pub(crate) fn owner_by_id(id: OwnerId, f: impl FnOnce()) -> bool {
     let prev = with_rt(|rt| {
         if !rt.owners.contains(id.0) {
             return None;

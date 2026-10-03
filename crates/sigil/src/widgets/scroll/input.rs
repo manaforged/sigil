@@ -2,7 +2,7 @@ use std::cell::Cell;
 
 use crate::events::{Key, KeyEvent, NodeEventsExt, ScrollDelta, ScrollEvent};
 use crate::kernel::NodeBuilder;
-use crate::reactive::{Signal, effect};
+use crate::reactive::{Signal, effect, untrack};
 
 use super::SCROLL_LINE;
 
@@ -135,12 +135,16 @@ fn apply(scroll: Signal<f32>, delta: f32, max: f32) -> bool {
     false
 }
 
-pub(crate) fn pin_to_bottom(scroll_y: Signal<f32>, max_scroll: Signal<f32>) {
+pub(crate) fn pin_to_bottom(
+    scroll_y: Signal<f32>,
+    max_scroll: Signal<f32>,
+    when: impl Fn() -> bool + 'static,
+) {
     let previous = Cell::new(max_scroll.peek());
     effect(move || {
         let max = max_scroll.get();
         let was_pinned = scroll_y.peek() + 1.0 >= previous.replace(max);
-        if was_pinned {
+        if was_pinned && untrack(&when) {
             scroll_y.set(max);
         }
     });

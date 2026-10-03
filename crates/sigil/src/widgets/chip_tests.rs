@@ -106,7 +106,7 @@ fn every_tone_clears_wcag_aa_contrast() {
 fn badge_is_a_pill_chip() {
     Runtime::scope("badge-pill", || {
         let mut cx = Cx::new_root();
-        let id = badge("NEW", Tone::Primary).build(&mut cx);
+        let id = chip("NEW", Tone::Primary).build(&mut cx);
         let node = cx.get(id).expect("badge node exists");
         assert_eq!(node.a11y.role, crate::kernel::Role::Label);
         assert_eq!(node.children().len(), 1);

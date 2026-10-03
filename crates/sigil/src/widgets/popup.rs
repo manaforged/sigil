@@ -3,7 +3,9 @@ mod item;
 use crate::kernel::{NodeBuilder, Role, TopLayer, container};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::layout::{Popup, PopupSide};
-use crate::style::{BORDER_WIDTH, Metrics, OVERLAY_SHADOW, Radius, Size, StyleAtom, Token, space};
+use crate::style::{
+    BORDER_WIDTH, ControlSize, Metrics, OVERLAY_SHADOW, Radius, StyleAtom, Token, space,
+};
 
 pub(crate) use item::{ChevronDirection, ItemSlots, chevron, footer, item_row};
 
@@ -56,7 +58,7 @@ pub(crate) fn separator() -> NodeBuilder {
                 .fill_width()
                 .height(separator_height())
                 .shrink(0.0)
-                .padding_x(metrics.padding(Size::Default))
+                .padding_x(metrics.padding(ControlSize::Default))
                 .padding_y(metrics.overlay_padding()),
         )
         .child(
@@ -68,7 +70,7 @@ pub(crate) fn separator() -> NodeBuilder {
 
 #[must_use]
 pub(crate) fn panel_height(rows: impl IntoIterator<Item = f32>) -> f32 {
-    let item = Metrics::current().control_height(Size::Default);
+    let item = Metrics::current().control_height(ControlSize::Default);
     let body = rows.into_iter().sum::<f32>().max(item);
     inset().mul_add(2.0, body)
 }

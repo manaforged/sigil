@@ -81,7 +81,8 @@ impl MarkdownEditBuilder {
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        use super::splitter::{SplitterOrientation, splitter};
+        use super::orientation::Orientation;
+        use super::splitter::splitter;
         use super::text_edit::text_edit;
 
         let editor = text_edit(self.source);
@@ -93,7 +94,7 @@ impl MarkdownEditBuilder {
         container()
             .layout(LayoutStyle::flex_row().fill_width().grow(1.0))
             .child(
-                splitter(SplitterOrientation::Horizontal)
+                splitter(Orientation::Horizontal)
                     .child(editor, 360.0)
                     .pane(markdown(self.source))
                     .initial(360.0)
@@ -147,10 +148,14 @@ fn chart_node(title: Option<String>, rows: &[(String, f64)]) -> NodeBuilder {
         column = column.child(text(title).class("text-xs").class(Token::Gray11.text()));
     }
     column.child(
-        super::chart::chart(rows.iter().map(|(_, value)| *value as f32))
-            .labels(rows.iter().map(|(name, _)| name.clone()))
-            .height(8.0 * (rows.len() as f32 + 3.0))
-            .width(480.0),
+        super::chart::chart(
+            rows.iter()
+                .map(|(_, value)| *value as f32)
+                .collect::<Vec<_>>(),
+        )
+        .labels(rows.iter().map(|(name, _)| name.clone()))
+        .height(8.0 * (rows.len() as f32 + 3.0))
+        .width(480.0),
     )
 }
 

@@ -2,20 +2,27 @@
 
 | Item | Kind | Description |
 | --- | --- | --- |
+| [`accelerator`](#accelerator) | fn |  |
 | [`events`](#events) | fn |  |
 | [`set_menu_bar`](#set_menu_bar) | fn |  |
 | [`AboutMetadata`](#aboutmetadata) | use |  |
 | [`CheckMenuItem`](#checkmenuitem) | use |  |
 | [`ContextMenu`](#contextmenu) | use |  |
 | [`IconMenuItem`](#iconmenuitem) | use |  |
+| [`KeyAccelerator`](#keyaccelerator) | use |  |
 | [`Menu`](#menu) | use |  |
 | [`MenuEvent`](#menuevent) | use |  |
 | [`MenuId`](#menuid) | use |  |
-| [`MenuItem`](#menuitem) | use |  |
+| [`NativeMenuItem`](#nativemenuitem) | use |  |
 | [`PredefinedMenuItem`](#predefinedmenuitem) | use |  |
 | [`Submenu`](#submenu) | use |  |
 
 ## Functions
+
+### `accelerator`
+
+<pre>pub fn <a href="#accelerator">accelerator</a>(shortcut: &amp;<a href="sigil-events.html#shortcut">Shortcut</a>) -&gt; Option&lt;KeyAccelerator&gt;</pre>
+
 
 ### `events`
 
@@ -41,6 +48,9 @@
 ### `IconMenuItem`
 
 
+### `KeyAccelerator`
+
+
 ### `Menu`
 
 
@@ -50,7 +60,7 @@
 ### `MenuId`
 
 
-### `MenuItem`
+### `NativeMenuItem`
 
 
 ### `PredefinedMenuItem`

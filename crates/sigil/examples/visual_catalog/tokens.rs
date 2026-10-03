@@ -1,7 +1,7 @@
 use std::fmt::{self, Write as _};
 use std::path::Path;
 
-use sigil::style::{Metrics, Radius, Rgba8, Size, Theme, Token, space};
+use sigil::style::{ControlSize, Metrics, Radius, Rgba8, Theme, Token, space};
 use skrifa::instance::{LocationRef, Size as FontSize};
 use skrifa::string::StringId;
 use skrifa::{FontRef, MetadataProvider};
@@ -119,7 +119,7 @@ fn metrics(out: &mut String, faces: &[Face]) -> fmt::Result {
     writeln!(
         out,
         "  --sg-control-height: {}px;\n  --sg-focus-ring-width: {}px;\n  --sg-focus-ring-offset: {}px;",
-        window.control_height(Size::Default),
+        window.control_height(ControlSize::Default),
         window.ring_width(),
         window.ring_offset()
     )?;

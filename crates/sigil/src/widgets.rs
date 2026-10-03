@@ -56,6 +56,7 @@ mod mermaid;
 mod modal;
 mod notice;
 mod number_field;
+mod orientation;
 pub(crate) mod overlay;
 mod panel;
 pub(crate) mod patterns;
@@ -86,14 +87,14 @@ mod virtual_list;
 pub use button::{ButtonBuilder, button, icon_button};
 pub use chart::{ChartBuilder, ChartMark, chart};
 pub use checkbox::{CheckboxBuilder, checkbox};
-pub use chip::{ChipBuilder, badge, chip};
+pub use chip::{ChipBuilder, chip};
 pub use code_edit::{ChangeKind, CodeEditBuilder, DiagSeverity, DiagSpan, HlSpan, code_edit};
 pub use color_field::{ColorFieldBuilder, color_field, parse_hex, to_hex};
 pub use combobox::{Combobox, combobox};
 pub use command_menu::{CommandMenuBuilder, SubmenuBuilder, command_menu};
 pub use composition::{kv_row, status_bar};
 pub use date_field::{Date, DateFieldBuilder, date_field};
-pub use diff::{DiffBuilder, DiffLayout, diff};
+pub use diff::{DiffBuilder, DiffView, diff};
 pub use divider::{horizontal as divider_horizontal, vertical as divider_vertical};
 pub use dot::{DotBuilder, dot};
 pub use drag::{Axis, axis_drag};
@@ -113,26 +114,29 @@ pub use image::image_rgba;
 pub use interactive::{InteractiveBuilder, interactive};
 pub use markdown::{MarkdownEditBuilder, markdown, markdown_edit, markdown_inline};
 pub use menu::{MenuBarBuilder, MenuBuilder, MenuItem, context_menu, menu, menu_bar};
+#[cfg(fuzzing)]
+pub(crate) use mermaid::figure as mermaid_figure;
 pub use mermaid::mermaid;
 pub use modal::{ModalBuilder, Side, modal, sheet};
 pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
+pub use orientation::Orientation;
 pub use overlay::heatmap;
 pub use panel::{PanelBuilder, panel};
 pub use patterns::{
-    Disclosure, HintEntry, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone, app_shell,
-    avatar, card, empty_state, hairline, hint_bar, hint_overlay, kv_grid, list_row, list_row_with,
-    notice_band, section_label, sidebar, sidebar_width, spacer,
+    Disclosure, HintEntry, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone, SidebarBuilder,
+    app_shell, avatar, card, empty_state, hairline, hint_bar, hint_overlay, kv_grid, list_row,
+    list_row_with, notice_band, section_label, sidebar, spacer,
 };
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};
 pub use scroll::{ScrollBuilder, scroll};
 pub use segmented::{SegmentedBuilder, segmented};
-pub use slider::{Orientation, SliderBuilder, slider};
+pub use slider::{SliderBuilder, slider};
 #[cfg(feature = "terminal")]
 pub(crate) use sparkline::spark_glyph;
 pub use sparkline::{SparkFill, SparkMark, SparklineBuilder, sparkline};
 pub use spinner::{spinner, spinner_frame};
-pub use splitter::{PaneBuilder, SplitterBuilder, SplitterOrientation, splitter};
+pub use splitter::{PaneBuilder, SplitterBuilder, splitter};
 pub use surface::surface;
 pub use table::{
     ColAlign, ColWidth, ColumnLayout, Density, Identifiable, MIN_COL_WIDTH, SortDir, SortKey,
@@ -140,7 +144,7 @@ pub use table::{
 };
 pub use tabs::{TabsBuilder, tabs};
 pub use terminal::terminal;
-pub use text_edit::{FocusCaret, TextEditBuilder, TextEditState, text_edit};
+pub use text_edit::{FocusCaret, SubmitKey, TextEditBuilder, TextEditState, text_edit};
 pub use text_field::{TextFieldBuilder, text_field};
 pub use toast::toast;
 pub use toast_queue::{MAX_VISIBLE, TOAST_TTL, ToastEntry, ToastLevel, ToastQueue, toast_queue};
@@ -148,6 +152,6 @@ pub use toggle::{ToggleBuilder, toggle};
 pub use tooltip::{TooltipBuilder, tooltip};
 pub use vector::{PathCmd, PathColor, PathFill, PathNode, path};
 pub use virtual_list::{
-    IntoList, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder, virtual_list,
-    virtual_list_bind,
+    IntoList, RowRender, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder,
+    virtual_list, virtual_list_bind,
 };

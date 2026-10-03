@@ -39,7 +39,17 @@ pub(crate) struct Component {
     #[serde(default)]
     pub(crate) preview: Option<String>,
     #[serde(default)]
+    pub(crate) live: Live,
+    #[serde(default)]
     pub(crate) captures: Vec<Capture>,
+}
+
+#[derive(Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum Live {
+    #[default]
+    Sandbox,
+    Off,
 }
 
 #[derive(Deserialize)]

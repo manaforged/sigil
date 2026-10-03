@@ -86,7 +86,7 @@ and on a pointer-down outside the panel.
 
 `MenuItem::new(label)` carries `.shortcut(hint)` (a displayed hint, not
 a binding), `.disabled(bool)`, `.submenu(bool)` (shows the indicator —
-you render the submenu yourself), and `.select(Fn())` which fires and
+you render the submenu yourself), and `.activate(Fn())` which fires and
 closes the menu.
 
 `menu_bar()` builds the horizontal bar: `.menu(label, items)` appends a
@@ -110,16 +110,17 @@ command_menu()
             .item("SVG", || { /* ... */ })
     })
     .disabled("Print")
-    .select(|label| tracing::info!(label, "ran"))
+    .submit(|label| tracing::info!(label, "ran"))
     .cancel(|| tracing::info!("cancelled"));
 # };
 ```
 
 Arrow Up/Down move the cursor, Enter or Arrow Right activates the item
 or descends into a submenu, Arrow Left or Escape ascends — and calls
-`.cancel` at the root. `.select` receives the activated label. For a
-searchable Cmd-K palette, compose `text_field`, `virtual_list`, and a
-`modal` — `command_menu` does not filter.
+`.cancel` at the root. `.submit` receives the activated label. Typing
+filters and ranks the items of the open level with `fuzzy_score`. For a
+palette with custom rows, compose `text_field`, `virtual_list`, and a
+`modal`.
 
 ## tooltip
 

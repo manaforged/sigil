@@ -23,7 +23,6 @@
 | [`WindowCommand`](#windowcommand) | enum |  |
 | [`cell_text_lines`](#cell_text_lines) | fn |  |
 | [`cell_width`](#cell_width) | fn |  |
-| [`clear_exit`](#clear_exit) | fn |  |
 | [`display_scale`](#display_scale) | fn |  |
 | [`is_grid`](#is_grid) | fn |  |
 | [`open`](#open) | fn |  |
@@ -33,7 +32,6 @@
 | [`set_default_fonts`](#set_default_fonts) | fn |  |
 | [`set_text_tuning`](#set_text_tuning) | fn |  |
 | [`set_theme`](#set_theme) | fn |  |
-| [`take_exit`](#take_exit) | fn |  |
 | [`text_tuning`](#text_tuning) | fn |  |
 | [`use_system_fonts`](#use_system_fonts) | fn |  |
 | [`viewport_size`](#viewport_size) | fn |  |
@@ -341,11 +339,6 @@
 <pre>pub fn <a href="#cell_width">cell_width</a>(text: &amp;str) -&gt; usize</pre>
 
 
-### `clear_exit`
-
-<pre>pub fn <a href="#clear_exit">clear_exit</a>()</pre>
-
-
 ### `display_scale`
 
 <pre>pub fn <a href="#display_scale">display_scale</a>() -&gt; <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;</pre>
@@ -391,11 +384,6 @@
 <pre>pub fn <a href="#set_theme">set_theme</a>(theme: <a href="sigil-style.html#theme">Theme</a>)</pre>
 
 
-### `take_exit`
-
-<pre>pub fn <a href="#take_exit">take_exit</a>() -&gt; bool</pre>
-
-
 ### `text_tuning`
 
 <pre>pub fn <a href="#text_tuning">text_tuning</a>() -&gt; <a href="#texttuning">TextTuning</a></pre>
@@ -425,7 +413,7 @@
 
 ### `FrameInputHook`
 
-<pre>pub type <a href="#frameinputhook">FrameInputHook</a>&lt;'a&gt; = Box&lt;(dyn FnOnce(&amp;mut <a href="sigil.html#host">Host</a>, &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>) + 'a)&gt;</pre>
+<pre>pub type <a href="#frameinputhook">FrameInputHook</a>&lt;'a&gt; = Box&lt;(dyn FnOnce(&amp;mut <a href="sigil.html#host">Host</a>, &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>) -&gt; Option&lt;(f32, f32)&gt; + 'a)&gt;</pre>
 
 
 ### `FrameLayoutHook`

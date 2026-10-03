@@ -5,7 +5,7 @@ use crate::events::request_focus;
 use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, derived, effect, untrack};
 use crate::style::{StyleOverlay, space};
 
 use super::builder::{CloseHandler, StripChrome, TAB_HEIGHT};
@@ -102,55 +102,78 @@ fn visual_order(order: Option<Signal<Vec<usize>>>, count: usize) -> Vec<usize> {
         .unwrap_or_else(|| (0..count).collect())
 }
 
-#[allow(
-    clippy::too_many_arguments,
-    clippy::needless_pass_by_value,
-    reason = "the argument list mirrors the upstream API contract"
-)]
+#[derive(Clone)]
+pub(super) struct StripSpec {
+    pub(super) active: Signal<usize>,
+    pub(super) disabled: Rc<Vec<usize>>,
+    pub(super) order: Option<Signal<Vec<usize>>>,
+    pub(super) drag: Option<DragState>,
+    pub(super) closeable: bool,
+    pub(super) close_handler: Option<CloseHandler>,
+    pub(super) user_overlay: StyleOverlay,
+    pub(super) chrome: StripChrome,
+}
+
 pub(super) fn build_tab_list(
-    active: Signal<usize>,
-    labels: Vec<String>,
-    disabled: &[usize],
+    labels: Signal<Vec<String>>,
     aria_label: &str,
-    order: Option<Signal<Vec<usize>>>,
-    drag: Option<DragState>,
-    closeable: bool,
-    close_handler: Option<CloseHandler>,
-    user_overlay: StyleOverlay,
-    chrome: StripChrome,
+    spec: StripSpec,
 ) -> NodeBuilder {
-    let count = labels.len();
-    let disabled = Rc::new(disabled.to_vec());
-    let roving = Roving {
-        active,
-        order: Rc::new(visual_order(order, count)),
-        disabled: Rc::clone(&disabled),
-        ids: Rc::new(RefCell::new(vec![None; count])),
-    };
-    let mut root = container()
+    clamp_active(labels, spec.active);
+    container()
         .role(Role::TabList)
         .label(accessible_label(aria_label))
-        .layout(tab_list_layout(chrome));
-    for (visual_index, original) in roving.order.iter().copied().enumerate() {
-        let label = labels.get(original).cloned().unwrap_or_default();
-        let tab = build_tab(
-            original,
-            visual_index,
-            label,
-            active,
-            &disabled,
-            drag,
-            closeable,
-            close_handler.as_ref().map(Rc::clone),
-            user_overlay.clone(),
-            chrome,
-        );
-        let tab_stop = derived(move || active.get() == original);
-        let tab = tab.mutate(move |node| node.a11y.tab_stop = Some(tab_stop));
-        root = root.child(roving.install(tab, visual_index));
+        .layout(tab_list_layout(spec.chrome))
+        .children_reactive(move || {
+            let labels = labels.get();
+            untrack(|| tab_children(&spec, &labels))
+        })
+}
+
+fn clamp_active(labels: Signal<Vec<String>>, active: Signal<usize>) {
+    effect(move || {
+        let count = labels.get().len();
+        let current = active.peek();
+        if count > 0 && current >= count {
+            active.set(count - 1);
+        }
+    });
+}
+
+fn tab_children(spec: &StripSpec, labels: &[String]) -> Vec<NodeBuilder> {
+    let count = labels.len();
+    let active = spec.active;
+    let roving = Roving {
+        active,
+        order: Rc::new(visual_order(spec.order, count)),
+        disabled: Rc::clone(&spec.disabled),
+        ids: Rc::new(RefCell::new(vec![None; count])),
+    };
+    if let Some(drag_state) = spec.drag {
+        drag_state.bind(spec.order, count);
     }
-    if let Some(drag_state) = drag {
-        drag_state.bind(order, count);
-    }
-    root
+    roving
+        .order
+        .iter()
+        .copied()
+        .enumerate()
+        .map(|(visual_index, original)| {
+            let label = labels.get(original).cloned().unwrap_or_default();
+            let tab = build_tab(
+                original,
+                visual_index,
+                label,
+                active,
+                &spec.disabled,
+                spec.drag,
+                spec.closeable,
+                spec.close_handler.as_ref().map(Rc::clone),
+                spec.user_overlay.clone(),
+                spec.chrome,
+            );
+            let tab_stop = derived(move || active.get() == original);
+            let tab = tab.mutate(move |node| node.a11y.tab_stop = Some(tab_stop));
+            roving.install(tab, visual_index)
+        })
+        .collect()
 }

@@ -1,6 +1,6 @@
 use std::fmt::Write as _;
 
-use crate::widgets::markdown::parse::{Block, List};
+use crate::widgets::markdown::parse::{Block, List, ListItem};
 use crate::widgets::text_search::{CloseTags, find_ci, starts_ci};
 
 pub(crate) fn parse_html(source: &str) -> Vec<Block> {
@@ -116,7 +116,7 @@ fn list(rest: &str, tag: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
     }
     let items = items
         .into_iter()
-        .map(|item| vec![Block::Paragraph(item)])
+        .map(|item| ListItem::plain(vec![Block::Paragraph(item)]))
         .collect();
     let start = (tag == "ol").then_some(1);
     Some((Block::List(List { start, items }), eaten))

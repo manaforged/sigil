@@ -4,7 +4,7 @@ use crate::events::NodeEventsExt;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 
-use super::builder::SplitterOrientation;
+use crate::widgets::orientation::Orientation;
 
 #[derive(Clone, Copy)]
 pub(super) struct SplitterState {
@@ -12,7 +12,7 @@ pub(super) struct SplitterState {
 }
 
 struct SplitterStateInner {
-    orientation: SplitterOrientation,
+    orientation: Orientation,
     sizes: RefCell<Vec<f32>>,
     mins: RefCell<Vec<f32>>,
     maxs: RefCell<Vec<f32>>,
@@ -32,7 +32,7 @@ struct DragAnchor {
 
 impl SplitterState {
     pub(super) fn new(
-        orientation: SplitterOrientation,
+        orientation: Orientation,
         sizes: Vec<f32>,
         mins: Vec<f32>,
         maxs: Vec<f32>,
@@ -55,7 +55,7 @@ impl SplitterState {
         Self { inner }
     }
 
-    pub(super) const fn orientation(self) -> SplitterOrientation {
+    pub(super) const fn orientation(self) -> Orientation {
         self.inner.orientation
     }
 
@@ -283,10 +283,10 @@ pub(super) fn install_handle_hooks(
     })
 }
 
-const fn axis_of(orientation: SplitterOrientation, x: f32, y: f32) -> f32 {
+const fn axis_of(orientation: Orientation, x: f32, y: f32) -> f32 {
     match orientation {
-        SplitterOrientation::Horizontal => x,
-        SplitterOrientation::Vertical => y,
+        Orientation::Horizontal => x,
+        Orientation::Vertical => y,
     }
 }
 

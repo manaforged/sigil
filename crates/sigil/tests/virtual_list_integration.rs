@@ -77,7 +77,7 @@ fn keyboard_navigation_end_to_end() {
                 .viewport_width(320.0)
                 .keyboard(true)
                 .scroll_bind(scroll_y)
-                .focused_row_bind(focused_row),
+                .cursor(focused_row),
         );
         let layout = compute_layout(&mut cx, root, Size::fixed(320.0, 96.0));
         let mut router = EventRouter::new();

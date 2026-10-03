@@ -89,11 +89,41 @@ fn an_announcement_reaches_the_status_row() {
             crate::kernel::container().child(crate::widgets::modal(visible).title("File saved"))
         });
         let mut router = EventRouter::new();
-        let _ = step(&mut host, &mut router, [], 40, 8);
+        let mut screen = Screen::new(40, 8);
+        let _ = screen.frame(&mut host, &mut router, [], (40, 8));
         visible.set(true);
-        let grid = step(&mut host, &mut router, [], 40, 8).expect("frame");
-        let text = grid.text();
+        let text = screen
+            .frame(&mut host, &mut router, [], (40, 8))
+            .expect("frame")
+            .text();
         let last = text.lines().last().unwrap_or_default();
         assert!(last.starts_with("File saved"), "{text}");
+    });
+}
+
+#[test]
+fn a_status_region_on_screen_at_start_is_not_announced() {
+    Runtime::scope("tui-quiet-start", || {
+        let mut host = Host::cells();
+        host.mount(move || {
+            crate::kernel::container()
+                .child(crate::kernel::text("body"))
+                .child(crate::widgets::status_bar([crate::kernel::text("Ready")]))
+        });
+        let mut router = EventRouter::new();
+        let mut screen = Screen::new(40, 8);
+        let first = screen
+            .frame(&mut host, &mut router, [], (40, 8))
+            .expect("first frame")
+            .text();
+        assert!(first.contains("Ready"), "{first}");
+        let next = screen
+            .frame(&mut host, &mut router, [], (40, 8))
+            .expect("next frame")
+            .text();
+        assert!(
+            !first.contains("Status bar") && !next.contains("Status bar"),
+            "{first}\n{next}"
+        );
     });
 }

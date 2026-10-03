@@ -87,7 +87,8 @@ and follow the terminal cursor. The terminal host uses both.
   `Role::Status`) send their new text to the terminal. In inline mode
   the host writes it above the live region with `print_above`. On the
   alternate screen it draws the text on the last row for
-  `Access::status` (default 5 s), then redraws that row.
+  `Access::status` (default 5 s), then redraws that row. Live regions
+  already on screen in the first frame are not announced.
 
 ```rust,no_run
 use std::time::Duration;

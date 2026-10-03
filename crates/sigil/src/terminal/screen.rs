@@ -322,6 +322,7 @@ fn frame_hooks<'s>(
                 profile::count(profile::Counter::TuiEvents);
                 host.route(router, event);
             }
+            None
         })),
         paint: Some(Box::new(move |host, router, info| {
             let _phase = profile::span(profile::Phase::TuiPaint);

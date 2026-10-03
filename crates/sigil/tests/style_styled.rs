@@ -295,10 +295,10 @@ fn font_methods_emit_typography_atoms() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         text("Aa")
-            .font_size(14)
+            .font_size(14.0)
             .font_weight(600)
             .font_family(FontFamily::Mono)
-            .line_height(20),
+            .line_height_px(20.0),
     );
     let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
     let scene = emit_scene(&cx, root);

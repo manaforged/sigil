@@ -1,19 +1,6 @@
 use sigil::prelude::*;
 
-use super::spec::Build;
-use super::{chrome, content, controls, data, inputs, overlays, plumbing};
-
 pub(crate) type App = fn() -> Box<dyn IntoNode>;
-
-const BUILDERS: [&[(&str, Build)]; 7] = [
-    plumbing::BUILDERS,
-    controls::BUILDERS,
-    inputs::BUILDERS,
-    data::BUILDERS,
-    content::BUILDERS,
-    chrome::BUILDERS,
-    overlays::BUILDERS,
-];
 
 const SOURCES: &[(&str, &str)] = &[
     (
@@ -105,14 +92,6 @@ const APPS: &[(&str, App)] = &[
         sigil::kernel::node(crate::showcase_settings::app())
     }),
 ];
-
-pub(crate) fn builder(id: &str) -> Option<Build> {
-    BUILDERS
-        .iter()
-        .flat_map(|table| table.iter())
-        .find(|(name, _)| *name == id)
-        .map(|(_, build)| *build)
-}
 
 pub(crate) fn source(path: &str) -> Option<&'static str> {
     SOURCES

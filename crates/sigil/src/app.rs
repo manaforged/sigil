@@ -37,6 +37,7 @@ mod theme_watch;
 pub mod tray;
 pub(crate) mod tree_root;
 
+#[cfg(feature = "shell")]
 pub use crate::hal::shell::{Anchor, ResizeDirection, WindowCommand, WindowOpts};
 #[cfg(feature = "scene")]
 pub use crate::renderer::slug::{TextTuning, set_text_tuning, text_tuning};
@@ -53,7 +54,8 @@ pub(crate) use config::FRAME_INTERVAL;
 pub use config::PanicPolicy;
 pub use embed::AccessibilityTree;
 pub use error::ErrorKind;
-pub use exit::{clear_exit, take_exit};
+#[cfg(feature = "terminal")]
+pub(crate) use exit::{clear_exit, take_exit};
 pub use frame::{
     FrameHooks, FrameInfo, FrameInputHook, FrameLayoutHook, FrameOutput, FramePaintHook,
 };

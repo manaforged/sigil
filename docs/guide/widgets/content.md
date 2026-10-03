@@ -24,7 +24,7 @@ text(move || format!("Count: {}", count.get())).nowrap();
 `Role::Label`), `.label(name)` and `.description(text)` for
 accessibility, `.focusable(bool)`, `.tab_index(i32)`,
 `.keyboard_shortcut(Shortcut)`, `.hittable(bool)`, and `.mutate(f)` for
-raw node edits. Font and colour come from the `Paint` methods: `.font_size(14)`,
+raw node edits. Font and colour come from the `Paint` methods: `.font_size(14.0)`,
 `.font_weight(600)`, `.font_family(FontFamily::Mono)`,
 `.text_color(Token::OnSurfaceMuted)`.
 
@@ -103,8 +103,9 @@ framed 280×180 bar chart by default.
   share the label axis.
 - `.height(px)` (min 48) / `.width(px)` (min 80).
 
-Values are a static `Vec<f32>` taken at build time — rebuild the widget
-to update data. The node is `Role::GenericContainer` labeled "Chart".
+Values are `impl Reactive<Vec<f32>>`: a `Vec`, an array, a signal, or a
+closure. A signal or closure source draws the chart again when it
+changes. The node is `Role::Figure` labeled "Chart".
 
 ## Small content helpers
 

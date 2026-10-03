@@ -64,7 +64,7 @@ fn disabled_button_does_not_focus_or_activate() {
     sigil::reactive::Runtime::scope("sigil-widget-button-disabled", || {
         let hits = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
-        let root = cx.add(button("Disabled").enabled(false).activate({
+        let root = cx.add(button("Disabled").disabled(true).activate({
             let hits = Rc::clone(&hits);
             move || hits.set(hits.get() + 1)
         }));
@@ -78,9 +78,8 @@ fn disabled_button_does_not_focus_or_activate() {
         router.route(&mut cx, &layout, enter_down());
 
         assert_eq!(hits.get(), 0);
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
-        assert!(!node.a11y.hittable);
+        assert!(!router.is_focus_target(&cx, &layout, root));
+        assert!(!router.is_click_target(&cx, &layout, root));
     });
 }
 

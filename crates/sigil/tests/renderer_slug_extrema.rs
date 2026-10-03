@@ -26,7 +26,7 @@ fn lines() -> NodeBuilder {
             let lead = f32::from(step) / f32::from(OFFSETS);
             column = column
                 .child(container().layout(LayoutStyle::block().fixed_size(1.0, lead)))
-                .child(text("o o o").font_size(size));
+                .child(text("o o o").font_size(f32::from(size)));
         }
     }
     column

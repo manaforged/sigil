@@ -14,12 +14,11 @@ const GROUP_GAP: f32 = space(2);
 const X_AXIS: f32 = space(8);
 
 pub(super) fn draw(
-    root: NodeBuilder,
     series: &[ChartSeries],
     labels: &[String],
     mark: ChartMark,
     count: usize,
-) -> NodeBuilder {
+) -> Vec<NodeBuilder> {
     let peak = series
         .iter()
         .flat_map(|item| item.values.iter().copied())
@@ -29,7 +28,7 @@ pub(super) fn draw(
         ChartMark::Bar => (bars(series, count, max), GROUP_GAP),
         ChartMark::Line => (lines(series, count, max), 0.0),
     };
-    let mut node = root.child(
+    let mut nodes = vec![
         container()
             .layout(
                 LayoutStyle::flex_row()
@@ -50,11 +49,11 @@ pub(super) fn draw(
                     .child(plot)
                     .child(x_axis(labels, count, gap)),
             ),
-    );
+    ];
     if series.iter().any(|item| !item.name.is_empty()) {
-        node = node.child(legend(series));
+        nodes.push(legend(series));
     }
-    node
+    nodes
 }
 
 fn y_axis(max: f32) -> NodeBuilder {

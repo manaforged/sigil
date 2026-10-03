@@ -36,7 +36,7 @@ fn editor_view(name: &str, body: &str) -> NodeBuilder {
     let line_count = body.lines().count().max(1);
     let extent = (line_count as f32).mul_add(16.8, 20.0);
     let mono = text(body.to_owned())
-        .font_size(14)
+        .font_size(14.0)
         .font_family(FontFamily::Mono);
     let code = container()
         .layout(LayoutStyle::flex_column().padding(10.0).width(2000.0))

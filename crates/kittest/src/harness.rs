@@ -280,6 +280,7 @@ fn hooks(events: Vec<ShellEvent>, paint: Option<FramePaintHook<'_>>) -> FrameHoo
                     sigil::profile::note_input(&event);
                     host.route(router, event);
                 }
+                None
             },
         )),
         paint,

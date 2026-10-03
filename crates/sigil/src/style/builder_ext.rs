@@ -5,7 +5,7 @@ use super::install::{
 use super::presence::install_presence;
 use crate::animation_runtime::AnimationConfig;
 use crate::kernel::{NodeBuilder, TextBuilder};
-use crate::reactive::Signal;
+use crate::reactive::{Reactive, Signal};
 use smallvec::SmallVec;
 
 use std::cell::Cell;
@@ -79,10 +79,10 @@ pub trait NodeStyleExt {
     fn animate(self, kind: NumericAtomKind, value: Signal<f32>) -> Self;
 
     #[must_use]
-    fn visible_when(self, signal: Signal<bool>) -> Self;
+    fn visible_when(self, shown: impl Reactive<bool>) -> Self;
 
     #[must_use]
-    fn paint_when<F>(self, signal: Signal<bool>, paint: F) -> Self
+    fn paint_when<F>(self, active: impl Reactive<bool>, paint: F) -> Self
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder;
 }
@@ -138,17 +138,17 @@ macro_rules! style_sinks {
                 self.mutate(move |node| install_tone(node, tone))
             }
 
-            fn paint_when<F>(self, signal: Signal<bool>, paint: F) -> Self
+            fn paint_when<F>(self, active: impl Reactive<bool>, paint: F) -> Self
             where
                 F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
             {
                 let atoms = intern_atoms(paint(StateStyleBuilder::new()).into_atoms());
-                self.style_reactive(move || if signal.get() { atoms } else { EMPTY_ATOMS })
+                self.style_reactive(move || if active.read() { atoms } else { EMPTY_ATOMS })
             }
 
-            fn visible_when(self, signal: Signal<bool>) -> Self {
+            fn visible_when(self, shown: impl Reactive<bool>) -> Self {
                 let hidden = parse_classes("hidden");
-                self.style_reactive(move || if signal.get() { EMPTY_ATOMS } else { hidden })
+                self.style_reactive(move || if shown.read() { EMPTY_ATOMS } else { hidden })
             }
         }
     };

@@ -30,7 +30,10 @@ pub(crate) fn window_frame(
 ) {
     let hooks = FrameHooks {
         input: event.map(|event| -> sigil::app::FrameInputHook<'_> {
-            Box::new(move |target: &mut Host, events: &mut EventRouter| target.route(events, event))
+            Box::new(move |target: &mut Host, events: &mut EventRouter| {
+                target.route(events, event);
+                None
+            })
         }),
         after_layout: None,
         paint: Some(Box::new(move |target, _, info| {

@@ -111,7 +111,7 @@ container()
     .border_color(Token::OverlayBorder)
     .rounded(Radius::Md)
     .shadow(Elevation::Md)
-    .child(text("Title").font_size(18).font_weight(600).text_color(Token::OnSurface))
+    .child(text("Title").font_size(18.0).font_weight(600).text_color(Token::OnSurface))
     .child(text("12:30").font_family(FontFamily::Mono).text_color(Token::OnSurfaceMuted))
 # };
 ```
@@ -127,7 +127,7 @@ container()
 | `shadow(Elevation)` | Drop shadow |
 | `opacity(f32)` | Opacity, 0.0 to 1.0 |
 | `font_size`, `font_weight`, `font_italic`, `font_family(FontFamily)` | Font |
-| `line_height`, `letter_spacing_em`, `tabular_nums` | Text metrics |
+| `line_height_px`, `letter_spacing_em`, `tabular_nums` | Text metrics; each name carries its unit |
 | `underline`, `line_through` | Text decoration |
 | `transition`, `duration` | Style transitions |
 

@@ -15,7 +15,7 @@ pub fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static)
         container().child(text(line.clone()).class("font-mono text-sm"))
     })
     .row_height(rows(1.0))
-    .auto_pin_to_bottom(true);
+    .follow_end(true);
     let focused = signal(false);
     container()
         .role(Role::TextInput)

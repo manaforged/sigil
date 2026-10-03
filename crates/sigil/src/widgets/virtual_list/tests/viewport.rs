@@ -83,7 +83,7 @@ fn select_fires_with_selected_index() {
             .selection(SelectionMode::Single);
 
         let selection = builder.selection_state();
-        let builder = builder.select(move |i| {
+        let builder = builder.change(move |i| {
             last_clone.set(Some(i));
         });
 

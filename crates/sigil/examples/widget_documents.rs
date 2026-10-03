@@ -45,7 +45,7 @@ fn mermaid_demo() -> NodeBuilder {
 }
 
 fn diff_demo() -> DiffBuilder {
-    diff(PATCH).path("src/app.rs").layout(DiffLayout::Unified)
+    diff(PATCH).path("src/app.rs").view(DiffView::Unified)
 }
 
 fn build() -> impl IntoNode {

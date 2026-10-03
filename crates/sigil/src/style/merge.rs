@@ -27,12 +27,7 @@ pub(crate) fn merge_classes(
 }
 
 #[must_use]
-pub fn merge_warning_count() -> usize {
-    diagnostic::warning_count()
-}
-
-#[must_use]
-pub fn merge_warning_count_for_component(component_id: ComponentId) -> usize {
+pub(crate) fn merge_warning_count_for_component(component_id: ComponentId) -> usize {
     diagnostic::warning_count_for_component(component_id)
 }
 
@@ -41,7 +36,7 @@ pub fn unknown_class_warning_count() -> usize {
     diagnostic::unknown_class_count()
 }
 
-pub fn bump_unknown_class_count() {
+pub(crate) fn bump_unknown_class_count() {
     diagnostic::bump_unknown_class();
 }
 
@@ -341,13 +336,6 @@ mod diagnostic {
                 "sigil-style merge conflict for component {component_id} slot {slot:?}; override wins",
             );
         }
-    }
-
-    pub(super) fn warning_count() -> usize {
-        WARNED
-            .get()
-            .and_then(|warned| warned.lock().ok().map(|warned| warned.len()))
-            .unwrap_or(0)
     }
 
     pub(super) fn warning_count_for_component(component_id: ComponentId) -> usize {

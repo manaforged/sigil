@@ -58,7 +58,7 @@ fn button_focused() {
 #[test]
 fn button_disabled() {
     let img = render_widget_to_png_stub(
-        || button("Save").enabled(false),
+        || button("Save").disabled(true),
         InteractionMode::Disabled,
         [160, 56],
         (24.0, 16.0),

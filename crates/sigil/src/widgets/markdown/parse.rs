@@ -1,5 +1,5 @@
 use super::chart_parse::fence_block;
-pub(crate) use super::containers::List;
+pub(crate) use super::containers::{List, ListItem};
 use super::containers::{
     heading, image_line, list_marker, rule, take_list, take_quote, take_table,
 };

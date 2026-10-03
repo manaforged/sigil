@@ -72,7 +72,7 @@ fn splitter_pane(bg: Token) -> NodeBuilder {
 fn splitter_horizontal_default() {
     let img = render_widget_to_png_stub(
         || {
-            let w = splitter(SplitterOrientation::Horizontal)
+            let w = splitter(Orientation::Horizontal)
                 .child(splitter_pane(Token::Accent), 120.0)
                 .child(splitter_pane(Token::SurfaceHover), 120.0)
                 .layout(LayoutStyle::flex_row().fixed_size(246.0, 80.0));
@@ -89,7 +89,7 @@ fn splitter_horizontal_default() {
 fn splitter_vertical_default() {
     let img = render_widget_to_png_stub(
         || {
-            let w = splitter(SplitterOrientation::Vertical)
+            let w = splitter(Orientation::Vertical)
                 .child(splitter_pane(Token::Accent), 60.0)
                 .child(splitter_pane(Token::SurfaceHover), 60.0)
                 .layout(LayoutStyle::flex_column().fixed_size(160.0, 126.0));
@@ -106,7 +106,7 @@ fn splitter_vertical_default() {
 fn splitter_horizontal_with_min_max() {
     let img = render_widget_to_png_stub(
         || {
-            let w = splitter(SplitterOrientation::Horizontal)
+            let w = splitter(Orientation::Horizontal)
                 .child(splitter_pane(Token::Accent), 120.0)
                 .child(splitter_pane(Token::SurfaceHover), 120.0)
                 .min_size(0, 60.0)

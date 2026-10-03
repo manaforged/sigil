@@ -82,6 +82,10 @@ pub mod testing;
 
 #[cfg(fuzzing)]
 pub mod fuzzing {
+    pub fn render_mermaid(input: &str) {
+        drop(crate::widgets::mermaid_figure(input));
+    }
+
     #[must_use]
     pub fn parse_class_string(input: &str) -> bool {
         crate::style::parse_class_string(input).is_ok()
@@ -107,7 +111,7 @@ pub mod prelude {
     pub use crate::geometry::{Point, Size};
     pub use crate::kernel::{
         Action, ImageSource, IntoNode, NodeBuilder, Role, TextContent, container, for_each,
-        fragment, image, node, show, text,
+        fragment, image, match_status, node, show, switch, text,
     };
     pub use crate::layout::{
         AlignItems, Display, FlexWrap, IntoPx, JustifyContent, LayoutBuilderExt, LayoutReactiveExt,
@@ -117,28 +121,30 @@ pub mod prelude {
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::run;
     pub use crate::style::{
-        ColorAtom, Elevation, FocusRing, FontFamily, NodeStyleExt, Paint, Radius, Rgba8,
-        StateVariants, Theme, Token, Tone,
+        ColorAtom, ControlSize, Elevation, FocusRing, FontFamily, NodeStyleExt, Paint, Radius,
+        Rgba8, StateVariants, Theme, Token, Tone,
     };
-    pub use crate::tasks::{ScheduleError, SignalWriter, Status, Task, signal_writer, spawn, task};
+    pub use crate::tasks::{
+        ScheduleError, SignalWriter, Status, Task, signal_writer, spawn, task, task_with,
+    };
     #[cfg(feature = "scene")]
     pub use crate::widgets::icon_svg;
     #[cfg(feature = "image-decode")]
     pub use crate::widgets::image_bytes;
     pub use crate::widgets::layout_ext::WidgetLayoutExt;
     pub use crate::widgets::{
-        ColWidth, Combobox, Date, Density, DiffLayout, Disclosure, DragDropExt, DragState,
-        Identifiable, ListRowSlots, MenuItem, NumericKind, Orientation, PathNode, SelectionMode,
-        Side, SplitterOrientation, TableColumn, TableState, ToastQueue, app_shell, avatar,
-        axis_drag, badge, button, card, chart, checkbox, chip, code_edit, color_field, combobox,
-        command_menu, context_menu, date_field, diff, divider_horizontal, divider_vertical, dot,
-        drag_ghost, dropdown, empty_state, field, fuzzy_score, gauge, hairline, heatmap, highlight,
-        hint_bar, hint_overlay, hl_spans, html, icon, icon_button, image_rgba, interactive,
-        kv_grid, kv_row, list_row, list_row_with, markdown, markdown_edit, markdown_inline, menu,
-        menu_bar, mermaid, modal, notice_band, number_field, panel, path, progress, radio_group,
-        scroll, section_label, segmented, sheet, sidebar, sidebar_width, slider, spacer, sparkline,
-        spinner, spinner_frame, splitter, status_bar, surface, table, tabs, terminal, text_edit,
-        text_field, toast, toast_queue, toggle, tooltip, virtual_list,
+        ColWidth, Combobox, Date, Density, DiffView, Disclosure, DragDropExt, DragState,
+        Identifiable, ListRowSlots, MenuItem, ModalBuilder, NumericKind, Orientation, PathNode,
+        SelectionMode, Side, SortDir, SortKey, SubmitKey, TableColumn, TableState, ToastQueue,
+        app_shell, avatar, axis_drag, button, card, chart, checkbox, chip, code_edit, color_field,
+        combobox, command_menu, context_menu, date_field, diff, divider_horizontal,
+        divider_vertical, dot, drag_ghost, dropdown, empty_state, field, fuzzy_score, gauge,
+        hairline, heatmap, highlight, hint_bar, hint_overlay, hl_spans, html, icon, icon_button,
+        image_rgba, interactive, kv_grid, kv_row, list_row, list_row_with, markdown, markdown_edit,
+        markdown_inline, menu, menu_bar, mermaid, modal, notice_band, number_field, panel, path,
+        progress, radio_group, scroll, section_label, segmented, sheet, sidebar, slider, spacer,
+        sparkline, spinner, spinner_frame, splitter, status_bar, surface, table, tabs, terminal,
+        text_edit, text_field, toast, toast_queue, toggle, tooltip, virtual_list,
     };
     pub use crate::{AppConfig, AppResult};
 }
@@ -177,6 +183,8 @@ mod doc_snippets {
     pub struct GuideTerminal;
     #[doc = include_str!("../../../docs/guide/troubleshooting.md")]
     pub struct GuideTroubleshooting;
+    #[cfg_attr(feature = "terminal", doc = include_str!("../../../docs/guide/hosts.md"))]
+    pub struct GuideHosts;
     #[doc = include_str!("../../../docs/guide/units.md")]
     pub struct GuideUnits;
     #[doc = include_str!("../../../docs/guide/web.md")]

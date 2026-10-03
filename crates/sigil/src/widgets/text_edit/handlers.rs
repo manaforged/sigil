@@ -9,7 +9,7 @@ use crate::style::TextStyle;
 
 use super::super::shared::disabled_now;
 use super::TextEdit;
-use super::builder::TextChange;
+use super::builder::{SubmitKey, TextChange};
 use super::ime::ImeState;
 use crate::clipboard::Clipboard;
 
@@ -162,7 +162,11 @@ pub(in crate::widgets) fn noop_change() -> TextChange {
     Rc::new(|_| {})
 }
 
-pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
+pub(super) fn attach_key_handlers(
+    node: NodeBuilder,
+    runtime: TextEditRuntime,
+    submit_key: SubmitKey,
+) -> NodeBuilder {
     let edge = runtime.clone();
     let line = runtime.clone();
     let profile = KeyProfile {
@@ -172,21 +176,28 @@ pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: TextEditRuntime) -
         })),
     };
     let node = keymap::edit_keys(node, &runtime, &profile);
-    let node = enter_keys(node, &runtime);
+    let node = enter_keys(node, &runtime, submit_key);
     let node = commands::clipboard_keys(node, &runtime);
     let node = word_keys(node, &runtime);
     let node = commands::history_keys(node, runtime.clone());
     commands::attach_a11y_edit(node, runtime)
 }
 
-fn enter_keys(node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
+fn enter_keys(node: NodeBuilder, runtime: &TextEditRuntime, submit_key: SubmitKey) -> NodeBuilder {
     let enter = runtime.clone();
     let submit = runtime.clone();
-    node.key(Key::Enter, move |event| insert_newline(event, &enter))
-        .key(
+    let (newline, send) = match submit_key {
+        SubmitKey::CtrlEnter => (
+            Shortcut::plain(Key::Enter),
             Shortcut::new(Key::Enter, ModifiersState::CONTROL),
-            move |event| commands::submit_text(event, &submit),
-        )
+        ),
+        SubmitKey::Enter => (
+            Shortcut::new(Key::Enter, ModifiersState::SHIFT),
+            Shortcut::plain(Key::Enter),
+        ),
+    };
+    node.key(newline, move |event| insert_newline(event, &enter))
+        .key(send, move |event| commands::submit_text(event, &submit))
 }
 
 pub(in crate::widgets) fn insert_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {

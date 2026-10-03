@@ -144,7 +144,7 @@ fn diff_row(_state: State) -> NodeBuilder {
     node(
         diff(PATCH)
             .path("src/app.rs")
-            .layout(DiffLayout::Unified)
+            .view(DiffView::Unified)
             .max_rows(24),
     )
 }

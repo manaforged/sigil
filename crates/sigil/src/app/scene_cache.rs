@@ -1,7 +1,9 @@
-use crate::kernel::{Cx, NodeId};
+use crate::geometry::{Point, Rect};
+use crate::kernel::{Cx, Node, NodeId};
 use crate::profile::{Counter, Phase};
 use crate::reactive::Runtime;
-use crate::scene::{CommandScene, SceneCommand};
+use crate::scene::{CommandScene, DrawRect, SceneCommand, SceneRectStyle};
+use crate::style::{Theme, Token};
 
 use crate::app::launch::backend::{Backend, Surface};
 
@@ -30,6 +32,7 @@ impl SceneKey {
 pub(super) struct SceneCache {
     key: Option<SceneKey>,
     scene: CommandScene,
+    backdrop: bool,
     #[cfg(test)]
     emissions: usize,
 }
@@ -45,7 +48,7 @@ impl SceneCache {
         let key = SceneKey::new(cx, root, viewport);
         if !allow_replay || self.key != Some(key) {
             crate::profile::count(Counter::SceneEmit);
-            self.scene = emit_viewport_scene(cx, root, viewport);
+            self.scene = window_scene(cx, root, viewport, self.backdrop);
             self.key = Some(key);
             #[cfg(test)]
             {
@@ -67,6 +70,7 @@ impl SceneCache {
             viewport,
             allow_replay,
         } = request;
+        self.backdrop = !renderer.is_transparent();
         let Some(surface) = surface.as_mut() else {
             return;
         };
@@ -87,6 +91,30 @@ impl SceneCache {
         self.scene.commands.truncate(base);
         renderer.last_frame_stats().record_profile();
     }
+}
+
+pub(super) fn window_scene(
+    cx: &Cx,
+    root: NodeId,
+    viewport: (f32, f32),
+    backdrop: bool,
+) -> CommandScene {
+    let mut scene = emit_viewport_scene(cx, root, viewport);
+    if backdrop {
+        let surface = cx
+            .get(root)
+            .and_then(Node::get_extension::<Theme>)
+            .map_or_else(
+                || Theme::default().color(Token::Surface),
+                |theme| theme.color(Token::Surface),
+            );
+        let rect = Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1);
+        scene.commands.insert(
+            0,
+            SceneCommand::Rect(DrawRect::new(rect, SceneRectStyle::solid(surface))),
+        );
+    }
+    scene
 }
 
 fn note_scene(scene: &CommandScene) {

@@ -212,12 +212,12 @@ fn items_bind_app_shape_batched_keystrokes() {
                     .child(
                         text(format!("{i}"))
                             .text_color(Token::OnSurface)
-                            .font_size(12),
+                            .font_size(12.0),
                     )
                     .child(
                         text(s.clone())
                             .text_color(Token::OnSurface)
-                            .font_size(12)
+                            .font_size(12.0)
                             .font_family(FontFamily::Mono),
                     )
             })
@@ -225,7 +225,7 @@ fn items_bind_app_shape_batched_keystrokes() {
             .viewport_height(330.0)
             .viewport_width(952.0)
             .selection(SelectionMode::Single)
-            .select(move |i| selected.set(Some(i))),
+            .change(move |i| selected.set(Some(i))),
         );
 
         let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));

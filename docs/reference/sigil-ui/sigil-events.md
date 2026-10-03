@@ -29,11 +29,10 @@
 | [`WindowEvent`](#windowevent) | enum |  |
 | [`NodeEventsExt`](#nodeeventsext) | trait |  |
 | [`focus_from_keyboard`](#focus_from_keyboard) | fn |  |
-| [`note_focus_source`](#note_focus_source) | fn |  |
 | [`request_focus`](#request_focus) | fn |  |
 | [`request_reveal`](#request_reveal) | fn |  |
 | [`request_window_command`](#request_window_command) | fn |  |
-| [`take_window_commands`](#take_window_commands) | fn |  |
+| [`PRIMARY`](#primary) | const |  |
 | [`Key`](#key) | use |  |
 | [`ModifiersState`](#modifiersstate) | use |  |
 | [`PhysicalKey`](#physicalkey) | use |  |
@@ -50,6 +49,7 @@
 | <code>matches(&amp;self, event: &amp;<a href="#keyevent">KeyEvent</a>) -&gt; bool</code> |  |
 | <code>new(key: impl Into&lt;<a href="#logicalkey">LogicalKey</a>&gt;, modifiers: Modifiers) -&gt; Self</code> |  |
 | <code>plain(key: impl Into&lt;<a href="#logicalkey">LogicalKey</a>&gt;) -&gt; Self</code> |  |
+| <code>primary(key: impl Into&lt;<a href="#logicalkey">LogicalKey</a>&gt;) -&gt; Self</code> |  |
 
 **Fields**
 
@@ -460,6 +460,7 @@
 | <code>file_drop&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;<a href="#filedropevent">FileDropEvent</a>) + 'static</code> |  |
 | <code>focus_in&lt;H&gt;(self, h: H) -&gt; Self where H: Fn() + 'static</code> |  |
 | <code>focus_out&lt;H&gt;(self, h: H) -&gt; Self where H: Fn() + 'static</code> |  |
+| <code>focus_when(self, trigger: <a href="sigil-reactive.html#signal">Signal</a>&lt;u64&gt;) -&gt; Self</code> |  |
 | <code>ime_caret(self, anchor: Rc&lt;Cell&lt;Option&lt;<a href="sigil-layout.html#caretgeometry">CaretGeometry</a>&gt;&gt;&gt;) -&gt; Self</code> |  |
 | <code>ime_eligible&lt;F&gt;(self, f: F) -&gt; Self where F: Fn() -&gt; bool + 'static</code> |  |
 | <code>key&lt;S, H&gt;(self, shortcut: S, h: H) -&gt; Self where S: Into&lt;<a href="#shortcut">Shortcut</a>&gt;, H: Fn(&amp;mut <a href="#keyevent">KeyEvent</a>) + 'static</code> |  |
@@ -487,11 +488,6 @@
 <pre>pub fn <a href="#focus_from_keyboard">focus_from_keyboard</a>() -&gt; bool</pre>
 
 
-### `note_focus_source`
-
-<pre>pub fn <a href="#note_focus_source">note_focus_source</a>(keyboard: bool)</pre>
-
-
 ### `request_focus`
 
 <pre>pub fn <a href="#request_focus">request_focus</a>(id: <a href="sigil-kernel.html#nodeid">NodeId</a>)</pre>
@@ -507,9 +503,11 @@
 <pre>pub fn <a href="#request_window_command">request_window_command</a>(command: <a href="sigil-app.html#windowcommand">WindowCommand</a>)</pre>
 
 
-### `take_window_commands`
+## Constants
 
-<pre>pub fn <a href="#take_window_commands">take_window_commands</a>() -&gt; Vec&lt;<a href="sigil-app.html#windowcommand">WindowCommand</a>&gt;</pre>
+### `PRIMARY`
+
+<pre>pub const <a href="#primary">PRIMARY</a>: Modifiers</pre>
 
 
 ## Re-exports

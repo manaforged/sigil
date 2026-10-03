@@ -5,7 +5,7 @@ use crate::style::{Dimension as StyleDimension, Px, StyleAtom};
 
 const ATOM_CACHE_CAP: usize = 512;
 
-pub(super) fn cached_width_atom(px: i16) -> &'static [StyleAtom] {
+pub(in crate::widgets) fn cached_width_atom(px: i16) -> &'static [StyleAtom] {
     static CACHE: OnceLock<Mutex<HashMap<i16, &'static [StyleAtom]>>> = OnceLock::new();
 
     cached_atom(&CACHE, px, |p| {
@@ -47,7 +47,7 @@ fn cached_atom(
     leaked
 }
 
-pub(super) fn to_i16(px: f32) -> i16 {
+pub(in crate::widgets) fn to_i16(px: f32) -> i16 {
     #[allow(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,

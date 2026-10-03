@@ -12,7 +12,9 @@
 | [`Node`](#node) | struct |  |
 | [`NodeExtensions`](#nodeextensions) | struct |  |
 | [`NodeId`](#nodeid) | struct |  |
+| [`StatusView`](#statusview) | struct |  |
 | [`Surface`](#surface) | struct |  |
+| [`SwitchBuilder`](#switchbuilder) | struct |  |
 | [`TextBuilder`](#textbuilder) | struct |  |
 | [`TextCursor`](#textcursor) | struct |  |
 | [`TopLayer`](#toplayer) | struct |  |
@@ -29,9 +31,11 @@
 | [`for_each`](#for_each) | fn |  |
 | [`fragment`](#fragment) | fn |  |
 | [`image`](#image) | fn |  |
+| [`match_status`](#match_status) | fn |  |
 | [`node`](#node-1) | fn |  |
 | [`schedule_keyed_rebuild`](#schedule_keyed_rebuild) | fn |  |
 | [`show`](#show) | fn |  |
+| [`switch`](#switch) | fn |  |
 | [`text`](#text) | fn |  |
 | [`Action`](#action) | use |  |
 | [`Live`](#live) | use |  |
@@ -274,6 +278,20 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>Ord</code>, <code>PartialEq</code>, <code>PartialOrd</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
+### `StatusView`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>pub fn <a href="#statusview">StatusView</a>&lt;T, E&gt;::error&lt;N: <a href="#intonode">IntoNode</a> + 'static&gt;(self, view: impl Fn(&amp;E) -&gt; N + 'static) -&gt; Self</code> |  |
+| <code>pub fn <a href="#statusview">StatusView</a>&lt;T, E&gt;::idle&lt;N: <a href="#intonode">IntoNode</a> + 'static&gt;(self, view: impl Fn() -&gt; N + 'static) -&gt; Self</code> |  |
+| <code>pub fn <a href="#statusview">StatusView</a>&lt;T, E&gt;::ok&lt;N: <a href="#intonode">IntoNode</a> + 'static&gt;(self, view: impl Fn(&amp;T) -&gt; N + 'static) -&gt; Self</code> |  |
+| <code>pub fn <a href="#statusview">StatusView</a>&lt;T, E&gt;::pending&lt;N: <a href="#intonode">IntoNode</a> + 'static&gt;(self, view: impl Fn() -&gt; N + 'static) -&gt; Self</code> |  |
+
+**Trait implementations:** <code><a href="#intonode">IntoNode</a></code>
+
+
 ### `Surface`
 
 **Fields**
@@ -283,6 +301,19 @@
 | <code>key: u64</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Debug</code>, <code>Copy</code>
+
+
+### `SwitchBuilder`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>pub fn <a href="#switchbuilder">SwitchBuilder</a>&lt;K&gt;::case&lt;N: <a href="#intonode">IntoNode</a> + 'static&gt;(self, key: K, view: impl Fn() -&gt; N + 'static) -&gt; Self</code> |  |
+| <code>pub const fn <a href="#switchbuilder">SwitchBuilder</a>&lt;K&gt;::keep_alive(self, keep: bool) -&gt; Self</code> |  |
+| <code>pub fn <a href="#switchbuilder">SwitchBuilder</a>&lt;K&gt;::otherwise&lt;N: <a href="#intonode">IntoNode</a> + 'static&gt;(self, view: impl Fn() -&gt; N + 'static) -&gt; Self</code> |  |
+
+**Trait implementations:** <code><a href="#intonode">IntoNode</a></code>
 
 
 ### `TextBuilder`
@@ -466,6 +497,11 @@
 <pre>pub fn <a href="#image">image</a>(source: <a href="#imagesource">ImageSource</a>) -&gt; <a href="#imagebuilder">ImageBuilder</a></pre>
 
 
+### `match_status`
+
+<pre>pub fn <a href="#match_status">match_status</a>&lt;T: 'static, E: 'static&gt;(status: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;<a href="sigil-tasks.html#status">Status</a>&lt;T, E&gt;&gt;) -&gt; <a href="#statusview">StatusView</a>&lt;T, E&gt;</pre>
+
+
 ### `node`
 
 <pre>pub fn <a href="#node-1">node</a>(child: impl <a href="#intonode">IntoNode</a> + 'static) -&gt; Box&lt;dyn <a href="#intonode">IntoNode</a>&gt;</pre>
@@ -479,6 +515,11 @@
 ### `show`
 
 <pre>pub fn <a href="#show">show</a>&lt;A, B&gt;(cond: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;, then: impl Fn() -&gt; A + 'static, otherwise: impl Fn() -&gt; B + 'static) -&gt; <a href="#nodebuilder">NodeBuilder</a> where A: <a href="#intonode">IntoNode</a> + 'static, B: <a href="#intonode">IntoNode</a> + 'static</pre>
+
+
+### `switch`
+
+<pre>pub fn <a href="#switch">switch</a>&lt;K: Clone + PartialEq + 'static&gt;(key: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;K&gt;) -&gt; <a href="#switchbuilder">SwitchBuilder</a>&lt;K&gt;</pre>
 
 
 ### `text`

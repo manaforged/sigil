@@ -57,10 +57,10 @@ fn paint_node() -> NodeBuilder {
         .rounded(Radius::Md)
         .shadow(Elevation::Sm)
         .opacity(0.8)
-        .font_size(14)
+        .font_size(14.0)
         .font_weight(400)
         .font_family(FontFamily::Sans)
-        .line_height(16)
+        .line_height_px(16.0)
         .transition(TransitionId(1))
         .duration(MillisU16(150))
 }
@@ -101,9 +101,9 @@ fn paint_override_last_wins(c: &mut Criterion) {
                 .rounded(Radius::Lg)
                 .shadow(Elevation::Lg)
                 .opacity(1.0)
-                .font_size(18)
+                .font_size(18.0)
                 .font_weight(700)
-                .line_height(24)
+                .line_height_px(24.0)
                 .transition(TransitionId(2))
                 .duration(MillisU16(300));
             let id = cx.add(black_box(node));

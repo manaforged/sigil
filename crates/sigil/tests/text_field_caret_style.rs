@@ -60,7 +60,7 @@ fn focused_field_scene() -> CommandScene {
         text_field(signal(VALUE.to_owned()))
             .width(420.0)
             .height(40.0)
-            .font_size(14),
+            .font_size(14.0),
     );
     let mut layout =
         LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));

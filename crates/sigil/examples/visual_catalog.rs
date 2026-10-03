@@ -10,6 +10,8 @@ use std::process::ExitCode;
 
 #[path = "visual_catalog/api.rs"]
 mod api;
+#[path = "visual_catalog/builders.rs"]
+mod builders;
 #[path = "visual_catalog/capture.rs"]
 mod capture;
 #[path = "visual_catalog/catalog.rs"]

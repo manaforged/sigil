@@ -66,7 +66,12 @@ fn styled_text_color_overrides_default() {
 #[test]
 fn styled_text_typography_emits_in_scene() {
     let mut cx = Cx::new_root();
-    let root = cx.add(text("Large").font_size(20).font_weight(700).line_height(32));
+    let root = cx.add(
+        text("Large")
+            .font_size(20.0)
+            .font_weight(700)
+            .line_height_px(32.0),
+    );
 
     layout(&mut cx, root);
 
@@ -221,10 +226,10 @@ fn container_font_classes_cascade_to_child_glyph_style() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .font_size(18)
+            .font_size(18.0)
             .font_weight(700)
             .font_family(FontFamily::Mono)
-            .line_height(24)
+            .line_height_px(24.0)
             .child(text("Doom")),
     );
 
@@ -251,9 +256,9 @@ fn own_font_class_beats_inherited_typography() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .font_size(18)
+            .font_size(18.0)
             .font_weight(700)
-            .child(text("Own").font_size(12)),
+            .child(text("Own").font_size(12.0)),
     );
 
     layout(&mut cx, root);
@@ -280,7 +285,7 @@ fn deferred_top_layer_subtree_keeps_inherited_typography() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .font_size(18)
+            .font_size(18.0)
             .font_weight(700)
             .text_color(Token::Accent)
             .child(popup),

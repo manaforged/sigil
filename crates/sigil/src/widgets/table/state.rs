@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::reactive::{Signal, effect, signal};
 
 use super::columns::{ColWidth, MIN_COL_WIDTH, TableColumn};
-use super::derive::{compute_visible, reuse_identity};
+use super::derive::{compute_visible, retain_visible, reuse_identity};
 use super::identity::{self, Identifiable};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -73,6 +73,8 @@ impl<Row: 'static> TableState<Row> {
         let mut identity = None;
         let mut previous = None;
         let visible = signal(Rc::new(Vec::new()));
+        let selection = signal(Rc::new(HashSet::new()));
+        let select_anchor = signal(None::<u32>);
         effect(move || {
             let key = sort.get();
             let query = quick_filter.get();
@@ -83,6 +85,7 @@ impl<Row: 'static> TableState<Row> {
                 compute_visible(&live_rows, &derive_columns, key, &query, previous.as_ref())
             };
             previous = (key.is_some() && query.is_empty()).then(|| Rc::clone(&indices));
+            retain_visible(&indices, selection, select_anchor);
             visible.set(indices);
         });
         let order = (0..columns.len()).collect();
@@ -91,8 +94,8 @@ impl<Row: 'static> TableState<Row> {
             columns,
             sort,
             quick_filter,
-            selection: signal(Rc::new(HashSet::new())),
-            select_anchor: signal(None),
+            selection,
+            select_anchor,
             visible,
             layout: signal(Rc::new(ColumnLayout {
                 order,
@@ -249,6 +252,10 @@ impl<Row: 'static> TableState<Row> {
             .copied()
             .collect::<HashSet<u32>>();
         self.selection.set(Rc::new(span));
+    }
+
+    pub(super) fn anchor(&self) -> Option<u32> {
+        self.select_anchor.peek()
     }
 
     pub fn clear_selection(&self) {

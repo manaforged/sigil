@@ -69,7 +69,7 @@ fn text_child_measures_with_inherited_typography() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
-            .font_size(18)
+            .font_size(18.0)
             .font_weight(700)
             .child(text("Inherit")),
     );
@@ -100,7 +100,7 @@ fn text_child_measures_with_inherited_typography() {
 #[test]
 fn ancestor_typography_change_remeasures_descendant_text() {
     let mut cx = Cx::new_root();
-    let styled = container().font_size(18).child(text("Target"));
+    let styled = container().font_size(18.0).child(text("Target"));
     let root = cx.add(
         container()
             .child(styled)

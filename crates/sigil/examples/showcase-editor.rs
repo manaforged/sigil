@@ -12,7 +12,7 @@ fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - editor").size(1024, 640), app)
 }
 
-fn file_list() -> NodeBuilder {
+fn file_list() -> sigil::widgets::SidebarBuilder {
     sidebar(
         container()
             .layout(LayoutStyle::flex_column())
@@ -65,7 +65,7 @@ fn preview() -> PanelBuilder {
 }
 
 fn work_area() -> SplitterBuilder {
-    splitter(SplitterOrientation::Horizontal)
+    splitter(Orientation::Horizontal)
         .child(file_list(), 200.0)
         .child(editor_tabs(), 480.0)
         .child(preview(), 320.0)
@@ -73,8 +73,8 @@ fn work_area() -> SplitterBuilder {
 
 pub(crate) fn app() -> impl IntoNode {
     let file_menu = [
-        MenuItem::new("Open").shortcut("Ctrl+O").select(|| {}),
-        MenuItem::new("Save").shortcut("Ctrl+S").select(|| {}),
+        MenuItem::new("Open").shortcut("Ctrl+O").activate(|| {}),
+        MenuItem::new("Save").shortcut("Ctrl+S").activate(|| {}),
     ];
     app_shell(
         menu_bar().menu("File", file_menu),

@@ -14,7 +14,7 @@ The family pages carry signatures, options, and behavior notes:
 
 - [Controls](widgets/controls.md) — button, icon_button, checkbox,
   toggle, radio_group, slider.
-- [Indicators](widgets/indicators.md) — chip, badge, dot, spinner, gauge,
+- [Indicators](widgets/indicators.md) — chip, dot, spinner, gauge,
   progress.
 - [Fields](widgets/fields.md) — text_field, text_edit, number_field,
   date_field, color_field, combobox, dropdown.
@@ -71,9 +71,10 @@ The family pages carry signatures, options, and behavior notes:
   keys wrap, Home and End jump, and the focus ring sits on the checked
   row.
 - **command_menu()** — a nested action tree: `.item(label, action)`,
-  `.submenu(...)`, and `.select(Fn(&str))`. It is not a searchable
-  Cmd-K palette. Build that shape from `text_field` plus `virtual_list`
-  inside `modal` or `sheet` (recipe below).
+  `.submenu(...)`, and `.submit(Fn(&str))`. Typing filters and ranks the
+  items of the open level with `fuzzy_score`. For a palette with custom
+  rows, compose `text_field` and `virtual_list` inside `modal` or `sheet`
+  (recipe below).
 
 ## Data and display
 
@@ -92,12 +93,12 @@ The family pages carry signatures, options, and behavior notes:
   gives 28 px rows. An empty filter shows "No rows"; override it with
   `.empty(|| ...)`.
 - **diff(patch)** — a unified-diff viewer. Pass the patch text; the
-  widget parses hunks itself. `.layout(DiffLayout::Split)` shows before
+  widget parses hunks itself. `.view(DiffView::Split)` shows before
   and after side by side with per-line numbers and intraline
-  highlighting of the changed range; `DiffLayout::Unified` stacks the
+  highlighting of the changed range; `DiffView::Unified` stacks the
   removed rows above the added rows. Chain `.path(name)` for the header,
   `.status(text)` for the footer, `.max_rows(n)` to cap a long patch,
-  and `.choose(|choice| ...)` to make the split/unified control
+  and `.change(|choice| ...)` to make the split/unified control
   switch the view.
 - **chart(values)** — a bar chart by default; `.line()` draws a
   polyline. Chain `.tone(Tone)`, `.labels(["Mon", ...])`, and
@@ -106,13 +107,12 @@ The family pages carry signatures, options, and behavior notes:
 - **virtual_list(items, render)** — a windowed list. `items` is a `Vec`
   (snapshot) or a `Signal` (live). Default keys are list indices.
   `.identified()` keys by `Identifiable::id`. `.key_by` takes any other
-  domain key. `.auto_pin_to_bottom(true)` keeps a live list on the last
+  domain key. `.follow_end(true)` keeps a live list on the last
   row when it grows.
 - **progress(Signal\<f32\>, max)** and **gauge(Signal\<f32\>)**.
 - **chip(label, Tone)** — the same `Tone` as buttons.
-  `.tone_signal(...)` retints reactively. `.activate(Fn())` makes it a
+  `.tone(..)` also takes a signal or closure. `.activate(Fn())` makes it a
   button; without `.activate` it stays a label.
-- **badge(label, Tone)** — a pill chip (`rounded-full`).
 - **field(label, control)** — a label above a control; `.error(..)`
   adds an error line. Use it for forms.
 - **icon(glyph)**, **dot(Tone)**, **divider_horizontal()**, and
@@ -137,8 +137,8 @@ The family pages carry signatures, options, and behavior notes:
 
 - **card(child)** — a padded surface.
 - **avatar(initials)** — an initials disc.
-- **sidebar(child)** and **sidebar_width(px, child)** — a fixed-width
-  nav column.
+- **sidebar(child)** — a fixed-width nav column. Chain `.width(len)` and
+  `.resizable(min, max)`.
 - **panel()** — chain `.title()`, `.padding()`, and `.elevation()`.
 - **splitter(Orientation)** — an `IntoNode`. Chain
   `.pane(node).initial(px).min(px).grow(1.0)`. A grow pane takes the
@@ -170,9 +170,9 @@ The family pages carry signatures, options, and behavior notes:
   `.close(Fn(usize))`.
 - **scroll(inner)** — measures its content; `.extent(px)` sets a known height. Chain `.width()` and `.height()`.
 - **menu_bar()** — a GPU app bar. `Paint` methods such as
-  `.bg(Token::SurfaceHover)` style the strip. `.menu("File", [MenuItem::new("Open").select(|| {})])`
+  `.bg(Token::SurfaceHover)` style the strip. `.menu("File", [MenuItem::new("Open").activate(|| {})])`
   builds a dropdown. This is the bar you design. The native OS bar is
-  opt-in: `sigil::menu::set_menu_bar` (feature `menu`, next frame).
+  opt-in: `sigil::app::menu::set_menu_bar` (feature `menu`, next frame).
 - **menu(Signal\<bool\>)** — a GPU popup panel (`.item`, `.separator()`).
   Use it for context menus, not the app bar.
 - **tooltip(label)** — chain `.shortcut()`; it wraps a target child.

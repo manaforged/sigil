@@ -79,8 +79,8 @@ impl<T: NumericKind> NumberFieldBuilder<T> {
     }
 
     #[must_use]
-    pub const fn invalid_when(mut self, invalid: Signal<bool>) -> Self {
-        self.invalid = Some(invalid);
+    pub fn invalid_when(mut self, invalid: impl crate::reactive::Reactive<bool>) -> Self {
+        self.invalid = Some(invalid.into_signal());
         self
     }
 

@@ -50,7 +50,7 @@ Key options:
   index without `key_by`). A row that has not laid out yet uses
   `.estimate(len)` (default: the row height). The cache clears when the
   row width changes, and drops the keys of removed rows when the items
-  change. `follow` and `auto_pin_to_bottom` keep the tail
+  change. `follow_row` and `follow_end` keep the tail
   pinned while rows grow and measurements replace estimates. When the
   list is scrolled up, a height change above the first visible row
   moves the scroll offset by the same amount, so the visible rows stay
@@ -59,11 +59,13 @@ Key options:
 - `.selection(SelectionMode)` — `None`, `Single`, `Multi`, `Extend`.
   `.selection_state(&mut self) -> Signal<SelectionState>` exposes the
   state object (`contains`, `selected_indices`, `click`,
-  `ctrl_click`, `shift_click`); `.select(Fn(usize))` is a convenience
+  `ctrl_click`, `shift_click`); `.change(Fn(usize))` is a convenience
   effect over the first selected index.
 - `.scroll_bind(Signal<f32>)` / `.scroll_x_bind(scroll_x, max, width)`
-  / `.focused_row_bind(Signal<usize>)` — bind scroll and focus to
-  external signals.
+  — bind scroll to external signals.
+- `.cursor(Signal<usize>)` — the keyboard-focused row. Arrow keys write
+  it, and the list keeps that row in view unless `.follow_row` names
+  another target.
 - `.content_height_bind(Signal<f32>)` / `.max_scroll_bind(Signal<f32>)`
   — the list writes its content height and its largest scroll offset
   (content height minus the viewport) to these signals. Both use the
@@ -72,14 +74,15 @@ Key options:
   `scroll_bind` clamped to `0.0..=max_scroll`. To jump to the tail,
   write `max_scroll`.
 - `.scroll_into_view(index)`, `.initial_scroll(ScrollAnchor)`
-  (`Top`/`Bottom`/`Index`), `.scroll_to_end()` — initial position.
-- `.auto_pin_to_bottom(bool)` — keep the view pinned to the last row
-  while rows grow (chat/log behavior).
-- `.follow(Signal<usize>)` — an effect that scrolls the target row
+  (`Top`/`Bottom`/`Index`) — initial position.
+- `.follow_end(bool)` — start at the end and keep the view pinned to the
+  last row while rows grow, until the user scrolls up (chat/log behavior).
+- `.follow_row(Signal<usize>)` — an effect that scrolls the target row
   into view whenever it changes. It scrolls the least whole rows that
   show the row, and uses the measured viewport with `.viewport_fill()`.
   When the content grows, the list follows only if the view was at the
-  bottom. If the user scrolls up, the view stays, also when a new row
+  bottom and the target is the last row; a list that opens empty and
+  fills later stays at the target row. If the user scrolls up, the view stays, also when a new row
   moves the target. The list follows again after the view returns to
   the bottom. A target write with no new rows always scrolls to the
   target row, so `target.update(|row| *row = last)` jumps to the tail.
@@ -201,7 +204,7 @@ A selected row keeps the `accent-5` wash. Hover and pressed rows show
   and a row height below one cell still takes one cell. Prefer
   `.viewport_fill()` in terminal layouts so the list takes the height
   that its parent gives it.
-- `.follow(Signal<usize>)` and `.viewport_fill()` use the measured
+- `.follow_row(Signal<usize>)` and `.viewport_fill()` use the measured
   viewport, so they follow the terminal size.
 - The wheel scrolls three lines per notch.
 - A heatmap cell of 8 px is smaller than a cell, so a heatmap paints

@@ -7,8 +7,7 @@ use crate::kernel::{AccessibleName, TextContent};
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, Tone};
-use crate::style::{Metrics, NodeStyleExt, Radius, Size, Style, StyleAtom, StyleVariant, Theme};
+use crate::style::{ControlSize, Metrics, NodeStyleExt, Radius, Style, Theme, Tone};
 
 #[cfg(feature = "scene")]
 use crate::widgets::icon::icon_svg;
@@ -23,14 +22,11 @@ use super::shared::{
 
 pub struct ButtonBuilder {
     label: TextContent,
-    tone: Tone,
-    variant: StyleVariant,
-    label_atoms: &'static [StyleAtom],
-    frame: bool,
+    tone: Option<Tone>,
+    fill: Option<ButtonFill>,
     width: ButtonWidth,
     height: f32,
     padding_x: f32,
-    enabled: bool,
     disabled: Option<Signal<bool>>,
     activate: Option<Activate>,
     mutators: Vec<BuilderMutator>,
@@ -61,14 +57,11 @@ impl ButtonBuilder {
         let metrics = Metrics::current();
         Self {
             label: label.into(),
-            tone: Tone::Neutral,
-            variant: SOFT_VARIANT,
-            label_atoms: LABEL_TEXT_SOFT,
-            frame: true,
+            tone: None,
+            fill: None,
             width: ButtonWidth::Hug,
-            height: metrics.control_height(Size::Default),
-            padding_x: metrics.padding(Size::Default),
-            enabled: true,
+            height: metrics.control_height(ControlSize::Default),
+            padding_x: metrics.padding(ControlSize::Default),
             disabled: None,
             activate: None,
             mutators: Vec::new(),
@@ -95,38 +88,23 @@ impl ButtonBuilder {
     }
 
     #[must_use]
-    pub const fn primary(mut self) -> Self {
-        self.tone = Tone::Primary;
-        self.variant = SOLID_VARIANT;
-        self.label_atoms = LABEL_TEXT_SOLID;
-        self
+    pub const fn primary(self) -> Self {
+        self.tone(Tone::Primary)
     }
 
     #[must_use]
-    pub const fn neutral(mut self) -> Self {
-        self.tone = Tone::Neutral;
-        self.variant = SOFT_VARIANT;
-        self.label_atoms = LABEL_TEXT_SOFT;
-        self.frame = true;
-        self
+    pub const fn neutral(self) -> Self {
+        self.tone(Tone::Neutral)
     }
 
     #[must_use]
-    pub const fn destructive(mut self) -> Self {
-        self.tone = Tone::Error;
-        self.variant = SOLID_VARIANT;
-        self.label_atoms = LABEL_TEXT_SOLID;
-        self.frame = true;
-        self
+    pub const fn destructive(self) -> Self {
+        self.tone(Tone::Error)
     }
 
     #[must_use]
-    pub const fn outline(mut self) -> Self {
-        self.tone = Tone::Neutral;
-        self.variant = GHOST_VARIANT;
-        self.label_atoms = LABEL_TEXT_SOFT;
-        self.frame = true;
-        self
+    pub const fn outline(self) -> Self {
+        self.fill(ButtonFill::Outline)
     }
 
     #[cfg(feature = "scene")]
@@ -137,40 +115,44 @@ impl ButtonBuilder {
     }
 
     #[must_use]
-    pub const fn ghost(mut self) -> Self {
-        self.tone = Tone::Neutral;
-        self.variant = GHOST_VARIANT;
-        self.label_atoms = LABEL_TEXT_SOFT;
-        self.frame = false;
-        self
+    pub const fn ghost(self) -> Self {
+        self.fill(ButtonFill::Ghost)
     }
 
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
-        self.tone = tone;
+        self.tone = Some(tone);
         self
     }
 
     #[must_use]
-    pub const fn solid(mut self) -> Self {
-        self.variant = SOLID_VARIANT;
-        self.label_atoms = LABEL_TEXT_SOLID;
-        self.frame = true;
-        self
+    pub const fn solid(self) -> Self {
+        self.fill(ButtonFill::Solid)
     }
 
     #[must_use]
-    pub const fn soft(mut self) -> Self {
-        self.variant = SOFT_VARIANT;
-        self.label_atoms = LABEL_TEXT_SOFT;
-        self.frame = true;
+    pub const fn soft(self) -> Self {
+        self.fill(ButtonFill::Soft)
+    }
+
+    const fn fill(mut self, fill: ButtonFill) -> Self {
+        self.fill = Some(fill);
         self
     }
 
-    #[must_use]
-    pub const fn enabled(mut self, yes: bool) -> Self {
-        self.enabled = yes;
-        self
+    const fn resolved_tone(&self) -> Tone {
+        match self.tone {
+            Some(tone) => tone,
+            None => Tone::Neutral,
+        }
+    }
+
+    const fn resolved_fill(&self) -> ButtonFill {
+        match (self.fill, self.tone) {
+            (Some(fill), _) => fill,
+            (None, Some(Tone::Primary | Tone::Error)) => ButtonFill::Solid,
+            (None, _) => ButtonFill::Soft,
+        }
     }
 
     #[must_use]
@@ -180,23 +162,17 @@ impl ButtonBuilder {
     }
 
     #[must_use]
-    pub fn size(mut self, size: Size) -> Self {
+    pub fn size(mut self, size: ControlSize) -> Self {
         let metrics = Metrics::current();
-        let size = if size == Size::Grow {
+        let size = if size == ControlSize::Grow {
             self.width = ButtonWidth::Fill;
-            Size::Default
+            ControlSize::Default
         } else {
             self.width = ButtonWidth::Hug;
             size
         };
         self.height = metrics.control_height(size);
         self.padding_x = metrics.padding(size);
-        self
-    }
-
-    #[must_use]
-    pub const fn width(mut self, width: f32) -> Self {
-        self.width = ButtonWidth::Fixed(width);
         self
     }
 
@@ -219,7 +195,7 @@ impl ButtonBuilder {
             self.width = ButtonWidth::Fixed(self.height);
             self.padding_x = 0.0;
         }
-        let interaction = InteractionState::new(self.enabled);
+        let interaction = InteractionState::new(true);
         let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
         let layout_overrides = self.layout_overrides.clone();
         let user_overlay = self.style_accumulator.take_state_overlay();
@@ -245,7 +221,7 @@ impl ButtonBuilder {
         user_overlay: crate::style::StyleOverlay,
         look_disabled: Option<Signal<bool>>,
     ) -> NodeBuilder {
-        let variant = self.variant;
+        let variant = self.resolved_fill().variant();
         let disabled = self.disabled;
         let pointer_activate = Rc::clone(&activate);
         let key_activate = Rc::clone(&activate);
@@ -263,7 +239,7 @@ impl ButtonBuilder {
             .framed(node)
             .class(variant.base())
             .class(BUTTON_TRANSITION_ATOMS)
-            .tone(self.tone)
+            .tone(self.resolved_tone())
             .stateful_style(variant, user_overlay, move || {
                 reactive_style_state(interaction, look_disabled)
             })
@@ -280,8 +256,13 @@ impl ButtonBuilder {
         let node = match self.pending {
             Some(pending) => node.child(self.pending_content(pending)),
             None if self.square => node.child(
-                label_node(self.label.clone(), self.tone, self.label_atoms, false)
-                    .class(ICON_GLYPH),
+                label_node(
+                    self.label.clone(),
+                    self.resolved_tone(),
+                    self.resolved_fill().label_atoms(),
+                    false,
+                )
+                .class(ICON_GLYPH),
             ),
             None => self.label_content(node),
         };
@@ -301,13 +282,13 @@ impl ButtonBuilder {
                 .layout(
                     LayoutStyle::flex_row()
                         .align_items(AlignItems::Center)
-                        .gap(Metrics::current().gap(Size::Compact)),
+                        .gap(Metrics::current().gap(ControlSize::Compact)),
                 )
                 .child(
                     icon_svg(svg)
-                        .tone(self.tone)
+                        .tone(self.resolved_tone())
                         .px(size)
-                        .on_solid(self.variant == SOLID_VARIANT),
+                        .on_solid(self.resolved_fill() == ButtonFill::Solid),
                 )
                 .child(label),
         )
@@ -320,11 +301,19 @@ impl ButtonBuilder {
 
     fn label_text(&self) -> crate::kernel::TextBuilder {
         let compact = compact_label(self.height, self.layout_overrides.height_hint());
-        label_node(self.label.clone(), self.tone, self.label_atoms, compact)
+        label_node(
+            self.label.clone(),
+            self.resolved_tone(),
+            self.resolved_fill().label_atoms(),
+            compact,
+        )
     }
 
     fn framed(&self, node: NodeBuilder) -> NodeBuilder {
-        match (self.frame, self.variant == SOLID_VARIANT) {
+        match (
+            self.resolved_fill().frame(),
+            self.resolved_fill() == ButtonFill::Solid,
+        ) {
             (false, _) => node,
             (true, true) => node.class(SOLID_FRAME),
             (true, false) => node.class(BUTTON_FRAME),
@@ -332,14 +321,18 @@ impl ButtonBuilder {
     }
 
     fn pending_content(&self, pending: Signal<bool>) -> NodeBuilder {
-        let (label, tone, atoms) = (self.label.clone(), self.tone, self.label_atoms);
+        let (label, tone, atoms) = (
+            self.label.clone(),
+            self.resolved_tone(),
+            self.resolved_fill().label_atoms(),
+        );
         let compact = compact_label(self.height, self.layout_overrides.height_hint());
         container()
             .hittable(false)
             .layout(
                 LayoutStyle::flex_row()
                     .align_items(AlignItems::Center)
-                    .gap(Metrics::current().gap(Size::Compact)),
+                    .gap(Metrics::current().gap(ControlSize::Compact)),
             )
             .class(atoms)
             .children_reactive(move || {
@@ -357,8 +350,8 @@ mod impls;
 mod parts;
 
 use parts::{
-    BUTTON_FRAME, BUTTON_TRANSITION_ATOMS, ButtonWidth, LABEL_TEXT_SOFT, LABEL_TEXT_SOLID,
-    SOLID_FRAME, accessible_label, button_layout, compact_label, label_node,
+    BUTTON_FRAME, BUTTON_TRANSITION_ATOMS, ButtonFill, ButtonWidth, SOLID_FRAME, accessible_label,
+    button_layout, compact_label, label_node,
 };
 
 #[cfg(test)]

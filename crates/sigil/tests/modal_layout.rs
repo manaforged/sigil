@@ -112,7 +112,10 @@ fn overlay_passes(above: usize, inside: usize) -> (u64, Rect) {
 fn frame(host: &mut Host, router: &mut EventRouter, event: Option<ShellEvent>) {
     let hooks = FrameHooks {
         input: event.map(|event| -> sigil::app::FrameInputHook<'_> {
-            Box::new(move |target: &mut Host, events: &mut EventRouter| target.route(events, event))
+            Box::new(move |target: &mut Host, events: &mut EventRouter| {
+                target.route(events, event);
+                None
+            })
         }),
         ..FrameHooks::default()
     };

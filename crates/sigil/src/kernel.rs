@@ -23,7 +23,7 @@ pub use announce::{announce, announce_assertive};
 pub use builder::{NodeBuilder, container, fragment};
 pub(crate) use component::WithCx;
 pub use component::{IntoNode, node};
-pub use control_flow::{for_each, show};
+pub use control_flow::{StatusView, SwitchBuilder, for_each, match_status, show, switch};
 pub use cx::{Cx, HostMode};
 pub use id::NodeId;
 pub(crate) use image::ThemedImage;

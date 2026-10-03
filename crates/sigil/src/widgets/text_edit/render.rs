@@ -3,7 +3,8 @@ use crate::events::{ModifiersState, NodeEventsExt, PointerEvent};
 use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, fragment, text};
-use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow};
+use crate::layout::snap::CellForm;
+use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, rows};
 use crate::layout::{TextStyleCapture, with_text_geometry};
 use crate::reactive::{Signal, derived, effect};
 use crate::style::{
@@ -37,7 +38,8 @@ static EDIT_DISABLED: &[StyleAtom] = &[
     StyleAtom::Opacity(DISABLED_OPACITY),
 ];
 
-pub(super) const DEFAULT_HEIGHT: f32 = 160.0;
+const DEFAULT_HEIGHT: f32 = 160.0;
+const DEFAULT_ROWS: f32 = 5.0;
 
 pub(super) const fn content_padding() -> (f32, f32) {
     (space(3), space(2))
@@ -55,7 +57,6 @@ pub(super) fn build_base_node(
     let placeholder_str = text_content(placeholder);
     let displayed = displayed_text(
         value,
-        interaction.focus_visible(),
         placeholder.clone(),
         runtime.ime.preedit,
         runtime.caret,
@@ -85,7 +86,7 @@ pub(super) fn build_base_node(
 pub(super) fn edit_layout() -> LayoutStyle {
     LayoutStyle::flex_column()
         .fill_width()
-        .height(DEFAULT_HEIGHT)
+        .height(CellForm::new(DEFAULT_HEIGHT, rows(DEFAULT_ROWS).px()).pick())
         .min_size(0.0, 0.0)
         .padding(1.0)
 }
@@ -301,7 +302,6 @@ fn offset_at_point(runtime: &TextEditRuntime, x: f32, y: f32, scroll_y: f32) -> 
 
 fn displayed_text(
     value: Signal<String>,
-    focused: Signal<bool>,
     placeholder: TextContent,
     preedit: Signal<String>,
     caret: Signal<usize>,
@@ -311,7 +311,7 @@ fn displayed_text(
         let composing = preedit.get();
         if !composing.is_empty() {
             splice_preedit(&current, caret.get(), &composing)
-        } else if current.is_empty() && !focused.get() {
+        } else if current.is_empty() {
             text_content(&placeholder)
         } else {
             current

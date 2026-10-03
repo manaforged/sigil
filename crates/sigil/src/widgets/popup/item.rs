@@ -1,7 +1,7 @@
 use crate::kernel::{IntoNode, NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::Signal;
-use crate::style::{DisplayKind, Metrics, Radius, Size, StyleAtom, Token, Tone, space};
+use crate::style::{ControlSize, DisplayKind, Metrics, Radius, StyleAtom, Token, Tone, space};
 
 use super::super::chart::tone_solid;
 use super::super::vector::path;
@@ -67,10 +67,10 @@ fn row_layout() -> LayoutStyle {
     let metrics = Metrics::current();
     LayoutStyle::flex_row()
         .fill_width()
-        .height(metrics.control_height(Size::Default))
+        .height(metrics.control_height(ControlSize::Default))
         .shrink(0.0)
-        .padding_x(metrics.padding(Size::Default))
-        .gap(metrics.gap(Size::Default))
+        .padding_x(metrics.padding(ControlSize::Default))
+        .gap(metrics.gap(ControlSize::Default))
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)
         .overflow_x(Overflow::Hidden)

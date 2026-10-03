@@ -1,11 +1,14 @@
 use std::cell::RefCell;
 
+use crate::events::{Key, LogicalKey, ModifiersState, Shortcut};
 use crate::reactive::EventChannel;
 use crossbeam_channel::{Receiver, Sender, unbounded};
+use muda::accelerator::{Key as NativeKey, Modifiers as NativeModifiers};
 
+pub use muda::accelerator::KeyAccelerator;
 pub use muda::{
-    AboutMetadata, CheckMenuItem, ContextMenu, IconMenuItem, Menu, MenuEvent, MenuId, MenuItem,
-    PredefinedMenuItem, Submenu,
+    AboutMetadata, CheckMenuItem, ContextMenu, IconMenuItem, Menu, MenuEvent, MenuId,
+    MenuItem as NativeMenuItem, PredefinedMenuItem, Submenu,
 };
 
 thread_local! {
@@ -59,6 +62,75 @@ pub(crate) fn pump() {
             }
         });
     });
+}
+
+#[must_use]
+pub fn accelerator(shortcut: &Shortcut) -> Option<KeyAccelerator> {
+    let key = match &shortcut.key {
+        LogicalKey::Named(key) => native_named_key(*key)?,
+        LogicalKey::Character(text) => NativeKey::Character(text.to_string()),
+    };
+    Some(KeyAccelerator::new(
+        Some(native_modifiers(shortcut.modifiers)),
+        key,
+    ))
+}
+
+fn native_modifiers(modifiers: ModifiersState) -> NativeModifiers {
+    let pairs = [
+        (ModifiersState::SHIFT, NativeModifiers::SHIFT),
+        (ModifiersState::CONTROL, NativeModifiers::CONTROL),
+        (ModifiersState::ALT, NativeModifiers::ALT),
+        (ModifiersState::META, NativeModifiers::SUPER),
+    ];
+    pairs
+        .into_iter()
+        .filter(|(ours, _)| modifiers.contains(*ours))
+        .fold(NativeModifiers::empty(), |acc, (_, native)| acc | native)
+}
+
+fn native_named_key(key: Key) -> Option<NativeKey> {
+    Some(match key {
+        Key::Enter => NativeKey::Enter,
+        Key::Tab => NativeKey::Tab,
+        Key::Escape => NativeKey::Escape,
+        Key::Backspace => NativeKey::Backspace,
+        Key::Delete => NativeKey::Delete,
+        Key::Insert => NativeKey::Insert,
+        _ => native_navigation_key(key)?,
+    })
+}
+
+fn native_navigation_key(key: Key) -> Option<NativeKey> {
+    Some(match key {
+        Key::Home => NativeKey::Home,
+        Key::End => NativeKey::End,
+        Key::PageUp => NativeKey::PageUp,
+        Key::PageDown => NativeKey::PageDown,
+        Key::ArrowUp => NativeKey::ArrowUp,
+        Key::ArrowDown => NativeKey::ArrowDown,
+        Key::ArrowLeft => NativeKey::ArrowLeft,
+        Key::ArrowRight => NativeKey::ArrowRight,
+        _ => native_function_key(key)?,
+    })
+}
+
+const fn native_function_key(key: Key) -> Option<NativeKey> {
+    Some(match key {
+        Key::F1 => NativeKey::F1,
+        Key::F2 => NativeKey::F2,
+        Key::F3 => NativeKey::F3,
+        Key::F4 => NativeKey::F4,
+        Key::F5 => NativeKey::F5,
+        Key::F6 => NativeKey::F6,
+        Key::F7 => NativeKey::F7,
+        Key::F8 => NativeKey::F8,
+        Key::F9 => NativeKey::F9,
+        Key::F10 => NativeKey::F10,
+        Key::F11 => NativeKey::F11,
+        Key::F12 => NativeKey::F12,
+        _ => return None,
+    })
 }
 
 #[cfg(target_os = "macos")]

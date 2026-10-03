@@ -125,11 +125,11 @@ fn virtual_list_width_height_override_reaches_root_node() {
 
 #[test]
 fn splitter_width_height_override_reaches_root_node() {
-    use crate::widgets::splitter::{SplitterOrientation, splitter};
+    use crate::widgets::{Orientation, splitter};
     crate::reactive::Runtime::scope("layout-ext-splitter-smoke", || {
         let mut cx = crate::kernel::Cx::new_root();
         let root = cx.add(
-            splitter(SplitterOrientation::Horizontal)
+            splitter(Orientation::Horizontal)
                 .child(crate::kernel::container(), 200.0)
                 .child(crate::kernel::container(), 200.0)
                 .width(100.0)

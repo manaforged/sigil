@@ -2,7 +2,8 @@ use crate::animation_runtime::presets;
 use crate::kernel::{AccessibleName, TextBuilder, TextContent, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{
-    BORDER_WIDTH, Elevation, Metrics, NodeStyleExt, Size, StyleAtom, Tone, TransitionId,
+    BORDER_WIDTH, ControlSize, Elevation, GHOST_VARIANT, Metrics, NodeStyleExt, SOFT_VARIANT,
+    SOLID_VARIANT, StyleAtom, StyleVariant, Tone, TransitionId,
 };
 
 pub(super) const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
@@ -58,7 +59,7 @@ pub(super) static LABEL_TEXT_SOFT: &[StyleAtom] = &[
 ];
 
 pub(super) fn compact_label(height: f32, override_height: Option<f32>) -> bool {
-    height < Metrics::current().control_height(Size::Default)
+    height < Metrics::current().control_height(ControlSize::Default)
         || override_height.is_some_and(|px| px <= COMPACT_LABEL_HEIGHT)
 }
 
@@ -70,4 +71,33 @@ pub(super) fn label_node(
 ) -> TextBuilder {
     let node = text(label).nowrap().tone(tone).class(atoms);
     if compact { node.class("text-xs") } else { node }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ButtonFill {
+    Solid,
+    Soft,
+    Ghost,
+    Outline,
+}
+
+impl ButtonFill {
+    pub(super) const fn variant(self) -> StyleVariant {
+        match self {
+            Self::Solid => SOLID_VARIANT,
+            Self::Soft => SOFT_VARIANT,
+            Self::Ghost | Self::Outline => GHOST_VARIANT,
+        }
+    }
+
+    pub(super) const fn label_atoms(self) -> &'static [StyleAtom] {
+        match self {
+            Self::Solid => LABEL_TEXT_SOLID,
+            Self::Soft | Self::Ghost | Self::Outline => LABEL_TEXT_SOFT,
+        }
+    }
+
+    pub(super) const fn frame(self) -> bool {
+        !matches!(self, Self::Ghost)
+    }
 }

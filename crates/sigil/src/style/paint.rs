@@ -1,3 +1,4 @@
+use crate::style::engine::encode_px;
 use crate::style::styled::color::{background_atom, border_color_atom, text_atom};
 use crate::style::{
     BgGradient, ColorOrToken, Elevation, FontFamily, MillisU16, Px, Radius, Style, StyleAtom,
@@ -121,8 +122,8 @@ pub trait Paint: PaintTarget {
     }
 
     #[must_use]
-    fn font_size(self, px: i16) -> Self {
-        push(self, StyleAtom::FontSize(Px(px)))
+    fn font_size(self, px: f32) -> Self {
+        push(self, StyleAtom::FontSize(encode_px(px)))
     }
 
     #[must_use]
@@ -141,8 +142,8 @@ pub trait Paint: PaintTarget {
     }
 
     #[must_use]
-    fn line_height(self, px: i16) -> Self {
-        push(self, StyleAtom::LineHeight(Px(px)))
+    fn line_height_px(self, px: f32) -> Self {
+        push(self, StyleAtom::LineHeight(encode_px(px)))
     }
 
     #[must_use]

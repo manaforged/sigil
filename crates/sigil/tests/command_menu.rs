@@ -35,7 +35,7 @@ fn sample_menu(select: impl Fn(&str) + 'static) -> impl FnOnce() -> CommandMenuB
             })
             .disabled("Item")
             .item("Wait", || {})
-            .select(select)
+            .submit(select)
     }
 }
 
@@ -123,7 +123,7 @@ fn disabled_item_skipped_by_navigation() {
                 .item("A", || {})
                 .disabled("B")
                 .item("C", || {})
-                .select(move |label| selected.update(|v| v.push(label.to_owned())))
+                .submit(move |label| selected.update(|v| v.push(label.to_owned())))
         });
 
         press(
@@ -175,7 +175,7 @@ fn leaf_select_fires_observer_and_closes() {
             command_menu()
                 .item("Attack", move || fired.set(true))
                 .submenu("Ability", |m| m.item("Fire", || {}))
-                .select(move |label| selected_label.set(label.to_owned()))
+                .submit(move |label| selected_label.set(label.to_owned()))
         });
 
         press(
@@ -190,13 +190,9 @@ fn leaf_select_fires_observer_and_closes() {
             &mut layout,
             &mut router,
             root,
-            (Key::ArrowRight, PhysicalKey::ArrowRight),
+            (Key::Enter, PhysicalKey::Enter),
         );
-        assert_eq!(
-            panel_count(&cx, root),
-            2,
-            "right-arrow descends into Ability"
-        );
+        assert_eq!(panel_count(&cx, root), 2, "enter descends into Ability");
 
         press(
             &mut cx,
@@ -230,10 +226,20 @@ fn navigate(cx: &mut Cx, root: NodeId, keys: &[(Key, PhysicalKey)]) {
         .compute(cx, root, Size::fixed(VIEWPORT.0, VIEWPORT.1))
         .expect("layout");
     let mut router = EventRouter::new();
-    router.set_focus(cx, Some(root));
+    router.set_focus(cx, Some(query_field(cx, root)));
     for (key, physical) in keys {
         router.route(cx, &layout, key_down(*key, *physical));
     }
+}
+
+fn query_field(cx: &Cx, root: NodeId) -> NodeId {
+    let mut field = None;
+    cx.visit_preorder(root, |id, node| {
+        if field.is_none() && node.a11y.role == sigil::kernel::Role::TextInput {
+            field = Some(id);
+        }
+    });
+    field.expect("the command menu has a query field")
 }
 
 #[test]
@@ -241,7 +247,7 @@ fn command_menu_open() {
     let img = render_widget_to_png_stub(
         || sample_menu(|_| {})(),
         InteractionMode::Default,
-        [432, 128],
+        [432, 176],
         (1.0, 1.0),
     );
     assert_rendered_matches_golden(img, &golden_path!("command_menu_open"), DELTA_PCT);
@@ -263,7 +269,7 @@ fn command_menu_nested() {
             root
         }),
         InteractionMode::Default,
-        [432, 128],
+        [432, 176],
         (1.0, 1.0),
     );
     assert_rendered_matches_golden(img, &golden_path!("command_menu_nested"), DELTA_PCT);
@@ -285,7 +291,7 @@ fn command_menu_disabled_item() {
             root
         }),
         InteractionMode::Default,
-        [432, 128],
+        [432, 176],
         (1.0, 1.0),
     );
     assert_rendered_matches_golden(img, &golden_path!("command_menu_disabled_item"), DELTA_PCT);

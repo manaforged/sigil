@@ -342,7 +342,6 @@ fn capture_core(
     sigil::reactive::Runtime::scope("sigil-visual-golden", || {
         let mut cx = Cx::new_root();
         let root = cx.add(build);
-        let focus = focus_target(&cx, root);
         let [viewport_w, viewport_h] = target.logical;
         let viewport = Size::fixed(viewport_w, viewport_h);
         let mut layout = LayoutEngine::with_text_measure(text_measure);
@@ -352,6 +351,7 @@ fn capture_core(
                 .map_err(|err| Error::Layout(format!("{err:?}")))
         };
         relayout(&mut cx, &mut layout)?;
+        let focus = focus_target(&cx, root);
         drive_state(&mut cx, &layout, focus, mode, hit_point);
         relayout(&mut cx, &mut layout)?;
         interaction::advance(mode, || relayout(&mut cx, &mut layout))?;

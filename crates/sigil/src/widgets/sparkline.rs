@@ -1,5 +1,10 @@
-use crate::kernel::{Cx, IntoNode, NodeId, Role, TextBuilder, container, text};
+use std::rc::Rc;
+
+use crate::kernel::{
+    AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, container, text,
+};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::reactive::{Reactive, derived};
 use crate::style::Tone;
 
 use super::chart::{tone_shade, tone_solid};
@@ -29,8 +34,8 @@ pub(crate) enum Layer {
     Body,
 }
 
-pub struct SparklineBuilder {
-    values: Vec<f32>,
+#[derive(Clone)]
+struct SparkShape {
     range: Option<(f32, f32)>,
     tone: Tone,
     tones: Vec<Option<Tone>>,
@@ -39,72 +44,92 @@ pub struct SparklineBuilder {
     rows: usize,
 }
 
+pub struct SparklineBuilder {
+    values: Rc<dyn Reactive<Vec<f32>>>,
+    shape: SparkShape,
+}
+
 #[must_use]
-pub fn sparkline(values: impl IntoIterator<Item = f32>) -> SparklineBuilder {
+pub fn sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder {
     SparklineBuilder {
-        values: values.into_iter().collect(),
-        range: None,
-        tone: Tone::Primary,
-        tones: Vec::new(),
-        mark: SparkMark::Block,
-        fill: SparkFill::Solid,
-        rows: 1,
+        values: Rc::new(values),
+        shape: SparkShape {
+            range: None,
+            tone: Tone::Primary,
+            tones: Vec::new(),
+            mark: SparkMark::Block,
+            fill: SparkFill::Solid,
+            rows: 1,
+        },
     }
 }
 
 impl SparklineBuilder {
     #[must_use]
     pub const fn range(mut self, low: f32, high: f32) -> Self {
-        self.range = Some((low, high));
+        self.shape.range = Some((low, high));
         self
     }
 
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
-        self.tone = tone;
+        self.shape.tone = tone;
         self
     }
 
     #[must_use]
     pub fn tones(mut self, tones: impl IntoIterator<Item = Option<Tone>>) -> Self {
-        self.tones = tones.into_iter().collect();
+        self.shape.tones = tones.into_iter().collect();
         self
     }
 
     #[must_use]
     pub const fn mark(mut self, mark: SparkMark) -> Self {
-        self.mark = mark;
+        self.shape.mark = mark;
         self
     }
 
     #[must_use]
     pub const fn fill(mut self, fill: SparkFill) -> Self {
-        self.fill = fill;
+        self.shape.fill = fill;
         self
     }
 
     #[must_use]
     pub fn rows(mut self, rows: usize) -> Self {
-        self.rows = rows.max(1);
+        self.shape.rows = rows.max(1);
         self
     }
 
-    fn bounds(&self) -> (f32, f32) {
+    #[cfg(test)]
+    fn graph(&self) -> Vec<String> {
+        self.shape.graph(&self.values.read())
+    }
+
+    #[cfg(test)]
+    fn glyphs(&self) -> String {
+        self.graph().join("\n")
+    }
+
+    #[cfg(test)]
+    fn runs(&self) -> Vec<Vec<(Tone, Layer, String)>> {
+        self.shape.runs(&self.values.read())
+    }
+}
+
+impl SparkShape {
+    fn bounds(&self, values: &[f32]) -> (f32, f32) {
         self.range.unwrap_or_else(|| {
-            let low = self.values.iter().copied().fold(f32::INFINITY, f32::min);
-            let high = self
-                .values
-                .iter()
-                .copied()
-                .fold(f32::NEG_INFINITY, f32::max);
+            let low = values.iter().copied().fold(f32::INFINITY, f32::min);
+            let high = values.iter().copied().fold(f32::NEG_INFINITY, f32::max);
             (low.min(0.0), high)
         })
     }
 
-    fn fractions(&self) -> Vec<f32> {
-        let (low, high) = self.bounds();
+    fn fractions(&self, values: &[f32]) -> Vec<f32> {
+        let (low, high) = self.bounds(values);
         let span = high - low;
-        self.values
+        values
             .iter()
             .map(|value| {
                 if span > 0.0 {
@@ -116,23 +141,36 @@ impl SparklineBuilder {
             .collect()
     }
 
-    fn graph(&self) -> Vec<String> {
-        glyphs::graph_rows(&self.fractions(), self.rows, self.mark)
+    fn graph(&self, values: &[f32]) -> Vec<String> {
+        glyphs::graph_rows(&self.fractions(values), self.rows, self.mark)
     }
 
-    #[cfg(test)]
-    fn glyphs(&self) -> String {
-        self.graph().join("\n")
-    }
-
-    fn runs(&self) -> Vec<Vec<(Tone, Layer, String)>> {
-        let tones = glyphs::cell_tones(&self.tones, self.values.len(), self.mark, self.tone);
-        let graph = self.graph();
+    fn runs(&self, values: &[f32]) -> Vec<Vec<(Tone, Layer, String)>> {
+        let tones = glyphs::cell_tones(&self.tones, values.len(), self.mark, self.tone);
+        let graph = self.graph(values);
         let layers = glyphs::cell_layers(&graph, self.fill);
         graph
             .iter()
             .zip(&layers)
             .map(|(row, layer)| glyphs::tone_runs(row, &tones, layer, self.tone))
+            .collect()
+    }
+
+    fn describe(&self, values: &[f32]) -> String {
+        let (low, high) = self.bounds(values);
+        let last = values.last().copied().unwrap_or(0.0);
+        format!("{low} to {high}, last {last}")
+    }
+
+    fn lines(&self, values: &[f32]) -> Vec<NodeBuilder> {
+        self.runs(values)
+            .into_iter()
+            .map(|row| {
+                row.into_iter().fold(
+                    container().layout(LayoutStyle::flex_row()),
+                    |line, (tone, layer, glyphs)| line.child(run_text(tone, layer, glyphs)),
+                )
+            })
             .collect()
     }
 }
@@ -147,32 +185,20 @@ fn run_text(tone: Tone, layer: Layer, glyphs: String) -> TextBuilder {
 
 impl IntoNode for SparklineBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
-        let (low, high) = self.bounds();
-        let last = self.values.last().copied().unwrap_or(0.0);
-        let description = format!("{low} to {high}, last {last}");
-        let mut rows = self.runs();
-        if let [row] = rows.as_mut_slice()
-            && let [(tone, layer, glyphs)] = row.as_mut_slice()
-        {
-            return run_text(*tone, *layer, std::mem::take(glyphs))
-                .role(Role::Image)
-                .label("Sparkline")
-                .description(description)
-                .build(cx);
-        }
-        let mut root = container()
+        let source = self.values;
+        let values = derived(move || source.read());
+        let shape = self.shape;
+        let label_shape = shape.clone();
+        let description = derived(move || values.with(|values| label_shape.describe(values)));
+        container()
             .role(Role::Image)
             .label("Sparkline")
-            .description(description)
-            .layout(LayoutStyle::flex_column());
-        for row in rows {
-            let mut line = container().layout(LayoutStyle::flex_row());
-            for (tone, layer, glyphs) in row {
-                line = line.child(run_text(tone, layer, glyphs));
-            }
-            root = root.child(line);
-        }
-        root.build(cx)
+            .mutate(move |target| {
+                target.a11y.description = Some(AccessibleName::Derived(description));
+            })
+            .layout(LayoutStyle::flex_column())
+            .children_reactive(move || values.with(|values| shape.lines(values)))
+            .build(cx)
     }
 }
 

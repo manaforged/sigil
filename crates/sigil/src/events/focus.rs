@@ -34,7 +34,7 @@ thread_local! {
     static FALLBACK_FOCUS_SOURCE: Cell<bool> = const { Cell::new(true) };
 }
 
-pub fn note_focus_source(keyboard: bool) {
+pub(crate) fn note_focus_source(keyboard: bool) {
     let target = FOCUS_FROM_KEYBOARD.with(|slot| slot.borrow().clone());
     if let Some(cell) = target {
         cell.set(keyboard);

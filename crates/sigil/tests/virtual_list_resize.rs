@@ -54,8 +54,7 @@ fn measured_rows_keep_the_view_still_when_a_row_grows() {
                     .measured()
                     .viewport_fill()
                     .scroll_bind(scroll_y)
-                    .auto_pin_to_bottom(true)
-                    .scroll_to_end(),
+                    .follow_end(true),
                 )
         });
         let pinned = settle(&mut host, &mut router);

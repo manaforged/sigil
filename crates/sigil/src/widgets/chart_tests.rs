@@ -24,12 +24,13 @@ fn empty_chart_builds() {
 #[test]
 fn bar_chart_builds() {
     Runtime::scope("chart-bar", || {
-        let mut cx = Cx::new_root();
-        let id = chart([4.0, 8.0, 3.0, 10.0])
-            .labels(["Mon", "Tue", "Wed", "Thu"])
-            .build(&mut cx);
-        assert!(cx.get(id).is_some());
-        assert!(!cx.get(id).unwrap().children().is_empty());
+        let mut host = Host::new();
+        host.mount(move || {
+            container().child(chart([4.0, 8.0, 3.0, 10.0]).labels(["Mon", "Tue", "Wed", "Thu"]))
+        });
+        host.layout((320.0, 200.0)).unwrap();
+        let scene = host.scene((320.0, 200.0)).unwrap();
+        assert!(scene.find_text("Mon").is_some());
     });
 }
 

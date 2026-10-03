@@ -2,10 +2,10 @@ use crate::events::{Key, NodeEventsExt};
 use crate::kernel::NodeBuilder;
 use crate::reactive::derived;
 
-use super::builder::SplitterOrientation;
 use super::drag::SplitterState;
+use crate::widgets::orientation::Orientation;
 
-const KEY_STEP: f32 = 16.0;
+pub(in crate::widgets) const KEY_STEP: f32 = 16.0;
 
 pub(super) fn install_handle_keys(
     node: NodeBuilder,
@@ -15,14 +15,27 @@ pub(super) fn install_handle_keys(
     let (min, max) = state.bounds(handle);
     let value = derived(move || state.tracked_size(handle));
     let (back, forward) = match state.orientation() {
-        SplitterOrientation::Horizontal => (Key::ArrowLeft, Key::ArrowRight),
-        SplitterOrientation::Vertical => (Key::ArrowUp, Key::ArrowDown),
+        Orientation::Horizontal => (Key::ArrowLeft, Key::ArrowRight),
+        Orientation::Vertical => (Key::ArrowUp, Key::ArrowDown),
     };
     let node = node
         .focusable(true)
         .label("Resize panes")
         .value(value, min, max)
         .value_step(KEY_STEP);
+    resize_keys(node, (back, forward), move |step| {
+        let (low, high) = state.bounds(handle);
+        let current = state.size_at(handle);
+        let target = (current + step).clamp(low, high);
+        state.nudge(handle, target - current);
+    })
+}
+
+pub(in crate::widgets) fn resize_keys(
+    node: NodeBuilder,
+    (back, forward): (Key, Key),
+    step_by: impl Fn(f32) + Clone + 'static,
+) -> NodeBuilder {
     [
         (back, -KEY_STEP),
         (forward, KEY_STEP),
@@ -31,11 +44,9 @@ pub(super) fn install_handle_keys(
     ]
     .into_iter()
     .fold(node, |node, (key, step)| {
+        let step_by = step_by.clone();
         node.key(key, move |event| {
-            let (low, high) = state.bounds(handle);
-            let current = state.size_at(handle);
-            let target = (current + step).clamp(low, high);
-            state.nudge(handle, target - current);
+            step_by(step);
             event.stop_propagation();
         })
     })

@@ -295,7 +295,7 @@ mod sidebar;
 use list_row::row_height;
 pub use list_row::{Disclosure, ListColumn, ListRowSlots, RowTone, list_row, list_row_with};
 pub(crate) use list_row::{ROW_SELECTED, ROW_SELECTED_HOVER, row_states};
-pub use sidebar::{sidebar, sidebar_width};
+pub use sidebar::{SidebarBuilder, sidebar};
 
 #[cfg(test)]
 #[path = "patterns_tests.rs"]

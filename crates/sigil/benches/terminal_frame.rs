@@ -18,7 +18,7 @@ use sigil::kernel::{container, text};
 use sigil::reactive::Runtime;
 use sigil::style::{Tone, grid};
 use sigil::terminal::{ColorDepth, Grid, step as try_step};
-use sigil::widgets::{ColWidth, TableColumn, TableState, badge, table};
+use sigil::widgets::{ColWidth, TableColumn, TableState, chip, table};
 
 const COLS: u16 = 120;
 const ROWS: u16 = 40;
@@ -77,7 +77,7 @@ fn columns() -> Vec<TableColumn<Row>> {
             .cell(|row: &Row| text(row.port.to_string()).nowrap()),
         TableColumn::new("state", "STATE")
             .width(ColWidth::Fixed(72.0))
-            .cell(|_: &Row| badge("STRAY", Tone::Warn)),
+            .cell(|_: &Row| chip("STRAY", Tone::Warn)),
         TableColumn::new("where", "WHERE")
             .width(ColWidth::Fixed(176.0))
             .cell(|row: &Row| text(row.place.clone()).nowrap()),

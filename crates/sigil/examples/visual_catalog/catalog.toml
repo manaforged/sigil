@@ -397,6 +397,7 @@ id = "surface"
 title = "Surface"
 group = "chrome"
 builder = "surface"
+live = "off"
 captures = [
   { build = "surface", size = [240, 80], hit = [8.0, 8.0], states = ["default"] },
 ]
@@ -528,15 +529,6 @@ group = "indicators"
 builder = "chip"
 captures = [
   { build = "chip", size = [200, 48], hit = [8.0, 8.0], states = ["default"] },
-]
-
-[[components]]
-id = "badge"
-title = "Badge"
-group = "indicators"
-builder = "badge"
-captures = [
-  { build = "badge", size = [200, 48], hit = [8.0, 8.0], states = ["default"] },
 ]
 
 [[components]]

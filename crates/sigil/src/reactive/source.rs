@@ -37,6 +37,38 @@ where
     }
 }
 
+impl Reactive<Self> for String {
+    fn read(&self) -> Self {
+        self.clone()
+    }
+
+    fn into_signal(self) -> Signal<Self> {
+        signal(self)
+    }
+}
+
+impl Reactive<String> for &'static str {
+    fn read(&self) -> String {
+        (*self).to_owned()
+    }
+
+    fn into_signal(self) -> Signal<String> {
+        signal(self.to_owned())
+    }
+}
+
+impl<T: Clone + 'static> Reactive<Self> for Vec<T> {
+    fn read(&self) -> Self {
+        self.clone()
+    }
+}
+
+impl<T: Clone + 'static, const N: usize> Reactive<Vec<T>> for [T; N] {
+    fn read(&self) -> Vec<T> {
+        self.to_vec()
+    }
+}
+
 impl Reactive<Self> for bool {
     fn read(&self) -> Self {
         *self

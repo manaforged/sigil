@@ -154,6 +154,10 @@ required-features = ["terminal"]
 name = "visual_catalog"
 required-features = ["terminal", "desktop"]
 
+[[example]]
+name = "catalog_live"
+required-features = ["desktop"]
+
 [[test]]
 name = "perf_gate"
 harness = false

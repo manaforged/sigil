@@ -35,7 +35,7 @@ pub fn cancel_interval(id: IntervalId) {
 }
 
 #[must_use = "shells can ignore the count; tests use it to assert that fires actually happened"]
-pub fn tick_intervals() -> usize {
+pub(crate) fn tick_intervals() -> usize {
     let now = REGISTRY.with(|r| r.borrow().now());
     let due: Vec<(IntervalId, OwnerId)> = REGISTRY.with(|r| {
         r.borrow()

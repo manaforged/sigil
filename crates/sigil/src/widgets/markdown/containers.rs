@@ -3,7 +3,48 @@ use super::parse::{Block, parse_nested};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct List {
     pub(crate) start: Option<u64>,
-    pub(crate) items: Vec<Vec<Block>>,
+    pub(crate) items: Vec<ListItem>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Task {
+    Open,
+    Done,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ListItem {
+    pub(crate) task: Option<Task>,
+    pub(crate) blocks: Vec<Block>,
+}
+
+impl ListItem {
+    pub(crate) const fn plain(blocks: Vec<Block>) -> Self {
+        Self { task: None, blocks }
+    }
+}
+
+fn task_marker(line: &str) -> Option<(Task, &str)> {
+    let task = match line.get(..4)? {
+        "[ ] " => Task::Open,
+        "[x] " | "[X] " => Task::Done,
+        _ => return None,
+    };
+    Some((task, &line[4..]))
+}
+
+fn list_item(lines: &[String], depth: usize) -> ListItem {
+    let source = lines.join("\n");
+    match task_marker(&source) {
+        Some((task, rest)) => ListItem {
+            task: Some(task),
+            blocks: parse_nested(rest, depth),
+        },
+        None => ListItem {
+            task: None,
+            blocks: parse_nested(&source, depth),
+        },
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -92,10 +133,7 @@ pub(super) fn take_list(lines: &[&str], start: usize, depth: usize) -> Option<(L
         }
         i += 1;
     }
-    let items = items
-        .iter()
-        .map(|item| parse_nested(&item.join("\n"), depth))
-        .collect();
+    let items = items.iter().map(|item| list_item(item, depth)).collect();
     Some((
         List {
             start: first.number,

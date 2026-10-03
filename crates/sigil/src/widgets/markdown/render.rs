@@ -2,10 +2,13 @@ use crate::kernel::{NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::cols;
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::reactive::signal;
 use crate::style::{Px, Radius, StyleAtom, TextFace, TextRun, Token, space};
+use crate::widgets::interaction::InteractionState;
 use crate::widgets::{Highlight, highlight};
 
-use super::containers::List;
+use super::super::checkbox::{CheckMark, checkbox_indicator};
+use super::containers::{List, Task};
 use super::inline::styled;
 use super::parse::Block;
 
@@ -108,21 +111,38 @@ pub(super) fn list(
         .role(Role::List)
         .layout(LayoutStyle::flex_column().fill_width().gap(space(1)));
     for (index, item) in list.items.into_iter().enumerate() {
-        let bullet = tinted(text(marker(start, index)).nowrap(), tone)
-            .layout(LayoutStyle::block().width(cols(width as f32)).shrink(0.0));
-        column = column.child(
-            container()
-                .role(Role::ListItem)
-                .layout(
-                    LayoutStyle::flex_row()
-                        .fill_width()
-                        .align_items(AlignItems::Start),
-                )
-                .child(bullet)
-                .child(stack(item, (tone, space(1)), node)),
+        let row = container().role(Role::ListItem).layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .align_items(AlignItems::Start),
         );
+        let row = match item.task {
+            Some(task) => row.child(task_mark(task)),
+            None => row.child(
+                tinted(text(marker(start, index)).nowrap(), tone)
+                    .layout(LayoutStyle::block().width(cols(width as f32)).shrink(0.0)),
+            ),
+        };
+        column = column.child(row.child(stack(item.blocks, (tone, space(1)), node)));
     }
     column
+}
+
+fn task_mark(task: Task) -> NodeBuilder {
+    let checked = signal(task == Task::Done);
+    container()
+        .role(Role::CheckBox)
+        .checked(checked)
+        .layout(LayoutStyle::block().width(cols(4.0)).shrink(0.0))
+        .child(checkbox_indicator(
+            CheckMark {
+                checked,
+                partial: signal(false),
+            },
+            None,
+            crate::style::Tone::Neutral,
+            InteractionState::new(true),
+        ))
 }
 
 pub(super) fn code(lang: &str, body: &str) -> NodeBuilder {

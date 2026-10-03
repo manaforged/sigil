@@ -7,13 +7,13 @@ use crate::reactive::{Signal, derived, effect, untrack};
 
 use super::measure::Tops;
 use super::window::RowHeights;
-use super::{BuildAxes, InitialScroll, VirtualListBuilder};
+use super::{BuildAxes, InitialScroll, RowRender, VirtualListBuilder};
 use crate::widgets::scroll::{WheelAxis, pin_to_bottom, wheel};
 
 impl<T, R> VirtualListBuilder<T, R>
 where
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: RowRender<T>,
 {
     #[must_use]
     pub const fn content_height_bind(mut self, content_height: Signal<f32>) -> Self {
@@ -90,7 +90,11 @@ fn follow_target(axes: BuildAxes, (top, height): (f32, f32), current: f32, viewp
 }
 
 pub(super) fn follow(target: Signal<usize>, axes: BuildAxes, rows: impl Fn() -> usize + 'static) {
-    pin_to_bottom(axes.scroll_y, axes.max);
+    let rows = Rc::new(rows);
+    let tail_rows = Rc::clone(&rows);
+    pin_to_bottom(axes.scroll_y, axes.max, move || {
+        target.peek().saturating_add(1) >= tail_rows()
+    });
     let last_rows = Cell::new(rows());
     effect(move || {
         let wanted = target.get();
@@ -150,7 +154,7 @@ pub(super) fn apply_bound_scroll(
         axes.scroll_y.set(target);
     }
     if pin_bottom {
-        pin_to_bottom(axes.scroll_y, axes.max);
+        pin_to_bottom(axes.scroll_y, axes.max, || true);
     }
 }
 

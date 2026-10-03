@@ -81,3 +81,27 @@ pub(super) fn sort_mark<Row: 'static>(
         .class(super::header::HEADER_TEXT),
     )
 }
+
+impl<Row: 'static> TableState<Row> {
+    pub fn cycle_sort(&self) {
+        let sortable = || self.columns().iter().filter(|col| col.is_sortable());
+        let current = self.sort_key().peek().map(|key| key.column);
+        let next = current
+            .and_then(|id| sortable().skip_while(|col| col.id() != id).nth(1))
+            .or_else(|| sortable().next());
+        if let Some(col) = next {
+            self.sort(col.id(), SortDir::Ascending);
+        }
+    }
+
+    pub fn reverse_sort(&self) {
+        let Some(key) = self.sort_key().peek() else {
+            return;
+        };
+        let dir = match key.dir {
+            SortDir::Ascending => SortDir::Descending,
+            SortDir::Descending => SortDir::Ascending,
+        };
+        self.sort(key.column, dir);
+    }
+}

@@ -187,6 +187,7 @@ impl Host {
             && let Some(node) = self.cx.get_mut(root)
         {
             node.attach(theme);
+            crate::scene::emit_cache::theme_changed();
         }
     }
 

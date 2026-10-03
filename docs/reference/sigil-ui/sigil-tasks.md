@@ -11,6 +11,7 @@
 | [`Status`](#status) | enum |  |
 | [`TaskWorkers`](#taskworkers) | enum |  |
 | [`MessageReceiver`](#messagereceiver) | trait |  |
+| [`blocking`](#blocking) | fn |  |
 | [`installed`](#installed) | fn |  |
 | [`on_message`](#on_message) | fn |  |
 | [`on_message_or_close`](#on_message_or_close) | fn |  |
@@ -19,6 +20,7 @@
 | [`sleep`](#sleep) | fn |  |
 | [`spawn`](#spawn) | fn |  |
 | [`task`](#task-1) | fn |  |
+| [`task_with`](#task_with) | fn |  |
 
 ## Structs
 
@@ -55,8 +57,10 @@
 
 | Method | Description |
 | --- | --- |
+| <code>pub fn <a href="#task">Task</a>&lt;T, E, A&gt;::cancel(self)</code> |  |
+| <code>pub fn <a href="#task">Task</a>&lt;T, E, A&gt;::run_with(self, arg: A)</code> |  |
+| <code>pub fn <a href="#task">Task</a>&lt;T, E, A&gt;::status(self) -&gt; <a href="#status">Status</a>&lt;T, E&gt; where T: Clone, E: Clone</code> |  |
 | <code>pub fn <a href="#task">Task</a>&lt;T, E&gt;::run(self)</code> |  |
-| <code>pub fn <a href="#task">Task</a>&lt;T, E&gt;::status(self) -&gt; <a href="#status">Status</a>&lt;T, E&gt; where T: Clone, E: Clone</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Copy</code>
 
@@ -150,6 +154,11 @@
 
 ## Functions
 
+### `blocking`
+
+<pre>pub async fn <a href="#blocking">blocking</a>&lt;T, F&gt;(f: F) -&gt; T where T: Send + 'static, F: FnOnce() -&gt; T + Send + 'static</pre>
+
+
 ### `installed`
 
 <pre>pub fn <a href="#installed">installed</a>() -&gt; bool</pre>
@@ -188,6 +197,11 @@
 ### `task`
 
 <pre>pub fn <a href="#task-1">task</a>&lt;T, E, F, Fut&gt;(make: F) -&gt; <a href="#task">Task</a>&lt;T, E&gt; where T: Send + 'static, E: Send + 'static, F: Fn() -&gt; Fut + 'static, Fut: Future&lt;Output = Result&lt;T, E&gt;&gt; + Send + 'static</pre>
+
+
+### `task_with`
+
+<pre>pub fn <a href="#task_with">task_with</a>&lt;A, T, E, F, Fut&gt;(make: F) -&gt; <a href="#task">Task</a>&lt;T, E, A&gt; where A: 'static, T: Send + 'static, E: Send + 'static, F: Fn(A) -&gt; Fut + 'static, Fut: Future&lt;Output = Result&lt;T, E&gt;&gt; + Send + 'static</pre>
 
 
 ---

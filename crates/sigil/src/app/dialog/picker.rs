@@ -139,8 +139,7 @@ fn entry_list(picker: Picker) -> impl IntoNode {
         .row_height(rows(1.0))
         .viewport_height(rows(LIST_ROWS))
         .keyboard(true)
-        .focused_row_bind(cursor)
-        .follow(cursor);
+        .cursor(cursor);
         let enter = picker.clone();
         let back = picker.clone();
         let id = container()

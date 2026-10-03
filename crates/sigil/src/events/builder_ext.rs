@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crate::events::{FileDropEvent, ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut};
 use crate::kernel::{Node, NodeBuilder};
 use crate::layout::CaretGeometry;
+use crate::reactive::Signal;
 use accesskit::Action;
 
 use crate::events::EventHandlers;
@@ -117,6 +118,9 @@ pub trait NodeEventsExt {
 
     #[must_use]
     fn autofocus(self) -> Self;
+
+    #[must_use]
+    fn focus_when(self, trigger: Signal<u64>) -> Self;
 }
 
 impl NodeEventsExt for NodeBuilder {
@@ -295,6 +299,14 @@ impl NodeEventsExt for NodeBuilder {
 
     fn autofocus(self) -> Self {
         self.on_added(|_, id| crate::events::focus::request_focus(id))
+    }
+
+    fn focus_when(self, trigger: Signal<u64>) -> Self {
+        self.on_added(move |_, id| {
+            crate::events::focus::focus_on_trigger(trigger, move || {
+                crate::events::focus::request_focus(id);
+            });
+        })
     }
 }
 

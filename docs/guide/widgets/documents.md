@@ -96,14 +96,14 @@ Input is bounded to 256 lines of 512 chars and output to 512 lines of
 
 ## diff
 
-`diff(patch: impl Into<String>) -> DiffBuilder`. Parses a unified diff
+`diff(patch: impl Reactive<String>) -> DiffBuilder`. Parses a unified diff
 and renders it as split (side-by-side) or unified rows with a header
 showing the path and `+added`/`−removed` counts.
 
 - `.path(text)` — header label; falls back to the patch's own paths.
 - `.status(text)` — extra header label (e.g. "modified").
-- `.layout(DiffLayout::Split | DiffLayout::Unified)` — default Split.
-- `.choose(Fn(DiffLayout))` — makes the header's split/unified buttons
+- `.view(DiffView::Split | DiffView::Unified)` — default Split.
+- `.change(Fn(DiffView))` — makes the header's split/unified buttons
   live; the callback receives the picked layout so you can rebuild.
 - `.max_rows(n)` — truncates rendered rows.
 
@@ -132,8 +132,8 @@ only while the editor has focus.
   `image-decode`, it paints as `[alt]` text.
 - A link in `markdown` or `html` becomes an OSC 8 hyperlink when the
   terminal supports hyperlinks.
-- `diff` in `DiffLayout::Split` needs about 80 columns to show both
-  sides. Use `DiffLayout::Unified` in a narrow terminal.
+- `diff` in `DiffView::Split` needs about 80 columns to show both
+  sides. Use `DiffView::Unified` in a narrow terminal.
 
 ## Example
 

@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use sigil::prelude::*;
 use sigil::style::Rgba8;
 use sigil::widgets::{
-    Combobox, Date, TableColumn, TableState, badge, chart, checkbox, chip, code_edit, color_field,
+    Combobox, Date, TableColumn, TableState, chart, checkbox, chip, code_edit, color_field,
     combobox, date_field, divider_horizontal, dot, dropdown, gauge, icon_button, markdown,
     number_field, progress, radio_group, scroll, slider, table, tabs, text_edit, text_field,
     toggle, virtual_list,
@@ -38,7 +38,7 @@ fn controls() -> Vec<Case> {
             Box::new(|| icon_button("R", || {}).accessible("Reset")),
         ),
         ("chip", Box::new(|| chip("Stable", Tone::Success))),
-        ("badge", Box::new(|| badge("3", Tone::Info))),
+        ("chip_count", Box::new(|| chip("3", Tone::Info))),
         (
             "checkbox",
             Box::new(|| checkbox(signal(true)).label("Enabled")),

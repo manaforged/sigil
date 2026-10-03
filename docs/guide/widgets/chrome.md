@@ -41,12 +41,14 @@ gaps. A panel at tier 1 and a card share one fill and one border.
 
 ## sidebar
 
-`sidebar(child) -> NodeBuilder` — a fixed `Role::Navigation` column in
+`sidebar(child) -> SidebarBuilder` — a fixed `Role::Navigation` column in
 the `surface-subtle` chrome fill with a 1 px right border, 220 px wide,
 full height, no shrink. Content sits inside an 8 px inset with 4 px
 gaps.
-`sidebar_width(px, child)` sets the width. Put navigation content
-inside; it does not scroll or collapse on its own.
+`.width(len)` sets the width and `.resizable(min, max)` adds a drag and
+keyboard resize handle. `Paint` methods such as `.bg(..)` paint the whole
+column. Put navigation content inside; it does not scroll or collapse on
+its own.
 
 ## tabs
 
@@ -72,7 +74,7 @@ underline. The pane sits 8 px (`space(2)`) below the strip.
 
 ## splitter
 
-`splitter(SplitterOrientation::Horizontal | Vertical) -> SplitterBuilder`.
+`splitter(Orientation::Horizontal | Vertical) -> SplitterBuilder`.
 Horizontal splits left/right (draggable vertical handles), Vertical
 splits top/bottom. Each handle is a 6 px hit area that draws a 1 px
 `border` rule in its center. The area fills with `surface-hover` on
@@ -83,7 +85,7 @@ hover and `surface-pressed` while dragged.
 # let nav_pane = container();
 # let content_pane = container();
 # let _ = {
-splitter(SplitterOrientation::Horizontal)
+splitter(Orientation::Horizontal)
     .child(nav_pane, 240.0)
     .pane(content_pane).min(200.0).grow(1.0)
     .commit();
@@ -108,9 +110,8 @@ content height instead, for content whose height you already know.
 - `.height(px)` (default 240) / `.width(px)` / `.fill()` — size the
   viewport.
 - `.scroll_bind(Signal<f32>)` — expose the scroll offset.
-- `.scroll_to_end()` — start scrolled to the bottom.
-- `.auto_pin_to_bottom(bool)` — hold position at the end while content
-  grows (logs, chat).
+- `.follow_end(bool)` — start at the end and stay pinned there while
+  content grows, until the user scrolls up (logs, chat).
 
 Wheel scrolling and a drawn scrollbar are built in. The track is 8 px
 wide and as tall as the viewport. The fully rounded thumb is 4 px wide
@@ -198,8 +199,8 @@ shortcut that sets the tab signal.
   takes its height rounded to whole cells, so the frame costs more rows
   than a hand-built frame. In a terminal-only app, build the frame from
   a `container()` with `rows()` heights.
-- `sidebar` is 220 px wide. `sidebar_width(px, child)` takes pixels,
-  not `cols()`. The host rounds the width to whole cells.
+- `sidebar` is 220 px wide. `.width(cols(n))` sets it in cells; the
+  host rounds a pixel width to whole cells.
 - `tabs` labels should fit on one row. Short labels avoid a wrap in a
   narrow terminal.
 - A scroll viewport clips its content. The wheel scrolls three lines

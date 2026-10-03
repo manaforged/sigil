@@ -3,4 +3,4 @@ mod handlers;
 mod marks;
 mod track;
 
-pub use builder::{Orientation, SliderBuilder, slider};
+pub use builder::{SliderBuilder, slider};

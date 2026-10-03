@@ -7,6 +7,7 @@ use crate::layout::LayoutReactiveExt;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived, effect_named, signal as signal_of};
 
+use super::RowRender;
 use super::measure::{Measure, Tops, row_key_of};
 use super::render::{WidthSpec, place_row, with_selection};
 use super::selection::SelectionRuntime;
@@ -36,7 +37,7 @@ where
     S: Deref + Clone + 'static,
     S::Target: AsRef<[T]>,
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: RowRender<T>,
 {
     let mounted = mounted_window(signal, scroll_y.get(), &spec);
     let content = revision(signal);
@@ -136,7 +137,7 @@ where
     S: Deref + Clone + 'static,
     S::Target: AsRef<[T]>,
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: RowRender<T>,
 {
     fn run(&self) {
         let y = self.scroll_y.get();
@@ -250,7 +251,7 @@ where
     S: Deref + Clone + 'static,
     S::Target: AsRef<[T]>,
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: RowRender<T>,
 {
     let items = signal.peek();
     let slice: &[T] = (*items).as_ref();
@@ -287,7 +288,7 @@ where
     S: Deref + 'static,
     S::Target: AsRef<[T]>,
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: RowRender<T>,
 {
     let render = Rc::clone(&spec.render);
     let row_height = spec.tops.map_or(spec.row_height, |tops| {
@@ -300,7 +301,7 @@ where
         let slice: &[T] = (*items).as_ref();
         let row = slice
             .get(index)
-            .map_or_else(container, |item| (*render)(index, item));
+            .map_or_else(|| node(container()), |item| node(render.row(index, item)));
         let slot = match measure {
             Some(measure) => with_selection(measure.slot(cache_key, width, row), index, selection),
             None => place_row(index, row_height, width, row, selection),

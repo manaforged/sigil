@@ -67,6 +67,11 @@ impl From<SmolStr> for LogicalKey {
     }
 }
 
+#[cfg(target_os = "macos")]
+pub const PRIMARY: ModifiersState = ModifiersState::META;
+#[cfg(not(target_os = "macos"))]
+pub const PRIMARY: ModifiersState = ModifiersState::CONTROL;
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Shortcut {
     pub key: LogicalKey,
@@ -90,6 +95,11 @@ impl Shortcut {
     #[must_use]
     pub fn ctrl(key: impl Into<LogicalKey>) -> Self {
         Self::new(key, ModifiersState::CONTROL)
+    }
+
+    #[must_use]
+    pub fn primary(key: impl Into<LogicalKey>) -> Self {
+        Self::new(key, PRIMARY)
     }
 
     #[must_use]

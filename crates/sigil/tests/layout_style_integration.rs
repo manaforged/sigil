@@ -135,7 +135,12 @@ fn flex_row_items_center() {
 #[test]
 fn typography_atoms_drive_text_measurement() {
     let mut cx = Cx::new_root();
-    let root = cx.add(text("Type").font_size(20).font_weight(700).line_height(32));
+    let root = cx.add(
+        text("Type")
+            .font_size(20.0)
+            .font_weight(700)
+            .line_height_px(32.0),
+    );
 
     LayoutEngine::with_text_measure(Box::new(StyleAwareMeasure))
         .compute(&mut cx, root, Size::max_content())

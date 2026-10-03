@@ -9,7 +9,7 @@ mod widget_support;
 
 use sigil::kernel::Cx;
 use sigil::prelude::*;
-use sigil::widgets::{SplitterOrientation, splitter};
+use sigil::widgets::{Orientation, splitter};
 use sigil_kittest::FixedMeasure;
 use widget_support::compute;
 
@@ -17,7 +17,7 @@ use widget_support::compute;
 fn horizontal_splitter_lays_out_panes_with_initial_sizes() {
     let mut cx = Cx::new_root();
     let root = cx.add(
-        splitter(SplitterOrientation::Horizontal)
+        splitter(Orientation::Horizontal)
             .child(container().label("a"), 200.0)
             .child(container().label("b"), 200.0)
             .child(container().label("c"), 200.0),
@@ -56,7 +56,7 @@ fn horizontal_splitter_lays_out_panes_with_initial_sizes() {
 fn vertical_splitter_lays_out_panes_with_initial_sizes() {
     let mut cx = Cx::new_root();
     let root = cx.add(
-        splitter(SplitterOrientation::Vertical)
+        splitter(Orientation::Vertical)
             .child(container().label("top"), 100.0)
             .child(container().label("bottom"), 100.0),
     );
@@ -90,13 +90,13 @@ fn vertical_splitter_lays_out_panes_with_initial_sizes() {
 
 #[test]
 fn nested_splitter_renders_all_leaves() {
-    let inner = splitter(SplitterOrientation::Horizontal)
+    let inner = splitter(Orientation::Horizontal)
         .child(container().label("bottom-left"), 150.0)
         .child(container().label("bottom-right"), 150.0);
 
     let mut cx = Cx::new_root();
     let root = cx.add(
-        splitter(SplitterOrientation::Vertical)
+        splitter(Orientation::Vertical)
             .child(container().label("top"), 100.0)
             .child(inner, 100.0),
     );
@@ -122,7 +122,7 @@ fn nested_splitter_renders_all_leaves() {
 fn pane_builder_carries_initial_min_max_into_layout() {
     let mut cx = Cx::new_root();
     let root = cx.add(
-        splitter(SplitterOrientation::Horizontal)
+        splitter(Orientation::Horizontal)
             .pane(container().label("a"))
             .initial(150.0)
             .min(50.0)
@@ -161,7 +161,7 @@ fn grow_pane_takes_leftover_width() {
     sigil::reactive::Runtime::scope("phase-2-4::splitter-grow", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
-            splitter(SplitterOrientation::Horizontal)
+            splitter(Orientation::Horizontal)
                 .pane(container().label("side"))
                 .initial(120.0)
                 .pane(container().label("main"))
@@ -197,7 +197,7 @@ fn sizes_bind_carries_initial_sizes() {
         let bound = signal(Vec::<f32>::new());
         let mut cx = Cx::new_root();
         let _root = cx.add(
-            splitter(SplitterOrientation::Horizontal)
+            splitter(Orientation::Horizontal)
                 .child(container().label("a"), 100.0)
                 .child(container().label("b"), 150.0)
                 .child(container().label("c"), 200.0)

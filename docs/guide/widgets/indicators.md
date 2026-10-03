@@ -4,22 +4,22 @@ Read-only status visuals. They paint state; except for chip with
 `.activate()`, none of them take input, and they do not implement
 `StateHost` — state closures are a compile error by design.
 
-## chip and badge
+## chip
 
 `chip(label, Tone) -> ChipBuilder` — a 20 px `text-xs font-medium`
-label in a tinted `rounded-full` pill. `badge(label, Tone)` is the same
-builder. The label renders as written; write it in sentence case.
+label in a tinted `rounded-full` pill. Use it for a status tag or a
+count. The label renders as written; write it in sentence case.
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
 chip("Stable", Tone::Success);
-badge("3", Tone::Error);
+chip("3", Tone::Error);
 # };
 ```
 
-- `.tone(Tone)` retints statically; `.tone_signal(Signal<Tone>)`
-  retints reactively.
+- `.tone(..)` takes a `Tone`, a `Signal<Tone>`, or a closure; a signal
+  or closure retints the chip when it changes.
 - `.activate(Fn())` turns the chip into a button: `Role::Button`,
   pointer release and Enter fire the closure. Without it the chip is
   `Role::Label` and inert.
@@ -92,7 +92,7 @@ the default state. They take no keys, except a chip with `.activate()`.
 
 | Widget | Keys | Role | Name source |
 | --- | --- | --- | --- |
-| `chip`, `badge` | Enter with `.activate()`, else none | `Label`, or `Button` with `.activate()` | The label |
+| `chip` | Enter with `.activate()`, else none | `Label`, or `Button` with `.activate()` | The label |
 | `dot` | none | `GenericContainer` | None. Put the meaning in a nearby label. |
 | `gauge` | none | `ProgressIndicator` | A static `.label()`, else "Gauge" |
 | `progress` | none | `ProgressIndicator` | `.label()`, else "Progress" |

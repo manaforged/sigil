@@ -4,14 +4,14 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{PanelBuilder, ScrollBuilder, SplitterBuilder, TabsBuilder};
+use sigil::widgets::{PanelBuilder, ScrollBuilder, SidebarBuilder, SplitterBuilder, TabsBuilder};
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - chrome").size(720, 720), build)
 }
 
 fn app_shell_demo() -> NodeBuilder {
-    let file_menu = [MenuItem::new("Quit").shortcut("Ctrl+Q").select(|| {})];
+    let file_menu = [MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {})];
     app_shell(
         menu_bar().menu("File", file_menu),
         container().child(text("Work area").nowrap()),
@@ -30,7 +30,7 @@ fn card_demo() -> NodeBuilder {
     card(kv_grid(&[("Host", "window"), ("Theme", "dark")]))
 }
 
-fn sidebar_demo() -> NodeBuilder {
+fn sidebar_demo() -> SidebarBuilder {
     sidebar(
         container()
             .layout(LayoutStyle::flex_column())
@@ -50,7 +50,7 @@ fn tabs_demo() -> TabsBuilder {
 }
 
 fn splitter_demo() -> SplitterBuilder {
-    splitter(SplitterOrientation::Horizontal)
+    splitter(Orientation::Horizontal)
         .child(card(text("Left").nowrap()), 160.0)
         .pane(card(text("Right").nowrap()))
         .min(120.0)

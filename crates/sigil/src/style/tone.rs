@@ -43,3 +43,13 @@ impl From<Tone> for ToneContext {
         Self::new(tone)
     }
 }
+
+impl crate::reactive::Reactive<Self> for Tone {
+    fn read(&self) -> Self {
+        *self
+    }
+
+    fn into_signal(self) -> crate::reactive::Signal<Self> {
+        crate::reactive::signal(self)
+    }
+}

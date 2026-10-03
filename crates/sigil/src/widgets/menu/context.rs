@@ -3,7 +3,7 @@ use crate::kernel::{IntoNode, NodeBuilder, TopLayer, container};
 use crate::layout::ViewportOverlay;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Owner, OwnerId, Signal, signal};
-use crate::style::{Metrics, NodeStyleExt, Size};
+use crate::style::{ControlSize, Metrics, NodeStyleExt};
 
 use super::super::popup::{PANEL_INSET, PANEL_WIDTH};
 use super::builder::{MenuItem, menu};
@@ -58,7 +58,7 @@ fn anchored_menu(
     host: Option<OwnerId>,
 ) -> NodeBuilder {
     let viewport = crate::app::viewport_size().peek();
-    let item_height = Metrics::current().control_height(Size::Default);
+    let item_height = Metrics::current().control_height(ControlSize::Default);
     let height = rows
         .iter()
         .fold(PANEL_INSET * 2.0, |total, _| total + item_height);

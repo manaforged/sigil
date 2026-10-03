@@ -72,6 +72,7 @@ fn selection_moves_the_painted_highlight_between_existing_tabs() {
         let theme = Theme::light();
         let mut cx = Cx::new_root();
         let root = cx.add(tabs().active(active).labels(["A", "B"]));
+        cx.flush_reactive_children();
         let first = find(&cx, root, Role::Tab, "A");
         let second = find(&cx, root, Role::Tab, "B");
         let color = |id| render_style_for(id, cx.get(id).unwrap(), &theme, None).background_color;

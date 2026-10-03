@@ -13,7 +13,8 @@ use crate::style::{
 use crate::widgets::interaction::InteractionState;
 
 use super::super::shared::binary_style_state;
-use super::builder::{Orientation, SliderRuntime};
+use super::builder::SliderRuntime;
+use crate::widgets::orientation::Orientation;
 
 const SLIDER_TRANSITION: TransitionId = presets::SMOOTH;
 static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(SLIDER_TRANSITION)];

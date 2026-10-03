@@ -4,7 +4,7 @@ use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{NodeBuilder, Role};
 use crate::layout::snap::line;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::Signal;
+use crate::reactive::{Reactive, Signal};
 use crate::style::{Radius, Tone, space};
 
 use crate::widgets::interaction::InteractionState;
@@ -31,14 +31,9 @@ impl ChipBuilder {
     }
 
     #[must_use]
-    pub const fn tone(mut self, tone: Tone) -> Self {
-        self.tone = tone;
-        self
-    }
-
-    #[must_use]
-    pub const fn tone_signal(mut self, tone: Signal<Tone>) -> Self {
-        self.tone_signal = Some(tone);
+    pub fn tone(mut self, tone: impl Reactive<Tone>) -> Self {
+        self.tone = tone.read();
+        self.tone_signal = Some(tone.into_signal());
         self
     }
 

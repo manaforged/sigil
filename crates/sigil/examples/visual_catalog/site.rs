@@ -7,8 +7,9 @@ use sigil::tasks::AsyncRuntime;
 use sigil_kittest::InteractionMode;
 
 use super::api::{ApiMap, function_source};
+use super::builders;
 use super::capture::{self, Look, View};
-use super::catalog::{Capture, Catalog, Component, Example, HostKind, Settle};
+use super::catalog::{Capture, Catalog, Component, Example, HostKind, Live, Settle};
 use super::registry;
 use super::shots::Shots;
 use super::spec::{Build, State};
@@ -130,12 +131,18 @@ impl Export<'_> {
         }
         let mut states = Vec::new();
         for capture in &component.captures {
-            let build = registry::builder(&capture.build)
+            let build = builders::builder(&capture.build)
                 .ok_or_else(|| format!("{}: no builder {}", component.id, capture.build))?;
             for drive in &capture.states {
                 states.push(self.state(component, capture, build, *drive)?);
             }
         }
+        let live: Vec<Value> = component
+            .captures
+            .iter()
+            .filter(|_| component.live == Live::Sandbox)
+            .map(|capture| self.live(capture))
+            .collect();
         println!("{}: {} states", component.id, states.len());
         let preview = preview_state(component, &states);
         Ok(json!({
@@ -146,9 +153,30 @@ impl Export<'_> {
             "summary": summary.unwrap_or_default(),
             "preview_state": preview,
             "states": states,
+            "live": live,
             "code": code.unwrap_or_default(),
             "api": self.api.rows_for(&component.builder),
         }))
+    }
+
+    fn live(&self, capture: &Capture) -> Value {
+        let mut drives: Vec<State> = capture.states.clone();
+        drives.sort_by_key(|drive| *drive != State::Shown);
+        let states: Vec<Value> = drives
+            .iter()
+            .filter(|drive| **drive == State::Default || built(**drive))
+            .filter_map(|drive| {
+                let info = self.catalog.state(*drive)?;
+                Some(json!({"id": drive, "label": info.label}))
+            })
+            .collect();
+        json!({
+            "build": capture.build,
+            "variant": capture.variant,
+            "label": capture.label,
+            "size": capture.size,
+            "states": states,
+        })
     }
 
     fn state(
@@ -165,7 +193,7 @@ impl Export<'_> {
         let id = capture.state_id(info);
         let hit = (capture.hit[0], capture.hit[1]);
         let view = View {
-            mode: drive.mode(self.catalog.drag),
+            mode: capture::mode(drive, self.catalog.drag),
             size: capture.size,
             pad: self.catalog.pad,
             hit,
@@ -316,4 +344,11 @@ fn terminal_grid(
             None
         }
     }
+}
+
+const fn built(state: State) -> bool {
+    matches!(
+        state,
+        State::Disabled | State::Invalid | State::Selected | State::Shown
+    )
 }

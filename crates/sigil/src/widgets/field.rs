@@ -28,23 +28,23 @@ pub fn field<C: IntoNode + 'static>(label: impl Into<TextContent>, control: C) -
 
 pub trait FieldControl: IntoNode + Sized + 'static {
     #[must_use]
-    fn invalid_when(self, invalid: Signal<bool>) -> Self;
+    fn invalid_when(self, invalid: impl Reactive<bool>) -> Self;
 }
 
 impl FieldControl for TextFieldBuilder {
-    fn invalid_when(self, invalid: Signal<bool>) -> Self {
+    fn invalid_when(self, invalid: impl Reactive<bool>) -> Self {
         Self::invalid_when(self, invalid)
     }
 }
 
 impl<T: NumericKind + 'static> FieldControl for NumberFieldBuilder<T> {
-    fn invalid_when(self, invalid: Signal<bool>) -> Self {
+    fn invalid_when(self, invalid: impl Reactive<bool>) -> Self {
         Self::invalid_when(self, invalid)
     }
 }
 
 impl FieldControl for ColorFieldBuilder {
-    fn invalid_when(self, invalid: Signal<bool>) -> Self {
+    fn invalid_when(self, invalid: impl Reactive<bool>) -> Self {
         Self::invalid_when(self, invalid)
     }
 }

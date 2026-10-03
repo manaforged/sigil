@@ -48,7 +48,7 @@ fn keyboard_navigation_moves_focus_and_scrolls_into_view() {
                 .row_height(32.0)
                 .viewport_height(480.0)
                 .scroll_bind(scroll_y)
-                .focused_row_bind(focused_row),
+                .cursor(focused_row),
         );
         let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout

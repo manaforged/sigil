@@ -81,7 +81,7 @@ pub(super) fn frame_once(ctx: FrameCtx<'_>) -> AppResult<()> {
 fn frame_hooks<'e, 's: 'e>(env: &'e RefCell<FrameEnv<'s>>) -> FrameHooks<'e> {
     FrameHooks {
         input: Some(Box::new(|host, router| {
-            input_phase(&mut env.borrow_mut(), host, router);
+            input_phase(&mut env.borrow_mut(), host, router)
         })),
         after_layout: Some(Box::new(|host, router| {
             let env = &mut *env.borrow_mut();
@@ -95,7 +95,11 @@ fn frame_hooks<'e, 's: 'e>(env: &'e RefCell<FrameEnv<'s>>) -> FrameHooks<'e> {
     }
 }
 
-fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &mut EventRouter) {
+fn input_phase(
+    env: &mut FrameEnv<'_>,
+    host: &mut Host,
+    router: &mut EventRouter,
+) -> Option<(f32, f32)> {
     let _effect = crate::profile::span(crate::profile::Phase::Effect);
     let _ = env.async_rt.pump();
     install_shell_features(env.shell, env.window_handle);
@@ -110,7 +114,7 @@ fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &mut EventRouter
     });
     if let Err(err) = surface_result {
         env.input_error = Some(err);
-        return;
+        return None;
     }
     pump_shell_features();
     if let Some((cx, layout, _)) = host.tree() {
@@ -128,6 +132,7 @@ fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &mut EventRouter
         });
         event_wiring::drain_a11y_actions(env.a11y_action_rx, cx, router, layout);
     }
+    Some(*env.viewport)
 }
 
 #[allow(

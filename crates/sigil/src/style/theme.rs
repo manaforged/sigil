@@ -5,7 +5,7 @@ use crate::style::scale::{
     green_dark, green_light, ruby_dark, ruby_light, slate_dark, slate_light,
 };
 use crate::style::variant::{FontFamilyHint, Variant};
-use crate::style::{Dimension, LengthPercentage, Px, Rgba8, Size};
+use crate::style::{ControlSize, Dimension, LengthPercentage, Px, Rgba8};
 use mix::{alpha_mix, rgba, shift};
 
 mod color;
@@ -213,44 +213,44 @@ impl Theme {
     }
 
     #[must_use]
-    pub fn control_width(&self, size: Size) -> Dimension {
+    pub fn control_width(&self, size: ControlSize) -> Dimension {
         match size {
-            Size::Grow => Dimension::Full,
+            ControlSize::Grow => Dimension::Full,
             _ => Dimension::Px(px(self.metrics.control_width(size))),
         }
     }
 
     #[must_use]
-    pub fn control_height(&self, size: Size) -> Dimension {
+    pub fn control_height(&self, size: ControlSize) -> Dimension {
         match size {
-            Size::Grow => Dimension::Auto,
+            ControlSize::Grow => Dimension::Auto,
             _ => Dimension::Px(px(self.metrics.control_height(size))),
         }
     }
 
     #[must_use]
-    pub fn padding(&self, size: Size) -> LengthPercentage {
+    pub fn padding(&self, size: ControlSize) -> LengthPercentage {
         match size {
-            Size::Grow => LengthPercentage::Percent(1.0),
+            ControlSize::Grow => LengthPercentage::Percent(1.0),
             _ => LengthPercentage::Px(px(self.metrics.padding(size))),
         }
     }
 
     #[must_use]
-    pub fn gap(&self, size: Size) -> LengthPercentage {
+    pub fn gap(&self, size: ControlSize) -> LengthPercentage {
         match size {
-            Size::Grow => LengthPercentage::Percent(1.0),
+            ControlSize::Grow => LengthPercentage::Percent(1.0),
             _ => LengthPercentage::Px(px(self.metrics.gap(size))),
         }
     }
 
     #[must_use]
-    pub const fn radius(&self, size: Size) -> LengthPercentage {
+    pub const fn radius(&self, size: ControlSize) -> LengthPercentage {
         LengthPercentage::Px(self.metrics.radius(match size {
-            Size::Compact => Radius::Sm,
-            Size::Default => Radius::Md,
-            Size::Wide => Radius::Lg,
-            Size::Grow => Radius::Full,
+            ControlSize::Compact => Radius::Sm,
+            ControlSize::Default => Radius::Md,
+            ControlSize::Wide => Radius::Lg,
+            ControlSize::Grow => Radius::Full,
         }))
     }
 

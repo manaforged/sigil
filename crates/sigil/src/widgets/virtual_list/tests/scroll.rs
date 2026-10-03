@@ -51,7 +51,7 @@ fn scroll_to_end_seeds_signal_at_bottom() {
                 .row_height(30.0)
                 .viewport_height(200.0)
                 .scroll_bind(scroll_y)
-                .scroll_to_end(),
+                .initial_scroll(ScrollAnchor::Bottom),
         );
         assert_eq!(scroll_y.get(), 2800.0);
     });
@@ -75,7 +75,7 @@ fn scroll_into_view_seeds_signal_at_row_position() {
 }
 
 #[test]
-fn auto_pin_to_bottom_no_op_for_static_items() {
+fn follow_end_starts_a_static_list_at_the_end() {
     Runtime::scope("sigil-virtual-list-auto-pin", || {
         let scroll_y = crate::reactive::signal(0.0_f32);
         let items: Vec<usize> = (0..10).collect();
@@ -85,9 +85,9 @@ fn auto_pin_to_bottom_no_op_for_static_items() {
                 .row_height(30.0)
                 .viewport_height(200.0)
                 .scroll_bind(scroll_y)
-                .auto_pin_to_bottom(true),
+                .follow_end(true),
         );
-        assert_eq!(scroll_y.get(), 0.0);
+        assert_eq!(scroll_y.get(), 100.0);
     });
 }
 
@@ -102,7 +102,7 @@ fn bound_scroll_to_end_seeds_from_live_count() {
                 .row_height(30.0)
                 .viewport_height(200.0)
                 .scroll_bind(scroll_y)
-                .scroll_to_end(),
+                .initial_scroll(ScrollAnchor::Bottom),
         );
         assert_eq!(scroll_y.get(), 2800.0);
     });
@@ -119,8 +119,7 @@ fn auto_pin_follows_grow_when_already_at_bottom() {
                 .row_height(30.0)
                 .viewport_height(200.0)
                 .scroll_bind(scroll_y)
-                .scroll_to_end()
-                .auto_pin_to_bottom(true),
+                .follow_end(true),
         );
         assert_eq!(scroll_y.get(), 2800.0);
         items.set((0..120_u32).collect());
@@ -139,9 +138,10 @@ fn auto_pin_leaves_scroll_when_user_scrolled_up() {
                 .row_height(30.0)
                 .viewport_height(200.0)
                 .scroll_bind(scroll_y)
-                .auto_pin_to_bottom(true),
+                .follow_end(true),
         );
-        assert_eq!(scroll_y.get(), 0.0);
+        assert_eq!(scroll_y.get(), 2800.0);
+        scroll_y.set(0.0);
         items.set((0..120_u32).collect());
         assert_eq!(scroll_y.get(), 0.0);
     });

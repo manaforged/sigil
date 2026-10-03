@@ -14,7 +14,7 @@ pub(crate) const BUILDERS: &[(&str, Build)] = &[
     ("tabs_line", tabs_line_row),
     ("splitter", splitter_row),
     ("scroll", scroll_fixed_row),
-    ("scroll", scroll_row),
+    ("scroll_auto", scroll_row),
     ("terminal", terminal_row),
 ];
 
@@ -65,9 +65,9 @@ fn menu_bar_row(_state: State) -> NodeBuilder {
     node(menu_bar().menu(
         "File",
         [
-            MenuItem::new("New").select(|| {}),
-            MenuItem::new("Open").shortcut("Ctrl+O").select(|| {}),
-            MenuItem::new("Quit").shortcut("Ctrl+Q").select(|| {}),
+            MenuItem::new("New").activate(|| {}),
+            MenuItem::new("Open").shortcut("Ctrl+O").activate(|| {}),
+            MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {}),
         ],
     ))
 }
@@ -101,7 +101,7 @@ fn tabs_line_row(state: State) -> NodeBuilder {
 
 fn splitter_row(_state: State) -> NodeBuilder {
     node(
-        splitter(SplitterOrientation::Horizontal)
+        splitter(Orientation::Horizontal)
             .child(card(text("Navigation").nowrap()), 180.0)
             .child(card(text("Content").nowrap()), 260.0)
             .height(140.0),

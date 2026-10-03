@@ -87,7 +87,7 @@ fn mermaid_fence_paints_boxes() {
 #[test]
 fn a_chip_cell_paints_on_its_own_row() {
     use sigil::style::Tone;
-    use sigil::widgets::{ColWidth, TableColumn, TableState, badge, table};
+    use sigil::widgets::{ColWidth, TableColumn, TableState, chip, table};
 
     #[derive(Clone)]
     struct Row {
@@ -105,7 +105,7 @@ fn a_chip_cell_paints_on_its_own_row() {
                         .cell(|row: &Row| text(row.name).nowrap()),
                     TableColumn::new("tag", "TAG")
                         .width(ColWidth::Fixed(64.0))
-                        .cell(|row: &Row| badge(row.name, Tone::Neutral)),
+                        .cell(|row: &Row| chip(row.name, Tone::Neutral)),
                 ],
             );
             container().child(text("heading")).child(

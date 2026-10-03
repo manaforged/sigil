@@ -3,16 +3,22 @@ use std::rc::Rc;
 use crate::events::NodeEventsExt;
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::PopupSide;
-use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::snap::CellForm;
+use crate::layout::{LayoutBuilderExt, LayoutStyle, Position, rows};
 use crate::reactive::{Signal, derived};
-use crate::style::{Metrics, Size, StyleAtom, Token};
+use crate::style::{ControlSize, Metrics, StyleAtom, Token};
 
 use super::super::listbox::{ListModel, scrolled};
 use super::super::popup::{self, ItemSlots, POPUP_GAP, item_row};
 use super::super::shared::disabled_now;
 use super::builder::IndexChange;
 
-pub(super) const TRIGGER_HEIGHT: f32 = 32.0;
+const TRIGGER_HEIGHT: f32 = 32.0;
+const TRIGGER_ROWS: f32 = 3.0;
+
+pub(super) fn trigger_height() -> f32 {
+    CellForm::new(TRIGGER_HEIGHT, rows(TRIGGER_ROWS).px()).pick()
+}
 pub(super) const POPUP_MAX_VISIBLE: usize = 6;
 
 pub(super) static SURFACE_HOVER: &[StyleAtom] = &[Token::SurfaceHover.bg()];
@@ -77,7 +83,7 @@ impl ListModel for DropdownModel {
     reason = "option counts are small; sub-unit precision is irrelevant at render scale"
 )]
 fn rows_height(count: usize) -> f32 {
-    count as f32 * Metrics::current().control_height(Size::Default)
+    count as f32 * Metrics::current().control_height(ControlSize::Default)
 }
 
 pub(super) fn build_popup(
