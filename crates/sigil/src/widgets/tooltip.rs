@@ -11,8 +11,8 @@ use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, P
 use crate::layout::{Popup, PopupSide, ViewportOverlay};
 use crate::reactive::{IntervalId, Signal, cancel_interval, interval, signal};
 use crate::style::{
-    DisplayKind, Metrics, NodeStyleExt, PaintTarget, Size, Style, StyleAtom, StyleSlot, Theme,
-    Token, TransitionId, space,
+    ControlSize, DisplayKind, Metrics, NodeStyleExt, PaintTarget, Style, StyleAtom, StyleSlot,
+    Theme, Token, TransitionId, space,
 };
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -160,7 +160,10 @@ impl WidgetLayoutExt for TooltipBuilder {
 
 impl IntoNode for TooltipBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 
@@ -273,7 +276,7 @@ fn bubble_layout() -> LayoutStyle {
     let metrics = Metrics::current();
     LayoutStyle::flex_column()
         .max_width(BUBBLE_MAX_WIDTH)
-        .padding_x(metrics.padding(Size::Compact))
+        .padding_x(metrics.padding(ControlSize::Compact))
         .padding_y(metrics.overlay_padding())
         .gap(metrics.overlay_padding())
         .align_items(AlignItems::Start)

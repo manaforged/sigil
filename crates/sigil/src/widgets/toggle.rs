@@ -192,7 +192,10 @@ impl PaintTarget for ToggleBuilder {
 
 impl IntoNode for ToggleBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 

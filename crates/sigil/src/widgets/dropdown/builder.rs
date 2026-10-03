@@ -4,7 +4,8 @@ use std::rc::Rc;
 use crate::animation_runtime::presets;
 use crate::events::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
+use crate::layout::snap::CellForm;
+use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow, rows};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
     BORDER_WIDTH, PaintTarget, Radius, StateHost, StateStyle, Style, StyleAtom, StyleOverlay,
@@ -20,7 +21,7 @@ use super::super::popup::{ChevronDirection, chevron};
 use super::super::shared::{
     Activate, DIMMED, activate_pointer_reactive, disabled_now, reactive_style_state,
 };
-use super::popup::{DropdownModel, OptionCtx, SURFACE_HOVER, TRIGGER_HEIGHT, build_popup};
+use super::popup::{DropdownModel, OptionCtx, SURFACE_HOVER, build_popup, trigger_height};
 
 #[cfg(test)]
 #[path = "builder_tests.rs"]
@@ -113,7 +114,7 @@ impl DropdownBuilder {
             trigger_height: self
                 .layout_overrides
                 .height_hint()
-                .unwrap_or(TRIGGER_HEIGHT),
+                .unwrap_or_else(trigger_height),
         };
         let user_overlay = self.style_accumulator.take_state_overlay();
         let trigger = build_trigger(
@@ -161,7 +162,10 @@ impl WidgetLayoutExt for DropdownBuilder {
 
 impl IntoNode for DropdownBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 
@@ -233,6 +237,11 @@ fn build_trigger(
 }
 
 const MIN_TRIGGER_WIDTH: f32 = space(24);
+const LABEL_HEIGHT: f32 = 24.0;
+
+fn label_height() -> f32 {
+    CellForm::new(LABEL_HEIGHT, rows(1.0).px()).pick()
+}
 
 fn trigger_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
@@ -250,7 +259,7 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
             LayoutStyle::flex_row()
                 .grow(1.0)
                 .width(0.0)
-                .height(24.0)
+                .height(label_height())
                 .align_items(AlignItems::Center)
                 .overflow_x(Overflow::Hidden),
         )

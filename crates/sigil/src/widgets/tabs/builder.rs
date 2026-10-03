@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, container};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Signal, signal};
+use crate::reactive::{Reactive, Signal, derived, signal};
 use crate::style::{
     NodeStyleExt, PaintTarget, Radius, StateHost, Style, StyleSlot, Theme, Token, space,
 };
@@ -11,7 +11,7 @@ use crate::style::{
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::BuilderMutator;
 use super::drag::DragState;
-use super::list::build_tab_list;
+use super::list::{StripSpec, build_tab_list};
 use super::tab::line_strip_height;
 
 pub(super) const TAB_HEIGHT: f32 = space(7);
@@ -30,6 +30,7 @@ pub(super) type CloseHandler = Rc<dyn Fn(usize) + 'static>;
 pub struct TabsBuilder {
     active: Option<Signal<usize>>,
     labels: Vec<String>,
+    label_source: Option<Box<dyn Fn() -> Vec<String>>>,
     disabled: Vec<usize>,
     aria_label: String,
     mutators: Vec<BuilderMutator>,
@@ -49,6 +50,7 @@ pub fn tabs() -> TabsBuilder {
     TabsBuilder {
         active: None,
         labels: Vec::new(),
+        label_source: None,
         disabled: Vec::new(),
         aria_label: String::new(),
         mutators: Vec::new(),
@@ -77,11 +79,13 @@ impl TabsBuilder {
     }
 
     #[must_use]
-    pub fn labels(mut self, labels: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        for label in labels {
-            self.labels.push(label.into());
-            self.contents.push(None);
-        }
+    pub fn labels<S>(mut self, labels: impl Reactive<Vec<S>>) -> Self
+    where
+        S: Into<String> + 'static,
+    {
+        self.label_source = Some(Box::new(move || {
+            labels.read().into_iter().map(Into::into).collect()
+        }));
         self
     }
 
@@ -161,21 +165,21 @@ impl TabsBuilder {
         let order_signal = self.order;
         let drag = self.reorderable.then(DragState::new);
         let user_overlay = self.style_accumulator.take_state_overlay();
+        let labels = label_signal(self.labels, self.label_source.take());
+        let spec = StripSpec {
+            active,
+            disabled: Rc::new(self.disabled.clone()),
+            order: order_signal,
+            drag,
+            closeable: self.closeable,
+            close_handler: self.close_handler.as_ref().map(Rc::clone),
+            user_overlay,
+            chrome: self.chrome,
+        };
         let tab_list = apply_chrome(
             self.chrome,
             self.list_justify,
-            build_tab_list(
-                active,
-                self.labels,
-                &self.disabled,
-                &self.aria_label,
-                order_signal,
-                drag,
-                self.closeable,
-                self.close_handler.as_ref().map(Rc::clone),
-                user_overlay,
-                self.chrome,
-            ),
+            build_tab_list(labels, &self.aria_label, spec),
         );
         let mut root = if self.contents.iter().any(Option::is_some) {
             wrap_with_content(tab_list, active, self.contents)
@@ -216,7 +220,24 @@ impl WidgetLayoutExt for TabsBuilder {
 
 impl IntoNode for TabsBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
+    }
+}
+
+fn label_signal(
+    fixed: Vec<String>,
+    source: Option<Box<dyn Fn() -> Vec<String>>>,
+) -> Signal<Vec<String>> {
+    match source {
+        None => signal(fixed),
+        Some(source) => derived(move || {
+            let mut all = fixed.clone();
+            all.extend(source());
+            all
+        }),
     }
 }
 

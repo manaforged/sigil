@@ -1,11 +1,61 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use crate::kernel::NodeBuilder;
 use crate::layout::{IntoPx, LayoutStyle};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+mod events;
+
+type NodeHook = Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>;
+
+#[derive(Clone, Default)]
+pub(crate) struct NodeHooks(Option<Rc<RefCell<Vec<NodeHook>>>>);
+
+impl NodeHooks {
+    fn push(&mut self, hook: NodeHook) {
+        self.0
+            .get_or_insert_with(Rc::default)
+            .borrow_mut()
+            .push(hook);
+    }
+
+    #[must_use]
+    pub(crate) fn finish(&self, node: NodeBuilder) -> NodeBuilder {
+        let Some(store) = &self.0 else {
+            return node;
+        };
+        let hooks = std::mem::take(&mut *store.borrow_mut());
+        hooks.into_iter().fold(node, |built, hook| hook(built))
+    }
+}
+
+#[derive(Clone, Default)]
 pub struct LayoutOverrides {
     full: Option<LayoutStyle>,
     width: Option<f32>,
     height: Option<f32>,
     grow: Option<f32>,
+    hooks: NodeHooks,
+}
+
+impl core::fmt::Debug for LayoutOverrides {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("LayoutOverrides")
+            .field("full", &self.full)
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .field("grow", &self.grow)
+            .finish_non_exhaustive()
+    }
+}
+
+impl PartialEq for LayoutOverrides {
+    fn eq(&self, other: &Self) -> bool {
+        self.full == other.full
+            && self.width == other.width
+            && self.height == other.height
+            && self.grow == other.grow
+    }
 }
 
 impl LayoutOverrides {
@@ -16,7 +66,22 @@ impl LayoutOverrides {
             width: None,
             height: None,
             grow: None,
+            hooks: NodeHooks(None),
         }
+    }
+
+    pub(crate) fn node_hook(&mut self, hook: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) {
+        self.hooks.push(Box::new(hook));
+    }
+
+    #[must_use]
+    pub(crate) fn finish(&self, node: NodeBuilder) -> NodeBuilder {
+        self.hooks.finish(node)
+    }
+
+    #[must_use]
+    pub(crate) fn hooks(&self) -> NodeHooks {
+        self.hooks.clone()
     }
 
     pub fn layout(&mut self, style: LayoutStyle) {
@@ -94,6 +159,12 @@ pub trait WidgetLayoutExt: Sized {
     #[must_use]
     fn grow(mut self, factor: f32) -> Self {
         LayoutOverrides::grow(self.layout_overrides_mut(), factor);
+        self
+    }
+
+    #[must_use]
+    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.layout_overrides_mut().node_hook(f);
         self
     }
 }

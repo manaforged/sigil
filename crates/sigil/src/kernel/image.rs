@@ -4,7 +4,8 @@ use std::rc::Rc;
 
 use accesskit::Role;
 
-use crate::kernel::{A11yProps, AccessibleName, Cx, IntoNode, NodeId, NodeType};
+use crate::kernel::{A11yProps, AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, NodeType};
+use crate::style::{PaintTarget, Style, StyleSlot};
 use crate::widgets::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
 #[derive(Clone)]
@@ -178,6 +179,7 @@ pub struct ImageBuilder {
     a11y: A11yProps,
     pre_extensions: Vec<NodeExt>,
     layout_overrides: LayoutOverrides,
+    style_accumulator: Style,
 }
 
 #[must_use]
@@ -191,6 +193,7 @@ pub fn image(source: ImageSource) -> ImageBuilder {
         },
         pre_extensions: Vec::new(),
         layout_overrides: LayoutOverrides::new(),
+        style_accumulator: Style::new(),
     }
 }
 
@@ -221,6 +224,12 @@ impl ImageBuilder {
     }
 }
 
+impl PaintTarget for ImageBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
+    }
+}
+
 impl WidgetLayoutExt for ImageBuilder {
     fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
         &mut self.layout_overrides
@@ -229,25 +238,22 @@ impl WidgetLayoutExt for ImageBuilder {
 
 impl IntoNode for ImageBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
-        let id = cx.new_node(
-            NodeType::Image {
-                source: self.source,
-                fit: self.fit,
-            },
-            self.a11y,
-        );
-        if let Some(node) = cx.get_mut(id) {
-            for apply in self.pre_extensions {
-                apply(node);
-            }
-            if self.layout_overrides != LayoutOverrides::new() {
-                node.attach(
-                    self.layout_overrides
-                        .apply(crate::layout::LayoutStyle::default()),
-                );
-            }
+        let kind = NodeType::Image {
+            source: self.source,
+            fit: self.fit,
+        };
+        let mut node = NodeBuilder::from_parts(kind, self.a11y, self.pre_extensions);
+        if self.layout_overrides != LayoutOverrides::new() {
+            node = node.with(
+                self.layout_overrides
+                    .clone()
+                    .apply(crate::layout::LayoutStyle::default()),
+            );
         }
-        id
+        if !self.style_accumulator.is_empty() {
+            node = node.style(self.style_accumulator);
+        }
+        self.layout_overrides.finish(node).build(cx)
     }
 }
 

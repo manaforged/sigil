@@ -1,6 +1,8 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::style::{BORDER_WIDTH, Paint, StateVariants, StyleAtom, Token};
+use crate::style::{
+    BORDER_WIDTH, Paint, PaintTarget, StateVariants, Style, StyleAtom, StyleSlot, Token,
+};
 
 use super::super::interactive::interactive;
 
@@ -9,14 +11,9 @@ use super::atoms::{cached_height_atom, cached_width_atom, to_i16};
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::drag::{SplitterState, install_handle_hooks};
 use super::keys::install_handle_keys;
+use crate::widgets::orientation::Orientation;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SplitterOrientation {
-    Horizontal,
-    Vertical,
-}
-
-const HANDLE_PX: f32 = 6.0;
+pub(in crate::widgets) const HANDLE_PX: f32 = 6.0;
 
 static RULE: &[StyleAtom] = &[Token::Border.bg()];
 
@@ -29,16 +26,17 @@ struct PaneEntry {
 }
 
 pub struct SplitterBuilder {
-    orientation: SplitterOrientation,
+    orientation: Orientation,
     panes: Vec<PaneEntry>,
     sizes_bind: Option<crate::reactive::Signal<Vec<f32>>>,
     snap_points: Vec<(usize, Vec<f32>)>,
     snap_threshold: f32,
     layout_overrides: LayoutOverrides,
+    style_accumulator: Style,
 }
 
 #[must_use]
-pub const fn splitter(orientation: SplitterOrientation) -> SplitterBuilder {
+pub fn splitter(orientation: Orientation) -> SplitterBuilder {
     SplitterBuilder {
         orientation,
         panes: Vec::new(),
@@ -46,6 +44,7 @@ pub const fn splitter(orientation: SplitterOrientation) -> SplitterBuilder {
         snap_points: Vec::new(),
         snap_threshold: 8.0,
         layout_overrides: LayoutOverrides::new(),
+        style_accumulator: Style::new(),
     }
 }
 
@@ -141,12 +140,8 @@ impl SplitterBuilder {
         }
 
         let root_layout = match orientation {
-            SplitterOrientation::Horizontal => {
-                LayoutStyle::flex_row().align_items(AlignItems::Stretch)
-            }
-            SplitterOrientation::Vertical => {
-                LayoutStyle::flex_column().align_items(AlignItems::Stretch)
-            }
+            Orientation::Horizontal => LayoutStyle::flex_row().align_items(AlignItems::Stretch),
+            Orientation::Vertical => LayoutStyle::flex_column().align_items(AlignItems::Stretch),
         };
 
         let mut root = container()
@@ -166,6 +161,10 @@ impl SplitterBuilder {
             }
         }
 
+        if !self.style_accumulator.is_empty() {
+            root = root.style(self.style_accumulator);
+        }
+        let root = self.layout_overrides.finish(root);
         root.with(self.layout_overrides.apply(root_layout))
     }
 }
@@ -232,6 +231,18 @@ impl From<PaneBuilder> for NodeBuilder {
     }
 }
 
+impl PaintTarget for SplitterBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
+    }
+}
+
+impl PaintTarget for PaneBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.splitter.style_accumulator)
+    }
+}
+
 impl WidgetLayoutExt for SplitterBuilder {
     fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
         &mut self.layout_overrides
@@ -247,7 +258,7 @@ impl WidgetLayoutExt for PaneBuilder {
 fn build_pane(
     content: Box<dyn IntoNode>,
     pane_idx: usize,
-    orientation: SplitterOrientation,
+    orientation: Orientation,
     state: SplitterState,
     grow: f32,
 ) -> NodeBuilder {
@@ -264,9 +275,9 @@ fn build_pane(
     node.child(content)
 }
 
-fn pane_layout(orientation: SplitterOrientation, size_px: f32, grow: f32) -> LayoutStyle {
+fn pane_layout(orientation: Orientation, size_px: f32, grow: f32) -> LayoutStyle {
     let style = match orientation {
-        SplitterOrientation::Horizontal => {
+        Orientation::Horizontal => {
             let style = LayoutStyle::flex_column();
             if grow > 0.0 {
                 if size_px > 0.0 {
@@ -278,7 +289,7 @@ fn pane_layout(orientation: SplitterOrientation, size_px: f32, grow: f32) -> Lay
                 style.width(size_px)
             }
         }
-        SplitterOrientation::Vertical => {
+        Orientation::Vertical => {
             let style = LayoutStyle::flex_column();
             if grow > 0.0 {
                 if size_px > 0.0 {
@@ -298,19 +309,15 @@ fn pane_layout(orientation: SplitterOrientation, size_px: f32, grow: f32) -> Lay
     }
 }
 
-fn pane_size_atom(orientation: SplitterOrientation, size_px: f32) -> &'static [StyleAtom] {
+fn pane_size_atom(orientation: Orientation, size_px: f32) -> &'static [StyleAtom] {
     let px = to_i16(size_px);
     match orientation {
-        SplitterOrientation::Horizontal => cached_width_atom(px),
-        SplitterOrientation::Vertical => cached_height_atom(px),
+        Orientation::Horizontal => cached_width_atom(px),
+        Orientation::Vertical => cached_height_atom(px),
     }
 }
 
-fn build_handle(
-    handle_idx: usize,
-    orientation: SplitterOrientation,
-    state: SplitterState,
-) -> NodeBuilder {
+fn build_handle(handle_idx: usize, orientation: Orientation, state: SplitterState) -> NodeBuilder {
     let node = container()
         .role(Role::Splitter)
         .hittable(true)
@@ -327,10 +334,10 @@ fn build_handle(
     )
 }
 
-fn handle_layout(orientation: SplitterOrientation) -> LayoutStyle {
+fn handle_layout(orientation: Orientation) -> LayoutStyle {
     let style = match orientation {
-        SplitterOrientation::Horizontal => LayoutStyle::flex_row().width(HANDLE_PX),
-        SplitterOrientation::Vertical => LayoutStyle::flex_column().height(HANDLE_PX),
+        Orientation::Horizontal => LayoutStyle::flex_row().width(HANDLE_PX),
+        Orientation::Vertical => LayoutStyle::flex_column().height(HANDLE_PX),
     };
     style
         .shrink(0.0)
@@ -338,11 +345,11 @@ fn handle_layout(orientation: SplitterOrientation) -> LayoutStyle {
         .justify_content(JustifyContent::Center)
 }
 
-fn rule(orientation: SplitterOrientation) -> NodeBuilder {
+fn rule(orientation: Orientation) -> NodeBuilder {
     let thickness = f32::from(BORDER_WIDTH.0);
     let layout = match orientation {
-        SplitterOrientation::Horizontal => LayoutStyle::block().width(thickness).fill_height(),
-        SplitterOrientation::Vertical => LayoutStyle::block().height(thickness).fill_width(),
+        Orientation::Horizontal => LayoutStyle::block().width(thickness).fill_height(),
+        Orientation::Vertical => LayoutStyle::block().height(thickness).fill_width(),
     };
     container()
         .hittable(false)

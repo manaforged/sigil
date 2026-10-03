@@ -1,14 +1,14 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
-use crate::style::{NodeStyleExt, PaintTarget, Size, StyleSlot};
+use crate::style::{ControlSize, NodeStyleExt, PaintTarget, StyleSlot};
 use crate::style::{Px, StyleAtom, Tone};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
 pub struct DotBuilder {
     tone: Tone,
-    size: Size,
+    size: ControlSize,
     style_accumulator: crate::style::Style,
     layout_overrides: LayoutOverrides,
 }
@@ -23,22 +23,24 @@ impl DotBuilder {
     pub fn new(tone: Tone) -> Self {
         Self {
             tone,
-            size: Size::Compact,
+            size: ControlSize::Compact,
             style_accumulator: crate::style::Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
     }
 
     #[must_use]
-    pub const fn size(mut self, size: Size) -> Self {
+    pub const fn size(mut self, size: ControlSize) -> Self {
         self.size = size;
         self
     }
 
     fn into_node_builder(self) -> NodeBuilder {
         let (layout, mut node) =
-            CellForm::<fn(Tone, Size) -> (LayoutStyle, NodeBuilder)>::new(round_dot, cell_dot)
-                .pick()(self.tone, self.size);
+            CellForm::<fn(Tone, ControlSize) -> (LayoutStyle, NodeBuilder)>::new(
+                round_dot, cell_dot,
+            )
+            .pick()(self.tone, self.size);
         node = node
             .role(Role::GenericContainer)
             .with(self.layout_overrides.apply(layout));
@@ -49,7 +51,7 @@ impl DotBuilder {
     }
 }
 
-fn cell_dot(tone: Tone, _size: Size) -> (LayoutStyle, NodeBuilder) {
+fn cell_dot(tone: Tone, _size: ControlSize) -> (LayoutStyle, NodeBuilder) {
     let layout = LayoutStyle::block().width(cols(1.0)).height(rows(1.0));
     let node = container()
         .tone(tone)
@@ -58,11 +60,11 @@ fn cell_dot(tone: Tone, _size: Size) -> (LayoutStyle, NodeBuilder) {
     (layout, node)
 }
 
-fn round_dot(tone: Tone, size: Size) -> (LayoutStyle, NodeBuilder) {
+fn round_dot(tone: Tone, size: ControlSize) -> (LayoutStyle, NodeBuilder) {
     let extent = match size {
-        Size::Compact => 8.0,
-        Size::Default => 12.0,
-        Size::Wide | Size::Grow => 16.0,
+        ControlSize::Compact => 8.0,
+        ControlSize::Default => 12.0,
+        ControlSize::Wide | ControlSize::Grow => 16.0,
     };
     #[allow(
         clippy::cast_possible_truncation,
@@ -119,7 +121,10 @@ impl WidgetLayoutExt for DotBuilder {
 
 impl IntoNode for DotBuilder {
     fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 

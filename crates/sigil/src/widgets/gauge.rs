@@ -106,7 +106,10 @@ impl WidgetLayoutExt for GaugeBuilder {
 
 impl IntoNode for GaugeBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 

@@ -8,8 +8,8 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
-    BORDER_WIDTH, Metrics, NodeStyleExt, PaintTarget, Px, Size, StateHost, StateStyle, Style,
-    StyleAtom, StyleOverlay, StyleSlot, StyleVariant, Theme, Token, Tone, TransitionId,
+    BORDER_WIDTH, ControlSize, Metrics, NodeStyleExt, PaintTarget, Px, StateHost, StateStyle,
+    Style, StyleAtom, StyleOverlay, StyleSlot, StyleVariant, Theme, Token, Tone, TransitionId,
 };
 
 use crate::widgets::interaction::InteractionState;
@@ -203,14 +203,17 @@ impl WidgetLayoutExt for CheckboxBuilder {
 
 impl IntoNode for CheckboxBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 
 fn checkbox_layout(has_label: bool) -> LayoutStyle {
     let metrics = Metrics::current();
-    let root_size = metrics.control_height(Size::Default);
-    let gap = metrics.gap(Size::Default);
+    let root_size = metrics.control_height(ControlSize::Default);
+    let gap = metrics.gap(ControlSize::Default);
     let row = control_row(LayoutStyle::flex_row())
         .height(root_size)
         .gap(gap)

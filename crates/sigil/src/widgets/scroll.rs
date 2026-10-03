@@ -40,8 +40,7 @@ pub struct ScrollBuilder {
     extent: Option<Signal<f32>>,
     sizing: Sizing,
     scroll_y: Option<Signal<f32>>,
-    initial_end: bool,
-    pin_bottom: bool,
+    follow_end: bool,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
@@ -69,8 +68,7 @@ pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
         extent: None,
         sizing: Sizing::Fixed,
         scroll_y: None,
-        initial_end: false,
-        pin_bottom: false,
+        follow_end: false,
         style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
     }
@@ -102,14 +100,8 @@ impl ScrollBuilder {
     }
 
     #[must_use]
-    pub const fn scroll_to_end(mut self) -> Self {
-        self.initial_end = true;
-        self
-    }
-
-    #[must_use]
-    pub const fn auto_pin_to_bottom(mut self, on: bool) -> Self {
-        self.pin_bottom = on;
+    pub const fn follow_end(mut self, on: bool) -> Self {
+        self.follow_end = on;
         self
     }
 
@@ -125,11 +117,9 @@ impl ScrollBuilder {
         let (viewport, viewport_height) = viewport_signals(width, height, sizing != Sizing::Fixed);
 
         let max_scroll = derived(move || (extent.get() - viewport_height.get()).max(0.0));
-        if self.initial_end {
+        if self.follow_end {
             scroll_y.set(max_scroll.peek());
-        }
-        if self.pin_bottom {
-            pin_to_bottom(scroll_y, max_scroll);
+            pin_to_bottom(scroll_y, max_scroll, || true);
         }
         let floor = sizing.floor(extent, viewport_height);
         let body = wrap_content(content, scroll_y, max_scroll, extent, floor);
@@ -223,7 +213,10 @@ impl WidgetLayoutExt for ScrollBuilder {
 
 impl IntoNode for ScrollBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 

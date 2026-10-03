@@ -93,6 +93,8 @@ impl TextGeometry for StubGeometry {
 
 #[path = "widgets/binary.rs"]
 mod binary;
+#[path = "widgets/builder_hooks.rs"]
+mod builder_hooks;
 #[path = "widgets/button.rs"]
 mod button;
 #[path = "widgets/slider.rs"]

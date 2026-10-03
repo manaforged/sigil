@@ -22,7 +22,7 @@
 | <code>const width(&amp;mut self, px: f32)</code> |  |
 | <code>const width_hint(&amp;self) -&gt; Option&lt;f32&gt;</code> |  |
 
-**Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
+**Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>
 
 
 ## Traits
@@ -37,6 +37,7 @@
 | <code>height(self, height: impl <a href="sigil-layout.html#intopx">IntoPx</a>) -&gt; Self</code> |  |
 | <code>layout(self, style: <a href="sigil-layout.html#layoutstyle">LayoutStyle</a>) -&gt; Self</code> |  |
 | <code>layout_overrides_mut(&amp;mut self) -&gt; &amp;mut <a href="#layoutoverrides">LayoutOverrides</a></code> |  |
+| <code>map_node(self, f: impl FnOnce(<a href="sigil-kernel.html#nodebuilder">NodeBuilder</a>) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> + 'static) -&gt; Self</code> |  |
 | <code>width(self, width: impl <a href="sigil-layout.html#intopx">IntoPx</a>) -&gt; Self</code> |  |
 
 

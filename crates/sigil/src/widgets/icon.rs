@@ -7,7 +7,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 #[cfg(feature = "scene")]
 use crate::style::Token;
 use crate::style::Tone;
-use crate::style::{NodeStyleExt, PaintTarget, Size, StyleAtom, StyleSlot};
+use crate::style::{ControlSize, NodeStyleExt, PaintTarget, StyleAtom, StyleSlot};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
@@ -28,7 +28,7 @@ enum Glyph {
 pub struct IconBuilder {
     glyph: Glyph,
     tone: Tone,
-    size: Size,
+    size: ControlSize,
     px: Option<f32>,
     step: u8,
     #[cfg(feature = "scene")]
@@ -57,7 +57,7 @@ impl IconBuilder {
         Self {
             glyph: Glyph::Text(glyph.into()),
             tone: Tone::Neutral,
-            size: Size::Default,
+            size: ControlSize::Default,
             px: None,
             step: 11,
             #[cfg(feature = "scene")]
@@ -75,7 +75,7 @@ impl IconBuilder {
     }
 
     #[must_use]
-    pub const fn size(mut self, size: Size) -> Self {
+    pub const fn size(mut self, size: ControlSize) -> Self {
         self.size = size;
         self
     }
@@ -107,16 +107,16 @@ impl IconBuilder {
 
     fn into_node_builder(self) -> NodeBuilder {
         let extent = self.px.unwrap_or(match self.size {
-            Size::Compact => 16.0,
-            Size::Default => 20.0,
-            Size::Wide | Size::Grow => 24.0,
+            ControlSize::Compact => 16.0,
+            ControlSize::Default => 20.0,
+            ControlSize::Wide | ControlSize::Grow => 24.0,
         });
         #[cfg(feature = "scene")]
         let drawn = self.px.unwrap_or(extent * 0.8);
         let glyph_class = match self.size {
-            Size::Compact => "text-xs",
-            Size::Default => "text-base",
-            Size::Wide | Size::Grow => "text-lg",
+            ControlSize::Compact => "text-xs",
+            ControlSize::Default => "text-base",
+            ControlSize::Wide | ControlSize::Grow => "text-lg",
         };
         let role = self
             .label
@@ -188,7 +188,10 @@ impl WidgetLayoutExt for IconBuilder {
 
 impl IntoNode for IconBuilder {
     fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 

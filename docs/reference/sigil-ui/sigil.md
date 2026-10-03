@@ -9,6 +9,7 @@
 | [`run`](#run) | fn |  |
 | [`AppResult`](#appresult) | type |  |
 | [`wgpu`](#wgpu) | use |  |
+| [`T`](#t) | impl |  |
 | [`alloc::boxed::Box`](#allocboxedbox) | impl |  |
 | [`F`](#f) | impl |  |
 | [`f32`](#f32) | impl |  |
@@ -17,12 +18,13 @@
 | [`i32`](#i32) | impl |  |
 | [`i64`](#i64) | impl |  |
 | [`usize`](#usize) | impl |  |
-| [`T`](#t) | impl |  |
+| [`str`](#str) | impl |  |
+| [`alloc::string::String`](#allocstringstring) | impl |  |
 | [`bool`](#bool) | impl |  |
+| [`alloc::vec::Vec`](#allocvecvec) | impl |  |
 | [`tokio::sync::mpsc::bounded::Receiver`](#tokiosyncmpscboundedreceiver) | impl |  |
 | [`tokio::sync::mpsc::unbounded::UnboundedReceiver`](#tokiosyncmpscunboundedunboundedreceiver) | impl |  |
 | [`core::io::error::Error`](#coreioerrorerror) | impl |  |
-| [`alloc::vec::Vec`](#allocvecvec) | impl |  |
 
 ## Structs
 
@@ -136,6 +138,11 @@
 
 ## Implementations
 
+### `T`
+
+**Trait implementations:** <code><a href="sigil-events.html#nodeeventsext">NodeEventsExt</a></code>, <code><a href="sigil-style.html#paint">Paint</a></code>, <code><a href="sigil-style.html#statevariants">StateVariants</a></code>
+
+
 ### `alloc::boxed::Box`
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>
@@ -143,7 +150,7 @@
 
 ### `F`
 
-**Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-reactive.html#reactive">Reactive</a>&lt;T&gt;</code>
+**Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-reactive.html#reactive">Reactive</a>&lt;T&gt;</code>, <code><a href="sigil-widgets.html#rowrender">RowRender</a>&lt;T&gt;</code>
 
 
 ### `f32`
@@ -176,14 +183,24 @@
 **Trait implementations:** <code><a href="sigil-widgets.html#numerickind">NumericKind</a></code>
 
 
-### `T`
+### `str`
 
-**Trait implementations:** <code><a href="sigil-style.html#paint">Paint</a></code>, <code><a href="sigil-style.html#statevariants">StateVariants</a></code>
+**Trait implementations:** <code><a href="sigil-reactive.html#reactive">Reactive</a>&lt;String&gt;</code>
+
+
+### `alloc::string::String`
+
+**Trait implementations:** <code><a href="sigil-reactive.html#reactive">Reactive</a>&lt;String&gt;</code>
 
 
 ### `bool`
 
 **Trait implementations:** <code><a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;</code>
+
+
+### `alloc::vec::Vec`
+
+**Trait implementations:** <code><a href="sigil-reactive.html#reactive">Reactive</a>&lt;Vec&lt;T&gt;&gt;</code>, <code><a href="sigil-widgets.html#intolist">IntoList</a>&lt;T, R&gt;</code>
 
 
 ### `tokio::sync::mpsc::bounded::Receiver`
@@ -199,11 +216,6 @@
 ### `core::io::error::Error`
 
 **Trait implementations:** <code>From&lt;<a href="sigil-terminal.html#printaboveerror">PrintAboveError</a>&gt;</code>
-
-
-### `alloc::vec::Vec`
-
-**Trait implementations:** <code><a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> + 'static&gt; <a href="sigil-widgets.html#intolist">IntoList</a>&lt;T, R&gt;</code>
 
 
 ---

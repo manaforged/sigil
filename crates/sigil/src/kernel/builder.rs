@@ -35,6 +35,18 @@ pub fn fragment() -> NodeBuilder {
 }
 
 impl NodeBuilder {
+    pub(crate) fn from_parts(
+        kind: NodeType,
+        a11y: A11yProps,
+        pre_extensions: Vec<NodeMutator>,
+    ) -> Self {
+        Self {
+            a11y,
+            pre_extensions,
+            ..Self::new(kind)
+        }
+    }
+
     fn new(kind: NodeType) -> Self {
         Self {
             a11y: A11yProps::default(),

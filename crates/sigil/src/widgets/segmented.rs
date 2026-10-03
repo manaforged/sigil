@@ -1,7 +1,7 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{BORDER_WIDTH, Radius, StyleAtom};
+use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot};
 
 use super::button::button;
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -11,22 +11,24 @@ static SEGMENTED_FRAME: &[StyleAtom] = &[
     StyleAtom::BorderToneStep(6),
 ];
 
+const SEGMENTED_HEIGHT: f32 = 32.0;
+
 pub struct SegmentedBuilder {
     active: Signal<usize>,
     labels: Vec<String>,
     name: Option<String>,
-    height: f32,
     layout_overrides: LayoutOverrides,
+    style_accumulator: Style,
 }
 
 #[must_use]
-pub const fn segmented(active: Signal<usize>, labels: Vec<String>) -> SegmentedBuilder {
+pub fn segmented(active: Signal<usize>, labels: Vec<String>) -> SegmentedBuilder {
     SegmentedBuilder {
         active,
         labels,
         name: None,
-        height: 32.0,
         layout_overrides: LayoutOverrides::new(),
+        style_accumulator: Style::new(),
     }
 }
 
@@ -37,22 +39,20 @@ impl SegmentedBuilder {
         self
     }
 
-    #[must_use]
-    pub const fn height(mut self, height: f32) -> Self {
-        self.height = height;
-        self
-    }
-
     fn into_node_builder(self) -> NodeBuilder {
         let active = self.active;
         let labels = self.labels;
-        let inner = (self.height - 6.0).max(16.0);
+        let height = self
+            .layout_overrides
+            .height_hint()
+            .unwrap_or(SEGMENTED_HEIGHT);
+        let inner = (height - 6.0).max(16.0);
         let mut node = container()
             .role(Role::RadioGroup)
             .with(
                 self.layout_overrides.apply(
                     LayoutStyle::flex_row()
-                        .height(self.height)
+                        .height(height)
                         .shrink(0.0)
                         .gap(2.0)
                         .padding(2.0)
@@ -82,7 +82,16 @@ impl SegmentedBuilder {
         if let Some(name) = self.name {
             node = node.label(name);
         }
+        if !self.style_accumulator.is_empty() {
+            node = node.style(self.style_accumulator);
+        }
         node
+    }
+}
+
+impl PaintTarget for SegmentedBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 
@@ -94,6 +103,9 @@ impl WidgetLayoutExt for SegmentedBuilder {
 
 impl IntoNode for SegmentedBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }

@@ -25,16 +25,12 @@ fn noop_value_change() -> ValueChange {
     Rc::new(|_| {})
 }
 
+use crate::widgets::orientation::Orientation;
+
 const HORIZONTAL_WIDTH: f32 = 180.0;
 const HORIZONTAL_HEIGHT: f32 = 24.0;
 const VERTICAL_WIDTH: f32 = 24.0;
 const VERTICAL_HEIGHT: f32 = 180.0;
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum Orientation {
-    #[default]
-    Horizontal,
-    Vertical,
-}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct SliderRange {
@@ -225,7 +221,10 @@ impl SliderBuilder {
 
 impl IntoNode for SliderBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 

@@ -7,14 +7,16 @@
 mod build;
 mod keyboard;
 mod measure;
+mod paint;
 mod render;
+mod row;
 mod scroll;
 mod selection;
 mod strip;
 mod viewport;
 mod window;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId};
+use crate::kernel::{IntoNode, NodeBuilder};
 use crate::reactive::{Signal, effect};
 
 use std::ops::Deref;
@@ -22,6 +24,7 @@ use std::ops::Deref;
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::scroll::ScrollAxis;
 use super::table::Identifiable;
+pub use row::RowRender;
 use selection::SelectionRuntime;
 pub use selection::{SelectionMode, SelectionState};
 
@@ -84,7 +87,7 @@ where
 pub struct VirtualListBuilder<T, R>
 where
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: RowRender<T>,
 {
     items: Vec<T>,
     bound: Option<BoundItems<T, R>>,
@@ -112,6 +115,7 @@ where
     measured: bool,
     estimate: Option<f32>,
     scrollbar: bool,
+    style_accumulator: crate::style::Style,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -134,11 +138,11 @@ pub enum ScrollAnchor {
     Index(usize),
 }
 
-pub trait IntoList<T, R: Fn(usize, &T) -> NodeBuilder + 'static> {
+pub trait IntoList<T, R: RowRender<T>> {
     fn into_list(self, render: R) -> VirtualListBuilder<T, R>;
 }
 
-impl<T: 'static, R: Fn(usize, &T) -> NodeBuilder + 'static> IntoList<T, R> for Vec<T> {
+impl<T: 'static, R: RowRender<T>> IntoList<T, R> for Vec<T> {
     fn into_list(self, render: R) -> VirtualListBuilder<T, R> {
         from_vec(self, render)
     }
@@ -149,7 +153,7 @@ where
     S: Deref + Clone + 'static,
     S::Target: AsRef<[T]>,
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: RowRender<T>,
 {
     fn into_list(self, render: R) -> VirtualListBuilder<T, R> {
         from_vec(Vec::new(), render).bind_items(self)
@@ -157,10 +161,11 @@ where
 }
 
 #[must_use]
-pub fn virtual_list<T, R, I>(items: I, render: R) -> VirtualListBuilder<T, R>
+pub fn virtual_list<T, R, N, I>(items: I, render: R) -> VirtualListBuilder<T, R>
 where
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: Fn(usize, &T) -> N + 'static,
+    N: IntoNode + 'static,
     I: IntoList<T, R>,
 {
     items.into_list(render)
@@ -169,7 +174,7 @@ where
 fn from_vec<T, R>(items: Vec<T>, render: R) -> VirtualListBuilder<T, R>
 where
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: RowRender<T>,
 {
     VirtualListBuilder {
         items,
@@ -198,16 +203,18 @@ where
         measured: false,
         estimate: None,
         scrollbar: false,
+        style_accumulator: crate::style::Style::new(),
     }
 }
 
 #[must_use]
-pub fn virtual_list_bind<S, T, R>(items: Signal<S>, render: R) -> VirtualListBuilder<T, R>
+pub fn virtual_list_bind<S, T, R, N>(items: Signal<S>, render: R) -> VirtualListBuilder<T, R>
 where
     S: Deref + Clone + 'static,
     S::Target: AsRef<[T]>,
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: Fn(usize, &T) -> N + 'static,
+    N: IntoNode + 'static,
 {
     virtual_list(items, render)
 }
@@ -215,7 +222,7 @@ where
 impl<T, R> VirtualListBuilder<T, R>
 where
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: RowRender<T>,
 {
     #[must_use]
     pub fn identified(self) -> Self
@@ -313,8 +320,11 @@ where
     }
 
     #[must_use]
-    pub const fn focused_row_bind(mut self, focused_row: Signal<usize>) -> Self {
-        self.focused_row = Some(focused_row);
+    pub const fn cursor(mut self, cursor: Signal<usize>) -> Self {
+        self.focused_row = Some(cursor);
+        if self.follow.is_none() {
+            self.follow = Some(cursor);
+        }
         self
     }
 
@@ -336,7 +346,7 @@ where
     }
 
     #[must_use]
-    pub fn select(mut self, f: impl Fn(usize) + 'static) -> Self {
+    pub fn change(mut self, f: impl Fn(usize) + 'static) -> Self {
         let selection = self.ensure_selection_state();
         effect(move || {
             if let Some(index) = selection.get().selected_indices().next() {
@@ -347,13 +357,10 @@ where
     }
 
     #[must_use]
-    pub const fn scroll_to_end(mut self) -> Self {
-        self.initial_scroll = Some(InitialScroll::End);
-        self
-    }
-
-    #[must_use]
-    pub const fn auto_pin_to_bottom(mut self, on: bool) -> Self {
+    pub const fn follow_end(mut self, on: bool) -> Self {
+        if on {
+            self.initial_scroll = Some(InitialScroll::End);
+        }
         self.pin_bottom = on;
         self
     }
@@ -375,21 +382,13 @@ where
     }
 
     #[must_use]
-    pub const fn follow(mut self, target: Signal<usize>) -> Self {
+    pub const fn follow_row(mut self, target: Signal<usize>) -> Self {
         self.follow = Some(target);
         self
     }
 }
 
-impl<T: 'static, R: Fn(usize, &T) -> NodeBuilder + 'static> IntoNode for VirtualListBuilder<T, R> {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
-
-impl<T: 'static, R: Fn(usize, &T) -> NodeBuilder + 'static> WidgetLayoutExt
-    for VirtualListBuilder<T, R>
-{
+impl<T: 'static, R: RowRender<T>> WidgetLayoutExt for VirtualListBuilder<T, R> {
     fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
         &mut self.layout_overrides
     }

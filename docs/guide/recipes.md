@@ -16,6 +16,10 @@ along the path from the root to the focused node:
 
 A handler calls `event.stop_propagation()` to end both passes.
 
+Tab and Shift+Tab move focus between the capture pass and the bubble
+pass. A capture handler that stops propagation keeps focus in place, so
+`.key_capture(Key::Tab, f)` on an ancestor owns Tab for its subtree.
+
 A `Shortcut` is a key plus modifiers:
 
 | Constructor | Matches |
@@ -108,6 +112,26 @@ fn main() -> AppResult<()> {
 ```
 
 `key_capture(shortcut, f)` is the same, but runs only for one shortcut.
+
+### Keys on a widget builder
+
+Every widget builder that implements `WidgetLayoutExt` also takes the
+`NodeEventsExt` methods. The handler goes on the root node of the
+widget and runs after the handlers of the widget. If the widget stops a
+key that you need, use `key_capture` instead. To use a `NodeBuilder`
+method that is not in `NodeEventsExt`, such as `on_added`, call
+`.map_node(|node| node.on_added(f))`.
+
+### Helper return types
+
+A helper that returns `impl IntoNode` keeps only `IntoNode`. Chained
+builder methods are not available on the result. Return the concrete
+builder type (for example `sigil::widgets::ButtonBuilder`) or
+`NodeBuilder` to keep them. Under Rust 2024, `impl IntoNode` captures
+every lifetime in the arguments. A helper that takes `&state` and
+returns `impl IntoNode` then borrows `state` for the life of the node.
+Write `-> impl IntoNode + use<>` when the result does not use the
+reference, or return a concrete type.
 
 ## Theme switching
 
@@ -357,7 +381,7 @@ one.
 
 A chat transcript has rows whose height depends on the width: wrapped
 markdown, tool cards, images. `.measured()` sizes each row from its
-layout. `.auto_pin_to_bottom(true)` keeps the last row in view while a
+layout. `.follow_end(true)` keeps the last row in view while a
 reply streams in.
 
 App state that is not `Send` stays on the UI thread. A worker sends
@@ -398,7 +422,7 @@ fn tree() -> impl IntoNode {
         .measured()
         .estimate(rows(2.0))
         .viewport_fill()
-        .auto_pin_to_bottom(true)
+        .follow_end(true)
 }
 
 fn main() -> AppResult<()> {
@@ -425,7 +449,7 @@ fn tree() -> impl IntoNode {
         .viewport_fill()
         .scroll_bind(scroll)
         .max_scroll_bind(max)
-        .follow(tail);
+        .follow_row(tail);
     let root = container()
         .key(Key::PageUp, move |_| scroll.set((scroll.peek() - page).clamp(0.0, max.peek())))
         .key(Key::PageDown, move |_| scroll.set((scroll.peek() + page).clamp(0.0, max.peek())))

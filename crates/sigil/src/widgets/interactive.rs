@@ -45,6 +45,7 @@ impl InteractiveBuilder {
         let overlay = style.take_state_overlay();
         let base_atoms = style.into_atoms();
         let interaction = InteractionState::new(true);
+        let hooks = self.layout_overrides.hooks();
         let mut node = self.inner.focusable(self.focusable);
         if self.layout_overrides != LayoutOverrides::new() {
             node = node.layout(self.layout_overrides.apply(LayoutStyle::default()));
@@ -58,7 +59,7 @@ impl InteractiveBuilder {
         } else {
             node
         };
-        interaction.observe_style(node)
+        hooks.finish(interaction.observe_style(node))
     }
 }
 

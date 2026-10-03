@@ -1,4 +1,4 @@
-use crate::kernel::{NodeBuilder, container};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
 use crate::layout::LayoutReactiveExt;
 use crate::layout::LayoutStyle;
 use crate::layout::{LayoutBuilderExt, Position};
@@ -9,6 +9,7 @@ use std::ops::Deref;
 
 use super::keyboard::{KeyboardRuntime, attach_key_handlers};
 use super::measure::Measure;
+use super::paint;
 use super::render::{content_container, viewport_container, width_apply, width_spec};
 use super::scroll::{self, apply_bound_scroll, attach_wheel};
 use super::selection::{SelectionRuntime, SelectionState};
@@ -17,13 +18,13 @@ use super::viewport::{ViewportSize, apply_viewport_overrides};
 use super::window::{self, strip_height};
 use super::{
     BoundCtx, BoundItems, BoundVisibleThunk, BuildAxes, DEFAULT_ROW_HEIGHT,
-    DEFAULT_VIEWPORT_HEIGHT, Sizing, VirtualListBuilder, bound_slice,
+    DEFAULT_VIEWPORT_HEIGHT, RowRender, Sizing, VirtualListBuilder, bound_slice,
 };
 
 impl<T, R> VirtualListBuilder<T, R>
 where
     T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+    R: RowRender<T>,
 {
     #[must_use]
     pub const fn scrollbar(mut self, on: bool) -> Self {
@@ -110,7 +111,8 @@ where
                 count.as_ref().map_or(0, |count| count())
             });
         }
-        self.build_bound(axes, measure).size_reactive(axes.viewport)
+        let paint = self.take_paint();
+        paint::apply(self.build_bound(axes, measure), paint).size_reactive(axes.viewport)
     }
 
     fn axes(&mut self) -> (BuildAxes, Option<Measure>) {
@@ -277,4 +279,13 @@ fn shrink_bound(root: NodeBuilder, axes: BuildAxes, shrinks: bool) -> NodeBuilde
         }
     });
     root.animate(NumericAtomKind::Height, height)
+}
+
+impl<T: 'static, R: RowRender<T>> IntoNode for VirtualListBuilder<T, R> {
+    fn build(self, cx: &mut Cx) -> NodeId {
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
+    }
 }

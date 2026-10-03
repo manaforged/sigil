@@ -7,7 +7,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived};
 use crate::style::{
-    Metrics, NodeStyleExt, Size, Style, StyleAtom, StyleOverlay, Token, Tone, space,
+    ControlSize, Metrics, NodeStyleExt, Style, StyleAtom, StyleOverlay, Token, Tone, space,
 };
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -256,7 +256,7 @@ fn group_layout() -> LayoutStyle {
 
 fn option_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
-        .height(Metrics::current().control_height(Size::Default))
+        .height(Metrics::current().control_height(ControlSize::Default))
         .padding_x(space(1))
         .gap(space(2))
         .align_items(AlignItems::Center)
@@ -294,7 +294,10 @@ impl WidgetLayoutExt for RadioGroupBuilder {
 
 impl IntoNode for RadioGroupBuilder {
     fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 

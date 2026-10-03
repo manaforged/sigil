@@ -13,6 +13,7 @@
 | [`LayoutStyle`](#layoutstyle) | struct |  |
 | [`ListRowSlots`](#listrowslots) | struct |  |
 | [`MenuItem`](#menuitem) | struct |  |
+| [`ModalBuilder`](#modalbuilder) | struct |  |
 | [`MouseButtons`](#mousebuttons) | struct |  |
 | [`NodeBuilder`](#nodebuilder) | struct |  |
 | [`PathNode`](#pathnode) | struct |  |
@@ -23,6 +24,7 @@
 | [`Signal`](#signal) | struct |  |
 | [`SignalWriter`](#signalwriter) | struct |  |
 | [`Size`](#size) | struct |  |
+| [`SortKey`](#sortkey) | struct |  |
 | [`TableColumn`](#tablecolumn) | struct |  |
 | [`TableState`](#tablestate) | struct |  |
 | [`Task`](#task) | struct |  |
@@ -32,8 +34,9 @@
 | [`AlignItems`](#alignitems) | enum |  |
 | [`ColWidth`](#colwidth) | enum |  |
 | [`ColorAtom`](#coloratom) | enum |  |
+| [`ControlSize`](#controlsize) | enum |  |
 | [`Density`](#density) | enum |  |
-| [`DiffLayout`](#difflayout) | enum |  |
+| [`DiffView`](#diffview) | enum |  |
 | [`Disclosure`](#disclosure) | enum |  |
 | [`Display`](#display) | enum |  |
 | [`Elevation`](#elevation) | enum |  |
@@ -50,8 +53,9 @@
 | [`ScheduleError`](#scheduleerror) | enum |  |
 | [`SelectionMode`](#selectionmode) | enum |  |
 | [`Side`](#side) | enum |  |
-| [`SplitterOrientation`](#splitterorientation) | enum |  |
+| [`SortDir`](#sortdir) | enum |  |
 | [`Status`](#status) | enum |  |
+| [`SubmitKey`](#submitkey) | enum |  |
 | [`TextContent`](#textcontent) | enum |  |
 | [`Token`](#token) | enum |  |
 | [`Tone`](#tone) | enum |  |
@@ -71,7 +75,6 @@
 | [`app_shell`](#app_shell) | fn |  |
 | [`avatar`](#avatar) | fn |  |
 | [`axis_drag`](#axis_drag) | fn |  |
-| [`badge`](#badge) | fn |  |
 | [`button`](#button) | fn |  |
 | [`card`](#card) | fn |  |
 | [`chart`](#chart) | fn |  |
@@ -123,6 +126,7 @@
 | [`markdown`](#markdown) | fn |  |
 | [`markdown_edit`](#markdown_edit) | fn |  |
 | [`markdown_inline`](#markdown_inline) | fn |  |
+| [`match_status`](#match_status) | fn |  |
 | [`menu`](#menu) | fn |  |
 | [`menu_bar`](#menu_bar) | fn |  |
 | [`mermaid`](#mermaid) | fn |  |
@@ -146,7 +150,6 @@
 | [`sheet`](#sheet) | fn |  |
 | [`show`](#show) | fn |  |
 | [`sidebar`](#sidebar) | fn |  |
-| [`sidebar_width`](#sidebar_width) | fn |  |
 | [`signal`](#signal-1) | fn |  |
 | [`signal_writer`](#signal_writer) | fn |  |
 | [`slider`](#slider) | fn |  |
@@ -158,9 +161,11 @@
 | [`splitter`](#splitter) | fn |  |
 | [`status_bar`](#status_bar) | fn |  |
 | [`surface`](#surface) | fn |  |
+| [`switch`](#switch) | fn |  |
 | [`table`](#table) | fn |  |
 | [`tabs`](#tabs) | fn |  |
 | [`task`](#task-1) | fn |  |
+| [`task_with`](#task_with) | fn |  |
 | [`terminal`](#terminal) | fn |  |
 | [`text`](#text) | fn |  |
 | [`text_edit`](#text_edit) | fn |  |
@@ -254,6 +259,9 @@
 | <code>submenu_indicator: bool</code> |  |
 
 
+### `ModalBuilder`
+
+
 ### `MouseButtons`
 
 
@@ -326,6 +334,16 @@
 | --- | --- |
 | <code>height: <a href="sigil-geometry.html#dim">Dim</a></code> |  |
 | <code>width: <a href="sigil-geometry.html#dim">Dim</a></code> |  |
+
+
+### `SortKey`
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>column: &amp;'static str</code> |  |
+| <code>dir: <a href="sigil-widgets.html#sortdir">SortDir</a></code> |  |
 
 
 ### `TableColumn`
@@ -405,6 +423,18 @@
 | <code>ThemeRef(<a href="sigil-style.html#colorkey">ColorKey</a>)</code> |  |
 
 
+### `ControlSize`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Compact</code> |  |
+| <code>Default</code> |  |
+| <code>Grow</code> |  |
+| <code>Wide</code> |  |
+
+
 ### `Density`
 
 **Variants**
@@ -416,7 +446,7 @@
 | <code>Grid</code> |  |
 
 
-### `DiffLayout`
+### `DiffView`
 
 **Variants**
 
@@ -618,14 +648,14 @@
 | <code>Right</code> |  |
 
 
-### `SplitterOrientation`
+### `SortDir`
 
 **Variants**
 
 | Variant | Description |
 | --- | --- |
-| <code>Horizontal</code> |  |
-| <code>Vertical</code> |  |
+| <code>Ascending</code> |  |
+| <code>Descending</code> |  |
 
 
 ### `Status`
@@ -639,6 +669,16 @@
 | <code>Ok(T)</code> |  |
 | <code>Panicked(String)</code> |  |
 | <code>Pending</code> |  |
+
+
+### `SubmitKey`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>CtrlEnter</code> |  |
+| <code>Enter</code> |  |
 
 
 ### `TextContent`
@@ -837,6 +877,7 @@
 | <code>file_drop&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;<a href="sigil-events.html#filedropevent">FileDropEvent</a>) + 'static</code> |  |
 | <code>focus_in&lt;H&gt;(self, h: H) -&gt; Self where H: Fn() + 'static</code> |  |
 | <code>focus_out&lt;H&gt;(self, h: H) -&gt; Self where H: Fn() + 'static</code> |  |
+| <code>focus_when(self, trigger: <a href="sigil-reactive.html#signal">Signal</a>&lt;u64&gt;) -&gt; Self</code> |  |
 | <code>ime_caret(self, anchor: Rc&lt;Cell&lt;Option&lt;<a href="sigil-layout.html#caretgeometry">CaretGeometry</a>&gt;&gt;&gt;) -&gt; Self</code> |  |
 | <code>ime_eligible&lt;F&gt;(self, f: F) -&gt; Self where F: Fn() -&gt; bool + 'static</code> |  |
 | <code>key&lt;S, H&gt;(self, shortcut: S, h: H) -&gt; Self where S: Into&lt;<a href="sigil-events.html#shortcut">Shortcut</a>&gt;, H: Fn(&amp;mut <a href="sigil-events.html#keyevent">KeyEvent</a>) + 'static</code> |  |
@@ -865,11 +906,11 @@
 | --- | --- |
 | <code>animate(self, kind: <a href="sigil-style.html#numericatomkind">NumericAtomKind</a>, value: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;) -&gt; Self</code> |  |
 | <code>focus_ring(self, ring: <a href="sigil-style.html#focusring">FocusRing</a>) -&gt; Self</code> |  |
-| <code>paint_when&lt;F&gt;(self, signal: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;, paint: F) -&gt; Self where F: FnOnce(<a href="sigil-style.html#statestylebuilder">StateStyleBuilder</a>) -&gt; <a href="sigil-style.html#statestylebuilder">StateStyleBuilder</a></code> |  |
+| <code>paint_when&lt;F&gt;(self, active: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;, paint: F) -&gt; Self where F: FnOnce(<a href="sigil-style.html#statestylebuilder">StateStyleBuilder</a>) -&gt; <a href="sigil-style.html#statestylebuilder">StateStyleBuilder</a></code> |  |
 | <code>presence(self, shown: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;, config: <a href="sigil-animation_runtime.html#animationconfig">AnimationConfig</a>) -&gt; Self</code> |  |
 | <code>theme(self, theme: <a href="sigil-style.html#theme">Theme</a>) -&gt; Self</code> |  |
 | <code>tone(self, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
-| <code>visible_when(self, signal: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;) -&gt; Self</code> |  |
+| <code>visible_when(self, shown: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
 
 
 ### `NumericKind`
@@ -900,10 +941,10 @@
 | <code>duration(self, duration: <a href="sigil-style.html#millisu16">MillisU16</a>) -&gt; Self</code> |  |
 | <code>font_family(self, family: <a href="sigil-style.html#fontfamily">FontFamily</a>) -&gt; Self</code> |  |
 | <code>font_italic(self, italic: bool) -&gt; Self</code> |  |
-| <code>font_size(self, px: i16) -&gt; Self</code> |  |
+| <code>font_size(self, px: f32) -&gt; Self</code> |  |
 | <code>font_weight(self, weight: u16) -&gt; Self</code> |  |
 | <code>letter_spacing_em(self, em: f32) -&gt; Self</code> |  |
-| <code>line_height(self, px: i16) -&gt; Self</code> |  |
+| <code>line_height_px(self, px: f32) -&gt; Self</code> |  |
 | <code>line_through(self) -&gt; Self</code> |  |
 | <code>opacity(self, value: f32) -&gt; Self</code> |  |
 | <code>rounded(self, radius: <a href="sigil-style.html#radius">Radius</a>) -&gt; Self</code> |  |
@@ -948,6 +989,7 @@
 | <code>height(self, height: impl <a href="sigil-layout.html#intopx">IntoPx</a>) -&gt; Self</code> |  |
 | <code>layout(self, style: <a href="sigil-layout.html#layoutstyle">LayoutStyle</a>) -&gt; Self</code> |  |
 | <code>layout_overrides_mut(&amp;mut self) -&gt; &amp;mut <a href="sigil-widgets-layout_ext.html#layoutoverrides">LayoutOverrides</a></code> |  |
+| <code>map_node(self, f: impl FnOnce(<a href="sigil-kernel.html#nodebuilder">NodeBuilder</a>) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> + 'static) -&gt; Self</code> |  |
 | <code>width(self, width: impl <a href="sigil-layout.html#intopx">IntoPx</a>) -&gt; Self</code> |  |
 
 
@@ -968,11 +1010,6 @@
 <pre>pub fn <a href="#axis_drag">axis_drag</a>&lt;S&gt;(node: <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a>, axis: <a href="sigil-widgets.html#axis">Axis</a>, snapshot: impl Fn() -&gt; S + 'static, on_delta: impl Fn(S, f32) + 'static, on_end: impl Fn() + 'static) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> where S: Clone + 'static</pre>
 
 
-### `badge`
-
-<pre>pub fn <a href="#badge">badge</a>(label: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; <a href="sigil-widgets.html#chipbuilder">ChipBuilder</a></pre>
-
-
 ### `button`
 
 <pre>pub fn <a href="#button">button</a>(label: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;) -&gt; <a href="sigil-widgets.html#buttonbuilder">ButtonBuilder</a></pre>
@@ -985,7 +1022,7 @@
 
 ### `chart`
 
-<pre>pub fn <a href="#chart">chart</a>(values: impl IntoIterator&lt;Item = f32&gt;) -&gt; <a href="sigil-widgets.html#chartbuilder">ChartBuilder</a></pre>
+<pre>pub fn <a href="#chart">chart</a>(values: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;Vec&lt;f32&gt;&gt;) -&gt; <a href="sigil-widgets.html#chartbuilder">ChartBuilder</a></pre>
 
 
 ### `checkbox`
@@ -1050,7 +1087,7 @@
 
 ### `diff`
 
-<pre>pub fn <a href="#diff">diff</a>(patch: impl Into&lt;String&gt;) -&gt; <a href="sigil-widgets.html#diffbuilder">DiffBuilder</a></pre>
+<pre>pub fn <a href="#diff">diff</a>(patch: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;String&gt;) -&gt; <a href="sigil-widgets.html#diffbuilder">DiffBuilder</a></pre>
 
 
 ### `divider_horizontal`
@@ -1228,6 +1265,11 @@
 <pre>pub fn <a href="#markdown_inline">markdown_inline</a>(source: &amp;str) -&gt; <a href="sigil-kernel.html#textbuilder">TextBuilder</a></pre>
 
 
+### `match_status`
+
+<pre>pub fn <a href="#match_status">match_status</a>&lt;T: 'static, E: 'static&gt;(status: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;<a href="sigil-tasks.html#status">Status</a>&lt;T, E&gt;&gt;) -&gt; <a href="sigil-kernel.html#statusview">StatusView</a>&lt;T, E&gt;</pre>
+
+
 ### `menu`
 
 <pre>pub fn <a href="#menu">menu</a>(open: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;) -&gt; <a href="sigil-widgets.html#menubuilder">MenuBuilder</a></pre>
@@ -1240,7 +1282,7 @@
 
 ### `mermaid`
 
-<pre>pub fn <a href="#mermaid">mermaid</a>(source: impl Into&lt;String&gt;) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
+<pre>pub fn <a href="#mermaid">mermaid</a>(source: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;String&gt;) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
 
 
 ### `modal`
@@ -1320,7 +1362,7 @@
 
 ### `segmented`
 
-<pre>pub const fn <a href="#segmented">segmented</a>(active: <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;, labels: Vec&lt;String&gt;) -&gt; <a href="sigil-widgets.html#segmentedbuilder">SegmentedBuilder</a></pre>
+<pre>pub fn <a href="#segmented">segmented</a>(active: <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;, labels: Vec&lt;String&gt;) -&gt; <a href="sigil-widgets.html#segmentedbuilder">SegmentedBuilder</a></pre>
 
 
 ### `set_theme`
@@ -1340,12 +1382,7 @@
 
 ### `sidebar`
 
-<pre>pub fn <a href="#sidebar">sidebar</a>(child: impl <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
-
-
-### `sidebar_width`
-
-<pre>pub fn <a href="#sidebar_width">sidebar_width</a>(width: impl <a href="sigil-layout.html#intopx">IntoPx</a>, child: impl <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
+<pre>pub fn <a href="#sidebar">sidebar</a>(child: impl <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static) -&gt; <a href="sigil-widgets.html#sidebarbuilder">SidebarBuilder</a></pre>
 
 
 ### `signal`
@@ -1370,7 +1407,7 @@
 
 ### `sparkline`
 
-<pre>pub fn <a href="#sparkline">sparkline</a>(values: impl IntoIterator&lt;Item = f32&gt;) -&gt; <a href="sigil-widgets.html#sparklinebuilder">SparklineBuilder</a></pre>
+<pre>pub fn <a href="#sparkline">sparkline</a>(values: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;Vec&lt;f32&gt;&gt;) -&gt; <a href="sigil-widgets.html#sparklinebuilder">SparklineBuilder</a></pre>
 
 
 ### `spawn`
@@ -1390,7 +1427,7 @@
 
 ### `splitter`
 
-<pre>pub const fn <a href="#splitter">splitter</a>(orientation: <a href="sigil-widgets.html#splitterorientation">SplitterOrientation</a>) -&gt; <a href="sigil-widgets.html#splitterbuilder">SplitterBuilder</a></pre>
+<pre>pub fn <a href="#splitter">splitter</a>(orientation: <a href="sigil-widgets.html#orientation">Orientation</a>) -&gt; <a href="sigil-widgets.html#splitterbuilder">SplitterBuilder</a></pre>
 
 
 ### `status_bar`
@@ -1401,6 +1438,11 @@
 ### `surface`
 
 <pre>pub fn <a href="#surface">surface</a>(key: u64) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
+
+
+### `switch`
+
+<pre>pub fn <a href="#switch">switch</a>&lt;K: Clone + PartialEq + 'static&gt;(key: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;K&gt;) -&gt; <a href="sigil-kernel.html#switchbuilder">SwitchBuilder</a>&lt;K&gt;</pre>
 
 
 ### `table`
@@ -1416,6 +1458,11 @@
 ### `task`
 
 <pre>pub fn <a href="#task-1">task</a>&lt;T, E, F, Fut&gt;(make: F) -&gt; <a href="sigil-tasks.html#task">Task</a>&lt;T, E&gt; where T: Send + 'static, E: Send + 'static, F: Fn() -&gt; Fut + 'static, Fut: Future&lt;Output = Result&lt;T, E&gt;&gt; + Send + 'static</pre>
+
+
+### `task_with`
+
+<pre>pub fn <a href="#task_with">task_with</a>&lt;A, T, E, F, Fut&gt;(make: F) -&gt; <a href="sigil-tasks.html#task">Task</a>&lt;T, E, A&gt; where A: 'static, T: Send + 'static, E: Send + 'static, F: Fn(A) -&gt; Fut + 'static, Fut: Future&lt;Output = Result&lt;T, E&gt;&gt; + Send + 'static</pre>
 
 
 ### `terminal`
@@ -1460,7 +1507,7 @@
 
 ### `virtual_list`
 
-<pre>pub fn <a href="#virtual_list">virtual_list</a>&lt;T, R, I&gt;(items: I, render: R) -&gt; <a href="sigil-widgets.html#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt; where T: 'static, R: Fn(usize, &amp;T) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> + 'static, I: <a href="sigil-widgets.html#intolist">IntoList</a>&lt;T, R&gt;</pre>
+<pre>pub fn <a href="#virtual_list">virtual_list</a>&lt;T, R, N, I&gt;(items: I, render: R) -&gt; <a href="sigil-widgets.html#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt; where T: 'static, R: Fn(usize, &amp;T) -&gt; N + 'static, N: <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static, I: <a href="sigil-widgets.html#intolist">IntoList</a>&lt;T, R&gt;</pre>
 
 
 ### `watch_theme`

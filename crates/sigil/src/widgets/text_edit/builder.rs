@@ -16,12 +16,20 @@ use crate::clipboard::{Clipboard, clipboard};
 
 pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SubmitKey {
+    #[default]
+    CtrlEnter,
+    Enter,
+}
+
 pub struct TextEditBuilder {
     pub(super) value: Signal<String>,
     pub(super) placeholder: TextContent,
     pub(super) disabled: Option<Signal<bool>>,
     pub(super) change: Option<TextChange>,
     pub(super) submit: Option<TextChange>,
+    submit_key: SubmitKey,
     pub(super) clipboard: Option<Rc<dyn Clipboard>>,
     pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) caret_position: Option<Signal<usize>>,
@@ -49,6 +57,7 @@ impl TextEditBuilder {
             disabled: None,
             change: None,
             submit: None,
+            submit_key: SubmitKey::CtrlEnter,
             clipboard: None,
             caret_visible: None,
             caret_position: None,
@@ -108,6 +117,12 @@ impl TextEditBuilder {
     #[must_use]
     pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.change = Some(Rc::new(f));
+        self
+    }
+
+    #[must_use]
+    pub const fn submit_on(mut self, key: SubmitKey) -> Self {
+        self.submit_key = key;
         self
     }
 
@@ -174,7 +189,7 @@ impl TextEditBuilder {
             user_overlay,
             self.chrome,
         );
-        let node = interaction.install(attach_key_handlers(node, runtime.clone()));
+        let node = interaction.install(attach_key_handlers(node, runtime.clone(), self.submit_key));
         let mut node = attach_ime_handlers(node, &runtime);
         for mutate in mutators {
             node = mutate(node);
@@ -203,7 +218,11 @@ impl WidgetLayoutExt for TextEditBuilder {
 impl IntoNode for TextEditBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
         let (autofocus, trigger) = (self.autofocus, self.focus_trigger);
-        let id = self.into_node_builder().build(cx);
+        let id = self
+            .layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx);
         if autofocus {
             crate::events::request_focus(id);
         }

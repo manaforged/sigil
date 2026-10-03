@@ -1,6 +1,11 @@
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use std::rc::Rc;
+
+use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, Tone, space};
+use crate::reactive::{Reactive, derived};
+use crate::style::{
+    BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, Tone, space,
+};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::kernel::text;
@@ -13,34 +18,49 @@ pub enum ChartMark {
     Line,
 }
 
+#[derive(Clone, PartialEq)]
 pub(super) struct ChartSeries {
     name: String,
     values: Vec<f32>,
     tone: Tone,
 }
 
+struct SeriesSource {
+    name: String,
+    values: Rc<dyn Reactive<Vec<f32>>>,
+    tone: Tone,
+}
+
+impl SeriesSource {
+    fn read(&self) -> ChartSeries {
+        ChartSeries {
+            name: self.name.clone(),
+            values: self.values.read(),
+            tone: self.tone,
+        }
+    }
+}
+
 pub struct ChartBuilder {
-    series: Vec<ChartSeries>,
+    series: Vec<SeriesSource>,
     labels: Vec<String>,
     mark: ChartMark,
-    height: f32,
-    width: f32,
     layout_overrides: LayoutOverrides,
+    style_accumulator: Style,
 }
 
 #[must_use]
-pub fn chart(values: impl IntoIterator<Item = f32>) -> ChartBuilder {
+pub fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder {
     ChartBuilder {
-        series: vec![ChartSeries {
+        series: vec![SeriesSource {
             name: String::new(),
-            values: values.into_iter().collect(),
+            values: Rc::new(values),
             tone: Tone::Primary,
         }],
         labels: Vec::new(),
         mark: ChartMark::Bar,
-        height: 180.0,
-        width: 280.0,
         layout_overrides: LayoutOverrides::new(),
+        style_accumulator: Style::new(),
     }
 }
 
@@ -75,40 +95,46 @@ impl ChartBuilder {
     pub fn series(
         mut self,
         name: impl Into<String>,
-        values: impl IntoIterator<Item = f32>,
+        values: impl Reactive<Vec<f32>>,
         tone: Tone,
     ) -> Self {
-        self.series.push(ChartSeries {
+        self.series.push(SeriesSource {
             name: name.into(),
-            values: values.into_iter().collect(),
+            values: Rc::new(values),
             tone,
         });
         self
     }
 
-    #[must_use]
-    pub const fn height(mut self, px: f32) -> Self {
-        self.height = px.max(48.0);
-        self
+    fn frame_size(&mut self) -> (f32, f32) {
+        let width = self
+            .layout_overrides
+            .width_hint()
+            .map_or(280.0, |px| px.max(80.0));
+        let height = self
+            .layout_overrides
+            .height_hint()
+            .map_or(180.0, |px| px.max(48.0));
+        self.layout_overrides.width(width);
+        self.layout_overrides.height(height);
+        (width, height)
     }
 
-    #[must_use]
-    pub const fn width(mut self, px: f32) -> Self {
-        self.width = px.max(80.0);
-        self
-    }
-
-    fn into_node_builder(self) -> NodeBuilder {
-        let count = self
-            .series
-            .iter()
-            .map(|series| series.values.len())
-            .max()
-            .unwrap_or(0);
-        let root = container()
+    fn into_node_builder(mut self) -> NodeBuilder {
+        let (width, height) = self.frame_size();
+        let sources = std::mem::take(&mut self.series);
+        let series = derived(move || sources.iter().map(SeriesSource::read).collect::<Vec<_>>());
+        let labels = Rc::new(std::mem::take(&mut self.labels));
+        let label_names = Rc::clone(&labels);
+        let description = derived(move || series.with(|series| summary(series, &label_names)));
+        let mark = self.mark;
+        let paint = std::mem::replace(&mut self.style_accumulator, Style::new());
+        let mut root = container()
             .role(Role::Figure)
             .label("Chart")
-            .description(summary(&self.series, &self.labels))
+            .mutate(move |target| {
+                target.a11y.description = Some(AccessibleName::Derived(description));
+            })
             .class([
                 Radius::Md.atom(),
                 StyleAtom::BorderWidth(BORDER_WIDTH),
@@ -118,18 +144,32 @@ impl ChartBuilder {
             .with(
                 self.layout_overrides.apply(
                     LayoutStyle::flex_column()
-                        .width(self.width)
-                        .height(self.height)
+                        .width(width)
+                        .height(height)
                         .padding(space(3))
                         .gap(space(2)),
                 ),
             );
-        if count == 0 || self.series.iter().all(|s| s.values.is_empty()) {
-            return root
+        if !paint.is_empty() {
+            root = root.style(paint);
+        }
+        root.children_reactive(move || series.with(|series| content(series, &labels, mark)))
+    }
+}
+
+fn content(series: &[ChartSeries], labels: &[String], mark: ChartMark) -> Vec<NodeBuilder> {
+    let count = series
+        .iter()
+        .map(|series| series.values.len())
+        .max()
+        .unwrap_or(0);
+    if count == 0 {
+        return vec![
+            container()
                 .layout(
                     LayoutStyle::flex_column()
-                        .width(self.width)
-                        .height(self.height)
+                        .fill_width()
+                        .grow(1.0)
                         .align_items(AlignItems::Center)
                         .justify_content(JustifyContent::Center),
                 )
@@ -138,10 +178,10 @@ impl ChartBuilder {
                         .nowrap()
                         .class("text-sm")
                         .class(Token::OnSurfaceMuted.text()),
-                );
-        }
-        plot::draw(root, &self.series, &self.labels, self.mark, count)
+                ),
+        ];
     }
+    plot::draw(series, labels, mark, count)
 }
 
 fn summary(series: &[ChartSeries], labels: &[String]) -> String {
@@ -170,7 +210,16 @@ fn summary(series: &[ChartSeries], labels: &[String]) -> String {
 
 impl IntoNode for ChartBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
+    }
+}
+
+impl PaintTarget for ChartBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 

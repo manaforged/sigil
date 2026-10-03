@@ -6,8 +6,8 @@ use crate::layout::PopupSide;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Owner, OwnerId, Signal, signal};
 use crate::style::{
-    BORDER_WIDTH, Metrics, Paint, PaintTarget, Radius, Size, StateVariants, Style, StyleAtom,
-    StyleSlot, Token, space,
+    BORDER_WIDTH, ControlSize, Metrics, Paint, PaintTarget, Radius, StateVariants, Style,
+    StyleAtom, StyleSlot, Token, space,
 };
 
 use super::super::interactive::interactive;
@@ -95,7 +95,10 @@ impl PaintTarget for MenuBarBuilder {
 
 impl IntoNode for MenuBarBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 
@@ -159,7 +162,7 @@ fn interactive_trigger(
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .height(Metrics::current().control_height(Size::Compact))
+                .height(Metrics::current().control_height(ControlSize::Compact))
                 .padding_x(space(2))
                 .align_items(AlignItems::Center),
         )

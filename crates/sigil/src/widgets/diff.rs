@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container, node};
 use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
+use crate::reactive::{Reactive, derived};
 use crate::style::{BORDER_WIDTH, Paint, PaintTarget, Style, StyleSlot, Token, space};
 
 use super::button::{ButtonBuilder, button};
@@ -17,15 +18,15 @@ use rows::{source_row, split_row, unified_rows, weights};
 const GUTTER_W: f32 = 56.0;
 pub(super) const ROW_INSET: f32 = space(2);
 
-const CHOICE_FONT_PX: i16 = 12;
+const CHOICE_FONT_PX: f32 = 12.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DiffLayout {
+pub enum DiffView {
     Split,
     Unified,
 }
 
-impl DiffLayout {
+impl DiffView {
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
@@ -63,28 +64,35 @@ fn overflow_row() -> NodeBuilder {
     )
 }
 
-type LayoutPick = Rc<dyn Fn(DiffLayout)>;
+type ViewChange = Rc<dyn Fn(DiffView)>;
 
-pub struct DiffBuilder {
-    patch: String,
+#[derive(Clone)]
+struct DiffShape {
     path: Option<String>,
     status: Option<String>,
-    layout: DiffLayout,
+    view: DiffView,
     max_rows: usize,
-    pick: Option<LayoutPick>,
+    on_change: Option<ViewChange>,
+}
+
+pub struct DiffBuilder {
+    patch: Rc<dyn Reactive<String>>,
+    shape: DiffShape,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
 #[must_use]
-pub fn diff(patch: impl Into<String>) -> DiffBuilder {
+pub fn diff(patch: impl Reactive<String>) -> DiffBuilder {
     DiffBuilder {
-        patch: patch.into(),
-        path: None,
-        status: None,
-        layout: DiffLayout::Split,
-        max_rows: usize::MAX,
-        pick: None,
+        patch: Rc::new(patch),
+        shape: DiffShape {
+            path: None,
+            status: None,
+            view: DiffView::Split,
+            max_rows: usize::MAX,
+            on_change: None,
+        },
         style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
     }
@@ -93,32 +101,96 @@ pub fn diff(patch: impl Into<String>) -> DiffBuilder {
 impl DiffBuilder {
     #[must_use]
     pub fn path(mut self, path: impl Into<String>) -> Self {
-        self.path = Some(path.into());
+        self.shape.path = Some(path.into());
         self
     }
 
     #[must_use]
     pub fn status(mut self, status: impl Into<String>) -> Self {
-        self.status = Some(status.into());
+        self.shape.status = Some(status.into());
         self
     }
 
     #[must_use]
-    pub const fn layout(mut self, layout: DiffLayout) -> Self {
-        self.layout = layout;
+    pub const fn view(mut self, view: DiffView) -> Self {
+        self.shape.view = view;
         self
     }
 
     #[must_use]
     pub const fn max_rows(mut self, rows: usize) -> Self {
-        self.max_rows = rows;
+        self.shape.max_rows = rows;
         self
     }
 
     #[must_use]
-    pub fn choose(mut self, pick: impl Fn(DiffLayout) + 'static) -> Self {
-        self.pick = Some(Rc::new(pick));
+    pub fn change(mut self, on_change: impl Fn(DiffView) + 'static) -> Self {
+        self.shape.on_change = Some(Rc::new(on_change));
         self
+    }
+
+    fn into_node_builder(self) -> NodeBuilder {
+        let source = self.patch;
+        let patch = derived(move || source.read());
+        let summary = derived(move || {
+            let (added, removed) = patch.with(|body| counts(&pairs(body)));
+            format!("{added} added, {removed} removed")
+        });
+        let shape = self.shape;
+        let mut root = container()
+            .role(Role::List)
+            .label(shape.path.clone().unwrap_or_else(|| String::from("Diff")))
+            .mutate(move |target| target.a11y.description = Some(AccessibleName::Derived(summary)))
+            .layout(self.layout_overrides.clone().apply(root_layout()))
+            .class("rounded")
+            .class(Token::Field.bg())
+            .border_w(BORDER_WIDTH.0)
+            .border_color(Token::Border)
+            .children_reactive(move || patch.with(|body| shape.rows(body)));
+        if !self.style_accumulator.is_empty() {
+            root = root.style(self.style_accumulator);
+        }
+        root
+    }
+}
+
+fn counts(pairs: &[Pair]) -> (usize, usize) {
+    let changed = |side: fn(&Pair) -> bool| {
+        pairs
+            .iter()
+            .filter(|pair| pair.kind == Kind::Change && side(pair))
+            .count()
+    };
+    (
+        changed(|pair| pair.right.is_some()),
+        changed(|pair| pair.left.is_some()),
+    )
+}
+
+impl DiffShape {
+    fn rows(&self, patch: &str) -> Vec<Box<dyn IntoNode>> {
+        let pairs = pairs(patch);
+        let (added, removed) = counts(&pairs);
+        let mut rows = vec![node(self.header(added, removed))];
+        if self.view == DiffView::Split {
+            rows.push(node(Self::labels(weights(&pairs))));
+        }
+        rows.extend(self.body(&pairs).into_iter().map(node));
+        if let Some(status) = self.status.clone() {
+            rows.push(node(
+                text(status)
+                    .nowrap()
+                    .layout(
+                        LayoutStyle::block()
+                            .fill_width()
+                            .padding_x(ROW_INSET)
+                            .min_size(0.0, 0.0),
+                    )
+                    .class("text-xs")
+                    .class(Token::Gray10.text()),
+            ));
+        }
+        rows
     }
 
     fn header(&self, added: usize, removed: usize) -> NodeBuilder {
@@ -151,11 +223,11 @@ impl DiffBuilder {
                     .class("text-xs font-mono")
                     .class(Token::Error11.text()),
             );
-        for choice in [DiffLayout::Split, DiffLayout::Unified] {
-            let active = choice == self.layout;
+        for choice in [DiffView::Split, DiffView::Unified] {
+            let active = choice == self.view;
             let choice_button = paint_choice(button(choice.name()).ghost(), active);
-            row = row.child(match self.pick.clone() {
-                Some(pick) => choice_button.activate(move || pick(choice)),
+            row = row.child(match self.on_change.clone() {
+                Some(on_change) => choice_button.activate(move || on_change(choice)),
                 None => choice_button,
             });
         }
@@ -196,10 +268,9 @@ impl DiffBuilder {
             .child(side("After", rw, false))
     }
 
-    fn body(&self) -> Vec<NodeBuilder> {
-        let pairs = pairs(&self.patch);
-        let split = self.layout == DiffLayout::Split;
-        let weights = weights(&pairs);
+    fn body(&self, pairs: &[Pair]) -> Vec<NodeBuilder> {
+        let split = self.view == DiffView::Split;
+        let weights = weights(pairs);
         let mut rows: Vec<NodeBuilder> = Vec::new();
         let (mut old, mut new, mut index) = (0, 0, 0);
         while let Some(pair) = pairs.get(index) {
@@ -208,7 +279,7 @@ impl DiffBuilder {
                 break;
             }
             if !split && pair.kind == Kind::Change {
-                let count = change_run(&pairs, index);
+                let count = change_run(pairs, index);
                 let group = pairs.get(index..index + count).unwrap_or_default();
                 rows.extend(unified_rows(group, old, new));
                 old += group.iter().filter(|item| item.left.is_some()).count();
@@ -248,50 +319,6 @@ impl DiffBuilder {
         }
         rows
     }
-
-    fn into_node_builder(self) -> NodeBuilder {
-        let pairs = pairs(&self.patch);
-        let added = pairs
-            .iter()
-            .filter(|pair| pair.kind == Kind::Change && pair.right.is_some())
-            .count();
-        let removed = pairs
-            .iter()
-            .filter(|pair| pair.kind == Kind::Change && pair.left.is_some())
-            .count();
-        let mut root = container()
-            .role(Role::List)
-            .label(self.path.clone().unwrap_or_else(|| String::from("Diff")))
-            .description(format!("{added} added, {removed} removed"))
-            .layout(self.layout_overrides.clone().apply(root_layout()))
-            .class("rounded")
-            .class(Token::Field.bg())
-            .border_w(BORDER_WIDTH.0)
-            .border_color(Token::Border)
-            .child(self.header(added, removed));
-        if self.layout == DiffLayout::Split {
-            root = root.child(Self::labels(weights(&pairs)));
-        }
-        root = self.body().into_iter().fold(root, NodeBuilder::child);
-        if let Some(status) = self.status.clone() {
-            root = root.child(
-                text(status)
-                    .nowrap()
-                    .layout(
-                        LayoutStyle::block()
-                            .fill_width()
-                            .padding_x(ROW_INSET)
-                            .min_size(0.0, 0.0),
-                    )
-                    .class("text-xs")
-                    .class(Token::Gray10.text()),
-            );
-        }
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
-        root
-    }
 }
 
 impl PaintTarget for DiffBuilder {
@@ -316,7 +343,10 @@ fn root_layout() -> LayoutStyle {
 
 impl IntoNode for DiffBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 

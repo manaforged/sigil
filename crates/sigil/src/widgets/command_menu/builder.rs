@@ -5,8 +5,8 @@ use crate::style::{PaintTarget, Style, StyleSlot};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::Activate;
-use super::nav::SelectObserver;
-use super::render::into_node_builder;
+use super::nav::SubmitObserver;
+use super::render::{MenuParts, into_node_builder};
 
 pub(super) enum EntryDef {
     Leaf {
@@ -81,8 +81,9 @@ impl SubmenuBuilder {
 #[derive(Default)]
 pub struct CommandMenuBuilder {
     level: LevelDef,
-    on_select: Option<SelectObserver>,
+    on_submit: Option<SubmitObserver>,
     on_cancel: Option<Activate>,
+    placeholder: String,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
@@ -117,8 +118,14 @@ impl CommandMenuBuilder {
     }
 
     #[must_use]
-    pub fn select(mut self, cb: impl Fn(&str) + 'static) -> Self {
-        self.on_select = Some(Rc::new(cb));
+    pub fn submit(mut self, cb: impl Fn(&str) + 'static) -> Self {
+        self.on_submit = Some(Rc::new(cb));
+        self
+    }
+
+    #[must_use]
+    pub fn placeholder(mut self, text: impl Into<String>) -> Self {
+        self.placeholder = text.into();
         self
     }
 
@@ -143,13 +150,16 @@ impl PaintTarget for CommandMenuBuilder {
 
 impl IntoNode for CommandMenuBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        into_node_builder(
-            self.level,
-            self.on_select,
-            self.on_cancel,
-            self.style_accumulator,
-            self.layout_overrides,
-        )
-        .build(cx)
+        let hooks = self.layout_overrides.hooks();
+        hooks
+            .finish(into_node_builder(MenuParts {
+                level: self.level,
+                on_submit: self.on_submit,
+                on_cancel: self.on_cancel,
+                placeholder: self.placeholder,
+                style_accumulator: self.style_accumulator,
+                layout_overrides: self.layout_overrides,
+            }))
+            .build(cx)
     }
 }

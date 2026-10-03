@@ -17,7 +17,6 @@ pub struct ProgressBuilder {
     value: Signal<f32>,
     max: f32,
     pub indeterminate: bool,
-    track_height: f32,
     tone: Tone,
     name: AccessibleName,
     style_accumulator: Style,
@@ -36,7 +35,6 @@ impl ProgressBuilder {
             value,
             max: max.max(f32::EPSILON),
             indeterminate: false,
-            track_height: TRACK_HEIGHT,
             tone: Tone::Primary,
             name: AccessibleName::from("Progress"),
             style_accumulator: Style::new(),
@@ -47,12 +45,6 @@ impl ProgressBuilder {
     #[must_use]
     pub const fn indeterminate(mut self) -> Self {
         self.indeterminate = true;
-        self
-    }
-
-    #[must_use]
-    pub const fn height(mut self, px: f32) -> Self {
-        self.track_height = px;
         self
     }
 
@@ -71,7 +63,7 @@ impl ProgressBuilder {
     fn into_node_builder(self) -> NodeBuilder {
         let value = self.value;
         let max = self.max;
-        let track_h = self.track_height;
+        let track_h = self.layout_overrides.height_hint().unwrap_or(TRACK_HEIGHT);
         let is_indeterminate = self.indeterminate;
         let style_accumulator = self.style_accumulator;
 
@@ -109,7 +101,10 @@ impl WidgetLayoutExt for ProgressBuilder {
 
 impl IntoNode for ProgressBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 

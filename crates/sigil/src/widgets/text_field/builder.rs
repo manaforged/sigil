@@ -89,8 +89,8 @@ impl TextFieldBuilder {
     }
 
     #[must_use]
-    pub const fn invalid_when(mut self, invalid: Signal<bool>) -> Self {
-        self.invalid = Some(invalid);
+    pub fn invalid_when(mut self, invalid: impl crate::reactive::Reactive<bool>) -> Self {
+        self.invalid = Some(invalid.into_signal());
         self
     }
 
@@ -193,8 +193,9 @@ impl TextFieldBuilder {
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
+        let hooks = self.layout_overrides.hooks();
         let node = node.with(self.layout_overrides.apply(field_layout()));
-        (node, runtime)
+        (hooks.finish(node), runtime)
     }
 }
 

@@ -17,7 +17,7 @@ pub struct MenuItem {
     pub shortcut: Option<String>,
     pub disabled: bool,
     pub submenu_indicator: bool,
-    pub(super) select: Option<Rc<dyn Fn()>>,
+    pub(super) on_activate: Option<Rc<dyn Fn()>>,
 }
 
 impl std::fmt::Debug for MenuItem {
@@ -27,7 +27,7 @@ impl std::fmt::Debug for MenuItem {
             .field("shortcut", &self.shortcut)
             .field("disabled", &self.disabled)
             .field("submenu_indicator", &self.submenu_indicator)
-            .field("select", &self.select.is_some())
+            .field("on_activate", &self.on_activate.is_some())
             .finish()
     }
 }
@@ -40,7 +40,7 @@ impl MenuItem {
             shortcut: None,
             disabled: false,
             submenu_indicator: false,
-            select: None,
+            on_activate: None,
         }
     }
 
@@ -63,8 +63,8 @@ impl MenuItem {
     }
 
     #[must_use]
-    pub fn select(mut self, select: impl Fn() + 'static) -> Self {
-        self.select = Some(Rc::new(select));
+    pub fn activate(mut self, on_activate: impl Fn() + 'static) -> Self {
+        self.on_activate = Some(Rc::new(on_activate));
         self
     }
 }
@@ -134,6 +134,7 @@ impl MenuBuilder {
         let width = self.layout_overrides.width_hint().unwrap_or(PANEL_WIDTH);
         let (layout, placement) = placement(self.anchor, width, height);
         let menu_label = self.label.unwrap_or_else(|| String::from("Menu"));
+        let hooks = self.layout_overrides.hooks();
 
         let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
         let mut panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
@@ -146,14 +147,15 @@ impl MenuBuilder {
             panel = panel.style(self.style_accumulator);
         }
 
-        container()
+        let root = container()
             .layout(layout)
             .style_reactive(move || open_display(open))
             .pointer_down(move |event| {
                 open.set(false);
                 event.stop_propagation();
             })
-            .child(panel)
+            .child(panel);
+        hooks.finish(root)
     }
 }
 

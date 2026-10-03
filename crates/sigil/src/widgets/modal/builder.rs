@@ -225,7 +225,10 @@ impl PaintTarget for ModalBuilder {
 
 impl IntoNode for ModalBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
     }
 }
 
