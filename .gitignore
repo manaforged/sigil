@@ -18,24 +18,6 @@ coverage/
 mutants.out/
 mutants.out.old/
 showcase/
-marketing/
-docs/reviews/
-
-# Internal working docs — local only, never pushed. The public doc
-# surface is docs/api.md plus docs/guide/ plus rustdoc (decision
-# records are committed — see docs/guide/decisions/README.md); everything
-# else under docs/ stays out of the index (untracked 2026-08-19).
-docs/audits/
-docs/benchmarks/
-docs/perf/
-docs/plans/
-docs/retros/
-docs/specs/
-docs/spikes/
-docs/visual-audits/
-docs/bugs.md
-docs/followups.md
-docs/r14-simplify-punch-list.md
 
 
 # WASM demo build output — rebuilt at publish time
