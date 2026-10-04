@@ -105,7 +105,8 @@ feature. `desktop` is the default. `terminal` adds the terminal host.
 - No mobile host. The web host has no system fonts, no clipboard
   paste, and no accessibility tree, and it runs tasks on the page's
   one thread; see [Web host](docs/guide/web.md).
-- The terminal host has no IME, no rounded corners, and no shadows.
+- The terminal host has no rounded corners and no shadows. It composes
+  CJK input through the terminal's own input method.
   Images render through the terminal graphics protocol on Kitty,
   Ghostty, WezTerm, Konsole, iTerm2, Warp, and Sixel terminals. Other
   terminals show sextant glyphs.
@@ -124,11 +125,11 @@ named `story-*`; each counts the Sigil names it uses.
 
 | Measure | Value |
 | --- | --- |
-| surface | 3294 items in 36 modules: 439 types, 257 functions, 1228 methods, 520 fields, 790 variants, 60 constants; 495 aliases |
-| app tier | 174 prelude names; budget 174 |
+| surface | 3304 items in 36 modules: 444 types, 251 functions, 1238 methods, 520 fields, 790 variants, 61 constants; 510 aliases |
+| app tier | 179 prelude names; budget 179 |
 | journeys | 8 journeys, 8 at budget: story-01-hello 6/6, story-02-counter 13/13, story-03-form 19/19, story-04-todo 24/24, story-05-nav 17/17, story-07-async 19/19, story-08-component 14/14, story-09-test 8/8 |
-| documented | 719 of 719 module-level items (100%): 0 by rustdoc, 719 by reference docs |
-| doc paths | 111 reference rows name paths that are not public |
+| documented | 718 of 718 module-level items (100%): 0 by rustdoc, 718 by reference docs |
+| doc paths | 106 reference rows name paths that are not public |
 | findings | 0 deny, 0 warn |
 
 <!-- /truesight -->
@@ -139,6 +140,7 @@ named `story-*`; each counts the Sigil names it uses.
 | --- | --- |
 | [User guide](docs/guide/README.md) | Task pages in reading order. Build the book with `mdbook serve docs`. |
 | [Troubleshooting](docs/guide/troubleshooting.md) | No GPU, images in tmux, and terminal colour. |
+| [GUI and TUI](docs/guide/hosts.md) | Build for the window, the terminal, or both; host-only APIs; how to split host code. |
 | [Recipes](docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, terminal hooks, and screen readers. |
 | [API map](docs/api.md) | Every exported item with its signature and an example. Plain Markdown for tools too. |
 | [Architecture](docs/guide/arch/overview.md) | How it works inside. |

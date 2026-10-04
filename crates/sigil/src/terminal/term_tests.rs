@@ -1,4 +1,5 @@
 use super::*;
+use crate::terminal::caps::Backdrop;
 
 static SERIAL: Mutex<()> = Mutex::new(());
 
@@ -83,4 +84,17 @@ fn a_panic_on_another_thread_leaves_the_terminal_alone() {
         !restored,
         "a worker panic must not restore the terminal the UI thread still drives"
     );
+}
+
+#[test]
+fn caps_reports_the_probe_only_while_the_host_holds_it() {
+    let probed = Caps {
+        backdrop: Some(Backdrop::Light),
+        ..Caps::default()
+    };
+    assert_eq!(caps(), None);
+    CAPS.with(|slot| slot.set(Some(probed)));
+    assert_eq!(caps().and_then(|caps| caps.backdrop), Some(Backdrop::Light));
+    CAPS.with(|slot| slot.set(None));
+    assert_eq!(caps(), None);
 }

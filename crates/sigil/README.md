@@ -102,7 +102,7 @@ With the `desktop` feature, `open(url)` passes an `http`, `https`, or
 | `clipboard-image` | no | `sigil::clipboard::image()`, images from the system clipboard. |
 | `image-decode` | no | `image_bytes`, and `data:` images in `markdown`. |
 | `dialog` | no | `sigil::app::dialog`: native open, save, folder, message, and confirm dialogs. Turns on `desktop`. |
-| `menu` | no | `sigil::menu`: native application menus. Turns on `desktop`. |
+| `menu` | no | `sigil::app::menu`: native application menus. Turns on `desktop`. |
 | `tray` | no | `sigil::app::tray`: system tray icons and events. Turns on `menu`. |
 | `audio` | no | `Player` for audio playback. |
 | `hot` | no | Code hot reload under `dx serve --hot-patch`: `run` mounts the root again after each patch; an embed host uses `Host::mount_hot`. Uses `subsecond` and `dioxus-devtools`. Not on wasm. |
@@ -140,7 +140,7 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 
 <!-- truesight:surface sigil-ui -->
 
-3294 public items (439 types, 257 functions, 1228 methods, 520 fields, 790 variants, 60 constants) at 3789 paths; 495 are re-export aliases. 1813 trait impl lines, 202 inherent impl lines. 36 modules, 1 re-export only.
+3304 public items (444 types, 251 functions, 1238 methods, 520 fields, 790 variants, 61 constants) at 3814 paths; 510 are re-export aliases. 1825 trait impl lines, 206 inherent impl lines. 36 modules, 1 re-export only.
 
 | Module | Items | Types | Functions | Methods | Aliases |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -149,37 +149,37 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 | `sigil::animation` | 76 | 9 | 0 | 33 | 0 |
 | `sigil::animation_runtime` | 52 | 8 | 8 | 23 | 0 |
 | `sigil::animation_runtime::presets` | 8 | 0 | 0 | 0 | 0 |
-| `sigil::app` | 116 | 23 | 17 | 11 | 0 |
+| `sigil::app` | 114 | 23 | 15 | 11 | 0 |
 | `sigil::app::dialog` | 15 | 2 | 5 | 8 | 0 |
-| `sigil::app::menu` | 2 | 0 | 2 | 0 | 0 |
+| `sigil::app::menu` | 3 | 0 | 3 | 0 | 0 |
 | `sigil::app::tray` | 2 | 0 | 2 | 0 | 0 |
 | `sigil::bidi` | 11 | 2 | 2 | 4 | 0 |
 | `sigil::clipboard` | 16 | 5 | 5 | 4 | 0 |
-| `sigil::events` | 192 | 26 | 6 | 64 | 0 |
+| `sigil::events` | 193 | 26 | 4 | 66 | 0 |
 | `sigil::geometry` | 39 | 7 | 0 | 17 | 0 |
 | `sigil::hal` | 62 | 24 | 0 | 25 | 0 |
 | `sigil::icons` | 12 | 3 | 0 | 2 | 0 |
 | `sigil::icons::builtin` | 9 | 0 | 0 | 0 | 0 |
-| `sigil::kernel` | 198 | 21 | 10 | 105 | 0 |
+| `sigil::kernel` | 209 | 23 | 12 | 112 | 0 |
 | `sigil::layout` | 225 | 30 | 5 | 93 | 0 |
-| `sigil::prelude` (re-export only) | 0 | 0 | 0 | 0 | 495 |
+| `sigil::prelude` (re-export only) | 0 | 0 | 0 | 0 | 510 |
 | `sigil::profile` | 213 | 13 | 19 | 13 | 0 |
-| `sigil::reactive` | 51 | 9 | 14 | 24 | 0 |
+| `sigil::reactive` | 48 | 9 | 11 | 24 | 0 |
 | `sigil::reactive::debug` | 2 | 0 | 2 | 0 | 0 |
 | `sigil::renderer` | 56 | 9 | 1 | 20 | 0 |
 | `sigil::renderer::capture` | 6 | 1 | 2 | 0 | 0 |
 | `sigil::scene` | 251 | 36 | 3 | 52 | 0 |
 | `sigil::shell` | 25 | 5 | 0 | 15 | 0 |
-| `sigil::style` | 589 | 61 | 10 | 174 | 0 |
+| `sigil::style` | 586 | 61 | 7 | 174 | 0 |
 | `sigil::style::palette` | 19 | 1 | 0 | 12 | 0 |
 | `sigil::style::scale` | 27 | 2 | 14 | 3 | 0 |
 | `sigil::style::variant` | 12 | 3 | 0 | 1 | 0 |
-| `sigil::tasks` | 46 | 9 | 8 | 20 | 0 |
-| `sigil::terminal` | 175 | 27 | 33 | 35 | 0 |
+| `sigil::tasks` | 50 | 9 | 10 | 22 | 0 |
+| `sigil::terminal` | 176 | 27 | 34 | 35 | 0 |
 | `sigil::text` | 33 | 5 | 2 | 21 | 0 |
-| `sigil::widgets` | 655 | 87 | 82 | 368 | 0 |
+| `sigil::widgets` | 654 | 90 | 80 | 366 | 0 |
 | `sigil::widgets::interaction` | 11 | 1 | 0 | 10 | 0 |
-| `sigil::widgets::layout_ext` | 15 | 2 | 0 | 13 | 0 |
+| `sigil::widgets::layout_ext` | 16 | 2 | 0 | 14 | 0 |
 
 <!-- /truesight -->
 

@@ -32,6 +32,7 @@
 | [`blocks`](#blocks) | fn |  |
 | [`blocks_window`](#blocks_window) | fn |  |
 | [`calibrate`](#calibrate) | fn |  |
+| [`caps`](#caps-1) | fn |  |
 | [`cell_point`](#cell_point) | fn |  |
 | [`click`](#click) | fn |  |
 | [`detect`](#detect) | fn |  |
@@ -473,6 +474,11 @@
 ### `calibrate`
 
 <pre>pub fn <a href="#calibrate">calibrate</a>(out: &amp;mut impl Write) -&gt; Result&lt;()&gt;</pre>
+
+
+### `caps`
+
+<pre>pub fn <a href="#caps-1">caps</a>() -&gt; Option&lt;<a href="#caps">Caps</a>&gt;</pre>
 
 
 ### `cell_point`

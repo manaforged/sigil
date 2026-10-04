@@ -13,6 +13,39 @@ First release.
 
 ### Added
 
+- `Task::cancel` stops a running task and sets it back to `Idle`; a
+  late result is dropped. `tasks::blocking(f)` runs a subprocess, file
+  read, or other blocking work inside a task without stalling a worker.
+- `kernel::switch(key).case(..).keep_alive(bool)` shows one view per
+  key, and can keep hidden views mounted so they keep their state.
+  `kernel::match_status(status)` shows one view per task status.
+- `Shortcut::primary` and `events::PRIMARY`: Command on macOS, Control
+  elsewhere. `app::menu::accelerator` turns a `Shortcut` into a native
+  menu hint, and the native menu types are re-exported under
+  `app::menu`, so an app needs no direct `muda` dependency.
+- `command_menu` filters its items as you type, ranked with
+  `fuzzy_score`. Enter opens a submenu; Escape goes back one level.
+- `TabsBuilder::labels` takes a signal or closure, and tabs follow it.
+- `task_with(|arg| ..)` and `Task::run_with(arg)`: a task whose runs
+  take an argument. `task` is `task_with` over `()`.
+- `terminal::caps()` returns the capabilities the terminal host probed
+  on entry, such as `Caps::backdrop`, so an app picks a light or dark
+  theme without a second probe.
+- `NodeEventsExt::focus_when(Signal<u64>)` focuses any node or widget
+  each time the signal changes.
+- `TextEditBuilder::submit_on(SubmitKey::Enter)`: Enter submits and
+  Shift+Enter inserts a new line.
+- `sidebar`, `splitter`, `virtual_list`, `chart`, `segmented`, and
+  `image` take the `Paint` methods.
+- `markdown` renders task-list items (`- [ ]`, `- [x]`) as read-only
+  check boxes.
+- The prelude adds `match_status`, `task_with`, `ModalBuilder`,
+  `SortDir`, `SortKey`, `SubmitKey`, and `DiffView`.
+- `sidebar(..).resizable(min, max)` adds a drag handle with keyboard
+  control.
+- `TableState::cycle_sort`, `reverse_sort`, and `select_by` sort and
+  move the selection from app keys.
+
 - A retained widget tree built from components, functions that return
   `impl IntoNode`, driven by reactive signals: `signal`, `derived`, and
   effects.
@@ -43,6 +76,85 @@ First release.
 
 ### Changed
 
+- Host and plumbing items are no longer public where an app has no use
+  for them. Each change below is breaking.
+  - `AppConfig::window`, `canvas`, `min_size`, `user_zoom`, `frameless`,
+    `overlay`, `anchor`, and `resizable` exist only with feature
+    `desktop`; `terminal()` already needed feature `terminal`. A build
+    without a host's feature no longer compiles a call that selects it.
+    Without a call, the host is the window with `desktop`, else the
+    terminal.
+  - `WindowCommand`, `ResizeDirection`, `WindowOpts`, `Anchor`, and
+    `request_window_command` need feature `desktop`, so a terminal-only
+    build does not show them.
+  - `reactive::tick_intervals`, `is_live`, `owner_by_id`,
+    `app::take_exit`, `app::clear_exit`, `events::note_focus_source`,
+    `events::take_window_commands`, and the style merge-warning
+    counters are crate-private.
+- `docs/api.md` lists the methods of every builder and state type.
+- One spelling per job. Each change below is breaking.
+  - `ButtonBuilder::enabled` is removed; use `disabled(..)`.
+  - The `width`/`height(f32)` methods on button, progress, segmented,
+    and chart are removed. `WidgetLayoutExt::width` and `height` size
+    them and also take `cols(..)` and `rows(..)`.
+  - `SplitterOrientation` is removed; `splitter` takes `Orientation`.
+  - `badge` is removed; use `chip`.
+  - `style::Size` is renamed `ControlSize` and is in the prelude.
+  - `font_size` and `line_height_px` take `f32`, like every other
+    length. `line_height` is renamed `line_height_px`, so the unit is in
+    the name, like `letter_spacing_em`.
+  - `visible_when`, `paint_when`, and `invalid_when` take a signal or a
+    closure, like `disabled` and `show`.
+  - `ChipBuilder::tone` takes a tone, a signal, or a closure;
+    `tone_signal` is removed.
+  - `diff`, `mermaid`, and `sparkline` take a value, a signal, or a
+    closure, and redraw when it changes.
+  - `scroll_to_end` and `auto_pin_to_bottom` are replaced by
+    `follow_end(bool)` on scroll areas and lists. `follow` is renamed
+    `follow_row`.
+  - A `virtual_list` row can be any node, for example `text(..)`.
+  - Native menus are only at `sigil::app::menu`. The native menu item
+    is `app::menu::NativeMenuItem`, distinct from `widgets::MenuItem`.
+  - `sidebar_width` is removed; use `sidebar(child).width(..)`.
+  - Callbacks use three verbs: `activate()` for a press, `change(value)`
+    for an edit, `submit(value)` for a commit. `MenuItem::select` is
+    now `activate`, `CommandMenuBuilder::select` is `submit`,
+    `DiffBuilder::choose` is `change`, and `VirtualListBuilder::select`
+    is `change`.
+  - Button tone and fill are independent, so call order does not
+    matter. `primary()`, `neutral()`, and `destructive()` set only the
+    tone; `solid()`, `soft()`, `ghost()`, and `outline()` set only the
+    fill. With no fill, `Primary` and `Error` draw solid and other
+    tones draw soft. `button("Go").primary().ghost()` is now a ghost
+    button in the primary tone.
+  - In `command_menu`, Right and Left no longer open and close
+    submenus, because the query field uses them to move the caret.
+  - `DiffLayout` is renamed `DiffView`, and `DiffBuilder::layout` is
+    `view`, so `.layout` always means `WidgetLayoutExt::layout`.
+  - `VirtualListBuilder::focused_row_bind` is renamed `cursor`. The
+    cursor row also stays in view; `follow_row` remains for read-only
+    targets and wins for scrolling.
+  - `chart` and `ChartBuilder::series` take a value, a signal, or a
+    closure, and redraw when it changes.
+  - `splitter` and `segmented` are no longer `const fn`.
+- `text_edit` shows its placeholder while focused and empty, like
+  `text_field`. On a terminal its default height is 5 rows, not 20, and
+  the dropdown trigger is 3 rows.
+- Every widget builder takes the `NodeEventsExt` methods (`key`,
+  `key_capture`, `focus_in`, `autofocus`, pointer handlers, and the
+  rest), so `virtual_list(..).key(..)` or `button(..).key(..)` needs no
+  wrapper container. `WidgetLayoutExt::map_node` runs any `NodeBuilder`
+  method on the widget's root node, for example
+  `.map_node(|node| node.on_added(..))` to read its id. A widget's own
+  handlers run before the ones you add.
+- `FrameInputHook` returns `Option<(f32, f32)>`. An embed host returns
+  the viewport when its input changed it, for example a resize, and
+  `Host::frame` lays out at that size in the same frame. Return `None`
+  to keep the viewport passed to `frame`. This is a breaking change.
+- A theme set while input runs, for example from a click handler,
+  paints in the same frame.
+- Focus that the window host gives to the first control on start shows
+  no focus ring. Keyboard focus still shows it.
 - A component is a function that returns `impl IntoNode`. It runs once
   inside its own reactive owner, so signals it creates live and die with
   its node. `run(config, app)` takes the root component; the closure no
@@ -298,8 +410,50 @@ First release.
   text on a tinted row. It was five rows tall with its padding and
   border. The window form is unchanged.
 
+### Migrating from the class-string API
+
+| Before | After |
+| --- | --- |
+| `.class("text-xs font-mono italic font-bold")` | `.font_size(12.0).font_family(FontFamily::Mono).font_italic(true).font_weight(700)` |
+| `.class("text-gray-11 rounded-md bg-* border-* border-l")` | `.text_color(Token::Gray11).rounded(Radius::Md).bg(Token::..).border_color(Token::..).border_left(1)` |
+| `.class(Token::OnSurface.text())` | `.text_color(Token::OnSurface)` |
+| `.style(Style::new().bg(..).border_width(n))` | `.bg(..).border_w(n)` |
+| `.class("w-full h-full")` | `.layout(LayoutStyle::block().fill_width().fill_height())` |
+| `.bg("field")` | `.bg(Token::Field)` |
+| `badge(..)` | `chip(..)` |
+| `sidebar_width(w, child)` | `sidebar(child).width(w)` |
+| `.follow(sig)`, `.auto_pin_to_bottom()` | `.follow_row(sig)`, `.follow_end(true)` |
+| `.focused_row_bind(sig)` | `.cursor(sig)` |
+| `DiffBuilder::choose`, `.layout(DiffLayout::..)` | `change`, `.view(DiffView::..)` |
+| `.line_height(px)` | `.line_height_px(px)` |
+| `segmented(..).height(f32)`, `chart(..).height(f32)` | `WidgetLayoutExt::height(..)` |
+| `sparkline(iter)` | `sparkline(vec)` or a signal |
+
+`Paint` and `WidgetLayoutExt` are in the prelude; a module that does not
+glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
+
 ### Fixed
 
+- Tab runs the capture handlers before it moves focus, so
+  `key_capture(Key::Tab, ..)` on an ancestor can own Tab.
+- A `follow_row` list that fills after mount stays on its row instead of
+  jumping to the end.
+- A row that the sort or quick filter hides leaves the table selection,
+  so `selected_row` never returns a hidden row.
+- The terminal no longer announces live regions that are on screen in
+  the first frame, so "Status bar" does not cover the bottom row at
+  start.
+- The window paints the theme `Surface` behind the tree, so a light
+  theme no longer shows a dark clear colour.
+- A closeable tab leaves a gap between its label and its close button.
+
+- After `set_theme`, text and controls that did not change kept the
+  colours of the old theme until they were rebuilt. Every node now
+  repaints in the new theme.
+- In the browser, a page that supplies its own canvas laid out the
+  first frames at the `AppConfig` size instead of the canvas size, so
+  part of the canvas stayed unpainted.
+- A table header cell showed its focus ring on pointer focus.
 - A split diff gave each side half the width, so a long added line was
   cut while the removed side had spare room. Each side now takes width
   in proportion to its widest line.

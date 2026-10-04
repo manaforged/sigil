@@ -34,7 +34,7 @@ pub(crate) use run::run;
 pub use run::{AfterFrame, EventPump, Hooks, calibrate, present, step};
 pub use screen::Screen;
 pub use term::{
-    PrintAboveError, bell, focused, print_above, set_mouse_capture, set_mouse_tracking, set_title,
-    suspend,
+    PrintAboveError, bell, caps, focused, print_above, set_mouse_capture, set_mouse_tracking,
+    set_title, suspend,
 };
 pub use write::render;

@@ -161,8 +161,13 @@ fn enter_modes(inline: bool) -> io::Result<()> {
     })
 }
 
+#[must_use]
+pub fn caps() -> Option<Caps> {
+    CAPS.with(Cell::get)
+}
+
 fn current_caps() -> Caps {
-    CAPS.with(Cell::get).unwrap_or_default()
+    caps().unwrap_or_default()
 }
 
 fn write_title(title: &str) -> io::Result<()> {
