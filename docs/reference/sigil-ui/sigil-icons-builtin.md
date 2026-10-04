@@ -6,6 +6,7 @@
 | [`ARROW_DOWN_SVG`](#arrow_down_svg) | const |  |
 | [`ARROW_RIGHT_SVG`](#arrow_right_svg) | const |  |
 | [`ARROW_UP_SVG`](#arrow_up_svg) | const |  |
+| [`CHECK_SVG`](#check_svg) | const |  |
 | [`CHEVRONS_UP_DOWN_SVG`](#chevrons_up_down_svg) | const |  |
 | [`GEAR_SVG`](#gear_svg) | const |  |
 | [`HEART_SVG`](#heart_svg) | const |  |
@@ -16,7 +17,7 @@
 
 ### `ALL`
 
-<pre>pub const <a href="#all">ALL</a>: [(&amp;str, &amp;str); 8]</pre>
+<pre>pub const <a href="#all">ALL</a>: [(&amp;str, &amp;str); 9]</pre>
 
 
 ### `ARROW_DOWN_SVG`
@@ -32,6 +33,11 @@
 ### `ARROW_UP_SVG`
 
 <pre>pub const <a href="#arrow_up_svg">ARROW_UP_SVG</a>: &amp;str</pre>
+
+
+### `CHECK_SVG`
+
+<pre>pub const <a href="#check_svg">CHECK_SVG</a>: &amp;str</pre>
 
 
 ### `CHEVRONS_UP_DOWN_SVG`

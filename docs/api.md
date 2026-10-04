@@ -1164,7 +1164,7 @@ fn main() -> AppResult<()> {
 | `icons::IconBaker` | `struct IconBaker`; `const fn new() -> Self`; `fn bake(&self, svg_source: &str, width: u32, height: u32) -> Result<BakedIcon, BakeError>` | Rasterizes an SVG icon into an alpha mask of the given size. |
 | `icons::BakedIcon` | `struct BakedIcon { width: u32, height: u32, alpha: Vec<u8> }` | Holds a baked icon as one alpha byte per pixel. |
 | `icons::BakeError` | `enum BakeError { SvgParseError(String), PathOverflow, TooManySegments(u32), ViewBoxMissing }` | Reports why `IconBaker::bake` failed. |
-| `icons::builtin::HEART_SVG`, `icons::builtin::GEAR_SVG`, `icons::builtin::SEARCH_SVG`, `icons::builtin::ARROW_RIGHT_SVG`, `icons::builtin::X_SVG`, `icons::builtin::ARROW_UP_SVG`, `icons::builtin::ARROW_DOWN_SVG`, `icons::builtin::CHEVRONS_UP_DOWN_SVG` | `const *_SVG: &str` | Hold the SVG source of each bundled icon. |
+| `icons::builtin::HEART_SVG`, `icons::builtin::GEAR_SVG`, `icons::builtin::SEARCH_SVG`, `icons::builtin::ARROW_RIGHT_SVG`, `icons::builtin::X_SVG`, `icons::builtin::ARROW_UP_SVG`, `icons::builtin::ARROW_DOWN_SVG`, `icons::builtin::CHEVRONS_UP_DOWN_SVG`, `icons::builtin::CHECK_SVG` | `const *_SVG: &str` | Hold the SVG source of each bundled icon. |
 | `icons::builtin::ALL` | `const ALL: [(&str, &str); 8]` | Lists every bundled icon as a `(name, svg)` pair. |
 
 ## Module `kernel`
