@@ -52,3 +52,20 @@ fn tree_size_counts_children() {
     });
     assert_eq!(count, 3);
 }
+
+#[test]
+fn tick_intervals_fires_a_due_interval_in_a_hand_driven_loop() {
+    with_runtime("testing-tick-intervals", |_| {
+        let fired = std::rc::Rc::new(std::cell::Cell::new(0_u32));
+        let count = std::rc::Rc::clone(&fired);
+        crate::reactive::__test_set_clock(std::time::Instant::now());
+        let _id = crate::reactive::interval(std::time::Duration::from_millis(10), move || {
+            count.set(count.get() + 1);
+        });
+        assert_eq!(tick_intervals(), 0);
+        crate::reactive::__test_advance_clock(std::time::Duration::from_millis(10));
+        assert_eq!(tick_intervals(), 1);
+        assert_eq!(fired.get(), 1);
+        crate::reactive::__test_clear_clock();
+    });
+}

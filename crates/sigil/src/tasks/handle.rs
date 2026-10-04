@@ -25,9 +25,18 @@ impl OwnerHandle {
     pub fn is_alive(&self) -> bool {
         crate::reactive::is_live(self.id)
     }
+
+    #[track_caller]
+    pub fn run(&self, f: impl FnOnce()) -> bool {
+        crate::reactive::owner_by_id(self.id, f)
+    }
 }
 
 const _: fn() = || {
     const fn assert_send_sync_clone_static<T: Send + Sync + Clone + 'static>() {}
     assert_send_sync_clone_static::<OwnerHandle>();
 };
+
+#[cfg(test)]
+#[path = "handle_tests.rs"]
+mod tests;

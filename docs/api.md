@@ -1359,7 +1359,7 @@ fn main() -> AppResult<()> {
 | `tasks::installed` | `fn installed() -> bool` | Tells whether a task dispatcher is installed on this thread. |
 | `tasks::on_message` | `fn on_message<T: Send + 'static, F: Fn(T) + 'static>(rx: impl MessageReceiver<T>, f: F)` | Run `f` on the UI thread for each message, in the current owner. `rx` is a tokio `UnboundedReceiver<T>` or a bounded `Receiver<T>`. |
 | `tasks::on_message_or_close` | `fn on_message_or_close<T: Send + 'static, F: Fn(T) + 'static, C: FnOnce() + 'static>(rx: impl MessageReceiver<T>, f: F, on_close: C)` | Like `on_message`. Runs `on_close` on the UI thread after the last message, when every sender is dropped. |
-| `tasks::OwnerHandle` | `OwnerHandle::current() -> Option<OwnerHandle>` | `Send` handle of a reactive owner. |
+| `tasks::OwnerHandle` | `OwnerHandle::current() -> Option<OwnerHandle>`, `OwnerHandle::from_id(OwnerId)`, `.is_alive() -> bool`, `.run(f) -> bool` | `Send` handle of a reactive owner. `run` calls `f` inside the owner, so signals and effects it creates belong there, and returns `false` without calling `f` once the owner is disposed. |
 
 ## Module `terminal`
 
@@ -1408,6 +1408,16 @@ fn main() -> AppResult<()> {
 | `terminal::render::WindowHandle`, `terminal::render::into_window_handle` | `fn into_window_handle<W: HasWindowHandle + HasDisplayHandle + Send + Sync + 'static>(window: W) -> WindowHandle` | Wraps a platform window so the renderer can create a surface for it. |
 | `terminal::render::ScreenSubmission`, `terminal::render::OffscreenTarget` | `struct ScreenSubmission<'a> { device, queue, view, format, viewport, scale, clear }`; `struct OffscreenTarget<'a> { device, queue, view, format, viewport, scale }` | Name an embedder-owned wgpu target that the renderer draws a scene into. |
 | `terminal::render::RendererError` | `enum RendererError { NoAdapter, DeviceRequest, SurfaceCreate, NoSupportedFormat, SurfaceValidation, NotInitialized, InvalidViewport, Layer, Software(String) }` | Reports why the renderer could not start or draw a frame. |
+
+## Module `testing`
+
+Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil_kittest::Harness`.
+
+| Name | Signature | Purpose |
+| --- | --- | --- |
+| `testing::with_cx`, `testing::with_runtime` | `fn with_cx(name: &'static str, f: impl FnOnce(&mut Cx))`; `fn with_runtime(name: &'static str, f: impl FnOnce(&Runtime))` | Run `f` inside a fresh reactive runtime, with a root `Cx` for `with_cx`. |
+| `testing::tree_size` | `fn tree_size(name: &'static str, root: impl IntoNode) -> usize` | Count the nodes a tree mounts. |
+| `testing::tick_intervals` | `fn tick_intervals() -> usize` | Fire every due `interval` and return how many fired. A hand-driven frame loop calls it where `Host::frame` would. |
 
 ## Module `text`
 

@@ -75,6 +75,7 @@
 | <code>const from_id(id: <a href="sigil-reactive.html#ownerid">OwnerId</a>) -&gt; Self</code> |  |
 | <code>const id(self) -&gt; <a href="sigil-reactive.html#ownerid">OwnerId</a></code> |  |
 | <code>is_alive(&amp;self) -&gt; bool</code> |  |
+| <code>run(&amp;self, f: impl FnOnce()) -&gt; bool</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 

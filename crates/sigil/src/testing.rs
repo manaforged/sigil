@@ -12,6 +12,10 @@ pub fn with_runtime<F: FnOnce(&Runtime)>(name: &'static str, f: F) {
     Runtime::scope(name, || f(&Runtime));
 }
 
+pub fn tick_intervals() -> usize {
+    crate::reactive::tick_intervals()
+}
+
 pub fn tree_size(name: &'static str, root: impl crate::kernel::IntoNode) -> usize {
     let mut size = 0;
     with_cx(name, |cx| {

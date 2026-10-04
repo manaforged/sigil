@@ -28,6 +28,9 @@ First release.
 - `TabsBuilder::labels` takes a signal or closure, and tabs follow it.
 - `task_with(|arg| ..)` and `Task::run_with(arg)`: a task whose runs
   take an argument. `task` is `task_with` over `()`.
+- `OwnerHandle::run(f)` runs `f` inside a live reactive owner, so a
+  task result reaches the view that started it only while that view is
+  mounted; it returns `false` once the owner is disposed.
 - `terminal::caps()` returns the capabilities the terminal host probed
   on entry, such as `Caps::backdrop`, so an app picks a light or dark
   theme without a second probe.

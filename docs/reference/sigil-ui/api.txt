@@ -4702,6 +4702,7 @@ pub fn sigil::tasks::OwnerHandle::current() -> core::option::Option<Self>
 pub const fn sigil::tasks::OwnerHandle::from_id(id: sigil::reactive::OwnerId) -> Self
 pub const fn sigil::tasks::OwnerHandle::id(self) -> sigil::reactive::OwnerId
 pub fn sigil::tasks::OwnerHandle::is_alive(&self) -> bool
+pub fn sigil::tasks::OwnerHandle::run(&self, f: impl core::ops::function::FnOnce()) -> bool
 impl core::clone::Clone for sigil::tasks::OwnerHandle
 impl core::cmp::Eq for sigil::tasks::OwnerHandle
 impl core::cmp::PartialEq for sigil::tasks::OwnerHandle
