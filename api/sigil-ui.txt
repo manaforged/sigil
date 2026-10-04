@@ -1057,10 +1057,11 @@ pub type sigil::text::OwnedTextEngine::Error = sigil::text::TextError
 pub type sigil::text::OwnedTextEngine::Paragraph = sigil::text::Paragraph
 pub mod sigil::icons
 pub mod sigil::icons::builtin
-pub const sigil::icons::builtin::ALL: [(&str, &str); 8]
+pub const sigil::icons::builtin::ALL: [(&str, &str); 9]
 pub const sigil::icons::builtin::ARROW_DOWN_SVG: &str
 pub const sigil::icons::builtin::ARROW_RIGHT_SVG: &str
 pub const sigil::icons::builtin::ARROW_UP_SVG: &str
+pub const sigil::icons::builtin::CHECK_SVG: &str
 pub const sigil::icons::builtin::CHEVRONS_UP_DOWN_SVG: &str
 pub const sigil::icons::builtin::GEAR_SVG: &str
 pub const sigil::icons::builtin::HEART_SVG: &str

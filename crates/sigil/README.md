@@ -140,7 +140,7 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 
 <!-- truesight:surface sigil-ui -->
 
-3305 public items (444 types, 251 functions, 1239 methods, 520 fields, 790 variants, 61 constants) at 3815 paths; 510 are re-export aliases. 1825 trait impl lines, 206 inherent impl lines. 36 modules, 1 re-export only.
+3306 public items (444 types, 251 functions, 1239 methods, 520 fields, 790 variants, 62 constants) at 3816 paths; 510 are re-export aliases. 1825 trait impl lines, 206 inherent impl lines. 36 modules, 1 re-export only.
 
 | Module | Items | Types | Functions | Methods | Aliases |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -159,7 +159,7 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 | `sigil::geometry` | 39 | 7 | 0 | 17 | 0 |
 | `sigil::hal` | 62 | 24 | 0 | 25 | 0 |
 | `sigil::icons` | 12 | 3 | 0 | 2 | 0 |
-| `sigil::icons::builtin` | 9 | 0 | 0 | 0 | 0 |
+| `sigil::icons::builtin` | 10 | 0 | 0 | 0 | 0 |
 | `sigil::kernel` | 209 | 23 | 12 | 112 | 0 |
 | `sigil::layout` | 225 | 30 | 5 | 93 | 0 |
 | `sigil::prelude` (re-export only) | 0 | 0 | 0 | 0 | 510 |
