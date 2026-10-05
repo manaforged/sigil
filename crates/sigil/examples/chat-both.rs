@@ -3,15 +3,15 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::widgets::{ModalBuilder, ScrollBuilder, TextFieldBuilder};
-use std::time::Duration;
-
 use sigil::prelude::*;
 use sigil::tasks::sleep;
+use sigil::widgets::{ModalBuilder, ScrollBuilder, TextFieldBuilder};
+use std::time::Duration;
 use tokio::sync::mpsc::{
     UnboundedReceiver as Receiver, UnboundedSender as Sender, unbounded_channel,
 };
 
+const PANE_PADDING: f32 = sigil::style::space(2);
 const CHANNELS: &str = "general random builds incidents design release";
 
 const LINES: &[&str] = &[
@@ -225,7 +225,7 @@ pub(crate) fn app_tree() -> impl IntoNode {
         .key_capture(Shortcut::ctrl(LogicalKey::character("k")), open_picker)
         .child(
             container()
-                .layout(LayoutStyle::flex_row().fill_width().padding_x(cols(1.0)))
+                .layout(LayoutStyle::flex_row().fill_width().padding(PANE_PADDING))
                 .child(text(move || format!("# {}", current_name(chat))).nowrap())
                 .child(spacer())
                 .child(text("sigil-chat").nowrap().font_size(14.0)),
@@ -254,7 +254,7 @@ fn work(chat: Chat, posts: Sender<Post>) -> NodeBuilder {
                     LayoutStyle::flex_column()
                         .fill()
                         .gap(rows(1.0))
-                        .padding_x(cols(1.0)),
+                        .padding(PANE_PADDING),
                 )
                 .child(transcript(chat))
                 .child(composer(chat, posts)),
