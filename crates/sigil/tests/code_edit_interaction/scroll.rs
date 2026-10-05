@@ -225,3 +225,56 @@ fn short_doc_does_not_scroll_into_blank_space() {
         );
     });
 }
+
+struct WrapToWidth;
+
+impl sigil::layout::TextMeasure for WrapToWidth {
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "test text lengths are far below f32 precision limits"
+    )]
+    fn measure(
+        &self,
+        content: &TextContent,
+        space: sigil::geometry::Size,
+    ) -> sigil::geometry::LogicalSize {
+        let width = content.resolve().chars().count() as f32 * 8.0;
+        match space.width {
+            sigil::geometry::Dim::Fixed(limit) if limit > 0.0 && width > limit => {
+                sigil::geometry::LogicalSize::new(limit, (width / limit).ceil() * 16.0)
+            }
+            _ => sigil::geometry::LogicalSize::new(width, 16.0),
+        }
+    }
+}
+
+#[test]
+fn long_line_stays_one_row_under_a_wrapping_measure() {
+    sigil::reactive::Runtime::scope("code-edit-one-row", || {
+        let pane_w = 580.0;
+        let lines = signal(vec!["x".repeat(200), "next".to_owned()]);
+        let caret = signal((0_usize, 0_usize));
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(pane_w, 400.0))
+                .child(code_edit(lines, caret).row_height(20.0)),
+        );
+        let mut layout = LayoutEngine::with_text_measure(Box::new(WrapToWidth));
+        layout
+            .compute(&mut cx, root, Size::fixed(pane_w, 400.0))
+            .unwrap();
+        let mut tallest = 0.0_f32;
+        cx.visit_preorder(root, |id, node| {
+            if matches!(node.kind, sigil::kernel::NodeType::Text { .. })
+                && let Some(r) = layout.result(id)
+            {
+                tallest = tallest.max(r.rect().height);
+            }
+        });
+        assert!(
+            tallest <= 20.0,
+            "a 200-column line measured {tallest} px tall in 20 px rows, so it wraps onto the next row",
+        );
+    });
+}

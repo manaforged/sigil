@@ -274,6 +274,7 @@ fn selected_run(seg: String, token: Option<&'static str>, row_h: f32) -> NodeBui
 
 fn run_text(seg: String, token: Option<&'static str>) -> TextBuilder {
     text(seg)
+        .nowrap()
         .class(RUN_CLASS)
         .text_color(ColorOrToken::Token(
             token.map_or(ColorKey::Token(Token::OnSurface), ColorKey::parse),
