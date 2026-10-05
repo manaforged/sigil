@@ -27,8 +27,11 @@ fn drag_ghost_row(_state: State) -> NodeBuilder {
     let dropped = signal(String::from("Drop a card here"));
     container()
         .layout(LayoutStyle::flex_column().fill_width().gap(8.0))
-        .child(card(text("Card A").nowrap()).drag_source(drag.clone(), String::from("Card A")))
-        .child(card(text(dropped).nowrap()).drop_target(
+        .child(
+            NodeBuilder::from(card(text("Card A").nowrap()))
+                .drag_source(drag.clone(), String::from("Card A")),
+        )
+        .child(NodeBuilder::from(card(text(dropped).nowrap())).drop_target(
             drag.clone(),
             |_| true,
             move |item| dropped.set(format!("Dropped {item}")),

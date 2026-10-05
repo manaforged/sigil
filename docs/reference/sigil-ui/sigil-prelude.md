@@ -42,6 +42,7 @@
 | [`Elevation`](#elevation) | enum |  |
 | [`FlexWrap`](#flexwrap) | enum |  |
 | [`FontFamily`](#fontfamily) | enum |  |
+| [`Icon`](#icon) | enum |  |
 | [`JustifyContent`](#justifycontent) | enum |  |
 | [`KeyPhase`](#keyphase) | enum |  |
 | [`LogicalKey`](#logicalkey) | enum |  |
@@ -104,16 +105,14 @@
 | [`fragment`](#fragment) | fn |  |
 | [`fuzzy_score`](#fuzzy_score) | fn |  |
 | [`gauge`](#gauge) | fn |  |
-| [`hairline`](#hairline) | fn |  |
 | [`heatmap`](#heatmap) | fn |  |
 | [`highlight`](#highlight) | fn |  |
 | [`hint_bar`](#hint_bar) | fn |  |
 | [`hint_overlay`](#hint_overlay) | fn |  |
 | [`hl_spans`](#hl_spans) | fn |  |
 | [`html`](#html) | fn |  |
-| [`icon`](#icon) | fn |  |
+| [`icon`](#icon-1) | fn |  |
 | [`icon_button`](#icon_button) | fn |  |
-| [`icon_svg`](#icon_svg) | fn |  |
 | [`image`](#image) | fn |  |
 | [`image_bytes`](#image_bytes) | fn |  |
 | [`image_rgba`](#image_rgba) | fn |  |
@@ -157,8 +156,8 @@
 | [`sparkline`](#sparkline) | fn |  |
 | [`spawn`](#spawn) | fn |  |
 | [`spinner`](#spinner) | fn |  |
-| [`spinner_frame`](#spinner_frame) | fn |  |
 | [`splitter`](#splitter) | fn |  |
+| [`stat`](#stat) | fn |  |
 | [`status_bar`](#status_bar) | fn |  |
 | [`surface`](#surface) | fn |  |
 | [`switch`](#switch) | fn |  |
@@ -174,6 +173,7 @@
 | [`toast_queue`](#toast_queue) | fn |  |
 | [`toggle`](#toggle) | fn |  |
 | [`tooltip`](#tooltip) | fn |  |
+| [`tree`](#tree) | fn |  |
 | [`virtual_list`](#virtual_list) | fn |  |
 | [`watch_theme`](#watch_theme) | fn |  |
 | [`AppResult`](#appresult) | type |  |
@@ -236,13 +236,18 @@
 
 | Field | Description |
 | --- | --- |
+| <code>badge: Option&lt;(<a href="sigil-kernel.html#textcontent">TextContent</a>, <a href="sigil-style.html#tone">Tone</a>)&gt;</code> |  |
 | <code>columns: Vec&lt;<a href="sigil-widgets.html#listcolumn">ListColumn</a>&gt;</code> |  |
 | <code>depth: u16</code> |  |
 | <code>detail: Option&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;</code> |  |
 | <code>disclosure: <a href="sigil-widgets.html#disclosure">Disclosure</a></code> |  |
+| <code>indent: Option&lt;f32&gt;</code> |  |
+| <code>leading: Option&lt;Box&lt;dyn <a href="sigil-kernel.html#intonode">IntoNode</a>&gt;&gt;</code> |  |
 | <code>marker: Option&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;</code> |  |
+| <code>marker_tone: Option&lt;<a href="sigil-style.html#tone">Tone</a>&gt;</code> |  |
 | <code>shrink: bool</code> |  |
 | <code>status: Option&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;</code> |  |
+| <code>status_tone: Option&lt;<a href="sigil-style.html#tone">Tone</a>&gt;</code> |  |
 | <code>title_width: Option&lt;f32&gt;</code> |  |
 | <code>tone: <a href="sigil-widgets.html#rowtone">RowTone</a></code> |  |
 
@@ -515,6 +520,112 @@
 | <code>Mono</code> |  |
 | <code>Sans</code> |  |
 | <code>Serif</code> |  |
+
+
+### `Icon`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Activity</code> |  |
+| <code>ArrowDown</code> |  |
+| <code>ArrowLeft</code> |  |
+| <code>ArrowRight</code> |  |
+| <code>ArrowUp</code> |  |
+| <code>AtSign</code> |  |
+| <code>Bell</code> |  |
+| <code>Box</code> |  |
+| <code>Braces</code> |  |
+| <code>Bug</code> |  |
+| <code>Calendar</code> |  |
+| <code>ChartColumn</code> |  |
+| <code>Check</code> |  |
+| <code>ChevronDown</code> |  |
+| <code>ChevronLeft</code> |  |
+| <code>ChevronRight</code> |  |
+| <code>ChevronUp</code> |  |
+| <code>ChevronsUpDown</code> |  |
+| <code>Circle</code> |  |
+| <code>CircleAlert</code> |  |
+| <code>CircleCheck</code> |  |
+| <code>CircleX</code> |  |
+| <code>Clock</code> |  |
+| <code>Cloud</code> |  |
+| <code>Code</code> |  |
+| <code>Command</code> |  |
+| <code>Copy</code> |  |
+| <code>Cpu</code> |  |
+| <code>Database</code> |  |
+| <code>Download</code> |  |
+| <code>Ellipsis</code> |  |
+| <code>EllipsisVertical</code> |  |
+| <code>ExternalLink</code> |  |
+| <code>Eye</code> |  |
+| <code>EyeOff</code> |  |
+| <code>File</code> |  |
+| <code>FileCode</code> |  |
+| <code>FileText</code> |  |
+| <code>Folder</code> |  |
+| <code>FolderOpen</code> |  |
+| <code>Funnel</code> |  |
+| <code>Gauge</code> |  |
+| <code>GitBranch</code> |  |
+| <code>GitCommitHorizontal</code> |  |
+| <code>GitPullRequest</code> |  |
+| <code>Globe</code> |  |
+| <code>GripVertical</code> |  |
+| <code>Hash</code> |  |
+| <code>Heart</code> |  |
+| <code>History</code> |  |
+| <code>House</code> |  |
+| <code>Inbox</code> |  |
+| <code>Info</code> |  |
+| <code>Key</code> |  |
+| <code>Layers</code> |  |
+| <code>LayoutDashboard</code> |  |
+| <code>Link</code> |  |
+| <code>List</code> |  |
+| <code>ListTree</code> |  |
+| <code>Lock</code> |  |
+| <code>LockOpen</code> |  |
+| <code>LogIn</code> |  |
+| <code>LogOut</code> |  |
+| <code>Mail</code> |  |
+| <code>Menu</code> |  |
+| <code>Minus</code> |  |
+| <code>Monitor</code> |  |
+| <code>Moon</code> |  |
+| <code>Package</code> |  |
+| <code>PanelBottom</code> |  |
+| <code>PanelLeft</code> |  |
+| <code>Pause</code> |  |
+| <code>Pencil</code> |  |
+| <code>Play</code> |  |
+| <code>Plus</code> |  |
+| <code>RefreshCw</code> |  |
+| <code>Rocket</code> |  |
+| <code>RotateCcw</code> |  |
+| <code>ScrollText</code> |  |
+| <code>Search</code> |  |
+| <code>Server</code> |  |
+| <code>Settings</code> |  |
+| <code>Shield</code> |  |
+| <code>SlidersHorizontal</code> |  |
+| <code>Square</code> |  |
+| <code>Star</code> |  |
+| <code>Sun</code> |  |
+| <code>Terminal</code> |  |
+| <code>Trash2</code> |  |
+| <code>TrendingDown</code> |  |
+| <code>TrendingUp</code> |  |
+| <code>Triangle</code> |  |
+| <code>TriangleAlert</code> |  |
+| <code>Upload</code> |  |
+| <code>User</code> |  |
+| <code>Users</code> |  |
+| <code>X</code> |  |
+| <code>Zap</code> |  |
 
 
 ### `JustifyContent`
@@ -1017,7 +1128,7 @@
 
 ### `card`
 
-<pre>pub fn <a href="#card">card</a>(child: impl <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
+<pre>pub fn <a href="#card">card</a>(child: impl <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static) -&gt; <a href="sigil-widgets.html#cardbuilder">CardBuilder</a></pre>
 
 
 ### `chart`
@@ -1097,7 +1208,7 @@
 
 ### `divider_vertical`
 
-<pre>pub fn <a href="#divider_vertical">divider_vertical</a>() -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
+<pre>pub const fn <a href="#divider_vertical">divider_vertical</a>() -&gt; <a href="sigil-widgets.html#verticaldivider">VerticalDivider</a></pre>
 
 
 ### `dot`
@@ -1155,11 +1266,6 @@
 <pre>pub fn <a href="#gauge">gauge</a>(value: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;) -&gt; <a href="sigil-widgets.html#gaugebuilder">GaugeBuilder</a></pre>
 
 
-### `hairline`
-
-<pre>pub fn <a href="#hairline">hairline</a>() -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
-
-
 ### `heatmap`
 
 <pre>pub fn <a href="#heatmap">heatmap</a>&lt;F: Fn(usize, usize) -&gt; <a href="sigil-style.html#rgba8">Rgba8</a>&gt;(grid_w: usize, grid_h: usize, color: F) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
@@ -1192,17 +1298,12 @@
 
 ### `icon`
 
-<pre>pub fn <a href="#icon">icon</a>(glyph: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;) -&gt; <a href="sigil-widgets.html#iconbuilder">IconBuilder</a></pre>
+<pre>pub fn <a href="#icon-1">icon</a>(glyph: impl <a href="sigil-widgets.html#intoiconsource">IntoIconSource</a>) -&gt; <a href="sigil-widgets.html#iconbuilder">IconBuilder</a></pre>
 
 
 ### `icon_button`
 
 <pre>pub fn <a href="#icon_button">icon_button</a>(glyph: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;, activate: impl Fn() + 'static) -&gt; <a href="sigil-widgets.html#buttonbuilder">ButtonBuilder</a></pre>
-
-
-### `icon_svg`
-
-<pre>pub fn <a href="#icon_svg">icon_svg</a>(svg: impl Into&lt;Rc&lt;str&gt;&gt;) -&gt; <a href="sigil-widgets.html#iconbuilder">IconBuilder</a></pre>
 
 
 ### `image`
@@ -1232,7 +1333,7 @@
 
 ### `kv_grid`
 
-<pre>pub fn <a href="#kv_grid">kv_grid</a>(rows: &amp;[(&amp;'static str, &amp;'static str)]) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
+<pre>pub fn <a href="#kv_grid">kv_grid</a>&lt;K, V&gt;(rows: impl IntoIterator&lt;Item = (K, V)&gt;) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> where K: Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;, V: Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;</pre>
 
 
 ### `kv_row`
@@ -1420,14 +1521,14 @@
 <pre>pub fn <a href="#spinner">spinner</a>() -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
 
 
-### `spinner_frame`
-
-<pre>pub fn <a href="#spinner_frame">spinner_frame</a>(tick: u64) -&gt; &amp;'static str</pre>
-
-
 ### `splitter`
 
 <pre>pub fn <a href="#splitter">splitter</a>(orientation: <a href="sigil-widgets.html#orientation">Orientation</a>) -&gt; <a href="sigil-widgets.html#splitterbuilder">SplitterBuilder</a></pre>
+
+
+### `stat`
+
+<pre>pub fn <a href="#stat">stat</a>(label: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;, value: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;) -&gt; <a href="sigil-widgets.html#statbuilder">StatBuilder</a></pre>
 
 
 ### `status_bar`
@@ -1503,6 +1604,11 @@
 ### `tooltip`
 
 <pre>pub fn <a href="#tooltip">tooltip</a>(label: impl Into&lt;String&gt;) -&gt; <a href="sigil-widgets.html#tooltipbuilder">TooltipBuilder</a></pre>
+
+
+### `tree`
+
+<pre>pub fn <a href="#tree">tree</a>&lt;K: <a href="sigil-widgets.html#treekey">TreeKey</a>&gt;(nodes: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;Vec&lt;<a href="sigil-widgets.html#treenode">TreeNode</a>&lt;K&gt;&gt;&gt;) -&gt; <a href="sigil-widgets.html#treebuilder">TreeBuilder</a>&lt;K&gt;</pre>
 
 
 ### `virtual_list`

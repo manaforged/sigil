@@ -1,6 +1,5 @@
 use sigil::prelude::*;
 use sigil::style::space;
-use sigil::widgets::ListRowSlots;
 
 use super::facts::{SYMBOLS, Symbol};
 use super::state::Workspace;
@@ -11,7 +10,9 @@ fn symbol_row(ws: Workspace, symbol: Symbol, selected: bool) -> NodeBuilder {
         symbol.name,
         ListRowSlots {
             depth: symbol.depth,
-            marker: Some(symbol.kind.badge().into()),
+            leading: Some(Box::new(
+                icon(symbol.kind.icon()).size(ControlSize::Compact),
+            )),
             status: Some((symbol.line + 1).to_string().into()),
             ..ListRowSlots::default()
         },

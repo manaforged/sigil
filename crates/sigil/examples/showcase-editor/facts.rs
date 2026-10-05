@@ -44,11 +44,11 @@ pub(crate) const DIAGNOSTICS: &[Diagnostic] = &[
     },
 ];
 
-pub(crate) const fn severity_glyph(severity: DiagSeverity) -> &'static str {
+pub(crate) const fn severity_icon(severity: DiagSeverity) -> Icon {
     match severity {
-        DiagSeverity::Error => "×",
-        DiagSeverity::Warning => "▲",
-        DiagSeverity::Info | DiagSeverity::Hint => "●",
+        DiagSeverity::Error => Icon::CircleX,
+        DiagSeverity::Warning => Icon::TriangleAlert,
+        DiagSeverity::Info | DiagSeverity::Hint => Icon::Info,
     }
 }
 
@@ -124,13 +124,13 @@ pub(crate) enum SymbolKind {
 }
 
 impl SymbolKind {
-    pub(crate) const fn badge(self) -> &'static str {
+    pub(crate) const fn icon(self) -> Icon {
         match self {
-            Self::Const => "K",
-            Self::Enum => "E",
-            Self::Struct => "S",
-            Self::Impl => "I",
-            Self::Function => "ƒ",
+            Self::Const => Icon::Hash,
+            Self::Enum => Icon::List,
+            Self::Struct => Icon::Box,
+            Self::Impl => Icon::Layers,
+            Self::Function => Icon::Braces,
         }
     }
 }

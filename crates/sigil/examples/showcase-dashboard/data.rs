@@ -1,20 +1,19 @@
-use sigil::prelude::{Token, Tone};
+use sigil::prelude::{Icon, Tone};
 use sigil::style::space;
 
-pub(crate) const RAIL_WIDTH: f32 = space(40);
+pub(crate) const RAIL_WIDTH: f32 = space(46);
 pub(crate) const GROUP_WIDTH: f32 = space(50);
 pub(crate) const INSPECTOR_WIDTH: f32 = space(70);
 pub(crate) const INSPECTOR_BREAKPOINT: f32 = 1100.0;
 pub(crate) const COMMIT_MIN_WIDTH: f32 = space(30);
-pub(crate) const BRANCH_WIDTH: f32 = space(22);
-pub(crate) const REGION_WIDTH: f32 = space(22);
+pub(crate) const BRANCH_WIDTH: f32 = space(20);
+pub(crate) const REGION_WIDTH: f32 = space(20);
 pub(crate) const DURATION_WIDTH: f32 = space(22);
 pub(crate) const STATUS_WIDTH: f32 = space(26);
 pub(crate) const SHA_WIDTH: f32 = space(15);
 pub(crate) const LOG_HEIGHT: f32 = space(44);
 pub(crate) const TEXT_SMALL: f32 = 12.0;
 pub(crate) const TEXT_TITLE: f32 = 18.0;
-pub(crate) const TEXT_KPI: f32 = 20.0;
 pub(crate) const WEIGHT_STRONG: u16 = 600;
 pub(crate) const START_DELAY_MS: u64 = 1600;
 pub(crate) const DEPLOYS_BEFORE_OPEN: usize = 37;
@@ -59,22 +58,22 @@ impl Section {
         }
     }
 
-    pub(crate) const fn glyph(self) -> &'static str {
+    pub(crate) const fn icon(self) -> Icon {
         match self {
-            Self::Overview => "◆",
-            Self::Deploys => "▲",
-            Self::Services => "■",
-            Self::Runners => "●",
-            Self::Incidents => "◎",
-            Self::Audit => "≡",
-            Self::Settings => "◇",
+            Self::Overview => Icon::LayoutDashboard,
+            Self::Deploys => Icon::Rocket,
+            Self::Services => Icon::Server,
+            Self::Runners => Icon::Cpu,
+            Self::Incidents => Icon::TriangleAlert,
+            Self::Audit => Icon::ScrollText,
+            Self::Settings => Icon::Settings,
         }
     }
 
-    pub(crate) const fn badge(self) -> Option<&'static str> {
+    pub(crate) const fn badge(self) -> Option<(&'static str, Tone)> {
         match self {
-            Self::Runners => Some("8"),
-            Self::Incidents => Some("2"),
+            Self::Runners => Some(("8", Tone::Neutral)),
+            Self::Incidents => Some(("2", Tone::Error)),
             Self::Overview | Self::Deploys | Self::Services | Self::Audit | Self::Settings => None,
         }
     }
@@ -243,17 +242,6 @@ impl JobStatus {
             Self::Failed => 0.5,
             Self::Live | Self::RolledBack => 1.0,
         }
-    }
-}
-
-pub(crate) const fn tone_token(tone: Tone) -> Token {
-    match tone {
-        Tone::Success => Token::Success11,
-        Tone::Error => Token::Error11,
-        Tone::Warn => Token::Warn11,
-        Tone::Info => Token::Info11,
-        Tone::Primary => Token::Accent11,
-        _ => Token::OnSurface,
     }
 }
 

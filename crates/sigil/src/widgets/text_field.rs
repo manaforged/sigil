@@ -1,3 +1,4 @@
+mod adorn;
 mod builder;
 mod handlers;
 mod mask;

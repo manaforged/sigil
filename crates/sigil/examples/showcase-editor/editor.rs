@@ -1,6 +1,7 @@
 use sigil::prelude::*;
 use sigil::style::space;
 
+use super::chrome::Command;
 use super::project::{FileId, FileKind, Folder, PROJECT_NAME};
 use super::state::{Buffer, Workspace};
 
@@ -135,9 +136,10 @@ fn body(ws: Workspace, file: FileId) -> NodeBuilder {
 }
 
 fn no_editor() -> NodeBuilder {
+    let hint = Command::OpenFile.hint().unwrap_or_default();
     empty_state(
         "No open editors",
-        "Open a file from the explorer or press Ctrl+P.",
+        format!("Open a file from the explorer or press {hint}."),
     )
 }
 

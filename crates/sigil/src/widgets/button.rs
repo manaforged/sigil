@@ -114,6 +114,12 @@ impl ButtonBuilder {
         self
     }
 
+    #[cfg(feature = "scene")]
+    #[must_use]
+    pub fn icon(self, icon: crate::icons::Icon) -> Self {
+        self.icon_svg(icon.svg())
+    }
+
     #[must_use]
     pub const fn ghost(self) -> Self {
         self.fill(ButtonFill::Ghost)
@@ -255,18 +261,32 @@ impl ButtonBuilder {
             });
         let node = match self.pending {
             Some(pending) => node.child(self.pending_content(pending)),
-            None if self.square => node.child(
-                label_node(
-                    self.label.clone(),
-                    self.resolved_tone(),
-                    self.resolved_fill().label_atoms(),
-                    false,
-                )
-                .class(ICON_GLYPH),
-            ),
+            None if self.square => node.child(self.square_content()),
             None => self.label_content(node),
         };
         interaction.install(node)
+    }
+
+    fn square_content(&self) -> Box<dyn crate::kernel::IntoNode> {
+        #[cfg(feature = "scene")]
+        if let Some(svg) = self.leading.clone() {
+            let size = if self.height < 30.0 { 14.0 } else { 16.0 };
+            return Box::new(
+                icon_svg(svg)
+                    .tone(self.resolved_tone())
+                    .px(size)
+                    .on_solid(self.resolved_fill() == ButtonFill::Solid),
+            );
+        }
+        Box::new(
+            label_node(
+                self.label.clone(),
+                self.resolved_tone(),
+                self.resolved_fill().label_atoms(),
+                false,
+            )
+            .class(ICON_GLYPH),
+        )
     }
 
     #[cfg(feature = "scene")]

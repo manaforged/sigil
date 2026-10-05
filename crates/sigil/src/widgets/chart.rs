@@ -11,6 +11,10 @@ use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::kernel::text;
 mod plot;
 
+const DEFAULT_HEIGHT: f32 = 180.0;
+const MIN_HEIGHT: f32 = 48.0;
+const MIN_WIDTH: f32 = 80.0;
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ChartMark {
     #[default]
@@ -106,22 +110,24 @@ impl ChartBuilder {
         self
     }
 
-    fn frame_size(&mut self) -> (f32, f32) {
+    fn frame(&mut self) -> plot::Frame {
         let width = self
             .layout_overrides
             .width_hint()
-            .map_or(280.0, |px| px.max(80.0));
+            .map(|px| px.max(MIN_WIDTH));
         let height = self
             .layout_overrides
             .height_hint()
-            .map_or(180.0, |px| px.max(48.0));
-        self.layout_overrides.width(width);
+            .map_or(DEFAULT_HEIGHT, |px| px.max(MIN_HEIGHT));
+        if let Some(px) = width {
+            self.layout_overrides.width(px);
+        }
         self.layout_overrides.height(height);
-        (width, height)
+        plot::Frame::new(width, height)
     }
 
     fn into_node_builder(mut self) -> NodeBuilder {
-        let (width, height) = self.frame_size();
+        let frame = self.frame();
         let sources = std::mem::take(&mut self.series);
         let series = derived(move || sources.iter().map(SeriesSource::read).collect::<Vec<_>>());
         let labels = Rc::new(std::mem::take(&mut self.labels));
@@ -144,20 +150,26 @@ impl ChartBuilder {
             .with(
                 self.layout_overrides.apply(
                     LayoutStyle::flex_column()
-                        .width(width)
-                        .height(height)
-                        .padding(space(3))
+                        .fill_width()
+                        .min_width(0.0)
+                        .height(frame.height)
+                        .padding(frame.padding())
                         .gap(space(2)),
                 ),
             );
         if !paint.is_empty() {
             root = root.style(paint);
         }
-        root.children_reactive(move || series.with(|series| content(series, &labels, mark)))
+        root.children_reactive(move || series.with(|series| content(series, &labels, mark, frame)))
     }
 }
 
-fn content(series: &[ChartSeries], labels: &[String], mark: ChartMark) -> Vec<NodeBuilder> {
+fn content(
+    series: &[ChartSeries],
+    labels: &[String],
+    mark: ChartMark,
+    frame: plot::Frame,
+) -> Vec<NodeBuilder> {
     let count = series
         .iter()
         .map(|series| series.values.len())
@@ -181,7 +193,7 @@ fn content(series: &[ChartSeries], labels: &[String], mark: ChartMark) -> Vec<No
                 ),
         ];
     }
-    plot::draw(series, labels, mark, count)
+    plot::draw(series, labels, mark, count, frame)
 }
 
 fn summary(series: &[ChartSeries], labels: &[String]) -> String {
@@ -226,28 +238,6 @@ impl PaintTarget for ChartBuilder {
 impl WidgetLayoutExt for ChartBuilder {
     fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
         &mut self.layout_overrides
-    }
-}
-
-const SOLID_STEP: u8 = 11;
-const SHADE_STEP: u8 = 4;
-
-pub(crate) fn tone_solid(tone: Tone) -> Token {
-    Token::scale(tone.scale_role(), SOLID_STEP).unwrap_or(Token::Gray11)
-}
-
-pub(crate) fn tone_shade(tone: Tone) -> Token {
-    Token::scale(tone.scale_role(), SHADE_STEP).unwrap_or(Token::Gray4)
-}
-
-pub(crate) const fn tone_fill(tone: Tone) -> Token {
-    match tone {
-        Tone::Neutral => Token::Gray9,
-        Tone::Primary => Token::Accent9,
-        Tone::Info => Token::Info9,
-        Tone::Success => Token::Success9,
-        Tone::Warn => Token::Warn9,
-        Tone::Error => Token::Error9,
     }
 }
 

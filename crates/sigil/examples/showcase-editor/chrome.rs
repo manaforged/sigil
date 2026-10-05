@@ -2,11 +2,9 @@ use sigil::prelude::*;
 use sigil::style::space;
 use sigil::widgets::DiagSeverity;
 
-use super::facts::{count, severity_glyph, severity_tone};
+use super::facts::{count, severity_icon, severity_tone};
 use super::project::{AHEAD, BEHIND, BRANCH, PROJECT_NAME};
 use super::state::{BottomTab, Workspace};
-
-const MENU_BAR_W: f32 = 380.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Command {
@@ -21,54 +19,56 @@ pub(crate) enum Command {
     Shortcuts,
 }
 
-struct Entry {
-    label: &'static str,
-    shortcut: Option<&'static str>,
-    command: Command,
-}
+impl Command {
+    pub(crate) const BOUND: [Self; 3] = [Self::OpenFile, Self::Save, Self::Palette];
 
-const fn entry(label: &'static str, shortcut: Option<&'static str>, command: Command) -> Entry {
-    Entry {
-        label,
-        shortcut,
-        command,
+    const fn key(self) -> Option<&'static str> {
+        match self {
+            Self::OpenFile => Some("p"),
+            Self::Save => Some("s"),
+            Self::Palette => Some("k"),
+            Self::CloseEditor
+            | Self::ToggleOutline
+            | Self::Problems
+            | Self::Terminal
+            | Self::RunTests
+            | Self::Shortcuts => None,
+        }
+    }
+
+    pub(crate) fn shortcut(self) -> Option<Shortcut> {
+        self.key()
+            .map(|key| Shortcut::primary(LogicalKey::character(key)))
+    }
+
+    pub(crate) fn hint(self) -> Option<String> {
+        self.shortcut().map(|shortcut| shortcut.label())
     }
 }
 
-const MENUS: &[(&str, &[Entry])] = &[
+type MenuEntry = (&'static str, Command);
+
+const MENUS: &[(&str, &[MenuEntry])] = &[
     (
         "File",
         &[
-            entry("Open File...", Some("Ctrl+P"), Command::OpenFile),
-            entry("Save", Some("Ctrl+S"), Command::Save),
-            entry("Close Editor", None, Command::CloseEditor),
+            ("Open File...", Command::OpenFile),
+            ("Save", Command::Save),
+            ("Close Editor", Command::CloseEditor),
         ],
     ),
-    (
-        "Edit",
-        &[entry(
-            "Command Palette...",
-            Some("Ctrl+K"),
-            Command::Palette,
-        )],
-    ),
+    ("Edit", &[("Command Palette...", Command::Palette)]),
     (
         "View",
         &[
-            entry("Toggle Outline", None, Command::ToggleOutline),
-            entry("Problems", None, Command::Problems),
-            entry("Terminal", None, Command::Terminal),
+            ("Toggle Outline", Command::ToggleOutline),
+            ("Problems", Command::Problems),
+            ("Terminal", Command::Terminal),
         ],
     ),
-    (
-        "Go",
-        &[entry("Go to File...", Some("Ctrl+P"), Command::OpenFile)],
-    ),
-    ("Run", &[entry("Run Tests", None, Command::RunTests)]),
-    (
-        "Help",
-        &[entry("Keyboard Shortcuts", None, Command::Shortcuts)],
-    ),
+    ("Go", &[("Go to File...", Command::OpenFile)]),
+    ("Run", &[("Run Tests", Command::RunTests)]),
+    ("Help", &[("Keyboard Shortcuts", Command::Shortcuts)]),
 ];
 
 pub(crate) fn run(ws: Workspace, command: Command) {
@@ -88,19 +88,16 @@ pub(crate) fn run(ws: Workspace, command: Command) {
 }
 
 fn menus(ws: Workspace) -> sigil::widgets::MenuBarBuilder {
-    MENUS
-        .iter()
-        .fold(menu_bar(), |bar, (label, entries)| {
-            bar.menu(
-                *label,
-                entries.iter().map(|item| {
-                    let command = item.command;
-                    let base = MenuItem::new(item.label).activate(move || run(ws, command));
-                    item.shortcut.into_iter().fold(base, MenuItem::shortcut)
-                }),
-            )
-        })
-        .width(MENU_BAR_W)
+    MENUS.iter().fold(menu_bar(), |bar, (title, entries)| {
+        bar.menu(
+            *title,
+            entries.iter().map(|(label, command)| {
+                let command = *command;
+                let base = MenuItem::new(*label).activate(move || run(ws, command));
+                command.hint().into_iter().fold(base, MenuItem::shortcut)
+            }),
+        )
+    })
 }
 
 pub(crate) fn top_bar(ws: Workspace) -> NodeBuilder {
@@ -128,7 +125,8 @@ pub(crate) fn top_bar(ws: Workspace) -> NodeBuilder {
                 .activate(move || run(ws, Command::Problems)),
         )
         .child(
-            button("▶ Run tests")
+            button("Run tests")
+                .icon(Icon::Play)
                 .primary()
                 .size(ControlSize::Compact)
                 .activate(move || run(ws, Command::RunTests)),
@@ -143,7 +141,7 @@ fn severity_item(severity: DiagSeverity) -> NodeBuilder {
                 .align_items(AlignItems::Center),
         )
         .child(
-            icon(severity_glyph(severity))
+            icon(severity_icon(severity))
                 .tone(severity_tone(severity))
                 .size(ControlSize::Compact),
         )

@@ -44,17 +44,15 @@ fn main() -> sigil::AppResult<()> {
 
 pub(crate) fn app() -> impl IntoNode {
     let ws = Workspace::new();
-    container()
-        .layout(LayoutStyle::flex_column().fill())
-        .key_capture(Shortcut::primary(LogicalKey::character("k")), move |_| {
-            ws.palette_open.set(true);
-        })
-        .key_capture(Shortcut::primary(LogicalKey::character("p")), move |_| {
-            ws.quick_open.set(true);
-        })
-        .key_capture(Shortcut::primary(LogicalKey::character("s")), move |_| {
-            ws.save_active();
-        })
+    chrome::Command::BOUND
+        .into_iter()
+        .fold(
+            container().layout(LayoutStyle::flex_column().fill()),
+            |root, command| match command.shortcut() {
+                Some(shortcut) => root.key_capture(shortcut, move |_| chrome::run(ws, command)),
+                None => root,
+            },
+        )
         .child(app_shell(
             chrome::top_bar(ws),
             workbench(ws),

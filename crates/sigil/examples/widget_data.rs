@@ -66,7 +66,7 @@ fn list_row_demo() -> NodeBuilder {
 }
 
 fn kv_grid_demo() -> NodeBuilder {
-    kv_grid(&[("Region", "eu-west"), ("Replicas", "3")])
+    kv_grid([("Region", "eu-west"), ("Replicas", "3")])
 }
 
 fn kv_row_demo() -> NodeBuilder {

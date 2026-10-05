@@ -82,7 +82,7 @@ fn pattern_kv_grid() {
                         .padding(8.0),
                 )
                 .bg(Token::Surface)
-                .child(sigil::widgets::kv_grid(&[
+                .child(sigil::widgets::kv_grid([
                     ("Content-Type", "application/json"),
                     ("Status", "200 OK"),
                     ("Length", "1024"),

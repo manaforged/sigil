@@ -32,7 +32,10 @@ pub(crate) fn commands(ws: Workspace) -> NodeBuilder {
         .iter()
         .fold(command_menu(), |menu, (label, command)| {
             let command = *command;
-            menu.item(*label, move || {
+            let title = command
+                .hint()
+                .map_or_else(|| String::from(*label), |hint| format!("{label}    {hint}"));
+            menu.item(title, move || {
                 open.set(false);
                 run(ws, command);
             })

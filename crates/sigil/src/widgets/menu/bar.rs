@@ -33,6 +33,7 @@ struct Slot {
 
 pub struct MenuBarBuilder {
     slots: Vec<Slot>,
+    fill: bool,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
@@ -41,6 +42,7 @@ pub struct MenuBarBuilder {
 pub fn menu_bar() -> MenuBarBuilder {
     MenuBarBuilder {
         slots: Vec::new(),
+        fill: false,
         style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
     }
@@ -60,13 +62,19 @@ impl MenuBarBuilder {
         self
     }
 
+    #[must_use]
+    pub const fn fill(mut self) -> Self {
+        self.fill = true;
+        self
+    }
+
     fn into_node_builder(self) -> NodeBuilder {
         let open_idx: Signal<Option<usize>> = signal(None);
         let host = Owner::current();
         let mut bar = container()
             .role(Role::GenericContainer)
             .label("Menu bar")
-            .with(self.layout_overrides.apply(bar_layout()))
+            .with(self.layout_overrides.apply(bar_layout(self.fill)))
             .class(BAR_SURFACE);
 
         if !self.style_accumulator.is_empty() {
@@ -102,10 +110,10 @@ impl IntoNode for MenuBarBuilder {
     }
 }
 
-fn bar_layout() -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .fill_width()
-        .height(TRIGGER_H)
+fn bar_layout(fill: bool) -> LayoutStyle {
+    let row = LayoutStyle::flex_row();
+    let row = if fill { row.fill_width() } else { row };
+    row.height(TRIGGER_H)
         .shrink(0.0)
         .padding_x(space(1))
         .gap(space(1))

@@ -685,15 +685,6 @@ captures = [
 ]
 
 [[components]]
-id = "hairline"
-title = "Hairline"
-group = "content"
-builder = "hairline"
-captures = [
-  { build = "hairline", size = [240, 48], hit = [8.0, 0.0], states = ["default"] },
-]
-
-[[components]]
 id = "interactive"
 title = "Interactive"
 group = "plumbing"

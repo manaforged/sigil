@@ -46,6 +46,8 @@
 | Method | Description |
 | --- | --- |
 | <code>ctrl(key: impl Into&lt;<a href="#logicalkey">LogicalKey</a>&gt;) -&gt; Self</code> |  |
+| <code>label(&amp;self) -&gt; String</code> |  |
+| <code>label_for(&amp;self, mac: bool) -&gt; String</code> |  |
 | <code>matches(&amp;self, event: &amp;<a href="#keyevent">KeyEvent</a>) -&gt; bool</code> |  |
 | <code>new(key: impl Into&lt;<a href="#logicalkey">LogicalKey</a>&gt;, modifiers: Modifiers) -&gt; Self</code> |  |
 | <code>plain(key: impl Into&lt;<a href="#logicalkey">LogicalKey</a>&gt;) -&gt; Self</code> |  |

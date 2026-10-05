@@ -448,7 +448,7 @@ fn main() {
 | --- | --- | --- |
 | `NodeEventsExt` | `key`, `key_any`, `key_capture`, `key_capture_any`, `shortcut`, `pointer_down`, `on_scroll`, `focus_in`, `autofocus`, `focus_when(Signal<u64>)`, ... | Attach event handlers to a `NodeBuilder` or to any widget builder that implements `WidgetLayoutExt`. On a widget builder the handler goes on the root node of the widget, after the handlers of the widget. `autofocus()` gives the node keyboard focus when it mounts; `focus_when(trigger)` focuses it each time the signal changes, with no `NodeId` plumbing. |
 | `request_focus` | `fn request_focus(id: NodeId)` | Move keyboard focus to a node. |
-| `Shortcut` | `Shortcut::new(key, mods)`, `plain(key)`, `ctrl(key)`, `primary(key)` | A key plus modifiers. `primary` uses `events::PRIMARY`: Command on macOS, Control elsewhere, for example `Shortcut::primary(LogicalKey::character("s"))` for Cmd+S or Ctrl+S. |
+| `Shortcut` | `Shortcut::new(key, mods)`, `plain(key)`, `ctrl(key)`, `primary(key)`, `label()`, `label_for(mac: bool)` | A key plus modifiers. `label()` prints it for the running platform: `⇧⌘K` on macOS, `Shift+Super+K` elsewhere; `label_for` picks the style explicitly. `primary` uses `events::PRIMARY`: Command on macOS, Control elsewhere, for example `Shortcut::primary(LogicalKey::character("s"))` for Cmd+S or Ctrl+S. |
 | `events::PRIMARY` | `const PRIMARY: ModifiersState` | The platform's primary shortcut modifier: Command (`META`) on macOS, Control elsewhere, including wasm32. |
 | `Key` | `keyboard_types::NamedKey` | A named key such as `Key::Enter`. |
 | `LogicalKey` | `LogicalKey::named(key)`, `LogicalKey::character(s)` | A named key or a character. |
@@ -535,7 +535,7 @@ fn main() {
 | `Theme::color` | `fn color(&self, token: Token) -> Rgba8` | `resolve_color` for a built-in token. |
 | `Theme::register_token` / `with_token` | `fn register_token(&mut self, name: &str, value: ThemeValue) -> Option<ThemeValue>` | Set a runtime override. A built-in token name also updates the matching base colour field. |
 | `Theme::with_theme_tokens` | `fn with_theme_tokens(self, tokens: &phf::Map<&'static str, ThemeValue>) -> Self` | Fill the theme table layer from static data. |
-| `Tone` | `enum Tone { Neutral, Primary, Info, Success, Warn, Error }` | Semantic colour family. |
+| `Tone` | `enum Tone { Neutral, Primary, Info, Success, Warn, Error }`; `token(step: u8) -> Token`, `shade()`, `fill()`, `solid()` | Semantic colour family. `token` returns the tone's colour-scale step (1–12); `shade` is step 4 (tinted background), `fill` step 9 (solid fill), `solid` step 11 (text and strokes). |
 | `FocusRing` | `FocusRing::static_visible(bool)`; `theme_color(Token)` | Focus ring settings. `theme_color` sets the ring colour from a theme token. |
 
 Paint calls write to one store per node. A later call wins for each
@@ -628,7 +628,7 @@ fn main() {
 | `segmented` | `fn segmented(active: Signal<usize>, labels: Vec<String>) -> SegmentedBuilder` | A framed row of options where one is active; `.label()` names the group and `.height()` (`WidgetLayoutExt`) sets its height. |
 | `slider` | `fn slider(value: Signal<f32>, range: RangeInclusive<f32>) -> SliderBuilder` | A value slider. |
 | `Orientation` | `enum Orientation { Horizontal, Vertical }` | Axis of a slider or splitter. |
-| `text_field` | `fn text_field(value: Signal<String>) -> TextFieldBuilder` | A single-line text input. |
+| `text_field` | `fn text_field(value: Signal<String>) -> TextFieldBuilder`; `.leading(node)`, `.trailing(node)`, `.clearable()` | A single-line text input. `leading` and `trailing` place a node, such as an icon, inside the field border; the input fills the rest. `clearable` shows a clear button while the value is not empty; it empties the value, fires `change`, and puts focus back on the input. |
 | `text_edit` | `fn text_edit(value: Signal<String>) -> TextEditBuilder`; `.autofocus()`, `.focus_when(Signal<u64>)` | A multi-line text editor. `autofocus` focuses it when it mounts; `focus_when` focuses it each time the signal changes. |
 | `number_field` | `fn number_field<T: NumericKind>(value: Signal<T>, range: RangeInclusive<T>) -> NumberFieldBuilder<T>` | A numeric input. |
 | `NumericKind` | `trait NumericKind` | Number types that `number_field` accepts. |
@@ -636,7 +636,7 @@ fn main() {
 | `Date` | `struct Date { year: i32, month: u8, day: u8 }` | A calendar date. |
 | `color_field` | `fn color_field(value: Signal<Rgba8>) -> ColorFieldBuilder` | A colour input. |
 | `field` | `fn field<C: IntoNode>(label, control: C) -> FieldBuilder<C>`; `.error(impl Reactive<Option<String>>)` when `C: FieldControl` | A label above a control. `.error` shows the message under the control and paints the control invalid while it is `Some`. |
-| `chip` | `fn chip(label, tone: Tone) -> ChipBuilder` | A small tag. |
+| `chip` | `fn chip(label, tone: Tone) -> ChipBuilder`; `.dot()`, `.leading(node)` | A small tag. `dot` puts a dot in the chip's tone before the label, for status pills; `leading` puts any node, such as an icon, before it. |
 | `interactive` | `fn interactive(inner: NodeBuilder) -> InteractiveBuilder` | Make any node hoverable, pressable, and focusable. |
 
 ```rust,no_run
@@ -695,7 +695,7 @@ fn main() {
 | `menu` | `fn menu(open: Signal<bool>) -> MenuBuilder` | A popup menu. |
 | `context_menu` | `fn context_menu(target, items: impl Fn() -> Vec<MenuItem>) -> NodeBuilder` | Wraps `target`; a right click opens a menu of `items()` at the pointer. |
 | `MenuItem` | `struct MenuItem { label, shortcut, disabled, submenu_indicator }`; `MenuItem::new(label)`, `shortcut(hint)`, `disabled(bool)`, `submenu(bool)`, `activate(Fn())` | One menu entry. `activate` runs when the entry is pressed. |
-| `menu_bar` | `fn menu_bar() -> MenuBarBuilder` | An in-window menu bar. |
+| `menu_bar` | `fn menu_bar() -> MenuBarBuilder`; `.fill()` | An in-window menu bar, as wide as its menus. `fill` makes it take the full width. |
 | `command_menu` | `fn command_menu() -> CommandMenuBuilder` | A command palette. Typing in its query field filters and ranks items with `fuzzy_score`; Up and Down move, Enter or a click runs an item or opens a submenu, and Escape goes back one level. |
 | `fuzzy_score` | `fn fuzzy_score(query: &str, text: &str) -> Option<FuzzyMatch>` | Rank text against a query. A lower `score` is a better match. |
 | `table` | `fn table<Row>(state: TableState<Row>) -> TableBuilder<Row>` | A sortable, filterable table. |
@@ -708,13 +708,13 @@ fn main() {
 | `SelectionMode` | `enum SelectionMode { None, Single, Multi, Extend }` | Selection mode of a list. |
 | `list_row` | `fn list_row(selected: bool, title, detail) -> NodeBuilder` | One row of a list. |
 | `list_row_with` | `fn list_row_with(selected: bool, title, slots: ListRowSlots) -> NodeBuilder` | A list row with a marker, status, and columns. |
-| `ListRowSlots` | `struct ListRowSlots { depth, disclosure, marker, status, columns, shrink, title_width, tone }` | Optional parts of a list row. `title_width` gives the title a fixed width so columns line up after it. |
+| `ListRowSlots` | `struct ListRowSlots { depth, disclosure, marker, marker_tone, leading, status, status_tone, badge, columns, shrink, title_width, indent, tone }` | Optional parts of a list row. `title_width` gives the title a fixed width so columns line up after it. `leading` places a node, such as an icon, before the title. `marker_tone` and `status_tone` colour the marker and status text per row. `badge: Option<(TextContent, Tone)>` draws a count pill after the status. `indent` sets the columns per depth level (default 2). |
 | `Disclosure` | `enum Disclosure { None, Leaf, Collapsed, Expanded }` | The tree chevron slot of a list row. |
-| `kv_grid` | `fn kv_grid(rows: &[(&'static str, &'static str)]) -> NodeBuilder` | A two-column key/value grid. |
+| `kv_grid` | `fn kv_grid(rows: impl IntoIterator<Item = (impl Into<TextContent>, impl Into<TextContent>)>) -> NodeBuilder` | A two-column key/value grid. Keys and values can be reactive. |
 | `kv_row` | `fn kv_row(label, value: impl IntoNode + 'static) -> NodeBuilder` | One key/value row. |
-| `tabs` | `fn tabs() -> TabsBuilder`; `.tab(label, component)`, `.active(Signal<usize>)` | Tabs. Each `tab` adds a label and its content component; the component builds once, so a tab keeps its state while another is shown. |
+| `tabs` | `fn tabs() -> TabsBuilder`; `.tab(label, component)`, `.active(Signal<usize>)` | Tabs. Each `tab` adds a label and its content component; the component builds once, so a tab keeps its state while another is shown. When tabs have content, the active tab's content fills the space left below the tab strip. |
 | `code_edit` | `fn code_edit(lines: Signal<Vec<String>>, caret: Signal<(usize, usize)>) -> CodeEditBuilder` | A code editor with built-in `text_edit` editing. |
-| `highlight` | `fn highlight(language: &str, source: &str) -> Vec<Vec<Highlight>>` | Syntax marks per line for rust, sh, toml, json, python, js/ts, and diff. Other languages get no marks. |
+| `highlight` | `fn highlight(language: &str, source: &str) -> Vec<Vec<Highlight>>` | Syntax marks per line for rust, sh, toml, json, python, javascript, typescript, go, c/cpp, yaml, css, html, sql, markdown, and diff. Other languages get no marks. |
 | `hl_spans` | `fn hl_spans(language: &str, source: &str) -> Vec<Vec<HlSpan>>` | `highlight` as column spans for `code_edit(..).highlights(..)`. |
 | `markdown` | `fn markdown(source: Signal<String>) -> NodeBuilder` | Rendered markdown. |
 | `markdown_inline` | `fn markdown_inline(source: &str) -> TextBuilder` | One wrapped paragraph with inline markdown spans. |
@@ -763,7 +763,7 @@ fn tree() -> impl IntoNode {
     let list = list.measured().estimate(rows(2.0)).scroll_bind(scroll).max_scroll_bind(max_scroll);
     let list = list.content_height_bind(signal(0.0)).follow_row(signal(0));
     let _ = list_row_with(true, "Inbox", ListRowSlots { marker: Some("*".into()), ..ListRowSlots::default() });
-    let _ = (kv_grid(&[("Name", "Sigil")]), kv_row("Size", text("1 KB")));
+    let _ = (kv_grid([("Name", "Sigil")]), kv_row("Size", text("1 KB")));
     let _: TabsBuilder = tabs().tab("A", || text("a")).tab("B", || text("b"));
     let _: CodeEditBuilder = code_edit(signal(vec!["fn main() {}".into()]), signal((0, 0)));
     let _ = HlSpan { start: 0, end: 2, token: "keyword" };
@@ -790,7 +790,9 @@ fn main() {
 | `sidebar` | `fn sidebar(child: impl IntoNode + 'static) -> SidebarBuilder` | A side column. Set its width with `.width(..)`. |
 | `status_bar` | `fn status_bar<I: IntoIterator>(children: I) -> NodeBuilder` | A status line. |
 | `panel` | `fn panel() -> PanelBuilder` | A titled panel. |
-| `card` | `fn card(child: impl IntoNode + 'static) -> NodeBuilder` | A bordered card. |
+| `card` | `fn card(child: impl IntoNode + 'static) -> CardBuilder`; `.selected(impl Reactive<bool>)`, `.activate(f)` | A bordered card. `selected` gives it the accent border and background; `activate` handles click, Enter, and Space and makes the card a focusable button. Converts into `NodeBuilder`. |
+| `stat` | `fn stat(label, value) -> StatBuilder`; `.delta(text, Tone)`, `.caption(text)`, `.trend(values)`, `.range(low, high)`, `.tone(Tone)` | A KPI tile in card chrome: a label, a large value, and an optional toned change line, caption, and sparkline trend. Label and value can be reactive. |
+| `tree` | `fn tree<K: TreeKey>(nodes: impl Reactive<Vec<TreeNode<K>>>) -> TreeBuilder<K>` | A tree view for explorers, outlines, and settings. Only rows under expanded nodes are built, and they are virtualized. Click toggles a folder and activates a leaf; arrows move, Left and Right collapse and expand, Home and End jump, Enter activates. |
 | `sheet` | `fn sheet(show: Signal<bool>) -> ModalBuilder` | A panel that slides in from a side. |
 | `modal` | `fn modal(show: Signal<bool>) -> ModalBuilder` | A modal dialog. |
 | `ModalBuilder` | `struct ModalBuilder`; `close_button(bool)`; `ModalBuilder::new(Signal<bool>)`, `title(text)`, `child(impl IntoNode)`, `footer(impl IntoNode)`, `actions(cancel, confirm)`, `side(Side)`, `escape_closes(bool)`, `dismiss_on_backdrop(bool)`, `trap(bool)`; width with `WidgetLayoutExt::width` | Builder of a modal or sheet. A titled dialog shows a close button that sets `show` to false; `close_button(false)` removes it. Children scroll in a body between the title and the footer, so the title and actions stay visible when the dialog reaches its maximum height. `footer` adds one node to the footer; `actions(cancel, confirm)` adds two. Escape closes the dialog by default. A click on the backdrop closes a `sheet` but not a `modal`, unless `dismiss_on_backdrop` changes it. `trap(false)` lets focus leave the dialog. |
@@ -806,9 +808,8 @@ fn main() {
 | `notice_band` | `fn notice_band(body, tone: Tone) -> NodeBuilder` | A full-width notice. |
 | `empty_state` | `fn empty_state(title, body) -> NodeBuilder` | A placeholder for empty content. |
 | `spacer` | `fn spacer() -> NodeBuilder` | Flexible empty space. |
-| `hairline` | `fn hairline() -> NodeBuilder` | A one-pixel rule. |
 | `divider_horizontal` | `fn divider_horizontal() -> NodeBuilder` | A horizontal divider. |
-| `divider_vertical` | `fn divider_vertical() -> NodeBuilder` | A vertical divider. |
+| `divider_vertical` | `fn divider_vertical() -> VerticalDivider`; `.height(px)` | A vertical divider that fills the height. `height` gives a fixed tick, such as between toolbar items. |
 | `surface` | `fn surface(key: u64) -> NodeBuilder` | A rectangle that the embed host draws. |
 | `tooltip` | `fn tooltip(label: impl Into<String>) -> TooltipBuilder` | A hover tooltip. |
 | `toast` | `fn toast(message: Signal<Option<String>>) -> NodeBuilder` | One transient message. |
@@ -816,15 +817,14 @@ fn main() {
 | `ToastQueue` | `ToastQueue::new()`; `info`, `success`, `warning`, `error` | Queue of toast messages. |
 | `progress` | `fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder` | A progress bar; `.label()` names it, else "Progress". |
 | `gauge` | `fn gauge(value: Signal<f32>) -> GaugeBuilder` | A radial gauge. |
-| `chart` | `fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder` | A bar or line chart. A signal or closure source draws the chart again when it changes, like `sparkline`. |
+| `chart` | `fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder` | A bar or line chart. A signal or closure source draws the chart again when it changes, like `sparkline`. The chart fills its parent's width unless `.width()` is set; at small heights it thins x-axis labels and hides the axis row before the plot gets too small. |
 | `sparkline` | `fn sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder` | A sparkline. By default, one block glyph per value on one text row. A signal or closure source draws the graph again when it changes. |
 | `heatmap` | `fn heatmap<F: Fn(usize, usize) -> Rgba8>(grid_w, grid_h, color: F) -> NodeBuilder` | A grid of coloured cells. |
 | `dot` | `fn dot(tone: Tone) -> DotBuilder` | A status dot. |
 | `avatar` | `fn avatar(initials) -> NodeBuilder` | Initials in a circle. |
 | `spinner` | `fn spinner() -> NodeBuilder` | A busy indicator named "Loading". |
-| `spinner_frame` | `fn spinner_frame(tick: u64) -> &'static str` | The spinner glyph for a tick count. |
-| `icon` | `fn icon(glyph: impl Into<TextContent>) -> IconBuilder` | An icon glyph. |
-| `icon_svg` | `fn icon_svg(svg: impl Into<Rc<str>>) -> IconBuilder` | An SVG icon. Its colour comes from the tone and the active theme at paint time. |
+| `icon` | `fn icon(glyph: impl IntoIconSource) -> IconBuilder` | An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, or a text glyph. |
+| `Icon` | `enum Icon` (98 variants); `Icon::ALL`, `name()`, `svg()` | The bundled Lucide icon set (ISC). `name` is the kebab-case file name and `svg` the SVG source (feature `scene`). |
 | `path` | `const fn path(width: u32, height: u32) -> PathNode` | A vector path. |
 | `PathNode` | `move_to`, `line_to`, `quad_to`, `cubic_to`, `close`, `fill`, `fill_linear(start, end, stops: Vec<(f32, Rgba8)>)`, `fill_radial(center, radius, stops)`, `stroke`, `non_scaling_stroke` | Builder of a vector path. `fill_linear` and `fill_radial` fill with a gradient. The host rasterizes the path at the laid-out size times the device scale. `non_scaling_stroke` keeps the stroke width in logical px under any fit, with round joins and caps. |
 | `image_rgba` | `fn image_rgba(width: u32, height: u32, rgba: Vec<u8>) -> Option<ImageBuilder>` | An image from RGBA bytes. |
@@ -838,6 +838,8 @@ use sigil::widgets::DotBuilder;
 use sigil::widgets::GaugeBuilder;
 use sigil::widgets::HintOverlayBuilder;
 use sigil::widgets::IconBuilder;
+use sigil::widgets::icon_svg;
+use sigil::widgets::spinner_frame;
 use sigil::widgets::ModalBuilder;
 use sigil::widgets::PanelBuilder;
 use sigil::widgets::PathCmd;
@@ -866,7 +868,7 @@ fn tree() -> impl IntoNode {
     let _: PanelBuilder = panel();
     let _: HintOverlayBuilder = hint_overlay(&[("q", "quit")]);
     let _ = (section_label("Files"), hint_bar("q quit", "v0.1"), notice_band("Offline", Tone::Warn));
-    let _ = (empty_state("No files", "Add one"), hairline(), divider_horizontal(), divider_vertical());
+    let _ = (empty_state("No files", "Add one"), divider_horizontal(), divider_vertical());
     let _ = (surface(1), toast(signal(None)), toast_queue(queue), ToastLevel::Error);
     let _: TooltipBuilder = tooltip("Help");
     let _: (ProgressBuilder, GaugeBuilder) = (progress(signal(0.3), 1.0).tone(Tone::Warn), gauge(signal(0.5)));
@@ -1431,6 +1433,13 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
+| `widgets::spinner_frame` | `fn spinner_frame(tick: u64) -> &'static str` | The spinner glyph for a tick count. |
+| `widgets::icon_svg` | `fn icon_svg(svg: impl Into<Rc<str>>) -> IconBuilder` | An SVG icon. Its colour comes from the tone and the active theme at paint time. |
+| `widgets::TreeNode` | `struct TreeNode<K>`; `new(id, label)`, `.leading(icon)`, `.status(text, Tone)`, `.detail(text)`, `.tone(RowTone)`, `.children(iter)`, `.child(node)` | One node of a `tree`. `leading` takes an `Icon` or a text glyph. |
+| `widgets::TreeBuilder` | `struct TreeBuilder<K>`; `.expanded(Signal<Vec<K>>)`, `.selected(Signal<Option<K>>)`, `.activate(impl Fn(&K))`, `.indent(cols)`, `.label(name)` | Builder of a `tree`. `indent` sets the columns per nesting level. Without `expanded` the tree keeps its own expansion; `selected` follows the keyboard cursor; without `activate`, Enter toggles folders. Takes the `WidgetLayoutExt` overrides and fills its viewport by default. |
+| `widgets::TreeKey` | `trait TreeKey: Clone + Eq + Hash + 'static` | The key type of tree nodes; implemented for every such type. |
+| `widgets::TreeRow` | `struct TreeRow<K> { id, depth, disclosure, selected, parent, .. }`; `has_children()` | One visible row of a flattened tree. |
+| `widgets::IconSource` | `struct IconSource`; `trait IntoIconSource` | What `icon` accepts: a bundled `Icon` or any text glyph. |
 | `widgets::layout_ext::LayoutOverrides` | `struct LayoutOverrides`; `const fn new() -> Self` | Width, height, grow, padding, and full-style overrides that a widget builder applies to its root layout, plus the node hooks that `WidgetLayoutExt::map_node` queues. |
 | `widgets::overlay::heatmap::CELL_PX` | `const CELL_PX: f32 = 8.0` | Side length in pixels of one heatmap cell. |
 | `widgets::patterns::HintEntry` | `type HintEntry<'a> = (&'a str, &'a str)` | One key and label pair for the hint overlay. |
@@ -1484,7 +1493,7 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | `widgets::DiffBuilder` | `struct DiffBuilder`; `change(f: impl Fn(DiffView))`; `view(DiffView)`, `path(text)`, `status(text)`, `max_rows(n)` | Builder of a diff view. `change` shows one button per `DiffView` and calls `f` with the one the user picks. `path` shows in the header; `status` shows as a line under the rows. |
 | `widgets::PanelBuilder` | `struct PanelBuilder`; `PanelBuilder::new()`, `title(text)`, `child(impl IntoNode)`, `padding(px)`, `elevation(tier)` | Builder of a panel. `elevation` takes 0 to 3. |
 | `widgets::SplitterBuilder` | `struct SplitterBuilder`; `child(node, initial)`, `pane(node)`, `child_constrained(node, initial, min, max)`; `min_size(index, px)`, `max_size(index, px)`, `snap_points(handle, &[f32])`, `snap_threshold(px)`, `sizes_bind(Signal<Vec<f32>>)` | Builder of a splitter. `child_constrained` is `pane(node).initial(initial).min(min).max(max).commit()`. `sizes_bind` writes the pane sizes to the signal. A dragged handle snaps to a snap point within `snap_threshold`; the default is 8. |
-| `widgets::ScrollBuilder` | `struct ScrollBuilder`; `extent(f32 or Signal<f32>)`, `fill()`, `fit()`, `follow_end(bool)`; `scroll_bind(Signal<f32>)` | Builder of a scroll area. `fill()` takes the parent's height. `fit()` takes the content height up to the parent's height, then scrolls. `follow_end(true)` opens the area scrolled to the bottom and keeps it pinned there while the content grows, until the user scrolls up. |
+| `widgets::ScrollBuilder` | `struct ScrollBuilder` (converts into `NodeBuilder`); `extent(f32 or Signal<f32>)`, `fill()`, `fit()`, `follow_end(bool)`; `scroll_bind(Signal<f32>)` | Builder of a scroll area. `fill()` takes the parent's height. `fit()` takes the content height up to the parent's height, then scrolls. `follow_end(true)` opens the area scrolled to the bottom and keeps it pinned there while the content grows, until the user scrolls up. |
 | `widgets::HintOverlayBuilder` | `struct HintOverlayBuilder`; `HintOverlayBuilder::new(&[HintEntry])`, `entry(chord, description)` | Builder of a key hint overlay. |
 | `widgets::TooltipBuilder` | `struct TooltipBuilder`; `TooltipBuilder::new(label)`, `child(target)`, `shortcut(Option<text>)`, `delay(ms)`, `clamp_top()`, `theme(Theme)` | Builder of a tooltip. `child` is the node that shows the tooltip on hover. `clamp_top()` shows the tooltip below the target instead of above. |
 | `widgets::ToastEntry` | `struct ToastEntry { level: ToastLevel, message: String }` | One queued toast. |

@@ -14,7 +14,6 @@ pub(crate) const BUILDERS: &[(&str, Build)] = &[
     ("image_rgba", image_row),
     ("divider_horizontal", divider_h_row),
     ("divider_vertical", divider_v_row),
-    ("hairline", hairline_row),
     ("notice_band", notice_row),
     ("empty_state", empty_row),
     ("hint_bar", hint_bar_row),
@@ -93,10 +92,6 @@ fn divider_v_row(_state: State) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row().height(40.0))
         .child(divider_vertical())
-}
-
-fn hairline_row(_state: State) -> NodeBuilder {
-    node(hairline())
 }
 
 fn notice_row(_state: State) -> NodeBuilder {

@@ -38,7 +38,7 @@ fn sheet_demo() -> NodeBuilder {
         .child(
             sheet(open)
                 .title("Details")
-                .child(kv_grid(&[("Owner", "ada"), ("Size", "4 KB")])),
+                .child(kv_grid([("Owner", "ada"), ("Size", "4 KB")])),
         )
 }
 
@@ -56,6 +56,7 @@ fn menu_demo() -> NodeBuilder {
 
 fn menu_bar_demo() -> MenuBarBuilder {
     menu_bar()
+        .fill()
         .menu(
             "File",
             [

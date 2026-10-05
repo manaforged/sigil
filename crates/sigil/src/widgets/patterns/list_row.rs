@@ -1,8 +1,9 @@
-use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
+use crate::kernel::{IntoNode, NodeBuilder, Role, TextBuilder, TextContent, container, text};
 use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, cols};
 use crate::reactive::{Signal, signal};
-use crate::style::{Paint, Radius, StateVariants, Token, space};
+use crate::style::{Paint, Radius, StateVariants, Token, Tone, space};
 
+use super::super::chip::chip;
 use super::super::interactive::interactive;
 use super::super::popup::{ChevronDirection, chevron};
 use super::super::table::ColAlign;
@@ -79,12 +80,17 @@ impl From<(TextContent, f32)> for ListColumn {
 pub struct ListRowSlots {
     pub depth: u16,
     pub disclosure: Disclosure,
+    pub leading: Option<Box<dyn IntoNode>>,
     pub marker: Option<TextContent>,
+    pub marker_tone: Option<Tone>,
     pub status: Option<TextContent>,
+    pub status_tone: Option<Tone>,
+    pub badge: Option<(TextContent, Tone)>,
     pub detail: Option<TextContent>,
     pub columns: Vec<ListColumn>,
     pub shrink: bool,
     pub title_width: Option<f32>,
+    pub indent: Option<f32>,
     pub tone: RowTone,
 }
 
@@ -109,13 +115,27 @@ pub fn list_row_with(
     title: impl Into<TextContent>,
     mut slots: ListRowSlots,
 ) -> NodeBuilder {
-    let mut row = row_frame(slots.depth, slots.disclosure);
+    let mut row = row_frame(
+        slots.depth,
+        slots.indent.unwrap_or(INDENT_COLS),
+        slots.disclosure,
+    );
     if let Some(marker) = slots.marker.take() {
         row = row.child(
             container()
                 .layout(LayoutStyle::block().width(cols(2.0)).shrink(0.0))
-                .child(text(marker).class("text-sm").class(Token::Accent11.text())),
+                .child(
+                    text(marker).class("text-sm").class(
+                        slots
+                            .marker_tone
+                            .map_or(Token::Accent11, Tone::solid)
+                            .text(),
+                    ),
+                ),
         );
+    }
+    if let Some(leading) = slots.leading.take() {
+        row = row.child(leading_slot(leading));
     }
     let tone = slots.tone;
     row = row.child(title_text(title.into(), &slots));
@@ -123,7 +143,10 @@ pub fn list_row_with(
         row = row.child(detail_text(detail, tone));
     }
     if let Some(status) = slots.status.take() {
-        row = row.child(status_text(status, slots.shrink, tone));
+        row = row.child(status_text(status, slots.shrink, tone, slots.status_tone));
+    }
+    if let Some((label, badge_tone)) = slots.badge.take() {
+        row = row.child(chip(label, badge_tone));
     }
     for entry in std::mem::take(&mut slots.columns) {
         row = row.child(column(entry, slots.shrink, tone));
@@ -153,7 +176,7 @@ pub(crate) fn row_states(row: NodeBuilder, disabled: Option<Signal<bool>>) -> No
     .into_node_builder()
 }
 
-fn row_frame(depth: u16, disclosure: Disclosure) -> NodeBuilder {
+fn row_frame(depth: u16, indent_cols: f32, disclosure: Disclosure) -> NodeBuilder {
     let pad = space(2);
     let mut row = container().role(Role::GenericContainer).layout(
         LayoutStyle::flex_row()
@@ -164,7 +187,7 @@ fn row_frame(depth: u16, disclosure: Disclosure) -> NodeBuilder {
             .align_items(AlignItems::Center),
     );
     if depth > 0 {
-        row = row.child(indent(depth));
+        row = row.child(indent(depth, indent_cols));
     }
     if matches!(disclosure, Disclosure::Collapsed | Disclosure::Expanded) {
         row = row.expanded(signal(disclosure == Disclosure::Expanded));
@@ -175,10 +198,20 @@ fn row_frame(depth: u16, disclosure: Disclosure) -> NodeBuilder {
     row
 }
 
-fn indent(depth: u16) -> NodeBuilder {
+fn leading_slot(content: Box<dyn IntoNode>) -> NodeBuilder {
+    container()
+        .layout(
+            LayoutStyle::flex_row()
+                .shrink(0.0)
+                .align_items(AlignItems::Center),
+        )
+        .child(content)
+}
+
+fn indent(depth: u16, indent_cols: f32) -> NodeBuilder {
     container().layout(
         LayoutStyle::block()
-            .width(cols(INDENT_COLS * f32::from(depth)))
+            .width(cols(indent_cols * f32::from(depth)))
             .shrink(0.0),
     )
 }
@@ -236,11 +269,17 @@ fn detail_text(detail: TextContent, tone: RowTone) -> TextBuilder {
         )
 }
 
-fn status_text(status: TextContent, shrink: bool, tone: RowTone) -> TextBuilder {
-    let node = text(status)
-        .ellipsize()
-        .class("text-xs")
-        .class(tone.detail().text());
+fn status_text(
+    status: TextContent,
+    shrink: bool,
+    tone: RowTone,
+    status_tone: Option<Tone>,
+) -> TextBuilder {
+    let node = text(status).ellipsize().class("text-xs").class(
+        status_tone
+            .map_or_else(|| tone.detail(), Tone::solid)
+            .text(),
+    );
     if shrink {
         node.layout(LayoutStyle::block().shrink(1.0).min_size(0.0, 0.0))
     } else {

@@ -145,7 +145,7 @@ Small composites in `sigil::widgets`:
 - `kv_row(label, value)` — a row at least 28 px tall. The key is a
   muted 16-column cell that ellipsizes. The value starts 12 px after it
   and fills the rest, so values in a stack align.
-- `kv_grid(&[(key, value)])` — a stack of `kv_row`s with a 1 px
+- `kv_grid([(key, value)])` — a stack of `kv_row`s with a 1 px
   divider between rows; values render monospace.
 - `list_row(selected, title, detail)` — a 24 px row with an ellipsized
   title and optional right-aligned detail. A selected row has the
@@ -169,7 +169,7 @@ Small composites in `sigil::widgets`:
   accessible name.
 - `hint_overlay(hints)` — a popup-surface list of shortcut rows with
   8 px gaps.
-- `hairline()` — a 1×16 px vertical separator for toolbars.
+- `divider_vertical().height(space(4))` — a 1×16 px vertical separator for toolbars.
 - `spacer()` — a `grow(1)` block that pushes neighbors apart.
 
 None of these hold their own state — drive them with signals from your

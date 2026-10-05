@@ -178,7 +178,7 @@ view:
 
 - `list_row(selected, title, detail)` and `list_row_with(selected,
   title, ListRowSlots)` are the usual `virtual_list` rows.
-- `kv_row(label, value)` and `kv_grid(&[(key, value)])` show fixed
+- `kv_row(label, value)` and `kv_grid([(key, value)])` show fixed
   key-value facts.
 
 ## States, keys, and accessibility

@@ -70,6 +70,7 @@ mod slider;
 mod sparkline;
 mod spinner;
 mod splitter;
+mod stat;
 mod surface;
 mod table;
 mod tabs;
@@ -81,6 +82,7 @@ mod toast;
 mod toast_queue;
 mod toggle;
 mod tooltip;
+mod tree;
 mod vector;
 mod virtual_list;
 
@@ -95,7 +97,9 @@ pub use command_menu::{CommandMenuBuilder, SubmenuBuilder, command_menu};
 pub use composition::{kv_row, status_bar};
 pub use date_field::{Date, DateFieldBuilder, date_field};
 pub use diff::{DiffBuilder, DiffView, diff};
-pub use divider::{horizontal as divider_horizontal, vertical as divider_vertical};
+pub use divider::{
+    VerticalDivider, horizontal as divider_horizontal, vertical as divider_vertical,
+};
 pub use dot::{DotBuilder, dot};
 pub use drag::{Axis, axis_drag};
 pub use drag_drop::{DRAG_THRESHOLD_PX, DROP_TARGET_CLASS, DragDropExt, DragState, drag_ghost};
@@ -107,7 +111,7 @@ pub use highlight::{Highlight, highlight, hl_spans};
 pub use html::html;
 #[cfg(feature = "scene")]
 pub use icon::icon_svg;
-pub use icon::{IconBuilder, icon};
+pub use icon::{IconBuilder, IconSource, IntoIconSource, icon};
 #[cfg(feature = "image-decode")]
 pub use image::image_bytes;
 pub use image::image_rgba;
@@ -123,9 +127,9 @@ pub use orientation::Orientation;
 pub use overlay::heatmap;
 pub use panel::{PanelBuilder, panel};
 pub use patterns::{
-    Disclosure, HintEntry, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone, SidebarBuilder,
-    app_shell, avatar, card, empty_state, hairline, hint_bar, hint_overlay, kv_grid, list_row,
-    list_row_with, notice_band, section_label, sidebar, spacer,
+    CardBuilder, Disclosure, HintEntry, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone,
+    SidebarBuilder, app_shell, avatar, card, empty_state, hint_bar, hint_overlay, kv_grid,
+    list_row, list_row_with, notice_band, section_label, sidebar, spacer,
 };
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};
@@ -137,6 +141,7 @@ pub(crate) use sparkline::spark_glyph;
 pub use sparkline::{SparkFill, SparkMark, SparklineBuilder, sparkline};
 pub use spinner::{spinner, spinner_frame};
 pub use splitter::{PaneBuilder, SplitterBuilder, splitter};
+pub use stat::{StatBuilder, stat};
 pub use surface::surface;
 pub use table::{
     ColAlign, ColWidth, ColumnLayout, Density, Identifiable, MIN_COL_WIDTH, SortDir, SortKey,
@@ -150,6 +155,7 @@ pub use toast::toast;
 pub use toast_queue::{MAX_VISIBLE, TOAST_TTL, ToastEntry, ToastLevel, ToastQueue, toast_queue};
 pub use toggle::{ToggleBuilder, toggle};
 pub use tooltip::{TooltipBuilder, tooltip};
+pub use tree::{TreeBuilder, TreeKey, TreeNode, TreeRow, tree};
 pub use vector::{PathCmd, PathColor, PathFill, PathNode, path};
 pub use virtual_list::{
     IntoList, RowRender, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder,

@@ -23,7 +23,7 @@ fn panel_row(_state: State) -> NodeBuilder {
 }
 
 fn card_row(_state: State) -> NodeBuilder {
-    node(card(kv_grid(&[("Host", "wgpu"), ("Backend", "metal")])))
+    node(card(kv_grid([("Host", "wgpu"), ("Backend", "metal")])))
 }
 
 fn surface_row(_state: State) -> NodeBuilder {
@@ -62,7 +62,7 @@ fn shell_row(_state: State) -> NodeBuilder {
 }
 
 fn menu_bar_row(_state: State) -> NodeBuilder {
-    node(menu_bar().menu(
+    node(menu_bar().fill().menu(
         "File",
         [
             MenuItem::new("New").activate(|| {}),

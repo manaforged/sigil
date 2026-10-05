@@ -34,6 +34,7 @@ struct Lang {
     numbers: bool,
     words: HashMap<String, Token>,
     prefixes: Vec<(String, Token)>,
+    markers: Vec<(String, Token)>,
     classes: Classes,
 }
 
@@ -116,12 +117,20 @@ fn grouped(
         .collect()
 }
 
+fn longest_first(
+    spec: &Table,
+    key: &str,
+    style: &impl Fn(&str) -> Option<Token>,
+) -> Vec<(String, Token)> {
+    let mut items = grouped(spec, key, style);
+    items.sort_by_key(|(item, _)| std::cmp::Reverse(item.len()));
+    items
+}
+
 fn lang(name: &str, spec: &Table, style: &impl Fn(&str) -> Option<Token>) -> Lang {
     let mut names = vec![name.to_owned()];
     names.extend(strings(spec.get("aliases")));
     let block = strings(spec.get("block_comment"));
-    let mut prefixes = grouped(spec, "prefixes", style);
-    prefixes.sort_by_key(|(prefix, _)| std::cmp::Reverse(prefix.len()));
     Lang {
         names,
         line_comments: strings(spec.get("line_comments")),
@@ -138,7 +147,8 @@ fn lang(name: &str, spec: &Table, style: &impl Fn(&str) -> Option<Token>) -> Lan
             .and_then(Value::as_bool)
             .unwrap_or(false),
         words: grouped(spec, "words", style).into_iter().collect(),
-        prefixes,
+        prefixes: longest_first(spec, "prefixes", style),
+        markers: longest_first(spec, "markers", style),
         classes: Classes {
             comment: style("comment"),
             string: style("string"),
@@ -202,7 +212,7 @@ impl Lang {
             spans: Vec::new(),
             open: *open,
         };
-        let mut i = 0;
+        let mut i = self.marker(line, &mut marks);
         while let Some(ch) = line.get(i..).and_then(|rest| rest.chars().next()) {
             i = if marks.open {
                 self.close_block(line, i, &mut marks)
@@ -212,6 +222,20 @@ impl Lang {
         }
         *open = marks.open;
         marks.spans
+    }
+
+    fn marker(&self, line: &str, marks: &mut Marks) -> usize {
+        if marks.open {
+            return 0;
+        }
+        let indent = line.len() - line.trim_start().len();
+        let rest = &line[indent..];
+        self.markers
+            .iter()
+            .find(|(marker, _)| rest.starts_with(marker.as_str()))
+            .map_or(0, |(marker, token)| {
+                marks.push(indent, indent + marker.len(), Some(*token))
+            })
     }
 
     fn close_block(&self, line: &str, i: usize, marks: &mut Marks) -> usize {

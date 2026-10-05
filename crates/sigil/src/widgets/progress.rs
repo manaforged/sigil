@@ -134,10 +134,10 @@ fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> N
         )
 }
 
-const fn fill_atoms(tone: Tone) -> [StyleAtom; 2] {
+fn fill_atoms(tone: Tone) -> [StyleAtom; 2] {
     let paint = match tone {
         Tone::Primary => Token::Accent.bg(),
-        _ => super::chart::tone_fill(tone).bg(),
+        _ => tone.fill().bg(),
     };
     [Radius::Md.atom(), paint]
 }

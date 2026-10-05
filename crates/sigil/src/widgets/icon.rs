@@ -19,6 +19,7 @@ use svg::SvgGlyph;
 
 static ICON_GLYPH_COLOR: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 
+#[derive(Clone)]
 enum Glyph {
     Text(TextContent),
     #[cfg(feature = "scene")]
@@ -38,8 +39,34 @@ pub struct IconBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+#[derive(Clone)]
+pub struct IconSource(Glyph);
+
+impl IntoIconSource for IconSource {
+    fn into_icon_source(self) -> IconSource {
+        self
+    }
+}
+
+pub trait IntoIconSource {
+    fn into_icon_source(self) -> IconSource;
+}
+
+impl<T: Into<TextContent>> IntoIconSource for T {
+    fn into_icon_source(self) -> IconSource {
+        IconSource(Glyph::Text(self.into()))
+    }
+}
+
+#[cfg(feature = "scene")]
+impl IntoIconSource for crate::icons::Icon {
+    fn into_icon_source(self) -> IconSource {
+        IconSource(Glyph::Svg(Rc::from(self.svg())))
+    }
+}
+
 #[must_use]
-pub fn icon(glyph: impl Into<TextContent>) -> IconBuilder {
+pub fn icon(glyph: impl IntoIconSource) -> IconBuilder {
     IconBuilder::new(glyph)
 }
 
@@ -53,9 +80,9 @@ pub fn icon_svg(svg: impl Into<Rc<str>>) -> IconBuilder {
 
 impl IconBuilder {
     #[must_use]
-    pub fn new(glyph: impl Into<TextContent>) -> Self {
+    pub fn new(glyph: impl IntoIconSource) -> Self {
         Self {
-            glyph: Glyph::Text(glyph.into()),
+            glyph: glyph.into_icon_source().0,
             tone: Tone::Neutral,
             size: ControlSize::Default,
             px: None,

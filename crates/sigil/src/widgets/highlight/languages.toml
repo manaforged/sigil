@@ -68,7 +68,7 @@ words.literal = ["True", "False", "None"]
 words.type = ["int", "float", "str", "bool", "list", "dict", "set", "tuple", "bytes"]
 
 [lang.javascript]
-aliases = ["js", "jsx", "mjs", "cjs", "typescript", "ts", "tsx"]
+aliases = ["js", "jsx", "mjs", "cjs"]
 line_comments = ["//"]
 block_comment = ["/*", "*/"]
 strings = ["\"", "'", "`"]
@@ -87,3 +87,123 @@ aliases = ["patch"]
 prefixes.meta = ["+++", "---", "@@", "diff ", "index "]
 prefixes.added = ["+"]
 prefixes.removed = ["-"]
+
+[lang.typescript]
+aliases = ["ts", "tsx", "mts", "cts"]
+line_comments = ["//"]
+block_comment = ["/*", "*/"]
+strings = ["\"", "'", "`"]
+numbers = true
+words.keyword = [
+    "abstract", "as", "async", "await", "break", "case", "catch", "class", "const", "continue",
+    "declare", "default", "delete", "do", "else", "enum", "export", "extends", "finally", "for",
+    "from", "function", "if", "implements", "import", "in", "infer", "instanceof", "interface",
+    "is", "keyof", "let", "namespace", "new", "of", "private", "protected", "public",
+    "readonly", "return", "satisfies", "static", "switch", "this", "throw", "try", "type",
+    "typeof", "var", "void", "while", "yield",
+]
+words.literal = ["true", "false", "null", "undefined", "NaN"]
+words.type = [
+    "string", "number", "boolean", "any", "unknown", "never", "object", "bigint", "symbol",
+    "Promise", "Array", "Record", "Partial", "Readonly",
+]
+
+[lang.go]
+aliases = ["golang"]
+line_comments = ["//"]
+block_comment = ["/*", "*/"]
+strings = ["\"", "'", "`"]
+numbers = true
+words.keyword = [
+    "break", "case", "chan", "const", "continue", "default", "defer", "else", "fallthrough",
+    "for", "func", "go", "goto", "if", "import", "interface", "map", "package", "range",
+    "return", "select", "struct", "switch", "type", "var",
+]
+words.literal = ["true", "false", "nil", "iota"]
+words.type = [
+    "bool", "byte", "error", "float32", "float64", "int", "int8", "int16", "int32", "int64",
+    "rune", "string", "uint", "uint8", "uint16", "uint32", "uint64", "uintptr", "any",
+]
+
+[lang.cpp]
+aliases = ["c", "h", "hpp", "cc", "cxx", "c++", "hh"]
+line_comments = ["//"]
+block_comment = ["/*", "*/"]
+strings = ["\"", "'"]
+numbers = true
+prefixes.meta = ["#"]
+words.keyword = [
+    "auto", "break", "case", "catch", "class", "const", "constexpr", "continue", "default",
+    "delete", "do", "else", "enum", "explicit", "extern", "for", "friend", "goto", "if",
+    "inline", "namespace", "new", "noexcept", "operator", "private", "protected", "public",
+    "register", "return", "sizeof", "static", "struct", "switch", "template", "this", "throw",
+    "try", "typedef", "typename", "union", "using", "virtual", "volatile", "while",
+]
+words.literal = ["true", "false", "NULL", "nullptr"]
+words.type = [
+    "bool", "char", "double", "float", "int", "long", "short", "signed", "unsigned", "void",
+    "size_t", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t",
+    "uint64_t", "std", "string", "vector",
+]
+
+[lang.yaml]
+aliases = ["yml"]
+line_comments = ["#"]
+strings = ["\"", "'"]
+numbers = true
+prefixes.meta = ["---", "..."]
+markers.keyword = ["- "]
+words.literal = ["true", "false", "null", "yes", "no", "on", "off"]
+
+[lang.css]
+aliases = ["scss", "less"]
+block_comment = ["/*", "*/"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = ["important", "media", "import", "keyframes", "supports", "font-face"]
+words.literal = ["none", "auto", "inherit", "initial", "unset", "transparent"]
+
+[lang.html]
+aliases = ["htm", "xml", "svg"]
+block_comment = ["<!--", "-->"]
+strings = ["\"", "'"]
+words.keyword = [
+    "html", "head", "body", "div", "span", "a", "p", "img", "script", "style", "link", "meta",
+    "title", "ul", "ol", "li", "table", "tr", "td", "th", "form", "input", "button", "section",
+    "header", "footer", "nav", "main", "h1", "h2", "h3", "h4", "h5", "h6", "pre", "code",
+]
+words.type = ["class", "id", "href", "src", "type", "rel", "name", "value", "alt"]
+
+[lang.sql]
+aliases = ["psql", "mysql", "sqlite", "postgres"]
+line_comments = ["--"]
+block_comment = ["/*", "*/"]
+strings = ["'", "\""]
+numbers = true
+words.keyword = [
+    "select", "from", "where", "insert", "into", "values", "update", "set", "delete", "create",
+    "table", "drop", "alter", "index", "join", "inner", "left", "right", "outer", "on", "as",
+    "and", "or", "not", "in", "is", "like", "group", "by", "order", "having", "limit",
+    "offset", "union", "all", "distinct", "primary", "key", "foreign", "references", "with",
+    "case", "when", "then", "else", "end", "SELECT", "FROM", "WHERE", "INSERT", "INTO",
+    "VALUES", "UPDATE", "SET", "DELETE", "CREATE", "TABLE", "DROP", "ALTER", "INDEX", "JOIN",
+    "INNER", "LEFT", "RIGHT", "OUTER", "ON", "AS", "AND", "OR", "NOT", "IN", "IS", "LIKE",
+    "GROUP", "BY", "ORDER", "HAVING", "LIMIT", "OFFSET", "UNION", "ALL", "DISTINCT",
+    "PRIMARY", "KEY", "FOREIGN", "REFERENCES", "WITH", "CASE", "WHEN", "THEN", "ELSE", "END",
+]
+words.literal = ["true", "false", "null", "TRUE", "FALSE", "NULL"]
+words.type = [
+    "int", "integer", "bigint", "text", "varchar", "boolean", "date", "timestamp", "real",
+    "INT", "INTEGER", "BIGINT", "TEXT", "VARCHAR", "BOOLEAN", "DATE", "TIMESTAMP", "REAL",
+]
+
+[lang.markdown]
+aliases = ["md", "mdx"]
+strings = ["`"]
+prefixes.meta = ["```", "~~~"]
+prefixes.keyword = ["#"]
+prefixes.comment = [">"]
+markers.keyword = [
+    "- [ ] ", "- [x] ", "- ", "* ", "+ ", "1. ", "2. ", "3. ", "4. ", "5. ", "6. ", "7. ",
+    "8. ", "9. ",
+]

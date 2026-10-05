@@ -4,7 +4,9 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{PanelBuilder, ScrollBuilder, SidebarBuilder, SplitterBuilder, TabsBuilder};
+use sigil::widgets::{
+    CardBuilder, PanelBuilder, ScrollBuilder, SidebarBuilder, SplitterBuilder, TabsBuilder,
+};
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - chrome").size(720, 720), build)
@@ -13,7 +15,7 @@ fn main() -> sigil::AppResult<()> {
 fn app_shell_demo() -> NodeBuilder {
     let file_menu = [MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {})];
     app_shell(
-        menu_bar().menu("File", file_menu),
+        menu_bar().fill().menu("File", file_menu),
         container().child(text("Work area").nowrap()),
         status_bar([text("main").nowrap(), text("UTF-8").nowrap()]),
         None::<NodeBuilder>,
@@ -26,8 +28,8 @@ fn panel_demo() -> PanelBuilder {
         .child(text("Panel content").nowrap())
 }
 
-fn card_demo() -> NodeBuilder {
-    card(kv_grid(&[("Host", "window"), ("Theme", "dark")]))
+fn card_demo() -> CardBuilder {
+    card(kv_grid([("Host", "window"), ("Theme", "dark")]))
 }
 
 fn sidebar_demo() -> SidebarBuilder {

@@ -25,6 +25,7 @@
 | [`tokio::sync::mpsc::bounded::Receiver`](#tokiosyncmpscboundedreceiver) | impl |  |
 | [`tokio::sync::mpsc::unbounded::UnboundedReceiver`](#tokiosyncmpscunboundedunboundedreceiver) | impl |  |
 | [`core::io::error::Error`](#coreioerrorerror) | impl |  |
+| [`K`](#k) | impl |  |
 
 ## Structs
 
@@ -140,7 +141,7 @@
 
 ### `T`
 
-**Trait implementations:** <code><a href="sigil-events.html#nodeeventsext">NodeEventsExt</a></code>, <code><a href="sigil-style.html#paint">Paint</a></code>, <code><a href="sigil-style.html#statevariants">StateVariants</a></code>
+**Trait implementations:** <code><a href="sigil-events.html#nodeeventsext">NodeEventsExt</a></code>, <code><a href="sigil-style.html#paint">Paint</a></code>, <code><a href="sigil-style.html#statevariants">StateVariants</a></code>, <code><a href="sigil-widgets.html#intoiconsource">IntoIconSource</a></code>
 
 
 ### `alloc::boxed::Box`
@@ -216,6 +217,11 @@
 ### `core::io::error::Error`
 
 **Trait implementations:** <code>From&lt;<a href="sigil-terminal.html#printaboveerror">PrintAboveError</a>&gt;</code>
+
+
+### `K`
+
+**Trait implementations:** <code><a href="sigil-widgets.html#treekey">TreeKey</a></code>
 
 
 ---

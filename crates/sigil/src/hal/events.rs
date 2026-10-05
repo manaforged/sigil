@@ -72,6 +72,28 @@ pub const PRIMARY: ModifiersState = ModifiersState::META;
 #[cfg(not(target_os = "macos"))]
 pub const PRIMARY: ModifiersState = ModifiersState::CONTROL;
 
+const MODIFIER_LABELS: [(ModifiersState, &str, &str); 4] = [
+    (ModifiersState::CONTROL, "⌃", "Ctrl"),
+    (ModifiersState::ALT, "⌥", "Alt"),
+    (ModifiersState::SHIFT, "⇧", "Shift"),
+    (ModifiersState::META, "⌘", "Super"),
+];
+
+const KEY_LABELS: [(Key, &str, &str); 12] = [
+    (Key::Enter, "↵", "Enter"),
+    (Key::Escape, "Esc", "Esc"),
+    (Key::Tab, "⇥", "Tab"),
+    (Key::Backspace, "⌫", "Backspace"),
+    (Key::Delete, "⌦", "Del"),
+    (Key::ArrowUp, "↑", "↑"),
+    (Key::ArrowDown, "↓", "↓"),
+    (Key::ArrowLeft, "←", "←"),
+    (Key::ArrowRight, "→", "→"),
+    (Key::PageUp, "PgUp", "PgUp"),
+    (Key::PageDown, "PgDn", "PgDn"),
+    (Key::Home, "Home", "Home"),
+];
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Shortcut {
     pub key: LogicalKey,
@@ -100,6 +122,32 @@ impl Shortcut {
     #[must_use]
     pub fn primary(key: impl Into<LogicalKey>) -> Self {
         Self::new(key, PRIMARY)
+    }
+
+    #[must_use]
+    pub fn label(&self) -> String {
+        self.label_for(cfg!(target_os = "macos"))
+    }
+
+    #[must_use]
+    pub fn label_for(&self, mac: bool) -> String {
+        let mut parts: Vec<&str> = MODIFIER_LABELS
+            .iter()
+            .filter(|(flag, _, _)| self.modifiers.contains(*flag))
+            .map(|(_, apple, other)| if mac { *apple } else { *other })
+            .collect();
+        let key = match &self.key {
+            LogicalKey::Character(text) => text.to_uppercase(),
+            LogicalKey::Named(named) => KEY_LABELS
+                .iter()
+                .find(|(candidate, _, _)| candidate == named)
+                .map_or_else(
+                    || named.to_string(),
+                    |(_, apple, other)| (if mac { *apple } else { *other }).to_owned(),
+                ),
+        };
+        parts.push(&key);
+        parts.join(if mac { "" } else { "+" })
     }
 
     #[must_use]

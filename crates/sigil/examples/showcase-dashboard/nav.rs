@@ -1,7 +1,7 @@
 use sigil::prelude::{
-    AlignItems, IntoNode, LayoutBuilderExt, LayoutStyle, ListRowSlots, NodeBuilder, NodeEventsExt,
-    Paint, Radius, TextContent, Token, Tone, WidgetLayoutExt, container, divider_horizontal, icon,
-    list_row_with, section_label, sidebar, spacer, text,
+    AlignItems, Icon, IntoNode, LayoutBuilderExt, LayoutStyle, ListRowSlots, NodeBuilder,
+    NodeEventsExt, Paint, Radius, TextContent, Token, Tone, WidgetLayoutExt, container,
+    divider_horizontal, icon, list_row_with, section_label, sidebar, spacer, text,
 };
 use sigil::style::space;
 use sigil::widgets::SidebarBuilder;
@@ -41,7 +41,7 @@ fn wordmark() -> NodeBuilder {
                 .padding_y(space(3))
                 .align_items(AlignItems::Center),
         )
-        .child(icon("▲").tone(Tone::Primary))
+        .child(icon(Icon::Rocket).tone(Tone::Primary))
         .child(
             text("fleet")
                 .nowrap()
@@ -64,8 +64,10 @@ fn sections(console: Console) -> NodeBuilder {
 
 fn nav_row(console: Console, section: Section, active: bool) -> NodeBuilder {
     let slots = ListRowSlots {
-        marker: Some(TextContent::from(section.glyph())),
-        status: section.badge().map(TextContent::from),
+        leading: Some(Box::new(icon(section.icon()))),
+        badge: section
+            .badge()
+            .map(|(count, tone)| (TextContent::from(count), tone)),
         ..ListRowSlots::default()
     };
     list_row_with(active, section.label(), slots).pointer_up(move |_| console.section.set(section))

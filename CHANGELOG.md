@@ -13,6 +13,17 @@ First release.
 
 ### Added
 
+- `Icon`: the Lucide icon set (98 icons, ISC with the Feather-derived MIT portion), typed, so `icon(Icon::Folder)` draws a stroke icon tinted by the text colour. The nine older built-in icons now come from the same set.
+- `tree(nodes)` with `TreeNode`: an explorer or outline tree with icons, toned status, controlled expansion and selection, arrow-key navigation, Left/Right to collapse and expand, Enter to activate, and tree and tree-item accessibility roles.
+- `stat(label, value)`: a KPI tile with an optional toned delta, caption, and sparkline trend.
+- `card(..).selected(..)` and `.activate(..)`: a selectable card that is a focusable button.
+- `chip(..).dot()` and `.leading(node)`; `text_field(..).leading(node)`, `.trailing(node)`, and `.clearable()`.
+- `ListRowSlots` gains `leading`, `marker_tone`, `status_tone`, and `badge`, so rows can carry an icon, per-row colours, and a count pill.
+- `Tone::token(step)`, `shade()`, `fill()`, and `solid()` give a tone's colour-scale tokens.
+- `Shortcut::label()` and `label_for(mac)` print a shortcut as `⇧⌘K` on macOS and `Shift+Super+K` elsewhere.
+- A bundled symbol font (a renamed DejaVu Sans subset) covers ⌘ ⌥ ⇧ ⌃, check marks, ✕, arrows, and geometric shapes, so these no longer draw as empty boxes.
+- Syntax highlighting for markdown, typescript, go, c and c++, yaml, css, html, and sql.
+- `menu_bar().fill()`; `ScrollBuilder` converts into `NodeBuilder`.
 - `Task::cancel` stops a running task and sets it back to `Idle`; a
   late result is dropped. `tasks::blocking(f)` runs a subprocess, file
   read, or other blocking work inside a task without stalling a worker.
@@ -79,6 +90,13 @@ First release.
 
 ### Changed
 
+- `kv_grid` takes any iterator of key/value pairs, and values can be reactive.
+- `card` returns a `CardBuilder`; it converts into `NodeBuilder`.
+- `menu_bar` is as wide as its menus by default.
+- Tab content fills the space below the tab strip.
+- `chart` fills its parent's width by default and thins its axis labels at small sizes.
+- A text input exposes the controls inside it, such as a clear button, to assistive technology.
+- Error chips use the same text step as the other tones.
 - Host and plumbing items are no longer public where an app has no use
   for them. Each change below is breaking.
   - `AppConfig::window`, `canvas`, `min_size`, `user_zoom`, `frameless`,
@@ -412,6 +430,10 @@ First release.
 - In the terminal, `notice_band` is one row: a tone marker and the
   text on a tinted row. It was five rows tall with its padding and
   border. The window form is unchanged.
+
+### Removed
+
+- `hairline()`. Use `divider_vertical().height(px)`.
 
 ### Migrating from the class-string API
 

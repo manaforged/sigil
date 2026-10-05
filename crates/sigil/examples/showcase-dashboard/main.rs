@@ -59,10 +59,9 @@ pub(crate) fn app() -> impl IntoNode {
     let open = console.menu_open;
     container()
         .layout(LayoutStyle::flex_column().fill())
-        .key_capture(
-            Shortcut::primary(LogicalKey::character("k")),
-            move |_: &mut KeyEvent| open.set(true),
-        )
+        .key_capture(shell::menu_shortcut(), move |_: &mut KeyEvent| {
+            open.set(true);
+        })
         .child(app_shell(
             shell::top_bar(console),
             work(console),

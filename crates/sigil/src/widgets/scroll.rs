@@ -213,10 +213,14 @@ impl WidgetLayoutExt for ScrollBuilder {
 
 impl IntoNode for ScrollBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
+        NodeBuilder::from(self).build(cx)
+    }
+}
+
+impl From<ScrollBuilder> for NodeBuilder {
+    fn from(builder: ScrollBuilder) -> Self {
+        let hooks = builder.layout_overrides.hooks();
+        hooks.finish(builder.into_node_builder())
     }
 }
 

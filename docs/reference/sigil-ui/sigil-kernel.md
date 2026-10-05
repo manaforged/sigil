@@ -82,7 +82,7 @@
 | <code>const value_step(self, step: f32) -&gt; Self</code> |  |
 | <code>with&lt;T: 'static&gt;(self, value: T) -&gt; Self</code> |  |
 
-**Trait implementations:** <code><a href="sigil-events.html#nodeeventsext">NodeEventsExt</a></code>, <code>From&lt;<a href="sigil-widgets.html#panebuilder">PaneBuilder</a>&gt;</code>, <code>From&lt;<a href="sigil-widgets.html#splitterbuilder">SplitterBuilder</a>&gt;</code>, <code><a href="#intonode">IntoNode</a></code>, <code><a href="sigil-layout.html#layoutbuilderext">LayoutBuilderExt</a></code>, <code><a href="sigil-layout.html#layoutreactiveext">LayoutReactiveExt</a></code>, <code><a href="sigil-style.html#nodestyleext">NodeStyleExt</a></code>, <code><a href="sigil-widgets.html#dragdropext">DragDropExt</a>&lt;T&gt;</code>
+**Trait implementations:** <code><a href="sigil-events.html#nodeeventsext">NodeEventsExt</a></code>, <code>From&lt;<a href="sigil-widgets.html#cardbuilder">CardBuilder</a>&gt;</code>, <code>From&lt;<a href="sigil-widgets.html#panebuilder">PaneBuilder</a>&gt;</code>, <code>From&lt;<a href="sigil-widgets.html#scrollbuilder">ScrollBuilder</a>&gt;</code>, <code>From&lt;<a href="sigil-widgets.html#splitterbuilder">SplitterBuilder</a>&gt;</code>, <code>From&lt;<a href="sigil-widgets.html#statbuilder">StatBuilder</a>&gt;</code>, <code>From&lt;<a href="sigil-widgets.html#verticaldivider">VerticalDivider</a>&gt;</code>, <code><a href="#intonode">IntoNode</a></code>, <code><a href="sigil-layout.html#layoutbuilderext">LayoutBuilderExt</a></code>, <code><a href="sigil-layout.html#layoutreactiveext">LayoutReactiveExt</a></code>, <code><a href="sigil-style.html#nodestyleext">NodeStyleExt</a></code>, <code><a href="sigil-widgets.html#dragdropext">DragDropExt</a>&lt;T&gt;</code>
 
 
 ### `A11yProps`

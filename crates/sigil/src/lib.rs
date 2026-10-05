@@ -109,6 +109,8 @@ pub mod prelude {
     };
     pub use crate::events::{NodeEventsExt, request_focus};
     pub use crate::geometry::{Point, Size};
+    #[cfg(feature = "scene")]
+    pub use crate::icons::Icon;
     pub use crate::kernel::{
         Action, ImageSource, IntoNode, NodeBuilder, Role, TextContent, container, for_each,
         fragment, image, match_status, node, show, switch, text,
@@ -127,8 +129,6 @@ pub mod prelude {
     pub use crate::tasks::{
         ScheduleError, SignalWriter, Status, Task, signal_writer, spawn, task, task_with,
     };
-    #[cfg(feature = "scene")]
-    pub use crate::widgets::icon_svg;
     #[cfg(feature = "image-decode")]
     pub use crate::widgets::image_bytes;
     pub use crate::widgets::layout_ext::WidgetLayoutExt;
@@ -139,12 +139,12 @@ pub mod prelude {
         app_shell, avatar, axis_drag, button, card, chart, checkbox, chip, code_edit, color_field,
         combobox, command_menu, context_menu, date_field, diff, divider_horizontal,
         divider_vertical, dot, drag_ghost, dropdown, empty_state, field, fuzzy_score, gauge,
-        hairline, heatmap, highlight, hint_bar, hint_overlay, hl_spans, html, icon, icon_button,
-        image_rgba, interactive, kv_grid, kv_row, list_row, list_row_with, markdown, markdown_edit,
+        heatmap, highlight, hint_bar, hint_overlay, hl_spans, html, icon, icon_button, image_rgba,
+        interactive, kv_grid, kv_row, list_row, list_row_with, markdown, markdown_edit,
         markdown_inline, menu, menu_bar, mermaid, modal, notice_band, number_field, panel, path,
         progress, radio_group, scroll, section_label, segmented, sheet, sidebar, slider, spacer,
-        sparkline, spinner, spinner_frame, splitter, status_bar, surface, table, tabs, terminal,
-        text_edit, text_field, toast, toast_queue, toggle, tooltip, virtual_list,
+        sparkline, spinner, splitter, stat, status_bar, surface, table, tabs, terminal, text_edit,
+        text_field, toast, toast_queue, toggle, tooltip, tree, virtual_list,
     };
     pub use crate::{AppConfig, AppResult};
 }

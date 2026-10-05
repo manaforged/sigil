@@ -5,6 +5,7 @@
 | [`BakedIcon`](#bakedicon) | struct |  |
 | [`IconBaker`](#iconbaker) | struct |  |
 | [`BakeError`](#bakeerror) | enum |  |
+| [`Icon`](#icon) | enum |  |
 
 ## Structs
 
@@ -47,6 +48,122 @@
 | <code>ViewBoxMissing</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Error</code>, <code>Debug</code>, <code>Display</code>, <code>StructuralPartialEq</code>
+
+
+### `Icon`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>const ALL: &amp;'static [Self]</code> |  |
+| <code>const name(self) -&gt; &amp;'static str</code> |  |
+| <code>const svg(self) -&gt; &amp;'static str</code> |  |
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Activity</code> |  |
+| <code>ArrowDown</code> |  |
+| <code>ArrowLeft</code> |  |
+| <code>ArrowRight</code> |  |
+| <code>ArrowUp</code> |  |
+| <code>AtSign</code> |  |
+| <code>Bell</code> |  |
+| <code>Box</code> |  |
+| <code>Braces</code> |  |
+| <code>Bug</code> |  |
+| <code>Calendar</code> |  |
+| <code>ChartColumn</code> |  |
+| <code>Check</code> |  |
+| <code>ChevronDown</code> |  |
+| <code>ChevronLeft</code> |  |
+| <code>ChevronRight</code> |  |
+| <code>ChevronUp</code> |  |
+| <code>ChevronsUpDown</code> |  |
+| <code>Circle</code> |  |
+| <code>CircleAlert</code> |  |
+| <code>CircleCheck</code> |  |
+| <code>CircleX</code> |  |
+| <code>Clock</code> |  |
+| <code>Cloud</code> |  |
+| <code>Code</code> |  |
+| <code>Command</code> |  |
+| <code>Copy</code> |  |
+| <code>Cpu</code> |  |
+| <code>Database</code> |  |
+| <code>Download</code> |  |
+| <code>Ellipsis</code> |  |
+| <code>EllipsisVertical</code> |  |
+| <code>ExternalLink</code> |  |
+| <code>Eye</code> |  |
+| <code>EyeOff</code> |  |
+| <code>File</code> |  |
+| <code>FileCode</code> |  |
+| <code>FileText</code> |  |
+| <code>Folder</code> |  |
+| <code>FolderOpen</code> |  |
+| <code>Funnel</code> |  |
+| <code>Gauge</code> |  |
+| <code>GitBranch</code> |  |
+| <code>GitCommitHorizontal</code> |  |
+| <code>GitPullRequest</code> |  |
+| <code>Globe</code> |  |
+| <code>GripVertical</code> |  |
+| <code>Hash</code> |  |
+| <code>Heart</code> |  |
+| <code>History</code> |  |
+| <code>House</code> |  |
+| <code>Inbox</code> |  |
+| <code>Info</code> |  |
+| <code>Key</code> |  |
+| <code>Layers</code> |  |
+| <code>LayoutDashboard</code> |  |
+| <code>Link</code> |  |
+| <code>List</code> |  |
+| <code>ListTree</code> |  |
+| <code>Lock</code> |  |
+| <code>LockOpen</code> |  |
+| <code>LogIn</code> |  |
+| <code>LogOut</code> |  |
+| <code>Mail</code> |  |
+| <code>Menu</code> |  |
+| <code>Minus</code> |  |
+| <code>Monitor</code> |  |
+| <code>Moon</code> |  |
+| <code>Package</code> |  |
+| <code>PanelBottom</code> |  |
+| <code>PanelLeft</code> |  |
+| <code>Pause</code> |  |
+| <code>Pencil</code> |  |
+| <code>Play</code> |  |
+| <code>Plus</code> |  |
+| <code>RefreshCw</code> |  |
+| <code>Rocket</code> |  |
+| <code>RotateCcw</code> |  |
+| <code>ScrollText</code> |  |
+| <code>Search</code> |  |
+| <code>Server</code> |  |
+| <code>Settings</code> |  |
+| <code>Shield</code> |  |
+| <code>SlidersHorizontal</code> |  |
+| <code>Square</code> |  |
+| <code>Star</code> |  |
+| <code>Sun</code> |  |
+| <code>Terminal</code> |  |
+| <code>Trash2</code> |  |
+| <code>TrendingDown</code> |  |
+| <code>TrendingUp</code> |  |
+| <code>Triangle</code> |  |
+| <code>TriangleAlert</code> |  |
+| <code>Upload</code> |  |
+| <code>User</code> |  |
+| <code>Users</code> |  |
+| <code>X</code> |  |
+| <code>Zap</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>, <code><a href="sigil-widgets.html#intoiconsource">IntoIconSource</a></code>
 
 
 ---

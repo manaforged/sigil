@@ -1,40 +1,29 @@
 use sigil::prelude::*;
 use sigil::style::space;
 
-use super::facts::{DIAGNOSTICS, Diagnostic, OUTPUT, PROMPT, severity_glyph, severity_tone};
+use super::facts::{DIAGNOSTICS, Diagnostic, OUTPUT, PROMPT, severity_icon, severity_tone};
 use super::state::{BottomTab, Workspace};
 
 fn problem_row(ws: Workspace, diag: Diagnostic) -> NodeBuilder {
     let location = format!("{}:{}:{}", diag.file.path(), diag.line + 1, diag.start + 1);
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .padding_x(space(3))
-                .padding_y(space(1))
-                .gap(space(2))
-                .align_items(AlignItems::Center),
-        )
-        .pointer_down(move |_| ws.goto(diag.file, diag.line, diag.start))
-        .child(
-            icon(severity_glyph(diag.severity))
-                .tone(severity_tone(diag.severity))
-                .size(ControlSize::Compact),
-        )
-        .child(text(diag.message).nowrap().font_size(super::TEXT_SM))
-        .child(
-            text(format!("{location} [{}]", diag.code))
-                .ellipsize()
-                .font_size(super::TEXT_XS)
-                .text_color(Token::OnSurfaceMuted)
-                .layout(LayoutStyle::block().grow(1.0).min_size(0.0, 0.0)),
-        )
+    list_row_with(
+        false,
+        diag.message,
+        ListRowSlots {
+            leading: Some(Box::new(
+                icon(severity_icon(diag.severity))
+                    .tone(severity_tone(diag.severity))
+                    .size(ControlSize::Compact),
+            )),
+            detail: Some(format!("{location} [{}]", diag.code).into()),
+            ..ListRowSlots::default()
+        },
+    )
+    .pointer_down(move |_| ws.goto(diag.file, diag.line, diag.start))
 }
 
 fn fill_scroll(list: NodeBuilder) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0))
-        .child(scroll(list).fill())
+    scroll(list).fill().into()
 }
 
 fn echo(lines: &mut Vec<String>, input: &str) {
@@ -90,13 +79,21 @@ fn terminal_view(ws: Workspace) -> NodeBuilder {
         }))
 }
 
-fn panel_tabs(ws: Workspace) -> sigil::widgets::TabsBuilder {
-    tabs()
-        .labels(signal(BottomTab::ALL.map(BottomTab::label).to_vec()))
-        .active(ws.bottom)
-        .label("Panel")
-        .line()
-        .justify_list(JustifyContent::Start)
+pub(crate) fn bottom_panel(ws: Workspace) -> NodeBuilder {
+    let panel = BottomTab::ALL.into_iter().fold(tabs(), |panel, tab| {
+        panel.tab(tab.label(), move || view(ws, tab))
+    });
+    container()
+        .layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0))
+        .bg(Token::SurfaceSubtle)
+        .rounded(Radius::Md)
+        .child(
+            panel
+                .active(ws.bottom)
+                .label("Panel")
+                .line()
+                .justify_list(JustifyContent::Start),
+        )
 }
 
 fn view(ws: Workspace, tab: BottomTab) -> NodeBuilder {
@@ -105,23 +102,4 @@ fn view(ws: Workspace, tab: BottomTab) -> NodeBuilder {
         BottomTab::Output => output(),
         BottomTab::Terminal => terminal_view(ws),
     }
-}
-
-pub(crate) fn bottom_panel(ws: Workspace) -> NodeBuilder {
-    let current = derived(move || BottomTab::at(ws.bottom.get()));
-    container()
-        .layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0))
-        .bg(Token::SurfaceSubtle)
-        .rounded(Radius::Md)
-        .child(panel_tabs(ws))
-        .child(
-            container()
-                .layout(
-                    LayoutStyle::flex_column()
-                        .grow(1.0)
-                        .fill_width()
-                        .min_size(0.0, 0.0),
-                )
-                .children_reactive(move || [view(ws, current.get())]),
-        )
 }

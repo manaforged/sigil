@@ -1,6 +1,7 @@
 use sigil::prelude::{
-    AlignItems, ControlSize, LayoutBuilderExt, LayoutStyle, NodeBuilder, Paint, Token, Tone,
-    avatar, button, chip, command_menu, container, modal, spacer, status_bar, text, tooltip,
+    AlignItems, ControlSize, LayoutBuilderExt, LayoutStyle, LogicalKey, NodeBuilder, Paint,
+    Shortcut, Token, Tone, avatar, button, chip, command_menu, container, modal, spacer,
+    status_bar, text, tooltip,
 };
 use sigil::style::space;
 use sigil::widgets::ModalBuilder;
@@ -48,7 +49,7 @@ pub(crate) fn top_bar(console: Console) -> NodeBuilder {
         .child(spacer())
         .child(
             tooltip("Search services, jobs, and commands")
-                .shortcut(Some("Ctrl+K"))
+                .shortcut(Some(menu_shortcut().label()))
                 .child(
                     button("Search or run a command")
                         .ghost()
@@ -73,11 +74,18 @@ pub(crate) fn status(console: Console) -> NodeBuilder {
         text(move || format!("Last event {} UTC", console.clock.get()))
             .nowrap()
             .tabular_nums(true),
-        text("Ctrl+K Command menu   Space Select   Esc Close")
-            .nowrap()
-            .font_size(TEXT_SMALL)
-            .text_color(Token::OnSurfaceMuted),
+        text(format!(
+            "{} Command menu   Space Select   Esc Close",
+            menu_shortcut().label()
+        ))
+        .nowrap()
+        .font_size(TEXT_SMALL)
+        .text_color(Token::OnSurfaceMuted),
     ])
+}
+
+pub(crate) fn menu_shortcut() -> Shortcut {
+    Shortcut::primary(LogicalKey::character("k"))
 }
 
 pub(crate) fn command_modal(console: Console) -> ModalBuilder {

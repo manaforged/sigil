@@ -190,3 +190,18 @@ fn mixed_script_names_shape_without_notdef() {
         assert_eq!(notdef, 0, "{text} shaped {notdef} notdef glyphs");
     }
 }
+
+#[test]
+fn ui_symbols_shape_without_notdef() {
+    let engine = crate::text::OwnedTextEngine::new(crate::text::TextConfig::default());
+    let text = "⌘K ⌥⇧ ⌃ ✓ ✕ ▲ ▼ ◆ ★ ● ○ ↗";
+    let para = engine
+        .layout_paragraph_styled(text, None, &crate::style::TextStyle::default())
+        .expect("layout");
+    let notdef = para
+        .rendered_glyphs()
+        .iter()
+        .filter(|g| g.glyph_id == 0)
+        .count();
+    assert_eq!(notdef, 0, "{text} shaped {notdef} notdef glyphs");
+}

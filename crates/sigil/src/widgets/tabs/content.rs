@@ -12,6 +12,7 @@ pub(super) fn wrap_with_content(
         .role(Role::GenericContainer)
         .layout(
             LayoutStyle::flex_column()
+                .grow(1.0)
                 .align_items(AlignItems::Stretch)
                 .gap(space(2)),
         )
@@ -28,7 +29,7 @@ pub(super) fn wrap_with_content(
 fn content_panel(active: Signal<usize>, index: usize, content: Box<dyn IntoNode>) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
-        .layout(LayoutStyle::flex_column())
+        .layout(LayoutStyle::flex_column().grow(1.0))
         .style_reactive(move || content_display(active, index))
         .child(content)
 }

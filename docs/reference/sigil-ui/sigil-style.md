@@ -800,7 +800,11 @@
 
 | Method | Description |
 | --- | --- |
+| <code>fill(self) -&gt; <a href="#token">Token</a></code> |  |
 | <code>const scale_role(self) -&gt; <a href="sigil-style-scale.html#scalerole">ScaleRole</a></code> |  |
+| <code>shade(self) -&gt; <a href="#token">Token</a></code> |  |
+| <code>solid(self) -&gt; <a href="#token">Token</a></code> |  |
+| <code>token(self, step: u8) -&gt; <a href="#token">Token</a></code> |  |
 
 **Variants**
 

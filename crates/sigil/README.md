@@ -140,7 +140,7 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 
 <!-- truesight:surface sigil-ui -->
 
-3306 public items (444 types, 251 functions, 1239 methods, 520 fields, 790 variants, 62 constants) at 3816 paths; 510 are re-export aliases. 1825 trait impl lines, 206 inherent impl lines. 36 modules, 1 re-export only.
+3472 public items (454 types, 252 functions, 1278 methods, 537 fields, 888 variants, 63 constants) at 4085 paths; 613 are re-export aliases. 1849 trait impl lines, 213 inherent impl lines. 36 modules, 1 re-export only.
 
 | Module | Items | Types | Functions | Methods | Aliases |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -155,14 +155,14 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 | `sigil::app::tray` | 2 | 0 | 2 | 0 | 0 |
 | `sigil::bidi` | 11 | 2 | 2 | 4 | 0 |
 | `sigil::clipboard` | 16 | 5 | 5 | 4 | 0 |
-| `sigil::events` | 193 | 26 | 4 | 66 | 0 |
+| `sigil::events` | 195 | 26 | 4 | 68 | 0 |
 | `sigil::geometry` | 39 | 7 | 0 | 17 | 0 |
 | `sigil::hal` | 62 | 24 | 0 | 25 | 0 |
-| `sigil::icons` | 12 | 3 | 0 | 2 | 0 |
+| `sigil::icons` | 114 | 4 | 0 | 4 | 0 |
 | `sigil::icons::builtin` | 10 | 0 | 0 | 0 | 0 |
 | `sigil::kernel` | 209 | 23 | 12 | 112 | 0 |
 | `sigil::layout` | 225 | 30 | 5 | 93 | 0 |
-| `sigil::prelude` (re-export only) | 0 | 0 | 0 | 0 | 510 |
+| `sigil::prelude` (re-export only) | 0 | 0 | 0 | 0 | 613 |
 | `sigil::profile` | 213 | 13 | 19 | 13 | 0 |
 | `sigil::reactive` | 48 | 9 | 11 | 24 | 0 |
 | `sigil::reactive::debug` | 2 | 0 | 2 | 0 | 0 |
@@ -170,14 +170,14 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 | `sigil::renderer::capture` | 6 | 1 | 2 | 0 | 0 |
 | `sigil::scene` | 251 | 36 | 3 | 52 | 0 |
 | `sigil::shell` | 25 | 5 | 0 | 15 | 0 |
-| `sigil::style` | 586 | 61 | 7 | 174 | 0 |
+| `sigil::style` | 590 | 61 | 7 | 178 | 0 |
 | `sigil::style::palette` | 19 | 1 | 0 | 12 | 0 |
 | `sigil::style::scale` | 27 | 2 | 14 | 3 | 0 |
 | `sigil::style::variant` | 12 | 3 | 0 | 1 | 0 |
 | `sigil::tasks` | 51 | 9 | 10 | 23 | 0 |
 | `sigil::terminal` | 176 | 27 | 34 | 35 | 0 |
 | `sigil::text` | 33 | 5 | 2 | 21 | 0 |
-| `sigil::widgets` | 654 | 90 | 80 | 366 | 0 |
+| `sigil::widgets` | 712 | 99 | 81 | 397 | 0 |
 | `sigil::widgets::interaction` | 11 | 1 | 0 | 10 | 0 |
 | `sigil::widgets::layout_ext` | 16 | 2 | 0 | 14 | 0 |
 

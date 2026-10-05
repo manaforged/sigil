@@ -1,12 +1,13 @@
 use sigil::prelude::{
-    AlignItems, ControlSize, IntoNode, LayoutBuilderExt, LayoutStyle, NodeBuilder, NodeStyleExt,
-    Paint, TableState, Token, Tone, WidgetLayoutExt, button, card, chip, container, derived,
-    icon_svg, spacer, sparkline, text, text_field,
+    AlignItems, Icon, LayoutBuilderExt, LayoutStyle, NodeBuilder, NodeStyleExt, Paint, TableState,
+    Token, Tone, WidgetLayoutExt, button, chip, container, derived, icon, spacer, stat, text,
+    text_field,
 };
 use sigil::style::space;
+use sigil::widgets::StatBuilder;
 
 use super::data::{
-    Bucket, DEPLOYS_BEFORE_OPEN, TEXT_KPI, TEXT_SMALL, TEXT_TITLE, WEIGHT_STRONG, duration_label,
+    Bucket, DEPLOYS_BEFORE_OPEN, TEXT_SMALL, TEXT_TITLE, WEIGHT_STRONG, duration_label,
 };
 use super::deploys::{JobRow, job_table};
 use super::live::Console;
@@ -111,42 +112,15 @@ fn pause_controls(console: Console) -> NodeBuilder {
         )
 }
 
-fn metric_card(grow: f32, child: impl IntoNode + 'static) -> NodeBuilder {
+fn tile(stat: StatBuilder) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_column()
-                .grow(grow)
+                .grow(1.0)
                 .flex_basis(0.0)
                 .min_width(0.0),
         )
-        .child(card(child))
-}
-
-fn kpi(
-    title: &'static str,
-    value: impl Into<sigil::prelude::TextContent>,
-    trend: impl IntoNode + 'static,
-) -> NodeBuilder {
-    metric_card(
-        1.0,
-        container()
-            .layout(LayoutStyle::flex_column().fill_width().gap(space(1)))
-            .child(
-                text(title)
-                    .nowrap()
-                    .ellipsize()
-                    .font_size(TEXT_SMALL)
-                    .text_color(Token::OnSurfaceMuted),
-            )
-            .child(
-                text(value)
-                    .nowrap()
-                    .font_size(TEXT_KPI)
-                    .font_weight(WEIGHT_STRONG)
-                    .tabular_nums(true),
-            )
-            .child(trend),
-    )
+        .child(stat)
 }
 
 fn metrics(console: Console) -> NodeBuilder {
@@ -161,40 +135,25 @@ fn metrics(console: Console) -> NodeBuilder {
                 .gap(space(2))
                 .align_items(AlignItems::Stretch),
         )
-        .child(kpi(
-            "Success rate",
-            SUCCESS_RATE,
-            sparkline(SUCCESS_TREND.to_vec())
+        .child(tile(
+            stat("Success rate", SUCCESS_RATE)
+                .trend(SUCCESS_TREND.to_vec())
                 .range(SUCCESS_LOW, SUCCESS_HIGH)
                 .tone(Tone::Success),
         ))
-        .child(kpi(
-            "p95 duration",
-            P95_DURATION,
-            text(P95_TREND)
-                .nowrap()
-                .ellipsize()
-                .font_size(TEXT_SMALL)
-                .text_color(Token::Success11),
+        .child(tile(
+            stat("p95 duration", P95_DURATION).delta(P95_TREND, Tone::Success),
         ))
-        .child(kpi(
-            "Deploys today",
-            deploys,
-            text(move || format!("{} running now", console.tally(None, Bucket::Running)))
-                .nowrap()
-                .ellipsize()
-                .font_size(TEXT_SMALL)
-                .text_color(Token::OnSurfaceMuted),
+        .child(tile(stat("Deploys today", deploys).caption(move || {
+            format!("{} running now", console.tally(None, Bucket::Running))
+        })))
+        .child(tile(
+            stat("Mean duration", move || {
+                duration_label(mean_secs(&console.durations.get()))
+            })
+            .trend(move || console.durations.get())
+            .tone(Tone::Info),
         ))
-        .child(duration_card(console))
-}
-
-fn duration_card(console: Console) -> NodeBuilder {
-    kpi(
-        "Mean duration",
-        move || duration_label(mean_secs(&console.durations.get())),
-        sparkline(move || console.durations.get()).tone(Tone::Info),
-    )
 }
 
 #[allow(
@@ -220,13 +179,10 @@ fn search_row(state: &TableState<JobRow>) -> NodeBuilder {
                 .align_items(AlignItems::Center),
         )
         .child(
-            icon_svg(sigil::icons::builtin::SEARCH_SVG)
-                .size(ControlSize::Compact)
-                .tone(Tone::Neutral),
-        )
-        .child(
             text_field(state.quick_filter())
+                .leading(icon(Icon::Search))
                 .placeholder("Filter by commit, author, branch, or runner")
+                .clearable()
                 .grow(1.0),
         )
         .child(

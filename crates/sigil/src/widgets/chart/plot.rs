@@ -1,23 +1,83 @@
-use crate::kernel::{NodeBuilder, container};
+use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::{
     AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, Position,
 };
 use crate::style::{NodeStyleExt, Radius, Token, space};
 
 use super::super::vector::{PathNode, path};
-use super::{ChartMark, ChartSeries, nice_max, tone_fill};
+use super::{ChartMark, ChartSeries, nice_max};
 use crate::kernel::text;
 
 const AXIS: f32 = 32.0;
 const PLOT_PAD: f32 = space(2);
 const GROUP_GAP: f32 = space(2);
 const X_AXIS: f32 = space(8);
+const PAD: f32 = space(3);
+const COMPACT_PAD: f32 = space(1);
+const COMPACT_HEIGHT: f32 = 120.0;
+const MIN_PLOT: f32 = space(8);
+const MID_TICK_MIN: f32 = space(12);
+const LEGEND: f32 = space(6);
+const MIN_LABEL_PX: f32 = 32.0;
+const FLUID_MAX_LABELS: usize = 12;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct Frame {
+    pub(super) width: Option<f32>,
+    pub(super) height: f32,
+}
+
+impl Frame {
+    pub(super) const fn new(width: Option<f32>, height: f32) -> Self {
+        Self { width, height }
+    }
+
+    pub(super) fn padding(self) -> f32 {
+        if self.height < COMPACT_HEIGHT {
+            COMPACT_PAD
+        } else {
+            PAD
+        }
+    }
+
+    fn inner(self, legend: bool) -> f32 {
+        let legend = if legend { LEGEND } else { 0.0 };
+        2.0f32.mul_add(-self.padding(), self.height) - legend
+    }
+
+    fn shows_x_axis(self, legend: bool) -> bool {
+        self.inner(legend) >= X_AXIS + MIN_PLOT
+    }
+
+    fn plot_height(self, legend: bool) -> f32 {
+        let axis = if self.shows_x_axis(legend) {
+            X_AXIS
+        } else {
+            0.0
+        };
+        self.inner(legend) - axis
+    }
+
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "the label budget is a small non-negative count"
+    )]
+    fn label_stride(self, count: usize) -> usize {
+        let budget = self.width.map_or(FLUID_MAX_LABELS, |width| {
+            let span = 2.0f32.mul_add(-(self.padding() + PLOT_PAD), width) - AXIS - space(2);
+            (span / MIN_LABEL_PX).floor().max(1.0) as usize
+        });
+        count.div_ceil(budget.max(1)).max(1)
+    }
+}
 
 pub(super) fn draw(
     series: &[ChartSeries],
     labels: &[String],
     mark: ChartMark,
     count: usize,
+    frame: Frame,
 ) -> Vec<NodeBuilder> {
     let peak = series
         .iter()
@@ -28,6 +88,19 @@ pub(super) fn draw(
         ChartMark::Bar => (bars(series, count, max), GROUP_GAP),
         ChartMark::Line => (lines(series, count, max), 0.0),
     };
+    let has_legend = series.iter().any(|item| !item.name.is_empty());
+    let x_axis_on = frame.shows_x_axis(has_legend);
+    let mut column = container()
+        .layout(
+            LayoutStyle::flex_column()
+                .grow(1.0)
+                .min_size(0.0, 0.0)
+                .fill_height(),
+        )
+        .child(plot);
+    if x_axis_on {
+        column = column.child(x_axis(labels, count, gap, frame.label_stride(count)));
+    }
     let mut nodes = vec![
         container()
             .layout(
@@ -37,27 +110,21 @@ pub(super) fn draw(
                     .min_size(0.0, 0.0)
                     .gap(space(2)),
             )
-            .child(y_axis(max))
-            .child(
-                container()
-                    .layout(
-                        LayoutStyle::flex_column()
-                            .grow(1.0)
-                            .min_size(0.0, 0.0)
-                            .fill_height(),
-                    )
-                    .child(plot)
-                    .child(x_axis(labels, count, gap)),
-            ),
+            .child(y_axis(
+                max,
+                x_axis_on,
+                frame.plot_height(has_legend) >= MID_TICK_MIN,
+            ))
+            .child(column),
     ];
-    if series.iter().any(|item| !item.name.is_empty()) {
+    if has_legend {
         nodes.push(legend(series));
     }
     nodes
 }
 
-fn y_axis(max: f32) -> NodeBuilder {
-    let ticks = container()
+fn y_axis(max: f32, x_axis_on: bool, mid_tick: bool) -> NodeBuilder {
+    let mut ticks = container()
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()
@@ -65,35 +132,29 @@ fn y_axis(max: f32) -> NodeBuilder {
                 .align_items(AlignItems::End)
                 .justify_content(JustifyContent::SpaceBetween),
         )
-        .child(
-            text(format_tick(max))
-                .nowrap()
-                .class("text-xs")
-                .class(Token::Gray11.text()),
-        )
-        .child(
-            text(format_tick(max * 0.5))
-                .nowrap()
-                .class("text-xs")
-                .class(Token::Gray11.text()),
-        )
-        .child(
-            text("0")
-                .nowrap()
-                .class("text-xs")
-                .class(Token::Gray11.text()),
-        );
+        .child(tick(format_tick(max)));
+    if mid_tick {
+        ticks = ticks.child(tick(format_tick(max * 0.5)));
+    }
+    ticks = ticks.child(tick(String::from("0")));
     container()
         .layout(
             LayoutStyle::flex_column()
                 .width(AXIS)
                 .fill_height()
-                .padding_bottom(X_AXIS),
+                .padding_bottom(if x_axis_on { X_AXIS } else { 0.0 }),
         )
         .child(ticks)
 }
 
-fn x_axis(labels: &[String], count: usize, gap: f32) -> NodeBuilder {
+fn tick(value: String) -> impl IntoNode + 'static {
+    text(value)
+        .nowrap()
+        .class("text-xs")
+        .class(Token::Gray11.text())
+}
+
+fn x_axis(labels: &[String], count: usize, gap: f32, stride: usize) -> NodeBuilder {
     let mut row = container().layout(
         LayoutStyle::flex_row()
             .fill_width()
@@ -103,10 +164,14 @@ fn x_axis(labels: &[String], count: usize, gap: f32) -> NodeBuilder {
             .gap(gap),
     );
     for index in 0..count {
-        let text = labels
-            .get(index)
-            .cloned()
-            .unwrap_or_else(|| (index + 1).to_string());
+        let text = if index % stride == 0 {
+            labels
+                .get(index)
+                .cloned()
+                .unwrap_or_else(|| (index + 1).to_string())
+        } else {
+            String::new()
+        };
         row = row.child(
             container()
                 .layout(
@@ -189,7 +254,7 @@ fn bar_col(pct: f32, tone: super::Tone, name: &str, value: f32) -> NodeBuilder {
                         .grow(fill)
                         .min_size(0.0, 2.0),
                 )
-                .class([Radius::Sm.atom(), tone_fill(tone).bg()])
+                .class([Radius::Sm.atom(), tone.fill().bg()])
                 .tone(tone),
         )
 }
@@ -244,9 +309,7 @@ fn line_path(item: &ChartSeries, count: usize, max: f32) -> PathNode {
             stroke.line_to(x, y)
         };
     }
-    stroke
-        .stroke(tone_fill(item.tone), 2.0)
-        .non_scaling_stroke()
+    stroke.stroke(item.tone.fill(), 2.0).non_scaling_stroke()
 }
 
 fn legend(series: &[ChartSeries]) -> NodeBuilder {
@@ -265,7 +328,7 @@ fn legend(series: &[ChartSeries]) -> NodeBuilder {
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(8.0, 8.0))
-                        .class([Radius::Sm.atom(), tone_fill(item.tone).bg()]),
+                        .class([Radius::Sm.atom(), item.tone.fill().bg()]),
                 )
                 .child(
                     text(item.name.clone())

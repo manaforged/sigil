@@ -139,7 +139,7 @@ fn validated_field_emits_three_children() {
 fn kv_grid_emits_one_row_per_input() {
     Runtime::scope("kv-grid-three-rows", || {
         let mut cx = Cx::new_root();
-        let id = kv_grid(&[
+        let id = kv_grid([
             ("Content-Type", "application/json"),
             ("Status", "200 OK"),
             ("Length", "1024"),
@@ -158,7 +158,7 @@ fn kv_grid_emits_one_row_per_input() {
 fn kv_grid_empty_input_has_no_rows() {
     Runtime::scope("kv-grid-empty", || {
         let mut cx = Cx::new_root();
-        let id = kv_grid(&[]).build(&mut cx);
+        let id = kv_grid(Vec::<(&str, &str)>::new()).build(&mut cx);
         let node = cx.get(id).expect("kv-grid root exists");
         assert!(
             node.children().is_empty(),

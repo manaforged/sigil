@@ -14,6 +14,8 @@ pub(crate) enum Folder {
 }
 
 impl Folder {
+    pub(crate) const ALL: [Self; 4] = [Self::Src, Self::Physics, Self::Render, Self::Tests];
+
     pub(crate) const fn name(self) -> &'static str {
         match self {
             Self::Src => "src",
@@ -135,11 +137,11 @@ impl FileKind {
         }
     }
 
-    pub(crate) const fn badge(self) -> &'static str {
+    pub(crate) const fn icon(self) -> Icon {
         match self {
-            Self::Rust => "rs",
-            Self::Toml => "{}",
-            Self::Markdown => "md",
+            Self::Rust => Icon::FileCode,
+            Self::Toml => Icon::Braces,
+            Self::Markdown => Icon::FileText,
         }
     }
 }
@@ -204,36 +206,8 @@ impl FileSpec {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum TreeItem {
     Folder(Folder),
     File(FileId),
-}
-
-pub(crate) const TREE: &[TreeItem] = &[
-    TreeItem::Folder(Folder::Src),
-    TreeItem::Folder(Folder::Physics),
-    TreeItem::File(FileId::PhysicsMod),
-    TreeItem::File(FileId::Integrator),
-    TreeItem::Folder(Folder::Render),
-    TreeItem::File(FileId::Camera),
-    TreeItem::File(FileId::Lib),
-    TreeItem::File(FileId::Main),
-    TreeItem::Folder(Folder::Tests),
-    TreeItem::File(FileId::OrbitTest),
-    TreeItem::File(FileId::CargoToml),
-    TreeItem::File(FileId::Readme),
-];
-
-impl TreeItem {
-    pub(crate) fn ancestors(self) -> Vec<Folder> {
-        match self {
-            Self::Folder(folder) => Folder::chain(folder.parent()),
-            Self::File(file) => Folder::chain(file.spec().folder),
-        }
-    }
-
-    pub(crate) fn depth(self) -> u16 {
-        u16::try_from(self.ancestors().len()).unwrap_or(u16::MAX)
-    }
 }

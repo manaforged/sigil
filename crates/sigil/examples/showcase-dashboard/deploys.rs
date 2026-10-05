@@ -151,8 +151,9 @@ fn duration_cell(console: Console, slot: usize, secs: u32) -> sigil::kernel::Tex
 
 pub(crate) fn status_chip(console: Console, slot: usize) -> ChipBuilder {
     chip(
-        move || format!("● {}", console.status_of(slot).label()),
+        move || console.status_of(slot).label().to_owned(),
         Tone::Neutral,
     )
     .tone(move || console.status_of(slot).tone())
+    .dot()
 }

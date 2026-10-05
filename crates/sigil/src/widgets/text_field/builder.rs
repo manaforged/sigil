@@ -11,6 +11,7 @@ use crate::widgets::interaction::InteractionState;
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, disabled_now};
 use super::super::text_edit::{FocusCaret, noop_change};
+use super::adorn::{Adornments, FocusTarget, clear_button};
 use super::handlers::{FieldConfig, TextFieldRuntime, attach_key_handlers};
 use super::render::{FieldInputs, build_base_node, field_layout};
 use crate::clipboard::{Clipboard, clipboard};
@@ -36,6 +37,9 @@ pub struct TextFieldBuilder {
     pub(super) style_accumulator: Style,
     mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
+    adorn: Adornments,
+    clearable: bool,
+    focus_target: FocusTarget,
 }
 
 #[must_use]
@@ -65,6 +69,9 @@ impl TextFieldBuilder {
             style_accumulator: Style::new(),
             mutators: Vec::new(),
             layout_overrides: LayoutOverrides::new(),
+            adorn: Adornments::default(),
+            clearable: false,
+            focus_target: FocusTarget::default(),
         }
     }
 
@@ -148,6 +155,24 @@ impl TextFieldBuilder {
         self
     }
 
+    #[must_use]
+    pub fn leading(mut self, node: impl IntoNode + 'static) -> Self {
+        self.adorn.leading = Some(Box::new(node));
+        self
+    }
+
+    #[must_use]
+    pub fn trailing(mut self, node: impl IntoNode + 'static) -> Self {
+        self.adorn.trailing = Some(Box::new(node));
+        self
+    }
+
+    #[must_use]
+    pub const fn clearable(mut self) -> Self {
+        self.clearable = true;
+        self
+    }
+
     fn runtime(&mut self, column: f32) -> TextFieldRuntime {
         TextFieldRuntime::new(FieldConfig {
             value: self.value,
@@ -180,7 +205,17 @@ impl TextFieldBuilder {
             width,
             height,
         };
-        let node = build_base_node(inputs, &self.placeholder, interaction, runtime.clone());
+        let mut adorn = std::mem::take(&mut self.adorn);
+        if self.clearable {
+            adorn.clear = Some(clear_button(&runtime, Rc::clone(&self.focus_target)));
+        }
+        let node = build_base_node(
+            inputs,
+            &self.placeholder,
+            interaction,
+            runtime.clone(),
+            adorn,
+        );
         let node = interaction.install(attach_key_handlers(node, &runtime));
         let node = match self.blur {
             Some(blur) => node.focus_out(move || blur()),
@@ -218,8 +253,10 @@ impl IntoNode for TextFieldBuilder {
         let focus_trigger = self.focus_trigger;
         let autofocus = self.autofocus;
         let at = self.focus_caret;
+        let target = Rc::clone(&self.focus_target);
         let (node, runtime) = self.into_node_builder();
         let id = node.build(cx);
+        target.set(Some(id));
         if autofocus {
             focus_field(id, &runtime, at);
         }

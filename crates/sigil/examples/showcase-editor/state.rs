@@ -2,7 +2,7 @@ use sigil::prelude::*;
 use sigil::widgets::{ChangeKind, DiagSpan, HlSpan};
 
 use super::facts::{CHANGES, DIAGNOSTICS};
-use super::project::{FILE_COUNT, FileId, Folder};
+use super::project::{FILE_COUNT, FileId, Folder, TreeItem};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Activity {
@@ -28,10 +28,6 @@ impl BottomTab {
             Self::Output => "Output",
             Self::Terminal => "Terminal",
         }
-    }
-
-    pub(crate) fn at(index: usize) -> Self {
-        Self::ALL.get(index).copied().unwrap_or(Self::Problems)
     }
 }
 
@@ -98,7 +94,7 @@ pub(crate) struct Workspace {
     pub(crate) buffers: Signal<[Buffer; FILE_COUNT]>,
     pub(crate) open: Signal<Vec<FileId>>,
     pub(crate) active_tab: Signal<usize>,
-    pub(crate) expanded: Signal<Vec<Folder>>,
+    pub(crate) expanded: Signal<Vec<TreeItem>>,
     pub(crate) dirty: Signal<Vec<FileId>>,
     pub(crate) activity: Signal<Activity>,
     pub(crate) bottom: Signal<usize>,
@@ -120,7 +116,11 @@ impl Workspace {
             buffers: signal(buffers),
             open: signal(START_OPEN.to_vec()),
             active_tab: signal(0),
-            expanded: signal(vec![Folder::Src, Folder::Physics, Folder::Tests]),
+            expanded: signal(
+                [Folder::Src, Folder::Physics, Folder::Tests]
+                    .map(TreeItem::Folder)
+                    .to_vec(),
+            ),
             dirty: signal(
                 FileId::ALL
                     .into_iter()
@@ -181,16 +181,6 @@ impl Workspace {
         if active >= len || active > index {
             self.active_tab.set(active.saturating_sub(1));
         }
-    }
-
-    pub(crate) fn toggle_folder(&self, folder: Folder) {
-        self.expanded.update(|open| {
-            if let Some(pos) = open.iter().position(|f| *f == folder) {
-                open.remove(pos);
-            } else {
-                open.push(folder);
-            }
-        });
     }
 
     pub(crate) fn is_dirty(&self, file: FileId) -> bool {

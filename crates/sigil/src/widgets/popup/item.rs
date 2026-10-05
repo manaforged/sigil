@@ -3,7 +3,6 @@ use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, O
 use crate::reactive::Signal;
 use crate::style::{ControlSize, DisplayKind, Metrics, Radius, StyleAtom, Token, Tone, space};
 
-use super::super::chart::tone_solid;
 use super::super::vector::path;
 
 const GLYPH: f32 = space(4);
@@ -115,7 +114,7 @@ fn check_glyph(size: f32) -> impl IntoNode {
         .move_to(3.5, 8.5)
         .line_to(6.5, 11.5)
         .line_to(12.5, 4.5)
-        .stroke(tone_solid(Tone::Neutral), 1.6)
+        .stroke(Tone::Neutral.solid(), 1.6)
         .fit_size(size)
 }
 
@@ -126,7 +125,7 @@ pub(crate) fn chevron(direction: ChevronDirection, size: f32) -> impl IntoNode {
         ChevronDirection::Right => shape.move_to(6.0, 4.5).line_to(9.5, 8.0).line_to(6.0, 11.5),
         ChevronDirection::Down => shape.move_to(4.5, 6.0).line_to(8.0, 9.5).line_to(11.5, 6.0),
     };
-    shape.stroke(tone_solid(Tone::Neutral), 1.6).fit_size(size)
+    shape.stroke(Tone::Neutral.solid(), 1.6).fit_size(size)
 }
 
 #[must_use]

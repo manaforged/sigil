@@ -13,6 +13,7 @@ use crate::style::{
 
 use crate::widgets::interaction::InteractionState;
 
+use super::adorn::Adornments;
 use super::handlers::TextFieldRuntime;
 
 use super::super::shared::{FIELD_VARIANT, binary_style_state};
@@ -43,6 +44,7 @@ pub(super) fn build_base_node(
     placeholder: &TextContent,
     interaction: InteractionState,
     runtime: TextFieldRuntime,
+    adorn: Adornments,
 ) -> NodeBuilder {
     let FieldInputs {
         value,
@@ -72,15 +74,21 @@ pub(super) fn build_base_node(
             .text_value(value)
             .text_cursor(runtime.input.caret, runtime.input.selection);
     }
-    node.placeholder(placeholder_str)
+    let edges = (
+        adorn.leading.is_some(),
+        adorn.trailing.is_some() || adorn.clear.is_some(),
+    );
+    let inner = field_inner(runtime, interaction, displayed, (width, height), edges);
+    let node = node
+        .placeholder(placeholder_str)
         .layout(field_layout())
         .class(FIELD_VARIANT.base())
         .class(TEXT_FIELD_ANIM_BASE)
         .style_reactive(channel)
         .state_overlay(overlay, slot_cell)
         .seal_style()
-        .pointer_up(move |event| pointer_up(event, interaction))
-        .child(field_inner(runtime, interaction, displayed, width, height))
+        .pointer_up(move |event| pointer_up(event, interaction));
+    adorn.wrap(node, inner)
 }
 
 fn field_style_channel(
@@ -111,11 +119,11 @@ fn field_inner(
     runtime: TextFieldRuntime,
     interaction: InteractionState,
     displayed: Signal<String>,
-    width: Option<f32>,
-    height: Option<f32>,
+    (width, height): (Option<f32>, Option<f32>),
+    edges: (bool, bool),
 ) -> NodeBuilder {
     container()
-        .layout(field_inner_layout(width, height))
+        .layout(field_inner_layout(width, height, edges))
         .child(super::selection::text_region(
             runtime,
             interaction,
@@ -123,21 +131,32 @@ fn field_inner(
         ))
 }
 
-fn field_inner_layout(width: Option<f32>, height: Option<f32>) -> LayoutStyle {
+fn field_inner_layout(
+    width: Option<f32>,
+    height: Option<f32>,
+    (leading, trailing): (bool, bool),
+) -> LayoutStyle {
     let inset = crate::layout::snap::line(1.0);
     let padding_y = crate::layout::snap::detail(height.map_or(6.0, |height| {
         ((height - 2.0 - super::selection::line_height()) * 0.5).clamp(0.0, 6.0)
     }));
-    let base = width.map_or_else(
-        || LayoutStyle::flex_row().fill_width().grow(1.0),
-        |w| LayoutStyle::flex_row().width(2.0f32.mul_add(-inset, w).max(0.0)),
-    );
+    let adorned = leading || trailing;
+    let base = match width {
+        _ if adorned => LayoutStyle::flex_row()
+            .grow(1.0)
+            .shrink(1.0)
+            .min_size(0.0, crate::layout::Dimension::Auto),
+        Some(w) => LayoutStyle::flex_row().width(2.0f32.mul_add(-inset, w).max(0.0)),
+        None => LayoutStyle::flex_row().fill_width().grow(1.0),
+    };
     let base = match height {
         Some(h) => base.height(2.0f32.mul_add(-inset, h).max(0.0)),
         None => base,
     };
+    let edge = |side: bool| if side { space(2) } else { space(3) };
     base.align_items(AlignItems::Center)
-        .padding_x(space(3))
+        .padding_left(edge(leading))
+        .padding_right(edge(trailing))
         .padding_y(padding_y)
 }
 

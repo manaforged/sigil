@@ -1,15 +1,15 @@
 use sigil::prelude::*;
 use sigil::style::space;
-use sigil::widgets::{ListRowSlots, RowTone};
+use sigil::widgets::{ListRowSlots, RowTone, TreeNode};
 
-use super::project::{FileId, Folder, GitStatus, PROJECT_NAME, TREE, TreeItem};
+use super::project::{FileId, Folder, GitStatus, PROJECT_NAME, TreeItem};
 use super::state::{Activity, Workspace};
 
-const ACTIVITIES: &[(Activity, &str, &str)] = &[
-    (Activity::Explorer, "▤", "Explorer"),
-    (Activity::Search, "◎", "Search"),
-    (Activity::SourceControl, "◆", "Source control"),
-    (Activity::Run, "▶", "Run and debug"),
+const ACTIVITIES: &[(Activity, Icon, &str)] = &[
+    (Activity::Explorer, Icon::Layers, "Explorer"),
+    (Activity::Search, Icon::Search, "Search"),
+    (Activity::SourceControl, Icon::GitBranch, "Source control"),
+    (Activity::Run, Icon::Play, "Run and debug"),
 ];
 
 pub(crate) fn activity_strip(ws: Workspace) -> NodeBuilder {
@@ -24,7 +24,8 @@ pub(crate) fn activity_strip(ws: Workspace) -> NodeBuilder {
         |strip, (activity, glyph, name)| {
             let activity = *activity;
             strip.child(container().children_reactive(move || {
-                let base = icon_button(*glyph, move || ws.activity.set(activity))
+                let base = icon_button("", move || ws.activity.set(activity))
+                    .icon(*glyph)
                     .accessible(*name)
                     .size(ControlSize::Default);
                 [if ws.activity.get() == activity {
@@ -60,8 +61,15 @@ fn header(title: &'static str) -> NodeBuilder {
 }
 
 fn explorer(ws: Workspace) -> NodeBuilder {
+    let selected = signal(None);
+    effect(move || selected.set(ws.active().map(TreeItem::File)));
     container()
-        .layout(LayoutStyle::flex_column().fill_width().padding_y(space(1)))
+        .layout(
+            LayoutStyle::flex_column()
+                .fill()
+                .min_size(0.0, 0.0)
+                .padding_y(space(1)),
+        )
         .child(header("EXPLORER"))
         .child(list_row_with(
             false,
@@ -73,63 +81,65 @@ fn explorer(ws: Workspace) -> NodeBuilder {
             },
         ))
         .child(
-            container()
-                .layout(LayoutStyle::flex_column().fill_width())
-                .children_reactive(move || {
-                    let expanded = ws.expanded.get();
-                    let active = ws.active();
-                    let dirty = ws.dirty.get();
-                    TREE.iter()
-                        .copied()
-                        .filter(|item| item.ancestors().iter().all(|f| expanded.contains(f)))
-                        .map(|item| tree_row(ws, item, &expanded, active, &dirty))
-                        .collect::<Vec<_>>()
-                }),
+            tree(move || {
+                let expanded = ws.expanded.get();
+                let dirty = ws.dirty.get();
+                level(None, &expanded, &dirty)
+            })
+            .expanded(ws.expanded)
+            .selected(selected)
+            .activate(move |item| {
+                if let TreeItem::File(file) = item {
+                    ws.open_file(*file);
+                }
+            })
+            .label("Explorer")
+            .grow(1.0),
         )
 }
 
-fn tree_row(
-    ws: Workspace,
-    item: TreeItem,
-    expanded: &[Folder],
-    active: Option<FileId>,
+fn level(
+    parent: Option<Folder>,
+    expanded: &[TreeItem],
     dirty: &[FileId],
-) -> NodeBuilder {
-    let depth = item.depth().saturating_add(1);
-    match item {
-        TreeItem::Folder(folder) => {
-            let open = expanded.contains(&folder);
-            list_row_with(
-                false,
-                folder.name(),
-                ListRowSlots {
-                    depth,
-                    disclosure: if open {
-                        Disclosure::Expanded
-                    } else {
-                        Disclosure::Collapsed
-                    },
-                    ..ListRowSlots::default()
-                },
-            )
-            .pointer_down(move |_| ws.toggle_folder(folder))
-        }
-        TreeItem::File(file) => {
-            let spec = file.spec();
-            list_row_with(
-                active == Some(file),
-                spec.name,
-                ListRowSlots {
-                    depth,
-                    disclosure: Disclosure::Leaf,
-                    marker: Some(spec.kind.badge().into()),
-                    detail: dirty.contains(&file).then_some("●".into()),
-                    status: spec.git.map(|git| git.letter().into()),
-                    ..ListRowSlots::default()
-                },
-            )
-            .pointer_down(move |_| ws.open_file(file))
-        }
+) -> Vec<TreeNode<TreeItem>> {
+    let folders = Folder::ALL
+        .into_iter()
+        .filter(|folder| folder.parent() == parent)
+        .map(|folder| folder_node(folder, expanded, dirty));
+    let mut files: Vec<FileId> = FileId::ALL
+        .into_iter()
+        .filter(|file| file.spec().folder == parent)
+        .collect();
+    files.sort_by_key(|file| file.spec().name);
+    folders
+        .chain(files.into_iter().map(|file| file_node(file, dirty)))
+        .collect()
+}
+
+fn folder_node(folder: Folder, expanded: &[TreeItem], dirty: &[FileId]) -> TreeNode<TreeItem> {
+    let item = TreeItem::Folder(folder);
+    let glyph = if expanded.contains(&item) {
+        Icon::FolderOpen
+    } else {
+        Icon::Folder
+    };
+    TreeNode::new(item, folder.name())
+        .leading(glyph)
+        .children(level(Some(folder), expanded, dirty))
+}
+
+fn file_node(file: FileId, dirty: &[FileId]) -> TreeNode<TreeItem> {
+    let spec = file.spec();
+    let node = TreeNode::new(TreeItem::File(file), spec.name).leading(spec.kind.icon());
+    let node = if dirty.contains(&file) {
+        node.detail("●")
+    } else {
+        node
+    };
+    match spec.git {
+        Some(git) => node.status(git.letter(), git.tone()),
+        None => node,
     }
 }
 

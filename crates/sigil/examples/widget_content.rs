@@ -89,10 +89,6 @@ fn divider_vertical_demo() -> NodeBuilder {
         .child(text("Right").nowrap())
 }
 
-fn hairline_demo() -> NodeBuilder {
-    hairline()
-}
-
 fn build() -> impl IntoNode {
     scroll(
         container()
@@ -110,8 +106,7 @@ fn build() -> impl IntoNode {
             .child(hint_bar_demo())
             .child(avatar_demo())
             .child(divider_horizontal_demo())
-            .child(divider_vertical_demo())
-            .child(hairline_demo()),
+            .child(divider_vertical_demo()),
     )
     .fill()
 }

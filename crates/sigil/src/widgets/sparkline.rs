@@ -7,8 +7,6 @@ use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Reactive, derived};
 use crate::style::Tone;
 
-use super::chart::{tone_shade, tone_solid};
-
 mod glyphs;
 
 #[cfg(any(feature = "terminal", test))]
@@ -177,8 +175,8 @@ impl SparkShape {
 
 fn run_text(tone: Tone, layer: Layer, glyphs: String) -> TextBuilder {
     let ink = match layer {
-        Layer::Edge => tone_solid(tone),
-        Layer::Body => tone_shade(tone),
+        Layer::Edge => tone.solid(),
+        Layer::Body => tone.shade(),
     };
     text(glyphs).nowrap().class(ink.text())
 }

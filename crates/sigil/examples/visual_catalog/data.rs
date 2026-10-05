@@ -98,7 +98,7 @@ fn list_row_row(state: State) -> NodeBuilder {
 }
 
 fn kv_grid_row(_state: State) -> NodeBuilder {
-    node(kv_grid(&[("Host", "wgpu"), ("Backend", "metal")]))
+    node(kv_grid([("Host", "wgpu"), ("Backend", "metal")]))
 }
 
 fn kv_row_row(_state: State) -> NodeBuilder {

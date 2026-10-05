@@ -18,7 +18,9 @@ fn interactive_demo() -> InteractiveBuilder {
 
 fn axis_drag_demo() -> NodeBuilder {
     let width = signal(120.0_f32);
-    let handle = card(text(move || format!("Drag me: {:.0}", width.get())).nowrap());
+    let handle = NodeBuilder::from(card(
+        text(move || format!("Drag me: {:.0}", width.get())).nowrap(),
+    ));
     axis_drag(
         handle,
         Axis::X,
@@ -33,8 +35,11 @@ fn drag_ghost_demo() -> NodeBuilder {
     let dropped = signal(String::from("Drop a card here"));
     container()
         .layout(LayoutStyle::flex_column().gap(rows(1.0)))
-        .child(card(text("Card A").nowrap()).drag_source(drag.clone(), String::from("Card A")))
-        .child(card(text(dropped).nowrap()).drop_target(
+        .child(
+            NodeBuilder::from(card(text("Card A").nowrap()))
+                .drag_source(drag.clone(), String::from("Card A")),
+        )
+        .child(NodeBuilder::from(card(text(dropped).nowrap())).drop_target(
             drag.clone(),
             |_| true,
             move |item| dropped.set(format!("Dropped {item}")),

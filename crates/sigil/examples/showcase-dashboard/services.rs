@@ -1,7 +1,6 @@
 use sigil::prelude::{
-    AlignItems, ControlSize, LayoutBuilderExt, LayoutStyle, NodeBuilder, NodeEventsExt,
-    NodeStyleExt, Paint, Token, Tone, button, card, chip, container, dot, dropdown, scroll, spacer,
-    text,
+    AlignItems, ControlSize, Icon, LayoutBuilderExt, LayoutStyle, NodeBuilder, Paint, Token, Tone,
+    button, card, chip, container, dot, dropdown, scroll, spacer, text,
 };
 use sigil::style::space;
 use sigil::widgets::ScrollBuilder;
@@ -43,7 +42,8 @@ fn header(console: Console) -> NodeBuilder {
         .child(text("Services").nowrap().font_weight(WEIGHT_STRONG))
         .child(spacer())
         .child(
-            button("+ New")
+            button("New")
+                .icon(Icon::Plus)
                 .ghost()
                 .size(ControlSize::Compact)
                 .activate(move || console.toasts.info("New service draft opened")),
@@ -100,11 +100,9 @@ fn service_card(console: Console, service: Service) -> NodeBuilder {
                 .child(counter(console, service, Bucket::Failed, Tone::Error)),
         );
     card(body)
-        .paint_when(
-            move || console.service.get() == service,
-            |state| state.bg(Token::Accent3).border_color(Token::Accent7),
-        )
-        .pointer_up(move |_| console.service.set(service))
+        .selected(move || console.service.get() == service)
+        .activate(move || console.service.set(service))
+        .into()
 }
 
 fn counter(console: Console, service: Service, bucket: Bucket, tone: Tone) -> NodeBuilder {

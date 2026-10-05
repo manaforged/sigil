@@ -321,7 +321,7 @@ fn chrome_page() -> NodeBuilder {
     container()
         .layout(page_layout())
         .child(section_label("Menu bar"))
-        .child(menu_bar().menu(
+        .child(menu_bar().fill().menu(
             "File",
             [
                 MenuItem::new("New").activate(|| {}),
@@ -331,7 +331,7 @@ fn chrome_page() -> NodeBuilder {
         .child(section_label("Panel and card"))
         .child(row2(
             panel().title("Panel").child(text("Panel body").nowrap()),
-            card(kv_grid(&[("Host", "wgpu"), ("Backend", "metal")])),
+            card(kv_grid([("Host", "wgpu"), ("Backend", "metal")])),
         ))
         .child(section_label("Tabs"))
         .child(

@@ -1,12 +1,14 @@
-pub const HEART_SVG: &str = include_str!("../../assets/icons/heart.svg");
-pub const GEAR_SVG: &str = include_str!("../../assets/icons/gear.svg");
-pub const SEARCH_SVG: &str = include_str!("../../assets/icons/search.svg");
-pub const ARROW_RIGHT_SVG: &str = include_str!("../../assets/icons/arrow-right.svg");
-pub const X_SVG: &str = include_str!("../../assets/icons/x.svg");
-pub const ARROW_UP_SVG: &str = include_str!("../../assets/icons/arrow-up.svg");
-pub const ARROW_DOWN_SVG: &str = include_str!("../../assets/icons/arrow-down.svg");
-pub const CHEVRONS_UP_DOWN_SVG: &str = include_str!("../../assets/icons/chevrons-up-down.svg");
-pub const CHECK_SVG: &str = include_str!("../../assets/icons/check.svg");
+use crate::icons::Icon;
+
+pub const HEART_SVG: &str = Icon::Heart.svg();
+pub const GEAR_SVG: &str = Icon::Settings.svg();
+pub const SEARCH_SVG: &str = Icon::Search.svg();
+pub const ARROW_RIGHT_SVG: &str = Icon::ArrowRight.svg();
+pub const X_SVG: &str = Icon::X.svg();
+pub const ARROW_UP_SVG: &str = Icon::ArrowUp.svg();
+pub const ARROW_DOWN_SVG: &str = Icon::ArrowDown.svg();
+pub const CHEVRONS_UP_DOWN_SVG: &str = Icon::ChevronsUpDown.svg();
+pub const CHECK_SVG: &str = Icon::Check.svg();
 
 pub const ALL: [(&str, &str); 9] = [
     ("heart", HEART_SVG),

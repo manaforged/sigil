@@ -15,6 +15,7 @@ pub struct FontCollection {
     icon: Option<Font>,
     pub(crate) fallbacks: Vec<Font>,
     emoji: Font,
+    symbols: Option<Font>,
 }
 
 impl FontCollection {
@@ -58,6 +59,7 @@ impl FontCollection {
                 .chain(crate::text::fonts::added_fallback_fonts())
                 .collect(),
             emoji: load_emoji_font(),
+            symbols: load_symbols_font(),
         }
     }
 
@@ -75,6 +77,7 @@ impl FontCollection {
             icon: None,
             fallbacks: crate::text::fonts::added_fallback_fonts(),
             emoji: load_emoji_font(),
+            symbols: load_symbols_font(),
         }
     }
 
@@ -170,6 +173,7 @@ impl FontCollection {
             .into_iter()
             .flatten()
             .chain(&self.fallbacks)
+            .chain(self.symbols.as_ref())
             .chain(&system)
             .chain(std::iter::once(&self.emoji));
         for candidate in candidates {
@@ -215,6 +219,10 @@ fn load_emoji_font() -> Font {
     const BYTES: &[u8] = sigil_fonts::NOTO_COLOR_EMOJI_SUBSET;
     Font::from_bytes(BYTES.to_vec(), 0)
         .expect("bundled NotoColorEmoji-subset.ttf must parse — validated in color_glyph tests")
+}
+
+fn load_symbols_font() -> Option<Font> {
+    Font::from_bytes(sigil_fonts::SIGIL_SYMBOLS.to_vec(), 0).ok()
 }
 
 fn load_mono_font() -> Font {

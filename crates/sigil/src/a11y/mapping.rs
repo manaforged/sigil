@@ -47,6 +47,9 @@ fn walk_subtree(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>, out: &mut Vec<(Ak
     out.push((ak_id, projected));
     if let Some(runs) = runs {
         out.extend(runs);
+        for control in embedded_controls(cx, kernel_node) {
+            walk_subtree(cx, control, bounds, out);
+        }
         return;
     }
     for &child in kernel_node.children() {
@@ -95,6 +98,10 @@ fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<Run
     let runs = super::text::export(id, a11y, &mut ak);
     if runs.is_none() {
         apply_children(cx, kernel_node, &mut ak);
+    } else {
+        for control in embedded_controls(cx, kernel_node) {
+            ak.push_child(control.to_accesskit());
+        }
     }
     (ak, runs)
 }
@@ -250,5 +257,22 @@ fn collect_effective(cx: &Cx, id: NodeId, out: &mut Vec<NodeId>) {
         }
     } else {
         out.push(id);
+    }
+}
+
+fn embedded_controls(cx: &Cx, node: &Node) -> Vec<NodeId> {
+    let mut out = Vec::new();
+    collect_controls(cx, node, &mut out);
+    out
+}
+
+fn collect_controls(cx: &Cx, node: &Node, out: &mut Vec<NodeId>) {
+    for &child in node.children() {
+        let Some(inner) = cx.get(child) else { continue };
+        if inner.a11y.actions.is_empty() {
+            collect_controls(cx, inner, out);
+        } else {
+            out.push(child);
+        }
     }
 }

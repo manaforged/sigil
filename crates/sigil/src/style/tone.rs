@@ -1,3 +1,4 @@
+use crate::style::Token;
 use crate::style::scale::ScaleRole;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
@@ -13,6 +14,26 @@ pub enum Tone {
 }
 
 impl Tone {
+    #[must_use]
+    pub fn token(self, step: u8) -> Token {
+        Token::scale(self.scale_role(), step).unwrap_or(Token::OnSurface)
+    }
+
+    #[must_use]
+    pub fn shade(self) -> Token {
+        self.token(4)
+    }
+
+    #[must_use]
+    pub fn fill(self) -> Token {
+        self.token(9)
+    }
+
+    #[must_use]
+    pub fn solid(self) -> Token {
+        self.token(11)
+    }
+
     #[must_use]
     pub const fn scale_role(self) -> ScaleRole {
         match self {

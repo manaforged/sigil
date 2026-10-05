@@ -3,11 +3,13 @@
 mod bands;
 pub mod builtin;
 mod error;
+mod icon;
 mod parser;
 mod quadratic;
 mod raster;
 
 pub use error::BakeError;
+pub use icon::Icon;
 #[cfg(any(test, feature = "kittest"))]
 pub use quadratic::{QuadCurve, cubic_to_quadratics};
 

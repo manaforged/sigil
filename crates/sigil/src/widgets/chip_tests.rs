@@ -88,7 +88,7 @@ fn every_tone_clears_wcag_aa_contrast() {
         (Tone::Info, ScaleRole::Info, 12),
         (Tone::Success, ScaleRole::Success, 12),
         (Tone::Warn, ScaleRole::Warn, 12),
-        (Tone::Error, ScaleRole::Error, 11),
+        (Tone::Error, ScaleRole::Error, 12),
     ];
     for (tone, role, text_step) in cases {
         let scale = theme.scale(role);
