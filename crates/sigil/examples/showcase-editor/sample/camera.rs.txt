@@ -1,0 +1,19 @@
+use crate::physics::Vec3;
+
+pub struct Camera {
+    target: Vec3,
+    distance: f64,
+    fov: f64,
+}
+
+impl Camera {
+    pub fn looking_at(target: Vec3, distance: f64) -> Self {
+        Self { target, distance, fov: 60.0_f64.to_radians() }
+    }
+
+    pub fn project(&self, point: Vec3) -> (f64, f64) {
+        let rel = point - self.target;
+        let scale = 1.0 / (self.distance * (self.fov * 0.5).tan());
+        (rel.x * scale, rel.y * scale)
+    }
+}

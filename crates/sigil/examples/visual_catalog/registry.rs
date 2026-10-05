@@ -56,12 +56,12 @@ const SOURCES: &[(&str, &str)] = &[
         include_str!("../pomodoro-both.rs"),
     ),
     (
-        "crates/sigil/examples/showcase-dashboard.rs",
-        include_str!("../showcase-dashboard.rs"),
+        "crates/sigil/examples/showcase-dashboard/main.rs",
+        include_str!("../showcase-dashboard/main.rs"),
     ),
     (
-        "crates/sigil/examples/showcase-editor.rs",
-        include_str!("../showcase-editor.rs"),
+        "crates/sigil/examples/showcase-editor/main.rs",
+        include_str!("../showcase-editor/main.rs"),
     ),
     (
         "crates/sigil/examples/showcase-settings.rs",

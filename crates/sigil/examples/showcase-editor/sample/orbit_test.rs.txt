@@ -1,0 +1,32 @@
+use orbit::World;
+use orbit::physics::{Scheme, Vec3, total_energy};
+
+fn two_body(scheme: Scheme) -> World {
+    let mut world = World::new(scheme, 60.0);
+    world.spawn(1.989e30, Vec3::ZERO, Vec3::ZERO);
+    world.spawn(5.972e24, Vec3::new(1.496e11, 0.0, 0.0), Vec3::new(0.0, 29_780.0, 0.0));
+    world
+}
+
+#[test]
+fn verlet_conserves_energy() {
+    let mut world = two_body(Scheme::Verlet);
+    let start = total_energy(&world.bodies);
+    for _ in 0..10_000 {
+        world.tick();
+    }
+    let drift = ((total_energy(&world.bodies) - start) / start).abs();
+    assert!(drift < 1e-6, "drift {drift}");
+}
+
+#[test]
+fn rk4_tracks_verlet() {
+    let mut a = two_body(Scheme::Verlet);
+    let mut b = two_body(Scheme::Rk4);
+    for _ in 0..1_000 {
+        a.tick();
+        b.tick();
+    }
+    let gap = (a.bodies[1].position - b.bodies[1].position).length();
+    assert!(gap < 1.0e3, "gap {gap}");
+}

@@ -53,10 +53,10 @@ mod pomodoro_both;
 #[path = "preferences-window.rs"]
 mod preferences_window;
 #[allow(dead_code, unused_attributes)]
-#[path = "showcase-dashboard.rs"]
+#[path = "showcase-dashboard/main.rs"]
 mod showcase_dashboard;
 #[allow(dead_code, unused_attributes)]
-#[path = "showcase-editor.rs"]
+#[path = "showcase-editor/main.rs"]
 mod showcase_editor;
 #[allow(dead_code, unused_attributes)]
 #[path = "showcase-settings.rs"]

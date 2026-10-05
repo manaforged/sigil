@@ -1,0 +1,22 @@
+use orbit::World;
+use orbit::physics::{Scheme, Vec3, total_energy};
+use orbit::render::Camera;
+
+const SUN_MASS: f64 = 1.989e30;
+const EARTH_MASS: f64 = 5.972e24;
+const AU: f64 = 1.496e11;
+const DAY: f64 = 86_400.0;
+
+fn main() {
+    let mut world = World::new(Scheme::Verlet, 60.0);
+    world.spawn(SUN_MASS, Vec3::ZERO, Vec3::ZERO);
+    world.spawn(EARTH_MASS, Vec3::new(AU, 0.0, 0.0), Vec3::new(0.0, 29_780.0, 0.0));
+    let camera = Camera::looking_at(Vec3::ZERO, 2.5 * AU);
+    let start = total_energy(&world.bodies);
+    while world.steps() as f64 * 60.0 < 365.25 * DAY {
+        world.tick();
+    }
+    let drift = (total_energy(&world.bodies) - start) / start;
+    println!("steps: {}  energy drift: {drift:.3e}", world.steps());
+    println!("earth at {:?}", camera.project(world.bodies[1].position));
+}

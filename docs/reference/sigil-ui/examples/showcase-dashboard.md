@@ -6,8 +6,8 @@ Run it:
 cargo run -p sigil-ui --example showcase-dashboard --features desktop
 ```
 
-Source: `crates/sigil/examples/showcase-dashboard.rs`
+Source: `crates/sigil/examples/showcase-dashboard/main.rs`
 
 ```rust,ignore
-{{#include ../../../../crates/sigil/examples/showcase-dashboard.rs}}
+{{#include ../../../../crates/sigil/examples/showcase-dashboard/main.rs}}
 ```

@@ -774,23 +774,23 @@ source = "crates/sigil/examples/pomodoro-both.rs"
 
 [[examples]]
 id = "showcase-dashboard"
-title = "Dashboard"
-summary = "A metrics dashboard with KPI cards, a sortable table, a chart, and a status bar."
+title = "Deploy console"
+summary = "A deploy console with a nav rail, service cards, KPI sparklines, a selectable and sortable job table, a live log, and an inspector form, updating on a timer."
 hosts = ["window"]
 build = "showcase-dashboard"
-size = [960, 600]
-grid = [120, 36]
-source = "crates/sigil/examples/showcase-dashboard.rs"
+size = [1280, 800]
+grid = [160, 48]
+source = "crates/sigil/examples/showcase-dashboard/main.rs"
 
 [[examples]]
 id = "showcase-editor"
-title = "Editor"
-summary = "A code editor with a file list, tabs, a code view, and a live markdown preview in resizable panes."
+title = "Code editor"
+summary = "An IDE with a menu bar, file tree, tabs, a highlighted editor with gutter marks and diagnostics, an outline, problems and terminal panels, and a command palette."
 hosts = ["window"]
 build = "showcase-editor"
-size = [1024, 640]
-grid = [128, 38]
-source = "crates/sigil/examples/showcase-editor.rs"
+size = [1280, 800]
+grid = [160, 48]
+source = "crates/sigil/examples/showcase-editor/main.rs"
 
 [[examples]]
 id = "showcase-settings"

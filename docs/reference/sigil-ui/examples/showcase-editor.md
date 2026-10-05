@@ -6,8 +6,8 @@ Run it:
 cargo run -p sigil-ui --example showcase-editor --features desktop
 ```
 
-Source: `crates/sigil/examples/showcase-editor.rs`
+Source: `crates/sigil/examples/showcase-editor/main.rs`
 
 ```rust,ignore
-{{#include ../../../../crates/sigil/examples/showcase-editor.rs}}
+{{#include ../../../../crates/sigil/examples/showcase-editor/main.rs}}
 ```

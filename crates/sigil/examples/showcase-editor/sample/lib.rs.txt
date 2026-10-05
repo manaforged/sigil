@@ -1,0 +1,27 @@
+pub mod physics;
+pub mod render;
+
+use physics::{Body, Integrator, Scheme, Vec3};
+
+pub struct World {
+    pub bodies: Vec<Body>,
+    integrator: Integrator,
+}
+
+impl World {
+    pub fn new(scheme: Scheme, dt: f64) -> Self {
+        Self { bodies: Vec::new(), integrator: Integrator::new(scheme, dt) }
+    }
+
+    pub fn spawn(&mut self, mass: f64, position: Vec3, velocity: Vec3) {
+        self.bodies.push(Body::new(mass, position, velocity));
+    }
+
+    pub fn tick(&mut self) {
+        self.integrator.step(&mut self.bodies);
+    }
+
+    pub fn steps(&self) -> u64 {
+        self.integrator.steps()
+    }
+}

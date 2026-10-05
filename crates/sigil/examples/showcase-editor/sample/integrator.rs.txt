@@ -1,0 +1,107 @@
+use crate::physics::{Body, Vec3};
+
+pub const GRAVITY: f64 = 6.674e-11;
+const SOFTENING: f64 = 1.0e-3;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Scheme {
+    Verlet,
+    Rk4,
+}
+
+pub struct Integrator {
+    scheme: Scheme,
+    dt: f64,
+    steps: u64,
+}
+
+impl Integrator {
+    pub fn new(scheme: Scheme, dt: f64) -> Self {
+        Self { scheme, dt, steps: 0 }
+    }
+
+    pub fn steps(&self) -> u64 {
+        self.steps
+    }
+
+    pub fn step(&mut self, bodies: &mut [Body]) {
+        match self.scheme {
+            Scheme::Verlet => self.verlet(bodies),
+            Scheme::Rk4 => self.rk4(bodies),
+        }
+        self.steps += 1;
+    }
+
+    fn verlet(&self, bodies: &mut [Body]) {
+        let dt = self.dt;
+        let half_dt = 0.5 * dt;
+        let before = accelerations(bodies);
+        for (body, acc) in bodies.iter_mut().zip(&before) {
+            body.position += body.velocity * dt + *acc * (0.5 * dt * dt);
+        }
+        let after = accelerations(bodies);
+        for ((body, a0), a1) in bodies.iter_mut().zip(&before).zip(&after) {
+            body.velocity += (*a0 + *a1) * (0.5 * dt);
+        }
+    }
+
+    fn rk4(&self, bodies: &mut [Body]) {
+        let dt = self.dt;
+        let start: Vec<Body> = bodies.to_vec();
+        let k1 = derivative(&start);
+        let k2 = derivative(&advance(&start, &k1, 0.5 * dt));
+        let k3 = derivative(&advance(&start, &k2, 0.5 * dt));
+        let k4 = derivative(&advance(&start, &k3, dt));
+        for (i, body) in bodies.iter_mut().enumerate() {
+            let dv = (k1[i].1 + k2[i].1 * 2.0 + k3[i].1 * 2.0 + k4[i].1) * (dt / 6.0);
+            let dx = (k1[i].0 + k2[i].0 * 2.0 + k3[i].0 * 2.0 + k4[i].0) * (dt / 6.0);
+            body.position += dx;
+            body.velocity += dv;
+        }
+    }
+}
+
+fn accelerations(bodies: &[Body]) -> Vec<Vec3> {
+    let mut out = vec![Vec3::ZERO; bodies.len()];
+    for (i, a) in bodies.iter().enumerate() {
+        for (j, b) in bodies.iter().enumerate() {
+            if i == j {
+                continue;
+            }
+            let offset = b.position - a.position;
+            let dist_sq = offset.length_squared() + SOFTENING * SOFTENING;
+            let inv = 1.0 / (dist_sq * dist_sq.sqrt());
+            out[i] += offset * (GRAVITY * b.mass * inv);
+        }
+    }
+    out
+}
+
+fn derivative(bodies: &[Body]) -> Vec<(Vec3, Vec3)> {
+    let acc = accelerations(bodies);
+    bodies.iter().zip(acc).map(|(b, a)| (b.velocity, a)).collect()
+}
+
+fn advance(bodies: &[Body], slope: &[(Vec3, Vec3)], h: f64) -> Vec<Body> {
+    bodies
+        .iter()
+        .zip(slope)
+        .map(|(b, (dx, dv))| Body {
+            position: b.position + *dx * h,
+            velocity: b.velocity + *dv * h,
+            ..*b
+        })
+        .collect()
+}
+
+pub fn total_energy(bodies: &[Body]) -> f64 {
+    let kinetic: f64 = bodies.iter().map(|b| 0.5 * b.mass * b.velocity.length_squared()).sum();
+    let mut potential = 0.0;
+    for (i, a) in bodies.iter().enumerate() {
+        for b in &bodies[i + 1..] {
+            let dist = (b.position - a.position).length();
+            potential -= GRAVITY * a.mass * b.mass / dist;
+        }
+    }
+    kinetic + potential
+}

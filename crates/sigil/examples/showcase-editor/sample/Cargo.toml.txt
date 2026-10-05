@@ -1,0 +1,14 @@
+[package]
+name = "orbit"
+version = "0.3.0"
+edition = "2024"
+description = "A small n-body orbit simulator"
+license = "MIT"
+
+[dependencies]
+
+[dev-dependencies]
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
