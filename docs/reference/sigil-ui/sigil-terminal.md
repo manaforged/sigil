@@ -9,6 +9,7 @@
 | [`Hooks`](#hooks) | struct |  |
 | [`Lines`](#lines) | struct |  |
 | [`Marks`](#marks) | struct |  |
+| [`Notices`](#notices) | struct |  |
 | [`Paint`](#paint) | struct |  |
 | [`Placement`](#placement) | struct |  |
 | [`Screen`](#screen) | struct |  |
@@ -24,6 +25,7 @@
 | [`Keyboard`](#keyboard) | enum |  |
 | [`MouseTracking`](#mousetracking) | enum |  |
 | [`Mux`](#mux) | enum |  |
+| [`Notify`](#notify) | enum |  |
 | [`PrintAboveError`](#printaboveerror) | enum |  |
 | [`Protocol`](#protocol) | enum |  |
 | [`Underline`](#underline) | enum |  |
@@ -43,12 +45,14 @@
 | [`key_down`](#key_down) | fn |  |
 | [`map_key`](#map_key) | fn |  |
 | [`map_mouse`](#map_mouse) | fn |  |
+| [`notify`](#notify-1) | fn |  |
 | [`paste`](#paste) | fn |  |
 | [`png`](#png) | fn |  |
 | [`png_window`](#png_window) | fn |  |
 | [`pointer`](#pointer) | fn |  |
 | [`present`](#present) | fn |  |
 | [`print_above`](#print_above) | fn |  |
+| [`progress`](#progress) | fn |  |
 | [`raster`](#raster) | fn |  |
 | [`raster_into`](#raster_into) | fn |  |
 | [`raster_with`](#raster_with) | fn |  |
@@ -105,6 +109,7 @@
 | <code>hyperlinks: bool</code> |  |
 | <code>keyboard: <a href="#keyboard">Keyboard</a></code> |  |
 | <code>mux: Option&lt;<a href="#mux">Mux</a>&gt;</code> |  |
+| <code>notices: <a href="#notices">Notices</a></code> |  |
 | <code>sync: bool</code> |  |
 | <code>underline_styles: bool</code> |  |
 
@@ -193,6 +198,18 @@
 | <code>collect(cx: &amp;<a href="sigil-kernel.html#cx">Cx</a>, focus: Option&lt;<a href="sigil-kernel.html#nodeid">NodeId</a>&gt;, scene: &amp;<a href="sigil-scene.html#commandscene">CommandScene</a>, cell: f32) -&gt; Self</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
+
+
+### `Notices`
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>notify: Option&lt;<a href="#notify">Notify</a>&gt;</code> |  |
+| <code>progress: bool</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `Paint`
@@ -411,6 +428,18 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
+### `Notify`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Osc777</code> |  |
+| <code>Osc9</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
 ### `PrintAboveError`
 
 **Variants**
@@ -531,6 +560,11 @@
 <pre>pub fn <a href="#map_mouse">map_mouse</a>(event: &amp;MouseEvent, cell: f32, last: &amp;mut <a href="sigil-geometry.html#point">Point</a>) -&gt; Option&lt;<a href="sigil-events.html#shellevent">ShellEvent</a>&gt;</pre>
 
 
+### `notify`
+
+<pre>pub fn <a href="#notify-1">notify</a>(title: &amp;str, body: &amp;str) -&gt; Result&lt;()&gt;</pre>
+
+
 ### `paste`
 
 <pre>pub fn <a href="#paste">paste</a>(text: &amp;str) -&gt; <a href="sigil-events.html#shellevent">ShellEvent</a></pre>
@@ -559,6 +593,11 @@
 ### `print_above`
 
 <pre>pub fn <a href="#print_above">print_above</a>(text: &amp;str) -&gt; Result&lt;()&gt;</pre>
+
+
+### `progress`
+
+<pre>pub fn <a href="#progress">progress</a>(value: Option&lt;u8&gt;) -&gt; Result&lt;()&gt;</pre>
 
 
 ### `raster`

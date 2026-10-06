@@ -49,6 +49,51 @@ pub fn node(child: impl IntoNode + 'static) -> Box<dyn IntoNode> {
     Box::new(child)
 }
 
+macro_rules! into_node_builder {
+    ($($ty:ty),* $(,)?) => {
+        $(
+            impl From<$ty> for crate::kernel::NodeBuilder {
+                fn from(builder: $ty) -> Self {
+                    crate::kernel::fragment().child(builder)
+                }
+            }
+        )*
+    };
+}
+
+into_node_builder!(
+    crate::kernel::TextBuilder,
+    crate::kernel::ImageBuilder,
+    crate::widgets::ButtonBuilder,
+    crate::widgets::ChartBuilder,
+    crate::widgets::CheckboxBuilder,
+    crate::widgets::CodeEditBuilder,
+    crate::widgets::ColorFieldBuilder,
+    crate::widgets::CommandMenuBuilder,
+    crate::widgets::DateFieldBuilder,
+    crate::widgets::DiffBuilder,
+    crate::widgets::DotBuilder,
+    crate::widgets::DropdownBuilder,
+    crate::widgets::GaugeBuilder,
+    crate::widgets::IconBuilder,
+    crate::widgets::MarkdownEditBuilder,
+    crate::widgets::MenuBarBuilder,
+    crate::widgets::MenuBuilder,
+    crate::widgets::ModalBuilder,
+    crate::widgets::PanelBuilder,
+    crate::widgets::PathNode,
+    crate::widgets::ProgressBuilder,
+    crate::widgets::RadioGroupBuilder,
+    crate::widgets::SegmentedBuilder,
+    crate::widgets::SliderBuilder,
+    crate::widgets::SparklineBuilder,
+    crate::widgets::TabsBuilder,
+    crate::widgets::TextEditBuilder,
+    crate::widgets::TextFieldBuilder,
+    crate::widgets::ToggleBuilder,
+    crate::widgets::TooltipBuilder,
+);
+
 pub(crate) trait ErasedComponent {
     fn build_box(self: Box<Self>, cx: &mut Cx) -> NodeId;
 }

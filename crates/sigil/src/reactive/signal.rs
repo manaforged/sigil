@@ -20,6 +20,19 @@ impl<T: 'static> Clone for Signal<T> {
 }
 impl<T: 'static> Copy for Signal<T> {}
 
+impl<T: 'static> PartialEq for Signal<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+impl<T: 'static> Eq for Signal<T> {}
+
+impl<T: 'static> core::hash::Hash for Signal<T> {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.key.hash(state);
+    }
+}
+
 impl<T: 'static> Signal<T> {
     pub(crate) const fn from_key(key: SignalKey) -> Self {
         Self {

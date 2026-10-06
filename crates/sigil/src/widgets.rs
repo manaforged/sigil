@@ -86,7 +86,7 @@ mod tree;
 mod vector;
 mod virtual_list;
 
-pub use button::{ButtonBuilder, button, icon_button};
+pub use button::{ButtonBuilder, ButtonGlyph, button, icon_button};
 pub use chart::{ChartBuilder, ChartMark, chart};
 pub use checkbox::{CheckboxBuilder, checkbox};
 pub use chip::{ChipBuilder, chip};

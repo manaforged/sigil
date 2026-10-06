@@ -10,6 +10,7 @@
 | [`KeyEvent`](#keyevent) | struct |  |
 | [`KeyEventInit`](#keyeventinit) | struct |  |
 | [`MouseButtons`](#mousebuttons) | struct |  |
+| [`PasteEvent`](#pasteevent) | struct |  |
 | [`PointerEvent`](#pointerevent) | struct |  |
 | [`PointerEventInit`](#pointereventinit) | struct |  |
 | [`ScrollEvent`](#scrollevent) | struct |  |
@@ -184,6 +185,25 @@
 | <code>const remove(&amp;mut self, button: Self)</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
+### `PasteEvent`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>const new(text: String) -&gt; Self</code> |  |
+| <code>const propagation_stopped(&amp;self) -&gt; bool</code> |  |
+| <code>const stop_propagation(&amp;mut self)</code> |  |
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>text: String</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
 
 
 ### `PointerEvent`
@@ -427,6 +447,7 @@
 | <code>FileDrop(<a href="#filedropevent">FileDropEvent</a>)</code> |  |
 | <code>Ime(<a href="#imeevent">ImeEvent</a>)</code> |  |
 | <code>Key(<a href="#keyevent">KeyEvent</a>)</code> |  |
+| <code>Paste(String)</code> |  |
 | <code>Pointer(<a href="#pointerevent">PointerEvent</a>)</code> |  |
 | <code>Scroll(<a href="#scrollevent">ScrollEvent</a>)</code> |  |
 | <code>Window(<a href="#windowevent">WindowEvent</a>)</code> |  |
@@ -471,6 +492,7 @@
 | <code>key_capture_any&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="#keyevent">KeyEvent</a>) + 'static</code> |  |
 | <code>link&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;str) + 'static</code> |  |
 | <code>on_ime&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;<a href="#imeevent">ImeEvent</a>) + 'static</code> |  |
+| <code>on_paste&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="#pasteevent">PasteEvent</a>) + 'static</code> |  |
 | <code>on_scroll&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="#scrollevent">ScrollEvent</a>) + 'static</code> |  |
 | <code>on_selection_copy&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;str, &amp;<a href="sigil.html#appresult">AppResult</a>&lt;<a href="sigil-clipboard.html#delivery">Delivery</a>&gt;) + 'static</code> |  |
 | <code>pointer_down&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="#pointerevent">PointerEvent</a>) + 'static</code> |  |

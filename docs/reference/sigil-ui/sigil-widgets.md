@@ -67,6 +67,7 @@
 | [`ToastEntry`](#toastentry) | struct |  |
 | [`TreeNode`](#treenode) | struct |  |
 | [`TreeRow`](#treerow) | struct |  |
+| [`ButtonGlyph`](#buttonglyph) | enum |  |
 | [`ColWidth`](#colwidth) | enum |  |
 | [`Density`](#density) | enum |  |
 | [`DiffView`](#diffview) | enum |  |
@@ -1314,6 +1315,18 @@
 
 ## Enums
 
+### `ButtonGlyph`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Icon(<a href="sigil-icons.html#icon">Icon</a>)</code> |  |
+| <code>Text(<a href="sigil-kernel.html#textcontent">TextContent</a>)</code> |  |
+
+**Trait implementations:** <code>From&lt;<a href="sigil-icons.html#icon">Icon</a>&gt;</code>, <code>From&lt;T&gt;</code>
+
+
 ### `ColWidth`
 
 **Variants**
@@ -1864,7 +1877,7 @@
 
 ### `icon_button`
 
-<pre>pub fn <a href="#icon_button">icon_button</a>(glyph: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;, activate: impl Fn() + 'static) -&gt; <a href="#buttonbuilder">ButtonBuilder</a></pre>
+<pre>pub fn <a href="#icon_button">icon_button</a>(glyph: impl Into&lt;<a href="#buttonglyph">ButtonGlyph</a>&gt;, activate: impl Fn() + 'static) -&gt; <a href="#buttonbuilder">ButtonBuilder</a></pre>
 
 
 ### `icon_svg`

@@ -67,6 +67,7 @@
 | <code>const reduced_motion(self, reduced: bool) -&gt; Self</code> |  |
 | <code>const resizable(self, yes: bool) -&gt; Self</code> |  |
 | <code>const size(self, width: u32, height: u32) -&gt; Self</code> |  |
+| <code>suspend_on(self, shortcut: impl Into&lt;Option&lt;<a href="sigil-events.html#shortcut">Shortcut</a>&gt;&gt;) -&gt; Self</code> |  |
 | <code>const task_workers(self, workers: <a href="sigil-tasks.html#taskworkers">TaskWorkers</a>) -&gt; Self</code> |  |
 | <code>const terminal(self) -&gt; Self</code> |  |
 | <code>const terminal_access(self, access: <a href="sigil-terminal.html#access">Access</a>) -&gt; Self</code> |  |

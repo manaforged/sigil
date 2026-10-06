@@ -604,6 +604,8 @@
 | <code>Play</code> |  |
 | <code>Plus</code> |  |
 | <code>RefreshCw</code> |  |
+| <code>Repeat</code> |  |
+| <code>Repeat1</code> |  |
 | <code>Rocket</code> |  |
 | <code>RotateCcw</code> |  |
 | <code>ScrollText</code> |  |
@@ -611,6 +613,9 @@
 | <code>Server</code> |  |
 | <code>Settings</code> |  |
 | <code>Shield</code> |  |
+| <code>Shuffle</code> |  |
+| <code>SkipBack</code> |  |
+| <code>SkipForward</code> |  |
 | <code>SlidersHorizontal</code> |  |
 | <code>Square</code> |  |
 | <code>Star</code> |  |
@@ -624,6 +629,8 @@
 | <code>Upload</code> |  |
 | <code>User</code> |  |
 | <code>Users</code> |  |
+| <code>Volume2</code> |  |
+| <code>VolumeX</code> |  |
 | <code>X</code> |  |
 | <code>Zap</code> |  |
 
@@ -997,6 +1004,7 @@
 | <code>key_capture_any&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#keyevent">KeyEvent</a>) + 'static</code> |  |
 | <code>link&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;str) + 'static</code> |  |
 | <code>on_ime&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;<a href="sigil-events.html#imeevent">ImeEvent</a>) + 'static</code> |  |
+| <code>on_paste&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#pasteevent">PasteEvent</a>) + 'static</code> |  |
 | <code>on_scroll&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#scrollevent">ScrollEvent</a>) + 'static</code> |  |
 | <code>on_selection_copy&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;str, &amp;<a href="sigil.html#appresult">AppResult</a>&lt;<a href="sigil-clipboard.html#delivery">Delivery</a>&gt;) + 'static</code> |  |
 | <code>pointer_down&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#pointerevent">PointerEvent</a>) + 'static</code> |  |
@@ -1305,7 +1313,7 @@
 
 ### `icon_button`
 
-<pre>pub fn <a href="#icon_button">icon_button</a>(glyph: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;, activate: impl Fn() + 'static) -&gt; <a href="sigil-widgets.html#buttonbuilder">ButtonBuilder</a></pre>
+<pre>pub fn <a href="#icon_button">icon_button</a>(glyph: impl Into&lt;<a href="sigil-widgets.html#buttonglyph">ButtonGlyph</a>&gt;, activate: impl Fn() + 'static) -&gt; <a href="sigil-widgets.html#buttonbuilder">ButtonBuilder</a></pre>
 
 
 ### `image`

@@ -61,6 +61,28 @@ impl BgGradient {
     pub const fn new(axis: GradientAxis, stops: &'static [GradientStopKey]) -> Self {
         Self { axis, stops }
     }
+
+    #[must_use]
+    pub fn owned(axis: GradientAxis, stops: Vec<GradientStopKey>) -> Self {
+        Self::new(axis, intern_stops(stops))
+    }
+}
+
+fn intern_stops(stops: Vec<GradientStopKey>) -> &'static [GradientStopKey] {
+    use std::collections::HashSet;
+    use std::sync::{Mutex, OnceLock, PoisonError};
+
+    static CACHE: OnceLock<Mutex<HashSet<&'static [GradientStopKey]>>> = OnceLock::new();
+    let mut cache = CACHE
+        .get_or_init(|| Mutex::new(HashSet::new()))
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    if let Some(interned) = cache.get(stops.as_slice()).copied() {
+        return interned;
+    }
+    let interned: &'static [GradientStopKey] = Box::leak(stops.into_boxed_slice());
+    cache.insert(interned);
+    interned
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

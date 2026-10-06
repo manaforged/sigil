@@ -218,7 +218,7 @@ fn session() -> AppResult<sigil::app::Session> { sigil::app::Session::spawn("sh"
 | --- | --- | --- |
 | `kernel::Cx` | `struct Cx`; `cx.add(node) -> NodeId` | The node tree. App code does not name it; a component is a function that returns `impl IntoNode`. Embedders and `on_added` hooks use it. |
 | `kernel::NodeId` | `struct NodeId` | Handle of a node in the tree. |
-| `NodeBuilder` | `struct NodeBuilder`; `child(impl IntoNode)`, `children_reactive(Fn() -> IntoIterator<Item = N>)`, `children_keyed(Fn() -> IntoIterator<Item = (K, N)>)`, `with<T>(value)`, `mutate(FnOnce(&mut Node))`, `add(&mut Cx) -> NodeId`; accessibility: `role(Role)`, `label(name)`, `description(text)`, `placeholder(text)`, `labelled_by(NodeId)`, `owns(NodeId)`, `action(Action)`, `keyboard_shortcut(shortcut)`, `focusable(bool)`, `tab_index(i32)`, `traps_tab(bool)`, `hittable(bool)`, `checked(Signal<bool>)`, `selected(Signal<bool>)`, `expanded(Signal<bool>)`, `value(Signal<f32>, min, max)`, `value_step(f32)`, `text_value(Signal<String>)`, `text_cursor(caret, anchor)`, `row_count(Signal<usize>)`, `row_index(usize)`, `column_count(usize)`, `column_index(usize)`, `sort_direction(Signal<Option<SortDirection>>)`, `on_added` | Builder that `container` and most widgets return. `children_reactive` builds the children again each time a signal that the closure reads changes. `children_keyed` reconciles the children by key, like `for_each`. `with` attaches a typed value to the node (`NodeExtensions`). `hittable(false)` lets pointer events pass through the node. The accessibility methods set what screen readers get for the node. |
+| `NodeBuilder` | `struct NodeBuilder`; `child(impl IntoNode)`, `children_reactive(Fn() -> IntoIterator<Item = N>)`, `children_keyed(Fn() -> IntoIterator<Item = (K, N)>)`, `with<T>(value)`, `mutate(FnOnce(&mut Node))`, `add(&mut Cx) -> NodeId`; accessibility: `role(Role)`, `label(name)`, `description(text)`, `placeholder(text)`, `labelled_by(NodeId)`, `owns(NodeId)`, `action(Action)`, `keyboard_shortcut(shortcut)`, `focusable(bool)`, `tab_index(i32)`, `traps_tab(bool)`, `hittable(bool)`, `checked(Signal<bool>)`, `selected(Signal<bool>)`, `expanded(Signal<bool>)`, `value(Signal<f32>, min, max)`, `value_step(f32)`, `text_value(Signal<String>)`, `text_cursor(caret, anchor)`, `row_count(Signal<usize>)`, `row_index(usize)`, `column_count(usize)`, `column_index(usize)`, `sort_direction(Signal<Option<SortDirection>>)`, `on_added`; `From` every widget builder | Builder that `container` and most widgets return. `NodeBuilder::from(text(..))` or `.into()` puts any widget builder into a `Vec<NodeBuilder>`. `children_reactive` builds the children again each time a signal that the closure reads changes. `children_keyed` reconciles the children by key, like `for_each`. `with` attaches a typed value to the node (`NodeExtensions`). `hittable(false)` lets pointer events pass through the node. The accessibility methods set what screen readers get for the node. |
 | `IntoNode` | `trait IntoNode` | A value that builds into a node. |
 | `node` | `fn node(child: impl IntoNode + 'static) -> Box<dyn IntoNode>` | Box a child of any builder type. |
 | `container` | `fn container() -> NodeBuilder` | A box that holds children. |
@@ -345,7 +345,7 @@ See [Units](guide/units.md) for the rules that map `rows`, `cols`, and
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
-| `Signal` | `struct Signal<T>`; `get`, `peek`, `set`, `update`, `with` | Reactive value. `set` skips a value equal to the current one; `update` always notifies. |
+| `Signal` | `struct Signal<T>`; `get`, `peek`, `set`, `update`, `with`; `PartialEq`, `Eq`, `Hash` by identity | Reactive value. `set` skips a value equal to the current one; `update` always notifies. Two handles are equal when they name the same signal, so a store of signals can itself live in a signal. |
 | `signal` | `fn signal<T: 'static>(initial: T) -> Signal<T>` | Create a signal. |
 | `derived` | `fn derived<T: Clone + PartialEq, F: FnMut() -> T>(f: F) -> Signal<T>` | A signal that `f` recomputes. Notifies readers only when the new value differs from the old one. |
 | `effect` | `fn effect<F: FnMut() + 'static>(f: F)` | Run `f` now and after each change it reads. |
@@ -621,7 +621,7 @@ fn main() {
 | Name | Signature | Purpose |
 | --- | --- | --- |
 | `button` | `fn button(label: impl Into<TextContent>) -> ButtonBuilder` | A push button. |
-| `icon_button` | `fn icon_button(glyph, activate: impl Fn() + 'static) -> ButtonBuilder` | A button that shows one glyph. |
+| `icon_button` | `fn icon_button(glyph: impl Into<ButtonGlyph>, activate: impl Fn() + 'static) -> ButtonBuilder` | A button that shows one glyph: text or an `Icon`. An icon's name is the accessible name. |
 | `checkbox` | `fn checkbox(checked: Signal<bool>) -> CheckboxBuilder` | A checkbox. |
 | `toggle` | `const fn toggle(on: Signal<bool>) -> ToggleBuilder` | An on/off switch. |
 | `radio_group` | `fn radio_group(selected: Signal<String>) -> RadioGroupBuilder` | A set of radio options; `.label()` and `.labelled_by()` name the group. |
@@ -824,7 +824,7 @@ fn main() {
 | `avatar` | `fn avatar(initials) -> NodeBuilder` | Initials in a circle. |
 | `spinner` | `fn spinner() -> NodeBuilder` | A busy indicator named "Loading". |
 | `icon` | `fn icon(glyph: impl IntoIconSource) -> IconBuilder` | An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, or a text glyph. |
-| `Icon` | `enum Icon` (98 variants); `Icon::ALL`, `name()`, `svg()` | The bundled Lucide icon set (ISC). `name` is the kebab-case file name and `svg` the SVG source (feature `scene`). |
+| `Icon` | `enum Icon` (105 variants); `Icon::ALL`, `name()`, `svg()` | The bundled Lucide icon set (ISC). `name` is the kebab-case file name and `svg` the SVG source (feature `scene`). |
 | `path` | `const fn path(width: u32, height: u32) -> PathNode` | A vector path. |
 | `PathNode` | `move_to`, `line_to`, `quad_to`, `cubic_to`, `close`, `fill`, `fill_linear(start, end, stops: Vec<(f32, Rgba8)>)`, `fill_radial(center, radius, stops)`, `stroke`, `non_scaling_stroke` | Builder of a vector path. `fill_linear` and `fill_radial` fill with a gradient. The host rasterizes the path at the laid-out size times the device scale. `non_scaling_stroke` keeps the stroke width in logical px under any fit, with round joins and caps. |
 | `image_rgba` | `fn image_rgba(width: u32, height: u32, rgba: Vec<u8>) -> Option<ImageBuilder>` | An image from RGBA bytes. |
@@ -1321,7 +1321,7 @@ fn main() -> AppResult<()> {
 | `style::Transform2D` | `struct Transform2D`; `translate(x, y)`, `scale(x, y)`, `rotate(radians)`, `origin(x, y)`, `IDENTITY` | Holds a 2D translation, scale, and rotation for a node. The renderer applies it around the transform origin. |
 | `style::SELECTION_FILL` | `const SELECTION_FILL: Rgba8` | Gives the fill color for selected text. |
 | `style::SPACING_STEP` | `const SPACING_STEP: f32 = 4.0` | Sets the pixel size of one spacing step in style atoms. |
-| `style::GradientAxis`, `style::GradientStopKey`, `style::BgGradient` | `enum GradientAxis { TopToBottom, BottomToTop, LeftToRight, .. }`; `struct GradientStopKey { offset: u16, color: ColorAtom }`; `struct BgGradient { axis: GradientAxis, stops: &'static [GradientStopKey] }` | Describe a linear background gradient: its direction and its color stops. |
+| `style::GradientAxis`, `style::GradientStopKey`, `style::BgGradient` | `enum GradientAxis { TopToBottom, BottomToTop, LeftToRight, .. }`; `struct GradientStopKey { offset: u16, color: ColorAtom }`; `struct BgGradient { axis: GradientAxis, stops: &'static [GradientStopKey] }`; `BgGradient::owned(axis, Vec<GradientStopKey>)` | Describe a linear background gradient: its direction and its color stops. `owned` takes stops built at run time; equal stop lists share one copy for the life of the process. |
 | `style::DisplayKind`, `style::FlexDir`, `style::AlignKind`, `style::JustifyKind`, `style::FlexWrapKind`, `style::OverflowKind` | `enum DisplayKind { Flex, Block, Grid, .. }`; `enum FlexDir { Row, Column, RowReverse, .. }`; `enum AlignKind`; `enum JustifyKind`; `enum FlexWrapKind { NoWrap, Wrap }`; `enum OverflowKind { Visible, Hidden, Scroll, .. }` | Typed layout values that style atoms carry for display, flex direction, alignment, justification, wrap, and overflow. |
 | `style::TransitionId`, `style::MillisU16` | `struct TransitionId(pub u16)`; `struct MillisU16(pub u16)` | Identify a style transition and give its duration in milliseconds. |
 | `style::Elevation` | `enum Elevation { Sm, Base, Md, .. }` | Selects a shadow depth from the theme. |
@@ -1439,6 +1439,7 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
+| `widgets::ButtonGlyph` | `enum ButtonGlyph { Text(TextContent), Icon(Icon) }`; `From` text and `From<Icon>` | What `icon_button` shows. |
 | `widgets::spinner_frame` | `fn spinner_frame(tick: u64) -> &'static str` | The spinner glyph for a tick count. |
 | `widgets::icon_svg` | `fn icon_svg(svg: impl Into<Rc<str>>) -> IconBuilder` | An SVG icon. Its colour comes from the tone and the active theme at paint time. |
 | `widgets::TreeNode` | `struct TreeNode<K>`; `new(id, label)`, `.leading(icon)`, `.status(text, Tone)`, `.detail(text)`, `.tone(RowTone)`, `.children(iter)`, `.child(node)` | One node of a `tree`. `leading` takes an `Icon` or a text glyph. |

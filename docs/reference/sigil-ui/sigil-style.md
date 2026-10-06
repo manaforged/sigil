@@ -202,6 +202,7 @@
 | Method | Description |
 | --- | --- |
 | <code>const new(axis: <a href="#gradientaxis">GradientAxis</a>, stops: &amp;'static [<a href="#gradientstopkey">GradientStopKey</a>]) -&gt; Self</code> |  |
+| <code>owned(axis: <a href="#gradientaxis">GradientAxis</a>, stops: Vec&lt;<a href="#gradientstopkey">GradientStopKey</a>&gt;) -&gt; Self</code> |  |
 
 **Fields**
 
