@@ -459,6 +459,9 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- `chart` draws negative values: bars hang below the zero line, lines go
+  below it, and the y axis runs down to a rounded minimum. Before, values
+  were clamped at zero and a negative bar drew nothing.
 - `number_field` replaces text that does not parse with the stored value on
   Enter or blur. Before, typing "1.234,56" left that text on screen while
   the value silently stayed 1.234.

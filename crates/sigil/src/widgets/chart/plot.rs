@@ -79,14 +79,10 @@ pub(super) fn draw(
     count: usize,
     frame: Frame,
 ) -> Vec<NodeBuilder> {
-    let peak = series
-        .iter()
-        .flat_map(|item| item.values.iter().copied())
-        .fold(0.0_f32, f32::max);
-    let max = nice_max(peak);
+    let span = Span::of(series);
     let (plot, gap) = match mark {
-        ChartMark::Bar => (bars(series, count, max), GROUP_GAP),
-        ChartMark::Line => (lines(series, count, max), 0.0),
+        ChartMark::Bar => (bars(series, count, span), GROUP_GAP),
+        ChartMark::Line => (lines(series, count, span), 0.0),
     };
     let has_legend = series.iter().any(|item| !item.name.is_empty());
     let x_axis_on = frame.shows_x_axis(has_legend);
@@ -111,7 +107,7 @@ pub(super) fn draw(
                     .gap(space(2)),
             )
             .child(y_axis(
-                max,
+                span,
                 x_axis_on,
                 frame.plot_height(has_legend) >= MID_TICK_MIN,
             ))
@@ -123,7 +119,37 @@ pub(super) fn draw(
     nodes
 }
 
-fn y_axis(max: f32, x_axis_on: bool, mid_tick: bool) -> NodeBuilder {
+#[derive(Clone, Copy)]
+struct Span {
+    lo: f32,
+    hi: f32,
+}
+
+impl Span {
+    fn of(series: &[ChartSeries]) -> Self {
+        let values = || series.iter().flat_map(|item| item.values.iter().copied());
+        let peak = values().fold(0.0_f32, f32::max);
+        let trough = values().fold(0.0_f32, f32::min);
+        Self {
+            lo: if trough < 0.0 {
+                -nice_max(-trough)
+            } else {
+                0.0
+            },
+            hi: if peak > 0.0 || trough >= 0.0 {
+                nice_max(peak)
+            } else {
+                0.0
+            },
+        }
+    }
+
+    fn width(self) -> f32 {
+        self.hi - self.lo
+    }
+}
+
+fn y_axis(span: Span, x_axis_on: bool, mid_tick: bool) -> NodeBuilder {
     let mut ticks = container()
         .layout(
             LayoutStyle::flex_column()
@@ -132,11 +158,11 @@ fn y_axis(max: f32, x_axis_on: bool, mid_tick: bool) -> NodeBuilder {
                 .align_items(AlignItems::End)
                 .justify_content(JustifyContent::SpaceBetween),
         )
-        .child(tick(format_tick(max)));
+        .child(tick(format_tick(span.hi)));
     if mid_tick {
-        ticks = ticks.child(tick(format_tick(max * 0.5)));
+        ticks = ticks.child(tick(format_tick(span.lo.midpoint(span.hi))));
     }
-    ticks = ticks.child(tick(String::from("0")));
+    ticks = ticks.child(tick(format_tick(span.lo)));
     container()
         .layout(
             LayoutStyle::flex_column()
@@ -192,7 +218,7 @@ fn x_axis(labels: &[String], count: usize, gap: f32, stride: usize) -> NodeBuild
     row
 }
 
-fn bars(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
+fn bars(series: &[ChartSeries], count: usize, span: Span) -> NodeBuilder {
     let mut row = container()
         .layout(
             LayoutStyle::flex_row()
@@ -216,35 +242,37 @@ fn bars(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
                 .align_items(AlignItems::End),
         );
         for item in series {
-            let value = item.values.get(index).copied().unwrap_or(0.0).max(0.0);
-            let pct = ((value / max) * 100.0).clamp(0.0, 100.0);
-            group = group.child(bar_col(pct, item.tone, &item.name, value));
+            let value = item.values.get(index).copied().unwrap_or(0.0);
+            group = group.child(bar_col(span, item.tone, &item.name, value));
         }
         row = row.child(group);
     }
     row
 }
 
-fn bar_col(pct: f32, tone: super::Tone, name: &str, value: f32) -> NodeBuilder {
-    if value <= 0.0 {
-        return container().layout(LayoutStyle::block().grow(1.0).fill_height());
+fn bar_col(span: Span, tone: super::Tone, name: &str, value: f32) -> NodeBuilder {
+    let column = container().layout(
+        LayoutStyle::flex_column()
+            .grow(1.0)
+            .flex_basis(Dimension::Px(0.0))
+            .min_size(0.0, 0.0)
+            .fill_height(),
+    );
+    if value == 0.0 || !value.is_finite() {
+        return column;
     }
     let caption = if name.is_empty() {
         format!("{value:.0}")
     } else {
         format!("{name} {value:.0}")
     };
-    let fill = pct.max(1.0);
-    let rest = (100.0 - fill).max(0.01);
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .grow(1.0)
-                .flex_basis(Dimension::Px(0.0))
-                .min_size(0.0, 0.0)
-                .fill_height(),
-        )
-        .child(container().layout(LayoutStyle::block().fill_width().grow(rest)))
+    let value = value.clamp(span.lo, span.hi);
+    let unit = 100.0 / span.width();
+    let above = (span.hi - value.max(0.0)) * unit;
+    let fill = (value.abs() * unit).max(1.0);
+    let below = (value.min(0.0) - span.lo) * unit;
+    column
+        .child(container().layout(LayoutStyle::block().fill_width().grow(above.max(0.01))))
         .child(
             container()
                 .label(caption)
@@ -257,16 +285,17 @@ fn bar_col(pct: f32, tone: super::Tone, name: &str, value: f32) -> NodeBuilder {
                 .class([Radius::Sm.atom(), tone.fill().bg()])
                 .tone(tone),
         )
+        .child(container().layout(LayoutStyle::block().fill_width().grow(below.max(0.01))))
 }
 
-fn lines(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
+fn lines(series: &[ChartSeries], count: usize, span: Span) -> NodeBuilder {
     let mut layer = container().layout(LayoutStyle::block().fill());
     for item in series {
         if item.values.is_empty() {
             continue;
         }
         layer = layer.child(
-            line_path(item, count, max).layout(
+            line_path(item, count, span).layout(
                 LayoutStyle::block()
                     .position(Position::Absolute)
                     .inset_top(0.0)
@@ -292,7 +321,7 @@ fn lines(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
     clippy::cast_precision_loss,
     reason = "point counts are small; sub-unit precision is irrelevant at render scale"
 )]
-fn line_path(item: &ChartSeries, count: usize, max: f32) -> PathNode {
+fn line_path(item: &ChartSeries, count: usize, span: Span) -> PathNode {
     const W: u32 = 400;
     const H: u32 = 200;
     const W_F: f32 = 400.0;
@@ -301,7 +330,7 @@ fn line_path(item: &ChartSeries, count: usize, max: f32) -> PathNode {
     let mut stroke = path(W, H);
     for (point, value) in item.values.iter().take(count).enumerate() {
         let x = W_F * (point as f32 + 0.5) / columns;
-        let t = ((*value).max(0.0) / max).clamp(0.0, 1.0);
+        let t = ((*value - span.lo) / span.width()).clamp(0.0, 1.0);
         let y = (1.0 - t).mul_add(H_F - 8.0, 4.0);
         stroke = if point == 0 {
             stroke.move_to(x, y)
