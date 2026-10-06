@@ -1,9 +1,13 @@
 use std::rc::Rc;
 
+use crate::geometry::Rect;
 use crate::kernel::{
-    Cx, ImageRaster, ImageSource, IntoNode, NodeId, ThemedImage, cached_image, container, image,
+    Cx, ImageRaster, ImageSource, IntoNode, NodeId, ObjectFit, ThemedImage, cached_image,
+    container, image,
 };
 use crate::layout::LayoutStyle;
+use crate::scene::SceneBuilder;
+use crate::scene::command::DrawImage;
 use crate::style::{Rgba8, Theme, Token};
 use tiny_skia::{FillRule, Paint, Pixmap, Transform};
 
@@ -210,6 +214,22 @@ impl PathNode {
     pub(crate) const fn retina(mut self) -> Self {
         self.scale = 2;
         self
+    }
+
+    pub fn draw(self, scene: &mut SceneBuilder, destination: Rect, theme: &Theme) {
+        let Some(source) = self.rasterize(theme) else {
+            return;
+        };
+        let path = Rc::new(self);
+        scene.draw_image(DrawImage {
+            node: None,
+            source,
+            fit: ObjectFit::Fill,
+            destination,
+            opacity: 10_000,
+            crop: None,
+            raster: Some(path.bind(theme)),
+        });
     }
 
     fn resolved(&self, theme: &Theme) -> (Option<PathFill>, Option<(Rgba8, f32)>) {

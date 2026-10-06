@@ -41,11 +41,25 @@ impl Painter<'_> {
     }
 
     pub(super) fn layer(&mut self, scope: LayerScope, children: &[SceneCommand]) {
+        if let Some(effect) = SceneState::inline_transform(&scope) {
+            self.inline_layer(effect, scope.clip, children);
+            return;
+        }
         if let LayerEffect::Transform(transform) = scope.effect {
             self.transformed_layer(scope, transform, children);
             return;
         }
         self.untransformed_layer(scope, children);
+    }
+
+    fn inline_layer(&mut self, effect: Transform, clip: Rect, children: &[SceneCommand]) {
+        self.state.push_transform(effect);
+        self.state.push_clip(clip);
+        if !self.state.clipped_out() {
+            self.walk(children);
+        }
+        self.state.pop_clip();
+        self.state.pop_transform();
     }
 
     fn area(&self) -> Rect {

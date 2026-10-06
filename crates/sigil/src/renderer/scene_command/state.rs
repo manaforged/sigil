@@ -1,22 +1,15 @@
 use smallvec::{SmallVec, smallvec};
 
-use crate::geometry::{Point, Rect};
-use crate::renderer::glyph_place::run_ink;
+use crate::geometry::Rect;
 use crate::renderer::scene_command::walk::{IDENTITY, compose, intersect_rect, transform_rect};
-use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Stroke, Transform};
-use crate::renderer::shadow_paint::Shadow;
-use crate::scene::corner_radii::CornerRadii;
+use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Transform};
+
+mod frame;
+mod ink;
+pub(crate) use ink::{ink_rect, invert, shadow_reach, snap_out};
 
 pub(crate) const MAX_BLUR_REACH: f32 = 1024.0;
 pub(crate) const MAX_LAYER_EXTENT: f32 = 8191.0;
-
-#[derive(Clone, Copy)]
-pub(crate) struct TransformFrame {
-    pub(crate) scope: LayerScope,
-    pub(crate) bounds: Rect,
-    pub(crate) content: Transform,
-    pub(crate) composite: Transform,
-}
 
 #[derive(Clone)]
 pub(crate) struct SceneState {
@@ -133,33 +126,6 @@ impl SceneState {
         snap_out(bounds, area.origin, scale)
     }
 
-    pub(crate) fn transform_frame(
-        &self,
-        scope: &LayerScope,
-        effect: Transform,
-        area: Rect,
-        scale: f32,
-    ) -> Option<TransformFrame> {
-        let bounds = self.layer_bounds(scope, area)?;
-        let full = compose(self.current_transform(), effect);
-        let [[xx, xy, _], [yx, yy, _]] = full;
-        let fx = resolution(xx.hypot(yx)).min(extent_cap(bounds.width, scale));
-        let fy = resolution(xy.hypot(yy)).min(extent_cap(bounds.height, scale));
-        let shrink = [[fx, 0.0, 0.0], [0.0, fy, 0.0]];
-        let grow = [[1.0 / fx, 0.0, 0.0], [0.0, 1.0 / fy, 0.0]];
-        let radius = fx.min(fy);
-        Some(TransformFrame {
-            scope: LayerScope {
-                clip: transform_rect(shrink, scope.clip),
-                clip_radii: CornerRadii(scope.clip_radii.0.map(|r| r * radius)),
-                ..*scope
-            },
-            bounds: transform_rect(shrink, bounds),
-            content: shrink,
-            composite: compose(full, grow),
-        })
-    }
-
     fn target_clip(&self, scope: &LayerScope, visible: Rect) -> Option<Rect> {
         intersect_rect(
             transform_rect(self.current_transform(), scope.clip),
@@ -273,92 +239,6 @@ impl SceneState {
                         .unwrap_or_default(),
                 )
         })
-    }
-}
-
-pub(crate) fn invert(transform: Transform) -> Option<Transform> {
-    let [[a, b, tx], [c, d, ty]] = transform;
-    let det = a.mul_add(d, -(b * c));
-    if !det.is_normal() {
-        return None;
-    }
-    let inverse = [
-        [d / det, -b / det, b.mul_add(ty, -(d * tx)) / det],
-        [-c / det, a / det, c.mul_add(tx, -(a * ty)) / det],
-    ];
-    inverse
-        .iter()
-        .flatten()
-        .all(|value| value.is_finite())
-        .then_some(inverse)
-}
-
-pub(crate) fn shadow_reach(shadow: &Shadow) -> f32 {
-    shadow.blur.mul_add(
-        3.0,
-        shadow.spread.abs() + shadow.offset[0].abs().max(shadow.offset[1].abs()),
-    )
-}
-
-pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
-    let stroked =
-        |rect: Rect, stroke: Option<Stroke>| rect.expand(stroke.map_or(0.0, |s| s.width.max(0.0)));
-    Some(match command {
-        SceneCommand::Rect(draw) => {
-            let ink = stroked(draw.rect, draw.stroke);
-            draw.border.map_or(ink, |border| ink.union(border.rect))
-        }
-        SceneCommand::Gradient(draw) => {
-            let ink = stroked(draw.rect, draw.stroke);
-            draw.border.map_or(ink, |border| ink.union(border.rect))
-        }
-        SceneCommand::Pattern(draw) => stroked(draw.rect, draw.stroke),
-        SceneCommand::DrawShadow { rect, shadow, .. } => {
-            Rect::new(Point::new(rect[0], rect[1]), rect[2], rect[3]).expand(shadow_reach(shadow))
-        }
-        SceneCommand::GlyphRun(draw) => run_ink(&draw.run)?.expand(1.0 / scale),
-        SceneCommand::Sprite(draw) => draw.destination,
-        SceneCommand::Image(draw) => draw.destination,
-        SceneCommand::Decoration(draw) => draw.band.expand(draw.line_width * 2.0),
-        SceneCommand::PushLayer(scope) => match scope.effect {
-            LayerEffect::Transform(transform) => transform_rect(transform, scope.clip),
-            LayerEffect::Identity | LayerEffect::LayerBlur { .. } => scope.clip,
-        },
-        SceneCommand::PushClip(_)
-        | SceneCommand::PopClip
-        | SceneCommand::PushTransform(_)
-        | SceneCommand::PopTransform
-        | SceneCommand::SaveLayer { .. }
-        | SceneCommand::RestoreLayer
-        | SceneCommand::PopLayer => return None,
-    })
-}
-
-pub(crate) fn snap_out(rect: Rect, grid: Point, scale: f32) -> Rect {
-    let snap = |value: f32, origin: f32, round: fn(f32) -> f32| {
-        round((value - origin) * scale) / scale + origin
-    };
-    let x0 = snap(rect.origin.x, grid.x, f32::floor);
-    let y0 = snap(rect.origin.y, grid.y, f32::floor);
-    let x1 = snap(rect.origin.x + rect.width, grid.x, f32::ceil);
-    let y1 = snap(rect.origin.y + rect.height, grid.y, f32::ceil);
-    Rect::new(Point::new(x0, y0), x1 - x0, y1 - y0)
-}
-
-const fn resolution(reach: f32) -> f32 {
-    if reach.is_normal() {
-        reach.min(1.0)
-    } else {
-        1.0
-    }
-}
-
-fn extent_cap(logical: f32, scale: f32) -> f32 {
-    let physical = logical * scale;
-    if physical > MAX_LAYER_EXTENT {
-        MAX_LAYER_EXTENT / physical
-    } else {
-        1.0
     }
 }
 

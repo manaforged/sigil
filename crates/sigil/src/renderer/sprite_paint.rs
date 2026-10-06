@@ -14,9 +14,10 @@ mod atlas;
 mod builder;
 mod icon;
 mod image_pack;
+mod prepare;
 
 use crate::renderer::frame_upload::UploadedRange;
-use crate::renderer::scene_command::{DrawSprite, SceneCommand, SpriteKind, Transform};
+use crate::renderer::scene_command::{DrawSprite, SpriteKind, Transform};
 use crate::renderer::scene_instance::{BlendSpace, affine_rows};
 use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::sprite_atlas::{
@@ -31,6 +32,7 @@ use self::builder::{
 use self::icon::is_builtin_icon_atlas;
 use self::image_pack::ImagePack;
 pub(crate) use self::image_pack::PackedImage;
+pub(crate) use self::prepare::raster_scale;
 
 pub const BUILTIN_SPRITE_ATLAS_ID: u32 = u32::MAX - 1;
 
@@ -108,26 +110,6 @@ impl SpritePipeline {
 
     pub(crate) const fn format(&self) -> wgpu::TextureFormat {
         self.format
-    }
-
-    pub(crate) fn prepare(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        commands: &[SceneCommand],
-        scale: f32,
-    ) {
-        for command in commands {
-            match command {
-                SceneCommand::Image(draw) => {
-                    self.register_image(device, queue, &draw.source_at(scale).0);
-                }
-                SceneCommand::Sprite(draw) => {
-                    let _ = self.resolve_atlas(device, queue, draw.source.atlas);
-                }
-                _ => {}
-            }
-        }
     }
 
     pub(crate) fn register_atlas(

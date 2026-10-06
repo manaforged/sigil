@@ -24,6 +24,7 @@ mod tests;
 pub mod interaction;
 
 mod button;
+mod canvas;
 mod chart;
 mod checkbox;
 mod chip;
@@ -87,6 +88,8 @@ mod vector;
 mod virtual_list;
 
 pub use button::{ButtonBuilder, ButtonGlyph, button, icon_button};
+pub(crate) use canvas::CanvasPaint;
+pub use canvas::{CanvasBuilder, canvas};
 pub use chart::{ChartBuilder, ChartMark, chart};
 pub use checkbox::{CheckboxBuilder, checkbox};
 pub use chip::{ChipBuilder, chip};

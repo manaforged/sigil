@@ -830,6 +830,8 @@ fn main() {
 | `icon` | `fn icon(glyph: impl IntoIconSource) -> IconBuilder` | An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, or a text glyph. |
 | `Icon` | `enum Icon` (105 variants); `Icon::ALL`, `name()`, `svg()` | The bundled Lucide icon set (ISC). `name` is the kebab-case file name and `svg` the SVG source (feature `scene`). |
 | `path` | `const fn path(width: u32, height: u32) -> PathNode` | A vector path. |
+| `widgets::canvas`, `widgets::CanvasBuilder` | `fn canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static) -> CanvasBuilder`; `redraw_on(Signal<u64>)`, `layout(LayoutStyle)` | Custom drawing: the closure records scene commands for the node's rect when the node paints, clipped to that rect. It runs again on resize and each time the `redraw_on` signal changes. The terminal host paints the same commands to cells. |
+| `widgets::PathNode::draw` | `fn draw(self, scene: &mut SceneBuilder, destination: Rect, theme: &Theme)` | Record a vector path into a `canvas` scene. It rasterizes again at the drawn size. |
 | `PathNode` | `move_to`, `line_to`, `quad_to`, `cubic_to`, `close`, `fill`, `fill_linear(start, end, stops: Vec<(f32, Rgba8)>)`, `fill_radial(center, radius, stops)`, `stroke`, `non_scaling_stroke` | Builder of a vector path. `fill_linear` and `fill_radial` fill with a gradient. The host rasterizes the path at the laid-out size times the device scale. `non_scaling_stroke` keeps the stroke width in logical px under any fit, with round joins and caps. |
 | `image_rgba` | `fn image_rgba(width: u32, height: u32, rgba: Vec<u8>) -> Option<ImageBuilder>` | An image from RGBA bytes. |
 | `image_bytes` | `fn image_bytes(encoded: &[u8]) -> Option<ImageBuilder>` | An image from PNG or JPEG bytes (feature `image-decode`). |

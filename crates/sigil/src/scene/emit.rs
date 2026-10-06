@@ -4,6 +4,7 @@ use crate::geometry::Rect;
 use crate::kernel::{Cx, Node, NodeId, Surface, TopLayer};
 use crate::layout::LayoutResult;
 use crate::style::{RenderStyle, Rgba8, StyleBinding, TextStyle, Theme, ToneContext};
+use crate::widgets::CanvasPaint;
 
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{CommandScene, LayerEffect, LayerScope};
@@ -120,19 +121,15 @@ fn push_contents<'t>(
         let inherit =
             emit_cache::inherit_key(theme, inherited.text_color, inherited.text_style.as_ref())
                 ^ emit_cache::content_key(node)
-                ^ u64::from(paint.leaf);
+                ^ u64::from(paint.leaf)
+                ^ node
+                    .get_extension::<CanvasPaint>()
+                    .map_or(0, CanvasPaint::version);
         let selected = paint.selected.is_some();
         let key = (walk.cx.instance_id(), id);
         if selected || !emit_cache::replay(walk.scene, key, node, rect, inherit) {
-            if crate::profile::enabled() {
-                let cx = walk.cx;
-                crate::profile::attribute(crate::profile::Hotspot::EmitResolved, 1, || {
-                    cx.describe(id)
-                });
-            }
             let start = walk.scene.command_len();
-            push_focus_ring(walk.scene, id, node, rect, &paint);
-            push_node(walk.scene, id, node, rect, &paint);
+            record_node(walk, id, node, rect, &paint);
             if !selected {
                 emit_cache::store(key, node, rect, inherit, walk.scene.copy_from(start));
             }
@@ -143,6 +140,24 @@ fn push_contents<'t>(
         }
     }
     push_children(walk, node, &child_context, clip);
+}
+
+fn record_node(
+    walk: &mut EmitWalk<'_, '_>,
+    id: NodeId,
+    node: &Node,
+    rect: Rect,
+    paint: &NodePaint<'_>,
+) {
+    if crate::profile::enabled() {
+        let cx = walk.cx;
+        crate::profile::attribute(crate::profile::Hotspot::EmitResolved, 1, || cx.describe(id));
+    }
+    push_focus_ring(walk.scene, id, node, rect, paint);
+    push_node(walk.scene, id, node, rect, paint);
+    if let Some(canvas) = node.get_extension::<CanvasPaint>() {
+        canvas.record(walk.scene, rect);
+    }
 }
 
 #[allow(

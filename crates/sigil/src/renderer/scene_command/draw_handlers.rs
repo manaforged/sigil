@@ -54,7 +54,12 @@ impl Walk<'_> {
         reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
     )]
     pub(super) fn draw_image(&mut self, draw: &DrawImage) {
-        let Some((source, mut region, destination)) = draw.placement_at(self.ctx.scale) else {
+        let scale = crate::renderer::sprite_paint::raster_scale(
+            self.state.current_transform(),
+            self.ctx.scale,
+            draw.destination,
+        );
+        let Some((source, mut region, destination)) = draw.placement_at(scale) else {
             return;
         };
         let packed = {
