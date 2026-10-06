@@ -459,6 +459,10 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- A drag from `drag_source` starts when the first move after the press
+  already left the source, as a fast flick does. The press arms the shared
+  `DragState`; a source or target under the pointer starts the drag, and
+  leaving the source with the button held starts it too.
 - `PathNode::fit` lays a path out at its own width and height. Before, it
   made a square of the width, so `path(960, 220).fit()` took 960 x 960.
 - `image_bytes` decodes JPEG, as documented. Before, the `image` crate was
