@@ -817,9 +817,9 @@ fn main() {
 | `ToastQueue` | `ToastQueue::new()`; `info`, `success`, `warning`, `error` | Queue of toast messages. |
 | `progress` | `fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder` | A progress bar; `.label()` names it, else "Progress". |
 | `gauge` | `fn gauge(value: Signal<f32>) -> GaugeBuilder` | A radial gauge. |
-| `chart` | `fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder` | A bar or line chart. A signal or closure source draws the chart again when it changes, like `sparkline`. The chart fills its parent's width unless `.width()` is set; at small heights it thins x-axis labels and hides the axis row before the plot gets too small. |
+| `chart` | `fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder`; `ChartBuilder::candles(rows: impl Reactive<Vec<(f32, f32, f32, f32)>>)`, `.x_range(Signal<Range<f32>>)`, `.crosshair()` | A bar, line, or candle chart. A line with more points than the plot has pixel columns keeps the low and high point of each column, so 100k points draw as one short path. `candles` takes `(open, high, low, close)` rows. `x_range` binds the visible range in point units: the wheel zooms around the pointer and a drag pans. `crosshair` draws rules and the value under the pointer. A signal or closure source draws the chart again when it changes, like `sparkline`. The chart fills its parent's width unless `.width()` is set; at small heights it thins x-axis labels and hides the axis row before the plot gets too small. |
 | `sparkline` | `fn sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder` | A sparkline. By default, one block glyph per value on one text row. A signal or closure source draws the graph again when it changes. |
-| `heatmap` | `fn heatmap<F: Fn(usize, usize) -> Rgba8>(grid_w, grid_h, color: F) -> NodeBuilder` | A grid of coloured cells. |
+| `heatmap` | `fn heatmap<F: Fn(usize, usize) -> Rgba8>(grid_w, grid_h, color: F) -> NodeBuilder` | A grid of coloured cells, drawn as one image that fills its box. |
 | `dot` | `fn dot(tone: Tone) -> DotBuilder` | A status dot. |
 | `avatar` | `fn avatar(initials) -> NodeBuilder` | Initials in a circle. |
 | `spinner` | `fn spinner() -> NodeBuilder` | A busy indicator named "Loading". |
@@ -1451,7 +1451,6 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | `widgets::TreeRow` | `struct TreeRow<K> { id, depth, disclosure, selected, parent, .. }`; `has_children()` | One visible row of a flattened tree. |
 | `widgets::IconSource` | `struct IconSource`; `trait IntoIconSource` | What `icon` accepts: a bundled `Icon` or any text glyph. |
 | `widgets::layout_ext::LayoutOverrides` | `struct LayoutOverrides`; `const fn new() -> Self` | Width, height, grow, padding, and full-style overrides that a widget builder applies to its root layout, plus the node hooks that `WidgetLayoutExt::map_node` queues. |
-| `widgets::overlay::heatmap::CELL_PX` | `const CELL_PX: f32 = 8.0` | Side length in pixels of one heatmap cell. |
 | `widgets::patterns::HintEntry` | `type HintEntry<'a> = (&'a str, &'a str)` | One key and label pair for the hint overlay. |
 | `widgets::ChangeKind` | `enum ChangeKind { Added, Modified, Deleted }` | Line change mark in the `code_edit` gutter. |
 | `widgets::DiagSeverity`, `widgets::DiagSpan` | `enum DiagSeverity { Hint, Info, Warning, Error }`; `struct DiagSpan { line: usize, start: usize, end: usize, severity: DiagSeverity }` | Diagnostic range that `code_edit` underlines, with its severity. |
@@ -1512,7 +1511,7 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | `widgets::GaugeBuilder` | `struct GaugeBuilder`; `GaugeBuilder::new(Signal<f32>)`, `max(f32)`, `label(text)`, `warn(ratio)` | Builder of a gauge. `warn` paints the fill in the warning colour while value / max is below the ratio. |
 | `widgets::ChartBuilder` | `bar()`, `line()`, `labels(impl IntoIterator<Item = impl Into<String>>)`, `series(name, values: impl Reactive<Vec<f32>>, tone)`; `tone(Tone)` | Builder of a chart. `WidgetLayoutExt::width` and `height` set its size (default 280×180, minimum 80×48). |
 | `style::ControlSize` | `enum ControlSize { Compact, Default, Wide, Grow }` | Size step of a control. `Metrics` and `Theme` map it to height, width, padding, gap, and radius. |
-| `widgets::ChartMark` | `enum ChartMark { Bar, Line }` | Chart mark. |
+| `widgets::ChartMark` | `enum ChartMark { Bar, Line, Candle }` | Chart mark. |
 | `widgets::SparklineBuilder` | `range(low, high)`, `tone(t)`, `tones(impl IntoIterator<Item = Option<Tone>>)`, `mark(SparkMark)`, `fill(SparkFill)`, `rows(n: usize)` | Builder of a sparkline. Without `range`, the scale runs from the lower of 0 and the minimum to the maximum. `rows(n)` draws a filled area graph `n` text rows tall, bottom-aligned. `tones` sets an optional tone per value that overrides `tone` for its column; a braille cell takes the tone of its right value, else its left. |
 | `widgets::SparkMark` | `enum SparkMark { Block, Braille }` | Sparkline glyphs. `Block` (default): one column per value, 8 levels per row. `Braille`: two values per cell, 4 levels per row. |
 | `widgets::SparkFill` | `enum SparkFill { Solid, Shade }` | Body of a multi-row sparkline. `Solid` (default): every cell in the tone. `Shade`: the body in a dim step of the tone and the top cell of each column solid, so a steady high value reads as a line. |

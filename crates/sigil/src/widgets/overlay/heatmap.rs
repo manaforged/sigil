@@ -1,8 +1,10 @@
-use crate::kernel::{NodeBuilder, Role, container};
+use crate::kernel::{NodeBuilder, ObjectFit, Role, container, image};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
-use crate::style::{Paint, Rgba8};
+use crate::style::Rgba8;
 
-pub(crate) const CELL_PX: f32 = 8.0;
+use super::super::layout_ext::WidgetLayoutExt;
+
+mod raster;
 
 #[must_use]
 pub fn heatmap<F: Fn(usize, usize) -> Rgba8>(
@@ -10,25 +12,36 @@ pub fn heatmap<F: Fn(usize, usize) -> Rgba8>(
     grid_h: usize,
     color: F,
 ) -> NodeBuilder {
-    let mut root = container()
+    let root = container()
         .role(Role::Figure)
         .label("Heatmap")
         .description(format!("{grid_w} by {grid_h} grid"))
-        .layout(LayoutStyle::flex_column());
-    for y in 0..grid_h {
-        let mut row = container().layout(LayoutStyle::flex_row());
-        for x in 0..grid_w {
-            row = row.child(cell(color(x, y)));
-        }
-        root = root.child(row);
-    }
-    root
-}
-
-fn cell(color: Rgba8) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::block().fixed_size(CELL_PX, CELL_PX))
-        .bg(color)
+        .layout(
+            LayoutStyle::flex_column()
+                .fill_width()
+                .grow(1.0)
+                .min_size(0.0, 0.0),
+        );
+    let Some(grid) = raster::Grid::new(grid_w, grid_h, &color) else {
+        return root;
+    };
+    let Some(source) = grid.source() else {
+        return root;
+    };
+    let (min_w, min_h) = grid.min_size();
+    let themed = grid.themed(source.clone());
+    let picture = image(source)
+        .fit(ObjectFit::Fill)
+        .mutate(move |node| {
+            let _ = node.attach(themed);
+        })
+        .layout(
+            LayoutStyle::block()
+                .fill_width()
+                .grow(1.0)
+                .min_size(min_w, min_h),
+        );
+    root.child(picture)
 }
 
 #[cfg(test)]

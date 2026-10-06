@@ -1,25 +1,32 @@
+use std::ops::Range;
 use std::rc::Rc;
 
 use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Reactive, derived};
+use crate::reactive::{Reactive, Signal, derived};
 use crate::style::{
     BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, Tone, space,
 };
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::kernel::text;
+mod axis;
+mod decimate;
+mod interact;
+mod marks;
 mod plot;
 
 const DEFAULT_HEIGHT: f32 = 180.0;
 const MIN_HEIGHT: f32 = 48.0;
 const MIN_WIDTH: f32 = 80.0;
+const SUMMARY_VALUES: usize = 64;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ChartMark {
     #[default]
     Bar,
     Line,
+    Candle,
 }
 
 #[derive(Clone, PartialEq)]
@@ -49,6 +56,8 @@ pub struct ChartBuilder {
     series: Vec<SeriesSource>,
     labels: Vec<String>,
     mark: ChartMark,
+    x_range: Option<Signal<Range<f32>>>,
+    crosshair: bool,
     layout_overrides: LayoutOverrides,
     style_accumulator: Style,
 }
@@ -63,12 +72,39 @@ pub fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder {
         }],
         labels: Vec::new(),
         mark: ChartMark::Bar,
+        x_range: None,
+        crosshair: false,
         layout_overrides: LayoutOverrides::new(),
         style_accumulator: Style::new(),
     }
 }
 
 impl ChartBuilder {
+    #[must_use]
+    pub fn candles(rows: impl Reactive<Vec<(f32, f32, f32, f32)>>) -> Self {
+        let flat = move || {
+            rows.read()
+                .into_iter()
+                .flat_map(<[f32; 4]>::from)
+                .collect::<Vec<f32>>()
+        };
+        let mut builder = chart(flat);
+        builder.mark = ChartMark::Candle;
+        builder
+    }
+
+    #[must_use]
+    pub const fn x_range(mut self, range: Signal<Range<f32>>) -> Self {
+        self.x_range = Some(range);
+        self
+    }
+
+    #[must_use]
+    pub const fn crosshair(mut self) -> Self {
+        self.crosshair = true;
+        self
+    }
+
     #[must_use]
     pub const fn bar(mut self) -> Self {
         self.mark = ChartMark::Bar;
@@ -134,6 +170,7 @@ impl ChartBuilder {
         let label_names = Rc::clone(&labels);
         let description = derived(move || series.with(|series| summary(series, &label_names)));
         let mark = self.mark;
+        let interact = interact::Interact::new(self.x_range, self.crosshair);
         let paint = std::mem::replace(&mut self.style_accumulator, Style::new());
         let mut root = container()
             .role(Role::Figure)
@@ -160,7 +197,9 @@ impl ChartBuilder {
         if !paint.is_empty() {
             root = root.style(paint);
         }
-        root.children_reactive(move || series.with(|series| content(series, &labels, mark, frame)))
+        root.children_reactive(move || {
+            series.with(|series| content(series, &labels, mark, frame, &interact))
+        })
     }
 }
 
@@ -169,31 +208,66 @@ fn content(
     labels: &[String],
     mark: ChartMark,
     frame: plot::Frame,
+    interact: &interact::Interact,
 ) -> Vec<NodeBuilder> {
-    let count = series
+    let stride = if mark == ChartMark::Candle { 4 } else { 1 };
+    let total = series
         .iter()
-        .map(|series| series.values.len())
+        .map(|series| series.values.len() / stride)
         .max()
         .unwrap_or(0);
-    if count == 0 {
-        return vec![
-            container()
-                .layout(
-                    LayoutStyle::flex_column()
-                        .fill_width()
-                        .grow(1.0)
-                        .align_items(AlignItems::Center)
-                        .justify_content(JustifyContent::Center),
-                )
-                .child(
-                    text("No data")
-                        .nowrap()
-                        .class("text-sm")
-                        .class(Token::OnSurfaceMuted.text()),
-                ),
-        ];
+    if total == 0 {
+        return vec![empty()];
     }
-    plot::draw(series, labels, mark, count, frame)
+    let window = interact.window(total);
+    let visible = series
+        .iter()
+        .map(|item| ChartSeries {
+            name: item.name.clone(),
+            values: item
+                .values
+                .iter()
+                .skip(window.start * stride)
+                .take(window.len() * stride)
+                .copied()
+                .collect(),
+            tone: item.tone,
+        })
+        .collect::<Vec<_>>();
+    let shown = labels
+        .iter()
+        .skip(window.start)
+        .take(window.len())
+        .cloned()
+        .collect::<Vec<_>>();
+    plot::draw(
+        &plot::Plot {
+            series: &visible,
+            labels: &shown,
+            mark,
+            count: window.len(),
+            total,
+            frame,
+        },
+        interact,
+    )
+}
+
+fn empty() -> NodeBuilder {
+    container()
+        .layout(
+            LayoutStyle::flex_column()
+                .fill_width()
+                .grow(1.0)
+                .align_items(AlignItems::Center)
+                .justify_content(JustifyContent::Center),
+        )
+        .child(
+            text("No data")
+                .nowrap()
+                .class("text-sm")
+                .class(Token::OnSurfaceMuted.text()),
+        )
 }
 
 fn summary(series: &[ChartSeries], labels: &[String]) -> String {
@@ -204,6 +278,10 @@ fn summary(series: &[ChartSeries], labels: &[String]) -> String {
         } else {
             item.name.clone()
         };
+        if item.values.len() > SUMMARY_VALUES {
+            parts.push(span_summary(&name, &item.values));
+            continue;
+        }
         let values = item
             .values
             .iter()
@@ -218,6 +296,13 @@ fn summary(series: &[ChartSeries], labels: &[String]) -> String {
         parts.push(format!("{name}: {values}"));
     }
     parts.join("; ")
+}
+
+fn span_summary(name: &str, values: &[f32]) -> String {
+    let finite = || values.iter().copied().filter(|value| value.is_finite());
+    let low = finite().fold(f32::INFINITY, f32::min);
+    let high = finite().fold(f32::NEG_INFINITY, f32::max);
+    format!("{name}: {} values from {low} to {high}", values.len())
 }
 
 impl IntoNode for ChartBuilder {

@@ -16,15 +16,16 @@ fn empty_grid_has_no_rows() {
 }
 
 #[test]
-fn grid_shape_matches_dimensions() {
+fn a_grid_is_one_image_node() {
     Runtime::scope("heatmap-shape", || {
         let mut cx = Cx::new_root();
-        let root = cx.add(heatmap(3, 4, |_, _| rgba(0, 0, 0)));
-        assert_eq!(cx.child_count(root), 4, "one child per row");
-        for r in 0..4 {
-            let row = cx.nth_child(root, r).expect("row exists");
-            assert_eq!(cx.child_count(row), 3, "three cells per row");
-        }
+        let root = cx.add(heatmap(100, 100, |_, _| rgba(0, 0, 0)));
+        assert_eq!(cx.child_count(root), 1, "one image for the whole grid");
+        let picture = cx.nth_child(root, 0).and_then(|id| cx.get(id));
+        assert!(matches!(
+            picture.map(|node| &node.kind),
+            Some(crate::kernel::NodeType::Image { .. })
+        ));
     });
 }
 
