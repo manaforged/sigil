@@ -12,6 +12,32 @@ impl Direction {
     pub const fn is_rtl(self) -> bool {
         matches!(self, Self::Rtl)
     }
+
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        lookup(&DIRECTION_NAMES, name)
+    }
+}
+
+const DIRECTION_NAMES: [(&str, Direction); 2] = [("ltr", Direction::Ltr), ("rtl", Direction::Rtl)];
+
+const DATE_ORDER_NAMES: [(&str, DateOrder); 3] = [
+    ("ymd", DateOrder::Ymd),
+    ("dmy", DateOrder::Dmy),
+    ("mdy", DateOrder::Mdy),
+];
+
+const LOCALE_PRESETS: [(&str, Locale); 3] = [
+    ("en", Locale::en()),
+    ("de", Locale::de()),
+    ("ar", Locale::ar()),
+];
+
+fn lookup<T: Copy>(table: &[(&str, T)], name: &str) -> Option<T> {
+    table
+        .iter()
+        .find(|(candidate, _)| *candidate == name)
+        .map(|(_, value)| *value)
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
@@ -30,6 +56,11 @@ enum DatePart {
 }
 
 impl DateOrder {
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        lookup(&DATE_ORDER_NAMES, name)
+    }
+
     const fn parts(self) -> [DatePart; 3] {
         match self {
             Self::Ymd => [DatePart::Year, DatePart::Month, DatePart::Day],
@@ -66,6 +97,11 @@ impl Locale {
             date_order: DateOrder::Ymd,
             date_separator: '-',
         }
+    }
+
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        lookup(&LOCALE_PRESETS, name)
     }
 
     #[must_use]

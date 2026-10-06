@@ -159,6 +159,30 @@ A theme file is TOML. `base` selects `light`, `dark`, or
 or `#rrggbbaa`. `parse_theme` returns `None` if the document is not
 valid.
 
+A theme file also carries the language settings. `direction` is
+`"ltr"` or `"rtl"`. `locale = "en"`, `"de"`, or `"ar"` selects a
+built-in locale; a `[locale]` table sets fields one by one: `preset`
+(the built-in locale to start from), `decimal`, `group` (`""` for no
+grouping), `zero` and `date_separator` as single characters,
+`group_size` from 1 to 255, and `date_order` as `"ymd"`, `"dmy"`, or
+`"mdy"`. The `[strings]` table replaces built-in labels by their
+snake_case name, for example `close = "Schließen"`. An unknown name or
+value makes `parse_theme` return `None`.
+
+```toml
+base = "light"
+direction = "rtl"
+
+[tokens]
+
+[locale]
+preset = "ar"
+date_order = "ymd"
+
+[strings]
+close = "إغلاق"
+```
+
 ```rust,no_run
 use sigil::app::parse_theme;
 use sigil::prelude::*;

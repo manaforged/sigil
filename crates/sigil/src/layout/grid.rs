@@ -21,14 +21,16 @@ struct Cols {
     widths: Vec<f32>,
     x: Vec<f32>,
     n: usize,
+    mirror: Option<f32>,
 }
 
 impl Cols {
-    fn new(content_x: f32, widths: Vec<f32>, gap_x: f32) -> Self {
+    fn new(content_x: f32, widths: Vec<f32>, gap_x: f32, rtl_width: Option<f32>) -> Self {
         Self {
             n: widths.len().max(1),
             x: offsets(content_x, &widths, gap_x),
             widths,
+            mirror: rtl_width.map(|inner_w| content_x.mul_add(2.0, inner_w)),
         }
     }
 }
@@ -110,6 +112,12 @@ fn spanned_width(cols: &Cols, col: usize, span: usize) -> f32 {
     cols.x[last] + cols.widths[last] - cols.x[col]
 }
 
+fn cell_x(cols: &Cols, col: usize, span: usize) -> f32 {
+    let x = cols.x[col];
+    cols.mirror
+        .map_or(x, |axis| axis - x - spanned_width(cols, col, span))
+}
+
 impl<'a> GridSolver<'a> {
     pub(crate) const fn new(scope: MeasureScope<'a>) -> Self {
         Self { scope }
@@ -148,7 +156,12 @@ impl<'a> GridSolver<'a> {
             style,
             edges,
             gap_y,
-            cols: Cols::new(content.x, widths, gap_x),
+            cols: Cols::new(
+                content.x,
+                widths,
+                gap_x,
+                style.direction.is_rtl().then_some(inner_w),
+            ),
             border,
             content,
         };
@@ -301,7 +314,7 @@ impl<'a> GridSolver<'a> {
     ) -> Result<(), LayoutError> {
         for p in places {
             let origin = Position2 {
-                x: cols.x[p.col],
+                x: cell_x(cols, p.col, p.span),
                 y: rows.y[p.row],
             };
             let w = spanned_width(cols, p.col, p.span);

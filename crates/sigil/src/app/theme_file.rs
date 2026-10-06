@@ -1,4 +1,4 @@
-use crate::style::{Rgba8, Theme, ThemeValue};
+use crate::style::{DateOrder, Direction, Locale, Rgba8, StringKey, Theme, ThemeValue};
 
 pub(super) fn load(path: &std::path::Path) -> Option<Theme> {
     let input = std::fs::read_to_string(path).ok()?;
@@ -19,7 +19,65 @@ pub fn parse(input: &str) -> Option<Theme> {
         let color = parse_hex(hex)?;
         theme.register_token(name, ThemeValue::Color(color));
     }
+    if let Some(value) = doc.get("direction") {
+        theme.direction = Direction::from_name(value.as_str()?)?;
+    }
+    theme.locale = parse_locale(&doc, theme.locale)?;
+    if let Some(value) = doc.get("strings") {
+        for (name, text) in value.as_table()? {
+            let key = StringKey::from_name(name)?;
+            theme.strings.set(key, text.as_str()?.to_owned());
+        }
+    }
     Some(theme)
+}
+
+fn parse_locale(doc: &toml::Table, current: Locale) -> Option<Locale> {
+    let table = match doc.get("locale") {
+        None => return Some(current),
+        Some(toml::Value::String(name)) => return Locale::from_name(name),
+        Some(toml::Value::Table(table)) => table,
+        Some(_) => return None,
+    };
+    let mut locale = match table.get("preset") {
+        Some(name) => Locale::from_name(name.as_str()?)?,
+        None => current,
+    };
+    for (name, value) in table {
+        apply_locale_field(&mut locale, name, value)?;
+    }
+    Some(locale)
+}
+
+fn apply_locale_field(locale: &mut Locale, name: &str, value: &toml::Value) -> Option<()> {
+    match name {
+        "preset" => {}
+        "decimal" => locale.decimal = single_char(value)?,
+        "group" => {
+            let text = value.as_str()?;
+            locale.group = if text.is_empty() {
+                None
+            } else {
+                Some(single_char(value)?)
+            };
+        }
+        "group_size" => {
+            locale.group_size = u8::try_from(value.as_integer()?)
+                .ok()
+                .filter(|size| *size > 0)?;
+        }
+        "zero" => locale.zero = single_char(value)?,
+        "date_order" => locale.date_order = DateOrder::from_name(value.as_str()?)?,
+        "date_separator" => locale.date_separator = single_char(value)?,
+        _ => return None,
+    }
+    Some(())
+}
+
+fn single_char(value: &toml::Value) -> Option<char> {
+    let mut chars = value.as_str()?.chars();
+    let first = chars.next()?;
+    chars.next().is_none().then_some(first)
 }
 
 #[allow(

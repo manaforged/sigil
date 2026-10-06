@@ -296,7 +296,7 @@ impl LayoutEngine {
 mod attribution;
 mod cache;
 mod children;
-mod direction;
+pub(crate) mod direction;
 mod incremental;
 mod measure;
 mod overlays;

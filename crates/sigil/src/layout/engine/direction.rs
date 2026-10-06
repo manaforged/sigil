@@ -51,7 +51,7 @@ const fn flip_justify(justify: Option<JustifyContent>) -> JustifyContent {
     }
 }
 
-const fn flip_align(align: AlignItems) -> AlignItems {
+pub(crate) const fn flip_align(align: AlignItems) -> AlignItems {
     match align {
         AlignItems::Start => AlignItems::End,
         AlignItems::End => AlignItems::Start,

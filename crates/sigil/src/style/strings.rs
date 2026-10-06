@@ -85,7 +85,54 @@ impl StringKey {
     const fn index(self) -> usize {
         self as usize
     }
+
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        NAMES
+            .iter()
+            .find(|(candidate, _)| *candidate == name)
+            .map(|(_, key)| *key)
+    }
 }
+
+const NAMES: [(&str, StringKey); StringKey::ALL.len()] = [
+    ("close", StringKey::Close),
+    ("cancel", StringKey::Cancel),
+    ("ok", StringKey::Ok),
+    ("search", StringKey::Search),
+    ("dialog", StringKey::Dialog),
+    ("loading", StringKey::Loading),
+    ("required_mark", StringKey::RequiredMark),
+    ("empty", StringKey::Empty),
+    ("avatar", StringKey::Avatar),
+    ("chart", StringKey::Chart),
+    ("no_data", StringKey::NoData),
+    ("series", StringKey::Series),
+    ("chart_summary", StringKey::ChartSummary),
+    ("sparkline", StringKey::Sparkline),
+    ("sparkline_summary", StringKey::SparklineSummary),
+    ("heatmap", StringKey::Heatmap),
+    ("heatmap_grid", StringKey::HeatmapGrid),
+    ("code_editor", StringKey::CodeEditor),
+    ("command_menu", StringKey::CommandMenu),
+    ("status_bar", StringKey::StatusBar),
+    ("menu_bar", StringKey::MenuBar),
+    ("context_menu", StringKey::ContextMenu),
+    ("keyboard_shortcuts", StringKey::KeyboardShortcuts),
+    ("resize_sidebar", StringKey::ResizeSidebar),
+    ("resize_panes", StringKey::ResizePanes),
+    ("table_menu", StringKey::TableMenu),
+    ("sort_ascending", StringKey::SortAscending),
+    ("sort_descending", StringKey::SortDescending),
+    ("hide_column", StringKey::HideColumn),
+    ("autosize", StringKey::Autosize),
+    ("move_left", StringKey::MoveLeft),
+    ("move_right", StringKey::MoveRight),
+    ("show_all_columns", StringKey::ShowAllColumns),
+    ("select", StringKey::Select),
+    ("select_all_rows", StringKey::SelectAllRows),
+    ("select_row", StringKey::SelectRow),
+];
 
 const ENGLISH: [&str; StringKey::ALL.len()] = [
     "Close",

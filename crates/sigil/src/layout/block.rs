@@ -285,7 +285,13 @@ fn layout_children(
         let gap = open.absorb_top(edges_preview.margin_top());
         cursor_y += gap;
         let child_border_origin = Position2::new(
-            content_origin.x + edges_preview.margin.left.unwrap_or(0.0),
+            child_border_x(
+                parent.style(),
+                style,
+                inner_cb,
+                content_origin.x,
+                &edges_preview,
+            ),
             content_origin.y + cursor_y,
         );
         let resolved = match style.display {
@@ -299,6 +305,23 @@ fn layout_children(
         open.emit_bottom(resolved.edges.margin_bottom());
     }
     Ok(cursor_y)
+}
+
+fn child_border_x(
+    parent: &StyleData,
+    style: &StyleData,
+    inner_cb: Size<f32>,
+    content_x: f32,
+    edges: &NodeEdges,
+) -> f32 {
+    let start = content_x + edges.margin.left.unwrap_or(0.0);
+    if !parent.direction.is_rtl() {
+        return start;
+    }
+    let intent = SizeIntent::build(style, inner_cb, edges);
+    intent.w.preferred.map_or(start, |width| {
+        content_x + inner_cb.width - edges.margin.right.unwrap_or(0.0) - intent.w.clamp(width)
+    })
 }
 
 fn solve_flex_child(

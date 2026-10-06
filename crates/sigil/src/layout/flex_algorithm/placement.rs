@@ -266,7 +266,14 @@ fn cross_offset_for(
     line_cross: f32,
     start_at_end: bool,
 ) -> f32 {
-    let align = item.align_self.or(container).unwrap_or(AlignItems::Stretch);
+    let own = item.align_self.map(|align| {
+        if start_at_end {
+            crate::layout::engine::direction::flip_align(align)
+        } else {
+            align
+        }
+    });
+    let align = own.or(container).unwrap_or(AlignItems::Stretch);
     let extra = (line_cross - item.outer_cross()).max(0.0);
     match align {
         AlignItems::Stretch if start_at_end => extra,
