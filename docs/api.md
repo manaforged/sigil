@@ -455,7 +455,7 @@ fn main() {
 | `ModifiersState` | `keyboard_types::Modifiers` | Modifier flags such as `CONTROL`. |
 | `KeyEvent` | `struct KeyEvent { key, physical, modifiers, repeat, phase, text }` | A key press or release. |
 | `KeyPhase` | `enum KeyPhase { Down, Up }` | Press or release. |
-| `PointerEvent` | `struct PointerEvent` | A pointer event. |
+| `PointerEvent` | `struct PointerEvent` | A pointer event. `capture_pointer()` sends the following moves and the release to the node that asked, and only to it: they do not bubble to its ancestors. `position` is relative to the handler's node; `window_position` is in window coordinates. |
 | `PointerKind` | `enum PointerKind { Mouse, Touch, Pen }` | Pointer device. |
 | `PointerPhase` | `enum PointerPhase { Down, Move, Up, Enter, Leave, Cancel }` | Pointer event phase. |
 | `MouseButton` | `enum MouseButton { Left, Right, Middle, Back, Forward, Other(u16) }` | One mouse button. |
@@ -986,7 +986,7 @@ Public items outside the prelude. Import them by path.
 | `text::add_fallback_font` | `fn add_fallback_font(bytes: Vec<u8>, face_index: u32) -> Result<(), TextError>` | Add a fallback face to every text engine. Shaping uses it for characters the primary faces lack. Layout measures text again on the next frame. |
 | `text::load_font_url` | `fn load_font_url(url: &str, face_index: u32) -> Signal<Status<(), FontLoadError>>` (wasm32 only) | Fetch a font file and add it with `add_fallback_font`. The signal turns `Ok(())` when the face is in use. |
 | `text::FontLoadError` | `enum FontLoadError { Fetch(String), Http(u16), InvalidFont }` (wasm32 only) | Why `load_font_url` failed. |
-| `text::OwnedTextEngine` | `register_font(bytes: Vec<u8>, face_index: u32) -> Result<(), TextError>`, `clear_cache()` | Add a font face at run time; drop the shaping cache. |
+| `text::OwnedTextEngine` | `register_font(bytes: Vec<u8>, face_index: u32) -> Result<(), TextError>`, `clear_cache()` | The text engine of a host. App code reaches the shared engine only through `OwnedTextEngine::thread()`, an `Rc`, so it cannot call `register_font`; use `app::set_default_fonts` to replace a face or `text::add_fallback_font` to add one. |
 | `layout::Dimension` | `enum Dimension` | A length: px, percent, text length, or auto. |
 | `layout::LengthPercentage` | `enum LengthPercentage` | A px or percent length. |
 | `style::Dimension` | `enum Dimension { Px(Px), Full, Fraction(u16), Auto }` | A size in a style atom. |
@@ -1082,6 +1082,7 @@ Public items outside the prelude. Import them by path.
 | --- | --- | --- |
 | `clipboard::NoopClipboard` | `struct NoopClipboard;` | `Clipboard` implementation used when no clipboard is installed. `set` returns an error. |
 | `clipboard::copy` | `fn copy(text: &str) -> AppResult<Delivery>` | Write text to the installed clipboard. |
+| `clipboard::image` | `fn image() -> AppResult<Option<ImageSource>>` (feature `clipboard-image`) | Read an image from the clipboard; `None` when it holds no image. There is no image write. |
 | `clipboard::ClipError` | `ClipError::new(msg)` | A clipboard back end failed. |
 | `clipboard::OsClipboard` | `struct OsClipboard` | The OS clipboard (feature `clipboard`). |
 | `clipboard::install` | `fn install(clip: impl Clipboard + 'static)` | Replace the installed clipboard. |
@@ -1317,13 +1318,13 @@ fn main() -> AppResult<()> {
 | --- | --- | --- |
 | `style::Transform2D` | `struct Transform2D`; `translate(x, y)`, `scale(x, y)`, `rotate(radians)`, `origin(x, y)`, `IDENTITY` | Holds a 2D translation, scale, and rotation for a node. The renderer applies it around the transform origin. |
 | `style::SELECTION_FILL` | `const SELECTION_FILL: Rgba8` | Gives the fill color for selected text. |
-| `style::atom::SPACING_STEP` | `const SPACING_STEP: f32 = 4.0` | Sets the pixel size of one spacing step in style atoms. |
-| `style::atom::GradientAxis`, `style::atom::GradientStopKey`, `style::atom::BgGradient` | `enum GradientAxis { TopToBottom, BottomToTop, LeftToRight, .. }`; `struct GradientStopKey { offset: u16, color: ColorAtom }`; `struct BgGradient { axis: GradientAxis, stops: &'static [GradientStopKey] }` | Describe a linear background gradient: its direction and its color stops. |
-| `style::atom::DisplayKind`, `style::atom::FlexDir`, `style::atom::AlignKind`, `style::atom::JustifyKind`, `style::atom::FlexWrapKind`, `style::atom::OverflowKind` | `enum DisplayKind { Flex, Block, Grid, .. }`; `enum FlexDir { Row, Column, RowReverse, .. }`; `enum AlignKind`; `enum JustifyKind`; `enum FlexWrapKind { NoWrap, Wrap }`; `enum OverflowKind { Visible, Hidden, Scroll, .. }` | Typed layout values that style atoms carry for display, flex direction, alignment, justification, wrap, and overflow. |
-| `style::atom::TransitionId`, `style::atom::MillisU16` | `struct TransitionId(pub u16)`; `struct MillisU16(pub u16)` | Identify a style transition and give its duration in milliseconds. |
-| `style::atom::Elevation` | `enum Elevation { Sm, Base, Md, .. }` | Selects a shadow depth from the theme. |
-| `style::atom::RenderStyle` | `struct RenderStyle { background_color, background_gradient, text_color, border_radius, border_width, border_top, .., border_color, shadow, opacity: u16, transform: Transform2D }` | Holds the resolved paint properties of one node. Opacity is in units of 1/10000. |
-| `style::atom::TextDecoration` | `enum TextDecoration { None, Underline, .. }` | Selects the line drawn with text. |
+| `style::SPACING_STEP` | `const SPACING_STEP: f32 = 4.0` | Sets the pixel size of one spacing step in style atoms. |
+| `style::GradientAxis`, `style::GradientStopKey`, `style::BgGradient` | `enum GradientAxis { TopToBottom, BottomToTop, LeftToRight, .. }`; `struct GradientStopKey { offset: u16, color: ColorAtom }`; `struct BgGradient { axis: GradientAxis, stops: &'static [GradientStopKey] }` | Describe a linear background gradient: its direction and its color stops. |
+| `style::DisplayKind`, `style::FlexDir`, `style::AlignKind`, `style::JustifyKind`, `style::FlexWrapKind`, `style::OverflowKind` | `enum DisplayKind { Flex, Block, Grid, .. }`; `enum FlexDir { Row, Column, RowReverse, .. }`; `enum AlignKind`; `enum JustifyKind`; `enum FlexWrapKind { NoWrap, Wrap }`; `enum OverflowKind { Visible, Hidden, Scroll, .. }` | Typed layout values that style atoms carry for display, flex direction, alignment, justification, wrap, and overflow. |
+| `style::TransitionId`, `style::MillisU16` | `struct TransitionId(pub u16)`; `struct MillisU16(pub u16)` | Identify a style transition and give its duration in milliseconds. |
+| `style::Elevation` | `enum Elevation { Sm, Base, Md, .. }` | Selects a shadow depth from the theme. |
+| `style::RenderStyle` | `struct RenderStyle { background_color, background_gradient, text_color, border_radius, border_width, border_top, .., border_color, shadow, opacity: u16, transform: Transform2D }` | Holds the resolved paint properties of one node. Opacity is in units of 1/10000. |
+| `style::TextDecoration` | `enum TextDecoration { None, Underline, .. }` | Selects the line drawn with text. |
 | `style::binding::ReactiveStateSlot`, `style::binding::ReactiveStyleAtoms` | `type ReactiveStateSlot = Rc<Cell<StateSlot>>`; `type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>` | Shared cells that let code change a node's state slot or style atoms without rebuilding the tree. |
 | `style::engine::StyleEngine` | `struct StyleEngine<'theme>`; `apply(&self, &[StyleAtom], &mut RenderStyle)`, `apply_text(&self, &[StyleAtom], &mut TextStyle)`, `resolve_color(&self, ColorAtom) -> Rgba8` | Applies style atoms to paint and text styles against a theme and tone. |
 | `style::unknown_class_warning_count` | `fn unknown_class_warning_count() -> usize` | Number of unknown class names seen. |
