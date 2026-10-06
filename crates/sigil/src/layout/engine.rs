@@ -12,6 +12,7 @@ use crate::layout::cache_key::{
 use crate::layout::engine_drive::{LayoutDrive, NodeHandle};
 use crate::layout::text_style::InheritedText;
 use crate::layout::{LayoutError, LayoutResult, TextMeasure};
+use crate::style::locale::Direction;
 use cache::take_cache_miss;
 use measure::Pass;
 
@@ -98,7 +99,7 @@ impl LayoutEngine {
     pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), LayoutError> {
         self.gc(cx)?;
         let root_text = TextStyle::default();
-        self.sync_subtree(cx, root, InheritedText::new(&root_text))
+        self.sync_subtree(cx, root, InheritedText::new(&root_text, Direction::Ltr))
             .map(|_handles| ())
     }
 
@@ -295,6 +296,7 @@ impl LayoutEngine {
 mod attribution;
 mod cache;
 mod children;
+mod direction;
 mod incremental;
 mod measure;
 mod overlays;

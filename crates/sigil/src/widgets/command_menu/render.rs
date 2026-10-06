@@ -2,6 +2,8 @@ use crate::events::{MouseButton, NodeEventsExt};
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived, signal};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 use crate::style::{ControlSize, Metrics, Style, space};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -99,7 +101,7 @@ pub(super) fn into_node_builder(parts: MenuParts) -> NodeBuilder {
     };
     let root = container()
         .role(Role::Menu)
-        .label("Command Menu")
+        .label(theme_label(StringKey::CommandMenu))
         .layout(root_layout())
         .children_reactive(move || {
             let levels = palette.stack.get();

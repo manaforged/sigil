@@ -1,3 +1,5 @@
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 use core::time::Duration;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
@@ -39,7 +41,9 @@ pub fn spinner() -> NodeBuilder {
         tick.update(|value| *value = value.wrapping_add(1));
     });
     let grid = Metrics::current().is_grid();
-    let indicator = container().role(Role::ProgressIndicator).label("Loading");
+    let indicator = container()
+        .role(Role::ProgressIndicator)
+        .label(theme_label(StringKey::Loading));
     #[cfg(feature = "scene")]
     if !grid {
         return indicator.children_reactive(move || {

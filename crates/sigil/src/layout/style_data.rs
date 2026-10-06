@@ -243,6 +243,7 @@ pub struct StyleData {
     pub grid_column_start: u16,
     pub grid_row_start: u16,
     pub grid_auto_flow_dense: bool,
+    pub direction: crate::style::Direction,
 }
 
 impl Default for StyleData {
@@ -276,6 +277,7 @@ impl Default for StyleData {
             grid_row_span: 1,
             grid_column_start: 0,
             grid_row_start: 0,
+            direction: crate::style::Direction::Ltr,
             grid_auto_flow_dense: false,
         }
     }

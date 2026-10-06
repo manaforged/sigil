@@ -3,6 +3,8 @@ use crate::kernel::{IntoNode, NodeBuilder, TopLayer, container};
 use crate::layout::ViewportOverlay;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Owner, OwnerId, Signal, signal};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string;
 use crate::style::{ControlSize, Metrics, NodeStyleExt};
 
 use super::super::popup::{PANEL_INSET, PANEL_WIDTH};
@@ -72,7 +74,9 @@ fn anchored_menu(
     } else {
         y
     };
-    let mut panel = menu(open).label("Context menu").anchor(x, y);
+    let mut panel = menu(open)
+        .label(theme_string(StringKey::ContextMenu))
+        .anchor(x, y);
     if let Some(host) = host {
         panel = panel.host(host);
     }

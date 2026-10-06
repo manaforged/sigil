@@ -4,10 +4,15 @@ use smallvec::SmallVec;
 
 use crate::layout::engine_drive::NodeHandle;
 use crate::layout::text_geometry::TextStyleCapture;
-use crate::layout::text_style::{InheritedText, inherited_text_style, text_style_signature};
+use crate::layout::text_style::{
+    InheritedText, inherited_direction, inherited_signature, inherited_text_style, node_direction,
+    signature_is_rtl,
+};
 use crate::layout::{LayoutError, LayoutStyle};
+use crate::style::locale::Direction;
 
 use super::LayoutEngine;
+use super::direction::apply_direction;
 use super::overlays::{apply_intrinsic_image_size, apply_reactive_position, apply_style_overlay};
 
 impl LayoutEngine {
@@ -43,9 +48,10 @@ impl LayoutEngine {
             return Ok(out);
         }
 
+        let inherited = inherited.under(node);
         let binding = node.get_extension::<StyleBinding>();
         let layered = binding.and_then(|b| TextStyle::layered_over_binding(inherited.style, b));
-        let effective = layered.as_ref().map_or(inherited, InheritedText::new);
+        let effective = inherited.layered(layered.as_ref());
         publish_text_style(node, effective.style);
         let text_sig_matches = self.synced_text_sig.get(id.key()).copied() == Some(effective.sig);
 
@@ -59,7 +65,7 @@ impl LayoutEngine {
             && self.synced_version.get(id.key()).copied() == Some(kernel_version)
             && text_sig_matches;
         if !version_matches {
-            self.write_synced_node(id, node, inherited.style, kernel_version)?;
+            self.write_synced_node(id, node, inherited, kernel_version)?;
         }
         self.synced_text_sig.insert(id.key(), effective.sig);
 
@@ -151,8 +157,9 @@ impl LayoutEngine {
             return Ok(());
         }
         let inherited = inherited_text_style(cx, id);
+        let direction = node_direction(node, inherited_direction(cx, id));
         let (intent, text_content, text_style, flags) =
-            Self::layout_inputs_for_node(node, &inherited);
+            Self::layout_inputs_for_node(node, &inherited, direction);
         let existing = self.core_to_handle.get(id.key()).copied();
         self.upsert_with_text(id, existing, &intent, text_content, text_style, flags)?;
         self.synced_version.insert(id.key(), node.version());
@@ -162,7 +169,7 @@ impl LayoutEngine {
             .and_then(|binding| TextStyle::layered_over_binding(&inherited, binding));
         let effective = layered.as_ref().unwrap_or(&inherited);
         publish_text_style(node, effective);
-        let effective_sig = text_style_signature(effective);
+        let effective_sig = inherited_signature(effective, direction);
         if self.synced_text_sig.get(id.key()).copied() != Some(effective_sig) {
             self.synced_text_sig.insert(id.key(), effective_sig);
             let children = node
@@ -171,7 +178,7 @@ impl LayoutEngine {
                 .copied()
                 .collect::<SmallVec<[_; 8]>>();
             for child in children {
-                self.cascade_text_styles(cx, child, InheritedText::new(effective))?;
+                self.cascade_text_styles(cx, child, InheritedText::new(effective, direction))?;
             }
         }
         Ok(())
@@ -197,18 +204,21 @@ impl LayoutEngine {
             }
             return Ok(());
         }
+        let inherited = inherited.under(node);
         let layered = node
             .get_extension::<StyleBinding>()
             .and_then(|binding| TextStyle::layered_over_binding(inherited.style, binding));
-        let effective = layered.as_ref().map_or(inherited, InheritedText::new);
+        let effective = inherited.layered(layered.as_ref());
         publish_text_style(node, effective.style);
-        if self.synced_text_sig.get(id.key()).copied() == Some(effective.sig) {
+        let previous = self.synced_text_sig.get(id.key()).copied();
+        if previous == Some(effective.sig) {
             return Ok(());
         }
         self.synced_text_sig.insert(id.key(), effective.sig);
-        if matches!(node.kind, NodeType::Text { .. }) {
+        let mirrored = effective.direction.is_rtl() || previous.is_some_and(signature_is_rtl);
+        if matches!(node.kind, NodeType::Text { .. }) || mirrored {
             let (intent, text_content, text_style, flags) =
-                Self::layout_inputs_for_node(node, inherited.style);
+                Self::layout_inputs_for_node(node, inherited.style, inherited.direction);
             let existing = self.core_to_handle.get(id.key()).copied();
             self.upsert_with_text(id, existing, &intent, text_content, text_style, flags)?;
         }
@@ -222,12 +232,12 @@ impl LayoutEngine {
         &mut self,
         id: NodeId,
         node: &crate::kernel::Node,
-        inherited_text: &TextStyle,
+        inherited: InheritedText<'_>,
         kernel_version: u32,
     ) -> Result<(), LayoutError> {
         let existing_handle = self.core_to_handle.get(id.key()).copied();
         let (intent, text_content, text_style, flags) =
-            Self::layout_inputs_for_node(node, inherited_text);
+            Self::layout_inputs_for_node(node, inherited.style, inherited.direction);
         self.upsert_with_text(
             id,
             existing_handle,
@@ -243,6 +253,7 @@ impl LayoutEngine {
     fn layout_inputs_for_node(
         node: &crate::kernel::Node,
         inherited_text: &TextStyle,
+        direction: Direction,
     ) -> (
         LayoutStyle,
         Option<TextContent>,
@@ -255,10 +266,8 @@ impl LayoutEngine {
                 .get_extension::<crate::layout::ReactivePosition>()
                 .is_none()
         {
-            let intent = node
-                .get_extension::<LayoutStyle>()
-                .cloned()
-                .unwrap_or_default();
+            let mut intent = layout_style_of(node);
+            apply_direction(intent.data_mut(), direction);
             return (
                 intent,
                 None,
@@ -266,10 +275,7 @@ impl LayoutEngine {
                 crate::layout::forest::TextFlags::default(),
             );
         }
-        let mut intent = node
-            .get_extension::<LayoutStyle>()
-            .cloned()
-            .unwrap_or_default();
+        let mut intent = layout_style_of(node);
         let mut text_style = match &node.kind {
             NodeType::Text { .. } => Some(inherited_text.clone()),
             NodeType::Container | NodeType::Fragment | NodeType::Image { .. } => None,
@@ -281,6 +287,7 @@ impl LayoutEngine {
         if let Some(style) = text_style.as_mut() {
             style.runs = node.get_extension::<crate::style::TextRuns>().cloned();
         }
+        apply_direction(intent.data_mut(), direction);
         intent = apply_reactive_position(node, intent);
         let (text_content, flags) = match &node.kind {
             NodeType::Text {
@@ -307,6 +314,12 @@ impl LayoutEngine {
         }
         Ok(())
     }
+}
+
+fn layout_style_of(node: &crate::kernel::Node) -> LayoutStyle {
+    node.get_extension::<LayoutStyle>()
+        .cloned()
+        .unwrap_or_default()
 }
 
 fn publish_text_style(node: &crate::kernel::Node, style: &TextStyle) {

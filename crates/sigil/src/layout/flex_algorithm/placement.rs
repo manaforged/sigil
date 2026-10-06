@@ -154,7 +154,8 @@ fn place_line_items(
         let Some(item) = line.items.get(idx) else {
             continue;
         };
-        let cross_offset = cross_offset_for(item, style.align_items, line_cross);
+        let start_at_end = style.direction.is_rtl() && !ctx.axes.row;
+        let cross_offset = cross_offset_for(item, style.align_items, line_cross, start_at_end);
         let placed = PlacedItem {
             id: item.id,
             main_pos: cursor + item.margin_main_start(),
@@ -259,10 +260,16 @@ fn distribute_main(
     }
 }
 
-fn cross_offset_for(item: &FlexItem, container: Option<AlignItems>, line_cross: f32) -> f32 {
+fn cross_offset_for(
+    item: &FlexItem,
+    container: Option<AlignItems>,
+    line_cross: f32,
+    start_at_end: bool,
+) -> f32 {
     let align = item.align_self.or(container).unwrap_or(AlignItems::Stretch);
     let extra = (line_cross - item.outer_cross()).max(0.0);
     match align {
+        AlignItems::Stretch if start_at_end => extra,
         AlignItems::Start | AlignItems::Baseline | AlignItems::Stretch => 0.0,
         AlignItems::End => extra,
         AlignItems::Center => extra / 2.0,

@@ -83,6 +83,7 @@ pub(super) struct HostEnv {
     viewport: Signal<LogicalSize>,
     scale: Signal<f32>,
     pub(super) caps: HostCaps,
+    pub(super) theme: Signal<crate::style::Theme>,
 }
 
 pub(crate) struct EnvGuard {
@@ -93,6 +94,7 @@ pub(crate) struct EnvGuard {
     viewport: Option<Signal<LogicalSize>>,
     scale: Option<Signal<f32>>,
     caps: HostCaps,
+    theme: Option<Signal<crate::style::Theme>>,
 }
 
 impl Drop for EnvGuard {
@@ -104,6 +106,7 @@ impl Drop for EnvGuard {
         VIEWPORT.with(|slot| slot.set(self.viewport.take()));
         SCALE.with(|slot| slot.set(self.scale.take()));
         CAPS.with(|slot| slot.set(self.caps));
+        let _ = crate::style::theme::ambient::swap_active_theme(self.theme.take());
     }
 }
 
@@ -111,9 +114,13 @@ impl HostEnv {
     pub(super) fn new(cell: f32, geometry: Rc<dyn TextGeometry>, owner: OwnerId) -> Self {
         let mut signals = None;
         owner_by_id(owner, || {
-            signals = Some((signal(LogicalSize::default()), signal(1.0)));
+            signals = Some((
+                signal(LogicalSize::default()),
+                signal(1.0),
+                signal(crate::style::Theme::default()),
+            ));
         });
-        let (viewport, scale) = signals.expect("host root owner is live");
+        let (viewport, scale, theme) = signals.expect("host root owner is live");
         Self {
             cell,
             geometry,
@@ -122,6 +129,7 @@ impl HostEnv {
             viewport,
             scale,
             caps: HostCaps::window(),
+            theme,
         }
     }
 
@@ -136,6 +144,7 @@ impl HostEnv {
             viewport: VIEWPORT.with(|slot| slot.replace(Some(self.viewport))),
             scale: SCALE.with(|slot| slot.replace(Some(self.scale))),
             caps: CAPS.with(|slot| slot.replace(self.caps)),
+            theme: crate::style::theme::ambient::swap_active_theme(Some(self.theme)),
         }
     }
 

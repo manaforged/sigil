@@ -4,6 +4,9 @@ mod render;
 mod scroll;
 
 use crate::reactive::Reactive;
+use crate::style::locale::Direction;
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 use std::rc::Rc;
 
 use crate::events::{KeyEvent, NodeEventsExt};
@@ -176,7 +179,8 @@ impl CodeEditBuilder {
         let runtime = editing::runtime(model, self.disabled);
         let node = field_chrome(container(), interaction, disabled)
             .role(Role::TextInput)
-            .label("Code editor")
+            .label(theme_label(StringKey::CodeEditor))
+            .with(Direction::Ltr)
             .focusable(true)
             .traps_tab(traps_tab)
             .class("w-full h-full")

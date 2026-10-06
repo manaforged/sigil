@@ -1,3 +1,5 @@
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::{ActiveTheme, theme_label, theme_text};
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -168,13 +170,15 @@ impl ChartBuilder {
         let series = derived(move || sources.iter().map(SeriesSource::read).collect::<Vec<_>>());
         let labels = Rc::new(std::mem::take(&mut self.labels));
         let label_names = Rc::clone(&labels);
-        let description = derived(move || series.with(|series| summary(series, &label_names)));
+        let theme = ActiveTheme::capture();
+        let description =
+            derived(move || series.with(|series| summary(series, &label_names, theme)));
         let mark = self.mark;
         let interact = interact::Interact::new(self.x_range, self.crosshair);
         let paint = std::mem::replace(&mut self.style_accumulator, Style::new());
         let mut root = container()
             .role(Role::Figure)
-            .label("Chart")
+            .label(theme_label(StringKey::Chart))
             .mutate(move |target| {
                 target.a11y.description = Some(AccessibleName::Derived(description));
             })
@@ -263,23 +267,23 @@ fn empty() -> NodeBuilder {
                 .justify_content(JustifyContent::Center),
         )
         .child(
-            text("No data")
+            text(theme_text(StringKey::NoData))
                 .nowrap()
                 .class("text-sm")
                 .class(Token::OnSurfaceMuted.text()),
         )
 }
 
-fn summary(series: &[ChartSeries], labels: &[String]) -> String {
+fn summary(series: &[ChartSeries], labels: &[String], theme: ActiveTheme) -> String {
     let mut parts = Vec::with_capacity(series.len());
     for (index, item) in series.iter().enumerate() {
         let name = if item.name.is_empty() {
-            format!("Series {}", index + 1)
+            theme.fill(StringKey::Series, &[&(index + 1)])
         } else {
             item.name.clone()
         };
         if item.values.len() > SUMMARY_VALUES {
-            parts.push(span_summary(&name, &item.values));
+            parts.push(span_summary(&name, &item.values, theme));
             continue;
         }
         let values = item
@@ -298,11 +302,14 @@ fn summary(series: &[ChartSeries], labels: &[String]) -> String {
     parts.join("; ")
 }
 
-fn span_summary(name: &str, values: &[f32]) -> String {
+fn span_summary(name: &str, values: &[f32], theme: ActiveTheme) -> String {
     let finite = || values.iter().copied().filter(|value| value.is_finite());
     let low = finite().fold(f32::INFINITY, f32::min);
     let high = finite().fold(f32::NEG_INFINITY, f32::max);
-    format!("{name}: {} values from {low} to {high}", values.len())
+    theme.fill(
+        StringKey::ChartSummary,
+        &[&name, &values.len(), &low, &high],
+    )
 }
 
 impl IntoNode for ChartBuilder {

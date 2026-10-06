@@ -1,3 +1,5 @@
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string;
 use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, container};
@@ -116,7 +118,10 @@ pub(super) fn context_overlay<Row: 'static>(
             if let Some(host) = chrome.host {
                 panel = panel.host(host);
             }
-            let mut panel = panel.label("Table menu").anchor(x, y).width(menu_width);
+            let mut panel = panel
+                .label(theme_string(StringKey::TableMenu))
+                .anchor(x, y)
+                .width(menu_width);
             for item in items {
                 panel = panel.item(item);
             }
@@ -138,34 +143,57 @@ fn header_menu<Row: 'static>(state: &TableState<Row>, id: &'static str) -> Vec<M
     if sortable {
         let asc = state.clone();
         let desc = state.clone();
-        items.push(MenuItem::new("Sort ascending").activate(move || {
-            asc.sort(id, SortDir::Ascending);
-        }));
-        items.push(MenuItem::new("Sort descending").activate(move || {
-            desc.sort(id, SortDir::Descending);
-        }));
+        items.push(
+            MenuItem::new(theme_string(StringKey::SortAscending)).activate(move || {
+                asc.sort(id, SortDir::Ascending);
+            }),
+        );
+        items.push(
+            MenuItem::new(theme_string(StringKey::SortDescending)).activate(move || {
+                desc.sort(id, SortDir::Descending);
+            }),
+        );
     }
     let hide = state.clone();
-    items.push(MenuItem::new("Hide column").activate(move || hide.hide_column(id)));
+    items.push(
+        MenuItem::new(theme_string(StringKey::HideColumn)).activate(move || hide.hide_column(id)),
+    );
     let autosize = state.clone();
-    items.push(MenuItem::new("Autosize").activate(move || autosize.clear_column_width(id)));
+    items.push(
+        MenuItem::new(theme_string(StringKey::Autosize))
+            .activate(move || autosize.clear_column_width(id)),
+    );
     if let Some(from) = visual {
-        if from > 0 {
-            let left = state.clone();
-            items.push(
-                MenuItem::new("Move left").activate(move || left.move_column(from, from - 1)),
-            );
-        }
-        if from + 1 < order.len() {
-            let right = state.clone();
-            items.push(
-                MenuItem::new("Move right").activate(move || right.move_column(from, from + 1)),
-            );
-        }
+        move_items(state, from, order.len(), &mut items);
     }
     let show = state.clone();
-    items.push(MenuItem::new("Show all columns").activate(move || show.show_all_columns()));
+    items.push(
+        MenuItem::new(theme_string(StringKey::ShowAllColumns))
+            .activate(move || show.show_all_columns()),
+    );
     items
+}
+
+fn move_items<Row: 'static>(
+    state: &TableState<Row>,
+    from: usize,
+    count: usize,
+    items: &mut Vec<MenuItem>,
+) {
+    if from > 0 {
+        let left = state.clone();
+        items.push(
+            MenuItem::new(theme_string(StringKey::MoveLeft))
+                .activate(move || left.move_column(from, from - 1)),
+        );
+    }
+    if from + 1 < count {
+        let right = state.clone();
+        items.push(
+            MenuItem::new(theme_string(StringKey::MoveRight))
+                .activate(move || right.move_column(from, from + 1)),
+        );
+    }
 }
 
 fn row_menu_items<Row: 'static>(

@@ -1,5 +1,7 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 use crate::style::{BORDER_WIDTH, ControlSize, Metrics, StyleAtom, Token, space};
 
 pub(crate) const STATUS_BAR_HEIGHT: f32 = space(7);
@@ -23,7 +25,7 @@ where
     let last = children.len().checked_sub(1).filter(|last| *last > 0);
     let mut root = container()
         .role(Role::Status)
-        .label("Status bar")
+        .label(theme_label(StringKey::StatusBar))
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()

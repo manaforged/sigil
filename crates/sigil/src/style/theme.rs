@@ -1,13 +1,16 @@
+use crate::style::locale::{Direction, Locale};
 use crate::style::metrics::{Metrics, Radius};
 use crate::style::palette::{Palette, is_dark, pick_higher_contrast};
 use crate::style::scale::{
     ColorScale, ScaleRole, amber_dark, amber_light, blue_dark, blue_light, cyan_dark, cyan_light,
     green_dark, green_light, ruby_dark, ruby_light, slate_dark, slate_light,
 };
+use crate::style::strings::Strings;
 use crate::style::variant::{FontFamilyHint, Variant};
 use crate::style::{ControlSize, Dimension, LengthPercentage, Px, Rgba8};
 use mix::{alpha_mix, rgba, shift};
 
+pub(crate) mod ambient;
 mod color;
 mod console;
 mod mix;
@@ -45,6 +48,9 @@ pub struct Theme {
     pub missing_token_fallback: Rgba8,
     pub tokens: TokenTable,
     pub metrics: Metrics,
+    pub direction: Direction,
+    pub locale: Locale,
+    pub strings: Strings,
 }
 
 impl Theme {
@@ -101,6 +107,24 @@ impl Theme {
     #[must_use]
     pub const fn with_info_scale(mut self, scale: ColorScale) -> Self {
         self.info = scale;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_direction(mut self, direction: Direction) -> Self {
+        self.direction = direction;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_locale(mut self, locale: Locale) -> Self {
+        self.locale = locale;
+        self
+    }
+
+    #[must_use]
+    pub fn with_strings(mut self, strings: Strings) -> Self {
+        self.strings = strings;
         self
     }
 
@@ -168,6 +192,9 @@ impl Theme {
             missing_token_fallback: rgba(255, 0, 255),
             tokens: TokenTable::default(),
             metrics: Metrics::current(),
+            direction: Direction::Ltr,
+            locale: Locale::default(),
+            strings: Strings::default(),
         }
     }
 }
@@ -209,6 +236,9 @@ impl Theme {
             missing_token_fallback: rgba(255, 0, 255),
             tokens: TokenTable::default(),
             metrics: Metrics::current(),
+            direction: Direction::Ltr,
+            locale: Locale::default(),
+            strings: Strings::default(),
         }
     }
 
@@ -290,6 +320,24 @@ impl ThemeBuilder {
     #[must_use]
     pub fn token(mut self, name: &str, value: ThemeValue) -> Self {
         self.theme.register_token(name, value);
+        self
+    }
+
+    #[must_use]
+    pub const fn direction(mut self, direction: Direction) -> Self {
+        self.theme.direction = direction;
+        self
+    }
+
+    #[must_use]
+    pub const fn locale(mut self, locale: Locale) -> Self {
+        self.theme.locale = locale;
+        self
+    }
+
+    #[must_use]
+    pub fn strings(mut self, strings: Strings) -> Self {
+        self.theme.strings = strings;
         self
     }
 

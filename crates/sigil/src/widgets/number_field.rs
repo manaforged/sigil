@@ -4,14 +4,16 @@ use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode, NodeId};
 use crate::reactive::{Signal, derived, effect, signal};
+use crate::style::locale::Locale;
+use crate::style::theme::ambient::ActiveTheme;
 
 use super::text_field::{TextFieldBuilder, text_field};
 
 pub trait NumericKind: Copy + PartialOrd + 'static + private::Sealed {
     #[must_use]
-    fn parse(input: &str) -> Option<Self>;
+    fn parse(input: &str, locale: &Locale) -> Option<Self>;
     #[must_use]
-    fn render(self) -> String;
+    fn render(self, locale: &Locale) -> String;
     #[must_use]
     fn clamp_to(self, range: &RangeInclusive<Self>) -> Self;
 }
@@ -28,11 +30,11 @@ mod private {
 macro_rules! impl_numeric_int {
     ($t:ty) => {
         impl NumericKind for $t {
-            fn parse(input: &str) -> Option<Self> {
-                input.trim().parse::<Self>().ok()
+            fn parse(input: &str, locale: &Locale) -> Option<Self> {
+                locale.normalize_number(input)?.parse::<Self>().ok()
             }
-            fn render(self) -> String {
-                self.to_string()
+            fn render(self, locale: &Locale) -> String {
+                locale.localize_number(&self.to_string())
             }
             fn clamp_to(self, range: &RangeInclusive<Self>) -> Self {
                 self.clamp(*range.start(), *range.end())
@@ -48,11 +50,15 @@ impl_numeric_int!(usize);
 macro_rules! impl_numeric_float {
     ($t:ty) => {
         impl NumericKind for $t {
-            fn parse(input: &str) -> Option<Self> {
-                input.trim().parse::<Self>().ok().filter(|v| v.is_finite())
+            fn parse(input: &str, locale: &Locale) -> Option<Self> {
+                locale
+                    .normalize_number(input)?
+                    .parse::<Self>()
+                    .ok()
+                    .filter(|v| v.is_finite())
             }
-            fn render(self) -> String {
-                self.to_string()
+            fn render(self, locale: &Locale) -> String {
+                locale.localize_number(&self.to_string())
             }
             fn clamp_to(self, range: &RangeInclusive<Self>) -> Self {
                 self.clamp(*range.start(), *range.end())
@@ -69,6 +75,7 @@ pub struct NumberFieldBuilder<T: NumericKind> {
     buffer: Signal<String>,
     range: Rc<RangeInclusive<T>>,
     invalid: Option<Signal<bool>>,
+    theme: ActiveTheme,
 }
 
 impl<T: NumericKind> NumberFieldBuilder<T> {
@@ -88,14 +95,16 @@ impl<T: NumericKind> NumberFieldBuilder<T> {
         let buffer = self.buffer;
         let range = self.range;
         let invalid = self.invalid;
+        let theme = self.theme;
         self.inner.invalid_when(derived(move || {
-            invalid.is_some_and(|flag| flag.get()) || !in_range(&buffer.get(), &range)
+            invalid.is_some_and(|flag| flag.get())
+                || !in_range(&buffer.get(), &range, &theme.locale())
         }))
     }
 }
 
-fn in_range<T: NumericKind>(raw: &str, range: &RangeInclusive<T>) -> bool {
-    T::parse(raw).is_some_and(|parsed| {
+fn in_range<T: NumericKind>(raw: &str, range: &RangeInclusive<T>, locale: &Locale) -> bool {
+    T::parse(raw, locale).is_some_and(|parsed| {
         parsed.partial_cmp(&parsed.clamp_to(range)) == Some(core::cmp::Ordering::Equal)
     })
 }
@@ -111,14 +120,15 @@ pub fn number_field<T: NumericKind>(
     value: Signal<T>,
     range: RangeInclusive<T>,
 ) -> NumberFieldBuilder<T> {
-    let buffer = signal(value.peek().render());
+    let theme = ActiveTheme::capture();
+    let buffer = signal(value.peek().render(&theme.locale()));
     let range = Rc::new(range);
 
     let buf_for_value = buffer;
     let range_for_value = Rc::clone(&range);
     effect(move || {
         let clamped = value.get().clamp_to(&range_for_value);
-        let rendered = clamped.render();
+        let rendered = clamped.render(&theme.locale());
         if buf_for_value.peek().as_str() != rendered {
             buf_for_value.set(rendered);
         }
@@ -127,8 +137,9 @@ pub fn number_field<T: NumericKind>(
     let revert = {
         let range = Rc::clone(&range);
         Rc::new(move || {
-            if T::parse(&buffer.peek()).is_none() {
-                buffer.set(value.peek().clamp_to(&range).render());
+            let locale = theme.locale();
+            if T::parse(&buffer.peek(), &locale).is_none() {
+                buffer.set(value.peek().clamp_to(&range).render(&locale));
             }
         })
     };
@@ -137,7 +148,7 @@ pub fn number_field<T: NumericKind>(
         .change({
             let range = Rc::clone(&range);
             move |raw| {
-                let Some(parsed) = T::parse(raw) else {
+                let Some(parsed) = T::parse(raw, &theme.locale()) else {
                     return;
                 };
                 let clamped = parsed.clamp_to(&range);
@@ -155,6 +166,7 @@ pub fn number_field<T: NumericKind>(
         buffer,
         range,
         invalid: None,
+        theme,
     }
 }
 

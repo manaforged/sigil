@@ -1,5 +1,7 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::{theme_label, theme_string};
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
 
 use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
@@ -135,7 +137,7 @@ impl HintOverlayBuilder {
     fn into_node_builder(self) -> NodeBuilder {
         let mut root = container()
             .role(Role::GenericContainer)
-            .label("Keyboard shortcuts")
+            .label(theme_label(StringKey::KeyboardShortcuts))
             .layout(
                 LayoutStyle::flex_column()
                     .padding(space(3))
@@ -191,7 +193,9 @@ pub fn spacer() -> NodeBuilder {
 #[must_use]
 pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) -> NodeBuilder {
     let title: TextContent = title.into();
-    let name = title.as_static_str().unwrap_or("Empty").to_owned();
+    let name = title
+        .as_static_str()
+        .map_or_else(|| theme_string(StringKey::Empty), str::to_owned);
     container()
         .role(Role::Status)
         .label(name)
@@ -242,7 +246,7 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
     let content: TextContent = initials.into();
     let name = match &content {
         TextContent::Static(value) => value.clone(),
-        _ => String::from("avatar"),
+        _ => theme_string(StringKey::Avatar),
     };
     container()
         .role(Role::Image)

@@ -3,6 +3,8 @@ use crate::kernel::{
 };
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Reactive, Signal, derived};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_text;
 use crate::style::{DisplayKind, StyleAtom, Token, space};
 
 use super::color_field::ColorFieldBuilder;
@@ -11,7 +13,6 @@ use super::text_field::TextFieldBuilder;
 
 const FIELD_GAP: f32 = space(1);
 static ERROR_VISIBLE: &[StyleAtom] = &[];
-const REQUIRED_MARK: &str = "*";
 static ERROR_HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
 
 pub struct FieldBuilder<C> {
@@ -124,7 +125,7 @@ fn label_row(label: TextContent, required: Option<Signal<bool>>) -> Box<dyn Into
                 .layout(LayoutStyle::flex_row().gap(FIELD_GAP))
                 .child(label)
                 .child(
-                    text(REQUIRED_MARK)
+                    text(theme_text(StringKey::RequiredMark))
                         .hittable(false)
                         .class(Token::Error11.text())
                         .style_reactive(move || {

@@ -65,4 +65,5 @@ pub(super) static DEFAULT_STYLE: StyleData = StyleData {
     grid_column_start: 0,
     grid_row_start: 0,
     grid_auto_flow_dense: false,
+    direction: crate::style::Direction::Ltr,
 };

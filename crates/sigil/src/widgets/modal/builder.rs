@@ -1,3 +1,5 @@
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::{ActiveTheme, theme_label};
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -204,6 +206,7 @@ impl WidgetLayoutExt for ModalBuilder {
 
 fn install_open_effects(show: Signal<bool>, title: Option<TextContent>, body_scroll: Signal<f32>) {
     let prev = Rc::new(Cell::new(true));
+    let theme = ActiveTheme::capture();
     effect_named("sigil::modal::open", move || {
         let open_now = show.get();
         let was_open = prev.replace(open_now);
@@ -211,7 +214,7 @@ fn install_open_effects(show: Signal<bool>, title: Option<TextContent>, body_scr
             body_scroll.set(0.0);
             let name = title
                 .as_ref()
-                .map_or_else(|| String::from("Dialog"), TextContent::resolve);
+                .map_or_else(|| theme.string(StringKey::Dialog), TextContent::resolve);
             queue_announcement(name, Live::Polite);
         }
     });
@@ -363,7 +366,7 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
 
 fn accessible_name(title: Option<&TextContent>) -> AccessibleName {
     let Some(title) = title else {
-        return AccessibleName::Static(String::from("Dialog"));
+        return AccessibleName::Derived(theme_label(StringKey::Dialog));
     };
     match title {
         TextContent::Static(value) => AccessibleName::Static(value.clone()),

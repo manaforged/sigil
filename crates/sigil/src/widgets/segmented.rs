@@ -92,7 +92,7 @@ fn segment(
     let shown =
         CellForm::<fn(&str, bool) -> String>::new(window_label, cell_label).pick()(label, selected);
     let choice = button(shown)
-        .accessible(label)
+        .accessible(label.to_owned())
         .height(height)
         .activate(move || active.set(index));
     let choice = if selected {

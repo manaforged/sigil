@@ -186,6 +186,7 @@ impl Host {
         if let Some(root) = self.root
             && let Some(node) = self.cx.get_mut(root)
         {
+            self.env.theme.set(theme.clone());
             node.attach(theme);
             crate::scene::emit_cache::theme_changed();
         }

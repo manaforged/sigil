@@ -2,6 +2,8 @@ use crate::events::Key;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, signal};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 use crate::style::{
     BORDER_WIDTH, Paint, PaintTarget, StateVariants, Style, StyleAtom, StyleSlot, Token, space,
 };
@@ -86,7 +88,7 @@ fn resize_handle(width: Signal<f32>, min: f32, max: f32) -> NodeBuilder {
         .role(Role::Splitter)
         .hittable(true)
         .focusable(true)
-        .label("Resize sidebar")
+        .label(theme_label(StringKey::ResizeSidebar))
         .value(width, min, max)
         .value_step(KEY_STEP)
         .layout(

@@ -1,6 +1,8 @@
 use crate::kernel::{NodeBuilder, ObjectFit, Role, container, image};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::style::Rgba8;
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::{ActiveTheme, theme_label};
 
 use super::super::layout_ext::WidgetLayoutExt;
 
@@ -14,8 +16,8 @@ pub fn heatmap<F: Fn(usize, usize) -> Rgba8>(
 ) -> NodeBuilder {
     let root = container()
         .role(Role::Figure)
-        .label("Heatmap")
-        .description(format!("{grid_w} by {grid_h} grid"))
+        .label(theme_label(StringKey::Heatmap))
+        .description(ActiveTheme::capture().fill(StringKey::HeatmapGrid, &[&grid_w, &grid_h]))
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()

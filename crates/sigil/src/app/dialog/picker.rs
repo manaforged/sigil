@@ -1,3 +1,5 @@
+use crate::style::StringKey;
+use crate::style::theme::ambient::theme_text;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -124,7 +126,7 @@ pub(super) fn picker_view(
     }
     let open = picker;
     body.actions(
-        button("Cancel").activate(move || finish.answer(Answer::Cancel)),
+        button(theme_text(StringKey::Cancel)).activate(move || finish.answer(Answer::Cancel)),
         button(action).primary().activate(move || open.confirm()),
     )
     .build(cx)
@@ -186,13 +188,13 @@ pub(super) fn alert_view(
     let shown = modal(show).title(title).child(text(body).nowrap());
     match kind {
         AlertKind::Message => shown.footer(
-            button("OK")
+            button(theme_text(StringKey::Ok))
                 .primary()
                 .activate(move || ok.answer(Answer::Ok)),
         ),
         AlertKind::Confirm => shown.actions(
-            button("Cancel").activate(move || finish.answer(Answer::Cancel)),
-            button("OK")
+            button(theme_text(StringKey::Cancel)).activate(move || finish.answer(Answer::Cancel)),
+            button(theme_text(StringKey::Ok))
                 .primary()
                 .activate(move || ok.answer(Answer::Ok)),
         ),

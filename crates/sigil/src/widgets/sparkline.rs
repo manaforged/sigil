@@ -1,3 +1,5 @@
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::{ActiveTheme, theme_label};
 use std::rc::Rc;
 
 use crate::kernel::{
@@ -154,10 +156,10 @@ impl SparkShape {
             .collect()
     }
 
-    fn describe(&self, values: &[f32]) -> String {
+    fn describe(&self, values: &[f32], theme: ActiveTheme) -> String {
         let (low, high) = self.bounds(values);
         let last = values.last().copied().unwrap_or(0.0);
-        format!("{low} to {high}, last {last}")
+        theme.fill(StringKey::SparklineSummary, &[&low, &high, &last])
     }
 
     fn lines(&self, values: &[f32]) -> Vec<NodeBuilder> {
@@ -187,10 +189,12 @@ impl IntoNode for SparklineBuilder {
         let values = derived(move || source.read());
         let shape = self.shape;
         let label_shape = shape.clone();
-        let description = derived(move || values.with(|values| label_shape.describe(values)));
+        let theme = ActiveTheme::capture();
+        let description =
+            derived(move || values.with(|values| label_shape.describe(values, theme)));
         container()
             .role(Role::Image)
-            .label("Sparkline")
+            .label(theme_label(StringKey::Sparkline))
             .mutate(move |target| {
                 target.a11y.description = Some(AccessibleName::Derived(description));
             })

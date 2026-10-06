@@ -1,3 +1,5 @@
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::{ActiveTheme, theme_label, theme_string};
 use std::rc::Rc;
 
 use crate::events::{MouseButton, NodeEventsExt};
@@ -24,12 +26,16 @@ pub(super) fn header_cell<Row: 'static>(state: &TableState<Row>, height: f32) ->
     let toggle = state.clone();
     container()
         .role(Role::ColumnHeader)
-        .label("Select")
+        .label(theme_label(StringKey::Select))
         .column_index(1)
         .layout(cell_layout(height))
-        .child(select_box(mark, "Select all visible rows", move || {
-            toggle_all(&toggle);
-        }))
+        .child(select_box(
+            mark,
+            theme_string(StringKey::SelectAllRows),
+            move || {
+                toggle_all(&toggle);
+            },
+        ))
 }
 
 pub(super) fn row_cell<Row: 'static>(
@@ -52,7 +58,7 @@ pub(super) fn row_cell<Row: 'static>(
         .layout(cell_layout(height))
         .child(select_box(
             mark,
-            format!("Select row {}", row + 1),
+            ActiveTheme::capture().fill(StringKey::SelectRow, &[&(row + 1)]),
             move || {
                 toggle.toggle_selected(row);
             },

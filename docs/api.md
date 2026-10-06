@@ -529,7 +529,10 @@ fn main() {
 | `Rgba8` | `struct Rgba8 { r, g, b, a: u8 }` | An 8-bit RGBA colour. |
 | `ColorAtom` | `enum ColorAtom { Rgba8(Rgba8), ThemeRef(ColorKey) }` | A colour or a theme colour key. |
 | `Token::scale` / `Token::scale_step` | `fn scale(ScaleRole, u8) -> Option<Token>`, `fn scale_step(self) -> Option<(ScaleRole, u8)>` | Map a scale role and step 1..=12 to its token and back. |
-| `Theme` | `Theme::light()`, `Theme::dark()`, `Theme::console_dark()` | Theme values. |
+| `Theme` | `Theme::light()`, `Theme::dark()`, `Theme::console_dark()`; `with_direction(Direction)`, `with_locale(Locale)`, `with_strings(Strings)` | Theme values. The direction, locale, and strings apply to the whole tree: a right-to-left theme mirrors padding, margins, insets, flex row order, and start/end alignment; `number_field` and `date_field` parse and format with the locale; built-in labels such as Close and Cancel come from the strings. |
+| `style::Direction` | `enum Direction { Ltr, Rtl }`; `is_rtl()` | Layout direction. `.with(Direction::Ltr)` on a node keeps it and its children left to right in a right-to-left theme, as `code_edit` does. |
+| `style::Locale`, `style::DateOrder` | `struct Locale { decimal, group, group_size, zero, date_order, date_separator }`; `Locale::en()`, `de()`, `ar()`, `new(decimal, group)`, `with_date(order, sep)`, `with_zero(char)`, `with_group_size(u8)`; `parse_number`, `format_number`, `parse_date`, `format_date`; `enum DateOrder { Ymd, Dmy, Mdy }` | Number and date rules as data. `Locale::default()` is `.` decimals, no grouping, and year-month-day with `-`. |
+| `style::Strings`, `style::StringKey` | `struct Strings`; `Strings::english()`, `from_table(&[(StringKey, &str)])`, `with(key, value)`, `set`, `get(key)`, `fill(key, args)`; `enum StringKey` | The built-in labels a theme carries, with English defaults. `fill` replaces `{0}`, `{1}` placeholders. |
 | `Theme::resolve_color` | `fn resolve_color(&self, key: ColorKey) -> Rgba8` | Resolve a colour key. Order: runtime override, theme table, built-in value. An unknown `Custom` name panics in debug builds and paints `missing_token_fallback` with one `tracing` warning per name in release builds. |
 | `Theme::color` | `fn color(&self, token: Token) -> Rgba8` | `resolve_color` for a built-in token. |
 | `Theme::register_token` / `with_token` | `fn register_token(&mut self, name: &str, value: ThemeValue) -> Option<ThemeValue>` | Set a runtime override. A built-in token name also updates the matching base colour field. |
@@ -632,7 +635,7 @@ fn main() {
 | `number_field` | `fn number_field<T: NumericKind>(value: Signal<T>, range: RangeInclusive<T>) -> NumberFieldBuilder<T>` | A numeric input. Text that parses updates `value` as you type; on Enter or blur, text that does not parse is replaced by the stored value, so the field never shows a number it did not store. |
 | `NumericKind` | `trait NumericKind` | Number types that `number_field` accepts. |
 | `date_field` | `fn date_field(value: Signal<Date>) -> DateFieldBuilder` | A date input. |
-| `Date` | `struct Date { year: i32, month: u8, day: u8 }` | A calendar date. |
+| `Date` | `struct Date { year: i32, month: u8, day: u8 }`; `parse_in(&str, &Locale)`, `render_in(&Locale)` | A calendar date. `parse` and `render` use `Locale::default()`. |
 | `color_field` | `fn color_field(value: Signal<Rgba8>) -> ColorFieldBuilder` | A colour input. |
 | `field` | `fn field<C: IntoNode>(label, control: C) -> FieldBuilder<C>`; `.error(impl Reactive<Option<String>>)` when `C: FieldControl`; `.required(impl Reactive<bool>)` | A label above a control. `.required` marks the control required for screen readers and shows a marker after the label while it is true. `.error` shows the message under the control and paints the control invalid while it is `Some`. The control is marked invalid while an error shows and is described by the message. |
 | `chip` | `fn chip(label, tone: Tone) -> ChipBuilder`; `.dot()`, `.leading(node)` | A small tag. `dot` puts a dot in the chip's tone before the label, for status pills; `leading` puts any node, such as an icon, before it. |

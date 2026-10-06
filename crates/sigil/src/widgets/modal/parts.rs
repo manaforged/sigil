@@ -2,6 +2,8 @@ use crate::kernel::{IntoNode, NodeBuilder, TextContent, container, text};
 use crate::layout::snap;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 use crate::style::{ControlSize, Paint, Token, space};
 
 use super::super::button::icon_button;
@@ -38,7 +40,7 @@ pub(super) fn dialog_header(title: TextContent, close: Option<Signal<bool>>) -> 
     match close {
         Some(show) => row.child(
             icon_button(CLOSE_GLYPH, move || show.set(false))
-                .accessible("Close")
+                .accessible(theme_label(StringKey::Close))
                 .size(ControlSize::Compact),
         ),
         None => row,

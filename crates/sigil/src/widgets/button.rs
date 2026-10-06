@@ -73,8 +73,8 @@ impl ButtonBuilder {
     }
 
     #[must_use]
-    pub fn accessible(mut self, name: impl Into<String>) -> Self {
-        self.accessible = Some(AccessibleName::Static(name.into()));
+    pub fn accessible(mut self, name: impl Into<AccessibleName>) -> Self {
+        self.accessible = Some(name.into());
         self
     }
 

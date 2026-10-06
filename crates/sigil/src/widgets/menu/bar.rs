@@ -1,3 +1,5 @@
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 use std::rc::Rc;
 
 use crate::events::NodeEventsExt;
@@ -73,7 +75,7 @@ impl MenuBarBuilder {
         let host = Owner::current();
         let mut bar = container()
             .role(Role::GenericContainer)
-            .label("Menu bar")
+            .label(theme_label(StringKey::MenuBar))
             .with(self.layout_overrides.apply(bar_layout(self.fill)))
             .class(BAR_SURFACE);
 

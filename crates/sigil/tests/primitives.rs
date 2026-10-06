@@ -155,8 +155,12 @@ fn a_resizable_sidebar_grows_from_its_handle_keys() {
             let cx = host.cx();
             let mut found = None;
             cx.visit_preorder(root, |id, node| {
-                if matches!(&node.a11y.name, sigil::kernel::AccessibleName::Static(name) if name == "Resize sidebar")
-                {
+                let name = match &node.a11y.name {
+                    sigil::kernel::AccessibleName::Static(name) => name.clone(),
+                    sigil::kernel::AccessibleName::Derived(name) => name.peek(),
+                    sigil::kernel::AccessibleName::None => String::new(),
+                };
+                if name == "Resize sidebar" {
                     found = Some(id);
                 }
             });

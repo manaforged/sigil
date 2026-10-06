@@ -3,7 +3,7 @@ use crate::style::StyleBinding;
 
 use crate::layout::LayoutError;
 use crate::layout::engine_drive::NodeHandle;
-use crate::layout::text_style::{InheritedText, inherited_text_style};
+use crate::layout::text_style::{InheritedText, inherited_direction, inherited_text_style};
 
 use super::LayoutEngine;
 
@@ -35,8 +35,9 @@ impl LayoutEngine {
         }
         if self.hidden.remove(&parent) {
             let text = inherited_text_style(cx, parent);
+            let direction = inherited_direction(cx, parent);
             return self
-                .sync_subtree(cx, parent, InheritedText::new(&text))
+                .sync_subtree(cx, parent, InheritedText::new(&text, direction))
                 .map(|_handles| ());
         }
         let handles = self.flatten_child_handles(cx, parent_node.children())?;
@@ -69,7 +70,7 @@ impl LayoutEngine {
                 handles.push(handle);
             } else {
                 let text = inherited_text_style(cx, *child);
-                let inherited = InheritedText::new(&text);
+                let inherited = InheritedText::new(&text, inherited_direction(cx, *child));
                 handles.extend(self.sync_subtree(cx, *child, inherited)?);
             }
         }

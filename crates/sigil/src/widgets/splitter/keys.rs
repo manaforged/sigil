@@ -1,6 +1,8 @@
 use crate::events::{Key, NodeEventsExt};
 use crate::kernel::NodeBuilder;
 use crate::reactive::derived;
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 
 use super::drag::SplitterState;
 use crate::widgets::orientation::Orientation;
@@ -20,7 +22,7 @@ pub(super) fn install_handle_keys(
     };
     let node = node
         .focusable(true)
-        .label("Resize panes")
+        .label(theme_label(StringKey::ResizePanes))
         .value(value, min, max)
         .value_step(KEY_STEP);
     resize_keys(node, (back, forward), move |step| {
