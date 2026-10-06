@@ -320,6 +320,9 @@ fn drive_session<T: Clone + 'static>(
         state.cancel();
         return;
     }
+    if !event.is_captured() {
+        event.capture_pointer();
+    }
     state.track(at);
     event.stop_propagation();
 }

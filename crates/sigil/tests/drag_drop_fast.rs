@@ -19,9 +19,10 @@ fn row_bounds(ui: &mut Harness, name: &str) -> Rect {
         .unwrap()
 }
 
-fn drop_after_first_move(first: f32) -> Option<(u32, u32)> {
+fn drag_rows(first: f32, release_below: bool) -> (Option<(u32, u32)>, bool) {
     let dropped = signal(None::<(u32, u32)>);
     let drag: DragState<u32> = DragState::new();
+    let probe = drag.clone();
     let mut ui = Harness::new(move || {
         (0..8_u32).fold(column(), |col, id| {
             col.child(
@@ -50,9 +51,17 @@ fn drop_after_first_move(first: f32) -> Option<(u32, u32)> {
     for t in [0.125_f32, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0] {
         ui.send([pointer_drag(x, (ty - fy).mul_add(t, fy))]);
     }
-    ui.send([pointer_up(x, ty)]);
+    let release_y = if release_below { 380.0 } else { ty };
+    if release_below {
+        ui.send([pointer_drag(x, release_y)]);
+    }
+    ui.send([pointer_up(x, release_y)]);
     ui.settle();
-    dropped.peek()
+    (dropped.peek(), probe.is_active())
+}
+
+fn drop_after_first_move(first: f32) -> Option<(u32, u32)> {
+    drag_rows(first, false).0
 }
 
 #[test]
@@ -66,5 +75,17 @@ fn a_drag_starts_when_the_first_move_stays_on_the_source() {
 fn a_drag_starts_when_the_first_move_already_left_the_source() {
     Runtime::scope("drag-fast", || {
         assert_eq!(drop_after_first_move(18.0), Some((0, 4)));
+    });
+}
+
+#[test]
+fn a_fast_drag_released_over_empty_space_ends() {
+    Runtime::scope("drag-gap", || {
+        let (dropped, active) = drag_rows(18.0, true);
+        assert_eq!(dropped, None);
+        assert!(
+            !active,
+            "the drag stayed active after the button was released"
+        );
     });
 }
