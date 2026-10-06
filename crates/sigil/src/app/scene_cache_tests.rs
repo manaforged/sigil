@@ -46,12 +46,18 @@ fn an_opaque_window_paints_the_theme_surface_behind_the_tree() {
 
         let opaque = super::window_scene(&cx, root, (100.0, 80.0), true);
         let backdrop = match opaque.commands.first() {
-            Some(crate::scene::SceneCommand::Rect(rect)) => {
-                Some((rect.color, rect.rect.width, rect.rect.height))
-            }
+            Some(crate::scene::SceneCommand::Rect(rect)) => Some((rect.color, rect.rect)),
             _ => None,
         };
-        assert_eq!(backdrop, Some((surface, 100.0, 80.0)));
+        let (color, rect) = backdrop.expect("an opaque window starts with the backdrop");
+        assert_eq!(color, surface);
+        assert!(
+            rect.origin.x < 0.0
+                && rect.origin.y < 0.0
+                && rect.origin.x + rect.width > 100.0
+                && rect.origin.y + rect.height > 80.0,
+            "the backdrop's edge lies outside the viewport: {rect:?}"
+        );
 
         let clear = super::window_scene(&cx, root, (100.0, 80.0), false);
         assert_eq!(clear.commands.len() + 1, opaque.commands.len());
