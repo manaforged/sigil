@@ -10,7 +10,7 @@ use crate::events::handlers::dispatch;
 use crate::events::hit_test::{HitTestCache, NodePath, visible};
 use crate::events::pointer_dispatch::{
     PointerTargets, dispatch_pointer_path, dispatch_pointer_target, dispatch_synthetic_target,
-    pointer_target_for_node, pointer_targets, synthetic_leave_source,
+    local_point, pointer_target_for_node, pointer_targets, synthetic_leave_source,
 };
 
 mod keyboard;
@@ -67,8 +67,11 @@ impl EventRouter {
         let Some(path) = self.hit_cache.hit_path(cx, layout, event.position) else {
             return;
         };
-        for id in path.iter().rev().copied() {
-            let _ = dispatch(cx, id, |handlers| handlers.invoke_scroll(&mut event));
+        let global = event.position;
+        let targets = pointer_targets(cx, layout, &path, self.hit_cache.uses_transforms());
+        for target in targets.iter().rev().copied() {
+            event.position = local_point(cx, target, global);
+            let _ = dispatch(cx, target.id, |handlers| handlers.invoke_scroll(&mut event));
             if event.propagation_stopped() {
                 return;
             }

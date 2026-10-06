@@ -1125,7 +1125,7 @@ fn main() -> AppResult<()> {
 | `events::request_window_command` | `fn request_window_command(command: WindowCommand)` | Send a command to the window. Feature `desktop`. |
 | `events::PhysicalKey` | `keyboard_types::Code` | A key position on the keyboard. |
 | `events::ImeEvent` | `enum ImeEvent { Enabled, Preedit, Commit, Disabled }` | Input method event. |
-| `events::ScrollEvent` | `struct ScrollEvent` | A wheel or trackpad scroll. |
+| `events::ScrollEvent` | `struct ScrollEvent` | A wheel or trackpad scroll. Each `on_scroll` handler sees `position` relative to its own node, as pointer handlers do. |
 | `events::ScrollDelta` | `enum ScrollDelta { Pixels(Point), Lines(Point) }` | Scroll amount. |
 | `events::ScrollPhase` | `enum ScrollPhase { Started, Moved, Ended, Cancelled }` | Scroll gesture phase. |
 | `events::FileDropEvent` | `struct FileDropEvent` | A file drag over or onto the window. |

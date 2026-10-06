@@ -154,6 +154,17 @@ pub(crate) fn pointer_target_for_node(
         })
 }
 
+pub(crate) fn local_point(cx: &Cx, target: PointerTarget, global_position: Point) -> Point {
+    let local = if target.transformed {
+        local_position(cx, target.id, global_position)
+    } else {
+        Some(global_position)
+    };
+    local.map_or(Point::new(-1.0, -1.0), |position| {
+        Point::new(position.x - target.origin.x, position.y - target.origin.y)
+    })
+}
+
 fn invoke_pointer(
     cx: &Cx,
     target: PointerTarget,
@@ -163,14 +174,7 @@ fn invoke_pointer(
 ) -> bool {
     let previous_position = event.position;
     let previous_size = event.target_size;
-    let local = if target.transformed {
-        local_position(cx, target.id, global_position)
-    } else {
-        Some(global_position)
-    };
-    event.position = local.map_or(Point::new(-1.0, -1.0), |position| {
-        Point::new(position.x - target.origin.x, position.y - target.origin.y)
-    });
+    event.position = local_point(cx, target, global_position);
     event.target_size = target.size;
     let already_requested = event.capture_requested();
     let _ = dispatch(cx, target.id, |handlers| {

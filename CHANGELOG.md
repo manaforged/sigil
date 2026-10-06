@@ -459,6 +459,9 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- `on_scroll` handlers see `ScrollEvent::position` relative to their own
+  node, as pointer handlers do. Before, it was in window coordinates, so
+  zoom around the pointer in an offset canvas jumped.
 - A drag from `drag_source` starts when the first move after the press
   already left the source, as a fast flick does. The press arms the shared
   `DragState`; a source or target under the pointer starts the drag, and
