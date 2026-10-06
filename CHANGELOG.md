@@ -459,6 +459,9 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- A dropped file goes to the deepest `file_drop` handler under the pointer
+  (else on the focused node's path) instead of to every handler, so one
+  drop no longer lands in two panes.
 - `on_scroll` handlers see `ScrollEvent::position` relative to their own
   node, as pointer handlers do. Before, it was in window coordinates, so
   zoom around the pointer in an offset canvas jumped.

@@ -1128,7 +1128,7 @@ fn main() -> AppResult<()> {
 | `events::ScrollEvent` | `struct ScrollEvent` | A wheel or trackpad scroll. Each `on_scroll` handler sees `position` relative to its own node, as pointer handlers do. |
 | `events::ScrollDelta` | `enum ScrollDelta { Pixels(Point), Lines(Point) }` | Scroll amount. |
 | `events::ScrollPhase` | `enum ScrollPhase { Started, Moved, Ended, Cancelled }` | Scroll gesture phase. |
-| `events::FileDropEvent` | `struct FileDropEvent` | A file drag over or onto the window. |
+| `events::FileDropEvent` | `struct FileDropEvent` | A file drag over or onto the window. The host reports no drop point, so the event goes to the deepest `file_drop` handler under the last known pointer position, else on the focused node's path; with neither, every handler sees it. |
 | `events::FileDropPhase` | `enum FileDropPhase { Hovered, Dropped, Cancelled }` | File drop phase. |
 | `events::WindowEvent` | `enum WindowEvent` | Resize, focus, and close events of the window. |
 | `events::KeyEventInit`, `hal::events::KeyEventInit` | `struct KeyEventInit { key: LogicalKey, physical: PhysicalKey, modifiers: ModifiersState, repeat: bool, phase: KeyPhase, text: Option<SmolStr> }` | Fields for `KeyEvent::new`. |

@@ -186,7 +186,7 @@ fn invoke_pointer(
     newly_requested
 }
 
-fn path_to_node(cx: &Cx, target: NodeId) -> NodePath {
+pub(crate) fn path_to_node(cx: &Cx, target: NodeId) -> NodePath {
     let mut reversed = NodePath::new();
     let mut current = Some(target);
     while let Some(id) = current {
