@@ -169,3 +169,28 @@ fn interval_panic_drains_deferred_cleanups_and_clears_origin() {
         __test_clear_clock();
     });
 }
+
+struct CancelOnDrop(Rc<Cell<Option<IntervalId>>>);
+
+impl Drop for CancelOnDrop {
+    fn drop(&mut self) {
+        if let Some(id) = self.0.get() {
+            cancel_interval(id);
+        }
+    }
+}
+
+#[test]
+fn ending_a_scope_drops_an_interval_whose_callback_cancels_on_drop() {
+    let worker = std::thread::spawn(|| {
+        Runtime::scope("interval::cancel_on_drop", || {
+            let slot = Rc::new(Cell::new(None));
+            let guard = CancelOnDrop(Rc::clone(&slot));
+            let id = interval(Duration::from_millis(50), move || {
+                let _held = &guard;
+            });
+            slot.set(Some(id));
+        });
+    });
+    assert!(worker.join().is_ok(), "ending the scope panicked");
+}

@@ -459,6 +459,11 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- Ending the scope that started `app::Player` playback no longer panics
+  with "RefCell already borrowed", and a thread that ends with a playing
+  `Player` no longer aborts the process. `cancel_interval` drops the
+  interval's callback after it releases the registry, and does nothing
+  once the thread's registry is gone.
 - Dragging across `selectable_text` in a terminal selects and copies whole
   cells, including the cell the drag started on; before, the first
   character was dropped. A drag toward the start of the text copies the

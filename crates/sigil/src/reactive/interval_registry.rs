@@ -40,8 +40,12 @@ impl Registry {
         self.test_clock.unwrap_or_else(Instant::now)
     }
 
-    pub(super) fn remove(&mut self, id: IntervalId) {
-        self.slots.retain(|(slot_id, _)| *slot_id != id);
+    pub(super) fn remove(&mut self, id: IntervalId) -> Vec<(IntervalId, IntervalSlot)> {
+        let (gone, kept) = core::mem::take(&mut self.slots)
+            .into_iter()
+            .partition(|(slot_id, _)| *slot_id == id);
+        self.slots = kept;
+        gone
     }
 }
 

@@ -31,7 +31,8 @@ pub fn interval(period: Duration, callback: impl Fn() + 'static) -> IntervalId {
 }
 
 pub fn cancel_interval(id: IntervalId) {
-    REGISTRY.with(|r| r.borrow_mut().remove(id));
+    let removed = REGISTRY.try_with(|r| r.borrow_mut().remove(id));
+    drop(removed);
 }
 
 #[must_use = "shells can ignore the count; tests use it to assert that fires actually happened"]
