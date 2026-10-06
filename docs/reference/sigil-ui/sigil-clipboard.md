@@ -9,6 +9,7 @@
 | [`Clipboard`](#clipboard) | trait |  |
 | [`clipboard`](#clipboard-1) | fn |  |
 | [`copy`](#copy) | fn |  |
+| [`copy_image`](#copy_image) | fn |  |
 | [`image`](#image) | fn |  |
 | [`install`](#install) | fn |  |
 | [`paste`](#paste) | fn |  |
@@ -61,6 +62,7 @@
 | <code>get(&amp;self) -&gt; Option&lt;String&gt;</code> |  |
 | <code>image(&amp;self) -&gt; Result&lt;Option&lt;<a href="sigil-kernel.html#imagesource">ImageSource</a>&gt;, <a href="#cliperror">ClipError</a>&gt;</code> |  |
 | <code>set(&amp;self, text: &amp;str) -&gt; Result&lt;<a href="#delivery">Delivery</a>, <a href="#cliperror">ClipError</a>&gt;</code> |  |
+| <code>set_image(&amp;self, _image: &amp;<a href="sigil-kernel.html#imagesource">ImageSource</a>) -&gt; Result&lt;<a href="#delivery">Delivery</a>, <a href="#cliperror">ClipError</a>&gt;</code> |  |
 
 
 ## Functions
@@ -73,6 +75,11 @@
 ### `copy`
 
 <pre>pub fn <a href="#copy">copy</a>(text: &amp;str) -&gt; <a href="sigil.html#appresult">AppResult</a>&lt;<a href="#delivery">Delivery</a>&gt;</pre>
+
+
+### `copy_image`
+
+<pre>pub fn <a href="#copy_image">copy_image</a>(image: &amp;<a href="sigil-kernel.html#imagesource">ImageSource</a>) -&gt; Result&lt;<a href="#delivery">Delivery</a>, <a href="#cliperror">ClipError</a>&gt;</pre>
 
 
 ### `image`

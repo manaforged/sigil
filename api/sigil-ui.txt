@@ -413,12 +413,18 @@ impl core::fmt::Debug for sigil::app::HostCaps
 impl core::marker::Copy for sigil::app::HostCaps
 impl core::marker::StructuralPartialEq for sigil::app::HostCaps
 pub struct sigil::app::Player
+pub sigil::app::Player::duration: sigil::reactive::Signal<core::option::Option<core::time::Duration>>
 pub sigil::app::Player::playing: sigil::reactive::Signal<bool>
 pub sigil::app::Player::progress: sigil::reactive::Signal<f32>
+pub sigil::app::Player::volume: sigil::reactive::Signal<f32>
 impl sigil::app::Player
+pub fn sigil::app::Player::append(&self, path: &std::path::Path) -> sigil::AppResult<()>
 pub fn sigil::app::Player::new() -> Self
+pub fn sigil::app::Player::play_bytes(&self, bytes: alloc::vec::Vec<u8>) -> sigil::AppResult<()>
 pub fn sigil::app::Player::play_path(&self, path: &std::path::Path) -> sigil::AppResult<()>
+pub fn sigil::app::Player::queue<P: core::convert::AsRef<std::path::Path>>(&self, paths: impl core::iter::traits::collect::IntoIterator<Item = P>) -> sigil::AppResult<()>
 pub fn sigil::app::Player::seek(&self, ratio: f32) -> sigil::AppResult<()>
+pub fn sigil::app::Player::stop(&self)
 pub fn sigil::app::Player::tick(&self)
 pub fn sigil::app::Player::toggle(&self)
 impl core::clone::Clone for sigil::app::Player
@@ -524,8 +530,10 @@ pub trait sigil::clipboard::Clipboard
 pub fn sigil::clipboard::Clipboard::get(&self) -> core::option::Option<alloc::string::String>
 pub fn sigil::clipboard::Clipboard::image(&self) -> core::result::Result<core::option::Option<sigil::kernel::ImageSource>, sigil::clipboard::ClipError>
 pub fn sigil::clipboard::Clipboard::set(&self, text: &str) -> core::result::Result<sigil::clipboard::Delivery, sigil::clipboard::ClipError>
+pub fn sigil::clipboard::Clipboard::set_image(&self, _image: &sigil::kernel::ImageSource) -> core::result::Result<sigil::clipboard::Delivery, sigil::clipboard::ClipError>
 pub fn sigil::clipboard::clipboard() -> alloc::rc::Rc<dyn sigil::clipboard::Clipboard>
 pub fn sigil::clipboard::copy(text: &str) -> sigil::AppResult<sigil::clipboard::Delivery>
+pub fn sigil::clipboard::copy_image(image: &sigil::kernel::ImageSource) -> core::result::Result<sigil::clipboard::Delivery, sigil::clipboard::ClipError>
 pub fn sigil::clipboard::image() -> sigil::AppResult<core::option::Option<sigil::kernel::ImageSource>>
 pub fn sigil::clipboard::install(clip: impl sigil::clipboard::Clipboard + 'static)
 pub fn sigil::clipboard::paste() -> sigil::AppResult<alloc::string::String>
@@ -555,6 +563,16 @@ impl core::fmt::Debug for sigil::events::FocusIntent
 impl core::hash::Hash for sigil::events::FocusIntent
 impl core::marker::Copy for sigil::events::FocusIntent
 impl core::marker::StructuralPartialEq for sigil::events::FocusIntent
+#[non_exhaustive] pub enum sigil::events::GestureKind
+pub sigil::events::GestureKind::DoubleTap
+pub sigil::events::GestureKind::Pan(sigil::geometry::Point)
+pub sigil::events::GestureKind::Pinch(f64)
+pub sigil::events::GestureKind::Rotate(f32)
+impl core::clone::Clone for sigil::events::GestureKind
+impl core::cmp::PartialEq for sigil::events::GestureKind
+impl core::fmt::Debug for sigil::events::GestureKind
+impl core::marker::Copy for sigil::events::GestureKind
+impl core::marker::StructuralPartialEq for sigil::events::GestureKind
 #[non_exhaustive] pub enum sigil::events::ImeEvent
 pub sigil::events::ImeEvent::Commit(smol_str::SmolStr)
 pub sigil::events::ImeEvent::Disabled
@@ -652,6 +670,7 @@ impl core::marker::Copy for sigil::events::ScrollPhase
 impl core::marker::StructuralPartialEq for sigil::events::ScrollPhase
 #[non_exhaustive] pub enum sigil::events::ShellEvent
 pub sigil::events::ShellEvent::FileDrop(sigil::events::FileDropEvent)
+pub sigil::events::ShellEvent::Gesture(sigil::events::GestureEvent)
 pub sigil::events::ShellEvent::Ime(sigil::events::ImeEvent)
 pub sigil::events::ShellEvent::Key(sigil::events::KeyEvent)
 pub sigil::events::ShellEvent::Paste(alloc::string::String)
@@ -662,6 +681,17 @@ impl core::clone::Clone for sigil::events::ShellEvent
 impl core::cmp::PartialEq for sigil::events::ShellEvent
 impl core::fmt::Debug for sigil::events::ShellEvent
 impl core::marker::StructuralPartialEq for sigil::events::ShellEvent
+#[non_exhaustive] pub enum sigil::events::ShortcutParseError
+pub sigil::events::ShortcutParseError::Empty
+pub sigil::events::ShortcutParseError::UnknownKey(alloc::string::String)
+pub sigil::events::ShortcutParseError::UnknownModifier(alloc::string::String)
+impl core::clone::Clone for sigil::events::ShortcutParseError
+impl core::cmp::Eq for sigil::events::ShortcutParseError
+impl core::cmp::PartialEq for sigil::events::ShortcutParseError
+impl core::error::Error for sigil::events::ShortcutParseError
+impl core::fmt::Debug for sigil::events::ShortcutParseError
+impl core::fmt::Display for sigil::events::ShortcutParseError
+impl core::marker::StructuralPartialEq for sigil::events::ShortcutParseError
 #[non_exhaustive] pub enum sigil::events::WindowEvent
 pub sigil::events::WindowEvent::CloseRequested
 pub sigil::events::WindowEvent::Destroyed
@@ -716,6 +746,29 @@ impl core::cmp::Eq for sigil::events::FileDropEvent
 impl core::cmp::PartialEq for sigil::events::FileDropEvent
 impl core::fmt::Debug for sigil::events::FileDropEvent
 impl core::marker::StructuralPartialEq for sigil::events::FileDropEvent
+#[non_exhaustive] pub struct sigil::events::GestureEvent
+pub sigil::events::GestureEvent::kind: sigil::events::GestureKind
+pub sigil::events::GestureEvent::modifiers: keyboard_types::modifiers::Modifiers
+pub sigil::events::GestureEvent::phase: sigil::events::ScrollPhase
+pub sigil::events::GestureEvent::position: sigil::geometry::Point
+impl sigil::events::GestureEvent
+pub const fn sigil::events::GestureEvent::new(init: sigil::events::GestureEventInit) -> Self
+pub const fn sigil::events::GestureEvent::propagation_stopped(&self) -> bool
+pub const fn sigil::events::GestureEvent::stop_propagation(&mut self)
+impl core::clone::Clone for sigil::events::GestureEvent
+impl core::cmp::PartialEq for sigil::events::GestureEvent
+impl core::fmt::Debug for sigil::events::GestureEvent
+impl core::marker::StructuralPartialEq for sigil::events::GestureEvent
+pub struct sigil::events::GestureEventInit
+pub sigil::events::GestureEventInit::kind: sigil::events::GestureKind
+pub sigil::events::GestureEventInit::modifiers: keyboard_types::modifiers::Modifiers
+pub sigil::events::GestureEventInit::phase: sigil::events::ScrollPhase
+pub sigil::events::GestureEventInit::position: sigil::geometry::Point
+impl core::clone::Clone for sigil::events::GestureEventInit
+impl core::cmp::PartialEq for sigil::events::GestureEventInit
+impl core::fmt::Debug for sigil::events::GestureEventInit
+impl core::marker::Copy for sigil::events::GestureEventInit
+impl core::marker::StructuralPartialEq for sigil::events::GestureEventInit
 #[non_exhaustive] pub struct sigil::events::KeyEvent
 pub sigil::events::KeyEvent::key: sigil::events::LogicalKey
 pub sigil::events::KeyEvent::modifiers: keyboard_types::modifiers::Modifiers
@@ -783,8 +836,11 @@ pub sigil::events::PointerEvent::delta: sigil::geometry::Point
 pub sigil::events::PointerEvent::kind: sigil::events::PointerKind
 pub sigil::events::PointerEvent::modifiers: keyboard_types::modifiers::Modifiers
 pub sigil::events::PointerEvent::phase: sigil::events::PointerPhase
+pub sigil::events::PointerEvent::pointer_id: u64
 pub sigil::events::PointerEvent::position: sigil::geometry::Point
+pub sigil::events::PointerEvent::pressure: core::option::Option<f32>
 pub sigil::events::PointerEvent::target_size: sigil::geometry::LogicalSize
+pub sigil::events::PointerEvent::tilt: core::option::Option<sigil::events::PointerTilt>
 pub sigil::events::PointerEvent::window_position: sigil::geometry::Point
 impl sigil::events::PointerEvent
 pub const fn sigil::events::PointerEvent::capture_pointer(&mut self)
@@ -794,6 +850,7 @@ pub const fn sigil::events::PointerEvent::new(init: sigil::events::PointerEventI
 pub const fn sigil::events::PointerEvent::propagation_stopped(&self) -> bool
 pub const fn sigil::events::PointerEvent::set_captured(&mut self, captured: bool)
 pub const fn sigil::events::PointerEvent::stop_propagation(&mut self)
+pub const fn sigil::events::PointerEvent::with_contact(self, pointer_id: u64, pressure: core::option::Option<f32>, tilt: core::option::Option<sigil::events::PointerTilt>) -> Self
 impl core::clone::Clone for sigil::events::PointerEvent
 impl core::cmp::PartialEq for sigil::events::PointerEvent
 impl core::fmt::Debug for sigil::events::PointerEvent
@@ -811,6 +868,15 @@ impl core::cmp::PartialEq for sigil::events::PointerEventInit
 impl core::fmt::Debug for sigil::events::PointerEventInit
 impl core::marker::Copy for sigil::events::PointerEventInit
 impl core::marker::StructuralPartialEq for sigil::events::PointerEventInit
+pub struct sigil::events::PointerTilt
+pub sigil::events::PointerTilt::x: f32
+pub sigil::events::PointerTilt::y: f32
+impl core::clone::Clone for sigil::events::PointerTilt
+impl core::cmp::PartialEq for sigil::events::PointerTilt
+impl core::default::Default for sigil::events::PointerTilt
+impl core::fmt::Debug for sigil::events::PointerTilt
+impl core::marker::Copy for sigil::events::PointerTilt
+impl core::marker::StructuralPartialEq for sigil::events::PointerTilt
 #[non_exhaustive] pub struct sigil::events::ScrollEvent
 pub sigil::events::ScrollEvent::delta: sigil::events::ScrollDelta
 pub sigil::events::ScrollEvent::modifiers: keyboard_types::modifiers::Modifiers
@@ -853,6 +919,8 @@ impl core::convert::From<keyboard_types::named_key::NamedKey> for sigil::events:
 impl core::fmt::Debug for sigil::events::Shortcut
 impl core::hash::Hash for sigil::events::Shortcut
 impl core::marker::StructuralPartialEq for sigil::events::Shortcut
+impl core::str::traits::FromStr for sigil::events::Shortcut
+pub type sigil::events::Shortcut::Err = sigil::events::ShortcutParseError
 pub const sigil::events::PRIMARY: keyboard_types::modifiers::Modifiers
 pub trait sigil::events::NodeEventsExt
 pub fn sigil::events::NodeEventsExt::autofocus(self) -> Self
@@ -867,6 +935,7 @@ pub fn sigil::events::NodeEventsExt::key_any<H>(self, h: H) -> Self where H: cor
 pub fn sigil::events::NodeEventsExt::key_capture<S, H>(self, shortcut: S, h: H) -> Self where S: core::convert::Into<sigil::events::Shortcut>, H: core::ops::function::Fn(&mut sigil::events::KeyEvent) + 'static
 pub fn sigil::events::NodeEventsExt::key_capture_any<H>(self, h: H) -> Self where H: core::ops::function::Fn(&mut sigil::events::KeyEvent) + 'static
 pub fn sigil::events::NodeEventsExt::link<H>(self, h: H) -> Self where H: core::ops::function::Fn(&str) + 'static
+pub fn sigil::events::NodeEventsExt::on_gesture<H>(self, h: H) -> Self where H: core::ops::function::Fn(&mut sigil::events::GestureEvent) + 'static
 pub fn sigil::events::NodeEventsExt::on_ime<H>(self, h: H) -> Self where H: core::ops::function::Fn(&sigil::events::ImeEvent) + 'static
 pub fn sigil::events::NodeEventsExt::on_paste<H>(self, h: H) -> Self where H: core::ops::function::Fn(&mut sigil::events::PasteEvent) + 'static
 pub fn sigil::events::NodeEventsExt::on_scroll<H>(self, h: H) -> Self where H: core::ops::function::Fn(&mut sigil::events::ScrollEvent) + 'static
@@ -1318,10 +1387,13 @@ pub sigil::kernel::A11yProps::live: core::option::Option<accesskit::Live>
 pub sigil::kernel::A11yProps::name: sigil::kernel::AccessibleName
 pub sigil::kernel::A11yProps::owns: smallvec::SmallVec<[sigil::kernel::NodeId; 2]>
 pub sigil::kernel::A11yProps::placeholder: core::option::Option<alloc::string::String>
+pub sigil::kernel::A11yProps::position_in_set: core::option::Option<usize>
+pub sigil::kernel::A11yProps::required: core::option::Option<sigil::reactive::Signal<bool>>
 pub sigil::kernel::A11yProps::role: accesskit::Role
 pub sigil::kernel::A11yProps::row_count: core::option::Option<sigil::reactive::Signal<usize>>
 pub sigil::kernel::A11yProps::row_index: core::option::Option<usize>
 pub sigil::kernel::A11yProps::selected: core::option::Option<sigil::reactive::Signal<bool>>
+pub sigil::kernel::A11yProps::size_of_set: core::option::Option<usize>
 pub sigil::kernel::A11yProps::sort_direction: core::option::Option<sigil::reactive::Signal<core::option::Option<accesskit::SortDirection>>>
 pub sigil::kernel::A11yProps::step: core::option::Option<f32>
 pub sigil::kernel::A11yProps::tab_index: core::option::Option<i32>
@@ -2580,6 +2652,7 @@ pub sigil::prelude::KeyEvent::repeat: bool
 pub sigil::prelude::KeyEvent::text: core::option::Option<smol_str::SmolStr>
 pub struct sigil::prelude::LayoutStyle(_, _)
 pub struct sigil::prelude::ListRowSlots
+pub sigil::prelude::ListRowSlots::activate: core::option::Option<alloc::rc::Rc<dyn core::ops::function::Fn()>>
 pub sigil::prelude::ListRowSlots::badge: core::option::Option<(sigil::kernel::TextContent, sigil::style::Tone)>
 pub sigil::prelude::ListRowSlots::columns: alloc::vec::Vec<sigil::widgets::ListColumn>
 pub sigil::prelude::ListRowSlots::depth: u16
@@ -2649,8 +2722,11 @@ pub sigil::prelude::PointerEvent::delta: sigil::geometry::Point
 pub sigil::prelude::PointerEvent::kind: sigil::events::PointerKind
 pub sigil::prelude::PointerEvent::modifiers: keyboard_types::modifiers::Modifiers
 pub sigil::prelude::PointerEvent::phase: sigil::events::PointerPhase
+pub sigil::prelude::PointerEvent::pointer_id: u64
 pub sigil::prelude::PointerEvent::position: sigil::geometry::Point
+pub sigil::prelude::PointerEvent::pressure: core::option::Option<f32>
 pub sigil::prelude::PointerEvent::target_size: sigil::geometry::LogicalSize
+pub sigil::prelude::PointerEvent::tilt: core::option::Option<sigil::events::PointerTilt>
 pub sigil::prelude::PointerEvent::window_position: sigil::geometry::Point
 pub struct sigil::prelude::Rgba8
 pub sigil::prelude::Rgba8::a: u8
@@ -2678,6 +2754,7 @@ pub fn sigil::reactive::Signal<T>::get(self) -> T
 pub fn sigil::reactive::Signal<T>::peek(self) -> T
 impl<T: core::cmp::PartialEq + 'static> sigil::reactive::Signal<T>
 pub fn sigil::reactive::Signal<T>::set(self, value: T)
+impl sigil::widgets::DiffSource for sigil::reactive::Signal<sigil::widgets::Patch>
 impl<S, T, R> sigil::widgets::IntoList<T, R> for sigil::reactive::Signal<S> where S: core::ops::deref::Deref + core::clone::Clone + 'static, <S as core::ops::deref::Deref>::Target: core::convert::AsRef<[T]>, T: 'static, R: sigil::widgets::RowRender<T>
 impl<T, U> core::ops::arith::AddAssign<U> for sigil::reactive::Signal<T> where T: core::ops::arith::AddAssign<U> + 'static
 impl<T, U> core::ops::arith::DivAssign<U> for sigil::reactive::Signal<T> where T: core::ops::arith::DivAssign<U> + 'static
@@ -2871,6 +2948,7 @@ pub fn sigil::prelude::NodeEventsExt::key_any<H>(self, h: H) -> Self where H: co
 pub fn sigil::prelude::NodeEventsExt::key_capture<S, H>(self, shortcut: S, h: H) -> Self where S: core::convert::Into<sigil::events::Shortcut>, H: core::ops::function::Fn(&mut sigil::events::KeyEvent) + 'static
 pub fn sigil::prelude::NodeEventsExt::key_capture_any<H>(self, h: H) -> Self where H: core::ops::function::Fn(&mut sigil::events::KeyEvent) + 'static
 pub fn sigil::prelude::NodeEventsExt::link<H>(self, h: H) -> Self where H: core::ops::function::Fn(&str) + 'static
+pub fn sigil::prelude::NodeEventsExt::on_gesture<H>(self, h: H) -> Self where H: core::ops::function::Fn(&mut sigil::events::GestureEvent) + 'static
 pub fn sigil::prelude::NodeEventsExt::on_ime<H>(self, h: H) -> Self where H: core::ops::function::Fn(&sigil::events::ImeEvent) + 'static
 pub fn sigil::prelude::NodeEventsExt::on_paste<H>(self, h: H) -> Self where H: core::ops::function::Fn(&mut sigil::events::PasteEvent) + 'static
 pub fn sigil::prelude::NodeEventsExt::on_scroll<H>(self, h: H) -> Self where H: core::ops::function::Fn(&mut sigil::events::ScrollEvent) + 'static
@@ -2998,7 +3076,7 @@ pub fn sigil::prelude::container() -> sigil::kernel::NodeBuilder
 pub fn sigil::prelude::context_menu(target: impl sigil::kernel::IntoNode + 'static, items: impl core::ops::function::Fn() -> alloc::vec::Vec<sigil::widgets::MenuItem> + 'static) -> sigil::kernel::NodeBuilder
 pub fn sigil::prelude::date_field(value: sigil::reactive::Signal<sigil::widgets::Date>) -> sigil::widgets::DateFieldBuilder
 pub fn sigil::prelude::derived<T, F>(f: F) -> sigil::reactive::Signal<T> where T: core::clone::Clone + core::cmp::PartialEq + 'static, F: core::ops::function::FnMut() -> T + 'static
-pub fn sigil::prelude::diff(patch: impl sigil::reactive::Reactive<alloc::string::String>) -> sigil::widgets::DiffBuilder
+pub fn sigil::prelude::diff(patch: impl sigil::widgets::DiffSource + 'static) -> sigil::widgets::DiffBuilder
 pub fn sigil::prelude::divider_horizontal() -> sigil::kernel::NodeBuilder
 pub const fn sigil::prelude::divider_vertical() -> sigil::widgets::VerticalDivider
 pub fn sigil::prelude::dot(tone: sigil::style::Tone) -> sigil::widgets::DotBuilder
@@ -5495,6 +5573,7 @@ impl core::marker::Copy for sigil::widgets::ChangeKind
 impl core::marker::StructuralPartialEq for sigil::widgets::ChangeKind
 pub enum sigil::widgets::ChartMark
 pub sigil::widgets::ChartMark::Bar
+pub sigil::widgets::ChartMark::Candle
 pub sigil::widgets::ChartMark::Line
 impl core::clone::Clone for sigil::widgets::ChartMark
 impl core::cmp::Eq for sigil::widgets::ChartMark
@@ -5552,6 +5631,20 @@ impl core::default::Default for sigil::widgets::FocusCaret
 impl core::fmt::Debug for sigil::widgets::FocusCaret
 impl core::marker::Copy for sigil::widgets::FocusCaret
 impl core::marker::StructuralPartialEq for sigil::widgets::FocusCaret
+pub enum sigil::widgets::LineKind
+pub sigil::widgets::LineKind::Added
+pub sigil::widgets::LineKind::Context
+pub sigil::widgets::LineKind::Note
+pub sigil::widgets::LineKind::Removed
+impl sigil::widgets::LineKind
+pub const fn sigil::widgets::LineKind::is_change(self) -> bool
+impl core::clone::Clone for sigil::widgets::LineKind
+impl core::cmp::Eq for sigil::widgets::LineKind
+impl core::cmp::PartialEq for sigil::widgets::LineKind
+impl core::fmt::Debug for sigil::widgets::LineKind
+impl core::hash::Hash for sigil::widgets::LineKind
+impl core::marker::Copy for sigil::widgets::LineKind
+impl core::marker::StructuralPartialEq for sigil::widgets::LineKind
 pub enum sigil::widgets::Orientation
 pub sigil::widgets::Orientation::Horizontal
 pub sigil::widgets::Orientation::Vertical
@@ -5687,10 +5780,13 @@ pub fn sigil::widgets::CardBuilder::selected(self, selected: impl sigil::reactiv
 pub struct sigil::widgets::ChartBuilder
 impl sigil::widgets::ChartBuilder
 pub const fn sigil::widgets::ChartBuilder::bar(self) -> Self
+pub fn sigil::widgets::ChartBuilder::candles(rows: impl sigil::reactive::Reactive<alloc::vec::Vec<(f32, f32, f32, f32)>>) -> Self
+pub const fn sigil::widgets::ChartBuilder::crosshair(self) -> Self
 pub fn sigil::widgets::ChartBuilder::labels(self, labels: impl core::iter::traits::collect::IntoIterator<Item = impl core::convert::Into<alloc::string::String>>) -> Self
 pub const fn sigil::widgets::ChartBuilder::line(self) -> Self
 pub fn sigil::widgets::ChartBuilder::series(self, name: impl core::convert::Into<alloc::string::String>, values: impl sigil::reactive::Reactive<alloc::vec::Vec<f32>>, tone: sigil::style::Tone) -> Self
 pub fn sigil::widgets::ChartBuilder::tone(self, tone: sigil::style::Tone) -> Self
+pub const fn sigil::widgets::ChartBuilder::x_range(self, range: sigil::reactive::Signal<core::ops::range::Range<f32>>) -> Self
 pub struct sigil::widgets::CheckboxBuilder
 impl sigil::widgets::CheckboxBuilder
 pub fn sigil::widgets::CheckboxBuilder::change(self, change: impl core::ops::function::Fn(bool) + 'static) -> Self
@@ -5761,6 +5857,7 @@ impl sigil::widgets::DiffBuilder
 pub fn sigil::widgets::DiffBuilder::change(self, on_change: impl core::ops::function::Fn(sigil::widgets::DiffView) + 'static) -> Self
 pub const fn sigil::widgets::DiffBuilder::max_rows(self, rows: usize) -> Self
 pub fn sigil::widgets::DiffBuilder::path(self, path: impl core::convert::Into<alloc::string::String>) -> Self
+pub const fn sigil::widgets::DiffBuilder::select(self, selection: sigil::reactive::Signal<sigil::widgets::Selection>) -> Self
 pub fn sigil::widgets::DiffBuilder::status(self, status: impl core::convert::Into<alloc::string::String>) -> Self
 pub const fn sigil::widgets::DiffBuilder::view(self, view: sigil::widgets::DiffView) -> Self
 pub struct sigil::widgets::DotBuilder
@@ -5777,6 +5874,8 @@ pub fn sigil::widgets::DropdownBuilder::new(selected: sigil::reactive::Signal<us
 pub struct sigil::widgets::FieldBuilder<C>
 impl<C: sigil::widgets::FieldControl> sigil::widgets::FieldBuilder<C>
 pub fn sigil::widgets::FieldBuilder<C>::error(self, error: impl sigil::reactive::Reactive<core::option::Option<alloc::string::String>>) -> Self
+impl<C> sigil::widgets::FieldBuilder<C>
+pub fn sigil::widgets::FieldBuilder<C>::required(self, required: impl sigil::reactive::Reactive<bool>) -> Self
 #[non_exhaustive] pub struct sigil::widgets::FuzzyMatch
 pub sigil::widgets::FuzzyMatch::positions: alloc::vec::Vec<usize>
 pub sigil::widgets::FuzzyMatch::score: usize
@@ -5811,6 +5910,19 @@ pub sigil::widgets::HlSpan::start: usize
 pub sigil::widgets::HlSpan::token: &'static str
 impl core::clone::Clone for sigil::widgets::HlSpan
 impl core::fmt::Debug for sigil::widgets::HlSpan
+pub struct sigil::widgets::Hunk
+pub sigil::widgets::Hunk::header: alloc::string::String
+pub sigil::widgets::Hunk::lines: alloc::vec::Vec<sigil::widgets::Line>
+pub sigil::widgets::Hunk::meta: alloc::vec::Vec<alloc::string::String>
+pub sigil::widgets::Hunk::new_start: usize
+pub sigil::widgets::Hunk::old_start: usize
+pub sigil::widgets::Hunk::path: core::option::Option<alloc::string::String>
+impl core::clone::Clone for sigil::widgets::Hunk
+impl core::cmp::Eq for sigil::widgets::Hunk
+impl core::cmp::PartialEq for sigil::widgets::Hunk
+impl core::default::Default for sigil::widgets::Hunk
+impl core::fmt::Debug for sigil::widgets::Hunk
+impl core::marker::StructuralPartialEq for sigil::widgets::Hunk
 pub struct sigil::widgets::IconBuilder
 impl sigil::widgets::IconBuilder
 pub fn sigil::widgets::IconBuilder::label(self, label: impl core::convert::Into<alloc::string::String>) -> Self
@@ -5827,6 +5939,28 @@ impl sigil::widgets::InteractiveBuilder
 pub fn sigil::widgets::InteractiveBuilder::disabled(self, disabled: impl sigil::reactive::Reactive<bool>) -> Self
 pub const fn sigil::widgets::InteractiveBuilder::focusable(self, yes: bool) -> Self
 pub fn sigil::widgets::InteractiveBuilder::into_node_builder(self) -> sigil::kernel::NodeBuilder
+pub struct sigil::widgets::Line
+pub sigil::widgets::Line::kind: sigil::widgets::LineKind
+pub sigil::widgets::Line::new: core::option::Option<usize>
+pub sigil::widgets::Line::old: core::option::Option<usize>
+pub sigil::widgets::Line::text: alloc::string::String
+impl core::clone::Clone for sigil::widgets::Line
+impl core::cmp::Eq for sigil::widgets::Line
+impl core::cmp::PartialEq for sigil::widgets::Line
+impl core::fmt::Debug for sigil::widgets::Line
+impl core::marker::StructuralPartialEq for sigil::widgets::Line
+pub struct sigil::widgets::LineId
+pub sigil::widgets::LineId::hunk: usize
+pub sigil::widgets::LineId::line: usize
+impl core::clone::Clone for sigil::widgets::LineId
+impl core::cmp::Eq for sigil::widgets::LineId
+impl core::cmp::Ord for sigil::widgets::LineId
+impl core::cmp::PartialEq for sigil::widgets::LineId
+impl core::cmp::PartialOrd for sigil::widgets::LineId
+impl core::fmt::Debug for sigil::widgets::LineId
+impl core::hash::Hash for sigil::widgets::LineId
+impl core::marker::Copy for sigil::widgets::LineId
+impl core::marker::StructuralPartialEq for sigil::widgets::LineId
 pub struct sigil::widgets::ListColumn
 pub sigil::widgets::ListColumn::align: sigil::widgets::ColAlign
 pub sigil::widgets::ListColumn::text: sigil::kernel::TextContent
@@ -5836,6 +5970,7 @@ pub fn sigil::widgets::ListColumn::new(text: impl core::convert::Into<sigil::ker
 pub const fn sigil::widgets::ListColumn::start(self) -> Self
 impl core::convert::From<(sigil::kernel::TextContent, f32)> for sigil::widgets::ListColumn
 pub struct sigil::widgets::ListRowSlots
+pub sigil::widgets::ListRowSlots::activate: core::option::Option<alloc::rc::Rc<dyn core::ops::function::Fn()>>
 pub sigil::widgets::ListRowSlots::badge: core::option::Option<(sigil::kernel::TextContent, sigil::style::Tone)>
 pub sigil::widgets::ListRowSlots::columns: alloc::vec::Vec<sigil::widgets::ListColumn>
 pub sigil::widgets::ListRowSlots::depth: u16
@@ -5896,6 +6031,21 @@ pub fn sigil::widgets::PanelBuilder::new() -> Self
 pub const fn sigil::widgets::PanelBuilder::padding(self, px: f32) -> Self
 pub fn sigil::widgets::PanelBuilder::title(self, title: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::default::Default for sigil::widgets::PanelBuilder
+pub struct sigil::widgets::Patch
+pub sigil::widgets::Patch::hunks: alloc::vec::Vec<sigil::widgets::Hunk>
+pub sigil::widgets::Patch::trailer: alloc::vec::Vec<alloc::string::String>
+impl sigil::widgets::Patch
+pub fn sigil::widgets::Patch::changes(&self) -> impl core::iter::traits::iterator::Iterator<Item = sigil::widgets::LineId> + '_
+pub fn sigil::widgets::Patch::hunk_changes(&self, hunk: usize) -> impl core::iter::traits::iterator::Iterator<Item = sigil::widgets::LineId> + '_
+pub fn sigil::widgets::Patch::line(&self, id: sigil::widgets::LineId) -> core::option::Option<&sigil::widgets::Line>
+pub fn sigil::widgets::Patch::parse(text: &str) -> Self
+impl core::clone::Clone for sigil::widgets::Patch
+impl core::cmp::Eq for sigil::widgets::Patch
+impl core::cmp::PartialEq for sigil::widgets::Patch
+impl core::default::Default for sigil::widgets::Patch
+impl core::fmt::Debug for sigil::widgets::Patch
+impl core::marker::StructuralPartialEq for sigil::widgets::Patch
+impl sigil::widgets::DiffSource for sigil::widgets::Patch
 pub struct sigil::widgets::PathNode
 pub struct sigil::widgets::ProgressBuilder
 pub sigil::widgets::ProgressBuilder::indeterminate: bool
@@ -5922,6 +6072,19 @@ pub const fn sigil::widgets::ScrollBuilder::scroll_bind(self, scroll_y: sigil::r
 pub struct sigil::widgets::SegmentedBuilder
 impl sigil::widgets::SegmentedBuilder
 pub fn sigil::widgets::SegmentedBuilder::label(self, name: impl core::convert::Into<alloc::string::String>) -> Self
+pub struct sigil::widgets::Selection
+pub sigil::widgets::Selection::hunks: alloc::collections::btree::set::BTreeSet<usize>
+pub sigil::widgets::Selection::lines: alloc::collections::btree::set::BTreeSet<sigil::widgets::LineId>
+impl sigil::widgets::Selection
+pub fn sigil::widgets::Selection::contains(&self, id: sigil::widgets::LineId) -> bool
+pub fn sigil::widgets::Selection::select_hunk(&mut self, patch: &sigil::widgets::Patch, hunk: usize)
+pub fn sigil::widgets::Selection::select_line(&mut self, patch: &sigil::widgets::Patch, id: sigil::widgets::LineId, extend: bool)
+impl core::clone::Clone for sigil::widgets::Selection
+impl core::cmp::Eq for sigil::widgets::Selection
+impl core::cmp::PartialEq for sigil::widgets::Selection
+impl core::default::Default for sigil::widgets::Selection
+impl core::fmt::Debug for sigil::widgets::Selection
+impl core::marker::StructuralPartialEq for sigil::widgets::Selection
 pub struct sigil::widgets::SelectionState
 impl sigil::widgets::SelectionState
 pub fn sigil::widgets::SelectionState::click(&mut self, index: usize)
@@ -6024,6 +6187,7 @@ pub struct sigil::widgets::TextEditBuilder
 impl sigil::widgets::TextEditBuilder
 pub const fn sigil::widgets::TextEditBuilder::autofocus(self) -> Self
 pub const fn sigil::widgets::TextEditBuilder::caret_position(self, position: sigil::reactive::Signal<usize>) -> Self
+pub const fn sigil::widgets::TextEditBuilder::caret_rect(self, rect: sigil::reactive::Signal<core::option::Option<sigil::geometry::Rect>>) -> Self
 pub fn sigil::widgets::TextEditBuilder::caret_visible(&mut self) -> sigil::reactive::Signal<bool>
 pub fn sigil::widgets::TextEditBuilder::change(self, f: impl core::ops::function::Fn(&str) + 'static) -> Self
 pub const fn sigil::widgets::TextEditBuilder::chrome(self, enabled: bool) -> Self
@@ -6159,6 +6323,9 @@ pub const sigil::widgets::DROP_TARGET_CLASS: &str
 pub const sigil::widgets::MAX_VISIBLE: usize
 pub const sigil::widgets::MIN_COL_WIDTH: f32
 pub const sigil::widgets::TOAST_TTL: core::time::Duration
+pub trait sigil::widgets::DiffSource
+pub fn sigil::widgets::DiffSource::into_patch(self) -> sigil::reactive::Signal<alloc::rc::Rc<sigil::widgets::Patch>>
+impl<R: sigil::reactive::Reactive<alloc::string::String>> sigil::widgets::DiffSource for R
 pub trait sigil::widgets::DragDropExt<T: core::clone::Clone + 'static>
 pub fn sigil::widgets::DragDropExt::drag_source(self, state: sigil::widgets::DragState<T>, payload: T) -> Self
 pub fn sigil::widgets::DragDropExt::drop_target(self, state: sigil::widgets::DragState<T>, accepts: impl core::ops::function::Fn(&T) -> bool + 'static, on_drop: impl core::ops::function::Fn(T) + 'static) -> Self
@@ -6198,7 +6365,7 @@ pub fn sigil::widgets::combobox(state: sigil::widgets::Combobox) -> sigil::kerne
 pub fn sigil::widgets::command_menu() -> sigil::widgets::CommandMenuBuilder
 pub fn sigil::widgets::context_menu(target: impl sigil::kernel::IntoNode + 'static, items: impl core::ops::function::Fn() -> alloc::vec::Vec<sigil::widgets::MenuItem> + 'static) -> sigil::kernel::NodeBuilder
 pub fn sigil::widgets::date_field(value: sigil::reactive::Signal<sigil::widgets::Date>) -> sigil::widgets::DateFieldBuilder
-pub fn sigil::widgets::diff(patch: impl sigil::reactive::Reactive<alloc::string::String>) -> sigil::widgets::DiffBuilder
+pub fn sigil::widgets::diff(patch: impl sigil::widgets::DiffSource + 'static) -> sigil::widgets::DiffBuilder
 pub fn sigil::widgets::divider_horizontal() -> sigil::kernel::NodeBuilder
 pub const fn sigil::widgets::divider_vertical() -> sigil::widgets::VerticalDivider
 pub fn sigil::widgets::dot(tone: sigil::style::Tone) -> sigil::widgets::DotBuilder
@@ -6222,6 +6389,7 @@ pub fn sigil::widgets::image_rgba(width: u32, height: u32, rgba: alloc::vec::Vec
 pub fn sigil::widgets::interactive(inner: sigil::kernel::NodeBuilder) -> sigil::widgets::InteractiveBuilder
 pub fn sigil::widgets::kv_grid<K, V>(rows: impl core::iter::traits::collect::IntoIterator<Item = (K, V)>) -> sigil::kernel::NodeBuilder where K: core::convert::Into<sigil::kernel::TextContent>, V: core::convert::Into<sigil::kernel::TextContent>
 pub fn sigil::widgets::kv_row(label: impl core::convert::Into<sigil::kernel::TextContent>, value: impl sigil::kernel::IntoNode + 'static) -> sigil::kernel::NodeBuilder
+pub fn sigil::widgets::language_for_path(path: &str) -> core::option::Option<&'static str>
 pub fn sigil::widgets::list_row(selected: bool, title: impl core::convert::Into<sigil::kernel::TextContent>, detail: impl core::convert::Into<sigil::kernel::TextContent>) -> sigil::kernel::NodeBuilder
 pub fn sigil::widgets::list_row_with(selected: bool, title: impl core::convert::Into<sigil::kernel::TextContent>, slots: sigil::widgets::ListRowSlots) -> sigil::kernel::NodeBuilder
 pub fn sigil::widgets::markdown(source: sigil::reactive::Signal<alloc::string::String>) -> sigil::kernel::NodeBuilder
@@ -6257,6 +6425,7 @@ pub fn sigil::widgets::tabs() -> sigil::widgets::TabsBuilder
 pub fn sigil::widgets::terminal(lines: sigil::reactive::Signal<alloc::vec::Vec<alloc::string::String>>, on_input: impl core::ops::function::Fn(alloc::string::String) + 'static) -> sigil::kernel::NodeBuilder
 pub fn sigil::widgets::text_edit(value: sigil::reactive::Signal<alloc::string::String>) -> sigil::widgets::TextEditBuilder
 pub fn sigil::widgets::text_field(value: sigil::reactive::Signal<alloc::string::String>) -> sigil::widgets::TextFieldBuilder
+pub fn sigil::widgets::text_runs(marks: &[sigil::widgets::Highlight], range: core::ops::range::Range<usize>) -> alloc::vec::Vec<sigil::style::TextRun>
 pub fn sigil::widgets::to_hex(color: sigil::style::Rgba8) -> alloc::string::String
 pub fn sigil::widgets::toast(message: sigil::reactive::Signal<core::option::Option<alloc::string::String>>) -> sigil::kernel::NodeBuilder
 pub fn sigil::widgets::toast_queue(queue: sigil::widgets::ToastQueue) -> sigil::kernel::NodeBuilder

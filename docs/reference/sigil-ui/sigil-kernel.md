@@ -117,10 +117,13 @@
 | <code>name: <a href="#accessiblename">AccessibleName</a></code> |  |
 | <code>owns: SmallVec&lt;[<a href="#nodeid">NodeId</a>; 2]&gt;</code> |  |
 | <code>placeholder: Option&lt;String&gt;</code> |  |
+| <code>position_in_set: Option&lt;usize&gt;</code> |  |
+| <code>required: Option&lt;<a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;&gt;</code> |  |
 | <code>role: Role</code> |  |
 | <code>row_count: Option&lt;<a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;&gt;</code> |  |
 | <code>row_index: Option&lt;usize&gt;</code> |  |
 | <code>selected: Option&lt;<a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;&gt;</code> |  |
+| <code>size_of_set: Option&lt;usize&gt;</code> |  |
 | <code>sort_direction: Option&lt;<a href="sigil-reactive.html#signal">Signal</a>&lt;Option&lt;SortDirection&gt;&gt;&gt;</code> |  |
 | <code>step: Option&lt;f32&gt;</code> |  |
 | <code>tab_index: Option&lt;i32&gt;</code> |  |

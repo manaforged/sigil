@@ -1055,7 +1055,7 @@ Public items outside the prelude. Import them by path.
 | `app::dialog` | `mod dialog` | File and message dialogs. No call blocks the frame loop. Feature `dialog` gives the API and an in-app modal that works on every host and needs no desktop dependencies. Feature `native-dialog` adds the OS dialog on the window host, run on the task runtime; the terminal host, or a Linux session without `DISPLAY` or `WAYLAND_DISPLAY`, still uses the in-app modal. The in-app modal shows the directory path, a list with `..` and folders first, the extension filter applied, a name field in save mode, and Cancel and Open buttons. Arrows move, Enter opens a folder or picks a file, Backspace goes up, and Escape cancels. The caller code is the same on both hosts. |
 | `app::tray` | `mod tray` | System tray icon (feature `tray`). |
 | `app::menu` | `mod menu` | Native menu bar (feature `menu`). |
-| `app::Player` | `struct Player` | Audio file player (feature `audio`). |
+| `app::Player` | `struct Player`; `play_path`, `play_bytes(Vec<u8>)`, `queue(paths)`, `append(path)`, `stop()`, `toggle()`, `seek`; `volume: Signal<f32>`, `duration: Signal<Option<Duration>>` | Audio player (feature `audio`). It keeps one output device for its life, so `append` and `queue` play tracks back to back with no gap. Setting `volume` changes the output level. |
 | `app::Session` | `struct Session` | Child process in a pseudo-terminal (feature `pty`). |
 | `app::ErrorKind` | `enum ErrorKind` | Class of an `Error`. |
 | `app::PanicPolicy` | `enum PanicPolicy { Isolate, Abort }` | What a panic in a handler does. |

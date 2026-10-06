@@ -236,6 +236,7 @@
 
 | Field | Description |
 | --- | --- |
+| <code>activate: Option&lt;Rc&lt;dyn Fn()&gt;&gt;</code> |  |
 | <code>badge: Option&lt;(<a href="sigil-kernel.html#textcontent">TextContent</a>, <a href="sigil-style.html#tone">Tone</a>)&gt;</code> |  |
 | <code>columns: Vec&lt;<a href="sigil-widgets.html#listcolumn">ListColumn</a>&gt;</code> |  |
 | <code>depth: u16</code> |  |
@@ -298,8 +299,11 @@
 | <code>kind: <a href="sigil-events.html#pointerkind">PointerKind</a></code> |  |
 | <code>modifiers: Modifiers</code> |  |
 | <code>phase: <a href="sigil-events.html#pointerphase">PointerPhase</a></code> |  |
+| <code>pointer_id: u64</code> |  |
 | <code>position: <a href="sigil-geometry.html#point">Point</a></code> |  |
+| <code>pressure: Option&lt;f32&gt;</code> |  |
 | <code>target_size: <a href="sigil-geometry.html#logicalsize">LogicalSize</a></code> |  |
+| <code>tilt: Option&lt;<a href="sigil-events.html#pointertilt">PointerTilt</a>&gt;</code> |  |
 | <code>window_position: <a href="sigil-geometry.html#point">Point</a></code> |  |
 
 
@@ -1003,6 +1007,7 @@
 | <code>key_capture&lt;S, H&gt;(self, shortcut: S, h: H) -&gt; Self where S: Into&lt;<a href="sigil-events.html#shortcut">Shortcut</a>&gt;, H: Fn(&amp;mut <a href="sigil-events.html#keyevent">KeyEvent</a>) + 'static</code> |  |
 | <code>key_capture_any&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#keyevent">KeyEvent</a>) + 'static</code> |  |
 | <code>link&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;str) + 'static</code> |  |
+| <code>on_gesture&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#gestureevent">GestureEvent</a>) + 'static</code> |  |
 | <code>on_ime&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;<a href="sigil-events.html#imeevent">ImeEvent</a>) + 'static</code> |  |
 | <code>on_paste&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#pasteevent">PasteEvent</a>) + 'static</code> |  |
 | <code>on_scroll&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#scrollevent">ScrollEvent</a>) + 'static</code> |  |
@@ -1208,7 +1213,7 @@
 
 ### `diff`
 
-<pre>pub fn <a href="#diff">diff</a>(patch: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;String&gt;) -&gt; <a href="sigil-widgets.html#diffbuilder">DiffBuilder</a></pre>
+<pre>pub fn <a href="#diff">diff</a>(patch: impl <a href="sigil-widgets.html#diffsource">DiffSource</a> + 'static) -&gt; <a href="sigil-widgets.html#diffbuilder">DiffBuilder</a></pre>
 
 
 ### `divider_horizontal`

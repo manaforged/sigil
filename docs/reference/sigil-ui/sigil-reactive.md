@@ -42,7 +42,7 @@
 | <code>pub fn <a href="#signal">Signal</a>&lt;T&gt;::peek(self) -&gt; T</code> |  |
 | <code>pub fn <a href="#signal">Signal</a>&lt;T&gt;::set(self, value: T)</code> |  |
 
-**Trait implementations:** <code><a href="sigil-widgets.html#intolist">IntoList</a>&lt;T, R&gt;</code>, <code>AddAssign&lt;U&gt;</code>, <code>DivAssign&lt;U&gt;</code>, <code>MulAssign&lt;U&gt;</code>, <code>RemAssign&lt;U&gt;</code>, <code>SubAssign&lt;U&gt;</code>, <code>BitAndAssign&lt;U&gt;</code>, <code>BitOrAssign&lt;U&gt;</code>, <code>BitXorAssign&lt;U&gt;</code>, <code>ShlAssign&lt;U&gt;</code>, <code>ShrAssign&lt;U&gt;</code>, <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code><a href="#reactive">Reactive</a>&lt;T&gt;</code>, <code>Display</code>
+**Trait implementations:** <code><a href="sigil-widgets.html#diffsource">DiffSource</a></code>, <code><a href="sigil-widgets.html#intolist">IntoList</a>&lt;T, R&gt;</code>, <code>AddAssign&lt;U&gt;</code>, <code>DivAssign&lt;U&gt;</code>, <code>MulAssign&lt;U&gt;</code>, <code>RemAssign&lt;U&gt;</code>, <code>SubAssign&lt;U&gt;</code>, <code>BitAndAssign&lt;U&gt;</code>, <code>BitOrAssign&lt;U&gt;</code>, <code>BitXorAssign&lt;U&gt;</code>, <code>ShlAssign&lt;U&gt;</code>, <code>ShrAssign&lt;U&gt;</code>, <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code><a href="#reactive">Reactive</a>&lt;T&gt;</code>, <code>Display</code>
 
 
 ### `EventChannel`

@@ -54,3 +54,46 @@ fn seek_without_sink_errors() {
         );
     });
 }
+
+fn silent_wav(millis: u32) -> Vec<u8> {
+    let rate: u32 = 8_000;
+    let samples = rate * millis / 1_000;
+    let data = samples * 2;
+    let mut wav = Vec::with_capacity(44 + data as usize);
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&(36 + data).to_le_bytes());
+    wav.extend_from_slice(b"WAVEfmt ");
+    wav.extend_from_slice(&16_u32.to_le_bytes());
+    wav.extend_from_slice(&1_u16.to_le_bytes());
+    wav.extend_from_slice(&1_u16.to_le_bytes());
+    wav.extend_from_slice(&rate.to_le_bytes());
+    wav.extend_from_slice(&(rate * 2).to_le_bytes());
+    wav.extend_from_slice(&2_u16.to_le_bytes());
+    wav.extend_from_slice(&16_u16.to_le_bytes());
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&data.to_le_bytes());
+    wav.resize(44 + data as usize, 0);
+    wav
+}
+
+#[test]
+#[ignore = "manual: needs an audio output device"]
+fn tracks_play_back_to_back_on_one_device() {
+    Runtime::scope("audio-queue", || {
+        let player = Player::new();
+        player.play_bytes(silent_wav(300)).unwrap();
+        assert!(player.playing.peek());
+        assert_eq!(player.duration.peek(), Some(Duration::from_millis(300)));
+        let started = std::time::Instant::now();
+        player.play_bytes(silent_wav(200)).unwrap();
+        assert!(
+            started.elapsed() < Duration::from_millis(5),
+            "switching tracks took {:?}",
+            started.elapsed()
+        );
+        assert_eq!(player.duration.peek(), Some(Duration::from_millis(200)));
+        player.stop();
+        assert!(!player.playing.peek());
+        assert_eq!(player.duration.peek(), None);
+    });
+}

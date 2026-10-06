@@ -7,17 +7,21 @@
 | [`EventHandlers`](#eventhandlers) | struct |  |
 | [`EventRouter`](#eventrouter) | struct |  |
 | [`FileDropEvent`](#filedropevent) | struct |  |
+| [`GestureEvent`](#gestureevent) | struct |  |
+| [`GestureEventInit`](#gestureeventinit) | struct |  |
 | [`KeyEvent`](#keyevent) | struct |  |
 | [`KeyEventInit`](#keyeventinit) | struct |  |
 | [`MouseButtons`](#mousebuttons) | struct |  |
 | [`PasteEvent`](#pasteevent) | struct |  |
 | [`PointerEvent`](#pointerevent) | struct |  |
 | [`PointerEventInit`](#pointereventinit) | struct |  |
+| [`PointerTilt`](#pointertilt) | struct |  |
 | [`ScrollEvent`](#scrollevent) | struct |  |
 | [`ScrollEventInit`](#scrolleventinit) | struct |  |
 | [`SelectableText`](#selectabletext) | struct |  |
 | [`FileDropPhase`](#filedropphase) | enum |  |
 | [`FocusIntent`](#focusintent) | enum |  |
+| [`GestureKind`](#gesturekind) | enum |  |
 | [`ImeEvent`](#imeevent) | enum |  |
 | [`KeyPhase`](#keyphase) | enum |  |
 | [`LogicalKey`](#logicalkey) | enum |  |
@@ -27,6 +31,7 @@
 | [`ScrollDelta`](#scrolldelta) | enum |  |
 | [`ScrollPhase`](#scrollphase) | enum |  |
 | [`ShellEvent`](#shellevent) | enum |  |
+| [`ShortcutParseError`](#shortcutparseerror) | enum |  |
 | [`WindowEvent`](#windowevent) | enum |  |
 | [`NodeEventsExt`](#nodeeventsext) | trait |  |
 | [`focus_from_keyboard`](#focus_from_keyboard) | fn |  |
@@ -61,7 +66,7 @@
 | <code>key: <a href="#logicalkey">LogicalKey</a></code> |  |
 | <code>modifiers: Modifiers</code> |  |
 
-**Trait implementations:** <code>From&lt;<a href="#logicalkey">LogicalKey</a>&gt;</code>, <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>From&lt;NamedKey&gt;</code>, <code>Debug</code>, <code>Hash</code>, <code>StructuralPartialEq</code>
+**Trait implementations:** <code>From&lt;<a href="#logicalkey">LogicalKey</a>&gt;</code>, <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>From&lt;NamedKey&gt;</code>, <code>Debug</code>, <code>Hash</code>, <code>StructuralPartialEq</code>, <code>FromStr</code>
 
 
 ### `ClickConfig`
@@ -124,6 +129,42 @@
 | <code>phase: <a href="#filedropphase">FileDropPhase</a></code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
+
+
+### `GestureEvent`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>const new(init: <a href="#gestureeventinit">GestureEventInit</a>) -&gt; Self</code> |  |
+| <code>const propagation_stopped(&amp;self) -&gt; bool</code> |  |
+| <code>const stop_propagation(&amp;mut self)</code> |  |
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>kind: <a href="#gesturekind">GestureKind</a></code> |  |
+| <code>modifiers: Modifiers</code> |  |
+| <code>phase: <a href="#scrollphase">ScrollPhase</a></code> |  |
+| <code>position: <a href="sigil-geometry.html#point">Point</a></code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
+
+
+### `GestureEventInit`
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>kind: <a href="#gesturekind">GestureKind</a></code> |  |
+| <code>modifiers: Modifiers</code> |  |
+| <code>phase: <a href="#scrollphase">ScrollPhase</a></code> |  |
+| <code>position: <a href="sigil-geometry.html#point">Point</a></code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `KeyEvent`
@@ -219,6 +260,7 @@
 | <code>const propagation_stopped(&amp;self) -&gt; bool</code> |  |
 | <code>const set_captured(&amp;mut self, captured: bool)</code> |  |
 | <code>const stop_propagation(&amp;mut self)</code> |  |
+| <code>const with_contact(self, pointer_id: u64, pressure: Option&lt;f32&gt;, tilt: Option&lt;<a href="#pointertilt">PointerTilt</a>&gt;) -&gt; Self</code> |  |
 
 **Fields**
 
@@ -230,8 +272,11 @@
 | <code>kind: <a href="#pointerkind">PointerKind</a></code> |  |
 | <code>modifiers: Modifiers</code> |  |
 | <code>phase: <a href="#pointerphase">PointerPhase</a></code> |  |
+| <code>pointer_id: u64</code> |  |
 | <code>position: <a href="sigil-geometry.html#point">Point</a></code> |  |
+| <code>pressure: Option&lt;f32&gt;</code> |  |
 | <code>target_size: <a href="sigil-geometry.html#logicalsize">LogicalSize</a></code> |  |
+| <code>tilt: Option&lt;<a href="#pointertilt">PointerTilt</a>&gt;</code> |  |
 | <code>window_position: <a href="sigil-geometry.html#point">Point</a></code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
@@ -252,6 +297,18 @@
 | <code>position: <a href="sigil-geometry.html#point">Point</a></code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
+### `PointerTilt`
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>x: f32</code> |  |
+| <code>y: f32</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `ScrollEvent`
@@ -320,6 +377,20 @@
 | <code>Up</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
+### `GestureKind`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>DoubleTap</code> |  |
+| <code>Pan(<a href="sigil-geometry.html#point">Point</a>)</code> |  |
+| <code>Pinch(f64)</code> |  |
+| <code>Rotate(f32)</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `ImeEvent`
@@ -445,6 +516,7 @@
 | Variant | Description |
 | --- | --- |
 | <code>FileDrop(<a href="#filedropevent">FileDropEvent</a>)</code> |  |
+| <code>Gesture(<a href="#gestureevent">GestureEvent</a>)</code> |  |
 | <code>Ime(<a href="#imeevent">ImeEvent</a>)</code> |  |
 | <code>Key(<a href="#keyevent">KeyEvent</a>)</code> |  |
 | <code>Paste(String)</code> |  |
@@ -453,6 +525,19 @@
 | <code>Window(<a href="#windowevent">WindowEvent</a>)</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
+
+
+### `ShortcutParseError`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Empty</code> |  |
+| <code>UnknownKey(String)</code> |  |
+| <code>UnknownModifier(String)</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Error</code>, <code>Debug</code>, <code>Display</code>, <code>StructuralPartialEq</code>
 
 
 ### `WindowEvent`
@@ -491,6 +576,7 @@
 | <code>key_capture&lt;S, H&gt;(self, shortcut: S, h: H) -&gt; Self where S: Into&lt;<a href="#shortcut">Shortcut</a>&gt;, H: Fn(&amp;mut <a href="#keyevent">KeyEvent</a>) + 'static</code> |  |
 | <code>key_capture_any&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="#keyevent">KeyEvent</a>) + 'static</code> |  |
 | <code>link&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;str) + 'static</code> |  |
+| <code>on_gesture&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="#gestureevent">GestureEvent</a>) + 'static</code> |  |
 | <code>on_ime&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;<a href="#imeevent">ImeEvent</a>) + 'static</code> |  |
 | <code>on_paste&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="#pasteevent">PasteEvent</a>) + 'static</code> |  |
 | <code>on_scroll&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="#scrollevent">ScrollEvent</a>) + 'static</code> |  |

@@ -141,9 +141,13 @@
 
 | Method | Description |
 | --- | --- |
+| <code>append(&amp;self, path: &amp;Path) -&gt; <a href="sigil.html#appresult">AppResult</a>&lt;()&gt;</code> |  |
 | <code>new() -&gt; Self</code> |  |
+| <code>play_bytes(&amp;self, bytes: Vec&lt;u8&gt;) -&gt; <a href="sigil.html#appresult">AppResult</a>&lt;()&gt;</code> |  |
 | <code>play_path(&amp;self, path: &amp;Path) -&gt; <a href="sigil.html#appresult">AppResult</a>&lt;()&gt;</code> |  |
+| <code>queue&lt;P: AsRef&lt;Path&gt;&gt;(&amp;self, paths: impl IntoIterator&lt;Item = P&gt;) -&gt; <a href="sigil.html#appresult">AppResult</a>&lt;()&gt;</code> |  |
 | <code>seek(&amp;self, ratio: f32) -&gt; <a href="sigil.html#appresult">AppResult</a>&lt;()&gt;</code> |  |
+| <code>stop(&amp;self)</code> |  |
 | <code>tick(&amp;self)</code> |  |
 | <code>toggle(&amp;self)</code> |  |
 
@@ -151,8 +155,10 @@
 
 | Field | Description |
 | --- | --- |
+| <code>duration: <a href="sigil-reactive.html#signal">Signal</a>&lt;Option&lt;Duration&gt;&gt;</code> |  |
 | <code>playing: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;</code> |  |
 | <code>progress: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;</code> |  |
+| <code>volume: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Default</code>
 

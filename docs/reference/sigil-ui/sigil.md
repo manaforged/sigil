@@ -25,6 +25,7 @@
 | [`tokio::sync::mpsc::bounded::Receiver`](#tokiosyncmpscboundedreceiver) | impl |  |
 | [`tokio::sync::mpsc::unbounded::UnboundedReceiver`](#tokiosyncmpscunboundedunboundedreceiver) | impl |  |
 | [`core::io::error::Error`](#coreioerrorerror) | impl |  |
+| [`R`](#r) | impl |  |
 | [`K`](#k) | impl |  |
 
 ## Structs
@@ -218,6 +219,11 @@
 ### `core::io::error::Error`
 
 **Trait implementations:** <code>From&lt;<a href="sigil-terminal.html#printaboveerror">PrintAboveError</a>&gt;</code>
+
+
+### `R`
+
+**Trait implementations:** <code><a href="sigil-widgets.html#diffsource">DiffSource</a></code>
 
 
 ### `K`

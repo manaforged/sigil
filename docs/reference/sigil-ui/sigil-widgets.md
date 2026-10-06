@@ -59,8 +59,13 @@
 | [`FuzzyMatch`](#fuzzymatch) | struct |  |
 | [`Highlight`](#highlight) | struct |  |
 | [`HlSpan`](#hlspan) | struct |  |
+| [`Hunk`](#hunk) | struct |  |
 | [`IconSource`](#iconsource) | struct |  |
+| [`Line`](#line) | struct |  |
+| [`LineId`](#lineid) | struct |  |
 | [`ListColumn`](#listcolumn) | struct |  |
+| [`Patch`](#patch) | struct |  |
+| [`Selection`](#selection) | struct |  |
 | [`SelectionState`](#selectionstate) | struct |  |
 | [`SubmenuBuilder`](#submenubuilder) | struct |  |
 | [`TextEditState`](#texteditstate) | struct |  |
@@ -84,6 +89,7 @@
 | [`ColAlign`](#colalign) | enum |  |
 | [`DiagSeverity`](#diagseverity) | enum |  |
 | [`FocusCaret`](#focuscaret) | enum |  |
+| [`LineKind`](#linekind) | enum |  |
 | [`PathCmd`](#pathcmd) | enum |  |
 | [`PathFill`](#pathfill) | enum |  |
 | [`RowTone`](#rowtone) | enum |  |
@@ -91,6 +97,7 @@
 | [`SparkFill`](#sparkfill) | enum |  |
 | [`SparkMark`](#sparkmark) | enum |  |
 | [`ToastLevel`](#toastlevel) | enum |  |
+| [`DiffSource`](#diffsource) | trait |  |
 | [`DragDropExt`](#dragdropext) | trait |  |
 | [`FieldControl`](#fieldcontrol) | trait |  |
 | [`Identifiable`](#identifiable) | trait |  |
@@ -137,6 +144,7 @@
 | [`interactive`](#interactive) | fn |  |
 | [`kv_grid`](#kv_grid) | fn |  |
 | [`kv_row`](#kv_row) | fn |  |
+| [`language_for_path`](#language_for_path) | fn |  |
 | [`list_row`](#list_row) | fn |  |
 | [`list_row_with`](#list_row_with) | fn |  |
 | [`markdown`](#markdown) | fn |  |
@@ -172,6 +180,7 @@
 | [`terminal`](#terminal) | fn |  |
 | [`text_edit`](#text_edit) | fn |  |
 | [`text_field`](#text_field) | fn |  |
+| [`text_runs`](#text_runs) | fn |  |
 | [`to_hex`](#to_hex) | fn |  |
 | [`toast`](#toast) | fn |  |
 | [`toast_queue`](#toast_queue) | fn |  |
@@ -236,10 +245,13 @@
 | Method | Description |
 | --- | --- |
 | <code>const bar(self) -&gt; Self</code> |  |
+| <code>candles(rows: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;Vec&lt;(f32, f32, f32, f32)&gt;&gt;) -&gt; Self</code> |  |
+| <code>const crosshair(self) -&gt; Self</code> |  |
 | <code>labels(self, labels: impl IntoIterator&lt;Item = impl Into&lt;String&gt;&gt;) -&gt; Self</code> |  |
 | <code>const line(self) -&gt; Self</code> |  |
 | <code>series(self, name: impl Into&lt;String&gt;, values: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;Vec&lt;f32&gt;&gt;, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
 | <code>tone(self, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
+| <code>const x_range(self, range: <a href="sigil-reactive.html#signal">Signal</a>&lt;Range&lt;f32&gt;&gt;) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 
@@ -344,6 +356,7 @@
 | <code>change(self, on_change: impl Fn(<a href="#diffview">DiffView</a>) + 'static) -&gt; Self</code> |  |
 | <code>const max_rows(self, rows: usize) -&gt; Self</code> |  |
 | <code>path(self, path: impl Into&lt;String&gt;) -&gt; Self</code> |  |
+| <code>const select(self, selection: <a href="sigil-reactive.html#signal">Signal</a>&lt;<a href="#selection">Selection</a>&gt;) -&gt; Self</code> |  |
 | <code>status(self, status: impl Into&lt;String&gt;) -&gt; Self</code> |  |
 | <code>const view(self, view: <a href="#diffview">DiffView</a>) -&gt; Self</code> |  |
 
@@ -728,6 +741,7 @@
 | --- | --- |
 | <code>const autofocus(self) -&gt; Self</code> |  |
 | <code>const caret_position(self, position: <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;) -&gt; Self</code> |  |
+| <code>const caret_rect(self, rect: <a href="sigil-reactive.html#signal">Signal</a>&lt;Option&lt;<a href="sigil-geometry.html#rect">Rect</a>&gt;&gt;) -&gt; Self</code> |  |
 | <code>caret_visible(&amp;mut self) -&gt; <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;</code> |  |
 | <code>change(self, f: impl Fn(&amp;str) + 'static) -&gt; Self</code> |  |
 | <code>const chrome(self, enabled: bool) -&gt; Self</code> |  |
@@ -822,6 +836,7 @@
 | Method | Description |
 | --- | --- |
 | <code>pub fn <a href="#fieldbuilder">FieldBuilder</a>&lt;C&gt;::error(self, error: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;Option&lt;String&gt;&gt;) -&gt; Self</code> |  |
+| <code>pub fn <a href="#fieldbuilder">FieldBuilder</a>&lt;C&gt;::required(self, required: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>
 
@@ -981,6 +996,7 @@
 
 | Field | Description |
 | --- | --- |
+| <code>activate: Option&lt;Rc&lt;dyn Fn()&gt;&gt;</code> |  |
 | <code>badge: Option&lt;(<a href="sigil-kernel.html#textcontent">TextContent</a>, <a href="sigil-style.html#tone">Tone</a>)&gt;</code> |  |
 | <code>columns: Vec&lt;<a href="#listcolumn">ListColumn</a>&gt;</code> |  |
 | <code>depth: u16</code> |  |
@@ -1181,9 +1197,51 @@
 **Trait implementations:** <code>Clone</code>, <code>Debug</code>
 
 
+### `Hunk`
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>header: String</code> |  |
+| <code>lines: Vec&lt;<a href="#line">Line</a>&gt;</code> |  |
+| <code>meta: Vec&lt;String&gt;</code> |  |
+| <code>new_start: usize</code> |  |
+| <code>old_start: usize</code> |  |
+| <code>path: Option&lt;String&gt;</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
+
+
 ### `IconSource`
 
 **Trait implementations:** <code>Clone</code>, <code><a href="#intoiconsource">IntoIconSource</a></code>
+
+
+### `Line`
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>kind: <a href="#linekind">LineKind</a></code> |  |
+| <code>new: Option&lt;usize&gt;</code> |  |
+| <code>old: Option&lt;usize&gt;</code> |  |
+| <code>text: String</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
+
+
+### `LineId`
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>hunk: usize</code> |  |
+| <code>line: usize</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>Ord</code>, <code>PartialEq</code>, <code>PartialOrd</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `ListColumn`
@@ -1204,6 +1262,47 @@
 | <code>width: f32</code> |  |
 
 **Trait implementations:** <code>From&lt;(<a href="sigil-kernel.html#textcontent">TextContent</a>, f32)&gt;</code>
+
+
+### `Patch`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>changes(&amp;self) -&gt; impl Iterator&lt;Item = <a href="#lineid">LineId</a>&gt; + '_</code> |  |
+| <code>hunk_changes(&amp;self, hunk: usize) -&gt; impl Iterator&lt;Item = <a href="#lineid">LineId</a>&gt; + '_</code> |  |
+| <code>line(&amp;self, id: <a href="#lineid">LineId</a>) -&gt; Option&lt;&amp;<a href="#line">Line</a>&gt;</code> |  |
+| <code>parse(text: &amp;str) -&gt; Self</code> |  |
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>hunks: Vec&lt;<a href="#hunk">Hunk</a>&gt;</code> |  |
+| <code>trailer: Vec&lt;String&gt;</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>StructuralPartialEq</code>, <code><a href="#diffsource">DiffSource</a></code>
+
+
+### `Selection`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>contains(&amp;self, id: <a href="#lineid">LineId</a>) -&gt; bool</code> |  |
+| <code>select_hunk(&amp;mut self, patch: &amp;<a href="#patch">Patch</a>, hunk: usize)</code> |  |
+| <code>select_line(&amp;mut self, patch: &amp;<a href="#patch">Patch</a>, id: <a href="#lineid">LineId</a>, extend: bool)</code> |  |
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>hunks: BTreeSet&lt;usize&gt;</code> |  |
+| <code>lines: BTreeSet&lt;<a href="#lineid">LineId</a>&gt;</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
 
 
 ### `SelectionState`
@@ -1491,6 +1590,7 @@
 | Variant | Description |
 | --- | --- |
 | <code>Bar</code> |  |
+| <code>Candle</code> |  |
 | <code>Line</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
@@ -1533,6 +1633,26 @@
 | <code>SelectAll</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
+### `LineKind`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>const is_change(self) -&gt; bool</code> |  |
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Added</code> |  |
+| <code>Context</code> |  |
+| <code>Note</code> |  |
+| <code>Removed</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `PathCmd`
@@ -1646,6 +1766,15 @@
 
 
 ## Traits
+
+### `DiffSource`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>into_patch(self) -&gt; <a href="sigil-reactive.html#signal">Signal</a>&lt;Rc&lt;<a href="#patch">Patch</a>&gt;&gt;</code> |  |
+
 
 ### `DragDropExt`
 
@@ -1792,7 +1921,7 @@
 
 ### `diff`
 
-<pre>pub fn <a href="#diff">diff</a>(patch: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;String&gt;) -&gt; <a href="#diffbuilder">DiffBuilder</a></pre>
+<pre>pub fn <a href="#diff">diff</a>(patch: impl <a href="#diffsource">DiffSource</a> + 'static) -&gt; <a href="#diffbuilder">DiffBuilder</a></pre>
 
 
 ### `divider_horizontal`
@@ -1908,6 +2037,11 @@
 ### `kv_row`
 
 <pre>pub fn <a href="#kv_row">kv_row</a>(label: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;, value: impl <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
+
+
+### `language_for_path`
+
+<pre>pub fn <a href="#language_for_path">language_for_path</a>(path: &amp;str) -&gt; Option&lt;&amp;'static str&gt;</pre>
 
 
 ### `list_row`
@@ -2083,6 +2217,11 @@
 ### `text_field`
 
 <pre>pub fn <a href="#text_field">text_field</a>(value: <a href="sigil-reactive.html#signal">Signal</a>&lt;String&gt;) -&gt; <a href="#textfieldbuilder">TextFieldBuilder</a></pre>
+
+
+### `text_runs`
+
+<pre>pub fn <a href="#text_runs">text_runs</a>(marks: &amp;[<a href="#highlight">Highlight</a>], range: Range&lt;usize&gt;) -&gt; Vec&lt;<a href="sigil-style.html#textrun">TextRun</a>&gt;</pre>
 
 
 ### `to_hex`
