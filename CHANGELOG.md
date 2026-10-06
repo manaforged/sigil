@@ -459,6 +459,9 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- Text marked `nowrap` that flex shrinks below its width paints on one line.
+  Before, the GPU path wrapped it at the box width while layout kept one
+  line, so the extra lines drew over the rows below.
 - Ending the scope that started `app::Player` playback no longer panics
   with "RefCell already borrowed", and a thread that ends with a playing
   `Player` no longer aborts the process. `cancel_interval` drops the

@@ -217,10 +217,10 @@ const fn shape_paragraph(run: GlyphRun) -> GlyphRun {
 fn shape_paragraph(run: GlyphRun) -> GlyphRun {
     let max_width = run.rect.width.max(1.0);
     let engine = crate::text::OwnedTextEngine::thread();
-    let paragraph = if run.flow == TextFlow::Ellipsis {
-        engine.layout_paragraph_ellipsized(&run.text, max_width, &run.style)
-    } else {
-        engine.layout_paragraph_styled(&run.text, Some(max_width), &run.style)
+    let paragraph = match run.flow {
+        TextFlow::Ellipsis => engine.layout_paragraph_ellipsized(&run.text, max_width, &run.style),
+        TextFlow::Line => engine.layout_paragraph_styled(&run.text, None, &run.style),
+        TextFlow::Wrap => engine.layout_paragraph_styled(&run.text, Some(max_width), &run.style),
     };
     match paragraph {
         Ok(paragraph) => run.with_paragraph(paragraph),
