@@ -124,19 +124,31 @@ pub fn number_field<T: NumericKind>(
         }
     });
 
-    let inner = text_field(buffer).change({
+    let revert = {
         let range = Rc::clone(&range);
-        move |raw| {
-            let Some(parsed) = T::parse(raw) else {
-                return;
-            };
-            let clamped = parsed.clamp_to(&range);
-            let current = value.peek();
-            if current.partial_cmp(&clamped) != Some(core::cmp::Ordering::Equal) {
-                value.set(clamped);
+        Rc::new(move || {
+            if T::parse(&buffer.peek()).is_none() {
+                buffer.set(value.peek().clamp_to(&range).render());
             }
-        }
-    });
+        })
+    };
+    let on_blur = Rc::clone(&revert);
+    let inner = text_field(buffer)
+        .change({
+            let range = Rc::clone(&range);
+            move |raw| {
+                let Some(parsed) = T::parse(raw) else {
+                    return;
+                };
+                let clamped = parsed.clamp_to(&range);
+                let current = value.peek();
+                if current.partial_cmp(&clamped) != Some(core::cmp::Ordering::Equal) {
+                    value.set(clamped);
+                }
+            }
+        })
+        .submit(move |_| revert())
+        .blur(move || on_blur());
 
     NumberFieldBuilder {
         inner,

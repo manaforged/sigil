@@ -630,7 +630,7 @@ fn main() {
 | `Orientation` | `enum Orientation { Horizontal, Vertical }` | Axis of a slider or splitter. |
 | `text_field` | `fn text_field(value: Signal<String>) -> TextFieldBuilder`; `.leading(node)`, `.trailing(node)`, `.clearable()` | A single-line text input. `leading` and `trailing` place a node, such as an icon, inside the field border; the input fills the rest. `clearable` shows a clear button while the value is not empty; it empties the value, fires `change`, and puts focus back on the input. |
 | `text_edit` | `fn text_edit(value: Signal<String>) -> TextEditBuilder`; `.autofocus()`, `.focus_when(Signal<u64>)` | A multi-line text editor. `autofocus` focuses it when it mounts; `focus_when` focuses it each time the signal changes. |
-| `number_field` | `fn number_field<T: NumericKind>(value: Signal<T>, range: RangeInclusive<T>) -> NumberFieldBuilder<T>` | A numeric input. |
+| `number_field` | `fn number_field<T: NumericKind>(value: Signal<T>, range: RangeInclusive<T>) -> NumberFieldBuilder<T>` | A numeric input. Text that parses updates `value` as you type; on Enter or blur, text that does not parse is replaced by the stored value, so the field never shows a number it did not store. |
 | `NumericKind` | `trait NumericKind` | Number types that `number_field` accepts. |
 | `date_field` | `fn date_field(value: Signal<Date>) -> DateFieldBuilder` | A date input. |
 | `Date` | `struct Date { year: i32, month: u8, day: u8 }` | A calendar date. |

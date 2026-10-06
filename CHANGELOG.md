@@ -459,6 +459,9 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- `number_field` replaces text that does not parse with the stored value on
+  Enter or blur. Before, typing "1.234,56" left that text on screen while
+  the value silently stayed 1.234.
 - A dropped file goes to the deepest `file_drop` handler under the pointer
   (else on the focused node's path) instead of to every handler, so one
   drop no longer lands in two panes.
