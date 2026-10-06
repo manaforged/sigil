@@ -15,7 +15,7 @@ pub(crate) fn note_input(event: &ShellEvent) {
             PointerPhase::Enter | PointerPhase::Leave | PointerPhase::Cancel => {}
         },
         ShellEvent::Key(_) | ShellEvent::Paste(_) => interact(Cause::Key),
-        ShellEvent::Scroll(_) => interact(Cause::Scroll),
+        ShellEvent::Scroll(_) | ShellEvent::Gesture(_) => interact(Cause::Scroll),
         ShellEvent::Ime(_) => interact(Cause::Ime),
         ShellEvent::Window(WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged(_)) => {
             interact(Cause::Resize);

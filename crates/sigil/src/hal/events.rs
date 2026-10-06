@@ -4,14 +4,18 @@ use crate::geometry::{PhysicalSize, Point, Scale};
 
 pub use keyboard_types::{Code as PhysicalKey, Modifiers as ModifiersState, NamedKey as Key};
 
+mod gesture;
 mod paste;
 mod pointer;
+mod shortcut_parse;
 
+pub use gesture::{GestureEvent, GestureEventInit, GestureKind};
 pub use paste::PasteEvent;
+pub use shortcut_parse::ShortcutParseError;
 
 pub use pointer::{
     ClickConfig, MouseButton, MouseButtons, PointerEvent, PointerEventInit, PointerKind,
-    PointerPhase,
+    PointerPhase, PointerTilt,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -21,6 +25,7 @@ pub enum ShellEvent {
     Key(KeyEvent),
     Ime(ImeEvent),
     Scroll(ScrollEvent),
+    Gesture(GestureEvent),
     FileDrop(FileDropEvent),
     Paste(alloc::string::String),
     Window(WindowEvent),

@@ -1,16 +1,18 @@
 use std::path::PathBuf;
 
 use crate::events::{
-    FileDropEvent, FileDropPhase, ImeEvent, KeyEvent as SigilKeyEvent, KeyEventInit, KeyPhase,
-    MouseButton, PointerEvent, PointerEventInit, PointerKind, PointerPhase, ScrollEvent,
-    ScrollEventInit, ShellEvent, WindowEvent as SigilWindowEvent,
+    FileDropEvent, FileDropPhase, GestureEvent, GestureEventInit, GestureKind, ImeEvent,
+    KeyEvent as SigilKeyEvent, KeyEventInit, KeyPhase, MouseButton, PointerEvent, PointerEventInit,
+    PointerKind, PointerPhase, ScrollEvent, ScrollEventInit, ShellEvent,
+    WindowEvent as SigilWindowEvent,
 };
 use crate::geometry::{PhysicalSize, Point, Scale};
 use smol_str::SmolStr;
 use winit::{
     event::{
         ElementState, Ime as WinitIme, KeyEvent as WinitKeyEvent, MouseButton as WinitMouseButton,
-        MouseScrollDelta as WinitMouseScrollDelta, TouchPhase, WindowEvent as WinitWindowEvent,
+        MouseScrollDelta as WinitMouseScrollDelta, Touch as WinitTouch, TouchPhase,
+        WindowEvent as WinitWindowEvent,
     },
     window::WindowId,
 };
@@ -53,9 +55,13 @@ impl WinitShell {
                 true
             }
             WinitWindowEvent::Touch(touch) => {
-                self.push_touch(touch.phase, touch.location.x, touch.location.y, scale);
+                self.push_touch(&touch, scale);
                 true
             }
+            event @ (WinitWindowEvent::PinchGesture { .. }
+            | WinitWindowEvent::RotationGesture { .. }
+            | WinitWindowEvent::PanGesture { .. }
+            | WinitWindowEvent::DoubleTapGesture { .. }) => self.buffer_gesture(&event, scale),
             WinitWindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 self.push_scale_factor_changed(window_id, scale_factor)
             }
@@ -70,6 +76,25 @@ impl WinitShell {
             }
             WinitWindowEvent::HoveredFileCancelled => {
                 self.push_file_drop(None, FileDropPhase::Cancelled)
+            }
+            _ => false,
+        }
+    }
+
+    fn buffer_gesture(&mut self, event: &WinitWindowEvent, scale: crate::geometry::Scale) -> bool {
+        match *event {
+            WinitWindowEvent::PinchGesture { delta, phase, .. } => {
+                self.push_gesture(GestureKind::Pinch(delta), phase)
+            }
+            WinitWindowEvent::RotationGesture { delta, phase, .. } => {
+                self.push_gesture(GestureKind::Rotate(delta), phase)
+            }
+            WinitWindowEvent::PanGesture { delta, phase, .. } => {
+                let delta = logical_point_from_f64(f64::from(delta.x), f64::from(delta.y), scale);
+                self.push_gesture(GestureKind::Pan(delta), phase)
+            }
+            WinitWindowEvent::DoubleTapGesture { .. } => {
+                self.push_gesture(GestureKind::DoubleTap, TouchPhase::Ended)
             }
             _ => false,
         }
@@ -207,19 +232,27 @@ impl WinitShell {
         );
     }
 
-    pub(super) fn push_touch(&mut self, phase: TouchPhase, x: f64, y: f64, scale: Scale) {
-        let next = logical_point_from_f64(x, y, scale);
+    pub(super) fn push_touch(&mut self, touch: &WinitTouch, scale: Scale) {
+        let next = logical_point_from_f64(touch.location.x, touch.location.y, scale);
         let delta = Point::new(
             next.x - self.pointer_position.x,
             next.y - self.pointer_position.y,
         );
         self.pointer_position = next;
-        self.push_pointer(
-            map_touch_pointer_phase(phase),
-            delta,
-            None,
-            PointerKind::Touch,
-        );
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "normalized force is in 0.0..=1.0"
+        )]
+        let pressure = touch.force.map(|force| force.normalized() as f32);
+        let event = self
+            .pointer_event(
+                map_touch_pointer_phase(touch.phase),
+                delta,
+                None,
+                PointerKind::Touch,
+            )
+            .with_contact(touch.id, pressure, None);
+        self.events.push(ShellEvent::Pointer(event));
     }
 
     fn push_pointer(
@@ -229,16 +262,37 @@ impl WinitShell {
         button: Option<MouseButton>,
         kind: PointerKind,
     ) {
+        let event = self.pointer_event(phase, delta, button, kind);
+        self.events.push(ShellEvent::Pointer(event));
+    }
+
+    const fn pointer_event(
+        &self,
+        phase: PointerPhase,
+        delta: Point,
+        button: Option<MouseButton>,
+        kind: PointerKind,
+    ) -> PointerEvent {
+        PointerEvent::new(PointerEventInit {
+            position: self.pointer_position,
+            delta,
+            kind,
+            button,
+            buttons: self.pointer_buttons,
+            modifiers: self.modifiers,
+            phase,
+        })
+    }
+
+    pub(super) fn push_gesture(&mut self, kind: GestureKind, phase: TouchPhase) -> bool {
         self.events
-            .push(ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-                position: self.pointer_position,
-                delta,
+            .push(ShellEvent::Gesture(GestureEvent::new(GestureEventInit {
                 kind,
-                button,
-                buttons: self.pointer_buttons,
+                phase: map_scroll_phase(phase),
+                position: self.pointer_position,
                 modifiers: self.modifiers,
-                phase,
             })));
+        true
     }
 
     pub(super) fn push_scroll(

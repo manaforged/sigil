@@ -62,6 +62,12 @@ pub enum PointerPhase {
     Cancel,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct PointerTilt {
+    pub x: f32,
+    pub y: f32,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct PointerEvent {
@@ -74,6 +80,9 @@ pub struct PointerEvent {
     pub modifiers: ModifiersState,
     pub phase: PointerPhase,
     pub target_size: LogicalSize,
+    pub pointer_id: u64,
+    pub pressure: Option<f32>,
+    pub tilt: Option<PointerTilt>,
     capture_requested: bool,
     captured: bool,
     propagation_stopped: bool,
@@ -103,10 +112,26 @@ impl PointerEvent {
             modifiers: init.modifiers,
             phase: init.phase,
             target_size: LogicalSize::new(0.0, 0.0),
+            pointer_id: 0,
+            pressure: None,
+            tilt: None,
             capture_requested: false,
             captured: false,
             propagation_stopped: false,
         }
+    }
+
+    #[must_use]
+    pub const fn with_contact(
+        mut self,
+        pointer_id: u64,
+        pressure: Option<f32>,
+        tilt: Option<PointerTilt>,
+    ) -> Self {
+        self.pointer_id = pointer_id;
+        self.pressure = pressure;
+        self.tilt = tilt;
+        self
     }
 
     pub const fn stop_propagation(&mut self) {

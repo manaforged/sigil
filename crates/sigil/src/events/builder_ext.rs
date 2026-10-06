@@ -2,7 +2,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::events::{
-    FileDropEvent, ImeEvent, KeyEvent, PasteEvent, PointerEvent, ScrollEvent, Shortcut,
+    FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PasteEvent, PointerEvent, ScrollEvent,
+    Shortcut,
 };
 use crate::kernel::{Node, NodeBuilder};
 use crate::layout::CaretGeometry;
@@ -121,6 +122,11 @@ pub trait NodeEventsExt {
     fn on_paste<H>(self, h: H) -> Self
     where
         H: Fn(&mut PasteEvent) + 'static;
+
+    #[must_use]
+    fn on_gesture<H>(self, h: H) -> Self
+    where
+        H: Fn(&mut GestureEvent) + 'static;
 
     #[must_use]
     fn ime_caret(self, anchor: Rc<Cell<Option<CaretGeometry>>>) -> Self;
@@ -320,6 +326,13 @@ impl NodeEventsExt for NodeBuilder {
         H: Fn(&mut PasteEvent) + 'static,
     {
         super::router::on_paste(self, h)
+    }
+
+    fn on_gesture<H>(self, h: H) -> Self
+    where
+        H: Fn(&mut GestureEvent) + 'static,
+    {
+        super::router::on_gesture(self, h)
     }
 
     fn ime_caret(self, anchor: Rc<Cell<Option<CaretGeometry>>>) -> Self {

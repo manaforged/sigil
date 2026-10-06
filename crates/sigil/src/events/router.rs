@@ -14,9 +14,11 @@ use crate::events::pointer_dispatch::{
 };
 
 mod file_drop;
+mod gesture;
 mod keyboard;
 mod paste;
 
+pub(crate) use gesture::on_gesture;
 pub(crate) use paste::on_paste;
 
 #[derive(Debug, Default)]
@@ -51,6 +53,7 @@ impl EventRouter {
                 self.focus_lost(cx, layout);
             }
             ShellEvent::Scroll(event) => self.route_scroll(cx, layout, event),
+            ShellEvent::Gesture(event) => self.route_gesture(cx, layout, event),
             ShellEvent::Ime(event) => self.route_ime(cx, layout, &event),
             ShellEvent::FileDrop(event) => self.route_file_drop(cx, layout, &event),
             ShellEvent::Paste(text) => self.route_paste(cx, layout, text),
