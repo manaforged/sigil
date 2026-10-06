@@ -169,6 +169,10 @@ name = "terminal_host"
 required-features = ["terminal"]
 
 [[test]]
+name = "image_jpeg"
+required-features = ["image-decode"]
+
+[[test]]
 name = "virtual_list_resize"
 required-features = ["terminal"]
 

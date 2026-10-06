@@ -61,7 +61,7 @@ softbuffer = "0.4"
 tiny-skia = "0.12"
 bytemuck = { version = "1", features = ["derive"] }
 half = "2"
-image = { version = "0.25", default-features = false, features = ["png"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 skrifa = "0.46"
 # CPU mask rasterizer for the hinted small-text path. Already in-graph
 # transitively (cosmic-text -> swash -> zeno), zero-dep crate.

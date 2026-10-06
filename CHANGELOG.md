@@ -459,6 +459,8 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- `image_bytes` decodes JPEG, as documented. Before, the `image` crate was
+  built with PNG only.
 - The image cache evicts the least recently used images when it is full.
   Before, it dropped every cached image at 256 entries or 64 MB, so a
   scrolling cover grid decoded the screen just left again.
