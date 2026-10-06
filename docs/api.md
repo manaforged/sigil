@@ -352,7 +352,6 @@ See [Units](guide/units.md) for the rules that map `rows`, `cols`, and
 | `Reactive` | `trait Reactive<T>`; `fn read(&self) -> T`; `fn into_signal(self) -> Signal<T>` | A value source: a `Signal<T>`, a closure `Fn() -> T`, or a plain value (`bool`, `String`, `&'static str` as `Reactive<String>`, `Vec<T>` or `[T; N]` as `Reactive<Vec<T>>`). Show/hide, `invalid_when`, and the content widgets `diff`, `mermaid`, and `sparkline` take one. `disabled` on every widget takes one, so `.disabled(move \|\| name.get().is_empty())` needs no `derived`. |
 | `interval` | `fn interval(period: Duration, callback: impl Fn() + 'static) -> IntervalId` | Run `callback` on a fixed period. |
 | `IntervalId` | `struct IntervalId` | Handle for `sigil::reactive::cancel_interval`. |
-| `reactive::__test_set_clock`, `__test_advance_clock`, `__test_clear_clock` | `fn(Instant)`, `fn(Duration)`, `fn()` | Drive the interval clock by hand in tests (feature `test-clock`). |
 
 ```rust,no_run
 use sigil::reactive::EventChannel;
@@ -961,7 +960,6 @@ Public items outside the prelude. Import them by path.
 | `AppConfig::esc_exits` | `const fn esc_exits(self, yes: bool) -> Self` | Exit the app on Escape. `exits_on_esc(&self) -> bool` reads the setting. |
 | `AppConfig::on_panic` | `const fn on_panic(&self) -> PanicPolicy` | The configured panic policy. |
 | `AppConfig::suspend_on` | `fn suspend_on(self, shortcut: impl Into<Option<Shortcut>>) -> Self` | The key that suspends the terminal host (job control); the default is Ctrl+Z. The host restores the terminal and stops; `fg` resumes it and redraws the screen. `None` turns it off and delivers the key to the app. Unix only; the window host ignores it. |
-| `kernel::Cx::announce_assertive` | `fn announce_assertive(&mut self, text: impl Into<String>)` | Like `announce`, with assertive politeness: screen readers interrupt current speech. |
 | `kernel::Cx::flush_announcements` | `fn flush_announcements(&mut self)` | Move the text that `kernel::announce` queued into the live region. `Host::frame` calls it every frame. |
 | `kernel::announce` | `fn announce(text: impl Into<String>)` | Queue a polite screen-reader announcement; the next frame posts it to the live region. |
 | `kernel::announce_assertive` | `fn announce_assertive(text: impl Into<String>)` | Queue an assertive announcement that interrupts the screen reader. |
@@ -981,11 +979,11 @@ Public items outside the prelude. Import them by path.
 | `style::palette::Palette` | `struct Palette { background, text, primary, success, warning, danger: Rgba8 }`; `obsidian()`, `terminal()`, `aetherlight()`, `voltglyph()`, `mythril()`, `frostkeep()`, `vellum()`, `embergrove()`, `verdigris()`, `faewine()`, `crystalline()`, `spellforge(accent: Rgba8)` | Named six-colour palettes. `spellforge` derives a palette from one accent colour. |
 | `style::scale` | `const fn {slate, blue, green, amber, ruby, cyan, iris}_{light, dark}() -> ColorScale` | Twelve-step colour scales for `Theme`. |
 | `style::Theme::with_gray_scale` | `with_gray_scale`, `with_accent_scale`, `with_success_scale`, `with_warn_scale`, `with_error_scale`, `with_info_scale` (each `const fn(self, scale: ColorScale) -> Self`) | Replace one colour scale of a theme. |
-| `style::theme::font_family_hint` | `const fn font_family_hint(variant: Variant) -> FontFamilyHint` | The font family a theme variant asks for. |
+| `style::font_family_hint` | `const fn font_family_hint(variant: Variant) -> FontFamilyHint` | The font family a theme variant asks for. |
 | `layout::LayoutStyle` | `grid_columns(Vec<TrackSize>)`, `grid_rows(Vec<TrackSize>)`, `grid_area(col, row)`, `grid_dense()`, `max_height(impl Into<Dimension>)`, `with_layout(f: impl FnOnce(&mut StyleData))` | Grid tracks and placement, and direct access to the layout data. |
 | `style::Metrics::icon_size` | `fn icon_size(self) -> f32` | Icon size in points, or one cell on the terminal host. |
 | `style::LengthPercentage::px_or_zero` | `const fn px_or_zero(self) -> f32` | The pixel value, or 0 for a non-pixel size. `Dimension` has the same method. |
-| `style::binding::StyleBinding::set_animator_overlay` | `fn set_animator_overlay(&mut self, overlay: Option<Box<dyn AnimatorOverlay>>)` | Replace the animated values that override the resolved style. |
+| `style::StyleBinding::set_animator_overlay` | `fn set_animator_overlay(&mut self, overlay: Option<Box<dyn AnimatorOverlay>>)` | Replace the animated values that override the resolved style. |
 | `text::add_fallback_font` | `fn add_fallback_font(bytes: Vec<u8>, face_index: u32) -> Result<(), TextError>` | Add a fallback face to every text engine. Shaping uses it for characters the primary faces lack. Layout measures text again on the next frame. |
 | `text::load_font_url` | `fn load_font_url(url: &str, face_index: u32) -> Signal<Status<(), FontLoadError>>` (wasm32 only) | Fetch a font file and add it with `add_fallback_font`. The signal turns `Ok(())` when the face is in use. |
 | `text::FontLoadError` | `enum FontLoadError { Fetch(String), Http(u16), InvalidFont }` (wasm32 only) | Why `load_font_url` failed. |
@@ -993,15 +991,14 @@ Public items outside the prelude. Import them by path.
 | `layout::Dimension` | `enum Dimension` | A length: px, percent, text length, or auto. |
 | `layout::LengthPercentage` | `enum LengthPercentage` | A px or percent length. |
 | `style::Dimension` | `enum Dimension { Px(Px), Full, Fraction(u16), Auto }` | A size in a style atom. |
-| `patterns` | `mod patterns` | The module of the frame and row patterns. |
 | `clipboard::paste` | `fn paste() -> AppResult<String>` | Read text from the installed clipboard. |
 
 ## Module `a11y`
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
-| `a11y::AccessKitBridge`, `a11y::bridge::AccessKitBridge` | `struct AccessKitBridge<F: FnMut(TreeUpdate)>`; `const fn new(action_rx: crossbeam_channel::Receiver<ActionRequest>, publish_sink: F) -> Self` | Implements `A11yBridge` over AccessKit. It passes each tree update to the sink and reads action requests from the channel. |
-| `a11y::BridgeError`, `a11y::bridge::BridgeError` | `struct BridgeError;` | Error type of `AccessKitBridge`. It reports that the bridge rejected an update. |
+| `a11y::AccessKitBridge` | `struct AccessKitBridge<F: FnMut(TreeUpdate)>`; `const fn new(action_rx: crossbeam_channel::Receiver<ActionRequest>, publish_sink: F) -> Self` | Implements `A11yBridge` over AccessKit. It passes each tree update to the sink and reads action requests from the channel. |
+| `a11y::BridgeError` | `struct BridgeError;` | Error type of `AccessKitBridge`. It reports that the bridge rejected an update. |
 
 ## Module `animation`
 
@@ -1020,7 +1017,7 @@ Public items outside the prelude. Import them by path.
 | Name | Signature | Purpose |
 | --- | --- | --- |
 | `animation_runtime::AnimatorStatus` | `enum AnimatorStatus { Running, Settled }` | Tells whether an `Animator` still moves or has reached its target. |
-| `animation_runtime::AttachedAnimator`, `animation_runtime::binding_animate::AttachedAnimator` | `struct AttachedAnimator { kind: NumericAtomKind, signal: Signal<f32>, animator: Animator, .. }` | One numeric style atom that a component animates: the atom kind, the signal that holds the current value, and its animator. |
+| `animation_runtime::AttachedAnimator` | `struct AttachedAnimator { kind: NumericAtomKind, signal: Signal<f32>, animator: Animator, .. }` | One numeric style atom that a component animates: the atom kind, the signal that holds the current value, and its animator. |
 | `animation_runtime::srgb_channel_to_linear` | `fn srgb_channel_to_linear(c: u8) -> f32` | Converts one sRGB 8-bit channel to a linear value in 0.0 to 1.0. |
 | `animation_runtime::presets` | `mod presets { const SMOOTH, GENTLE, SNAPPY, BOUNCY, STIFF, FAST, DEFAULT, SLOW: TransitionId }` | Named `TransitionId` values that `animation_runtime::config` maps to spring and tween configs. |
 | `animation_runtime::active_count` | `fn active_count() -> usize` | Returns the number of animators on this thread that are not paused and not settled. |
@@ -1135,8 +1132,8 @@ fn main() -> AppResult<()> {
 | `events::FileDropEvent` | `struct FileDropEvent` | A file drag over or onto the window. The host reports no drop point, so the event goes to the deepest `file_drop` handler under the last known pointer position, else on the focused node's path; with neither, every handler sees it. |
 | `events::FileDropPhase` | `enum FileDropPhase { Hovered, Dropped, Cancelled }` | File drop phase. |
 | `events::WindowEvent` | `enum WindowEvent` | Resize, focus, and close events of the window. |
-| `events::KeyEventInit`, `hal::events::KeyEventInit` | `struct KeyEventInit { key: LogicalKey, physical: PhysicalKey, modifiers: ModifiersState, repeat: bool, phase: KeyPhase, text: Option<SmolStr> }` | Fields for `KeyEvent::new`. |
-| `events::ScrollEventInit`, `hal::events::ScrollEventInit` | `struct ScrollEventInit { position: Point, delta: ScrollDelta, modifiers: ModifiersState, phase: ScrollPhase }` | Fields for `ScrollEvent::new`. |
+| `events::KeyEventInit` | `struct KeyEventInit { key: LogicalKey, physical: PhysicalKey, modifiers: ModifiersState, repeat: bool, phase: KeyPhase, text: Option<SmolStr> }` | Fields for `KeyEvent::new`. |
+| `events::ScrollEventInit` | `struct ScrollEventInit { position: Point, delta: ScrollDelta, modifiers: ModifiersState, phase: ScrollPhase }` | Fields for `ScrollEvent::new`. |
 | `events::EventRouter` | `EventRouter::new()` | Routes shell events to an embedded tree. |
 | `events::ShellEvent` | `enum ShellEvent { Pointer, Key, Ime, Scroll, Gesture(GestureEvent), FileDrop, Paste(String), Window }` | An input event from the host. The terminal host sends a bracketed paste as one `Paste`. |
 | `events::PasteEvent` | `struct PasteEvent { pub text: String, .. }`; `PasteEvent::new(text)`, `stop_propagation()`, `propagation_stopped() -> bool` | Pasted text routed to the focused node, then to each ancestor until a handler stops it. `NodeEventsExt::on_paste(f)` receives it. Text fields insert it as one edit, the same as a clipboard paste. |
@@ -1152,18 +1149,18 @@ fn main() -> AppResult<()> {
 | `geometry::Dim` | `enum Dim { Fixed(f32), MinContent, MaxContent }` | One axis of a size constraint. |
 | `geometry::LogicalSize` | `struct LogicalSize { width: f32, height: f32 }` | A size in logical px or cells. |
 | `geometry::PhysicalSize` | `struct PhysicalSize { width: u32, height: u32 }`; `const fn new(width: u32, height: u32) -> Self` | Size in device pixels. |
-| `geometry::Scale`, `hal::size::Scale` | `struct Scale(f32)`; `const ONE`; `fn new(scale: f32) -> Self`; `const fn factor(self) -> f32`; `fn to_physical(self, logical: LogicalSize) -> PhysicalSize` | Device scale factor. `new` replaces a non-finite or non-positive value with `ONE`. |
+| `geometry::Scale` | `struct Scale(f32)`; `const ONE`; `fn new(scale: f32) -> Self`; `const fn factor(self) -> f32`; `fn to_physical(self, logical: LogicalSize) -> PhysicalSize` | Device scale factor. `new` replaces a non-finite or non-positive value with `ONE`. |
 
 
 ## Module `hal`
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
-| `hal::Renderer`, `renderer::Renderer` | `trait Renderer { type Error; type Surface; type WindowHandle; fn create_surface(..); fn resize(..); fn clear(..); }` | Contract for a render backend: create a surface for a window, resize it, and clear it to a color. |
-| `hal::Shell`, `shell::Shell` | `trait Shell: Sized { type Error; type Waker; type Window; fn waker(&self); fn wake(waker: &Self::Waker); fn create_window(..); fn create_window_logical(..); fn create_window_with(..); fn drain_events(&mut self); fn run<F>(self, frame: F); }` | Contract for a windowing backend: create windows, wake the loop from other threads, drain events, and run the frame loop. |
-| `hal::RenderedGlyph`, `hal::text::RenderedGlyph` | `#[non_exhaustive] pub struct RenderedGlyph { font_id: u64, font_index: u32, glyph_id: u32, x: f32, y: f32, size: f32, color: Color, variation_coords: Box<[i16]>, skew: f32 }` | One positioned glyph that the text engine gives to the renderer. |
-| `hal::TextAffinity`, `hal::HitPosition`, `hal::text::TextAffinity`, `hal::text::HitPosition` | `enum TextAffinity { Downstream, Upstream }`; `struct HitPosition { byte_index: usize, affinity: TextAffinity }` | Result of a text hit test: the byte index and the side of a line break or bidi boundary that the caret belongs to. |
-| `hal::ParagraphMetrics`, `hal::TextEngine`, `hal::text::ParagraphMetrics`, `hal::text::TextEngine` | `trait ParagraphMetrics { fn width; fn height; fn line_count; fn min_content_width; fn max_content_width }`; `trait TextEngine { type Error; type Paragraph: ParagraphMetrics; fn layout_paragraph(&self, text: &str, max_width: Option<f32>) -> Result<Self::Paragraph, Self::Error>; fn clear_cache(&self) }` | Contract for a text shaper: lay out a paragraph at a width and report its size and line count. |
+| `hal::Renderer` | `trait Renderer { type Error; type Surface; type WindowHandle; fn create_surface(..); fn resize(..); fn clear(..); }` | Contract for a render backend: create a surface for a window, resize it, and clear it to a color. |
+| `hal::Shell` | `trait Shell: Sized { type Error; type Waker; type Window; fn waker(&self); fn wake(waker: &Self::Waker); fn create_window(..); fn create_window_logical(..); fn create_window_with(..); fn drain_events(&mut self); fn run<F>(self, frame: F); }` | Contract for a windowing backend: create windows, wake the loop from other threads, drain events, and run the frame loop. |
+| `hal::RenderedGlyph` | `#[non_exhaustive] pub struct RenderedGlyph { font_id: u64, font_index: u32, glyph_id: u32, x: f32, y: f32, size: f32, color: Color, variation_coords: Box<[i16]>, skew: f32 }` | One positioned glyph that the text engine gives to the renderer. |
+| `hal::TextAffinity`, `hal::HitPosition` | `enum TextAffinity { Downstream, Upstream }`; `struct HitPosition { byte_index: usize, affinity: TextAffinity }` | Result of a text hit test: the byte index and the side of a line break or bidi boundary that the caret belongs to. |
+| `hal::ParagraphMetrics`, `hal::TextEngine` | `trait ParagraphMetrics { fn width; fn height; fn line_count; fn min_content_width; fn max_content_width }`; `trait TextEngine { type Error; type Paragraph: ParagraphMetrics; fn layout_paragraph(&self, text: &str, max_width: Option<f32>) -> Result<Self::Paragraph, Self::Error>; fn clear_cache(&self) }` | Contract for a text shaper: lay out a paragraph at a width and report its size and line count. |
 | `hal::ParagraphMetrics` | `trait ParagraphMetrics { fn width(&self) -> f32; fn height(&self) -> f32; fn line_count(&self) -> usize; fn min_content_width(&self) -> f32; ... }` | Reports the measured size of a laid-out paragraph. |
 | `hal::TextEngine` | `trait TextEngine { type Error; type Paragraph: ParagraphMetrics; fn layout_paragraph(&self, text: &str, max_width: Option<f32>, ..) -> Result<Self::Paragraph, Self::Error>; ... }` | Shapes and lays out text into paragraphs. |
 
@@ -1206,8 +1203,8 @@ fn main() -> AppResult<()> {
 | `layout::Display`, `layout::Position`, `layout::FlexDirection`, `layout::BoxSizing` | `enum Display { Block, Flex, Grid, None }`; `enum Position { Relative, Absolute }`; `enum FlexDirection { Row, Column, RowReverse, ColumnReverse }`; `enum BoxSizing { ContentBox, BorderBox }` | Set the display mode, positioning, flex direction, and box sizing of a `StyleData` node. |
 | `layout::JustifyContent`, `layout::AlignContent`, `layout::AlignItems`, `layout::AlignSelf` | `enum JustifyContent` and `enum AlignContent { Start, End, Center, Stretch, SpaceBetween, SpaceAround, SpaceEvenly }`; `enum AlignItems { Start, End, Center, Baseline, Stretch }`; `type AlignSelf = AlignItems` | Set main-axis and cross-axis alignment of a `StyleData` node and its children. |
 | `layout::LengthPercentage`, `layout::LengthPercentageAuto` | `enum LengthPercentage { Px(f32), Percent(f32), Text(TextLength) }`; `enum LengthPercentageAuto { Px(f32), Percent(f32), Auto }` | Padding, margin, gap, and inset values of a `StyleData` node. |
-| `layout::TextGeometry`, `layout::text_geometry::TextGeometry` | `trait TextGeometry { fn hit(..) -> HitPosition; fn caret(..) -> CaretGeometry; fn selection_rects(..) -> Vec<Rect> }` | Maps between points and text positions for hit testing, carets, and selection. |
-| `layout::CaretGeometry`, `layout::text_geometry::CaretGeometry` | `struct CaretGeometry { x: f32, top: f32, height: f32 }` | Holds the position and height of a text caret. |
+| `layout::TextGeometry` | `trait TextGeometry { fn hit(..) -> HitPosition; fn caret(..) -> CaretGeometry; fn selection_rects(..) -> Vec<Rect> }` | Maps between points and text positions for hit testing, carets, and selection. |
+| `layout::CaretGeometry` | `struct CaretGeometry { x: f32, top: f32, height: f32 }` | Holds the position and height of a text caret. |
 | `layout::ReactivePosition` | `struct ReactivePosition` | Extension that `position_reactive` attaches. |
 | `layout::BoundsReactive` | `struct BoundsReactive` | Extension that `bounds_reactive` attaches. |
 | `layout::FlexDirection` | `enum FlexDirection { Row, Column, RowReverse, ColumnReverse }` | Main axis of a flex box. |
@@ -1260,7 +1257,6 @@ fn main() -> AppResult<()> {
 | `reactive::untrack` | `fn untrack<R>(f: impl FnOnce() -> R) -> R` | Run `f` without subscribing the current effect to its reads. |
 | `reactive::defer` | `fn defer(f: impl FnOnce() + 'static)` | Run `f` after the current effect returns, or now outside an effect. An effect uses it to consume the signal that triggers it. |
 | `reactive::EventChannel` | `struct EventChannel<T>`; `emit`, `subscribe` | Send events between parts of the app. |
-| `reactive::StyleReactiveEffect` | `struct StyleReactiveEffect`; `new()` | Holds a reactive atom channel that updates a node's style when its value changes. |
 | `reactive::Runtime` | `struct Runtime`; `Runtime::scope(name, f) -> R` | Run code inside a reactive runtime. |
 
 ## Module `renderer`
@@ -1332,26 +1328,27 @@ fn main() -> AppResult<()> {
 | `style::Elevation` | `enum Elevation { Sm, Base, Md, .. }` | Selects a shadow depth from the theme. |
 | `style::RenderStyle` | `struct RenderStyle { background_color, background_gradient, text_color, border_radius, border_width, border_top, .., border_color, shadow, opacity: u16, transform: Transform2D }` | Holds the resolved paint properties of one node. Opacity is in units of 1/10000. |
 | `style::TextDecoration` | `enum TextDecoration { None, Underline, .. }` | Selects the line drawn with text. |
-| `style::binding::ReactiveStateSlot`, `style::binding::ReactiveStyleAtoms` | `type ReactiveStateSlot = Rc<Cell<StateSlot>>`; `type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>` | Shared cells that let code change a node's state slot or style atoms without rebuilding the tree. |
-| `style::engine::StyleEngine` | `struct StyleEngine<'theme>`; `apply(&self, &[StyleAtom], &mut RenderStyle)`, `apply_text(&self, &[StyleAtom], &mut TextStyle)`, `resolve_color(&self, ColorAtom) -> Rgba8` | Applies style atoms to paint and text styles against a theme and tone. |
+| `style::ReactiveStateSlot`, `style::ReactiveStyleAtoms` | `type ReactiveStateSlot = Rc<Cell<StateSlot>>`; `type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>` | Shared cells that let code change a node's state slot or style atoms without rebuilding the tree. |
+| `style::StyleEngine` | `struct StyleEngine<'theme>`; `apply(&self, &[StyleAtom], &mut RenderStyle)`, `apply_text(&self, &[StyleAtom], &mut TextStyle)`, `resolve_color(&self, ColorAtom) -> Rgba8` | Applies style atoms to paint and text styles against a theme and tone. |
+| `style::StyleReactiveEffect` | `struct StyleReactiveEffect`; `new()` | Holds a reactive atom channel that updates a node's style when its value changes. |
 | `style::unknown_class_warning_count` | `fn unknown_class_warning_count() -> usize` | Number of unknown class names seen. |
-| `style::metrics::BORDER_WIDTH`, `style::metrics::DISABLED_OPACITY`, `style::metrics::ICON_SIZE`, `style::metrics::OVERLAY_SHADOW` | `const BORDER_WIDTH: Px = Px(1)`; `const DISABLED_OPACITY: u16 = 5_000`; `const ICON_SIZE: Px = Px(20)`; `const OVERLAY_SHADOW: Elevation = Elevation::Md` | Default border width, disabled opacity, icon size, and overlay shadow for widgets. |
-| `style::metrics::space` | `const fn space(steps: u8) -> f32` | Converts a number of spacing steps to pixels. |
-| `style::overlay::StyleOverlay` | `struct StyleOverlay`; `new()`, `is_empty()`, `rest()`, `hover()`, `focus()`, `pressed()`, `disabled()`, `atoms_for(StateSlot) -> &[StyleAtom]` | Holds extra style atoms for each interaction state. |
-| `style::resolve::render_style_for` | `fn render_style_for(id: NodeId, node: &Node, inherited: &Theme, inherited_text: Option<Rgba8>) -> RenderStyle` | Resolves the paint style of a node from its style binding and theme. |
-| `style::resolve::text_style_for` | `fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextStyle` | Resolves the text style of a node on top of a base text style. |
+| `style::BORDER_WIDTH`, `style::DISABLED_OPACITY`, `style::ICON_SIZE`, `style::OVERLAY_SHADOW` | `const BORDER_WIDTH: Px = Px(1)`; `const DISABLED_OPACITY: u16 = 5_000`; `const ICON_SIZE: Px = Px(20)`; `const OVERLAY_SHADOW: Elevation = Elevation::Md` | Default border width, disabled opacity, icon size, and overlay shadow for widgets. |
+| `style::space` | `const fn space(steps: u8) -> f32` | Converts a number of spacing steps to pixels. |
+| `style::StyleOverlay` | `struct StyleOverlay`; `new()`, `is_empty()`, `rest()`, `hover()`, `focus()`, `pressed()`, `disabled()`, `atoms_for(StateSlot) -> &[StyleAtom]` | Holds extra style atoms for each interaction state. |
+| `style::render_style_for` | `fn render_style_for(id: NodeId, node: &Node, inherited: &Theme, inherited_text: Option<Rgba8>) -> RenderStyle` | Resolves the paint style of a node from its style binding and theme. |
+| `style::text_style_for` | `fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextStyle` | Resolves the text style of a node on top of a base text style. |
 | `style::scale::slate_light`, `style::scale::iris_light`, `style::scale::blue_light`, `style::scale::green_light`, `style::scale::amber_light`, `style::scale::ruby_light`, `style::scale::cyan_light`, `style::scale::slate_dark`, `style::scale::iris_dark`, `style::scale::blue_dark`, `style::scale::green_dark`, `style::scale::amber_dark`, `style::scale::ruby_dark`, `style::scale::cyan_dark` | `const fn slate_light() -> ColorScale` (same shape for each) | Return the built-in 12-step color scales for light and dark themes. |
-| `style::state::StateSlot` | `enum StateSlot { Rest, Focused, Hovered, Pressed, Disabled }` | Names the interaction state that selects state style atoms. |
-| `style::styled::StateStyleBuilder` | `struct StateStyleBuilder` | Builds the paint for one interaction state. Implements `Paint`. |
-| `style::text_style::TextLineHeight` | `enum TextLineHeight { FontSizeRelative(f32), Absolute(f32) }` | Gives line height as a multiple of font size or in pixels. |
-| `style::text_style::TextStyle` | `struct TextStyle { font_family: String, font_size: f32, font_weight: u16, italic: bool, line_height: TextLineHeight, letter_spacing_em: f32, tabular_nums: bool, decoration: TextDecoration, runs: Option<TextRuns> }` | Holds the resolved typography of a text node. |
-| `style::text_style::TextFace`, `style::text_style::TextRun`, `style::text_style::TextRuns` | `struct TextFace { bold, italic, mono, .. }`; `struct TextRun { start: usize, end: usize, face: TextFace, .. }`; `struct TextRuns(pub Arc<[TextRun]>)` | Mark byte ranges of a text with bold, italic, or monospace faces. |
-| `style::text_style::is_typography_atom` | `const fn is_typography_atom(atom: StyleAtom) -> bool` | Returns true when a style atom changes text layout. |
-| `style::text_style::StyledTextEngine` | `trait StyledTextEngine: TextEngine { fn layout_paragraph_styled(&self, text: &str, max_width: Option<f32>, style: &TextStyle) -> Result<Self::Paragraph, Self::Error>; }` | Lays out a paragraph with a text style. |
-| `style::theme::ThemeBuilder` | `struct ThemeBuilder`; `new()`, `tokens(&phf::Map<&str, ThemeValue>)`, `token(&str, ThemeValue)`, `build() -> Theme` | Builds a theme from named token values. |
-| `style::tone::ToneContext` | `struct ToneContext { tone: Tone }`; `new(Tone)` | Carries the tone that descendants resolve tone colors against. |
+| `style::StateSlot` | `enum StateSlot { Rest, Focused, Hovered, Pressed, Disabled }` | Names the interaction state that selects state style atoms. |
+| `style::StateStyleBuilder` | `struct StateStyleBuilder` | Builds the paint for one interaction state. Implements `Paint`. |
+| `style::TextLineHeight` | `enum TextLineHeight { FontSizeRelative(f32), Absolute(f32) }` | Gives line height as a multiple of font size or in pixels. |
+| `style::TextStyle` | `struct TextStyle { font_family: String, font_size: f32, font_weight: u16, italic: bool, line_height: TextLineHeight, letter_spacing_em: f32, tabular_nums: bool, decoration: TextDecoration, runs: Option<TextRuns> }` | Holds the resolved typography of a text node. |
+| `style::TextFace`, `style::TextRun`, `style::TextRuns` | `struct TextFace { bold, italic, mono, .. }`; `struct TextRun { start: usize, end: usize, face: TextFace, .. }`; `struct TextRuns(pub Arc<[TextRun]>)` | Mark byte ranges of a text with bold, italic, or monospace faces. |
+| `style::is_typography_atom` | `const fn is_typography_atom(atom: StyleAtom) -> bool` | Returns true when a style atom changes text layout. |
+| `style::StyledTextEngine` | `trait StyledTextEngine: TextEngine { fn layout_paragraph_styled(&self, text: &str, max_width: Option<f32>, style: &TextStyle) -> Result<Self::Paragraph, Self::Error>; }` | Lays out a paragraph with a text style. |
+| `style::ThemeBuilder` | `struct ThemeBuilder`; `new()`, `tokens(&phf::Map<&str, ThemeValue>)`, `token(&str, ThemeValue)`, `build() -> Theme` | Builds a theme from named token values. |
+| `style::ToneContext` | `struct ToneContext { tone: Tone }`; `new(Tone)` | Carries the tone that descendants resolve tone colors against. |
 | `style::variant::VariantTokens` | `struct VariantTokens { radius: u16, shadows: bool, hover_lift: bool, font: FontFamilyHint }` | Holds the radius, shadow, hover, and font settings of a theme variant. |
-| `style::variant_kit::SOLID_VARIANT`, `style::variant_kit::SOFT_VARIANT`, `style::variant_kit::GHOST_VARIANT` | `const SOLID_VARIANT: StyleVariant` (same for soft and ghost) | Built-in solid, soft, and ghost style variants with their per-state atoms. |
+| `style::SOLID_VARIANT`, `style::SOFT_VARIANT`, `style::GHOST_VARIANT` | `const SOLID_VARIANT: StyleVariant` (same for soft and ghost) | Built-in solid, soft, and ghost style variants with their per-state atoms. |
 | `style::Px` | `struct Px(pub i16)` | A pixel length in a style atom. |
 | `style::ColorOrToken` | `enum ColorOrToken { Rgba(Rgba8), Token(ColorKey), Atom(ColorAtom) }` | Colour argument of the `Paint` methods. Converts from `Token`, `Rgba8`, and `ColorAtom`. |
 | `style::ColorKey` | `enum ColorKey { Token(Token), Custom(&'static str) }`, `ColorKey::parse(name)` | Typed key of a theme colour. `parse` maps a built-in name to `Token` and any other name to `Custom`. |
@@ -1397,30 +1394,7 @@ fn main() -> AppResult<()> {
 | `terminal::Paint`, `terminal::raster_into`, `terminal::raster_with` | `struct Paint<'a> { theme: &Theme, cell: f32, caps: Caps, marks: &Marks }`; `fn raster_into(grid: &mut Grid, scene: &CommandScene, theme: &Theme, cell: f32)`; `fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &Paint<'_>)` | Draw a scene into an existing grid. `raster_with` takes capabilities and marks as well as the theme. |
 | `terminal::EventPump`, `terminal::AfterFrame` | `type EventPump<'a> = Box<dyn FnMut(&mut Vec<ShellEvent>) + 'a>`; `type AfterFrame<'a> = Box<dyn FnMut(&mut Host, &mut EventRouter, &Screen) + 'a>` | Callback types for `Hooks`: inject extra events before a frame, and run code after a frame is drawn. |
 | `terminal::calibrate` | `fn calibrate(out: &mut impl Write) -> io::Result<()>` | Measure how the terminal renders wide glyphs and set the cell width rule to match. |
-| `terminal::render` | `mod render` | Offscreen rendering for embed hosts (feature `render`). |
-| `terminal::render::PhysicalSize` | `struct PhysicalSize { width: u32, height: u32 }`; `const fn new(width, height)` | Holds a surface size in physical pixels. |
-| `terminal::render::RenderedGlyph` | `struct RenderedGlyph { font_id, font_index, glyph_id, x, y, size, color, variation_coords, skew }` | Describes one shaped glyph with its font, position, size, and color, ready to draw. |
-| `terminal::render::CornerRadii` | `struct CornerRadii(pub [f32; 4])` | Re-export of `scene::CornerRadii`. Holds the four corner radii of a rounded rectangle. |
-| `terminal::render::SceneCommand` | `enum SceneCommand { PushClip, PopClip, PushTransform, PopTransform, SaveLayer, RestoreLayer, PushLayer(LayerScope), PopLayer, Rect(DrawRect), Gradient(DrawGradient), Pattern(DrawPattern), DrawShadow { rect, radii, shadow }, GlyphRun(DrawGlyphRun), Sprite(DrawSprite), Image(DrawImage), Decoration(DrawDecoration) }` | Re-export of `scene::SceneCommand`. Lists one draw or state command in a `CommandScene`. Both hosts replay the commands in order. |
-| `terminal::render::DrawRect`, `terminal::render::SceneRectStyle` | `DrawRect::new(rect: Rect, style: SceneRectStyle) -> DrawRect`; `SceneRectStyle::{new, solid, rounded, with_stroke}` | Re-export of `scene::DrawRect`, `scene::SceneRectStyle`. Draws a solid rectangle with optional corner radii, opacity, and stroke. |
-| `terminal::render::DrawGradient`, `terminal::render::SceneGradientStyle` | `DrawGradient::new(rect: Rect, style: SceneGradientStyle) -> DrawGradient`; `SceneGradientStyle::{new, with_stroke}` | Re-export of `scene::DrawGradient`, `scene::SceneGradientStyle`. Draws a rectangle filled with a linear gradient. |
-| `terminal::render::DrawPattern`, `terminal::render::ScenePatternStyle` | `DrawPattern::new(rect: Rect, style: ScenePatternStyle) -> DrawPattern`; `ScenePatternStyle::{new, with_stroke}` | Re-export of `scene::DrawPattern`, `scene::ScenePatternStyle`. Draws a rectangle filled with a repeating pattern. |
-| `terminal::render::DrawSprite`, `terminal::render::SceneSpriteStyle` | `DrawSprite::new(style: &SceneSpriteStyle) -> DrawSprite` | Re-export of `scene::DrawSprite`, `scene::SceneSpriteStyle`. Draws a region of a sprite atlas into a destination rectangle with a tint color. |
-| `terminal::render::DrawDecoration`, `terminal::render::SceneDecorationStyle` | `struct DrawDecoration { node, kind: DecorationKind, band: Rect, color, opacity, period, line_width }` | Re-export of `scene::DrawDecoration`, `scene::SceneDecorationStyle`. Draws a text decoration line inside a band. |
-| `terminal::render::DrawGlyphRun` | `DrawGlyphRun::new(run: GlyphRun) -> DrawGlyphRun` | Re-export of `scene::DrawGlyphRun`. Wraps a glyph run as a scene command payload. |
-| `terminal::render::DecorationKind` | `enum DecorationKind { Underline, Strikethrough, WavyUnderline }` | Re-export of `scene::DecorationKind`. Selects the shape of a text decoration. |
-| `terminal::render::SpriteKind`, `terminal::render::SpriteSource` | `enum SpriteKind { Mono, Subpixel, Poly }`; `struct SpriteSource { atlas: u32, region: Rect, phase: f32 }` | Re-export of `scene::SpriteKind`, `scene::SpriteSource`. Select the atlas region of a sprite and how its texels are sampled. |
-| `terminal::render::LayerScope`, `terminal::render::LayerEffect` | `struct LayerScope { clip, clip_radii, effect: LayerEffect, opacity }`; `enum LayerEffect { Identity, Transform(Transform), LayerBlur { sigma } }` | Re-export of `scene::LayerScope`, `scene::LayerEffect`. Open an offscreen layer with a clip, an opacity, and an effect applied when the layer composites. |
-| `terminal::render::PaintFill`, `terminal::render::PatternKind` | `enum PaintFill { Solid(Rgba8), LinearGradient(LinearGradient), Pattern(PatternKind) }`; `enum PatternKind { Slash { color, period, line_width }, Checker { color_a, color_b, cell } }` | Re-export of `scene::PaintFill`, `scene::PatternKind`. Select how a shape is filled. |
-| `terminal::render::LinearGradient`, `terminal::render::GradientStop` | `LinearGradient::new(start: Point, end: Point, stops) -> LinearGradient`; `GradientStop::new(offset: f32, color: Rgba8)` | Re-export of `scene::LinearGradient`, `scene::GradientStop`. Define a linear gradient from start to end through color stops. |
-| `terminal::render::Stroke`, `terminal::render::StrokeStyle`, `terminal::render::StrokeAlign` | `struct Stroke { color, width, style: StrokeStyle, align: StrokeAlign }`; `StrokeStyle { Solid, Dashed(f32) }`; `StrokeAlign { Centered, Inside, Outside }` | Re-export of `scene::Stroke`, `scene::StrokeStyle`, `scene::StrokeAlign`. Describe the outline of a shape: color, width, dash, and position relative to the edge. |
-| `terminal::render::Shadow`, `terminal::render::ShadowKind` | `struct Shadow { color: [f32; 4], offset: [f32; 2], blur, spread, kind: ShadowKind }`; `ShadowKind { Outer, Inner, Glow }` | Re-export of `scene::Shadow`, `scene::ShadowKind`. Describe a box shadow drawn outside, inside, or around a rounded rectangle. |
-| `terminal::render::emit_scene` | `fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene` | Re-export of `scene::emit_scene`. Walks the laid-out widget tree from `root` and returns its draw commands. |
-| `terminal::render::WgpuRenderer` | `WgpuRenderer::new() -> Result<Self, RendererError>`; `render_command_scene(&mut self, surface: &mut WgpuSurface, scene: &CommandScene, clear_color: Color, viewport: (f32, f32)) -> Result<(), RendererError>` | Owns the GPU device and pipelines and draws a `CommandScene` to a surface. |
-| `terminal::render::WgpuSurface` | `size(&self) -> PhysicalSize`; `format(&self) -> wgpu::TextureFormat` | Holds a configured window surface that the renderer draws to. |
-| `terminal::render::WindowHandle`, `terminal::render::into_window_handle` | `fn into_window_handle<W: HasWindowHandle + HasDisplayHandle + Send + Sync + 'static>(window: W) -> WindowHandle` | Wraps a platform window so the renderer can create a surface for it. |
-| `terminal::render::ScreenSubmission`, `terminal::render::OffscreenTarget` | `struct ScreenSubmission<'a> { device, queue, view, format, viewport, scale, clear }`; `struct OffscreenTarget<'a> { device, queue, view, format, viewport, scale }` | Name an embedder-owned wgpu target that the renderer draws a scene into. |
-| `terminal::render::RendererError` | `enum RendererError { NoAdapter, DeviceRequest, SurfaceCreate, NoSupportedFormat, SurfaceValidation, NotInitialized, InvalidViewport, Layer, Software(String) }` | Reports why the renderer could not start or draw a frame. |
+| `terminal::render` | `fn render(out: &mut impl Write, prev: &Grid, next: &Grid, depth: ColorDepth) -> io::Result<()>` | Write the escape sequences that turn the `prev` grid into `next` at the given colour depth. |
 
 ## Module `testing`
 
@@ -1453,7 +1427,7 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | `widgets::TreeRow` | `struct TreeRow<K> { id, depth, disclosure, selected, parent, .. }`; `has_children()` | One visible row of a flattened tree. |
 | `widgets::IconSource` | `struct IconSource`; `trait IntoIconSource` | What `icon` accepts: a bundled `Icon` or any text glyph. |
 | `widgets::layout_ext::LayoutOverrides` | `struct LayoutOverrides`; `const fn new() -> Self` | Width, height, grow, padding, and full-style overrides that a widget builder applies to its root layout, plus the node hooks that `WidgetLayoutExt::map_node` queues. |
-| `widgets::patterns::HintEntry` | `type HintEntry<'a> = (&'a str, &'a str)` | One key and label pair for the hint overlay. |
+| `widgets::HintEntry` | `type HintEntry<'a> = (&'a str, &'a str)` | One key and label pair for the hint overlay. |
 | `widgets::ChangeKind` | `enum ChangeKind { Added, Modified, Deleted }` | Line change mark in the `code_edit` gutter. |
 | `widgets::DiagSeverity`, `widgets::DiagSpan` | `enum DiagSeverity { Hint, Info, Warning, Error }`; `struct DiagSpan { line: usize, start: usize, end: usize, severity: DiagSeverity }` | Diagnostic range that `code_edit` underlines, with its severity. |
 | `widgets::parse_hex`, `widgets::to_hex` | `fn parse_hex(input: &str) -> Option<Rgba8>`; `fn to_hex(color: Rgba8) -> String` | Parse `#rgb` or `#rrggbb` to an opaque color, and format a color as `#rrggbb`. |
