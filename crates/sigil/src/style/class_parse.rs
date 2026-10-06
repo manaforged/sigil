@@ -1,8 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock, PoisonError};
 
 use smallvec::SmallVec;
 
+use crate::style::intern::intern;
 use crate::style::{StyleAtom, parse_class_string, parser::ParseError};
 
 pub(crate) fn parse_classes(input: &'static str) -> &'static [StyleAtom] {
@@ -21,18 +22,7 @@ pub(crate) fn parse_classes(input: &'static str) -> &'static [StyleAtom] {
 }
 
 pub(crate) fn intern_atoms(atoms: SmallVec<[StyleAtom; 16]>) -> &'static [StyleAtom] {
-    static CACHE: OnceLock<Mutex<HashSet<&'static [StyleAtom]>>> = OnceLock::new();
-
-    let mut cache = CACHE
-        .get_or_init(|| Mutex::new(HashSet::new()))
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner);
-    if let Some(interned) = cache.get(atoms.as_slice()).copied() {
-        return interned;
-    }
-    let interned: &'static [StyleAtom] = Box::leak(atoms.into_vec().into_boxed_slice());
-    cache.insert(interned);
-    interned
+    intern(atoms.into_vec())
 }
 
 fn parse_and_leak(input: &'static str) -> &'static [StyleAtom] {

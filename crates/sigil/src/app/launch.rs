@@ -18,7 +18,7 @@ use crate::app::exit::clear_exit;
 use crate::app::window::allocate_window_id;
 use crate::kernel::IntoNode;
 
-mod backend;
+pub(super) mod backend;
 mod clock;
 mod event_wiring;
 mod frame;

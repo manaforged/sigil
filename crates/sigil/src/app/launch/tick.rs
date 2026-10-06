@@ -103,7 +103,7 @@ impl LoopState {
         };
         let WindowRecord { host, router, view } = record;
         let viewport = view.viewport;
-        let surface = &mut view.surface;
+        let surface = view.surface.as_ref();
         let mut shot = |app: &mut crate::app::embed::Host| {
             super::backend::inspect_shot(app, renderer, surface, viewport)
         };

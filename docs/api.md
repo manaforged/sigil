@@ -1291,6 +1291,8 @@ fn main() -> AppResult<()> {
 | Name | Signature | Purpose |
 | --- | --- | --- |
 | `renderer::capture::FORMAT`, `renderer::capture::CaptureExtent` | `const FORMAT: wgpu::TextureFormat = Rgba8UnormSrgb`; `struct CaptureExtent { width: u32, height: u32 }` | The texture format and size of a capture target (feature `scene`). |
+| `renderer::capture::render_to_image`, `renderer::capture::ImageRenderer`, `renderer::capture::ImageTarget` | `fn render_to_image(renderer: ImageRenderer<'_>, scene: &CommandScene, target: ImageTarget) -> Result<RgbaImage, RendererError>`; `enum ImageRenderer { Gpu(&mut WgpuRenderer), Cpu(&mut CpuRenderer) }`; `struct ImageTarget { size: PhysicalSize, viewport: (f32, f32), clear: Color }` | Render a scene to an image on the GPU or the CPU. The inspector screenshot, `app::snapshot`, and the kittest harness all render through it. |
+| `app::snapshot` | `fn snapshot(view: impl IntoNode, size: PhysicalSize) -> AppResult<RgbaImage>` | Lay out and render a view off screen to an image of `size` pixels, on the GPU when an adapter exists, else on the CPU renderer (feature `desktop`). |
 | `renderer::capture::capture_texture`, `renderer::capture::read_texture` | `fn capture_texture(device: &wgpu::Device, extent: CaptureExtent) -> wgpu::Texture`; `fn read_texture(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Texture, extent: CaptureExtent) -> Result<Vec<u8>, Box<dyn Error>>` | Create a render target texture that supports copy-out, and read it back as tightly packed RGBA8 rows. |
 
 ## Module `scene`

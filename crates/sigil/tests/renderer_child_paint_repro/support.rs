@@ -59,9 +59,9 @@ pub(super) fn capture(build: impl sigil::kernel::IntoNode, size_px: [u32; 2]) ->
         .expect("layout compute");
 
     let scene = emit_scene(&cx, root);
-    let (device, queue) = sigil_kittest::gpu::shared_device()
+    let mut renderer = sigil_kittest::gpu::headless_renderer()
         .expect("sigil-kittest")
         .expect("the child paint repro needs a GPU");
-    sigil_kittest::gpu::render_scene_to_image(device, queue, &scene, (w as f32, h as f32), size_px)
+    sigil_kittest::gpu::render_scene_to_image(&mut renderer, &scene, (w as f32, h as f32), size_px)
         .expect("sigil-kittest")
 }

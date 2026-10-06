@@ -10,7 +10,7 @@ use image::RgbaImage;
 use sigil::app::{DefaultFonts, TextTuning, set_default_fonts, set_text_tuning};
 use sigil::prelude::*;
 use sigil_kittest::Harness;
-use sigil_kittest::gpu::{render_scene_to_image, shared_device};
+use sigil_kittest::gpu::{headless_renderer, render_scene_to_image};
 
 const FONT: &[u8] = include_bytes!("fixtures/text/Barlow-Regular-subset.ttf");
 const OFFSETS: u16 = 8;
@@ -126,7 +126,7 @@ impl Ink {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn outline_glyph_counters_stay_open_at_curve_joins() {
-    let Some((device, queue)) = shared_device().unwrap() else {
+    let Some(mut renderer) = headless_renderer().unwrap() else {
         return;
     };
     set_default_fonts(DefaultFonts {
@@ -145,7 +145,7 @@ fn outline_glyph_counters_stay_open_at_curve_joins() {
     for tenths in SCALES {
         let scene = ui.host().0.emit(viewport);
         let size = [VIEWPORT.0 * tenths / 10, VIEWPORT.1 * tenths / 10];
-        let ink = Ink::new(&render_scene_to_image(device, queue, &scene, viewport, size).unwrap());
+        let ink = Ink::new(&render_scene_to_image(&mut renderer, &scene, viewport, size).unwrap());
         for bounds in ink.glyph_boxes() {
             if bounds[3] - bounds[1] < MIN_RING_PX {
                 continue;

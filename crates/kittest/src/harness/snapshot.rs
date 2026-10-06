@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use super::{Harness, Surface};
-use crate::gpu::{render_scene_to_image, shared_device};
+use crate::gpu::{headless_renderer, render_scene_to_image};
 use crate::{Error, Rendered, assert_png_matches_golden, assert_text_matches_golden};
 
 pub const SNAPSHOT_MAX_DELTA_PCT: f32 = 0.5;
@@ -20,10 +20,10 @@ impl Harness {
         let viewport = self.viewport();
         let mut scene = self.host.emit(viewport);
         sigil::scene::paint_backdrop(&mut scene, self.host.theme(), viewport);
-        let Some((device, queue)) = shared_device()? else {
+        let Some(mut renderer) = headless_renderer()? else {
             return Ok(None);
         };
-        render_scene_to_image(device, queue, &scene, viewport, [size.0, size.1]).map(Some)
+        render_scene_to_image(&mut renderer, &scene, viewport, [size.0, size.1]).map(Some)
     }
 
     #[track_caller]

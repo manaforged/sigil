@@ -1,17 +1,21 @@
 use crate::geometry::PhysicalSize;
 use crate::hal::Renderer as _;
 use crate::profile::{BackendKind, BackendStatus, FallbackCause};
-#[cfg(feature = "inspect")]
-use crate::renderer::capture::{CaptureExtent, capture_texture, read_texture};
 use crate::renderer::frame_stats::FrameStats;
-#[cfg(feature = "inspect")]
-use crate::renderer::offscreen::OffscreenTarget;
 use crate::renderer::{
     CpuRenderer, CpuSurface, RendererError, WgpuRenderer, WgpuSurface, into_window_handle,
 };
 use crate::scene::CommandScene;
 use crate::style::Color;
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
+
+#[cfg(feature = "inspect")]
+mod inspect;
+#[cfg(any(feature = "inspect", not(target_arch = "wasm32")))]
+mod offscreen;
+
+#[cfg(feature = "inspect")]
+pub(super) use inspect::inspect_shot;
 
 const ENV: &str = "SIGIL_BACKEND";
 const SURFACE_CLEAR: Color = Color::rgba(0.03, 0.04, 0.05, 1.0);
@@ -36,7 +40,7 @@ impl Choice {
     }
 }
 
-pub(super) struct Backend {
+pub(in crate::app) struct Backend {
     inner: Inner,
     fallback: bool,
     status: BackendStatus,
@@ -55,7 +59,7 @@ pub(super) enum Surface {
 }
 
 impl Backend {
-    pub(super) fn from_env() -> Result<Self, RendererError> {
+    pub(in crate::app) fn from_env() -> Result<Self, RendererError> {
         let value = std::env::var(ENV).unwrap_or_default();
         let choice = Choice::parse(&value);
         if choice == Choice::Unknown {
@@ -93,7 +97,7 @@ impl Backend {
         self.status
     }
 
-    pub(super) const fn clear_color(&self) -> Color {
+    pub(in crate::app) const fn clear_color(&self) -> Color {
         if self.is_transparent() {
             TRANSPARENT_CLEAR
         } else {
@@ -255,109 +259,6 @@ impl Backend {
             _ => Err(mismatch()),
         }
     }
-
-    #[cfg(feature = "inspect")]
-    pub(super) fn screenshot(
-        &mut self,
-        surface: &Surface,
-        scene: &CommandScene,
-        clear: Color,
-        viewport: (f32, f32),
-    ) -> Result<Vec<u8>, RendererError> {
-        match (&mut self.inner, surface) {
-            (Inner::Cpu(r), Surface::Cpu(s)) => r
-                .render(scene, clear, viewport, s.size())?
-                .encode_png()
-                .map_err(|err| RendererError::Software(err.to_string())),
-            (Inner::Wgpu(r), Surface::Wgpu(s)) => wgpu_shot(r, s, scene, clear, viewport),
-            _ => Err(mismatch()),
-        }
-    }
-}
-
-#[cfg(feature = "inspect")]
-pub(super) fn inspect_shot(
-    app: &mut crate::app::embed::Host,
-    renderer: &mut Backend,
-    surface: &mut Option<Surface>,
-    viewport: (f32, f32),
-) -> Result<serde_json::Value, String> {
-    let Some((cx, _, root)) = app.tree() else {
-        return Err("no mounted tree".into());
-    };
-    let scene = super::scene_cache::window_scene(cx, root, viewport, !renderer.is_transparent());
-    let Some(surface) = surface.as_mut() else {
-        return Err("window surface is not initialized yet".into());
-    };
-    let clear = renderer.clear_color();
-    let size = surface_size(surface);
-    let png = renderer
-        .screenshot(surface, &scene, clear, viewport)
-        .map_err(|err| err.to_string())?;
-    Ok(serde_json::json!({
-        "png": base64::Engine::encode(
-            &base64::engine::general_purpose::STANDARD,
-            png,
-        ),
-        "width": size.width,
-        "height": size.height,
-    }))
-}
-
-#[cfg(feature = "inspect")]
-const fn surface_size(surface: &Surface) -> PhysicalSize {
-    match surface {
-        Surface::Wgpu(surface) => surface.size(),
-        Surface::Cpu(surface) => surface.size(),
-    }
-}
-
-#[cfg(feature = "inspect")]
-#[allow(
-    clippy::cast_precision_loss,
-    reason = "mirrors the surface_text_scale formula used for on-screen frames"
-)]
-fn wgpu_shot(
-    renderer: &mut WgpuRenderer,
-    surface: &WgpuSurface,
-    scene: &CommandScene,
-    clear: Color,
-    viewport: (f32, f32),
-) -> Result<Vec<u8>, RendererError> {
-    let (device, queue) = renderer
-        .device()
-        .zip(renderer.queue())
-        .ok_or(RendererError::NotInitialized)
-        .map(|(device, queue)| (device.clone(), queue.clone()))?;
-    let size = surface.size();
-    let extent = CaptureExtent {
-        width: size.width,
-        height: size.height,
-    };
-    let texture = capture_texture(&device, extent);
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let scale = size.width as f32 / viewport.0.max(1.0);
-    renderer.render_command_scene_offscreen(
-        OffscreenTarget {
-            device: &device,
-            queue: &queue,
-            view: &view,
-            format: crate::renderer::capture::FORMAT,
-            viewport,
-            scale,
-        },
-        scene,
-        clear,
-    )?;
-    let rgba = read_texture(&device, &queue, &texture, extent)
-        .map_err(|err| RendererError::Software(err.to_string()))?;
-    let image = image::RgbaImage::from_raw(size.width, size.height, rgba)
-        .ok_or(RendererError::InvalidViewport)?;
-    let mut png = Vec::new();
-    image
-        .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
-        .map_err(|err| RendererError::Software(err.to_string()))?;
-    Ok(png)
 }
 
 fn mismatch() -> RendererError {

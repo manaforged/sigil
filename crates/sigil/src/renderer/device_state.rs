@@ -186,7 +186,6 @@ impl DeviceState {
         ));
     }
 
-    #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn ensure_ready_headless(&mut self) -> Result<&mut ReadyState, RendererError> {
         self.ensure_ready_for(None)?;
         match self {

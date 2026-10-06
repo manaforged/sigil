@@ -14,7 +14,7 @@ pub use with_cx::WithCx;
 mod error;
 pub use error::Error;
 pub mod gpu;
-use gpu::{render_scene_to_image, shared_device};
+use gpu::render_scene_to_image;
 mod harness;
 mod with_cx;
 pub use harness::{Harness, Node, Query, SNAPSHOT_MAX_DELTA_PCT, Target};
@@ -362,12 +362,11 @@ fn capture_core(
             viewport_h,
         );
         let top_layer = bounds::top_layer(&cx, &layout, root, frame);
-        let Some((device, queue)) = shared_device()? else {
+        let Some(mut renderer) = gpu::headless_renderer()? else {
             return Ok(None);
         };
         let image = render_scene_to_image(
-            device,
-            queue,
+            &mut renderer,
             &scene,
             (viewport_w, viewport_h),
             target.physical,

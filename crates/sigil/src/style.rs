@@ -20,6 +20,7 @@ pub(crate) mod focus_ring;
 pub(crate) mod font_family;
 mod grid;
 mod install;
+pub(crate) mod intern;
 pub(crate) mod locale;
 pub(crate) mod merge;
 pub(crate) mod metrics;

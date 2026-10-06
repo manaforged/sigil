@@ -31,6 +31,8 @@ mod open;
 pub(crate) mod platform_prefs;
 #[cfg(feature = "pty")]
 pub(crate) mod pty;
+#[cfg(all(feature = "desktop", not(target_arch = "wasm32")))]
+mod snapshot;
 #[cfg(feature = "scene")]
 mod text_geometry;
 #[cfg(feature = "scene")]
@@ -74,6 +76,8 @@ pub(crate) use launch::launch;
 pub use open::open;
 #[cfg(feature = "pty")]
 pub use pty::Session;
+#[cfg(all(feature = "desktop", not(target_arch = "wasm32")))]
+pub use snapshot::snapshot;
 #[cfg(feature = "scene")]
 pub use text_geometry::EngineGeometry;
 #[cfg(feature = "scene")]

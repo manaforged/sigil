@@ -52,12 +52,11 @@ fn cpu_group_opacity_blends_overlap_once() {
 #[test]
 #[ignore = "needs a wgpu adapter"]
 fn gpu_group_opacity_blends_overlap_once() {
-    let Some((device, queue)) = sigil_kittest::gpu::shared_device().expect("gpu") else {
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("gpu") else {
         return;
     };
     let image = sigil_kittest::gpu::render_scene_to_image(
-        device,
-        queue,
+        &mut renderer,
         &overlapping_group(),
         (100.0, 40.0),
         [100, 40],

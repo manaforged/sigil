@@ -2,9 +2,106 @@ use std::error::Error;
 use std::io;
 use std::sync::mpsc;
 
+use crate::geometry::PhysicalSize;
+use crate::renderer::cpu::CpuRenderer;
+use crate::renderer::error::RendererError;
+use crate::renderer::offscreen::OffscreenTarget;
+use crate::renderer::renderer::WgpuRenderer;
+use crate::renderer::scene_command::CommandScene;
+use crate::style::Color;
+
 pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 const BYTES_PER_PIXEL: u32 = 4;
+
+pub enum ImageRenderer<'a> {
+    Gpu(&'a mut WgpuRenderer),
+    Cpu(&'a mut CpuRenderer),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ImageTarget {
+    pub size: PhysicalSize,
+    pub viewport: (f32, f32),
+    pub clear: Color,
+}
+
+impl ImageTarget {
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "image dimensions are far below the f32 mantissa limit"
+    )]
+    fn scale(self) -> f32 {
+        self.size.width as f32 / self.viewport.0.max(1.0)
+    }
+
+    const fn extent(self) -> CaptureExtent {
+        CaptureExtent {
+            width: self.size.width,
+            height: self.size.height,
+        }
+    }
+}
+
+pub fn render_to_image(
+    renderer: ImageRenderer<'_>,
+    scene: &CommandScene,
+    target: ImageTarget,
+) -> Result<image::RgbaImage, RendererError> {
+    if target.size.width == 0 || target.size.height == 0 {
+        return Err(RendererError::InvalidViewport);
+    }
+    let rgba = match renderer {
+        ImageRenderer::Gpu(renderer) => gpu_pixels(renderer, scene, target)?,
+        ImageRenderer::Cpu(renderer) => cpu_pixels(renderer, scene, target)?,
+    };
+    image::RgbaImage::from_raw(target.size.width, target.size.height, rgba)
+        .ok_or(RendererError::InvalidViewport)
+}
+
+fn gpu_pixels(
+    renderer: &mut WgpuRenderer,
+    scene: &CommandScene,
+    target: ImageTarget,
+) -> Result<Vec<u8>, RendererError> {
+    let (device, queue) = {
+        let ready = renderer.state.ensure_ready_headless()?;
+        (ready.device.clone(), ready.queue.clone())
+    };
+    let extent = target.extent();
+    let texture = capture_texture(&device, extent);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    renderer.render_command_scene_offscreen(
+        OffscreenTarget {
+            device: &device,
+            queue: &queue,
+            view: &view,
+            format: FORMAT,
+            viewport: target.viewport,
+            scale: target.scale(),
+        },
+        scene,
+        target.clear,
+    )?;
+    read_texture(&device, &queue, &texture, extent)
+        .map_err(|err| RendererError::Software(err.to_string()))
+}
+
+fn cpu_pixels(
+    renderer: &mut CpuRenderer,
+    scene: &CommandScene,
+    target: ImageTarget,
+) -> Result<Vec<u8>, RendererError> {
+    let pixmap = renderer.render(scene, target.clear, target.viewport, target.size)?;
+    Ok(pixmap
+        .pixels()
+        .iter()
+        .flat_map(|px| {
+            let color = px.demultiply();
+            [color.red(), color.green(), color.blue(), color.alpha()]
+        })
+        .collect())
+}
 
 #[must_use]
 pub fn capture_texture(device: &wgpu::Device, extent: CaptureExtent) -> wgpu::Texture {
