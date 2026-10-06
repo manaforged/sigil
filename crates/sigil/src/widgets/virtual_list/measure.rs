@@ -12,6 +12,7 @@ use super::render::{WidthSpec, width_apply};
 use super::{RowKey, bound_slice};
 
 pub(super) type Tops = Signal<Rc<Vec<f32>>>;
+pub(super) type Keys = Signal<Rc<Vec<u64>>>;
 
 type Cache = Rc<RefCell<HashMap<u64, f32>>>;
 
@@ -21,6 +22,7 @@ pub(super) struct Measure {
     width: Rc<Cell<f32>>,
     version: Signal<u64>,
     pub(super) tops: Tops,
+    pub(super) keys: Option<Keys>,
 }
 
 pub(super) fn row_key_of<T>(row_key: Option<&RowKey<T>>, index: usize, item: &T) -> u64 {
@@ -54,6 +56,18 @@ impl Measure {
         let cache: Cache = Rc::default();
         let version = signal(0_u64);
         prune(items, row_key.clone(), Rc::clone(&cache));
+        let keys = row_key.clone().map(|key_of| {
+            derived(move || {
+                let items = items.get();
+                Rc::new(
+                    bound_slice(&items)
+                        .iter()
+                        .enumerate()
+                        .map(|(index, item)| key_of(index, item))
+                        .collect::<Vec<u64>>(),
+                )
+            })
+        });
         let heights = Rc::clone(&cache);
         let tops = derived(move || {
             version.track();
@@ -75,6 +89,7 @@ impl Measure {
             width: Rc::default(),
             version,
             tops,
+            keys,
         }
     }
 

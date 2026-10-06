@@ -127,6 +127,7 @@ where
             (!self.row_tops.is_empty())
                 .then(|| signal(std::rc::Rc::new(std::mem::take(&mut self.row_tops))))
         });
+        let keys = measure.as_ref().and_then(|measure| measure.keys);
         let live_rows = self.bound.as_ref().map(|bound| bound.live_rows);
         let viewport = signal((0.0, 0.0));
         let (content, max) = scroll::extent(viewport, viewport_height, move || {
@@ -143,6 +144,7 @@ where
             selection_state: self.ensure_selection_state(),
             viewport,
             tops,
+            keys,
             content,
             max,
         };

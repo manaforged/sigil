@@ -462,6 +462,9 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- A measured `virtual_list` with `key_by` keeps the same item at the top when
+  items are inserted above it, such as older chat history loaded on scroll.
+  Before, it held the row index, so the view jumped by the number inserted.
 - Accessibility bounds follow transforms: a node inside a scaled or moved
   parent reports where it is drawn. Before, it reported its untransformed
   layout box, so screen readers highlighted the wrong place on a canvas.

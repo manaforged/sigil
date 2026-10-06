@@ -120,10 +120,13 @@ pub(super) fn anchor(axes: BuildAxes) {
         return;
     };
     let seen = RefCell::new(tops.peek());
+    let seen_keys = RefCell::new(axes.keys.map(|keys| keys.peek()));
     effect(move || {
         let next = tops.get();
         untrack(|| {
             let prev = seen.replace(Rc::clone(&next));
+            let next_keys = axes.keys.map(|keys| keys.peek());
+            let prev_keys = seen_keys.replace(next_keys.clone());
             let current = axes.scroll_y.peek();
             let viewport = viewport_px(axes.viewport.peek(), axes.viewport_height);
             let (before, after) = (RowHeights::Tops(&prev), RowHeights::Tops(&next));
@@ -131,13 +134,30 @@ pub(super) fn anchor(axes: BuildAxes) {
                 return;
             }
             let row = before.row_at(current);
-            let shift = after.top(row) - before.top(row);
+            let moved_to = same_item(prev_keys.as_deref(), next_keys.as_deref(), row);
+            let shift = after.top(moved_to) - before.top(row);
             if shift.abs() > f32::EPSILON {
                 let max = (after.total() - viewport).max(0.0);
                 axes.scroll_y.set((current + shift).clamp(0.0, max));
             }
         });
     });
+}
+
+fn same_item(before: Option<&Vec<u64>>, after: Option<&Vec<u64>>, row: usize) -> usize {
+    let (Some(before), Some(after)) = (before, after) else {
+        return row;
+    };
+    let Some(key) = before.get(row) else {
+        return row;
+    };
+    if after.get(row) == Some(key) {
+        return row;
+    }
+    after
+        .iter()
+        .position(|candidate| candidate == key)
+        .unwrap_or(row)
 }
 
 pub(super) fn apply_bound_scroll(

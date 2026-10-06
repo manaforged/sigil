@@ -72,6 +72,7 @@ struct BuildAxes {
     selection_state: Signal<SelectionState>,
     viewport: Signal<(f32, f32)>,
     tops: Option<measure::Tops>,
+    keys: Option<measure::Keys>,
     content: Signal<f32>,
     max: Signal<f32>,
 }
