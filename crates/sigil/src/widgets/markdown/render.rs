@@ -21,20 +21,10 @@ pub(super) fn tinted(node: TextBuilder, tone: Tone) -> TextBuilder {
 
 pub(super) fn rich(source: &str, class: &'static str, tone: Tone, role: Role) -> NodeBuilder {
     let body = styled(source);
-    let mut node = container()
+    container()
         .role(role)
         .layout(LayoutStyle::block().fill_width())
-        .child(tinted(text(body.text).runs(body.runs).class(class), tone));
-    for (label, href) in body.links {
-        node = node.child(
-            container()
-                .role(Role::Link)
-                .label(label)
-                .description(href)
-                .layout(LayoutStyle::block().width(0.0).height(0.0)),
-        );
-    }
-    node
+        .child(tinted(text(body.text).runs(body.runs).class(class), tone))
 }
 
 pub(super) fn heading(level: u8, body: &str) -> NodeBuilder {

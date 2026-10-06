@@ -8,6 +8,7 @@ pub(crate) mod focus;
 mod handlers;
 pub(crate) mod hit_test;
 mod ime_handlers;
+pub(crate) mod links;
 pub(crate) mod pointer_dispatch;
 mod router;
 pub(crate) mod selection;

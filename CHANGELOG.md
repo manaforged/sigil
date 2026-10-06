@@ -459,6 +459,10 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- Links in `markdown` can be clicked and reached by assistive technology:
+  each is a `Link` node with its URL and the area of its text, and a click
+  on it calls the nearest `NodeEventsExt::link` handler. Before, links were
+  zero-size nodes with nothing to click.
 - A `field` with an error marks its control invalid and links the message
   as its description, and an open `modal` that traps focus is marked modal
   with the rest of the page hidden from assistive technology. Before, the

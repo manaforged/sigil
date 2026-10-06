@@ -58,6 +58,11 @@ pub trait NodeEventsExt {
         H: Fn(&FileDropEvent) + 'static;
 
     #[must_use]
+    fn link<H>(self, h: H) -> Self
+    where
+        H: Fn(&str) + 'static;
+
+    #[must_use]
     fn on_scroll<H>(self, h: H) -> Self
     where
         H: Fn(&mut ScrollEvent) + 'static;
@@ -189,6 +194,15 @@ impl NodeEventsExt for NodeBuilder {
     {
         with_handlers(self, move |handlers| {
             handlers.add_file_drop(Box::new(h));
+        })
+    }
+
+    fn link<H>(self, h: H) -> Self
+    where
+        H: Fn(&str) + 'static,
+    {
+        with_handlers(self, move |handlers| {
+            handlers.add_link(Box::new(h));
         })
     }
 

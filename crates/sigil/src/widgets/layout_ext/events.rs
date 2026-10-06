@@ -73,6 +73,13 @@ impl<T: WidgetLayoutExt> NodeEventsExt for T {
         self.map_node(move |node| <NodeBuilder as NodeEventsExt>::file_drop(node, h))
     }
 
+    fn link<H>(self, h: H) -> Self
+    where
+        H: Fn(&str) + 'static,
+    {
+        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::link(node, h))
+    }
+
     fn on_scroll<H>(self, h: H) -> Self
     where
         H: Fn(&mut ScrollEvent) + 'static,

@@ -19,6 +19,7 @@ type KeyHandler = Box<dyn Fn(&mut KeyEvent) + 'static>;
 type ScrollHandler = Box<dyn Fn(&mut ScrollEvent) + 'static>;
 type FocusHandler = Box<dyn Fn() + 'static>;
 type FileDropHandler = Box<dyn Fn(&FileDropEvent) + 'static>;
+type LinkHandler = Box<dyn Fn(&str) + 'static>;
 type ValueAdjustment = Box<dyn Fn(bool) + 'static>;
 type A11yEditHandler = Box<dyn Fn(&A11yEdit) -> bool + 'static>;
 
@@ -53,6 +54,7 @@ pub struct EventHandlers {
     focus_in: Vec<FocusHandler>,
     focus_out: Vec<FocusHandler>,
     file_drop: Vec<FileDropHandler>,
+    link: Vec<LinkHandler>,
     value_adjustment: Option<ValueAdjustment>,
     a11y_edit: Option<A11yEditHandler>,
 }
@@ -121,6 +123,15 @@ impl EventHandlers {
     }
     pub(crate) fn add_file_drop(&mut self, handler: FileDropHandler) {
         self.file_drop.push(handler);
+    }
+    pub(crate) fn add_link(&mut self, handler: LinkHandler) {
+        self.link.push(handler);
+    }
+    pub(crate) fn invoke_link(&self, href: &str) -> bool {
+        for handler in &self.link {
+            handler(href);
+        }
+        !self.link.is_empty()
     }
     pub(crate) fn invoke_file_drop(&self, event: &FileDropEvent) -> bool {
         for handler in &self.file_drop {

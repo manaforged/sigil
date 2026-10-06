@@ -99,6 +99,11 @@ fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<Run
     let runs = super::text::export(id, a11y, &mut ak);
     if runs.is_none() {
         apply_children(cx, kernel_node, &mut ak);
+        let factor = f64::from(cx.scale().factor());
+        let links = super::links::export(cx, id, bounds, factor, &mut ak);
+        if links.is_some() {
+            return (ak, links);
+        }
     } else {
         for control in embedded_controls(cx, kernel_node) {
             ak.push_child(control.to_accesskit());

@@ -106,7 +106,6 @@ fn flush_text(out: &mut Vec<Span>, text: &mut String) {
 pub(super) struct Styled {
     pub(super) text: String,
     pub(super) runs: Vec<TextRun>,
-    pub(super) links: Vec<(String, String)>,
 }
 
 pub(super) fn styled(source: &str) -> Styled {
@@ -146,21 +145,21 @@ fn push_spans(out: &mut Styled, source: &str, face: &TextFace) {
                 };
                 push_run(out, &unbreakable(&body), &code);
             }
-            Span::Link { text, href } => push_link(out, face, text, href),
+            Span::Link { text, href } => push_link(out, face, &text, &href),
         }
     }
 }
 
-fn push_link(out: &mut Styled, face: &TextFace, text: String, href: String) {
+fn push_link(out: &mut Styled, face: &TextFace, text: &str, href: &str) {
     let link = TextFace {
         color: Some(Token::Accent11),
-        link: Some(href.as_str().into()),
+        link: Some(href.into()),
         ..face.clone()
     };
     if text.contains("://") {
-        push_run(out, &url_breaks(&text), &link);
+        push_run(out, &url_breaks(text), &link);
     } else {
-        push_spans(out, &text, &link);
+        push_spans(out, text, &link);
     }
     if !HostCaps::current().hyperlinks && text != href {
         push_run(out, " (", face);
@@ -168,10 +167,9 @@ fn push_link(out: &mut Styled, face: &TextFace, text: String, href: String) {
             color: Some(Token::OnSurfaceMuted),
             ..face.clone()
         };
-        push_run(out, &url_breaks(&href), &url);
+        push_run(out, &url_breaks(href), &url);
         push_run(out, ")", face);
     }
-    out.links.push((text, href));
 }
 
 const JOINER: char = '\u{2060}';

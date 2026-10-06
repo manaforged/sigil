@@ -36,6 +36,7 @@ pub struct EventRouter {
     shortcuts: ShortcutIndex,
     hit_cache: HitTestCache,
     hover_seen: Option<(u64, u64, (u32, u32))>,
+    link_press: Option<std::sync::Arc<str>>,
 }
 
 impl EventRouter {
@@ -197,10 +198,30 @@ impl EventRouter {
         self.focus_pointer_target(cx, &path, event.phase);
         let capture_requester =
             dispatch_pointer_path(cx, &next_targets, &mut event, global_position);
+        self.follow_link(cx, &path, &event, global_position);
         if event.capture_requested() {
             self.pointer_capture = capture_requester.or_else(|| path.last().copied());
         }
         self.release_capture_on_terminal_phase(event.phase);
+    }
+
+    fn follow_link(&mut self, cx: &Cx, path: &NodePath, event: &PointerEvent, at: Point) {
+        match event.phase {
+            PointerPhase::Down => {
+                self.link_press = crate::events::links::link_at(cx, path, at);
+            }
+            PointerPhase::Up => {
+                let pressed = self.link_press.take();
+                let released = crate::events::links::link_at(cx, path, at);
+                if let (Some(href), false) = (
+                    released.filter(|href| pressed.as_ref() == Some(href)),
+                    event.propagation_stopped(),
+                ) {
+                    crate::events::links::activate(cx, path, &href);
+                }
+            }
+            _ => {}
+        }
     }
 
     fn route_captured_pointer(

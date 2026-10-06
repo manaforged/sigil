@@ -446,7 +446,7 @@ fn main() {
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
-| `NodeEventsExt` | `key`, `key_any`, `key_capture`, `key_capture_any`, `shortcut`, `pointer_down`, `on_scroll`, `focus_in`, `autofocus`, `focus_when(Signal<u64>)`, ... | Attach event handlers to a `NodeBuilder` or to any widget builder that implements `WidgetLayoutExt`. On a widget builder the handler goes on the root node of the widget, after the handlers of the widget. `autofocus()` gives the node keyboard focus when it mounts; `focus_when(trigger)` focuses it each time the signal changes, with no `NodeId` plumbing. |
+| `NodeEventsExt` | `key`, `key_any`, `key_capture`, `key_capture_any`, `shortcut`, `pointer_down`, `on_scroll`, `focus_in`, `link`, `autofocus`, `focus_when(Signal<u64>)`, ... | Attach event handlers to a `NodeBuilder` or to any widget builder that implements `WidgetLayoutExt`. On a widget builder the handler goes on the root node of the widget, after the handlers of the widget. `autofocus()` gives the node keyboard focus when it mounts; `focus_when(trigger)` focuses it each time the signal changes, with no `NodeId` plumbing. `link(f)` receives the URL when a link inside the node, such as one in `markdown`, is clicked; the deepest handler on the path gets it. |
 | `request_focus` | `fn request_focus(id: NodeId)` | Move keyboard focus to a node. |
 | `Shortcut` | `Shortcut::new(key, mods)`, `plain(key)`, `ctrl(key)`, `primary(key)`, `label()`, `label_for(mac: bool)` | A key plus modifiers. `label()` prints it for the running platform: `⇧⌘K` on macOS, `Shift+Super+K` elsewhere; `label_for` picks the style explicitly. `primary` uses `events::PRIMARY`: Command on macOS, Control elsewhere, for example `Shortcut::primary(LogicalKey::character("s"))` for Cmd+S or Ctrl+S. |
 | `events::PRIMARY` | `const PRIMARY: ModifiersState` | The platform's primary shortcut modifier: Command (`META`) on macOS, Control elsewhere, including wasm32. |
@@ -716,7 +716,7 @@ fn main() {
 | `code_edit` | `fn code_edit(lines: Signal<Vec<String>>, caret: Signal<(usize, usize)>) -> CodeEditBuilder` | A code editor with built-in `text_edit` editing. |
 | `highlight` | `fn highlight(language: &str, source: &str) -> Vec<Vec<Highlight>>` | Syntax marks per line for rust, sh, toml, json, python, javascript, typescript, go, c/cpp, yaml, css, html, sql, markdown, and diff. Other languages get no marks. |
 | `hl_spans` | `fn hl_spans(language: &str, source: &str) -> Vec<Vec<HlSpan>>` | `highlight` as column spans for `code_edit(..).highlights(..)`. |
-| `markdown` | `fn markdown(source: Signal<String>) -> NodeBuilder` | Rendered markdown. |
+| `markdown` | `fn markdown(source: Signal<String>) -> NodeBuilder` | Rendered markdown. Each link is exposed as a `Link` node with its URL and on-screen area, and a click on it reaches the nearest `link` handler. |
 | `markdown_inline` | `fn markdown_inline(source: &str) -> TextBuilder` | One wrapped paragraph with inline markdown spans. |
 | `markdown_edit` | `fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder` | A markdown editor with preview. |
 | `html` | `fn html(source: Signal<String>) -> NodeBuilder` | Rendered HTML subset. |
