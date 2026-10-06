@@ -459,6 +459,9 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- `Harness::image` and pixel snapshots paint the theme surface behind the
+  tree, as a window does. Before, they cleared to black, so text in the
+  default light theme looked unreadable in snapshots.
 - Text marked `nowrap` that flex shrinks below its width paints on one line.
   Before, the GPU path wrapped it at the box width while layout kept one
   line, so the extra lines drew over the rows below.

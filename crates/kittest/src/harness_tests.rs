@@ -159,3 +159,21 @@ fn harness_frames_are_profiled_with_layout_time() {
         "a profiled frame reports its layout time"
     );
 }
+
+#[test]
+fn a_pixel_snapshot_paints_the_theme_surface_like_a_window() {
+    let mut ui = Harness::new(|| sigil::kernel::text("x")).pixels(80, 40);
+    let Ok(Some(image)) = ui.image() else {
+        return;
+    };
+    let surface = sigil::style::Theme::default().color(sigil::style::Token::Surface);
+    let corner = image.get_pixel(79, 39).0;
+    let want = [surface.r, surface.g, surface.b];
+    assert!(
+        corner[..3]
+            .iter()
+            .zip(want)
+            .all(|(got, want)| got.abs_diff(want) <= 2),
+        "corner {corner:?} is not the theme surface {want:?}"
+    );
+}

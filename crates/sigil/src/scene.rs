@@ -1,3 +1,4 @@
+pub(crate) mod backdrop;
 pub(crate) mod builder;
 pub(crate) mod command;
 pub(crate) mod corner_radii;
@@ -6,6 +7,7 @@ pub(crate) mod emit_cache;
 pub(crate) mod shadow;
 pub(crate) mod style_adapter;
 
+pub use backdrop::paint_backdrop;
 pub use builder::SceneBuilder;
 #[cfg(feature = "scene")]
 pub use command::shape_glyph_run;

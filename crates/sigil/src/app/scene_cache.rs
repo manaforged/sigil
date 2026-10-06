@@ -1,9 +1,8 @@
-use crate::geometry::{Point, Rect};
 use crate::kernel::{Cx, Node, NodeId};
 use crate::profile::{Counter, Phase};
 use crate::reactive::Runtime;
-use crate::scene::{CommandScene, DrawRect, SceneCommand, SceneRectStyle};
-use crate::style::{Theme, Token};
+use crate::scene::{CommandScene, SceneCommand, paint_backdrop};
+use crate::style::Theme;
 
 use crate::app::launch::backend::{Backend, Surface};
 
@@ -101,18 +100,10 @@ pub(super) fn window_scene(
 ) -> CommandScene {
     let mut scene = emit_viewport_scene(cx, root, viewport);
     if backdrop {
-        let surface = cx
-            .get(root)
-            .and_then(Node::get_extension::<Theme>)
-            .map_or_else(
-                || Theme::default().color(Token::Surface),
-                |theme| theme.color(Token::Surface),
-            );
-        let rect = Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1);
-        scene.commands.insert(
-            0,
-            SceneCommand::Rect(DrawRect::new(rect, SceneRectStyle::solid(surface))),
-        );
+        match cx.get(root).and_then(Node::get_extension::<Theme>) {
+            Some(theme) => paint_backdrop(&mut scene, theme, viewport),
+            None => paint_backdrop(&mut scene, &Theme::default(), viewport),
+        }
     }
     scene
 }

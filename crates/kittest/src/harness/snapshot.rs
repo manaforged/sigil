@@ -18,7 +18,8 @@ impl Harness {
             ));
         };
         let viewport = self.viewport();
-        let scene = self.host.emit(viewport);
+        let mut scene = self.host.emit(viewport);
+        sigil::scene::paint_backdrop(&mut scene, self.host.theme(), viewport);
         let Some((device, queue)) = shared_device()? else {
             return Ok(None);
         };
