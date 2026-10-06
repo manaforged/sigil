@@ -68,6 +68,7 @@ pub struct A11yProps {
     pub labelled_by: Option<NodeId>,
     pub described_by: Option<NodeId>,
     pub invalid: Option<Signal<bool>>,
+    pub required: Option<Signal<bool>>,
     pub live: Option<accesskit::Live>,
     pub expanded: Option<Signal<bool>>,
     pub level: Option<usize>,
@@ -76,6 +77,8 @@ pub struct A11yProps {
     pub column_count: Option<usize>,
     pub row_index: Option<usize>,
     pub column_index: Option<usize>,
+    pub position_in_set: Option<usize>,
+    pub size_of_set: Option<usize>,
     pub focus_scope: Option<FocusScopeKind>,
 }
 
@@ -106,6 +109,7 @@ impl Default for A11yProps {
             labelled_by: None,
             described_by: None,
             invalid: None,
+            required: None,
             live: None,
             expanded: None,
             level: None,
@@ -114,6 +118,8 @@ impl Default for A11yProps {
             column_count: None,
             row_index: None,
             column_index: None,
+            position_in_set: None,
+            size_of_set: None,
             focus_scope: None,
         }
     }

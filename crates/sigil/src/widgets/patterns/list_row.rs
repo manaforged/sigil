@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextBuilder, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{
@@ -10,6 +12,7 @@ use super::super::chip::chip;
 use super::super::interactive::interactive;
 use super::super::popup::{ChevronDirection, chevron};
 use super::super::table::ColAlign;
+use super::activatable::activatable;
 
 const INDENT_COLS: f32 = 2.0;
 const CELL_COLLAPSED: &str = "▸";
@@ -97,6 +100,7 @@ pub struct ListRowSlots {
     pub title_width: Option<f32>,
     pub indent: Option<f32>,
     pub tone: RowTone,
+    pub activate: Option<Rc<dyn Fn()>>,
 }
 
 #[must_use]
@@ -159,12 +163,16 @@ pub fn list_row_with(
     if tone == RowTone::Header {
         return row;
     }
-    if selected {
-        return row
-            .selected(signal(true))
-            .class([Radius::Md.atom(), ROW_SELECTED.bg()]);
+    let row = if selected {
+        row.selected(signal(true))
+            .class([Radius::Md.atom(), ROW_SELECTED.bg()])
+    } else {
+        row_states(row, None)
+    };
+    match slots.activate {
+        Some(activate) => activatable(row, Role::ListItem, &activate),
+        None => row,
     }
-    row_states(row, None)
 }
 
 pub(crate) const ROW_SELECTED: Token = Token::Accent5;

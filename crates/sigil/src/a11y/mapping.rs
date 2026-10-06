@@ -215,6 +215,9 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
     if a11y.invalid.is_some_and(|sig| sig.peek()) {
         ak.set_invalid(Invalid::True);
     }
+    if a11y.required.is_some_and(|sig| sig.peek()) {
+        ak.set_required();
+    }
     if a11y.focus_scope == Some(crate::kernel::FocusScopeKind::Modal) {
         ak.set_modal();
     }
@@ -246,6 +249,12 @@ fn apply_grid(ak: &mut AkNode, a11y: &A11yProps) {
     }
     if let Some(index) = a11y.column_index {
         ak.set_column_index(index);
+    }
+    if let Some(position) = a11y.position_in_set {
+        ak.set_position_in_set(position);
+    }
+    if let Some(size) = a11y.size_of_set {
+        ak.set_size_of_set(size);
     }
     if let Some(sig) = a11y.sort_direction
         && let Some(direction) = sig.peek()

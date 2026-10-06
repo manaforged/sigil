@@ -635,7 +635,7 @@ fn main() {
 | `date_field` | `fn date_field(value: Signal<Date>) -> DateFieldBuilder` | A date input. |
 | `Date` | `struct Date { year: i32, month: u8, day: u8 }` | A calendar date. |
 | `color_field` | `fn color_field(value: Signal<Rgba8>) -> ColorFieldBuilder` | A colour input. |
-| `field` | `fn field<C: IntoNode>(label, control: C) -> FieldBuilder<C>`; `.error(impl Reactive<Option<String>>)` when `C: FieldControl` | A label above a control. `.error` shows the message under the control and paints the control invalid while it is `Some`. The control is marked invalid while an error shows and is described by the message. |
+| `field` | `fn field<C: IntoNode>(label, control: C) -> FieldBuilder<C>`; `.error(impl Reactive<Option<String>>)` when `C: FieldControl`; `.required(impl Reactive<bool>)` | A label above a control. `.required` marks the control required for screen readers and shows a marker after the label while it is true. `.error` shows the message under the control and paints the control invalid while it is `Some`. The control is marked invalid while an error shows and is described by the message. |
 | `chip` | `fn chip(label, tone: Tone) -> ChipBuilder`; `.dot()`, `.leading(node)` | A small tag. `dot` puts a dot in the chip's tone before the label, for status pills; `leading` puts any node, such as an icon, before it. |
 | `interactive` | `fn interactive(inner: NodeBuilder) -> InteractiveBuilder` | Make any node hoverable, pressable, and focusable. |
 
@@ -707,8 +707,8 @@ fn main() {
 | `virtual_list` | `fn virtual_list<T, R: Fn(usize, &T) -> N, N: IntoNode, I: IntoList<T, R>>(items: I, render: R) -> VirtualListBuilder<T, R>` | A list that builds only the visible rows. `render` returns any `IntoNode`, such as `text(..)` or a widget builder. |
 | `SelectionMode` | `enum SelectionMode { None, Single, Multi, Extend }` | Selection mode of a list. |
 | `list_row` | `fn list_row(selected: bool, title, detail) -> NodeBuilder` | One row of a list. |
-| `list_row_with` | `fn list_row_with(selected: bool, title, slots: ListRowSlots) -> NodeBuilder` | A list row with a marker, status, and columns. |
-| `ListRowSlots` | `struct ListRowSlots { depth, disclosure, marker, marker_tone, leading, status, status_tone, badge, columns, shrink, title_width, indent, tone }` | Optional parts of a list row. `title_width` gives the title a fixed width so columns line up after it. `leading` places a node, such as an icon, before the title. `marker_tone` and `status_tone` colour the marker and status text per row. `badge: Option<(TextContent, Tone)>` draws a count pill after the status. `indent` sets the columns per depth level (default 2). |
+| `list_row_with` | `fn list_row_with(selected: bool, title, slots: ListRowSlots) -> NodeBuilder` | A list row with a marker, status, and columns. With `slots.activate` set, the row takes keyboard focus and runs it on Enter, Space, or a click. |
+| `ListRowSlots` | `struct ListRowSlots { depth, disclosure, marker, marker_tone, leading, status, status_tone, badge, columns, shrink, title_width, indent, tone, activate: Option<Rc<dyn Fn()>> }` | Optional parts of a list row. `title_width` gives the title a fixed width so columns line up after it. `leading` places a node, such as an icon, before the title. `marker_tone` and `status_tone` colour the marker and status text per row. `badge: Option<(TextContent, Tone)>` draws a count pill after the status. `indent` sets the columns per depth level (default 2). |
 | `Disclosure` | `enum Disclosure { None, Leaf, Collapsed, Expanded }` | The tree chevron slot of a list row. |
 | `kv_grid` | `fn kv_grid(rows: impl IntoIterator<Item = (impl Into<TextContent>, impl Into<TextContent>)>) -> NodeBuilder` | A two-column key/value grid. Keys and values can be reactive. |
 | `kv_row` | `fn kv_row(label, value: impl IntoNode + 'static) -> NodeBuilder` | One key/value row. |
@@ -1190,7 +1190,7 @@ fn main() -> AppResult<()> {
 | `kernel::ImageRaster` | `struct ImageRaster` (opaque, `Clone + PartialEq + Debug`) | Resolution-independent source of an image. Paths and SVG icons carry one; the renderer asks it for pixels at the physical destination size. |
 | `kernel::ObjectFit` | `enum ObjectFit { Fill, Contain, Cover }` | How an image fills its box. |
 | `kernel::TopLayer` | `struct TopLayer` | Marker of a node that paints above the tree. |
-| `kernel::A11yProps` | `struct A11yProps` | Accessibility properties of a node. |
+| `kernel::A11yProps` | `struct A11yProps`; `required: Option<Signal<bool>>`, `position_in_set: Option<usize>`, `size_of_set: Option<usize>`, .. | Accessibility properties of a node. `virtual_list` sets each row's position and the item count, so a screen reader reads "5 of 200". |
 | `kernel::AccessibleName` | `enum AccessibleName` | None, static, or signal name. |
 | `kernel::Surface` | `struct Surface { key: u64 }` | Marker of a host-drawn surface. |
 

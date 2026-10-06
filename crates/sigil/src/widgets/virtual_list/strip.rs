@@ -302,6 +302,7 @@ where
     let measure = spec.measure.clone();
     crate::kernel::WithCx(move |cx: &mut Cx| {
         let slice: &[T] = (*items).as_ref();
+        let size = slice.len();
         let row = slice
             .get(index)
             .map_or_else(|| node(container()), |item| node(render.row(index, item)));
@@ -309,6 +310,10 @@ where
             Some(measure) => with_selection(measure.slot(cache_key, width, row), index, selection),
             None => place_row(index, row_height, width, row, selection),
         };
-        slot.build(cx)
+        slot.mutate(move |built| {
+            built.a11y.position_in_set = Some(index.saturating_add(1));
+            built.a11y.size_of_set = Some(size);
+        })
+        .build(cx)
     })
 }
