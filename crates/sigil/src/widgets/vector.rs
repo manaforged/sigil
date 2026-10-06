@@ -186,18 +186,22 @@ impl PathNode {
             clippy::cast_precision_loss,
             reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
         )]
-        let logical = self.width as f32;
-        self.fit_size(logical)
+        let (width, height) = (self.width as f32, self.height as f32);
+        self.fit_box(width, height)
     }
 
     #[must_use]
-    pub fn fit_size(mut self, logical: f32) -> Self {
+    pub fn fit_size(self, logical: f32) -> Self {
+        self.fit_box(logical, logical)
+    }
+
+    fn fit_box(mut self, width: f32, height: f32) -> Self {
         self.scale = 2;
         self.layout = Some(
             LayoutStyle::block()
-                .fixed_size(logical, logical)
+                .fixed_size(width, height)
                 .shrink(0.0)
-                .min_size(logical, logical),
+                .min_size(width, height),
         );
         self
     }

@@ -459,6 +459,8 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- `PathNode::fit` lays a path out at its own width and height. Before, it
+  made a square of the width, so `path(960, 220).fit()` took 960 x 960.
 - `image_bytes` decodes JPEG, as documented. Before, the `image` crate was
   built with PNG only.
 - The image cache evicts the least recently used images when it is full.
