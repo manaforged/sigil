@@ -2,6 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::events::NodeEventsExt;
+use crate::events::selection::drag_active;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, derived, effect, untrack};
 
@@ -99,6 +100,9 @@ pub(super) fn follow(target: Signal<usize>, axes: BuildAxes, rows: impl Fn() -> 
     effect(move || {
         let wanted = target.get();
         untrack(|| {
+            if drag_active() {
+                return;
+            }
             let total = rows();
             let current = axes.scroll_y.peek();
             let max = axes.max.peek();

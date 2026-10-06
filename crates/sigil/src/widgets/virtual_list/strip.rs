@@ -145,6 +145,9 @@ where
         if let Some(tops) = self.spec.tops {
             tops.track();
         }
+        if crate::events::selection::drag_active() && self.seen.get() != content {
+            return;
+        }
         let stale = self.seen.replace(content) != content;
         if stale {
             self.generation.set(self.generation.get() + 1);

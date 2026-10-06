@@ -35,7 +35,7 @@ pub(super) fn endpoint_at(cx: &Cx, region: NodeId, point: Point) -> Option<Endpo
         theme,
         text_style: Rc::new(TextStyle::default()),
     };
-    let mut best: Option<(f32, Endpoint)> = None;
+    let mut best: Option<(Gap, Endpoint)> = None;
     walk_text(cx, region, &inherit, point, &mut best);
     best.map(|(_, endpoint)| endpoint)
 }
@@ -45,7 +45,7 @@ fn walk_text(
     id: NodeId,
     inherit: &Inherit<'_>,
     point: Point,
-    best: &mut Option<(f32, Endpoint)>,
+    best: &mut Option<(Gap, Endpoint)>,
 ) {
     let Some(node) = cx.get(id) else {
         return;
@@ -79,20 +79,26 @@ fn walk_text(
     }
 }
 
-fn gap(rect: Rect, point: Point) -> f32 {
+type Gap = (f32, f32);
+
+fn gap(rect: Rect, point: Point) -> Gap {
     let bottom = rect.origin.y + rect.height;
     let right = rect.origin.x + rect.width;
-    if point.y < rect.origin.y {
+    let vertical = if point.y < rect.origin.y {
         rect.origin.y - point.y
     } else if point.y > bottom {
         point.y - bottom
-    } else if point.x < rect.origin.x {
+    } else {
+        0.0
+    };
+    let horizontal = if point.x < rect.origin.x {
         rect.origin.x - point.x
     } else if point.x > right {
         point.x - right
     } else {
         0.0
-    }
+    };
+    (vertical, horizontal)
 }
 
 pub(super) fn node_text(cx: &Cx, id: NodeId) -> Option<String> {

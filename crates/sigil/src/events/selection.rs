@@ -69,6 +69,10 @@ pub(crate) fn end_drag() {
     });
 }
 
+pub(crate) fn drag_active() -> bool {
+    STATE.with(|state| state.borrow().is_some_and(|sel| sel.dragging))
+}
+
 pub(crate) fn escape(cx: &mut Cx) -> bool {
     if STATE.with(|state| state.borrow().is_some()) {
         clear();

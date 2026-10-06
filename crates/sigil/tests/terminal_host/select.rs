@@ -98,3 +98,63 @@ fn a_drag_copy_reports_what_it_copied() {
     }
     assert_eq!(copied.borrow().as_slice(), &[("quick".to_owned(), true)]);
 }
+
+#[test]
+fn a_drag_in_a_following_list_copies_the_row_it_started_on() {
+    sigil::reactive::Runtime::scope(
+        "a_drag_in_a_following_list_copies_the_row_it_started_on",
+        || {
+            use sigil::prelude::*;
+            use sigil::widgets::virtual_list_bind;
+            let copied = Rc::new(RefCell::new(Vec::new()));
+            sigil::clipboard::install(Recorder(Rc::clone(&copied)));
+            let lines = signal((0..30).map(|at| format!("line {at}")).collect::<Vec<_>>());
+            let mut host = sigil::Host::cells();
+            host.mount(move || {
+                container()
+                    .selectable_text(true)
+                    .layout(LayoutStyle::flex_column().fill())
+                    .child(
+                        virtual_list_bind(lines, |_, line: &String| text(line.clone()).nowrap())
+                            .row_height(8.0)
+                            .follow_end(true)
+                            .viewport_fill(),
+                    )
+            });
+            let mut router = EventRouter::new();
+            step(&mut host, &mut router, [], 40, 6);
+            let before = step(&mut host, &mut router, [], 40, 6).text();
+            let start = before.lines().nth(1).unwrap_or_default().trim().to_owned();
+            for phase in [PointerPhase::Move, PointerPhase::Down] {
+                step(&mut host, &mut router, [pointer(phase, 0, 1)], 40, 6);
+            }
+            step(
+                &mut host,
+                &mut router,
+                [pointer(PointerPhase::Move, 5, 1)],
+                40,
+                6,
+            );
+            lines.update(|lines| lines.extend((30..35).map(|at| format!("line {at}"))));
+            step(
+                &mut host,
+                &mut router,
+                [pointer(PointerPhase::Move, 7, 1)],
+                40,
+                6,
+            );
+            step(
+                &mut host,
+                &mut router,
+                [pointer(PointerPhase::Up, 7, 1)],
+                40,
+                6,
+            );
+            assert!(start.starts_with("line "), "{before}");
+            assert_eq!(
+                copied.borrow().last().map(|text| text.trim().to_owned()),
+                Some(start)
+            );
+        },
+    );
+}

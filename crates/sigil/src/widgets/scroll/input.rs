@@ -1,5 +1,6 @@
 use std::cell::Cell;
 
+use crate::events::selection::drag_active;
 use crate::events::{Key, KeyEvent, NodeEventsExt, ScrollDelta, ScrollEvent};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, effect, untrack};
@@ -143,6 +144,9 @@ pub(crate) fn pin_to_bottom(
     let previous = Cell::new(max_scroll.peek());
     effect(move || {
         let max = max_scroll.get();
+        if drag_active() {
+            return;
+        }
         let was_pinned = scroll_y.peek() + 1.0 >= previous.replace(max);
         if was_pinned && untrack(&when) {
             scroll_y.set(max);
