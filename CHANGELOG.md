@@ -459,6 +459,9 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- The image cache evicts the least recently used images when it is full.
+  Before, it dropped every cached image at 256 entries or 64 MB, so a
+  scrolling cover grid decoded the screen just left again.
 - `Harness::image` and pixel snapshots paint the theme surface behind the
   tree, as a window does. Before, they cleared to black, so text in the
   default light theme looked unreadable in snapshots.

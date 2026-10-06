@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use super::*;
+use crate::kernel::cached_image;
 
 #[test]
 fn rejects_mismatched_buffer_length() {

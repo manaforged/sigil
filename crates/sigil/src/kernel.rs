@@ -11,6 +11,7 @@ mod cx;
 mod describe;
 mod id;
 mod image;
+mod image_cache;
 mod node;
 mod reactive_children;
 mod semantics;
@@ -27,8 +28,8 @@ pub use control_flow::{StatusView, SwitchBuilder, for_each, match_status, show, 
 pub use cx::{Cx, HostMode};
 pub use id::NodeId;
 pub(crate) use image::ThemedImage;
-pub(crate) use image::cached_image;
 pub use image::{ImageBuilder, ImageCrop, ImageRaster, ImageSource, ObjectFit, image};
+pub(crate) use image_cache::cached_image;
 pub use node::{Node, NodeExtensions, NodeType, Surface, TopLayer};
 pub use reactive_children::schedule_keyed_rebuild;
 pub use semantics::{A11yProps, AccessibleName, FocusScopeKind, TextCursor};
