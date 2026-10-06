@@ -39,6 +39,7 @@
 | [`TextFlow`](#textflow) | enum |  |
 | [`emit_scene`](#emit_scene) | fn |  |
 | [`emit_scene_clipped`](#emit_scene_clipped) | fn |  |
+| [`paint_backdrop`](#paint_backdrop) | fn |  |
 | [`shape_glyph_run`](#shape_glyph_run) | fn |  |
 | [`Transform`](#transform) | type |  |
 
@@ -713,6 +714,11 @@
 ### `emit_scene_clipped`
 
 <pre>pub fn <a href="#emit_scene_clipped">emit_scene_clipped</a>(cx: &amp;<a href="sigil-kernel.html#cx">Cx</a>, root: <a href="sigil-kernel.html#nodeid">NodeId</a>, clip: Option&lt;<a href="sigil-geometry.html#rect">Rect</a>&gt;) -&gt; <a href="#commandscene">CommandScene</a></pre>
+
+
+### `paint_backdrop`
+
+<pre>pub fn <a href="#paint_backdrop">paint_backdrop</a>(scene: &amp;mut <a href="#commandscene">CommandScene</a>, theme: &amp;<a href="sigil-style.html#theme">Theme</a>, viewport: (f32, f32))</pre>
 
 
 ### `shape_glyph_run`

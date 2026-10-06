@@ -125,11 +125,11 @@ named `story-*`; each counts the Sigil names it uses.
 
 | Measure | Value |
 | --- | --- |
-| surface | 3472 items in 36 modules: 454 types, 252 functions, 1278 methods, 537 fields, 888 variants, 63 constants; 613 aliases |
+| surface | 3477 items in 36 modules: 454 types, 253 functions, 1280 methods, 539 fields, 888 variants, 63 constants; 615 aliases |
 | app tier | 179 prelude names; budget 179 |
 | journeys | 8 journeys, 8 at budget: story-01-hello 6/6, story-02-counter 13/13, story-03-form 19/19, story-04-todo 24/24, story-05-nav 17/17, story-07-async 19/19, story-08-component 14/14, story-09-test 8/8 |
-| documented | 730 of 730 module-level items (100%): 0 by rustdoc, 730 by reference docs |
-| doc paths | 110 reference rows name paths that are not public |
+| documented | 731 of 731 module-level items (100%): 0 by rustdoc, 731 by reference docs |
+| doc paths | 95 reference rows name paths that are not public |
 | findings | 0 deny, 0 warn |
 
 <!-- /truesight -->

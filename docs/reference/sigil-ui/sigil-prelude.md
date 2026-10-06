@@ -995,8 +995,10 @@
 | <code>key_any&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#keyevent">KeyEvent</a>) + 'static</code> |  |
 | <code>key_capture&lt;S, H&gt;(self, shortcut: S, h: H) -&gt; Self where S: Into&lt;<a href="sigil-events.html#shortcut">Shortcut</a>&gt;, H: Fn(&amp;mut <a href="sigil-events.html#keyevent">KeyEvent</a>) + 'static</code> |  |
 | <code>key_capture_any&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#keyevent">KeyEvent</a>) + 'static</code> |  |
+| <code>link&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;str) + 'static</code> |  |
 | <code>on_ime&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;<a href="sigil-events.html#imeevent">ImeEvent</a>) + 'static</code> |  |
 | <code>on_scroll&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#scrollevent">ScrollEvent</a>) + 'static</code> |  |
+| <code>on_selection_copy&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;str, &amp;<a href="sigil.html#appresult">AppResult</a>&lt;<a href="sigil-clipboard.html#delivery">Delivery</a>&gt;) + 'static</code> |  |
 | <code>pointer_down&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#pointerevent">PointerEvent</a>) + 'static</code> |  |
 | <code>pointer_down_capture&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#pointerevent">PointerEvent</a>) + 'static</code> |  |
 | <code>pointer_enter&lt;H&gt;(self, h: H) -&gt; Self where H: Fn(&amp;mut <a href="sigil-events.html#pointerevent">PointerEvent</a>) + 'static</code> |  |

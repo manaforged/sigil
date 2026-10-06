@@ -102,12 +102,14 @@
 | <code>checked: Option&lt;<a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;&gt;</code> |  |
 | <code>column_count: Option&lt;usize&gt;</code> |  |
 | <code>column_index: Option&lt;usize&gt;</code> |  |
+| <code>described_by: Option&lt;<a href="#nodeid">NodeId</a>&gt;</code> |  |
 | <code>description: Option&lt;<a href="#accessiblename">AccessibleName</a>&gt;</code> |  |
 | <code>disabled: Option&lt;<a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;&gt;</code> |  |
 | <code>expanded: Option&lt;<a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;&gt;</code> |  |
 | <code>focus_scope: Option&lt;<a href="#focusscopekind">FocusScopeKind</a>&gt;</code> |  |
 | <code>focusable: bool</code> |  |
 | <code>hittable: bool</code> |  |
+| <code>invalid: Option&lt;<a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;&gt;</code> |  |
 | <code>keyboard_shortcut: Option&lt;<a href="sigil-events.html#shortcut">Shortcut</a>&gt;</code> |  |
 | <code>labelled_by: Option&lt;<a href="#nodeid">NodeId</a>&gt;</code> |  |
 | <code>level: Option&lt;usize&gt;</code> |  |
