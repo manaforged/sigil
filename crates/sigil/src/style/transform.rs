@@ -138,6 +138,17 @@ impl Transform2D {
         ]
     }
 
+    pub(crate) fn apply(self, point: Point, rect: Rect) -> Point {
+        if self.is_identity() {
+            return point;
+        }
+        let [[xx, xy, tx], [yx, yy, ty]] = self.matrix(rect);
+        Point::new(
+            xx.mul_add(point.x, xy.mul_add(point.y, tx)),
+            yx.mul_add(point.x, yy.mul_add(point.y, ty)),
+        )
+    }
+
     pub(crate) fn inverse(self, point: Point, rect: Rect) -> Option<Point> {
         if self.is_identity() {
             return Some(point);

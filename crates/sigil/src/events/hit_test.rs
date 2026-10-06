@@ -278,7 +278,7 @@ const fn contains(rect: Rect, point: Point) -> bool {
         && point.y < rect.origin.y + rect.height
 }
 
-pub(super) fn local_position(cx: &Cx, target: NodeId, mut point: Point) -> Option<Point> {
+fn transform_chain(cx: &Cx, target: NodeId) -> NodePath {
     let mut chain = NodePath::new();
     let mut current = Some(target);
     while let Some(id) = current {
@@ -291,6 +291,43 @@ pub(super) fn local_position(cx: &Cx, target: NodeId, mut point: Point) -> Optio
         }
         current = cx.parent(id);
     }
+    chain
+}
+
+pub(crate) fn visual_bounds(cx: &Cx, target: NodeId, rect: Rect) -> Rect {
+    let right = rect.origin.x + rect.width;
+    let bottom = rect.origin.y + rect.height;
+    let mut corners = [
+        rect.origin,
+        Point::new(right, rect.origin.y),
+        Point::new(rect.origin.x, bottom),
+        Point::new(right, bottom),
+    ];
+    for id in transform_chain(cx, target) {
+        let Some(node) = cx.get(id) else {
+            continue;
+        };
+        if let Some(binding) = node.get_extension::<StyleBinding>()
+            && let Some(result) = node.get_extension::<crate::layout::LayoutResult>()
+        {
+            let transform = Transform2D::for_binding(binding);
+            for corner in &mut corners {
+                *corner = transform.apply(*corner, result.rect());
+            }
+        }
+    }
+    let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+    for corner in corners {
+        x0 = x0.min(corner.x);
+        y0 = y0.min(corner.y);
+        x1 = x1.max(corner.x);
+        y1 = y1.max(corner.y);
+    }
+    Rect::new(Point::new(x0, y0), x1 - x0, y1 - y0)
+}
+
+pub(super) fn local_position(cx: &Cx, target: NodeId, mut point: Point) -> Option<Point> {
+    let chain = transform_chain(cx, target);
     for id in chain.into_iter().rev() {
         let node = cx.get(id)?;
         if let Some(binding) = node.get_extension::<StyleBinding>()

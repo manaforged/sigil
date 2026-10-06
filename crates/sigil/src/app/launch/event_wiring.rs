@@ -162,7 +162,9 @@ pub(super) fn publish_a11y(
         return;
     }
     let update = crate::a11y::tree(cx, router.focus(), &|id| {
-        layout.result(id).map(|result| result.rect())
+        layout
+            .result(id)
+            .map(|result| crate::events::hit_test::visual_bounds(cx, id, result.rect()))
     });
     let action_rx = shell.a11y_action_receiver();
     let mut bridge = crate::a11y::AccessKitBridge::new(action_rx, |tree_update| {

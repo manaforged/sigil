@@ -459,6 +459,9 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- Accessibility bounds follow transforms: a node inside a scaled or moved
+  parent reports where it is drawn. Before, it reported its untransformed
+  layout box, so screen readers highlighted the wrong place on a canvas.
 - Links in `markdown` can be clicked and reached by assistive technology:
   each is a `Link` node with its URL and the area of its text, and a click
   on it calls the nearest `NodeEventsExt::link` handler. Before, links were

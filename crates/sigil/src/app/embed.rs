@@ -259,7 +259,9 @@ impl Host {
     pub fn accessibility_tree(&self, router: &EventRouter) -> AccessibilityTree {
         let _env = self.enter();
         crate::a11y::tree(&self.cx, router.focus(), &|id| {
-            self.layout.result(id).map(|result| result.rect())
+            self.layout
+                .result(id)
+                .map(|result| crate::events::hit_test::visual_bounds(&self.cx, id, result.rect()))
         })
     }
 
