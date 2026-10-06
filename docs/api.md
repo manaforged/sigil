@@ -1423,6 +1423,8 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
+| `text::WebFont`, `text::WebFontScript` | `struct WebFont { script: WebFontScript, url: String, face_index: u32 }`, `WebFont::new(script, url, face_index)`, `WebFont::noto_defaults()`; `enum WebFontScript { Cjk, Arabic, Hebrew, Devanagari, Khmer, Thai, Lao }` | One web fallback face and the script it covers. The Noto defaults pin exact commits on jsDelivr. |
+| `text::set_web_fallbacks`, `text::web_fallbacks` | `fn set_web_fallbacks(fonts: impl IntoIterator<Item = WebFont>)`; `fn web_fallbacks() -> Vec<WebFont>` | The faces the web host fetches the first time text uses a script. Call before `sigil::run`; an empty list fetches nothing. Native targets ignore the list. |
 | `text::TextConfig` | `struct TextConfig { font_family: String, font_size: f32, font_weight: u16, line_height: f32 }`; `fn text_style(&self) -> TextStyle` | Holds basic font settings and converts them to a `TextStyle`. |
 | `text::prefer_system_fonts` | `fn prefer_system_fonts()` | Switches the default fonts to system fonts unless the app already set them. |
 | `text::Paragraph` | `struct Paragraph` (`Clone`) | Holds a shaped, line-broken text block. Implements `ParagraphMetrics`. |

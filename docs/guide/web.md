@@ -88,6 +88,27 @@ load. `face_index` selects a face in a `.ttc` collection.
 Text in the loaded script shows empty boxes until the signal turns
 `Ok(())`. If it turns `Err`, the boxes stay.
 
+## Script fallbacks
+
+The first time text uses CJK, Arabic, Hebrew, Devanagari, Khmer, Thai, or Lao, Sigil fetches the faces listed for that script by `sigil::text::web_fallbacks()` through `load_font_url`. Sigil fetches each script once per page, and fetches nothing for scripts the text does not use. The text draws as empty boxes until the fetch completes, and stays that way if the fetch fails.
+
+The default list is Noto Sans from jsDelivr. Each URL pins an exact commit of `notofonts/notofonts.github.io` or `notofonts/noto-cjk`, so the files do not change when those repositories change.
+
+Call `set_web_fallbacks` before `sigil::run` to serve faces from your own origin, for example when the page is offline or its content security policy blocks the CDN. Pass an empty list to fetch nothing:
+
+```rust,ignore
+use sigil::text::{WebFont, WebFontScript, set_web_fallbacks};
+
+set_web_fallbacks([WebFont::new(
+    WebFontScript::Cjk,
+    "fonts/NotoSansJP-Regular.otf",
+    0,
+)]);
+set_web_fallbacks([]);
+```
+
+Native targets ignore this list and use the system fonts.
+
 ## Limits
 
 - IME input goes through a hidden `<textarea>` that Sigil appends to
@@ -95,12 +116,7 @@ Text in the loaded script shows empty boxes until the signal turns
   caret, so the browser draws the candidate window there. Composition
   events become the same `ImeEvent`s as on the desktop host. Other keys
   pass to the canvas unchanged.
-- No system fonts. The first time text uses CJK, Arabic, Hebrew,
-  Devanagari, Khmer, Thai, or Lao, Sigil fetches a Noto face for that
-  script from jsDelivr through `load_font_url`. The text draws as empty
-  boxes until the fetch completes, and stays that way if the page is
-  offline or its content security policy blocks the CDN. Call
-  `load_font_url` to serve a face from your own origin.
+- No system fonts. See [Script fallbacks](#script-fallbacks).
 - Tasks run on the page's one thread. `task`, `spawn`, and `sleep`
   work, and `sleep` waits on `setTimeout`, but a future that computes
   without awaiting freezes the page until it returns.

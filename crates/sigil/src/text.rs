@@ -17,6 +17,7 @@ mod numeric_run;
 mod paragraph;
 mod script_fonts;
 mod system_fonts;
+mod web_font;
 
 pub(crate) mod color_glyph;
 mod colr_paint;
@@ -42,3 +43,4 @@ pub use fonts::prefer_system_fonts;
 pub(crate) use paragraph::FaceSpec;
 pub use paragraph::Paragraph;
 pub use shaper::Font;
+pub use web_font::{WebFont, WebFontScript, set_web_fallbacks, web_fallbacks};
