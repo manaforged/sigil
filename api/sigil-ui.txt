@@ -280,6 +280,8 @@ pub sigil::app::media::MediaKey::SeekBy::amount: core::time::Duration
 pub sigil::app::media::MediaKey::SeekBy::forward: bool
 pub sigil::app::media::MediaKey::SeekForward
 pub sigil::app::media::MediaKey::SetPosition(core::time::Duration)
+pub sigil::app::media::MediaKey::SetRepeat(sigil::app::media::Repeat)
+pub sigil::app::media::MediaKey::SetShuffle(bool)
 pub sigil::app::media::MediaKey::SetVolume(f64)
 pub sigil::app::media::MediaKey::Stop
 pub sigil::app::media::MediaKey::Toggle
@@ -299,12 +301,25 @@ impl core::default::Default for sigil::app::media::PlaybackState
 impl core::fmt::Debug for sigil::app::media::PlaybackState
 impl core::marker::Copy for sigil::app::media::PlaybackState
 impl core::marker::StructuralPartialEq for sigil::app::media::PlaybackState
+#[non_exhaustive] pub enum sigil::app::media::Repeat
+pub sigil::app::media::Repeat::All
+pub sigil::app::media::Repeat::Off
+pub sigil::app::media::Repeat::One
+impl core::clone::Clone for sigil::app::media::Repeat
+impl core::cmp::Eq for sigil::app::media::Repeat
+impl core::cmp::PartialEq for sigil::app::media::Repeat
+impl core::default::Default for sigil::app::media::Repeat
+impl core::fmt::Debug for sigil::app::media::Repeat
+impl core::marker::Copy for sigil::app::media::Repeat
+impl core::marker::StructuralPartialEq for sigil::app::media::Repeat
 #[non_exhaustive] pub struct sigil::app::media::Track
 pub sigil::app::media::Track::album: core::option::Option<alloc::string::String>
 pub sigil::app::media::Track::artist: core::option::Option<alloc::string::String>
 pub sigil::app::media::Track::cover_url: core::option::Option<alloc::string::String>
 pub sigil::app::media::Track::duration: core::option::Option<core::time::Duration>
 pub sigil::app::media::Track::position: core::option::Option<core::time::Duration>
+pub sigil::app::media::Track::repeat: sigil::app::media::Repeat
+pub sigil::app::media::Track::shuffle: bool
 pub sigil::app::media::Track::state: sigil::app::media::PlaybackState
 pub sigil::app::media::Track::title: alloc::string::String
 impl sigil::app::media::Track
@@ -314,6 +329,8 @@ pub fn sigil::app::media::Track::cover_url(self, url: impl core::convert::Into<a
 pub const fn sigil::app::media::Track::duration(self, duration: core::time::Duration) -> Self
 pub fn sigil::app::media::Track::new(title: impl core::convert::Into<alloc::string::String>) -> Self
 pub const fn sigil::app::media::Track::position(self, position: core::time::Duration) -> Self
+pub const fn sigil::app::media::Track::repeat(self, repeat: sigil::app::media::Repeat) -> Self
+pub const fn sigil::app::media::Track::shuffle(self, shuffle: bool) -> Self
 pub const fn sigil::app::media::Track::state(self, state: sigil::app::media::PlaybackState) -> Self
 impl core::clone::Clone for sigil::app::media::Track
 impl core::cmp::Eq for sigil::app::media::Track
@@ -595,6 +612,7 @@ pub fn sigil::app::set_cell_width(width: sigil::app::CellWidth)
 pub fn sigil::app::set_default_fonts(fonts: sigil::app::DefaultFonts)
 pub fn sigil::app::set_text_tuning(tuning: sigil::app::TextTuning)
 pub fn sigil::app::set_theme(theme: sigil::style::Theme)
+pub fn sigil::app::snapshot(view: impl sigil::kernel::IntoNode, size: sigil::geometry::PhysicalSize) -> sigil::AppResult<image::images::buffer::RgbaImage>
 pub fn sigil::app::text_tuning() -> sigil::app::TextTuning
 pub fn sigil::app::use_system_fonts()
 pub fn sigil::app::viewport_size() -> sigil::reactive::Signal<sigil::geometry::LogicalSize>
@@ -3664,14 +3682,25 @@ pub fn sigil::reactive::signal<T: 'static>(initial: T) -> sigil::reactive::Signa
 pub fn sigil::reactive::untrack<R>(f: impl core::ops::function::FnOnce() -> R) -> R
 pub mod sigil::renderer
 pub mod sigil::renderer::capture
+pub enum sigil::renderer::capture::ImageRenderer<'a>
+pub sigil::renderer::capture::ImageRenderer::Cpu(&'a mut sigil::renderer::CpuRenderer)
+pub sigil::renderer::capture::ImageRenderer::Gpu(&'a mut sigil::renderer::WgpuRenderer)
 pub struct sigil::renderer::capture::CaptureExtent
 pub sigil::renderer::capture::CaptureExtent::height: u32
 pub sigil::renderer::capture::CaptureExtent::width: u32
 impl core::clone::Clone for sigil::renderer::capture::CaptureExtent
 impl core::marker::Copy for sigil::renderer::capture::CaptureExtent
+pub struct sigil::renderer::capture::ImageTarget
+pub sigil::renderer::capture::ImageTarget::clear: sigil::style::Color
+pub sigil::renderer::capture::ImageTarget::size: sigil::geometry::PhysicalSize
+pub sigil::renderer::capture::ImageTarget::viewport: (f32, f32)
+impl core::clone::Clone for sigil::renderer::capture::ImageTarget
+impl core::fmt::Debug for sigil::renderer::capture::ImageTarget
+impl core::marker::Copy for sigil::renderer::capture::ImageTarget
 pub const sigil::renderer::capture::FORMAT: wgpu_types::texture::format::TextureFormat
 pub fn sigil::renderer::capture::capture_texture(device: &wgpu::api::device::Device, extent: sigil::renderer::capture::CaptureExtent) -> wgpu::api::texture::Texture
 pub fn sigil::renderer::capture::read_texture(device: &wgpu::api::device::Device, queue: &wgpu::api::queue::Queue, texture: &wgpu::api::texture::Texture, extent: sigil::renderer::capture::CaptureExtent) -> core::result::Result<alloc::vec::Vec<u8>, alloc::boxed::Box<dyn core::error::Error>>
+pub fn sigil::renderer::capture::render_to_image(renderer: sigil::renderer::capture::ImageRenderer<'_>, scene: &sigil::scene::CommandScene, target: sigil::renderer::capture::ImageTarget) -> core::result::Result<image::images::buffer::RgbaImage, sigil::renderer::RendererError>
 pub enum sigil::renderer::LayerError
 pub sigil::renderer::LayerError::Empty
 pub sigil::renderer::LayerError::TooLarge
@@ -4412,6 +4441,8 @@ pub enum sigil::style::DateOrder
 pub sigil::style::DateOrder::Dmy
 pub sigil::style::DateOrder::Mdy
 pub sigil::style::DateOrder::Ymd
+impl sigil::style::DateOrder
+pub fn sigil::style::DateOrder::from_name(name: &str) -> core::option::Option<Self>
 impl core::clone::Clone for sigil::style::DateOrder
 impl core::cmp::Eq for sigil::style::DateOrder
 impl core::cmp::PartialEq for sigil::style::DateOrder
@@ -4438,6 +4469,7 @@ pub enum sigil::style::Direction
 pub sigil::style::Direction::Ltr
 pub sigil::style::Direction::Rtl
 impl sigil::style::Direction
+pub fn sigil::style::Direction::from_name(name: &str) -> core::option::Option<Self>
 pub const fn sigil::style::Direction::is_rtl(self) -> bool
 impl core::clone::Clone for sigil::style::Direction
 impl core::cmp::Eq for sigil::style::Direction
@@ -4624,6 +4656,7 @@ pub sigil::style::StringKey::StatusBar
 pub sigil::style::StringKey::TableMenu
 impl sigil::style::StringKey
 pub const sigil::style::StringKey::ALL: [Self; 36]
+pub fn sigil::style::StringKey::from_name(name: &str) -> core::option::Option<Self>
 impl core::clone::Clone for sigil::style::StringKey
 impl core::cmp::Eq for sigil::style::StringKey
 impl core::cmp::PartialEq for sigil::style::StringKey
@@ -4893,6 +4926,7 @@ pub const fn sigil::style::Locale::de() -> Self
 pub const fn sigil::style::Locale::en() -> Self
 pub fn sigil::style::Locale::format_date(&self, year: i32, month: u8, day: u8) -> alloc::string::String
 pub fn sigil::style::Locale::format_number(&self, value: f64, fraction_digits: usize) -> alloc::string::String
+pub fn sigil::style::Locale::from_name(name: &str) -> core::option::Option<Self>
 pub fn sigil::style::Locale::localize_number(&self, plain: &str) -> alloc::string::String
 pub const fn sigil::style::Locale::new(decimal: char, group: core::option::Option<char>) -> Self
 pub fn sigil::style::Locale::normalize_number(&self, input: &str) -> core::option::Option<alloc::string::String>
@@ -5725,6 +5759,21 @@ impl core::fmt::Debug for sigil::text::TextError
 impl core::fmt::Display for sigil::text::TextError
 impl core::marker::Copy for sigil::text::TextError
 impl core::marker::StructuralPartialEq for sigil::text::TextError
+pub enum sigil::text::WebFontScript
+pub sigil::text::WebFontScript::Arabic
+pub sigil::text::WebFontScript::Cjk
+pub sigil::text::WebFontScript::Devanagari
+pub sigil::text::WebFontScript::Hebrew
+pub sigil::text::WebFontScript::Khmer
+pub sigil::text::WebFontScript::Lao
+pub sigil::text::WebFontScript::Thai
+impl core::clone::Clone for sigil::text::WebFontScript
+impl core::cmp::Eq for sigil::text::WebFontScript
+impl core::cmp::PartialEq for sigil::text::WebFontScript
+impl core::fmt::Debug for sigil::text::WebFontScript
+impl core::hash::Hash for sigil::text::WebFontScript
+impl core::marker::Copy for sigil::text::WebFontScript
+impl core::marker::StructuralPartialEq for sigil::text::WebFontScript
 pub struct sigil::text::Font
 impl sigil::text::Font
 pub fn sigil::text::Font::bytes_arc(&self) -> alloc::sync::Arc<alloc::vec::Vec<u8>>
@@ -5764,8 +5813,22 @@ pub fn sigil::text::TextConfig::text_style(&self) -> sigil::style::TextStyle
 impl core::clone::Clone for sigil::text::TextConfig
 impl core::default::Default for sigil::text::TextConfig
 impl core::fmt::Debug for sigil::text::TextConfig
+pub struct sigil::text::WebFont
+pub sigil::text::WebFont::face_index: u32
+pub sigil::text::WebFont::script: sigil::text::WebFontScript
+pub sigil::text::WebFont::url: alloc::string::String
+impl sigil::text::WebFont
+pub fn sigil::text::WebFont::new(script: sigil::text::WebFontScript, url: impl core::convert::Into<alloc::string::String>, face_index: u32) -> Self
+pub fn sigil::text::WebFont::noto_defaults() -> alloc::vec::Vec<Self>
+impl core::clone::Clone for sigil::text::WebFont
+impl core::cmp::Eq for sigil::text::WebFont
+impl core::cmp::PartialEq for sigil::text::WebFont
+impl core::fmt::Debug for sigil::text::WebFont
+impl core::marker::StructuralPartialEq for sigil::text::WebFont
 pub fn sigil::text::add_fallback_font(bytes: alloc::vec::Vec<u8>, face_index: u32) -> core::result::Result<(), sigil::text::TextError>
 pub fn sigil::text::prefer_system_fonts()
+pub fn sigil::text::set_web_fallbacks(fonts: impl core::iter::traits::collect::IntoIterator<Item = sigil::text::WebFont>)
+pub fn sigil::text::web_fallbacks() -> alloc::vec::Vec<sigil::text::WebFont>
 pub mod sigil::widgets
 pub mod sigil::widgets::interaction
 pub struct sigil::widgets::interaction::InteractionState

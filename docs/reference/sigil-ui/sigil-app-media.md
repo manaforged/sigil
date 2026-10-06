@@ -5,6 +5,7 @@
 | [`Track`](#track) | struct |  |
 | [`MediaKey`](#mediakey) | enum |  |
 | [`PlaybackState`](#playbackstate) | enum |  |
+| [`Repeat`](#repeat) | enum |  |
 | [`events`](#events) | fn |  |
 | [`now_playing`](#now_playing) | fn |  |
 
@@ -22,6 +23,8 @@
 | <code>const duration(self, duration: Duration) -&gt; Self</code> |  |
 | <code>new(title: impl Into&lt;String&gt;) -&gt; Self</code> |  |
 | <code>const position(self, position: Duration) -&gt; Self</code> |  |
+| <code>const repeat(self, repeat: <a href="#repeat">Repeat</a>) -&gt; Self</code> |  |
+| <code>const shuffle(self, shuffle: bool) -&gt; Self</code> |  |
 | <code>const state(self, state: <a href="#playbackstate">PlaybackState</a>) -&gt; Self</code> |  |
 
 **Fields**
@@ -33,6 +36,8 @@
 | <code>cover_url: Option&lt;String&gt;</code> |  |
 | <code>duration: Option&lt;Duration&gt;</code> |  |
 | <code>position: Option&lt;Duration&gt;</code> |  |
+| <code>repeat: <a href="#repeat">Repeat</a></code> |  |
+| <code>shuffle: bool</code> |  |
 | <code>state: <a href="#playbackstate">PlaybackState</a></code> |  |
 | <code>title: String</code> |  |
 
@@ -64,6 +69,8 @@
 | <code>SeekBy</code> |  |
 | <code>SeekForward</code> |  |
 | <code>SetPosition(Duration)</code> |  |
+| <code>SetRepeat(<a href="#repeat">Repeat</a>)</code> |  |
+| <code>SetShuffle(bool)</code> |  |
 | <code>SetVolume(f64)</code> |  |
 | <code>Stop</code> |  |
 | <code>Toggle</code> |  |
@@ -80,6 +87,19 @@
 | <code>Paused</code> |  |
 | <code>Playing</code> |  |
 | <code>Stopped</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
+### `Repeat`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>All</code> |  |
+| <code>Off</code> |  |
+| <code>One</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 

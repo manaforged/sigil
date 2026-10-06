@@ -2,19 +2,15 @@
 
 ## Report a vulnerability
 
-Email [thomas@manaforge.tech](mailto:thomas@manaforge.tech). You can
-also open the repository's **Security** tab and select **Report a
-vulnerability**. Do not open a public issue.
+Email [thomas@manaforge.tech](mailto:thomas@manaforge.tech). You can also open the repository's **Security** tab and select **Report a vulnerability**. Do not open a public issue.
 
 ## Supported versions
 
-The latest `0.x` release gets security fixes. Older `0.x` releases do
-not.
+The latest `0.x` release gets security fixes. Older `0.x` releases do not.
 
 ## Input surfaces
 
-Sigil parses these inputs. Parsing runs on the UI thread unless the
-entry says otherwise. A large input can stall a frame.
+Sigil parses these inputs. Parsing runs on the UI thread unless the entry says otherwise. A large input can stall a frame.
 
 | Input | What the code does |
 | --- | --- |
@@ -42,17 +38,12 @@ The `fuzz/` crate holds six `cargo-fuzz` targets:
 | `style_class` | `parse_class_string` and `parse_stateful_token` |
 | `scene_render` | `CpuRenderer::render` on generated scenes |
 
-On 2026-09-24 each parser target ran for 1 hour on x86_64 Linux with
-AddressSanitizer and `-max_len=1048576`. The `markdown` target found
-two faults, which are fixed:
+On 2026-09-24 each parser target ran for 1 hour on x86_64 Linux with AddressSanitizer and `-max_len=1048576`. The `markdown` target found two faults, which are fixed:
 
-- Deeply nested quotes and lists overflowed the stack. The parser now
-  flattens nesting deeper than 16 levels into a paragraph.
-- The path raster cache held up to 256 entries of any size and grew
-  past 2 GiB. The cache now also holds at most 64 MiB of pixels.
+- Deeply nested quotes and lists overflowed the stack. The parser now flattens nesting deeper than 16 levels into a paragraph.
+- The path raster cache held up to 256 entries of any size and grew past 2 GiB. The cache now also holds at most 64 MiB of pixels.
 
-After the fixes, no run found a crash, a leak, or an out-of-memory
-condition:
+After the fixes, no run found a crash, a leak, or an out-of-memory condition:
 
 | Target | Executions |
 | --- | --- |
@@ -72,27 +63,12 @@ cd fuzz
 cargo +nightly fuzz run markdown -- -max_total_time=3600 -max_len=1048576
 ```
 
-A crash input goes to `fuzz/artifacts/<target>/`. Minimize it with
-`cargo +nightly fuzz tmin <target> <input>`.
+A crash input goes to `fuzz/artifacts/<target>/`. Minimize it with `cargo +nightly fuzz tmin <target> <input>`.
 
 ## sigil-sign trust model
 
-- `sign_file` and `sign_file_with_key` produce a standard minisign
-  signature over the package bytes. The `.sig` file is the plain
-  minisign envelope. The trusted comment is
-  `file:<name>\tversion:<version>`, and the signature covers it.
-- `verify_file` checks the signature against the public key, then
-  checks that the trusted comment names the file. A signature moved to
-  another file name fails.
-- Rollback: `verify_file` refuses a package signed for another version
-  when the caller passes `expected_version`. Without it, an older
-  signed package still verifies. The updater must pass the version it
-  expects to install.
-- `sigil-pack sign` and `sigil-pack genkey` read the key password from
-  `SIGIL_PACK_PASSWORD` and refuse a `--password` flag. `sign` refuses
-  to write the signature through a symbolic link or over a non-regular
-  file. `genkey` creates the secret key with mode 0600 and never
-  overwrites a file.
-- Bundle copies open the source once and check that the opened file is
-  the one that passed the symlink check (device and inode on Unix).
-  Output files are created new; an existing path fails.
+- `sign_file` and `sign_file_with_key` produce a standard minisign signature over the package bytes. The `.sig` file is the plain minisign envelope. The trusted comment is `file:<name>\tversion:<version>`, and the signature covers it.
+- `verify_file` checks the signature against the public key, then checks that the trusted comment names the file. A signature moved to another file name fails.
+- Rollback: `verify_file` refuses a package signed for another version when the caller passes `expected_version`. Without it, an older signed package still verifies. The updater must pass the version it expects to install.
+- `sigil-pack sign` and `sigil-pack genkey` read the key password from `SIGIL_PACK_PASSWORD` and refuse a `--password` flag. `sign` refuses to write the signature through a symbolic link or over a non-regular file. `genkey` creates the secret key with mode 0600 and never overwrites a file.
+- Bundle copies open the source once and check that the opened file is the one that passed the symlink check (device and inode on Unix). Output files are created new; an existing path fails.

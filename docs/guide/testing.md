@@ -1,9 +1,6 @@
 # Testing
 
-`sigil_kittest::Harness` drives a widget tree the way a user does: it
-finds controls through the accessibility tree, clicks and types through
-the normal event router, and runs frames until the UI is idle. The same
-test runs on the terminal host or the window host.
+`sigil_kittest::Harness` drives a widget tree the way a user does: it finds controls through the accessibility tree, clicks and types through the normal event router, and runs frames until the UI is idle. The same test runs on the terminal host or the window host.
 
 Add the harness as a dev-dependency:
 
@@ -28,22 +25,13 @@ fn counter() -> impl IntoNode {
 Harness::new(counter).click("+").expect_text("Count: 1");
 ```
 
-`click("+")` finds the control a user sees as "+". A label names the
-text on a button or tab, a checkbox label, or a field's label. When the
-label matches a control and a plain text, the control wins; a label on
-two controls fails the test. `expect_text` waits until a node shows the
-text, up to `EXPECT_TIMEOUT` (5 s), then fails with the accessibility
-tree. Every action runs frames until the UI settles, so a test never
-calls `settle` itself.
+`click("+")` finds the control a user sees as "+". A label names the text on a button or tab, a checkbox label, or a field's label. When the label matches a control and a plain text, the control wins; a label on two controls fails the test. `expect_text` waits until a node shows the text, up to `EXPECT_TIMEOUT` (5 s), then fails with the accessibility tree. Every action runs frames until the UI settles, so a test never calls `settle` itself.
 
-`size(cols, rows)` uses the terminal cell host; the default is 80×24.
-`pixels(width, height)` uses the window host instead. Queries and
-actions behave the same on both.
+`size(cols, rows)` uses the terminal cell host; the default is 80×24. `pixels(width, height)` uses the window host instead. Queries and actions behave the same on both.
 
 ## Find controls
 
-Queries read the accessibility tree, so a test finds a control by what a
-user or a screen reader sees:
+Queries read the accessibility tree, so a test finds a control by what a user or a screen reader sees:
 
 | Call | Matches |
 | --- | --- |
@@ -54,13 +42,9 @@ user or a screen reader sees:
 | `find_all(&query)`, `query(&query)` | every match, or the first |
 | `focused()` | the focused node |
 
-`get*` fails the test and prints the accessibility tree unless exactly
-one node matches. A field inside `field("Name", ..)` takes its name from
-the label.
+`get*` fails the test and prints the accessibility tree unless exactly one node matches. A field inside `field("Name", ..)` takes its name from the label.
 
-A `Node` is a snapshot. Read `value()`, `is_checked()`, `is_focused()`
-and the other accessors on it, and query again, or call
-`ui.refresh(&node)`, after an action.
+A `Node` is a snapshot. Read `value()`, `is_checked()`, `is_focused()` and the other accessors on it, and query again, or call `ui.refresh(&node)`, after an action.
 
 ```rust
 # use sigil::prelude::*;
@@ -94,14 +78,9 @@ assert_eq!(ui.get_by_role(Role::CheckBox, "Agree").is_checked(), Some(true));
 | `focus_next()`, `focus_previous()` | Tab, Shift+Tab |
 | `send(events)` | any `ShellEvent`s, built with `sigil_kittest::input` |
 
-A target is a label, a `Node`, or a `Point` in layout points. A label
-waits up to `EXPECT_TIMEOUT` for its control to appear. Every action
-runs frames until no signal write and no animation is pending. A tree
-that never settles fails the test after `SETTLE_SAFETY_CAP` frames.
+A target is a label, a `Node`, or a `Point` in layout points. A label waits up to `EXPECT_TIMEOUT` for its control to appear. Every action runs frames until no signal write and no animation is pending. A tree that never settles fails the test after `SETTLE_SAFETY_CAP` frames.
 
-The harness installs a task runtime, so `task`, `spawn`, and
-`signal_writer` work in a test. Each frame applies the results that
-finished; `expect_text` waits for them:
+The harness installs a task runtime, so `task`, `spawn`, and `signal_writer` work in a test. Each frame applies the results that finished; `expect_text` waits for them:
 
 ```rust,ignore
 {{#include ../../crates/sigil/examples/story-07-async.rs}}
@@ -116,9 +95,7 @@ Harness::new(loader)
 
 ## Time
 
-The harness owns the interval clock. `advance(duration)` moves it
-forward and runs a frame per 1/60 s, so intervals fire and animations
-step without real waiting:
+The harness owns the interval clock. `advance(duration)` moves it forward and runs a frame per 1/60 s, so intervals fire and animations step without real waiting:
 
 ```rust
 # use std::time::Duration;
@@ -136,15 +113,12 @@ assert!(ui.text().contains("ticks 3"));
 
 ## Snapshots
 
-`snapshot("name")` compares the harness output with a committed golden
-under `tests/goldens/` of the crate that runs the test:
+`snapshot("name")` compares the harness output with a committed golden under `tests/goldens/` of the crate that runs the test:
 
 - A cell harness writes the grid text to `<name>.txt`.
-- A pixel harness renders offscreen and compares `<name>.png` within
-  `SNAPSHOT_MAX_DELTA_PCT`. `snapshot_with(name, pct)` sets the budget.
+- A pixel harness renders offscreen and compares `<name>.png` within `SNAPSHOT_MAX_DELTA_PCT`. `snapshot_with(name, pct)` sets the budget.
 
-`SIGIL_REGEN_GOLDENS=1` rewrites the goldens. A pixel snapshot without a
-GPU adapter fails unless `SIGIL_ALLOW_NO_GPU=1` is set, which skips it.
+`SIGIL_REGEN_GOLDENS=1` rewrites the goldens. A pixel snapshot without a GPU adapter fails unless `SIGIL_ALLOW_NO_GPU=1` is set, which skips it.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -155,7 +129,4 @@ ui.snapshot("save_button");
 
 ## Lower level
 
-`ui.host()` returns the `Host` and `EventRouter` for anything the
-harness does not cover. `ui.accessibility_snapshot()` returns the text
-dump that a failed `get` prints. [Headless driving](automation.md)
-describes the host calls the harness is built on.
+`ui.host()` returns the `Host` and `EventRouter` for anything the harness does not cover. `ui.accessibility_snapshot()` returns the text dump that a failed `get` prints. [Headless driving](automation.md) describes the host calls the harness is built on.

@@ -80,6 +80,17 @@ fn detection_prefers_the_override_then_known_terminals() {
 }
 
 #[test]
+fn an_unknown_graphics_override_falls_back_to_detection() {
+    assert_eq!(
+        detect(env(&[
+            ("SIGIL_GRAPHICS", "bogus"),
+            ("KITTY_WINDOW_ID", "1")
+        ])),
+        Some(Protocol::Kitty)
+    );
+}
+
+#[test]
 fn base64_matches_the_standard_alphabet_and_padding() {
     assert_eq!(base64(b""), "");
     assert_eq!(base64(b"f"), "Zg==");

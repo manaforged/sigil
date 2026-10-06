@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
 
 use crate::kernel::ImageSource;
+use crate::terminal::caps::{Known, known_env};
 use crossterm::{cursor, queue};
 
 mod encode;
@@ -39,29 +40,48 @@ pub fn detect_mux(env: impl Fn(&str) -> Option<String>) -> Option<Mux> {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Forced {
+    Off,
+    On(Protocol),
+}
+
+impl std::str::FromStr for Forced {
+    type Err = ();
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "none" => Ok(Self::Off),
+            "kitty" => Ok(Self::On(Protocol::Kitty)),
+            "iterm2" | "iterm" => Ok(Self::On(Protocol::Iterm2)),
+            "sixel" => Ok(Self::On(Protocol::Sixel)),
+            _ => Err(()),
+        }
+    }
+}
+
+pub(crate) fn forced_graphics(env: &impl Fn(&str) -> Option<String>) -> Option<Forced> {
+    env("SIGIL_GRAPHICS")?.parse().ok()
+}
+
 pub fn detect(env: impl Fn(&str) -> Option<String>) -> Option<Protocol> {
-    if let Some(forced) = env("SIGIL_GRAPHICS") {
-        return match forced.trim().to_ascii_lowercase().as_str() {
-            "kitty" => Some(Protocol::Kitty),
-            "iterm2" | "iterm" => Some(Protocol::Iterm2),
-            "sixel" => Some(Protocol::Sixel),
-            _ => None,
-        };
+    match forced_graphics(&env) {
+        Some(Forced::Off) => return None,
+        Some(Forced::On(protocol)) => return Some(protocol),
+        None => {}
     }
     let term = env("TERM").unwrap_or_default();
     let program = env("TERM_PROGRAM").unwrap_or_default();
-    if env("KITTY_WINDOW_ID").is_some()
-        || env("GHOSTTY_RESOURCES_DIR").is_some()
-        || env("KONSOLE_VERSION").is_some()
-        || matches!(term.as_str(), "xterm-kitty" | "xterm-ghostty")
-        || program == "ghostty"
+    if env("KONSOLE_VERSION").is_some() || matches!(term.as_str(), "xterm-kitty" | "xterm-ghostty")
     {
         return Some(Protocol::Kitty);
     }
-    if matches!(program.as_str(), "iTerm.app" | "WarpTerminal" | "WezTerm")
-        || env("WEZTERM_EXECUTABLE").is_some()
-        || env("LC_TERMINAL").as_deref() == Some("iTerm2")
-    {
+    match known_env(&env) {
+        Some(Known::Kitty | Known::Ghostty) => return Some(Protocol::Kitty),
+        Some(Known::WezTerm | Known::Iterm) => return Some(Protocol::Iterm2),
+        _ => {}
+    }
+    if program == "WarpTerminal" {
         return Some(Protocol::Iterm2);
     }
     if sixel_capable(&term, &program) {

@@ -40,6 +40,7 @@
 
 - [Decision records](guide/decisions/README.md)
   - [DR-058 Signals over entities](guide/decisions/DR-058-signals-over-entity.md)
+  - [DR-059 Web backends](guide/decisions/DR-059-web-backends.md)
 
 # API reference
 

@@ -2,9 +2,7 @@
 
 `crates/sigil` is the package `sigil-ui`, library `sigil`.
 
-Downstream code depends on `sigil-ui`, not on `wgpu` or `winit`
-directly. The terminal host is the module `terminal` behind the
-feature `terminal`, which adds crossterm.
+Downstream code depends on `sigil-ui`, not on `wgpu` or `winit` directly. The terminal host is the module `terminal` behind the feature `terminal`, which adds crossterm.
 
 | Module | Owns |
 | --- | --- |
@@ -24,10 +22,4 @@ feature `terminal`, which adds crossterm.
 | `widgets` | The widget catalog. No window, no GPU. |
 | `profile` | `SIGIL_PROFILE`, trace output, phase table. |
 
-Modules are layered. `hal` and `reactive` sit at the bottom. `kernel`,
-`style`, `layout`, and `events` build on them. `widgets` and `renderer`
-sit above. `reactive` does not depend on the tree. The tree depends on
-signals, which is why `Signal` is `Copy` and lives in thread-local
-storage: the layout engine can read a style signal without owning a
-widget. The `terminal` module sits above everything and paints the same
-tree on a character grid.
+Modules are layered. `hal` and `reactive` sit at the bottom. `kernel`, `style`, `layout`, and `events` build on them. `widgets` and `renderer` sit above. `reactive` does not depend on the tree. The tree depends on signals, which is why `Signal` is `Copy` and lives in thread-local storage: the layout engine can read a style signal without owning a widget. The `terminal` module sits above everything and paints the same tree on a character grid.

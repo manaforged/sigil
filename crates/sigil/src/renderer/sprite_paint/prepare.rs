@@ -34,7 +34,7 @@ impl SpritePipeline {
                     self.register_image(device, queue, &draw.source_at(at).0);
                 }
                 SceneCommand::Sprite(draw) => {
-                    let _ = self.resolve_atlas(device, queue, draw.source.atlas);
+                    self.resolve_atlas(device, queue, draw.source.atlas);
                 }
                 SceneCommand::PushLayer(scope) => {
                     let pushed = matches!(scope.effect, LayerEffect::Transform(_));

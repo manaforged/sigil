@@ -6,9 +6,13 @@
 | [`OwnedTextEngine`](#ownedtextengine) | struct |  |
 | [`Font`](#font) | struct |  |
 | [`TextConfig`](#textconfig) | struct |  |
+| [`WebFont`](#webfont) | struct |  |
 | [`TextError`](#texterror) | enum |  |
+| [`WebFontScript`](#webfontscript) | enum |  |
 | [`add_fallback_font`](#add_fallback_font) | fn |  |
 | [`prefer_system_fonts`](#prefer_system_fonts) | fn |  |
+| [`set_web_fallbacks`](#set_web_fallbacks) | fn |  |
+| [`web_fallbacks`](#web_fallbacks) | fn |  |
 
 ## Structs
 
@@ -82,6 +86,26 @@
 **Trait implementations:** <code>Clone</code>, <code>Default</code>, <code>Debug</code>
 
 
+### `WebFont`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>new(script: <a href="#webfontscript">WebFontScript</a>, url: impl Into&lt;String&gt;, face_index: u32) -&gt; Self</code> |  |
+| <code>noto_defaults() -&gt; Vec&lt;Self&gt;</code> |  |
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>face_index: u32</code> |  |
+| <code>script: <a href="#webfontscript">WebFontScript</a></code> |  |
+| <code>url: String</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
+
+
 ## Enums
 
 ### `TextError`
@@ -95,6 +119,23 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Error</code>, <code>Debug</code>, <code>Display</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
+### `WebFontScript`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Arabic</code> |  |
+| <code>Cjk</code> |  |
+| <code>Devanagari</code> |  |
+| <code>Hebrew</code> |  |
+| <code>Khmer</code> |  |
+| <code>Lao</code> |  |
+| <code>Thai</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
 ## Functions
 
 ### `add_fallback_font`
@@ -105,6 +146,16 @@
 ### `prefer_system_fonts`
 
 <pre>pub fn <a href="#prefer_system_fonts">prefer_system_fonts</a>()</pre>
+
+
+### `set_web_fallbacks`
+
+<pre>pub fn <a href="#set_web_fallbacks">set_web_fallbacks</a>(fonts: impl IntoIterator&lt;Item = <a href="#webfont">WebFont</a>&gt;)</pre>
+
+
+### `web_fallbacks`
+
+<pre>pub fn <a href="#web_fallbacks">web_fallbacks</a>() -&gt; Vec&lt;<a href="#webfont">WebFont</a>&gt;</pre>
 
 
 ---

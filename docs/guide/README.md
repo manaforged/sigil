@@ -2,37 +2,34 @@
 
 How to write native Rust UIs with Sigil, and how the framework is built.
 
-The widget catalog ships in the crate. You do not add a second
-component package.
+The widget catalog ships in the crate. You do not add a second component package.
 
 ```text
 mdbook serve docs
 ```
 
-The server opens the book at `http://localhost:3000`. Build a static
-site with `mdbook build docs`. The output goes to
-`docs/book/` and is not committed.
+The server opens the book at `http://localhost:3000`. Build a static site with `mdbook build docs`. The output goes to `docs/book/` and is not committed.
 
 The framework repository includes the small examples used in this guide.
 
 ## Guide
 
-- [Quickstart](quickstart.md) — install, first app, three hosts
-- [Widgets](widgets.md) — the widget set
-- [GUI and TUI](hosts.md) — what each host owns, and how to split host code
-- [Terminal host](terminal.md) — the character-grid host
-- [Signing](signing.md) — sign an update package
-- [Packing](packing.md) — build a macOS or Windows app bundle
-- [API map](../api.md) — each job mapped to its symbol
+- [Quickstart](quickstart.md): install, first app, three hosts
+- [Widgets](widgets.md): the widget set
+- [GUI and TUI](hosts.md): what each host owns, and how to split host code
+- [Terminal host](terminal.md): the character-grid host
+- [Signing](signing.md): sign an update package
+- [Packing](packing.md): build a macOS or Windows app bundle
+- [API map](../api.md): each job mapped to its symbol
 
 ## Architecture
 
-- [Overview](arch/overview.md) — what happens in one frame
-- [State](arch/state.md) — signals, owners, async tasks
-- [Painting](arch/painting.md) — tree, layout, text, renderer
-- [Platform](arch/platform.md) — shell, input, accessibility
-- [Modules](arch/modules.md) — the module map
+- [Overview](arch/overview.md): what happens in one frame
+- [State](arch/state.md): signals, owners, async tasks
+- [Painting](arch/painting.md): tree, layout, text, renderer
+- [Platform](arch/platform.md): shell, input, accessibility
+- [Modules](arch/modules.md): the module map
 
 ## Decisions
 
-- [Decision records](decisions/README.md) — accepted architectural decisions
+- [Decision records](decisions/README.md): accepted architectural decisions

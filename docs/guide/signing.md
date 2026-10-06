@@ -1,7 +1,6 @@
 # Signing
 
-A Sigil application ships signed release packages. The signer lives in the
-`sigil-sign` crate. The envelope is the reference minisign format.
+A Sigil application ships signed release packages. The signer lives in the `sigil-sign` crate. The envelope is the reference minisign format.
 
 ## Sign a package
 
@@ -16,14 +15,11 @@ std::fs::write("MyApp-0.1.0-full.nupkg.sig", envelope)?;
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-`sign_file` reads the package and returns the envelope as text. The caller
-decides where to write it.
+`sign_file` reads the package and returns the envelope as text. The caller decides where to write it.
 
-Pass `None` for an unencrypted key. An encrypted key without a password
-returns `SignError::PasswordRequired`.
+Pass `None` for an unencrypted key. An encrypted key without a password returns `SignError::PasswordRequired`.
 
-The trusted comment is `file:<name>\tversion:<version>`. The signature
-covers it, so a signature cannot be moved to another file name or version.
+The trusted comment is `file:<name>\tversion:<version>`. The signature covers it, so a signature cannot be moved to another file name or version.
 
 ## Write the signature
 
@@ -42,9 +38,6 @@ sigil_sign::verify_file(
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-`verify_file` checks the signature, then checks that the trusted comment
-names the file and the version you expect to install, so an older signed
-package is refused. A mismatch returns `SignError::TrustedComment`.
+`verify_file` checks the signature, then checks that the trusted comment names the file and the version you expect to install, so an older signed package is refused. A mismatch returns `SignError::TrustedComment`.
 
-The application embeds the public key. It verifies each package against the
-signature beside it before it installs the update.
+The application embeds the public key. It verifies each package against the signature beside it before it installs the update.

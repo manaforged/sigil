@@ -247,7 +247,9 @@ impl GpuTimer {
         if self.in_flight.is_empty() {
             return;
         }
-        let _ = device.poll(wgpu::PollType::Poll);
+        if let Err(err) = device.poll(wgpu::PollType::Poll) {
+            tracing::warn!(%err, "GPU timing poll failed");
+        }
         while let Some(ok) = self
             .in_flight
             .front()

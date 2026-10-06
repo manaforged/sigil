@@ -1,33 +1,22 @@
 # sigil-ui
 
-UI in Rust. One widget tree. Open it in a window with `sigil::run`,
-embed it with `sigil::Host`, or paint it on a character grid with
-`sigil::run(AppConfig::new(title).terminal(), tree)` (feature `terminal`).
+UI in Rust. One widget tree. Open it in a window with `sigil::run`, embed it with `sigil::Host`, or paint it on a character grid with `sigil::run(AppConfig::new(title).terminal(), tree)` (feature `terminal`).
 
-The package is `sigil-ui` because `sigil` is taken on crates.io. The
-library name is `sigil`, so imports read `sigil::`.
+The package is `sigil-ui` because `sigil` is taken on crates.io. The library name is `sigil`, so imports read `sigil::`.
 
 ## Status
 
-0.1 is an early release. The API will break between minor versions until
-1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for
-untrusted input; they have been fuzzed only briefly. Report bugs on
-[GitHub issues](https://github.com/manaforged/sigil/issues).
+0.1 is an early release. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input; they have been fuzzed only briefly. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
 
 ## Install
 
-Follow [Install](https://github.com/manaforged/sigil#install). It also
-gives the terminal-only line without the GPU stack.
+Follow [Install](https://github.com/manaforged/sigil#install). It also gives the terminal-only line without the GPU stack.
 
-Rust 1.90 or newer. The window host uses wgpu by default;
-`SIGIL_BACKEND=cpu` selects the CPU renderer.
+Rust 1.90 or newer. The window host uses wgpu by default; `SIGIL_BACKEND=cpu` selects the CPU renderer.
 
 ## Usage
 
-Write `use sigil::prelude::*;`. The prelude brings in `run`, the
-widgets, the signals, and `task`.
-Widget helpers implement `IntoNode`; type a helper as `impl IntoNode`.
-The second argument to `run` is a function that returns the app's root: `run("Go", || button("Go"))`.
+Write `use sigil::prelude::*;`. The prelude brings in `run`, the widgets, the signals, and `task`. Widget helpers implement `IntoNode`; type a helper as `impl IntoNode`. The second argument to `run` is a function that returns the app's root: `run("Go", || button("Go"))`.
 
 A window:
 
@@ -76,17 +65,11 @@ Runtime::scope("embed", || {
 });
 ```
 
-`Host::scene` lays out the tree and returns the `CommandScene` that the
-window renderer and the terminal rasteriser both draw. `Host::emit`
-returns the scene for the current layout. After layout,
-`Host::surfaces` lists the `surface(key)` holes. You place a native
-view in each hole; Sigil does not create an OS window for it.
+`Host::scene` lays out the tree and returns the `CommandScene` that the window renderer and the terminal rasteriser both draw. `Host::emit` returns the scene for the current layout. After layout, `Host::surfaces` lists the `surface(key)` holes. You place a native view in each hole; Sigil does not create an OS window for it.
 
-Clipboard: call `copy("text")` inside `run`, or after
-`install(OsClipboard)` on an embed host.
+Clipboard: call `copy("text")` inside `run`, or after `install(OsClipboard)` on an embed host.
 
-With the `desktop` feature, `open(url)` passes an `http`, `https`, or
-`mailto` URL to the OS handler. It rejects every other scheme.
+With the `desktop` feature, `open(url)` passes an `http`, `https`, or `mailto` URL to the OS handler. It rejects every other scheme.
 
 ## Features
 
@@ -111,36 +94,26 @@ With the `desktop` feature, `open(url)` passes an `http`, `https`, or
 
 ## Limits
 
-- `signal`, `derived`, and `effect` panic outside `Runtime::scope`.
-  `run` opens that scope. An embed host that uses signals must call
-  `Runtime::scope`.
+- `signal`, `derived`, and `effect` panic outside `Runtime::scope`. `run` opens that scope. An embed host that uses signals must call `Runtime::scope`.
 - `run` does not place a native view in a `surface(key)` hole.
 - `html()` parses a document subset. No CSS, no JavaScript, no browser.
-- `markdown`, `html`, `mermaid`, and the SVG parser reject sources
-  larger than 1 MiB.
+- `markdown`, `html`, `mermaid`, and the SVG parser reject sources larger than 1 MiB.
 - A `pty` session opens at 24x80 and does not resize.
-- Public modules not listed in `docs/api.md` are used by tests and
-  macro expansion. They are not API and can change in any 0.1.x release.
+- Public modules not listed in `docs/api.md` are used by tests and macro expansion. They are not API and can change in any 0.1.x release.
 
-Styling is typed: paint through `Paint` methods and state variants,
-layout through `LayoutStyle`. Typed
-actions use a plain `impl Action for ...`; there is no derive macro.
+Styling is typed: paint through `Paint` methods and state variants, layout through `LayoutStyle`. Typed actions use a plain `impl Action for ...`; there is no derive macro.
 
 ## Docs
 
-The [user guide](https://github.com/manaforged/sigil/tree/main/docs/guide)
-covers each widget, the terminal host, and troubleshooting. The
-[API map](https://github.com/manaforged/sigil/blob/main/docs/api.md)
-maps each job to its symbol.
+The [user guide](https://github.com/manaforged/sigil/tree/main/docs/guide) covers each widget, the terminal host, and troubleshooting. The [API map](https://github.com/manaforged/sigil/blob/main/docs/api.md) maps each job to its symbol.
 
-License: MIT. The default fonts ship in the separate `sigil-fonts` crate,
-which the `scene` feature pulls in, under the SIL Open Font License 1.1.
+License: MIT. The default fonts ship in the separate `sigil-fonts` crate, which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 
 ## API
 
 <!-- truesight:surface sigil-ui -->
 
-3756 public items (483 types, 269 functions, 1358 methods, 600 fields, 982 variants, 64 constants) at 4387 paths; 631 are re-export aliases. 2057 trait impl lines, 227 inherent impl lines. 39 modules, 1 re-export only.
+3795 public items (488 types, 273 functions, 1366 methods, 608 fields, 996 variants, 64 constants) at 4426 paths; 631 are re-export aliases. 2079 trait impl lines, 229 inherent impl lines. 39 modules, 1 re-export only.
 
 | Module | Items | Types | Functions | Methods | Aliases |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -149,10 +122,10 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 | `sigil::animation` | 76 | 9 | 0 | 33 | 0 |
 | `sigil::animation_runtime` | 52 | 8 | 8 | 23 | 0 |
 | `sigil::animation_runtime::presets` | 8 | 0 | 0 | 0 | 0 |
-| `sigil::app` | 143 | 26 | 19 | 19 | 0 |
+| `sigil::app` | 144 | 26 | 20 | 19 | 0 |
 | `sigil::app::dialog` | 15 | 2 | 5 | 8 | 0 |
 | `sigil::app::hotkey` | 2 | 0 | 2 | 0 | 0 |
-| `sigil::app::media` | 37 | 3 | 2 | 7 | 0 |
+| `sigil::app::media` | 47 | 4 | 2 | 9 | 0 |
 | `sigil::app::menu` | 3 | 0 | 3 | 0 | 0 |
 | `sigil::app::notify` | 7 | 1 | 1 | 2 | 0 |
 | `sigil::app::tray` | 3 | 0 | 3 | 0 | 0 |
@@ -170,16 +143,16 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 | `sigil::reactive` | 48 | 9 | 11 | 24 | 0 |
 | `sigil::reactive::debug` | 2 | 0 | 2 | 0 | 0 |
 | `sigil::renderer` | 56 | 9 | 1 | 20 | 0 |
-| `sigil::renderer::capture` | 6 | 1 | 2 | 0 | 0 |
+| `sigil::renderer::capture` | 14 | 3 | 3 | 0 | 0 |
 | `sigil::scene` | 252 | 36 | 4 | 52 | 0 |
 | `sigil::shell` | 27 | 5 | 0 | 17 | 0 |
-| `sigil::style` | 673 | 66 | 7 | 205 | 0 |
+| `sigil::style` | 677 | 66 | 7 | 209 | 0 |
 | `sigil::style::palette` | 19 | 1 | 0 | 12 | 0 |
 | `sigil::style::scale` | 27 | 2 | 14 | 3 | 0 |
 | `sigil::style::variant` | 12 | 3 | 0 | 1 | 0 |
 | `sigil::tasks` | 51 | 9 | 10 | 23 | 0 |
 | `sigil::terminal` | 185 | 29 | 36 | 35 | 0 |
-| `sigil::text` | 33 | 5 | 2 | 21 | 0 |
+| `sigil::text` | 49 | 7 | 4 | 23 | 0 |
 | `sigil::widgets` | 768 | 108 | 84 | 417 | 0 |
 | `sigil::widgets::interaction` | 11 | 1 | 0 | 10 | 0 |
 | `sigil::widgets::layout_ext` | 16 | 2 | 0 | 14 | 0 |

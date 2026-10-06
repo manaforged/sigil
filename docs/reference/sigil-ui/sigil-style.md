@@ -277,6 +277,7 @@
 | <code>const en() -&gt; Self</code> |  |
 | <code>format_date(&amp;self, year: i32, month: u8, day: u8) -&gt; String</code> |  |
 | <code>format_number(&amp;self, value: f64, fraction_digits: usize) -&gt; String</code> |  |
+| <code>from_name(name: &amp;str) -&gt; Option&lt;Self&gt;</code> |  |
 | <code>localize_number(&amp;self, plain: &amp;str) -&gt; String</code> |  |
 | <code>const new(decimal: char, group: Option&lt;char&gt;) -&gt; Self</code> |  |
 | <code>normalize_number(&amp;self, input: &amp;str) -&gt; Option&lt;String&gt;</code> |  |
@@ -916,6 +917,12 @@
 
 ### `DateOrder`
 
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>from_name(name: &amp;str) -&gt; Option&lt;Self&gt;</code> |  |
+
 **Variants**
 
 | Variant | Description |
@@ -953,6 +960,7 @@
 
 | Method | Description |
 | --- | --- |
+| <code>from_name(name: &amp;str) -&gt; Option&lt;Self&gt;</code> |  |
 | <code>const is_rtl(self) -&gt; bool</code> |  |
 
 **Variants**
@@ -1114,6 +1122,7 @@
 | Method | Description |
 | --- | --- |
 | <code>const ALL: [Self; 36]</code> |  |
+| <code>from_name(name: &amp;str) -&gt; Option&lt;Self&gt;</code> |  |
 
 **Variants**
 

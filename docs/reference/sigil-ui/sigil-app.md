@@ -37,6 +37,7 @@
 | [`set_default_fonts`](#set_default_fonts) | fn |  |
 | [`set_text_tuning`](#set_text_tuning) | fn |  |
 | [`set_theme`](#set_theme) | fn |  |
+| [`snapshot`](#snapshot) | fn |  |
 | [`text_tuning`](#text_tuning) | fn |  |
 | [`use_system_fonts`](#use_system_fonts) | fn |  |
 | [`viewport_size`](#viewport_size) | fn |  |
@@ -451,6 +452,11 @@
 ### `set_theme`
 
 <pre>pub fn <a href="#set_theme">set_theme</a>(theme: <a href="sigil-style.html#theme">Theme</a>)</pre>
+
+
+### `snapshot`
+
+<pre>pub fn <a href="#snapshot">snapshot</a>(view: impl <a href="sigil-kernel.html#intonode">IntoNode</a>, size: <a href="sigil-geometry.html#physicalsize">PhysicalSize</a>) -&gt; <a href="sigil.html#appresult">AppResult</a>&lt;RgbaImage&gt;</pre>
 
 
 ### `text_tuning`

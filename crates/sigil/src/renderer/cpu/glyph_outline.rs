@@ -79,7 +79,9 @@ pub(super) fn run_paths(run: &GlyphRun, transform: Transform, scale: f32) -> Vec
             let coords = coords(g);
             let mut sheared = Oblique::new(&mut pen, g.skew);
             let settings = DrawSettings::unhinted(Size::new(g.size), LocationRef::new(&coords));
-            let _ = glyph.draw(settings, &mut sheared);
+            if glyph.draw(settings, &mut sheared).is_err() {
+                continue;
+            }
             paths.extend(builder.finish());
         }
     });

@@ -1,6 +1,6 @@
 use crate::app::Ambiguous;
 use crate::terminal::glyphs::Glyphs;
-use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
+use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux, forced_graphics};
 
 mod ask;
 mod known;
@@ -8,7 +8,7 @@ mod known;
 mod probe;
 
 use ask::{Question, Questions, Version};
-use known::Known;
+pub(in crate::terminal) use known::{Known, known_env};
 pub use known::{Notices, Notify};
 #[cfg(unix)]
 pub(crate) use probe::exchange;
@@ -245,7 +245,7 @@ fn questions(
     Questions::default()
         .with(
             Question::Graphics,
-            graphics.is_none() && env("SIGIL_GRAPHICS").is_none(),
+            graphics.is_none() && forced_graphics(env).is_none(),
         )
         .with(Question::Sync, sync.is_none())
         .with(Question::Keys, keys.is_none())
@@ -258,15 +258,17 @@ fn questions(
 }
 
 fn forced_color(env: &impl Fn(&str) -> Option<String>) -> Option<ColorDepth> {
-    Some(
-        match env("SIGIL_COLOR")?.trim().to_ascii_lowercase().as_str() {
-            "truecolor" | "24bit" => ColorDepth::Truecolor,
-            "256" => ColorDepth::Ansi256,
-            "16" => ColorDepth::Ansi16,
-            "none" => ColorDepth::Monochrome,
-            _ => return None,
-        },
-    )
+    color_override(&env("SIGIL_COLOR")?)
+}
+
+fn color_override(value: &str) -> Option<ColorDepth> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "truecolor" | "24bit" => Some(ColorDepth::Truecolor),
+        "256" => Some(ColorDepth::Ansi256),
+        "16" => Some(ColorDepth::Ansi16),
+        "none" => Some(ColorDepth::Monochrome),
+        _ => None,
+    }
 }
 
 fn flag(env: &impl Fn(&str) -> Option<String>, key: &str) -> bool {

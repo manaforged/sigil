@@ -3,8 +3,11 @@
 | Item | Kind | Description |
 | --- | --- | --- |
 | [`CaptureExtent`](#captureextent) | struct |  |
+| [`ImageTarget`](#imagetarget) | struct |  |
+| [`ImageRenderer`](#imagerenderer) | enum |  |
 | [`capture_texture`](#capture_texture) | fn |  |
 | [`read_texture`](#read_texture) | fn |  |
+| [`render_to_image`](#render_to_image) | fn |  |
 | [`FORMAT`](#format) | const |  |
 
 ## Structs
@@ -21,6 +24,31 @@
 **Trait implementations:** <code>Clone</code>, <code>Copy</code>
 
 
+### `ImageTarget`
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>clear: <a href="sigil-style.html#color">Color</a></code> |  |
+| <code>size: <a href="sigil-geometry.html#physicalsize">PhysicalSize</a></code> |  |
+| <code>viewport: (f32, f32)</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Debug</code>, <code>Copy</code>
+
+
+## Enums
+
+### `ImageRenderer`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Cpu(&amp;'a mut <a href="sigil-renderer.html#cpurenderer">CpuRenderer</a>)</code> |  |
+| <code>Gpu(&amp;'a mut <a href="sigil-renderer.html#wgpurenderer">WgpuRenderer</a>)</code> |  |
+
+
 ## Functions
 
 ### `capture_texture`
@@ -31,6 +59,11 @@
 ### `read_texture`
 
 <pre>pub fn <a href="#read_texture">read_texture</a>(device: &amp;Device, queue: &amp;Queue, texture: &amp;Texture, extent: <a href="#captureextent">CaptureExtent</a>) -&gt; Result&lt;Vec&lt;u8&gt;, Box&lt;dyn Error&gt;&gt;</pre>
+
+
+### `render_to_image`
+
+<pre>pub fn <a href="#render_to_image">render_to_image</a>(renderer: <a href="#imagerenderer">ImageRenderer</a>&lt;'_&gt;, scene: &amp;<a href="sigil-scene.html#commandscene">CommandScene</a>, target: <a href="#imagetarget">ImageTarget</a>) -&gt; Result&lt;RgbaImage, <a href="sigil-renderer.html#renderererror">RendererError</a>&gt;</pre>
 
 
 ## Constants

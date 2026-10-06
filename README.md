@@ -1,26 +1,19 @@
 # Sigil
 
-Desktop UI in Rust. One widget tree runs on three hosts. `sigil::run`
-opens a window or, with the `terminal` feature, paints the tree on a
-character grid. `Host` embeds the tree in another engine's loop.
+UI in Rust. One widget tree runs on three hosts. `sigil::run` opens a window or, with the `terminal` feature, paints the tree on a character grid. `Host` embeds the tree in another engine's loop.
 
 ![The workbench example application](docs/workbench.png)
 
-[docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md)
-lists every exported item with its signature in one plain-text file.
+[docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md) lists every exported item with its signature in one Markdown file.
 
 ## Status
 
-0.1 is an early release. The API will break between minor versions until
-1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for
-untrusted input; they have been fuzzed only briefly. Report bugs on
-[GitHub issues](https://github.com/manaforged/sigil/issues).
+0.1 is an early release. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input. Fuzz targets cover them, but the fuzz runs so far are short. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
 
 ## Requirements
 
 - Rust 1.90 or newer.
-- A wgpu-capable GPU for the default desktop renderer.
-  Set `SIGIL_BACKEND=cpu` to use the CPU renderer. The terminal host needs no GPU.
+- A wgpu-capable GPU for the default renderer of the window host. Set `SIGIL_BACKEND=cpu` to use the CPU renderer. The terminal host needs no GPU.
 
 ## Platforms
 
@@ -41,9 +34,7 @@ Sigil is not on crates.io yet. Add the Git dependency:
 sigil-ui = { git = "https://github.com/manaforged/sigil" }
 ```
 
-The package is `sigil-ui` because the `sigil` name is taken on
-crates.io. The library is `sigil`, so imports read `sigil::`. The first
-build compiles the wgpu stack and can take a few minutes.
+The package is `sigil-ui` because the `sigil` name is taken on crates.io. The library is `sigil`, so imports read `sigil::`. The first build compiles the wgpu stack and can take a few minutes.
 
 For a terminal-only program:
 
@@ -52,15 +43,13 @@ For a terminal-only program:
 sigil-ui = { git = "https://github.com/manaforged/sigil", default-features = false, features = ["terminal"] }
 ```
 
-To pack release builds, install the `sigil-pack` tool:
+To pack release builds, install the `sigil-sign` package. It provides the `sigil-pack` command.
 
 ```bash
 cargo install --git https://github.com/manaforged/sigil sigil-sign
 ```
 
-To sign packages from your own code, add
-`sigil-sign = { git = "https://github.com/manaforged/sigil" }`; see
-[Signing](docs/guide/signing.md).
+To sign packages from your own code, add `sigil-sign = { git = "https://github.com/manaforged/sigil" }`; see [Signing](docs/guide/signing.md).
 
 ## Usage
 
@@ -81,10 +70,7 @@ fn app_tree() -> impl IntoNode {
 }
 ```
 
-`sigil::run` opens the window and drives the frame loop. Pass
-`AppConfig::new(title).terminal()` to run the same tree in the terminal.
-An embed host pumps `Host` inside `Runtime::scope`. To run the
-examples, clone this repository and run:
+`sigil::run` opens the window and drives the frame loop. Pass `AppConfig::new(title).terminal()` to run the same tree in the terminal. The embed host pumps `Host` inside `Runtime::scope`. To run the examples, clone this repository and run:
 
 ```bash
 cargo run -p sigil-ui --example hello-counter                        # the app above
@@ -94,41 +80,29 @@ cargo run -p sigil-ui --example hello-terminal --features terminal   # terminal 
 
 ## Cargo features
 
-The [`sigil-ui` README](crates/sigil/README.md#features) lists every
-feature. `desktop` is the default. `terminal` adds the terminal host.
+The [`sigil-ui` README](crates/sigil/README.md#features) lists every feature. `desktop` is the default. `terminal` adds the terminal host.
 
 ## Limits
 
-- Headless machines run the terminal host and the test suite. The
-  window host needs a GPU adapter, unless `SIGIL_BACKEND=cpu` selects
-  the CPU renderer. `auto` is the default; `wgpu` requires an adapter.
-- No mobile host. The web host has no system fonts, no clipboard
-  paste, and no accessibility tree, and it runs tasks on the page's
-  one thread; see [Web host](docs/guide/web.md).
-- The terminal host has no rounded corners and no shadows. It composes
-  CJK input through the terminal's own input method.
-  Images render through the terminal graphics protocol on Kitty,
-  Ghostty, WezTerm, Konsole, iTerm2, Warp, and Sixel terminals. Other
-  terminals show sextant glyphs.
-- Fuzz targets are in progress. Read [SECURITY.md](SECURITY.md) before
-  you pass untrusted documents to the markdown, HTML, or SVG parsers.
-- `sigil-pack macos` ad-hoc codesigns unless you pass a signing
-  identity. Ad-hoc signing is not Developer ID or notarization.
-- A form can show a doubled label after save and reopen (issue #1).
+- Headless machines run the terminal host and the test suite. The window host needs a GPU adapter, unless `SIGIL_BACKEND=cpu` selects the CPU renderer. `auto` is the default; `wgpu` requires an adapter.
+- No mobile host. The web host has no system fonts, no clipboard paste, and no accessibility tree, and it runs tasks on the page's one thread; see [Web host](docs/guide/web.md).
+- The terminal host has no rounded corners and no shadows. It composes CJK input through the terminal's own input method. Images render through the terminal graphics protocol on Kitty, Ghostty, WezTerm, Konsole, iTerm2, Warp, and Sixel terminals. Other terminals show sextant glyphs.
+- Six fuzz targets cover the markdown, HTML, SVG, mermaid, class-string and scene-render inputs. Read [SECURITY.md](SECURITY.md) before you pass them untrusted input.
+- `sigil-pack macos` ad-hoc codesigns unless you pass a signing identity. Ad-hoc signing is not Developer ID or notarization.
+- A form can show a doubled label after you save it and open it again.
 
 ## API health
 
-Generated by `cargo truesight health`. Stories are the example programs
-named `story-*`; each counts the Sigil names it uses.
+Generated by `cargo truesight health`. Stories are the example programs named `story-*`; each counts the Sigil names it uses.
 
 <!-- truesight:health sigil-ui -->
 
 | Measure | Value |
 | --- | --- |
-| surface | 3756 items in 39 modules: 483 types, 269 functions, 1358 methods, 600 fields, 982 variants, 64 constants; 631 aliases |
+| surface | 3795 items in 39 modules: 488 types, 273 functions, 1366 methods, 608 fields, 996 variants, 64 constants; 631 aliases |
 | app tier | 179 prelude names; budget 179 |
 | journeys | 8 journeys, 8 at budget: story-01-hello 6/6, story-02-counter 13/13, story-03-form 19/19, story-04-todo 24/24, story-05-nav 17/17, story-07-async 19/19, story-08-component 14/14, story-09-test 8/8 |
-| documented | 776 of 776 module-level items (100%): 0 by rustdoc, 776 by reference docs |
+| documented | 785 of 785 module-level items (100%): 0 by rustdoc, 785 by reference docs |
 | doc paths | 8 reference rows name paths that are not public |
 | findings | 0 deny, 0 warn |
 
@@ -142,22 +116,18 @@ named `story-*`; each counts the Sigil names it uses.
 | [Troubleshooting](docs/guide/troubleshooting.md) | No GPU, images in tmux, and terminal colour. |
 | [GUI and TUI](docs/guide/hosts.md) | Build for the window, the terminal, or both; host-only APIs; how to split host code. |
 | [Recipes](docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, terminal hooks, and screen readers. |
-| [API map](docs/api.md) | Every exported item with its signature and an example. Plain Markdown for tools too. |
+| [API map](docs/api.md) | Every exported item with its signature and an example, in one Markdown file. |
 | [Architecture](docs/guide/arch/overview.md) | How it works inside. |
 
 The [changelog](CHANGELOG.md) lists each release.
 
 ## Security
 
-Report vulnerabilities by email to [thomas@manaforge.tech](mailto:thomas@manaforge.tech).
-[SECURITY.md](SECURITY.md) lists the other reporting channel and each
-input surface.
+Report vulnerabilities by email to [thomas@manaforge.tech](mailto:thomas@manaforge.tech). [SECURITY.md](SECURITY.md) lists the other reporting channel and each input surface.
 
 ## Contributing
 
-Issues are welcome. Pull requests are by invitation: open an issue
-first, and send a patch only when asked. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for the build and the gate.
+Issues are welcome. Pull requests are by invitation: open an issue first, and send a patch only when asked. See [CONTRIBUTING.md](CONTRIBUTING.md) for the build and the gate.
 
 ## License
 

@@ -13,7 +13,7 @@
 | [`render_scene_to_image`](#render_scene_to_image) | fn |  |
 | [`shared_device`](#shared_device) | fn |  |
 | [`Gpu`](#gpu) | type |  |
-| [`FORMAT`](#format) | const |  |
+| [`FORMAT`](#format) | use |  |
 
 ## Structs
 
@@ -68,7 +68,7 @@
 
 ### `render_scene_to_image`
 
-<pre>pub fn <a href="#render_scene_to_image">render_scene_to_image</a>(device: &amp;Device, queue: &amp;Queue, scene: &amp;CommandScene, viewport: (f32, f32), size_px: [u32; 2]) -&gt; Result&lt;RgbaImage, <a href="sigil_kittest.html#error">Error</a>&gt;</pre>
+<pre>pub fn <a href="#render_scene_to_image">render_scene_to_image</a>(renderer: &amp;mut WgpuRenderer, scene: &amp;CommandScene, viewport: (f32, f32), [width, height]: [u32; 2]) -&gt; Result&lt;RgbaImage, <a href="sigil_kittest.html#error">Error</a>&gt;</pre>
 
 
 ### `shared_device`
@@ -83,11 +83,9 @@
 <pre>pub type <a href="#gpu">Gpu</a> = (Device, Queue)</pre>
 
 
-## Constants
+## Re-exports
 
 ### `FORMAT`
-
-<pre>pub const <a href="#format">FORMAT</a>: TextureFormat</pre>
 
 
 ---

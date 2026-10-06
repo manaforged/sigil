@@ -1,8 +1,6 @@
 # GUI and TUI
 
-One widget tree runs in a desktop window (GUI) and in a terminal (TUI).
-This page tells you what the two hosts share, what belongs to one host,
-and how to write code for one host without limiting the other.
+One widget tree runs in a desktop window (GUI) and in a terminal (TUI). This page tells you what the two hosts share, what belongs to one host, and how to write code for one host without limiting the other.
 
 ## Choose the hosts when you build
 
@@ -14,8 +12,7 @@ Cargo features decide which hosts are in your binary.
 | TUI only | `sigil-ui = { git = "https://github.com/manaforged/sigil", default-features = false, features = ["terminal"] }` | The terminal host: crossterm. No wgpu and no winit. |
 | Both | `sigil-ui = { git = "https://github.com/manaforged/sigil", features = ["terminal"] }` | Both hosts. You pick one each run. |
 
-`sigil::run` opens a window by default. `AppConfig::terminal()` opens the
-terminal host instead. An app with both hosts picks one at start:
+`sigil::run` opens a window by default. `AppConfig::terminal()` opens the terminal host instead. An app with both hosts picks one at start:
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -37,9 +34,7 @@ fn app_tree() -> impl IntoNode {
 
 ## What the hosts share
 
-Both hosts run the same components, signals, layout, events, focus,
-accessibility, themes, and tests. A component that uses only these
-needs no host code. Write it once.
+Both hosts run the same components, signals, layout, events, focus, accessibility, themes, and tests. A component that uses only these needs no host code. Write it once.
 
 ## What belongs to one host
 
@@ -60,35 +55,19 @@ needs no host code. Write it once.
 - The `SIGIL_TUI_TRANSCRIPT` accessibility transcript.
 - Box-drawing borders and cell colors.
 
-A GUI-only API compiles out of a TUI-only build because its feature is
-off. You do not guard it at run time.
+A GUI-only API compiles out of a TUI-only build because its feature is off. You do not guard it at run time.
 
 ## Write the GUI the way you want
 
-Paint the window with every tool it has: shadows, blur, gradients,
-rounded corners, images, and pixel sizes. The terminal host keeps what
-a cell can show and drops the rest: a shadow, a blur, or a gradient is
-omitted, a rounded box becomes rounded box-drawing glyphs, and an image
-goes through the terminal graphics protocol or sextant glyphs. The
-[Terminal host](terminal.md#scene-mapping) page lists each mapping. You
-do not add a terminal branch to keep a GUI style.
+Paint the window with every tool it has: shadows, blur, gradients, rounded corners, images, and pixel sizes. The terminal host keeps what a cell can show and drops the rest: a shadow, a blur, or a gradient is omitted, a rounded box becomes rounded box-drawing glyphs, and an image goes through the terminal graphics protocol or sextant glyphs. The [Terminal host](terminal.md#scene-mapping) page lists each mapping. You do not add a terminal branch to keep a GUI style.
 
-The window host paints the theme's `Surface` colour behind the tree, so
-an area the tree leaves unpainted follows the theme. A transparent
-window skips it. The terminal host leaves unpainted cells to the
-terminal's own background.
+The window host paints the theme's `Surface` colour behind the tree, so an area the tree leaves unpainted follows the theme. A transparent window skips it. The terminal host leaves unpainted cells to the terminal's own background.
 
-Give text-sized lengths in `rows`, `cols`, or `em`, and give picture
-sizes in pixels. Then the terminal gets whole cells and the window gets
-text-height controls from the same code. See [Units](units.md).
+Give text-sized lengths in `rows`, `cols`, or `em`, and give picture sizes in pixels. Then the terminal gets whole cells and the window gets text-height controls from the same code. See [Units](units.md).
 
 ## Branch when the screen differs
 
-When one host needs a different screen, branch on
-`sigil::app::is_grid()` at the top of a component. It returns `true` on
-the terminal host and `false` on the window host, and it is already set
-when the component runs. The host does not change while the app runs,
-so the branch is fixed for the life of the node.
+When one host needs a different screen, branch on `sigil::app::is_grid()` at the top of a component. It returns `true` on the terminal host and `false` on the window host, and it is already set when the component runs. The host does not change while the app runs, so the branch is fixed for the life of the node.
 
 ```rust
 use sigil::app::is_grid;
@@ -105,15 +84,11 @@ fn inbox(selected: Signal<usize>) -> impl IntoNode {
 }
 ```
 
-Keep the state outside the branch, as `selected` is here. Both screens
-then share one copy of the behavior, and only the layout differs.
-Branch at the screen level. Do not branch inside small widgets: Sigil's
-own widgets already take the cell form on the grid.
+Keep the state outside the branch, as `selected` is here. Both screens then share one copy of the behavior, and only the layout differs. Branch at the screen level. Do not branch inside small widgets: Sigil's own widgets already take the cell form on the grid.
 
 ## Split host code at compile time
 
-Code that calls a GUI-only or TUI-only API goes behind your own
-feature, which turns on the Sigil feature:
+Code that calls a GUI-only or TUI-only API goes behind your own feature, which turns on the Sigil feature:
 
 ```toml
 [features]
@@ -129,15 +104,11 @@ fn install_menu() {
 }
 ```
 
-A TUI-only build then has no menu code and no GPU stack, and a GUI-only
-build has no terminal code.
+A TUI-only build then has no menu code and no GPU stack, and a GUI-only build has no terminal code.
 
 ## Test both hosts
 
-`sigil-kittest` drives the window host and compares PNG goldens; see
-[Testing](testing.md). The terminal host runs headless through
-`Host::cells` and `sigil::terminal::step`; see the
-[API map](../api.md). To check that a TUI-only build has no GPU stack:
+`sigil-kittest` drives the window host and compares PNG goldens; see [Testing](testing.md). The terminal host runs headless through `Host::cells` and `sigil::terminal::step`; see the [API map](../api.md). To check that a TUI-only build has no GPU stack:
 
 ```bash
 cargo tree -p your-app --no-default-features --features tui | grep -E 'wgpu|winit'

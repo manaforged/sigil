@@ -13,7 +13,7 @@ pub struct Notices {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Known {
+pub(in crate::terminal) enum Known {
     Kitty,
     Ghostty,
     WezTerm,
@@ -75,7 +75,7 @@ fn known_term(term: &str) -> Option<Known> {
     })
 }
 
-fn known_env(env: &impl Fn(&str) -> Option<String>) -> Option<Known> {
+pub(in crate::terminal) fn known_env(env: &impl Fn(&str) -> Option<String>) -> Option<Known> {
     let program = env("TERM_PROGRAM").unwrap_or_default();
     Some(if env("KITTY_WINDOW_ID").is_some() {
         Known::Kitty

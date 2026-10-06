@@ -1,24 +1,17 @@
 # Recipes
 
-Each recipe is a complete program or tree function for one job. Every
-code block on this page compiles as a doctest of the `sigil` crate. The
-[API map](../api.md) lists the signature of each item used here.
+Each recipe is a complete program or tree function for one job. Every code block on this page compiles as a doctest of the `sigil` crate. The [API map](../api.md) lists the signature of each item used here.
 
 ## Keys
 
-A key event goes to the focused node first. Handlers run in two passes
-along the path from the root to the focused node:
+A key event goes to the focused node first. Handlers run in two passes along the path from the root to the focused node:
 
-1. Capture handlers (`key_capture`, `key_capture_any`) run from the
-   root down to the focused node.
-2. Bubble handlers (`key`, `key_any`) run from the focused node up to
-   the root.
+1. Capture handlers (`key_capture`, `key_capture_any`) run from the root down to the focused node.
+2. Bubble handlers (`key`, `key_any`) run from the focused node up to the root.
 
 A handler calls `event.stop_propagation()` to end both passes.
 
-Tab and Shift+Tab move focus between the capture pass and the bubble
-pass. A capture handler that stops propagation keeps focus in place, so
-`.key_capture(Key::Tab, f)` on an ancestor owns Tab for its subtree.
+Tab and Shift+Tab move focus between the capture pass and the bubble pass. A capture handler that stops propagation keeps focus in place, so `.key_capture(Key::Tab, f)` on an ancestor owns Tab for its subtree.
 
 A `Shortcut` is a key plus modifiers:
 
@@ -29,8 +22,7 @@ A `Shortcut` is a key plus modifiers:
 | `Shortcut::ctrl(LogicalKey::character("s"))` | Ctrl+S |
 | `Shortcut::new(key, ModifiersState::CONTROL \| ModifiersState::SHIFT)` | Any modifier set |
 
-`Key::Escape` converts into a `Shortcut` directly, so `.key(Key::Escape, f)`
-also works.
+`Key::Escape` converts into a `Shortcut` directly, so `.key(Key::Escape, f)` also works.
 
 ### Bind a key on a focused node
 
@@ -57,15 +49,11 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-`request_focus` gives the node keyboard focus. Without focus, a node
-receives no key events through the focus path.
+`request_focus` gives the node keyboard focus. Without focus, a node receives no key events through the focus path.
 
 ### Bind a key that fires from anywhere
 
-`.shortcut(s, handler)` registers `s` as a global shortcut. The router
-runs the handler for the key, wherever the focus is. One node can hold
-many shortcuts. A plain character shortcut does not fire while a text
-input has focus, so typing `q` into a field does not quit.
+`.shortcut(s, handler)` registers `s` as a global shortcut. The router runs the handler for the key, wherever the focus is. One node can hold many shortcuts. A plain character shortcut does not fire while a text input has focus, so typing `q` into a field does not quit.
 
 ```rust,no_run
 # #[cfg(feature = "terminal")]
@@ -89,9 +77,7 @@ fn main() -> AppResult<()> {
 
 ### See every key before the focused widget
 
-`key_capture_any` on an ancestor sees each key before the focused
-descendant. This example turns Tab inside a text editor into two
-spaces.
+`key_capture_any` on an ancestor sees each key before the focused descendant. This example turns Tab inside a text editor into two spaces.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -115,29 +101,15 @@ fn main() -> AppResult<()> {
 
 ### Keys on a widget builder
 
-Every widget builder that implements `WidgetLayoutExt` also takes the
-`NodeEventsExt` methods. The handler goes on the root node of the
-widget and runs after the handlers of the widget. If the widget stops a
-key that you need, use `key_capture` instead. To use a `NodeBuilder`
-method that is not in `NodeEventsExt`, such as `on_added`, call
-`.map_node(|node| node.on_added(f))`.
+Every widget builder that implements `WidgetLayoutExt` also takes the `NodeEventsExt` methods. The handler goes on the root node of the widget and runs after the handlers of the widget. If the widget stops a key that you need, use `key_capture` instead. To use a `NodeBuilder` method that is not in `NodeEventsExt`, such as `on_added`, call `.map_node(|node| node.on_added(f))`.
 
 ### Helper return types
 
-A helper that returns `impl IntoNode` keeps only `IntoNode`. Chained
-builder methods are not available on the result. Return the concrete
-builder type (for example `sigil::widgets::ButtonBuilder`) or
-`NodeBuilder` to keep them. Under Rust 2024, `impl IntoNode` captures
-every lifetime in the arguments. A helper that takes `&state` and
-returns `impl IntoNode` then borrows `state` for the life of the node.
-Write `-> impl IntoNode + use<>` when the result does not use the
-reference, or return a concrete type.
+A helper that returns `impl IntoNode` keeps only `IntoNode`. Chained builder methods are not available on the result. Return the concrete builder type (for example `sigil::widgets::ButtonBuilder`) or `NodeBuilder` to keep them. Under Rust 2024, `impl IntoNode` captures every lifetime in the arguments. A helper that takes `&state` and returns `impl IntoNode` then borrows `state` for the life of the node. Write `-> impl IntoNode + use<>` when the result does not use the reference, or return a concrete type.
 
 ## Theme switching
 
-`Theme::light()`, `Theme::dark()`, and `Theme::console_dark()` build
-the default themes. `set_theme` replaces the active theme at the next
-frame, on the window and on the terminal host.
+`Theme::light()`, `Theme::dark()`, and `Theme::console_dark()` build the default themes. `set_theme` replaces the active theme at the next frame, on the window and on the terminal host.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -154,20 +126,9 @@ fn main() -> AppResult<()> {
 }
 ```
 
-A theme file is TOML. `base` selects `light`, `dark`, or
-`console_dark`. The `[tokens]` table sets token colours as `#rrggbb`
-or `#rrggbbaa`. `parse_theme` returns `None` if the document is not
-valid.
+A theme file is TOML. `base` selects `light`, `dark`, or `console_dark`. The `[tokens]` table sets token colours as `#rrggbb` or `#rrggbbaa`. `parse_theme` returns `None` if the document is not valid.
 
-A theme file also carries the language settings. `direction` is
-`"ltr"` or `"rtl"`. `locale = "en"`, `"de"`, or `"ar"` selects a
-built-in locale; a `[locale]` table sets fields one by one: `preset`
-(the built-in locale to start from), `decimal`, `group` (`""` for no
-grouping), `zero` and `date_separator` as single characters,
-`group_size` from 1 to 255, and `date_order` as `"ymd"`, `"dmy"`, or
-`"mdy"`. The `[strings]` table replaces built-in labels by their
-snake_case name, for example `close = "Schließen"`. An unknown name or
-value makes `parse_theme` return `None`.
+A theme file also carries the language settings. `direction` is `"ltr"` or `"rtl"`. `locale = "en"`, `"de"`, or `"ar"` selects a built-in locale; a `[locale]` table sets fields one by one: `preset` (the built-in locale to start from), `decimal`, `group` (`""` for no grouping), `zero` and `date_separator` as single characters, `group_size` from 1 to 255, and `date_order` as `"ymd"`, `"dmy"`, or `"mdy"`. The `[strings]` table replaces built-in labels by their snake_case name, for example `close = "Schließen"`. An unknown name or value makes `parse_theme` return `None`.
 
 ```toml
 base = "light"
@@ -207,10 +168,7 @@ fn main() -> AppResult<()> {
 }
 ```
 
-To reload a theme file while the app runs, call `watch_theme`. The
-watch stops when the `ThemeWatcher` is dropped, so keep it for the
-life of the tree. `AppConfig::theme_file(path)` loads and watches a
-file without code in the tree.
+To reload a theme file while the app runs, call `watch_theme`. The watch stops when the `ThemeWatcher` is dropped, so keep it for the life of the tree. `AppConfig::theme_file(path)` loads and watches a file without code in the tree.
 
 ```rust,no_run
 use sigil::reactive::on_cleanup;
@@ -229,9 +187,7 @@ fn main() -> AppResult<()> {
 }
 ```
 
-`Token` names each theme colour. The `Paint` methods `bg`,
-`text_color`, and `border_color` take a token, so a misspelled token
-does not compile.
+`Token` names each theme colour. The `Paint` methods `bg`, `text_color`, and `border_color` take a token, so a misspelled token does not compile.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -251,8 +207,7 @@ fn main() -> AppResult<()> {
 
 ## Layout reference
 
-`LayoutStyle` describes the box of one node. Start from a constructor,
-then chain setters:
+`LayoutStyle` describes the box of one node. Start from a constructor, then chain setters:
 
 | Constructor | Box |
 | --- | --- |
@@ -273,11 +228,7 @@ then chain setters:
 | `position`, `inset`, `inset_top`, ... | Absolute placement |
 | `overflow`, `overflow_x`, `overflow_y` | Clip and scroll |
 
-A plain number is logical pixels. `rows(n)`, `cols(n)`, and `em(n)`
-are text-relative. In the terminal host, `rows(1.0)` is one cell high
-and `cols(1.0)` is one cell wide. In a window, `rows(1.0)` is one line
-height and `cols(1.0)` is one character advance. Use text-relative
-units in a tree that runs on both hosts. See [Units](units.md).
+A plain number is logical pixels. `rows(n)`, `cols(n)`, and `em(n)` are text-relative. In the terminal host, `rows(1.0)` is one cell high and `cols(1.0)` is one cell wide. In a window, `rows(1.0)` is one line height and `cols(1.0)` is one character advance. Use text-relative units in a tree that runs on both hosts. See [Units](units.md).
 
 ```rust,no_run
 # #[cfg(feature = "terminal")]
@@ -308,10 +259,7 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-`viewport_size()` returns the viewport as a signal, in logical px on
-every host. On the terminal one cell is `Host::CELL` px, so divide by
-it to get columns and rows. Read it in a `derived` or a
-`children_reactive` closure to adapt the tree to the size.
+`viewport_size()` returns the viewport as a signal, in logical px on every host. On the terminal one cell is `Host::CELL` px, so divide by it to get columns and rows. Read it in a `derived` or a `children_reactive` closure to adapt the tree to the size.
 
 ```rust,no_run
 use sigil::app::is_grid;
@@ -331,11 +279,7 @@ fn main() -> AppResult<()> {
 
 ## Streaming from a backend
 
-Signals belong to the UI thread. A backend task writes through a
-`SignalWriter`. The host runs each write on the UI thread at the start
-of the next turn. `SignalWriter::update` appends in place, so a long
-transcript is not copied on each chunk. Read it with `Signal::with` to
-avoid a clone.
+Signals belong to the UI thread. A backend task writes through a `SignalWriter`. The host runs each write on the UI thread at the start of the next turn. `SignalWriter::update` appends in place, so a long transcript is not copied on each chunk. Read it with `Signal::with` to avoid a clone.
 
 ```rust,no_run
 # #[cfg(feature = "terminal")]
@@ -363,13 +307,9 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-The future runs on the app's tokio runtime. Wait inside it with
-`sigil::tasks::sleep`, not `std::thread::sleep`, so a worker thread
-stays free. `update` returns `Err(ScheduleError::Closed)` after the app
-exits. The `?` ends the task on that error.
+The future runs on the app's tokio runtime. Wait inside it with `sigil::tasks::sleep`, not `std::thread::sleep`, so a worker thread stays free. `update` returns `Err(ScheduleError::Closed)` after the app exits. The `?` ends the task on that error.
 
-For one result, `spawn` runs a future and returns a
-`Signal<Status<T, E>>` that starts as `Status::Pending`:
+For one result, `spawn` runs a future and returns a `Signal<Status<T, E>>` that starts as `Status::Pending`:
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -391,11 +331,7 @@ fn main() -> AppResult<()> {
 
 ### Load on demand
 
-For work the user starts, such as a Load button, `task` builds a new
-future on each `run()`. The status starts `Status::Idle`. `run()` sets
-`Status::Pending` and aborts the run it replaces; a result from a
-replaced run is dropped, so a slow first load cannot overwrite a newer
-one.
+For work the user starts, such as a Load button, `task` builds a new future on each `run()`. The status starts `Status::Idle`. `run()` sets `Status::Pending` and aborts the run it replaces; a result from a replaced run is dropped, so a slow first load cannot overwrite a newer one.
 
 ```rust,ignore
 {{#include ../../crates/sigil/examples/story-07-async.rs}}
@@ -403,15 +339,9 @@ one.
 
 ### Stream a measured transcript
 
-A chat transcript has rows whose height depends on the width: wrapped
-markdown, tool cards, images. `.measured()` sizes each row from its
-layout. `.follow_end(true)` keeps the last row in view while a
-reply streams in.
+A chat transcript has rows whose height depends on the width: wrapped markdown, tool cards, images. `.measured()` sizes each row from its layout. `.follow_end(true)` keeps the last row in view while a reply streams in.
 
-App state that is not `Send` stays on the UI thread. A worker sends
-messages on a tokio channel. `on_message` runs the handler on the UI
-thread for each message. A send wakes the event loop, so the app does
-not poll.
+App state that is not `Send` stays on the UI thread. A worker sends messages on a tokio channel. `on_message` runs the handler on the UI thread for each message. A send wakes the event loop, so the app does not poll.
 
 ```rust,no_run
 use sigil::tasks::on_message;
@@ -454,10 +384,7 @@ fn main() -> AppResult<()> {
 }
 ```
 
-Page the transcript from outside the list. `.max_scroll_bind` receives
-the largest scroll offset. Write `scroll_bind` clamped to that value.
-`.follow` stops at the user's position after a scroll up, and follows
-again when the view is back at the bottom.
+Page the transcript from outside the list. `.max_scroll_bind` receives the largest scroll offset. Write `scroll_bind` clamped to that value. `.follow` stops at the user's position after a scroll up, and follows again when the view is back at the bottom.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -482,17 +409,11 @@ fn tree() -> impl IntoNode {
 }
 ```
 
-`on_message_or_close(rx, f, on_close)` also runs `on_close` after the
-last message, when the worker drops its sender. `rx` may be a bounded
-`tokio::sync::mpsc::Receiver`.
+`on_message_or_close(rx, f, on_close)` also runs `on_close` after the last message, when the worker drops its sender. `rx` may be a bounded `tokio::sync::mpsc::Receiver`.
 
 ### Consume a trigger inside an effect
 
-An effect that reads a signal and writes the same signal inside its
-run is a reactive cycle. `defer(f)` runs `f` after the effect returns.
-The write then runs the effect again, and that run sees the cleared
-value. `untrack` does not help here: it stops the subscription of a
-read, not the notification of a write.
+An effect that reads a signal and writes the same signal inside its run is a reactive cycle. `defer(f)` runs `f` after the effect returns. The write then runs the effect again, and that run sees the cleared value. `untrack` does not help here: it stops the subscription of a read, not the notification of a write.
 
 ```rust,no_run
 use sigil::reactive::defer;
@@ -514,9 +435,7 @@ fn tree() -> impl IntoNode {
 
 ## Timers
 
-`interval(period, f)` runs `f` on the UI thread once per period. The
-interval stops when its owner is disposed, or when you call
-`sigil::reactive::cancel_interval(id)`. It needs no thread.
+`interval(period, f)` runs `f` on the UI thread once per period. The interval stops when its owner is disposed, or when you call `sigil::reactive::cancel_interval(id)`. It needs no thread.
 
 ```rust,no_run
 # #[cfg(feature = "terminal")]
@@ -548,8 +467,7 @@ fn main() -> AppResult<()> {
 
 ## Host hooks
 
-These functions work in the terminal host. Outside the terminal host,
-`suspend` runs its function, and the other functions do nothing.
+These functions work in the terminal host. Outside the terminal host, `suspend` runs its function, and the other functions do nothing.
 
 | Function | Effect |
 | --- | --- |
@@ -587,24 +505,17 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-With `quit_on_ctrl_c(false)`, Ctrl+C reaches the tree as a key event,
-and the app exits through `request_exit`.
+With `quit_on_ctrl_c(false)`, Ctrl+C reaches the tree as a key event, and the app exits through `request_exit`.
 
 ## Screen readers
 
-`sigil::run` connects the window host to the platform screen reader.
-An embed host does this itself:
+`sigil::run` connects the window host to the platform screen reader. An embed host does this itself:
 
-1. Call `Host::accessibility_tree(&router)` after each layout. Send the
-   `TreeUpdate` to your `accesskit` adapter.
-2. When the adapter reports an `accesskit::ActionRequest`, convert its
-   `target_node` with `NodeId::from_accesskit`.
+1. Call `Host::accessibility_tree(&router)` after each layout. Send the `TreeUpdate` to your `accesskit` adapter.
+2. When the adapter reports an `accesskit::ActionRequest`, convert its `target_node` with `NodeId::from_accesskit`.
 3. Call `Host::perform(&mut router, target, &request)`.
 
-`Host::perform` handles `Focus`, `Click`, `Increment`, `Decrement`,
-`SetValue`, `SetTextSelection`, `Expand`, `Collapse`, and
-`ScrollIntoView`. Add `accesskit` 0.25 to your own dependencies to
-name its types.
+`Host::perform` handles `Focus`, `Click`, `Increment`, `Decrement`, `SetValue`, `SetTextSelection`, `Expand`, `Collapse`, and `ScrollIntoView`. Add `accesskit` 0.25 to your own dependencies to name its types.
 
 ```rust,no_run
 use sigil::kernel::NodeId;
@@ -634,18 +545,11 @@ fn main() {
 }
 ```
 
-Give each control a name that a screen reader can say. Widgets take
-the name from their label. For a bare container, set
-`.role(Role::...)` and `.label("...")`.
+Give each control a name that a screen reader can say. Widgets take the name from their label. For a bare container, set `.role(Role::...)` and `.label("...")`.
 
 ## Tasks in an embed
 
-`sigil::run` owns the task runtime. An embed host creates one on its UI
-thread with `AsyncRuntime::new()`, installs it with `install_current()`,
-and calls `pump()` before each `Host::frame`. `pump` applies the
-results that finished, so `task`, `spawn`, and `signal_writer` work as
-they do under `sigil::run`. `set_waker` wakes the host's event loop
-when a result arrives.
+`sigil::run` owns the task runtime. An embed host creates one on its UI thread with `AsyncRuntime::new()`, installs it with `install_current()`, and calls `pump()` before each `Host::frame`. `pump` applies the results that finished, so `task`, `spawn`, and `signal_writer` work as they do under `sigil::run`. `set_waker` wakes the host's event loop when a result arrives.
 
 ```rust,no_run
 use sigil::app::FrameHooks;
