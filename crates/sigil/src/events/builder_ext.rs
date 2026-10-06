@@ -340,7 +340,8 @@ impl NodeEventsExt for NodeBuilder {
     }
 
     fn autofocus(self) -> Self {
-        self.on_added(|_, id| crate::events::focus::request_focus(id))
+        self.with(crate::events::focus::Autofocus)
+            .on_added(|_, id| crate::events::focus::request_focus(id))
     }
 
     fn focus_when(self, trigger: Signal<u64>) -> Self {

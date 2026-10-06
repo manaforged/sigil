@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use crate::events::focus::targets::is_self_or_ancestor;
 use crate::events::hit_test::visible;
 
-use super::{FocusManager, FocusScopeEntry};
+use super::{Autofocus, FocusManager, FocusScopeEntry};
 
 impl FocusManager {
     #[allow(
@@ -52,12 +52,8 @@ impl FocusManager {
                 scope_root,
                 restore_to: self.focused,
             });
-            if !focused_inside
-                && cx
-                    .get(scope_root)
-                    .is_some_and(|node| node.a11y.is_focusable())
-            {
-                self.set_focus(cx, Some(scope_root));
+            if !focused_inside && let Some(target) = initial_focus(cx, scope_root) {
+                self.set_focus(cx, Some(target));
             }
             self.ring_generation = u64::MAX;
         }
@@ -80,6 +76,19 @@ fn collect_scope_roots(cx: &Cx, id: NodeId, out: &mut Vec<NodeId>) {
     for child in node.children().iter().copied() {
         collect_scope_roots(cx, child, out);
     }
+}
+
+fn initial_focus(cx: &Cx, scope_root: NodeId) -> Option<NodeId> {
+    first_in_subtree(cx, scope_root, &|id| {
+        cx.get(id).is_some_and(|node| {
+            node.a11y.is_focusable() && node.get_extension::<Autofocus>().is_some()
+        })
+    })
+    .or_else(|| {
+        cx.get(scope_root)
+            .is_some_and(|node| node.a11y.is_focusable())
+            .then_some(scope_root)
+    })
 }
 
 fn first_focusable_in_document_order(cx: &Cx) -> Option<NodeId> {

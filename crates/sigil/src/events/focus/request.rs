@@ -3,6 +3,9 @@ use std::cell::{Cell, RefCell};
 use crate::kernel::NodeId;
 use crate::reactive::Signal;
 
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct Autofocus;
+
 thread_local! {
     static PENDING: RefCell<Vec<NodeId>> = const { RefCell::new(Vec::new()) };
     static REVEAL: RefCell<Vec<NodeId>> = const { RefCell::new(Vec::new()) };

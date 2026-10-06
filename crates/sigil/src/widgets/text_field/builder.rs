@@ -255,6 +255,11 @@ impl IntoNode for TextFieldBuilder {
         let at = self.focus_caret;
         let target = Rc::clone(&self.focus_target);
         let (node, runtime) = self.into_node_builder();
+        let node = if autofocus {
+            node.with(crate::events::focus::Autofocus)
+        } else {
+            node
+        };
         let id = node.build(cx);
         target.set(Some(id));
         if autofocus {

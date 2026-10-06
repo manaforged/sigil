@@ -218,14 +218,16 @@ impl WidgetLayoutExt for TextEditBuilder {
 impl IntoNode for TextEditBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
         let (autofocus, trigger) = (self.autofocus, self.focus_trigger);
-        let id = self
+        let node = self
             .layout_overrides
             .hooks()
-            .finish(self.into_node_builder())
-            .build(cx);
-        if autofocus {
-            crate::events::request_focus(id);
-        }
+            .finish(self.into_node_builder());
+        let node = if autofocus {
+            <NodeBuilder as crate::events::NodeEventsExt>::autofocus(node)
+        } else {
+            node
+        };
+        let id = node.build(cx);
         if let Some(trigger) = trigger {
             crate::events::focus::focus_on_trigger(trigger, move || {
                 crate::events::request_focus(id);

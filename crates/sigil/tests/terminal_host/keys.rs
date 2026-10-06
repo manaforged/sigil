@@ -155,3 +155,35 @@ fn a_paste_reaches_the_focused_node_as_one_event() {
         assert_eq!(*seen.borrow(), vec!["one\ntwo".to_owned()]);
     });
 }
+
+#[test]
+fn an_autofocus_field_in_a_modal_takes_keys_when_the_modal_opens() {
+    use sigil::Host;
+    use sigil::events::EventRouter;
+    use sigil::reactive::signal;
+    use sigil::widgets::{modal, text_field};
+
+    sigil::reactive::Runtime::scope("tui-modal-autofocus", || {
+        let open = signal(false);
+        let query = signal(String::new());
+        let mut host = Host::cells();
+        let mut router = EventRouter::new();
+        host.mount(move || {
+            container().child(
+                modal(open)
+                    .title("Palette")
+                    .child(text_field(query).autofocus()),
+            )
+        });
+        drop(step(&mut host, &mut router, [], 40, 12));
+        open.set(true);
+        drop(step(&mut host, &mut router, [], 40, 12));
+        let typed = sigil::terminal::map_key(&crossterm::event::KeyEvent::new(
+            crossterm::event::KeyCode::Char('d'),
+            crossterm::event::KeyModifiers::NONE,
+        ))
+        .expect("char maps");
+        drop(step(&mut host, &mut router, [typed], 40, 12));
+        assert_eq!(query.peek(), "d");
+    });
+}
