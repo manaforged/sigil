@@ -69,3 +69,32 @@ fn a_backward_drag_copies_the_cell_it_started_on() {
 fn a_drag_inside_a_line_copies_exactly_the_cells_it_crossed() {
     assert_eq!(drag_copies(4, 8).as_deref(), Some("quick"));
 }
+
+#[test]
+fn a_drag_copy_reports_what_it_copied() {
+    let copied = Rc::new(RefCell::new(Vec::new()));
+    sigil::clipboard::install(Recorder(Rc::new(RefCell::new(Vec::new()))));
+    let seen = Rc::clone(&copied);
+    let mut host = sigil::Host::cells();
+    host.mount(move || {
+        let seen = Rc::clone(&seen);
+        container()
+            .selectable_text(true)
+            .on_selection_copy(move |text, result| {
+                seen.borrow_mut().push((text.to_owned(), result.is_ok()));
+            })
+            .child(text("The quick brown fox"))
+    });
+    let mut router = EventRouter::new();
+    step(&mut host, &mut router, [], 40, 4);
+    for (phase, col) in [
+        (PointerPhase::Move, 4),
+        (PointerPhase::Down, 4),
+        (PointerPhase::Move, 6),
+        (PointerPhase::Move, 8),
+        (PointerPhase::Up, 8),
+    ] {
+        step(&mut host, &mut router, [pointer(phase, col, 0)], 40, 4);
+    }
+    assert_eq!(copied.borrow().as_slice(), &[("quick".to_owned(), true)]);
+}

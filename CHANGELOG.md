@@ -13,6 +13,9 @@ First release.
 
 ### Added
 
+- `NodeEventsExt::on_selection_copy` reports the text and clipboard result
+  when a `selectable_text` region copies a selection (drag-to-copy in a
+  terminal, or Cmd/Ctrl+C), so an app can confirm the copy.
 - `Icon`: the Lucide icon set (98 icons, ISC with the Feather-derived MIT portion), typed, so `icon(Icon::Folder)` draws a stroke icon tinted by the text colour. The nine older built-in icons now come from the same set.
 - `tree(nodes)` with `TreeNode`: an explorer or outline tree with icons, toned status, controlled expansion and selection, arrow-key navigation, Left/Right to collapse and expand, Enter to activate, and tree and tree-item accessibility roles.
 - `stat(label, value)`: a KPI tile with an optional toned delta, caption, and sparkline trend.

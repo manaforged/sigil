@@ -234,8 +234,23 @@ fn extend(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
     if cx.host_mode() == crate::kernel::HostMode::Cell {
         let text = selected_text(cx, selection);
         if !text.is_empty() {
-            let _ = crate::clipboard::copy(&text);
+            deliver(cx, selection.region, &text);
         }
+    }
+}
+
+fn deliver(cx: &Cx, region: NodeId, text: &str) {
+    let result = crate::clipboard::copy(text);
+    let mut at = Some(region);
+    while let Some(id) = at {
+        if crate::events::handlers::dispatch(cx, id, |handlers| {
+            handlers.invoke_selection_copy(text, &result)
+        })
+        .unwrap_or(false)
+        {
+            return;
+        }
+        at = cx.parent(id);
     }
 }
 
@@ -265,7 +280,7 @@ pub(crate) fn copy_selection(cx: &Cx) -> bool {
     if text.is_empty() {
         return false;
     }
-    let _ = crate::clipboard::copy(&text);
+    deliver(cx, sel.region, &text);
     true
 }
 

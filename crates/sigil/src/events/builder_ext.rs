@@ -63,6 +63,11 @@ pub trait NodeEventsExt {
         H: Fn(&str) + 'static;
 
     #[must_use]
+    fn on_selection_copy<H>(self, h: H) -> Self
+    where
+        H: Fn(&str, &crate::AppResult<crate::clipboard::Delivery>) + 'static;
+
+    #[must_use]
     fn on_scroll<H>(self, h: H) -> Self
     where
         H: Fn(&mut ScrollEvent) + 'static;
@@ -203,6 +208,15 @@ impl NodeEventsExt for NodeBuilder {
     {
         with_handlers(self, move |handlers| {
             handlers.add_link(Box::new(h));
+        })
+    }
+
+    fn on_selection_copy<H>(self, h: H) -> Self
+    where
+        H: Fn(&str, &crate::AppResult<crate::clipboard::Delivery>) + 'static,
+    {
+        with_handlers(self, move |handlers| {
+            handlers.add_selection_copy(Box::new(h));
         })
     }
 

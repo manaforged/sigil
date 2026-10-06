@@ -20,6 +20,8 @@ type ScrollHandler = Box<dyn Fn(&mut ScrollEvent) + 'static>;
 type FocusHandler = Box<dyn Fn() + 'static>;
 type FileDropHandler = Box<dyn Fn(&FileDropEvent) + 'static>;
 type LinkHandler = Box<dyn Fn(&str) + 'static>;
+type SelectionCopyHandler =
+    Box<dyn Fn(&str, &crate::AppResult<crate::clipboard::Delivery>) + 'static>;
 type ValueAdjustment = Box<dyn Fn(bool) + 'static>;
 type A11yEditHandler = Box<dyn Fn(&A11yEdit) -> bool + 'static>;
 
@@ -55,6 +57,7 @@ pub struct EventHandlers {
     focus_out: Vec<FocusHandler>,
     file_drop: Vec<FileDropHandler>,
     link: Vec<LinkHandler>,
+    selection_copy: Vec<SelectionCopyHandler>,
     value_adjustment: Option<ValueAdjustment>,
     a11y_edit: Option<A11yEditHandler>,
 }
@@ -123,6 +126,19 @@ impl EventHandlers {
     }
     pub(crate) fn add_file_drop(&mut self, handler: FileDropHandler) {
         self.file_drop.push(handler);
+    }
+    pub(crate) fn add_selection_copy(&mut self, handler: SelectionCopyHandler) {
+        self.selection_copy.push(handler);
+    }
+    pub(crate) fn invoke_selection_copy(
+        &self,
+        text: &str,
+        result: &crate::AppResult<crate::clipboard::Delivery>,
+    ) -> bool {
+        for handler in &self.selection_copy {
+            handler(text, result);
+        }
+        !self.selection_copy.is_empty()
     }
     pub(crate) fn add_link(&mut self, handler: LinkHandler) {
         self.link.push(handler);
