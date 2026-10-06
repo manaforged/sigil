@@ -21,6 +21,19 @@ pub(super) fn image() -> AppResult<Option<ImageSource>> {
     })
 }
 
+#[cfg(feature = "clipboard-image")]
+pub(super) fn copy_image(image: &ImageSource) -> AppResult<Delivery> {
+    let width = usize::try_from(image.width()).map_err(Error::io)?;
+    let height = usize::try_from(image.height()).map_err(Error::io)?;
+    let data = arboard::ImageData {
+        width,
+        height,
+        bytes: std::borrow::Cow::Borrowed(image.rgba()),
+    };
+    with_handle(|clip| clip.set_image(data).map_err(Error::io))?;
+    Ok(Delivery::Confirmed)
+}
+
 pub(super) fn copy(text: &str) -> AppResult<Delivery> {
     with_handle(|clip| clip.set_text(text.to_owned()).map_err(Error::io))?;
     Ok(Delivery::Confirmed)
@@ -38,12 +51,10 @@ fn with_handle<R>(f: impl FnOnce(&mut arboard::Clipboard) -> AppResult<R>) -> Ap
     }
     HANDLE.with(|cell| {
         let mut slot = cell.borrow_mut();
-        if slot.is_none() {
-            *slot = Some(arboard::Clipboard::new().map_err(Error::io)?);
-        }
-        let handle = slot
-            .as_mut()
-            .expect("clipboard handle was just initialised above");
+        let handle = match &mut *slot {
+            Some(handle) => handle,
+            empty => empty.insert(arboard::Clipboard::new().map_err(Error::io)?),
+        };
         f(handle)
     })
 }

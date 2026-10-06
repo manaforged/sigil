@@ -24,3 +24,10 @@ pub(super) fn paste() -> AppResult<String> {
 pub(super) const fn image() -> AppResult<Option<ImageSource>> {
     Ok(None)
 }
+
+#[cfg(feature = "clipboard-image")]
+pub(super) fn copy_image(_image: &ImageSource) -> AppResult<Delivery> {
+    Err(Error::io(ClipError::new(
+        "the browser clipboard has no image write",
+    )))
+}

@@ -42,6 +42,11 @@ pub trait Clipboard {
     fn image(&self) -> Result<Option<crate::kernel::ImageSource>, ClipError> {
         Ok(None)
     }
+
+    #[cfg(feature = "clipboard-image")]
+    fn set_image(&self, _image: &crate::kernel::ImageSource) -> Result<Delivery, ClipError> {
+        Err(ClipError::new("this clipboard does not accept images"))
+    }
 }
 
 pub struct NoopClipboard;
@@ -91,6 +96,11 @@ pub fn paste() -> AppResult<String> {
 #[cfg(feature = "clipboard-image")]
 pub fn image() -> AppResult<Option<crate::kernel::ImageSource>> {
     clipboard().image().map_err(Error::io)
+}
+
+#[cfg(feature = "clipboard-image")]
+pub fn copy_image(image: &crate::kernel::ImageSource) -> Result<Delivery, ClipError> {
+    clipboard().set_image(image)
 }
 
 #[derive(Debug)]

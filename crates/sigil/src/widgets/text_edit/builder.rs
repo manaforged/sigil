@@ -1,6 +1,7 @@
 use crate::reactive::Reactive;
 use std::rc::Rc;
 
+use crate::geometry::Rect;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
 use crate::reactive::{Signal, signal};
 use crate::style::{PaintTarget, StateHost, Style, StyleSlot};
@@ -33,6 +34,7 @@ pub struct TextEditBuilder {
     pub(super) clipboard: Option<Rc<dyn Clipboard>>,
     pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) caret_position: Option<Signal<usize>>,
+    caret_rect: Option<Signal<Option<Rect>>>,
     pub(super) content_padding: (f32, f32),
     pub(super) chrome: bool,
     state: Option<TextEditState>,
@@ -61,6 +63,7 @@ impl TextEditBuilder {
             clipboard: None,
             caret_visible: None,
             caret_position: None,
+            caret_rect: None,
             content_padding: content_padding(),
             chrome: true,
             state: None,
@@ -79,6 +82,12 @@ impl TextEditBuilder {
     #[must_use]
     pub const fn caret_position(mut self, position: Signal<usize>) -> Self {
         self.caret_position = Some(position);
+        self
+    }
+
+    #[must_use]
+    pub const fn caret_rect(mut self, rect: Signal<Option<Rect>>) -> Self {
+        self.caret_rect = Some(rect);
         self
     }
 
@@ -181,6 +190,9 @@ impl TextEditBuilder {
             self.content_padding,
         );
 
+        if let Some(target) = self.caret_rect {
+            runtime.ime.report_caret_rect(target);
+        }
         let user_overlay = style_accumulator.take_state_overlay();
         let node = build_base_node(
             &runtime,

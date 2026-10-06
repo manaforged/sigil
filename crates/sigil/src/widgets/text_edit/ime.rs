@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::events::{ImeEvent, NodeEventsExt};
+use crate::geometry::{Point, Rect};
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::NodeBuilder;
 use crate::layout::{CaretGeometry, with_text_geometry};
@@ -10,11 +11,14 @@ use crate::reactive::{Signal, batch, effect, signal};
 use super::handlers::{TextEditRuntime, commit, write_value};
 use super::render::{floor_char_boundary, splice_preedit};
 
+type CaretRectSlot = Rc<Cell<Option<Signal<Option<Rect>>>>>;
+
 #[derive(Clone)]
 pub(in crate::widgets) struct ImeState {
     pub(in crate::widgets) preedit: Signal<String>,
     preedit_cursor: Signal<Option<(usize, usize)>>,
     caret_anchor: Rc<Cell<Option<CaretGeometry>>>,
+    caret_rect: CaretRectSlot,
 }
 
 impl ImeState {
@@ -23,7 +27,12 @@ impl ImeState {
             preedit: signal(String::new()),
             preedit_cursor: signal(None),
             caret_anchor: Rc::new(Cell::new(None)),
+            caret_rect: Rc::new(Cell::new(None)),
         }
+    }
+
+    pub(super) fn report_caret_rect(&self, target: Signal<Option<Rect>>) {
+        self.caret_rect.set(Some(target));
     }
 
     pub(in crate::widgets) fn composing_caret(&self, value: &str, caret: usize) -> (String, usize) {
@@ -121,10 +130,11 @@ fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
     let scroll_y = runtime.scroll_y;
     let scroll_x = runtime.scroll_x;
     let anchor = Rc::clone(&runtime.ime.caret_anchor);
+    let caret_rect = runtime.ime.caret_rect.get();
     let (padding_x, padding_y) = runtime.content_padding;
     effect(move || {
         if disabled.is_some_and(Signal::get) {
-            anchor.set(None);
+            publish(&anchor, caret_rect, None);
             return;
         }
         let (composed, cursor) = ime.composing_caret(&value.get(), caret.get());
@@ -146,6 +156,21 @@ fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
                 height: pos.height,
             }
         });
-        anchor.set(rect);
+        publish(&anchor, caret_rect, rect);
     });
+}
+
+fn publish(
+    anchor: &Cell<Option<CaretGeometry>>,
+    caret_rect: Option<Signal<Option<Rect>>>,
+    geometry: Option<CaretGeometry>,
+) {
+    anchor.set(geometry);
+    let Some(target) = caret_rect else {
+        return;
+    };
+    let rect = geometry.map(|g| Rect::new(Point::new(g.x, g.top), 0.0, g.height));
+    if target.peek() != rect {
+        target.set(rect);
+    }
 }

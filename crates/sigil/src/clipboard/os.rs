@@ -30,6 +30,11 @@ impl Clipboard for OsClipboard {
     fn image(&self) -> Result<Option<ImageSource>, ClipError> {
         platform::image().map_err(ClipError::new)
     }
+
+    #[cfg(feature = "clipboard-image")]
+    fn set_image(&self, image: &ImageSource) -> Result<Delivery, ClipError> {
+        platform::copy_image(image).map_err(ClipError::new)
+    }
 }
 
 #[cfg(feature = "desktop")]
