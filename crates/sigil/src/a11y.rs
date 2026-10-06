@@ -1,6 +1,7 @@
 pub(crate) mod actions;
 pub(crate) mod bridge;
 pub(crate) mod mapping;
+mod modal_scope;
 pub(crate) mod snapshot;
 mod text;
 

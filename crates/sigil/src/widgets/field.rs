@@ -63,19 +63,25 @@ impl<C: FieldControl> FieldBuilder<C> {
 
 impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
     fn build(self, cx: &mut Cx) -> NodeId {
+        let invalid = self
+            .error
+            .map(|error| derived(move || error.get().is_some()));
         let mut root = container()
             .role(Role::GenericContainer)
             .layout(LayoutStyle::flex_column().fill_width().gap(FIELD_GAP))
             .child(text(self.label).nowrap())
             .child(self.control)
-            .on_added(|tree, id| {
+            .on_added(move |tree, id| {
                 let Some(node) = tree.get(id) else { return };
                 let [label_id, control_id, ..] = *node.children() else {
                     return;
                 };
+                let error_id = node.children().get(2).copied();
                 if let Some(target) = tree.get_mut(control_id) {
                     target.a11y.labelled_by = Some(label_id);
                     target.a11y.name = AccessibleName::None;
+                    target.a11y.described_by = error_id;
+                    target.a11y.invalid = invalid;
                 }
             });
         if let Some(error) = self.error {

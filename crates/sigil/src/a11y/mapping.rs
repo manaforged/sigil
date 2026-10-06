@@ -2,7 +2,7 @@ use super::text::RunNodes;
 use crate::geometry::Rect;
 use crate::kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
 use accesskit::{
-    Action, Node as AkNode, NodeId as AkNodeId, Toggled, TreeId, TreeInfo, TreeUpdate,
+    Action, Invalid, Node as AkNode, NodeId as AkNodeId, Toggled, TreeId, TreeInfo, TreeUpdate,
 };
 
 pub type BoundsLookup<'a> = &'a dyn Fn(NodeId) -> Option<Rect>;
@@ -18,6 +18,7 @@ pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpd
         top_level(cx, root, &mut top);
         walk_subtree(cx, root, bounds, &mut nodes);
     }
+    super::modal_scope::hide_outside(cx, &mut nodes);
     window.set_children(top);
     nodes.insert(0, (WINDOW_ROOT, window));
     let focus_ak = focus
@@ -143,6 +144,9 @@ fn apply_description(ak: &mut AkNode, description: Option<&AccessibleName>) {
 }
 
 fn apply_labelled_by(ak: &mut AkNode, a11y: &A11yProps) {
+    if let Some(target) = a11y.described_by {
+        ak.push_described_by(target.to_accesskit());
+    }
     if let Some(target) = a11y.labelled_by {
         ak.push_labelled_by(target.to_accesskit());
     }
@@ -202,6 +206,12 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
     }
     if let Some(sig) = a11y.expanded {
         ak.set_expanded(sig.peek());
+    }
+    if a11y.invalid.is_some_and(|sig| sig.peek()) {
+        ak.set_invalid(Invalid::True);
+    }
+    if a11y.focus_scope == Some(crate::kernel::FocusScopeKind::Modal) {
+        ak.set_modal();
     }
     if let Some(live) = a11y.live.or_else(|| default_live(a11y.role)) {
         ak.set_live(live);

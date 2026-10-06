@@ -459,6 +459,11 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- A `field` with an error marks its control invalid and links the message
+  as its description, and an open `modal` that traps focus is marked modal
+  with the rest of the page hidden from assistive technology. Before, the
+  error only changed colour and screen readers could still reach the page
+  behind a dialog.
 - `chart` draws negative values: bars hang below the zero line, lines go
   below it, and the y axis runs down to a rounded minimum. Before, values
   were clamped at zero and a negative bar drew nothing.

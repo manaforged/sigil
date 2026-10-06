@@ -635,7 +635,7 @@ fn main() {
 | `date_field` | `fn date_field(value: Signal<Date>) -> DateFieldBuilder` | A date input. |
 | `Date` | `struct Date { year: i32, month: u8, day: u8 }` | A calendar date. |
 | `color_field` | `fn color_field(value: Signal<Rgba8>) -> ColorFieldBuilder` | A colour input. |
-| `field` | `fn field<C: IntoNode>(label, control: C) -> FieldBuilder<C>`; `.error(impl Reactive<Option<String>>)` when `C: FieldControl` | A label above a control. `.error` shows the message under the control and paints the control invalid while it is `Some`. |
+| `field` | `fn field<C: IntoNode>(label, control: C) -> FieldBuilder<C>`; `.error(impl Reactive<Option<String>>)` when `C: FieldControl` | A label above a control. `.error` shows the message under the control and paints the control invalid while it is `Some`. The control is marked invalid while an error shows and is described by the message. |
 | `chip` | `fn chip(label, tone: Tone) -> ChipBuilder`; `.dot()`, `.leading(node)` | A small tag. `dot` puts a dot in the chip's tone before the label, for status pills; `leading` puts any node, such as an icon, before it. |
 | `interactive` | `fn interactive(inner: NodeBuilder) -> InteractiveBuilder` | Make any node hoverable, pressable, and focusable. |
 
@@ -794,7 +794,7 @@ fn main() {
 | `stat` | `fn stat(label, value) -> StatBuilder`; `.delta(text, Tone)`, `.caption(text)`, `.trend(values)`, `.range(low, high)`, `.tone(Tone)` | A KPI tile in card chrome: a label, a large value, and an optional toned change line, caption, and sparkline trend. Label and value can be reactive. |
 | `tree` | `fn tree<K: TreeKey>(nodes: impl Reactive<Vec<TreeNode<K>>>) -> TreeBuilder<K>` | A tree view for explorers, outlines, and settings. Only rows under expanded nodes are built, and they are virtualized. Click toggles a folder and activates a leaf; arrows move, Left and Right collapse and expand, Home and End jump, Enter activates. |
 | `sheet` | `fn sheet(show: Signal<bool>) -> ModalBuilder` | A panel that slides in from a side. |
-| `modal` | `fn modal(show: Signal<bool>) -> ModalBuilder` | A modal dialog. |
+| `modal` | `fn modal(show: Signal<bool>) -> ModalBuilder` | A modal dialog. While it is open and traps focus, it is marked modal and the rest of the page is hidden from assistive technology. |
 | `ModalBuilder` | `struct ModalBuilder`; `close_button(bool)`; `ModalBuilder::new(Signal<bool>)`, `title(text)`, `child(impl IntoNode)`, `footer(impl IntoNode)`, `actions(cancel, confirm)`, `side(Side)`, `escape_closes(bool)`, `dismiss_on_backdrop(bool)`, `trap(bool)`; width with `WidgetLayoutExt::width` | Builder of a modal or sheet. A titled dialog shows a close button that sets `show` to false; `close_button(false)` removes it. Children scroll in a body between the title and the footer, so the title and actions stay visible when the dialog reaches its maximum height. `footer` adds one node to the footer; `actions(cancel, confirm)` adds two. Escape closes the dialog by default. A click on the backdrop closes a `sheet` but not a `modal`, unless `dismiss_on_backdrop` changes it. `trap(false)` lets focus leave the dialog. |
 | `SortDir` | `enum SortDir { Ascending, Descending }` | Direction of a table sort. |
 | `SortKey` | `struct SortKey { column: &'static str, dir: SortDir }` | Table sort column and direction. |
