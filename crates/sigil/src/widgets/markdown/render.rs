@@ -3,9 +3,9 @@ use crate::layout::cols;
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::signal;
-use crate::style::{Px, Radius, StyleAtom, TextFace, TextRun, Token, space};
+use crate::style::{Px, Radius, StyleAtom, Token, space};
 use crate::widgets::interaction::InteractionState;
-use crate::widgets::{Highlight, highlight};
+use crate::widgets::{highlight, text_runs};
 
 use super::super::checkbox::{CheckMark, checkbox_indicator};
 use super::containers::{List, Task};
@@ -161,26 +161,11 @@ pub(super) fn code(lang: &str, body: &str) -> NodeBuilder {
         let rest = if rest.is_empty() { " " } else { rest };
         row = row.child(
             text(rest.to_string())
-                .runs(code_runs(&marks, lead.len()))
+                .runs(text_runs(&marks, lead.len()..usize::MAX))
                 .class(Token::OnSurface.text())
                 .layout(LayoutStyle::block().grow(1.0).shrink(1.0).min_width(0.0)),
         );
         block = block.child(row);
     }
     block
-}
-
-fn code_runs(marks: &[Highlight], lead: usize) -> Vec<TextRun> {
-    marks
-        .iter()
-        .filter(|mark| mark.start >= lead)
-        .map(|mark| TextRun {
-            start: mark.start - lead,
-            end: mark.end - lead,
-            face: TextFace {
-                color: Some(mark.token),
-                ..TextFace::default()
-            },
-        })
-        .collect()
 }

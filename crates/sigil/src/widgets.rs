@@ -96,7 +96,9 @@ pub use combobox::{Combobox, combobox};
 pub use command_menu::{CommandMenuBuilder, SubmenuBuilder, command_menu};
 pub use composition::{kv_row, status_bar};
 pub use date_field::{Date, DateFieldBuilder, date_field};
-pub use diff::{DiffBuilder, DiffView, diff};
+pub use diff::{
+    DiffBuilder, DiffSource, DiffView, Hunk, Line, LineId, LineKind, Patch, Selection, diff,
+};
 pub use divider::{
     VerticalDivider, horizontal as divider_horizontal, vertical as divider_vertical,
 };
@@ -107,7 +109,7 @@ pub use dropdown::{DropdownBuilder, dropdown};
 pub use field::{FieldBuilder, FieldControl, field};
 pub use fuzzy::{FuzzyMatch, fuzzy_score};
 pub use gauge::{GaugeBuilder, gauge};
-pub use highlight::{Highlight, highlight, hl_spans};
+pub use highlight::{Highlight, highlight, hl_spans, language_for_path, text_runs};
 pub use html::html;
 #[cfg(feature = "scene")]
 pub use icon::icon_svg;

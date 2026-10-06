@@ -1,11 +1,12 @@
 use std::collections::HashMap;
+use std::ops::Range;
 use std::sync::LazyLock;
 
 use toml::{Table, Value};
 
 use super::HlSpan;
 use super::grapheme::col_count;
-use crate::style::Token;
+use crate::style::{TextFace, TextRun, Token};
 
 const LANGUAGES: &str = include_str!("highlight/languages.toml");
 
@@ -46,6 +47,36 @@ pub fn highlight(language: &str, source: &str) -> Vec<Vec<Highlight>> {
     source
         .split('\n')
         .map(|line| lang.map_or_else(Vec::new, |lang| lang.line(line, &mut open)))
+        .collect()
+}
+
+#[must_use]
+pub fn language_for_path(path: &str) -> Option<&'static str> {
+    let name = path.rsplit(['/', '\\']).next()?.to_ascii_lowercase();
+    let tag = name.rsplit_once('.').map_or(name.as_str(), |(_, ext)| ext);
+    CATALOG
+        .iter()
+        .find(|lang| lang.names.iter().any(|known| known == tag))
+        .and_then(|lang| lang.names.first())
+        .map(String::as_str)
+}
+
+#[must_use]
+pub fn text_runs(marks: &[Highlight], range: Range<usize>) -> Vec<TextRun> {
+    marks
+        .iter()
+        .filter_map(|mark| {
+            let start = mark.start.max(range.start);
+            let end = mark.end.min(range.end);
+            (start < end).then(|| TextRun {
+                start: start - range.start,
+                end: end - range.start,
+                face: TextFace {
+                    color: Some(mark.token),
+                    ..TextFace::default()
+                },
+            })
+        })
         .collect()
 }
 

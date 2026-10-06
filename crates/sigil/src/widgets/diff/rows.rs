@@ -1,80 +1,128 @@
 use std::ops::Range;
 
-use crate::kernel::{NodeBuilder, Role, container};
+use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
-use crate::style::{BORDER_WIDTH, Paint, Token};
+use crate::style::{BORDER_WIDTH, Paint, Token, space};
+use crate::widgets::highlight::{highlight, text_runs};
 
-use super::GUTTER_W;
-use super::patch::{Kind, Pair, changed};
-use crate::app::cell_width;
-use crate::kernel::text;
+use super::model::{Cell, DiffRow};
+use super::patch::LineKind;
+use super::selection::Picker;
 
-const fn tones(mark: char) -> (Option<Token>, Token, Option<Token>) {
-    match mark {
-        '-' => (Some(Token::Error3), Token::Error11, Some(Token::Error5)),
-        '+' => (
+pub(super) const GUTTER_W: f32 = 56.0;
+pub(super) const ROW_INSET: f32 = space(2);
+
+const fn tones(kind: LineKind) -> (Option<Token>, Token, Option<Token>) {
+    match kind {
+        LineKind::Removed => (Some(Token::Error3), Token::Error11, Some(Token::Error5)),
+        LineKind::Added => (
             Some(Token::Success3),
             Token::Success11,
             Some(Token::Success5),
         ),
-        _ => (None, Token::Gray11, None),
+        LineKind::Context | LineKind::Note => (None, Token::Gray11, None),
     }
 }
 
-const fn line_state(mark: char) -> &'static str {
-    match mark {
-        '-' => "removed",
-        '+' => "added",
-        _ => "unchanged",
+const fn line_state(kind: LineKind) -> &'static str {
+    match kind {
+        LineKind::Removed => "removed",
+        LineKind::Added => "added",
+        LineKind::Context | LineKind::Note => "unchanged",
     }
 }
 
-pub(super) fn segments(
-    body: &str,
-    range: Option<Range<usize>>,
-    fg: Token,
-    hit: Option<Token>,
-) -> Vec<NodeBuilder> {
-    let body = body.replace('\t', "    ");
-    let part = |node: crate::kernel::TextBuilder| {
+const fn gutter_mark(kind: LineKind) -> char {
+    match kind {
+        LineKind::Removed => '-',
+        LineKind::Added => '+',
+        LineKind::Context | LineKind::Note => ' ',
+    }
+}
+
+pub(super) fn render(row: &DiffRow, picker: Option<Picker>) -> NodeBuilder {
+    match row {
+        DiffRow::Meta(body) => text_row(body.clone(), "text-xs font-mono", Token::Gray10),
+        DiffRow::Hunk { hunk, header } => {
+            let line = text_row(header.clone(), "text-xs font-mono", Token::Info11);
+            match picker {
+                Some(picker) => picker.hunk(line, *hunk),
+                None => line,
+            }
+        }
+        DiffRow::Split {
+            left,
+            right,
+            weights,
+        } => split_row(left.as_ref(), right.as_ref(), *weights, picker),
+        DiffRow::Unified(cell) => source_row(cell, picker),
+        DiffRow::Overflow => text_row(
+            "… expand tool output to see the remaining changes".to_string(),
+            "text-xs",
+            Token::Gray10,
+        ),
+    }
+}
+
+pub(super) fn text_row(body: String, class: &'static str, tone: Token) -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::flex_row().fill_width().padding_x(ROW_INSET))
+        .child(
+            text(body)
+                .nowrap()
+                .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0))
+                .class(class)
+                .class(tone.text()),
+        )
+}
+
+fn segments(cell: &Cell, fg: Token, hit: Option<Token>) -> Vec<NodeBuilder> {
+    let marks = cell
+        .language
+        .and_then(|language| highlight(language, &cell.body).into_iter().next())
+        .unwrap_or_default();
+    let part = |range: Range<usize>| {
+        let slice = cell.body.get(range.clone()).unwrap_or_default().to_string();
         container()
             .layout(LayoutStyle::block().min_size(0.0, 0.0))
-            .child(node.ellipsize().class("text-xs font-mono").class(fg.text()))
+            .child(
+                text(slice)
+                    .nowrap()
+                    .runs(text_runs(&marks, range))
+                    .ellipsize()
+                    .class("text-xs font-mono")
+                    .class(fg.text()),
+            )
     };
-    let Some(range) = range.filter(|range| range.start < range.end && range.end <= body.len())
+    let len = cell.body.len();
+    let Some(range) = cell
+        .range
+        .clone()
+        .filter(|range| range.start < range.end && range.end <= len)
     else {
-        return vec![part(text(body).nowrap())];
+        return vec![part(0..len)];
     };
-    let mut parts = Vec::new();
-    for (slice, mark) in [
-        (&body[..range.start], false),
-        (&body[range.clone()], true),
-        (&body[range.end..], false),
-    ] {
-        if slice.is_empty() {
-            continue;
-        }
-        let node = part(text(slice.to_string()).nowrap());
-        parts.push(match hit.filter(|_| mark) {
-            Some(hit) => node.class(hit.bg()),
-            None => node,
-        });
-    }
-    parts
+    [
+        (0..range.start, false),
+        (range.clone(), true),
+        (range.end..len, false),
+    ]
+    .into_iter()
+    .filter(|(slice, _)| !slice.is_empty())
+    .map(|(slice, mark)| match hit.filter(|_| mark) {
+        Some(hit) => part(slice).class(hit.bg()),
+        None => part(slice),
+    })
+    .collect()
 }
 
-pub(super) fn source_row(
-    body: Option<&str>,
-    number: usize,
-    mark: char,
-    range: Option<Range<usize>>,
-) -> NodeBuilder {
-    let (bg, fg, hit) = tones(mark);
+pub(super) fn source_row(cell: &Cell, picker: Option<Picker>) -> NodeBuilder {
+    let (bg, fg, hit) = tones(cell.kind);
     let row = container().layout(
         LayoutStyle::flex_row()
             .fill_width()
             .min_size(0.0, 0.0)
-            .padding_x(super::ROW_INSET)
+            .padding_x(ROW_INSET)
             .align_items(AlignItems::Center)
             .gap(0.0),
     );
@@ -82,50 +130,26 @@ pub(super) fn source_row(
         Some(bg) => row.class(bg.bg()),
         None => row,
     };
-    let Some(body) = body else {
-        return container().layout(LayoutStyle::flex_row().fill_width().gap(0.0));
-    };
     let row = row
         .role(Role::ListItem)
-        .description(line_state(mark))
+        .description(line_state(cell.kind))
         .child(
-            text(format!("{number:>4} {mark} "))
+            text(format!("{:>4} {} ", cell.number, gutter_mark(cell.kind)))
                 .nowrap()
                 .layout(LayoutStyle::block().width(GUTTER_W).shrink(0.0))
-                .nowrap()
                 .class("text-xs font-mono")
                 .class(Token::Gray9.text()),
         );
-    segments(body, range, fg, hit)
+    let row = segments(cell, fg, hit)
         .into_iter()
-        .fold(row, NodeBuilder::child)
+        .fold(row, NodeBuilder::child);
+    match picker.filter(|_| cell.kind.is_change()) {
+        Some(picker) => picker.line(row, cell.id),
+        None => row,
+    }
 }
 
-pub(super) fn weights(pairs: &[Pair]) -> (f32, f32) {
-    let widest = |side: fn(&Pair) -> Option<&str>| {
-        pairs
-            .iter()
-            .filter(|pair| matches!(pair.kind, Kind::Context | Kind::Change))
-            .filter_map(side)
-            .map(|line| cell_width(&line.replace('\t', "    ")))
-            .max()
-            .unwrap_or(0)
-    };
-    let weight =
-        |cells: usize| f32::from(u16::try_from(cells).unwrap_or(u16::MAX)) + GUTTER_W / 8.0;
-    (
-        weight(widest(|pair| pair.left.as_deref())),
-        weight(widest(|pair| pair.right.as_deref())),
-    )
-}
-
-fn half(
-    body: Option<&str>,
-    (number, mark): (usize, char),
-    range: Option<Range<usize>>,
-    ruled: bool,
-    grow: f32,
-) -> NodeBuilder {
+fn half(cell: Option<&Cell>, picker: Option<Picker>, ruled: bool, grow: f32) -> NodeBuilder {
     let column = container().layout(
         LayoutStyle::flex_column()
             .grow(grow)
@@ -140,19 +164,18 @@ fn half(
     } else {
         column
     };
-    column.child(source_row(body, number, mark, range))
+    column.child(cell.map_or_else(
+        || container().layout(LayoutStyle::flex_row().fill_width().gap(0.0)),
+        |cell| source_row(cell, picker),
+    ))
 }
 
-pub(super) fn split_row(pair: &Pair, old: usize, new: usize, (lw, rw): (f32, f32)) -> NodeBuilder {
-    let left = pair.left.as_deref();
-    let right = pair.right.as_deref();
-    let expanded = |side: Option<&str>| side.unwrap_or("").replace('\t', "    ");
-    let ranges = (pair.kind == Kind::Change).then(|| changed(&expanded(left), &expanded(right)));
-    let (left_mark, right_mark) = if ranges.is_some() {
-        ('-', '+')
-    } else {
-        (' ', ' ')
-    };
+fn split_row(
+    left: Option<&Cell>,
+    right: Option<&Cell>,
+    (lw, rw): (f32, f32),
+    picker: Option<Picker>,
+) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
@@ -160,42 +183,6 @@ pub(super) fn split_row(pair: &Pair, old: usize, new: usize, (lw, rw): (f32, f32
                 .min_size(0.0, 0.0)
                 .gap(0.0),
         )
-        .child(half(
-            left,
-            (old, left_mark),
-            ranges.as_ref().map(|r| r.0.clone()),
-            true,
-            lw,
-        ))
-        .child(half(
-            right,
-            (new, right_mark),
-            ranges.map(|r| r.1),
-            false,
-            rw,
-        ))
-}
-
-pub(super) fn unified_rows(group: &[Pair], old: usize, new: usize) -> Vec<NodeBuilder> {
-    let mut rows = Vec::new();
-    for (added, mut number) in [(false, old), (true, new)] {
-        for pair in group {
-            let left = pair.left.as_deref();
-            let right = pair.right.as_deref();
-            let (a, b) = changed(
-                &left.unwrap_or("").replace('\t', "    "),
-                &right.unwrap_or("").replace('\t', "    "),
-            );
-            let (body, range, mark) = if added {
-                (right, b, '+')
-            } else {
-                (left, a, '-')
-            };
-            if let Some(body) = body {
-                rows.push(source_row(Some(body), number, mark, Some(range)));
-                number += 1;
-            }
-        }
-    }
-    rows
+        .child(half(left, picker, true, lw))
+        .child(half(right, picker, false, rw))
 }

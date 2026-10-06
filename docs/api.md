@@ -714,14 +714,16 @@ fn main() {
 | `kv_row` | `fn kv_row(label, value: impl IntoNode + 'static) -> NodeBuilder` | One key/value row. |
 | `tabs` | `fn tabs() -> TabsBuilder`; `.tab(label, component)`, `.active(Signal<usize>)` | Tabs. Each `tab` adds a label and its content component; the component builds once, so a tab keeps its state while another is shown. When tabs have content, the active tab's content fills the space left below the tab strip. |
 | `code_edit` | `fn code_edit(lines: Signal<Vec<String>>, caret: Signal<(usize, usize)>) -> CodeEditBuilder` | A code editor with built-in `text_edit` editing. |
-| `highlight` | `fn highlight(language: &str, source: &str) -> Vec<Vec<Highlight>>` | Syntax marks per line for rust, sh, toml, json, python, javascript, typescript, go, c/cpp, yaml, css, html, sql, markdown, and diff. Other languages get no marks. |
+| `highlight` | `fn highlight(language: &str, source: &str) -> Vec<Vec<Highlight>>` | Syntax marks per line for rust, sh, toml, json, python, javascript, typescript, go, c/cpp, yaml, css, html, sql, markdown, and diff. Other languages get no marks. `language_for_path(path)` names the language of a file path; `text_runs(marks, range)` turns marks into `TextRun`s for a range of a line. |
 | `hl_spans` | `fn hl_spans(language: &str, source: &str) -> Vec<Vec<HlSpan>>` | `highlight` as column spans for `code_edit(..).highlights(..)`. |
 | `markdown` | `fn markdown(source: Signal<String>) -> NodeBuilder` | Rendered markdown. Each link is exposed as a `Link` node with its URL and on-screen area, and a click on it reaches the nearest `link` handler. |
 | `markdown_inline` | `fn markdown_inline(source: &str) -> TextBuilder` | One wrapped paragraph with inline markdown spans. |
 | `markdown_edit` | `fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder` | A markdown editor with preview. |
 | `html` | `fn html(source: Signal<String>) -> NodeBuilder` | Rendered HTML subset. |
 | `mermaid` | `fn mermaid(source: impl Reactive<String>) -> NodeBuilder` | A rendered mermaid diagram. A signal or closure source draws the diagram again when it changes. |
-| `diff` | `fn diff(patch: impl Reactive<String>) -> DiffBuilder` | A rendered unified diff. A signal or closure source renders the rows again when it changes. |
+| `diff` | `fn diff(patch: impl DiffSource + 'static) -> DiffBuilder`; `.select(Signal<Selection>)` | A rendered unified diff of text or a parsed `Patch`. A signal or closure source renders the rows again when it changes. Rows render through `virtual_list`, so a long patch builds only the visible rows. Code is coloured by the language of the file path. With `select`, a click on a hunk header selects the hunk and a click or Shift+click selects changed lines, for staging. |
+| `Patch`, `Hunk`, `Line`, `LineKind`, `LineId` | `Patch::parse(&str) -> Patch`; `struct Patch { hunks, trailer }`, `line(LineId)`, `changes()`, `hunk_changes(usize)`; `struct Hunk { meta, path, header, old_start, new_start, lines }`; `struct Line { kind, text, old, new }`; `enum LineKind { Context, Removed, Added, Note }` | The parsed unified diff that `diff` renders. |
+| `Selection`, `DiffSource` | `struct Selection { hunks: BTreeSet<usize>, lines: BTreeSet<LineId>, .. }`, `contains`, `select_hunk`, `select_line`; `trait DiffSource` for text, `Patch`, and `Signal<Patch>` | What the user selected in a `diff`, and the sources `diff` accepts. |
 | `DiffView` | `enum DiffView { Split, Unified }` | Diff view: side-by-side or unified rows. |
 | `terminal` | `fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static) -> NodeBuilder` | A terminal transcript with an input line. |
 
