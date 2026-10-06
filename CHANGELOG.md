@@ -459,6 +459,10 @@ glob-import the prelude imports them for `.bg(..)` and `.height(..)`.
 
 ### Fixed
 
+- Dragging across `selectable_text` in a terminal selects and copies whole
+  cells, including the cell the drag started on; before, the first
+  character was dropped. A drag toward the start of the text copies the
+  selection; before, it copied nothing.
 - Tab runs the capture handlers before it moves focus, so
   `key_capture(Key::Tab, ..)` on an ancestor can own Tab.
 - A `follow_row` list that fills after mount stays on its row instead of

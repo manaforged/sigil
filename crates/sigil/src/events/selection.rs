@@ -10,7 +10,7 @@ use crate::kernel::{Cx, Node, NodeId};
 use crate::layout::LayoutEngine;
 
 use super::selection_walk::{
-    endpoint_at, node_text, selected_ranges, selected_text, snap_focus, word_bounds,
+    cell_bounds, endpoint_at, node_text, selected_ranges, selected_text, snap_focus, word_bounds,
 };
 
 pub struct SelectableText;
@@ -21,6 +21,12 @@ pub(crate) struct Endpoint {
     pub(crate) byte: usize,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Unit {
+    Word,
+    Cell,
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct TextSelection {
     pub(crate) region: NodeId,
@@ -29,6 +35,7 @@ pub(crate) struct TextSelection {
     dragging: bool,
     moved: bool,
     pub(crate) word: Option<(usize, usize)>,
+    pub(crate) unit: Unit,
 }
 
 thread_local! {
@@ -105,17 +112,15 @@ fn begin(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
         return;
     };
     if shift_only {
-        shift_extend(cx, region, endpoint);
+        shift_extend(cx, region, endpoint, event.position);
         return;
     }
-    let word = note_down(event.position)
-        .then(|| node_text(cx, endpoint.node).and_then(|text| word_bounds(&text, endpoint.byte)))
-        .flatten();
     if STATE.with(|state| state.borrow().is_some()) {
         cx.mark_mutated();
     }
-    let (anchor, focus) = match word {
-        Some((w0, w1)) => (
+    let (span, unit) = press_span(cx, region, endpoint, event.position);
+    let (anchor, focus) = match (unit, span) {
+        (Unit::Word, Some((w0, w1))) => (
             Endpoint {
                 node: endpoint.node,
                 byte: w0,
@@ -125,7 +130,7 @@ fn begin(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
                 byte: w1,
             },
         ),
-        None => (endpoint, endpoint),
+        _ => (endpoint, endpoint),
     };
     STATE.with(|state| {
         *state.borrow_mut() = Some(TextSelection {
@@ -133,10 +138,26 @@ fn begin(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
             anchor,
             focus,
             dragging: true,
-            moved: word.is_some(),
-            word,
+            moved: unit == Unit::Word,
+            word: span,
+            unit,
         });
     });
+}
+
+fn press_span(
+    cx: &Cx,
+    region: NodeId,
+    endpoint: Endpoint,
+    point: Point,
+) -> (Option<(usize, usize)>, Unit) {
+    let word = note_down(point)
+        .then(|| node_text(cx, endpoint.node).and_then(|text| word_bounds(&text, endpoint.byte)))
+        .flatten();
+    word.map_or_else(
+        || (cell_bounds(cx, region, point), Unit::Cell),
+        |span| (Some(span), Unit::Word),
+    )
 }
 
 fn note_down(point: Point) -> bool {
@@ -150,13 +171,13 @@ fn note_down(point: Point) -> bool {
     double
 }
 
-fn shift_extend(cx: &mut Cx, region: NodeId, endpoint: Endpoint) {
+fn shift_extend(cx: &mut Cx, region: NodeId, endpoint: Endpoint, point: Point) {
     let existing = STATE
         .with(|state| *state.borrow())
         .filter(|sel| sel.region == region && live(cx, *sel));
     match existing {
         Some(sel) => {
-            let (anchor, focus) = snap_focus(cx, sel, endpoint);
+            let (anchor, focus) = snap_focus(cx, sel, endpoint, point);
             STATE.with(|state| {
                 *state.borrow_mut() = Some(TextSelection {
                     anchor,
@@ -176,6 +197,7 @@ fn shift_extend(cx: &mut Cx, region: NodeId, endpoint: Endpoint) {
                 dragging: true,
                 moved: false,
                 word: None,
+                unit: Unit::Word,
             });
         }),
     }
@@ -188,7 +210,7 @@ fn extend(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
         return;
     };
     if let Some(endpoint) = endpoint_at(cx, selection.region, event.position) {
-        let (anchor, focus) = snap_focus(cx, selection, endpoint);
+        let (anchor, focus) = snap_focus(cx, selection, endpoint, event.position);
         if focus != selection.focus || anchor != selection.anchor {
             selection.anchor = anchor;
             selection.focus = focus;

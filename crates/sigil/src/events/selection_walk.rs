@@ -8,7 +8,7 @@ use crate::kernel::{Cx, Node, NodeId, NodeType};
 use crate::layout::{LayoutResult, with_text_geometry};
 use crate::style::{StyleBinding, TextStyle, Theme, text_style_for};
 
-use super::selection::{Endpoint, TextSelection};
+use super::selection::{Endpoint, TextSelection, Unit};
 
 pub(super) fn hidden(node: &Node) -> bool {
     node.get_extension::<StyleBinding>()
@@ -113,7 +113,24 @@ pub(super) fn word_bounds(text: &str, byte: usize) -> Option<(usize, usize)> {
     None
 }
 
-pub(super) fn snap_focus(cx: &Cx, sel: TextSelection, hit: Endpoint) -> (Endpoint, Endpoint) {
+const CELL_EDGE: f32 = 0.01;
+
+pub(super) fn cell_bounds(cx: &Cx, region: NodeId, point: Point) -> Option<(usize, usize)> {
+    if cx.host_mode() != crate::kernel::HostMode::Cell {
+        return None;
+    }
+    let reach = crate::Host::CELL / 2.0 - CELL_EDGE;
+    let lead = endpoint_at(cx, region, Point::new(point.x - reach, point.y))?;
+    let tail = endpoint_at(cx, region, Point::new(point.x + reach, point.y))?;
+    (lead.node == tail.node).then(|| (lead.byte.min(tail.byte), lead.byte.max(tail.byte)))
+}
+
+pub(super) fn snap_focus(
+    cx: &Cx,
+    sel: TextSelection,
+    hit: Endpoint,
+    point: Point,
+) -> (Endpoint, Endpoint) {
     let Some((w0, w1)) = sel.word else {
         return (sel.anchor, hit);
     };
@@ -121,9 +138,11 @@ pub(super) fn snap_focus(cx: &Cx, sel: TextSelection, hit: Endpoint) -> (Endpoin
     let anchor_at = order.get(&sel.anchor.node).copied().unwrap_or(0);
     let hit_at = order.get(&hit.node).copied().unwrap_or(usize::MAX);
     let forward = hit_at > anchor_at || (hit_at == anchor_at && hit.byte >= sel.anchor.byte);
-    let word = node_text(cx, hit.node)
-        .and_then(|text| word_bounds(&text, hit.byte))
-        .unwrap_or((hit.byte, hit.byte));
+    let span = match sel.unit {
+        Unit::Word => node_text(cx, hit.node).and_then(|text| word_bounds(&text, hit.byte)),
+        Unit::Cell => cell_bounds(cx, sel.region, point),
+    };
+    let word = span.unwrap_or((hit.byte, hit.byte));
     let focus_byte = if forward { word.1 } else { word.0 };
     let anchor_byte = if forward { w0 } else { w1 };
     (
@@ -147,7 +166,7 @@ fn selected_range(
     let at = *order.get(&node)?;
     let anchor = *order.get(&sel.anchor.node)?;
     let focus = *order.get(&sel.focus.node)?;
-    let (lo, hi) = if anchor <= focus {
+    let (lo, hi) = if (anchor, sel.anchor.byte) <= (focus, sel.focus.byte) {
         (sel.anchor, sel.focus)
     } else {
         (sel.focus, sel.anchor)

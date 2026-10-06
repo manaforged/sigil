@@ -53,6 +53,8 @@ mod frames;
 mod keys;
 #[path = "terminal_host/paint.rs"]
 mod paint;
+#[path = "terminal_host/select.rs"]
+mod select;
 #[path = "terminal_host/table.rs"]
 mod table;
 #[path = "terminal_host/wrap.rs"]
