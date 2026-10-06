@@ -10,7 +10,7 @@ pub(super) fn supported() -> AppResult<()> {
 pub(super) fn create(
     _name: &str,
     _hwnd: Option<isize>,
-    _sink: impl FnMut(MediaKey) + Send + 'static,
+    _sink: impl Fn(MediaKey) + Send + Sync + 'static,
 ) -> AppResult<Controls> {
     Err(unsupported())
 }

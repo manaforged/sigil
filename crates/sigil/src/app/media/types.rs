@@ -9,6 +9,15 @@ pub enum PlaybackState {
     Playing,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum Repeat {
+    #[default]
+    Off,
+    One,
+    All,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct Track {
@@ -19,6 +28,8 @@ pub struct Track {
     pub duration: Option<Duration>,
     pub position: Option<Duration>,
     pub state: PlaybackState,
+    pub shuffle: bool,
+    pub repeat: Repeat,
 }
 
 impl Track {
@@ -65,6 +76,18 @@ impl Track {
         self.state = state;
         self
     }
+
+    #[must_use]
+    pub const fn shuffle(mut self, shuffle: bool) -> Self {
+        self.shuffle = shuffle;
+        self
+    }
+
+    #[must_use]
+    pub const fn repeat(mut self, repeat: Repeat) -> Self {
+        self.repeat = repeat;
+        self
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -81,6 +104,8 @@ pub enum MediaKey {
     SeekBy { forward: bool, amount: Duration },
     SetPosition(Duration),
     SetVolume(f64),
+    SetShuffle(bool),
+    SetRepeat(Repeat),
     Raise,
     Quit,
 }

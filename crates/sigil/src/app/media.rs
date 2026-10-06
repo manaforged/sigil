@@ -20,7 +20,7 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 mod backend;
 mod types;
 
-pub use types::{MediaKey, PlaybackState, Track};
+pub use types::{MediaKey, PlaybackState, Repeat, Track};
 
 thread_local! {
     static CONTROLS: RefCell<Option<Controls>> = const { RefCell::new(None) };

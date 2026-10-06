@@ -1,11 +1,8 @@
-use core::ffi::c_void;
+use core::time::Duration;
 
-use souvlaki::{
-    MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig,
-    SeekDirection,
-};
+use playwire::{Event, MediaControls, PlayerConfig};
 
-use super::types::{MediaKey, PlaybackState, Track};
+use super::types::{MediaKey, PlaybackState, Repeat, Track};
 use crate::app::error::{AppResult, Error};
 
 pub(super) type Controls = MediaControls;
@@ -21,71 +18,87 @@ pub(super) const fn supported() -> AppResult<()> {
 pub(super) fn create(
     name: &str,
     hwnd: Option<isize>,
-    sink: impl Fn(MediaKey) + Send + 'static,
+    sink: impl Fn(MediaKey) + Send + Sync + 'static,
 ) -> AppResult<MediaControls> {
-    let dbus_name: String = name
+    let bus_name: String = name
         .chars()
         .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '_' })
         .collect();
-    let config = PlatformConfig {
-        dbus_name: &dbus_name,
-        display_name: name,
-        hwnd: hwnd.map(|raw| std::ptr::with_exposed_provenance_mut::<c_void>(raw.cast_unsigned())),
-    };
-    let mut controls = MediaControls::new(config).map_err(|err| backend_error(&err))?;
-    controls
-        .attach(move |event| {
-            if let Some(key) = to_key(&event) {
-                sink(key);
-            }
-        })
-        .map_err(|err| backend_error(&err))?;
-    Ok(controls)
+    let mut config = PlayerConfig::new(name);
+    config.bus_name = bus_name;
+    config.hwnd = hwnd.and_then(|raw| u64::try_from(raw.cast_unsigned()).ok());
+    MediaControls::new(config, move |event| {
+        if let Some(key) = to_key(&event) {
+            sink(key);
+        }
+    })
+    .map_err(|err| backend_error(&err))
 }
 
 pub(super) fn apply(controls: &mut MediaControls, track: &Track) -> AppResult<()> {
     controls
-        .set_metadata(MediaMetadata {
-            title: Some(&track.title),
-            album: track.album.as_deref(),
-            artist: track.artist.as_deref(),
-            cover_url: track.cover_url.as_deref(),
-            duration: track.duration,
-        })
-        .map_err(|err| backend_error(&err))?;
-    let progress = track.position.map(MediaPosition);
-    let playback = match track.state {
-        PlaybackState::Stopped => MediaPlayback::Stopped,
-        PlaybackState::Paused => MediaPlayback::Paused { progress },
-        PlaybackState::Playing => MediaPlayback::Playing { progress },
-    };
-    controls
-        .set_playback(playback)
+        .set_state(&to_state(track))
         .map_err(|err| backend_error(&err))
 }
 
-const fn to_key(event: &MediaControlEvent) -> Option<MediaKey> {
+fn to_state(track: &Track) -> playwire::PlaybackState {
+    let published = (track.state != PlaybackState::Stopped).then(|| playwire::Track {
+        title: track.title.clone(),
+        artists: track.artist.iter().cloned().collect(),
+        album: track.album.clone().unwrap_or_default(),
+        artwork_url: track.cover_url.clone().unwrap_or_default(),
+        ..playwire::Track::default()
+    });
+    playwire::PlaybackState {
+        track: published,
+        playing: track.state == PlaybackState::Playing,
+        position: track.position.unwrap_or_default(),
+        duration: track.duration,
+        volume: 1.0,
+        repeat: to_repeat(track.repeat),
+        shuffle: track.shuffle,
+        ..playwire::PlaybackState::default()
+    }
+}
+
+const fn to_repeat(repeat: Repeat) -> playwire::Repeat {
+    match repeat {
+        Repeat::Off => playwire::Repeat::Off,
+        Repeat::One => playwire::Repeat::One,
+        Repeat::All => playwire::Repeat::All,
+    }
+}
+
+const fn from_repeat(repeat: playwire::Repeat) -> Repeat {
+    match repeat {
+        playwire::Repeat::Off => Repeat::Off,
+        playwire::Repeat::One => Repeat::One,
+        playwire::Repeat::All => Repeat::All,
+    }
+}
+
+fn to_key(event: &Event) -> Option<MediaKey> {
     Some(match *event {
-        MediaControlEvent::Play => MediaKey::Play,
-        MediaControlEvent::Pause => MediaKey::Pause,
-        MediaControlEvent::Toggle => MediaKey::Toggle,
-        MediaControlEvent::Next => MediaKey::Next,
-        MediaControlEvent::Previous => MediaKey::Previous,
-        MediaControlEvent::Stop => MediaKey::Stop,
-        MediaControlEvent::Seek(SeekDirection::Forward) => MediaKey::SeekForward,
-        MediaControlEvent::Seek(SeekDirection::Backward) => MediaKey::SeekBackward,
-        MediaControlEvent::SeekBy(direction, amount) => MediaKey::SeekBy {
-            forward: matches!(direction, SeekDirection::Forward),
-            amount,
+        Event::Play => MediaKey::Play,
+        Event::Pause => MediaKey::Pause,
+        Event::PlayPause => MediaKey::Toggle,
+        Event::Next => MediaKey::Next,
+        Event::Previous => MediaKey::Previous,
+        Event::Stop => MediaKey::Stop,
+        Event::SeekBy(seconds) => MediaKey::SeekBy {
+            forward: seconds >= 0.0,
+            amount: Duration::try_from_secs_f64(seconds.abs()).ok()?,
         },
-        MediaControlEvent::SetPosition(MediaPosition(at)) => MediaKey::SetPosition(at),
-        MediaControlEvent::SetVolume(volume) => MediaKey::SetVolume(volume),
-        MediaControlEvent::Raise => MediaKey::Raise,
-        MediaControlEvent::Quit => MediaKey::Quit,
-        MediaControlEvent::OpenUri(_) => return None,
+        Event::SeekTo(at) => MediaKey::SetPosition(at),
+        Event::SetVolume(volume) => MediaKey::SetVolume(volume),
+        Event::SetShuffle(on) => MediaKey::SetShuffle(on),
+        Event::SetRepeat(repeat) => MediaKey::SetRepeat(from_repeat(repeat)),
+        Event::Raise => MediaKey::Raise,
+        Event::Quit => MediaKey::Quit,
+        _ => return None,
     })
 }
 
-fn backend_error(err: &souvlaki::Error) -> Error {
-    Error::new(std::io::Error::other(format!("{err:?}")))
+fn backend_error(err: &playwire::Error) -> Error {
+    Error::new(std::io::Error::other(err.to_string()))
 }
