@@ -2,11 +2,16 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
+use crate::kernel::{
+    AccessibleName, Cx, IntoNode, NodeBuilder, Role, TextContent, container, text,
+};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived};
-use crate::style::{NodeStyleExt, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, Tone};
+use crate::style::{
+    ControlSize, Metrics, NodeStyleExt, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token,
+    Tone,
+};
 
 const TRACK_HEIGHT: f32 = 8.0;
 const INDETERMINATE_RATIO: f32 = 0.30;
@@ -22,6 +27,7 @@ pub struct ProgressBuilder {
     pub indeterminate: bool,
     tone: Tone,
     name: AccessibleName,
+    caption: Option<TextContent>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
@@ -40,6 +46,7 @@ impl ProgressBuilder {
             indeterminate: false,
             tone: Tone::Primary,
             name: AccessibleName::from("Progress"),
+            caption: None,
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
@@ -60,6 +67,7 @@ impl ProgressBuilder {
     #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         self.name = name.into();
+        self.caption = caption_text(&self.name);
         self
     }
 
@@ -80,13 +88,19 @@ impl ProgressBuilder {
             .role(Role::ProgressIndicator)
             .label(self.name)
             .value(value, 0.0, max)
-            .layout(self.layout_overrides.apply(track_layout(track_h)))
+            .layout(
+                self.layout_overrides
+                    .apply(track_layout(track_h, self.caption.is_some())),
+            )
             .class(TRACK)
             .child(fill);
         if !style_accumulator.is_empty() {
             node = node.style(style_accumulator);
         }
-        node
+        match self.caption {
+            Some(caption) => captioned_row(caption, node),
+            None => node,
+        }
     }
 }
 
@@ -111,11 +125,35 @@ impl IntoNode for ProgressBuilder {
     }
 }
 
-fn track_layout(track_h: f32) -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .height(track_h)
-        .fill_width()
-        .align_items(AlignItems::Center)
+fn track_layout(track_h: f32, captioned: bool) -> LayoutStyle {
+    let base = LayoutStyle::flex_row().height(track_h);
+    let base = if captioned {
+        base.grow(1.0).width(0.0)
+    } else {
+        base.fill_width()
+    };
+    base.align_items(AlignItems::Center)
+}
+
+fn caption_text(name: &AccessibleName) -> Option<TextContent> {
+    match name {
+        AccessibleName::None => None,
+        AccessibleName::Static(value) => Some(TextContent::from(value.clone())),
+        AccessibleName::Derived(value) => Some(TextContent::from(*value)),
+    }
+}
+
+fn captioned_row(caption: TextContent, bar: NodeBuilder) -> NodeBuilder {
+    let metrics = Metrics::current();
+    container()
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .gap(metrics.gap(ControlSize::Default))
+                .align_items(AlignItems::Center),
+        )
+        .child(text(caption).nowrap())
+        .child(bar)
 }
 
 fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> NodeBuilder {

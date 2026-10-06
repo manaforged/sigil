@@ -163,6 +163,12 @@ impl SliderBuilder {
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
+        let node = match self.label {
+            Some(caption) => {
+                super::caption::with_caption(node, caption, self.orientation, self.length)
+            }
+            None => node,
+        };
         if self.marks.is_empty() || self.orientation == Orientation::Vertical {
             node
         } else {
@@ -198,8 +204,11 @@ impl SliderBuilder {
                 runtime,
                 interaction,
                 user_overlay,
-                self.accessible_label(),
-                self.layout_overrides.clone(),
+                RootLook {
+                    label: self.accessible_label(),
+                    overrides: self.layout_overrides.clone(),
+                    captioned: self.label.is_some(),
+                },
             ),
             interaction,
             runtime,
@@ -300,13 +309,23 @@ impl SliderRuntime {
     }
 }
 
+struct RootLook {
+    label: String,
+    overrides: LayoutOverrides,
+    captioned: bool,
+}
+
 fn slider_root(
     runtime: SliderRuntime,
     interaction: InteractionState,
     user_overlay: StyleOverlay,
-    label: String,
-    overrides: LayoutOverrides,
+    look: RootLook,
 ) -> NodeBuilder {
+    let RootLook {
+        label,
+        overrides,
+        captioned,
+    } = look;
     let root = container()
         .role(Role::Slider)
         .label(label)
@@ -314,7 +333,11 @@ fn slider_root(
         .action(Action::Decrement)
         .value(runtime.value, runtime.range.min, runtime.range.max)
         .value_step(runtime.step)
-        .layout(overrides.apply(slider_layout(runtime.orientation, runtime.length)));
+        .layout(overrides.apply(slider_layout(
+            runtime.orientation,
+            runtime.length,
+            captioned,
+        )));
     let root = control_surface(root, interaction, runtime.disabled, user_overlay);
     match runtime.orientation {
         Orientation::Horizontal => root
@@ -328,7 +351,7 @@ fn slider_root(
     }
 }
 
-fn slider_layout(orientation: Orientation, length: Option<f32>) -> LayoutStyle {
+fn slider_layout(orientation: Orientation, length: Option<f32>, captioned: bool) -> LayoutStyle {
     match orientation {
         Orientation::Horizontal => {
             let base = LayoutStyle::flex_row().height(
@@ -340,6 +363,7 @@ fn slider_layout(orientation: Orientation, length: Option<f32>) -> LayoutStyle {
             );
             let base = match length {
                 Some(px) => base.width(px),
+                None if captioned => base.grow(1.0).width(0.0),
                 None => base.fill_width(),
             };
             base.align_items(AlignItems::Center)

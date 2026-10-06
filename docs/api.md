@@ -628,7 +628,7 @@ fn main() {
 | `toggle` | `const fn toggle(on: Signal<bool>) -> ToggleBuilder` | An on/off switch. |
 | `radio_group` | `fn radio_group(selected: Signal<String>) -> RadioGroupBuilder` | A set of radio options; `.label()` and `.labelled_by()` name the group. |
 | `segmented` | `fn segmented(active: Signal<usize>, labels: Vec<String>) -> SegmentedBuilder` | A framed row of options where one is active; `.label()` names the group and `.height()` (`WidgetLayoutExt`) sets its height. |
-| `slider` | `fn slider(value: Signal<f32>, range: RangeInclusive<f32>) -> SliderBuilder` | A value slider. |
+| `slider` | `fn slider(value: Signal<f32>, range: RangeInclusive<f32>) -> SliderBuilder`; `.label(text)` | A value slider. `.label` shows the text before the track and names the slider. |
 | `Orientation` | `enum Orientation { Horizontal, Vertical }` | Axis of a slider or splitter. |
 | `text_field` | `fn text_field(value: Signal<String>) -> TextFieldBuilder`; `.leading(node)`, `.trailing(node)`, `.clearable()` | A single-line text input. `leading` and `trailing` place a node, such as an icon, inside the field border; the input fills the rest. `clearable` shows a clear button while the value is not empty; it empties the value, fires `change`, and puts focus back on the input. |
 | `text_edit` | `fn text_edit(value: Signal<String>) -> TextEditBuilder`; `.autofocus()`, `.focus_when(Signal<u64>)`, `.caret_rect(Signal<Option<Rect>>)` | A multi-line text editor. `autofocus` focuses it when it mounts; `focus_when` focuses it each time the signal changes. `caret_rect` receives the caret rectangle, relative to the editor's box, each time the caret moves, and `None` while the editor is disabled, so a popup can follow the caret. |
@@ -819,7 +819,7 @@ fn main() {
 | `toast` | `fn toast(message: Signal<Option<String>>) -> NodeBuilder` | One transient message. |
 | `toast_queue` | `fn toast_queue(queue: ToastQueue) -> NodeBuilder` | A stack of transient messages. |
 | `ToastQueue` | `ToastQueue::new()`; `info`, `success`, `warning`, `error` | Queue of toast messages. |
-| `progress` | `fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder` | A progress bar; `.label()` names it, else "Progress". |
+| `progress` | `fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder`; `.label(text)` | A progress bar. `.label` shows the text beside the bar and names it; without a label it is named "Progress". |
 | `gauge` | `fn gauge(value: Signal<f32>) -> GaugeBuilder` | A radial gauge. |
 | `chart` | `fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder`; `ChartBuilder::candles(rows: impl Reactive<Vec<(f32, f32, f32, f32)>>)`, `.x_range(Signal<Range<f32>>)`, `.crosshair()` | A bar, line, or candle chart. A line with more points than the plot has pixel columns keeps the low and high point of each column, so 100k points draw as one short path. `candles` takes `(open, high, low, close)` rows. `x_range` binds the visible range in point units: the wheel zooms around the pointer and a drag pans. `crosshair` draws rules and the value under the pointer. A signal or closure source draws the chart again when it changes, like `sparkline`. The chart fills its parent's width unless `.width()` is set; at small heights it thins x-axis labels and hides the axis row before the plot gets too small. |
 | `sparkline` | `fn sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder` | A sparkline. By default, one block glyph per value on one text row. A signal or closure source draws the graph again when it changes. |

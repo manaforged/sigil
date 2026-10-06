@@ -1,4 +1,5 @@
 mod builder;
+mod caption;
 mod handlers;
 mod marks;
 mod track;

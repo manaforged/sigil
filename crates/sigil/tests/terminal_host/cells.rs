@@ -218,3 +218,18 @@ fn modal_actions_do_not_fuse_with_the_dialog_border() {
     );
     assert!(!grid.contains('┴') && !grid.contains('┬'), "{grid}");
 }
+
+#[test]
+fn slider_and_progress_show_their_labels() {
+    let grid = present(
+        || {
+            column()
+                .child(slider(signal(0.4), 0.0..=1.0).label("Volume"))
+                .child(progress(signal(0.5_f32), 1.0).label("Upload"))
+        },
+        40,
+        8,
+        &[],
+    );
+    assert!(grid.contains("Volume") && grid.contains("Upload"), "{grid}");
+}
