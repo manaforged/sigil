@@ -15,13 +15,14 @@ type ReactiveChildrenInstall = Box<dyn FnOnce(NodeId)>;
 type AddedHook = Box<dyn FnOnce(&mut Cx, NodeId)>;
 
 pub struct NodeBuilder {
-    a11y: A11yProps,
-    children: SmallVec<[Box<dyn ErasedComponent>; 4]>,
+    pub(super) a11y: A11yProps,
+    pub(super) children: SmallVec<[Box<dyn ErasedComponent>; 4]>,
     kind: NodeType,
-    pre_extensions: Vec<NodeMutator>,
-    reactive_children: Option<ReactiveChildrenInstall>,
-    on_added: Vec<AddedHook>,
+    pub(super) pre_extensions: Vec<NodeMutator>,
+    pub(super) reactive_children: Option<ReactiveChildrenInstall>,
+    pub(super) on_added: Vec<AddedHook>,
     style: Style,
+    pub(super) wraps: Option<Box<dyn ErasedComponent>>,
 }
 
 #[must_use]
@@ -56,6 +57,14 @@ impl NodeBuilder {
             reactive_children: None,
             on_added: Vec::new(),
             style: Style::new(),
+            wraps: None,
+        }
+    }
+
+    pub(crate) fn wrapping(widget: impl IntoNode + 'static) -> Self {
+        Self {
+            wraps: Some(Box::new(widget)),
+            ..Self::new(NodeType::Container)
         }
     }
 
@@ -298,7 +307,10 @@ impl IntoNode for NodeBuilder {
 }
 
 impl NodeBuilder {
-    fn build_node(self, cx: &mut Cx) -> NodeId {
+    fn build_node(mut self, cx: &mut Cx) -> NodeId {
+        if let Some(widget) = self.wraps.take() {
+            return self.build_onto(widget, cx);
+        }
         let id = cx.new_node(self.kind, self.a11y);
         if let Some(node) = cx.get_mut(id) {
             for apply in self.pre_extensions {

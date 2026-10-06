@@ -79,3 +79,19 @@ fn equal_owned_gradient_stops_share_one_copy() {
     assert_eq!(first.stops, stops().as_slice());
     assert!(std::ptr::eq(first.stops, second.stops));
 }
+
+#[test]
+fn a_converted_builder_is_the_widget_node_itself() {
+    sigil::reactive::Runtime::scope("node-from", || {
+        let mut cx = sigil::kernel::Cx::new_root();
+        let converted: NodeBuilder = text("hello").into();
+        let root = cx.add(column().child(converted.label("greeting")));
+        let child = cx.nth_child(root, 0).expect("child");
+        let node = cx.get(child).expect("node");
+        assert!(matches!(node.kind, sigil::kernel::NodeType::Text { .. }));
+        assert!(matches!(
+            &node.a11y.name,
+            sigil::kernel::AccessibleName::Static(name) if name == "greeting"
+        ));
+    });
+}

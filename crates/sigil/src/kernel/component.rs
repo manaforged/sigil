@@ -54,7 +54,7 @@ macro_rules! into_node_builder {
         $(
             impl From<$ty> for crate::kernel::NodeBuilder {
                 fn from(builder: $ty) -> Self {
-                    crate::kernel::fragment().child(builder)
+                    crate::kernel::NodeBuilder::wrapping(builder)
                 }
             }
         )*

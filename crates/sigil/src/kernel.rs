@@ -5,6 +5,7 @@ use criterion as _;
 
 mod announce;
 mod builder;
+mod builder_wrap;
 mod component;
 mod control_flow;
 mod cx;
