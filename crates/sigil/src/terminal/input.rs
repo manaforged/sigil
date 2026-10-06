@@ -84,6 +84,7 @@ fn wake_pair(async_rt: &mut crate::tasks::AsyncRuntime) -> Option<std::os::unix:
     let (rx, tx) = std::os::unix::net::UnixStream::pair().ok()?;
     rx.set_nonblocking(true).ok()?;
     tx.set_nonblocking(true).ok()?;
+    crate::terminal::signals::set_wake(tx.try_clone().ok());
     async_rt.set_waker(move || drop((&tx).write(&[1])));
     Some(rx)
 }
@@ -111,6 +112,7 @@ pub(crate) fn gather_input(
     for read in coalesce_paste(burst) {
         match map_input(read, config, pointer) {
             Input::Quit => return Ok(Incoming::Quit),
+            Input::Suspend => crate::terminal::signals::stop(),
             Input::Event(mapped) => push_key_text(&mut incoming, mapped),
             Input::Resize(mut cols, mut rows) => {
                 limit(config, &mut cols, &mut rows);
@@ -134,6 +136,7 @@ pub(crate) fn gather_input(
 
 enum Input {
     Quit,
+    Suspend,
     Event(ShellEvent),
     Resize(u16, u16),
     None,
@@ -144,10 +147,8 @@ fn map_input(event: Event, config: &AppConfig, pointer: &mut crate::geometry::Po
         Event::Key(key) => {
             if quit(&key, config) {
                 Input::Quit
-            } else if let Some(mapped) = map_key(&key) {
-                Input::Event(mapped)
             } else {
-                Input::None
+                map_key(&key).map_or(Input::None, |mapped| keyed(mapped, config))
             }
         }
         Event::Resize(cols, rows) => Input::Resize(cols, rows),
@@ -155,6 +156,20 @@ fn map_input(event: Event, config: &AppConfig, pointer: &mut crate::geometry::Po
         Event::Paste(pasted) => Input::Event(crate::terminal::keys::paste(&pasted)),
         Event::FocusGained => focus(true),
         Event::FocusLost => focus(false),
+    }
+}
+
+fn keyed(mapped: ShellEvent, config: &AppConfig) -> Input {
+    let suspend = match (&mapped, config.suspend.as_ref()) {
+        (ShellEvent::Key(key), Some(shortcut)) => {
+            key.phase == crate::events::KeyPhase::Down && shortcut.matches(key)
+        }
+        _ => false,
+    };
+    if suspend {
+        Input::Suspend
+    } else {
+        Input::Event(mapped)
     }
 }
 

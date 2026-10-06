@@ -1,16 +1,20 @@
 use std::iter::once;
 
 use crate::events::{A11yEdit, with_handlers};
-use crate::events::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
+use crate::events::{
+    Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, PasteEvent, Shortcut,
+};
 use crate::kernel::NodeBuilder;
 
 use super::super::TextEdit;
 use super::{TextEditRuntime, commit, edit_value, move_caret, sync_value};
 
 pub(in crate::widgets) fn clipboard_keys(
-    mut node: NodeBuilder,
+    node: NodeBuilder,
     runtime: &TextEditRuntime,
 ) -> NodeBuilder {
+    let pasted = runtime.clone();
+    let mut node = node.on_paste(move |event| shell_paste(event, &pasted));
     for modifiers in once(ModifiersState::CONTROL)
         .chain(cfg!(target_os = "macos").then_some(ModifiersState::META))
     {
@@ -178,6 +182,17 @@ fn clipboard_paste(event: &mut KeyEvent, runtime: &TextEditRuntime) {
         return;
     };
     event.stop_propagation();
+    insert_pasted(runtime, &text);
+}
+
+fn shell_paste(event: &mut PasteEvent, runtime: &TextEditRuntime) {
+    event.stop_propagation();
+    if !runtime.disabled() {
+        insert_pasted(runtime, &event.text);
+    }
+}
+
+fn insert_pasted(runtime: &TextEditRuntime, text: &str) {
     let mut state = runtime.edit_mut();
     let normalised = if runtime.column.is_some() {
         text.chars()

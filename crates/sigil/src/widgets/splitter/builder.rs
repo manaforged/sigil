@@ -6,11 +6,10 @@ use crate::style::{
 
 use super::super::interactive::interactive;
 
-use super::atoms::{cached_height_atom, cached_width_atom, to_i16};
-
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::drag::{SplitterState, install_handle_hooks};
 use super::keys::install_handle_keys;
+use super::pane::{build_pane, shares_free_space};
 use crate::widgets::orientation::Orientation;
 
 pub(in crate::widgets) const HANDLE_PX: f32 = 6.0;
@@ -126,9 +125,13 @@ impl SplitterBuilder {
         let sizes: Vec<f32> = self.panes.iter().map(|p| p.initial_size).collect();
         let mins: Vec<f32> = self.panes.iter().map(|p| p.min).collect();
         let maxs: Vec<f32> = self.panes.iter().map(|p| p.max).collect();
-        let grows: Vec<f32> = self.panes.iter().map(|p| p.grow).collect();
+        let grows: Vec<f32> = self
+            .panes
+            .iter()
+            .map(|p| shares_free_space(p.initial_size, p.grow))
+            .collect();
 
-        let state = SplitterState::new(orientation, sizes, mins, maxs, grows);
+        let state = SplitterState::new(orientation, sizes, mins, maxs, grows.clone());
 
         for (handle_idx, pts) in self.snap_points {
             state.set_snap(handle_idx, pts);
@@ -148,13 +151,13 @@ impl SplitterBuilder {
             .role(Role::GenericContainer)
             .layout(root_layout.clone());
 
-        for (pane_idx, entry) in self.panes.into_iter().enumerate() {
+        for (pane_idx, (entry, grow)) in self.panes.into_iter().zip(grows).enumerate() {
             root = root.child(build_pane(
                 entry.content,
                 pane_idx,
                 orientation,
                 state,
-                entry.grow,
+                grow,
             ));
             if pane_idx + 1 < count {
                 root = root.child(build_handle(pane_idx, orientation, state));
@@ -252,68 +255,6 @@ impl WidgetLayoutExt for SplitterBuilder {
 impl WidgetLayoutExt for PaneBuilder {
     fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
         &mut self.splitter.layout_overrides
-    }
-}
-
-fn build_pane(
-    content: Box<dyn IntoNode>,
-    pane_idx: usize,
-    orientation: Orientation,
-    state: SplitterState,
-    grow: f32,
-) -> NodeBuilder {
-    let initial_px = state.size_at(pane_idx);
-    let initial_layout = pane_layout(orientation, initial_px, grow);
-    let node = container()
-        .role(Role::GenericContainer)
-        .layout(initial_layout);
-    let node = if grow > 0.0 {
-        node
-    } else {
-        node.style_reactive(move || pane_size_atom(orientation, state.size_at(pane_idx)))
-    };
-    node.child(content)
-}
-
-fn pane_layout(orientation: Orientation, size_px: f32, grow: f32) -> LayoutStyle {
-    let style = match orientation {
-        Orientation::Horizontal => {
-            let style = LayoutStyle::flex_column();
-            if grow > 0.0 {
-                if size_px > 0.0 {
-                    style.width(size_px)
-                } else {
-                    style
-                }
-            } else {
-                style.width(size_px)
-            }
-        }
-        Orientation::Vertical => {
-            let style = LayoutStyle::flex_column();
-            if grow > 0.0 {
-                if size_px > 0.0 {
-                    style.height(size_px)
-                } else {
-                    style
-                }
-            } else {
-                style.height(size_px)
-            }
-        }
-    };
-    if grow > 0.0 {
-        style.grow(grow).min_size(0.0, 0.0)
-    } else {
-        style.shrink(0.0)
-    }
-}
-
-fn pane_size_atom(orientation: Orientation, size_px: f32) -> &'static [StyleAtom] {
-    let px = to_i16(size_px);
-    match orientation {
-        Orientation::Horizontal => cached_width_atom(px),
-        Orientation::Vertical => cached_height_atom(px),
     }
 }
 

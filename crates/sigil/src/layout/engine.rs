@@ -33,6 +33,7 @@ pub struct LayoutEngine {
     reactive_sigs: SecondaryMap<slotmap::DefaultKey, u64>,
     steady: AHashSet<NodeId>,
     restyled: AHashSet<NodeId>,
+    hidden: AHashSet<NodeId>,
     last_reactive_sig: u64,
     republished: bool,
 }
@@ -56,6 +57,7 @@ impl LayoutEngine {
             reactive_sigs: SecondaryMap::new(),
             steady: AHashSet::new(),
             restyled: AHashSet::new(),
+            hidden: AHashSet::new(),
             last_reactive_sig: 0,
             republished: false,
         }
@@ -246,6 +248,7 @@ impl LayoutEngine {
                 let _ = self.synced_version.remove(core_id.key());
                 let _ = self.synced_text_sig.remove(core_id.key());
                 let _ = self.published_result.remove(core_id.key());
+                self.hidden.remove(&core_id);
                 self.reactive_layout.remove(&core_id.key());
             }
         }
@@ -258,6 +261,7 @@ impl LayoutEngine {
         self.published_result.clear();
         self.popup_offsets.clear();
         self.core_to_handle.clear();
+        self.hidden.clear();
         self.reactive_layout.clear();
         self.positions.clear();
         self.text_sizes.clear();
@@ -290,6 +294,7 @@ impl LayoutEngine {
 
 mod attribution;
 mod cache;
+mod children;
 mod incremental;
 mod measure;
 mod overlays;

@@ -41,6 +41,9 @@ pub(super) fn sort_mark<Row: 'static>(
     use crate::style::space;
     use crate::widgets::icon_svg;
     let mark = sort_state(state, column, sortable);
+    if crate::style::cell_size().is_some() {
+        return glyph_mark(mark);
+    }
     container().hittable(false).children_reactive(move || {
         let current = mark.get();
         let icon = match current {
@@ -66,20 +69,23 @@ pub(super) fn sort_mark<Row: 'static>(
     column: &'static str,
     sortable: bool,
 ) -> NodeBuilder {
+    glyph_mark(sort_state(state, column, sortable))
+}
+
+fn glyph_mark(mark: Signal<SortMark>) -> NodeBuilder {
     use crate::kernel::text;
-    let mark = sort_state(state, column, sortable);
-    container().child(
-        text(derived(move || {
-            match mark.get() {
-                SortMark::Ascending => "▲",
-                SortMark::Descending => "▼",
-                SortMark::None | SortMark::Idle => "",
-            }
-            .to_owned()
-        }))
-        .class("text-xs")
-        .class(super::header::HEADER_TEXT),
-    )
+    container().children_reactive(move || {
+        let glyph = match mark.get() {
+            SortMark::Ascending => "▲",
+            SortMark::Descending => "▼",
+            SortMark::None | SortMark::Idle => return Vec::new(),
+        };
+        vec![
+            text(glyph.to_owned())
+                .class("text-xs")
+                .class(super::header::HEADER_TEXT),
+        ]
+    })
 }
 
 impl<Row: 'static> TableState<Row> {

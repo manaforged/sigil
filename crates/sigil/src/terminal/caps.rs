@@ -2,8 +2,16 @@ use crate::app::Ambiguous;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
 
+mod ask;
+mod known;
 #[cfg(unix)]
 mod probe;
+
+use ask::{Question, Questions, Version};
+use known::Known;
+pub use known::{Notices, Notify};
+#[cfg(unix)]
+pub(crate) use probe::exchange;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColorDepth {
@@ -74,6 +82,7 @@ pub struct Caps {
     pub sync: bool,
     pub clipboard: ClipRoute,
     pub backdrop: Option<Backdrop>,
+    pub notices: Notices,
 }
 
 impl Default for Caps {
@@ -93,22 +102,12 @@ impl Default for Caps {
             sync: true,
             clipboard: ClipRoute::Osc52,
             backdrop: None,
+            notices: Notices {
+                notify: None,
+                progress: false,
+            },
         }
     }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Known {
-    Kitty,
-    Ghostty,
-    WezTerm,
-    Iterm,
-    Foot,
-    Alacritty,
-    Contour,
-    WindowsTerminal,
-    Vte,
-    Apple,
 }
 
 #[derive(Default)]
@@ -117,13 +116,8 @@ struct Answers {
     sync: bool,
     kitty_keys: bool,
     backdrop: Option<Backdrop>,
-}
-
-#[derive(Clone, Copy)]
-struct Questions {
-    graphics: bool,
-    sync: bool,
-    keys: bool,
+    truecolor: bool,
+    version: Version,
 }
 
 struct Draft {
@@ -148,7 +142,7 @@ impl Caps {
     pub fn probe() -> Self {
         let draft = draft(&|key: &str| std::env::var(key).ok());
         let backdrop = draft.caps.backdrop.is_none();
-        if !(draft.ask.graphics || draft.ask.sync || draft.ask.keys || backdrop) {
+        if draft.ask.none() && !backdrop {
             return draft.caps;
         }
         #[cfg(unix)]
@@ -164,17 +158,29 @@ impl Caps {
 
 impl Draft {
     const fn settle(mut self, answers: &Answers) -> Caps {
-        if self.ask.graphics {
+        if self.ask.has(Question::Graphics) {
             self.caps.graphics = answers.graphics;
         }
-        if self.ask.sync {
+        if self.ask.has(Question::Sync) {
             self.caps.sync = answers.sync;
         }
         if self.caps.backdrop.is_none() {
             self.caps.backdrop = answers.backdrop;
         }
-        if self.ask.keys && answers.kitty_keys {
+        if self.ask.has(Question::Keys) && answers.kitty_keys {
             self.caps.keyboard = Keyboard::Kitty;
+        }
+        if self.ask.has(Question::Color) && (answers.truecolor || answers.kitty_keys) {
+            self.caps.color = ColorDepth::Truecolor;
+        }
+        if !self.ask.has(Question::Version) {
+            return self.caps;
+        }
+        if !matches!(answers.version, Version::Silent) || answers.kitty_keys {
+            self.caps.hyperlinks = true;
+        }
+        if let Version::Named(named) = answers.version {
+            self.caps.notices = named.notices();
         }
         self.caps
     }
@@ -182,7 +188,7 @@ impl Draft {
 
 fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
     let mux = detect_mux(env);
-    let known = known(env, mux);
+    let known = known::known(env, mux);
     let sync = known.map(|term| !matches!(term, Known::Vte | Known::Apple));
     let keys = known.map(|term| {
         matches!(
@@ -197,9 +203,10 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
     });
     let graphics = detect(env);
     let glyphs = glyphs(env);
+    let color = color_depth(env, known);
     Draft {
         caps: Caps {
-            color: color_depth(env, known),
+            color,
             graphics,
             mux,
             keyboard: keyboard(keys),
@@ -222,53 +229,31 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
             sync: sync.unwrap_or(true),
             clipboard: clip_route(env),
             backdrop: backdrop(env),
+            notices: known.map(Known::notices).unwrap_or_default(),
         },
-        ask: Questions {
-            graphics: graphics.is_none() && env("SIGIL_GRAPHICS").is_none(),
-            sync: sync.is_none(),
-            keys: keys.is_none(),
-        },
+        ask: questions(env, (graphics, sync, keys), color, known),
     }
 }
 
-fn known(env: &impl Fn(&str) -> Option<String>, mux: Option<Mux>) -> Option<Known> {
-    let term = env("TERM").unwrap_or_default();
-    known_term(&term).or_else(|| if mux.is_some() { None } else { known_env(env) })
-}
-
-fn known_term(term: &str) -> Option<Known> {
-    Some(match term {
-        "xterm-kitty" => Known::Kitty,
-        "xterm-ghostty" => Known::Ghostty,
-        "wezterm" => Known::WezTerm,
-        "alacritty" => Known::Alacritty,
-        _ if term.starts_with("foot") => Known::Foot,
-        _ if term.starts_with("contour") => Known::Contour,
-        _ => return None,
-    })
-}
-
-fn known_env(env: &impl Fn(&str) -> Option<String>) -> Option<Known> {
-    let program = env("TERM_PROGRAM").unwrap_or_default();
-    Some(if env("KITTY_WINDOW_ID").is_some() {
-        Known::Kitty
-    } else if env("GHOSTTY_RESOURCES_DIR").is_some() || program == "ghostty" {
-        Known::Ghostty
-    } else if env("WEZTERM_EXECUTABLE").is_some() || program == "WezTerm" {
-        Known::WezTerm
-    } else if program == "iTerm.app" || env("LC_TERMINAL").as_deref() == Some("iTerm2") {
-        Known::Iterm
-    } else if env("ALACRITTY_WINDOW_ID").is_some() {
-        Known::Alacritty
-    } else if env("WT_SESSION").is_some() {
-        Known::WindowsTerminal
-    } else if env("VTE_VERSION").is_some() {
-        Known::Vte
-    } else if program == "Apple_Terminal" {
-        Known::Apple
-    } else {
-        return None;
-    })
+fn questions(
+    env: &impl Fn(&str) -> Option<String>,
+    (graphics, sync, keys): (Option<Protocol>, Option<bool>, Option<bool>),
+    color: ColorDepth,
+    known: Option<Known>,
+) -> Questions {
+    Questions::default()
+        .with(
+            Question::Graphics,
+            graphics.is_none() && env("SIGIL_GRAPHICS").is_none(),
+        )
+        .with(Question::Sync, sync.is_none())
+        .with(Question::Keys, keys.is_none())
+        .with(
+            Question::Color,
+            matches!(color, ColorDepth::Ansi256 | ColorDepth::Ansi16)
+                && forced_color(env).is_none(),
+        )
+        .with(Question::Version, known.is_none())
 }
 
 fn forced_color(env: &impl Fn(&str) -> Option<String>) -> Option<ColorDepth> {

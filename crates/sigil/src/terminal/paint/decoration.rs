@@ -207,8 +207,36 @@ pub(super) fn border(grid: &mut Grid, border: &CellBorder, edge: &Edge<'_>) {
     let top = cell_edge(rect.origin.y / cell);
     let right = cell_edge((rect.origin.x + rect.width) / cell).saturating_sub(1);
     let bottom = cell_edge((rect.origin.y + rect.height) / cell).saturating_sub(1);
-    let [north, east, south, west] = sides(border, top == bottom);
+    let ([north, east, south, west], collapsed) = sides(border, top, bottom);
     let set = line(border, edge.borders);
+    let (xs, ys) = clip_cells(grid, clip, cell);
+    for y in ys {
+        for x in xs.clone() {
+            let edges = [
+                north && y == top && rect.origin.y >= 0.0,
+                east && x == right,
+                south && y == bottom,
+                west && x == left && rect.origin.x >= 0.0,
+            ];
+            if let Some(glyph) = glyph(edges, set) {
+                let stroke = Stroke {
+                    at: (x, y),
+                    glyph,
+                    set,
+                    side: (x == left, x == right),
+                    full: !collapsed,
+                };
+                join(grid, &stroke, (color, theme), rect);
+            }
+        }
+    }
+}
+
+fn clip_cells(
+    grid: &Grid,
+    clip: Rect,
+    cell: f32,
+) -> (std::ops::Range<usize>, std::ops::Range<usize>) {
     let start_x = cell_edge(clip.origin.x / cell);
     let start_y = cell_edge(clip.origin.y / cell);
     let end_x = span(
@@ -223,31 +251,20 @@ pub(super) fn border(grid: &mut Grid, border: &CellBorder, edge: &Edge<'_>) {
         clip.height,
         grid.rows(),
     );
-    for y in start_y..end_y {
-        for x in start_x..end_x {
-            let edges = [
-                north && y == top && rect.origin.y >= 0.0,
-                east && x == right,
-                south && y == bottom,
-                west && x == left && rect.origin.x >= 0.0,
-            ];
-            if let Some(glyph) = glyph(edges, set) {
-                let stroke = Stroke {
-                    at: (x, y),
-                    glyph,
-                    set,
-                    side: (x == left, x == right),
-                };
-                join(grid, &stroke, (color, theme), rect);
-            }
-        }
-    }
+    (start_x..end_x, start_y..end_y)
 }
 
-fn sides(border: &CellBorder, flat: bool) -> [bool; 4] {
+fn sides(border: &CellBorder, top: usize, bottom: usize) -> ([bool; 4], bool) {
     let [north, east, south, west] = border.widths.map(|width| width > 0.0);
-    let rule = flat && !east && !west;
-    [north && !rule, east, south && !rule, west]
+    let rule = if east || west {
+        bottom < top + 2
+    } else {
+        top == bottom
+    };
+    (
+        [north && !rule, east, south && !rule, west],
+        rule && (north || south),
+    )
 }
 
 struct Stroke {
@@ -255,6 +272,7 @@ struct Stroke {
     glyph: &'static str,
     set: Glyphs,
     side: (bool, bool),
+    full: bool,
 }
 
 fn join(grid: &mut Grid, stroke: &Stroke, (color, theme): (Rgba8, &Theme), rect: Rect) {
@@ -262,6 +280,10 @@ fn join(grid: &mut Grid, stroke: &Stroke, (color, theme): (Rgba8, &Theme), rect:
     let [.., across, down] = stroke.set;
     let under = grid.get(x, y);
     let bg = under.as_ref().map_or(Ink::Bare, |cell| cell.bg);
+    if !stroke.full {
+        grid.put(x, y, stroke.glyph, blend(bg, color, false, theme));
+        return;
+    }
     let crossing =
         stroke.glyph == across && grid.edged(x, y) && under.is_some_and(|cell| cell.text == down);
     let inner =

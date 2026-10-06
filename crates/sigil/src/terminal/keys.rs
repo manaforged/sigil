@@ -51,7 +51,7 @@ pub(crate) fn push_key_text(events: &mut Vec<ShellEvent>, event: ShellEvent) {
     let merged = match (events.last(), &event) {
         (Some(last), next) => composed_text(last)
             .zip(composed_text(next))
-            .map(|(head, tail)| paste(&format!("{head}{tail}"))),
+            .map(|(head, tail)| text_key(&format!("{head}{tail}"))),
         (None, _) => None,
     };
     match merged {
@@ -178,6 +178,10 @@ fn typed(event: &Event) -> Option<char> {
 
 #[must_use]
 pub fn paste(text: &str) -> ShellEvent {
+    ShellEvent::Paste(text.to_string())
+}
+
+fn text_key(text: &str) -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {
         key: LogicalKey::character(text.to_string()),
         physical: PhysicalKey::Unidentified,

@@ -1,7 +1,7 @@
 use std::os::fd::AsFd;
 use std::time::{Duration, Instant};
 
-use super::{Answers, Backdrop, Questions};
+use super::{Answers, Backdrop, Known, Question, Questions, Version};
 use crate::terminal::graphics::Protocol;
 
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -20,16 +20,42 @@ pub(super) fn ask(ask: Questions, backdrop: bool) -> Option<Answers> {
     Some(parse(&reply))
 }
 
+pub(crate) fn exchange(
+    query: impl FnOnce(&mut std::io::StdoutLock<'_>) -> std::io::Result<()>,
+    done: impl Fn(&str) -> bool,
+) -> Option<String> {
+    use std::io::{IsTerminal, Write};
+    let stdin = std::io::stdin();
+    if !stdin.is_terminal() || !std::io::stdout().is_terminal() {
+        return None;
+    }
+    let mut out = std::io::stdout().lock();
+    query(&mut out).ok()?;
+    out.write_all(b"\x1b[c").ok()?;
+    out.flush().ok()?;
+    drop(out);
+    let mut reply = Vec::new();
+    let finished = |text: &str| done(text) || da1(text).is_some();
+    collect(&stdin, &mut reply, Instant::now() + TIMEOUT, finished).then_some(())?;
+    Some(String::from_utf8_lossy(&reply).into_owned())
+}
+
 fn queries(ask: Questions, backdrop: bool) -> String {
     let mut text = String::new();
-    if ask.graphics {
+    if ask.has(Question::Graphics) {
         text.push_str("\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\");
     }
-    if ask.sync {
+    if ask.has(Question::Sync) {
         text.push_str("\x1b[?2026$p");
     }
-    if ask.keys {
+    if ask.has(Question::Keys) || ask.has(Question::Color) || ask.has(Question::Version) {
         text.push_str("\x1b[?u");
+    }
+    if ask.has(Question::Version) {
+        text.push_str("\x1b[>0q");
+    }
+    if ask.has(Question::Color) {
+        text.push_str("\x1b[38;2;1;2;3m\x1bP$qm\x1b\\\x1b[0m");
     }
     if backdrop {
         text.push_str("\x1b]11;?\x1b\\");
@@ -40,15 +66,22 @@ fn queries(ask: Questions, backdrop: bool) -> String {
 
 fn read_reply(input: &impl AsFd) -> Option<String> {
     let mut reply = Vec::new();
-    if !collect(input, &mut reply, Instant::now() + TIMEOUT) {
+    if !collect(input, &mut reply, Instant::now() + TIMEOUT, |text| {
+        da1(text).is_some()
+    }) {
         return None;
     }
     Some(String::from_utf8_lossy(&reply).into_owned())
 }
 
-fn collect(input: &impl AsFd, reply: &mut Vec<u8>, deadline: Instant) -> bool {
+fn collect(
+    input: &impl AsFd,
+    reply: &mut Vec<u8>,
+    deadline: Instant,
+    done: impl Fn(&str) -> bool,
+) -> bool {
     let mut chunk = [0_u8; 256];
-    while da1(&String::from_utf8_lossy(reply)).is_none() {
+    while !done(&String::from_utf8_lossy(reply)) {
         let Some(left) = deadline.checked_duration_since(Instant::now()) else {
             return false;
         };
@@ -88,7 +121,21 @@ fn parse(reply: &str) -> Answers {
             .any(|rest| rest.starts_with(['1', '2', '3', '4'])),
         kitty_keys: csi_params(reply, 'u').is_some(),
         backdrop: backdrop(reply),
+        truecolor: dcs(reply, "\x1bP1$r").is_some_and(truecolor),
+        version: dcs(reply, "\x1bP>|").map_or(Version::Silent, |name| {
+            Known::from_version(name).map_or(Version::Unnamed, Version::Named)
+        }),
     }
+}
+
+fn dcs<'a>(reply: &'a str, intro: &str) -> Option<&'a str> {
+    let (_, rest) = reply.split_once(intro)?;
+    rest.split('\x1b').next()
+}
+
+fn truecolor(body: &str) -> bool {
+    let body = body.replace(':', ";");
+    body.contains("38;2;1;2;3") || body.contains("38;2;;1;2;3")
 }
 
 fn da1(reply: &str) -> Option<&str> {

@@ -91,6 +91,7 @@ fn tab_list_layout(chrome: StripChrome) -> LayoutStyle {
         } else {
             TAB_HEIGHT
         })
+        .shrink(0.0)
         .gap(space(1))
         .align_items(AlignItems::Center)
 }

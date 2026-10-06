@@ -6,7 +6,8 @@ use accesskit::Action;
 
 use crate::events::{NodeEventsExt, PointerEvent};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::snap::CellForm;
+use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::Signal;
 use crate::style::{NodeStyleExt, PaintTarget, StateHost, Style, StyleOverlay, StyleSlot, Theme};
 
@@ -330,7 +331,13 @@ fn slider_root(
 fn slider_layout(orientation: Orientation, length: Option<f32>) -> LayoutStyle {
     match orientation {
         Orientation::Horizontal => {
-            let base = LayoutStyle::flex_row().height(HORIZONTAL_HEIGHT);
+            let base = LayoutStyle::flex_row().height(
+                CellForm::new(
+                    Dimension::from(HORIZONTAL_HEIGHT),
+                    Dimension::from(rows(1.0)),
+                )
+                .pick(),
+            );
             let base = match length {
                 Some(px) => base.width(px),
                 None => base.fill_width(),
@@ -338,7 +345,9 @@ fn slider_layout(orientation: Orientation, length: Option<f32>) -> LayoutStyle {
             base.align_items(AlignItems::Center)
         }
         Orientation::Vertical => {
-            let base = LayoutStyle::flex_column().width(VERTICAL_WIDTH);
+            let base = LayoutStyle::flex_column().width(
+                CellForm::new(Dimension::from(VERTICAL_WIDTH), Dimension::from(cols(1.0))).pick(),
+            );
             let base = match length {
                 Some(px) => base.height(px),
                 None => base.fill_height(),

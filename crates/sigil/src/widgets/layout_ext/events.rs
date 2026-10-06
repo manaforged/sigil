@@ -3,7 +3,8 @@ use std::rc::Rc;
 
 use super::WidgetLayoutExt;
 use crate::events::{
-    FileDropEvent, ImeEvent, KeyEvent, NodeEventsExt, PointerEvent, ScrollEvent, Shortcut,
+    FileDropEvent, ImeEvent, KeyEvent, NodeEventsExt, PasteEvent, PointerEvent, ScrollEvent,
+    Shortcut,
 };
 use crate::kernel::NodeBuilder;
 use crate::layout::CaretGeometry;
@@ -113,6 +114,13 @@ impl<T: WidgetLayoutExt> NodeEventsExt for T {
         H: Fn(&ImeEvent) + 'static,
     {
         self.map_node(move |node| <NodeBuilder as NodeEventsExt>::on_ime(node, h))
+    }
+
+    fn on_paste<H>(self, h: H) -> Self
+    where
+        H: Fn(&mut PasteEvent) + 'static,
+    {
+        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::on_paste(node, h))
     }
 
     fn key<S, H>(self, shortcut: S, h: H) -> Self

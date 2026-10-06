@@ -41,7 +41,7 @@ pub fn invoke_node(
 
 pub use crate::hal::events::{
     ClickConfig, FileDropEvent, FileDropPhase, ImeEvent, Key, KeyEvent, KeyEventInit, KeyPhase,
-    LogicalKey, ModifiersState, MouseButton, MouseButtons, PRIMARY, PhysicalKey, PointerEvent,
-    PointerEventInit, PointerKind, PointerPhase, ScrollDelta, ScrollEvent, ScrollEventInit,
-    ScrollPhase, ShellEvent, Shortcut, WindowEvent,
+    LogicalKey, ModifiersState, MouseButton, MouseButtons, PRIMARY, PasteEvent, PhysicalKey,
+    PointerEvent, PointerEventInit, PointerKind, PointerPhase, ScrollDelta, ScrollEvent,
+    ScrollEventInit, ScrollPhase, ShellEvent, Shortcut, WindowEvent,
 };

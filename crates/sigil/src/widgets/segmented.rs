@@ -1,4 +1,5 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot};
@@ -12,6 +13,8 @@ static SEGMENTED_FRAME: &[StyleAtom] = &[
 ];
 
 const SEGMENTED_HEIGHT: f32 = 32.0;
+const CELL_ACTIVE_OPEN: &str = "[";
+const CELL_ACTIVE_CLOSE: &str = "]";
 
 pub struct SegmentedBuilder {
     active: Signal<usize>,
@@ -66,17 +69,7 @@ impl SegmentedBuilder {
                 labels
                     .iter()
                     .enumerate()
-                    .map(|(index, text)| {
-                        let choice = button(text.clone())
-                            .height(inner)
-                            .activate(move || active.set(index));
-                        let choice = if index == current {
-                            choice.primary()
-                        } else {
-                            choice.ghost()
-                        };
-                        container().child(choice)
-                    })
+                    .map(|(index, text)| segment(active, index, text, index == current, inner))
                     .collect::<Vec<_>>()
             });
         if let Some(name) = self.name {
@@ -86,6 +79,39 @@ impl SegmentedBuilder {
             node = node.style(self.style_accumulator);
         }
         node
+    }
+}
+
+fn segment(
+    active: Signal<usize>,
+    index: usize,
+    label: &str,
+    selected: bool,
+    height: f32,
+) -> NodeBuilder {
+    let shown =
+        CellForm::<fn(&str, bool) -> String>::new(window_label, cell_label).pick()(label, selected);
+    let choice = button(shown)
+        .accessible(label)
+        .height(height)
+        .activate(move || active.set(index));
+    let choice = if selected {
+        choice.primary()
+    } else {
+        choice.ghost()
+    };
+    container().child(choice)
+}
+
+fn window_label(label: &str, _selected: bool) -> String {
+    label.to_owned()
+}
+
+fn cell_label(label: &str, selected: bool) -> String {
+    if selected {
+        format!("{CELL_ACTIVE_OPEN}{label}{CELL_ACTIVE_CLOSE}")
+    } else {
+        label.to_owned()
     }
 }
 

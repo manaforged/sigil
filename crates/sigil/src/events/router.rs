@@ -1,4 +1,4 @@
-use crate::events::{FileDropEvent, PointerEvent, PointerPhase, ScrollEvent, ShellEvent, Shortcut};
+use crate::events::{PointerEvent, PointerPhase, ScrollEvent, ShellEvent, Shortcut};
 use crate::geometry::Point;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
@@ -10,21 +10,14 @@ use crate::events::handlers::dispatch;
 use crate::events::hit_test::{HitTestCache, NodePath, visible};
 use crate::events::pointer_dispatch::{
     PointerTargets, dispatch_pointer_path, dispatch_pointer_target, dispatch_synthetic_target,
-    local_point, path_to_node, pointer_target_for_node, pointer_targets, synthetic_leave_source,
+    local_point, pointer_target_for_node, pointer_targets, synthetic_leave_source,
 };
 
-fn broadcast_file_drop(cx: &Cx, event: &FileDropEvent) {
-    let mut stack: Vec<NodeId> = cx.roots().to_vec();
-    while let Some(id) = stack.pop() {
-        let Some(node) = cx.get(id) else {
-            continue;
-        };
-        let _ = dispatch(cx, id, |handlers| handlers.invoke_file_drop(event));
-        stack.extend(node.children().iter().copied());
-    }
-}
-
+mod file_drop;
 mod keyboard;
+mod paste;
+
+pub(crate) use paste::on_paste;
 
 #[derive(Debug, Default)]
 pub struct EventRouter {
@@ -60,24 +53,8 @@ impl EventRouter {
             ShellEvent::Scroll(event) => self.route_scroll(cx, layout, event),
             ShellEvent::Ime(event) => self.route_ime(cx, layout, &event),
             ShellEvent::FileDrop(event) => self.route_file_drop(cx, layout, &event),
+            ShellEvent::Paste(text) => self.route_paste(cx, layout, text),
             ShellEvent::Window(_) => {}
-        }
-    }
-
-    fn route_file_drop(&mut self, cx: &Cx, layout: &LayoutEngine, event: &FileDropEvent) {
-        let at_pointer = self
-            .last_pointer
-            .as_ref()
-            .and_then(|pointer| self.hit_cache.hit_path(cx, layout, pointer.position));
-        let path = at_pointer.or_else(|| self.focus.focus().map(|id| path_to_node(cx, id)));
-        let Some(path) = path else {
-            broadcast_file_drop(cx, event);
-            return;
-        };
-        for id in path.iter().rev().copied() {
-            if dispatch(cx, id, |handlers| handlers.invoke_file_drop(event)).unwrap_or(false) {
-                return;
-            }
         }
     }
 

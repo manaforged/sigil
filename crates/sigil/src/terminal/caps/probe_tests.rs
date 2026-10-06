@@ -39,3 +39,14 @@ fn a_late_reply_is_read_to_its_end_before_input_starts() -> std::io::Result<()> 
     );
     Ok(())
 }
+
+#[test]
+fn a_truecolor_echo_and_a_version_reply_are_read() {
+    use crate::terminal::caps::{Known, Version};
+    let reply = parse("\x1bP1$r0;38:2::1:2:3m\x1b\\\x1bP>|WezTerm 20240203-110809\x1b\\\x1b[?62;c");
+    let plain = parse("\x1bP0$r\x1b\\\x1b[?62;c");
+    assert!(reply.truecolor);
+    assert!(matches!(reply.version, Version::Named(Known::WezTerm)));
+    assert!(!plain.truecolor);
+    assert!(matches!(plain.version, Version::Silent));
+}

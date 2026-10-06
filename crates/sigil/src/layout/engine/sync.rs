@@ -11,6 +11,15 @@ use super::LayoutEngine;
 use super::overlays::{apply_intrinsic_image_size, apply_reactive_position, apply_style_overlay};
 
 impl LayoutEngine {
+    fn hide_children(&mut self, id: NodeId) -> Result<SmallVec<[NodeHandle; 4]>, LayoutError> {
+        let parent_handle = self.handle(id)?;
+        self.drive.set_children(parent_handle, &[])?;
+        self.hidden.insert(id);
+        let mut out = SmallVec::<[NodeHandle; 4]>::new();
+        out.push(parent_handle);
+        Ok(out)
+    }
+
     pub(super) fn sync_subtree(
         &mut self,
         cx: &Cx,
@@ -55,13 +64,10 @@ impl LayoutEngine {
         self.synced_text_sig.insert(id.key(), effective.sig);
 
         if binding.is_some_and(StyleBinding::hides) {
-            let parent_handle = self.handle(id)?;
-            self.drive.set_children(parent_handle, &[])?;
-            let mut out = SmallVec::<[NodeHandle; 4]>::new();
-            out.push(parent_handle);
-            return Ok(out);
+            return self.hide_children(id);
         }
 
+        self.hidden.remove(&id);
         let mut child_handles = SmallVec::<[NodeHandle; 8]>::new();
         for child in &children {
             child_handles.extend(self.sync_subtree(cx, *child, effective)?);
@@ -300,71 +306,6 @@ impl LayoutEngine {
             self.remove_mirror(id)?;
         }
         Ok(())
-    }
-
-    fn sync_child_list(
-        &mut self,
-        cx: &Cx,
-        id: NodeId,
-        node: &crate::kernel::Node,
-    ) -> Result<(), LayoutError> {
-        let parent = if matches!(node.kind, NodeType::Fragment) {
-            self.nearest_mirrored_ancestor(cx, id)
-        } else {
-            Some(id)
-        };
-        let Some(parent) = parent else {
-            return Ok(());
-        };
-        let Some(parent_node) = cx.get(parent) else {
-            return Ok(());
-        };
-        if parent_node
-            .get_extension::<StyleBinding>()
-            .is_some_and(StyleBinding::hides)
-        {
-            self.drive.set_children(self.handle(parent)?, &[])?;
-            return Ok(());
-        }
-        let handles = self.flatten_child_handles(cx, parent_node.children())?;
-        self.drive.set_children(self.handle(parent)?, &handles)
-    }
-
-    #[allow(
-        clippy::unused_self,
-        reason = "kept as method for symmetry with sibling sync helpers; will gain &self use when subtree mirror tracking lands"
-    )]
-    fn nearest_mirrored_ancestor(&self, cx: &Cx, id: NodeId) -> Option<NodeId> {
-        let mut current = cx.parent(id);
-        while let Some(parent) = current {
-            let node = cx.get(parent)?;
-            if !matches!(node.kind, NodeType::Fragment) {
-                return Some(parent);
-            }
-            current = cx.parent(parent);
-        }
-        None
-    }
-
-    fn flatten_child_handles(
-        &mut self,
-        cx: &Cx,
-        children: &[NodeId],
-    ) -> Result<Vec<NodeHandle>, LayoutError> {
-        let mut handles = Vec::new();
-        for child in children {
-            let node = cx.get(*child).ok_or(LayoutError::NodeMissing(*child))?;
-            if matches!(node.kind, NodeType::Fragment) {
-                handles.extend(self.flatten_child_handles(cx, node.children())?);
-            } else if let Some(handle) = self.core_to_handle.get(child.key()).copied() {
-                handles.push(handle);
-            } else {
-                let text = inherited_text_style(cx, *child);
-                let inherited = InheritedText::new(&text);
-                handles.extend(self.sync_subtree(cx, *child, inherited)?);
-            }
-        }
-        Ok(handles)
     }
 }
 

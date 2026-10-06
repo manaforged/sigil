@@ -106,3 +106,26 @@ fn ambiguous_width_and_bce_come_from_env() {
     assert_eq!(caps(&[("TERM", "screen-256color")]).erase, Erase::Default);
     assert_eq!(caps(&[("TERM", "xterm")]).erase, Erase::Background);
 }
+
+#[test]
+fn probe_replies_raise_colour_links_and_notices_behind_a_multiplexer() {
+    use super::Known;
+    use super::{Answers, Version, draft};
+    let env = |key: &str| match key {
+        "TERM" => Some("screen-256color".to_owned()),
+        "TMUX" => Some("/tmp/tmux-1/default,1,0".to_owned()),
+        _ => None,
+    };
+    let before = draft(&env);
+    assert_eq!(before.caps.color, ColorDepth::Ansi256);
+    assert!(!before.caps.hyperlinks);
+    let answers = Answers {
+        truecolor: true,
+        version: Version::Named(Known::WezTerm),
+        ..Answers::default()
+    };
+    let after = draft(&env).settle(&answers);
+    assert_eq!(after.color, ColorDepth::Truecolor);
+    assert!(after.hyperlinks);
+    assert!(after.notices.progress && after.notices.notify.is_some());
+}

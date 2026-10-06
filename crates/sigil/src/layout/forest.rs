@@ -11,6 +11,7 @@ use crate::layout::{LayoutError, StyleData};
 mod box_cell;
 mod default_style;
 mod intrinsic;
+mod links;
 mod measure;
 mod text_memo;
 
@@ -168,65 +169,6 @@ impl LayoutForest {
         self.boxes.push(BoxCell::new(ComputedBox::default()));
         self.intrinsic.push(IntrinsicMemo::default());
         id
-    }
-
-    pub(crate) fn free(&mut self, id: LocalId) -> Result<(), LayoutError> {
-        let slot = self.slot(id)?;
-        let entry = self
-            .nodes
-            .get_mut(slot)
-            .expect("slot() validated the index is in-bounds");
-        let next_tag = entry.tag.wrapping_add(1);
-        entry.alive = false;
-        entry.children.clear();
-        entry.kernel = None;
-        entry.style = StyleData::default();
-        entry.text = None;
-        entry.parent = None;
-        entry.tag = next_tag;
-        self.forget(slot);
-        self.free.push(LocalId {
-            index: id.index,
-            tag: next_tag,
-        });
-        Ok(())
-    }
-
-    #[cfg(any(test, feature = "kittest"))]
-    pub(crate) fn attach(&mut self, parent: LocalId, child: LocalId) -> Result<(), LayoutError> {
-        let _ = self.slot(child)?;
-        let slot = self.slot(parent)?;
-        let entry = self
-            .nodes
-            .get_mut(slot)
-            .expect("slot() validated the parent index is in-bounds");
-        entry.children.push(child);
-        self.adopt(parent, &[child]);
-        self.invalidate(parent);
-        Ok(())
-    }
-
-    pub(crate) fn set_children(
-        &mut self,
-        parent: LocalId,
-        children: &[LocalId],
-    ) -> Result<(), LayoutError> {
-        for child in children {
-            let _ = self.slot(*child)?;
-        }
-        let slot = self.slot(parent)?;
-        let entry = self
-            .nodes
-            .get_mut(slot)
-            .expect("slot() validated the parent index is in-bounds");
-        if entry.children.as_slice() == children {
-            return Ok(());
-        }
-        entry.children.clear();
-        entry.children.extend_from_slice(children);
-        self.adopt(parent, children);
-        self.invalidate(parent);
-        Ok(())
     }
 
     pub(crate) fn set_style(&mut self, id: LocalId, style: StyleData) -> Result<(), LayoutError> {

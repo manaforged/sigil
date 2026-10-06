@@ -253,6 +253,7 @@ fn apply_chrome(
                 .layout(
                     LayoutStyle::flex_row()
                         .fill_width()
+                        .shrink(0.0)
                         .justify_content(justify),
                 )
                 .child(strip),

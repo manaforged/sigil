@@ -4,7 +4,10 @@ use crate::geometry::{PhysicalSize, Point, Scale};
 
 pub use keyboard_types::{Code as PhysicalKey, Modifiers as ModifiersState, NamedKey as Key};
 
+mod paste;
 mod pointer;
+
+pub use paste::PasteEvent;
 
 pub use pointer::{
     ClickConfig, MouseButton, MouseButtons, PointerEvent, PointerEventInit, PointerKind,
@@ -19,6 +22,7 @@ pub enum ShellEvent {
     Ime(ImeEvent),
     Scroll(ScrollEvent),
     FileDrop(FileDropEvent),
+    Paste(alloc::string::String),
     Window(WindowEvent),
 }
 

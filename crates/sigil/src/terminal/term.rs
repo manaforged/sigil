@@ -82,6 +82,12 @@ impl Term {
         if signals::halted() {
             return Ok(());
         }
+        if signals::take_resumed() {
+            self.reenter()?;
+        }
+        if signals::suspended() {
+            return Ok(());
+        }
         let redraw = core::mem::take(&mut self.redraw) | REDRAW.with(|flag| flag.replace(false));
         if self.inline {
             return paint_inline(&mut self.out, screen, redraw);
@@ -90,7 +96,7 @@ impl Term {
     }
 
     pub(crate) fn pending(&self) -> bool {
-        self.redraw || REDRAW.with(Cell::get)
+        self.redraw || REDRAW.with(Cell::get) || signals::resumed()
     }
 
     pub(crate) const fn caps(&self) -> Caps {
@@ -166,7 +172,7 @@ pub fn caps() -> Option<Caps> {
     CAPS.with(Cell::get)
 }
 
-fn current_caps() -> Caps {
+pub(crate) fn current_caps() -> Caps {
     caps().unwrap_or_default()
 }
 
@@ -287,17 +293,8 @@ pub fn set_title(title: &str) -> io::Result<()> {
     }
 }
 
-pub fn bell(note: Option<&str>) -> io::Result<()> {
-    if !LIVE.with(Cell::get) {
-        return Ok(());
-    }
-    let mut out = io::stdout().lock();
-    if let Some(note) = note {
-        let seq = format!("\x1b]9;{note}\x07");
-        crate::terminal::graphics::write_mux(&mut out, &seq, current_caps().mux)?;
-    }
-    out.write_all(b"\x07")?;
-    out.flush()
+pub(crate) fn live() -> bool {
+    LIVE.with(Cell::get)
 }
 
 pub fn set_mouse_capture(yes: bool) -> io::Result<()> {

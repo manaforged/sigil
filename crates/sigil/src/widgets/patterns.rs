@@ -64,7 +64,7 @@ fn work_section(child: impl IntoNode + 'static) -> NodeBuilder {
 fn status_section(child: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
-        .layout(chrome_layout(STATUS_BAR_HEIGHT))
+        .layout(chrome_layout(crate::layout::snap::ruled(STATUS_BAR_HEIGHT)))
         .class(STATUS_CHROME)
         .child(child)
 }

@@ -3,15 +3,18 @@ use std::sync::{Mutex, OnceLock};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
+use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived};
 use crate::style::{NodeStyleExt, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, Tone};
 
 const TRACK_HEIGHT: f32 = 8.0;
 const INDETERMINATE_RATIO: f32 = 0.30;
+const CELL_RULE_THICKNESS: f32 = 1.0;
 
 static TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
 static FILL: &[StyleAtom] = &[Radius::Md.atom(), Token::Accent.bg()];
+static EMPTY: &[StyleAtom] = &[];
 
 pub struct ProgressBuilder {
     value: Signal<f32>,
@@ -127,11 +130,15 @@ fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> N
                 .class(fill_atoms(tone))
                 .tone(tone),
         )
-        .child(
-            container()
-                .layout(LayoutStyle::block().height(track_h).width(0.0))
-                .style_reactive(move || grow_atoms(empty.get())),
-        )
+        .child(empty_segment(empty, track_h))
+}
+
+fn empty_segment(units: Signal<u16>, track_h: f32) -> NodeBuilder {
+    let (height, paint) = CellForm::new((track_h, EMPTY), (CELL_RULE_THICKNESS, TRACK)).pick();
+    container()
+        .layout(LayoutStyle::block().height(height).width(0.0))
+        .class(paint)
+        .style_reactive(move || grow_atoms(units.get()))
 }
 
 fn fill_atoms(tone: Tone) -> [StyleAtom; 2] {
@@ -171,11 +178,7 @@ fn indeterminate_fill(phase: Signal<f32>, track_h: f32) -> NodeBuilder {
         let used = t * (1.0 - INDETERMINATE_RATIO) + INDETERMINATE_RATIO;
         GROW_SCALE - grow_units(used)
     });
-    let spacer = move |units: crate::reactive::Signal<u16>| {
-        container()
-            .layout(LayoutStyle::block().height(track_h).width(0.0))
-            .style_reactive(move || grow_atoms(units.get()))
-    };
+    let spacer = move |units: Signal<u16>| empty_segment(units, track_h);
     container()
         .layout(LayoutStyle::flex_row().fill_width().height(track_h))
         .child(spacer(lead))

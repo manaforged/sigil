@@ -230,9 +230,21 @@ frame. It waits for input until the next interval is due.
   desktop are window-only.
 - `run` installs an OSC 52 clipboard: copy and cut emit
   `ESC ] 52 ; c ; <base64> BEL`, wrapped in DCS passthrough under tmux
-  or screen. Clipboard reads are not wired; paste reaches widgets
-  through bracketed paste. The `clipboard` feature of `sigil-ui` and
-  an OS clipboard are not needed.
+  or screen. A clipboard read sends the OSC 52 query and waits up to
+  one second for the reply; a terminal that does not answer is not
+  asked again in the session. A bracketed paste arrives as one
+  `ShellEvent::Paste`, which the router delivers to the focused node
+  as a `PasteEvent`; text fields insert it as one edit. The
+  `clipboard` feature of `sigil-ui` and an OS clipboard are not needed.
+- Ctrl+Z suspends the app like any job-control program: the host
+  restores the terminal and stops, and `fg` resumes it and redraws.
+  `AppConfig::suspend_on` changes the key; `None` hands Ctrl+Z to the
+  app.
+- `terminal::notify`, `terminal::progress`, `terminal::set_title`, and
+  `terminal::bell` write the terminal's notification (OSC 9 or OSC
+  777), tab progress (OSC 9;4), and title sequences. The host sends
+  only the sequences `Caps::notices` lists for the terminal it
+  identified.
 - `SIGIL_TUI_TRANSCRIPT=1` turns on a transcript stream on stderr:
   each flushed frame writes the `sigil::a11y::snapshot` of the
   accessibility tree when the tree changed, else the text rows that
@@ -248,6 +260,11 @@ frame. It waits for input until the next interval is due.
   and its label sits on the border row. A box thinner than one cell
   paints as a rule glyph instead of a block, so a 1 px divider stays a
   line.
+- One cell is 8 px wide and 8 px tall in layout units, so a size that
+  reads well in a window can double in a terminal: a 16 px row height
+  is two rows. Use `rows(n)` and `cols(n)` for sizes that must read
+  the same in both hosts; the built-in widgets size their rows with
+  them.
 - The `terminal` feature enables `image-decode`, so a markdown
   `data:` image renders. The image keeps its width in cells and takes
   half its height in rows, because a cell is twice as tall as it is

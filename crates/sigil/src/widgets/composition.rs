@@ -27,7 +27,7 @@ where
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .height(STATUS_BAR_HEIGHT)
+                .height(crate::layout::snap::ruled(STATUS_BAR_HEIGHT))
                 .shrink(0.0)
                 .padding_x(space(2))
                 .gap(STATUS_BAR_GAP)

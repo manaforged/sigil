@@ -1,5 +1,8 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextBuilder, TextContent, container, text};
-use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, cols};
+use crate::layout::snap::CellForm;
+use crate::layout::{
+    AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows,
+};
 use crate::reactive::{Signal, signal};
 use crate::style::{Paint, Radius, StateVariants, Token, Tone, space};
 
@@ -9,6 +12,8 @@ use super::super::popup::{ChevronDirection, chevron};
 use super::super::table::ColAlign;
 
 const INDENT_COLS: f32 = 2.0;
+const CELL_COLLAPSED: &str = "▸";
+const CELL_EXPANDED: &str = "▾";
 
 pub(super) fn row_height() -> f32 {
     crate::layout::snap::line(24.0)
@@ -224,11 +229,30 @@ fn disclosure_slot(disclosure: Disclosure) -> NodeBuilder {
             .align_items(AlignItems::Center)
             .justify_content(JustifyContent::Center),
     );
+    let mark =
+        CellForm::<fn(ChevronDirection) -> Box<dyn IntoNode>>::new(window_mark, cell_mark).pick();
     match disclosure {
-        Disclosure::Collapsed => slot.child(chevron(ChevronDirection::Right, space(3))),
-        Disclosure::Expanded => slot.child(chevron(ChevronDirection::Down, space(3))),
+        Disclosure::Collapsed => slot.child(mark(ChevronDirection::Right)),
+        Disclosure::Expanded => slot.child(mark(ChevronDirection::Down)),
         Disclosure::None | Disclosure::Leaf => slot,
     }
+}
+
+fn window_mark(direction: ChevronDirection) -> Box<dyn IntoNode> {
+    Box::new(chevron(direction, space(3)))
+}
+
+fn cell_mark(direction: ChevronDirection) -> Box<dyn IntoNode> {
+    let glyph = match direction {
+        ChevronDirection::Right => CELL_COLLAPSED,
+        ChevronDirection::Down => CELL_EXPANDED,
+    };
+    Box::new(
+        container()
+            .layout(LayoutStyle::block().width(cols(1.0)).height(rows(1.0)))
+            .class(Token::OnSurfaceMuted.text())
+            .child(text(glyph)),
+    )
 }
 
 fn title_text(title: TextContent, slots: &ListRowSlots) -> TextBuilder {

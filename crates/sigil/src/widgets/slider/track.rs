@@ -2,8 +2,9 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 use crate::animation_runtime::presets;
-use crate::kernel::{NodeBuilder, container};
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::kernel::{NodeBuilder, container, text};
+use crate::layout::snap::CellForm;
+use crate::layout::{LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::Signal;
 use crate::style::{
     BORDER_WIDTH, BgGradient, ColorAtom, Elevation, GradientAxis, GradientStopKey, Rgba8,
@@ -21,9 +22,13 @@ static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(SLIDER_TRA
 
 const THUMB_SIZE: f32 = 16.0;
 const TRACK_THICKNESS: f32 = 6.0;
+const CELL_THUMB: &str = "●";
+
+type ThumbForm = fn(InteractionState, Option<Signal<bool>>, bool) -> NodeBuilder;
 
 static TRACK_REST: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
 static TRACK_FILL: &[StyleAtom] = &[Token::Accent.bg()];
+static CELL_THUMB_ATOMS: &[StyleAtom] = &[Token::Accent.text()];
 static THUMB_REST: &[StyleAtom] = &[
     Token::OnAccent.bg(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
@@ -249,6 +254,31 @@ pub(super) fn track_rest(runtime: SliderRuntime) -> NodeBuilder {
 }
 
 pub(super) fn slider_thumb(
+    interaction: InteractionState,
+    disabled: Option<Signal<bool>>,
+    glass: bool,
+) -> NodeBuilder {
+    CellForm::<ThumbForm>::new(window_thumb, cell_thumb).pick()(interaction, disabled, glass)
+}
+
+fn cell_thumb(
+    _interaction: InteractionState,
+    _disabled: Option<Signal<bool>>,
+    _glass: bool,
+) -> NodeBuilder {
+    container()
+        .hittable(false)
+        .layout(
+            LayoutStyle::block()
+                .width(cols(1.0))
+                .height(rows(1.0))
+                .shrink(0.0),
+        )
+        .class(CELL_THUMB_ATOMS)
+        .child(text(CELL_THUMB))
+}
+
+fn window_thumb(
     interaction: InteractionState,
     disabled: Option<Signal<bool>>,
     glass: bool,

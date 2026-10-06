@@ -127,3 +127,31 @@ fn paste_inserts_whole() {
         assert_eq!(value.peek(), "hello world");
     });
 }
+
+#[test]
+fn a_paste_reaches_the_focused_node_as_one_event() {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    use sigil::Host;
+    use sigil::events::{EventRouter, PasteEvent};
+    use sigil::prelude::NodeEventsExt;
+    use sigil::terminal::paste;
+
+    sigil::reactive::Runtime::scope("tui-paste-event", || {
+        let seen = Rc::new(RefCell::new(Vec::new()));
+        let record = Rc::clone(&seen);
+        let mut host = Host::cells();
+        let mut router = EventRouter::new();
+        host.mount(move || {
+            let record = Rc::clone(&record);
+            button("Target").on_paste(move |event: &mut PasteEvent| {
+                record.borrow_mut().push(event.text.clone());
+            })
+        });
+        drop(step(&mut host, &mut router, [], 40, 6));
+        router.focus_next(host.cx());
+        drop(step(&mut host, &mut router, [paste("one\ntwo")], 40, 6));
+        assert_eq!(*seen.borrow(), vec!["one\ntwo".to_owned()]);
+    });
+}

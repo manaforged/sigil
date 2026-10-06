@@ -73,6 +73,8 @@ pub struct AppConfig {
     pub(crate) terminal_access: crate::terminal::Access,
     #[cfg(feature = "terminal")]
     pub(crate) mouse_tracking: Option<crate::terminal::MouseTracking>,
+    #[cfg(feature = "terminal")]
+    pub(crate) suspend: Option<crate::events::Shortcut>,
     #[cfg(feature = "desktop")]
     #[cfg_attr(
         not(target_arch = "wasm32"),
@@ -120,6 +122,10 @@ impl AppConfig {
             terminal_access: crate::terminal::Access::default(),
             #[cfg(feature = "terminal")]
             mouse_tracking: None,
+            #[cfg(feature = "terminal")]
+            suspend: Some(crate::events::Shortcut::ctrl(
+                crate::events::LogicalKey::character("z"),
+            )),
             #[cfg(feature = "desktop")]
             canvas: None,
         }
@@ -215,6 +221,13 @@ impl AppConfig {
     #[must_use]
     pub const fn mouse_tracking(mut self, tracking: crate::terminal::MouseTracking) -> Self {
         self.mouse_tracking = Some(tracking);
+        self
+    }
+
+    #[cfg(feature = "terminal")]
+    #[must_use]
+    pub fn suspend_on(mut self, shortcut: impl Into<Option<crate::events::Shortcut>>) -> Self {
+        self.suspend = shortcut.into();
         self
     }
 

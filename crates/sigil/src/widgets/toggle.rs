@@ -3,12 +3,13 @@ use std::rc::Rc;
 
 use crate::animation_runtime::presets;
 use crate::events::{Key, LogicalKey, NodeEventsExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::Signal;
+use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
+use crate::layout::snap::CellForm;
+use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle, cols, rows};
+use crate::reactive::{Signal, derived};
 use crate::style::{
-    JustifyKind, NodeStyleExt, PaintTarget, StateStyle, Style, StyleAtom, StyleOverlay, StyleSlot,
-    StyleVariant, Theme, Token, TransitionId, space,
+    ControlSize, JustifyKind, Metrics, NodeStyleExt, PaintTarget, StateStyle, Style, StyleAtom,
+    StyleOverlay, StyleSlot, StyleVariant, Theme, Token, TransitionId, space,
 };
 
 use crate::widgets::interaction::InteractionState;
@@ -20,6 +21,9 @@ use super::shared::{
 };
 
 const TOGGLE_TRANSITION: TransitionId = presets::SMOOTH;
+const CELL_TRACK_COLS: f32 = 4.0;
+const CELL_TRACK_ON: &str = "[ ■]";
+const CELL_TRACK_OFF: &str = "[■ ]";
 
 pub struct ToggleBuilder {
     on: Signal<bool>,
@@ -76,6 +80,8 @@ static TOGGLE_OFF_DISABLED: &[StyleAtom] = &[
 ];
 static THUMB_ON: &[StyleAtom] = &[Token::OnAccent.bg()];
 static THUMB_OFF: &[StyleAtom] = &[Token::Gray11.bg()];
+static CELL_ON: &[StyleAtom] = &[Token::Accent.text()];
+static CELL_OFF: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
 
 #[must_use]
 pub fn toggle(on: Signal<bool>) -> ToggleBuilder {
@@ -176,7 +182,11 @@ impl ToggleBuilder {
             .key(LogicalKey::character(" "), move |event| {
                 activate_binary_key(event, interaction, disabled, on, &space_change);
             })
-            .child(toggle_track(on, disabled, interaction));
+            .child(CellForm::<TrackForm>::new(toggle_track, cell_track).pick()(
+                on,
+                disabled,
+                interaction,
+            ));
         if let Some(label_source) = self.label.clone() {
             node = node.child(toggle_label(label_source));
         }
@@ -199,17 +209,54 @@ impl IntoNode for ToggleBuilder {
     }
 }
 
+type TrackForm = fn(Signal<bool>, Option<Signal<bool>>, InteractionState) -> NodeBuilder;
+
 fn toggle_layout(has_label: bool) -> LayoutStyle {
+    let metrics = Metrics::current();
+    let height = metrics.control_height(ControlSize::Default);
     let layout = control_row(LayoutStyle::flex_row())
-        .height(space(7))
+        .height(height)
         .shrink(0.0)
-        .gap(space(2))
+        .gap(metrics.gap(ControlSize::Default))
         .align_items(AlignItems::Center);
     if has_label {
         layout
     } else {
-        layout.fixed_size(CONTROL_INSET.mul_add(2.0, space(9)), space(7))
+        CellForm::<fn(LayoutStyle, f32) -> LayoutStyle>::new(bare_window_layout, bare_cell_layout)
+            .pick()(layout, height)
     }
+}
+
+fn bare_window_layout(layout: LayoutStyle, height: f32) -> LayoutStyle {
+    layout.fixed_size(CONTROL_INSET.mul_add(2.0, space(9)), height)
+}
+
+const fn bare_cell_layout(layout: LayoutStyle, _height: f32) -> LayoutStyle {
+    layout
+}
+
+fn cell_track(
+    on: Signal<bool>,
+    _disabled: Option<Signal<bool>>,
+    _interaction: InteractionState,
+) -> NodeBuilder {
+    container()
+        .hittable(false)
+        .layout(
+            LayoutStyle::block()
+                .width(cols(CELL_TRACK_COLS))
+                .height(rows(1.0))
+                .shrink(0.0),
+        )
+        .style_reactive(move || if on.get() { CELL_ON } else { CELL_OFF })
+        .child(text(derived(move || {
+            if on.get() {
+                CELL_TRACK_ON
+            } else {
+                CELL_TRACK_OFF
+            }
+            .to_owned()
+        })))
 }
 
 fn toggle_track(
