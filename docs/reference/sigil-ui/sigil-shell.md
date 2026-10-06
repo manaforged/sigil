@@ -16,14 +16,16 @@
 
 | Method | Description |
 | --- | --- |
-| <code>a11y_action_receiver(&amp;self) -&gt; Receiver&lt;ActionRequest&gt;</code> |  |
-| <code>a11y_active(&amp;self) -&gt; bool</code> |  |
-| <code>publish_a11y_update(&amp;mut self, update: &amp;TreeUpdate)</code> |  |
-| <code>take_a11y_activation(&amp;self) -&gt; bool</code> |  |
+| <code>a11y_action_receiver(&amp;self, handle: <a href="#winitwindowhandle">WinitWindowHandle</a>) -&gt; Option&lt;Receiver&lt;ActionRequest&gt;&gt;</code> |  |
+| <code>a11y_active(&amp;self, handle: <a href="#winitwindowhandle">WinitWindowHandle</a>) -&gt; bool</code> |  |
+| <code>publish_a11y_update(&amp;mut self, handle: <a href="#winitwindowhandle">WinitWindowHandle</a>, update: TreeUpdate)</code> |  |
+| <code>take_a11y_activation(&amp;self, handle: <a href="#winitwindowhandle">WinitWindowHandle</a>) -&gt; bool</code> |  |
 | <code>const exit_requested(&amp;self) -&gt; bool</code> |  |
 | <code>new() -&gt; Result&lt;Self, <a href="#shellerror">ShellError</a>&gt;</code> |  |
 | <code>new_accessory() -&gt; Result&lt;Self, <a href="#shellerror">ShellError</a>&gt;</code> |  |
 | <code>on_idle_deadline&lt;F: Fn() -&gt; Option&lt;Instant&gt; + Send + Sync + 'static&gt;(&amp;mut self, hook: F)</code> |  |
+| <code>const redraw_target(&amp;self) -&gt; Option&lt;<a href="#winitwindowhandle">WinitWindowHandle</a>&gt;</code> |  |
+| <code>remove_window(&amp;mut self, handle: <a href="#winitwindowhandle">WinitWindowHandle</a>)</code> |  |
 | <code>const request_exit(&amp;mut self)</code> |  |
 | <code>take_failed_windows(&amp;mut self) -&gt; Vec&lt;(<a href="#winitwindowhandle">WinitWindowHandle</a>, String)&gt;</code> |  |
 | <code>take_force_paint(&amp;mut self) -&gt; bool</code> |  |

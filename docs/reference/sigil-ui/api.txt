@@ -263,6 +263,66 @@ pub fn sigil::app::dialog::open_file() -> sigil::app::dialog::Picked<std::path::
 pub fn sigil::app::dialog::pick_folder() -> sigil::app::dialog::Picked<std::path::PathBuf>
 pub fn sigil::app::dialog::save_file() -> sigil::app::dialog::Picked<std::path::PathBuf>
 pub type sigil::app::dialog::Picked<T> = sigil::reactive::Signal<sigil::tasks::Status<core::option::Option<T>, core::convert::Infallible>>
+pub mod sigil::app::hotkey
+pub fn sigil::app::hotkey::register(shortcut: &sigil::events::Shortcut) -> sigil::AppResult<sigil::reactive::EventChannel<sigil::events::KeyPhase>>
+pub fn sigil::app::hotkey::unregister(shortcut: &sigil::events::Shortcut) -> sigil::AppResult<bool>
+pub mod sigil::app::media
+#[non_exhaustive] pub enum sigil::app::media::MediaKey
+pub sigil::app::media::MediaKey::Next
+pub sigil::app::media::MediaKey::Pause
+pub sigil::app::media::MediaKey::Play
+pub sigil::app::media::MediaKey::Previous
+pub sigil::app::media::MediaKey::Quit
+pub sigil::app::media::MediaKey::Raise
+pub sigil::app::media::MediaKey::SeekBackward
+pub sigil::app::media::MediaKey::SeekBy
+pub sigil::app::media::MediaKey::SeekBy::amount: core::time::Duration
+pub sigil::app::media::MediaKey::SeekBy::forward: bool
+pub sigil::app::media::MediaKey::SeekForward
+pub sigil::app::media::MediaKey::SetPosition(core::time::Duration)
+pub sigil::app::media::MediaKey::SetVolume(f64)
+pub sigil::app::media::MediaKey::Stop
+pub sigil::app::media::MediaKey::Toggle
+impl core::clone::Clone for sigil::app::media::MediaKey
+impl core::cmp::PartialEq for sigil::app::media::MediaKey
+impl core::fmt::Debug for sigil::app::media::MediaKey
+impl core::marker::Copy for sigil::app::media::MediaKey
+impl core::marker::StructuralPartialEq for sigil::app::media::MediaKey
+#[non_exhaustive] pub enum sigil::app::media::PlaybackState
+pub sigil::app::media::PlaybackState::Paused
+pub sigil::app::media::PlaybackState::Playing
+pub sigil::app::media::PlaybackState::Stopped
+impl core::clone::Clone for sigil::app::media::PlaybackState
+impl core::cmp::Eq for sigil::app::media::PlaybackState
+impl core::cmp::PartialEq for sigil::app::media::PlaybackState
+impl core::default::Default for sigil::app::media::PlaybackState
+impl core::fmt::Debug for sigil::app::media::PlaybackState
+impl core::marker::Copy for sigil::app::media::PlaybackState
+impl core::marker::StructuralPartialEq for sigil::app::media::PlaybackState
+#[non_exhaustive] pub struct sigil::app::media::Track
+pub sigil::app::media::Track::album: core::option::Option<alloc::string::String>
+pub sigil::app::media::Track::artist: core::option::Option<alloc::string::String>
+pub sigil::app::media::Track::cover_url: core::option::Option<alloc::string::String>
+pub sigil::app::media::Track::duration: core::option::Option<core::time::Duration>
+pub sigil::app::media::Track::position: core::option::Option<core::time::Duration>
+pub sigil::app::media::Track::state: sigil::app::media::PlaybackState
+pub sigil::app::media::Track::title: alloc::string::String
+impl sigil::app::media::Track
+pub fn sigil::app::media::Track::album(self, album: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn sigil::app::media::Track::artist(self, artist: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn sigil::app::media::Track::cover_url(self, url: impl core::convert::Into<alloc::string::String>) -> Self
+pub const fn sigil::app::media::Track::duration(self, duration: core::time::Duration) -> Self
+pub fn sigil::app::media::Track::new(title: impl core::convert::Into<alloc::string::String>) -> Self
+pub const fn sigil::app::media::Track::position(self, position: core::time::Duration) -> Self
+pub const fn sigil::app::media::Track::state(self, state: sigil::app::media::PlaybackState) -> Self
+impl core::clone::Clone for sigil::app::media::Track
+impl core::cmp::Eq for sigil::app::media::Track
+impl core::cmp::PartialEq for sigil::app::media::Track
+impl core::default::Default for sigil::app::media::Track
+impl core::fmt::Debug for sigil::app::media::Track
+impl core::marker::StructuralPartialEq for sigil::app::media::Track
+pub fn sigil::app::media::events() -> sigil::reactive::EventChannel<sigil::app::media::MediaKey>
+pub fn sigil::app::media::now_playing(track: sigil::app::media::Track) -> sigil::AppResult<()>
 pub mod sigil::app::menu
 pub use sigil::app::menu::AboutMetadata
 pub use sigil::app::menu::CheckMenuItem
@@ -278,6 +338,21 @@ pub use sigil::app::menu::Submenu
 pub fn sigil::app::menu::accelerator(shortcut: &sigil::events::Shortcut) -> core::option::Option<muda::accelerator::KeyAccelerator>
 pub fn sigil::app::menu::events() -> sigil::reactive::EventChannel<muda::menu_id::MenuId>
 pub fn sigil::app::menu::set_menu_bar(menu: muda::menu::Menu)
+pub mod sigil::app::notify
+#[non_exhaustive] pub struct sigil::app::notify::Notification
+pub sigil::app::notify::Notification::app_name: core::option::Option<alloc::string::String>
+pub sigil::app::notify::Notification::body: alloc::string::String
+pub sigil::app::notify::Notification::title: alloc::string::String
+impl sigil::app::notify::Notification
+pub fn sigil::app::notify::Notification::app_name(self, name: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn sigil::app::notify::Notification::new(title: impl core::convert::Into<alloc::string::String>, body: impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for sigil::app::notify::Notification
+impl core::cmp::Eq for sigil::app::notify::Notification
+impl core::cmp::PartialEq for sigil::app::notify::Notification
+impl core::default::Default for sigil::app::notify::Notification
+impl core::fmt::Debug for sigil::app::notify::Notification
+impl core::marker::StructuralPartialEq for sigil::app::notify::Notification
+pub fn sigil::app::notify::send(notification: &sigil::app::notify::Notification) -> sigil::AppResult<()>
 pub mod sigil::app::tray
 pub use sigil::app::tray::Icon
 pub use sigil::app::tray::TrayIcon
@@ -285,6 +360,7 @@ pub use sigil::app::tray::TrayIconBuilder
 pub use sigil::app::tray::TrayIconEvent
 pub fn sigil::app::tray::events() -> sigil::reactive::EventChannel<tray_icon::TrayIconEvent>
 pub fn sigil::app::tray::set_tray(builder: tray_icon::TrayIconBuilder)
+pub fn sigil::app::tray::update<R>(edit: impl core::ops::function::FnOnce(&tray_icon::TrayIcon) -> R) -> core::option::Option<R>
 pub enum sigil::app::Ambiguous
 pub sigil::app::Ambiguous::Narrow
 pub sigil::app::Ambiguous::Wide
@@ -312,6 +388,18 @@ pub sigil::app::CellWidth::Unicode
 impl core::clone::Clone for sigil::app::CellWidth
 impl core::default::Default for sigil::app::CellWidth
 impl core::marker::Copy for sigil::app::CellWidth
+#[non_exhaustive] pub enum sigil::app::CloseAction
+pub sigil::app::CloseAction::Close
+pub sigil::app::CloseAction::Hide
+pub sigil::app::CloseAction::Keep
+impl core::clone::Clone for sigil::app::CloseAction
+impl core::cmp::Eq for sigil::app::CloseAction
+impl core::cmp::PartialEq for sigil::app::CloseAction
+impl core::default::Default for sigil::app::CloseAction
+impl core::fmt::Debug for sigil::app::CloseAction
+impl core::hash::Hash for sigil::app::CloseAction
+impl core::marker::Copy for sigil::app::CloseAction
+impl core::marker::StructuralPartialEq for sigil::app::CloseAction
 #[non_exhaustive] pub enum sigil::app::ErrorKind
 pub sigil::app::ErrorKind::Config
 pub sigil::app::ErrorKind::Font
@@ -357,16 +445,31 @@ impl core::marker::StructuralPartialEq for sigil::app::ResizeDirection
 pub sigil::app::WindowCommand::Close
 pub sigil::app::WindowCommand::Drag
 pub sigil::app::WindowCommand::DragResize(sigil::app::ResizeDirection)
+pub sigil::app::WindowCommand::Focus
+pub sigil::app::WindowCommand::Hide
 pub sigil::app::WindowCommand::Minimize
+pub sigil::app::WindowCommand::SetLevel(sigil::app::WindowLevel)
+pub sigil::app::WindowCommand::SetPosition(sigil::geometry::Point)
+pub sigil::app::WindowCommand::SetTitle(alloc::string::String)
 pub sigil::app::WindowCommand::SetZoom(u16)
+pub sigil::app::WindowCommand::Show
 pub sigil::app::WindowCommand::ToggleMaximize
 impl core::clone::Clone for sigil::app::WindowCommand
-impl core::cmp::Eq for sigil::app::WindowCommand
 impl core::cmp::PartialEq for sigil::app::WindowCommand
 impl core::fmt::Debug for sigil::app::WindowCommand
-impl core::hash::Hash for sigil::app::WindowCommand
-impl core::marker::Copy for sigil::app::WindowCommand
 impl core::marker::StructuralPartialEq for sigil::app::WindowCommand
+#[non_exhaustive] pub enum sigil::app::WindowLevel
+pub sigil::app::WindowLevel::AlwaysOnBottom
+pub sigil::app::WindowLevel::AlwaysOnTop
+pub sigil::app::WindowLevel::Normal
+impl core::clone::Clone for sigil::app::WindowLevel
+impl core::cmp::Eq for sigil::app::WindowLevel
+impl core::cmp::PartialEq for sigil::app::WindowLevel
+impl core::default::Default for sigil::app::WindowLevel
+impl core::fmt::Debug for sigil::app::WindowLevel
+impl core::hash::Hash for sigil::app::WindowLevel
+impl core::marker::Copy for sigil::app::WindowLevel
+impl core::marker::StructuralPartialEq for sigil::app::WindowLevel
 pub struct sigil::app::DefaultFonts
 pub sigil::app::DefaultFonts::display: core::option::Option<(alloc::sync::Arc<alloc::vec::Vec<u8>>, u32)>
 pub sigil::app::DefaultFonts::fallbacks: alloc::vec::Vec<(alloc::sync::Arc<alloc::vec::Vec<u8>>, u32)>
@@ -451,6 +554,21 @@ impl core::marker::Copy for sigil::app::TextTuning
 impl core::marker::StructuralPartialEq for sigil::app::TextTuning
 pub struct sigil::app::ThemeWatcher
 impl core::ops::drop::Drop for sigil::app::ThemeWatcher
+pub struct sigil::app::WindowId(_)
+impl sigil::app::WindowId
+pub fn sigil::app::WindowId::close(self)
+pub fn sigil::app::WindowId::command(self, command: sigil::app::WindowCommand)
+pub fn sigil::app::WindowId::focused(self) -> core::option::Option<sigil::reactive::Signal<bool>>
+pub fn sigil::app::WindowId::occluded(self) -> core::option::Option<sigil::reactive::Signal<bool>>
+impl core::clone::Clone for sigil::app::WindowId
+impl core::cmp::Eq for sigil::app::WindowId
+impl core::cmp::Ord for sigil::app::WindowId
+impl core::cmp::PartialEq for sigil::app::WindowId
+impl core::cmp::PartialOrd for sigil::app::WindowId
+impl core::fmt::Debug for sigil::app::WindowId
+impl core::hash::Hash for sigil::app::WindowId
+impl core::marker::Copy for sigil::app::WindowId
+impl core::marker::StructuralPartialEq for sigil::app::WindowId
 pub struct sigil::app::WindowOpts
 pub sigil::app::WindowOpts::anchor: core::option::Option<sigil::app::Anchor>
 pub sigil::app::WindowOpts::fixed_size: bool
@@ -466,9 +584,11 @@ impl core::marker::Copy for sigil::app::WindowOpts
 impl core::marker::StructuralPartialEq for sigil::app::WindowOpts
 pub fn sigil::app::cell_text_lines(text: &str, max_cells: usize) -> alloc::vec::Vec<(usize, usize)>
 pub fn sigil::app::cell_width(text: &str) -> usize
+pub fn sigil::app::current_window() -> core::option::Option<sigil::app::WindowId>
 pub fn sigil::app::display_scale() -> sigil::reactive::Signal<f32>
 pub fn sigil::app::is_grid() -> bool
 pub fn sigil::app::open(target: impl core::convert::AsRef<std::ffi::os_str::OsStr>) -> sigil::AppResult<()>
+pub fn sigil::app::open_window<C, F, N>(config: C, view: F) -> sigil::app::WindowId where C: core::convert::Into<sigil::AppConfig>, F: core::ops::function::Fn() -> N + 'static, N: sigil::kernel::IntoNode
 pub fn sigil::app::parse_theme(input: &str) -> core::option::Option<sigil::style::Theme>
 pub fn sigil::app::set_ambiguous(width: sigil::app::Ambiguous)
 pub fn sigil::app::set_cell_width(width: sigil::app::CellWidth)
@@ -479,6 +599,8 @@ pub fn sigil::app::text_tuning() -> sigil::app::TextTuning
 pub fn sigil::app::use_system_fonts()
 pub fn sigil::app::viewport_size() -> sigil::reactive::Signal<sigil::geometry::LogicalSize>
 pub fn sigil::app::watch_theme(path: impl core::convert::Into<std::path::PathBuf>) -> sigil::AppResult<sigil::app::ThemeWatcher>
+pub fn sigil::app::window_focused() -> sigil::reactive::Signal<bool>
+pub fn sigil::app::window_occluded() -> sigil::reactive::Signal<bool>
 pub type sigil::app::AccessibilityTree = accesskit::TreeUpdate
 pub type sigil::app::FrameInputHook<'a> = alloc::boxed::Box<(dyn core::ops::function::FnOnce(&mut sigil::Host, &mut sigil::events::EventRouter) -> core::option::Option<(f32, f32)> + 'a)>
 pub type sigil::app::FrameLayoutHook<'a> = alloc::boxed::Box<(dyn core::ops::function::FnOnce(&mut sigil::Host, &mut sigil::events::EventRouter) + 'a)>
@@ -1637,6 +1759,7 @@ pub trait sigil::kernel::IntoNode: sigil::kernel::component::IntoNodeBox
 pub fn sigil::kernel::IntoNode::build(self, cx: &mut sigil::kernel::Cx) -> sigil::kernel::NodeId
 impl sigil::kernel::IntoNode for alloc::boxed::Box<dyn sigil::kernel::IntoNode>
 impl sigil::kernel::IntoNode for sigil::widgets::ButtonBuilder
+impl sigil::kernel::IntoNode for sigil::widgets::CanvasBuilder
 impl sigil::kernel::IntoNode for sigil::widgets::CardBuilder
 impl sigil::kernel::IntoNode for sigil::widgets::ChartBuilder
 impl sigil::kernel::IntoNode for sigil::widgets::CheckboxBuilder
@@ -2015,6 +2138,7 @@ pub sigil::layout::StyleData::align_items: core::option::Option<sigil::layout::A
 pub sigil::layout::StyleData::align_self: core::option::Option<sigil::layout::AlignSelf>
 pub sigil::layout::StyleData::border: sigil::layout::Rect<sigil::layout::LengthPercentage>
 pub sigil::layout::StyleData::box_sizing: sigil::layout::BoxSizing
+pub sigil::layout::StyleData::direction: sigil::style::Direction
 pub sigil::layout::StyleData::display: sigil::layout::Display
 pub sigil::layout::StyleData::flex_basis: sigil::layout::Dimension
 pub sigil::layout::StyleData::flex_direction: sigil::layout::FlexDirection
@@ -2554,6 +2678,7 @@ pub const fn sigil::AppConfig::inline(self, yes: bool) -> Self
 pub const fn sigil::AppConfig::min_size(self, width: u32, height: u32) -> Self
 pub const fn sigil::AppConfig::mouse_tracking(self, tracking: sigil::terminal::MouseTracking) -> Self
 pub fn sigil::AppConfig::new(title: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn sigil::AppConfig::on_close(self, decide: impl core::ops::function::Fn() -> sigil::app::CloseAction + 'static) -> Self
 pub const fn sigil::AppConfig::on_panic(&self) -> sigil::app::PanicPolicy
 pub const fn sigil::AppConfig::overlay(self, yes: bool) -> Self
 pub const fn sigil::AppConfig::panic_policy(self, policy: sigil::app::PanicPolicy) -> Self
@@ -2602,7 +2727,9 @@ pub sigil::prelude::Date::year: i32
 impl sigil::widgets::Date
 pub fn sigil::widgets::Date::new(year: i32, month: u8, day: u8) -> core::option::Option<Self>
 pub fn sigil::widgets::Date::parse(input: &str) -> core::option::Option<Self>
+pub fn sigil::widgets::Date::parse_in(input: &str, locale: &sigil::style::Locale) -> core::option::Option<Self>
 pub fn sigil::widgets::Date::render(self) -> alloc::string::String
+pub fn sigil::widgets::Date::render_in(self, locale: &sigil::style::Locale) -> alloc::string::String
 impl core::clone::Clone for sigil::widgets::Date
 impl core::cmp::Eq for sigil::widgets::Date
 impl core::cmp::PartialEq for sigil::widgets::Date
@@ -2701,6 +2828,7 @@ pub struct sigil::prelude::PathNode
 impl sigil::widgets::PathNode
 pub fn sigil::widgets::PathNode::close(self) -> Self
 pub fn sigil::widgets::PathNode::cubic_to(self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) -> Self
+pub fn sigil::widgets::PathNode::draw(self, scene: &mut sigil::scene::SceneBuilder, destination: sigil::geometry::Rect, theme: &sigil::style::Theme)
 pub fn sigil::widgets::PathNode::fill(self, color: impl core::convert::Into<sigil::widgets::PathColor>) -> Self
 pub fn sigil::widgets::PathNode::fill_linear(self, start: (f32, f32), end: (f32, f32), stops: alloc::vec::Vec<(f32, sigil::style::Rgba8)>) -> Self
 pub fn sigil::widgets::PathNode::fill_radial(self, center: (f32, f32), radius: f32, stops: alloc::vec::Vec<(f32, sigil::style::Rgba8)>) -> Self
@@ -2857,14 +2985,17 @@ pub sigil::prelude::Theme::accent: sigil::style::Rgba8
 pub sigil::prelude::Theme::accent_hover: sigil::style::Rgba8
 pub sigil::prelude::Theme::accent_scale: sigil::style::scale::ColorScale
 pub sigil::prelude::Theme::border: sigil::style::Rgba8
+pub sigil::prelude::Theme::direction: sigil::style::Direction
 pub sigil::prelude::Theme::error: sigil::style::scale::ColorScale
 pub sigil::prelude::Theme::gray: sigil::style::scale::ColorScale
 pub sigil::prelude::Theme::info: sigil::style::scale::ColorScale
+pub sigil::prelude::Theme::locale: sigil::style::Locale
 pub sigil::prelude::Theme::metrics: sigil::style::Metrics
 pub sigil::prelude::Theme::missing_token_fallback: sigil::style::Rgba8
 pub sigil::prelude::Theme::on_accent: sigil::style::Rgba8
 pub sigil::prelude::Theme::on_solid: sigil::style::Rgba8
 pub sigil::prelude::Theme::on_surface: sigil::style::Rgba8
+pub sigil::prelude::Theme::strings: sigil::style::Strings
 pub sigil::prelude::Theme::success: sigil::style::scale::ColorScale
 pub sigil::prelude::Theme::surface: sigil::style::Rgba8
 pub sigil::prelude::Theme::surface_hover: sigil::style::Rgba8
@@ -2878,9 +3009,12 @@ pub const fn sigil::style::Theme::scale(&self, role: sigil::style::scale::ScaleR
 pub const fn sigil::style::Theme::surface_subtle(&self) -> sigil::style::Rgba8
 pub const fn sigil::style::Theme::text_muted(&self) -> sigil::style::Rgba8
 pub const fn sigil::style::Theme::with_accent_scale(self, scale: sigil::style::scale::ColorScale) -> Self
+pub const fn sigil::style::Theme::with_direction(self, direction: sigil::style::Direction) -> Self
 pub const fn sigil::style::Theme::with_error_scale(self, scale: sigil::style::scale::ColorScale) -> Self
 pub const fn sigil::style::Theme::with_gray_scale(self, scale: sigil::style::scale::ColorScale) -> Self
 pub const fn sigil::style::Theme::with_info_scale(self, scale: sigil::style::scale::ColorScale) -> Self
+pub const fn sigil::style::Theme::with_locale(self, locale: sigil::style::Locale) -> Self
+pub fn sigil::style::Theme::with_strings(self, strings: sigil::style::Strings) -> Self
 pub const fn sigil::style::Theme::with_success_scale(self, scale: sigil::style::scale::ColorScale) -> Self
 pub const fn sigil::style::Theme::with_warn_scale(self, scale: sigil::style::scale::ColorScale) -> Self
 pub fn sigil::style::Theme::color(&self, token: sigil::style::Token) -> sigil::style::Rgba8
@@ -2973,8 +3107,8 @@ pub fn sigil::prelude::NodeStyleExt::tone(self, tone: sigil::style::Tone) -> Sel
 pub fn sigil::prelude::NodeStyleExt::visible_when(self, shown: impl sigil::reactive::Reactive<bool>) -> Self
 pub trait sigil::prelude::NumericKind: core::marker::Copy + core::cmp::PartialOrd + 'static + sigil::widgets::number_field::private::Sealed
 pub fn sigil::prelude::NumericKind::clamp_to(self, range: &core::ops::range::RangeInclusive<Self>) -> Self
-pub fn sigil::prelude::NumericKind::parse(input: &str) -> core::option::Option<Self>
-pub fn sigil::prelude::NumericKind::render(self) -> alloc::string::String
+pub fn sigil::prelude::NumericKind::parse(input: &str, locale: &sigil::style::Locale) -> core::option::Option<Self>
+pub fn sigil::prelude::NumericKind::render(self, locale: &sigil::style::Locale) -> alloc::string::String
 impl sigil::widgets::NumericKind for f32
 impl sigil::widgets::NumericKind for f64
 impl sigil::widgets::NumericKind for i32
@@ -4079,14 +4213,16 @@ impl core::marker::Copy for sigil::shell::WakeEvent
 impl core::marker::StructuralPartialEq for sigil::shell::WakeEvent
 pub struct sigil::shell::WinitShell
 impl sigil::shell::WinitShell
-pub fn sigil::shell::WinitShell::a11y_action_receiver(&self) -> crossbeam_channel::channel::Receiver<accesskit::ActionRequest>
-pub fn sigil::shell::WinitShell::a11y_active(&self) -> bool
-pub fn sigil::shell::WinitShell::publish_a11y_update(&mut self, update: &accesskit::TreeUpdate)
-pub fn sigil::shell::WinitShell::take_a11y_activation(&self) -> bool
+pub fn sigil::shell::WinitShell::a11y_action_receiver(&self, handle: sigil::shell::WinitWindowHandle) -> core::option::Option<crossbeam_channel::channel::Receiver<accesskit::ActionRequest>>
+pub fn sigil::shell::WinitShell::a11y_active(&self, handle: sigil::shell::WinitWindowHandle) -> bool
+pub fn sigil::shell::WinitShell::publish_a11y_update(&mut self, handle: sigil::shell::WinitWindowHandle, update: accesskit::TreeUpdate)
+pub fn sigil::shell::WinitShell::take_a11y_activation(&self, handle: sigil::shell::WinitWindowHandle) -> bool
 pub const fn sigil::shell::WinitShell::exit_requested(&self) -> bool
 pub fn sigil::shell::WinitShell::new() -> core::result::Result<Self, sigil::shell::ShellError>
 pub fn sigil::shell::WinitShell::new_accessory() -> core::result::Result<Self, sigil::shell::ShellError>
 pub fn sigil::shell::WinitShell::on_idle_deadline<F: core::ops::function::Fn() -> core::option::Option<std::time::Instant> + core::marker::Send + core::marker::Sync + 'static>(&mut self, hook: F)
+pub const fn sigil::shell::WinitShell::redraw_target(&self) -> core::option::Option<sigil::shell::WinitWindowHandle>
+pub fn sigil::shell::WinitShell::remove_window(&mut self, handle: sigil::shell::WinitWindowHandle)
 pub const fn sigil::shell::WinitShell::request_exit(&mut self)
 pub fn sigil::shell::WinitShell::take_failed_windows(&mut self) -> alloc::vec::Vec<(sigil::shell::WinitWindowHandle, alloc::string::String)>
 pub fn sigil::shell::WinitShell::take_force_paint(&mut self) -> bool
@@ -4272,6 +4408,18 @@ pub sigil::style::ControlSize::Compact
 pub sigil::style::ControlSize::Default
 pub sigil::style::ControlSize::Grow
 pub sigil::style::ControlSize::Wide
+pub enum sigil::style::DateOrder
+pub sigil::style::DateOrder::Dmy
+pub sigil::style::DateOrder::Mdy
+pub sigil::style::DateOrder::Ymd
+impl core::clone::Clone for sigil::style::DateOrder
+impl core::cmp::Eq for sigil::style::DateOrder
+impl core::cmp::PartialEq for sigil::style::DateOrder
+impl core::default::Default for sigil::style::DateOrder
+impl core::fmt::Debug for sigil::style::DateOrder
+impl core::hash::Hash for sigil::style::DateOrder
+impl core::marker::Copy for sigil::style::DateOrder
+impl core::marker::StructuralPartialEq for sigil::style::DateOrder
 pub enum sigil::style::Dimension
 pub sigil::style::Dimension::Auto
 pub sigil::style::Dimension::Fraction(u16)
@@ -4286,6 +4434,19 @@ impl core::fmt::Debug for sigil::style::Dimension
 impl core::hash::Hash for sigil::style::Dimension
 impl core::marker::Copy for sigil::style::Dimension
 impl core::marker::StructuralPartialEq for sigil::style::Dimension
+pub enum sigil::style::Direction
+pub sigil::style::Direction::Ltr
+pub sigil::style::Direction::Rtl
+impl sigil::style::Direction
+pub const fn sigil::style::Direction::is_rtl(self) -> bool
+impl core::clone::Clone for sigil::style::Direction
+impl core::cmp::Eq for sigil::style::Direction
+impl core::cmp::PartialEq for sigil::style::Direction
+impl core::default::Default for sigil::style::Direction
+impl core::fmt::Debug for sigil::style::Direction
+impl core::hash::Hash for sigil::style::Direction
+impl core::marker::Copy for sigil::style::Direction
+impl core::marker::StructuralPartialEq for sigil::style::Direction
 pub enum sigil::style::DisplayKind
 pub sigil::style::DisplayKind::Block
 pub sigil::style::DisplayKind::Flex
@@ -4424,6 +4585,52 @@ impl core::default::Default for sigil::style::StateSlot
 impl core::fmt::Debug for sigil::style::StateSlot
 impl core::marker::Copy for sigil::style::StateSlot
 impl core::marker::StructuralPartialEq for sigil::style::StateSlot
+#[non_exhaustive] pub enum sigil::style::StringKey
+pub sigil::style::StringKey::Autosize
+pub sigil::style::StringKey::Avatar
+pub sigil::style::StringKey::Cancel
+pub sigil::style::StringKey::Chart
+pub sigil::style::StringKey::ChartSummary
+pub sigil::style::StringKey::Close
+pub sigil::style::StringKey::CodeEditor
+pub sigil::style::StringKey::CommandMenu
+pub sigil::style::StringKey::ContextMenu
+pub sigil::style::StringKey::Dialog
+pub sigil::style::StringKey::Empty
+pub sigil::style::StringKey::Heatmap
+pub sigil::style::StringKey::HeatmapGrid
+pub sigil::style::StringKey::HideColumn
+pub sigil::style::StringKey::KeyboardShortcuts
+pub sigil::style::StringKey::Loading
+pub sigil::style::StringKey::MenuBar
+pub sigil::style::StringKey::MoveLeft
+pub sigil::style::StringKey::MoveRight
+pub sigil::style::StringKey::NoData
+pub sigil::style::StringKey::Ok
+pub sigil::style::StringKey::RequiredMark
+pub sigil::style::StringKey::ResizePanes
+pub sigil::style::StringKey::ResizeSidebar
+pub sigil::style::StringKey::Search
+pub sigil::style::StringKey::Select
+pub sigil::style::StringKey::SelectAllRows
+pub sigil::style::StringKey::SelectRow
+pub sigil::style::StringKey::Series
+pub sigil::style::StringKey::ShowAllColumns
+pub sigil::style::StringKey::SortAscending
+pub sigil::style::StringKey::SortDescending
+pub sigil::style::StringKey::Sparkline
+pub sigil::style::StringKey::SparklineSummary
+pub sigil::style::StringKey::StatusBar
+pub sigil::style::StringKey::TableMenu
+impl sigil::style::StringKey
+pub const sigil::style::StringKey::ALL: [Self; 36]
+impl core::clone::Clone for sigil::style::StringKey
+impl core::cmp::Eq for sigil::style::StringKey
+impl core::cmp::PartialEq for sigil::style::StringKey
+impl core::fmt::Debug for sigil::style::StringKey
+impl core::hash::Hash for sigil::style::StringKey
+impl core::marker::Copy for sigil::style::StringKey
+impl core::marker::StructuralPartialEq for sigil::style::StringKey
 pub enum sigil::style::StyleAtom
 pub sigil::style::StyleAtom::AlignItems(sigil::style::AlignKind)
 pub sigil::style::StyleAtom::BackgroundColor(sigil::style::ColorAtom)
@@ -4673,6 +4880,35 @@ impl core::fmt::Debug for sigil::style::GradientStopKey
 impl core::hash::Hash for sigil::style::GradientStopKey
 impl core::marker::Copy for sigil::style::GradientStopKey
 impl core::marker::StructuralPartialEq for sigil::style::GradientStopKey
+pub struct sigil::style::Locale
+pub sigil::style::Locale::date_order: sigil::style::DateOrder
+pub sigil::style::Locale::date_separator: char
+pub sigil::style::Locale::decimal: char
+pub sigil::style::Locale::group: core::option::Option<char>
+pub sigil::style::Locale::group_size: u8
+pub sigil::style::Locale::zero: char
+impl sigil::style::Locale
+pub const fn sigil::style::Locale::ar() -> Self
+pub const fn sigil::style::Locale::de() -> Self
+pub const fn sigil::style::Locale::en() -> Self
+pub fn sigil::style::Locale::format_date(&self, year: i32, month: u8, day: u8) -> alloc::string::String
+pub fn sigil::style::Locale::format_number(&self, value: f64, fraction_digits: usize) -> alloc::string::String
+pub fn sigil::style::Locale::localize_number(&self, plain: &str) -> alloc::string::String
+pub const fn sigil::style::Locale::new(decimal: char, group: core::option::Option<char>) -> Self
+pub fn sigil::style::Locale::normalize_number(&self, input: &str) -> core::option::Option<alloc::string::String>
+pub fn sigil::style::Locale::parse_date(&self, input: &str) -> core::option::Option<(i32, u8, u8)>
+pub fn sigil::style::Locale::parse_number(&self, input: &str) -> core::option::Option<f64>
+pub const fn sigil::style::Locale::with_date(self, order: sigil::style::DateOrder, separator: char) -> Self
+pub const fn sigil::style::Locale::with_group_size(self, size: u8) -> Self
+pub const fn sigil::style::Locale::with_zero(self, zero: char) -> Self
+impl core::clone::Clone for sigil::style::Locale
+impl core::cmp::Eq for sigil::style::Locale
+impl core::cmp::PartialEq for sigil::style::Locale
+impl core::default::Default for sigil::style::Locale
+impl core::fmt::Debug for sigil::style::Locale
+impl core::hash::Hash for sigil::style::Locale
+impl core::marker::Copy for sigil::style::Locale
+impl core::marker::StructuralPartialEq for sigil::style::Locale
 pub struct sigil::style::Metrics
 impl sigil::style::Metrics
 pub fn sigil::style::Metrics::control_height(self, size: sigil::style::ControlSize) -> f32
@@ -4758,6 +4994,20 @@ impl core::fmt::Debug for sigil::style::StateStyle
 impl core::marker::Copy for sigil::style::StateStyle
 impl core::marker::StructuralPartialEq for sigil::style::StateStyle
 pub struct sigil::style::StateStyleBuilder
+pub struct sigil::style::Strings
+impl sigil::style::Strings
+pub fn sigil::style::Strings::english() -> Self
+pub fn sigil::style::Strings::fill(&self, key: sigil::style::StringKey, args: &[&dyn core::fmt::Display]) -> alloc::string::String
+pub fn sigil::style::Strings::from_table(table: &[(sigil::style::StringKey, &'static str)]) -> Self
+pub fn sigil::style::Strings::get(&self, key: sigil::style::StringKey) -> &str
+pub fn sigil::style::Strings::set(&mut self, key: sigil::style::StringKey, value: impl core::convert::Into<alloc::borrow::Cow<'static, str>>)
+pub fn sigil::style::Strings::with(self, key: sigil::style::StringKey, value: impl core::convert::Into<alloc::borrow::Cow<'static, str>>) -> Self
+impl core::clone::Clone for sigil::style::Strings
+impl core::cmp::Eq for sigil::style::Strings
+impl core::cmp::PartialEq for sigil::style::Strings
+impl core::default::Default for sigil::style::Strings
+impl core::fmt::Debug for sigil::style::Strings
+impl core::marker::StructuralPartialEq for sigil::style::Strings
 pub struct sigil::style::StyleBinding
 impl sigil::style::StyleBinding
 pub fn sigil::style::StyleBinding::animator_overlay(&self) -> core::option::Option<&dyn sigil::style::AnimatorOverlay>
@@ -4898,14 +5148,17 @@ pub sigil::style::Theme::accent: sigil::style::Rgba8
 pub sigil::style::Theme::accent_hover: sigil::style::Rgba8
 pub sigil::style::Theme::accent_scale: sigil::style::scale::ColorScale
 pub sigil::style::Theme::border: sigil::style::Rgba8
+pub sigil::style::Theme::direction: sigil::style::Direction
 pub sigil::style::Theme::error: sigil::style::scale::ColorScale
 pub sigil::style::Theme::gray: sigil::style::scale::ColorScale
 pub sigil::style::Theme::info: sigil::style::scale::ColorScale
+pub sigil::style::Theme::locale: sigil::style::Locale
 pub sigil::style::Theme::metrics: sigil::style::Metrics
 pub sigil::style::Theme::missing_token_fallback: sigil::style::Rgba8
 pub sigil::style::Theme::on_accent: sigil::style::Rgba8
 pub sigil::style::Theme::on_solid: sigil::style::Rgba8
 pub sigil::style::Theme::on_surface: sigil::style::Rgba8
+pub sigil::style::Theme::strings: sigil::style::Strings
 pub sigil::style::Theme::success: sigil::style::scale::ColorScale
 pub sigil::style::Theme::surface: sigil::style::Rgba8
 pub sigil::style::Theme::surface_hover: sigil::style::Rgba8
@@ -4916,7 +5169,10 @@ pub sigil::style::Theme::warn: sigil::style::scale::ColorScale
 pub struct sigil::style::ThemeBuilder
 impl sigil::style::ThemeBuilder
 pub fn sigil::style::ThemeBuilder::build(self) -> sigil::style::Theme
+pub const fn sigil::style::ThemeBuilder::direction(self, direction: sigil::style::Direction) -> Self
+pub const fn sigil::style::ThemeBuilder::locale(self, locale: sigil::style::Locale) -> Self
 pub fn sigil::style::ThemeBuilder::new() -> Self
+pub fn sigil::style::ThemeBuilder::strings(self, strings: sigil::style::Strings) -> Self
 pub fn sigil::style::ThemeBuilder::token(self, name: &str, value: sigil::style::ThemeValue) -> Self
 pub fn sigil::style::ThemeBuilder::tokens(self, tokens: &phf::map::Map<&'static str, sigil::style::ThemeValue>) -> Self
 impl core::cmp::PartialEq for sigil::style::ThemeBuilder
@@ -5755,7 +6011,7 @@ impl core::marker::Copy for sigil::widgets::ToastLevel
 impl core::marker::StructuralPartialEq for sigil::widgets::ToastLevel
 pub struct sigil::widgets::ButtonBuilder
 impl sigil::widgets::ButtonBuilder
-pub fn sigil::widgets::ButtonBuilder::accessible(self, name: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn sigil::widgets::ButtonBuilder::accessible(self, name: impl core::convert::Into<sigil::kernel::AccessibleName>) -> Self
 pub fn sigil::widgets::ButtonBuilder::activate(self, activate: impl core::ops::function::Fn() + 'static) -> Self
 pub const fn sigil::widgets::ButtonBuilder::destructive(self) -> Self
 pub fn sigil::widgets::ButtonBuilder::disabled(self, disabled: impl sigil::reactive::Reactive<bool>) -> Self
@@ -5772,6 +6028,10 @@ pub const fn sigil::widgets::ButtonBuilder::soft(self) -> Self
 pub const fn sigil::widgets::ButtonBuilder::solid(self) -> Self
 pub fn sigil::widgets::ButtonBuilder::theme(self, theme: sigil::style::Theme) -> Self
 pub const fn sigil::widgets::ButtonBuilder::tone(self, tone: sigil::style::Tone) -> Self
+pub struct sigil::widgets::CanvasBuilder
+impl sigil::widgets::CanvasBuilder
+pub fn sigil::widgets::CanvasBuilder::layout(self, style: sigil::layout::LayoutStyle) -> Self
+pub const fn sigil::widgets::CanvasBuilder::redraw_on(self, version: sigil::reactive::Signal<u64>) -> Self
 pub struct sigil::widgets::CardBuilder
 impl sigil::widgets::CardBuilder
 pub fn sigil::widgets::CardBuilder::activate(self, activate: impl core::ops::function::Fn() + 'static) -> Self
@@ -6342,8 +6602,8 @@ pub fn sigil::widgets::IntoList::into_list(self, render: R) -> sigil::widgets::V
 impl<T: 'static, R: sigil::widgets::RowRender<T>> sigil::widgets::IntoList<T, R> for alloc::vec::Vec<T>
 pub trait sigil::widgets::NumericKind: core::marker::Copy + core::cmp::PartialOrd + 'static + sigil::widgets::number_field::private::Sealed
 pub fn sigil::widgets::NumericKind::clamp_to(self, range: &core::ops::range::RangeInclusive<Self>) -> Self
-pub fn sigil::widgets::NumericKind::parse(input: &str) -> core::option::Option<Self>
-pub fn sigil::widgets::NumericKind::render(self) -> alloc::string::String
+pub fn sigil::widgets::NumericKind::parse(input: &str, locale: &sigil::style::Locale) -> core::option::Option<Self>
+pub fn sigil::widgets::NumericKind::render(self, locale: &sigil::style::Locale) -> alloc::string::String
 pub trait sigil::widgets::RowRender<T>: 'static
 pub type sigil::widgets::RowRender::Row: sigil::kernel::IntoNode + 'static
 pub fn sigil::widgets::RowRender::row(&self, index: usize, item: &T) -> Self::Row
@@ -6355,6 +6615,7 @@ pub fn sigil::widgets::app_shell(top: impl sigil::kernel::IntoNode + 'static, wo
 pub fn sigil::widgets::avatar(initials: impl core::convert::Into<sigil::kernel::TextContent>) -> sigil::kernel::NodeBuilder
 pub fn sigil::widgets::axis_drag<S>(node: sigil::kernel::NodeBuilder, axis: sigil::widgets::Axis, snapshot: impl core::ops::function::Fn() -> S + 'static, on_delta: impl core::ops::function::Fn(S, f32) + 'static, on_end: impl core::ops::function::Fn() + 'static) -> sigil::kernel::NodeBuilder where S: core::clone::Clone + 'static
 pub fn sigil::widgets::button(label: impl core::convert::Into<sigil::kernel::TextContent>) -> sigil::widgets::ButtonBuilder
+pub fn sigil::widgets::canvas(record: impl core::ops::function::Fn(&mut sigil::scene::SceneBuilder, sigil::geometry::Rect) + 'static) -> sigil::widgets::CanvasBuilder
 pub fn sigil::widgets::card(child: impl sigil::kernel::IntoNode + 'static) -> sigil::widgets::CardBuilder
 pub fn sigil::widgets::chart(values: impl sigil::reactive::Reactive<alloc::vec::Vec<f32>>) -> sigil::widgets::ChartBuilder
 pub fn sigil::widgets::checkbox(checked: sigil::reactive::Signal<bool>) -> sigil::widgets::CheckboxBuilder

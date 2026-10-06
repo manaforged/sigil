@@ -26,6 +26,7 @@ pub(super) enum Known {
     Apple,
 }
 
+#[cfg(unix)]
 const XTVERSION: [(&str, Known); 6] = [
     ("kitty", Known::Kitty),
     ("ghostty", Known::Ghostty),
@@ -47,6 +48,7 @@ impl Known {
         Notices { notify, progress }
     }
 
+    #[cfg(unix)]
     pub(super) fn from_version(name: &str) -> Option<Self> {
         let name = name.trim().to_ascii_lowercase();
         XTVERSION

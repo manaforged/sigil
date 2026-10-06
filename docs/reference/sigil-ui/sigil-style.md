@@ -9,12 +9,14 @@
 | [`BgGradient`](#bggradient) | struct |  |
 | [`Color`](#color) | struct |  |
 | [`GradientStopKey`](#gradientstopkey) | struct |  |
+| [`Locale`](#locale) | struct |  |
 | [`Metrics`](#metrics) | struct |  |
 | [`MillisU16`](#millisu16) | struct |  |
 | [`Px`](#px) | struct |  |
 | [`RenderStyle`](#renderstyle) | struct |  |
 | [`StateStyle`](#statestyle) | struct |  |
 | [`StateStyleBuilder`](#statestylebuilder) | struct |  |
+| [`Strings`](#strings) | struct |  |
 | [`StyleBinding`](#stylebinding) | struct |  |
 | [`StyleEngine`](#styleengine) | struct |  |
 | [`StyleOverlay`](#styleoverlay) | struct |  |
@@ -41,7 +43,9 @@
 | [`Tone`](#tone) | enum |  |
 | [`AlignKind`](#alignkind) | enum |  |
 | [`ColorAtomKind`](#coloratomkind) | enum |  |
+| [`DateOrder`](#dateorder) | enum |  |
 | [`Dimension`](#dimension) | enum |  |
+| [`Direction`](#direction) | enum |  |
 | [`DisplayKind`](#displaykind) | enum |  |
 | [`FlexDir`](#flexdir) | enum |  |
 | [`FlexWrapKind`](#flexwrapkind) | enum |  |
@@ -51,6 +55,7 @@
 | [`NumericAtomKind`](#numericatomkind) | enum |  |
 | [`OverflowKind`](#overflowkind) | enum |  |
 | [`StateSlot`](#stateslot) | enum |  |
+| [`StringKey`](#stringkey) | enum |  |
 | [`StyleAtom`](#styleatom) | enum |  |
 | [`TextDecoration`](#textdecoration) | enum |  |
 | [`TextLineHeight`](#textlineheight) | enum |  |
@@ -146,9 +151,12 @@
 | <code>const surface_subtle(&amp;self) -&gt; <a href="#rgba8">Rgba8</a></code> |  |
 | <code>const text_muted(&amp;self) -&gt; <a href="#rgba8">Rgba8</a></code> |  |
 | <code>const with_accent_scale(self, scale: <a href="sigil-style-scale.html#colorscale">ColorScale</a>) -&gt; Self</code> |  |
+| <code>const with_direction(self, direction: <a href="#direction">Direction</a>) -&gt; Self</code> |  |
 | <code>const with_error_scale(self, scale: <a href="sigil-style-scale.html#colorscale">ColorScale</a>) -&gt; Self</code> |  |
 | <code>const with_gray_scale(self, scale: <a href="sigil-style-scale.html#colorscale">ColorScale</a>) -&gt; Self</code> |  |
 | <code>const with_info_scale(self, scale: <a href="sigil-style-scale.html#colorscale">ColorScale</a>) -&gt; Self</code> |  |
+| <code>const with_locale(self, locale: <a href="#locale">Locale</a>) -&gt; Self</code> |  |
+| <code>with_strings(self, strings: <a href="#strings">Strings</a>) -&gt; Self</code> |  |
 | <code>const with_success_scale(self, scale: <a href="sigil-style-scale.html#colorscale">ColorScale</a>) -&gt; Self</code> |  |
 | <code>const with_warn_scale(self, scale: <a href="sigil-style-scale.html#colorscale">ColorScale</a>) -&gt; Self</code> |  |
 | <code>color(&amp;self, token: <a href="#token">Token</a>) -&gt; <a href="#rgba8">Rgba8</a></code> |  |
@@ -176,14 +184,17 @@
 | <code>accent_hover: <a href="#rgba8">Rgba8</a></code> |  |
 | <code>accent_scale: <a href="sigil-style-scale.html#colorscale">ColorScale</a></code> |  |
 | <code>border: <a href="#rgba8">Rgba8</a></code> |  |
+| <code>direction: <a href="#direction">Direction</a></code> |  |
 | <code>error: <a href="sigil-style-scale.html#colorscale">ColorScale</a></code> |  |
 | <code>gray: <a href="sigil-style-scale.html#colorscale">ColorScale</a></code> |  |
 | <code>info: <a href="sigil-style-scale.html#colorscale">ColorScale</a></code> |  |
+| <code>locale: <a href="#locale">Locale</a></code> |  |
 | <code>metrics: <a href="#metrics">Metrics</a></code> |  |
 | <code>missing_token_fallback: <a href="#rgba8">Rgba8</a></code> |  |
 | <code>on_accent: <a href="#rgba8">Rgba8</a></code> |  |
 | <code>on_solid: <a href="#rgba8">Rgba8</a></code> |  |
 | <code>on_surface: <a href="#rgba8">Rgba8</a></code> |  |
+| <code>strings: <a href="#strings">Strings</a></code> |  |
 | <code>success: <a href="sigil-style-scale.html#colorscale">ColorScale</a></code> |  |
 | <code>surface: <a href="#rgba8">Rgba8</a></code> |  |
 | <code>surface_hover: <a href="#rgba8">Rgba8</a></code> |  |
@@ -253,6 +264,40 @@
 | <code>offset: u16</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
+### `Locale`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>const ar() -&gt; Self</code> |  |
+| <code>const de() -&gt; Self</code> |  |
+| <code>const en() -&gt; Self</code> |  |
+| <code>format_date(&amp;self, year: i32, month: u8, day: u8) -&gt; String</code> |  |
+| <code>format_number(&amp;self, value: f64, fraction_digits: usize) -&gt; String</code> |  |
+| <code>localize_number(&amp;self, plain: &amp;str) -&gt; String</code> |  |
+| <code>const new(decimal: char, group: Option&lt;char&gt;) -&gt; Self</code> |  |
+| <code>normalize_number(&amp;self, input: &amp;str) -&gt; Option&lt;String&gt;</code> |  |
+| <code>parse_date(&amp;self, input: &amp;str) -&gt; Option&lt;(i32, u8, u8)&gt;</code> |  |
+| <code>parse_number(&amp;self, input: &amp;str) -&gt; Option&lt;f64&gt;</code> |  |
+| <code>const with_date(self, order: <a href="#dateorder">DateOrder</a>, separator: char) -&gt; Self</code> |  |
+| <code>const with_group_size(self, size: u8) -&gt; Self</code> |  |
+| <code>const with_zero(self, zero: char) -&gt; Self</code> |  |
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>date_order: <a href="#dateorder">DateOrder</a></code> |  |
+| <code>date_separator: char</code> |  |
+| <code>decimal: char</code> |  |
+| <code>group: Option&lt;char&gt;</code> |  |
+| <code>group_size: u8</code> |  |
+| <code>zero: char</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `Metrics`
@@ -334,6 +379,22 @@
 
 
 ### `StateStyleBuilder`
+
+
+### `Strings`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>english() -&gt; Self</code> |  |
+| <code>fill(&amp;self, key: <a href="#stringkey">StringKey</a>, args: &amp;[&amp;dyn Display]) -&gt; String</code> |  |
+| <code>from_table(table: &amp;[(<a href="#stringkey">StringKey</a>, &amp;'static str)]) -&gt; Self</code> |  |
+| <code>get(&amp;self, key: <a href="#stringkey">StringKey</a>) -&gt; &amp;str</code> |  |
+| <code>set(&amp;mut self, key: <a href="#stringkey">StringKey</a>, value: impl Into&lt;Cow&lt;'static, str&gt;&gt;)</code> |  |
+| <code>with(self, key: <a href="#stringkey">StringKey</a>, value: impl Into&lt;Cow&lt;'static, str&gt;&gt;) -&gt; Self</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
 
 
 ### `StyleBinding`
@@ -516,7 +577,10 @@
 | Method | Description |
 | --- | --- |
 | <code>build(self) -&gt; <a href="#theme">Theme</a></code> |  |
+| <code>const direction(self, direction: <a href="#direction">Direction</a>) -&gt; Self</code> |  |
+| <code>const locale(self, locale: <a href="#locale">Locale</a>) -&gt; Self</code> |  |
 | <code>new() -&gt; Self</code> |  |
+| <code>strings(self, strings: <a href="#strings">Strings</a>) -&gt; Self</code> |  |
 | <code>token(self, name: &amp;str, value: <a href="#themevalue">ThemeValue</a>) -&gt; Self</code> |  |
 | <code>tokens(self, tokens: &amp;Map&lt;&amp;'static str, <a href="#themevalue">ThemeValue</a>&gt;) -&gt; Self</code> |  |
 
@@ -850,6 +914,19 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
+### `DateOrder`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Dmy</code> |  |
+| <code>Mdy</code> |  |
+| <code>Ymd</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
 ### `Dimension`
 
 **Methods**
@@ -868,6 +945,24 @@
 | <code>Px(<a href="#px">Px</a>)</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
+### `Direction`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>const is_rtl(self) -&gt; bool</code> |  |
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Ltr</code> |  |
+| <code>Rtl</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `DisplayKind`
@@ -1010,6 +1105,58 @@
 | <code>Rest</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
+### `StringKey`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>const ALL: [Self; 36]</code> |  |
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Autosize</code> |  |
+| <code>Avatar</code> |  |
+| <code>Cancel</code> |  |
+| <code>Chart</code> |  |
+| <code>ChartSummary</code> |  |
+| <code>Close</code> |  |
+| <code>CodeEditor</code> |  |
+| <code>CommandMenu</code> |  |
+| <code>ContextMenu</code> |  |
+| <code>Dialog</code> |  |
+| <code>Empty</code> |  |
+| <code>Heatmap</code> |  |
+| <code>HeatmapGrid</code> |  |
+| <code>HideColumn</code> |  |
+| <code>KeyboardShortcuts</code> |  |
+| <code>Loading</code> |  |
+| <code>MenuBar</code> |  |
+| <code>MoveLeft</code> |  |
+| <code>MoveRight</code> |  |
+| <code>NoData</code> |  |
+| <code>Ok</code> |  |
+| <code>RequiredMark</code> |  |
+| <code>ResizePanes</code> |  |
+| <code>ResizeSidebar</code> |  |
+| <code>Search</code> |  |
+| <code>Select</code> |  |
+| <code>SelectAllRows</code> |  |
+| <code>SelectRow</code> |  |
+| <code>Series</code> |  |
+| <code>ShowAllColumns</code> |  |
+| <code>SortAscending</code> |  |
+| <code>SortDescending</code> |  |
+| <code>Sparkline</code> |  |
+| <code>SparklineSummary</code> |  |
+| <code>StatusBar</code> |  |
+| <code>TableMenu</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `StyleAtom`

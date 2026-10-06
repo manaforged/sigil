@@ -374,14 +374,17 @@
 | <code>accent_hover: <a href="sigil-style.html#rgba8">Rgba8</a></code> |  |
 | <code>accent_scale: <a href="sigil-style-scale.html#colorscale">ColorScale</a></code> |  |
 | <code>border: <a href="sigil-style.html#rgba8">Rgba8</a></code> |  |
+| <code>direction: <a href="sigil-style.html#direction">Direction</a></code> |  |
 | <code>error: <a href="sigil-style-scale.html#colorscale">ColorScale</a></code> |  |
 | <code>gray: <a href="sigil-style-scale.html#colorscale">ColorScale</a></code> |  |
 | <code>info: <a href="sigil-style-scale.html#colorscale">ColorScale</a></code> |  |
+| <code>locale: <a href="sigil-style.html#locale">Locale</a></code> |  |
 | <code>metrics: <a href="sigil-style.html#metrics">Metrics</a></code> |  |
 | <code>missing_token_fallback: <a href="sigil-style.html#rgba8">Rgba8</a></code> |  |
 | <code>on_accent: <a href="sigil-style.html#rgba8">Rgba8</a></code> |  |
 | <code>on_solid: <a href="sigil-style.html#rgba8">Rgba8</a></code> |  |
 | <code>on_surface: <a href="sigil-style.html#rgba8">Rgba8</a></code> |  |
+| <code>strings: <a href="sigil-style.html#strings">Strings</a></code> |  |
 | <code>success: <a href="sigil-style-scale.html#colorscale">ColorScale</a></code> |  |
 | <code>surface: <a href="sigil-style.html#rgba8">Rgba8</a></code> |  |
 | <code>surface_hover: <a href="sigil-style.html#rgba8">Rgba8</a></code> |  |
@@ -1046,8 +1049,8 @@
 | Method | Description |
 | --- | --- |
 | <code>clamp_to(self, range: &amp;RangeInclusive&lt;Self&gt;) -&gt; Self</code> |  |
-| <code>parse(input: &amp;str) -&gt; Option&lt;Self&gt;</code> |  |
-| <code>render(self) -&gt; String</code> |  |
+| <code>parse(input: &amp;str, locale: &amp;<a href="sigil-style.html#locale">Locale</a>) -&gt; Option&lt;Self&gt;</code> |  |
+| <code>render(self, locale: &amp;<a href="sigil-style.html#locale">Locale</a>) -&gt; String</code> |  |
 
 
 ### `Paint`

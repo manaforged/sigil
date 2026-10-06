@@ -107,6 +107,7 @@ fn ambiguous_width_and_bce_come_from_env() {
     assert_eq!(caps(&[("TERM", "xterm")]).erase, Erase::Background);
 }
 
+#[cfg(unix)]
 #[test]
 fn probe_replies_raise_colour_links_and_notices_behind_a_multiplexer() {
     use super::Known;

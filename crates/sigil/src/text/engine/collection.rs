@@ -150,6 +150,7 @@ impl FontCollection {
         Ok(())
     }
 
+    #[cfg(any(test, debug_assertions))]
     #[must_use]
     pub(crate) fn fallback_chain(&self, primary: &Font, weight: u16, text: &str) -> Vec<Font> {
         self.chain_for(primary, weight, &chain_scripts(text))

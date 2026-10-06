@@ -64,7 +64,7 @@ pub(crate) mod diagnostic {
     #[cold]
     pub(crate) fn class_parse(input: &str, err: &ParseError) {
         use std::collections::HashSet;
-        use std::sync::{Mutex, OnceLock, PoisonError};
+        use std::sync::{Mutex, OnceLock};
 
         static WARNED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
         bump_unknown_class_count();

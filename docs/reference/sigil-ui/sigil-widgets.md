@@ -3,6 +3,7 @@
 | Item | Kind | Description |
 | --- | --- | --- |
 | [`ButtonBuilder`](#buttonbuilder) | struct |  |
+| [`CanvasBuilder`](#canvasbuilder) | struct |  |
 | [`CardBuilder`](#cardbuilder) | struct |  |
 | [`ChartBuilder`](#chartbuilder) | struct |  |
 | [`CheckboxBuilder`](#checkboxbuilder) | struct |  |
@@ -110,6 +111,7 @@
 | [`avatar`](#avatar) | fn |  |
 | [`axis_drag`](#axis_drag) | fn |  |
 | [`button`](#button) | fn |  |
+| [`canvas`](#canvas) | fn |  |
 | [`card`](#card) | fn |  |
 | [`chart`](#chart) | fn |  |
 | [`checkbox`](#checkbox) | fn |  |
@@ -204,7 +206,7 @@
 
 | Method | Description |
 | --- | --- |
-| <code>accessible(self, name: impl Into&lt;String&gt;) -&gt; Self</code> |  |
+| <code>accessible(self, name: impl Into&lt;<a href="sigil-kernel.html#accessiblename">AccessibleName</a>&gt;) -&gt; Self</code> |  |
 | <code>activate(self, activate: impl Fn() + 'static) -&gt; Self</code> |  |
 | <code>const destructive(self) -&gt; Self</code> |  |
 | <code>disabled(self, disabled: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;bool&gt;) -&gt; Self</code> |  |
@@ -223,6 +225,18 @@
 | <code>const tone(self, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
+
+
+### `CanvasBuilder`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>layout(self, style: <a href="sigil-layout.html#layoutstyle">LayoutStyle</a>) -&gt; Self</code> |  |
+| <code>const redraw_on(self, version: <a href="sigil-reactive.html#signal">Signal</a>&lt;u64&gt;) -&gt; Self</code> |  |
+
+**Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>
 
 
 ### `CardBuilder`
@@ -551,6 +565,7 @@
 | --- | --- |
 | <code>close(self) -&gt; Self</code> |  |
 | <code>cubic_to(self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) -&gt; Self</code> |  |
+| <code>draw(self, scene: &amp;mut <a href="sigil-scene.html#scenebuilder">SceneBuilder</a>, destination: <a href="sigil-geometry.html#rect">Rect</a>, theme: &amp;<a href="sigil-style.html#theme">Theme</a>)</code> |  |
 | <code>fill(self, color: impl Into&lt;<a href="#pathcolor">PathColor</a>&gt;) -&gt; Self</code> |  |
 | <code>fill_linear(self, start: (f32, f32), end: (f32, f32), stops: Vec&lt;(f32, <a href="sigil-style.html#rgba8">Rgba8</a>)&gt;) -&gt; Self</code> |  |
 | <code>fill_radial(self, center: (f32, f32), radius: f32, stops: Vec&lt;(f32, <a href="sigil-style.html#rgba8">Rgba8</a>)&gt;) -&gt; Self</code> |  |
@@ -962,7 +977,9 @@
 | --- | --- |
 | <code>new(year: i32, month: u8, day: u8) -&gt; Option&lt;Self&gt;</code> |  |
 | <code>parse(input: &amp;str) -&gt; Option&lt;Self&gt;</code> |  |
+| <code>parse_in(input: &amp;str, locale: &amp;<a href="sigil-style.html#locale">Locale</a>) -&gt; Option&lt;Self&gt;</code> |  |
 | <code>render(self) -&gt; String</code> |  |
+| <code>render_in(self, locale: &amp;<a href="sigil-style.html#locale">Locale</a>) -&gt; String</code> |  |
 
 **Fields**
 
@@ -1830,8 +1847,8 @@
 | Method | Description |
 | --- | --- |
 | <code>clamp_to(self, range: &amp;RangeInclusive&lt;Self&gt;) -&gt; Self</code> |  |
-| <code>parse(input: &amp;str) -&gt; Option&lt;Self&gt;</code> |  |
-| <code>render(self) -&gt; String</code> |  |
+| <code>parse(input: &amp;str, locale: &amp;<a href="sigil-style.html#locale">Locale</a>) -&gt; Option&lt;Self&gt;</code> |  |
+| <code>render(self, locale: &amp;<a href="sigil-style.html#locale">Locale</a>) -&gt; String</code> |  |
 
 
 ### `RowRender`
@@ -1867,6 +1884,11 @@
 ### `button`
 
 <pre>pub fn <a href="#button">button</a>(label: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;) -&gt; <a href="#buttonbuilder">ButtonBuilder</a></pre>
+
+
+### `canvas`
+
+<pre>pub fn <a href="#canvas">canvas</a>(record: impl Fn(&amp;mut <a href="sigil-scene.html#scenebuilder">SceneBuilder</a>, <a href="sigil-geometry.html#rect">Rect</a>) + 'static) -&gt; <a href="#canvasbuilder">CanvasBuilder</a></pre>
 
 
 ### `card`

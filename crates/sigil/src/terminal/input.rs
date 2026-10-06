@@ -73,6 +73,10 @@ impl Wake {
     }
 
     #[cfg(not(unix))]
+    #[allow(
+        clippy::unused_self,
+        reason = "the unix variant drains the wake socket held on self"
+    )]
     fn ready(&self, (wait, tick): (Option<Duration>, Duration), _listen: bool) -> io::Result<bool> {
         event::poll(wait.unwrap_or(tick))
     }

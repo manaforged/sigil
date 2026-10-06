@@ -179,6 +179,7 @@ impl Draft {
         if !matches!(answers.version, Version::Silent) || answers.kitty_keys {
             self.caps.hyperlinks = true;
         }
+        #[cfg(unix)]
         if let Version::Named(named) = answers.version {
             self.caps.notices = named.notices();
         }

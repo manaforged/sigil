@@ -226,6 +226,7 @@
 | <code>align_self: Option&lt;<a href="#alignself">AlignSelf</a>&gt;</code> |  |
 | <code>border: <a href="#rect">Rect</a>&lt;<a href="#lengthpercentage">LengthPercentage</a>&gt;</code> |  |
 | <code>box_sizing: <a href="#boxsizing">BoxSizing</a></code> |  |
+| <code>direction: <a href="sigil-style.html#direction">Direction</a></code> |  |
 | <code>display: <a href="#display">Display</a></code> |  |
 | <code>flex_basis: <a href="#dimension">Dimension</a></code> |  |
 | <code>flex_direction: <a href="#flexdirection">FlexDirection</a></code> |  |

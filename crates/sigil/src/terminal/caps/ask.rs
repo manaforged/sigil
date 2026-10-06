@@ -1,10 +1,13 @@
+#[cfg(unix)]
 use super::Known;
 
 #[derive(Clone, Copy, Default)]
 pub(super) enum Version {
     #[default]
     Silent,
+    #[cfg(unix)]
     Unnamed,
+    #[cfg(unix)]
     Named(Known),
 }
 

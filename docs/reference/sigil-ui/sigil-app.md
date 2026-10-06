@@ -13,19 +13,24 @@
 | [`Session`](#session) | struct |  |
 | [`TextTuning`](#texttuning) | struct |  |
 | [`ThemeWatcher`](#themewatcher) | struct |  |
+| [`WindowId`](#windowid) | struct |  |
 | [`WindowOpts`](#windowopts) | struct |  |
 | [`Ambiguous`](#ambiguous) | enum |  |
 | [`Anchor`](#anchor) | enum |  |
 | [`CellWidth`](#cellwidth) | enum |  |
+| [`CloseAction`](#closeaction) | enum |  |
 | [`ErrorKind`](#errorkind) | enum |  |
 | [`PanicPolicy`](#panicpolicy) | enum |  |
 | [`ResizeDirection`](#resizedirection) | enum |  |
 | [`WindowCommand`](#windowcommand) | enum |  |
+| [`WindowLevel`](#windowlevel) | enum |  |
 | [`cell_text_lines`](#cell_text_lines) | fn |  |
 | [`cell_width`](#cell_width) | fn |  |
+| [`current_window`](#current_window) | fn |  |
 | [`display_scale`](#display_scale) | fn |  |
 | [`is_grid`](#is_grid) | fn |  |
 | [`open`](#open) | fn |  |
+| [`open_window`](#open_window) | fn |  |
 | [`parse_theme`](#parse_theme) | fn |  |
 | [`set_ambiguous`](#set_ambiguous) | fn |  |
 | [`set_cell_width`](#set_cell_width) | fn |  |
@@ -36,6 +41,8 @@
 | [`use_system_fonts`](#use_system_fonts) | fn |  |
 | [`viewport_size`](#viewport_size) | fn |  |
 | [`watch_theme`](#watch_theme) | fn |  |
+| [`window_focused`](#window_focused) | fn |  |
+| [`window_occluded`](#window_occluded) | fn |  |
 | [`AccessibilityTree`](#accessibilitytree) | type |  |
 | [`FrameInputHook`](#frameinputhook) | type |  |
 | [`FrameLayoutHook`](#framelayouthook) | type |  |
@@ -203,6 +210,20 @@
 **Trait implementations:** <code>Drop</code>
 
 
+### `WindowId`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>close(self)</code> |  |
+| <code>command(self, command: <a href="#windowcommand">WindowCommand</a>)</code> |  |
+| <code>focused(self) -&gt; Option&lt;<a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;&gt;</code> |  |
+| <code>occluded(self) -&gt; Option&lt;<a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;&gt;</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>Ord</code>, <code>PartialEq</code>, <code>PartialOrd</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
 ### `WindowOpts`
 
 **Fields**
@@ -270,6 +291,19 @@
 **Trait implementations:** <code>Clone</code>, <code>Default</code>, <code>Copy</code>
 
 
+### `CloseAction`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Close</code> |  |
+| <code>Hide</code> |  |
+| <code>Keep</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
 ### `ErrorKind`
 
 **Variants**
@@ -326,11 +360,30 @@
 | <code>Close</code> |  |
 | <code>Drag</code> |  |
 | <code>DragResize(<a href="#resizedirection">ResizeDirection</a>)</code> |  |
+| <code>Focus</code> |  |
+| <code>Hide</code> |  |
 | <code>Minimize</code> |  |
+| <code>SetLevel(<a href="#windowlevel">WindowLevel</a>)</code> |  |
+| <code>SetPosition(<a href="sigil-geometry.html#point">Point</a>)</code> |  |
+| <code>SetTitle(String)</code> |  |
 | <code>SetZoom(u16)</code> |  |
+| <code>Show</code> |  |
 | <code>ToggleMaximize</code> |  |
 
-**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+**Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
+
+
+### `WindowLevel`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>AlwaysOnBottom</code> |  |
+| <code>AlwaysOnTop</code> |  |
+| <code>Normal</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ## Functions
@@ -343,6 +396,11 @@
 ### `cell_width`
 
 <pre>pub fn <a href="#cell_width">cell_width</a>(text: &amp;str) -&gt; usize</pre>
+
+
+### `current_window`
+
+<pre>pub fn <a href="#current_window">current_window</a>() -&gt; Option&lt;<a href="#windowid">WindowId</a>&gt;</pre>
 
 
 ### `display_scale`
@@ -358,6 +416,11 @@
 ### `open`
 
 <pre>pub fn <a href="#open">open</a>(target: impl AsRef&lt;OsStr&gt;) -&gt; <a href="sigil.html#appresult">AppResult</a>&lt;()&gt;</pre>
+
+
+### `open_window`
+
+<pre>pub fn <a href="#open_window">open_window</a>&lt;C, F, N&gt;(config: C, view: F) -&gt; <a href="#windowid">WindowId</a> where C: Into&lt;<a href="sigil.html#appconfig">AppConfig</a>&gt;, F: Fn() -&gt; N + 'static, N: <a href="sigil-kernel.html#intonode">IntoNode</a></pre>
 
 
 ### `parse_theme`
@@ -408,6 +471,16 @@
 ### `watch_theme`
 
 <pre>pub fn <a href="#watch_theme">watch_theme</a>(path: impl Into&lt;PathBuf&gt;) -&gt; <a href="sigil.html#appresult">AppResult</a>&lt;<a href="#themewatcher">ThemeWatcher</a>&gt;</pre>
+
+
+### `window_focused`
+
+<pre>pub fn <a href="#window_focused">window_focused</a>() -&gt; <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;</pre>
+
+
+### `window_occluded`
+
+<pre>pub fn <a href="#window_occluded">window_occluded</a>() -&gt; <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;</pre>
 
 
 ## Type aliases

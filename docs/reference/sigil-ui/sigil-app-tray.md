@@ -4,6 +4,7 @@
 | --- | --- | --- |
 | [`events`](#events) | fn |  |
 | [`set_tray`](#set_tray) | fn |  |
+| [`update`](#update) | fn |  |
 | [`Icon`](#icon) | use |  |
 | [`TrayIcon`](#trayicon) | use |  |
 | [`TrayIconBuilder`](#trayiconbuilder) | use |  |
@@ -19,6 +20,11 @@
 ### `set_tray`
 
 <pre>pub fn <a href="#set_tray">set_tray</a>(builder: TrayIconBuilder)</pre>
+
+
+### `update`
+
+<pre>pub fn <a href="#update">update</a>&lt;R&gt;(edit: impl FnOnce(&amp;TrayIcon) -&gt; R) -&gt; Option&lt;R&gt;</pre>
 
 
 ## Re-exports

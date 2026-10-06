@@ -136,6 +136,10 @@ pub(crate) struct SignalGuard;
 
 #[cfg(not(unix))]
 impl SignalGuard {
+    #[allow(
+        clippy::unnecessary_wraps,
+        reason = "the unix variant fails when a signal handler cannot be registered"
+    )]
     pub(crate) const fn install() -> std::io::Result<Self> {
         Ok(Self)
     }
