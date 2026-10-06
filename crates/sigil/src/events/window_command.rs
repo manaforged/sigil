@@ -1,18 +1,12 @@
-use std::cell::RefCell;
-
-use crate::app::WindowCommand;
-
-thread_local! {
-    static PENDING: RefCell<Vec<WindowCommand>> = const { RefCell::new(Vec::new()) };
-}
+use crate::app::{WindowCommand, WindowId};
 
 pub fn request_window_command(command: WindowCommand) {
-    PENDING.with(|cell| cell.borrow_mut().push(command));
+    crate::app::window::queue_command(crate::app::current_window(), command);
 }
 
 #[must_use]
-pub(crate) fn take_window_commands() -> Vec<WindowCommand> {
-    PENDING.with(|cell| core::mem::take(&mut *cell.borrow_mut()))
+pub(crate) fn take_window_commands() -> Vec<(Option<WindowId>, WindowCommand)> {
+    crate::app::window::take_commands()
 }
 
 #[cfg(test)]

@@ -16,6 +16,10 @@ pub fn set_tray(builder: TrayIconBuilder) {
     PENDING.with(|slot| *slot.borrow_mut() = Some(builder));
 }
 
+pub fn update<R>(edit: impl FnOnce(&TrayIcon) -> R) -> Option<R> {
+    INSTALLED.with(|slot| slot.borrow().as_ref().map(edit))
+}
+
 #[must_use]
 pub fn events() -> EventChannel<TrayIconEvent> {
     EVENTS.with(Clone::clone)

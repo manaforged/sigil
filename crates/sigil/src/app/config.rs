@@ -41,6 +41,26 @@ impl std::fmt::Debug for TerminalHooks {
     }
 }
 
+#[cfg(feature = "desktop")]
+#[derive(Clone, Default)]
+pub(crate) struct CloseHook(Option<std::rc::Rc<dyn Fn() -> crate::app::CloseAction>>);
+
+#[cfg(feature = "desktop")]
+impl CloseHook {
+    pub(crate) fn decide(&self) -> crate::app::CloseAction {
+        self.0
+            .as_ref()
+            .map_or(crate::app::CloseAction::Close, |hook| hook())
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl std::fmt::Debug for CloseHook {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("CloseHook")
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     pub(crate) title: String,
@@ -62,6 +82,8 @@ pub struct AppConfig {
     pub(crate) min_size: Option<(u32, u32)>,
     #[cfg(feature = "desktop")]
     pub(crate) resize: Resize,
+    #[cfg(feature = "desktop")]
+    pub(crate) on_close: CloseHook,
     pub(crate) inline: bool,
     pub(crate) frame_interval: std::time::Duration,
     pub(crate) reduced_motion: Option<bool>,
@@ -111,6 +133,8 @@ impl AppConfig {
             min_size: None,
             #[cfg(feature = "desktop")]
             resize: Resize::Free,
+            #[cfg(feature = "desktop")]
+            on_close: CloseHook::default(),
             inline: false,
             frame_interval: FRAME_INTERVAL,
             reduced_motion: None,
@@ -255,6 +279,13 @@ impl AppConfig {
     #[must_use]
     pub const fn resizable(mut self, yes: bool) -> Self {
         self.resize = if yes { Resize::Free } else { Resize::Fixed };
+        self
+    }
+
+    #[cfg(feature = "desktop")]
+    #[must_use]
+    pub fn on_close(mut self, decide: impl Fn() -> crate::app::CloseAction + 'static) -> Self {
+        self.on_close = CloseHook(Some(std::rc::Rc::new(decide)));
         self
     }
 

@@ -8,25 +8,21 @@ use crate::profile::Cause;
 use crate::reactive::Runtime;
 use crate::shell::{WinitShell, WinitWindowHandle};
 
-use crate::app::config::AppConfig;
 use crate::app::error::AppResult;
 use std::sync::Arc;
 
 use super::backend::{Backend, Surface};
+use super::record::WindowView;
 use super::{
     clamp_physical_size, logical_size_from_viewport, resize_surface, scale_from_f64, set_viewport,
 };
 
 pub(super) struct DrainCtx<'a> {
-    pub(super) shell: &'a mut WinitShell,
-    pub(super) window_handle: WinitWindowHandle,
+    pub(super) view: &'a mut WindowView,
     pub(super) cx: &'a mut Cx,
     pub(super) layout: &'a LayoutEngine,
     pub(super) router: &'a mut EventRouter,
-    pub(super) surface: &'a mut Option<Surface>,
     pub(super) renderer: &'a mut Backend,
-    pub(super) viewport: &'a mut (f32, f32),
-    pub(super) config: &'a mut AppConfig,
     pub(super) exit_requested: &'a mut bool,
 }
 
@@ -100,75 +96,56 @@ pub(super) fn sync_ime(
 
 pub(super) fn drain_events(ctx: DrainCtx<'_>) {
     let DrainCtx {
-        shell,
-        window_handle,
+        view,
         cx,
         layout,
         router,
-        surface,
         renderer,
-        viewport,
-        config,
         exit_requested,
     } = ctx;
-    for event in shell.drain_events() {
+    for event in core::mem::take(&mut view.inbox) {
         crate::profile::note_input(&event);
         if let ShellEvent::Window(window_event) = &event {
             let mut window_ctx = WindowEventCtx {
                 cx,
                 renderer,
-                surface,
-                viewport,
-                exit_requested,
+                surface: &mut view.surface,
+                viewport: &mut view.viewport,
             };
             handle_window_event(&mut window_ctx, window_event);
         }
-        match &event {
-            ShellEvent::Key(key_event)
-                if config.quit.esc
-                    && key_event.key == Key::Escape.into()
-                    && key_event.phase == KeyPhase::Down =>
-            {
-                *exit_requested = true;
-            }
-            _ => {}
+        if let ShellEvent::Key(key_event) = &event
+            && view.config.quit.esc
+            && key_event.key == Key::Escape.into()
+            && key_event.phase == KeyPhase::Down
+        {
+            *exit_requested = true;
         }
         router.route(cx, layout, event);
-    }
-    for command in crate::events::take_window_commands() {
-        if let crate::app::WindowCommand::SetZoom(percent) = command
-            && percent > 0
-        {
-            config.user_zoom = f32::from(percent) / 100.0;
-        }
-        if let Err(err) = shell.window_command(&window_handle, command) {
-            tracing::warn!(target: "sigil::shell", error = %err, "window command failed");
-        }
-    }
-    if *exit_requested {
-        shell.request_exit();
     }
 }
 
 pub(super) fn publish_a11y(
     shell: &mut WinitShell,
-    cx: &Cx,
-    router: &EventRouter,
-    layout: &LayoutEngine,
+    handle: WinitWindowHandle,
+    tree: (&Cx, &EventRouter, &LayoutEngine),
     dirty: bool,
 ) {
-    let fresh = shell.take_a11y_activation();
-    if !shell.a11y_active() || !(dirty || fresh) {
+    let (cx, router, layout) = tree;
+    let fresh = shell.take_a11y_activation(handle);
+    if !shell.a11y_active(handle) || !(dirty || fresh) {
         return;
     }
+    let Some(action_rx) = shell.a11y_action_receiver(handle) else {
+        return;
+    };
     let update = crate::a11y::tree(cx, router.focus(), &|id| {
         layout
             .result(id)
             .map(|result| crate::events::hit_test::visual_bounds(cx, id, result.rect()))
     });
-    let action_rx = shell.a11y_action_receiver();
     let mut bridge = crate::a11y::AccessKitBridge::new(action_rx, |tree_update| {
-        shell.publish_a11y_update(&tree_update);
+        shell.publish_a11y_update(handle, tree_update);
     });
     if let Err(err) = crate::hal::A11yBridge::publish(&mut bridge, update) {
         tracing::warn!(target: "sigil::a11y", error = ?err, "accessibility update publish failed");
@@ -194,17 +171,16 @@ struct WindowEventCtx<'a> {
     renderer: &'a mut Backend,
     surface: &'a mut Option<Surface>,
     viewport: &'a mut (f32, f32),
-    exit_requested: &'a mut bool,
 }
 
 fn handle_window_event(ctx: &mut WindowEventCtx<'_>, event: &WindowEvent) {
     match event {
-        WindowEvent::CloseRequested | WindowEvent::Destroyed => {
-            *ctx.exit_requested = true;
-        }
         WindowEvent::Resized(size) => handle_resized(ctx, *size),
         WindowEvent::ScaleFactorChanged(scale) => handle_scale_changed(ctx, *scale),
-        WindowEvent::Focused(_) | WindowEvent::Occluded(_) => {}
+        WindowEvent::CloseRequested
+        | WindowEvent::Destroyed
+        | WindowEvent::Focused(_)
+        | WindowEvent::Occluded(_) => {}
     }
 }
 

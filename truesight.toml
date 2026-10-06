@@ -10,7 +10,7 @@ docs = ["docs/api.md"]
 doc-sections = { "Prelude" = "prelude", "Crate root" = "" }
 journey-prefix = "story-"
 journey-ignore = ["contains", "is_empty", "iter", "filter", "push", "max", "trim", "to_string", "into", "clone", "map", "unwrap_or_default", "retain", "count", "Rc"]
-features = ["desktop","scene","shell","cpu","shaping-complex","render","clipboard","clipboard-image","dialog","native-dialog","menu","tray","image-decode","inspect","audio","pty","terminal"]
+features = ["desktop","scene","shell","cpu","shaping-complex","render","clipboard","clipboard-image","dialog","native-dialog","menu","tray","image-decode","inspect","audio","pty","terminal","notify","media","hotkey"]
 tag = "sigil-ui-v{version}"
 
 [crate.journeys]

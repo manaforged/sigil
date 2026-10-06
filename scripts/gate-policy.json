@@ -9,7 +9,7 @@
   "ratchet": {
     "dead_code": { "lint": "dead_code", "max": 11 },
     "unreachable_pub": { "lint": "unreachable_pub", "max": 17 },
-    "too_many_lines": { "lint": "clippy::too_many_lines", "max": 9 },
+    "too_many_lines": { "lint": "clippy::too_many_lines", "max": 8 },
     "too_many_arguments": { "lint": "clippy::too_many_arguments", "max": 21 },
     "panic": { "lint": "clippy::panic", "max": 4 },
     "unwrap_used": { "lint": "clippy::unwrap_used", "max": 0 },

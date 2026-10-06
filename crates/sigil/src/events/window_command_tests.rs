@@ -11,9 +11,9 @@ fn queued_commands_drain_in_order() {
     assert_eq!(
         take_window_commands(),
         vec![
-            WindowCommand::Minimize,
-            WindowCommand::ToggleMaximize,
-            WindowCommand::DragResize(ResizeDirection::SouthEast),
+            (None, WindowCommand::Minimize),
+            (None, WindowCommand::ToggleMaximize),
+            (None, WindowCommand::DragResize(ResizeDirection::SouthEast)),
         ]
     );
 }

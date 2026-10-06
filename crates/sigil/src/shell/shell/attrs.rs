@@ -120,6 +120,7 @@ impl WinitShell {
                         spec.handle,
                         scale_from_f64(window.scale_factor() * f64::from(zoom)),
                     ));
+                    window.request_redraw();
                     self.windows.push((spec.handle, Arc::new(window)));
                 }
                 Err(err) => self.failed.push((spec.handle, err.to_string())),

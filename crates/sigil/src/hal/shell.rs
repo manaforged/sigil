@@ -4,7 +4,7 @@ use alloc::vec::IntoIter;
 
 use crate::hal::events::ShellEvent;
 use crate::hal::{
-    geometry::{PhysicalSize, Rect},
+    geometry::{PhysicalSize, Point, Rect},
     size::{LogicalSize, Scale},
 };
 
@@ -37,7 +37,16 @@ pub enum ResizeDirection {
     West,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub enum WindowLevel {
+    AlwaysOnBottom,
+    #[default]
+    Normal,
+    AlwaysOnTop,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum WindowCommand {
     Close,
@@ -46,6 +55,12 @@ pub enum WindowCommand {
     Drag,
     DragResize(ResizeDirection),
     SetZoom(u16),
+    Show,
+    Hide,
+    Focus,
+    SetTitle(alloc::string::String),
+    SetPosition(Point),
+    SetLevel(WindowLevel),
 }
 
 pub trait Shell: Sized {

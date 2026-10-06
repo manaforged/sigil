@@ -13,12 +13,18 @@ pub(crate) mod error;
 pub(crate) mod exit;
 mod frame;
 mod host_env;
+#[cfg(all(feature = "hotkey", not(target_arch = "wasm32")))]
+pub mod hotkey;
 #[cfg(all(feature = "inspect", any(feature = "desktop", feature = "terminal")))]
 pub(crate) mod inspect;
 #[cfg(feature = "desktop")]
 mod launch;
+#[cfg(feature = "media")]
+pub mod media;
 #[cfg(feature = "menu")]
 pub mod menu;
+#[cfg(feature = "notify")]
+pub mod notify;
 #[cfg(feature = "desktop")]
 mod open;
 #[cfg(any(feature = "desktop", feature = "terminal"))]
@@ -36,9 +42,11 @@ mod theme_watch;
 #[cfg(feature = "tray")]
 pub mod tray;
 pub(crate) mod tree_root;
+#[cfg(feature = "desktop")]
+pub(crate) mod window;
 
 #[cfg(feature = "shell")]
-pub use crate::hal::shell::{Anchor, ResizeDirection, WindowCommand, WindowOpts};
+pub use crate::hal::shell::{Anchor, ResizeDirection, WindowCommand, WindowLevel, WindowOpts};
 #[cfg(feature = "scene")]
 pub use crate::renderer::slug::{TextTuning, set_text_tuning, text_tuning};
 #[cfg(feature = "scene")]
@@ -76,6 +84,10 @@ pub(crate) use theme_file::launch as launch_theme;
 pub use theme_file::parse as parse_theme;
 #[cfg(any(feature = "desktop", feature = "terminal"))]
 pub use theme_watch::{ThemeWatcher, watch_theme};
+#[cfg(feature = "desktop")]
+pub use window::{
+    CloseAction, WindowId, current_window, open_window, window_focused, window_occluded,
+};
 
 #[cfg(all(feature = "desktop", any(test, feature = "kittest")))]
 pub use launch::__drive_test_frame;

@@ -11,7 +11,7 @@ use winit::{
 
 use crate::events::{ShellEvent, WindowEvent as SigilWindowEvent};
 
-use crate::shell::{shell::WinitShell, waker::WakeEvent};
+use crate::shell::{WinitWindowHandle, shell::WinitShell, waker::WakeEvent};
 
 pub(crate) struct WinitApp<F> {
     pub(crate) shell: WinitShell,
@@ -27,6 +27,26 @@ impl<F> WinitApp<F> {
             return false;
         }
         true
+    }
+}
+
+impl<F> WinitApp<F>
+where
+    F: FnMut(&mut WinitShell),
+{
+    fn run_frame(&mut self, event_loop: &ActiveEventLoop, target: Option<WinitWindowHandle>) {
+        self.shell.set_redraw_target(target);
+        (self.frame)(&mut self.shell);
+        self.shell.set_redraw_target(None);
+        if self.shell.exit_requested() {
+            event_loop.exit();
+        }
+    }
+
+    fn run_hidden(&mut self, event_loop: &ActiveEventLoop) {
+        if !self.shell.any_visible() {
+            self.run_frame(event_loop, None);
+        }
     }
 }
 
@@ -54,12 +74,14 @@ where
         for (_, window) in self.shell.windows() {
             window.request_redraw();
         }
+        self.run_hidden(event_loop);
     }
 
-    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
+    fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
         if matches!(cause, StartCause::ResumeTimeReached { .. }) {
             self.app_redraw_pending = true;
             self.shell.request_redraws();
+            self.run_hidden(event_loop);
         }
     }
 
@@ -79,10 +101,13 @@ where
         self.shell.process_a11y_event(window_id, &event);
         match event {
             WinitWindowEvent::CloseRequested => {
-                self.shell
-                    .push_event(ShellEvent::Window(SigilWindowEvent::CloseRequested));
-                self.shell.request_exit();
+                if let Some(handle) = self.shell.handle_for(window_id) {
+                    self.shell
+                        .push_event(handle, ShellEvent::Window(SigilWindowEvent::CloseRequested));
+                }
+                self.app_redraw_pending = true;
                 self.shell.request_redraws();
+                self.run_hidden(event_loop);
             }
             WinitWindowEvent::RedrawRequested => {
                 if !self.materialise_pending(event_loop) {
@@ -92,10 +117,8 @@ where
                     self.shell.set_force_paint();
                 }
                 self.app_redraw_pending = false;
-                (self.frame)(&mut self.shell);
-                if self.shell.exit_requested() {
-                    event_loop.exit();
-                }
+                let target = self.shell.handle_for(window_id);
+                self.run_frame(event_loop, target);
             }
             event => {
                 if self.shell.buffer_window_event(window_id, event) {

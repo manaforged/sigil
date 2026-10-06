@@ -1,11 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
-use web_time::Instant;
 
 use crate::animation_runtime::active_count as active_animation_count;
-#[cfg(test)]
-use crate::animation_runtime::tick as tick_animations;
-use crate::events::EventRouter;
 #[cfg(test)]
 use crate::geometry::Size;
 use crate::geometry::{LogicalSize, PhysicalSize, Scale};
@@ -17,26 +13,31 @@ use crate::shell::{WinitShell, WinitWindowHandle};
 use crate::tasks::AsyncRuntime;
 
 use crate::app::config::{AppConfig, PanicPolicy};
-use crate::app::embed::Host;
 use crate::app::error::{AppResult, Error};
 use crate::app::exit::clear_exit;
+use crate::app::window::allocate_window_id;
 use crate::kernel::IntoNode;
 
 mod backend;
+mod clock;
 mod event_wiring;
 mod frame;
+mod lifecycle;
+mod record;
 #[path = "scene_cache.rs"]
 mod scene_cache;
+mod tick;
 #[cfg(target_arch = "wasm32")]
 mod web;
 
-#[cfg(feature = "inspect")]
-use backend::inspect_shot;
 use backend::{Backend, Surface};
+#[cfg(test)]
+use clock::AnimationClock;
 use frame::frame_once;
 #[cfg(test)]
 use frame::{begin_effect, run_layout_if_dirty};
-use scene_cache::SceneCache;
+use record::{WindowRecord, Windows};
+use tick::{FrameCtx, LoopState};
 
 pub(crate) fn launch<C, F, N>(config: C, tree: F) -> AppResult<()>
 where
@@ -46,7 +47,7 @@ where
 {
     let config = config.into();
     let owner = Owner::new("sigil-app", None);
-    let result = owner.with(|| run(config, tree, owner));
+    let result = owner.with(|| run(&config, tree, owner));
     #[cfg(not(target_arch = "wasm32"))]
     owner.dispose();
     #[cfg(target_arch = "wasm32")]
@@ -56,23 +57,13 @@ where
     result
 }
 
-#[allow(clippy::too_many_lines, reason = "launch is one linear setup")]
-fn run<F, N>(config: AppConfig, tree: F, owner: Owner) -> AppResult<()>
+fn run<F, N>(config: &AppConfig, tree: F, owner: Owner) -> AppResult<()>
 where
     F: Fn() -> N + 'static,
     N: IntoNode,
 {
-    let mut config = AppConfig {
-        user_zoom: if config.user_zoom > 0.0 {
-            config.user_zoom
-        } else {
-            1.0
-        },
-        ..config
-    };
+    crate::app::window::reset();
     crate::text::prefer_system_fonts();
-    let logical_size = logical_size_from_config(config.size);
-
     let mut shell = if config.overlay {
         WinitShell::new_accessory()
     } else {
@@ -81,28 +72,10 @@ where
     .map_err(Error::window)?;
     #[cfg(target_arch = "wasm32")]
     shell.set_canvas(config.canvas.clone());
-    let window_handle = create_initial_window(&mut shell, &config, logical_size)?;
-
-    let mut async_rt = install_async_runtime(&shell, config.task_workers)?;
+    let async_rt = install_async_runtime(&shell, config.task_workers)?;
     install_font_wake(&shell);
-
-    let mut host = Host::new();
-    host.mount_app(tree);
-    if host.root().is_none() {
-        return Err(Error::new(std::io::Error::other(
-            "the mounted tree has no root node",
-        )));
-    }
+    let windows = initial_windows(&mut shell, config, tree)?;
     let _theme_watch = crate::app::launch_theme(config.theme_file.as_deref());
-
-    let mut viewport = (
-        logical_size.width / config.user_zoom,
-        logical_size.height / config.user_zoom,
-    );
-    host.layout(viewport).map_err(Error::from)?;
-
-    let mut router = EventRouter::new();
-    let a11y_action_rx = shell.a11y_action_receiver();
     let mut renderer = Backend::from_env()?;
     #[cfg(target_arch = "wasm32")]
     renderer.request_device({
@@ -110,14 +83,34 @@ where
         move || drop(WinitShell::wake(&waker))
     });
     renderer.set_transparent(config.overlay || config.frameless);
-    let mut surface: Option<Surface> = None;
-    let mut exit_requested = false;
     clear_exit();
-    let mut frame_state = FrameState::default();
-
     shell.on_idle_deadline(next_interval_deadline);
+    let state = LoopState::new(windows, renderer, async_rt, config.panic_policy);
+    drive(shell, state, owner)
+}
 
-    let panic_policy = config.panic_policy;
+fn initial_windows<F, N>(shell: &mut WinitShell, config: &AppConfig, tree: F) -> AppResult<Windows>
+where
+    F: Fn() -> N + 'static,
+    N: IntoNode,
+{
+    let mut config = config.clone();
+    if config.user_zoom <= 0.0 {
+        config.user_zoom = 1.0;
+    }
+    let handle = create_initial_window(shell, &config, logical_size_from_config(config.size))?;
+    let record = WindowRecord::new(
+        allocate_window_id(),
+        handle,
+        config,
+        Box::new(move |host: &mut crate::app::embed::Host| host.mount_app(tree)),
+    )?;
+    let mut windows = Windows::default();
+    windows.insert(record);
+    Ok(windows)
+}
+
+fn drive(shell: WinitShell, mut state: LoopState, owner: Owner) -> AppResult<()> {
     #[cfg(feature = "inspect")]
     let inspect = crate::app::inspect::install_with_wake({
         let waker = shell.waker();
@@ -131,42 +124,15 @@ where
                 owner.with(|| {
                     #[cfg(feature = "inspect")]
                     if let Some(inspect) = &inspect {
-                        let mut shot = |app: &mut Host| {
-                            inspect_shot(app, &mut renderer, &mut surface, viewport)
-                        };
-                        inspect.service(
-                            &mut host,
-                            &mut router,
-                            crate::app::inspect::View {
-                                cell: None,
-                                text: None,
-                                shot: Some(&mut shot),
-                            },
-                        );
+                        state.service_inspect(inspect);
                     }
-                    let frame = FrameCtx {
-                        config: &mut config,
-                        shell,
-                        window_handle,
-                        host: &mut host,
-                        router: &mut router,
-                        renderer: &mut renderer,
-                        surface: &mut surface,
-                        viewport: &mut viewport,
-                        exit_requested: &mut exit_requested,
-                        async_rt: &mut async_rt,
-                        a11y_action_rx: &a11y_action_rx,
-                        frame_state: &mut frame_state,
-                    };
-                    if let Err(error) = run_frame(panic_policy, frame) {
+                    if let Err(error) = state.tick(shell) {
                         Runtime::recover_from_panic();
                         #[cfg(target_arch = "wasm32")]
                         web::report(&error);
                         launch_failure.set(Some(error));
                         shell.request_exit();
-                        return;
                     }
-                    request_animation_frame(shell, window_handle);
                 });
             })
             .map_err(Error::window)
@@ -181,9 +147,9 @@ fn finish(result: AppResult<()>) -> AppResult<()> {
     result
 }
 
-fn request_animation_frame(shell: &WinitShell, handle: WinitWindowHandle) {
+fn request_animation_frame(shell: &WinitShell, handle: Option<WinitWindowHandle>) {
     if active_animation_count() > 0
-        && let Some(window) = shell.window_for(handle)
+        && let Some(window) = handle.and_then(|handle| shell.window_for(handle))
     {
         window.request_redraw();
     }
@@ -232,63 +198,7 @@ where
         .map_err(Error::window)
 }
 
-struct FrameCtx<'a> {
-    config: &'a mut AppConfig,
-    shell: &'a mut WinitShell,
-    window_handle: WinitWindowHandle,
-    host: &'a mut Host,
-    router: &'a mut EventRouter,
-    renderer: &'a mut Backend,
-    surface: &'a mut Option<Surface>,
-    viewport: &'a mut (f32, f32),
-    exit_requested: &'a mut bool,
-    async_rt: &'a mut AsyncRuntime,
-    a11y_action_rx: &'a crossbeam_channel::Receiver<accesskit::ActionRequest>,
-    frame_state: &'a mut FrameState,
-}
-
-#[derive(Default)]
-struct FrameState {
-    animation_clock: AnimationClock,
-    scene_cache: SceneCache,
-}
-
-const NOMINAL_FRAME_SECS: f32 = 1.0 / 60.0;
-
-#[derive(Default)]
-struct AnimationClock {
-    previous: Option<Instant>,
-}
-
-impl AnimationClock {
-    fn elapsed(&mut self, now: Instant) -> f32 {
-        if active_animation_count() == 0 {
-            self.previous = None;
-            return NOMINAL_FRAME_SECS;
-        }
-        self.previous
-            .replace(now)
-            .map_or(NOMINAL_FRAME_SECS, |previous| {
-                now.saturating_duration_since(previous).as_secs_f32()
-            })
-    }
-
-    #[cfg(test)]
-    fn tick_active(&mut self, now: Instant) -> bool {
-        if active_animation_count() == 0 {
-            self.previous = None;
-            return false;
-        }
-        let dt = self.elapsed(now);
-        tick_animations(dt);
-        if active_animation_count() == 0 {
-            self.previous = None;
-        }
-        true
-    }
-}
-
-#[cfg(all(feature = "menu", target_os = "windows"))]
+#[cfg(all(any(feature = "menu", feature = "media"), target_os = "windows"))]
 fn menu_hwnd(shell: &WinitShell, handle: WinitWindowHandle) -> Option<isize> {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     let window = shell.window_for(handle)?;
@@ -298,7 +208,7 @@ fn menu_hwnd(shell: &WinitShell, handle: WinitWindowHandle) -> Option<isize> {
     }
 }
 
-#[cfg(all(feature = "menu", not(target_os = "windows")))]
+#[cfg(all(any(feature = "menu", feature = "media"), not(target_os = "windows")))]
 const fn menu_hwnd(_shell: &WinitShell, _handle: WinitWindowHandle) -> Option<isize> {
     None
 }

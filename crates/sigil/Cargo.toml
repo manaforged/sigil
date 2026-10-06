@@ -76,6 +76,9 @@ arboard = { workspace = true, optional = true }
 zed-font-kit = { workspace = true, optional = true }
 subsecond = { version = "0.7.10", optional = true }
 dioxus-devtools = { version = "0.7.10", default-features = false, optional = true }
+notify-rust = { version = "4.18", optional = true }
+souvlaki = { version = "0.8.3", optional = true, default-features = false, features = ["use_zbus"] }
+global-hotkey = { version = "0.8", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3", features = ["wasm_js"] }
@@ -122,6 +125,9 @@ inspect = ["dep:base64"]
 kittest = []
 test-clock = []
 audio = ["dep:rodio"]
+notify = ["dep:notify-rust"]
+media = ["desktop", "dep:souvlaki", "dep:raw-window-handle"]
+hotkey = ["desktop", "dep:global-hotkey"]
 pty = ["dep:portable-pty", "dep:vt100"]
 hot = ["dep:subsecond", "dep:dioxus-devtools"]
 terminal = ["dep:crossterm", "dep:rustix", "dep:signal-hook", "image-decode"]

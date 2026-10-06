@@ -5,7 +5,8 @@ use crate::hal::Shell as _;
 use accesskit::{ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, TreeUpdate};
 use winit::{event_loop::ActiveEventLoop, window::Window};
 
-use super::{WinitShell, WinitWaker};
+use super::WinitShell;
+use crate::shell::WinitWaker;
 use crate::shell::WinitWindowHandle;
 
 pub(crate) struct ActionSender {
@@ -65,6 +66,13 @@ impl DeactivationHandler for ActivationSwitch {
     }
 }
 
+pub(crate) struct AdapterEntry {
+    pub(crate) handle: WinitWindowHandle,
+    adapter: accesskit_winit::Adapter,
+    activation: Arc<Activation>,
+    actions: crossbeam_channel::Receiver<ActionRequest>,
+}
+
 impl WinitShell {
     pub(crate) fn install_a11y_adapter(
         &mut self,
@@ -72,8 +80,9 @@ impl WinitShell {
         handle: WinitWindowHandle,
         window: &Window,
     ) {
+        let (tx, actions) = crossbeam_channel::unbounded();
         let action_sender = ActionSender {
-            tx: self.a11y_action_tx.clone(),
+            tx,
             waker: self.waker(),
         };
         let activation = Arc::new(Activation::default());
@@ -89,7 +98,12 @@ impl WinitShell {
             switch(),
         );
         window.set_visible(true);
-        self.a11y_adapters.push((handle, adapter, activation));
+        self.a11y_adapters.push(AdapterEntry {
+            handle,
+            adapter,
+            activation,
+            actions,
+        });
     }
 
     pub(crate) fn process_a11y_event(
@@ -97,44 +111,45 @@ impl WinitShell {
         window_id: winit::window::WindowId,
         event: &winit::event::WindowEvent,
     ) {
-        let Some(handle) = self
-            .windows()
-            .iter()
-            .find_map(|(h, w)| (w.id() == window_id).then_some(*h))
-        else {
+        let Some(handle) = self.handle_for(window_id) else {
             return;
         };
         let Some(window) = self.window_for(handle).cloned() else {
             return;
         };
-        if let Some((_, adapter, _)) = self.a11y_adapters.iter_mut().find(|(h, _, _)| *h == handle)
-        {
-            adapter.process_event(&window, event);
+        if let Some(entry) = self.a11y_adapters.iter_mut().find(|e| e.handle == handle) {
+            entry.adapter.process_event(&window, event);
+        }
+    }
+
+    fn adapter(&self, handle: WinitWindowHandle) -> Option<&AdapterEntry> {
+        self.a11y_adapters.iter().find(|e| e.handle == handle)
+    }
+
+    #[must_use]
+    pub fn a11y_active(&self, handle: WinitWindowHandle) -> bool {
+        self.adapter(handle)
+            .is_some_and(|e| e.activation.is_active())
+    }
+
+    #[must_use]
+    pub fn take_a11y_activation(&self, handle: WinitWindowHandle) -> bool {
+        self.adapter(handle)
+            .is_some_and(|e| e.activation.take_pending())
+    }
+
+    pub fn publish_a11y_update(&mut self, handle: WinitWindowHandle, update: TreeUpdate) {
+        if let Some(entry) = self.a11y_adapters.iter_mut().find(|e| e.handle == handle) {
+            entry.adapter.update_if_active(|| update);
         }
     }
 
     #[must_use]
-    pub fn a11y_active(&self) -> bool {
-        self.a11y_adapters.iter().any(|(_, _, a)| a.is_active())
-    }
-
-    #[must_use]
-    pub fn take_a11y_activation(&self) -> bool {
-        self.a11y_adapters
-            .iter()
-            .fold(false, |acc, (_, _, a)| a.take_pending() || acc)
-    }
-
-    pub fn publish_a11y_update(&mut self, update: &TreeUpdate) {
-        for (_, adapter, _) in &mut self.a11y_adapters {
-            let for_adapter = update.clone();
-            adapter.update_if_active(|| for_adapter);
-        }
-    }
-
-    #[must_use]
-    pub fn a11y_action_receiver(&self) -> crossbeam_channel::Receiver<ActionRequest> {
-        self.a11y_action_rx.clone()
+    pub fn a11y_action_receiver(
+        &self,
+        handle: WinitWindowHandle,
+    ) -> Option<crossbeam_channel::Receiver<ActionRequest>> {
+        self.adapter(handle).map(|e| e.actions.clone())
     }
 }
 
