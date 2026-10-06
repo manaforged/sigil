@@ -9,6 +9,7 @@ use crate::terminal::caps::{Caps, ColorDepth};
 use super::decoration::{self, Edge, Surface};
 use super::marks::Marks;
 use super::paint_clip::{Text, image_crop, paint_text};
+use super::transform::Space;
 use super::{Face, Grid, Ink, Underline, cell_edge, floor_cell};
 
 pub struct Paint<'a> {
@@ -45,6 +46,7 @@ pub fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &Paint<'_>) {
         cell: if paint.cell <= 0.0 { 1.0 } else { paint.cell },
         clips: Vec::new(),
         alphas: Vec::new(),
+        space: Space::default(),
     };
     for command in &scene.commands {
         walk.command(command);
@@ -99,6 +101,7 @@ struct Walk<'a> {
     cell: f32,
     clips: Vec<Rect>,
     alphas: Vec<f32>,
+    space: Space,
 }
 
 type Area = (Rect, (usize, usize), (usize, usize));
@@ -124,19 +127,21 @@ impl Walk<'_> {
             SceneCommand::PushLayer(scope) => {
                 self.push_clip(scope.clip);
                 self.alphas.push(scope.opacity);
+                self.space.push_effect(scope.effect);
             }
             SceneCommand::PopLayer => {
                 self.clips.pop();
                 self.alphas.pop();
+                self.space.pop();
             }
+            SceneCommand::PushTransform(transform) => self.space.push(*transform),
+            SceneCommand::PopTransform => self.space.pop(),
             SceneCommand::Rect(draw) => self.rect(draw),
             SceneCommand::Gradient(draw) => self.gradient(draw),
             SceneCommand::GlyphRun(draw) => self.text(draw),
             SceneCommand::Image(draw) => self.image(draw),
             SceneCommand::Decoration(draw) => self.decoration(draw),
-            SceneCommand::PushTransform(_)
-            | SceneCommand::PopTransform
-            | SceneCommand::Pattern(_)
+            SceneCommand::Pattern(_)
             | SceneCommand::DrawShadow { .. }
             | SceneCommand::Sprite(_) => {}
         }
@@ -147,6 +152,7 @@ impl Walk<'_> {
     }
 
     fn push_clip(&mut self, rect: Rect) {
+        let rect = self.space.map(rect);
         let next = self.clip().map_or(rect, |outer| {
             outer
                 .intersection(rect)
@@ -173,6 +179,7 @@ impl Walk<'_> {
     }
 
     fn area(&self, rect: Rect) -> Option<Area> {
+        let rect = self.space.map(rect);
         let visible = match self.clip() {
             Some(clip) => rect.intersection(clip)?,
             None => rect,
@@ -203,7 +210,7 @@ impl Walk<'_> {
             let ink = self.ink(color, draw.tone);
             if ink.set() {
                 let surface = Surface {
-                    rect: draw.rect,
+                    rect: self.space.map(draw.rect),
                     visible,
                     origin,
                     size,
@@ -217,6 +224,7 @@ impl Walk<'_> {
         }
         if let Some(border) = draw.border {
             let border = CellBorder {
+                rect: self.space.map(border.rect),
                 color: self.fade(border.color, draw.opacity),
                 ..border
             };
@@ -253,7 +261,7 @@ impl Walk<'_> {
             return;
         };
         let text = Text {
-            rect: run.rect,
+            rect: self.space.map(run.rect),
             clip: self.clip(),
             content: &run.text,
             flow: run.flow,
@@ -289,7 +297,13 @@ impl Walk<'_> {
         }
         super::marks::decorate(
             self.grid,
-            &super::marks::line(draw, color),
+            &super::marks::line(
+                &DrawDecoration {
+                    band: self.space.map(draw.band),
+                    ..*draw
+                },
+                color,
+            ),
             self.clip(),
             self.cell,
         );
@@ -299,7 +313,11 @@ impl Walk<'_> {
         let Some((visible, origin, size)) = self.area(draw.destination) else {
             return;
         };
-        let crop = image_crop((draw.destination, draw.crop), visible, &draw.source);
+        let crop = image_crop(
+            (self.space.map(draw.destination), draw.crop),
+            visible,
+            &draw.source,
+        );
         self.grid.place(&draw.source, crop, origin, size);
     }
 }

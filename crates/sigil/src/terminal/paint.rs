@@ -14,6 +14,7 @@ mod marks;
 #[path = "paint_clip.rs"]
 mod paint_clip;
 mod scene;
+mod transform;
 
 pub use marks::Marks;
 pub use scene::{Paint, raster, raster_into, raster_with};

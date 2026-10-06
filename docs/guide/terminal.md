@@ -251,6 +251,9 @@ frame. It waits for input until the next interval is due.
   changed. This is the screen-reader and automation transcript surface.
 - The cell grid changes the paint, not the tree. The widgets, events,
   and signals are the same as the desktop host.
+- Transforms move and scale what they hold, as in a window: a panned or
+  zoomed subtree paints at its transformed place and size, snapped to
+  cells. Text keeps one cell per character at its transformed position.
 - Write ordinary pixel geometry. Layout snaps it to the cell grid: a
   size rounds to whole cells, a padding, gap, or margin rounds to the
   nearest cell, and each box edge rounds to the nearest cell line, so

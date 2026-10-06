@@ -59,5 +59,7 @@ mod paint;
 mod select;
 #[path = "terminal_host/table.rs"]
 mod table;
+#[path = "terminal_host/transforms.rs"]
+mod transforms;
 #[path = "terminal_host/wrap.rs"]
 mod wrap;
