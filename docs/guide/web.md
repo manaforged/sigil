@@ -95,8 +95,12 @@ Text in the loaded script shows empty boxes until the signal turns
   caret, so the browser draws the candidate window there. Composition
   events become the same `ImeEvent`s as on the desktop host. Other keys
   pass to the canvas unchanged.
-- No system fonts. Scripts outside the bundled faces draw as empty
-  boxes until `load_font_url` loads a face that covers them.
+- No system fonts. The first time text uses CJK, Arabic, Hebrew,
+  Devanagari, Khmer, Thai, or Lao, Sigil fetches a Noto face for that
+  script from jsDelivr through `load_font_url`. The text draws as empty
+  boxes until the fetch completes, and stays that way if the page is
+  offline or its content security policy blocks the CDN. Call
+  `load_font_url` to serve a face from your own origin.
 - Tasks run on the page's one thread. `task`, `spawn`, and `sleep`
   work, and `sleep` waits on `setTimeout`, but a future that computes
   without awaiting freezes the page until it returns.
