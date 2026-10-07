@@ -34,12 +34,6 @@ pub(super) struct Interact {
     drag: Rc<Cell<Option<f32>>>,
 }
 
-pub(super) struct Readout {
-    pub(super) values: Rc<[f32]>,
-    pub(super) total: usize,
-    pub(super) pad: f32,
-}
-
 impl Interact {
     pub(super) fn new(range: Option<Signal<Range<f32>>>, crosshair: bool) -> Self {
         Self {
@@ -67,14 +61,20 @@ impl Interact {
         if end <= start { 0..total } else { start..end }
     }
 
-    pub(super) fn attach(&self, plot: NodeBuilder, readout: &Readout) -> NodeBuilder {
+    pub(super) fn attach(
+        &self,
+        plot: NodeBuilder,
+        total: usize,
+        pad: f32,
+        values: impl FnOnce() -> Rc<[f32]>,
+    ) -> NodeBuilder {
         let mut plot = plot;
         if self.crosshair {
-            plot = plot.child(self.overlay(Rc::clone(&readout.values), readout.pad));
+            plot = plot.child(self.overlay(values(), pad));
         }
         if self.crosshair || self.range.is_some() {
-            plot = self.pointer(plot, readout.total, readout.pad);
-            plot = self.wheel(plot, readout.total, readout.pad);
+            plot = self.pointer(plot, total, pad);
+            plot = self.wheel(plot, total, pad);
         }
         plot
     }

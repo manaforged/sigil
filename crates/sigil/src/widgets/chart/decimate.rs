@@ -67,21 +67,24 @@ impl IndexOrder for (usize, f32) {
 type Extremes = ((usize, f32), (usize, f32));
 
 fn extremes(values: &[f32], start: usize, end: usize) -> Option<Extremes> {
-    let mut found: Option<Extremes> = None;
-    for (offset, value) in values.get(start..end)?.iter().copied().enumerate() {
+    let bucket = values.get(start..end)?;
+    let mut points = bucket.iter().copied().enumerate();
+    let (first, initial) = points.find(|(_, value)| value.is_finite())?;
+    let seed = (start + first, initial);
+    let (mut low, mut high) = (seed, seed);
+    for (offset, value) in points {
         if !value.is_finite() {
             continue;
         }
         let point = (start + offset, value);
-        found = Some(match found {
-            None => (point, point),
-            Some((low, high)) => (
-                if value < low.1 { point } else { low },
-                if value > high.1 { point } else { high },
-            ),
-        });
+        if value < low.1 {
+            low = point;
+        }
+        if value > high.1 {
+            high = point;
+        }
     }
-    found
+    Some((low, high))
 }
 
 pub(super) fn candles(rows: &[Candle], columns: usize) -> Vec<Candle> {

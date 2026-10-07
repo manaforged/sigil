@@ -27,9 +27,31 @@ Any example builds without changes. Load the module from a page and serve the di
 </script>
 ```
 
+## Website catalog
+
+Generate the captures and live bundle from the same clean, committed Sigil checkout. Set `sigil_site_data` to the catalog output directory:
+
+```bash
+sigil_site_data=/path/to/sigil-site-data
+cargo run --locked -p sigil-ui --example visual_catalog --features terminal,desktop \
+  -- --site "$sigil_site_data"
+cargo build --locked --release -p sigil-ui --target wasm32-unknown-unknown \
+  --example catalog_live
+wasm-bindgen --target web --out-dir "$sigil_site_data/live" \
+  "${CARGO_TARGET_DIR:-target}/wasm32-unknown-unknown/release/examples/catalog_live.wasm"
+```
+
+Keep the complete `wasm-bindgen` output, including its `snippets` directory. Use the matching CLI described above.
+
+The manifest records `sigil_commit`. The website builder requires that revision to resolve to the configured Sigil repository's current `HEAD`, with no tracked source changes. An unresolved revision, an older revision, or a dirty marker requires regeneration. If you set `SIGIL_COMMIT`, use the checkout's full commit hash.
+
+Each component records the catalog's `live_mode`: `sandbox` or `off`. A component with captures and `sandbox` requires live entries and the `catalog_live` bundle. Components with `off`, or without captures, can omit live entries. Each selectable live state records its `capture_id`; this refers to the corresponding captured state even when its display ID differs from the live state.
+
 ## Usage
 
 ```rust,no_run
+# #[cfg(feature = "desktop")]
+# mod web {
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
@@ -38,6 +60,8 @@ fn main() -> sigil::AppResult<()> {
 # fn app_tree() -> impl IntoNode {
 #     text("app")
 # }
+# }
+# fn main() {}
 ```
 
 `AppConfig::canvas(id)` draws into the `<canvas>` with that id and keeps its CSS size. Without it, or if no canvas has that id, `run` appends a canvas of `AppConfig::size` to `<body>`. Native hosts ignore it, so the same `main` builds for every target.

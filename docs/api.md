@@ -94,20 +94,28 @@ fn main() -> sigil::AppResult<()> {
         sigil::app::set_theme(theme);
     }
     let _: fn(std::path::PathBuf) -> sigil::AppResult<sigil::app::ThemeWatcher> = sigil::app::watch_theme;
+#   #[cfg(feature = "desktop")]
     let _ = sigil::app::open("https://example.com");
     let mut host = sigil::Host::new();
     host.mount(app_tree);
     let _: Option<sigil::app::AccessibilityTree> = None;
+#   #[cfg(feature = "shell")]
+#   {
     let _ = sigil::app::WindowCommand::DragResize(sigil::app::ResizeDirection::East);
     let _ = sigil::app::WindowOpts::default();
     let _ = sigil::app::Anchor::BottomCenter { margin: 16.0 };
+#   }
+#   #[cfg(feature = "scene")]
+#   {
     sigil::app::set_default_fonts(sigil::app::DefaultFonts::default());
     sigil::app::use_system_fonts();
     let tuning: sigil::app::TextTuning = sigil::app::text_tuning();
     sigil::app::set_text_tuning(tuning);
+#   }
     let _ = sigil::widgets::interaction::InteractionState::new(true);
     let _ = sigil::style::Token::Accent;
     let _ = sigil::scene::CommandScene::default();
+#   #[cfg(feature = "scene")]
     let _: Option<sigil::wgpu::TextureFormat> = None;
     let _ = sigil::terminal::focused();
     let _ = (sigil::layout::cols(2.0), sigil::reactive::batch(|| 1));
@@ -158,7 +166,7 @@ fn tray_events() -> sigil::reactive::EventChannel<tray_icon::TrayIconEvent> {
     sigil::app::tray::events()
 }
 
-#[cfg(feature = "render")]
+#[cfg(feature = "terminal")]
 use sigil::terminal::render as _;
 
 #[cfg(feature = "kittest")]
@@ -185,6 +193,8 @@ fn main() {}
 | `open` | `fn open(target) -> AppResult<()>` | Same as `sigil::app::open` (feature `desktop`). |
 
 ```rust,no_run
+# #[cfg(any(feature = "desktop", feature = "terminal"))]
+# mod hosted {
 use sigil::Error;
 use sigil::app::is_grid;
 use sigil::app::parse_theme;
@@ -202,7 +212,9 @@ fn main() -> AppResult<()> {
     let _: Option<(Host, ThemeWatcher, Error)> = None;
     let _ = Runtime::scope("demo", || text("x"));
     set_theme(parse_theme("base = \"light\"\n[tokens]\n").unwrap_or_else(Theme::light));
-    let _ = (open("https://example.com"), watch_theme("theme.toml").map(drop));
+#   #[cfg(feature = "desktop")]
+    let _ = open("https://example.com");
+    let _ = watch_theme("theme.toml").map(drop);
     run(AppConfig::new("Demo"), tree)
 }
 
@@ -210,6 +222,8 @@ fn main() -> AppResult<()> {
 fn player() -> sigil::app::Player { sigil::app::Player::new() }
 #[cfg(feature = "pty")]
 fn session() -> AppResult<sigil::app::Session> { sigil::app::Session::spawn("sh") }
+# }
+# fn main() {}
 ```
 
 ### Nodes and text
@@ -463,7 +477,9 @@ fn main() {
 | `Size` | `struct Size { width: Dim, height: Dim }`; `Size::max_content()`, `Size::min_content()` | A size constraint. The two constructors ask for the max-content or min-content size on both axes. |
 
 ```rust,no_run
+# #[cfg(feature = "shell")]
 use sigil::app::ResizeDirection;
+# #[cfg(feature = "shell")]
 use sigil::app::WindowCommand;
 use sigil::events::EventHandlers;
 use sigil::events::FileDropEvent;
@@ -475,6 +491,7 @@ use sigil::events::ScrollDelta;
 use sigil::events::ScrollEvent;
 use sigil::events::ScrollPhase;
 use sigil::events::WindowEvent;
+# #[cfg(feature = "desktop")]
 use sigil::events::request_window_command;
 use sigil::geometry::Dim;
 use sigil::geometry::LogicalSize;
@@ -499,6 +516,7 @@ fn tree() -> impl IntoNode {
         .file_drop(|event: &FileDropEvent| drop(event))
         .on_ime(|event: &ImeEvent| drop(matches!(event, ImeEvent::Commit(_))))
         .on_added(|_, id| request_focus(id));
+#   #[cfg(feature = "desktop")]
     request_window_command(WindowCommand::DragResize(ResizeDirection::South));
     root
 }
@@ -1104,6 +1122,7 @@ Public items outside the prelude. Import them by path.
 
 ```rust,no_run
 use sigil::clipboard::ClipError;
+# #[cfg(feature = "clipboard")]
 use sigil::clipboard::OsClipboard;
 use sigil::clipboard::copy;
 use sigil::prelude::*;
@@ -1122,6 +1141,7 @@ fn main() -> AppResult<()> {
     install(Memory);
     let _: Delivery = copy("hello")?;
     let _: String = sigil::clipboard::paste()?;
+#   #[cfg(feature = "clipboard")]
     let _: Option<OsClipboard> = None;
     Ok(())
 }

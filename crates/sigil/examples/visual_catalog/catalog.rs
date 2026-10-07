@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::spec::State;
 
@@ -44,7 +44,7 @@ pub(crate) struct Component {
     pub(crate) captures: Vec<Capture>,
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum Live {
     #[default]

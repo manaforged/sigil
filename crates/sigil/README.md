@@ -21,6 +21,8 @@ Write `use sigil::prelude::*;`. The prelude brings in `run`, the widgets, the si
 A window:
 
 ```rust,no_run
+# #[cfg(feature = "desktop")]
+# mod window {
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
@@ -35,11 +37,15 @@ fn app_tree() -> impl IntoNode {
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
 }
+# }
+# fn main() {}
 ```
 
 The same tree in a terminal:
 
 ```rust,no_run
+# #[cfg(feature = "terminal")]
+# mod terminal {
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
@@ -47,6 +53,8 @@ fn main() -> sigil::AppResult<()> {
         text("hello")
     })
 }
+# }
+# fn main() {}
 ```
 
 An embed host. You own the window and the GPU:
@@ -76,21 +84,28 @@ With the `desktop` feature, `open(url)` passes an `http`, `https`, or `mailto` U
 | Feature | Default | Enables |
 | --- | --- | --- |
 | `desktop` | yes | The window host for `run`, `open`, and the OS clipboard. Turns on `scene`, `clipboard`, and winit with AccessKit. |
-| `terminal` | no | The terminal host: `run` with `.terminal()`, and `sigil::terminal`. Uses crossterm. |
-| `scene` | via `desktop` | The wgpu renderer, the CPU renderer, text shaping, SVG icons, and `sigil::text`. No window. |
+| `terminal` | no | The terminal host: `run` with `.terminal()`, and `sigil::terminal`, including `sigil::terminal::render`. Uses crossterm and enables `image-decode`. |
+| `scene` | via `desktop` | The wgpu renderer, the CPU renderer, offscreen capture through `sigil::renderer::capture`, text shaping, SVG icons, and `sigil::text`. No window. |
+| `shell` | via `desktop` | The winit window shell with AccessKit. |
 | `cpu` | via `scene` | The CPU renderer that `SIGIL_BACKEND=cpu` selects. |
-| `render` | no | `sigil::terminal::render` for scene output without a window. Turns on `scene`. |
-| `capture` | no | Offscreen capture of a scene to pixels. Turns on `scene`. |
+| `shaping-complex` | via `scene` | Complex-script text shaping through `HarfRust`. |
+| `render` | no | Scene rendering without a window. Turns on `scene`. |
 | `clipboard` | via `desktop` | `OsClipboard`, the system clipboard. |
 | `clipboard-image` | no | `sigil::clipboard::image()`, images from the system clipboard. |
 | `image-decode` | no | `image_bytes`, and `data:` images in `markdown`. |
-| `dialog` | no | `sigil::app::dialog`: native open, save, folder, message, and confirm dialogs. Turns on `desktop`. |
+| `dialog` | no | `sigil::app::dialog`: in-app open, save, folder, message, and confirm dialogs on either host. |
+| `native-dialog` | no | Native dialogs on the window host; the terminal host keeps the in-app dialogs. Turns on `dialog` and `desktop`. |
 | `menu` | no | `sigil::app::menu`: native application menus. Turns on `desktop`. |
 | `tray` | no | `sigil::app::tray`: system tray icons and events. Turns on `menu`. |
 | `audio` | no | `Player` for audio playback. |
+| `notify` | no | Desktop notifications through `sigil::app::notify`. |
+| `media` | no | Now-playing metadata and media-key events through `sigil::app::media`. Turns on `desktop`. |
+| `hotkey` | no | Global keyboard shortcuts through `sigil::app::hotkey`. Turns on `desktop`. |
 | `hot` | no | Code hot reload under `dx serve --hot-patch`: `run` mounts the root again after each patch; an embed host uses `Host::mount_hot`. Uses `subsecond` and `dioxus-devtools`. Not on wasm. |
 | `pty` | no | `Session`: a child process on a pseudo-terminal. |
 | `kittest` | no | Test support for `sigil-kittest`. Not API. |
+| `test-clock` | no | Manual interval clock for tests. |
+| `inspect` | no | The local inspection socket when `SIGIL_INSPECT` is set. |
 
 ## Limits
 
@@ -158,4 +173,3 @@ License: MIT. The default fonts ship in the separate `sigil-fonts` crate, which 
 | `sigil::widgets::layout_ext` | 16 | 2 | 0 | 14 | 0 |
 
 <!-- /truesight -->
-

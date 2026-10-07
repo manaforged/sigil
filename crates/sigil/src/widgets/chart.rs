@@ -38,6 +38,12 @@ pub(super) struct ChartSeries {
     tone: Tone,
 }
 
+pub(super) struct ChartView<'a> {
+    name: &'a str,
+    values: &'a [f32],
+    tone: Tone,
+}
+
 struct SeriesSource {
     name: String,
     values: Rc<dyn Reactive<Vec<f32>>>,
@@ -226,28 +232,26 @@ fn content(
     let window = interact.window(total);
     let visible = series
         .iter()
-        .map(|item| ChartSeries {
-            name: item.name.clone(),
+        .map(|item| ChartView {
+            name: &item.name,
             values: item
                 .values
-                .iter()
-                .skip(window.start * stride)
-                .take(window.len() * stride)
-                .copied()
-                .collect(),
+                .split_at((window.end * stride).min(item.values.len()))
+                .0
+                .split_at((window.start * stride).min(item.values.len()))
+                .1,
             tone: item.tone,
         })
         .collect::<Vec<_>>();
     let shown = labels
-        .iter()
-        .skip(window.start)
-        .take(window.len())
-        .cloned()
-        .collect::<Vec<_>>();
+        .split_at(window.end.min(labels.len()))
+        .0
+        .split_at(window.start.min(labels.len()))
+        .1;
     plot::draw(
         &plot::Plot {
             series: &visible,
-            labels: &shown,
+            labels: shown,
             mark,
             count: window.len(),
             total,
@@ -303,9 +307,13 @@ fn summary(series: &[ChartSeries], labels: &[String], theme: ActiveTheme) -> Str
 }
 
 fn span_summary(name: &str, values: &[f32], theme: ActiveTheme) -> String {
-    let finite = || values.iter().copied().filter(|value| value.is_finite());
-    let low = finite().fold(f32::INFINITY, f32::min);
-    let high = finite().fold(f32::NEG_INFINITY, f32::max);
+    let (mut low, mut high) = (f32::INFINITY, f32::NEG_INFINITY);
+    for &value in values {
+        if value.is_finite() {
+            low = low.min(value);
+            high = high.max(value);
+        }
+    }
     theme.fill(
         StringKey::ChartSummary,
         &[&name, &values.len(), &low, &high],

@@ -153,6 +153,7 @@ impl Export<'_> {
             "summary": summary.unwrap_or_default(),
             "preview_state": preview,
             "states": states,
+            "live_mode": component.live,
             "live": live,
             "code": code.unwrap_or_default(),
             "api": self.api.rows_for(&component.builder),
@@ -167,7 +168,9 @@ impl Export<'_> {
             .filter(|drive| **drive == State::Default || built(**drive))
             .filter_map(|drive| {
                 let info = self.catalog.state(*drive)?;
-                Some(json!({"id": drive, "label": info.label}))
+                Some(
+                    json!({"id": drive, "label": info.label, "capture_id": capture.state_id(info)}),
+                )
             })
             .collect();
         json!({

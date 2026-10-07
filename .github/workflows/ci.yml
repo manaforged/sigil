@@ -57,7 +57,7 @@ jobs:
         with:
           tool: cargo-hack,cargo-deny@0.20.2,cargo-fuzz@0.13.2,mdbook@0.4.40,wasm-bindgen-cli@0.2.127
       - name: truesight
-        run: cargo install --locked --git https://github.com/manaforged/truesight --rev 382ac6c2d7a43663ce6da52a64a8abf8a77e0f5c cargo-truesight
+        run: cargo install --locked --git https://github.com/manaforged/truesight --rev 2f9e198cd3dd1abd1e712bb3a6887d0f31086ecb cargo-truesight
       - name: gate
         run: scripts/gate.sh --gpu
 

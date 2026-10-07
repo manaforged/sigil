@@ -2,7 +2,7 @@ use crate::kernel::{IntoNode, NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::style::{Radius, Token, space};
 
-use super::ChartSeries;
+use super::ChartView;
 use super::plot::{AXIS, Span, X_AXIS};
 
 pub(super) fn y_axis(span: Span, x_axis_on: bool, mid_tick: bool) -> NodeBuilder {
@@ -36,7 +36,7 @@ fn tick(value: String) -> impl IntoNode + 'static {
         .class(Token::Gray11.text())
 }
 
-pub(super) fn legend(series: &[ChartSeries]) -> NodeBuilder {
+pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
     let mut row = container().layout(LayoutStyle::flex_row().gap(space(3)));
     for item in series {
         if item.name.is_empty() {
@@ -55,7 +55,7 @@ pub(super) fn legend(series: &[ChartSeries]) -> NodeBuilder {
                         .class([Radius::Sm.atom(), item.tone.fill().bg()]),
                 )
                 .child(
-                    text(item.name.clone())
+                    text(item.name.to_owned())
                         .nowrap()
                         .class("text-xs")
                         .class(Token::Gray12.text()),
