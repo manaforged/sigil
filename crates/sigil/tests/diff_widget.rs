@@ -41,7 +41,7 @@ fn a_5000_line_patch_builds_only_the_visible_rows() {
 fn a_click_on_a_hunk_header_selects_its_changed_lines() {
     let slot: Rc<Cell<Option<Signal<Selection>>>> = Rc::new(Cell::new(None));
     let export = Rc::clone(&slot);
-    let text = "--- a/x.rs\n+++ b/x.rs\n@@ -1,2 +1,2 @@\n keep\n-old\n+new\n";
+    let text = "--- a/x.rs\n+++ b/x.rs\n@@ -1,2 +1,2 @@ fn main\n keep\n-old\n+new\n";
     let patch = Patch::parse(text);
     assert_eq!(patch.hunks.len(), 1);
     assert_eq!(
@@ -60,7 +60,7 @@ fn a_click_on_a_hunk_header_selects_its_changed_lines() {
     let header = ui
         .find_all(&Query::role(Role::Label))
         .into_iter()
-        .find(|node| node.value().is_some_and(|value| value.starts_with("@@")))
+        .find(|node| node.value().is_some_and(|value| value.contains("fn main")))
         .expect("hunk header row");
     ui.click(&header);
     ui.settle();

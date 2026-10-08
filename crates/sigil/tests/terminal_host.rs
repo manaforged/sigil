@@ -37,6 +37,30 @@ fn step(
     sigil::terminal::step(host, router, events, cols, rows).expect("layout")
 }
 
+fn painted<N: IntoNode>(
+    tree: impl Fn() -> N + 'static,
+    cols: u16,
+    rows: u16,
+) -> sigil::terminal::Grid {
+    sigil::reactive::Runtime::scope("terminal-painted", || {
+        let mut host = sigil::Host::cells();
+        host.mount(tree);
+        let mut router = sigil::events::EventRouter::new();
+        drop(step(&mut host, &mut router, [], cols, rows));
+        step(&mut host, &mut router, [], cols, rows)
+    })
+}
+
+fn solid(row: &[sigil::terminal::Cell]) -> usize {
+    row.iter()
+        .filter(|cell| cell.text.trim().is_empty() && cell.bg != sigil::terminal::Ink::Bare)
+        .count()
+}
+
+fn fill_cells(grid: &sigil::terminal::Grid) -> usize {
+    (0..grid.rows()).map(|row| solid(grid.row(row))).sum()
+}
+
 fn counter() -> impl IntoNode {
     let count = signal(0_i32);
     let label = derived(move || format!("Count: {}", count.get()));

@@ -153,9 +153,20 @@ fn a_tree_chevron_sits_on_the_folder_row() {
 
 #[test]
 fn progress_draws_the_unfilled_track() {
-    let grid = present(|| progress(signal(0.5_f32), 1.0), 40, 3, &[]);
-    let line = line_with(&grid, "█");
-    assert!(line.contains('─'), "no track after the fill:\n{grid}");
+    let grid = super::painted(|| progress(signal(0.5_f32), 1.0), 40, 3);
+    let bar = (0..grid.rows())
+        .find(|row| super::solid(grid.row(*row)) > 0)
+        .unwrap_or_else(|| panic!("no fill in:\n{}", grid.text()));
+    let track: String = grid
+        .row(bar)
+        .iter()
+        .map(|cell| cell.text.as_str())
+        .collect();
+    assert!(
+        track.contains('─'),
+        "no track after the fill:\n{}",
+        grid.text()
+    );
 }
 
 #[test]

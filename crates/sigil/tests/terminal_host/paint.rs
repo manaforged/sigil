@@ -18,41 +18,11 @@ fn enter_increments_the_same_button() {
 }
 
 #[test]
-fn progress_paints_a_block_bar() {
+fn progress_paints_a_solid_bar() {
     use sigil::reactive::signal;
     use sigil::widgets::progress;
-    let grid = present(
-        || {
-            let value = signal(0.6_f32);
-            progress(value, 1.0)
-        },
-        40,
-        8,
-        &[],
-    );
-    let filled = grid.matches('█').count();
-    let empty = present(
-        || {
-            let value = signal(0.0_f32);
-            progress(value, 1.0)
-        },
-        40,
-        8,
-        &[],
-    )
-    .matches('█')
-    .count();
-    let full = present(
-        || {
-            let value = signal(1.0_f32);
-            progress(value, 1.0)
-        },
-        40,
-        8,
-        &[],
-    )
-    .matches('█')
-    .count();
+    let at = |value: f32| fill_cells(&painted(move || progress(signal(value), 1.0), 40, 8));
+    let (empty, filled, full) = (at(0.0), at(0.6), at(1.0));
     assert!(
         empty < filled && filled < full,
         "0.6 must sit between 0.0 and 1.0, got {empty} < {filled} < {full}"
@@ -60,10 +30,14 @@ fn progress_paints_a_block_bar() {
 }
 
 #[test]
-fn chart_bars_use_the_same_block_fill() {
+fn chart_bars_use_the_same_solid_fill() {
     use sigil::widgets::chart;
-    let grid = present(|| chart([1.0, 3.0, 2.0]).bar(), 40, 16, &[]);
-    assert!(grid.contains('█'), "expected chart bars in:\n{grid}");
+    let grid = painted(|| chart([1.0, 3.0, 2.0]).bar(), 40, 16);
+    assert!(
+        fill_cells(&grid) > 0,
+        "expected chart bars in:\n{}",
+        grid.text()
+    );
 }
 
 #[test]
