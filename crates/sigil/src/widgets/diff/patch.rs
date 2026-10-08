@@ -182,6 +182,23 @@ pub(super) fn starts(line: &str) -> Option<(usize, usize)> {
     Some((old, new))
 }
 
+pub(super) fn group_name(header: &str) -> Option<&str> {
+    let at = header.rfind("@@")?;
+    let name = header[at + 2..].trim();
+    (!name.is_empty()).then_some(name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::group_name;
+
+    #[test]
+    fn a_bare_hunk_range_is_not_a_title() {
+        assert_eq!(group_name("@@ -282,11 +282,13 @@"), None);
+        assert_eq!(group_name("@@ -10,2 +10,4 @@ fn shared"), Some("fn shared"));
+    }
+}
+
 pub(super) fn changed(left: &str, right: &str) -> (Range<usize>, Range<usize>) {
     let prefix = left
         .chars()

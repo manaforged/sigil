@@ -2,7 +2,7 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use super::DiffView;
-use super::patch::{Hunk, Line, LineId, LineKind, Patch, changed};
+use super::patch::{Hunk, Line, LineId, LineKind, Patch, changed, group_name};
 use super::rows::GUTTER_W;
 use crate::app::cell_width;
 use crate::widgets::highlight::language_for_path;
@@ -65,10 +65,10 @@ pub(super) fn model(
     let (mut added, mut removed) = (0, 0);
     for (index, hunk) in patch.hunks.iter().enumerate() {
         meta_rows(&mut rows, &hunk.meta);
-        if !hunk.header.is_empty() {
+        if let Some(name) = group_name(&hunk.header) {
             rows.push(DiffRow::Hunk {
                 hunk: index,
-                header: hunk.header.clone(),
+                header: name.to_string(),
             });
         }
         let pairs = pairs(hunk);

@@ -14,12 +14,8 @@ pub(super) const ROW_INSET: f32 = space(2);
 
 const fn tones(kind: LineKind) -> (Option<Token>, Token, Option<Token>) {
     match kind {
-        LineKind::Removed => (Some(Token::Error3), Token::Error11, Some(Token::Error5)),
-        LineKind::Added => (
-            Some(Token::Success3),
-            Token::Success11,
-            Some(Token::Success5),
-        ),
+        LineKind::Removed => (Some(Token::Error3), Token::Error11, None),
+        LineKind::Added => (Some(Token::Success3), Token::Success11, None),
         LineKind::Context | LineKind::Note => (None, Token::Gray11, None),
     }
 }
