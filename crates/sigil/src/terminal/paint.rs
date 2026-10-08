@@ -298,11 +298,11 @@ impl Grid {
         }
     }
 
-    fn fill(&mut self, area: Area, bg: Ink, (bare, theme): (bool, &Theme)) {
+    fn fill(&mut self, area: Area, bg: Ink, theme: &Theme) {
         if !bg.set() {
             return;
         }
-        self.each(area, |cell| decoration::background(cell, bg, bare, theme));
+        self.each(area, |cell| decoration::background(cell, bg, theme));
     }
 
     fn rule(&mut self, area: Area, glyph: &str, ink: Ink) {

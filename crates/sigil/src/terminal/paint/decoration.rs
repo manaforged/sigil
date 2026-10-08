@@ -6,7 +6,7 @@ use smol_str::SmolStr;
 
 use super::{Cell, Grid, Ink, cell_edge, floor_cell};
 
-pub(super) fn background(cell: &mut Cell, ink: Ink, bare: bool, theme: &Theme) {
+pub(super) fn background(cell: &mut Cell, ink: Ink, theme: &Theme) {
     if let Ink::Exact(over) = ink {
         if over.a == 0 {
             return;
@@ -18,8 +18,8 @@ pub(super) fn background(cell: &mut Cell, ink: Ink, bare: bool, theme: &Theme) {
         }
     }
     *cell = Cell {
-        text: SmolStr::new_inline(if bare { "█" } else { " " }),
-        fg: if bare { ink } else { Ink::Bare },
+        text: SmolStr::new_inline(" "),
+        fg: Ink::Bare,
         bg: ink,
         ..Cell::blank()
     };
@@ -58,7 +58,6 @@ pub(super) struct Surface<'a> {
     pub(super) origin: (usize, usize),
     pub(super) size: (usize, usize),
     pub(super) ink: Ink,
-    pub(super) leaf: bool,
     pub(super) halves: bool,
     pub(super) theme: &'a Theme,
 }
@@ -81,7 +80,7 @@ pub(super) fn surface(grid: &mut Grid, surface: &Surface<'_>, cell: f32) {
         grid.fill(
             (surface.origin, surface.size, surface.rect),
             surface.ink,
-            (surface.leaf, surface.theme),
+            surface.theme,
         );
         return;
     }
@@ -101,7 +100,7 @@ pub(super) fn surface(grid: &mut Grid, surface: &Surface<'_>, cell: f32) {
             surface.rect,
         ),
         surface.ink,
-        (surface.leaf, surface.theme),
+        surface.theme,
     );
     halves(grid, surface, &rows, &cols);
 }
@@ -175,10 +174,11 @@ fn split(start: f32, end: f32) -> Split {
 }
 
 fn hairline(rect: Rect, cell: f32) -> Option<&'static str> {
-    if rect.height > 0.0 && rect.height < cell {
+    let stem = cell * 0.5;
+    if rect.height > 0.0 && rect.height < stem {
         return Some("─");
     }
-    if rect.width > 0.0 && rect.width < cell {
+    if rect.width > 0.0 && rect.width < stem {
         return Some("│");
     }
     None

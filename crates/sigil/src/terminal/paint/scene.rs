@@ -215,7 +215,6 @@ impl Walk<'_> {
                     origin,
                     size,
                     ink,
-                    leaf: draw.leaf,
                     halves: draw.leaf && draw.border.is_none(),
                     theme: self.theme,
                 };
