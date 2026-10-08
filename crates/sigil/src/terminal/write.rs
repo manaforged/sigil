@@ -282,7 +282,7 @@ fn cells(
     if let Some((_, paint)) = fill {
         pen.pick(out, paint)?;
         queue!(out, Clear(ClearType::UntilNewLine))?;
-    } else if tail {
+    } else if tail && stop < row_cells.len() {
         pen.rest(out)?;
         queue!(out, Clear(ClearType::UntilNewLine))?;
     }

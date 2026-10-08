@@ -1,6 +1,6 @@
 use crate::geometry::{Point, Rect};
 
-use super::{Grid, Ink, Pen, paint, row_bytes, terminal_inks};
+use super::{Cell, Grid, Ink, Pen, paint, row_bytes, terminal_inks};
 use crate::app::{CellWidth, set_cell_width};
 use crate::scene::{
     CellRect, CommandScene, DrawGlyphRun, DrawRect, GlyphRun, SceneCommand, SceneRectStyle,
@@ -336,6 +336,43 @@ fn the_cursor_shows_only_at_a_text_caret() -> std::io::Result<()> {
         "a text caret shows the cursor where it sits: {caret:?}"
     );
     Ok(())
+}
+
+#[test]
+fn a_painted_last_cell_keeps_its_background() {
+    let scrim = Rgba8 {
+        r: 10,
+        g: 8,
+        b: 20,
+        a: 255,
+    };
+    let star = Rgba8 {
+        r: 176,
+        g: 200,
+        b: 240,
+        a: 255,
+    };
+    let mut cells = Vec::new();
+    for column in 0..8 {
+        let (text, color) = if column == 5 {
+            ("·", star)
+        } else {
+            (" ", scrim)
+        };
+        cells.push(Cell {
+            text: text.into(),
+            fg: Ink::Exact(color),
+            bg: Ink::Exact(color),
+            ..Cell::blank()
+        });
+    }
+    let mut grid = Grid::new(8, 1);
+    grid.set_row(0, &cells);
+    let out = bytes(&grid, 0);
+    assert!(
+        out.contains('·') && !out.contains("\u{1b}[K"),
+        "the last cell was erased to the terminal background: {out:?}"
+    );
 }
 
 #[path = "write_fill_tests.rs"]

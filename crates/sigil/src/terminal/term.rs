@@ -10,8 +10,8 @@ use crossterm::event::{
 };
 use crossterm::style::Print;
 use crossterm::terminal::{
-    Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, SetTitle, disable_raw_mode,
-    enable_raw_mode,
+    Clear, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen,
+    SetTitle, disable_raw_mode, enable_raw_mode,
 };
 use crossterm::{cursor, execute, queue};
 
@@ -144,7 +144,7 @@ fn enter_modes(inline: bool) -> io::Result<()> {
     enable_raw_mode()?;
     let mut out = io::stdout();
     if !inline {
-        execute!(out, EnterAlternateScreen)?;
+        execute!(out, EnterAlternateScreen, DisableLineWrap)?;
     }
     execute!(out, EnableBracketedPaste, EnableFocusChange, cursor::Hide)?;
     write_mouse(&mut out, MOUSE.with(Cell::get))?;
@@ -260,7 +260,7 @@ pub(crate) fn restore() {
         cursor::Show
     ));
     if !INLINE.swap(false, Ordering::Relaxed) {
-        drop(execute!(io::stdout(), LeaveAlternateScreen));
+        drop(execute!(io::stdout(), LeaveAlternateScreen, EnableLineWrap));
     }
     drop(disable_raw_mode());
 }
