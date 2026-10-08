@@ -132,12 +132,16 @@ fn chart_row(_state: State) -> NodeBuilder {
 }
 
 fn heatmap_row(_state: State) -> NodeBuilder {
-    node(heatmap(12, 6, |x, y| Rgba8 {
-        r: 40,
-        g: u8::try_from(40 + x * 16).unwrap_or(u8::MAX),
-        b: u8::try_from(80 + y * 28).unwrap_or(u8::MAX),
-        a: 255,
-    }))
+    node(
+        container()
+            .layout(LayoutStyle::flex_column().width(240.0).height(120.0))
+            .child(heatmap(12, 6, |x, y| Rgba8 {
+                r: 40,
+                g: u8::try_from(40 + x * 16).unwrap_or(u8::MAX),
+                b: u8::try_from(80 + y * 28).unwrap_or(u8::MAX),
+                a: 255,
+            })),
+    )
 }
 
 fn diff_row(_state: State) -> NodeBuilder {

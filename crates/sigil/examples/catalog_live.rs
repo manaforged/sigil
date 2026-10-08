@@ -80,7 +80,7 @@ impl Pick {
 fn widget(pick: &Pick) -> NodeBuilder {
     builders::builder(&pick.build).map_or_else(
         || spec::node(text(format!("No builder {}", pick.build))),
-        |build| build(pick.state),
+        |build| build(pick.state).layout(LayoutStyle::default().align_items(AlignItems::Center)),
     )
 }
 

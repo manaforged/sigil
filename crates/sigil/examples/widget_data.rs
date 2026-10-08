@@ -50,12 +50,14 @@ fn table_demo() -> TableBuilder<Repo> {
 }
 
 fn heatmap_demo() -> NodeBuilder {
-    heatmap(12, 6, |x, y| Rgba8 {
-        r: 40,
-        g: u8::try_from(x * 20).unwrap_or(u8::MAX),
-        b: u8::try_from(y * 40).unwrap_or(u8::MAX),
-        a: 255,
-    })
+    container()
+        .layout(LayoutStyle::flex_column().width(240.0).height(120.0))
+        .child(heatmap(12, 6, |x, y| Rgba8 {
+            r: 40,
+            g: u8::try_from(40 + x * 16).unwrap_or(u8::MAX),
+            b: u8::try_from(80 + y * 28).unwrap_or(u8::MAX),
+            a: 255,
+        }))
 }
 
 fn list_row_demo() -> NodeBuilder {

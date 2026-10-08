@@ -235,7 +235,7 @@ captures = [
 id = "validated_field"
 title = "Validated field"
 group = "fields"
-builder = "validated_field"
+builder = "field"
 captures = [
   { build = "validated_field", size = [320, 104], hit = [60.0, 36.0], states = ["default", "focused", "invalid"] },
 ]
@@ -285,7 +285,7 @@ title = "Command menu"
 group = "overlays"
 builder = "command_menu"
 captures = [
-  { build = "command_menu", size = [360, 220], hit = [60.0, 50.0], states = ["default", "hover", "pressed", "focused"] },
+  { build = "command_menu", size = [400, 220], hit = [60.0, 50.0], states = ["default", "hover", "pressed", "focused"] },
 ]
 
 [[components]]
@@ -333,7 +333,7 @@ title = "App shell"
 group = "chrome"
 builder = "app_shell"
 captures = [
-  { build = "app_shell", size = [480, 220], hit = [8.0, 8.0], states = ["default"] },
+  { build = "app_shell", size = [640, 220], hit = [8.0, 8.0], states = ["default"] },
 ]
 
 [[components]]
@@ -417,8 +417,8 @@ title = "Virtual list"
 group = "data"
 builder = "virtual_list"
 captures = [
-  { build = "virtual_list", size = [320, 160], hit = [40.0, 40.0], states = ["default", "hover", "pressed", "focused", "selected"] },
-  { build = "virtual_list_fill", variant = "fill", label = "Fill", size = [320, 160], hit = [40.0, 40.0], states = ["default"] },
+  { build = "virtual_list", size = [640, 160], hit = [40.0, 40.0], states = ["default", "hover", "pressed", "focused", "selected"] },
+  { build = "virtual_list_fill", variant = "fill", label = "Fill", size = [640, 160], hit = [40.0, 40.0], states = ["default"] },
 ]
 
 [[components]]
@@ -427,7 +427,7 @@ title = "Table"
 group = "data"
 builder = "table"
 captures = [
-  { build = "table", size = [420, 200], hit = [200.0, 54.0], grid = [72, 25], states = ["default", "hover", "pressed", "focused", "disabled", "selected"] },
+  { build = "table", size = [640, 200], hit = [200.0, 54.0], grid = [72, 25], states = ["default", "hover", "pressed", "focused", "disabled", "selected"] },
 ]
 
 [[components]]
@@ -436,7 +436,7 @@ title = "Heatmap"
 group = "data"
 builder = "heatmap"
 captures = [
-  { build = "heatmap", size = [200, 120], hit = [8.0, 8.0], states = ["default"] },
+  { build = "heatmap", size = [240, 120], hit = [8.0, 8.0], states = ["default"] },
 ]
 
 [[components]]
@@ -483,7 +483,7 @@ title = "Markdown edit"
 group = "documents"
 builder = "markdown_edit"
 captures = [
-  { build = "markdown_edit", size = [520, 260], hit = [60.0, 40.0], states = ["default", "hover", "focused", "disabled"] },
+  { build = "markdown_edit", size = [640, 260], hit = [60.0, 40.0], states = ["default", "hover", "focused", "disabled"] },
 ]
 
 [[components]]
@@ -501,7 +501,7 @@ title = "Code edit"
 group = "documents"
 builder = "code_edit"
 captures = [
-  { build = "code_edit", size = [400, 136], hit = [60.0, 20.0], states = ["default", "hover", "focused", "disabled"] },
+  { build = "code_edit", size = [640, 136], hit = [60.0, 20.0], states = ["default", "hover", "focused", "disabled"] },
 ]
 
 [[components]]
@@ -519,7 +519,7 @@ title = "Diff"
 group = "documents"
 builder = "diff"
 captures = [
-  { build = "diff", size = [480, 180], hit = [8.0, 8.0], states = ["default"] },
+  { build = "diff", size = [640, 180], hit = [8.0, 8.0], states = ["default"] },
 ]
 
 [[components]]
@@ -580,7 +580,7 @@ captures = [
 id = "label"
 title = "Label"
 group = "content"
-builder = "label"
+builder = "text"
 captures = [
   { build = "label", size = [240, 48], hit = [8.0, 8.0], states = ["default"] },
 ]
@@ -618,7 +618,7 @@ title = "Chart"
 group = "content"
 builder = "chart"
 captures = [
-  { build = "chart", size = [360, 180], hit = [8.0, 8.0], states = ["default"] },
+  { build = "chart", size = [640, 180], hit = [8.0, 8.0], states = ["default"] },
 ]
 
 [[components]]
