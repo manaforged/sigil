@@ -20,10 +20,7 @@ mod geometry;
 #[path = "paragraph_ink.rs"]
 mod ink;
 
-use geometry::{
-    caret_x_in_line, hit_test_line, locate_line_for_position, order_positions, pick_line,
-    select_line,
-};
+use geometry::{locate_line_for_position, order_positions, pick_line};
 
 #[derive(Debug, Clone)]
 pub(crate) struct LayoutLine {
@@ -284,7 +281,7 @@ impl Paragraph {
             };
         }
         let line = pick_line(&self.inner.lines, y);
-        hit_test_line(line, x)
+        line.hit_test_line(x)
     }
 
     #[must_use]
@@ -297,7 +294,7 @@ impl Paragraph {
                 self.inner.line_height,
             );
         };
-        let x = caret_x_in_line(line, pos);
+        let x = line.caret_x_in_line(pos);
         Rect::new(
             Point::new(x, line.line_top()),
             caret_width.max(1.0),
@@ -317,8 +314,7 @@ impl Paragraph {
         }
         let (lo_b, hi_b) = (u32_clamp(lo.byte_index), u32_clamp(hi.byte_index));
         for (index, line) in self.inner.lines.iter().enumerate() {
-            select_line(
-                line,
+            line.select_line(
                 self.inner.lines.get(index + 1),
                 (lo_b, hi_b),
                 (self.inner.font_size * 0.5).max(1.0),

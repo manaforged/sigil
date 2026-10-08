@@ -33,7 +33,7 @@ pub(super) fn header_cell<Row: 'static>(state: &TableState<Row>, height: f32) ->
             mark,
             theme_string(StringKey::SelectAllRows),
             move || {
-                toggle_all(&toggle);
+                toggle.toggle_all();
             },
         ))
 }
@@ -130,20 +130,20 @@ fn header_mark<Row: 'static>(state: TableState<Row>) -> Signal<Mark> {
     })
 }
 
-fn toggle_all<Row: 'static>(state: &TableState<Row>) {
-    let visible = state.visible().peek();
-    let mut set = (*state.selection().peek()).clone();
-    if !visible.is_empty() && visible.iter().all(|row| set.contains(row)) {
-        for row in visible.iter() {
-            set.remove(row);
-        }
-    } else {
-        set.extend(visible.iter().copied());
-    }
-    state.selection().set(Rc::new(set));
-}
-
 impl<Row: 'static> TableState<Row> {
+    fn toggle_all(&self) {
+        let visible = self.visible().peek();
+        let mut set = (*self.selection().peek()).clone();
+        if !visible.is_empty() && visible.iter().all(|row| set.contains(row)) {
+            for row in visible.iter() {
+                set.remove(row);
+            }
+        } else {
+            set.extend(visible.iter().copied());
+        }
+        self.selection().set(Rc::new(set));
+    }
+
     pub fn select_by(&self, delta: i32) {
         let visible = self.visible().peek();
         let Some(last) = visible.len().checked_sub(1) else {

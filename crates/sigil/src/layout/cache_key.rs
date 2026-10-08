@@ -71,7 +71,7 @@ pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
             continue;
         };
         node.version().hash(&mut hasher);
-        if hash_unversioned_layout(node, &mut hasher) {
+        if node.hash_unversioned_layout(&mut hasher) {
             continue;
         }
         for child in node.children().iter().rev().copied() {
@@ -79,29 +79,6 @@ pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
         }
     }
     hasher.finish()
-}
-
-pub(crate) fn has_unversioned_layout(node: &Node) -> bool {
-    if node
-        .get_extension::<crate::layout::ReactivePosition>()
-        .is_some()
-    {
-        return true;
-    }
-    if node
-        .get_extension::<StyleBinding>()
-        .is_some_and(StyleBinding::has_reactive)
-    {
-        return true;
-    }
-    matches!(
-        &node.kind,
-        NodeType::Text {
-            content,
-            wrap,
-            ..
-        } if !matches!(content, TextContent::Static(_)) && (*wrap || !definite_width(node))
-    )
 }
 
 pub(crate) fn reactive_layout_signature(cx: &Cx, ids: &BTreeSet<DefaultKey>) -> u64 {
@@ -112,7 +89,7 @@ pub(crate) fn reactive_layout_signature(cx: &Cx, ids: &BTreeSet<DefaultKey>) -> 
             continue;
         };
         key.hash(&mut hasher);
-        hash_unversioned_layout(node, &mut hasher);
+        node.hash_unversioned_layout(&mut hasher);
     }
     hasher.finish()
 }
@@ -126,79 +103,100 @@ fn interaction_hash(binding: &StyleBinding) -> u64 {
     hasher.finish()
 }
 
-pub(crate) fn animation_signature(node: &Node) -> Option<u64> {
-    let binding = node.get_extension::<StyleBinding>()?;
-    (binding.animator_overlay().is_some() || binding.has_transition())
-        .then(|| interaction_hash(binding))
-}
+impl Node {
+    pub(crate) fn has_unversioned_layout(&self) -> bool {
+        if self
+            .get_extension::<crate::layout::ReactivePosition>()
+            .is_some()
+        {
+            return true;
+        }
+        if self
+            .get_extension::<StyleBinding>()
+            .is_some_and(StyleBinding::has_reactive)
+        {
+            return true;
+        }
+        matches!(
+            &self.kind,
+            NodeType::Text {
+                content,
+                wrap,
+                ..
+            } if !matches!(content, TextContent::Static(_)) && (*wrap || !self.definite_width())
+        )
+    }
 
-pub(crate) fn reactive_seed_signature(node: &Node) -> u64 {
-    seed_signature(node, None)
-}
+    pub(crate) fn animation_signature(&self) -> Option<u64> {
+        let binding = self.get_extension::<StyleBinding>()?;
+        (binding.animator_overlay().is_some() || binding.has_transition())
+            .then(|| interaction_hash(binding))
+    }
 
-pub(crate) fn seed_signature(node: &Node, interaction: Option<u64>) -> u64 {
-    let mut hasher = AHasher::default();
-    hash_unversioned_layout(node, &mut hasher);
-    if let Some(binding) = node.get_extension::<StyleBinding>() {
-        for reactive in binding.reactive_channels() {
-            for atom in reactive {
-                atom.hash(&mut hasher);
+    pub(crate) fn reactive_seed_signature(&self) -> u64 {
+        self.seed_signature(None)
+    }
+
+    pub(crate) fn seed_signature(&self, interaction: Option<u64>) -> u64 {
+        let mut hasher = AHasher::default();
+        self.hash_unversioned_layout(&mut hasher);
+        if let Some(binding) = self.get_extension::<StyleBinding>() {
+            for reactive in binding.reactive_channels() {
+                for atom in reactive {
+                    atom.hash(&mut hasher);
+                }
+            }
+            if binding.animator_overlay().is_some() || binding.state_overlay().is_some() {
+                interaction
+                    .unwrap_or_else(|| interaction_hash(binding))
+                    .hash(&mut hasher);
             }
         }
-        if binding.animator_overlay().is_some() || binding.state_overlay().is_some() {
-            interaction
-                .unwrap_or_else(|| interaction_hash(binding))
-                .hash(&mut hasher);
-        }
+        hasher.finish()
     }
-    hasher.finish()
-}
 
-pub(crate) fn hash_unversioned_layout(node: &Node, hasher: &mut AHasher) -> bool {
-    let hidden = node.get_extension::<StyleBinding>().is_some_and(|binding| {
-        for reactive in binding.reactive_channels() {
-            for atom in reactive {
+    pub(crate) fn hash_unversioned_layout(&self, hasher: &mut AHasher) -> bool {
+        let hidden = self.get_extension::<StyleBinding>().is_some_and(|binding| {
+            for reactive in binding.reactive_channels() {
+                for atom in reactive {
+                    if atom.affects_layout() {
+                        atom.hash(hasher);
+                    }
+                }
+            }
+            for atom in binding.state_overlay_atoms() {
                 if atom.affects_layout() {
                     atom.hash(hasher);
                 }
             }
-        }
-        for atom in binding.state_overlay_atoms() {
-            if atom.affects_layout() {
-                atom.hash(hasher);
+            if let Some(overlay) = binding.animator_overlay() {
+                overlay.visit_layout_values(&mut |kind, value| {
+                    kind.hash(hasher);
+                    value.to_bits().hash(hasher);
+                });
             }
+            binding.hides()
+        });
+        if let Some(pos) = self.get_extension::<crate::layout::ReactivePosition>() {
+            let (x, y) = pos.get();
+            x.to_bits().hash(hasher);
+            y.to_bits().hash(hasher);
         }
-        if let Some(overlay) = binding.animator_overlay() {
-            overlay.visit_layout_values(&mut |kind, value| {
-                kind.hash(hasher);
-                value.to_bits().hash(hasher);
-            });
+        if let NodeType::Text { content, wrap, .. } = &self.kind
+            && !matches!(content, TextContent::Static(_))
+            && (*wrap || !self.definite_width())
+        {
+            content.resolve().hash(hasher);
         }
-        binding.hides()
-    });
-    if let Some(pos) = node.get_extension::<crate::layout::ReactivePosition>() {
-        let (x, y) = pos.get();
-        x.to_bits().hash(hasher);
-        y.to_bits().hash(hasher);
+        hidden
     }
-    if let NodeType::Text { content, wrap, .. } = &node.kind
-        && !matches!(content, TextContent::Static(_))
-        && (*wrap || !definite_width(node))
-    {
-        hash_text_content(content, hasher);
+
+    fn definite_width(&self) -> bool {
+        self.get_extension::<LayoutStyle>().is_some_and(|style| {
+            matches!(
+                style.data().size.width,
+                Dimension::Px(_) | Dimension::Percent(_) | Dimension::Fill | Dimension::Text(_)
+            )
+        })
     }
-    hidden
-}
-
-fn definite_width(node: &Node) -> bool {
-    node.get_extension::<LayoutStyle>().is_some_and(|style| {
-        matches!(
-            style.data().size.width,
-            Dimension::Px(_) | Dimension::Percent(_) | Dimension::Fill | Dimension::Text(_)
-        )
-    })
-}
-
-fn hash_text_content(content: &TextContent, hasher: &mut AHasher) {
-    content.resolve().hash(hasher);
 }

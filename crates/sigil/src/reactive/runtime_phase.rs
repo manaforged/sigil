@@ -1,6 +1,6 @@
 use core::panic::Location;
 
-use crate::reactive::owner_dispose::{dispose_owner, remove_effect};
+use crate::reactive::owner_dispose::dispose_owner;
 use crate::reactive::phase::DrawPhase;
 use crate::reactive::runtime::{Runtime, with_rt};
 
@@ -14,7 +14,7 @@ impl Runtime {
                     rt.dispose_after_run.push(eff_key);
                     continue;
                 }
-                if let Some(run_owner) = remove_effect(rt, eff_key) {
+                if let Some(run_owner) = rt.remove_effect(eff_key) {
                     run_owners.push(run_owner);
                 }
             }

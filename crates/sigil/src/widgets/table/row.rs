@@ -272,7 +272,7 @@ fn select_pointer<Row: 'static>(
         {
             return;
         }
-        apply_click(&state, row_index, event.modifiers);
+        state.apply_click(row_index, event.modifiers);
         if !(event.modifiers.shift() || event.modifiers.ctrl() || event.modifiers.meta()) {
             chrome.activate(&state, row_index);
         }
@@ -280,12 +280,14 @@ fn select_pointer<Row: 'static>(
     }
 }
 
-fn apply_click<Row: 'static>(state: &TableState<Row>, row_index: u32, modifiers: ModifiersState) {
-    if modifiers.shift() {
-        state.select_range_to(row_index);
-    } else if modifiers.ctrl() || modifiers.meta() {
-        state.toggle_selected(row_index);
-    } else {
-        state.select_only(row_index);
+impl<Row: 'static> TableState<Row> {
+    fn apply_click(&self, row_index: u32, modifiers: ModifiersState) {
+        if modifiers.shift() {
+            self.select_range_to(row_index);
+        } else if modifiers.ctrl() || modifiers.meta() {
+            self.toggle_selected(row_index);
+        } else {
+            self.select_only(row_index);
+        }
     }
 }

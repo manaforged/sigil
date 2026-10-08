@@ -1,6 +1,6 @@
 use core::panic::Location;
 
-use crate::reactive::owner_dispose::{dispose_owner, remove_effect, take_deferred_dispose};
+use crate::reactive::owner_dispose::dispose_owner;
 use crate::reactive::runtime::{EffectKey, OwnerKey, OwnerSlot, RuntimeState, with_rt};
 
 struct RunGuard {
@@ -14,7 +14,7 @@ impl Drop for RunGuard {
     fn drop(&mut self) {
         let mut f = self.f.take();
         let run_owner = with_rt(|rt| {
-            let deferred = take_deferred_dispose(rt, self.key);
+            let deferred = rt.take_deferred_dispose(self.key);
             let mut run_owner = None;
             if std::thread::panicking() {
                 if rt.panic_origin.is_none()
@@ -24,7 +24,7 @@ impl Drop for RunGuard {
                 }
                 if rt.panic_origin.is_some_and(|(key, ..)| key == self.key) {
                     rt.running.remove(&self.key);
-                    run_owner = remove_effect(rt, self.key);
+                    run_owner = rt.remove_effect(self.key);
                 } else if !deferred {
                     f = restore_interrupted(rt, self.key, f.take());
                 }
@@ -38,7 +38,7 @@ impl Drop for RunGuard {
             rt.current_effect = self.prev_effect;
             rt.running.remove(&self.key);
             if deferred && run_owner.is_none() {
-                run_owner = remove_effect(rt, self.key);
+                run_owner = rt.remove_effect(self.key);
             }
             run_owner
         });

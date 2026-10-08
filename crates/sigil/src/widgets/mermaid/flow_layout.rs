@@ -47,79 +47,6 @@ pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usi
     (graph, ranks)
 }
 
-pub(super) fn order(graph: &Graph, ranks: &[usize]) -> Vec<Vec<usize>> {
-    let depth = ranks.iter().max().map_or(0, |rank| rank.saturating_add(1));
-    let mut layers: Vec<Vec<usize>> = vec![Vec::new(); depth];
-    for (node, rank) in ranks.iter().enumerate() {
-        if let Some(layer) = layers.get_mut(*rank) {
-            layer.push(node);
-        }
-    }
-    for _ in 0..3 {
-        for rank in 1..depth {
-            sweep(graph, &mut layers, rank, true);
-        }
-        for rank in (0..depth.saturating_sub(1)).rev() {
-            sweep(graph, &mut layers, rank, false);
-        }
-    }
-    layers
-}
-
-pub(super) fn sweep(graph: &Graph, layers: &mut [Vec<usize>], rank: usize, down: bool) {
-    let neighbour = if down {
-        rank.saturating_sub(1)
-    } else {
-        rank.saturating_add(1)
-    };
-    let positions: HashMap<usize, usize> = layers
-        .get(neighbour)
-        .map(|layer| {
-            layer
-                .iter()
-                .enumerate()
-                .map(|(index, node)| (*node, index))
-                .collect()
-        })
-        .unwrap_or_default();
-    let Some(layer) = layers.get(rank).cloned() else {
-        return;
-    };
-    let mut keyed: Vec<(usize, usize)> = layer
-        .iter()
-        .enumerate()
-        .map(|(index, node)| (barycenter(graph, *node, &positions, down, index), *node))
-        .collect();
-    keyed.sort_by_key(|(key, _)| *key);
-    if let Some(slot) = layers.get_mut(rank) {
-        slot.clone_from(&keyed.into_iter().map(|(_, node)| node).collect());
-    }
-}
-
-pub(super) fn barycenter(
-    graph: &Graph,
-    node: usize,
-    positions: &HashMap<usize, usize>,
-    down: bool,
-    index: usize,
-) -> usize {
-    let mut sum = 0_usize;
-    let mut count = 0_usize;
-    for edge in &graph.edges {
-        let other = match (down, edge.to == node, edge.from == node) {
-            (true, true, _) => edge.from,
-            (false, _, true) => edge.to,
-            _ => continue,
-        };
-        if let Some(position) = positions.get(&other) {
-            sum = sum.saturating_add(position.saturating_mul(1000));
-            count = count.saturating_add(1);
-        }
-    }
-    sum.checked_div(count)
-        .unwrap_or_else(|| index.saturating_mul(1000))
-}
-
 pub(super) fn size(node: &Node) -> (usize, usize) {
     if node.dummy {
         return (1, 1);
@@ -138,53 +65,6 @@ pub(super) fn size(node: &Node) -> (usize, usize) {
         text.saturating_add(extra).saturating_add(4),
         node.label.len().max(1).saturating_add(2),
     )
-}
-
-pub(super) fn place(graph: &Graph, ranks: &[usize], layers: &[Vec<usize>]) -> Vec<Rect> {
-    let sizes: Vec<(usize, usize)> = graph.nodes.iter().map(size).collect();
-    let vertical = graph.dir.vertical();
-    let along = |node: usize| {
-        let (w, h) = sizes.get(node).copied().unwrap_or((1, 1));
-        if vertical { h } else { w }
-    };
-    let across = |node: usize| {
-        let (w, h) = sizes.get(node).copied().unwrap_or((1, 1));
-        if vertical { w } else { h }
-    };
-    let rank_size: Vec<usize> = layers
-        .iter()
-        .map(|layer| layer.iter().map(|node| along(*node)).max().unwrap_or(1))
-        .collect();
-    let gap = if vertical { GAP_ROWS } else { GAP_COLS };
-    let offsets = offsets(layers, &rank_size, gap, graph.dir.forward());
-    let positions = positions(graph, layers, &across);
-    graph
-        .nodes
-        .iter()
-        .enumerate()
-        .map(|(node, entry)| {
-            let (w, h) = sizes.get(node).copied().unwrap_or((1, 1));
-            let rank = ranks.get(node).copied().unwrap_or(0);
-            let offset = offsets.get(rank).copied().unwrap_or(0);
-            let span = rank_size.get(rank).copied().unwrap_or(1);
-            let at = positions.get(node).copied().unwrap_or(0);
-            if vertical {
-                Rect {
-                    x: at,
-                    y: offset,
-                    w,
-                    h: if entry.dummy { span } else { h },
-                }
-            } else {
-                Rect {
-                    x: offset,
-                    y: at,
-                    w: if entry.dummy { span } else { w },
-                    h,
-                }
-            }
-        })
-        .collect()
 }
 
 pub(super) fn offsets(
@@ -211,45 +91,167 @@ pub(super) fn offsets(
     offsets
 }
 
-pub(super) fn positions(
-    graph: &Graph,
-    layers: &[Vec<usize>],
-    across: &dyn Fn(usize) -> usize,
-) -> Vec<usize> {
-    let mut positions = vec![0_usize; graph.nodes.len()];
-    for layer in layers {
-        let mut cursor = 0_usize;
-        for node in layer {
-            let extent = across(*node);
-            let desired = parents(graph, *node, &positions, across)
-                .map_or(cursor, |centre| centre.saturating_sub(extent / 2));
-            let at = desired.max(cursor);
-            if let Some(slot) = positions.get_mut(*node) {
-                slot.clone_from(&at);
+impl Graph {
+    pub(super) fn order(&self, ranks: &[usize]) -> Vec<Vec<usize>> {
+        let depth = ranks.iter().max().map_or(0, |rank| rank.saturating_add(1));
+        let mut layers: Vec<Vec<usize>> = vec![Vec::new(); depth];
+        for (node, rank) in ranks.iter().enumerate() {
+            if let Some(layer) = layers.get_mut(*rank) {
+                layer.push(node);
             }
-            cursor = at.saturating_add(extent).saturating_add(SPACING);
+        }
+        for _ in 0..3 {
+            for rank in 1..depth {
+                self.sweep(&mut layers, rank, true);
+            }
+            for rank in (0..depth.saturating_sub(1)).rev() {
+                self.sweep(&mut layers, rank, false);
+            }
+        }
+        layers
+    }
+
+    pub(super) fn sweep(&self, layers: &mut [Vec<usize>], rank: usize, down: bool) {
+        let neighbour = if down {
+            rank.saturating_sub(1)
+        } else {
+            rank.saturating_add(1)
+        };
+        let positions: HashMap<usize, usize> = layers
+            .get(neighbour)
+            .map(|layer| {
+                layer
+                    .iter()
+                    .enumerate()
+                    .map(|(index, node)| (*node, index))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let Some(layer) = layers.get(rank).cloned() else {
+            return;
+        };
+        let mut keyed: Vec<(usize, usize)> = layer
+            .iter()
+            .enumerate()
+            .map(|(index, node)| (self.barycenter(*node, &positions, down, index), *node))
+            .collect();
+        keyed.sort_by_key(|(key, _)| *key);
+        if let Some(slot) = layers.get_mut(rank) {
+            slot.clone_from(&keyed.into_iter().map(|(_, node)| node).collect());
         }
     }
-    positions
-}
 
-pub(super) fn parents(
-    graph: &Graph,
-    node: usize,
-    positions: &[usize],
-    across: &dyn Fn(usize) -> usize,
-) -> Option<usize> {
-    let centres: Vec<usize> = graph
-        .edges
-        .iter()
-        .filter(|edge| edge.to == node && edge.from != node)
-        .filter_map(|edge| {
-            let at = positions.get(edge.from)?;
-            Some(at.saturating_add(across(edge.from) / 2))
-        })
-        .collect();
-    if centres.is_empty() {
-        return None;
+    pub(super) fn barycenter(
+        &self,
+        node: usize,
+        positions: &HashMap<usize, usize>,
+        down: bool,
+        index: usize,
+    ) -> usize {
+        let mut sum = 0_usize;
+        let mut count = 0_usize;
+        for edge in &self.edges {
+            let other = match (down, edge.to == node, edge.from == node) {
+                (true, true, _) => edge.from,
+                (false, _, true) => edge.to,
+                _ => continue,
+            };
+            if let Some(position) = positions.get(&other) {
+                sum = sum.saturating_add(position.saturating_mul(1000));
+                count = count.saturating_add(1);
+            }
+        }
+        sum.checked_div(count)
+            .unwrap_or_else(|| index.saturating_mul(1000))
     }
-    Some(centres.iter().sum::<usize>() / centres.len())
+
+    pub(super) fn place(&self, ranks: &[usize], layers: &[Vec<usize>]) -> Vec<Rect> {
+        let sizes: Vec<(usize, usize)> = self.nodes.iter().map(size).collect();
+        let vertical = self.dir.vertical();
+        let along = |node: usize| {
+            let (w, h) = sizes.get(node).copied().unwrap_or((1, 1));
+            if vertical { h } else { w }
+        };
+        let across = |node: usize| {
+            let (w, h) = sizes.get(node).copied().unwrap_or((1, 1));
+            if vertical { w } else { h }
+        };
+        let rank_size: Vec<usize> = layers
+            .iter()
+            .map(|layer| layer.iter().map(|node| along(*node)).max().unwrap_or(1))
+            .collect();
+        let gap = if vertical { GAP_ROWS } else { GAP_COLS };
+        let offsets = offsets(layers, &rank_size, gap, self.dir.forward());
+        let positions = self.positions(layers, &across);
+        self.nodes
+            .iter()
+            .enumerate()
+            .map(|(node, entry)| {
+                let (w, h) = sizes.get(node).copied().unwrap_or((1, 1));
+                let rank = ranks.get(node).copied().unwrap_or(0);
+                let offset = offsets.get(rank).copied().unwrap_or(0);
+                let span = rank_size.get(rank).copied().unwrap_or(1);
+                let at = positions.get(node).copied().unwrap_or(0);
+                if vertical {
+                    Rect {
+                        x: at,
+                        y: offset,
+                        w,
+                        h: if entry.dummy { span } else { h },
+                    }
+                } else {
+                    Rect {
+                        x: offset,
+                        y: at,
+                        w: if entry.dummy { span } else { w },
+                        h,
+                    }
+                }
+            })
+            .collect()
+    }
+
+    pub(super) fn positions(
+        &self,
+        layers: &[Vec<usize>],
+        across: &dyn Fn(usize) -> usize,
+    ) -> Vec<usize> {
+        let mut positions = vec![0_usize; self.nodes.len()];
+        for layer in layers {
+            let mut cursor = 0_usize;
+            for node in layer {
+                let extent = across(*node);
+                let desired = self
+                    .parents(*node, &positions, across)
+                    .map_or(cursor, |centre| centre.saturating_sub(extent / 2));
+                let at = desired.max(cursor);
+                if let Some(slot) = positions.get_mut(*node) {
+                    slot.clone_from(&at);
+                }
+                cursor = at.saturating_add(extent).saturating_add(SPACING);
+            }
+        }
+        positions
+    }
+
+    pub(super) fn parents(
+        &self,
+        node: usize,
+        positions: &[usize],
+        across: &dyn Fn(usize) -> usize,
+    ) -> Option<usize> {
+        let centres: Vec<usize> = self
+            .edges
+            .iter()
+            .filter(|edge| edge.to == node && edge.from != node)
+            .filter_map(|edge| {
+                let at = positions.get(edge.from)?;
+                Some(at.saturating_add(across(edge.from) / 2))
+            })
+            .collect();
+        if centres.is_empty() {
+            return None;
+        }
+        Some(centres.iter().sum::<usize>() / centres.len())
+    }
 }

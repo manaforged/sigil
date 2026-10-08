@@ -26,7 +26,7 @@ use super::pattern::Placement;
 use super::shadow::{ShadowPlacement, shadow};
 use super::shapes::{self, gradient, opacity_of, solid};
 use super::stroke::stroke;
-use crate::renderer::glyph_place::{GlyphMode, plan_glyph_run};
+use crate::renderer::glyph_place::GlyphMode;
 
 impl Painter<'_> {
     pub(super) fn sprite(&mut self, draw: &DrawSprite) {
@@ -216,7 +216,7 @@ impl Painter<'_> {
     }
 
     pub(super) fn glyph_run(&mut self, run: &GlyphRun) {
-        let Some(plan) = plan_glyph_run(run, self.state.current_transform(), self.scale) else {
+        let Some(plan) = run.plan(self.state.current_transform(), self.scale) else {
             return;
         };
         let clip = self.state.current_clip();

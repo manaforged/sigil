@@ -25,8 +25,7 @@ pub(in crate::widgets) use commands::{
     attach_a11y_edit, clipboard_keys, history_keys, submit_text, word_keys,
 };
 pub(in crate::widgets) use keymap::{KeyProfile, LineStep, edit_keys};
-pub(super) use navigation::geometry_width;
-use navigation::{move_vertical, move_visual_edge, update_scroll};
+use navigation::{move_vertical, move_visual_edge};
 pub use state::TextEditState;
 
 #[derive(Clone)]
@@ -127,7 +126,39 @@ impl TextEditRuntime {
             }
             FocusCaret::SelectAll => edit.select_all(),
         }
-        commit(self, &edit);
+        self.commit(&edit);
+    }
+
+    pub(in crate::widgets) fn commit(&self, state: &TextEdit) {
+        if let Some(column) = self.column {
+            self.update_scroll(state, column);
+        }
+        self.preferred_x.set(None);
+        self.caret_affinity.set(TextAffinity::Downstream);
+        self.caret_visible.set(true);
+        if self.caret.peek() != state.caret() {
+            self.caret.set(state.caret());
+        }
+        if self.selection.peek() != state.selection() {
+            self.selection.set(state.selection());
+        }
+    }
+
+    pub(in crate::widgets) fn sync_value(&self, state: &TextEdit) {
+        batch(|| {
+            write_value(self.value, state.as_str());
+            (self.change)(state.as_str());
+            self.commit(state);
+        });
+    }
+
+    fn typed_text(&self, text: &str) -> Option<String> {
+        if self.column.is_some() {
+            return (!text.is_empty() && !text.chars().any(char::is_control))
+                .then(|| text.to_owned());
+        }
+        let text = text.replace("\r\n", "\n").replace('\r', "\n");
+        (text != "\n" && is_printable(&text)).then_some(text)
     }
 }
 
@@ -142,21 +173,6 @@ pub enum FocusCaret {
 #[cfg(test)]
 #[path = "handlers_tests.rs"]
 mod tests;
-
-pub(in crate::widgets) fn commit(runtime: &TextEditRuntime, state: &TextEdit) {
-    if let Some(column) = runtime.column {
-        update_scroll(runtime, state, column);
-    }
-    runtime.preferred_x.set(None);
-    runtime.caret_affinity.set(TextAffinity::Downstream);
-    runtime.caret_visible.set(true);
-    if runtime.caret.peek() != state.caret() {
-        runtime.caret.set(state.caret());
-    }
-    if runtime.selection.peek() != state.selection() {
-        runtime.selection.set(state.selection());
-    }
-}
 
 pub(in crate::widgets) fn noop_change() -> TextChange {
     Rc::new(|_| {})
@@ -213,13 +229,13 @@ pub(in crate::widgets) fn insert_text(event: &mut KeyEvent, runtime: &TextEditRu
     let Some(text) = event
         .text
         .as_deref()
-        .and_then(|text| typed_text(runtime, text))
+        .and_then(|text| runtime.typed_text(text))
     else {
         return;
     };
     let mut edit = runtime.edit_mut();
     edit.insert_str(&text);
-    sync_value(runtime, &edit);
+    runtime.sync_value(&edit);
     event.stop_propagation();
 }
 
@@ -233,7 +249,7 @@ fn insert_newline(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     }
     let mut edit = runtime.edit_mut();
     edit.insert_str("\n");
-    sync_value(runtime, &edit);
+    runtime.sync_value(&edit);
 }
 
 pub(in crate::widgets) fn edit_value(
@@ -249,9 +265,9 @@ pub(in crate::widgets) fn edit_value(
     let before = (state.len(), state.is_empty());
     edit(&mut state);
     if (state.len(), state.is_empty()) == before {
-        commit(runtime, &state);
+        runtime.commit(&state);
     } else {
-        sync_value(runtime, &state);
+        runtime.sync_value(&state);
     }
 }
 
@@ -271,16 +287,8 @@ pub(in crate::widgets) fn move_caret(
             runtime.anchor_affinity.set(affinity);
         }
         debug_assert!(state.caret() <= state.len());
-        commit(runtime, &state);
+        runtime.commit(&state);
     }
-}
-
-pub(in crate::widgets) fn sync_value(runtime: &TextEditRuntime, state: &TextEdit) {
-    batch(|| {
-        write_value(runtime.value, state.as_str());
-        (runtime.change)(state.as_str());
-        commit(runtime, state);
-    });
 }
 
 pub(super) fn write_value(value: Signal<String>, next: &str) {
@@ -288,14 +296,6 @@ pub(super) fn write_value(value: Signal<String>, next: &str) {
         current.clear();
         current.push_str(next);
     });
-}
-
-fn typed_text(runtime: &TextEditRuntime, text: &str) -> Option<String> {
-    if runtime.column.is_some() {
-        return (!text.is_empty() && !text.chars().any(char::is_control)).then(|| text.to_owned());
-    }
-    let text = text.replace("\r\n", "\n").replace('\r', "\n");
-    (text != "\n" && is_printable(&text)).then_some(text)
 }
 
 fn is_printable(text: &str) -> bool {

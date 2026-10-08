@@ -1,5 +1,5 @@
 use crate::geometry::{Point, Rect};
-use crate::kernel::{ImageCrop, Node, NodeId, NodeType, TextContent, ThemedImage};
+use crate::kernel::{ImageCrop, Node, NodeId, NodeType, ThemedImage};
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{
     CellBorder, CellRect, DecorationKind, DrawImage, GlyphRun, GradientStop, LinearGradient,
@@ -210,7 +210,7 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
     };
     let mut text_style = text_style_for(node, paint.theme, paint.text_base);
     text_style.runs = node.get_extension::<crate::style::TextRuns>().cloned();
-    let text = text_content(content);
+    let text = content.resolve();
     if let Some(range) = paint.selected {
         super::selection::push_selection(
             scene,
@@ -313,8 +313,4 @@ fn resolve(theme: &Theme, color: ColorAtom) -> Rgba8 {
         ColorAtom::Rgba8(color) => color,
         ColorAtom::ThemeRef(token) => theme.resolve_color(token),
     }
-}
-
-fn text_content(content: &TextContent) -> String {
-    content.resolve()
 }

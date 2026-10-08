@@ -7,22 +7,20 @@ use super::{EmitWalk, Inherited, child_inherited, is_top_layer, skips_paint};
 
 type Path<'t> = SmallVec<[(NodeId, &'t Node); 16]>;
 
-pub(super) fn defer_top_layer<'t>(
-    walk: &mut EmitWalk<'_, 't>,
-    node: &Node,
-    context: impl FnOnce() -> Inherited<'t>,
-) {
-    let found = find_top_layer(walk.cx, node);
-    if found.is_empty() {
-        return;
-    }
-    let base = context();
-    for (id, path) in found {
-        let inherited = path.iter().fold(base.clone(), |outer, &(step, step_node)| {
-            let style = render_style_for(step, step_node, outer.theme, outer.text_color);
-            child_inherited(step_node, &outer, &style)
-        });
-        walk.deferred.push((id, inherited, None));
+impl<'t> EmitWalk<'_, 't> {
+    pub(super) fn defer_top_layer(&mut self, node: &Node, context: impl FnOnce() -> Inherited<'t>) {
+        let found = find_top_layer(self.cx, node);
+        if found.is_empty() {
+            return;
+        }
+        let base = context();
+        for (id, path) in found {
+            let inherited = path.iter().fold(base.clone(), |outer, &(step, step_node)| {
+                let style = render_style_for(step, step_node, outer.theme, outer.text_color);
+                child_inherited(step_node, &outer, &style)
+            });
+            self.deferred.push((id, inherited, None));
+        }
     }
 }
 

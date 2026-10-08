@@ -8,7 +8,7 @@ use crate::kernel::NodeBuilder;
 use crate::layout::{CaretGeometry, with_text_geometry};
 use crate::reactive::{Signal, batch, effect, signal};
 
-use super::handlers::{TextEditRuntime, commit, write_value};
+use super::handlers::{TextEditRuntime, write_value};
 use super::render::{floor_char_boundary, splice_preedit};
 
 type CaretRectSlot = Rc<Cell<Option<Signal<Option<Rect>>>>>;
@@ -57,24 +57,17 @@ pub(in crate::widgets) fn attach_ime_handlers(
     let event_rt = runtime.clone();
     let blur_rt = runtime.clone();
     let eligible_rt = runtime.clone();
-    install_disable_clears_preedit(runtime);
-    install_caret_anchor_sync(runtime);
+    runtime.install_disable_clears_preedit();
+    runtime.install_caret_anchor_sync();
     node.on_ime(move |event| on_ime_event(event, &event_rt))
-        .focus_out(move || clear_preedit(&blur_rt))
+        .focus_out(move || blur_rt.clear_preedit())
         .ime_eligible(move || !eligible_rt.disabled())
         .ime_caret(anchor)
 }
 
-fn clear_preedit(runtime: &TextEditRuntime) {
-    batch(|| {
-        runtime.ime.preedit.set(String::new());
-        runtime.ime.preedit_cursor.set(None);
-    });
-}
-
 fn on_ime_event(event: &ImeEvent, runtime: &TextEditRuntime) {
     if matches!(event, ImeEvent::Disabled) {
-        clear_preedit(runtime);
+        runtime.clear_preedit();
         return;
     }
     if runtime.disabled() {
@@ -87,77 +80,9 @@ fn on_ime_event(event: &ImeEvent, runtime: &TextEditRuntime) {
                 runtime.ime.preedit_cursor.set(*range);
             });
         }
-        ImeEvent::Commit(text) => apply_commit(runtime, text),
+        ImeEvent::Commit(text) => runtime.apply_commit(text),
         ImeEvent::Enabled | ImeEvent::Disabled => {}
     }
-}
-
-fn apply_commit(runtime: &TextEditRuntime, text: &str) {
-    batch(|| {
-        runtime.ime.preedit.set(String::new());
-        runtime.ime.preedit_cursor.set(None);
-        if text.is_empty() {
-            return;
-        }
-        let mut edit = runtime.edit_mut();
-        edit.insert_str(text);
-        write_value(runtime.value, edit.as_str());
-        (runtime.change)(edit.as_str());
-        commit(runtime, &edit);
-    });
-}
-
-fn install_disable_clears_preedit(runtime: &TextEditRuntime) {
-    let Some(disabled) = runtime.disabled else {
-        return;
-    };
-    let disabled_rt = runtime.clone();
-    let preedit = runtime.ime.preedit;
-    effect(move || {
-        if disabled.get() && !preedit.peek().is_empty() {
-            clear_preedit(&disabled_rt);
-        }
-    });
-}
-
-fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
-    let ime = runtime.ime.clone();
-    let disabled = runtime.disabled;
-    let value = runtime.value;
-    let caret = runtime.caret;
-    let text_style = runtime.text_style;
-    let content_size = runtime.content_size;
-    let scroll_y = runtime.scroll_y;
-    let scroll_x = runtime.scroll_x;
-    let anchor = Rc::clone(&runtime.ime.caret_anchor);
-    let caret_rect = runtime.ime.caret_rect.get();
-    let (padding_x, padding_y) = runtime.content_padding;
-    effect(move || {
-        if disabled.is_some_and(Signal::get) {
-            publish(&anchor, caret_rect, None);
-            return;
-        }
-        let (composed, cursor) = ime.composing_caret(&value.get(), caret.get());
-        let width = (content_size.get().0 > 0.0).then_some(content_size.peek().0);
-        let style = text_style.get();
-        let rect = with_text_geometry(|engine| {
-            let pos = engine.caret(
-                &composed,
-                &style,
-                width,
-                HitPosition {
-                    byte_index: cursor,
-                    affinity: TextAffinity::Downstream,
-                },
-            );
-            CaretGeometry {
-                x: (pos.x + padding_x - scroll_x.get()).max(0.0),
-                top: pos.top + padding_y - scroll_y.get(),
-                height: pos.height,
-            }
-        });
-        publish(&anchor, caret_rect, rect);
-    });
 }
 
 fn publish(
@@ -172,5 +97,82 @@ fn publish(
     let rect = geometry.map(|g| Rect::new(Point::new(g.x, g.top), 0.0, g.height));
     if target.peek() != rect {
         target.set(rect);
+    }
+}
+
+impl TextEditRuntime {
+    fn clear_preedit(&self) {
+        batch(|| {
+            self.ime.preedit.set(String::new());
+            self.ime.preedit_cursor.set(None);
+        });
+    }
+
+    fn apply_commit(&self, text: &str) {
+        batch(|| {
+            self.ime.preedit.set(String::new());
+            self.ime.preedit_cursor.set(None);
+            if text.is_empty() {
+                return;
+            }
+            let mut edit = self.edit_mut();
+            edit.insert_str(text);
+            write_value(self.value, edit.as_str());
+            (self.change)(edit.as_str());
+            self.commit(&edit);
+        });
+    }
+
+    fn install_disable_clears_preedit(&self) {
+        let Some(disabled) = self.disabled else {
+            return;
+        };
+        let disabled_rt = self.clone();
+        let preedit = self.ime.preedit;
+        effect(move || {
+            if disabled.get() && !preedit.peek().is_empty() {
+                disabled_rt.clear_preedit();
+            }
+        });
+    }
+
+    fn install_caret_anchor_sync(&self) {
+        let ime = self.ime.clone();
+        let disabled = self.disabled;
+        let value = self.value;
+        let caret = self.caret;
+        let text_style = self.text_style;
+        let content_size = self.content_size;
+        let scroll_y = self.scroll_y;
+        let scroll_x = self.scroll_x;
+        let anchor = Rc::clone(&self.ime.caret_anchor);
+        let caret_rect = self.ime.caret_rect.get();
+        let (padding_x, padding_y) = self.content_padding;
+        effect(move || {
+            if disabled.is_some_and(Signal::get) {
+                publish(&anchor, caret_rect, None);
+                return;
+            }
+            let (composed, cursor) = ime.composing_caret(&value.get(), caret.get());
+            let width = (content_size.get().0 > 0.0).then_some(content_size.peek().0);
+            let style = text_style.get();
+            let rect = with_text_geometry(|engine| {
+                let pos = engine.caret(
+                    &composed,
+                    &style,
+                    width,
+                    HitPosition {
+                        byte_index: cursor,
+                        affinity: TextAffinity::Downstream,
+                    },
+                );
+                CaretGeometry {
+                    x: (pos.x + padding_x - scroll_x.get()).max(0.0),
+                    top: pos.top + padding_y - scroll_y.get(),
+                    height: pos.height,
+                }
+            });
+            publish(&anchor, caret_rect, rect);
+        });
     }
 }

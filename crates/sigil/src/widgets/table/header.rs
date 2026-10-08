@@ -214,7 +214,7 @@ fn sortable_cell<Row: 'static>(
     cell: NodeBuilder,
     chrome: TableChrome<Row>,
 ) -> NodeBuilder {
-    let direction = sort_direction(state, column);
+    let direction = state.sort_direction(column);
     let session = Rc::new(RefCell::new(None::<(f32, usize)>));
     let down = Rc::clone(&session);
     let up = Rc::clone(&session);
@@ -324,17 +324,16 @@ fn reorder_only<Row: 'static>(
     })
 }
 
-fn sort_direction<Row: 'static>(
-    state: &TableState<Row>,
-    column: &'static str,
-) -> Signal<Option<crate::kernel::SortDirection>> {
-    let sort = state.sort_key();
-    derived(move || {
-        sort.get()
-            .filter(|key| key.column == column)
-            .map(|key| match key.dir {
-                SortDir::Ascending => crate::kernel::SortDirection::Ascending,
-                SortDir::Descending => crate::kernel::SortDirection::Descending,
-            })
-    })
+impl<Row: 'static> TableState<Row> {
+    fn sort_direction(&self, column: &'static str) -> Signal<Option<crate::kernel::SortDirection>> {
+        let sort = self.sort_key();
+        derived(move || {
+            sort.get()
+                .filter(|key| key.column == column)
+                .map(|key| match key.dir {
+                    SortDir::Ascending => crate::kernel::SortDirection::Ascending,
+                    SortDir::Descending => crate::kernel::SortDirection::Descending,
+                })
+        })
+    }
 }

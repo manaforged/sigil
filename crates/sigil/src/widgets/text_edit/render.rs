@@ -16,7 +16,7 @@ use crate::layout::Position;
 use crate::widgets::interaction::InteractionState;
 
 use super::super::shared::binary_style_state;
-use super::handlers::{TextEditRuntime, geometry_width};
+use super::handlers::TextEditRuntime;
 
 #[path = "render_selection.rs"]
 mod selection;
@@ -98,7 +98,7 @@ fn edit_inner(
 ) -> NodeBuilder {
     let down = runtime.clone();
     let moved = runtime.clone();
-    let scroll_y = scroll_into_view(runtime);
+    let scroll_y = runtime.scroll_into_view();
     let (padding_x, padding_y) = runtime.content_padding;
     let offset = derived(move || (0.0, padding_y - scroll_y.get()));
     let text_box = container()
@@ -129,51 +129,6 @@ fn edit_inner(
         .pointer_move(move |event| pointer_drag_move(event, &moved, scroll_y))
         .pointer_up(move |event| pointer_up(event, interaction))
         .child(body)
-}
-
-fn scroll_into_view(runtime: &TextEditRuntime) -> Signal<f32> {
-    let scroll_y = runtime.scroll_y;
-    let value = runtime.value;
-    let caret = runtime.caret;
-    let text_style = runtime.text_style;
-    let caret_affinity = runtime.caret_affinity;
-    let content_size = runtime.content_size;
-    let viewport_size = runtime.viewport_size;
-    let (_, padding_y) = runtime.content_padding;
-    effect(move || {
-        let buffer = value.get();
-        let byte = caret.get().min(buffer.len());
-        let content_width = content_size.get().0;
-        let width = (content_width > 0.0).then_some(content_width);
-        let style = text_style.get();
-        let pos = with_text_geometry(|engine| {
-            engine.caret(
-                &buffer,
-                &style,
-                width,
-                HitPosition {
-                    byte_index: byte,
-                    affinity: caret_affinity.get(),
-                },
-            )
-        })
-        .unwrap_or_default();
-        let visible = padding_y.mul_add(-2.0, viewport_size.get().1).max(1.0);
-        let max_scroll = (content_size.get().1 - visible).max(0.0);
-        let cur = scroll_y.peek();
-        let next = if pos.top < cur {
-            pos.top
-        } else if pos.top + pos.height > cur + visible {
-            pos.top + pos.height - visible
-        } else {
-            cur
-        };
-        let next = next.clamp(0.0, max_scroll);
-        if (next - cur).abs() > f32::EPSILON {
-            scroll_y.set(next);
-        }
-    });
-    scroll_y
 }
 
 static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.bg()];
@@ -257,7 +212,7 @@ fn pointer_drag_start(event: &mut PointerEvent, runtime: &TextEditRuntime, scrol
     if runtime.disabled() {
         return;
     }
-    let offset = offset_at_point(runtime, event.position.x, event.position.y, scroll_y.peek());
+    let offset = runtime.offset_at_point(event.position.x, event.position.y, scroll_y.peek());
     let mut edit = runtime.edit_mut();
     if event.modifiers.contains(ModifiersState::SHIFT) {
         if edit.selection().is_none() {
@@ -268,7 +223,7 @@ fn pointer_drag_start(event: &mut PointerEvent, runtime: &TextEditRuntime, scrol
         edit.place_caret(offset.byte_index);
         runtime.anchor_affinity.set(offset.affinity);
     }
-    super::handlers::commit(runtime, &edit);
+    runtime.commit(&edit);
     runtime.caret_affinity.set(offset.affinity);
     event.capture_pointer();
 }
@@ -277,27 +232,11 @@ fn pointer_drag_move(event: &PointerEvent, runtime: &TextEditRuntime, scroll_y: 
     if !event.is_captured() || runtime.disabled() {
         return;
     }
-    let offset = offset_at_point(runtime, event.position.x, event.position.y, scroll_y.peek());
+    let offset = runtime.offset_at_point(event.position.x, event.position.y, scroll_y.peek());
     let mut edit = runtime.edit_mut();
     edit.extend_to(offset.byte_index);
-    super::handlers::commit(runtime, &edit);
+    runtime.commit(&edit);
     runtime.caret_affinity.set(offset.affinity);
-}
-
-fn offset_at_point(runtime: &TextEditRuntime, x: f32, y: f32, scroll_y: f32) -> HitPosition {
-    let buffer = runtime.value.peek();
-    let (padding_x, padding_y) = runtime.content_padding;
-    let content_y = y - padding_y + scroll_y;
-    let content_x = x - padding_x;
-    let style = runtime.text_style.peek();
-    let width = geometry_width(runtime);
-    with_text_geometry(|engine| {
-        engine.hit(&buffer, &style, width, Point::new(content_x, content_y))
-    })
-    .unwrap_or(HitPosition {
-        byte_index: 0,
-        affinity: TextAffinity::Downstream,
-    })
 }
 
 fn displayed_text(
@@ -363,4 +302,67 @@ fn edit_variant(chrome: bool) -> StyleVariant {
         crate::layout::snap::CellForm::new(EDIT_BASE, CELL_BASE).pick(),
         StateStyle::new(EDIT_REST, EDIT_FOCUS, EDIT_HOVER, EDIT_DOWN, EDIT_DISABLED),
     )
+}
+
+impl TextEditRuntime {
+    fn scroll_into_view(&self) -> Signal<f32> {
+        let scroll_y = self.scroll_y;
+        let value = self.value;
+        let caret = self.caret;
+        let text_style = self.text_style;
+        let caret_affinity = self.caret_affinity;
+        let content_size = self.content_size;
+        let viewport_size = self.viewport_size;
+        let (_, padding_y) = self.content_padding;
+        effect(move || {
+            let buffer = value.get();
+            let byte = caret.get().min(buffer.len());
+            let content_width = content_size.get().0;
+            let width = (content_width > 0.0).then_some(content_width);
+            let style = text_style.get();
+            let pos = with_text_geometry(|engine| {
+                engine.caret(
+                    &buffer,
+                    &style,
+                    width,
+                    HitPosition {
+                        byte_index: byte,
+                        affinity: caret_affinity.get(),
+                    },
+                )
+            })
+            .unwrap_or_default();
+            let visible = padding_y.mul_add(-2.0, viewport_size.get().1).max(1.0);
+            let max_scroll = (content_size.get().1 - visible).max(0.0);
+            let cur = scroll_y.peek();
+            let next = if pos.top < cur {
+                pos.top
+            } else if pos.top + pos.height > cur + visible {
+                pos.top + pos.height - visible
+            } else {
+                cur
+            };
+            let next = next.clamp(0.0, max_scroll);
+            if (next - cur).abs() > f32::EPSILON {
+                scroll_y.set(next);
+            }
+        });
+        scroll_y
+    }
+
+    fn offset_at_point(&self, x: f32, y: f32, scroll_y: f32) -> HitPosition {
+        let buffer = self.value.peek();
+        let (padding_x, padding_y) = self.content_padding;
+        let content_y = y - padding_y + scroll_y;
+        let content_x = x - padding_x;
+        let style = self.text_style.peek();
+        let width = self.geometry_width();
+        with_text_geometry(|engine| {
+            engine.hit(&buffer, &style, width, Point::new(content_x, content_y))
+        })
+        .unwrap_or(HitPosition {
+            byte_index: 0,
+            affinity: TextAffinity::Downstream,
+        })
+    }
 }

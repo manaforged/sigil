@@ -3364,6 +3364,7 @@ pub const fn sigil::profile::Cause::rank(self) -> u8
 impl core::clone::Clone for sigil::profile::Cause
 impl core::cmp::Eq for sigil::profile::Cause
 impl core::cmp::PartialEq for sigil::profile::Cause
+impl core::default::Default for sigil::profile::Cause
 impl core::fmt::Debug for sigil::profile::Cause
 impl core::fmt::Display for sigil::profile::Cause
 impl core::hash::Hash for sigil::profile::Cause

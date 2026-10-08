@@ -39,7 +39,7 @@ impl EventRouter {
             return;
         }
         crate::events::note_focus_source(true);
-        if is_tab_navigation(&event) {
+        if event.is_tab_navigation() {
             self.route_tab(cx, layout, &mut event);
             return;
         }
@@ -134,7 +134,7 @@ impl ShortcutIndex {
             if !visible(cx, *id) {
                 continue;
             }
-            if text_focused && is_plain_char(shortcut) {
+            if text_focused && shortcut.is_plain_char() {
                 continue;
             }
             if shortcut.matches(event) && invoke_shortcut(cx, *id, event) {
@@ -152,17 +152,19 @@ fn invoke_shortcut(cx: &Cx, id: NodeId, event: &mut KeyEvent) -> bool {
     .unwrap_or(false)
 }
 
-const fn is_plain_char(shortcut: &Shortcut) -> bool {
-    matches!(shortcut.key, LogicalKey::Character(_))
-        && shortcut
-            .modifiers
-            .intersection(
-                ModifiersState::SHIFT
-                    .union(ModifiersState::CONTROL)
-                    .union(ModifiersState::ALT)
-                    .union(ModifiersState::META),
-            )
-            .is_empty()
+impl Shortcut {
+    const fn is_plain_char(&self) -> bool {
+        matches!(self.key, LogicalKey::Character(_))
+            && self
+                .modifiers
+                .intersection(
+                    ModifiersState::SHIFT
+                        .union(ModifiersState::CONTROL)
+                        .union(ModifiersState::ALT)
+                        .union(ModifiersState::META),
+                )
+                .is_empty()
+    }
 }
 
 fn collect_shortcuts(cx: &Cx, id: NodeId, entries: &mut SmallVec<[(Shortcut, NodeId); 8]>) {
@@ -180,8 +182,10 @@ fn collect_shortcuts(cx: &Cx, id: NodeId, entries: &mut SmallVec<[(Shortcut, Nod
     }
 }
 
-fn is_tab_navigation(event: &KeyEvent) -> bool {
-    event.key == LogicalKey::Named(Key::Tab) && !event.modifiers.ctrl() && !event.modifiers.alt()
+impl KeyEvent {
+    fn is_tab_navigation(&self) -> bool {
+        self.key == LogicalKey::Named(Key::Tab) && !self.modifiers.ctrl() && !self.modifiers.alt()
+    }
 }
 
 fn route_tab_key(
@@ -190,7 +194,7 @@ fn route_tab_key(
     layout: &LayoutEngine,
     event: &KeyEvent,
 ) -> bool {
-    if !is_tab_navigation(event) {
+    if !event.is_tab_navigation() {
         return false;
     }
     if event.modifiers.shift() {

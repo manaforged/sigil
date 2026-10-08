@@ -6,7 +6,7 @@ pub(crate) use submit::{record_clear, submit_clear};
 mod surface_frame;
 
 use submit::acquire_frame;
-use surface_frame::{SurfaceFrame, render_surface};
+use surface_frame::SurfaceFrame;
 
 use crate::geometry::PhysicalSize;
 use crate::hal::Renderer;
@@ -197,7 +197,7 @@ impl WgpuRenderer {
             clear: clear_color,
             viewport,
         };
-        let result = render_surface(ready, surface, &request, last_frame_stats, retained);
+        let result = ready.render_surface(surface, &request, last_frame_stats, retained);
         #[cfg(not(target_arch = "wasm32"))]
         snapshot(&ready.instance);
         result

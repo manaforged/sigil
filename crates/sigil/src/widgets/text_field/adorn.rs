@@ -4,7 +4,6 @@ use std::rc::Rc;
 use crate::kernel::{IntoNode, NodeBuilder, NodeId, container};
 use crate::style::NodeStyleExt;
 use crate::widgets::button::icon_button;
-use crate::widgets::text_edit::sync_value;
 
 use super::handlers::TextFieldRuntime;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
@@ -31,7 +30,7 @@ pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusTarget) -> N
         }
         let mut state = input.edit_mut();
         state.replace("");
-        sync_value(&input, &state);
+        input.sync_value(&state);
         drop(state);
         if let Some(id) = target.get() {
             crate::events::request_focus(id);

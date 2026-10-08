@@ -14,22 +14,6 @@ enum SortMark {
     Descending,
 }
 
-fn sort_state<Row: 'static>(
-    state: &TableState<Row>,
-    column: &'static str,
-    sortable: bool,
-) -> Signal<SortMark> {
-    let sort = state.sort_key();
-    derived(move || match sort.get() {
-        Some(key) if key.column == column => match key.dir {
-            SortDir::Ascending => SortMark::Ascending,
-            SortDir::Descending => SortMark::Descending,
-        },
-        _ if sortable => SortMark::Idle,
-        _ => SortMark::None,
-    })
-}
-
 #[cfg(feature = "scene")]
 pub(super) fn sort_mark<Row: 'static>(
     state: &TableState<Row>,
@@ -40,7 +24,7 @@ pub(super) fn sort_mark<Row: 'static>(
     use crate::layout::{LayoutBuilderExt, LayoutStyle};
     use crate::style::space;
     use crate::widgets::icon_svg;
-    let mark = sort_state(state, column, sortable);
+    let mark = state.sort_state(column, sortable);
     if crate::style::cell_size().is_some() {
         return glyph_mark(mark);
     }
@@ -69,7 +53,7 @@ pub(super) fn sort_mark<Row: 'static>(
     column: &'static str,
     sortable: bool,
 ) -> NodeBuilder {
-    glyph_mark(sort_state(state, column, sortable))
+    glyph_mark(state.sort_state(column, sortable))
 }
 
 fn glyph_mark(mark: Signal<SortMark>) -> NodeBuilder {
@@ -109,5 +93,19 @@ impl<Row: 'static> TableState<Row> {
             SortDir::Descending => SortDir::Ascending,
         };
         self.sort(key.column, dir);
+    }
+}
+
+impl<Row: 'static> TableState<Row> {
+    fn sort_state(&self, column: &'static str, sortable: bool) -> Signal<SortMark> {
+        let sort = self.sort_key();
+        derived(move || match sort.get() {
+            Some(key) if key.column == column => match key.dir {
+                SortDir::Ascending => SortMark::Ascending,
+                SortDir::Descending => SortMark::Descending,
+            },
+            _ if sortable => SortMark::Idle,
+            _ => SortMark::None,
+        })
     }
 }

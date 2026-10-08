@@ -17,9 +17,7 @@ mod runs;
 mod selection;
 use paint::{NodePaint, push_focus_ring, push_node};
 mod effects;
-use effects::push_effect;
 mod top_layer;
-use top_layer::defer_top_layer;
 
 const VIEW_OVERSCAN: f32 = 64.0;
 
@@ -45,11 +43,11 @@ pub fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandS
         deferred: &mut deferred,
         selection: &selection,
     };
-    push_subtree(&mut walk, root, &inherited, clip);
+    walk.push_subtree(root, &inherited, clip);
     let mut next = 0;
     while let Some((id, inh, child_clip)) = walk.deferred.get(next).cloned() {
         next += 1;
-        push_subtree(&mut walk, id, &inh, child_clip);
+        walk.push_subtree(id, &inh, child_clip);
     }
     scene.finish()
 }
@@ -68,147 +66,148 @@ struct Inherited<'t> {
     text_style: Rc<TextStyle>,
 }
 
-fn push_subtree<'t>(
-    walk: &mut EmitWalk<'_, 't>,
-    id: NodeId,
-    inherited: &Inherited<'t>,
-    clip: Option<Rect>,
-) {
-    let Some(node) = walk.cx.get(id) else {
-        return;
-    };
-    crate::profile::count(crate::profile::Counter::EmitNodes);
-    if skips_paint(node) {
-        return;
-    }
-    let theme = node.get_extension::<Theme>().unwrap_or(inherited.theme);
-    let style = render_style_for(id, node, theme, inherited.text_color);
-    let layered = (!style.transform.is_identity() || style.opacity < 10_000)
-        && node.get_extension::<LayoutResult>().is_some();
-    if style.opacity > 0 && layered {
-        push_effect(walk, id, inherited, clip, style);
-    } else if style.opacity > 0 && !outside_clip(node, clip) {
-        push_contents(walk, id, inherited, clip, &style);
-    } else {
-        defer_top_layer(walk, node, || child_inherited(node, inherited, &style));
-    }
-}
-
-fn push_contents<'t>(
-    walk: &mut EmitWalk<'_, 't>,
-    id: NodeId,
-    inherited: &Inherited<'t>,
-    clip: Option<Rect>,
-    style: &RenderStyle,
-) {
-    let Some(node) = walk.cx.get(id) else {
-        return;
-    };
-    let child_context = child_inherited(node, inherited, style);
-    let theme = child_context.theme;
-    if let Some(result) = node.get_extension::<LayoutResult>() {
-        let rect = result.rect();
-        let paint = NodePaint {
-            style,
-            theme,
-            text_base: &inherited.text_style,
-            tone: node
-                .get_extension::<ToneContext>()
-                .map(|context| context.tone),
-            leaf: !has_laid_child(walk.cx, node),
-            selected: walk.selection.get(&id).copied(),
+impl<'t> EmitWalk<'_, 't> {
+    fn push_subtree(&mut self, id: NodeId, inherited: &Inherited<'t>, clip: Option<Rect>) {
+        let Some(node) = self.cx.get(id) else {
+            return;
         };
-        let inherit =
-            emit_cache::inherit_key(theme, inherited.text_color, inherited.text_style.as_ref())
-                ^ emit_cache::content_key(node)
-                ^ u64::from(paint.leaf)
-                ^ node
-                    .get_extension::<CanvasPaint>()
-                    .map_or(0, CanvasPaint::version);
-        let selected = paint.selected.is_some();
-        let key = (walk.cx.instance_id(), id);
-        if selected || !emit_cache::replay(walk.scene, key, node, rect, inherit) {
-            let start = walk.scene.command_len();
-            record_node(walk, id, node, rect, &paint);
-            if !selected {
-                emit_cache::store(key, node, rect, inherit, walk.scene.copy_from(start));
-            }
-        }
-        if result.clips() {
-            emit_clipped_children(walk, node, &child_context, clip, rect, style);
+        crate::profile::count(crate::profile::Counter::EmitNodes);
+        if skips_paint(node) {
             return;
         }
+        let theme = node.get_extension::<Theme>().unwrap_or(inherited.theme);
+        let style = render_style_for(id, node, theme, inherited.text_color);
+        let layered = (!style.transform.is_identity() || style.opacity < 10_000)
+            && node.get_extension::<LayoutResult>().is_some();
+        if style.opacity > 0 && layered {
+            self.push_effect(id, inherited, clip, style);
+        } else if style.opacity > 0 && !outside_clip(node, clip) {
+            self.push_contents(id, inherited, clip, &style);
+        } else {
+            self.defer_top_layer(node, || child_inherited(node, inherited, &style));
+        }
     }
-    push_children(walk, node, &child_context, clip);
-}
 
-fn record_node(
-    walk: &mut EmitWalk<'_, '_>,
-    id: NodeId,
-    node: &Node,
-    rect: Rect,
-    paint: &NodePaint<'_>,
-) {
-    if crate::profile::enabled() {
-        let cx = walk.cx;
-        crate::profile::attribute(crate::profile::Hotspot::EmitResolved, 1, || cx.describe(id));
+    fn push_contents(
+        &mut self,
+        id: NodeId,
+        inherited: &Inherited<'t>,
+        clip: Option<Rect>,
+        style: &RenderStyle,
+    ) {
+        let Some(node) = self.cx.get(id) else {
+            return;
+        };
+        let child_context = child_inherited(node, inherited, style);
+        let theme = child_context.theme;
+        if let Some(result) = node.get_extension::<LayoutResult>() {
+            let rect = result.rect();
+            let paint = NodePaint {
+                style,
+                theme,
+                text_base: &inherited.text_style,
+                tone: node
+                    .get_extension::<ToneContext>()
+                    .map(|context| context.tone),
+                leaf: !has_laid_child(self.cx, node),
+                selected: self.selection.get(&id).copied(),
+            };
+            let inherit =
+                emit_cache::inherit_key(theme, inherited.text_color, inherited.text_style.as_ref())
+                    ^ emit_cache::content_key(node)
+                    ^ u64::from(paint.leaf)
+                    ^ node
+                        .get_extension::<CanvasPaint>()
+                        .map_or(0, CanvasPaint::version);
+            let selected = paint.selected.is_some();
+            let key = (self.cx.instance_id(), id);
+            if selected || !emit_cache::replay(self.scene, key, node, rect, inherit) {
+                let start = self.scene.command_len();
+                self.record_node(id, node, rect, &paint);
+                if !selected {
+                    emit_cache::store(key, node, rect, inherit, self.scene.copy_from(start));
+                }
+            }
+            if result.clips() {
+                self.emit_clipped_children(node, &child_context, clip, rect, style);
+                return;
+            }
+        }
+        self.push_children(node, &child_context, clip);
     }
-    push_focus_ring(walk.scene, id, node, rect, paint);
-    push_node(walk.scene, id, node, rect, paint);
-    if let Some(canvas) = node.get_extension::<CanvasPaint>() {
-        canvas.record(walk.scene, rect);
-    }
-}
 
-#[allow(
-    clippy::too_many_arguments,
-    reason = "clip walk needs the node, inherit, and both clip rects"
-)]
-fn emit_clipped_children<'t>(
-    walk: &mut EmitWalk<'_, 't>,
-    node: &Node,
-    inherited: &Inherited<'t>,
-    clip: Option<Rect>,
-    rect: Rect,
-    style: &RenderStyle,
-) {
-    let Some(inner) = tighten_clip(clip, rect) else {
-        defer_top_layer(walk, node, || inherited.clone());
-        return;
-    };
-    let inner = inner.expand(1.0);
-    let clip_radii = corner_radii_for(style.border_radius);
-    let cx = walk.cx;
-    let deferred = &mut *walk.deferred;
-    let selection = walk.selection;
-    if clip_radii.0.iter().any(|radius| *radius > 0.0) {
-        walk.scene.with_composite_layer(
-            LayerScope {
-                clip: rect,
-                clip_radii,
-                effect: LayerEffect::Identity,
-                opacity: 1.0,
-            },
-            |scene| {
+    fn record_node(&mut self, id: NodeId, node: &Node, rect: Rect, paint: &NodePaint<'_>) {
+        if crate::profile::enabled() {
+            let cx = self.cx;
+            crate::profile::attribute(crate::profile::Hotspot::EmitResolved, 1, || cx.describe(id));
+        }
+        push_focus_ring(self.scene, id, node, rect, paint);
+        push_node(self.scene, id, node, rect, paint);
+        if let Some(canvas) = node.get_extension::<CanvasPaint>() {
+            canvas.record(self.scene, rect);
+        }
+    }
+
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "clip self needs the node, inherit, and both clip rects"
+    )]
+    fn emit_clipped_children(
+        &mut self,
+        node: &Node,
+        inherited: &Inherited<'t>,
+        clip: Option<Rect>,
+        rect: Rect,
+        style: &RenderStyle,
+    ) {
+        let Some(inner) = tighten_clip(clip, rect) else {
+            self.defer_top_layer(node, || inherited.clone());
+            return;
+        };
+        let inner = inner.expand(1.0);
+        let clip_radii = corner_radii_for(style.border_radius);
+        let cx = self.cx;
+        let deferred = &mut *self.deferred;
+        let selection = self.selection;
+        if clip_radii.0.iter().any(|radius| *radius > 0.0) {
+            self.scene.with_composite_layer(
+                LayerScope {
+                    clip: rect,
+                    clip_radii,
+                    effect: LayerEffect::Identity,
+                    opacity: 1.0,
+                },
+                |scene| {
+                    let mut nested = EmitWalk {
+                        scene,
+                        cx,
+                        deferred,
+                        selection,
+                    };
+                    nested.push_children(node, inherited, Some(inner));
+                },
+            );
+        } else {
+            self.scene.with_clip(rect, |scene| {
                 let mut nested = EmitWalk {
                     scene,
                     cx,
                     deferred,
                     selection,
                 };
-                push_children(&mut nested, node, inherited, Some(inner));
-            },
-        );
-    } else {
-        walk.scene.with_clip(rect, |scene| {
-            let mut nested = EmitWalk {
-                scene,
-                cx,
-                deferred,
-                selection,
-            };
-            push_children(&mut nested, node, inherited, Some(inner));
-        });
+                nested.push_children(node, inherited, Some(inner));
+            });
+        }
+    }
+
+    fn push_children(&mut self, node: &Node, inherited: &Inherited<'t>, clip: Option<Rect>) {
+        for child in node.children().iter().copied() {
+            if self.cx.get(child).is_some_and(is_top_layer) {
+                self.deferred.push((child, inherited.clone(), None));
+            } else {
+                self.push_subtree(child, inherited, clip);
+            }
+        }
     }
 }
 
@@ -224,21 +223,6 @@ fn outside_clip(node: &Node, clip: Option<Rect>) -> bool {
 
 fn tighten_clip(clip: Option<Rect>, rect: Rect) -> Option<Rect> {
     clip.map_or(Some(rect), |clip| clip.intersection(rect))
-}
-
-fn push_children<'t>(
-    walk: &mut EmitWalk<'_, 't>,
-    node: &Node,
-    inherited: &Inherited<'t>,
-    clip: Option<Rect>,
-) {
-    for child in node.children().iter().copied() {
-        if walk.cx.get(child).is_some_and(is_top_layer) {
-            walk.deferred.push((child, inherited.clone(), None));
-        } else {
-            push_subtree(walk, child, inherited, clip);
-        }
-    }
 }
 
 fn has_laid_child(cx: &Cx, node: &Node) -> bool {

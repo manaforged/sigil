@@ -5,7 +5,6 @@ use crate::layout::with_text_geometry;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom};
 
-use super::super::handlers::geometry_width;
 use super::TextEditRuntime;
 
 static SELECTION_ATOMS: &[StyleAtom] =
@@ -29,7 +28,7 @@ fn selection_rects(runtime: &TextEditRuntime) -> Vec<NodeBuilder> {
         return Vec::new();
     }
     let style = runtime.text_style.get();
-    let width = geometry_width(runtime);
+    let width = runtime.geometry_width();
     let anchor_position = HitPosition {
         byte_index: anchor,
         affinity: runtime.anchor_affinity.get(),

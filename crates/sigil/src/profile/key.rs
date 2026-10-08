@@ -1,11 +1,12 @@
 use std::fmt;
 
 macro_rules! named {
-    ($ty:ident { $($variant:ident => $name:literal),+ $(,)? }) => {
+    ($(#[$attr:meta])* $ty:ident { $($(#[$vattr:meta])* $variant:ident => $name:literal),+ $(,)? }) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+        $(#[$attr])*
         #[non_exhaustive]
         pub enum $ty {
-            $($variant),+
+            $($(#[$vattr])* $variant),+
         }
 
         impl $ty {
@@ -111,7 +112,8 @@ impl Phase {
     }
 }
 
-named!(Cause {
+named!(#[derive(Default)] Cause {
+    #[default]
     Idle => "idle",
     Pointer => "pointer",
     Hover => "hover",

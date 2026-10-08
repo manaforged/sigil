@@ -7,7 +7,7 @@ use crate::events::{
 use crate::kernel::NodeBuilder;
 
 use super::super::TextEdit;
-use super::{TextEditRuntime, commit, edit_value, move_caret, sync_value};
+use super::{TextEditRuntime, edit_value, move_caret};
 
 pub(in crate::widgets) fn clipboard_keys(
     node: NodeBuilder,
@@ -169,7 +169,7 @@ fn clipboard_cut(event: &mut KeyEvent, runtime: &TextEditRuntime) {
         }
         let mut state = runtime.edit_mut();
         state.backspace();
-        sync_value(runtime, &state);
+        runtime.sync_value(&state);
     }
 }
 
@@ -182,27 +182,14 @@ fn clipboard_paste(event: &mut KeyEvent, runtime: &TextEditRuntime) {
         return;
     };
     event.stop_propagation();
-    insert_pasted(runtime, &text);
+    runtime.insert_pasted(&text);
 }
 
 fn shell_paste(event: &mut PasteEvent, runtime: &TextEditRuntime) {
     event.stop_propagation();
     if !runtime.disabled() {
-        insert_pasted(runtime, &event.text);
+        runtime.insert_pasted(&event.text);
     }
-}
-
-fn insert_pasted(runtime: &TextEditRuntime, text: &str) {
-    let mut state = runtime.edit_mut();
-    let normalised = if runtime.column.is_some() {
-        text.chars()
-            .filter(|ch| *ch != '\n' && *ch != '\r')
-            .collect()
-    } else {
-        text.replace("\r\n", "\n").replace('\r', "\n")
-    };
-    state.insert_str(&normalised);
-    sync_value(runtime, &state);
 }
 
 fn select_all_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
@@ -210,7 +197,7 @@ fn select_all_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     if !runtime.disabled() {
         let mut state = runtime.edit_mut();
         state.select_all();
-        commit(runtime, &state);
+        runtime.commit(&state);
     }
 }
 
@@ -221,7 +208,7 @@ fn history_undo(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     }
     let mut state = runtime.edit_mut();
     if state.undo() {
-        sync_value(runtime, &state);
+        runtime.sync_value(&state);
     }
 }
 
@@ -232,7 +219,7 @@ fn history_redo(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     }
     let mut state = runtime.edit_mut();
     if state.redo() {
-        sync_value(runtime, &state);
+        runtime.sync_value(&state);
     }
 }
 
@@ -241,31 +228,46 @@ pub(in crate::widgets) fn attach_a11y_edit(
     runtime: TextEditRuntime,
 ) -> NodeBuilder {
     with_handlers(node, move |handlers| {
-        handlers.set_a11y_edit(Box::new(move |edit| a11y_edit(&runtime, edit)));
+        handlers.set_a11y_edit(Box::new(move |edit| runtime.a11y_edit(edit)));
     })
 }
 
-fn a11y_edit(runtime: &TextEditRuntime, edit: &A11yEdit) -> bool {
-    if runtime.disabled() {
-        return true;
+impl TextEditRuntime {
+    fn insert_pasted(&self, text: &str) {
+        let mut state = self.edit_mut();
+        let normalised = if self.column.is_some() {
+            text.chars()
+                .filter(|ch| *ch != '\n' && *ch != '\r')
+                .collect()
+        } else {
+            text.replace("\r\n", "\n").replace('\r', "\n")
+        };
+        state.insert_str(&normalised);
+        self.sync_value(&state);
     }
-    let mut state = runtime.edit_mut();
-    match edit {
-        A11yEdit::Text(text) if runtime.column.is_some() => {
-            let line: String = text.chars().filter(|ch| !ch.is_control()).collect();
-            state.replace(&line);
-            sync_value(runtime, &state);
+
+    fn a11y_edit(&self, edit: &A11yEdit) -> bool {
+        if self.disabled() {
+            return true;
         }
-        A11yEdit::Text(text) => {
-            state.replace(text);
-            sync_value(runtime, &state);
+        let mut state = self.edit_mut();
+        match edit {
+            A11yEdit::Text(text) if self.column.is_some() => {
+                let line: String = text.chars().filter(|ch| !ch.is_control()).collect();
+                state.replace(&line);
+                self.sync_value(&state);
+            }
+            A11yEdit::Text(text) => {
+                state.replace(text);
+                self.sync_value(&state);
+            }
+            A11yEdit::Select { anchor, focus } => {
+                state.place_caret(*anchor);
+                state.extend_to(*focus);
+                self.commit(&state);
+            }
+            A11yEdit::Number(_) => return false,
         }
-        A11yEdit::Select { anchor, focus } => {
-            state.place_caret(*anchor);
-            state.extend_to(*focus);
-            commit(runtime, &state);
-        }
-        A11yEdit::Number(_) => return false,
+        true
     }
-    true
 }

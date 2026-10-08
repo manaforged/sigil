@@ -43,7 +43,7 @@ impl Animator {
             return;
         }
         if let Some(id) = self.id.take() {
-            state::deregister(id);
+            id.deregister();
         }
         self.config = config;
     }
@@ -55,7 +55,7 @@ impl Animator {
         }
         if MotionPrefs::reduced() {
             if let Some(id) = self.id.take() {
-                state::deregister(id);
+                id.deregister();
             }
             self.signal.try_set(value);
             Runtime::mark_frame_dirty();
@@ -65,51 +65,51 @@ impl Animator {
             AnimationConfig::Spring { preset } => state::register_spring(self.signal, preset),
             AnimationConfig::Tween { ms, easing } => state::register_tween(self.signal, ms, easing),
         });
-        state::retarget(id, value);
+        id.retarget(value);
     }
 
     pub fn pause(&mut self) {
         if let Some(id) = self.id {
-            state::pause(id, true);
+            id.pause(true);
         }
     }
 
     pub fn resume(&mut self) {
         if let Some(id) = self.id {
-            state::pause(id, false);
+            id.pause(false);
         }
     }
 
     pub fn finish(&mut self) {
         if let Some(id) = self.id {
-            state::finish(id);
+            id.finish();
         }
     }
 
     pub fn cancel(&mut self) {
         if let Some(id) = self.id.take() {
-            state::deregister(id);
+            id.deregister();
         }
     }
 
     #[must_use]
     pub fn value(&self) -> f32 {
         self.id
-            .and_then(state::peek_value)
+            .and_then(AnimatorId::peek_value)
             .or_else(|| self.signal.try_peek())
             .unwrap_or_default()
     }
 
     #[must_use]
     pub fn settled(&self) -> bool {
-        self.id.is_none_or(state::is_settled)
+        self.id.is_none_or(AnimatorId::is_settled)
     }
 }
 
 impl Drop for Animator {
     fn drop(&mut self) {
         if let Some(id) = self.id.take() {
-            state::deregister(id);
+            id.deregister();
         }
     }
 }

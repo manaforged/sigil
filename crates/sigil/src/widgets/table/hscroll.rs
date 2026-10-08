@@ -31,7 +31,7 @@ pub(super) fn bind<Row: 'static>(
         |px| (signal(px), None),
     );
     let extent_state = state.clone();
-    let extent = derived(move || prefix + content_extent(&extent_state));
+    let extent = derived(move || prefix + extent_state.content_extent());
     let max = derived(move || (extent.get() - viewport.get()).max(0.0));
     HScroll {
         scroll_x: signal(0.0),
@@ -40,21 +40,6 @@ pub(super) fn bind<Row: 'static>(
         viewport,
         probe,
     }
-}
-
-fn content_extent<Row: 'static>(state: &TableState<Row>) -> f32 {
-    let layout = state.column_layout().get();
-    let mut total = 0.0;
-    for (_, column) in state.visible_columns() {
-        total += match layout.widths.get(column.id()) {
-            Some(&px) => px.max(column.min_px()),
-            None => match column.col_width() {
-                ColWidth::Fixed(px) => px.max(0.0),
-                ColWidth::Fraction(_) => column.min_px().max(0.0),
-            },
-        };
-    }
-    total
 }
 
 impl HScroll {
@@ -145,3 +130,20 @@ fn drag(hs: HScroll, anchor: Signal<Option<(f32, f32)>>, ev: &mut PointerEvent) 
 #[cfg(test)]
 #[path = "hscroll_tests.rs"]
 mod tests;
+
+impl<Row: 'static> TableState<Row> {
+    fn content_extent(&self) -> f32 {
+        let layout = self.column_layout().get();
+        let mut total = 0.0;
+        for (_, column) in self.visible_columns() {
+            total += match layout.widths.get(column.id()) {
+                Some(&px) => px.max(column.min_px()),
+                None => match column.col_width() {
+                    ColWidth::Fixed(px) => px.max(0.0),
+                    ColWidth::Fraction(_) => column.min_px().max(0.0),
+                },
+            };
+        }
+        total
+    }
+}

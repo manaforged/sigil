@@ -6,9 +6,7 @@ use slotmap::SecondaryMap;
 use smallvec::SmallVec;
 use std::collections::BTreeSet;
 
-use crate::layout::cache_key::{
-    LayoutCacheKey, has_unversioned_layout, reactive_layout_signature, reactive_seed_signature,
-};
+use crate::layout::cache_key::{LayoutCacheKey, reactive_layout_signature};
 use crate::layout::engine_drive::{LayoutDrive, NodeHandle};
 use crate::layout::text_style::InheritedText;
 use crate::layout::{LayoutError, LayoutResult, TextMeasure};
@@ -211,7 +209,7 @@ impl LayoutEngine {
         let settled = !self.republished
             || self.reactive_layout.iter().all(|key| {
                 cx.get(NodeId::from_key(*key)).is_some_and(|node| {
-                    self.reactive_sigs.get(*key).copied() == Some(reactive_seed_signature(node))
+                    self.reactive_sigs.get(*key).copied() == Some(node.reactive_seed_signature())
                 })
             });
         self.cached_key = settled.then_some(cache_key);
@@ -272,10 +270,10 @@ impl LayoutEngine {
     }
 
     fn track_reactive(&mut self, id: NodeId, node: &crate::kernel::Node) {
-        if has_unversioned_layout(node) {
+        if node.has_unversioned_layout() {
             self.reactive_layout.insert(id.key());
             self.reactive_sigs
-                .insert(id.key(), reactive_seed_signature(node));
+                .insert(id.key(), node.reactive_seed_signature());
         } else {
             self.reactive_layout.remove(&id.key());
             self.reactive_sigs.remove(id.key());

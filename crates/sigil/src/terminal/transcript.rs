@@ -69,7 +69,7 @@ impl Transcript {
             return;
         };
         let tree = crate::a11y::snapshot(update);
-        let rows = rows_of(grid);
+        let rows = grid.text_rows();
         if tree != self.tree {
             self.tree = tree;
             self.rows = rows;
@@ -109,17 +109,19 @@ fn open(value: &str) -> Option<File> {
     OpenOptions::new().create(true).append(true).open(path).ok()
 }
 
-fn rows_of(grid: &Grid) -> Vec<String> {
-    (0..grid.rows())
-        .map(|row| {
-            grid.row(row)
-                .iter()
-                .map(|cell| cell.text.as_str())
-                .collect::<String>()
-                .trim_end()
-                .to_string()
-        })
-        .collect()
+impl Grid {
+    fn text_rows(&self) -> Vec<String> {
+        (0..self.rows())
+            .map(|row| {
+                self.row(row)
+                    .iter()
+                    .map(|cell| cell.text.as_str())
+                    .collect::<String>()
+                    .trim_end()
+                    .to_string()
+            })
+            .collect()
+    }
 }
 
 fn spot(node: &accesskit::Node, cell: f32) -> Option<Spot> {

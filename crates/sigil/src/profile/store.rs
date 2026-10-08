@@ -33,7 +33,7 @@ thread_local! {
     static STORE: RefCell<Store> = RefCell::new(Store::new());
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Frame {
     pub index: u32,
     pub cause: Cause,
@@ -44,22 +44,6 @@ pub struct Frame {
     pub hot: Vec<Attribution>,
     pub gpu_passes: Vec<(&'static str, u64)>,
     pub end_us: u64,
-}
-
-impl Default for Frame {
-    fn default() -> Self {
-        Self {
-            index: 0,
-            cause: Cause::Idle,
-            wall_ns: 0,
-            phases: Vec::new(),
-            counts: Vec::new(),
-            backend: None,
-            hot: Vec::new(),
-            gpu_passes: Vec::new(),
-            end_us: 0,
-        }
-    }
 }
 
 impl Frame {

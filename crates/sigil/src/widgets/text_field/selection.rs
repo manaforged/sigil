@@ -9,7 +9,6 @@ use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom, TextStyle, Token};
 
 use crate::widgets::interaction::InteractionState;
 
-use super::super::text_edit::commit;
 use super::handlers::TextFieldRuntime;
 
 const CARET_W: f32 = 2.0;
@@ -115,7 +114,7 @@ fn selection_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
     } else {
         (caret, anchor)
     };
-    let (layout, lo, hi) = layout_span(runtime, &value, lo, hi);
+    let (layout, lo, hi) = runtime.layout_span(&value, lo, hi);
     let style = runtime.input.text_style.get();
     let geom = with_text_geometry(|engine| {
         let start = engine.caret(&layout, &style, None, downstream(lo));
@@ -140,7 +139,7 @@ fn caret_rects(runtime: &TextFieldRuntime, interaction: InteractionState) -> Vec
         .input
         .ime
         .composing_caret(&runtime.input.value.get(), runtime.input.caret.get());
-    let (layout, caret, _) = layout_span(runtime, &composed, cursor, cursor);
+    let (layout, caret, _) = runtime.layout_span(&composed, cursor, cursor);
     let style = runtime.input.text_style.get();
     let geom = with_text_geometry(|engine| {
         let pos = engine.caret(&layout, &style, None, downstream(caret));
@@ -186,10 +185,10 @@ fn pointer_down(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
     if runtime.disabled() {
         return;
     }
-    let byte = hit(runtime, event.position.x);
+    let byte = runtime.hit(event.position.x);
     let mut state = runtime.edit_mut();
     state.place_caret(byte);
-    commit(&runtime.input, &state);
+    runtime.input.commit(&state);
     drop(state);
     event.capture_pointer();
 }
@@ -198,10 +197,10 @@ fn pointer_move(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
     if !event.is_captured() || runtime.disabled() {
         return;
     }
-    let byte = hit(runtime, event.position.x);
+    let byte = runtime.hit(event.position.x);
     let mut state = runtime.edit_mut();
     state.extend_to(byte);
-    commit(&runtime.input, &state);
+    runtime.input.commit(&state);
     drop(state);
     event.stop_propagation();
 }
@@ -212,36 +211,34 @@ fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
     }
 }
 
-fn hit(runtime: &TextFieldRuntime, x: f32) -> usize {
-    let value = runtime.input.value.peek();
-    let text_x = x + runtime.input.scroll_x.peek();
-    let style = runtime.input.text_style.peek();
-    let hiding = super::mask::hiding_peek(runtime.password, runtime.reveal);
-    if hiding {
-        let layout = super::mask::mask_chars(&value);
-        let mask_byte =
-            with_text_geometry(|engine| engine.hit(&layout, &style, None, Point::new(text_x, 0.0)))
-                .map_or(0, |hit| hit.byte_index);
-        super::mask::unmask_byte(&value, mask_byte)
-    } else {
-        with_text_geometry(|engine| engine.hit(&value, &style, None, Point::new(text_x, 0.0)))
-            .map_or(0, |hit| hit.byte_index)
+impl TextFieldRuntime {
+    fn hit(&self, x: f32) -> usize {
+        let value = self.input.value.peek();
+        let text_x = x + self.input.scroll_x.peek();
+        let style = self.input.text_style.peek();
+        let hiding = super::mask::hiding_peek(self.password, self.reveal);
+        if hiding {
+            let layout = super::mask::mask_chars(&value);
+            let mask_byte = with_text_geometry(|engine| {
+                engine.hit(&layout, &style, None, Point::new(text_x, 0.0))
+            })
+            .map_or(0, |hit| hit.byte_index);
+            super::mask::unmask_byte(&value, mask_byte)
+        } else {
+            with_text_geometry(|engine| engine.hit(&value, &style, None, Point::new(text_x, 0.0)))
+                .map_or(0, |hit| hit.byte_index)
+        }
     }
-}
 
-fn layout_span(
-    runtime: &TextFieldRuntime,
-    value: &str,
-    lo: usize,
-    hi: usize,
-) -> (String, usize, usize) {
-    if super::mask::hiding(runtime.password, runtime.reveal) {
-        (
-            super::mask::mask_chars(value),
-            super::mask::mask_byte(value, lo),
-            super::mask::mask_byte(value, hi),
-        )
-    } else {
-        (value.to_owned(), lo, hi)
+    fn layout_span(&self, value: &str, lo: usize, hi: usize) -> (String, usize, usize) {
+        if super::mask::hiding(self.password, self.reveal) {
+            (
+                super::mask::mask_chars(value),
+                super::mask::mask_byte(value, lo),
+                super::mask::mask_byte(value, hi),
+            )
+        } else {
+            (value.to_owned(), lo, hi)
+        }
     }
 }

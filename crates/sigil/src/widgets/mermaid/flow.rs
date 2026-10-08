@@ -1,7 +1,5 @@
-use super::flow_layout::{expand, order, place};
-use super::flow_paint::paint;
+use super::flow_layout::expand;
 use super::flow_parse::parse;
-use super::rank::rank;
 
 pub(super) const GAP_ROWS: usize = 3;
 pub(super) const GAP_COLS: usize = 5;
@@ -79,9 +77,9 @@ pub(super) fn draw(source: &str) -> Option<Vec<String>> {
 }
 
 pub(super) fn render(graph: Graph) -> Vec<String> {
-    let ranks = rank(&graph);
+    let ranks = graph.rank();
     let (graph, ranks) = expand(graph, ranks);
-    let layers = order(&graph, &ranks);
-    let rects = place(&graph, &ranks, &layers);
-    paint(&graph, &rects)
+    let layers = graph.order(&ranks);
+    let rects = graph.place(&ranks, &layers);
+    graph.paint(&rects)
 }

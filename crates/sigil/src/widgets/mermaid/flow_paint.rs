@@ -2,102 +2,6 @@ use super::canvas::{Canvas, LEFT, UP};
 use super::flow::{Dir, Edge, Graph, Node, Rect, Shape};
 use super::flow_route::{Pen, between, entry, exit, route, span};
 
-pub(super) fn paint(graph: &Graph, rects: &[Rect]) -> Vec<String> {
-    let (cols, rows, extent, lanes) = sizes(graph, rects);
-    let mut canvas = Canvas::new(cols, rows);
-    for (node, rect) in graph.nodes.iter().zip(rects) {
-        if node.dummy {
-            through(&mut canvas, *rect, graph.dir, node.dashed);
-        } else {
-            shape(&mut canvas, node, *rect);
-        }
-    }
-    for (edge, lane) in graph.edges.iter().zip(&lanes) {
-        let (Some(from), Some(to)) = (rects.get(edge.from), rects.get(edge.to)) else {
-            continue;
-        };
-        match lane {
-            Some(lane) => {
-                let at = extent
-                    .saturating_add(1)
-                    .saturating_add(lane.saturating_mul(2));
-                around(&mut canvas, edge, (*from, *to), graph.dir, at);
-            }
-            None => route(&mut canvas, edge, *from, *to, graph.dir),
-        }
-    }
-    canvas.lines()
-}
-
-pub(super) fn sizes(graph: &Graph, rects: &[Rect]) -> (usize, usize, usize, Vec<Option<usize>>) {
-    let margin = graph
-        .edges
-        .iter()
-        .map(|edge| edge.label.chars().count())
-        .max()
-        .unwrap_or(0)
-        .saturating_add(2);
-    let cols = rects
-        .iter()
-        .map(|rect| rect.x.saturating_add(rect.w))
-        .max()
-        .unwrap_or(0)
-        .saturating_add(margin);
-    let rows = rects
-        .iter()
-        .map(|rect| rect.y.saturating_add(rect.h))
-        .max()
-        .unwrap_or(0)
-        .saturating_add(1);
-    let lanes = lanes(graph, rects);
-    let extent = rects
-        .iter()
-        .map(|rect| {
-            if graph.dir.vertical() {
-                rect.x.saturating_add(rect.w)
-            } else {
-                rect.y.saturating_add(rect.h)
-            }
-        })
-        .max()
-        .unwrap_or(0);
-    let back = match lanes.iter().flatten().count() {
-        0 => 0,
-        count => count.saturating_mul(2).saturating_add(2),
-    };
-    let (cols, rows) = if graph.dir.vertical() {
-        (cols.saturating_add(back), rows)
-    } else {
-        (cols, rows.saturating_add(back))
-    };
-    (cols, rows, extent, lanes)
-}
-
-pub(super) fn lanes(graph: &Graph, rects: &[Rect]) -> Vec<Option<usize>> {
-    let mut next = 0_usize;
-    let pen = Pen {
-        dir: graph.dir,
-        dashed: false,
-    };
-    graph
-        .edges
-        .iter()
-        .map(|edge| {
-            let (Some(from), Some(to)) = (rects.get(edge.from), rects.get(edge.to)) else {
-                return None;
-            };
-            let (pp, _) = pen.split(exit(*from, graph.dir));
-            let (qp, _) = pen.split(entry(*to, graph.dir));
-            if (qp > pp) == graph.dir.forward() && qp != pp {
-                return None;
-            }
-            let lane = next;
-            next = next.saturating_add(1);
-            Some(lane)
-        })
-        .collect()
-}
-
 pub(super) fn around(canvas: &mut Canvas, edge: &Edge, ends: (Rect, Rect), dir: Dir, lane: usize) {
     let (from, to) = ends;
     let pen = Pen {
@@ -195,5 +99,102 @@ pub(super) fn shape(canvas: &mut Canvas, node: &Node, rect: Rect) {
             .saturating_add(1)
             .saturating_add(inner.saturating_sub(width) / 2);
         canvas.text(x, rect.y.saturating_add(1).saturating_add(index), &text);
+    }
+}
+
+impl Graph {
+    pub(super) fn paint(&self, rects: &[Rect]) -> Vec<String> {
+        let (cols, rows, extent, lanes) = self.sizes(rects);
+        let mut canvas = Canvas::new(cols, rows);
+        for (node, rect) in self.nodes.iter().zip(rects) {
+            if node.dummy {
+                through(&mut canvas, *rect, self.dir, node.dashed);
+            } else {
+                shape(&mut canvas, node, *rect);
+            }
+        }
+        for (edge, lane) in self.edges.iter().zip(&lanes) {
+            let (Some(from), Some(to)) = (rects.get(edge.from), rects.get(edge.to)) else {
+                continue;
+            };
+            match lane {
+                Some(lane) => {
+                    let at = extent
+                        .saturating_add(1)
+                        .saturating_add(lane.saturating_mul(2));
+                    around(&mut canvas, edge, (*from, *to), self.dir, at);
+                }
+                None => route(&mut canvas, edge, *from, *to, self.dir),
+            }
+        }
+        canvas.lines()
+    }
+
+    pub(super) fn sizes(&self, rects: &[Rect]) -> (usize, usize, usize, Vec<Option<usize>>) {
+        let margin = self
+            .edges
+            .iter()
+            .map(|edge| edge.label.chars().count())
+            .max()
+            .unwrap_or(0)
+            .saturating_add(2);
+        let cols = rects
+            .iter()
+            .map(|rect| rect.x.saturating_add(rect.w))
+            .max()
+            .unwrap_or(0)
+            .saturating_add(margin);
+        let rows = rects
+            .iter()
+            .map(|rect| rect.y.saturating_add(rect.h))
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1);
+        let lanes = self.lanes(rects);
+        let extent = rects
+            .iter()
+            .map(|rect| {
+                if self.dir.vertical() {
+                    rect.x.saturating_add(rect.w)
+                } else {
+                    rect.y.saturating_add(rect.h)
+                }
+            })
+            .max()
+            .unwrap_or(0);
+        let back = match lanes.iter().flatten().count() {
+            0 => 0,
+            count => count.saturating_mul(2).saturating_add(2),
+        };
+        let (cols, rows) = if self.dir.vertical() {
+            (cols.saturating_add(back), rows)
+        } else {
+            (cols, rows.saturating_add(back))
+        };
+        (cols, rows, extent, lanes)
+    }
+
+    pub(super) fn lanes(&self, rects: &[Rect]) -> Vec<Option<usize>> {
+        let mut next = 0_usize;
+        let pen = Pen {
+            dir: self.dir,
+            dashed: false,
+        };
+        self.edges
+            .iter()
+            .map(|edge| {
+                let (Some(from), Some(to)) = (rects.get(edge.from), rects.get(edge.to)) else {
+                    return None;
+                };
+                let (pp, _) = pen.split(exit(*from, self.dir));
+                let (qp, _) = pen.split(entry(*to, self.dir));
+                if (qp > pp) == self.dir.forward() && qp != pp {
+                    return None;
+                }
+                let lane = next;
+                next = next.saturating_add(1);
+                Some(lane)
+            })
+            .collect()
     }
 }

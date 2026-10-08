@@ -4,13 +4,8 @@ use crate::hal::{HitPosition, TextAffinity};
 use crate::layout::with_text_geometry;
 
 use super::super::TextEdit;
+use super::TextEditRuntime;
 use super::keymap::LineStep;
-use super::{TextEditRuntime, commit};
-
-pub(in crate::widgets::text_edit) fn geometry_width(runtime: &TextEditRuntime) -> Option<f32> {
-    let width = runtime.content_size.get().0;
-    (width > 0.0).then_some(width)
-}
 
 pub(super) fn move_horizontal(
     event: &mut KeyEvent,
@@ -38,7 +33,7 @@ pub(super) fn move_horizontal(
         } else {
             state.place_caret(target.byte_index);
         }
-        commit(runtime, &state);
+        runtime.commit(&state);
         runtime.caret_affinity.set(target.affinity);
         return;
     }
@@ -64,7 +59,7 @@ pub(super) fn move_horizontal(
     } else {
         TextAffinity::Downstream
     };
-    commit(runtime, &state);
+    runtime.commit(&state);
     runtime.caret_affinity.set(affinity);
 }
 
@@ -75,7 +70,7 @@ fn wrap_transition(
     right: bool,
 ) -> Option<HitPosition> {
     let style = runtime.text_style.peek();
-    let width = geometry_width(runtime);
+    let width = runtime.geometry_width();
     let opposite = HitPosition {
         byte_index: position.byte_index,
         affinity: match position.affinity {
@@ -106,7 +101,7 @@ pub(super) fn move_vertical(
     let mut state = runtime.edit_mut();
     let buffer = state.as_str().to_owned();
     let style = runtime.text_style.peek();
-    let width = geometry_width(runtime);
+    let width = runtime.geometry_width();
     let position = HitPosition {
         byte_index: state.caret(),
         affinity: runtime.caret_affinity.peek(),
@@ -146,7 +141,7 @@ pub(super) fn move_vertical(
     } else {
         state.place_caret(target.byte_index);
     }
-    commit(runtime, &state);
+    runtime.commit(&state);
     runtime.caret_affinity.set(target.affinity);
     runtime.preferred_x.set(Some(x));
 }
@@ -164,7 +159,7 @@ pub(super) fn move_visual_edge(
     let mut state = runtime.edit_mut();
     let buffer = state.as_str().to_owned();
     let style = runtime.text_style.peek();
-    let width = geometry_width(runtime);
+    let width = runtime.geometry_width();
     let position = HitPosition {
         byte_index: state.caret(),
         affinity: runtime.caret_affinity.peek(),
@@ -188,37 +183,44 @@ pub(super) fn move_visual_edge(
     } else {
         state.place_caret(target.byte_index);
     }
-    commit(runtime, &state);
+    runtime.commit(&state);
     runtime.caret_affinity.set(target.affinity);
 }
 
-pub(super) fn update_scroll(runtime: &TextEditRuntime, edit: &TextEdit, column: f32) {
-    let style = runtime.text_style.peek();
-    let Some(caret_x) = with_text_geometry(|engine| {
-        engine
-            .caret(
-                edit.as_str(),
-                &style,
-                None,
-                HitPosition {
-                    byte_index: edit.caret(),
-                    affinity: TextAffinity::Downstream,
-                },
-            )
-            .x
-    }) else {
-        return;
-    };
-    let current = runtime.scroll_x.peek();
-    let offset = if caret_x < current {
-        caret_x
-    } else if caret_x > current + column {
-        caret_x - column
-    } else {
-        current
+impl TextEditRuntime {
+    pub(in crate::widgets::text_edit) fn geometry_width(&self) -> Option<f32> {
+        let width = self.content_size.get().0;
+        (width > 0.0).then_some(width)
     }
-    .max(0.0);
-    if (offset - current).abs() > f32::EPSILON {
-        runtime.scroll_x.set(offset);
+
+    pub(super) fn update_scroll(&self, edit: &TextEdit, column: f32) {
+        let style = self.text_style.peek();
+        let Some(caret_x) = with_text_geometry(|engine| {
+            engine
+                .caret(
+                    edit.as_str(),
+                    &style,
+                    None,
+                    HitPosition {
+                        byte_index: edit.caret(),
+                        affinity: TextAffinity::Downstream,
+                    },
+                )
+                .x
+        }) else {
+            return;
+        };
+        let current = self.scroll_x.peek();
+        let offset = if caret_x < current {
+            caret_x
+        } else if caret_x > current + column {
+            caret_x - column
+        } else {
+            current
+        }
+        .max(0.0);
+        if (offset - current).abs() > f32::EPSILON {
+            self.scroll_x.set(offset);
+        }
     }
 }

@@ -24,39 +24,27 @@ impl Player {
             device: std::rc::Rc::new(std::cell::RefCell::new(None)),
         };
         let watcher = player.clone();
-        effect(move || device::set_volume(&watcher, watcher.volume.get()));
+        effect(move || watcher.set_volume(watcher.volume.get()));
         player
-    }
-
-    pub fn toggle(&self) {
-        device::toggle(self);
-    }
-
-    pub fn tick(&self) {
-        device::sync(self);
-    }
-
-    pub fn seek(&self, ratio: f32) -> crate::AppResult<()> {
-        device::seek(self, ratio)
     }
 
     pub fn play_path(&self, path: &std::path::Path) -> crate::AppResult<()> {
         let decoder = device::decode_path(path)?;
-        device::reset(self)?;
-        device::append_source(self, decoder)
+        self.reset()?;
+        self.append_source(decoder)
     }
 
     pub fn play_bytes(&self, bytes: Vec<u8>) -> crate::AppResult<()> {
         let decoder = device::decode_bytes(bytes)?;
-        device::reset(self)?;
-        device::append_source(self, decoder)
+        self.reset()?;
+        self.append_source(decoder)
     }
 
     pub fn queue<P: AsRef<std::path::Path>>(
         &self,
         paths: impl IntoIterator<Item = P>,
     ) -> crate::AppResult<()> {
-        device::reset(self)?;
+        self.reset()?;
         for path in paths {
             self.append(path.as_ref())?;
         }
@@ -65,11 +53,7 @@ impl Player {
 
     pub fn append(&self, path: &std::path::Path) -> crate::AppResult<()> {
         let decoder = device::decode_path(path)?;
-        device::append_source(self, decoder)
-    }
-
-    pub fn stop(&self) {
-        device::stop(self);
+        self.append_source(decoder)
     }
 }
 

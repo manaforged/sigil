@@ -1,8 +1,7 @@
 use crate::geometry::Size;
-use crate::kernel::{Cx, NodeId};
+use crate::kernel::{Cx, Node, NodeId};
 use crate::layout::cache_key::{
-    AvailableKey, CacheDecision, LayoutCacheKey, animation_signature, layout_input_signature,
-    reactive_layout_signature, seed_signature,
+    AvailableKey, CacheDecision, LayoutCacheKey, layout_input_signature, reactive_layout_signature,
 };
 
 use super::LayoutEngine;
@@ -16,7 +15,7 @@ impl LayoutEngine {
             || cx.dirty().any(|id| id == root);
         for key in self.reactive_layout.iter().copied() {
             let id = NodeId::from_key(key);
-            let Some(signature) = cx.get(id).and_then(animation_signature) else {
+            let Some(signature) = cx.get(id).and_then(Node::animation_signature) else {
                 continue;
             };
             if !force && self.prepared.get(key) == Some(&signature) {
@@ -89,7 +88,7 @@ impl LayoutEngine {
             let Some(node) = cx.get(id) else {
                 continue;
             };
-            let sig = seed_signature(node, self.prepared.get(key).copied());
+            let sig = node.seed_signature(self.prepared.get(key).copied());
             let unchanged = self.reactive_sigs.insert(key, sig) == Some(sig);
             if unchanged && self.synced_version.get(key).copied() == Some(node.version()) {
                 self.steady.insert(id);

@@ -174,7 +174,7 @@
 | <code>Resize</code> |  |
 | <code>Scroll</code> |  |
 
-**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Display</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Display</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `Counter`

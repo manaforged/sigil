@@ -36,7 +36,7 @@ pub(super) fn parse(source: &str) -> Option<Graph> {
         if skipped(line) {
             continue;
         }
-        statement(&mut graph, line);
+        graph.statement(line);
     }
     Some(graph)
 }
@@ -89,46 +89,46 @@ pub(super) fn alias(line: &str, state: bool) -> Option<(String, String)> {
     ))
 }
 
-pub(super) fn statement(graph: &mut Graph, line: &str) {
-    let (line, colon) = match (graph.state, line.split_once(':')) {
-        (true, Some((head, tail))) => (head.trim(), Some(tail.trim().to_string())),
-        _ => (line, None),
-    };
-    let mut previous: Option<Vec<usize>> = None;
-    let mut pending: Option<Link> = None;
-    for part in tokens(line) {
-        match part {
-            Part::Link(found) => pending = Some(found),
-            Part::Nodes(nodes) => {
-                let first = previous.is_none();
-                let ids: Vec<usize> = nodes
-                    .into_iter()
-                    .map(|(id, detail)| graph.node_or_terminal(&id, detail, first))
-                    .collect();
-                if let (Some(from), Some(found)) = (&previous, pending.take()) {
-                    let pairs = from
-                        .iter()
-                        .flat_map(|source| ids.iter().map(move |target| (source, target)));
-                    let room = MAX_EDGES
-                        .saturating_sub(graph.edges.len())
-                        .min(MAX_STATEMENT_EDGES);
-                    for (source, target) in pairs.take(room) {
-                        graph.edges.push(Edge {
-                            from: *source,
-                            to: *target,
-                            label: colon.clone().unwrap_or_else(|| found.label.clone()),
-                            dashed: found.dashed,
-                            arrow: found.arrow,
-                        });
+impl Graph {
+    pub(super) fn statement(&mut self, line: &str) {
+        let (line, colon) = match (self.state, line.split_once(':')) {
+            (true, Some((head, tail))) => (head.trim(), Some(tail.trim().to_string())),
+            _ => (line, None),
+        };
+        let mut previous: Option<Vec<usize>> = None;
+        let mut pending: Option<Link> = None;
+        for part in tokens(line) {
+            match part {
+                Part::Link(found) => pending = Some(found),
+                Part::Nodes(nodes) => {
+                    let first = previous.is_none();
+                    let ids: Vec<usize> = nodes
+                        .into_iter()
+                        .map(|(id, detail)| self.node_or_terminal(&id, detail, first))
+                        .collect();
+                    if let (Some(from), Some(found)) = (&previous, pending.take()) {
+                        let pairs = from
+                            .iter()
+                            .flat_map(|source| ids.iter().map(move |target| (source, target)));
+                        let room = MAX_EDGES
+                            .saturating_sub(self.edges.len())
+                            .min(MAX_STATEMENT_EDGES);
+                        for (source, target) in pairs.take(room) {
+                            self.edges.push(Edge {
+                                from: *source,
+                                to: *target,
+                                label: colon.clone().unwrap_or_else(|| found.label.clone()),
+                                dashed: found.dashed,
+                                arrow: found.arrow,
+                            });
+                        }
                     }
+                    previous = Some(ids);
                 }
-                previous = Some(ids);
             }
         }
     }
-}
 
-impl Graph {
     pub(super) fn node_or_terminal(&mut self, id: &str, detail: Detail, first: bool) -> usize {
         if id == "[*]" {
             let (key, glyph) = if first {

@@ -16,40 +16,40 @@ impl Playback {
     pub fn new(value: Signal<f32>, frames: Keyframes) -> Self {
         let motion = KeyframeMotion::new(frames, value.try_peek().unwrap_or_default());
         let id = state::register(value, Motion::Keyframes(motion));
-        state::seek(id, 0.0);
+        id.seek(0.0);
         Self { id }
     }
 
     pub fn pause(&mut self) {
-        state::pause(self.id, true);
+        self.id.pause(true);
     }
     pub fn resume(&mut self) {
-        state::pause(self.id, false);
+        self.id.pause(false);
     }
     pub fn finish(&mut self) {
-        state::finish(self.id);
+        self.id.finish();
     }
     pub fn cancel(&mut self) {
-        state::cancel(self.id);
+        self.id.cancel();
     }
     pub fn seek(&mut self, elapsed: Duration) {
-        state::seek(self.id, elapsed.as_secs_f64());
+        self.id.seek(elapsed.as_secs_f64());
     }
 
     pub fn restart(&mut self) {
-        state::seek(self.id, 0.0);
-        state::pause(self.id, false);
+        self.id.seek(0.0);
+        self.id.pause(false);
     }
 
     #[must_use]
     pub fn finished(&self) -> bool {
-        state::is_settled(self.id)
+        self.id.is_settled()
     }
 }
 
 impl Drop for Playback {
     fn drop(&mut self) {
-        state::deregister(self.id);
+        self.id.deregister();
     }
 }
 

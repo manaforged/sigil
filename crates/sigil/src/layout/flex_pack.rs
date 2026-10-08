@@ -36,7 +36,7 @@ pub(crate) fn pack_definite(
         if matches!(child_style.display, Display::None) {
             continue;
         }
-        let Some((width, height)) = item_box(child_style) else {
+        let Some((width, height)) = child_style.item_box() else {
             return Ok(false);
         };
         let main = if ctx.axes.row { width } else { height };
@@ -77,7 +77,7 @@ fn container_ok(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
             style.align_items,
             None | Some(AlignItems::Start | AlignItems::Stretch)
         )
-        && gap_zero(style)
+        && style.gap_zero()
         && main_definite(ctx, style)
 }
 
@@ -98,59 +98,12 @@ const fn main_definite(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
     !matches!(main, Dimension::Auto)
 }
 
-fn gap_zero(style: &StyleData) -> bool {
-    zero_lp(style.gap.width) && zero_lp(style.gap.height)
-}
-
 fn zero_lp(value: LengthPercentage) -> bool {
     match value {
         LengthPercentage::Px(px) => px == 0.0,
         LengthPercentage::Percent(percent) => percent == 0.0,
         LengthPercentage::Text(length) => length.px() == 0.0,
     }
-}
-
-fn item_box(style: &StyleData) -> Option<(f32, f32)> {
-    if style.flex_grow > 0.0 || style.order != 0 {
-        return None;
-    }
-    if !matches!(style.flex_basis, Dimension::Auto) {
-        return None;
-    }
-    if matches!(style.position, Position::Absolute) {
-        return None;
-    }
-    if !matches!(
-        style.align_self,
-        None | Some(AlignSelf::Start | AlignSelf::Stretch)
-    ) {
-        return None;
-    }
-    if !margins_zero(style) {
-        return None;
-    }
-    let Dimension::Px(width) = style.size.width else {
-        return None;
-    };
-    let Dimension::Px(height) = style.size.height else {
-        return None;
-    };
-    #[expect(clippy::float_cmp, reason = "clamped returns the input or a bound")]
-    if clamped(width, style.min_size.width, style.max_size.width) != width {
-        return None;
-    }
-    #[expect(clippy::float_cmp, reason = "clamped returns the input or a bound")]
-    if clamped(height, style.min_size.height, style.max_size.height) != height {
-        return None;
-    }
-    Some((width, height))
-}
-
-fn margins_zero(style: &StyleData) -> bool {
-    zero_lp_auto(style.margin.left)
-        && zero_lp_auto(style.margin.right)
-        && zero_lp_auto(style.margin.top)
-        && zero_lp_auto(style.margin.bottom)
 }
 
 fn zero_lp_auto(value: LengthPercentageAuto) -> bool {
@@ -197,4 +150,53 @@ fn write_container(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>, edges: &NodeEdges, 
             h,
         },
     );
+}
+
+impl StyleData {
+    fn gap_zero(&self) -> bool {
+        zero_lp(self.gap.width) && zero_lp(self.gap.height)
+    }
+
+    fn item_box(&self) -> Option<(f32, f32)> {
+        if self.flex_grow > 0.0 || self.order != 0 {
+            return None;
+        }
+        if !matches!(self.flex_basis, Dimension::Auto) {
+            return None;
+        }
+        if matches!(self.position, Position::Absolute) {
+            return None;
+        }
+        if !matches!(
+            self.align_self,
+            None | Some(AlignSelf::Start | AlignSelf::Stretch)
+        ) {
+            return None;
+        }
+        if !self.margins_zero() {
+            return None;
+        }
+        let Dimension::Px(width) = self.size.width else {
+            return None;
+        };
+        let Dimension::Px(height) = self.size.height else {
+            return None;
+        };
+        #[expect(clippy::float_cmp, reason = "clamped returns the input or a bound")]
+        if clamped(width, self.min_size.width, self.max_size.width) != width {
+            return None;
+        }
+        #[expect(clippy::float_cmp, reason = "clamped returns the input or a bound")]
+        if clamped(height, self.min_size.height, self.max_size.height) != height {
+            return None;
+        }
+        Some((width, height))
+    }
+
+    fn margins_zero(&self) -> bool {
+        zero_lp_auto(self.margin.left)
+            && zero_lp_auto(self.margin.right)
+            && zero_lp_auto(self.margin.top)
+            && zero_lp_auto(self.margin.bottom)
+    }
 }

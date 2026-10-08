@@ -18,38 +18,36 @@ pub(crate) struct GlyphPlan {
     pub(crate) bounds: Rect,
 }
 
-pub(crate) fn run_ink(run: &GlyphRun) -> Option<Rect> {
-    let origin = run.rect.origin;
-    let ink = run.paragraph()?.ink_rect()?;
-    Some(Rect::new(
-        Point::new(origin.x + ink.origin.x, origin.y + ink.origin.y),
-        ink.width,
-        ink.height,
-    ))
-}
-
-pub(crate) fn plan_glyph_run(
-    run: &GlyphRun,
-    transform: Transform,
-    scale: f32,
-) -> Option<GlyphPlan> {
-    invert(transform)?;
-    if run.positioned_glyphs().is_empty() {
-        return None;
+impl GlyphRun {
+    pub(crate) fn ink_rect(&self) -> Option<Rect> {
+        let origin = self.rect.origin;
+        let ink = self.paragraph()?.ink_rect()?;
+        Some(Rect::new(
+            Point::new(origin.x + ink.origin.x, origin.y + ink.origin.y),
+            ink.width,
+            ink.height,
+        ))
     }
-    let ink = run_ink(run)?.expand(1.0 / scale.max(f32::MIN_POSITIVE));
-    let mode = if text_tuning().raster
-        && transform == IDENTITY
-        && run.style.font_size <= RASTER_MAX_LOGICAL_PX
-    {
-        GlyphMode::Mask
-    } else {
-        GlyphMode::Outline
-    };
-    Some(GlyphPlan {
-        mode,
-        bounds: transform_rect(transform, ink),
-    })
+
+    pub(crate) fn plan(&self, transform: Transform, scale: f32) -> Option<GlyphPlan> {
+        invert(transform)?;
+        if self.positioned_glyphs().is_empty() {
+            return None;
+        }
+        let ink = self.ink_rect()?.expand(1.0 / scale.max(f32::MIN_POSITIVE));
+        let mode = if text_tuning().raster
+            && transform == IDENTITY
+            && self.style.font_size <= RASTER_MAX_LOGICAL_PX
+        {
+            GlyphMode::Mask
+        } else {
+            GlyphMode::Outline
+        };
+        Some(GlyphPlan {
+            mode,
+            bounds: transform_rect(transform, ink),
+        })
+    }
 }
 
 pub(crate) fn axis_aligned(transform: Transform) -> bool {

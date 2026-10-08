@@ -1,7 +1,7 @@
 use crate::hal::RenderedGlyph;
 use crate::style::Color;
 
-use crate::renderer::glyph_place::{GlyphMode, plan_glyph_run};
+use crate::renderer::glyph_place::GlyphMode;
 use crate::renderer::raster_paint::{
     RasterDrawParams, RasterFrame, RasterGroup, RasterInstance, RasterTextPipeline,
 };
@@ -95,7 +95,7 @@ impl Walk<'_> {
     pub(super) fn queue_glyph_run(&mut self, draw: &DrawGlyphRun) {
         let run = &draw.run;
         let transform = self.state.current_transform();
-        let Some(plan) = plan_glyph_run(run, transform, self.ctx.scale) else {
+        let Some(plan) = run.plan(transform, self.ctx.scale) else {
             return;
         };
         let Some(bounds) = self.state.clip_rect(plan.bounds) else {
