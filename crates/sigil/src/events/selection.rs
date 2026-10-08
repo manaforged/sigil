@@ -87,9 +87,12 @@ fn pick_region(cx: &Cx, path: &[NodeId]) -> Option<NodeId> {
         .iter()
         .rposition(|id| cx.get(*id).is_some_and(marked))?;
     let interactive = path.get(pos + 1..).unwrap_or_default().iter().any(|id| {
-        cx.get(*id)
-            .and_then(|node| node.get_extension::<EventHandlers>())
-            .is_some_and(EventHandlers::owns_pointer_drag)
+        cx.get(*id).is_some_and(|node| {
+            node.a11y.role == crate::kernel::Role::Button
+                || node
+                    .get_extension::<EventHandlers>()
+                    .is_some_and(EventHandlers::owns_pointer_drag)
+        })
     });
     if interactive {
         return None;
