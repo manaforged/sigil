@@ -168,7 +168,7 @@ impl DiffBuilder {
                 container()
                     .layout(root_layout())
                     .children_reactive(move || {
-                        built.with(|built| top.top_rows(built.added, built.removed, built.weights))
+                        built.with(|built| top.top_rows(built.added, built.removed))
                     }),
             )
             .child(list);
@@ -183,12 +183,8 @@ impl DiffBuilder {
 }
 
 impl DiffShape {
-    fn top_rows(&self, added: usize, removed: usize, weights: (f32, f32)) -> Vec<NodeBuilder> {
-        let mut rows = vec![header::header(self, added, removed)];
-        if self.view == DiffView::Split {
-            rows.push(header::labels(weights));
-        }
-        rows
+    fn top_rows(&self, added: usize, removed: usize) -> Vec<NodeBuilder> {
+        vec![header::header(self, added, removed)]
     }
 }
 
