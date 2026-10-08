@@ -188,17 +188,6 @@ pub(super) fn group_name(header: &str) -> Option<&str> {
     (!name.is_empty()).then_some(name)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::group_name;
-
-    #[test]
-    fn a_bare_hunk_range_is_not_a_title() {
-        assert_eq!(group_name("@@ -282,11 +282,13 @@"), None);
-        assert_eq!(group_name("@@ -10,2 +10,4 @@ fn shared"), Some("fn shared"));
-    }
-}
-
 pub(super) fn changed(left: &str, right: &str) -> (Range<usize>, Range<usize>) {
     let prefix = left
         .chars()
@@ -214,4 +203,15 @@ pub(super) fn changed(left: &str, right: &str) -> (Range<usize>, Range<usize>) {
         .map(|(c, _)| c.len_utf8())
         .sum::<usize>();
     (prefix..left.len() - suffix, prefix..right.len() - suffix)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::group_name;
+
+    #[test]
+    fn a_bare_hunk_range_is_not_a_title() {
+        assert_eq!(group_name("@@ -282,11 +282,13 @@"), None);
+        assert_eq!(group_name("@@ -10,2 +10,4 @@ fn shared"), Some("fn shared"));
+    }
 }
