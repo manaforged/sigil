@@ -967,6 +967,7 @@ Public items outside the prelude. Import them by path.
 | `a11y::BoundsLookup` | `type BoundsLookup<'a> = &'a dyn Fn(NodeId) -> Option<Rect>` | Node bounds source for `a11y::tree`. |
 | `reactive::next_interval_deadline` | `fn next_interval_deadline() -> Option<Instant>` | Earliest next fire time of the registered intervals. An embed host loop sleeps until it. |
 | `AppConfig::inline` | `const fn inline(self, yes: bool) -> Self` | Run the terminal host in the normal screen below the prompt instead of the alternate screen. |
+| `AppConfig::modify_other_keys` | `const fn modify_other_keys(self, yes: bool) -> Self` | Terminal host. Turn on xterm modifyOtherKeys level 2 when the terminal lacks the kitty keyboard protocol, so Shift+Enter and Ctrl+letter arrive as their own keys. Off by default; reset on exit, suspend, and panic. Needs a crossterm that decodes `CSI 27 ; mod ; code ~`. |
 | `AppConfig::reduced_motion` | `const fn reduced_motion(self, reduced: bool) -> Self` | Override the OS reduced-motion setting for `MotionPrefs`. |
 | `AppConfig::click` | `const fn click(self, click: hal::ClickConfig) -> Self` | Override the double-click interval and distance. |
 | `AppConfig::task_workers` | `const fn task_workers(self, workers: tasks::TaskWorkers) -> Self` | Set the worker threads of the task runtime. Default `Auto` on every host. |

@@ -388,7 +388,7 @@ fn enter(config: &AppConfig) -> AppResult<Term> {
     if let Some(tracking) = config.mouse_tracking {
         crate::terminal::set_mouse_tracking(tracking).map_err(Error::io)?;
     }
-    let term = Term::enter(&config.title, config.inline).map_err(Error::io)?;
+    let term = Term::enter(config).map_err(Error::io)?;
     crate::app::set_ambiguous(term.caps().ambiguous);
     let dark = term.caps().backdrop == Some(crate::terminal::Backdrop::Dark);
     if config.theme_file.is_none() && dark {

@@ -59,6 +59,7 @@
 | <code>const frameless(self, yes: bool) -&gt; Self</code> |  |
 | <code>const inline(self, yes: bool) -&gt; Self</code> |  |
 | <code>const min_size(self, width: u32, height: u32) -&gt; Self</code> |  |
+| <code>const modify_other_keys(self, yes: bool) -&gt; Self</code> |  |
 | <code>const mouse_tracking(self, tracking: <a href="sigil-terminal.html#mousetracking">MouseTracking</a>) -&gt; Self</code> |  |
 | <code>new(title: impl Into&lt;String&gt;) -&gt; Self</code> |  |
 | <code>on_close(self, decide: impl Fn() -&gt; <a href="sigil-app.html#closeaction">CloseAction</a> + 'static) -&gt; Self</code> |  |

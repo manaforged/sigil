@@ -25,10 +25,14 @@ mod above;
 pub use above::{PrintAboveError, print_above};
 
 const BUFFER: usize = 64 * 1024;
+const MODIFY_KEYS_ON: &str = "\x1b[>4;2m";
+const MODIFY_KEYS_OFF: &str = "\x1b[>4m";
 
 static RESTORED: AtomicBool = AtomicBool::new(true);
 static TITLED: AtomicBool = AtomicBool::new(false);
 static KEYS_PUSHED: AtomicBool = AtomicBool::new(false);
+static MODIFY_KEYS_WANTED: AtomicBool = AtomicBool::new(false);
+static MODIFY_KEYS_SET: AtomicBool = AtomicBool::new(false);
 static INLINE: AtomicBool = AtomicBool::new(false);
 static BAR_CURSOR: AtomicBool = AtomicBool::new(false);
 static OWNER: Mutex<Option<ThreadId>> = Mutex::new(None);
@@ -51,8 +55,13 @@ pub(crate) struct Term {
 }
 
 impl Term {
-    pub(crate) fn enter(title: &str, inline: bool) -> io::Result<Self> {
-        TITLE.with(|slot| *slot.borrow_mut() = Some(title.to_owned()));
+    pub(crate) fn enter(config: &crate::AppConfig) -> io::Result<Self> {
+        let inline = config.inline;
+        MODIFY_KEYS_WANTED.store(
+            config.other_keys == crate::app::config::OtherKeys::Modified,
+            Ordering::Relaxed,
+        );
+        TITLE.with(|slot| *slot.borrow_mut() = Some(config.title.clone()));
         set_owner(Some(std::thread::current().id()));
         signals::resume();
         let guard = EnterGuard;
@@ -162,12 +171,28 @@ fn enter_modes(inline: bool) -> io::Result<()> {
             PushKeyboardEnhancementFlags(keyboard_flags())
         ));
     }
+    let modify = modify_keys_sequence(
+        current_caps().keyboard,
+        MODIFY_KEYS_WANTED.load(Ordering::Relaxed),
+    );
+    if !modify.is_empty() {
+        MODIFY_KEYS_SET.store(true, Ordering::Relaxed);
+        drop(execute!(io::stdout(), Print(modify)));
+    }
     TITLE.with(|slot| {
         slot.borrow()
             .as_deref()
             .filter(|title| !title.is_empty())
             .map_or(Ok(()), write_title)
     })
+}
+
+fn modify_keys_sequence(keyboard: Keyboard, wanted: bool) -> &'static str {
+    if wanted && keyboard != Keyboard::Kitty {
+        MODIFY_KEYS_ON
+    } else {
+        ""
+    }
 }
 
 #[must_use]
@@ -244,6 +269,9 @@ pub(crate) fn restore() {
     }
     if KEYS_PUSHED.swap(false, Ordering::Relaxed) {
         drop(execute!(io::stdout(), PopKeyboardEnhancementFlags));
+    }
+    if MODIFY_KEYS_SET.swap(false, Ordering::Relaxed) {
+        drop(execute!(io::stdout(), Print(MODIFY_KEYS_OFF)));
     }
     if TITLED.swap(false, Ordering::Relaxed) {
         drop(execute!(io::stdout(), SetTitle("")));

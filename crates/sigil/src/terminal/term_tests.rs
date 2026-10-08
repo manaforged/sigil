@@ -107,3 +107,21 @@ fn caps_reports_the_probe_only_while_the_host_holds_it() {
     CAPS.with(|slot| slot.set(None));
     assert_eq!(caps(), None);
 }
+
+#[test]
+fn modify_other_keys_turns_on_only_when_asked_and_kitty_is_absent() {
+    assert_eq!(modify_keys_sequence(Keyboard::Legacy, true), MODIFY_KEYS_ON);
+    assert_eq!(modify_keys_sequence(Keyboard::Legacy, false), "");
+    assert_eq!(modify_keys_sequence(Keyboard::Kitty, true), "");
+}
+
+#[test]
+fn restore_resets_modify_other_keys_once_after_it_was_set() {
+    let _serial = SERIAL.lock().unwrap_or_else(PoisonError::into_inner);
+    MODIFY_KEYS_SET.store(true, Ordering::Relaxed);
+    RESTORED.store(false, Ordering::Relaxed);
+    restore();
+    assert!(!MODIFY_KEYS_SET.load(Ordering::Relaxed));
+    restore();
+    assert!(!MODIFY_KEYS_SET.load(Ordering::Relaxed));
+}

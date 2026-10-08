@@ -2694,6 +2694,7 @@ pub const fn sigil::AppConfig::frame_interval(self, interval: core::time::Durati
 pub const fn sigil::AppConfig::frameless(self, yes: bool) -> Self
 pub const fn sigil::AppConfig::inline(self, yes: bool) -> Self
 pub const fn sigil::AppConfig::min_size(self, width: u32, height: u32) -> Self
+pub const fn sigil::AppConfig::modify_other_keys(self, yes: bool) -> Self
 pub const fn sigil::AppConfig::mouse_tracking(self, tracking: sigil::terminal::MouseTracking) -> Self
 pub fn sigil::AppConfig::new(title: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn sigil::AppConfig::on_close(self, decide: impl core::ops::function::Fn() -> sigil::app::CloseAction + 'static) -> Self

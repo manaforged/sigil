@@ -13,6 +13,13 @@ pub(crate) enum Resize {
     Fixed,
 }
 
+#[cfg(feature = "terminal")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OtherKeys {
+    Plain,
+    Modified,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct QuitKeys {
     pub(crate) esc: bool,
@@ -96,6 +103,8 @@ pub struct AppConfig {
     #[cfg(feature = "terminal")]
     pub(crate) mouse_tracking: Option<crate::terminal::MouseTracking>,
     #[cfg(feature = "terminal")]
+    pub(crate) other_keys: OtherKeys,
+    #[cfg(feature = "terminal")]
     pub(crate) suspend: Option<crate::events::Shortcut>,
     #[cfg(feature = "desktop")]
     #[cfg_attr(
@@ -146,6 +155,8 @@ impl AppConfig {
             terminal_access: crate::terminal::Access::default(),
             #[cfg(feature = "terminal")]
             mouse_tracking: None,
+            #[cfg(feature = "terminal")]
+            other_keys: OtherKeys::Plain,
             #[cfg(feature = "terminal")]
             suspend: Some(crate::events::Shortcut::ctrl(
                 crate::events::LogicalKey::character("z"),
@@ -245,6 +256,17 @@ impl AppConfig {
     #[must_use]
     pub const fn mouse_tracking(mut self, tracking: crate::terminal::MouseTracking) -> Self {
         self.mouse_tracking = Some(tracking);
+        self
+    }
+
+    #[cfg(feature = "terminal")]
+    #[must_use]
+    pub const fn modify_other_keys(mut self, yes: bool) -> Self {
+        self.other_keys = if yes {
+            OtherKeys::Modified
+        } else {
+            OtherKeys::Plain
+        };
         self
     }
 

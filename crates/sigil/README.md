@@ -128,11 +128,11 @@ License: MIT. The default fonts ship in the separate `sigil-fonts` crate, which 
 
 <!-- truesight:surface sigil-ui -->
 
-3795 public items (488 types, 273 functions, 1366 methods, 608 fields, 996 variants, 64 constants) at 4426 paths; 631 are re-export aliases. 2080 trait impl lines, 229 inherent impl lines. 39 modules, 1 re-export only.
+3796 public items (488 types, 273 functions, 1367 methods, 608 fields, 996 variants, 64 constants) at 4427 paths; 631 are re-export aliases. 2080 trait impl lines, 229 inherent impl lines. 39 modules, 1 re-export only.
 
 | Module | Items | Types | Functions | Methods | Aliases |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `sigil` | 62 | 4 | 2 | 55 | 0 |
+| `sigil` | 63 | 4 | 2 | 56 | 0 |
 | `sigil::a11y` | 13 | 4 | 3 | 5 | 0 |
 | `sigil::animation` | 76 | 9 | 0 | 33 | 0 |
 | `sigil::animation_runtime` | 52 | 8 | 8 | 23 | 0 |
