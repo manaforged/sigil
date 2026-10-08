@@ -138,6 +138,13 @@ fn owns_terminal() -> bool {
         .is_some_and(|owner| owner == std::thread::current().id())
 }
 
+fn keyboard_flags() -> KeyboardEnhancementFlags {
+    KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+        | KeyboardEnhancementFlags::REPORT_EVENT_TYPES
+        | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
+        | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES
+}
+
 fn enter_modes(inline: bool) -> io::Result<()> {
     INLINE.store(inline, Ordering::Relaxed);
     RESTORED.store(false, Ordering::Relaxed);
@@ -152,11 +159,7 @@ fn enter_modes(inline: bool) -> io::Result<()> {
         KEYS_PUSHED.store(true, Ordering::Relaxed);
         drop(execute!(
             io::stdout(),
-            PushKeyboardEnhancementFlags(
-                KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-                    | KeyboardEnhancementFlags::REPORT_EVENT_TYPES
-                    | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
-            )
+            PushKeyboardEnhancementFlags(keyboard_flags())
         ));
     }
     TITLE.with(|slot| {

@@ -3,6 +3,18 @@ use crossterm::event::{Event, KeyCode, KeyEvent as TerminalKeyEvent, KeyModifier
 use super::*;
 
 #[test]
+fn shift_enter_is_a_newline_chord_when_the_terminal_omits_shift() {
+    let bare = ModifiersState::empty();
+    assert_eq!(
+        note_enter_shift(bare, true, true),
+        ModifiersState::SHIFT,
+        "Enter while Shift is held inserts a newline"
+    );
+    assert_eq!(note_enter_shift(bare, true, false), bare);
+    assert_eq!(note_enter_shift(bare, false, true), bare);
+}
+
+#[test]
 fn terminal_function_keys_reach_application_shortcuts() -> Result<(), String> {
     for (number, expected) in [(1, Key::F1), (5, Key::F5), (35, Key::F35)] {
         let event = TerminalKeyEvent::new(KeyCode::F(number), KeyModifiers::SHIFT);

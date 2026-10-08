@@ -1,5 +1,14 @@
 use super::*;
 use crate::terminal::caps::Backdrop;
+use crossterm::event::KeyboardEnhancementFlags;
+
+#[test]
+fn shift_enter_is_requested_as_its_own_key() {
+    assert!(
+        keyboard_flags().contains(KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES),
+        "without report-all, Shift+Enter is the same byte as Enter"
+    );
+}
 
 static SERIAL: Mutex<()> = Mutex::new(());
 

@@ -224,7 +224,25 @@ fn modifiers(event: &crossterm::event::KeyEvent) -> ModifiersState {
     {
         state |= ModifiersState::META;
     }
+    note_enter_shift(state, event.code == KeyCode::Enter, shift_held())
+}
+
+fn note_enter_shift(mut state: ModifiersState, enter: bool, shift_down: bool) -> ModifiersState {
+    if enter && shift_down {
+        state |= ModifiersState::SHIFT;
+    }
     state
+}
+
+#[cfg(target_os = "macos")]
+fn shift_held() -> bool {
+    use objc2_app_kit::{NSEvent, NSEventModifierFlags};
+    NSEvent::modifierFlags_class().contains(NSEventModifierFlags::Shift)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn shift_held() -> bool {
+    false
 }
 
 fn logical(code: KeyCode) -> Option<LogicalKey> {
