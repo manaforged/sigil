@@ -5,73 +5,75 @@
 
 use sigil::prelude::*;
 use sigil::widgets::{
-    ColorFieldBuilder, DateFieldBuilder, DropdownBuilder, NumberFieldBuilder, TextEditBuilder,
-    TextFieldBuilder,
+    ColorFieldBuilder, DateFieldBuilder, DropdownBuilder, FieldBuilder, NumberFieldBuilder,
+    TextEditBuilder, TextFieldBuilder,
 };
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - fields").size(520, 720), build)
 }
 
-fn text_field_demo() -> TextFieldBuilder {
-    let name = signal(String::new());
-    text_field(name).placeholder("Full name")
+pub(crate) fn text_field_demo() -> TextFieldBuilder {
+    text_field(signal(String::from("Ada Lovelace"))).placeholder("Full name")
 }
 
-fn text_edit_demo() -> TextEditBuilder {
-    let notes = signal(String::from("First line\nSecond line"));
-    text_edit(notes).placeholder("Notes")
+pub(crate) fn text_edit_demo() -> TextEditBuilder {
+    text_edit(signal(String::from("Multi-line\neditable text."))).height(96.0)
 }
 
-fn number_field_demo() -> NumberFieldBuilder<i32> {
-    let quantity = signal(1_i32);
-    number_field(quantity, 1..=99)
+pub(crate) fn number_field_demo() -> NumberFieldBuilder<i32> {
+    number_field(signal(4_i32), 1..=99)
 }
 
-fn date_field_demo() -> DateFieldBuilder {
-    let due = signal(Date {
+pub(crate) fn date_field_demo() -> DateFieldBuilder {
+    date_field(signal(Date {
         year: 2026,
-        month: 9,
-        day: 24,
-    });
-    date_field(due)
+        month: 4,
+        day: 1,
+    }))
 }
 
-fn color_field_demo() -> ColorFieldBuilder {
-    let accent = signal(Rgba8 {
+pub(crate) fn color_field_demo() -> ColorFieldBuilder {
+    color_field(signal(Rgba8 {
         r: 90,
         g: 140,
         b: 255,
         a: 255,
-    });
-    color_field(accent)
+    }))
 }
 
-fn combobox_demo() -> NodeBuilder {
+pub(crate) fn combobox_demo(disabled: Signal<bool>) -> NodeBuilder {
     let language = Combobox::new(vec![
         String::from("Rust"),
         String::from("Go"),
         String::from("Zig"),
+        String::from("C++"),
     ])
-    .placeholder("Language");
+    .placeholder("Language")
+    .disabled(disabled);
     combobox(language)
 }
 
-fn dropdown_demo() -> DropdownBuilder {
-    let size = signal(0_usize);
-    dropdown(size, vec!["Small".into(), "Large".into()]).label("Size")
+pub(crate) fn dropdown_demo() -> DropdownBuilder {
+    dropdown(
+        signal(1_usize),
+        vec!["Small".into(), "Medium".into(), "Large".into()],
+    )
 }
 
-fn field_demo() -> impl IntoNode {
-    let city = signal(String::new());
-    field("City", text_field(city).placeholder("Berlin"))
+pub(crate) fn field_demo() -> FieldBuilder<TextFieldBuilder> {
+    field(
+        "Name",
+        text_field(signal(String::new())).placeholder("Full name"),
+    )
 }
 
-fn validated_field_demo() -> impl IntoNode {
-    let email = signal(String::from("ada@"));
-    field("Email", text_field(email).placeholder("name@example.com")).error(move || {
-        (!email.get().contains('.')).then(|| String::from("Enter a valid email address"))
-    })
+pub(crate) fn validated_field_demo(error: Option<String>) -> FieldBuilder<TextFieldBuilder> {
+    field(
+        "Email",
+        text_field(signal(String::from("ada@"))).placeholder("name@example.com"),
+    )
+    .error(signal(error))
 }
 
 fn build() -> impl IntoNode {
@@ -79,15 +81,15 @@ fn build() -> impl IntoNode {
         container()
             .role(Role::Main)
             .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
-            .child(field("Name", text_field_demo()))
-            .child(field("Notes", text_edit_demo()))
-            .child(field("Quantity", number_field_demo()))
-            .child(field("Due", date_field_demo()))
-            .child(field("Accent", color_field_demo()))
-            .child(field("Language", combobox_demo()))
-            .child(field("Size", dropdown_demo()))
+            .child(text_field_demo())
+            .child(text_edit_demo())
+            .child(number_field_demo())
+            .child(date_field_demo())
+            .child(color_field_demo())
+            .child(combobox_demo(signal(false)))
+            .child(dropdown_demo())
             .child(field_demo())
-            .child(validated_field_demo()),
+            .child(validated_field_demo(None)),
     )
     .fill()
 }

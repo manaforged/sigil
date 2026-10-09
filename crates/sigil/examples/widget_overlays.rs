@@ -4,101 +4,94 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{CommandMenuBuilder, HintOverlayBuilder, MenuBarBuilder, TooltipBuilder};
+use sigil::widgets::{CommandMenuBuilder, HintOverlayBuilder, MenuBarBuilder, MenuBuilder};
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - overlays").size(640, 560), build)
 }
 
-fn modal_demo() -> NodeBuilder {
-    let open = signal(false);
+pub(crate) fn modal_demo(open: Signal<bool>) -> NodeBuilder {
     container()
-        .child(
-            button("Delete file")
-                .destructive()
-                .activate(move || open.set(true)),
-        )
+        .layout(LayoutStyle::flex_column().fill_width().height(268.0))
+        .child(text("Page behind the modal").nowrap())
         .child(
             modal(open)
-                .title("Delete file")
-                .child(text("This cannot be undone.").nowrap())
-                .actions(
-                    button("Cancel").activate(move || open.set(false)),
-                    button("Delete")
-                        .destructive()
-                        .activate(move || open.set(false)),
-                ),
+                .title("Confirm action")
+                .child(text("This modal is mounted at the root.").nowrap())
+                .actions(button("Cancel"), button("Confirm").primary()),
         )
 }
 
-fn sheet_demo() -> NodeBuilder {
-    let open = signal(false);
+pub(crate) fn sheet_demo(open: Signal<bool>) -> NodeBuilder {
     container()
-        .child(button("Details").activate(move || open.set(true)))
+        .layout(LayoutStyle::flex_column().fill_width().height(268.0))
+        .child(text("Page behind the sheet").nowrap())
         .child(
             sheet(open)
                 .title("Details")
-                .child(kv_grid([("Owner", "ada"), ("Size", "4 KB")])),
+                .child(text("A right-edge sheet.").nowrap()),
         )
 }
 
-fn menu_demo() -> NodeBuilder {
-    let open = signal(false);
-    container()
-        .child(button("More").activate(move || open.set(true)))
-        .child(
-            menu(open)
-                .label("More")
-                .item(MenuItem::new("Rename").activate(|| {}))
-                .item(MenuItem::new("Archive").disabled(true)),
-        )
+pub(crate) fn menu_demo(open: Signal<bool>) -> MenuBuilder {
+    menu(open)
+        .label("Edit")
+        .anchor(16.0, 16.0)
+        .item(MenuItem::new("Undo").shortcut("Ctrl+Z").activate(|| {}))
+        .item(MenuItem::new("Redo").disabled(true))
+        .separator()
+        .item(MenuItem::new("Share").submenu(true))
 }
 
-fn menu_bar_demo() -> MenuBarBuilder {
-    menu_bar()
-        .fill()
-        .menu(
-            "File",
-            [
-                MenuItem::new("Open").shortcut("Ctrl+O").activate(|| {}),
-                MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {}),
-            ],
-        )
-        .menu(
-            "Edit",
-            [MenuItem::new("Undo").shortcut("Ctrl+Z").activate(|| {})],
-        )
+pub(crate) fn menu_bar_demo() -> MenuBarBuilder {
+    menu_bar().fill().menu(
+        "File",
+        [
+            MenuItem::new("New").activate(|| {}),
+            MenuItem::new("Open").shortcut("Ctrl+O").activate(|| {}),
+            MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {}),
+        ],
+    )
 }
 
-fn command_menu_demo() -> CommandMenuBuilder {
+pub(crate) fn command_menu_demo() -> CommandMenuBuilder {
     command_menu()
-        .item("New file", || {})
+        .item("Refresh", || {})
+        .item("Open settings", || {})
+        .disabled("Publish")
         .submenu("Export", |sub| sub.item("PNG", || {}).item("SVG", || {}))
-        .disabled("Print")
 }
 
-fn tooltip_demo() -> TooltipBuilder {
-    tooltip("Saves the file")
-        .shortcut(Some("Ctrl+S"))
-        .child(button("Save"))
-}
-
-fn toast_demo() -> NodeBuilder {
-    let message = signal(None::<String>);
+pub(crate) fn tooltip_demo() -> NodeBuilder {
     container()
-        .child(button("Notify").activate(move || message.set(Some(String::from("Saved")))))
-        .child(toast(message))
+        .layout(LayoutStyle::flex_column().fill_width().padding_top(40.0))
+        .child(
+            tooltip("Saves the document")
+                .delay(0)
+                .child(button("Hover me").ghost()),
+        )
 }
 
-fn toast_queue_demo() -> NodeBuilder {
-    let toasts = ToastQueue::new();
+pub(crate) fn toast_demo(shown: bool) -> NodeBuilder {
+    let message = shown.then(|| String::from("Changes saved"));
     container()
-        .child(button("Upload").activate(move || toasts.success("Upload complete")))
-        .child(toast_queue(toasts))
+        .layout(LayoutStyle::flex_column().fill_width().height(88.0))
+        .child(toast(signal(message)))
 }
 
-fn hint_overlay_demo() -> HintOverlayBuilder {
-    hint_overlay(&[("Ctrl+K", "Command menu"), ("Ctrl+S", "Save")]).entry("Esc", "Close")
+pub(crate) fn toast_queue_demo(shown: bool) -> NodeBuilder {
+    let queue = ToastQueue::new();
+    if shown {
+        queue.success("Saved");
+        queue.error("Upload failed");
+    }
+    container()
+        .layout(LayoutStyle::flex_column().fill_width().height(128.0))
+        .child(toast_queue(queue))
+}
+
+pub(crate) fn hint_overlay_demo() -> HintOverlayBuilder {
+    hint_overlay(&[("Ctrl+K", "Palette"), ("Esc", "Close")])
 }
 
 fn build() -> impl IntoNode {
@@ -110,15 +103,15 @@ fn build() -> impl IntoNode {
             .child(
                 container()
                     .layout(LayoutStyle::flex_row().gap(cols(1.0)))
-                    .child(modal_demo())
-                    .child(sheet_demo())
-                    .child(menu_demo())
+                    .child(modal_demo(signal(false)))
+                    .child(sheet_demo(signal(false)))
+                    .child(menu_demo(signal(false)))
                     .child(tooltip_demo()),
             )
             .child(command_menu_demo())
             .child(hint_overlay_demo())
-            .child(toast_demo())
-            .child(toast_queue_demo()),
+            .child(toast_demo(false))
+            .child(toast_queue_demo(false)),
     )
     .fill()
 }

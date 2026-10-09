@@ -24,108 +24,73 @@ pub(crate) const BUILDERS: &[(&str, Build)] = &[
 ];
 
 fn text_row(_state: State) -> NodeBuilder {
-    node(text(
-        "Text wraps to the width of its parent and flows onto the next line.",
-    ))
+    node(crate::widget_content::text_demo())
 }
 
 fn label_row(_state: State) -> NodeBuilder {
-    node(text("Labels and text share TextContent.").nowrap())
+    node(crate::widget_content::label_demo())
 }
 
 fn section_row(_state: State) -> NodeBuilder {
-    node(section_label("Section"))
+    node(crate::widget_content::section_label_demo())
 }
 
 fn icon_row(_state: State) -> NodeBuilder {
-    node(icon("▲").tone(Tone::Warn).label("Alert"))
+    node(crate::widget_content::icon_demo())
 }
 
 fn chip_row(_state: State) -> NodeBuilder {
-    node(chip("Stable", Tone::Success))
+    node(crate::widget_indicators::chip_demo())
 }
 
 fn dot_row(_state: State) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_row().gap(8.0))
-        .child(dot(Tone::Success))
-        .child(dot(Tone::Warn))
-        .child(dot(Tone::Error))
+    crate::widget_indicators::dot_demo()
 }
 
 fn avatar_row(_state: State) -> NodeBuilder {
-    node(avatar("TG"))
+    node(crate::widget_content::avatar_demo())
 }
 
 fn path_row(_state: State) -> NodeBuilder {
-    node(
-        path(24, 24)
-            .move_to(4.0, 20.0)
-            .line_to(12.0, 4.0)
-            .line_to(20.0, 20.0)
-            .close()
-            .fill(Rgba8 {
-                r: 90,
-                g: 140,
-                b: 255,
-                a: 255,
-            })
-            .fit(),
-    )
+    node(crate::widget_content::path_demo())
 }
 
 fn image_row(_state: State) -> NodeBuilder {
-    let pixels: Vec<u8> = (0..32_u32 * 32)
-        .flat_map(|i| {
-            let shade = u8::try_from((i % 32) * 8).unwrap_or(u8::MAX);
-            [shade, 120, 255 - shade, 255]
-        })
-        .collect();
-    image_rgba(32, 32, pixels).map_or_else(|| node(text("image_rgba rejected").nowrap()), node)
+    crate::widget_content::image_rgba_demo()
 }
 
 fn divider_h_row(_state: State) -> NodeBuilder {
-    node(divider_horizontal())
+    node(crate::widget_content::divider_horizontal_demo())
 }
 
 fn divider_v_row(_state: State) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_row().height(40.0))
-        .child(divider_vertical())
+    crate::widget_content::divider_vertical_demo()
 }
 
 fn notice_row(_state: State) -> NodeBuilder {
-    node(notice_band("Deployment finished", Tone::Success))
+    node(crate::widget_content::notice_band_demo())
 }
 
 fn empty_row(_state: State) -> NodeBuilder {
-    node(empty_state("No results", "Try a different search term."))
+    node(crate::widget_content::empty_state_demo())
 }
 
 fn hint_bar_row(_state: State) -> NodeBuilder {
-    node(hint_bar("↑↓ navigate", "Enter select"))
+    node(crate::widget_content::hint_bar_demo())
 }
 
 fn markdown_row(_state: State) -> NodeBuilder {
-    node(markdown(signal(String::from(
-        "# Heading\n\nBody with **bold** and `code`.\n\n- one\n- two",
-    ))))
+    node(crate::widget_documents::markdown_demo())
 }
 
-const QUADRANTS: &str = "iVBORw0KGgoAAAANSUhEUgAAAGAAAAAwCAYAAADuFn/PAAAAeklEQVR42u3SQQ0AQAgDQYQh7MTihVPBo8k8VkAzrene5PpNdAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAFA+oD0AwEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcNAHChr0hrUljjwAAAAASUVORK5CYII=";
-
 fn markdown_image_row(_state: State) -> NodeBuilder {
-    node(markdown(signal(format!(
-        "Image:\n\n![quadrants](data:image/png;base64,{QUADRANTS})"
-    ))))
+    node(crate::widget_documents::markdown_image_demo())
 }
 
 fn mermaid_row(_state: State) -> NodeBuilder {
-    node(mermaid("graph TD\n  Edit --> Parse\n  Parse --> Paint"))
+    node(crate::widget_documents::mermaid_demo())
 }
 
 fn html_row(_state: State) -> NodeBuilder {
-    node(html(signal(String::from(
-        "<h2>Release notes</h2><p>Sigil renders <b>HTML</b> with <i>inline</i> styles.</p>",
-    ))))
+    node(crate::widget_documents::html_demo())
 }

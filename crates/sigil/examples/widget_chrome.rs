@@ -4,78 +4,94 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{
-    CardBuilder, PanelBuilder, ScrollBuilder, SidebarBuilder, SplitterBuilder, TabsBuilder,
-};
+use sigil::widgets::{CardBuilder, PanelBuilder, SplitterBuilder, TabsBuilder};
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - chrome").size(720, 720), build)
 }
 
-fn app_shell_demo() -> NodeBuilder {
-    let file_menu = [MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {})];
-    app_shell(
-        menu_bar().fill().menu("File", file_menu),
-        container().child(text("Work area").nowrap()),
-        status_bar([text("main").nowrap(), text("UTF-8").nowrap()]),
-        None::<NodeBuilder>,
-    )
+pub(crate) fn app_shell_demo() -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::flex_column().fill_width().height(200.0))
+        .child(app_shell(
+            text("Top bar").nowrap(),
+            text("Work area").nowrap(),
+            text("Status").nowrap(),
+            None::<NodeBuilder>,
+        ))
 }
 
-fn panel_demo() -> PanelBuilder {
-    panel()
-        .title("Details")
-        .child(text("Panel content").nowrap())
+pub(crate) fn panel_demo() -> PanelBuilder {
+    panel().title("Panel").child(text("Panel body").nowrap())
 }
 
-fn card_demo() -> CardBuilder {
-    card(kv_grid([("Host", "window"), ("Theme", "dark")]))
+pub(crate) fn card_demo() -> CardBuilder {
+    card(kv_grid([("Host", "wgpu"), ("Backend", "metal")]))
 }
 
-fn sidebar_demo() -> SidebarBuilder {
-    sidebar(
-        container()
-            .layout(LayoutStyle::flex_column())
-            .child(section_label("Project"))
-            .child(list_row(true, "Overview", ""))
-            .child(list_row(false, "Settings", "")),
-    )
+pub(crate) fn sidebar_demo() -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::flex_row().fill_width().height(144.0))
+        .child(sidebar(
+            container()
+                .layout(LayoutStyle::flex_column().padding(8.0).gap(2.0))
+                .child(section_label("Widgets"))
+                .child(list_row(true, "Controls", ""))
+                .child(list_row(false, "Inputs", "")),
+        ))
 }
 
-fn tabs_demo() -> TabsBuilder {
-    let active = signal(0_usize);
+pub(crate) fn tabs_demo() -> TabsBuilder {
     tabs()
-        .active(active)
-        .tab("Summary", move || text("Summary pane").nowrap())
-        .tab("Details", move || text("Details pane").nowrap())
+        .active(signal(0_usize))
+        .tab("First", move || text("First tab pane").nowrap())
+        .tab("Second", move || text("Second tab pane").nowrap())
+        .tab("Third", move || text("Third tab pane").nowrap())
+}
+
+pub(crate) fn tabs_line_demo() -> TabsBuilder {
+    tabs()
+        .active(signal(0_usize))
+        .tab("Overview", move || text("Overview pane").nowrap())
+        .tab("Activity", move || text("Activity pane").nowrap())
+        .tab("Settings", move || text("Settings pane").nowrap())
         .line()
 }
 
-fn splitter_demo() -> SplitterBuilder {
+pub(crate) fn splitter_demo() -> SplitterBuilder {
     splitter(Orientation::Horizontal)
-        .child(card(text("Left").nowrap()), 160.0)
-        .pane(card(text("Right").nowrap()))
-        .min(120.0)
-        .grow(1.0)
-        .commit()
+        .child(card(text("Navigation").nowrap()), 180.0)
+        .child(card(text("Content").nowrap()), 260.0)
+        .height(140.0)
 }
 
-fn scroll_demo() -> ScrollBuilder {
-    let content = (1..=20).fold(
-        container().layout(LayoutStyle::flex_column()),
-        |column, index| column.child(text(format!("Line {index}")).nowrap()),
-    );
-    scroll(content).height(120.0)
+fn scroll_lines() -> NodeBuilder {
+    (1..=12).fold(
+        container().layout(LayoutStyle::flex_column().fill_width().gap(4.0)),
+        |column, index| column.child(text(format!("Scrolled line {index}")).nowrap()),
+    )
 }
 
-fn surface_demo() -> NodeBuilder {
-    surface(1)
+pub(crate) fn scroll_demo() -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::flex_column().fill_width().height(120.0))
+        .child(scroll(scroll_lines()).extent(280.0).fill())
 }
 
-fn status_bar_demo() -> NodeBuilder {
+pub(crate) fn scroll_auto_demo() -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::flex_column().fill_width().height(120.0))
+        .child(scroll(scroll_lines()).fill())
+}
+
+pub(crate) fn surface_demo() -> NodeBuilder {
+    surface(7).layout(LayoutStyle::flex_column().fixed_size(160.0, 48.0))
+}
+
+pub(crate) fn status_bar_demo() -> NodeBuilder {
     status_bar([
         text("main").nowrap(),
-        text("Ln 12, Col 4").nowrap(),
+        text("Ln 4, Col 12").nowrap(),
         text("UTF-8").nowrap(),
     ])
 }
@@ -92,10 +108,12 @@ fn build() -> impl IntoNode {
                     .child(sidebar_demo())
                     .child(tabs_demo()),
             )
+            .child(tabs_line_demo())
             .child(panel_demo())
             .child(card_demo())
             .child(splitter_demo())
             .child(scroll_demo())
+            .child(scroll_auto_demo())
             .child(surface_demo())
             .child(status_bar_demo()),
     )

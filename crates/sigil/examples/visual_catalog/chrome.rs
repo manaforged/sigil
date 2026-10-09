@@ -18,123 +18,70 @@ pub(crate) const BUILDERS: &[(&str, Build)] = &[
     ("terminal", terminal_row),
 ];
 
+fn active(state: State) -> Signal<usize> {
+    signal(usize::from(state == State::Selected))
+}
+
+fn disabled_tabs(state: State) -> &'static [usize] {
+    if state == State::Disabled { &[1] } else { &[] }
+}
+
 fn panel_row(_state: State) -> NodeBuilder {
-    node(panel().title("Panel").child(text("Panel body").nowrap()))
+    node(crate::widget_chrome::panel_demo())
 }
 
 fn card_row(_state: State) -> NodeBuilder {
-    node(card(kv_grid([("Host", "wgpu"), ("Backend", "metal")])))
+    node(crate::widget_chrome::card_demo())
 }
 
 fn surface_row(_state: State) -> NodeBuilder {
-    node(surface(7).layout(LayoutStyle::flex_column().fixed_size(160.0, 48.0)))
+    node(crate::widget_chrome::surface_demo())
 }
 
 fn sidebar_row(_state: State) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_row().fill_width().height(144.0))
-        .child(sidebar(
-            container()
-                .layout(LayoutStyle::flex_column().padding(8.0).gap(2.0))
-                .child(section_label("Widgets"))
-                .child(list_row(true, "Controls", ""))
-                .child(list_row(false, "Inputs", "")),
-        ))
+    crate::widget_chrome::sidebar_demo()
 }
 
 fn status_row(_state: State) -> NodeBuilder {
-    node(status_bar([
-        text("main").nowrap(),
-        text("Ln 4, Col 12").nowrap(),
-        text("UTF-8").nowrap(),
-    ]))
+    node(crate::widget_chrome::status_bar_demo())
 }
 
 fn shell_row(_state: State) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(200.0))
-        .child(app_shell(
-            text("Top bar").nowrap(),
-            text("Work area").nowrap(),
-            text("Status").nowrap(),
-            None::<NodeBuilder>,
-        ))
+    crate::widget_chrome::app_shell_demo()
 }
 
 fn menu_bar_row(_state: State) -> NodeBuilder {
-    node(menu_bar().fill().menu(
-        "File",
-        [
-            MenuItem::new("New").activate(|| {}),
-            MenuItem::new("Open").shortcut("Ctrl+O").activate(|| {}),
-            MenuItem::new("Quit").shortcut("Ctrl+Q").activate(|| {}),
-        ],
-    ))
+    node(crate::widget_overlays::menu_bar_demo())
 }
 
 fn tabs_row(state: State) -> NodeBuilder {
-    let active = signal(usize::from(state == State::Selected));
-    let disabled: &[usize] = if state == State::Disabled { &[1] } else { &[] };
     node(
-        tabs()
-            .active(active)
-            .tab("First", move || text("First tab pane").nowrap())
-            .tab("Second", move || text("Second tab pane").nowrap())
-            .tab("Third", move || text("Third tab pane").nowrap())
-            .disabled(disabled),
+        crate::widget_chrome::tabs_demo()
+            .active(active(state))
+            .disabled(disabled_tabs(state)),
     )
 }
 
 fn tabs_line_row(state: State) -> NodeBuilder {
-    let active = signal(usize::from(state == State::Selected));
-    let disabled: &[usize] = if state == State::Disabled { &[1] } else { &[] };
     node(
-        tabs()
-            .active(active)
-            .tab("Overview", move || text("Overview pane").nowrap())
-            .tab("Activity", move || text("Activity pane").nowrap())
-            .tab("Settings", move || text("Settings pane").nowrap())
-            .line()
-            .disabled(disabled),
+        crate::widget_chrome::tabs_line_demo()
+            .active(active(state))
+            .disabled(disabled_tabs(state)),
     )
 }
 
 fn splitter_row(_state: State) -> NodeBuilder {
-    node(
-        splitter(Orientation::Horizontal)
-            .child(card(text("Navigation").nowrap()), 180.0)
-            .child(card(text("Content").nowrap()), 260.0)
-            .height(140.0),
-    )
+    node(crate::widget_chrome::splitter_demo())
 }
 
 fn scroll_fixed_row(_state: State) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(120.0))
-        .child(scroll(scroll_lines()).extent(280.0).fill())
-}
-
-fn scroll_lines() -> NodeBuilder {
-    let mut column = container().layout(LayoutStyle::flex_column().fill_width().gap(4.0));
-    for index in 1..=12 {
-        column = column.child(text(format!("Scrolled line {index}")).nowrap());
-    }
-    column
+    crate::widget_chrome::scroll_demo()
 }
 
 fn scroll_row(_state: State) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(120.0))
-        .child(scroll(scroll_lines()).fill())
+    crate::widget_chrome::scroll_auto_demo()
 }
 
 fn terminal_row(_state: State) -> NodeBuilder {
-    let lines = vec![
-        String::from("$ cargo build"),
-        String::from("   Compiling sigil-ui v0.1.0"),
-        String::from("    Finished dev profile"),
-    ];
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(120.0))
-        .child(terminal(signal(lines), |_| {}))
+    crate::widget_plumbing::terminal_demo()
 }

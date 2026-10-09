@@ -21,6 +21,33 @@ mod overlays;
 mod plumbing;
 #[path = "visual_catalog/spec.rs"]
 mod spec;
+#[allow(dead_code, unused_attributes)]
+#[path = "widget_chrome.rs"]
+mod widget_chrome;
+#[allow(dead_code, unused_attributes)]
+#[path = "widget_content.rs"]
+mod widget_content;
+#[allow(dead_code, unused_attributes)]
+#[path = "widget_controls.rs"]
+mod widget_controls;
+#[allow(dead_code, unused_attributes)]
+#[path = "widget_data.rs"]
+mod widget_data;
+#[allow(dead_code, unused_attributes)]
+#[path = "widget_documents.rs"]
+mod widget_documents;
+#[allow(dead_code, unused_attributes)]
+#[path = "widget_fields.rs"]
+mod widget_fields;
+#[allow(dead_code, unused_attributes)]
+#[path = "widget_indicators.rs"]
+mod widget_indicators;
+#[allow(dead_code, unused_attributes)]
+#[path = "widget_overlays.rs"]
+mod widget_overlays;
+#[allow(dead_code, unused_attributes)]
+#[path = "widget_plumbing.rs"]
+mod widget_plumbing;
 
 use std::cell::RefCell;
 

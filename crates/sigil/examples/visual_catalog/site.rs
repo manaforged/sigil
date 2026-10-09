@@ -6,7 +6,7 @@ use sigil::layout::LayoutError;
 use sigil::tasks::AsyncRuntime;
 use sigil_kittest::InteractionMode;
 
-use super::api::{ApiMap, function_source};
+use super::api::{ApiMap, demo_source, function_source};
 use super::builders;
 use super::capture::{self, Look, View};
 use super::catalog::{Capture, Catalog, Component, Example, HostKind, Live, Settle};
@@ -121,7 +121,11 @@ impl Export<'_> {
             .ok_or_else(|| format!("{}: unknown group {}", component.id, component.group))?;
         let file = registry::source(&group.source)
             .ok_or_else(|| format!("{}: no source {}", group.id, group.source))?;
-        let code = function_source(file, &format!("{}_demo", component.id));
+        let code = component
+            .captures
+            .first()
+            .and_then(|capture| demo_source(file, &capture.build))
+            .or_else(|| function_source(file, &format!("{}_demo", component.id)));
         let summary = self
             .api
             .row(&component.builder)
@@ -141,7 +145,7 @@ impl Export<'_> {
             .captures
             .iter()
             .filter(|_| component.live == Live::Sandbox)
-            .map(|capture| self.live(capture))
+            .map(|capture| self.live(capture, file))
             .collect();
         println!("{}: {} states", component.id, states.len());
         let preview = preview_state(component, &states);
@@ -160,7 +164,7 @@ impl Export<'_> {
         }))
     }
 
-    fn live(&self, capture: &Capture) -> Value {
+    fn live(&self, capture: &Capture, file: &str) -> Value {
         let mut drives: Vec<State> = capture.states.clone();
         drives.sort_by_key(|drive| *drive != State::Shown);
         let states: Vec<Value> = drives
@@ -179,6 +183,7 @@ impl Export<'_> {
             "label": capture.label,
             "size": capture.size,
             "states": states,
+            "code": demo_source(file, &capture.build).unwrap_or_default(),
         })
     }
 

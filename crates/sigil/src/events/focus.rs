@@ -60,6 +60,13 @@ struct FocusScopeEntry {
     restore_to: Option<NodeId>,
 }
 
+#[cfg(any(target_arch = "wasm32", test))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct TabEdges {
+    pub(crate) first: bool,
+    pub(crate) last: bool,
+}
+
 #[derive(Debug)]
 pub(crate) struct FocusManager {
     focused: Option<NodeId>,
@@ -178,6 +185,21 @@ impl FocusManager {
             tree: None,
             tree_id: TreeId::ROOT,
             focus: self.focused.map_or(AccessNodeId(0), NodeId::to_accesskit),
+        }
+    }
+
+    #[cfg(any(target_arch = "wasm32", test))]
+    pub(crate) fn tab_edges(&self, cx: &Cx) -> TabEdges {
+        let ring = self.enabled_ring(cx);
+        let Some(focused) = self.focused else {
+            return TabEdges {
+                first: ring.is_empty(),
+                last: ring.is_empty(),
+            };
+        };
+        TabEdges {
+            first: ring.first().is_none_or(|id| *id == focused),
+            last: ring.last().is_none_or(|id| *id == focused),
         }
     }
 
@@ -325,3 +347,7 @@ struct FocusCandidate {
     tab_index: i32,
     order: usize,
 }
+
+#[cfg(test)]
+#[path = "focus/edges_tests.rs"]
+mod edges_tests;

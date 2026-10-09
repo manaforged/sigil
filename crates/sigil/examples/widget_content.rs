@@ -18,30 +18,33 @@ fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - content").size(480, 720), build)
 }
 
-fn text_demo() -> TextBuilder {
-    text("Text wraps to the width of its parent.")
+pub(crate) fn text_demo() -> TextBuilder {
+    text("Text wraps to the width of its parent and flows onto the next line.")
 }
 
-fn label_demo() -> TextBuilder {
-    let count = signal(3_i32);
-    text(move || format!("Count: {}", count.get())).nowrap()
+pub(crate) fn label_demo() -> TextBuilder {
+    text("Labels and text share TextContent.").nowrap()
 }
 
-fn icon_demo() -> IconBuilder {
-    icon("★").tone(Tone::Warn).label("Favourite")
+pub(crate) fn icon_demo() -> IconBuilder {
+    icon("▲").tone(Tone::Warn).label("Alert")
 }
 
-fn image_demo() -> NodeBuilder {
+pub(crate) fn image_rgba_demo() -> NodeBuilder {
     let pixels: Vec<u8> = (0..32_u32 * 32)
-        .flat_map(|i| [u8::try_from(i % 32 * 8).unwrap_or(u8::MAX), 90, 200, 255])
+        .flat_map(|i| {
+            let shade = u8::try_from((i % 32) * 8).unwrap_or(u8::MAX);
+            [shade, 120, 255 - shade, 255]
+        })
         .collect();
-    image_rgba(32, 32, pixels).map_or_else(
-        || container().child(text("Image unavailable").nowrap()),
-        |picture| container().child(picture.alt("Gradient")),
-    )
+    let frame = container().layout(LayoutStyle::flex_column().fill_width());
+    match image_rgba(32, 32, pixels) {
+        Some(picture) => frame.child(picture),
+        None => frame.child(text("image_rgba rejected").nowrap()),
+    }
 }
 
-fn path_demo() -> PathNode {
+pub(crate) fn path_demo() -> PathNode {
     path(24, 24)
         .move_to(4.0, 20.0)
         .line_to(12.0, 4.0)
@@ -51,42 +54,40 @@ fn path_demo() -> PathNode {
         .fit()
 }
 
-fn chart_demo() -> ChartBuilder {
+pub(crate) fn chart_demo() -> ChartBuilder {
     chart([12.0, 28.0, 18.0, 34.0])
         .labels(["Q1", "Q2", "Q3", "Q4"])
         .height(160.0)
 }
 
-fn section_label_demo() -> NodeBuilder {
-    section_label("Recent files")
+pub(crate) fn section_label_demo() -> NodeBuilder {
+    section_label("Section")
 }
 
-fn notice_band_demo() -> NodeBuilder {
-    notice_band("Changes are saved locally until you sign in.", Tone::Warn)
+pub(crate) fn notice_band_demo() -> NodeBuilder {
+    notice_band("Deployment finished", Tone::Success)
 }
 
-fn empty_state_demo() -> NodeBuilder {
+pub(crate) fn empty_state_demo() -> NodeBuilder {
     empty_state("No results", "Try a different search term.")
 }
 
-fn hint_bar_demo() -> NodeBuilder {
-    hint_bar("Enter open · Esc close", "3 items")
+pub(crate) fn hint_bar_demo() -> NodeBuilder {
+    hint_bar("↑↓ navigate", "Enter select")
 }
 
-fn avatar_demo() -> NodeBuilder {
-    avatar("AL")
+pub(crate) fn avatar_demo() -> NodeBuilder {
+    avatar("TG")
 }
 
-fn divider_horizontal_demo() -> NodeBuilder {
+pub(crate) fn divider_horizontal_demo() -> NodeBuilder {
     divider_horizontal()
 }
 
-fn divider_vertical_demo() -> NodeBuilder {
+pub(crate) fn divider_vertical_demo() -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_row().gap(cols(1.0)))
-        .child(text("Left").nowrap())
+        .layout(LayoutStyle::flex_row().height(40.0))
         .child(divider_vertical())
-        .child(text("Right").nowrap())
 }
 
 fn build() -> impl IntoNode {
@@ -97,7 +98,7 @@ fn build() -> impl IntoNode {
             .child(text_demo())
             .child(label_demo())
             .child(icon_demo())
-            .child(image_demo())
+            .child(image_rgba_demo())
             .child(path_demo())
             .child(chart_demo())
             .child(section_label_demo())

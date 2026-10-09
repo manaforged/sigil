@@ -16,116 +16,67 @@ pub(crate) const BUILDERS: &[(&str, Build)] = &[
     ("markdown_edit", markdown_edit_row),
 ];
 
-fn text_field_row(state: State) -> NodeBuilder {
-    node(
-        text_field(signal(String::from("Ada Lovelace")))
-            .placeholder("Full name")
-            .disabled(off(state))
-            .invalid_when(signal(state == State::Invalid)),
-    )
-}
-
-fn field_row(_state: State) -> NodeBuilder {
-    node(field(
-        "Name",
-        text_field(signal(String::new())).placeholder("Full name"),
-    ))
-}
-
-fn validated_row(state: State) -> NodeBuilder {
-    let error = (state == State::Invalid).then(|| String::from("Enter a valid email address"));
-    node(
-        field(
-            "Email",
-            text_field(signal(String::from("ada@"))).placeholder("name@example.com"),
-        )
-        .error(signal(error)),
-    )
-}
-
-fn text_edit_row(state: State) -> NodeBuilder {
-    node(
-        text_edit(signal(String::from("Multi-line\neditable text.")))
-            .height(96.0)
-            .disabled(off(state)),
-    )
-}
-
 fn invalid(state: State) -> Signal<bool> {
     signal(state == State::Invalid)
 }
 
+fn text_field_row(state: State) -> NodeBuilder {
+    node(
+        crate::widget_fields::text_field_demo()
+            .disabled(off(state))
+            .invalid_when(invalid(state)),
+    )
+}
+
+fn field_row(_state: State) -> NodeBuilder {
+    node(crate::widget_fields::field_demo())
+}
+
+fn validated_row(state: State) -> NodeBuilder {
+    let error = (state == State::Invalid).then(|| String::from("Enter a valid email address"));
+    node(crate::widget_fields::validated_field_demo(error))
+}
+
+fn text_edit_row(state: State) -> NodeBuilder {
+    node(crate::widget_fields::text_edit_demo().disabled(off(state)))
+}
+
 fn number_row(state: State) -> NodeBuilder {
     node(
-        number_field(signal(4_i32), 1..=99)
+        crate::widget_fields::number_field_demo()
             .disabled(off(state))
             .invalid_when(invalid(state)),
     )
 }
 
 fn date_row(state: State) -> NodeBuilder {
-    let day = Date {
-        year: 2026,
-        month: 4,
-        day: 1,
-    };
     node(
-        date_field(signal(day))
+        crate::widget_fields::date_field_demo()
             .disabled(off(state))
             .invalid_when(invalid(state)),
     )
 }
 
 fn color_row(state: State) -> NodeBuilder {
-    let colour = Rgba8 {
-        r: 90,
-        g: 140,
-        b: 255,
-        a: 255,
-    };
     node(
-        color_field(signal(colour))
+        crate::widget_fields::color_field_demo()
             .disabled(off(state))
             .invalid_when(invalid(state)),
     )
 }
 
 fn dropdown_row(state: State) -> NodeBuilder {
-    node(
-        dropdown(
-            signal(1_usize),
-            vec!["Small".into(), "Medium".into(), "Large".into()],
-        )
-        .disabled(off(state)),
-    )
+    node(crate::widget_fields::dropdown_demo().disabled(off(state)))
 }
 
 fn combobox_row(state: State) -> NodeBuilder {
-    let combo = Combobox::new(vec![
-        String::from("Rust"),
-        String::from("Go"),
-        String::from("Zig"),
-        String::from("C++"),
-    ])
-    .placeholder("Language")
-    .disabled(off(state));
-    node(combobox(combo))
+    node(crate::widget_fields::combobox_demo(off(state)))
 }
 
 fn code_edit_row(state: State) -> NodeBuilder {
-    let lines = vec![
-        String::from("fn main() {"),
-        String::from("    println!(\"hi\");"),
-        String::from("}"),
-    ];
-    node(code_edit(signal(lines), signal((1, 4))).disabled(off(state)))
+    node(crate::widget_documents::code_edit_demo().disabled(off(state)))
 }
 
 fn markdown_edit_row(state: State) -> NodeBuilder {
-    let source = signal(String::from(
-        "# Sigil widgets\n\nEdit me, *live* preview.\n\n- one\n- two",
-    ));
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(228.0))
-        .child(markdown_edit(source).disabled(off(state)))
+    crate::widget_documents::markdown_edit_demo(off(state))
 }

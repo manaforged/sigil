@@ -4,35 +4,33 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{ChipBuilder, DotBuilder, GaugeBuilder, ProgressBuilder};
+use sigil::widgets::{ChipBuilder, GaugeBuilder, ProgressBuilder};
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - indicators").size(480, 360), build)
 }
 
-fn chip_demo() -> ChipBuilder {
+pub(crate) fn chip_demo() -> ChipBuilder {
     chip("Stable", Tone::Success)
 }
 
-fn badge_demo() -> ChipBuilder {
-    chip("3", Tone::Error)
+pub(crate) fn dot_demo() -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::flex_row().gap(8.0))
+        .child(dot(Tone::Success))
+        .child(dot(Tone::Warn))
+        .child(dot(Tone::Error))
 }
 
-fn dot_demo() -> DotBuilder {
-    dot(Tone::Warn)
+pub(crate) fn gauge_demo() -> GaugeBuilder {
+    gauge(signal(40.0)).max(100.0).label("Battery").warn(0.25)
 }
 
-fn gauge_demo() -> GaugeBuilder {
-    let cpu = signal(0.42_f32);
-    gauge(cpu).max(1.0).label("CPU").warn(0.2)
+pub(crate) fn progress_demo() -> ProgressBuilder {
+    progress(signal(60.0), 100.0)
 }
 
-fn progress_demo() -> ProgressBuilder {
-    let upload = signal(30.0_f32);
-    progress(upload, 100.0).label("Upload")
-}
-
-fn spinner_demo() -> NodeBuilder {
+pub(crate) fn spinner_demo() -> NodeBuilder {
     spinner()
 }
 
@@ -44,7 +42,6 @@ fn build() -> impl IntoNode {
             container()
                 .layout(LayoutStyle::flex_row().gap(cols(1.0)))
                 .child(chip_demo())
-                .child(badge_demo())
                 .child(dot_demo())
                 .child(spinner_demo()),
         )

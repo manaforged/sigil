@@ -84,6 +84,8 @@ pub(super) fn sync_ime(
     layout: &LayoutEngine,
     router: &EventRouter,
 ) {
+    #[cfg(target_arch = "wasm32")]
+    shell.set_tab_edges(router.tab_edges(cx));
     if let Err(err) = shell.set_ime_allowed(&window_handle, router.focus_wants_ime(cx)) {
         tracing::warn!(target: "sigil::ime", error = %err, "IME enable update failed");
     }

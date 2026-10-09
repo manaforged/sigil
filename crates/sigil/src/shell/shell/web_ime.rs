@@ -8,6 +8,7 @@ use web_sys::{
     InputEvent, KeyboardEvent, KeyboardEventInit,
 };
 
+use crate::events::focus::TabEdges;
 use crate::events::{ShellEvent, WindowEvent};
 use crate::geometry::Rect;
 use crate::shell::WinitWaker;
@@ -33,6 +34,7 @@ pub(crate) struct WebIme {
     area: HtmlTextAreaElement,
     canvas: HtmlCanvasElement,
     queue: Queue,
+    edges: Rc<Cell<TabEdges>>,
     handoff: Rc<Cell<bool>>,
     allowed: bool,
     _listeners: Vec<Listener>,
@@ -42,6 +44,7 @@ struct Wiring {
     area: HtmlTextAreaElement,
     canvas: HtmlCanvasElement,
     queue: Queue,
+    edges: Rc<Cell<TabEdges>>,
     waker: WinitWaker,
 }
 
@@ -59,16 +62,19 @@ impl WebIme {
         area.set_attribute("style", AREA_STYLE).ok()?;
         document.body()?.append_child(&area).ok()?;
         let queue = Queue::default();
+        let edges = Rc::new(Cell::new(TabEdges::default()));
         let wiring = Wiring {
             area: area.clone(),
             canvas: canvas.clone(),
             queue: Rc::clone(&queue),
+            edges: Rc::clone(&edges),
             waker,
         };
         Some(Self {
             area,
             canvas,
             queue,
+            edges,
             handoff: Rc::new(Cell::new(false)),
             allowed: false,
             _listeners: wiring.listen(),
@@ -77,6 +83,10 @@ impl WebIme {
 
     pub(crate) fn drain_into(&self, events: &mut Vec<ShellEvent>) {
         events.append(&mut self.queue.borrow_mut());
+    }
+
+    pub(crate) fn set_tab_edges(&self, edges: TabEdges) {
+        self.edges.set(edges);
     }
 
     pub(crate) fn owns_focus(&self) -> bool {
@@ -138,7 +148,7 @@ impl Wiring {
             "input",
             "blur",
         ];
-        names
+        let mut listeners: Vec<Listener> = names
             .into_iter()
             .filter_map(|name| {
                 let wiring = Rc::clone(&this);
@@ -149,7 +159,43 @@ impl Wiring {
                     .ok()
                     .map(|()| listener)
             })
-            .collect()
+            .collect();
+        listeners.extend(this.release_tab_from_canvas());
+        listeners
+    }
+
+    fn release_tab_from_canvas(self: &Rc<Self>) -> Option<Listener> {
+        let wiring = Rc::clone(self);
+        let listener = Listener::new(move |event: Event| {
+            if wiring.releases_tab(&event) {
+                event.stop_immediate_propagation();
+            }
+        });
+        let target: &EventTarget = self.canvas.unchecked_ref();
+        target
+            .add_event_listener_with_callback_and_bool(
+                "keydown",
+                listener.as_ref().unchecked_ref(),
+                true,
+            )
+            .ok()
+            .map(|()| listener)
+    }
+
+    fn releases_tab(&self, event: &Event) -> bool {
+        let Some(key) = event.dyn_ref::<KeyboardEvent>() else {
+            return false;
+        };
+        let edges = self.edges.get();
+        key.key() == "Tab"
+            && !key.ctrl_key()
+            && !key.alt_key()
+            && !key.meta_key()
+            && if key.shift_key() {
+                edges.first
+            } else {
+                edges.last
+            }
     }
 
     fn handle(&self, name: &str, event: &Event) {
@@ -177,7 +223,9 @@ impl Wiring {
         let Some(key) = event.dyn_ref::<KeyboardEvent>() else {
             return;
         };
-        if key_route(&key.key(), key.key_code(), key.is_composing()) == KeyRoute::Browser {
+        if key_route(&key.key(), key.key_code(), key.is_composing()) == KeyRoute::Browser
+            || (name == "keydown" && self.releases_tab(event))
+        {
             return;
         }
         event.prevent_default();

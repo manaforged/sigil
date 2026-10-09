@@ -10,31 +10,37 @@ fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - plumbing").size(560, 480), build)
 }
 
-fn interactive_demo() -> InteractiveBuilder {
-    interactive(container().child(text("Focusable row").nowrap()))
-        .focusable(true)
-        .rounded(Radius::Md)
+pub(crate) fn interactive_demo() -> InteractiveBuilder {
+    interactive(
+        container()
+            .layout(LayoutStyle::flex_column().fill_width())
+            .child(text("Interactive row").nowrap().font_size(14.0)),
+    )
+    .focusable(true)
+    .rounded(Radius::Md)
 }
 
-fn axis_drag_demo() -> NodeBuilder {
-    let width = signal(120.0_f32);
-    let handle = NodeBuilder::from(card(
-        text(move || format!("Drag me: {:.0}", width.get())).nowrap(),
-    ));
+pub(crate) fn axis_drag_demo() -> NodeBuilder {
+    let width = signal(160.0_f32);
+    let handle = container()
+        .layout(LayoutStyle::flex_column().width(width.peek()))
+        .child(card(
+            text(move || format!("Width {:.0}", width.get())).nowrap(),
+        ));
     axis_drag(
         handle,
         Axis::X,
         move || width.peek(),
-        move |start, delta| width.set((start + delta).max(40.0)),
+        move |start, delta| width.set((start + delta).max(80.0)),
         || {},
     )
 }
 
-fn drag_ghost_demo() -> NodeBuilder {
+pub(crate) fn drag_ghost_demo() -> NodeBuilder {
     let drag = DragState::<String>::new();
     let dropped = signal(String::from("Drop a card here"));
     container()
-        .layout(LayoutStyle::flex_column().gap(rows(1.0)))
+        .layout(LayoutStyle::flex_column().fill_width().gap(8.0))
         .child(
             NodeBuilder::from(card(text("Card A").nowrap()))
                 .drag_source(drag.clone(), String::from("Card A")),
@@ -45,15 +51,19 @@ fn drag_ghost_demo() -> NodeBuilder {
             move |item| dropped.set(format!("Dropped {item}")),
         ))
         .child(drag_ghost(drag, |item: &String| {
-            text(item.clone()).nowrap()
+            card(text(item.clone()).nowrap())
         }))
 }
 
-fn terminal_demo() -> NodeBuilder {
-    let lines = signal(vec![String::from("$ echo ready"), String::from("ready")]);
-    terminal(lines, move |input| {
-        lines.update(|all| all.push(format!("$ {input}")));
-    })
+pub(crate) fn terminal_demo() -> NodeBuilder {
+    let lines = vec![
+        String::from("$ cargo build"),
+        String::from("   Compiling sigil-ui v0.1.0"),
+        String::from("    Finished dev profile"),
+    ];
+    container()
+        .layout(LayoutStyle::flex_column().fill_width().height(120.0))
+        .child(terminal(signal(lines), |_| {}))
 }
 
 fn build() -> impl IntoNode {

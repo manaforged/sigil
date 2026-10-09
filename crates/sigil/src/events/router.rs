@@ -106,6 +106,11 @@ impl EventRouter {
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn tab_edges(&self, cx: &Cx) -> crate::events::focus::TabEdges {
+        self.focus.tab_edges(cx)
+    }
+
     pub fn focus_next(&mut self, cx: &mut Cx) {
         crate::events::note_focus_source(true);
         self.focus.focus_next(cx, None);

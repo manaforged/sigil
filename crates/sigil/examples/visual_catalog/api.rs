@@ -81,9 +81,18 @@ fn builder_type(signature: &str) -> Option<&str> {
     (kind.ends_with("Builder") && kind != "NodeBuilder").then_some(kind)
 }
 
+pub(crate) fn demo_source(file: &str, build: &str) -> Option<String> {
+    function_source(file, &format!("{}_demo", build.replace('-', "_")))
+}
+
 pub(crate) fn function_source(file: &str, name: &str) -> Option<String> {
-    let head = format!("\nfn {name}(");
-    let start = file.find(&head)? + 1;
+    let head = format!("fn {name}(");
+    let start = [format!("\n{head}"), format!("\npub(crate) {head}")]
+        .iter()
+        .find_map(|line| {
+            file.find(line.as_str())
+                .map(|at| at + line.len() - head.len())
+        })?;
     let body = file.get(start..)?;
     let open = body.find('{')?;
     let mut depth = 0_usize;

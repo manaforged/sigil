@@ -26,6 +26,12 @@ impl WinitShell {
         attrs
     }
 
+    pub(crate) fn set_tab_edges(&self, edges: crate::events::focus::TabEdges) {
+        if let Some(ime) = &self.web_ime {
+            ime.set_tab_edges(edges);
+        }
+    }
+
     pub(super) fn install_web_ime(&mut self, window: &Window) {
         if self.web_ime.is_some() {
             return;
