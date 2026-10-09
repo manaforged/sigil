@@ -223,9 +223,11 @@ impl Wiring {
         let Some(key) = event.dyn_ref::<KeyboardEvent>() else {
             return;
         };
-        if key_route(&key.key(), key.key_code(), key.is_composing()) == KeyRoute::Browser
-            || (name == "keydown" && self.releases_tab(event))
-        {
+        if key_route(&key.key(), key.key_code(), key.is_composing()) == KeyRoute::Browser {
+            return;
+        }
+        if name == "keydown" && self.releases_tab(event) {
+            drop(self.canvas.focus());
             return;
         }
         event.prevent_default();

@@ -21,7 +21,7 @@ impl WinitShell {
             tracing::warn!(target: "sigil::shell", %id, "no <canvas> with this id; appending one to <body>");
             return attrs.with_append(true);
         };
-        let mut attrs = attrs.with_canvas(Some(canvas));
+        let mut attrs = attrs.with_canvas(Some(canvas)).with_active(false);
         attrs.inner_size = None;
         attrs
     }

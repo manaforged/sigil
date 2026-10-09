@@ -66,6 +66,8 @@ fn main() -> sigil::AppResult<()> {
 
 `AppConfig::canvas(id)` draws into the `<canvas>` with that id and keeps its CSS size. Without it, or if no canvas has that id, `run` appends a canvas of `AppConfig::size` to `<body>`. Native hosts ignore it, so the same `main` builds for every target.
 
+A canvas named with `AppConfig::canvas` does not take focus when the app starts, so the page keeps its own focus. Tab and Shift+Tab move between the app's widgets and leave the canvas at either end of its focus order, so keyboard users can move through the rest of the page.
+
 `run` returns when the browser event loop starts. The GPU device arrives later, and the first frame paints when it is ready. If the browser loses the device, the next frame requests a new one and paints when it arrives. `run` writes launch and frame errors to the browser console.
 
 ## Clipboard
