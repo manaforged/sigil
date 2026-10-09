@@ -136,6 +136,50 @@ fn scrolled_rows_land_at_their_document_position() {
     });
 }
 
+#[test]
+fn measured_rows_release_collapsed_height_and_reexpand() {
+    use crate::geometry::Size;
+    use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+
+    Runtime::scope("measured-collapse", || {
+        let items = signal(vec![24_u32, 24, 24]);
+        let extent = signal(0.0_f32);
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            virtual_list_bind(items, move |index, _| {
+                container().children_reactive(move || {
+                    vec![container().layout(LayoutStyle::block().height(items.get()[index] as f32))]
+                })
+            })
+            .key_by(|index, _| index as u64)
+            .measured()
+            .row_height(24.0)
+            .viewport_width(800.0)
+            .viewport_height(200.0)
+            .content_height_bind(extent),
+        );
+        let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroMeasure));
+        for (heights, expected) in [
+            (vec![24, 24, 24], 72.0),
+            (vec![24, 0, 0], 24.0),
+            (vec![0, 0, 0], 0.0),
+            (vec![24, 24, 24], 72.0),
+        ] {
+            items.set(heights);
+            for _ in 0..4 {
+                layout
+                    .compute(&mut cx, root, Size::fixed(800.0, 200.0))
+                    .expect("layout measured rows");
+            }
+            assert_eq!(
+                extent.peek(),
+                expected,
+                "collapsed rows must not leave a gap"
+            );
+        }
+    });
+}
+
 struct ZeroMeasure;
 
 impl crate::layout::TextMeasure for ZeroMeasure {

@@ -94,7 +94,7 @@ impl Measure {
     }
 
     fn record(&self, key: u64, (width, height): (f32, f32)) {
-        if !height.is_finite() || height <= 0.0 {
+        if !width.is_finite() || width <= 0.0 || !height.is_finite() || height < 0.0 {
             return;
         }
         let mut cache = self.cache.borrow_mut();

@@ -158,9 +158,10 @@ impl RowHeights<'_> {
             Self::Fixed { height, .. } => {
                 first.saturating_sub(pad_rows(viewport_height, height, overscan))
             }
-            Self::Tops(_) => {
+            Self::Tops(tops) => {
                 let pad_px = viewport_height * overscan as f32;
-                self.row_at((self.top(first) - pad_px).max(0.0))
+                let y = (self.top(first) - pad_px).max(0.0);
+                tops.partition_point(|top| *top < y).min(self.row_at(y))
             }
         }
     }
@@ -170,9 +171,13 @@ impl RowHeights<'_> {
             Self::Fixed { height, .. } => {
                 end.saturating_add(pad_rows(viewport_height, height, overscan))
             }
-            Self::Tops(_) => {
+            Self::Tops(tops) => {
                 let pad_px = viewport_height * overscan as f32;
-                self.first_at_or_after(self.top(end) + pad_px)
+                let y = self.top(end) + pad_px;
+                tops.partition_point(|top| *top <= y)
+                    .saturating_sub(1)
+                    .max(self.first_at_or_after(y))
+                    .min(self.rows())
             }
         }
     }
