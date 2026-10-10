@@ -6111,6 +6111,7 @@ pub fn sigil::widgets::ChartBuilder::labels(self, labels: impl core::iter::trait
 pub const fn sigil::widgets::ChartBuilder::line(self) -> Self
 pub fn sigil::widgets::ChartBuilder::series(self, name: impl core::convert::Into<alloc::string::String>, values: impl sigil::reactive::Reactive<alloc::vec::Vec<f32>>, tone: sigil::style::Tone) -> Self
 pub fn sigil::widgets::ChartBuilder::tone(self, tone: sigil::style::Tone) -> Self
+pub const fn sigil::widgets::ChartBuilder::whole_numbers(self) -> Self
 pub const fn sigil::widgets::ChartBuilder::x_range(self, range: sigil::reactive::Signal<core::ops::range::Range<f32>>) -> Self
 pub struct sigil::widgets::CheckboxBuilder
 impl sigil::widgets::CheckboxBuilder

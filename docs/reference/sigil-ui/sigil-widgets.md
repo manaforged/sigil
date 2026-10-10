@@ -265,6 +265,7 @@
 | <code>const line(self) -&gt; Self</code> |  |
 | <code>series(self, name: impl Into&lt;String&gt;, values: impl <a href="sigil-reactive.html#reactive">Reactive</a>&lt;Vec&lt;f32&gt;&gt;, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
 | <code>tone(self, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
+| <code>const whole_numbers(self) -&gt; Self</code> |  |
 | <code>const x_range(self, range: <a href="sigil-reactive.html#signal">Signal</a>&lt;Range&lt;f32&gt;&gt;) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
