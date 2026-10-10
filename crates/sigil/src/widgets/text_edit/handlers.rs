@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell, RefMut};
 use std::rc::Rc;
 
-use crate::events::{Key, KeyEvent, ModifiersState, NodeEventsExt, Shortcut};
+use crate::events::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
 use crate::hal::TextAffinity;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, signal};
@@ -200,20 +200,26 @@ pub(super) fn attach_key_handlers(
 }
 
 fn enter_keys(node: NodeBuilder, runtime: &TextEditRuntime, submit_key: SubmitKey) -> NodeBuilder {
-    let enter = runtime.clone();
     let submit = runtime.clone();
-    let (newline, send) = match submit_key {
+    let (newlines, send) = match submit_key {
         SubmitKey::CtrlEnter => (
-            Shortcut::plain(Key::Enter),
+            vec![Shortcut::plain(Key::Enter)],
             Shortcut::new(Key::Enter, ModifiersState::CONTROL),
         ),
         SubmitKey::Enter => (
-            Shortcut::new(Key::Enter, ModifiersState::SHIFT),
+            vec![
+                Shortcut::new(Key::Enter, ModifiersState::SHIFT),
+                Shortcut::new(Key::Enter, ModifiersState::ALT),
+                Shortcut::new(LogicalKey::character("j"), ModifiersState::CONTROL),
+            ],
             Shortcut::plain(Key::Enter),
         ),
     };
-    node.key(newline, move |event| insert_newline(event, &enter))
-        .key(send, move |event| commands::submit_text(event, &submit))
+    let node = newlines.into_iter().fold(node, |node, shortcut| {
+        let enter = runtime.clone();
+        node.key(shortcut, move |event| insert_newline(event, &enter))
+    });
+    node.key(send, move |event| commands::submit_text(event, &submit))
 }
 
 pub(in crate::widgets) fn insert_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
@@ -242,9 +248,6 @@ pub(in crate::widgets) fn insert_text(event: &mut KeyEvent, runtime: &TextEditRu
 fn insert_newline(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     event.stop_propagation();
     if runtime.disabled() {
-        return;
-    }
-    if event.modifiers.contains(ModifiersState::CONTROL) {
         return;
     }
     let mut edit = runtime.edit_mut();

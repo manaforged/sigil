@@ -103,6 +103,28 @@ fn submit_on_enter_sends_on_enter_and_breaks_lines_on_shift_enter() {
         assert!(sent.borrow().is_empty());
         assert!(draft.get().contains('\n'), "{:?}", draft.get());
 
+        for key in [
+            press(Key::Enter, ModifiersState::ALT),
+            ShellEvent::Key(KeyEvent::new(KeyEventInit {
+                key: LogicalKey::character("j"),
+                physical: PhysicalKey::KeyJ,
+                modifiers: ModifiersState::CONTROL,
+                repeat: false,
+                phase: KeyPhase::Down,
+                text: None,
+            })),
+        ] {
+            let lines = draft.get().matches('\n').count();
+            send(&mut host, &mut router, vec![key]);
+            assert!(sent.borrow().is_empty());
+            assert_eq!(
+                draft.get().matches('\n').count(),
+                lines + 1,
+                "{:?}",
+                draft.get()
+            );
+        }
+
         send(
             &mut host,
             &mut router,
