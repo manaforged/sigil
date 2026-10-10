@@ -66,6 +66,7 @@ pub struct ChartBuilder {
     mark: ChartMark,
     x_range: Option<Signal<Range<f32>>>,
     crosshair: bool,
+    whole: bool,
     layout_overrides: LayoutOverrides,
     style_accumulator: Style,
 }
@@ -82,6 +83,7 @@ pub fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder {
         mark: ChartMark::Bar,
         x_range: None,
         crosshair: false,
+        whole: false,
         layout_overrides: LayoutOverrides::new(),
         style_accumulator: Style::new(),
     }
@@ -110,6 +112,12 @@ impl ChartBuilder {
     #[must_use]
     pub const fn crosshair(mut self) -> Self {
         self.crosshair = true;
+        self
+    }
+
+    #[must_use]
+    pub const fn whole_numbers(mut self) -> Self {
+        self.whole = true;
         self
     }
 
@@ -167,7 +175,7 @@ impl ChartBuilder {
             self.layout_overrides.width(px);
         }
         self.layout_overrides.height(height);
-        plot::Frame::new(width, height)
+        plot::Frame::new(width, height, self.whole)
     }
 
     fn into_node_builder(mut self) -> NodeBuilder {

@@ -68,3 +68,31 @@ fn narrow_chart_dates_keep_the_day_digits_visible() {
         );
     });
 }
+
+#[test]
+fn a_whole_number_chart_never_labels_a_fraction() {
+    let labelled = |whole: bool| {
+        Runtime::scope("chart-whole-ticks", move || {
+            let mut host = Host::new();
+            host.mount(move || {
+                let plot = chart([0.0, 0.0, 1.0]).bar().height(400.0);
+                container()
+                    .layout(LayoutStyle::flex_column())
+                    .child(if whole { plot.whole_numbers() } else { plot })
+            });
+            host.layout((600.0, 500.0)).unwrap();
+            host.scene((600.0, 500.0))
+                .unwrap()
+                .find_text("0.5")
+                .is_some()
+        })
+    };
+    assert!(
+        labelled(false),
+        "a fractional midpoint is labelled by default"
+    );
+    assert!(
+        !labelled(true),
+        "a whole-number chart skips a fractional tick"
+    );
+}

@@ -27,11 +27,16 @@ const FLUID_COLUMNS: usize = 1024;
 pub(super) struct Frame {
     pub(super) width: Option<f32>,
     pub(super) height: f32,
+    pub(super) whole: bool,
 }
 
 impl Frame {
-    pub(super) const fn new(width: Option<f32>, height: f32) -> Self {
-        Self { width, height }
+    pub(super) const fn new(width: Option<f32>, height: f32, whole: bool) -> Self {
+        Self {
+            width,
+            height,
+            whole,
+        }
     }
 
     pub(super) fn padding(self) -> f32 {
@@ -117,7 +122,9 @@ pub(super) fn draw(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
     if x_axis_on {
         column = column.child(x_axis(plot.labels, count, gap, frame.label_stride(count)));
     }
-    let mid_tick = frame.plot_height(has_legend) >= MID_TICK_MIN;
+    let midpoint = span.lo.midpoint(span.hi);
+    let mid_tick =
+        frame.plot_height(has_legend) >= MID_TICK_MIN && (!frame.whole || midpoint.fract() == 0.0);
     let mut nodes = vec![
         container()
             .layout(
