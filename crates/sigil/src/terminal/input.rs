@@ -44,6 +44,10 @@ impl Wake {
     fn ready(&self, (wait, tick): (Option<Duration>, Duration), listen: bool) -> io::Result<bool> {
         use rustix::event::{PollFd, PollFlags, Timespec, poll};
         use std::io::Read;
+        if hung_up(io::stdin()) {
+            drop(signal_hook::low_level::raise(signal_hook::consts::SIGHUP));
+            return Ok(false);
+        }
         let Some(rx) = self
             .rx
             .as_ref()
@@ -80,6 +84,20 @@ impl Wake {
     fn ready(&self, (wait, tick): (Option<Duration>, Duration), _listen: bool) -> io::Result<bool> {
         event::poll(wait.unwrap_or(tick))
     }
+}
+
+#[cfg(unix)]
+pub(crate) fn hung_up(fd: impl rustix::fd::AsFd) -> bool {
+    use rustix::event::{PollFd, PollFlags, Timespec, poll};
+    let mut fds = [PollFd::new(&fd, PollFlags::IN)];
+    let now = Timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    poll(&mut fds, Some(&now)).is_ok()
+        && fds[0]
+            .revents()
+            .intersects(PollFlags::HUP | PollFlags::ERR | PollFlags::NVAL)
 }
 
 #[cfg(unix)]
@@ -216,3 +234,7 @@ fn quit(key: &crossterm::event::KeyEvent, config: &AppConfig) -> bool {
     }
     config.quit.esc && key.code == KeyCode::Esc
 }
+
+#[cfg(all(test, unix))]
+#[path = "input_tests.rs"]
+mod tests;
