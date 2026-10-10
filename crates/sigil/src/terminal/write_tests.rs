@@ -377,3 +377,6 @@ fn a_painted_last_cell_keeps_its_background() {
 
 #[path = "write_fill_tests.rs"]
 mod fills;
+
+#[path = "write_link_tests.rs"]
+mod links;

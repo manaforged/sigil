@@ -55,8 +55,7 @@ fn link(cx: &Cx, id: NodeId) -> Option<SmolStr> {
         AccessibleName::Derived(signal) => signal.peek(),
         AccessibleName::None => return None,
     };
-    let url = text.contains("://") || text.starts_with("mailto:");
-    (url && !text.chars().any(char::is_control)).then(|| SmolStr::from(text))
+    (text.contains("://") || text.starts_with("mailto:")).then(|| SmolStr::from(text))
 }
 
 fn caret_shape(draw: &DrawRect, cell: f32) -> bool {

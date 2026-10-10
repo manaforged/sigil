@@ -151,7 +151,10 @@ impl Style {
             underline_color: (styled && cell.underline_ink.set())
                 .then(|| paint(cell.underline_ink, caps.color))
                 .filter(|color| *color != Color::Reset),
-            link: cell.link.clone().filter(|_| caps.hyperlinks),
+            link: cell
+                .link
+                .clone()
+                .filter(|url| caps.hyperlinks && !url.chars().any(char::is_control)),
         }
     }
 
