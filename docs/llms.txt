@@ -102,7 +102,7 @@
 
 ## sigil-sign 0.1.0
 
-- [Every public item, one per line](reference/sigil-sign/api.txt): 46 lines
+- [Every public item, one per line](reference/sigil-sign/api.txt): 49 lines
 - [API overview](reference/sigil-sign/index.html): tasks, modules, features, and examples
 - [API changes by release](reference/sigil-sign/changes.html)
-- [sigil_sign](reference/sigil-sign/sigil_sign.html): 35 items
+- [sigil_sign](reference/sigil-sign/sigil_sign.html): 37 items
