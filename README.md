@@ -13,6 +13,7 @@ UI in Rust. One widget tree runs on three hosts. `sigil::run` opens a window or,
 ## Requirements
 
 - Rust 1.90 or newer.
+- On Linux, the window host needs the GTK3, udev, ALSA, xkbcommon, and xdo development packages. On Debian and Ubuntu: `sudo apt-get install libgtk-3-dev libudev-dev libasound2-dev libxkbcommon-dev libxkbcommon-x11-dev libxdo-dev`. The terminal host needs none of them.
 - A wgpu-capable GPU for the default renderer of the window host. Set `SIGIL_BACKEND=cpu` to use the CPU renderer. The terminal host needs no GPU.
 
 ## Platforms
@@ -89,7 +90,6 @@ The [`sigil-ui` README](crates/sigil/README.md#features) lists every feature. `d
 - The terminal host has no rounded corners and no shadows. It composes CJK input through the terminal's own input method. Images render through the terminal graphics protocol on Kitty, Ghostty, WezTerm, Konsole, iTerm2, Warp, and Sixel terminals. Other terminals show sextant glyphs.
 - Six fuzz targets cover the markdown, HTML, SVG, mermaid, class-string and scene-render inputs. Read [SECURITY.md](SECURITY.md) before you pass them untrusted input.
 - `sigil-pack macos` ad-hoc codesigns unless you pass a signing identity. Ad-hoc signing is not Developer ID or notarization.
-- A form can show a doubled label after you save it and open it again.
 
 ## API health
 
