@@ -274,7 +274,7 @@ impl Grid {
                     return;
                 };
                 cell.text = if pad == 0 {
-                    grapheme.into()
+                    crate::app::cell_glyph(grapheme).into()
                 } else {
                     SmolStr::new_inline(CONTINUES)
                 };

@@ -89,3 +89,21 @@ fn a_fill_over_a_bare_block_drops_the_block_glyph() {
     assert_eq!(cell.text, " ");
     assert_eq!(cell.bg, Ink::Exact(field));
 }
+
+#[test]
+fn control_characters_in_text_never_reach_the_terminal() {
+    let ink = Rgba8 {
+        r: 230,
+        g: 230,
+        b: 230,
+        a: 255,
+    };
+    let text = "a\x1b]52;c;eA==\x07b\tc\nd\x1b[2Je";
+    let grid = draw(vec![label(text, ink, TextStyle::default(), None)], 40, 1);
+    let shown: String = (0..40)
+        .filter_map(|x| grid.get(x, 0))
+        .map(|cell| cell.text.to_string())
+        .collect();
+    assert!(!shown.chars().any(char::is_control), "{shown:?}");
+    assert!(shown.starts_with('a'), "{shown:?}");
+}

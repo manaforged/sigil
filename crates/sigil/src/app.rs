@@ -56,6 +56,7 @@ pub use crate::text::fonts::{DefaultFonts, set_default_fonts, use_system_fonts};
 pub use appearance::set_theme;
 #[cfg(feature = "audio")]
 pub use audio::Player;
+pub(crate) use cell_text::cell_glyph;
 pub use cell_text::{
     Ambiguous, CellWidth, cell_text_lines, cell_width, set_ambiguous, set_cell_width,
 };

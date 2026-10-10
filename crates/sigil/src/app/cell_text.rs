@@ -48,6 +48,15 @@ fn char_width(ch: char) -> usize {
 }
 
 #[must_use]
+pub(crate) fn cell_glyph(text: &str) -> &str {
+    if text.chars().any(char::is_control) {
+        " "
+    } else {
+        text
+    }
+}
+
+#[must_use]
 pub fn cell_width(text: &str) -> usize {
     match CELL_WIDTH.get() {
         CellWidth::Unicode => match AMBIGUOUS.get() {

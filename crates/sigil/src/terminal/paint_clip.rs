@@ -1,4 +1,4 @@
-use crate::app::{cell_text_lines, cell_width};
+use crate::app::{cell_glyph, cell_text_lines, cell_width};
 use crate::geometry::Rect;
 use crate::kernel::{ImageCrop, ImageSource};
 use crate::scene::TextFlow;
@@ -212,7 +212,7 @@ impl Grid {
             for pad in 0..step {
                 if let Some(cell) = line.get_mut(x.saturating_add(pad)) {
                     cell.text = if pad == 0 {
-                        text.into()
+                        cell_glyph(text).into()
                     } else {
                         SmolStr::new_inline(CONTINUES)
                     };
