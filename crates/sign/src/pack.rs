@@ -207,6 +207,35 @@ pub struct CodeSign<'a> {
 
 impl CodeSign<'_> {
     #[cfg(target_os = "macos")]
+    pub fn sign(&self, path: &Path) -> Result<(), PackError> {
+        let metadata = refuse_link(path)?;
+        if !(metadata.is_file()
+            || metadata.is_dir() && path.extension().is_some_and(|extension| extension == "app"))
+        {
+            return Err(PackError::Codesign(format!(
+                "{} is not a regular executable or an .app bundle",
+                path.display()
+            )));
+        }
+        let status = Command::new("/usr/bin/codesign")
+            .args(self.args(path))
+            .status()
+            .map_err(PackError::Io)?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(PackError::Codesign(status.to_string()))
+        }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    pub fn sign(&self, _path: &Path) -> Result<(), PackError> {
+        Err(PackError::Codesign(
+            "native signing is supported only on macOS".into(),
+        ))
+    }
+
+    #[cfg(target_os = "macos")]
     fn args(&self, app: &Path) -> Vec<OsString> {
         let mut args: Vec<OsString> = vec!["--force".into(), "--sign".into()];
         match self.identity {
@@ -224,19 +253,6 @@ impl CodeSign<'_> {
         }
         args.push(app.into());
         args
-    }
-}
-
-#[cfg(target_os = "macos")]
-fn codesign(app: &Path, sign: &CodeSign<'_>) -> Result<(), PackError> {
-    let status = Command::new("/usr/bin/codesign")
-        .args(sign.args(app))
-        .status()
-        .map_err(PackError::Io)?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(PackError::Codesign(status.to_string()))
     }
 }
 
@@ -265,7 +281,7 @@ pub fn macos_app(
         copy_tree(copy.from, &relative_inside(&resources_dir, copy.to)?)?;
     }
     #[cfg(target_os = "macos")]
-    codesign(dest, sign)?;
+    sign.sign(dest)?;
     #[cfg(not(target_os = "macos"))]
     let _ = sign;
     Ok(())

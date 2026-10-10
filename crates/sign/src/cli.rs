@@ -1,7 +1,21 @@
 use std::path::{Path, PathBuf};
 
+use serde::Deserialize;
+use serde::de::value::{Error as ValueError, StrDeserializer};
+
 use crate::files::{replace, write_new};
 use crate::{AppBundle, CodeSign, ResourceCopy, macos_app, sign_file, verify_file, windows_dir};
+
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum PackCommand {
+    Macos,
+    Windows,
+    Codesign,
+    Sign,
+    Verify,
+    Genkey,
+}
 
 fn flag(args: &[String], name: &str) -> Result<Option<String>, String> {
     let mut rest = args.iter();
@@ -72,15 +86,33 @@ fn resources(pairs: &[(PathBuf, PathBuf)]) -> Vec<ResourceCopy<'_>> {
 pub fn pack_cli(argv: &[String]) -> Result<(), String> {
     let (cmd, rest) = argv
         .split_first()
-        .ok_or("usage: sigil-pack <macos|windows|sign|verify|genkey>")?;
-    match cmd.as_str() {
-        "macos" => pack_macos(rest),
-        "windows" => pack_windows(rest),
-        "sign" => pack_sign(rest),
-        "verify" => pack_verify(rest),
-        "genkey" => pack_genkey(rest),
-        other => Err(format!("unknown command: {other}")),
+        .ok_or("usage: sigil-pack <macos|windows|codesign|sign|verify|genkey>")?;
+    let command = PackCommand::deserialize(StrDeserializer::<ValueError>::new(cmd))
+        .map_err(|_| format!("unknown command: {cmd}"))?;
+    match command {
+        PackCommand::Macos => pack_macos(rest),
+        PackCommand::Windows => pack_windows(rest),
+        PackCommand::Codesign => pack_codesign(rest),
+        PackCommand::Sign => pack_sign(rest),
+        PackCommand::Verify => pack_verify(rest),
+        PackCommand::Genkey => pack_genkey(rest),
     }
+}
+
+fn codesign_identity(argv: &[String]) -> Result<Option<String>, String> {
+    Ok(flag(argv, "--identity")?.or_else(|| std::env::var("SIGIL_CODESIGN_IDENTITY").ok()))
+}
+
+fn pack_codesign(argv: &[String]) -> Result<(), String> {
+    let file = flag(argv, "--file")?.ok_or("missing --file")?;
+    let identity = codesign_identity(argv)?;
+    let entitlements = flag(argv, "--entitlements")?;
+    CodeSign {
+        identity: identity.as_deref().filter(|value| !value.is_empty()),
+        entitlements: entitlements.as_deref().map(Path::new),
+    }
+    .sign(Path::new(&file))
+    .map_err(|error| error.to_string())
 }
 
 fn pack_macos(argv: &[String]) -> Result<(), String> {
@@ -93,8 +125,7 @@ fn pack_macos(argv: &[String]) -> Result<(), String> {
     let min = flag(argv, "--min")?.unwrap_or_else(|| "10.15".into());
     let exe_name = flag(argv, "--exe-name")?.unwrap_or_else(|| name.clone());
     let copies = resource_pairs(argv)?;
-    let identity =
-        flag(argv, "--identity")?.or_else(|| std::env::var("SIGIL_CODESIGN_IDENTITY").ok());
+    let identity = codesign_identity(argv)?;
     let entitlements = flag(argv, "--entitlements")?;
     let sign = CodeSign {
         identity: identity.as_deref().filter(|value| !value.is_empty()),

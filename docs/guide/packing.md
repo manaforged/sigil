@@ -21,6 +21,23 @@ sigil-pack macos \
 
 The command writes `Contents/MacOS`, `Contents/Info.plist`, and `Contents/Resources`. Destination paths must stay inside the bundle. Symlinks in the source tree are refused.
 
+### Native code signing
+
+To sign an existing executable or `.app` bundle on macOS:
+
+```sh
+sigil-pack codesign \
+  --file target/release/myapp \
+  --identity 'Developer ID Application: Example Company (TEAMID)' \
+  --entitlements entitlements.plist
+```
+
+`macos` and `codesign` use the same signer. `--identity` takes precedence over `SIGIL_CODESIGN_IDENTITY`. Without an identity, the signer creates an ad-hoc signature. With an identity, it enables the hardened runtime and requests a secure timestamp. `--entitlements` applies only when an identity is supplied.
+
+The Rust API is `CodeSign::sign(&self, path: &Path) -> Result<(), PackError>` from `sigil_sign`. It signs the target in place and refuses symlinks. Native signing returns an error on other platforms. The `macos` command can still create an unsigned bundle on those platforms.
+
+Signing does not submit the target for notarization or staple a notarization ticket. Complete those steps separately before distributing a downloaded macOS app.
+
 ## Windows
 
 ```sh

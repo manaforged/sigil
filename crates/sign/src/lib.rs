@@ -131,6 +131,10 @@ fn load_key(secret_key: &str, password: Option<&str>) -> Result<SecretKey, SignE
 #[path = "sign_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+#[path = "pack_native_tests.rs"]
+mod pack_native_tests;
+
 #[cfg(doctest)]
 #[doc = include_str!("../../../docs/guide/signing.md")]
 pub struct SigningGuide;
