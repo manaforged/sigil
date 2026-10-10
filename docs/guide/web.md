@@ -6,7 +6,7 @@ The window host also builds for `wasm32-unknown-unknown`. `sigil::run` draws the
 
 ```bash
 rustup target add wasm32-unknown-unknown
-cargo build --release --target wasm32-unknown-unknown --example hello-counter
+cargo build --release -p sigil-ui --target wasm32-unknown-unknown --example hello-counter
 wasm-bindgen --target web --out-dir web \
   target/wasm32-unknown-unknown/release/examples/hello-counter.wasm
 ```

@@ -37,7 +37,7 @@ Read these before you write a helper. Most jobs already have a function.
 | --- | --- |
 | [docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md) | Look up every item at the crate root and in the prelude, with its signature, purpose, and an example that compiles. The "Jobs to symbols" section maps a job to the call. |
 | [api.txt](https://raw.githubusercontent.com/manaforged/sigil/main/docs/reference/sigil-ui/api.txt) | Search every public item by path, one per line. |
-| [llms.txt](https://raw.githubusercontent.com/manaforged/sigil/main/docs/llms.txt) | Index of the per-module reference pages and the examples. |
+| [API reference index](https://raw.githubusercontent.com/manaforged/sigil/main/docs/reference/sigil-ui/index.md) | Index of the per-module reference pages and the examples. |
 | [Recipes](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, host hooks, and screen readers. |
 | [GUI and TUI](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/hosts.md) | Build for the window, the terminal, or both. |
 | [Testing](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/testing.md) | Drive the UI from a test with `sigil_kittest::Harness`. |

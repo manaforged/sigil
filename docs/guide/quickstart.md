@@ -1,6 +1,6 @@
 # Quickstart
 
-Sigil is a desktop UI library in Rust. State is a signal graph. Layout, text shaping, and the wgpu renderer are owned code. AccessKit, IME, typed styling, and the widget catalog ship in the crate. You write plain Rust against one import.
+Sigil is a UI library in Rust for desktop windows, terminals, and the web. State is a signal graph. Layout, text shaping, and the wgpu renderer are owned code. AccessKit, IME, typed styling, and the widget catalog ship in the crate. You write plain Rust against one import.
 
 ```rust,no_run
 use sigil::prelude::*;

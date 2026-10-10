@@ -70,7 +70,7 @@ allow = [
 ]
 confidence-threshold = 0.93
 exceptions = [
-    { allow = ["OFL-1.1"], crate = "sigil-fonts" },
+    { allow = ["OFL-1.1", "Bitstream-Vera"], crate = "sigil-fonts" },
 ]
 
 [licenses.private]
