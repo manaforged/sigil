@@ -107,3 +107,44 @@ fn an_unterminated_alt_bracket_stays_a_key() {
     strip_replies(&mut events);
     assert_eq!(events, before);
 }
+
+#[test]
+fn altgr_characters_type_as_text() -> Result<(), String> {
+    for ch in ['@', '{', '€', 'ą'] {
+        let event =
+            TerminalKeyEvent::new(KeyCode::Char(ch), KeyModifiers::CONTROL | KeyModifiers::ALT);
+        let Some(ShellEvent::Key(mapped)) = map_key(&event) else {
+            return Err(format!("{ch} was dropped"));
+        };
+        assert_eq!(mapped.text.as_deref(), Some(ch.to_string().as_str()));
+        assert!(
+            !mapped
+                .modifiers
+                .intersects(ModifiersState::CONTROL | ModifiersState::ALT)
+        );
+    }
+    let shortcut = TerminalKeyEvent::new(
+        KeyCode::Char('k'),
+        KeyModifiers::CONTROL | KeyModifiers::ALT,
+    );
+    let Some(ShellEvent::Key(mapped)) = map_key(&shortcut) else {
+        return Err("ctrl+alt+k was dropped".to_string());
+    };
+    assert!(mapped.text.is_none());
+    Ok(())
+}
+
+#[test]
+fn a_burst_of_typed_lines_reads_as_one_paste() {
+    let mut burst = typed_keys("first line");
+    burst.push(key(KeyCode::Enter, KeyModifiers::NONE));
+    burst.extend(typed_keys("second"));
+    assert_eq!(burst_paste(&burst).as_deref(), Some("first line\nsecond"));
+    assert_eq!(burst_paste(&typed_keys("no newline here at all")), None);
+    let mut short = typed_keys("hi");
+    short.push(key(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(burst_paste(&short), None);
+    let mut chord = typed_keys("first line");
+    chord.push(key(KeyCode::Enter, KeyModifiers::CONTROL));
+    assert_eq!(burst_paste(&chord), None);
+}

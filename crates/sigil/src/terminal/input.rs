@@ -113,6 +113,11 @@ pub(crate) fn gather_input(
         ready = event::poll(Duration::ZERO).map_err(Error::io)?;
     }
     strip_replies(&mut burst);
+    #[cfg(windows)]
+    if let Some(text) = crate::terminal::keys::burst_paste(&burst) {
+        incoming.push(crate::terminal::keys::paste(&text));
+        burst.clear();
+    }
     for read in burst {
         match map_input(read, config, pointer) {
             Input::Quit => return Ok(Incoming::Quit),

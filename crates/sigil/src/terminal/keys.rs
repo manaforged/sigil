@@ -4,6 +4,9 @@ use crate::events::{
 use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers, MediaKeyCode, ModifierKeyCode};
 use smol_str::SmolStr;
 
+#[cfg(any(windows, test))]
+const PASTE_BURST: usize = 8;
+
 #[must_use]
 pub fn key_down(key: impl Into<LogicalKey>) -> ShellEvent {
     let key = key.into();
@@ -26,21 +29,30 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
     };
     let code = shifted(event);
     let key = logical(code)?;
+    let altgr = event
+        .modifiers
+        .contains(KeyModifiers::CONTROL | KeyModifiers::ALT)
+        && matches!(code, KeyCode::Char(ch) if !ch.is_ascii_alphanumeric());
     let text = match code {
         KeyCode::Char(ch)
             if phase == KeyPhase::Down
-                && !event
-                    .modifiers
-                    .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+                && (altgr
+                    || !event
+                        .modifiers
+                        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)) =>
         {
             Some(SmolStr::from(ch.to_string()))
         }
         _ => None,
     };
+    let mut held = modifiers(event);
+    if altgr {
+        held -= ModifiersState::CONTROL | ModifiersState::ALT;
+    }
     Some(ShellEvent::Key(KeyEvent::new(KeyEventInit {
         key,
         physical: PhysicalKey::Unidentified,
-        modifiers: modifiers(event),
+        modifiers: held,
         repeat,
         phase,
         text,
@@ -136,6 +148,33 @@ fn pressed(event: &Event) -> Option<(KeyCode, KeyModifiers)> {
 }
 
 #[must_use]
+#[cfg(any(windows, test))]
+pub(crate) fn burst_paste(burst: &[Event]) -> Option<String> {
+    let mut text = String::new();
+    let mut lines = 0_usize;
+    for event in burst {
+        let Event::Key(key) = event else {
+            return None;
+        };
+        if key.kind == KeyEventKind::Release {
+            continue;
+        }
+        if !(key.modifiers - KeyModifiers::SHIFT).is_empty() {
+            return None;
+        }
+        match key.code {
+            KeyCode::Char(ch) => text.push(ch),
+            KeyCode::Enter => {
+                text.push('\n');
+                lines += 1;
+            }
+            KeyCode::Tab => text.push('\t'),
+            _ => return None,
+        }
+    }
+    (lines > 0 && text.chars().count() >= PASTE_BURST).then_some(text)
+}
+
 pub fn paste(text: &str) -> ShellEvent {
     ShellEvent::Paste(text.to_string())
 }
