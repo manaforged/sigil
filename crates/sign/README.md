@@ -37,15 +37,17 @@ Pass `None` for an unencrypted key. `sign_file` returns the signature as text. Y
 
 `macos_app` and `windows_dir` build the bundles. `sigil-pack macos`, `sigil-pack windows`, `sigil-pack sign`, and `sigil-pack verify` run the same steps from the command line. `sigil-pack genkey DIR` writes a new key pair. `sigil-pack sign` and `sigil-pack genkey` read the key password from `SIGIL_PACK_PASSWORD`. `sigil-pack sign` writes the plain minisign envelope to `<file>.sig`; `minisign -V` accepts it.
 
+Set `AppBundle::provisioning_profile` to `Some(path)` to embed a macOS provisioning profile, or `None` to omit it. The CLI accepts `sigil-pack macos --provisioning-profile PATH`. The bundle builder copies the regular, non-symlink file unchanged to `Contents/embedded.provisionprofile` before signing. A profile requires a nonempty signing identity; ad-hoc signing is refused. `windows_dir` and other CLI commands reject provisioning profiles. `CodeSign` signs the completed bundle or an executable; it does not embed profiles.
+
 ## API
 
 <!-- truesight:surface sigil-sign -->
 
-35 public items (5 types, 6 functions, 11 fields, 13 variants) at 35 paths; 0 are re-export aliases. 10 trait impl lines, 0 inherent impl lines. 1 module, 0 re-export only.
+37 public items (5 types, 6 functions, 1 method, 12 fields, 13 variants) at 37 paths; 0 are re-export aliases. 10 trait impl lines, 1 inherent impl line. 1 module, 0 re-export only.
 
 | Module | Items | Types | Functions | Methods | Aliases |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `sigil_sign` | 35 | 5 | 6 | 0 | 0 |
+| `sigil_sign` | 37 | 5 | 6 | 1 | 0 |
 
 <!-- /truesight -->
 

@@ -1604,6 +1604,19 @@ do not branch on the host. The rasteriser maps each command to cells:
 TopLayer content comes last in the scene, so it draws above clipped
 content.
 
+## App bundles
+
+Package `sigil-sign`, library `sigil_sign`. Guide: [Signing](guide/signing.md).
+
+| Name | Signature | Purpose |
+| --- | --- | --- |
+| `sigil_sign::AppBundle` | Fields: `name`, `identifier`, `version`, `executable`, `exe_name`, `icon`, `provisioning_profile: Option<&Path>`, `min_system` | Bundle metadata and inputs. Set `provisioning_profile` to `None` when no macOS profile is required. |
+| `sigil_sign::CodeSign` | Fields: `identity: Option<&str>`, `entitlements: Option<&Path>`; `.sign(path: &Path) -> Result<(), PackError>` | Native macOS signing for an executable or a completed `.app`. `None` selects ad-hoc signing. Profiles belong to `AppBundle`. |
+| `sigil_sign::macos_app` | `fn macos_app(app: &AppBundle<'_>, resources: &[ResourceCopy<'_>], dest: &Path, sign: &CodeSign<'_>) -> Result<(), PackError>` | Build the app, copy an optional regular, non-symlink profile unchanged to `Contents/embedded.provisionprofile`, then sign on macOS. A profile requires a nonempty identity other than `-`. |
+| `sigil_sign::windows_dir` | `fn windows_dir(app: &AppBundle<'_>, resources: &[ResourceCopy<'_>], dest: &Path) -> Result<(), PackError>` | Build the Windows app directory. Rejects `AppBundle::provisioning_profile`. |
+
+`sigil-pack macos --provisioning-profile PATH` sets the profile. Other commands reject this flag. `--identity` or `SIGIL_CODESIGN_IDENTITY` supplies the identity. Profile embedding does not validate the profile's contents, expiration, application identifier, or entitlements.
+
 ## Errors
 
 | Type | Returned by | Meaning |

@@ -89,6 +89,11 @@ pub fn pack_cli(argv: &[String]) -> Result<(), String> {
         .ok_or("usage: sigil-pack <macos|windows|codesign|sign|verify|genkey>")?;
     let command = PackCommand::deserialize(StrDeserializer::<ValueError>::new(cmd))
         .map_err(|_| format!("unknown command: {cmd}"))?;
+    if !matches!(command, PackCommand::Macos)
+        && rest.iter().any(|arg| arg == "--provisioning-profile")
+    {
+        return Err("--provisioning-profile is supported only by macos".into());
+    }
     match command {
         PackCommand::Macos => pack_macos(rest),
         PackCommand::Windows => pack_windows(rest),
@@ -122,6 +127,10 @@ fn pack_macos(argv: &[String]) -> Result<(), String> {
     let ident = flag(argv, "--id")?.ok_or("missing --id")?;
     let version = flag(argv, "--version")?.ok_or("missing --version")?;
     let icon = flag(argv, "--icon")?;
+    let provisioning_profile = flag(argv, "--provisioning-profile")?;
+    if provisioning_profile.is_none() && argv.iter().any(|arg| arg == "--provisioning-profile") {
+        return Err("--provisioning-profile requires a value".into());
+    }
     let min = flag(argv, "--min")?.unwrap_or_else(|| "10.15".into());
     let exe_name = flag(argv, "--exe-name")?.unwrap_or_else(|| name.clone());
     let copies = resource_pairs(argv)?;
@@ -139,6 +148,7 @@ fn pack_macos(argv: &[String]) -> Result<(), String> {
         executable: Path::new(&exe),
         exe_name: &exe_name,
         icon: icon_path,
+        provisioning_profile: provisioning_profile.as_deref().map(Path::new),
         min_system: &min,
     };
     macos_app(&app, &resources(&copies), Path::new(&out), &sign).map_err(|e| e.to_string())
@@ -156,6 +166,7 @@ fn pack_windows(argv: &[String]) -> Result<(), String> {
         executable: Path::new(&exe),
         exe_name: &name,
         icon: None,
+        provisioning_profile: None,
         min_system: "",
     };
     windows_dir(&app, &resources(&copies), Path::new(&out)).map_err(|e| e.to_string())

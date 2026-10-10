@@ -41,3 +41,19 @@ sigil_sign::verify_file(
 `verify_file` checks the signature, then checks that the trusted comment names the file and the version you expect to install, so an older signed package is refused. A mismatch returns `SignError::TrustedComment`.
 
 The application embeds the public key. It verifies each package against the signature beside it before it installs the update.
+
+## Embed a macOS provisioning profile
+
+```bash
+sigil-pack macos --exe target/release/MyApp --out MyApp.app \
+  --name MyApp --id com.example.myapp --version 0.1.0 \
+  --identity "Developer ID Application: Example" \
+  --provisioning-profile MyApp.provisionprofile \
+  --entitlements MyApp.entitlements
+```
+
+The builder copies the profile unchanged to `Contents/embedded.provisionprofile` before signing the app. The source must be a regular file, without a symlink. A profile requires a nonempty signing identity. An absent identity or `-` selects ad-hoc signing and is refused when a profile is supplied. You can also supply the identity through `SIGIL_CODESIGN_IDENTITY`.
+
+For the Rust API, set `AppBundle::provisioning_profile` to `Some(path)`. Use `None` for a bundle without a profile. `CodeSign` holds the identity and entitlements. `windows_dir` rejects a profile, and the CLI accepts `--provisioning-profile` only for `macos`.
+
+Supply a profile and entitlements that match your application's identifier and signing identity. The builder does not validate the profile's contents or expiration. Native signing requires macOS. Profile embedding does not notarize the app.

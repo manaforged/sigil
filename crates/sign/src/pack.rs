@@ -21,6 +21,7 @@ pub struct AppBundle<'a> {
     pub executable: &'a Path,
     pub exe_name: &'a str,
     pub icon: Option<&'a Path>,
+    pub provisioning_profile: Option<&'a Path>,
     pub min_system: &'a str,
 }
 
@@ -262,6 +263,15 @@ pub fn macos_app(
     dest: &Path,
     sign: &CodeSign<'_>,
 ) -> Result<(), PackError> {
+    if app.provisioning_profile.is_some()
+        && !sign
+            .identity
+            .is_some_and(|identity| !identity.trim().is_empty() && identity.trim() != "-")
+    {
+        return Err(PackError::Codesign(
+            "a provisioning profile requires a signing identity".into(),
+        ));
+    }
     prepare_dest(dest)?;
     let macos = dest.join("Contents/MacOS");
     let resources_dir = dest.join("Contents/Resources");
@@ -280,6 +290,9 @@ pub fn macos_app(
     for copy in resources {
         copy_tree(copy.from, &relative_inside(&resources_dir, copy.to)?)?;
     }
+    if let Some(profile) = app.provisioning_profile {
+        copy_regular_file(profile, &dest.join("Contents/embedded.provisionprofile"))?;
+    }
     #[cfg(target_os = "macos")]
     sign.sign(dest)?;
     #[cfg(not(target_os = "macos"))]
@@ -292,6 +305,11 @@ pub fn windows_dir(
     resources: &[ResourceCopy<'_>],
     dest: &Path,
 ) -> Result<(), PackError> {
+    if app.provisioning_profile.is_some() {
+        return Err(PackError::Codesign(
+            "provisioning profiles are supported only for macOS app bundles".into(),
+        ));
+    }
     prepare_dest(dest)?;
     fs::create_dir_all(dest).map_err(PackError::Io)?;
     copy_regular_file(app.executable, &dest.join(one_component(app.exe_name)?))?;

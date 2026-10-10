@@ -27,10 +27,13 @@ pub sigil_sign::AppBundle::icon: core::option::Option<&'a std::path::Path>
 pub sigil_sign::AppBundle::identifier: &'a str
 pub sigil_sign::AppBundle::min_system: &'a str
 pub sigil_sign::AppBundle::name: &'a str
+pub sigil_sign::AppBundle::provisioning_profile: core::option::Option<&'a std::path::Path>
 pub sigil_sign::AppBundle::version: &'a str
 pub struct sigil_sign::CodeSign<'a>
 pub sigil_sign::CodeSign::entitlements: core::option::Option<&'a std::path::Path>
 pub sigil_sign::CodeSign::identity: core::option::Option<&'a str>
+impl sigil_sign::CodeSign<'_>
+pub fn sigil_sign::CodeSign<'_>::sign(&self, path: &std::path::Path) -> core::result::Result<(), sigil_sign::PackError>
 impl<'a> core::clone::Clone for sigil_sign::CodeSign<'a>
 impl<'a> core::default::Default for sigil_sign::CodeSign<'a>
 impl<'a> core::fmt::Debug for sigil_sign::CodeSign<'a>

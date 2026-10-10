@@ -28,10 +28,17 @@
 | <code>identifier: &amp;'a str</code> |  |
 | <code>min_system: &amp;'a str</code> |  |
 | <code>name: &amp;'a str</code> |  |
+| <code>provisioning_profile: Option&lt;&amp;'a Path&gt;</code> |  |
 | <code>version: &amp;'a str</code> |  |
 
 
 ### `CodeSign`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>pub fn <a href="#codesign">CodeSign</a>&lt;'_&gt;::sign(&amp;self, path: &amp;Path) -&gt; Result&lt;(), <a href="#packerror">PackError</a>&gt;</code> |  |
 
 **Fields**
 
