@@ -135,47 +135,6 @@ fn pressed(event: &Event) -> Option<(KeyCode, KeyModifiers)> {
     }
 }
 
-pub(crate) fn coalesce_paste(events: Vec<Event>) -> Vec<Event> {
-    let mut out = Vec::with_capacity(events.len());
-    let mut run = (String::new(), Vec::new());
-    for event in events {
-        if let Some(ch) = typed(&event) {
-            run.0.push(ch);
-            run.1.push(event);
-        } else {
-            settle(&mut out, &mut run);
-            out.push(event);
-        }
-    }
-    settle(&mut out, &mut run);
-    out
-}
-
-fn settle(out: &mut Vec<Event>, (text, held): &mut (String, Vec<Event>)) {
-    let text = core::mem::take(text);
-    if text.trim_end_matches('\n').contains('\n') {
-        held.clear();
-        out.push(Event::Paste(text));
-    } else {
-        out.append(held);
-    }
-}
-
-fn typed(event: &Event) -> Option<char> {
-    let Event::Key(key) = event else {
-        return None;
-    };
-    if key.kind == KeyEventKind::Release || !(key.modifiers - KeyModifiers::SHIFT).is_empty() {
-        return None;
-    }
-    match shifted(key) {
-        KeyCode::Char(ch) => Some(ch),
-        KeyCode::Enter => Some('\n'),
-        KeyCode::Tab => Some('\t'),
-        _ => None,
-    }
-}
-
 #[must_use]
 pub fn paste(text: &str) -> ShellEvent {
     ShellEvent::Paste(text.to_string())
@@ -224,25 +183,7 @@ fn modifiers(event: &crossterm::event::KeyEvent) -> ModifiersState {
     {
         state |= ModifiersState::META;
     }
-    note_enter_shift(state, event.code == KeyCode::Enter, shift_held())
-}
-
-fn note_enter_shift(mut state: ModifiersState, enter: bool, shift_down: bool) -> ModifiersState {
-    if enter && shift_down {
-        state |= ModifiersState::SHIFT;
-    }
     state
-}
-
-#[cfg(target_os = "macos")]
-fn shift_held() -> bool {
-    use objc2_app_kit::{NSEvent, NSEventModifierFlags};
-    NSEvent::modifierFlags_class().contains(NSEventModifierFlags::Shift)
-}
-
-#[cfg(not(target_os = "macos"))]
-fn shift_held() -> bool {
-    false
 }
 
 fn logical(code: KeyCode) -> Option<LogicalKey> {

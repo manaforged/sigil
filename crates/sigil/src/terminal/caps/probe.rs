@@ -9,7 +9,7 @@ const TIMEOUT: Duration = Duration::from_secs(1);
 pub(super) fn ask(ask: Questions, backdrop: bool) -> Option<Answers> {
     use std::io::{IsTerminal, Write};
     let stdin = std::io::stdin();
-    if !stdin.is_terminal() || !std::io::stdout().is_terminal() || ready(&stdin, Duration::ZERO)? {
+    if !stdin.is_terminal() || !std::io::stdout().is_terminal() || typing(&stdin)? {
         return None;
     }
     let mut out = std::io::stdout().lock();
@@ -26,7 +26,7 @@ pub(crate) fn exchange(
 ) -> Option<String> {
     use std::io::{IsTerminal, Write};
     let stdin = std::io::stdin();
-    if !stdin.is_terminal() || !std::io::stdout().is_terminal() {
+    if !stdin.is_terminal() || !std::io::stdout().is_terminal() || typing(&stdin)? {
         return None;
     }
     let mut out = std::io::stdout().lock();
@@ -38,6 +38,18 @@ pub(crate) fn exchange(
     let finished = |text: &str| done(text) || da1(text).is_some();
     collect(&stdin, &mut reply, Instant::now() + TIMEOUT, finished).then_some(())?;
     Some(String::from_utf8_lossy(&reply).into_owned())
+}
+
+pub(super) fn keys() -> Option<bool> {
+    use std::io::IsTerminal;
+    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
+        return None;
+    }
+    crossterm::terminal::supports_keyboard_enhancement().ok()
+}
+
+fn typing(stdin: &impl AsFd) -> Option<bool> {
+    Some(crossterm::event::poll(Duration::ZERO).unwrap_or(true) || ready(stdin, Duration::ZERO)?)
 }
 
 fn queries(ask: Questions, backdrop: bool) -> String {

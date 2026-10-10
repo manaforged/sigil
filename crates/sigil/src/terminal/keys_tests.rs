@@ -3,18 +3,6 @@ use crossterm::event::{Event, KeyCode, KeyEvent as TerminalKeyEvent, KeyModifier
 use super::*;
 
 #[test]
-fn shift_enter_is_a_newline_chord_when_the_terminal_omits_shift() {
-    let bare = ModifiersState::empty();
-    assert_eq!(
-        note_enter_shift(bare, true, true),
-        ModifiersState::SHIFT,
-        "Enter while Shift is held inserts a newline"
-    );
-    assert_eq!(note_enter_shift(bare, true, false), bare);
-    assert_eq!(note_enter_shift(bare, false, true), bare);
-}
-
-#[test]
 fn terminal_function_keys_reach_application_shortcuts() -> Result<(), String> {
     for (number, expected) in [(1, Key::F1), (5, Key::F5), (35, Key::F35)] {
         let event = TerminalKeyEvent::new(KeyCode::F(number), KeyModifiers::SHIFT);
@@ -118,16 +106,4 @@ fn an_unterminated_alt_bracket_stays_a_key() {
     let before = events.clone();
     strip_replies(&mut events);
     assert_eq!(events, before);
-}
-
-#[test]
-fn an_unbracketed_multi_line_burst_arrives_as_one_paste() {
-    let pasted = coalesce_paste(typed_keys("first\nsecond"));
-    assert_eq!(pasted, vec![Event::Paste("first\nsecond".to_owned())]);
-    let submitted = typed_keys("k\n");
-    assert_eq!(
-        coalesce_paste(submitted.clone()),
-        submitted,
-        "a key and Enter stay keys so Enter still submits"
-    );
 }

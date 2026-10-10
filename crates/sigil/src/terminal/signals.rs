@@ -78,9 +78,12 @@ fn proceed() {
 
 #[cfg(unix)]
 pub(crate) fn halt() {
-    let _painting = painting();
-    HALTED.store(true, Ordering::Relaxed);
-    crate::terminal::term::restore();
+    {
+        let _painting = painting();
+        HALTED.store(true, Ordering::Relaxed);
+        crate::terminal::term::restore();
+    }
+    wake();
 }
 
 #[cfg(unix)]
@@ -103,11 +106,7 @@ impl SignalGuard {
                     match signal {
                         SIGTSTP => pause(),
                         SIGCONT => proceed(),
-                        _ => {
-                            halt();
-                            drop(signal_hook::low_level::emulate_default_handler(signal));
-                            break;
-                        }
+                        _ => halt(),
                     }
                 }
             })?;

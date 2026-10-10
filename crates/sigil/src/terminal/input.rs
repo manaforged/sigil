@@ -5,7 +5,7 @@ use crossterm::event::{self, Event};
 
 use crate::events::{ShellEvent, WindowEvent};
 use crate::geometry::{LogicalSize, Scale};
-use crate::terminal::keys::{coalesce_paste, map_key, push_key_text, strip_replies};
+use crate::terminal::keys::{map_key, push_key_text, strip_replies};
 use crate::terminal::mouse::map_mouse;
 use crate::terminal::run::{CELL, Hooks};
 use crate::terminal::term::set_focused;
@@ -113,7 +113,7 @@ pub(crate) fn gather_input(
         ready = event::poll(Duration::ZERO).map_err(Error::io)?;
     }
     strip_replies(&mut burst);
-    for read in coalesce_paste(burst) {
+    for read in burst {
         match map_input(read, config, pointer) {
             Input::Quit => return Ok(Incoming::Quit),
             Input::Suspend => crate::terminal::signals::stop(),
