@@ -140,11 +140,13 @@ impl Caps {
 
     #[must_use]
     pub fn probe() -> Self {
-        let mut draft = draft(&|key: &str| std::env::var(key).ok());
+        let draft = draft(&|key: &str| std::env::var(key).ok());
         #[cfg(unix)]
-        {
+        let draft = {
+            let mut draft = draft;
             draft.caps.keyboard = keyboard(probe::keys());
-        }
+            draft
+        };
         let backdrop = draft.caps.backdrop.is_none();
         if draft.ask.none() && !backdrop {
             return draft.caps;
