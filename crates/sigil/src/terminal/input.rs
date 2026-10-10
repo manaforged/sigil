@@ -21,6 +21,8 @@ pub(crate) enum Incoming {
 pub(crate) struct Wake {
     #[cfg(unix)]
     rx: Option<std::os::unix::net::UnixStream>,
+    #[cfg(windows)]
+    pasted: std::cell::Cell<Option<std::time::Instant>>,
 }
 
 impl Wake {
@@ -37,7 +39,17 @@ impl Wake {
 
     #[cfg(not(unix))]
     pub(crate) const fn install(_async_rt: &mut crate::tasks::AsyncRuntime) -> Self {
-        Self {}
+        Self {
+            #[cfg(windows)]
+            pasted: std::cell::Cell::new(None),
+        }
+    }
+
+    #[cfg(windows)]
+    fn follows_paste(&self) -> bool {
+        self.pasted
+            .get()
+            .is_some_and(|at| at.elapsed() < crate::terminal::keys::PASTE_GAP)
     }
 
     #[cfg(unix)]
@@ -153,7 +165,8 @@ pub(crate) fn gather_input(
     }
     strip_replies(&mut burst);
     #[cfg(windows)]
-    if let Some(text) = crate::terminal::keys::burst_paste(&burst) {
+    if let Some(text) = crate::terminal::keys::burst_paste(&burst, wake.follows_paste()) {
+        wake.pasted.set(Some(std::time::Instant::now()));
         incoming.push(crate::terminal::keys::paste(&text));
         burst.clear();
     }

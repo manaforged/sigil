@@ -139,12 +139,30 @@ fn a_burst_of_typed_lines_reads_as_one_paste() {
     let mut burst = typed_keys("first line");
     burst.push(key(KeyCode::Enter, KeyModifiers::NONE));
     burst.extend(typed_keys("second"));
-    assert_eq!(burst_paste(&burst).as_deref(), Some("first line\nsecond"));
-    assert_eq!(burst_paste(&typed_keys("no newline here at all")), None);
+    assert_eq!(
+        burst_paste(&burst, false).as_deref(),
+        Some("first line\nsecond")
+    );
+    assert_eq!(
+        burst_paste(&typed_keys("no newline here at all"), false),
+        None
+    );
     let mut short = typed_keys("hi");
     short.push(key(KeyCode::Enter, KeyModifiers::NONE));
-    assert_eq!(burst_paste(&short), None);
+    assert_eq!(burst_paste(&short, false), None);
     let mut chord = typed_keys("first line");
     chord.push(key(KeyCode::Enter, KeyModifiers::CONTROL));
-    assert_eq!(burst_paste(&chord), None);
+    assert_eq!(burst_paste(&chord, false), None);
+}
+
+#[test]
+fn a_short_paste_and_its_last_fragment_stay_one_paste() {
+    let mut two = typed_keys("a");
+    two.push(key(KeyCode::Enter, KeyModifiers::NONE));
+    two.extend(typed_keys("b"));
+    assert_eq!(burst_paste(&two, false).as_deref(), Some("a\nb"));
+    let mut tail = typed_keys("ok");
+    tail.push(key(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(burst_paste(&tail, false), None);
+    assert_eq!(burst_paste(&tail, true).as_deref(), Some("ok\n"));
 }

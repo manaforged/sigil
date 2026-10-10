@@ -6,6 +6,8 @@ use smol_str::SmolStr;
 
 #[cfg(any(windows, test))]
 const PASTE_BURST: usize = 8;
+#[cfg(windows)]
+pub(crate) const PASTE_GAP: std::time::Duration = std::time::Duration::from_millis(25);
 
 #[must_use]
 pub fn key_down(key: impl Into<LogicalKey>) -> ShellEvent {
@@ -149,9 +151,10 @@ fn pressed(event: &Event) -> Option<(KeyCode, KeyModifiers)> {
 
 #[must_use]
 #[cfg(any(windows, test))]
-pub(crate) fn burst_paste(burst: &[Event]) -> Option<String> {
+pub(crate) fn burst_paste(burst: &[Event], follows_paste: bool) -> Option<String> {
     let mut text = String::new();
     let mut lines = 0_usize;
+    let mut inner = false;
     for event in burst {
         let Event::Key(key) = event else {
             return None;
@@ -171,8 +174,10 @@ pub(crate) fn burst_paste(burst: &[Event]) -> Option<String> {
             KeyCode::Tab => text.push('\t'),
             _ => return None,
         }
+        inner |= lines > 0 && key.code != KeyCode::Enter;
     }
-    (lines > 0 && text.chars().count() >= PASTE_BURST).then_some(text)
+    let long = lines > 0 && text.chars().count() >= PASTE_BURST;
+    (!text.is_empty() && (follows_paste || inner || long)).then_some(text)
 }
 
 pub fn paste(text: &str) -> ShellEvent {
