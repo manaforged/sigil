@@ -41,39 +41,51 @@ impl Wake {
     }
 
     #[cfg(unix)]
-    fn ready(&self, (wait, tick): (Option<Duration>, Duration), listen: bool) -> io::Result<bool> {
+    fn ready(&self, timing: (Option<Duration>, Duration), listen: bool) -> io::Result<bool> {
+        self.wait(io::stdin(), timing, listen, event::poll)
+    }
+
+    #[cfg(unix)]
+    fn wait(
+        &self,
+        input: impl rustix::fd::AsFd,
+        (wait, tick): (Option<Duration>, Duration),
+        listen: bool,
+        pending: impl Fn(Duration) -> io::Result<bool>,
+    ) -> io::Result<bool> {
         use rustix::event::{PollFd, PollFlags, Timespec, poll};
         use std::io::Read;
-        if hung_up(io::stdin()) {
-            drop(signal_hook::low_level::raise(signal_hook::consts::SIGHUP));
-            return Ok(false);
+        if hung_up(&input) {
+            return Ok(hang_up());
         }
         let Some(rx) = self
             .rx
             .as_ref()
             .filter(|_| listen && wait.is_none_or(|wait| !wait.is_zero()))
         else {
-            return event::poll(wait.unwrap_or(tick));
+            return pending(wait.unwrap_or(tick));
         };
-        if event::poll(Duration::ZERO)? {
+        if pending(Duration::ZERO)? {
             return Ok(true);
         }
-        let stdin = io::stdin();
         let timeout = wait
             .map(Timespec::try_from)
             .transpose()
             .map_err(io::Error::other)?;
         let mut fds = [
-            PollFd::new(&stdin, PollFlags::IN),
+            PollFd::new(&input, PollFlags::IN),
             PollFd::new(rx, PollFlags::IN),
         ];
         match poll(&mut fds, timeout.as_ref()) {
             Ok(_) | Err(rustix::io::Errno::INTR) => {}
             Err(errno) => return Err(errno.into()),
         }
+        if closed(fds[0].revents()) {
+            return Ok(hang_up());
+        }
         let mut sink = [0_u8; 64];
         while matches!((&*rx).read(&mut sink), Ok(read) if read > 0) {}
-        event::poll(Duration::ZERO)
+        pending(Duration::ZERO)
     }
 
     #[cfg(not(unix))]
@@ -94,10 +106,19 @@ pub(crate) fn hung_up(fd: impl rustix::fd::AsFd) -> bool {
         tv_sec: 0,
         tv_nsec: 0,
     };
-    poll(&mut fds, Some(&now)).is_ok()
-        && fds[0]
-            .revents()
-            .intersects(PollFlags::HUP | PollFlags::ERR | PollFlags::NVAL)
+    poll(&mut fds, Some(&now)).is_ok() && closed(fds[0].revents())
+}
+
+#[cfg(unix)]
+fn closed(revents: rustix::event::PollFlags) -> bool {
+    use rustix::event::PollFlags;
+    revents.intersects(PollFlags::HUP | PollFlags::ERR | PollFlags::NVAL)
+}
+
+#[cfg(unix)]
+fn hang_up() -> bool {
+    drop(signal_hook::low_level::raise(signal_hook::consts::SIGHUP));
+    false
 }
 
 #[cfg(unix)]
