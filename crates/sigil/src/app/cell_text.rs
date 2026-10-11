@@ -48,6 +48,7 @@ fn char_width(ch: char) -> usize {
 }
 
 #[must_use]
+#[cfg(feature = "terminal")]
 pub(crate) fn cell_glyph(text: &str) -> &str {
     if text.chars().any(char::is_control) {
         " "
