@@ -4,10 +4,10 @@
 
 ## sigil-ui 0.1.0
 
-- [Every public item, one per line](reference/sigil-ui/api.txt): 6803 lines
+- [Every public item, one per line](reference/sigil-ui/api.txt): 6805 lines
 - [API overview](reference/sigil-ui/index.html): tasks, modules, features, and examples
 - [API changes by release](reference/sigil-ui/changes.html)
-- [sigil](reference/sigil-ui/sigil.html): 63 items
+- [sigil](reference/sigil-ui/sigil.html): 64 items
 - [sigil::a11y](reference/sigil-ui/sigil-a11y.html): 13 items
 - [sigil::animation](reference/sigil-ui/sigil-animation.html): 76 items
 - [sigil::animation_runtime](reference/sigil-ui/sigil-animation_runtime.html): 52 items
@@ -35,7 +35,7 @@
 - [sigil::renderer](reference/sigil-ui/sigil-renderer.html): 56 items
 - [sigil::renderer::capture](reference/sigil-ui/sigil-renderer-capture.html): 14 items
 - [sigil::scene](reference/sigil-ui/sigil-scene.html): 252 items
-- [sigil::shell](reference/sigil-ui/sigil-shell.html): 27 items
+- [sigil::shell](reference/sigil-ui/sigil-shell.html): 28 items
 - [sigil::style](reference/sigil-ui/sigil-style.html): 677 items
 - [sigil::style::palette](reference/sigil-ui/sigil-style-palette.html): 19 items
 - [sigil::style::scale](reference/sigil-ui/sigil-style-scale.html): 27 items

@@ -85,6 +85,9 @@ where
     renderer.set_transparent(config.overlay || config.frameless);
     clear_exit();
     shell.on_idle_deadline(next_interval_deadline);
+    if let Some(hook) = config.on_exit.0.clone() {
+        shell.on_exit(move || hook());
+    }
     let state = LoopState::new(windows, renderer, async_rt, config.panic_policy);
     drive(shell, state, owner)
 }

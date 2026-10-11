@@ -63,6 +63,7 @@
 | <code>const mouse_tracking(self, tracking: <a href="sigil-terminal.html#mousetracking">MouseTracking</a>) -&gt; Self</code> |  |
 | <code>new(title: impl Into&lt;String&gt;) -&gt; Self</code> |  |
 | <code>on_close(self, decide: impl Fn() -&gt; <a href="sigil-app.html#closeaction">CloseAction</a> + 'static) -&gt; Self</code> |  |
+| <code>on_exit(self, run: impl Fn() + 'static) -&gt; Self</code> |  |
 | <code>const on_panic(&amp;self) -&gt; <a href="sigil-app.html#panicpolicy">PanicPolicy</a></code> |  |
 | <code>const overlay(self, yes: bool) -&gt; Self</code> |  |
 | <code>const panic_policy(self, policy: <a href="sigil-app.html#panicpolicy">PanicPolicy</a>) -&gt; Self</code> |  |

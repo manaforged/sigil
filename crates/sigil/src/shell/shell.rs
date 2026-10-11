@@ -60,6 +60,7 @@ pub struct WinitShell {
     modifiers: ModifiersState,
     next_handle: u64,
     deadline_hook: Option<DeadlineHook>,
+    exit_hook: Option<Box<dyn FnOnce()>>,
     exit_requested: bool,
     force_paint: bool,
     a11y_adapters: Vec<a11y::AdapterEntry>,
@@ -112,6 +113,7 @@ impl WinitShell {
             modifiers: ModifiersState::empty(),
             next_handle: 0,
             deadline_hook: None,
+            exit_hook: None,
             exit_requested: false,
             force_paint: false,
             a11y_adapters: Vec::new(),
@@ -127,6 +129,16 @@ impl WinitShell {
         hook: F,
     ) {
         self.deadline_hook = Some(Arc::new(hook));
+    }
+
+    pub fn on_exit<F: FnOnce() + 'static>(&mut self, hook: F) {
+        self.exit_hook = Some(Box::new(hook));
+    }
+
+    pub(crate) fn run_exit_hook(&mut self) {
+        if let Some(hook) = self.exit_hook.take() {
+            hook();
+        }
     }
 
     pub const fn request_exit(&mut self) {

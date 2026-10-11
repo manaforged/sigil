@@ -2698,6 +2698,7 @@ pub const fn sigil::AppConfig::modify_other_keys(self, yes: bool) -> Self
 pub const fn sigil::AppConfig::mouse_tracking(self, tracking: sigil::terminal::MouseTracking) -> Self
 pub fn sigil::AppConfig::new(title: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn sigil::AppConfig::on_close(self, decide: impl core::ops::function::Fn() -> sigil::app::CloseAction + 'static) -> Self
+pub fn sigil::AppConfig::on_exit(self, run: impl core::ops::function::Fn() + 'static) -> Self
 pub const fn sigil::AppConfig::on_panic(&self) -> sigil::app::PanicPolicy
 pub const fn sigil::AppConfig::overlay(self, yes: bool) -> Self
 pub const fn sigil::AppConfig::panic_policy(self, policy: sigil::app::PanicPolicy) -> Self
@@ -4251,6 +4252,7 @@ pub fn sigil::shell::WinitShell::take_a11y_activation(&self, handle: sigil::shel
 pub const fn sigil::shell::WinitShell::exit_requested(&self) -> bool
 pub fn sigil::shell::WinitShell::new() -> core::result::Result<Self, sigil::shell::ShellError>
 pub fn sigil::shell::WinitShell::new_accessory() -> core::result::Result<Self, sigil::shell::ShellError>
+pub fn sigil::shell::WinitShell::on_exit<F: core::ops::function::FnOnce() + 'static>(&mut self, hook: F)
 pub fn sigil::shell::WinitShell::on_idle_deadline<F: core::ops::function::Fn() -> core::option::Option<std::time::Instant> + core::marker::Send + core::marker::Sync + 'static>(&mut self, hook: F)
 pub const fn sigil::shell::WinitShell::redraw_target(&self) -> core::option::Option<sigil::shell::WinitWindowHandle>
 pub fn sigil::shell::WinitShell::remove_window(&mut self, handle: sigil::shell::WinitWindowHandle)

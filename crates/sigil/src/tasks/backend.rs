@@ -98,7 +98,7 @@ impl Backend {
         let previous = std::mem::replace(&mut *pool, Pool::Closed);
         drop(pool);
         if let Pool::Running(runtime) = previous {
-            drop(runtime);
+            runtime.shutdown_background();
         }
     }
 

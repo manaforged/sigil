@@ -85,6 +85,10 @@ where
         }
     }
 
+    fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
+        self.shell.run_exit_hook();
+    }
+
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         match self.shell.deadline_hook().and_then(|hook| hook()) {
             Some(deadline) => event_loop.set_control_flow(ControlFlow::WaitUntil(deadline)),

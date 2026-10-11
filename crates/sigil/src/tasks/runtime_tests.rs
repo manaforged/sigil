@@ -44,3 +44,40 @@ fn fixed_workers_run_spawned_task() {
         assert!(ran.load(Ordering::SeqCst));
     });
 }
+
+#[test]
+fn dropping_the_runtime_does_not_wait_for_blocking_work() {
+    let (release, stuck) = std::sync::mpsc::channel::<()>();
+    let (dropped, done) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        Runtime::scope(
+            "dropping_the_runtime_does_not_wait_for_blocking_work",
+            || {
+                let Ok(runtime) = AsyncRuntime::new() else {
+                    return;
+                };
+                let Some(owner) = OwnerHandle::current() else {
+                    return;
+                };
+                let (started, running) = std::sync::mpsc::channel();
+                let _task = runtime.spawn(owner, async move {
+                    crate::tasks::blocking(move || {
+                        let _ = started.send(());
+                        let _ = stuck.recv();
+                    })
+                    .await;
+                });
+                let _ = running.recv_timeout(Duration::from_secs(10));
+                drop(runtime);
+                let _ = dropped.send(());
+            },
+        );
+    });
+
+    let outcome = done.recv_timeout(Duration::from_secs(10));
+    let _ = release.send(());
+    assert!(
+        outcome.is_ok(),
+        "dropping the runtime waited on a blocking job"
+    );
+}

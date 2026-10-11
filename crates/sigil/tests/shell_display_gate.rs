@@ -13,9 +13,16 @@ use std::sync::atomic::Ordering;
     reason = "harness = false target: main() is its own reporter"
 )]
 fn main() {
+    if std::env::var_os(QUIT_CHILD).is_some() {
+        return quit_child();
+    }
     if std::env::var_os("SIGIL_DISPLAY_GATE").is_none() {
         println!("display_gate: skipped (set SIGIL_DISPLAY_GATE=1 on a GUI machine)");
         return;
+    }
+
+    if cfg!(target_os = "macos") {
+        quit_contract();
     }
 
     let mut shell = WinitShell::new().expect("construct shell on the main thread");
@@ -75,5 +82,49 @@ fn drop_contract(waker: &<WinitShell as Shell>::Waker) {
     assert!(
         msg.contains("event loop") || msg.contains("closed"),
         "error should mention event loop closure, got: {msg}"
+    );
+}
+
+const QUIT_CHILD: &str = "SIGIL_DISPLAY_GATE_QUIT_CHILD";
+const EXIT_HOOK_RAN: &str = "display_gate: exit hook ran";
+
+fn quit_contract() {
+    let output = std::process::Command::new(std::env::current_exe().expect("gate binary path"))
+        .env(QUIT_CHILD, "1")
+        .output()
+        .expect("run the quit child");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.matches(EXIT_HOOK_RAN).count() == 1,
+        "a quit sent to the app must run its exit hook once, child stdout: {stdout}"
+    );
+}
+
+#[allow(
+    clippy::print_stdout,
+    reason = "harness = false target: the child reports to its parent on stdout"
+)]
+fn quit_child() {
+    let sent = std::cell::Cell::new(false);
+    let config = sigil::AppConfig::new("quit gate").on_exit(|| {
+        println!("{EXIT_HOOK_RAN}");
+    });
+    let result = sigil::run(config, move || {
+        if !sent.replace(true) {
+            send_quit(std::process::id());
+        }
+        sigil::prelude::text("quit gate")
+    });
+    println!("display_gate: run returned {result:?}");
+}
+
+fn send_quit(pid: u32) {
+    let script = format!(
+        "ObjC.import('AppKit'); $.NSRunningApplication.runningApplicationWithProcessIdentifier({pid}).terminate"
+    );
+    drop(
+        std::process::Command::new("osascript")
+            .args(["-l", "JavaScript", "-e", &script])
+            .spawn(),
     );
 }
