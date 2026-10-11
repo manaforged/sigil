@@ -230,10 +230,11 @@ impl CodeSign<'_> {
     }
 
     #[cfg(not(target_os = "macos"))]
-    pub fn sign(&self, _path: &Path) -> Result<(), PackError> {
-        Err(PackError::Codesign(
-            "native signing is supported only on macOS".into(),
-        ))
+    pub fn sign(&self, path: &Path) -> Result<(), PackError> {
+        Err(PackError::Codesign(format!(
+            "native signing of {} is supported only on macOS",
+            path.display()
+        )))
     }
 
     #[cfg(target_os = "macos")]

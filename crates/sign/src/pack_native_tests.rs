@@ -60,7 +60,7 @@ fn standalone_signing_produces_a_valid_executable_and_refuses_links()
 #[test]
 fn native_signing_rejects_unsupported_platforms() {
     assert!(matches!(
-        super::CodeSign::default().sign(std::path::Path::new("unused")),
-        Err(super::PackError::Codesign(message)) if message == "native signing is supported only on macOS"
+        super::CodeSign::default().sign(std::path::Path::new("app.exe")),
+        Err(super::PackError::Codesign(message)) if message == "native signing of app.exe is supported only on macOS"
     ));
 }
