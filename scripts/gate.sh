@@ -65,7 +65,8 @@ step msrv-toolchain rustup toolchain install "$msrv" --profile minimal --no-self
 step msrv cargo "+$msrv" check --workspace --all-targets --all-features --locked
 step deny cargo deny check
 step fuzz-toolchain rustup toolchain install nightly --profile minimal --no-self-update
-step fuzz cargo +nightly fuzz build
+fuzz_target=$(rustc +nightly -vV | sed -n 's/^host: //p')
+step fuzz cargo +nightly fuzz build --target "$fuzz_target"
 step book mdbook build docs --dest-dir "$root/target/book"
 
 if [ "$gpu" = 1 ]; then
