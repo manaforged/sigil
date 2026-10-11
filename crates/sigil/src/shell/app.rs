@@ -86,7 +86,7 @@ where
     }
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
-        self.shell.run_exit_hook();
+        crate::shell::exit_hook::run();
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {

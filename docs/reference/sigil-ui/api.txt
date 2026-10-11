@@ -4646,6 +4646,7 @@ pub sigil::style::StringKey::Ok
 pub sigil::style::StringKey::RequiredMark
 pub sigil::style::StringKey::ResizePanes
 pub sigil::style::StringKey::ResizeSidebar
+pub sigil::style::StringKey::SavingOnExit
 pub sigil::style::StringKey::Search
 pub sigil::style::StringKey::Select
 pub sigil::style::StringKey::SelectAllRows
@@ -4659,7 +4660,7 @@ pub sigil::style::StringKey::SparklineSummary
 pub sigil::style::StringKey::StatusBar
 pub sigil::style::StringKey::TableMenu
 impl sigil::style::StringKey
-pub const sigil::style::StringKey::ALL: [Self; 36]
+pub const sigil::style::StringKey::ALL: [Self; 37]
 pub fn sigil::style::StringKey::from_name(name: &str) -> core::option::Option<Self>
 impl core::clone::Clone for sigil::style::StringKey
 impl core::cmp::Eq for sigil::style::StringKey

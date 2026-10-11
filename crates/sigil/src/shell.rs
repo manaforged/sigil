@@ -5,7 +5,10 @@ pub(crate) mod app;
 pub(crate) mod composition;
 pub(crate) mod dpi;
 pub(crate) mod event_map;
+pub(crate) mod exit_hook;
 pub(crate) mod key_map;
+#[cfg(windows)]
+pub(crate) mod session_end;
 #[allow(clippy::module_inception)]
 pub(crate) mod shell;
 pub(crate) mod waker;

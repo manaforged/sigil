@@ -1121,7 +1121,7 @@
 
 | Method | Description |
 | --- | --- |
-| <code>const ALL: [Self; 36]</code> |  |
+| <code>const ALL: [Self; 37]</code> |  |
 | <code>from_name(name: &amp;str) -&gt; Option&lt;Self&gt;</code> |  |
 
 **Variants**
@@ -1152,6 +1152,7 @@
 | <code>RequiredMark</code> |  |
 | <code>ResizePanes</code> |  |
 | <code>ResizeSidebar</code> |  |
+| <code>SavingOnExit</code> |  |
 | <code>Search</code> |  |
 | <code>Select</code> |  |
 | <code>SelectAllRows</code> |  |

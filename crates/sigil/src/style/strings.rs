@@ -40,10 +40,11 @@ pub enum StringKey {
     Select,
     SelectAllRows,
     SelectRow,
+    SavingOnExit,
 }
 
 impl StringKey {
-    pub const ALL: [Self; 36] = [
+    pub const ALL: [Self; 37] = [
         Self::Close,
         Self::Cancel,
         Self::Ok,
@@ -80,6 +81,7 @@ impl StringKey {
         Self::Select,
         Self::SelectAllRows,
         Self::SelectRow,
+        Self::SavingOnExit,
     ];
 
     const fn index(self) -> usize {
@@ -132,6 +134,7 @@ const NAMES: [(&str, StringKey); StringKey::ALL.len()] = [
     ("select", StringKey::Select),
     ("select_all_rows", StringKey::SelectAllRows),
     ("select_row", StringKey::SelectRow),
+    ("saving_on_exit", StringKey::SavingOnExit),
 ];
 
 const ENGLISH: [&str; StringKey::ALL.len()] = [
@@ -171,6 +174,7 @@ const ENGLISH: [&str; StringKey::ALL.len()] = [
     "Select",
     "Select all visible rows",
     "Select row {0}",
+    "Saving before closing",
 ];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
