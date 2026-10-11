@@ -92,21 +92,57 @@ const RUN_RETURNED_OK: &str = "display_gate: run returned Ok";
 #[cfg(windows)]
 const BLOCK_REASON: &str = "display_gate: block reason Saving before closing";
 
+const QUIT_DEADLINE: std::time::Duration = std::time::Duration::from_secs(90);
+
 fn quit_contract() {
-    let output = std::process::Command::new(std::env::current_exe().expect("gate binary path"))
-        .env(QUIT_CHILD, "1")
-        .output()
-        .expect("run the quit child");
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut command =
+        std::process::Command::new(std::env::current_exe().expect("gate binary path"));
+    command.env(QUIT_CHILD, "1");
+    if cfg!(windows) {
+        command.env("SIGIL_BACKEND", "cpu");
+    }
+    let mut child = command
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .expect("start the quit child");
+    let stdout = drain(child.stdout.take().expect("child stdout"));
+    let stderr = drain(child.stderr.take().expect("child stderr"));
+    let started = std::time::Instant::now();
+    let exited = loop {
+        if child.try_wait().expect("poll the quit child").is_some() {
+            break true;
+        }
+        if started.elapsed() > QUIT_DEADLINE {
+            drop(child.kill());
+            drop(child.wait());
+            break false;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    };
+    let stdout = stdout.join().expect("child stdout reader");
+    let stderr = stderr.join().expect("child stderr reader");
+    assert!(
+        exited,
+        "the quit child did not exit within {QUIT_DEADLINE:?}; stdout: {stdout} stderr: {stderr}"
+    );
     assert!(
         stdout.matches(EXIT_HOOK_RAN).count() == 1,
-        "a quit sent to the app must run its exit hook once, child stdout: {stdout}"
+        "a quit sent to the app must run its exit hook once, child stdout: {stdout} stderr: {stderr}"
     );
     #[cfg(windows)]
     assert!(
         stdout.contains(BLOCK_REASON) && stdout.contains(RUN_RETURNED_OK),
-        "a Windows session end must name the block reason and end the event loop, child stdout: {stdout}"
+        "a Windows session end must name the block reason and end the event loop, child stdout: {stdout} stderr: {stderr}"
     );
+}
+
+fn drain(mut pipe: impl std::io::Read + Send + 'static) -> std::thread::JoinHandle<String> {
+    std::thread::spawn(move || {
+        let mut text = String::new();
+        drop(pipe.read_to_string(&mut text));
+        text
+    })
 }
 
 #[allow(
@@ -171,6 +207,7 @@ fn end_session() {
         // SAFETY: `title` is a NUL-terminated UTF-16 string that outlives the call.
         let hwnd = unsafe { FindWindowW(std::ptr::null(), title.as_ptr()) };
         if !hwnd.is_null() {
+            println!("display_gate: quit window found");
             break hwnd;
         }
         if std::time::Instant::now() > deadline {
@@ -182,6 +219,7 @@ fn end_session() {
     let closeapp = ENDSESSION_CLOSEAPP as isize;
     // SAFETY: `hwnd` is this process's live top-level window; SendMessageW waits until its thread handles the message.
     unsafe { SendMessageW(hwnd, WM_QUERYENDSESSION, 0, closeapp) };
+    println!("display_gate: query end session answered");
     let mut reason = [0u16; 256];
     let mut len = reason.len() as u32;
     // SAFETY: `reason` and `len` describe a writable UTF-16 buffer.
@@ -198,4 +236,5 @@ fn end_session() {
     }
     // SAFETY: as above; WPARAM 1 tells the window the session is ending.
     unsafe { SendMessageW(hwnd, WM_ENDSESSION, 1, closeapp) };
+    println!("display_gate: end session answered");
 }
