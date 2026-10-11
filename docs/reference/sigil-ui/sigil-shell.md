@@ -23,6 +23,7 @@
 | <code>const exit_requested(&amp;self) -&gt; bool</code> |  |
 | <code>new() -&gt; Result&lt;Self, <a href="#shellerror">ShellError</a>&gt;</code> |  |
 | <code>new_accessory() -&gt; Result&lt;Self, <a href="#shellerror">ShellError</a>&gt;</code> |  |
+| <code>on_exit&lt;F: FnOnce() + 'static&gt;(&amp;mut self, hook: F)</code> |  |
 | <code>on_idle_deadline&lt;F: Fn() -&gt; Option&lt;Instant&gt; + Send + Sync + 'static&gt;(&amp;mut self, hook: F)</code> |  |
 | <code>const redraw_target(&amp;self) -&gt; Option&lt;<a href="#winitwindowhandle">WinitWindowHandle</a>&gt;</code> |  |
 | <code>remove_window(&amp;mut self, handle: <a href="#winitwindowhandle">WinitWindowHandle</a>)</code> |  |

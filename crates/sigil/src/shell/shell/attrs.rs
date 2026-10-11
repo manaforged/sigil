@@ -111,6 +111,11 @@ impl WinitShell {
                     {
                         tracing::warn!(target: "sigil::shell", error = %err, "overlay hit-test disable failed");
                     }
+                    #[cfg(windows)]
+                    crate::shell::session_end::watch(&window, {
+                        let waker = <Self as crate::hal::Shell>::waker(self);
+                        Box::new(move || drop(waker.wake()))
+                    });
                     self.install_a11y_adapter(active, spec.handle, &window);
                     #[cfg(target_arch = "wasm32")]
                     self.install_web_ime(&window);

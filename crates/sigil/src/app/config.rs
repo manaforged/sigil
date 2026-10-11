@@ -50,6 +50,17 @@ impl std::fmt::Debug for TerminalHooks {
 
 #[cfg(feature = "desktop")]
 #[derive(Clone, Default)]
+pub(crate) struct ExitHook(pub(crate) Option<std::rc::Rc<dyn Fn()>>);
+
+#[cfg(feature = "desktop")]
+impl std::fmt::Debug for ExitHook {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ExitHook")
+    }
+}
+
+#[cfg(feature = "desktop")]
+#[derive(Clone, Default)]
 pub(crate) struct CloseHook(Option<std::rc::Rc<dyn Fn() -> crate::app::CloseAction>>);
 
 #[cfg(feature = "desktop")]
@@ -91,6 +102,8 @@ pub struct AppConfig {
     pub(crate) resize: Resize,
     #[cfg(feature = "desktop")]
     pub(crate) on_close: CloseHook,
+    #[cfg(feature = "desktop")]
+    pub(crate) on_exit: ExitHook,
     pub(crate) inline: bool,
     pub(crate) frame_interval: std::time::Duration,
     pub(crate) reduced_motion: Option<bool>,
@@ -144,6 +157,8 @@ impl AppConfig {
             resize: Resize::Free,
             #[cfg(feature = "desktop")]
             on_close: CloseHook::default(),
+            #[cfg(feature = "desktop")]
+            on_exit: ExitHook::default(),
             inline: false,
             frame_interval: FRAME_INTERVAL,
             reduced_motion: None,
@@ -308,6 +323,13 @@ impl AppConfig {
     #[must_use]
     pub fn on_close(mut self, decide: impl Fn() -> crate::app::CloseAction + 'static) -> Self {
         self.on_close = CloseHook(Some(std::rc::Rc::new(decide)));
+        self
+    }
+
+    #[cfg(feature = "desktop")]
+    #[must_use]
+    pub fn on_exit(mut self, run: impl Fn() + 'static) -> Self {
+        self.on_exit = ExitHook(Some(std::rc::Rc::new(run)));
         self
     }
 

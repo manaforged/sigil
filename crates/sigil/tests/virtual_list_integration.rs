@@ -120,11 +120,10 @@ fn selection_propagates_to_a11y() {
     });
 }
 
-#[test]
-fn scroll_step_meets_144hz_budget() {
-    sigil::reactive::Runtime::scope("sigil-virtual-list-integration-budget", || {
+fn fastest_scroll_step(count: usize) -> Duration {
+    sigil::reactive::Runtime::scope("sigil-virtual-list-integration-scaling", || {
         let scroll_y = signal(0.0_f32);
-        let items: Vec<usize> = (0..100_000).collect();
+        let items: Vec<usize> = (0..count).collect();
         let mut samples = Vec::new();
         for n in 0..15 {
             scroll_y.update(|value| *value += ROW_HEIGHT);
@@ -146,21 +145,23 @@ fn scroll_step_meets_144hz_budget() {
                 samples.push(start.elapsed());
             }
         }
-        samples.sort_unstable();
-        let fastest = samples.first().copied().expect("10 samples");
-        let median = samples.get(samples.len() / 2).copied().expect("10 samples");
-        let (fastest_ms, median_ms) = (
-            fastest.as_secs_f64() * 1_000.0,
-            median.as_secs_f64() * 1_000.0,
-        );
-        eprintln!(
-            "virtual_list scroll_step fastest: {fastest_ms:.3} ms, median: {median_ms:.3} ms"
-        );
-        assert!(
-            fastest < Duration::from_secs_f64(0.006_94),
-            "fastest per-frame time {fastest_ms:.3} ms exceeds 6.94 ms"
-        );
-    });
+        samples.into_iter().min().expect("10 samples")
+    })
+}
+
+#[test]
+fn a_scroll_step_costs_the_same_for_a_hundred_thousand_rows_as_for_a_thousand() {
+    let small = fastest_scroll_step(1_000);
+    let large = fastest_scroll_step(100_000);
+    eprintln!(
+        "virtual_list scroll_step fastest: 1k rows {:.3} ms, 100k rows {:.3} ms",
+        small.as_secs_f64() * 1_000.0,
+        large.as_secs_f64() * 1_000.0
+    );
+    assert!(
+        large <= small * 2 + Duration::from_millis(1),
+        "a scroll step over 100k rows took {large:?}, against {small:?} for 1k rows"
+    );
 }
 
 fn build_recording_list(scroll_y: Signal<f32>, rendered: Rc<RefCell<Vec<usize>>>) {

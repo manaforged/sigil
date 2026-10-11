@@ -22,10 +22,11 @@ pub fn request_exit() {
 
 #[must_use]
 pub(crate) fn take_exit() -> bool {
+    let outside_frame = FALLBACK.swap(false, Ordering::SeqCst);
     if let Some(cell) = TARGET.with(|slot| slot.borrow().clone()) {
-        return cell.replace(false);
+        return cell.replace(false) | outside_frame;
     }
-    FALLBACK.swap(false, Ordering::SeqCst)
+    outside_frame
 }
 
 #[cfg(any(test, feature = "desktop", feature = "terminal"))]

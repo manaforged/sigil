@@ -4517,6 +4517,7 @@ dependencies = [
  "web-time",
  "wgpu",
  "windows-core",
+ "windows-sys 0.61.2",
  "winit",
  "zed-font-kit",
  "zeno",

@@ -129,6 +129,10 @@ impl WinitShell {
         self.deadline_hook = Some(Arc::new(hook));
     }
 
+    pub fn on_exit<F: FnOnce() + 'static>(&mut self, hook: F) {
+        super::exit_hook::set(Box::new(hook));
+    }
+
     pub const fn request_exit(&mut self) {
         self.exit_requested = true;
     }
