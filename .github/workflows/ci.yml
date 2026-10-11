@@ -79,3 +79,7 @@ jobs:
           save-if: "false"
       - name: test
         run: cargo test --workspace --locked --features sigil-ui/terminal
+      - name: display gate
+        env:
+          SIGIL_DISPLAY_GATE: "1"
+        run: cargo test -p sigil-ui --locked --test shell_display_gate
