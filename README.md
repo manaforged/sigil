@@ -1,14 +1,18 @@
 # Sigil
 
-UI in Rust. One widget tree runs on three hosts. `sigil::run` opens a window or, with the `terminal` feature, paints the tree on a character grid. `Host` embeds the tree in another engine's loop.
+A UI framework written in Rust. One widget tree runs in a window, in a terminal, or inside another engine's loop.
+
+- **One tree, three hosts**: `sigil::run` opens a window, or paints a character grid with the `terminal` feature, and `Host` embeds the tree in another engine.
+- **GPU or CPU**: a wgpu renderer, and a CPU renderer for machines without a GPU.
+- **Web too**: the same app builds for `wasm32`, drawing with WebGPU or into a 2D canvas.
+- **Batteries included**: 67 components, including markdown, tables, trees, charts, mermaid diagrams, and a code editor.
+- **Accessible**: the window host exposes the widget tree to screen readers through AccessKit.
+
+[Book](docs/book) | [API map](docs/api.md) | [Examples](crates/sigil/examples) | [Guides](docs/guide)
 
 ![The workbench example application](docs/workbench.png)
 
-[docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md) lists every exported item with its signature in one Markdown file.
-
-## Status
-
-0.1 is an early release. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input. Fuzz targets cover them, but the fuzz runs so far are short. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
+Status: unreleased. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input; fuzz targets cover them, but the runs so far are short. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
 
 ## Requirements
 
