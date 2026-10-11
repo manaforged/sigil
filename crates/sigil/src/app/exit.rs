@@ -20,6 +20,10 @@ pub fn request_exit() {
     }
 }
 
+pub(crate) fn defer_exit() {
+    FALLBACK.store(true, Ordering::SeqCst);
+}
+
 #[must_use]
 pub(crate) fn take_exit() -> bool {
     let outside_frame = FALLBACK.swap(false, Ordering::SeqCst);
