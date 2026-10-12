@@ -87,14 +87,14 @@ fn app_tree() -> impl IntoNode {
 
 ## Capabilities
 
-`run` detects one `sigil::terminal::Caps` when it starts. It reads the environment first. If the environment does not name the terminal, `run` sends a Kitty graphics query, a DEC 2026 mode query, a Kitty keyboard query, an OSC 11 background query, and DA1, and waits up to 150 ms for the reply.
+`run` detects one `sigil::terminal::Caps` when it starts. It reads the environment first. If the environment does not name the terminal, `run` sends a DEC 2026 mode query, a Kitty keyboard query, an OSC 11 background query, and DA1, and waits up to 150 ms for the reply.
 
 On a dark backdrop, `run` starts with `Theme::dark()` unless `AppConfig::theme_file` is set. `set_theme` from the app still wins. `Caps::detect` runs the environment step alone.
 
 | Capability | Environment | Query | Fallback |
 | --- | --- | --- | --- |
 | Color depth | `NO_COLOR`, `COLORTERM`, `TERM_PROGRAM`, `TERM` | none | truecolor, then 256, then 16, then no color |
-| Graphics | `SIGIL_GRAPHICS`, `TERM`, `TERM_PROGRAM`, `KITTY_WINDOW_ID` | Kitty graphics query, DA1 attribute 4 (Sixel) | sextant glyphs |
+| Graphics | `SIGIL_GRAPHICS`, `TERM`, `TERM_PROGRAM`, `KITTY_WINDOW_ID` | none | sextant glyphs |
 | Multiplexer | `TMUX`, `STY` | none | direct output |
 | Keyboard | known terminal | `CSI ? u` | legacy keys, no enhancement flags |
 | Synchronized output | known terminal | `CSI ? 2026 $ p` | frames without DEC 2026 |

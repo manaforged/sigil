@@ -13,7 +13,6 @@ pub(super) enum Version {
 
 #[derive(Clone, Copy)]
 pub(super) enum Question {
-    Graphics,
     Sync,
     Keys,
     Color,

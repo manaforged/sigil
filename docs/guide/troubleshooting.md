@@ -30,7 +30,7 @@ The terminal host selects an image protocol from the environment:
 - iTerm2 protocol: iTerm2 and Warp.
 - Sixel: foot, contour, mlterm, mintty, rio, yaft, and any `TERM` that contains `sixel`.
 
-If the environment names none of these, Sigil queries the terminal at start. If no protocol is found, images show as sextant glyphs.
+If the environment names none of these, images show as sextant glyphs. Sigil does not ask the terminal: a multiplexer can answer a graphics query for an outer terminal that cannot draw images.
 
 Inside tmux (`TMUX` is set), Sigil wraps each image sequence in the tmux passthrough form. tmux forwards it only when its `allow-passthrough` option is on:
 

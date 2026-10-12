@@ -124,3 +124,12 @@ fn probe_replies_raise_colour_links_and_notices_behind_a_multiplexer() {
     assert!(after.hyperlinks);
     assert!(after.notices.progress && after.notices.notify.is_some());
 }
+
+#[cfg(unix)]
+#[test]
+fn a_query_answer_never_turns_on_images() {
+    let env = |key: &str| (key == "TERM").then(|| "xterm-256color".to_string());
+    let answers = super::probe::parse("\x1b_Gi=31;OK\x1b\\\x1b[?62;4;22c");
+    let caps = super::draft(&env).settle(&answers);
+    assert_eq!(caps.graphics, None);
+}
