@@ -60,7 +60,7 @@ impl Host {
             tick_animations(dt.min(MAX_ANIMATION_FRAME_SECS));
         }
         self.publish_viewport(viewport);
-        let exit = take_exit();
+        let exit = ExitOnUnwind(take_exit());
         Runtime::begin_layout();
         let layout = {
             let _layout = crate::profile::span(crate::profile::Phase::Layout);
@@ -88,10 +88,20 @@ impl Host {
         Runtime::end_frame();
         crate::reactive::run_dispatch_deferred();
         FrameOutput {
-            exit,
+            exit: exit.0,
             intervals,
             animating,
             layout,
+        }
+    }
+}
+
+struct ExitOnUnwind(bool);
+
+impl Drop for ExitOnUnwind {
+    fn drop(&mut self) {
+        if self.0 && std::thread::panicking() {
+            crate::app::exit::defer_exit();
         }
     }
 }
