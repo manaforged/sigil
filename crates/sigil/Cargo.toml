@@ -179,6 +179,10 @@ name = "terminal_host"
 required-features = ["terminal"]
 
 [[test]]
+name = "terminal_images"
+required-features = ["terminal", "pty"]
+
+[[test]]
 name = "image_jpeg"
 required-features = ["image-decode"]
 
