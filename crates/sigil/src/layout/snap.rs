@@ -1,6 +1,6 @@
 use crate::layout::resolve::{AutoEdges, Edges};
 
-fn cell() -> Option<f32> {
+pub(crate) fn cell() -> Option<f32> {
     crate::style::cell_size().filter(|cell| *cell > 0.0)
 }
 
@@ -60,16 +60,11 @@ pub(crate) fn gap(value: f32) -> f32 {
 }
 
 pub(crate) fn row_gap(value: f32) -> f32 {
-    let Some(cell) = cell() else {
-        return value;
-    };
-    if value <= 0.0 {
-        return value;
+    if cell().is_some_and(|cell| value > 0.0 && value < cell) {
+        0.0
+    } else {
+        gap(value)
     }
-    if value < cell {
-        return 0.0;
-    }
-    (value / cell).round() * cell
 }
 
 pub(crate) fn ruled(value: f32) -> f32 {
@@ -85,18 +80,9 @@ pub(crate) fn rule_edges(edges: Edges, height: Option<f32>) -> Edges {
         return edges;
     };
     if height.is_some_and(|height| height <= cell) {
-        return Edges {
-            left: span(edges.left),
-            right: span(edges.right),
-            top: span(edges.top),
-            bottom: span(edges.bottom),
-        };
-    }
-    Edges {
-        left: rule(edges.left),
-        right: rule(edges.right),
-        top: rule(edges.top),
-        bottom: rule(edges.bottom),
+        edges.map(span)
+    } else {
+        edges.map(rule)
     }
 }
 
@@ -121,22 +107,7 @@ pub(crate) fn rect(x: f32, y: f32, w: f32, h: f32) -> (f32, f32, f32, f32) {
     (x, y, w, h)
 }
 
-pub(crate) fn gap_edges(edges: Edges) -> Edges {
-    if cell().is_none() {
-        return edges;
-    }
-    Edges {
-        left: gap(edges.left),
-        right: gap(edges.right),
-        top: gap(edges.top),
-        bottom: gap(edges.bottom),
-    }
-}
-
 pub(crate) fn gap_auto_edges(edges: AutoEdges) -> AutoEdges {
-    if cell().is_none() {
-        return edges;
-    }
     AutoEdges {
         left: edges.left.map(gap),
         right: edges.right.map(gap),

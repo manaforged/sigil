@@ -63,11 +63,7 @@ impl Backend {
         if let Some(handle) = self.lazy.handle.get() {
             return Some(handle.clone());
         }
-        let mut pool = self
-            .lazy
-            .pool
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut pool = self.pool();
         if let Some(handle) = self.lazy.handle.get() {
             return Some(handle.clone());
         }
@@ -90,16 +86,18 @@ impl Backend {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn shutdown(&self) {
-        let mut pool = self
-            .lazy
-            .pool
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let previous = std::mem::replace(&mut *pool, Pool::Closed);
-        drop(pool);
+        let previous = std::mem::replace(&mut *self.pool(), Pool::Closed);
         if let Pool::Running(runtime) = previous {
             runtime.shutdown_background();
         }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn pool(&self) -> std::sync::MutexGuard<'_, Pool> {
+        self.lazy
+            .pool
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     #[cfg(all(test, not(target_arch = "wasm32")))]

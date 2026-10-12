@@ -70,24 +70,18 @@ impl Transcript {
         };
         let tree = crate::a11y::snapshot(update);
         let rows = grid.text_rows();
-        if tree != self.tree {
+        let written: Vec<std::io::Result<()>> = if tree == self.tree {
+            rows.iter()
+                .enumerate()
+                .filter(|(row, text)| self.rows.get(*row) != Some(*text))
+                .map(|(_, text)| writeln!(out, "{text}"))
+                .collect()
+        } else {
             self.tree = tree;
-            self.rows = rows;
-            let written = out
-                .write_all(self.tree.as_bytes())
-                .and_then(|()| out.write_all(b"\n"))
-                .and_then(|()| out.flush());
-            if let Err(err) = written {
-                tracing::warn!(target: "sigil::terminal", error = %err, "transcript write failed");
-            }
-            return;
-        }
-        for (row, text) in rows.iter().enumerate() {
-            if self.rows.get(row) != Some(text)
-                && let Err(err) = writeln!(out, "{text}")
-            {
-                tracing::warn!(target: "sigil::terminal", error = %err, "transcript write failed");
-            }
+            vec![writeln!(out, "{}", self.tree).and_then(|()| out.flush())]
+        };
+        for err in written.into_iter().filter_map(Result::err) {
+            tracing::warn!(target: "sigil::terminal", error = %err, "transcript write failed");
         }
         self.rows = rows;
     }
@@ -95,14 +89,8 @@ impl Transcript {
 
 fn open(value: &str) -> Option<File> {
     let trimmed = value.trim();
-    if matches!(
-        trimmed.to_ascii_lowercase().as_str(),
-        "" | "0" | "off" | "false"
-    ) {
-        return None;
-    }
-    let lowered = trimmed.to_ascii_lowercase();
-    let path = match lowered.as_str() {
+    let path = match trimmed.to_ascii_lowercase().as_str() {
+        "" | "0" | "off" | "false" => return None,
         "1" | "on" | "true" => "sigil-transcript.log",
         _ => trimmed,
     };

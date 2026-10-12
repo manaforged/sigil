@@ -12,18 +12,14 @@ use crate::layout::{Popup, PopupSide, ViewportOverlay};
 use crate::reactive::{IntervalId, Signal, cancel_interval, interval, signal};
 use crate::style::{
     ControlSize, DisplayKind, Metrics, NodeStyleExt, PaintTarget, Style, StyleAtom, StyleSlot,
-    Theme, Token, TransitionId, space,
+    Theme, Token, space,
 };
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::popup::{POPUP_GAP, surface};
 use super::shared::BuilderMutator;
 
-const BUBBLE_MAX_WIDTH: f32 = space(60);
-
-const TOOLTIP_TRANSITION: TransitionId = presets::SMOOTH;
-
-static BUBBLE_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOOLTIP_TRANSITION)];
+static BUBBLE_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 
 pub struct TooltipBuilder {
     label: String,
@@ -93,52 +89,32 @@ impl TooltipBuilder {
         } else {
             PopupSide::Above
         };
-
         let description = bubble_description(&self.label, self.shortcut.as_deref());
-        let bubble = build_bubble(&self.label, self.shortcut.as_deref(), visible, side);
-
-        let pending: Rc<Cell<Option<IntervalId>>> = Rc::new(Cell::new(None));
-        let delay_ms = self.delay_ms;
-        let pending_for_enter = Rc::clone(&pending);
-
-        let mut root = wrapper_root(&description, self.layout_overrides)
-            .pointer_enter(move |event| {
-                event.stop_propagation();
-                if visible.peek() || pending_for_enter.get().is_some() {
-                    return;
-                }
-                if delay_ms == 0 {
-                    visible.set(true);
-                    return;
-                }
-                let pending_for_cb = Rc::clone(&pending_for_enter);
-                let id = interval(Duration::from_millis(delay_ms), move || {
-                    visible.set(true);
-                    if let Some(id) = pending_for_cb.take() {
-                        cancel_interval(id);
-                    }
-                });
-                pending_for_enter.set(Some(id));
-            })
-            .pointer_leave(move |event| {
-                if let Some(id) = pending.take() {
-                    cancel_interval(id);
-                }
-                if visible.peek() {
-                    visible.set(false);
-                }
-                event.stop_propagation();
-            });
-
+        let bubble = build_bubble(
+            &self.label,
+            self.shortcut.as_deref(),
+            &description,
+            (visible, side),
+        );
+        let root = container()
+            .role(Role::GenericContainer)
+            .description(description)
+            .layout(
+                self.layout_overrides.apply(
+                    LayoutStyle::flex_column()
+                        .position(Position::Relative)
+                        .align_items(AlignItems::Center)
+                        .justify_content(JustifyContent::Center),
+                ),
+            );
+        let mut root = hover_reveal(root, visible, self.delay_ms);
         if let Some(inner) = self.child {
             root = root.child(FocusTarget { inner, visible });
         }
         root = root.child(bubble);
-
         for mutate in self.mutators {
             root = mutate(root);
         }
-
         if !self.style_accumulator.is_empty() {
             root = root.style(self.style_accumulator);
         }
@@ -165,6 +141,38 @@ impl IntoNode for TooltipBuilder {
             .finish(self.into_node_builder())
             .build(cx)
     }
+}
+
+fn hover_reveal(root: NodeBuilder, visible: Signal<bool>, delay_ms: u64) -> NodeBuilder {
+    let pending: Rc<Cell<Option<IntervalId>>> = Rc::new(Cell::new(None));
+    let pending_for_enter = Rc::clone(&pending);
+    root.pointer_enter(move |event| {
+        event.stop_propagation();
+        if visible.peek() || pending_for_enter.get().is_some() {
+            return;
+        }
+        if delay_ms == 0 {
+            visible.set(true);
+            return;
+        }
+        let pending_for_cb = Rc::clone(&pending_for_enter);
+        let id = interval(Duration::from_millis(delay_ms), move || {
+            visible.set(true);
+            if let Some(id) = pending_for_cb.take() {
+                cancel_interval(id);
+            }
+        });
+        pending_for_enter.set(Some(id));
+    })
+    .pointer_leave(move |event| {
+        if let Some(id) = pending.take() {
+            cancel_interval(id);
+        }
+        if visible.peek() {
+            visible.set(false);
+        }
+        event.stop_propagation();
+    })
 }
 
 struct FocusTarget {
@@ -215,20 +223,6 @@ fn watch_focus(cx: &mut Cx, target: NodeId, visible: Signal<bool>) {
     });
 }
 
-fn wrapper_root(description: &str, overrides: LayoutOverrides) -> NodeBuilder {
-    container()
-        .role(Role::GenericContainer)
-        .description(description.to_owned())
-        .layout(
-            overrides.apply(
-                LayoutStyle::flex_column()
-                    .position(Position::Relative)
-                    .align_items(AlignItems::Center)
-                    .justify_content(JustifyContent::Center),
-            ),
-        )
-}
-
 fn bubble_description(label: &str, shortcut: Option<&str>) -> String {
     match shortcut {
         Some(keys) if !keys.is_empty() => format!("{label} ({keys})"),
@@ -239,12 +233,12 @@ fn bubble_description(label: &str, shortcut: Option<&str>) -> String {
 fn build_bubble(
     label: &str,
     shortcut: Option<&str>,
-    visible: Signal<bool>,
-    side: PopupSide,
+    description: &str,
+    (visible, side): (Signal<bool>, PopupSide),
 ) -> NodeBuilder {
-    let aria_label = bubble_description(label, shortcut);
+    let metrics = Metrics::current();
     let mut bubble = surface(Role::Tooltip)
-        .label(aria_label)
+        .label(description.to_owned())
         .with(TopLayer)
         .with(ViewportOverlay)
         .with(Popup {
@@ -253,15 +247,25 @@ fn build_bubble(
             sibling: true,
             gap: POPUP_GAP,
         })
-        .layout(bubble_layout())
+        .layout(
+            LayoutStyle::flex_column()
+                .max_width(space(60))
+                .padding_x(metrics.padding(ControlSize::Compact))
+                .padding_y(metrics.overlay_padding())
+                .gap(metrics.overlay_padding())
+                .align_items(AlignItems::Start)
+                .justify_content(JustifyContent::Center)
+                .position(Position::Absolute)
+                .inset_top(0.0)
+                .inset_left(0.0),
+        )
         .class(BUBBLE_BASE)
-        .style_reactive(move || visibility_atoms(visible.get()));
-
-    bubble = bubble.child(
-        text(label.to_owned())
-            .class("text-sm")
-            .class(Token::OnSurface.text()),
-    );
+        .style_reactive(move || visibility_atoms(visible.get()))
+        .child(
+            text(label.to_owned())
+                .class("text-sm")
+                .class(Token::OnSurface.text()),
+        );
     if let Some(keys) = shortcut.filter(|s| !s.is_empty()) {
         bubble = bubble.child(
             text(keys.to_owned())
@@ -270,20 +274,6 @@ fn build_bubble(
         );
     }
     bubble
-}
-
-fn bubble_layout() -> LayoutStyle {
-    let metrics = Metrics::current();
-    LayoutStyle::flex_column()
-        .max_width(BUBBLE_MAX_WIDTH)
-        .padding_x(metrics.padding(ControlSize::Compact))
-        .padding_y(metrics.overlay_padding())
-        .gap(metrics.overlay_padding())
-        .align_items(AlignItems::Start)
-        .justify_content(JustifyContent::Center)
-        .position(Position::Absolute)
-        .inset_top(0.0)
-        .inset_left(0.0)
 }
 
 const fn visibility_atoms(show: bool) -> &'static [StyleAtom] {

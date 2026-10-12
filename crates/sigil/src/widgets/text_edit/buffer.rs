@@ -70,49 +70,26 @@ impl TextEdit {
     }
 
     pub(crate) fn backspace(&mut self) {
-        if self.selection.is_some() {
-            self.push_history();
-            self.delete_selection_range();
-            return;
-        }
-        let Some(previous) = previous_boundary(&self.buffer, self.caret) else {
-            return;
-        };
-        self.push_history();
-        self.buffer.drain(previous..self.caret);
-        self.caret = self.clamp_boundary(previous);
-        self.debug_assert_invariants();
+        let start = previous_boundary(&self.buffer, self.caret).unwrap_or(self.caret);
+        self.delete_span(start, self.caret);
     }
 
     pub(crate) fn delete_forward(&mut self) {
-        if self.selection.is_some() {
-            self.push_history();
-            self.delete_selection_range();
-            return;
-        }
-        let Some(next) = next_boundary(&self.buffer, self.caret) else {
-            return;
-        };
-        self.push_history();
-        self.buffer.drain(self.caret..next);
-        self.caret = self.clamp_boundary(self.caret);
-        self.debug_assert_invariants();
+        let end = next_boundary(&self.buffer, self.caret).unwrap_or(self.caret);
+        self.delete_span(self.caret, end);
     }
 
-    pub(crate) fn move_left(&mut self) {
-        self.selection = None;
-        if let Some(next) = self.step(false) {
-            self.caret = next;
-        }
-        self.debug_assert_invariants();
+    pub(crate) fn move_by(&mut self, right: bool, extend: bool) {
+        let to = self.step(right).unwrap_or(self.caret);
+        self.jump_to(to, extend);
     }
 
-    pub(crate) fn move_right(&mut self) {
-        self.selection = None;
-        if let Some(next) = self.step(true) {
-            self.caret = next;
+    pub(crate) fn jump_to(&mut self, byte: usize, extend: bool) {
+        if extend {
+            self.extend_to(byte);
+        } else {
+            self.place_caret(byte);
         }
-        self.debug_assert_invariants();
     }
 
     fn step(&self, right: bool) -> Option<usize> {
@@ -177,90 +154,28 @@ impl TextEdit {
         self.debug_assert_invariants();
     }
 
-    pub(crate) const fn move_home(&mut self) {
-        self.selection = None;
-        self.caret = 0;
-    }
-
-    pub(crate) fn move_end(&mut self) {
-        self.selection = None;
-        self.caret = self.buffer.len();
-        self.debug_assert_invariants();
-    }
-
-    pub(crate) fn shift_left(&mut self) {
-        let anchor = *self.selection.get_or_insert(self.caret);
-        if let Some(previous) = self.step(false) {
-            self.caret = previous;
-        }
-        if self.caret == anchor {
-            self.selection = None;
-        }
-        self.debug_assert_invariants();
-    }
-
-    pub(crate) fn shift_right(&mut self) {
-        let anchor = *self.selection.get_or_insert(self.caret);
-        if let Some(next) = self.step(true) {
-            self.caret = next;
-        }
-        if self.caret == anchor {
-            self.selection = None;
-        }
-        self.debug_assert_invariants();
-    }
-
-    pub(crate) fn shift_home(&mut self) {
-        if self.caret == 0 {
-            return;
-        }
-        self.selection.get_or_insert(self.caret);
-        self.caret = 0;
-        self.debug_assert_invariants();
-    }
-
-    pub(crate) fn shift_end(&mut self) {
-        let end = self.buffer.len();
-        if self.caret == end {
-            return;
-        }
-        self.selection.get_or_insert(self.caret);
-        self.caret = end;
-        self.debug_assert_invariants();
-    }
-
     pub(crate) fn undo(&mut self) -> bool {
-        let Some(snapshot) = self.history.pop() else {
-            return false;
-        };
-        let current = Snapshot {
-            buffer: self.buffer.clone(),
-            caret: self.caret,
-        };
-        if self.future.len() >= MAX_HISTORY {
-            self.future.remove(0);
-        }
-        self.future.push(current);
-        self.buffer = snapshot.buffer;
-        self.caret = snapshot.caret;
-        self.selection = None;
-        self.debug_assert_invariants();
-        true
+        self.travel(true)
     }
 
     pub(crate) fn redo(&mut self) -> bool {
-        let Some(snapshot) = self.future.pop() else {
+        self.travel(false)
+    }
+
+    fn travel(&mut self, back: bool) -> bool {
+        let (from, to) = if back {
+            (&mut self.history, &mut self.future)
+        } else {
+            (&mut self.future, &mut self.history)
+        };
+        let Some(snapshot) = from.pop() else {
             return false;
         };
         let current = Snapshot {
-            buffer: self.buffer.clone(),
+            buffer: std::mem::replace(&mut self.buffer, snapshot.buffer),
             caret: self.caret,
         };
-        if self.history.len() >= MAX_HISTORY {
-            self.history.remove(0);
-        }
-        self.history.push(current);
-        self.buffer = snapshot.buffer;
+        bounded_push(to, current);
         self.caret = snapshot.caret;
         self.selection = None;
         self.debug_assert_invariants();
@@ -324,11 +239,6 @@ impl TextEdit {
         self.buffer.len()
     }
 
-    #[must_use]
-    pub(crate) const fn is_empty(&self) -> bool {
-        self.buffer.is_empty()
-    }
-
     pub(crate) const fn caret(&self) -> usize {
         self.caret
     }
@@ -352,10 +262,7 @@ impl TextEdit {
             buffer: self.buffer.clone(),
             caret: self.caret,
         };
-        if self.history.len() >= MAX_HISTORY {
-            self.history.remove(0);
-        }
-        self.history.push(snapshot);
+        bounded_push(&mut self.history, snapshot);
         self.future.clear();
     }
 
@@ -367,4 +274,11 @@ impl TextEdit {
             debug_assert!(self.buffer.is_char_boundary(anchor));
         }
     }
+}
+
+fn bounded_push(stack: &mut Vec<Snapshot>, snapshot: Snapshot) {
+    if stack.len() >= MAX_HISTORY {
+        stack.remove(0);
+    }
+    stack.push(snapshot);
 }

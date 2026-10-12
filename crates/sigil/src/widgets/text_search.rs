@@ -39,15 +39,13 @@ pub(crate) struct CloseTags {
 
 impl CloseTags {
     pub(crate) fn find(&mut self, rest: &str, needle: &str) -> Option<usize> {
-        let index = self
-            .tags
-            .iter()
-            .position(|tag| tag.needle == needle)
-            .unwrap_or_else(|| {
-                self.tags.push(NextMatch::new(needle, true));
-                self.tags.len().saturating_sub(1)
-            });
-        self.tags.get_mut(index)?.find(rest)
+        if !self.tags.iter().any(|tag| tag.needle == needle) {
+            self.tags.push(NextMatch::new(needle, true));
+        }
+        self.tags
+            .iter_mut()
+            .find(|tag| tag.needle == needle)?
+            .find(rest)
     }
 }
 

@@ -44,15 +44,16 @@ pub fn adapter_key() -> Option<String> {
 }
 
 fn vendor_class(info: &wgpu::AdapterInfo) -> &'static str {
+    const SOFTWARE: [(&str, &str); 5] = [
+        ("warp", "warp"),
+        ("basic render", "warp"),
+        ("llvmpipe", "lavapipe"),
+        ("lavapipe", "lavapipe"),
+        ("swiftshader", "swiftshader"),
+    ];
     let name = info.name.to_ascii_lowercase();
-    if name.contains("warp") || name.contains("basic render") {
-        return "warp";
-    }
-    if name.contains("llvmpipe") || name.contains("lavapipe") {
-        return "lavapipe";
-    }
-    if name.contains("swiftshader") {
-        return "swiftshader";
+    if let Some(&(_, class)) = SOFTWARE.iter().find(|(needle, _)| name.contains(needle)) {
+        return class;
     }
     if name.starts_with("apple") {
         return "apple";

@@ -2,12 +2,8 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::animation_runtime::active_count as active_animation_count;
-#[cfg(test)]
-use crate::geometry::Size;
 use crate::geometry::{LogicalSize, PhysicalSize, Scale};
 use crate::hal::Shell;
-#[cfg(test)]
-use crate::layout::LayoutEngine;
 use crate::reactive::{Owner, Runtime, next_interval_deadline};
 use crate::shell::{WinitShell, WinitWindowHandle};
 use crate::tasks::AsyncRuntime;
@@ -34,8 +30,6 @@ use backend::{Backend, Surface};
 #[cfg(test)]
 use clock::AnimationClock;
 use frame::frame_once;
-#[cfg(test)]
-use frame::{begin_effect, run_layout_if_dirty};
 use record::{WindowRecord, Windows};
 use tick::{FrameCtx, LoopState};
 
@@ -73,15 +67,12 @@ where
     #[cfg(target_arch = "wasm32")]
     shell.set_canvas(config.canvas.clone());
     let async_rt = install_async_runtime(&shell, config.task_workers)?;
-    install_font_wake(&shell);
+    crate::text::on_fonts_changed(wake_fn(&shell));
     let windows = initial_windows(&mut shell, config, tree)?;
     let _theme_watch = crate::app::launch_theme(config.theme_file.as_deref());
     let mut renderer = Backend::from_env()?;
     #[cfg(target_arch = "wasm32")]
-    renderer.request_device({
-        let waker = shell.waker();
-        move || drop(WinitShell::wake(&waker))
-    });
+    renderer.request_device(wake_fn(&shell));
     renderer.set_transparent(config.overlay || config.frameless);
     clear_exit();
     shell.on_idle_deadline(next_interval_deadline);
@@ -115,35 +106,27 @@ where
 
 fn drive(shell: WinitShell, mut state: LoopState, owner: Owner) -> AppResult<()> {
     #[cfg(feature = "inspect")]
-    let inspect = crate::app::inspect::install_with_wake({
-        let waker = shell.waker();
-        move || drop(WinitShell::wake(&waker))
-    });
+    let inspect = crate::app::inspect::install_with_wake(wake_fn(&shell));
     let failure = Rc::new(Cell::new(None));
     let launch_failure = Rc::clone(&failure);
-    finish(
-        shell
-            .run(move |shell| {
-                owner.with(|| {
-                    #[cfg(feature = "inspect")]
-                    if let Some(inspect) = &inspect {
-                        state.service_inspect(inspect);
-                    }
-                    if let Err(error) = state.tick(shell) {
-                        Runtime::recover_from_panic();
-                        #[cfg(target_arch = "wasm32")]
-                        web::report(&error);
-                        launch_failure.set(Some(error));
-                        shell.request_exit();
-                    }
-                });
-            })
-            .map_err(Error::window)
-            .and_then(|()| failure.take().map_or(Ok(()), Err)),
-    )
-}
-
-fn finish(result: AppResult<()>) -> AppResult<()> {
+    let result = shell
+        .run(move |shell| {
+            owner.with(|| {
+                #[cfg(feature = "inspect")]
+                if let Some(inspect) = &inspect {
+                    state.service_inspect(inspect);
+                }
+                if let Err(error) = state.tick(shell) {
+                    Runtime::recover_from_panic();
+                    #[cfg(target_arch = "wasm32")]
+                    web::report(&error);
+                    launch_failure.set(Some(error));
+                    shell.request_exit();
+                }
+            });
+        })
+        .map_err(Error::window)
+        .and_then(|()| failure.take().map_or(Ok(()), Err));
     if cfg!(not(target_arch = "wasm32")) {
         crate::profile::dump_if_enabled();
     }
@@ -158,9 +141,9 @@ fn request_animation_frame(shell: &WinitShell, handle: Option<WinitWindowHandle>
     }
 }
 
-fn install_font_wake(shell: &WinitShell) {
+fn wake_fn(shell: &WinitShell) -> impl Fn() + Send + Sync + 'static {
     let waker = shell.waker();
-    crate::text::on_fonts_changed(move || drop(WinitShell::wake(&waker)));
+    move || drop(WinitShell::wake(&waker))
 }
 
 fn install_async_runtime(
@@ -168,10 +151,7 @@ fn install_async_runtime(
     workers: crate::tasks::TaskWorkers,
 ) -> AppResult<AsyncRuntime> {
     let mut async_rt = AsyncRuntime::with_workers(workers).map_err(Error::task)?;
-    let waker = shell.waker();
-    async_rt.set_waker(move || {
-        let _ = WinitShell::wake(&waker);
-    });
+    async_rt.set_waker(wake_fn(shell));
     async_rt.install_current();
     Ok(async_rt)
 }
@@ -253,44 +233,16 @@ fn resize_surface(renderer: &mut Backend, surface: &mut Option<Surface>, physica
     }
 }
 
-#[cfg(test)]
-fn layout_for_scale(
-    cx: &mut crate::kernel::Cx,
-    root: crate::kernel::NodeId,
-    layout: &mut LayoutEngine,
-    _scale: Scale,
-    logical_viewport: LogicalSize,
-) -> core::result::Result<(), crate::layout::LayoutError> {
-    layout.compute(
-        cx,
-        root,
-        Size::fixed(logical_viewport.width, logical_viewport.height),
-    )
-}
-
-const fn set_viewport(viewport: &mut (f32, f32), logical: LogicalSize) {
-    viewport.0 = logical.width;
-    viewport.1 = logical.height;
-}
-
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "window sizes are far below the f32 mantissa limit"
+)]
 const fn logical_size_from_config(size: (u32, u32)) -> LogicalSize {
-    LogicalSize::new(f32_from_u32(size.0), f32_from_u32(size.1))
-}
-
-const fn logical_size_from_viewport(viewport: (f32, f32)) -> LogicalSize {
-    LogicalSize::new(viewport.0, viewport.1)
+    LogicalSize::new(size.0 as f32, size.1 as f32)
 }
 
 fn clamp_physical_size(size: PhysicalSize) -> PhysicalSize {
     PhysicalSize::new(size.width.max(1), size.height.max(1))
-}
-
-#[allow(
-    clippy::cast_precision_loss,
-    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-)]
-const fn f32_from_u32(v: u32) -> f32 {
-    v as f32
 }
 
 #[allow(

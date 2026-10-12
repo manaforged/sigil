@@ -1,7 +1,6 @@
-use core::panic::Location;
-
-use crate::reactive::owner_dispose::dispose_owner;
-use crate::reactive::runtime::{EffectKey, OwnerKey, OwnerSlot, RuntimeState, with_rt};
+use crate::reactive::diagnostic::{Cycle, reactive_cycle};
+use crate::reactive::owner_dispose::{dispose_owner, unsubscribe};
+use crate::reactive::runtime::{EffectKey, OwnerKey, RuntimeState, with_rt};
 
 struct RunGuard {
     key: EffectKey,
@@ -66,11 +65,7 @@ fn restore_interrupted(
         if old.contains(&dep) {
             continue;
         }
-        if let Some(sig) = rt.signals.get_mut(dep)
-            && let Some(pos) = sig.subscribers.iter().position(|k| *k == key)
-        {
-            sig.subscribers.swap_remove(pos);
-        }
+        unsubscribe(&mut rt.signals, dep, key);
     }
     let Some(slot) = rt.effects.get_mut(key) else {
         return f;
@@ -98,23 +93,8 @@ fn reconcile_deps(rt: &mut RuntimeState, key: EffectKey) {
         if new_deps.contains(&dep) {
             continue;
         }
-        if let Some(signal) = rt.signals.get_mut(dep)
-            && let Some(pos) = signal.subscribers.iter().position(|k| *k == key)
-        {
-            signal.subscribers.swap_remove(pos);
-        }
+        unsubscribe(&mut rt.signals, dep, key);
     }
-}
-
-enum RunSetup {
-    Skip,
-    AbortClearRunning,
-    Go {
-        f: Box<dyn FnMut()>,
-        prev_owner: Option<OwnerKey>,
-        prev_effect: Option<EffectKey>,
-        prev_run_owner: Option<OwnerKey>,
-    },
 }
 
 fn prune_dead_deps(rt: &mut RuntimeState, key: EffectKey) {
@@ -137,126 +117,55 @@ fn prune_dead_deps(rt: &mut RuntimeState, key: EffectKey) {
     }
 }
 
-fn make_effect_run_owner(
-    rt: &mut RuntimeState,
-    key: EffectKey,
-    parent_owner: OwnerKey,
-    effect_location: &'static Location<'static>,
-) -> Option<OwnerKey> {
-    let index_in_parent = rt
-        .owners
-        .get(parent_owner)
-        .map(|parent| parent.children.len());
-    let run_owner = rt.owners.insert(OwnerSlot {
-        parent: Some(parent_owner),
-        index_in_parent,
-        children: Vec::new(),
-        signals: Vec::new(),
-        effects: Vec::new(),
-        cleanups: Vec::new(),
-        name: "<effect-run>",
-        location: effect_location,
-    });
-    if let Some(p) = rt.owners.get_mut(parent_owner) {
-        p.children.push(run_owner);
+fn run_setup(rt: &mut RuntimeState, key: EffectKey) -> Option<(RunGuard, Option<OwnerKey>)> {
+    let slot = rt.effects.get(key)?;
+    if rt.running.contains(&key) {
+        reactive_cycle(Cycle::ReEntry(Some(slot.location)));
+        return None;
     }
-    if let Some(slot) = rt.effects.get_mut(key) {
-        slot.run_owner = Some(run_owner);
-        Some(run_owner)
-    } else {
-        rt.owners.remove(run_owner);
-        None
+    slot.f.as_ref()?;
+    prune_dead_deps(rt, key);
+    rt.running.insert(key);
+    let setup = go_setup(rt, key);
+    if setup.is_none() {
+        rt.running.remove(&key);
     }
+    setup
 }
 
-#[inline]
-fn run_setup(key: EffectKey) -> RunSetup {
-    with_rt(|rt| {
-        if !rt.effects.contains(key) {
-            return RunSetup::Skip;
-        }
-        if rt.running.contains(&key) {
-            let loc = rt.effects.get(key).map(|e| e.location);
-            crate::reactive::diagnostic::reactive_cycle(
-                crate::reactive::diagnostic::Cycle::ReEntry(loc),
-            );
-            return RunSetup::Skip;
-        }
-        if rt.effects.get(key).is_some_and(|slot| slot.f.is_none()) {
-            return RunSetup::Skip;
-        }
-        prune_dead_deps(rt, key);
-        rt.running.insert(key);
-        go_setup(rt, key)
-    })
-}
-
-fn go_setup(rt: &mut RuntimeState, key: EffectKey) -> RunSetup {
-    if let Some(effect) = rt.effects.get_mut(key) {
-        debug_assert!(effect.prev_deps.is_empty());
-        effect.prev_deps = core::mem::take(&mut effect.deps);
-        effect.prev_dep_cursor = 0;
+fn go_setup(rt: &mut RuntimeState, key: EffectKey) -> Option<(RunGuard, Option<OwnerKey>)> {
+    let effect = rt.effects.get_mut(key)?;
+    debug_assert!(effect.prev_deps.is_empty());
+    effect.prev_deps = core::mem::take(&mut effect.deps);
+    effect.prev_dep_cursor = 0;
+    let prev_run_owner = effect.run_owner.take();
+    let (parent, location) = (effect.owner, effect.location);
+    if !rt.owners.contains(parent) {
+        return None;
     }
-
-    let prev_run_owner = rt.effects.get_mut(key).and_then(|e| e.run_owner.take());
-
-    let Some((parent_owner, effect_location)) = rt.effects.get(key).map(|e| (e.owner, e.location))
-    else {
-        return RunSetup::AbortClearRunning;
-    };
-    if !rt.owners.contains(parent_owner) {
-        return RunSetup::AbortClearRunning;
-    }
-
-    let Some(run_owner) = make_effect_run_owner(rt, key, parent_owner, effect_location) else {
-        return RunSetup::AbortClearRunning;
-    };
-
+    let run_owner = rt.insert_owner("<effect-run>", Some(parent), location);
     let slot = rt
         .effects
         .get_mut(key)
-        .expect("invariant: slot present after make_effect_run_owner");
+        .expect("invariant: effect slot present during setup");
+    slot.run_owner = Some(run_owner);
     let f = slot
         .f
         .take()
         .expect("invariant: effect closure present outside a run");
-    let prev_owner = rt.current_owner;
-    let prev_effect = rt.current_effect;
-    rt.current_owner = Some(run_owner);
-    rt.current_effect = Some(key);
-
-    RunSetup::Go {
-        f,
-        prev_owner,
-        prev_effect,
-        prev_run_owner,
-    }
+    let guard = RunGuard {
+        key,
+        prev_owner: rt.current_owner.replace(run_owner),
+        prev_effect: rt.current_effect.replace(key),
+        f: Some(f),
+    };
+    Some((guard, prev_run_owner))
 }
 
 pub(crate) fn run_effect(key: EffectKey) {
-    let (f, prev_owner, prev_effect, prev_run_owner) = match run_setup(key) {
-        RunSetup::Skip => return,
-        RunSetup::AbortClearRunning => {
-            with_rt(|rt| {
-                rt.running.remove(&key);
-            });
-            return;
-        }
-        RunSetup::Go {
-            f,
-            prev_owner,
-            prev_effect,
-            prev_run_owner,
-        } => (f, prev_owner, prev_effect, prev_run_owner),
+    let Some((mut guard, prev_run_owner)) = with_rt(|rt| run_setup(rt, key)) else {
+        return;
     };
-
-    let mut guard = RunGuard {
-        key,
-        prev_owner,
-        prev_effect,
-        f: Some(f),
-    };
-
     if let Some(prev) = prev_run_owner {
         dispose_owner(prev);
         #[cfg(debug_assertions)]
@@ -264,16 +173,16 @@ pub(crate) fn run_effect(key: EffectKey) {
             let (name, location) = with_rt(|rt| {
                 rt.effects
                     .get(key)
-                    .map_or(("<effect>", Location::caller()), |e| (e.name, e.location))
+                    .map_or(("<effect>", core::panic::Location::caller()), |e| {
+                        (e.name, e.location)
+                    })
             });
             crate::reactive::debug::run_effect_leak_check(prev, name, location);
         }
     }
-
     guard.f.as_mut().expect("closure just stored in guard")();
     drop(guard);
     crate::reactive::effect::run_deferred(key);
-
     trace_effect_run(key);
 }
 

@@ -25,13 +25,10 @@ impl<'t> EmitWalk<'_, 't> {
 }
 
 fn find_top_layer<'t>(cx: &'t Cx, node: &Node) -> Vec<(NodeId, Path<'t>)> {
-    let mut found = Vec::new();
-    for id in cx.top_layers().iter().copied() {
-        if let Some(path) = path_under(cx, node, id) {
-            found.push((id, path));
-        }
-    }
-    found
+    cx.top_layers()
+        .iter()
+        .filter_map(|&id| Some((id, path_under(cx, node, id)?)))
+        .collect()
 }
 
 fn path_under<'t>(cx: &'t Cx, node: &Node, id: NodeId) -> Option<Path<'t>> {

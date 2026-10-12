@@ -37,6 +37,31 @@ const XTVERSION: [(&str, Known); 6] = [
 ];
 
 impl Known {
+    pub(super) const fn kitty_keys(self) -> bool {
+        match self {
+            Self::Kitty
+            | Self::Ghostty
+            | Self::WezTerm
+            | Self::Iterm
+            | Self::Foot
+            | Self::Alacritty => true,
+            Self::Contour | Self::WindowsTerminal | Self::Vte | Self::Apple => false,
+        }
+    }
+
+    pub(super) const fn underline_styles(self) -> bool {
+        match self {
+            Self::Apple | Self::Alacritty | Self::WindowsTerminal => false,
+            Self::Kitty
+            | Self::Ghostty
+            | Self::WezTerm
+            | Self::Iterm
+            | Self::Foot
+            | Self::Contour
+            | Self::Vte => true,
+        }
+    }
+
     pub(super) const fn notices(self) -> Notices {
         let (notify, progress) = match self {
             Self::Kitty | Self::Iterm => (Some(Notify::Osc9), true),

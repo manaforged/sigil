@@ -65,6 +65,13 @@ impl PatternKind {
     }
 }
 
+pub(crate) const TRANSPARENT: Rgba8 = Rgba8 {
+    r: 0,
+    g: 0,
+    b: 0,
+    a: 0,
+};
+
 const MIN_PATTERN_LENGTH: f32 = 1.0;
 const MAX_PATTERN_LENGTH: f32 = 1024.0;
 
@@ -103,15 +110,7 @@ impl LinearGradient {
             .collect();
         sorted.sort_by(|a, b| a.offset.total_cmp(&b.offset));
         let stops = match sorted.last() {
-            None => smallvec::smallvec![GradientStop::new(
-                0.0,
-                Rgba8 {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    a: 0
-                }
-            )],
+            None => smallvec::smallvec![GradientStop::new(0.0, TRANSPARENT)],
             Some(last) if self.is_degenerate() => {
                 smallvec::smallvec![GradientStop::new(0.0, last.color)]
             }
@@ -121,9 +120,7 @@ impl LinearGradient {
     }
 
     fn is_degenerate(&self) -> bool {
-        let dx = self.end.x - self.start.x;
-        let dy = self.end.y - self.start.y;
-        let length = dx.hypot(dy);
+        let length = (self.end.x - self.start.x).hypot(self.end.y - self.start.y);
         length.is_nan() || length < DEGENERATE_LENGTH
     }
 }
@@ -158,12 +155,7 @@ fn color_at(sorted: &[GradientStop], t: f32) -> Rgba8 {
         }
         (None, Some(first), _) if t < first.offset => first.color,
         (None, _, Some(last)) => last.color,
-        (None, _, None) => Rgba8 {
-            r: 0,
-            g: 0,
-            b: 0,
-            a: 0,
-        },
+        (None, _, None) => TRANSPARENT,
     }
 }
 

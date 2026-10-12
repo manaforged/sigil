@@ -28,21 +28,14 @@ impl BlockSolver<'_> {
         if dx != 0.0 || dy != 0.0 {
             self.shift_subtree(child, dx, dy);
         }
-        self.write(
-            child.id(),
-            ComputedBox {
-                x,
-                y,
-                w: box_w,
-                h: box_h,
-            },
-        );
+        let (w, h) = (box_w, box_h);
+        self.scope.write(child.id(), ComputedBox { x, y, w, h });
         Ok(())
     }
 
-    #[allow(
+    #[expect(
         clippy::too_many_arguments,
-        reason = "absolute sizing needs self + child + resolved edges/intent + inner_cb + provisional; bundling would obscure the data flow"
+        reason = "one absolute child needs its box, edges, intent and containing block"
     )]
     fn size_absolute(
         &self,
@@ -52,16 +45,9 @@ impl BlockSolver<'_> {
         inner_cb: Size<f32>,
         provisional: Position2,
     ) -> Result<(f32, f32), LayoutError> {
-        match child.style().display {
-            Display::Flex => {
-                self.solve_flex_child(child, inner_cb, provisional)?;
-                return self.computed_size(child);
-            }
-            Display::Grid => {
-                self.solve_grid_child(child, inner_cb, provisional)?;
-                return self.computed_size(child);
-            }
-            Display::Block | Display::None => {}
+        if matches!(child.style().display, Display::Flex | Display::Grid) {
+            self.solve_nested(child, inner_cb, provisional)?;
+            return self.computed_size(child);
         }
         let auto_w =
             (inner_cb.width - edges.margin.left.unwrap_or(0.0) - edges.margin.right.unwrap_or(0.0))
@@ -72,21 +58,7 @@ impl BlockSolver<'_> {
             width: inner_w,
             height: intent.h.preferred.unwrap_or(inner_cb.height),
         };
-        let content_origin = Position2::new(
-            provisional.x + edges.border.left + edges.padding.left,
-            provisional.y + edges.border.top + edges.padding.top,
-        );
-        let child_padding_box = Size {
-            width: inner_w + edges.padding.left + edges.padding.right,
-            height: inner_cb_child.height + edges.padding.top + edges.padding.bottom,
-        };
-        let content_h = self.layout_children(
-            child,
-            inner_cb_child,
-            content_origin,
-            child_padding_box,
-            content_origin,
-        )?;
+        let content_h = self.layout_children(child, inner_cb_child, provisional, edges)?;
         let auto_h = content_h + edges.block_chrome();
         let box_h = intent.h.clamp(intent.h.preferred.unwrap_or(auto_h));
         Ok((box_w, box_h))
@@ -97,15 +69,8 @@ impl BlockSolver<'_> {
         for child_id in node.children() {
             if let Some(child) = forest.refer(*child_id) {
                 if let Some(b) = self.boxed(*child_id) {
-                    self.write(
-                        *child_id,
-                        ComputedBox {
-                            x: b.x + dx,
-                            y: b.y + dy,
-                            w: b.w,
-                            h: b.h,
-                        },
-                    );
+                    let (x, y) = (b.x + dx, b.y + dy);
+                    self.scope.write(*child_id, ComputedBox { x, y, ..b });
                 }
                 self.shift_subtree(child, dx, dy);
             }

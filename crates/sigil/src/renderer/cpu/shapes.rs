@@ -77,6 +77,13 @@ pub(super) fn coverage_table(linear: [f32; 3], alpha: f32) -> [[u8; 4]; 256] {
     })
 }
 
+pub(super) fn rgba_table(color: Rgba8, opacity: f32) -> [[u8; 4]; 256] {
+    coverage_table(
+        [color.r, color.g, color.b].map(decode),
+        f32::from(color.a) / 255.0 * opacity,
+    )
+}
+
 pub(super) fn ts_color(color: Rgba8, opacity: f32) -> TsColor {
     let alpha = (f32::from(color.a) / 255.0 * opacity).clamp(0.0, 1.0);
     TsColor::from_rgba(

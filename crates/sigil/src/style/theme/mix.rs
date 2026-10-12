@@ -1,4 +1,5 @@
 use crate::style::Rgba8;
+use crate::style::scale::rgb;
 
 pub(super) fn shift(c: Rgba8, delta: i16) -> Rgba8 {
     let nudge = |channel: u8| -> u8 {
@@ -24,36 +25,9 @@ pub(super) fn ramp_accent(surface: Rgba8, solid: Rgba8) -> crate::style::scale::
         *step = alpha_mix(surface, solid, f32::from(t) / 9.0);
     }
     steps[8] = solid;
-    steps[9] = alpha_mix(
-        solid,
-        Rgba8 {
-            r: 255,
-            g: 255,
-            b: 255,
-            a: 255,
-        },
-        0.18,
-    );
-    steps[10] = alpha_mix(
-        solid,
-        Rgba8 {
-            r: 255,
-            g: 255,
-            b: 255,
-            a: 255,
-        },
-        0.36,
-    );
-    steps[11] = alpha_mix(
-        solid,
-        Rgba8 {
-            r: 255,
-            g: 255,
-            b: 255,
-            a: 255,
-        },
-        0.55,
-    );
+    steps[9] = alpha_mix(solid, rgb(255, 255, 255), 0.18);
+    steps[10] = alpha_mix(solid, rgb(255, 255, 255), 0.36);
+    steps[11] = alpha_mix(solid, rgb(255, 255, 255), 0.55);
     crate::style::scale::ColorScale::from_steps(steps).with_on_solid(surface)
 }
 
@@ -78,8 +52,4 @@ pub(super) fn alpha_mix(a: Rgba8, b: Rgba8, t: f32) -> Rgba8 {
         b: blend(a.b, b.b),
         a: a.a,
     }
-}
-
-pub(super) const fn rgba(r: u8, g: u8, b: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a: 255 }
 }

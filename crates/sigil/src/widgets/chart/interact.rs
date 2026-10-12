@@ -12,9 +12,6 @@ use crate::style::{Token, space};
 
 use super::axis::format_tick;
 
-const ZOOM_PER_PIXEL: f32 = 0.002;
-const ZOOM_PER_LINE: f32 = 0.1;
-const MIN_SPAN: f32 = 2.0;
 const RULE: f32 = 1.0;
 const READOUT_OFFSET: f32 = space(1);
 
@@ -63,12 +60,11 @@ impl Interact {
 
     pub(super) fn attach(
         &self,
-        plot: NodeBuilder,
+        mut plot: NodeBuilder,
         total: usize,
         pad: f32,
         values: impl FnOnce() -> Rc<[f32]>,
     ) -> NodeBuilder {
-        let mut plot = plot;
         if self.crosshair {
             plot = plot.child(self.overlay(values(), pad));
         }
@@ -82,9 +78,11 @@ impl Interact {
     fn pointer(&self, plot: NodeBuilder, total: usize, pad: f32) -> NodeBuilder {
         let (probe, crosshair, range) = (self.probe, self.crosshair, self.range);
         let width = Rc::clone(&self.width);
-        let drag = Rc::clone(&self.drag);
-        let down_drag = Rc::clone(&self.drag);
-        let up_drag = Rc::clone(&self.drag);
+        let (drag, down_drag, up_drag) = (
+            Rc::clone(&self.drag),
+            Rc::clone(&self.drag),
+            Rc::clone(&self.drag),
+        );
         plot.pointer_move(move |event: &mut PointerEvent| {
             width.set(event.target_size.width);
             if crosshair {
@@ -126,8 +124,8 @@ impl Interact {
         let width = Rc::clone(&self.width);
         plot.on_scroll(move |event: &mut ScrollEvent| {
             let steps = match event.delta {
-                ScrollDelta::Pixels(delta) => delta.y * ZOOM_PER_PIXEL,
-                ScrollDelta::Lines(delta) => delta.y * ZOOM_PER_LINE,
+                ScrollDelta::Pixels(delta) => delta.y * 0.002,
+                ScrollDelta::Lines(delta) => delta.y * 0.1,
             };
             if steps == 0.0 || !steps.is_finite() {
                 return;
@@ -183,7 +181,7 @@ fn clamp_range(range: Range<f32>, total: f32) -> Range<f32> {
     if !(range.start.is_finite() && range.end.is_finite()) || range.end <= range.start {
         return 0.0..total;
     }
-    let len = (range.end - range.start).clamp(MIN_SPAN.min(total), total);
+    let len = (range.end - range.start).clamp(2.0f32.min(total), total);
     let start = range.start.clamp(0.0, (total - len).max(0.0));
     start..start + len
 }

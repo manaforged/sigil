@@ -1,21 +1,16 @@
 #[cfg(feature = "scene")]
 use std::rc::Rc;
 
-use crate::kernel::TextContent;
-use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
+use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 #[cfg(feature = "scene")]
 use crate::style::Token;
-use crate::style::Tone;
-use crate::style::{ControlSize, NodeStyleExt, PaintTarget, StyleAtom, StyleSlot};
+use crate::style::{ControlSize, NodeStyleExt, PaintTarget, Style, StyleAtom, StyleSlot, Tone};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
 #[cfg(feature = "scene")]
 mod svg;
-
-#[cfg(feature = "scene")]
-use svg::SvgGlyph;
 
 static ICON_GLYPH_COLOR: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 
@@ -35,7 +30,7 @@ pub struct IconBuilder {
     #[cfg(feature = "scene")]
     on_solid: bool,
     label: Option<String>,
-    style_accumulator: crate::style::Style,
+    style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
@@ -90,7 +85,7 @@ impl IconBuilder {
             #[cfg(feature = "scene")]
             on_solid: false,
             label: None,
-            style_accumulator: crate::style::Style::new(),
+            style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
     }
@@ -133,25 +128,27 @@ impl IconBuilder {
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        let extent = self.px.unwrap_or(match self.size {
-            ControlSize::Compact => 16.0,
-            ControlSize::Default => 20.0,
-            ControlSize::Wide | ControlSize::Grow => 24.0,
-        });
+        let (base, glyph_class) = match self.size {
+            ControlSize::Compact => (16.0, "text-xs"),
+            ControlSize::Default => (20.0, "text-base"),
+            ControlSize::Wide | ControlSize::Grow => (24.0, "text-lg"),
+        };
+        let extent = self.px.unwrap_or(base);
         #[cfg(feature = "scene")]
         let drawn = self.px.unwrap_or(extent * 0.8);
-        let glyph_class = match self.size {
-            ControlSize::Compact => "text-xs",
-            ControlSize::Default => "text-base",
-            ControlSize::Wide | ControlSize::Grow => "text-lg",
+        let role = if self.label.is_some() {
+            Role::Image
+        } else {
+            Role::GenericContainer
         };
-        let role = self
-            .label
-            .as_ref()
-            .map_or(Role::GenericContainer, |_| Role::Image);
+        let layout = LayoutStyle::flex_row()
+            .fixed_size(extent, extent)
+            .shrink(0.0)
+            .align_items(AlignItems::Center)
+            .justify_content(JustifyContent::Center);
         let container_node = container()
             .role(role)
-            .with(self.layout_overrides.apply(icon_layout(extent)))
+            .with(self.layout_overrides.apply(layout))
             .tone(self.tone);
         let mut container_node = match self.glyph {
             Glyph::Text(glyph) => container_node.child(
@@ -162,7 +159,7 @@ impl IconBuilder {
                     .hittable(false),
             ),
             #[cfg(feature = "scene")]
-            Glyph::Svg(svg) => container_node.child(SvgGlyph {
+            Glyph::Svg(svg) => container_node.child(svg::SvgGlyph {
                 svg,
                 pixels: svg_pixels(drawn),
                 token: if self.on_solid {
@@ -191,14 +188,6 @@ impl IconBuilder {
 )]
 fn svg_pixels(extent: f32) -> u32 {
     (extent * 2.0).round() as u32
-}
-
-fn icon_layout(extent: f32) -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .fixed_size(extent, extent)
-        .shrink(0.0)
-        .align_items(AlignItems::Center)
-        .justify_content(JustifyContent::Center)
 }
 
 impl PaintTarget for IconBuilder {

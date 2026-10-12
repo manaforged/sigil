@@ -130,70 +130,42 @@ pub(super) fn context_overlay<Row: 'static>(
 }
 
 fn header_menu<Row: 'static>(state: &TableState<Row>, id: &'static str) -> Vec<MenuItem> {
-    let sortable = state
-        .columns()
-        .iter()
-        .any(|col| col.id() == id && col.is_sortable());
-    let order = state.column_layout().peek().order.clone();
+    let item = |key: StringKey, action: fn(&TableState<Row>, &'static str)| {
+        let state = state.clone();
+        MenuItem::new(theme_string(key)).activate(move || action(&state, id))
+    };
+    let mut items = Vec::new();
+    if state.is_sortable(id) {
+        items.push(item(StringKey::SortAscending, |table, column| {
+            table.sort(column, SortDir::Ascending);
+        }));
+        items.push(item(StringKey::SortDescending, |table, column| {
+            table.sort(column, SortDir::Descending);
+        }));
+    }
+    items.push(item(StringKey::HideColumn, TableState::hide_column));
+    items.push(item(StringKey::Autosize, TableState::clear_column_width));
+    let count = state.column_layout().peek().order.len();
     let visual = state
         .visible_columns()
         .into_iter()
         .position(|(_, col)| col.id() == id);
-    let mut items = Vec::new();
-    if sortable {
-        let asc = state.clone();
-        let desc = state.clone();
-        items.push(
-            MenuItem::new(theme_string(StringKey::SortAscending)).activate(move || {
-                asc.sort(id, SortDir::Ascending);
-            }),
-        );
-        items.push(
-            MenuItem::new(theme_string(StringKey::SortDescending)).activate(move || {
-                desc.sort(id, SortDir::Descending);
-            }),
-        );
-    }
-    let hide = state.clone();
-    items.push(
-        MenuItem::new(theme_string(StringKey::HideColumn)).activate(move || hide.hide_column(id)),
-    );
-    let autosize = state.clone();
-    items.push(
-        MenuItem::new(theme_string(StringKey::Autosize))
-            .activate(move || autosize.clear_column_width(id)),
-    );
     if let Some(from) = visual {
-        move_items(state, from, order.len(), &mut items);
+        let shift = |key: StringKey, to: usize| {
+            let state = state.clone();
+            MenuItem::new(theme_string(key)).activate(move || state.move_column(from, to))
+        };
+        if from > 0 {
+            items.push(shift(StringKey::MoveLeft, from - 1));
+        }
+        if from + 1 < count {
+            items.push(shift(StringKey::MoveRight, from + 1));
+        }
     }
-    let show = state.clone();
-    items.push(
-        MenuItem::new(theme_string(StringKey::ShowAllColumns))
-            .activate(move || show.show_all_columns()),
-    );
+    items.push(item(StringKey::ShowAllColumns, |table, _| {
+        table.show_all_columns();
+    }));
     items
-}
-
-fn move_items<Row: 'static>(
-    state: &TableState<Row>,
-    from: usize,
-    count: usize,
-    items: &mut Vec<MenuItem>,
-) {
-    if from > 0 {
-        let left = state.clone();
-        items.push(
-            MenuItem::new(theme_string(StringKey::MoveLeft))
-                .activate(move || left.move_column(from, from - 1)),
-        );
-    }
-    if from + 1 < count {
-        let right = state.clone();
-        items.push(
-            MenuItem::new(theme_string(StringKey::MoveRight))
-                .activate(move || right.move_column(from, from + 1)),
-        );
-    }
 }
 
 fn row_menu_items<Row: 'static>(

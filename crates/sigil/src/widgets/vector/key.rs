@@ -16,10 +16,16 @@ pub(super) fn mix_f32(hash: &mut u64, value: f32) {
 }
 
 fn mix_rgba(hash: &mut u64, color: Rgba8) {
-    mix(hash, color.r);
-    mix(hash, color.g);
-    mix(hash, color.b);
-    mix(hash, color.a);
+    for byte in [color.r, color.g, color.b, color.a] {
+        mix(hash, byte);
+    }
+}
+
+fn mix_tagged(hash: &mut u64, tag: u8, values: &[f32]) {
+    mix(hash, tag);
+    for value in values {
+        mix_f32(hash, *value);
+    }
 }
 
 fn mix_stops(hash: &mut u64, stops: &[(f32, Rgba8)]) {
@@ -31,31 +37,11 @@ fn mix_stops(hash: &mut u64, stops: &[(f32, Rgba8)]) {
 
 pub(super) fn hash_cmd(hash: &mut u64, cmd: PathCmd) {
     match cmd {
-        PathCmd::MoveTo(x, y) => {
-            mix(hash, 1);
-            mix_f32(hash, x);
-            mix_f32(hash, y);
-        }
-        PathCmd::LineTo(x, y) => {
-            mix(hash, 2);
-            mix_f32(hash, x);
-            mix_f32(hash, y);
-        }
-        PathCmd::QuadTo(cx, cy, x, y) => {
-            mix(hash, 3);
-            mix_f32(hash, cx);
-            mix_f32(hash, cy);
-            mix_f32(hash, x);
-            mix_f32(hash, y);
-        }
+        PathCmd::MoveTo(x, y) => mix_tagged(hash, 1, &[x, y]),
+        PathCmd::LineTo(x, y) => mix_tagged(hash, 2, &[x, y]),
+        PathCmd::QuadTo(cx, cy, x, y) => mix_tagged(hash, 3, &[cx, cy, x, y]),
         PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
-            mix(hash, 4);
-            mix_f32(hash, c1x);
-            mix_f32(hash, c1y);
-            mix_f32(hash, c2x);
-            mix_f32(hash, c2y);
-            mix_f32(hash, x);
-            mix_f32(hash, y);
+            mix_tagged(hash, 4, &[c1x, c1y, c2x, c2y, x, y]);
         }
         PathCmd::Close => mix(hash, 5),
     }
@@ -79,11 +65,7 @@ pub(super) fn mix_fill(hash: &mut u64, fill: Option<&PathFill>) {
             mix_rgba(hash, *color);
         }
         Some(PathFill::Linear { start, end, stops }) => {
-            mix(hash, 2);
-            mix_f32(hash, start.0);
-            mix_f32(hash, start.1);
-            mix_f32(hash, end.0);
-            mix_f32(hash, end.1);
+            mix_tagged(hash, 2, &[start.0, start.1, end.0, end.1]);
             mix_stops(hash, stops);
         }
         Some(PathFill::Radial {
@@ -91,10 +73,7 @@ pub(super) fn mix_fill(hash: &mut u64, fill: Option<&PathFill>) {
             radius,
             stops,
         }) => {
-            mix(hash, 3);
-            mix_f32(hash, center.0);
-            mix_f32(hash, center.1);
-            mix_f32(hash, *radius);
+            mix_tagged(hash, 3, &[center.0, center.1, *radius]);
             mix_stops(hash, stops);
         }
         Some(PathFill::Theme(_)) | None => mix(hash, 0),

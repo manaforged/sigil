@@ -13,11 +13,8 @@ use super::super::popup::{self, ItemSlots, POPUP_GAP, item_row};
 use super::super::shared::disabled_now;
 use super::builder::IndexChange;
 
-const TRIGGER_HEIGHT: f32 = 32.0;
-const TRIGGER_ROWS: f32 = 3.0;
-
 pub(super) fn trigger_height() -> f32 {
-    CellForm::new(TRIGGER_HEIGHT, rows(TRIGGER_ROWS).px()).pick()
+    CellForm::new(32.0, rows(3.0).px()).pick()
 }
 pub(super) const POPUP_MAX_VISIBLE: usize = 6;
 
@@ -107,15 +104,17 @@ pub(super) fn build_popup(
         Some(width) => base.width(width),
         None => base.fill_width(),
     });
-    let mut list = container().layout(LayoutStyle::flex_column().fill_width().height(extent));
-    for (index, label) in options.iter().enumerate() {
-        list = list.child(build_option(
-            index,
-            label.clone(),
-            ctx,
-            Rc::clone(on_change),
-        ));
-    }
+    let list = options.iter().enumerate().fold(
+        container().layout(LayoutStyle::flex_column().fill_width().height(extent)),
+        |list, (index, label)| {
+            list.child(build_option(
+                index,
+                label.clone(),
+                ctx,
+                Rc::clone(on_change),
+            ))
+        },
+    );
     if count > POPUP_MAX_VISIBLE {
         frame.child(scrolled(
             list,

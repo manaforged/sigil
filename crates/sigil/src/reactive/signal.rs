@@ -3,10 +3,11 @@ use core::panic::Location;
 
 use smallvec::SmallVec;
 
+use crate::reactive::diagnostic::{disposed_signal, no_scope};
 use crate::reactive::runtime::{
-    EffectKey, RuntimeState, SignalKey, SignalSlot, runtime_id, with_rt,
+    OwnerKey, RuntimeState, SignalKey, SignalSlot, runtime_id, with_rt,
 };
-use crate::reactive::signal_write::{UpdateGuard, UpdateInProgress};
+use crate::reactive::signal_write::{UpdateGuard, live_slot, take_value};
 
 pub struct Signal<T: 'static> {
     pub(crate) key: SignalKey,
@@ -107,55 +108,48 @@ impl<T: 'static> core::fmt::Debug for Signal<T> {
 #[track_caller]
 pub fn signal<T: 'static>(initial: T) -> Signal<T> {
     let location = Location::caller();
+    let owner = with_rt(|rt| rt.current_owner).unwrap_or_else(|| no_scope("signal()", location));
+    signal_in(initial, owner, location)
+}
+
+pub(crate) fn signal_in<T: 'static>(
+    initial: T,
+    owner: OwnerKey,
+    location: &'static Location<'static>,
+) -> Signal<T> {
     let key = with_rt(|rt| {
-        let owner = rt
-            .current_owner
-            .unwrap_or_else(|| crate::reactive::diagnostic::no_scope("signal()", location));
         assert!(
             rt.owners.contains(owner),
-            "signal() with a disposed current owner (id={owner:?}, at {location})",
+            "signal created under a disposed owner (id={owner:?}, at {location})",
         );
         let key = rt.signals.insert(SignalSlot {
-            owner,
             value: Box::new(initial),
             subscribers: SmallVec::new(),
-            location,
         });
         rt.owners
             .get_mut(owner)
-            .expect("current owner slot missing")
+            .expect("owner checked above")
             .signals
             .push(key);
         key
     });
-    Signal {
-        key,
-        _not_send: PhantomData,
-    }
+    Signal::from_key(key)
 }
 
 impl<T: Clone + 'static> Signal<T> {
     #[inline]
     #[track_caller]
-    #[must_use]
-    pub fn get(self) -> T {
+    fn read(self, op: &'static str, track: bool) -> T {
         let caller = Location::caller();
         with_rt(|rt| {
-            let Some(slot) = rt.signals.get(self.key) else {
-                crate::reactive::diagnostic::disposed_signal("get", caller);
-            };
-            assert!(
-                !slot
-                    .value
-                    .is::<crate::reactive::signal_write::UpdateInProgress>(),
-                "Signal::get on a signal whose own update closure is still running (at {caller})"
-            );
-            let value = slot
+            let value = live_slot(rt, self.key, op, caller)
                 .value
                 .downcast_ref::<T>()
                 .expect("signal type mismatch")
                 .clone();
-            track_key(rt, self.key);
+            if track {
+                track_key(rt, self.key);
+            }
             value
         })
     }
@@ -163,65 +157,47 @@ impl<T: Clone + 'static> Signal<T> {
     #[inline]
     #[track_caller]
     #[must_use]
+    pub fn get(self) -> T {
+        self.read("get", true)
+    }
+
+    #[inline]
+    #[track_caller]
+    #[must_use]
     pub fn peek(self) -> T {
-        let caller = Location::caller();
-        with_rt(|rt| {
-            let Some(slot) = rt.signals.get(self.key) else {
-                crate::reactive::diagnostic::disposed_signal("peek", caller);
-            };
-            assert!(
-                !slot
-                    .value
-                    .is::<crate::reactive::signal_write::UpdateInProgress>(),
-                "Signal::peek on a signal whose own update closure is still running (at {caller})"
-            );
-            slot.value
-                .downcast_ref::<T>()
-                .expect("signal type mismatch")
-                .clone()
-        })
+        self.read("peek", false)
     }
 
     #[inline]
     #[must_use]
     pub(crate) fn try_peek(self) -> Option<T> {
         with_rt(|rt| {
-            let slot = rt.signals.get(self.key)?;
-            if slot
-                .value
-                .is::<crate::reactive::signal_write::UpdateInProgress>()
-            {
-                return None;
-            }
-            slot.value.downcast_ref::<T>().cloned()
+            let value = &rt.signals.get(self.key)?.value;
+            value.downcast_ref::<T>().cloned()
         })
     }
 }
 
 fn track_key(rt: &mut RuntimeState, key: SignalKey) {
-    if let Some(effect) = rt.current_effect {
-        let should_subscribe = if let Some(eff) = rt.effects.get_mut(effect) {
-            if eff
-                .prev_deps
-                .get(eff.prev_dep_cursor)
-                .is_some_and(|&dep| dep == key)
-            {
-                eff.prev_dep_cursor += 1;
-                eff.deps.push(key);
-                false
-            } else if eff.deps.last().is_some_and(|&dep| dep == key) || eff.deps.contains(&key) {
-                false
-            } else {
-                let already_subscribed = eff.prev_deps.contains(&key);
-                eff.deps.push(key);
-                !already_subscribed
-            }
-        } else {
-            false
-        };
-        if should_subscribe && let Some(sub_slot) = rt.signals.get_mut(key) {
-            sub_slot.subscribers.push(effect);
-        }
+    let Some(effect) = rt.current_effect else {
+        return;
+    };
+    let Some(eff) = rt.effects.get_mut(effect) else {
+        return;
+    };
+    if eff.prev_deps.get(eff.prev_dep_cursor) == Some(&key) {
+        eff.prev_dep_cursor += 1;
+        eff.deps.push(key);
+        return;
+    }
+    if eff.deps.last() == Some(&key) || eff.deps.contains(&key) {
+        return;
+    }
+    eff.deps.push(key);
+    if !eff.prev_deps.contains(&key)
+        && let Some(slot) = rt.signals.get_mut(key)
+    {
+        slot.subscribers.push(effect);
     }
 }
 
@@ -231,7 +207,7 @@ impl<T: 'static> Signal<T> {
         let caller = Location::caller();
         with_rt(|rt| {
             if rt.signals.get(self.key).is_none() {
-                crate::reactive::diagnostic::disposed_signal("track", caller);
+                disposed_signal("track", caller);
             }
             track_key(rt, self.key);
         });
@@ -241,27 +217,13 @@ impl<T: 'static> Signal<T> {
     pub fn with<R>(self, f: impl FnOnce(&T) -> R) -> R {
         let caller = Location::caller();
         let taken = with_rt(|rt| {
-            let Some(slot) = rt.signals.get_mut(self.key) else {
-                crate::reactive::diagnostic::disposed_signal("with", caller);
-            };
-            assert!(
-                !slot.value.is::<UpdateInProgress>(),
-                "Signal::with on a signal whose own update or with closure is still running (at {caller})"
-            );
-            let taken = core::mem::replace(&mut slot.value, Box::new(UpdateInProgress));
+            let taken = take_value(rt, self.key, "with", caller);
             track_key(rt, self.key);
             taken
         });
-        let guard = UpdateGuard::new(self.key, taken);
-        let out = f(guard.value_ref::<T>());
-        drop(guard);
-        out
+        f(UpdateGuard::new(self.key, taken).value_ref::<T>())
     }
 }
-
-const _: () = {
-    let _ = core::mem::size_of::<EffectKey>();
-};
 
 #[cfg(test)]
 #[path = "sendable_tests.rs"]

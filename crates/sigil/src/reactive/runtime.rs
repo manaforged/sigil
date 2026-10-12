@@ -53,6 +53,12 @@ impl RuntimeState {
             runtime_id: 0,
         }
     }
+
+    pub(crate) fn enqueue(&mut self, effect: EffectKey) {
+        if self.pending_set.insert(effect) {
+            self.pending.push_back(effect);
+        }
+    }
 }
 
 thread_local! {

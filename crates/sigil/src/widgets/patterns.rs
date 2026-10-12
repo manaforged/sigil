@@ -7,8 +7,6 @@ use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
 use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
 pub use super::notice::notice_band;
 
-const TOP_BAR_HEIGHT: f32 = space(12);
-
 static TOP_CHROME: &[StyleAtom] = &[
     Token::SurfaceSubtle.bg(),
     StyleAtom::BorderBottom(BORDER_WIDTH),
@@ -25,63 +23,57 @@ pub fn app_shell(
     let mut root = container()
         .role(Role::GenericContainer)
         .layout(LayoutStyle::flex_column().fill())
-        .child(top_section(top))
-        .child(work_section(work))
-        .child(status_section(status));
+        .child(chrome_section(space(12), TOP_CHROME, top))
+        .child(
+            container()
+                .role(Role::GenericContainer)
+                .layout(
+                    LayoutStyle::flex_column()
+                        .fill_width()
+                        .grow(1.0)
+                        .min_size(0.0, 0.0)
+                        .padding(space(2)),
+                )
+                .class(Token::Surface.bg())
+                .child(work),
+        )
+        .child(chrome_section(
+            crate::layout::snap::ruled(STATUS_BAR_HEIGHT),
+            STATUS_CHROME,
+            status,
+        ));
     if let Some(overlay) = modal {
-        root = root.child(modal_overlay(overlay));
+        root = root.child(
+            container()
+                .role(Role::GenericContainer)
+                .layout(
+                    LayoutStyle::flex_column()
+                        .position(Position::Absolute)
+                        .fill(),
+                )
+                .child(overlay),
+        );
     }
     root
 }
 
-fn top_section(child: impl IntoNode + 'static) -> NodeBuilder {
-    container()
-        .role(Role::GenericContainer)
-        .layout(chrome_layout(TOP_BAR_HEIGHT))
-        .class(TOP_CHROME)
-        .child(child)
-}
-
-fn work_section(child: impl IntoNode + 'static) -> NodeBuilder {
+fn chrome_section(
+    height: f32,
+    chrome: &'static [StyleAtom],
+    child: impl IntoNode + 'static,
+) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
         .layout(
-            LayoutStyle::flex_column()
+            LayoutStyle::flex_row()
                 .fill_width()
-                .grow(1.0)
-                .min_size(0.0, 0.0)
-                .padding(space(2)),
+                .height(height)
+                .shrink(0.0)
+                .padding_x(space(2))
+                .gap(space(2))
+                .align_items(AlignItems::Center),
         )
-        .class(Token::Surface.bg())
-        .child(child)
-}
-
-fn status_section(child: impl IntoNode + 'static) -> NodeBuilder {
-    container()
-        .role(Role::GenericContainer)
-        .layout(chrome_layout(crate::layout::snap::ruled(STATUS_BAR_HEIGHT)))
-        .class(STATUS_CHROME)
-        .child(child)
-}
-
-fn chrome_layout(height: f32) -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .fill_width()
-        .height(height)
-        .shrink(0.0)
-        .padding_x(space(2))
-        .gap(space(2))
-        .align_items(AlignItems::Center)
-}
-
-fn modal_overlay(child: impl IntoNode + 'static) -> NodeBuilder {
-    container()
-        .role(Role::GenericContainer)
-        .layout(
-            LayoutStyle::flex_column()
-                .position(Position::Absolute)
-                .fill(),
-        )
+        .class(chrome)
         .child(child)
 }
 
@@ -111,6 +103,8 @@ static ROW_RULE: &[StyleAtom] = &[
     StyleAtom::BorderBottom(BORDER_WIDTH),
     Token::Border.border(),
 ];
+
+static OVERLAY_TEXT: &[StyleAtom] = &[Token::OnSurface.text()];
 
 pub type HintEntry<'a> = (&'a str, &'a str);
 
@@ -149,7 +143,18 @@ impl HintOverlayBuilder {
             .class(OVERLAY_TEXT);
 
         for (chord, desc) in self.entries {
-            root = root.child(hint_row(&chord, &desc));
+            root = root.child(
+                container()
+                    .role(Role::GenericContainer)
+                    .layout(
+                        LayoutStyle::flex_row()
+                            .gap(space(2))
+                            .align_items(AlignItems::Center)
+                            .justify_content(JustifyContent::Start),
+                    )
+                    .child(text(chord).class("font-mono"))
+                    .child(text(desc)),
+            );
         }
         root
     }
@@ -161,27 +166,10 @@ impl IntoNode for HintOverlayBuilder {
     }
 }
 
-static OVERLAY_TEXT: &[StyleAtom] = &[Token::OnSurface.text()];
-
-fn hint_row(chord: &str, description: &str) -> NodeBuilder {
-    container()
-        .role(Role::GenericContainer)
-        .layout(
-            LayoutStyle::flex_row()
-                .gap(space(2))
-                .align_items(AlignItems::Center)
-                .justify_content(JustifyContent::Start),
-        )
-        .child(text(chord.to_owned()).class("font-mono"))
-        .child(text(description.to_owned()))
-}
-
 #[must_use]
 pub fn hint_overlay(hints: &[HintEntry<'_>]) -> HintOverlayBuilder {
     HintOverlayBuilder::new(hints)
 }
-
-const AVATAR_PX: f32 = space(7);
 
 #[must_use]
 pub fn spacer() -> NodeBuilder {
@@ -253,7 +241,7 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
         .label(name)
         .layout(
             LayoutStyle::flex_row()
-                .fixed_size(AVATAR_PX, AVATAR_PX)
+                .fixed_size(space(7), space(7))
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center)
                 .shrink(0.0),

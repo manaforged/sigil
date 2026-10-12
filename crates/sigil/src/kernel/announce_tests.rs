@@ -13,10 +13,7 @@ fn announce_marks_live_region_polite_and_sets_label() {
     let node = cx.get(id).expect("live region node exists");
 
     assert_eq!(node.a11y.live, Some(Live::Polite));
-    match &node.a11y.name {
-        AccessibleName::Static(text) => assert_eq!(text, "File saved"),
-        other => panic!("expected static label, got {other:?}"),
-    }
+    assert_label(node, "File saved");
     assert!(matches!(node.kind, NodeType::Container));
 }
 
@@ -29,11 +26,7 @@ fn announce_reuses_the_same_node_across_calls() {
     let second = cx.live_region_id().expect("still present");
 
     assert_eq!(first, second);
-    let node = cx.get(second).expect("node");
-    match &node.a11y.name {
-        AccessibleName::Static(text) => assert_eq!(text, "second"),
-        other => panic!("expected static label, got {other:?}"),
-    }
+    assert_label(cx.get(second).expect("node"), "second");
 }
 
 #[test]
@@ -50,6 +43,13 @@ fn announce_assertive_sets_assertive_politeness() {
 fn cx_without_announce_has_no_live_region() {
     let cx = Cx::new_root();
     assert!(cx.live_region_id().is_none());
+}
+
+fn assert_label(node: &Node, want: &str) {
+    match &node.a11y.name {
+        AccessibleName::Static(text) => assert_eq!(text, want),
+        other => panic!("expected static label, got {other:?}"),
+    }
 }
 
 fn announce_then_flush(cx: &mut Cx, post: fn(String), text: &str) {

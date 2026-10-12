@@ -42,13 +42,13 @@ const _: fn() = || {
     assert_send_sync_clone_static::<Dispatcher>();
 };
 
-type OwnerTasks = Arc<Mutex<HashMap<OwnerId, Vec<TaskHandle>>>>;
+type Registry = Mutex<HashMap<OwnerId, Vec<TaskHandle>>>;
 
 #[derive(Clone)]
 pub(crate) struct SpawnParts {
     pub(crate) dispatcher: Dispatcher,
     pub(crate) backend: Backend,
-    owner_tasks: OwnerTasks,
+    owner_tasks: Arc<Registry>,
 }
 
 pub struct AsyncRuntime {
@@ -75,13 +75,7 @@ impl Drop for AsyncRuntime {
     }
 }
 
-fn noop_waker() -> Arc<dyn Fn() + Send + Sync + 'static> {
-    Arc::new(|| {})
-}
-
-fn lock(
-    registry: &Mutex<HashMap<OwnerId, Vec<TaskHandle>>>,
-) -> std::sync::MutexGuard<'_, HashMap<OwnerId, Vec<TaskHandle>>> {
+fn lock(registry: &Registry) -> std::sync::MutexGuard<'_, HashMap<OwnerId, Vec<TaskHandle>>> {
     registry
         .lock()
         .expect("owner_tasks mutex poisoned by a panicking holder")
@@ -99,7 +93,7 @@ impl AsyncRuntime {
             parts: SpawnParts {
                 dispatcher: Dispatcher {
                     tx,
-                    waker: noop_waker(),
+                    waker: Arc::new(|| {}),
                 },
                 backend,
                 owner_tasks: Arc::new(Mutex::new(HashMap::new())),
@@ -152,7 +146,7 @@ pub(crate) fn attach_task(parts: &SpawnParts, owner: OwnerHandle, task: TaskHand
     }
 }
 
-fn sweep_owner_tasks(registry: &Mutex<HashMap<OwnerId, Vec<TaskHandle>>>) {
+fn sweep_owner_tasks(registry: &Registry) {
     lock(registry).retain(|&owner_id, handles| {
         if !crate::reactive::is_live(owner_id) {
             for h in handles.drain(..) {
@@ -202,12 +196,8 @@ impl Scheduler for AsyncRuntime {
             let Ok(msg) = self.rx.try_recv() else {
                 break;
             };
-            if msg.owner.is_alive() {
-                let callback = msg.callback;
-                let ran_inner = crate::reactive::owner_by_id(msg.owner.id(), callback);
-                if ran_inner {
-                    ran += 1;
-                }
+            if msg.owner.is_alive() && crate::reactive::owner_by_id(msg.owner.id(), msg.callback) {
+                ran += 1;
             }
         }
         crate::reactive::run_dispatch_deferred();

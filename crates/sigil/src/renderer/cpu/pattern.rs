@@ -11,8 +11,8 @@ use tiny_skia::{FilterQuality, Pattern, Pixmap, Point as TsPoint, Shader, Spread
 
 use crate::renderer::scene_command::PatternKind;
 
-use super::bound::Bound;
-use super::shapes::{coverage_table, decode};
+use super::bound::{Bound, corners, extent};
+use super::shapes::rgba_table;
 
 pub(super) struct Placement {
     pub(super) kind: PatternKind,
@@ -41,15 +41,7 @@ pub(super) fn shader<'a>(slot: &'a mut Option<Pixmap>, place: &Placement) -> Opt
 }
 
 fn device_span(local: Rect, transform: Transform, [width, height]: [u32; 2]) -> Option<[u32; 4]> {
-    let (x0, y0) = (local.origin.x, local.origin.y);
-    let (x1, y1) = (x0 + local.width, y0 + local.height);
-    let mut points = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)].map(|(x, y)| TsPoint::from_xy(x, y));
-    transform.map_points(&mut points);
-    let (mut lo_x, mut lo_y, mut hi_x, mut hi_y) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
-    for p in points {
-        (lo_x, lo_y) = (lo_x.min(p.x), lo_y.min(p.y));
-        (hi_x, hi_y) = (hi_x.max(p.x), hi_y.max(p.y));
-    }
+    let [lo_x, lo_y, hi_x, hi_y] = extent(transform, corners(local));
     let (sx, ex) = span(lo_x, hi_x, width)?;
     let (sy, ey) = span(lo_y, hi_y, height)?;
     Some([sx, sy, ex, ey])
@@ -123,7 +115,7 @@ impl Field {
                 period,
                 line_width,
             } => Look::Slash {
-                table: Box::new(table(color)),
+                table: Box::new(rgba_table(color, 1.0)),
                 period: f64::from(period),
                 line: f64::from(line_width),
                 aa: f64::from((inverse.sx - inverse.ky).abs() + (inverse.kx - inverse.sy).abs())
@@ -184,13 +176,6 @@ fn smoothstep(lo: f64, hi: f64, x: f64) -> f64 {
     t * t * 2.0f64.mul_add(-t, 3.0)
 }
 
-fn table(color: Rgba8) -> [[u8; 4]; 256] {
-    coverage_table(
-        [decode(color.r), decode(color.g), decode(color.b)],
-        f32::from(color.a) / 255.0,
-    )
-}
-
 fn full(color: Rgba8) -> [u8; 4] {
-    table(color).last().copied().unwrap_or_default()
+    rgba_table(color, 1.0).last().copied().unwrap_or_default()
 }

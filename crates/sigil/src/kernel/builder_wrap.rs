@@ -2,10 +2,16 @@ use crate::kernel::component::ErasedComponent;
 use crate::kernel::{A11yProps, AccessibleName, Cx, NodeBuilder, NodeId};
 
 impl NodeBuilder {
-    pub(super) fn build_onto(self, widget: Box<dyn ErasedComponent>, cx: &mut Cx) -> NodeId {
+    pub(super) fn build_onto(mut self, widget: Box<dyn ErasedComponent>, cx: &mut Cx) -> NodeId {
         let id = widget.build_box(cx);
         if let Some(node) = cx.get_mut(id) {
-            overlay_a11y(&mut node.a11y, self.a11y);
+            overlay_a11y(&mut node.a11y, std::mem::take(&mut self.a11y));
+        }
+        self.finish(cx, id)
+    }
+
+    pub(super) fn finish(self, cx: &mut Cx, id: NodeId) -> NodeId {
+        if let Some(node) = cx.get_mut(id) {
             for apply in self.pre_extensions {
                 apply(node);
             }

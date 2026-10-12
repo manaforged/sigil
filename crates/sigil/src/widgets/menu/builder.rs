@@ -5,10 +5,10 @@ use crate::kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, container};
 use crate::layout::PopupSide;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Owner, OwnerId, Signal};
-use crate::style::{DisplayKind, PaintTarget, Style, StyleAtom, StyleSlot};
+use crate::style::{PaintTarget, Style, StyleSlot};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::popup::PANEL_WIDTH;
+use super::super::popup::{self, PANEL_WIDTH};
 use super::panel::{Row, menu_panel, panel_height, panel_layout};
 
 #[derive(Clone)]
@@ -132,7 +132,21 @@ impl MenuBuilder {
         let open = self.open;
         let height = panel_height(&self.rows);
         let width = self.layout_overrides.width_hint().unwrap_or(PANEL_WIDTH);
-        let (layout, placement) = placement(self.anchor, width, height);
+        let (layout, placement) = match self.anchor {
+            Some((x, y)) => (
+                LayoutStyle::block()
+                    .position(Position::Absolute)
+                    .inset_top(0.0)
+                    .inset_left(0.0)
+                    .fill_width()
+                    .fill_height(),
+                panel_layout(y, x, width, height),
+            ),
+            None => (
+                LayoutStyle::block().width(width).height(height),
+                panel_layout(0.0, 0.0, width, height),
+            ),
+        };
         let menu_label = self.label.unwrap_or_else(|| String::from("Menu"));
         let hooks = self.layout_overrides.hooks();
 
@@ -141,7 +155,7 @@ impl MenuBuilder {
             .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Popup))
             .label(menu_label)
             .with(self.layout_overrides.apply(placement))
-            .style_reactive(move || open_display(open))
+            .style_reactive(move || popup::shown(open))
             .pointer_down(PointerEvent::stop_propagation);
         if !self.style_accumulator.is_empty() {
             panel = panel.style(self.style_accumulator);
@@ -149,7 +163,7 @@ impl MenuBuilder {
 
         let root = container()
             .layout(layout)
-            .style_reactive(move || open_display(open))
+            .style_reactive(move || popup::shown(open))
             .pointer_down(move |event| {
                 open.set(false);
                 event.stop_propagation();
@@ -157,24 +171,6 @@ impl MenuBuilder {
             .child(panel);
         hooks.finish(root)
     }
-}
-
-fn placement(anchor: Option<(f32, f32)>, width: f32, height: f32) -> (LayoutStyle, LayoutStyle) {
-    if let Some((x, y)) = anchor {
-        return (
-            LayoutStyle::block()
-                .position(Position::Absolute)
-                .inset_top(0.0)
-                .inset_left(0.0)
-                .fill_width()
-                .fill_height(),
-            panel_layout(y, x, width, height),
-        );
-    }
-    (
-        LayoutStyle::block().width(width).height(height),
-        panel_layout(0.0, 0.0, width, height),
-    )
 }
 
 impl WidgetLayoutExt for MenuBuilder {
@@ -192,14 +188,6 @@ impl PaintTarget for MenuBuilder {
 impl IntoNode for MenuBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
         self.into_node_builder().build(cx)
-    }
-}
-
-fn open_display(open: Signal<bool>) -> &'static [StyleAtom] {
-    if open.get() {
-        &[]
-    } else {
-        &[StyleAtom::Display(DisplayKind::None)]
     }
 }
 

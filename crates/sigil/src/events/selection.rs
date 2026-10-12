@@ -6,7 +6,7 @@ use crate::events::handlers::EventHandlers;
 use crate::events::{ClickConfig, ModifiersState, MouseButton, PointerEvent, PointerPhase};
 use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
-use crate::kernel::{Cx, Node, NodeId};
+use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
 
 use super::selection_walk::{
@@ -43,16 +43,8 @@ thread_local! {
     static LAST_DOWN: RefCell<Option<(Instant, Point)>> = const { RefCell::new(None) };
 }
 
-pub(crate) fn clear() {
-    STATE.with(|state| *state.borrow_mut() = None);
-}
-
-fn marked(node: &Node) -> bool {
-    node.get_extension::<SelectableText>().is_some()
-}
-
-pub(crate) fn down(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
-    begin(cx, path, event);
+fn clear() {
+    STATE.set(None);
 }
 
 pub(crate) fn drag(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
@@ -62,30 +54,30 @@ pub(crate) fn drag(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent)
 }
 
 pub(crate) fn end_drag() {
-    STATE.with(|state| {
-        if let Some(selection) = state.borrow_mut().as_mut() {
+    STATE.with_borrow_mut(|state| {
+        if let Some(selection) = state.as_mut() {
             selection.dragging = false;
         }
     });
 }
 
 pub(crate) fn drag_active() -> bool {
-    STATE.with(|state| state.borrow().is_some_and(|sel| sel.dragging))
+    STATE.with_borrow(|state| state.is_some_and(|sel| sel.dragging))
 }
 
 pub(crate) fn escape(cx: &mut Cx) -> bool {
-    if STATE.with(|state| state.borrow().is_some()) {
-        clear();
+    let had = STATE.take().is_some();
+    if had {
         cx.mark_mutated();
-        return true;
     }
-    false
+    had
 }
 
 fn pick_region(cx: &Cx, path: &[NodeId]) -> Option<NodeId> {
-    let pos = path
-        .iter()
-        .rposition(|id| cx.get(*id).is_some_and(marked))?;
+    let pos = path.iter().rposition(|id| {
+        cx.get(*id)
+            .is_some_and(|node| node.get_extension::<SelectableText>().is_some())
+    })?;
     let interactive = path.get(pos + 1..).unwrap_or_default().iter().any(|id| {
         cx.get(*id).is_some_and(|node| {
             node.a11y.role == crate::kernel::Role::Button
@@ -95,61 +87,55 @@ fn pick_region(cx: &Cx, path: &[NodeId]) -> Option<NodeId> {
         })
     });
     if interactive {
-        return None;
+        None
+    } else {
+        path.get(pos).copied()
     }
-    path.get(pos).copied()
 }
 
-fn begin(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
-    if event.button != Some(MouseButton::Left) {
-        dismiss(cx);
-        return;
-    }
+pub(crate) fn down(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
     let shift_only = event.modifiers == ModifiersState::SHIFT;
-    if !event.modifiers.is_empty() && !shift_only {
-        dismiss(cx);
-        return;
-    }
-    let Some(region) = pick_region(cx, path) else {
-        dismiss(cx);
-        return;
-    };
-    let Some(endpoint) = endpoint_at(cx, region, event.position) else {
-        dismiss(cx);
+    let plain =
+        event.button == Some(MouseButton::Left) && (event.modifiers.is_empty() || shift_only);
+    let hit = plain
+        .then(|| pick_region(cx, path))
+        .flatten()
+        .and_then(|region| Some((region, endpoint_at(cx, region, event.position)?)));
+    let Some((region, endpoint)) = hit else {
+        escape(cx);
         return;
     };
     if shift_only {
         shift_extend(cx, region, endpoint, event.position);
         return;
     }
-    if STATE.with(|state| state.borrow().is_some()) {
+    if STATE.with_borrow(Option::is_some) {
         cx.mark_mutated();
     }
     let (span, unit) = press_span(cx, region, endpoint, event.position);
-    let (anchor, focus) = match (unit, span) {
-        (Unit::Word, Some((w0, w1))) => (
-            Endpoint {
-                node: endpoint.node,
-                byte: w0,
-            },
-            Endpoint {
-                node: endpoint.node,
-                byte: w1,
-            },
-        ),
-        _ => (endpoint, endpoint),
-    };
-    STATE.with(|state| {
-        *state.borrow_mut() = Some(TextSelection {
-            region,
-            anchor,
-            focus,
-            dragging: true,
-            moved: unit == Unit::Word,
-            word: span,
-            unit,
-        });
-    });
+    let (anchor, focus) =
+        span.filter(|_| unit == Unit::Word)
+            .map_or((endpoint, endpoint), |(w0, w1)| {
+                (
+                    Endpoint {
+                        byte: w0,
+                        ..endpoint
+                    },
+                    Endpoint {
+                        byte: w1,
+                        ..endpoint
+                    },
+                )
+            });
+    STATE.set(Some(TextSelection {
+        region,
+        anchor,
+        focus,
+        dragging: true,
+        moved: unit == Unit::Word,
+        word: span,
+        unit,
+    }));
 }
 
 fn press_span(
@@ -169,51 +155,46 @@ fn press_span(
 
 fn note_down(point: Point) -> bool {
     let now = Instant::now();
-    let double = LAST_DOWN.with(|state| {
-        state.borrow().is_some_and(|(at, prev)| {
+    LAST_DOWN
+        .replace(Some((now, point)))
+        .is_some_and(|(at, prev)| {
             ClickConfig::current().is_repeat(now.duration_since(at), prev, point)
         })
-    });
-    LAST_DOWN.with(|state| *state.borrow_mut() = Some((now, point)));
-    double
 }
 
 fn shift_extend(cx: &mut Cx, region: NodeId, endpoint: Endpoint, point: Point) {
     let existing = STATE
-        .with(|state| *state.borrow())
+        .with_borrow(|state| *state)
         .filter(|sel| sel.region == region && live(cx, *sel));
-    match existing {
-        Some(sel) => {
+    let next = existing.map_or(
+        TextSelection {
+            region,
+            anchor: endpoint,
+            focus: endpoint,
+            dragging: true,
+            moved: false,
+            word: None,
+            unit: Unit::Word,
+        },
+        |sel| {
             let (anchor, focus) = snap_focus(cx, sel, endpoint, point);
-            STATE.with(|state| {
-                *state.borrow_mut() = Some(TextSelection {
-                    anchor,
-                    focus,
-                    dragging: true,
-                    moved: true,
-                    ..sel
-                });
-            });
-            cx.mark_mutated();
-        }
-        None => STATE.with(|state| {
-            *state.borrow_mut() = Some(TextSelection {
-                region,
-                anchor: endpoint,
-                focus: endpoint,
+            TextSelection {
+                anchor,
+                focus,
                 dragging: true,
-                moved: false,
-                word: None,
-                unit: Unit::Word,
-            });
-        }),
+                moved: true,
+                ..sel
+            }
+        },
+    );
+    STATE.set(Some(next));
+    if existing.is_some() {
+        cx.mark_mutated();
     }
 }
 
 fn extend(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
-    let Some(mut selection) =
-        STATE.with(|state| state.borrow().as_ref().filter(|sel| sel.dragging).copied())
-    else {
+    let Some(mut selection) = STATE.with_borrow(|state| state.filter(|sel| sel.dragging)) else {
         return;
     };
     if let Some(endpoint) = endpoint_at(cx, selection.region, event.position) {
@@ -227,7 +208,7 @@ fn extend(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
         }
     }
     if event.phase == PointerPhase::Move {
-        STATE.with(|state| *state.borrow_mut() = Some(selection));
+        STATE.set(Some(selection));
         return;
     }
     selection.dragging = false;
@@ -237,7 +218,7 @@ fn extend(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
         return;
     }
     event.stop_propagation();
-    STATE.with(|state| *state.borrow_mut() = Some(selection));
+    STATE.set(Some(selection));
     if cx.host_mode() == crate::kernel::HostMode::Cell {
         let text = selected_text(cx, selection);
         if !text.is_empty() {
@@ -252,19 +233,11 @@ fn deliver(cx: &Cx, region: NodeId, text: &str) {
     while let Some(id) = at {
         if crate::events::handlers::dispatch(cx, id, |handlers| {
             handlers.invoke_selection_copy(text, &result)
-        })
-        .unwrap_or(false)
+        }) == Some(true)
         {
             return;
         }
         at = cx.parent(id);
-    }
-}
-
-fn dismiss(cx: &mut Cx) {
-    if STATE.with(|state| state.borrow().is_some()) {
-        clear();
-        cx.mark_mutated();
     }
 }
 
@@ -275,8 +248,7 @@ fn live(cx: &Cx, sel: TextSelection) -> bool {
 }
 
 pub(crate) fn copy_selection(cx: &Cx) -> bool {
-    let Some(sel) = STATE.with(|state| state.borrow().as_ref().filter(|sel| sel.moved).copied())
-    else {
+    let Some(sel) = STATE.with_borrow(|state| state.filter(|sel| sel.moved)) else {
         return false;
     };
     if !live(cx, sel) {
@@ -292,7 +264,7 @@ pub(crate) fn copy_selection(cx: &Cx) -> bool {
 }
 
 pub(crate) fn ranges(cx: &Cx) -> HashMap<NodeId, (usize, usize)> {
-    let Some(sel) = STATE.with(|state| *state.borrow()) else {
+    let Some(sel) = STATE.with_borrow(|state| *state) else {
         return HashMap::new();
     };
     if !live(cx, sel) {

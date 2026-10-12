@@ -6,7 +6,9 @@ use ahash::AHashMap;
 
 use crate::layout::LayoutError;
 use crate::layout::flex_algorithm::{Axis2, FlexCtx, layout_root};
-use crate::layout::forest::{ComputedBox, IntrinsicKey, LocalId, MeasureScope, NodeRef};
+use crate::layout::forest::{
+    ComputedBox, IntrinsicKey, LocalId, MeasureScope, NodeRef, SpaceConstraint,
+};
 use crate::layout::style_data::{Dimension, Display, FlexDirection, Position};
 
 pub(crate) struct FlexSolver<'a> {
@@ -58,18 +60,11 @@ impl<'a> FlexSolver<'a> {
 
     pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), LayoutError> {
         let avail = self.scope.available();
-        let cb = root_cb(avail);
-        let style = subtree.style();
-        let axes = Axis2::for_direction(style.flex_direction);
-        let ctx = FlexCtx {
-            solver: self,
-            axes,
-            cb,
-            suppress_stretch: false,
-            assigned_w: None,
-            assigned_h: None,
+        let cb = CbSize {
+            w: definite(avail.w),
+            h: definite(avail.h),
         };
-        layout_root(&ctx, subtree, Position2::origin())
+        self.solve_with(subtree, cb, Position2::new(0.0, 0.0), (None, None))
     }
 
     pub(crate) fn solve_at(
@@ -78,17 +73,7 @@ impl<'a> FlexSolver<'a> {
         cb: CbSize,
         origin: Position2,
     ) -> Result<(), LayoutError> {
-        let style = subtree.style();
-        let axes = Axis2::for_direction(style.flex_direction);
-        let ctx = FlexCtx {
-            solver: self,
-            axes,
-            cb,
-            suppress_stretch: false,
-            assigned_w: None,
-            assigned_h: None,
-        };
-        layout_root(&ctx, subtree, origin)
+        self.solve_with(subtree, cb, origin, (None, None))
     }
 
     pub(crate) fn solve_at_area(
@@ -97,15 +82,24 @@ impl<'a> FlexSolver<'a> {
         cb: CbSize,
         origin: Position2,
     ) -> Result<(), LayoutError> {
-        let style = subtree.style();
-        let axes = Axis2::for_direction(style.flex_direction);
+        let assigned = (Some(cb.w), (cb.h > 0.0).then_some(cb.h));
+        self.solve_with(subtree, cb, origin, assigned)
+    }
+
+    fn solve_with(
+        &self,
+        subtree: NodeRef<'_>,
+        cb: CbSize,
+        origin: Position2,
+        (assigned_w, assigned_h): (Option<f32>, Option<f32>),
+    ) -> Result<(), LayoutError> {
         let ctx = FlexCtx {
             solver: self,
-            axes,
+            axes: Axis2::for_direction(subtree.style().flex_direction),
             cb,
             suppress_stretch: false,
-            assigned_w: Some(cb.w),
-            assigned_h: (cb.h > 0.0).then_some(cb.h),
+            assigned_w,
+            assigned_h,
         };
         layout_root(&ctx, subtree, origin)
     }
@@ -171,24 +165,12 @@ impl Position2 {
     pub(crate) const fn new(x: f32, y: f32) -> Self {
         Self { x, y }
     }
-
-    pub(crate) const fn origin() -> Self {
-        Self { x: 0.0, y: 0.0 }
-    }
 }
 
-const fn root_cb(avail: crate::layout::forest::AvailableSpace) -> CbSize {
-    CbSize {
-        w: definite(avail.w),
-        h: definite(avail.h),
-    }
-}
-
-const fn definite(c: crate::layout::forest::SpaceConstraint) -> f32 {
+const fn definite(c: SpaceConstraint) -> f32 {
     match c {
-        crate::layout::forest::SpaceConstraint::Definite(v) => v,
-        crate::layout::forest::SpaceConstraint::MinContent
-        | crate::layout::forest::SpaceConstraint::MaxContent => 0.0,
+        SpaceConstraint::Definite(v) => v,
+        SpaceConstraint::MinContent | SpaceConstraint::MaxContent => 0.0,
     }
 }
 
@@ -204,6 +186,14 @@ impl CbSize {
             (self.w, self.h)
         } else {
             (self.h, self.w)
+        }
+    }
+
+    pub(crate) const fn across(axes: Axis2, main: f32, cross: f32) -> Self {
+        if axes.row {
+            Self { w: main, h: cross }
+        } else {
+            Self { w: cross, h: main }
         }
     }
 }

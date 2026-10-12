@@ -10,11 +10,10 @@ use crate::geometry::{Point, Rect};
 use crate::hal::RenderedGlyph;
 use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::raster::{GlyphMask, Hinters, RasterKey, subpixel_quantize};
-use crate::style::Rgba8;
 use ahash::AHashMap;
 use tiny_skia::Pixmap;
 
-use super::shapes::{coverage_table, decode, encode};
+use super::shapes::{decode, encode};
 
 use crate::renderer::scene_command::GlyphRun;
 
@@ -31,13 +30,6 @@ pub(super) struct RunPlacement {
     pub(super) offset: Point,
     pub(super) clip: Option<Rect>,
     pub(super) table: [[u8; 4]; 256],
-}
-
-pub(super) fn glyph_table(color: Rgba8, opacity: f32) -> [[u8; 4]; 256] {
-    coverage_table(
-        [color.r, color.g, color.b].map(decode),
-        f32::from(color.a) / 255.0 * opacity,
-    )
 }
 
 impl GlyphCache {
@@ -82,16 +74,7 @@ impl GlyphCache {
             if let Some((mask, used)) = self.masks.get_mut(&k) {
                 *used = frame;
                 if let Some(mask) = mask {
-                    blit(
-                        target,
-                        mask,
-                        Blit {
-                            x,
-                            y,
-                            bounds,
-                            table: &place.table,
-                        },
-                    );
+                    blit(target, mask, (x, y), bounds, &place.table);
                 }
             }
         }
@@ -130,30 +113,28 @@ fn pixel_clip(clip: Option<Rect>, scale: f32, offset: Point, target: &Pixmap) ->
     ]
 }
 
-#[derive(Clone, Copy)]
-struct Blit<'a> {
-    x: i32,
-    y: i32,
+fn blit(
+    target: &mut Pixmap,
+    raster: &GlyphMask,
+    (x, y): (i32, i32),
     bounds: [i32; 4],
-    table: &'a [[u8; 4]; 256],
-}
-
-fn blit(target: &mut Pixmap, raster: &GlyphMask, blit: Blit<'_>) {
+    table: &[[u8; 4]; 256],
+) {
     let stride = target.width() as usize;
     let data = target.data_mut();
     for row in 0..raster.height as i32 {
-        let py = blit.y - raster.top + row;
-        if py < blit.bounds[1] || py >= blit.bounds[3] {
+        let py = y - raster.top + row;
+        if py < bounds[1] || py >= bounds[3] {
             continue;
         }
         for col in 0..raster.width as i32 {
-            let px = blit.x + raster.left + col;
-            if px < blit.bounds[0] || px >= blit.bounds[2] {
+            let px = x + raster.left + col;
+            if px < bounds[0] || px >= bounds[2] {
                 continue;
             }
             let at = (row as u32 * raster.width + col as u32) as usize;
             let cov = usize::from(raster.data.get(at).copied().unwrap_or(0));
-            let Some(src) = blit.table.get(cov).filter(|_| cov > 0) else {
+            let Some(src) = table.get(cov).filter(|_| cov > 0) else {
                 continue;
             };
             let dst_at = (py as usize * stride + px as usize) * 4;

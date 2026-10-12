@@ -5,12 +5,10 @@ pub(super) fn render(diagram: &Diagram) -> Vec<String> {
     let depth = depth(&diagram.events);
     let margin = depth.saturating_mul(2).saturating_add(1);
     let (centres, right) = centres(diagram, margin);
-    let mut rows = 3_usize;
-    for event in &diagram.events {
+    let rows = diagram.events.iter().fold(7_usize, |rows, event| {
         let same = matches!(event, Event::Message { from, to, .. } if from == to);
-        rows = rows.saturating_add(height(event, same));
-    }
-    rows = rows.saturating_add(4);
+        rows.saturating_add(height(event, same))
+    });
     let cols = right.saturating_add(margin);
     let mut canvas = Canvas::new(cols, rows);
     for (participant, centre) in diagram.participants.iter().zip(&centres) {
@@ -20,8 +18,7 @@ pub(super) fn render(diagram: &Diagram) -> Vec<String> {
     for centre in &centres {
         canvas.vline(*centre, 3, rows.saturating_sub(4), '┆');
     }
-    let frames = events(&mut canvas, diagram, &centres);
-    for frame in frames {
+    for frame in events(&mut canvas, diagram, &centres) {
         framed(&mut canvas, &frame, cols);
     }
     canvas.lines()

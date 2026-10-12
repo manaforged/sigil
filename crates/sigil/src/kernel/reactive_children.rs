@@ -57,19 +57,17 @@ fn generation_owner() -> Owner {
 
 struct GenerationGuard(Option<Owner>);
 
-impl GenerationGuard {
-    const fn take(&mut self) -> Option<Owner> {
-        self.0.take()
+impl Drop for GenerationGuard {
+    fn drop(&mut self) {
+        if let Some(owner) = self.0.take() {
+            dispose_if_live(owner);
+        }
     }
 }
 
-impl Drop for GenerationGuard {
-    fn drop(&mut self) {
-        if let Some(owner) = self.0.take()
-            && is_live(owner.id())
-        {
-            owner.dispose();
-        }
+fn dispose_if_live(owner: Owner) {
+    if is_live(owner.id()) {
+        owner.dispose();
     }
 }
 
@@ -120,21 +118,7 @@ where
                 .map(|(key, child)| (key, Some(Box::new(child) as Box<dyn ErasedComponent>)))
                 .collect()
         });
-        let prior = Rc::clone(&prior);
-        let mut slot = Some(incoming);
-        let mut generation = GenerationGuard(Some(generation));
-        enqueue(DeferredRebuild {
-            parent,
-            apply: Box::new(move |cx| {
-                apply_keyed(
-                    cx,
-                    parent,
-                    &prior,
-                    slot.take().unwrap_or_default(),
-                    &mut generation,
-                );
-            }),
-        });
+        enqueue_keyed(parent, Rc::clone(&prior), incoming, Some(generation));
     });
 }
 
@@ -156,7 +140,7 @@ fn apply_positional(
     for child in builders {
         new_ids.push(cx.add_boxed_child(parent, child));
     }
-    pin_generation(cx, generation.take(), &new_ids);
+    pin_generation(cx, generation.0.take(), &new_ids);
     *prior.borrow_mut() = new_ids;
 }
 
@@ -177,8 +161,17 @@ pub fn schedule_keyed_rebuild<K, N>(
             )
         })
         .collect();
+    enqueue_keyed(parent, prior, incoming, None);
+}
+
+fn enqueue_keyed<K: Clone + Eq + Hash + 'static>(
+    parent: NodeId,
+    prior: Rc<RefCell<Vec<(K, NodeId)>>>,
+    incoming: KeyedIncoming<K>,
+    generation: Option<Owner>,
+) {
     let mut slot = Some(incoming);
-    let mut generation = GenerationGuard(None);
+    let mut generation = GenerationGuard(generation);
     enqueue(DeferredRebuild {
         parent,
         apply: Box::new(move |cx| {
@@ -211,11 +204,11 @@ fn apply_keyed<K: Clone + Eq + Hash>(
     }
     let keyed: AHashSet<NodeId> = order.iter().copied().collect();
     let prefix = static_prefix(cx, parent, &keyed);
-    cx.replace_children(parent, keyed_children(&prefix, &order));
+    cx.replace_children(parent, prefix.iter().chain(&order).copied().collect());
     let mut next = next;
     next.retain(|(_, id)| cx.nodes.get(id.key()).is_some());
     *prior.borrow_mut() = next;
-    pin_generation(cx, generation.take(), &fresh);
+    pin_generation(cx, generation.0.take(), &fresh);
 }
 
 fn pin_generation(cx: &Cx, generation: Option<Owner>, fresh: &[NodeId]) {
@@ -223,9 +216,7 @@ fn pin_generation(cx: &Cx, generation: Option<Owner>, fresh: &[NodeId]) {
         return;
     };
     if fresh.is_empty() {
-        if is_live(generation.id()) {
-            generation.dispose();
-        }
+        dispose_if_live(generation);
         return;
     }
     let mut owners = SmallVec::<[Owner; 4]>::new();
@@ -248,8 +239,8 @@ fn pin_generation(cx: &Cx, generation: Option<Owner>, fresh: &[NodeId]) {
             on_cleanup(move || {
                 if remaining.get() > 1 {
                     remaining.set(remaining.get() - 1);
-                } else if is_live(generation.id()) {
-                    generation.dispose();
+                } else {
+                    dispose_if_live(generation);
                 }
             });
         });
@@ -305,13 +296,6 @@ fn take_or_mount(
         Some(id) if cx.nodes.get(id.key()).is_some() => Some((id, false)),
         _ => builder.map(|builder| (cx.add_boxed_child(parent, builder), true)),
     }
-}
-
-fn keyed_children(prefix: &[NodeId], order: &[NodeId]) -> SmallVec<[NodeId; 4]> {
-    let mut children = SmallVec::<[NodeId; 4]>::with_capacity(prefix.len() + order.len());
-    children.extend_from_slice(prefix);
-    children.extend_from_slice(order);
-    children
 }
 
 impl Cx {

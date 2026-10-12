@@ -24,85 +24,59 @@ impl Drop for Session {
 
 impl Session {
     pub fn write(&self, bytes: &[u8]) -> AppResult<()> {
-        self.tx.send(bytes.to_vec()).map_err(|_| Error::io(NoChild))
+        self.tx
+            .send(bytes.to_vec())
+            .map_err(|_| pty_err("Session::write needs Session::spawn"))
     }
 
     pub fn spawn(program: &str) -> AppResult<Self> {
-        spawn_pty(program)
-    }
-}
+        use std::io::Write;
+        use std::thread;
 
-#[derive(Debug)]
-struct NoChild;
+        use crate::tasks::OwnerHandle;
+        use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 
-impl std::fmt::Display for NoChild {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("Session::write needs Session::spawn")
-    }
-}
-
-impl std::error::Error for NoChild {}
-
-#[derive(Debug)]
-struct NoOwner;
-
-impl std::fmt::Display for NoOwner {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("Session::spawn needs Runtime::scope")
-    }
-}
-
-impl std::error::Error for NoOwner {}
-
-fn spawn_pty(program: &str) -> AppResult<Session> {
-    spawn_pty_inner(program)
-}
-
-fn spawn_pty_inner(program: &str) -> AppResult<Session> {
-    use std::io::Write;
-    use std::thread;
-
-    use crate::tasks::OwnerHandle;
-    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-
-    let owner = OwnerHandle::current().ok_or_else(|| Error::task(NoOwner))?;
-    let dispatcher = crate::tasks::current::dispatcher()
-        .expect("Session::spawn requires AsyncRuntime::install_current");
-    let pty = native_pty_system();
-    let pair = pty
-        .openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
-        })
-        .map_err(pty_err)?;
-    let mut child = pair
-        .slave
-        .spawn_command(CommandBuilder::new(program))
-        .map_err(pty_err)?;
-    let killer = child.clone_killer();
-    let reader = pair.master.try_clone_reader().map_err(pty_err)?;
-    let mut writer = pair.master.take_writer().map_err(pty_err)?;
-    let (tx, rx) = mpsc::channel::<Vec<u8>>();
-    thread::spawn(move || {
-        while let Ok(bytes) = rx.recv() {
-            if writer.write_all(&bytes).is_err() {
-                break;
+        let owner = OwnerHandle::current().ok_or_else(|| {
+            Error::task(std::io::Error::other("Session::spawn needs Runtime::scope"))
+        })?;
+        let dispatcher = crate::tasks::current::dispatcher()
+            .expect("Session::spawn requires AsyncRuntime::install_current");
+        let pty = native_pty_system();
+        let pair = pty
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .map_err(pty_err)?;
+        let mut child = pair
+            .slave
+            .spawn_command(CommandBuilder::new(program))
+            .map_err(pty_err)?;
+        let killer = child.clone_killer();
+        let reader = pair.master.try_clone_reader().map_err(pty_err)?;
+        let mut writer = pair.master.take_writer().map_err(pty_err)?;
+        let (tx, rx) = mpsc::channel::<Vec<u8>>();
+        thread::spawn(move || {
+            while let Ok(bytes) = rx.recv() {
+                if writer.write_all(&bytes).is_err() {
+                    break;
+                }
             }
-        }
-    });
-    thread::spawn(move || {
-        drop(child.wait());
-    });
-    let lines = signal(Vec::new());
-    let painted = lines.into_sendable();
-    thread::spawn(move || read_rows(reader, dispatcher, owner, painted));
-    Ok(Session {
-        lines,
-        tx,
-        killer: Some(killer),
-    })
+        });
+        thread::spawn(move || {
+            drop(child.wait());
+        });
+        let lines = signal(Vec::new());
+        let painted = lines.into_sendable();
+        thread::spawn(move || read_rows(reader, dispatcher, owner, painted));
+        Ok(Self {
+            lines,
+            tx,
+            killer: Some(killer),
+        })
+    }
 }
 
 pub(crate) fn rows_of(parser: &vt100::Parser) -> Vec<String> {

@@ -1,17 +1,15 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use super::*;
-use crate::events::EventRouter;
 use crate::events::{
-    KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
-    PhysicalKey, PointerEvent, PointerEventInit, PointerKind, PointerPhase, ShellEvent,
+    EventRouter, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton,
+    MouseButtons, PhysicalKey, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
+    ShellEvent,
 };
 use crate::geometry::{LogicalSize, Point, Size};
-use crate::kernel::IntoNode;
-use crate::kernel::{AccessibleName, Cx, Role};
+use crate::kernel::{AccessibleName, Cx, IntoNode, Role};
 use crate::layout::{LayoutEngine, TextMeasure};
-use crate::reactive::Runtime;
-use crate::reactive::signal;
+use crate::reactive::{Runtime, signal};
 
 struct Measure;
 
@@ -98,30 +96,21 @@ fn press(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, key: Key)
 }
 
 #[test]
-fn icon_button_is_a_ghost_button() {
+fn icon_button_names_itself_after_the_glyph_unless_told() {
     Runtime::scope("icon-button-role", || {
         let mut cx = Cx::new_root();
-        let id = icon_button("\u{25B6}", || {})
-            .accessible("Play")
-            .build(&mut cx);
-        let node = cx.get(id).expect("button");
-        assert_eq!(node.a11y.role, Role::Button);
-        match &node.a11y.name {
-            AccessibleName::Static(name) => assert_eq!(name, "Play"),
-            other => panic!("expected static accessible name, got {other:?}"),
-        }
-    });
-}
-
-#[test]
-fn icon_button_defaults_accessible_name_to_glyph() {
-    Runtime::scope("icon-button-glyph-name", || {
-        let mut cx = Cx::new_root();
-        let id = icon_button("\u{25B6}", || {}).build(&mut cx);
-        let node = cx.get(id).expect("button");
-        match &node.a11y.name {
-            AccessibleName::Static(name) => assert_eq!(name, "\u{25B6}"),
-            other => panic!("expected static name, got {other:?}"),
+        let named = icon_button("\u{25B6}", || {}).accessible("Play");
+        for (button, expected) in [
+            (named, "Play"),
+            (icon_button("\u{25B6}", || {}), "\u{25B6}"),
+        ] {
+            let id = button.build(&mut cx);
+            let node = cx.get(id).expect("button");
+            assert_eq!(node.a11y.role, Role::Button);
+            match &node.a11y.name {
+                AccessibleName::Static(name) => assert_eq!(name, expected),
+                other => panic!("expected static accessible name, got {other:?}"),
+            }
         }
     });
 }
@@ -129,7 +118,7 @@ fn icon_button_defaults_accessible_name_to_glyph() {
 #[test]
 fn pending_button_starts_disabled() {
     Runtime::scope("button-pending", || {
-        let busy = crate::reactive::signal(true);
+        let busy = signal(true);
         let mut cx = Cx::new_root();
         let id = button("Save").pending(busy).build(&mut cx);
         let node = cx.get(id).expect("button");

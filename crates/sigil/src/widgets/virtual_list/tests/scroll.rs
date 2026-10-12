@@ -1,148 +1,90 @@
 use super::*;
 
+fn seeded<T: 'static, R: RowRender<T>>(
+    list: VirtualListBuilder<T, R>,
+    scroll_y: Signal<f32>,
+) -> Cx {
+    let mut cx = Cx::new_root();
+    let _ = cx.add(
+        list.row_height(30.0)
+            .viewport_height(200.0)
+            .scroll_bind(scroll_y),
+    );
+    cx
+}
+
+fn hundred() -> Vec<usize> {
+    (0..100).collect()
+}
+
 #[test]
 fn build_materialises_only_visible_window() {
-    Runtime::scope("sigil-virtual-list-visible-window", || {
-        let mut cx = Cx::new_root();
-        let items: Vec<usize> = (0..1000).collect();
-        let root = cx.add(virtual_list(items, |_, _| container()));
-        cx.flush_reactive_children();
-
-        assert_eq!(cx.child_count(bound_visible(&cx, root)), 30);
-    });
+    assert_eq!(
+        mounted(|| virtual_list((0..1000).collect::<Vec<usize>>(), |_, _| container())),
+        30
+    );
 }
 
 #[test]
 fn overscan_zero_mounts_the_geometric_page() {
-    Runtime::scope("sigil-virtual-list-overscan-zero", || {
-        let mut cx = Cx::new_root();
-        let items: Vec<usize> = (0..1000).collect();
-        let root = cx.add(virtual_list(items, |_, _| container()).overscan(0));
-        cx.flush_reactive_children();
+    let items = || (0..1000).collect::<Vec<usize>>();
+    assert_eq!(
+        mounted(|| virtual_list(items(), |_, _| container()).overscan(0)),
+        15
+    );
+    let bound = mounted(|| {
+        virtual_list_bind(signal(items()), |_, _| container())
+            .overscan(0)
+            .row_height(32.0)
+            .viewport_height(480.0)
+    });
+    assert_eq!(bound, 15);
+}
 
-        assert_eq!(cx.child_count(bound_visible(&cx, root)), 15);
+#[test]
+fn initial_scroll_seeds_the_signal() {
+    Runtime::scope("sigil-virtual-list-initial-scroll", || {
+        let end = signal(0.0_f32);
+        let _end = seeded(
+            virtual_list(hundred(), |_, _| container()).initial_scroll(ScrollAnchor::Bottom),
+            end,
+        );
+        assert_eq!(end.get(), 2800.0);
+        let row = signal(0.0_f32);
+        let _row = seeded(
+            virtual_list(hundred(), |_, _| container()).scroll_into_view(50),
+            row,
+        );
+        assert_eq!(row.get(), 1500.0);
+        let short = signal(0.0_f32);
+        let _short = seeded(
+            virtual_list((0..10).collect::<Vec<usize>>(), |_, _| container()).follow_end(true),
+            short,
+        );
+        assert_eq!(short.get(), 100.0);
+        let bound = signal(0.0_f32);
+        let list = virtual_list_bind(signal(hundred()), |_, _| container());
+        let _bound = seeded(list.initial_scroll(ScrollAnchor::Bottom), bound);
+        assert_eq!(bound.get(), 2800.0);
     });
 }
 
 #[test]
-fn overscan_zero_bind_mounts_the_geometric_page() {
-    Runtime::scope("sigil-virtual-list-overscan-zero-bind", || {
-        let items = signal((0..1000).collect::<Vec<usize>>());
-        let mut cx = Cx::new_root();
-        let root = cx.add(
-            virtual_list_bind(items, |_, _| container())
-                .overscan(0)
-                .row_height(32.0)
-                .viewport_height(480.0),
-        );
-        cx.flush_reactive_children();
-        assert_eq!(cx.child_count(bound_visible(&cx, root)), 15);
-    });
-}
-
-#[test]
-fn scroll_to_end_seeds_signal_at_bottom() {
-    Runtime::scope("sigil-virtual-list-scroll-to-end", || {
-        let scroll_y = crate::reactive::signal(0.0_f32);
-        let items: Vec<usize> = (0..100).collect();
-        let mut cx = Cx::new_root();
-        let _ = cx.add(
-            virtual_list(items, |_, _| container())
-                .row_height(30.0)
-                .viewport_height(200.0)
-                .scroll_bind(scroll_y)
-                .initial_scroll(ScrollAnchor::Bottom),
-        );
-        assert_eq!(scroll_y.get(), 2800.0);
-    });
-}
-
-#[test]
-fn scroll_into_view_seeds_signal_at_row_position() {
-    Runtime::scope("sigil-virtual-list-scroll-into-view", || {
-        let scroll_y = crate::reactive::signal(0.0_f32);
-        let items: Vec<usize> = (0..100).collect();
-        let mut cx = Cx::new_root();
-        let _ = cx.add(
-            virtual_list(items, |_, _| container())
-                .row_height(30.0)
-                .viewport_height(200.0)
-                .scroll_bind(scroll_y)
-                .scroll_into_view(50),
-        );
-        assert_eq!(scroll_y.get(), 1500.0);
-    });
-}
-
-#[test]
-fn follow_end_starts_a_static_list_at_the_end() {
-    Runtime::scope("sigil-virtual-list-auto-pin", || {
-        let scroll_y = crate::reactive::signal(0.0_f32);
-        let items: Vec<usize> = (0..10).collect();
-        let mut cx = Cx::new_root();
-        let _ = cx.add(
-            virtual_list(items, |_, _| container())
-                .row_height(30.0)
-                .viewport_height(200.0)
-                .scroll_bind(scroll_y)
-                .follow_end(true),
-        );
-        assert_eq!(scroll_y.get(), 100.0);
-    });
-}
-
-#[test]
-fn bound_scroll_to_end_seeds_from_live_count() {
-    Runtime::scope("sigil-vlist-bind-scroll-to-end", || {
-        let scroll_y = signal(0.0_f32);
-        let items = signal((0..100_u32).collect::<Vec<_>>());
-        let mut cx = Cx::new_root();
-        let _ = cx.add(
-            virtual_list_bind(items, |_, _| container())
-                .row_height(30.0)
-                .viewport_height(200.0)
-                .scroll_bind(scroll_y)
-                .initial_scroll(ScrollAnchor::Bottom),
-        );
-        assert_eq!(scroll_y.get(), 2800.0);
-    });
-}
-
-#[test]
-fn auto_pin_follows_grow_when_already_at_bottom() {
-    Runtime::scope("sigil-vlist-auto-pin-follow", || {
-        let scroll_y = signal(0.0_f32);
-        let items = signal((0..100_u32).collect::<Vec<_>>());
-        let mut cx = Cx::new_root();
-        let _ = cx.add(
-            virtual_list_bind(items, |_, _| container())
-                .row_height(30.0)
-                .viewport_height(200.0)
-                .scroll_bind(scroll_y)
-                .follow_end(true),
-        );
-        assert_eq!(scroll_y.get(), 2800.0);
-        items.set((0..120_u32).collect());
-        assert_eq!(scroll_y.get(), 3400.0);
-    });
-}
-
-#[test]
-fn auto_pin_leaves_scroll_when_user_scrolled_up() {
-    Runtime::scope("sigil-vlist-auto-pin-hold", || {
-        let scroll_y = signal(0.0_f32);
-        let items = signal((0..100_u32).collect::<Vec<_>>());
-        let mut cx = Cx::new_root();
-        let _ = cx.add(
-            virtual_list_bind(items, |_, _| container())
-                .row_height(30.0)
-                .viewport_height(200.0)
-                .scroll_bind(scroll_y)
-                .follow_end(true),
-        );
-        assert_eq!(scroll_y.get(), 2800.0);
-        scroll_y.set(0.0);
-        items.set((0..120_u32).collect());
-        assert_eq!(scroll_y.get(), 0.0);
+fn auto_pin_follows_grow_only_while_at_bottom() {
+    Runtime::scope("sigil-vlist-auto-pin", || {
+        for (scrolled_up, expected) in [(false, 3400.0), (true, 0.0)] {
+            let scroll_y = signal(0.0_f32);
+            let items = signal(hundred());
+            let _cx = seeded(
+                virtual_list_bind(items, |_, _| container()).follow_end(true),
+                scroll_y,
+            );
+            assert_eq!(scroll_y.get(), 2800.0);
+            if scrolled_up {
+                scroll_y.set(0.0);
+            }
+            items.set((0..120).collect());
+            assert_eq!(scroll_y.get(), expected);
+        }
     });
 }

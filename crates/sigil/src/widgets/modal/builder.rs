@@ -15,9 +15,7 @@ use crate::layout::{
     AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow, Position,
 };
 use crate::reactive::{Signal, effect_named, signal};
-use crate::style::{
-    DisplayKind, PaintTarget, Style, StyleAtom, StyleSlot, Token, TransitionId, space,
-};
+use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot, Token, space};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::popup::{self, footer};
@@ -25,13 +23,11 @@ use super::super::scroll::contain_scroll;
 use super::escape::{close_top_escape_modal, register_escape_modal};
 use super::parts::{BODY_GUTTER, CloseControl, dialog_body, dialog_header};
 
-const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
-
 const DIALOG_PADDING: f32 = space(4);
 
-static BACKDROP_BASE: &[StyleAtom] = &[Token::Scrim.bg(), StyleAtom::Transition(MODAL_TRANSITION)];
+static BACKDROP_BASE: &[StyleAtom] = &[Token::Scrim.bg(), StyleAtom::Transition(presets::SMOOTH)];
 
-static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(MODAL_TRANSITION)];
+static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Side {
@@ -161,19 +157,10 @@ impl ModalBuilder {
             register_escape_modal(show);
         }
 
+        let side = self.side;
+        let escape_closes = self.escape_closes;
         let backdrop = build_backdrop(show, self.dismiss_on_backdrop);
-        let dialog = build_dialog(DialogSpec {
-            show,
-            title: self.title,
-            children: self.children,
-            actions: self.actions,
-            body_scroll,
-            style_accumulator: self.style_accumulator,
-            trap: self.trap,
-            close_button: self.close_button,
-            side: self.side,
-            layout_overrides: self.layout_overrides,
-        });
+        let dialog = build_dialog(self, body_scroll);
 
         let mut root = contain_scroll(
             container()
@@ -181,12 +168,12 @@ impl ModalBuilder {
                 .label(root_name)
                 .with(TopLayer)
                 .with(ViewportOverlay)
-                .layout(root_layout(self.side))
-                .style_reactive(move || show_display(show))
+                .layout(root_layout(side))
+                .style_reactive(move || popup::shown(show))
                 .child(backdrop)
                 .child(dialog),
         );
-        if self.escape_closes {
+        if escape_closes {
             root = root.key(Key::Escape, |ev| {
                 if close_top_escape_modal() {
                     ev.stop_propagation();
@@ -271,7 +258,7 @@ fn build_backdrop(show: Signal<bool>, dismiss_on_backdrop: bool) -> NodeBuilder 
                 .fill(),
         )
         .class(BACKDROP_BASE)
-        .style_reactive(move || show_display(show));
+        .style_reactive(move || popup::shown(show));
     if dismiss_on_backdrop {
         backdrop = backdrop.pointer_down(move |ev| {
             if show.peek() {
@@ -283,31 +270,18 @@ fn build_backdrop(show: Signal<bool>, dismiss_on_backdrop: bool) -> NodeBuilder 
     backdrop
 }
 
-struct DialogSpec {
-    show: Signal<bool>,
-    title: Option<TextContent>,
-    children: Vec<Box<dyn IntoNode>>,
-    actions: Vec<Box<dyn IntoNode>>,
-    body_scroll: Signal<f32>,
-    style_accumulator: Style,
-    trap: bool,
-    close_button: CloseControl,
-    side: Option<Side>,
-    layout_overrides: LayoutOverrides,
-}
-
-fn build_dialog(spec: DialogSpec) -> NodeBuilder {
-    let DialogSpec {
+fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
+    let ModalBuilder {
         show,
         title,
         children,
         actions,
-        body_scroll,
         style_accumulator,
         trap,
         close_button,
         side,
         layout_overrides,
+        ..
     } = spec;
     let title_label = accessible_name(title.as_ref());
     let tab_stop = signal(false);
@@ -318,7 +292,7 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
         .mutate(move |node| node.a11y.tab_stop = Some(tab_stop))
         .with(layout_overrides.apply(dialog_layout(side)))
         .class(DIALOG_BASE)
-        .style_reactive(move || show_display(show));
+        .style_reactive(move || popup::shown(show));
     if trap {
         dialog = dialog.mutate(|node| {
             node.a11y.focus_scope = Some(FocusScopeKind::Modal);
@@ -342,9 +316,6 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
     dialog
 }
 
-const SHEET_WIDTH: f32 = 360.0;
-const SHEET_HEIGHT: f32 = 320.0;
-
 fn dialog_layout(side: Option<Side>) -> LayoutStyle {
     let padding_x = snap::line(DIALOG_PADDING);
     let base = LayoutStyle::flex_column()
@@ -359,8 +330,8 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
         .shrink(1.0);
     match side {
         None => base.min_size(420.0, 0.0),
-        Some(Side::Left | Side::Right) => base.fill_height().width(SHEET_WIDTH),
-        Some(Side::Bottom) => base.fill_width().height(SHEET_HEIGHT),
+        Some(Side::Left | Side::Right) => base.fill_height().width(360.0),
+        Some(Side::Bottom) => base.fill_width().height(320.0),
     }
 }
 
@@ -372,14 +343,6 @@ fn accessible_name(title: Option<&TextContent>) -> AccessibleName {
         TextContent::Static(value) => AccessibleName::Static(value.clone()),
         TextContent::Reactive(value) => AccessibleName::Derived(*value),
         TextContent::Compute(_) => AccessibleName::Static(title.resolve()),
-    }
-}
-
-fn show_display(show: Signal<bool>) -> &'static [StyleAtom] {
-    if show.get() {
-        &[]
-    } else {
-        &[StyleAtom::Display(DisplayKind::None)]
     }
 }
 

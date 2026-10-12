@@ -1,5 +1,5 @@
 use crate::geometry::Size;
-use crate::kernel::{Cx, TextContent, container};
+use crate::kernel::{Cx, NodeId, TextContent, container};
 use crate::layout::{LayoutEngine, TextMeasure};
 use crate::reactive::Runtime;
 
@@ -13,15 +13,19 @@ impl TextMeasure for StubMeasure {
     }
 }
 
+fn laid_out() -> (Cx, NodeId) {
+    let mut cx = Cx::new_root();
+    let root = cx.add(container());
+    LayoutEngine::with_text_measure(Box::new(StubMeasure))
+        .compute(&mut cx, root, Size::fixed(100.0, 80.0))
+        .expect("layout");
+    (cx, root)
+}
+
 #[test]
 fn replays_only_when_context_root_viewport_and_scale_match() {
     Runtime::scope("scene-cache-replay", || {
-        let mut cx = Cx::new_root();
-        let root = cx.add(container());
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        layout
-            .compute(&mut cx, root, Size::fixed(100.0, 80.0))
-            .expect("layout");
+        let (cx, root) = laid_out();
         let mut cache = SceneCache::default();
 
         let _ = cache.scene(&cx, root, (100.0, 80.0), false);
@@ -36,12 +40,7 @@ fn replays_only_when_context_root_viewport_and_scale_match() {
 #[test]
 fn an_opaque_window_paints_the_theme_surface_behind_the_tree() {
     Runtime::scope("scene-cache-backdrop", || {
-        let mut cx = Cx::new_root();
-        let root = cx.add(container());
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        layout
-            .compute(&mut cx, root, Size::fixed(100.0, 80.0))
-            .expect("layout");
+        let (cx, root) = laid_out();
         let surface = crate::style::Theme::default().color(crate::style::Token::Surface);
 
         let opaque = super::window_scene(&cx, root, (100.0, 80.0), true);

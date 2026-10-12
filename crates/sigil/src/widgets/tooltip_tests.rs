@@ -5,9 +5,13 @@ use crate::kernel::container as kernel_container;
 use crate::reactive::Runtime;
 
 #[test]
-fn tooltip_builds_with_target_child() {
+fn tooltip_builds_with_target_child_on_either_side() {
     Runtime::scope("tooltip-build", || {
-        let _builder = tooltip("Save the file")
+        let _below = tooltip("Hint")
+            .clamp_top()
+            .child(kernel_container())
+            .into_node_builder();
+        let _above = tooltip("Save the file")
             .child(kernel_container())
             .into_node_builder();
     });
@@ -31,14 +35,4 @@ fn visibility_atoms_gate_display_none() {
         visibility_atoms(false)[0],
         StyleAtom::Display(DisplayKind::None)
     );
-}
-
-#[test]
-fn clamp_top_pins_bubble_at_viewport_edge() {
-    Runtime::scope("tooltip-clamp-top", || {
-        let _builder = tooltip("Hint")
-            .clamp_top()
-            .child(kernel_container())
-            .into_node_builder();
-    });
 }

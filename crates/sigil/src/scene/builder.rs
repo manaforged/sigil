@@ -54,7 +54,7 @@ impl SceneBuilder {
 
     pub fn draw_shadow(&mut self, rect: Rect, radii: CornerRadii, shadow: Shadow) {
         self.commands.push(SceneCommand::DrawShadow {
-            rect: rect_fields(rect),
+            rect: [rect.origin.x, rect.origin.y, rect.width, rect.height],
             radii,
             shadow,
         });
@@ -121,23 +121,21 @@ impl SceneBuilder {
     }
 
     pub fn with_clip<F: FnOnce(&mut Self)>(&mut self, rect: Rect, body: F) {
-        self.with_scope(SceneCommand::PushClip(rect), ScopeKind::Clip, body);
+        self.with_scope(SceneCommand::PushClip(rect), SceneCommand::PopClip, body);
     }
 
     pub fn with_transform<F: FnOnce(&mut Self)>(&mut self, transform: Transform, body: F) {
-        self.with_scope(
-            SceneCommand::PushTransform(transform),
-            ScopeKind::Transform,
-            body,
-        );
+        let open = SceneCommand::PushTransform(transform);
+        self.with_scope(open, SceneCommand::PopTransform, body);
     }
 
     pub fn with_layer<F: FnOnce(&mut Self)>(&mut self, opacity: f32, body: F) {
-        self.with_scope(SceneCommand::SaveLayer { opacity }, ScopeKind::Layer, body);
+        let open = SceneCommand::SaveLayer { opacity };
+        self.with_scope(open, SceneCommand::RestoreLayer, body);
     }
 
     pub fn with_composite_layer<F: FnOnce(&mut Self)>(&mut self, scope: LayerScope, body: F) {
-        self.with_scope(SceneCommand::PushLayer(scope), ScopeKind::Offscreen, body);
+        self.with_scope(SceneCommand::PushLayer(scope), SceneCommand::PopLayer, body);
     }
 
     pub fn push_layer(&mut self, scope: LayerScope) {
@@ -165,64 +163,20 @@ impl SceneBuilder {
         self.commands.get(start..).unwrap_or(&[]).to_vec()
     }
 
-    fn with_scope<F: FnOnce(&mut Self)>(&mut self, open: SceneCommand, kind: ScopeKind, body: F) {
+    fn with_scope<F: FnOnce(&mut Self)>(
+        &mut self,
+        open: SceneCommand,
+        close: SceneCommand,
+        body: F,
+    ) {
         self.commands.push(open);
-        let mut scope = Scope::new(self, kind);
-        body(scope.builder());
+        body(self);
+        self.commands.push(close);
     }
-}
-
-const fn rect_fields(rect: Rect) -> [f32; 4] {
-    let Rect {
-        origin,
-        width,
-        height,
-    } = rect;
-    [origin.x, origin.y, width, height]
 }
 
 impl Default for SceneBuilder {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-enum ScopeKind {
-    Clip,
-    Transform,
-    Layer,
-    Offscreen,
-}
-
-impl ScopeKind {
-    const fn close_command(self) -> SceneCommand {
-        match self {
-            Self::Clip => SceneCommand::PopClip,
-            Self::Transform => SceneCommand::PopTransform,
-            Self::Layer => SceneCommand::RestoreLayer,
-            Self::Offscreen => SceneCommand::PopLayer,
-        }
-    }
-}
-
-struct Scope<'builder> {
-    builder: &'builder mut SceneBuilder,
-    kind: ScopeKind,
-}
-
-impl<'builder> Scope<'builder> {
-    const fn new(builder: &'builder mut SceneBuilder, kind: ScopeKind) -> Self {
-        Self { builder, kind }
-    }
-
-    const fn builder(&mut self) -> &mut SceneBuilder {
-        self.builder
-    }
-}
-
-impl Drop for Scope<'_> {
-    fn drop(&mut self) {
-        self.builder.commands.push(self.kind.close_command());
     }
 }

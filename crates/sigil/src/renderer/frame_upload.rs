@@ -5,43 +5,27 @@ use bytemuck::Pod;
 use crate::profile::{count, count_add};
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::scene_command::SceneCommand;
-use crate::renderer::scene_instance::{GpuStop, MAX_GRADIENT_STOPS, SceneUniforms};
+use crate::renderer::scene_instance::{GpuStop, SceneUniforms};
 use crate::renderer::split_encoder::SplitEncoder;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct UploadCapacities {
-    rects: usize,
-    fills: usize,
-    stops: usize,
-    shadows: usize,
-    decorations: usize,
-    glyphs: usize,
+    has_primitives: bool,
 }
 
 impl UploadCapacities {
     pub(crate) fn from_commands<'a>(commands: impl IntoIterator<Item = &'a SceneCommand>) -> Self {
-        let mut out = Self::default();
-        for command in commands {
-            match command {
-                SceneCommand::Rect(_) => out.rects += 1,
-                SceneCommand::Gradient(draw) => {
-                    out.fills += 1;
-                    out.stops += draw.gradient.stops.len().clamp(1, MAX_GRADIENT_STOPS);
-                }
-                SceneCommand::Pattern(_) => out.fills += 1,
-                SceneCommand::DrawShadow { .. } => out.shadows += 1,
-                SceneCommand::Decoration(_) => out.decorations += 1,
-                SceneCommand::GlyphRun(draw) => {
-                    out.glyphs += draw.run.positioned_glyphs().len();
-                }
-                _ => {}
-            }
-        }
-        out
-    }
-
-    const fn has_primitives(self) -> bool {
-        self.rects > 0 || self.fills > 0 || self.shadows > 0 || self.decorations > 0
+        let has_primitives = commands.into_iter().any(|command| {
+            matches!(
+                command,
+                SceneCommand::Rect(_)
+                    | SceneCommand::Gradient(_)
+                    | SceneCommand::Pattern(_)
+                    | SceneCommand::DrawShadow { .. }
+                    | SceneCommand::Decoration(_)
+            )
+        });
+        Self { has_primitives }
     }
 }
 
@@ -63,9 +47,14 @@ impl FrameUploads {
         capacity: UploadCapacities,
         stats: &mut FrameStats,
     ) -> Self {
-        let uniform = capacity
-            .has_primitives()
-            .then(|| make_uniform(encoder, viewport, stats));
+        let uniform = capacity.has_primitives.then(|| {
+            let (buffer, offset, allocated_bytes) = encoder.uniform(&SceneUniforms {
+                viewport: [viewport.0.max(1.0), viewport.1.max(1.0)],
+                _pad: [0.0, 0.0],
+            });
+            record(stats, allocated_bytes, size_of::<SceneUniforms>() as u64);
+            (buffer, offset)
+        });
         Self { uniform }
     }
 
@@ -87,12 +76,7 @@ impl FrameUploads {
         if values.is_empty() {
             return None;
         }
-        let uploaded = encoder.upload(values);
-        if uploaded.allocated_bytes > 0 {
-            stats.record_primitive_buffer(uploaded.allocated_bytes);
-        }
-        stats.record_primitive_write(uploaded.bytes.end - uploaded.bytes.start);
-        Some(uploaded)
+        Some(recorded(encoder.upload(values), stats))
     }
 
     pub(crate) fn upload_stops(
@@ -105,13 +89,24 @@ impl FrameUploads {
         } else {
             values
         };
-        let uploaded = encoder.storage(values);
-        if uploaded.allocated_bytes > 0 {
-            stats.record_primitive_buffer(uploaded.allocated_bytes);
-        }
-        stats.record_primitive_write(uploaded.bytes.end - uploaded.bytes.start);
-        uploaded
+        recorded(encoder.storage(values), stats)
     }
+}
+
+const fn recorded(uploaded: UploadedRange, stats: &mut FrameStats) -> UploadedRange {
+    record(
+        stats,
+        uploaded.allocated_bytes,
+        uploaded.bytes.end - uploaded.bytes.start,
+    );
+    uploaded
+}
+
+const fn record(stats: &mut FrameStats, allocated_bytes: u64, written: u64) {
+    if allocated_bytes > 0 {
+        stats.record_primitive_buffer(allocated_bytes);
+    }
+    stats.record_primitive_write(written);
 }
 
 pub(crate) struct UploadBuffers {
@@ -123,24 +118,9 @@ pub(crate) struct UploadBuffers {
 impl Default for UploadBuffers {
     fn default() -> Self {
         Self {
-            vertices: UploadBuffer::new_bytes(
-                "sigil draw instances",
-                0,
-                1,
-                wgpu::BufferUsages::VERTEX,
-            ),
-            uniforms: UploadBuffer::new_bytes(
-                "sigil draw uniforms",
-                0,
-                1,
-                wgpu::BufferUsages::UNIFORM,
-            ),
-            storage: UploadBuffer::new_bytes(
-                "sigil gradient stops",
-                0,
-                1,
-                wgpu::BufferUsages::STORAGE,
-            ),
+            vertices: UploadBuffer::new("sigil draw instances", wgpu::BufferUsages::VERTEX),
+            uniforms: UploadBuffer::new("sigil draw uniforms", wgpu::BufferUsages::UNIFORM),
+            storage: UploadBuffer::new("sigil gradient stops", wgpu::BufferUsages::STORAGE),
         }
     }
 }
@@ -166,18 +146,12 @@ pub(crate) struct UploadBuffer {
 }
 
 impl UploadBuffer {
-    pub(crate) fn new_bytes(
-        label: &'static str,
-        capacity: usize,
-        stride: usize,
-        usage: wgpu::BufferUsages,
-    ) -> Self {
-        let bytes = byte_len(capacity, stride);
+    const fn new(label: &'static str, usage: wgpu::BufferUsages) -> Self {
         Self {
             label,
             usage,
             buffer: None,
-            capacity: bytes,
+            capacity: 0,
             written: 0,
             pending: Vec::new(),
             pending_offset: 0,
@@ -251,27 +225,6 @@ const EMPTY_STOP: GpuStop = GpuStop {
     rgba23: 0,
     _pad: 0,
 };
-
-fn make_uniform(
-    encoder: &mut SplitEncoder,
-    viewport: (f32, f32),
-    stats: &mut FrameStats,
-) -> (wgpu::Buffer, u32) {
-    let uniform = SceneUniforms {
-        viewport: [viewport.0.max(1.0), viewport.1.max(1.0)],
-        _pad: [0.0, 0.0],
-    };
-    let (buffer, offset, allocated_bytes) = encoder.uniform(&uniform);
-    if allocated_bytes > 0 {
-        stats.record_primitive_buffer(allocated_bytes);
-    }
-    stats.record_primitive_write(size_of::<SceneUniforms>() as u64);
-    (buffer, offset)
-}
-
-fn byte_len(count: usize, stride: usize) -> u64 {
-    u64::try_from(count.saturating_mul(stride)).unwrap_or(u64::MAX)
-}
 
 #[cfg(test)]
 #[path = "frame_upload_tests.rs"]

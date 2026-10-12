@@ -18,8 +18,7 @@ pub(super) fn point_at(lines: &[String], byte: usize) -> (usize, usize) {
     for (index, line) in lines.iter().enumerate() {
         let end = start + line.len();
         if byte <= end {
-            let col = col_at_byte(line, byte - start);
-            return (index, col);
+            return (index, col_at_byte(line, byte - start));
         }
         start = end + 1;
     }

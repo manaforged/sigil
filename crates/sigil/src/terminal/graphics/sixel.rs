@@ -1,8 +1,8 @@
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
 
+use super::encode::{Sample, premultiplied};
 use crate::kernel::ImageSource;
-use crate::style::Rgba8;
 
 const CELL_W: usize = 8;
 const CELL_H: usize = 16;
@@ -14,16 +14,11 @@ pub(crate) fn encode(source: &ImageSource, window: (u32, u32), cols: u16, rows: 
     let width = usize::from(cols).saturating_mul(CELL_W);
     let height = usize::from(rows).saturating_mul(CELL_H);
     let pixels = palette_pixels(source, window, width, height);
-    let mut used = BTreeSet::new();
-    for &reg in &pixels {
-        if reg != EMPTY {
-            used.insert(reg);
-        }
-    }
+    let used: BTreeSet<u8> = pixels.iter().copied().filter(|reg| *reg != EMPTY).collect();
     let mut seq = String::new();
     let _ = write!(seq, "\x1bPq\"1;1;{width};{height}");
-    for reg in &used {
-        let (r, g, b) = register_rgb(*reg);
+    for reg in used {
+        let (r, g, b) = register_rgb(reg);
         let _ = write!(seq, "#{reg};2;{};{};{}", pct(r), pct(g), pct(b));
     }
     for top in (0..height).step_by(BAND) {
@@ -39,42 +34,24 @@ fn palette_pixels(
     width: usize,
     height: usize,
 ) -> Vec<u8> {
-    let sw = source.width() as usize;
-    let full = source.height() as usize;
-    let top = (window.0 as usize).min(full);
-    let wh = (window.1 as usize).clamp(1, full.saturating_sub(top).max(1));
-    let rgba = source.rgba();
-    let mut out = vec![EMPTY; width.saturating_mul(height)];
+    let sample = Sample::new(source, window);
+    let mut out = Vec::with_capacity(width.saturating_mul(height));
     for y in 0..height {
         for x in 0..width {
-            let sx = x.saturating_mul(sw) / width.max(1);
-            let sy = top.saturating_add(y.saturating_mul(wh) / height.max(1));
-            let at = (sy.min(full.saturating_sub(1)) * sw + sx.min(sw.saturating_sub(1))) * 4;
-            let px = rgba
-                .get(at..at + 4)
-                .and_then(|p| <[u8; 4]>::try_from(p).ok())
-                .unwrap_or_default();
-            if let Some(slot) = out.get_mut(y.saturating_mul(width).saturating_add(x)) {
-                *slot = register(px);
-            }
+            let sx = x.saturating_mul(sample.width) / width.max(1);
+            let sy = y.saturating_mul(sample.height) / height.max(1);
+            out.push(register(sample.texel(sx, sy)));
         }
     }
     out
 }
 
 fn register(px: [u8; 4]) -> u8 {
-    let [r, g, b, a] = px;
-    if a < 64 {
+    let [.., alpha] = px;
+    if alpha < 64 {
         return EMPTY;
     }
-    let alpha = u32::from(a);
-    let over = |channel: u8| u8::try_from(u32::from(channel) * alpha / 255).unwrap_or(u8::MAX);
-    crate::terminal::colour::cube(Rgba8 {
-        r: over(r),
-        g: over(g),
-        b: over(b),
-        a: 255,
-    })
+    crate::terminal::colour::cube(premultiplied(px))
 }
 
 fn register_rgb(reg: u8) -> (u8, u8, u8) {
@@ -119,15 +96,10 @@ fn band(seq: &mut String, pixels: &[u8], width: usize, top: usize, height: usize
 }
 
 fn run_out(seq: &mut String, ch: char, count: usize) {
-    if count == 0 {
-        return;
-    }
     if count > 3 {
         let _ = write!(seq, "!{count}{ch}");
     } else {
-        for _ in 0..count {
-            seq.push(ch);
-        }
+        seq.extend(std::iter::repeat_n(ch, count));
     }
 }
 

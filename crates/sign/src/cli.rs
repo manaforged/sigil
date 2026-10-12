@@ -31,25 +31,27 @@ fn flag(args: &[String], name: &str) -> Result<Option<String>, String> {
     Ok(None)
 }
 
+fn required(args: &[String], name: &str) -> Result<String, String> {
+    flag(args, name)?.ok_or_else(|| format!("missing {name}"))
+}
+
 fn resource_pairs(args: &[String]) -> Result<Vec<(PathBuf, PathBuf)>, String> {
     let mut froms = Vec::new();
     let mut tos = Vec::new();
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match arg.as_str() {
-            "--resource-from" => {
+            "--resource-from" | "--resource-to" => {
                 let value = rest
                     .next()
                     .filter(|value| !value.starts_with("--"))
-                    .ok_or("missing --resource-from value")?;
-                froms.push(PathBuf::from(value));
-            }
-            "--resource-to" => {
-                let value = rest
-                    .next()
-                    .filter(|value| !value.starts_with("--"))
-                    .ok_or("missing --resource-to value")?;
-                tos.push(PathBuf::from(value));
+                    .ok_or_else(|| format!("missing {arg} value"))?;
+                let list = if arg == "--resource-from" {
+                    &mut froms
+                } else {
+                    &mut tos
+                };
+                list.push(PathBuf::from(value));
             }
             "--resource" => {
                 return Err(
@@ -104,28 +106,32 @@ pub fn pack_cli(argv: &[String]) -> Result<(), String> {
     }
 }
 
-fn codesign_identity(argv: &[String]) -> Result<Option<String>, String> {
-    Ok(flag(argv, "--identity")?.or_else(|| std::env::var("SIGIL_CODESIGN_IDENTITY").ok()))
+fn codesign_flags(argv: &[String]) -> Result<[Option<String>; 2], String> {
+    let identity =
+        flag(argv, "--identity")?.or_else(|| std::env::var("SIGIL_CODESIGN_IDENTITY").ok());
+    Ok([identity, flag(argv, "--entitlements")?])
 }
 
-fn pack_codesign(argv: &[String]) -> Result<(), String> {
-    let file = flag(argv, "--file")?.ok_or("missing --file")?;
-    let identity = codesign_identity(argv)?;
-    let entitlements = flag(argv, "--entitlements")?;
+fn code_sign([identity, entitlements]: &[Option<String>; 2]) -> CodeSign<'_> {
     CodeSign {
         identity: identity.as_deref().filter(|value| !value.is_empty()),
         entitlements: entitlements.as_deref().map(Path::new),
     }
-    .sign(Path::new(&file))
-    .map_err(|error| error.to_string())
+}
+
+fn pack_codesign(argv: &[String]) -> Result<(), String> {
+    let file = required(argv, "--file")?;
+    code_sign(&codesign_flags(argv)?)
+        .sign(Path::new(&file))
+        .map_err(|error| error.to_string())
 }
 
 fn pack_macos(argv: &[String]) -> Result<(), String> {
-    let exe = flag(argv, "--exe")?.ok_or("missing --exe")?;
-    let out = flag(argv, "--out")?.ok_or("missing --out")?;
-    let name = flag(argv, "--name")?.ok_or("missing --name")?;
-    let ident = flag(argv, "--id")?.ok_or("missing --id")?;
-    let version = flag(argv, "--version")?.ok_or("missing --version")?;
+    let exe = required(argv, "--exe")?;
+    let out = required(argv, "--out")?;
+    let name = required(argv, "--name")?;
+    let ident = required(argv, "--id")?;
+    let version = required(argv, "--version")?;
     let icon = flag(argv, "--icon")?;
     let provisioning_profile = flag(argv, "--provisioning-profile")?;
     if provisioning_profile.is_none() && argv.iter().any(|arg| arg == "--provisioning-profile") {
@@ -134,30 +140,30 @@ fn pack_macos(argv: &[String]) -> Result<(), String> {
     let min = flag(argv, "--min")?.unwrap_or_else(|| "10.15".into());
     let exe_name = flag(argv, "--exe-name")?.unwrap_or_else(|| name.clone());
     let copies = resource_pairs(argv)?;
-    let identity = codesign_identity(argv)?;
-    let entitlements = flag(argv, "--entitlements")?;
-    let sign = CodeSign {
-        identity: identity.as_deref().filter(|value| !value.is_empty()),
-        entitlements: entitlements.as_deref().map(Path::new),
-    };
-    let icon_path = icon.as_deref().map(Path::new);
+    let signing = codesign_flags(argv)?;
     let app = AppBundle {
         name: &name,
         identifier: &ident,
         version: &version,
         executable: Path::new(&exe),
         exe_name: &exe_name,
-        icon: icon_path,
+        icon: icon.as_deref().map(Path::new),
         provisioning_profile: provisioning_profile.as_deref().map(Path::new),
         min_system: &min,
     };
-    macos_app(&app, &resources(&copies), Path::new(&out), &sign).map_err(|e| e.to_string())
+    macos_app(
+        &app,
+        &resources(&copies),
+        Path::new(&out),
+        &code_sign(&signing),
+    )
+    .map_err(|e| e.to_string())
 }
 
 fn pack_windows(argv: &[String]) -> Result<(), String> {
-    let exe = flag(argv, "--exe")?.ok_or("missing --exe")?;
-    let out = flag(argv, "--out")?.ok_or("missing --out")?;
-    let name = flag(argv, "--name")?.ok_or("missing --name")?;
+    let exe = required(argv, "--exe")?;
+    let out = required(argv, "--out")?;
+    let name = required(argv, "--name")?;
     let copies = resource_pairs(argv)?;
     let app = AppBundle {
         name: &name,
@@ -214,9 +220,9 @@ fn refuse_password_flag(argv: &[String]) -> Result<(), String> {
 
 fn pack_sign(argv: &[String]) -> Result<(), String> {
     refuse_password_flag(argv)?;
-    let key = flag(argv, "--key")?.ok_or("missing --key")?;
-    let file = flag(argv, "--file")?.ok_or("missing --file")?;
-    let version = flag(argv, "--version")?.ok_or("missing --version")?;
+    let key = required(argv, "--key")?;
+    let file = required(argv, "--file")?;
+    let version = required(argv, "--version")?;
     let password = std::env::var("SIGIL_PACK_PASSWORD").ok();
     let envelope = sign_file(
         Path::new(&file),
@@ -230,10 +236,10 @@ fn pack_sign(argv: &[String]) -> Result<(), String> {
 }
 
 fn pack_verify(argv: &[String]) -> Result<(), String> {
-    let key = flag(argv, "--pub")?.ok_or("missing --pub")?;
-    let file = flag(argv, "--file")?.ok_or("missing --file")?;
+    let key = required(argv, "--pub")?;
+    let file = required(argv, "--file")?;
     let sig = flag(argv, "--sig")?.unwrap_or_else(|| format!("{file}.sig"));
-    let version = flag(argv, "--version")?.ok_or("missing --version")?;
+    let version = required(argv, "--version")?;
     verify_file(Path::new(&key), Path::new(&file), Path::new(&sig), &version)
         .map_err(|e| e.to_string())?;
     eprintln!("verified {file} version {version}");

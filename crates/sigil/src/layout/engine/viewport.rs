@@ -7,6 +7,7 @@ use crate::layout::snap;
 use crate::style::StyleBinding;
 
 use super::LayoutEngine;
+use super::attribution::contains;
 use super::measure::to_available_space;
 
 #[derive(Clone, Copy)]
@@ -69,7 +70,7 @@ impl LayoutEngine {
                 .is_some_and(|node| node.get_extension::<Popup>().is_some())
             || solved
                 .iter()
-                .any(|&subroot| subroot != id && is_ancestor(cx, subroot, id))
+                .any(|&subroot| subroot != id && contains(cx, subroot, id))
     }
 
     fn place_popup(&mut self, cx: &mut Cx, id: NodeId, popup: Popup, viewport: (f32, f32)) {
@@ -167,17 +168,6 @@ fn side_y(anchor: Rect, height: f32, popup: Popup, (limit, margin): (f32, f32)) 
 
 fn clamp_axis(value: f32, size: f32, limit: f32, gap: f32) -> f32 {
     value.min(limit - size - gap).max(gap.min(value).max(0.0))
-}
-
-fn is_ancestor(cx: &Cx, ancestor: NodeId, id: NodeId) -> bool {
-    let mut current = cx.parent(id);
-    while let Some(parent) = current {
-        if parent == ancestor {
-            return true;
-        }
-        current = cx.parent(parent);
-    }
-    false
 }
 
 fn collect(cx: &Cx, id: NodeId, found: &mut Found) {

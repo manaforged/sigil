@@ -1,6 +1,7 @@
 #![allow(clippy::indexing_slicing, clippy::cast_precision_loss)]
 
 use crate::layout::forest::SpaceConstraint;
+use crate::layout::resolve::resolve_lp;
 use crate::layout::style_data::{Dimension, LengthPercentage, StyleData, TrackSize};
 
 pub(super) fn grid_box_h(style: &StyleData, avail_h: f32, content_h: f32, chrome: f32) -> f32 {
@@ -127,12 +128,7 @@ pub(super) fn apply_row_template(row_h: &mut [f32], tracks: &[TrackSize]) {
 }
 
 pub(super) fn resolve_gap(gap: LengthPercentage, inner_w: f32, snap: fn(f32) -> f32) -> f32 {
-    let resolved = match gap {
-        LengthPercentage::Px(px) => px.max(0.0),
-        LengthPercentage::Percent(pct) => (pct * inner_w).max(0.0),
-        LengthPercentage::Text(length) => length.px().max(0.0),
-    };
-    snap(resolved)
+    snap(resolve_lp(gap, inner_w).max(0.0))
 }
 
 pub(super) const fn definite(c: SpaceConstraint) -> f32 {

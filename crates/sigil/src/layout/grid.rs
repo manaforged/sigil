@@ -41,12 +41,6 @@ struct RowTracks<'a> {
     gap: f32,
 }
 
-impl<'a> RowTracks<'a> {
-    const fn new(y: &'a [f32], h: &'a [f32], gap: f32) -> Self {
-        Self { y, h, gap }
-    }
-}
-
 struct GridFrame<'a> {
     style: &'a StyleData,
     edges: NodeEdges,
@@ -168,12 +162,8 @@ impl<'a> GridSolver<'a> {
         let children: Vec<LocalId> = subtree.children().to_vec();
         let places = self.flow_children(&children, &frame);
         let row_h = self.layout_rows(&places, &frame)?;
-
         let avail_h = definite(self.scope.available().h);
-        let content_h = frame.gap_y.mul_add(
-            (row_h.len().saturating_sub(1)) as f32,
-            row_h.iter().sum::<f32>(),
-        );
+        let content_h = spanned_height(&row_h, 0, row_h.len(), frame.gap_y);
         let box_h = grid_box_h(frame.style, avail_h, content_h, frame.edges.block_chrome());
         self.scope.write_node(
             &subtree,
@@ -213,11 +203,12 @@ impl<'a> GridSolver<'a> {
             );
         }
         let row_y = offsets(frame.content.y, &row_h, frame.gap_y);
-        self.place_cells(
-            places,
-            &frame.cols,
-            &RowTracks::new(&row_y, &row_h, frame.gap_y),
-        )?;
+        let rows = RowTracks {
+            y: &row_y,
+            h: &row_h,
+            gap: frame.gap_y,
+        };
+        self.place_cells(places, &frame.cols, &rows)?;
         Ok(row_h)
     }
 
@@ -228,7 +219,7 @@ impl<'a> GridSolver<'a> {
             .grid_template_rows
             .len()
             .max(children.len())
-            .clamp(1, MAX_ROW_SPAN);
+            .clamp(1, 1024);
         let specs: Vec<Spec> = children
             .iter()
             .map(|&c| self.child_spec(c, ncols, row_cap))
@@ -341,23 +332,14 @@ impl<'a> GridSolver<'a> {
             Display::Flex => FlexSolver::new(nested).solve_at_area(
                 cell,
                 CbSize { w, h },
-                crate::layout::flex::Position2 {
-                    x: origin.x,
-                    y: origin.y,
-                },
+                crate::layout::flex::Position2::new(origin.x, origin.y),
             ),
             Display::Grid => GridSolver::new(nested).solve_at(cell, w, origin),
             Display::Block | Display::None => BlockSolver::new(nested).solve_at_assigned(
                 cell,
-                Size {
-                    width: w,
-                    height: h,
-                },
+                Size::new(w, h),
                 origin,
-                Size {
-                    width: Some(w),
-                    height: None,
-                },
+                Size::new(Some(w), None),
             ),
         }?;
         if stretch && h > 0.0 {
@@ -379,13 +361,9 @@ impl<'a> GridSolver<'a> {
         self.scope.write_node(
             &node,
             ComputedBox {
-                x: current.x,
-                y: current.y,
-                w: current.w,
                 h: track_h,
+                ..current
             },
         );
     }
 }
-
-const MAX_ROW_SPAN: usize = 1024;

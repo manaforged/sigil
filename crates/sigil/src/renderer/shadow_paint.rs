@@ -1,10 +1,11 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use wgpu::util::DeviceExt as _;
-
 #[path = "shadow_shader.rs"]
 mod shadow_shader;
 
+use crate::renderer::fill_paint::setup::{
+    QuadDesc, QuadPipeline, buffer_group, buffer_layout, clipped_pass,
+};
 use crate::renderer::frame_upload::UploadedRange;
 use crate::renderer::scene_instance::ShadowInstance;
 use crate::renderer::scene_paint::PaintCtx;
@@ -22,183 +23,6 @@ impl ShadowKind {
     }
 }
 
-pub(crate) struct ShadowPipeline {
-    format: wgpu::TextureFormat,
-    pipeline: wgpu::RenderPipeline,
-    uniform_layout: wgpu::BindGroupLayout,
-    unit_quad: wgpu::Buffer,
-}
-
-impl ShadowPipeline {
-    pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader = shader(device);
-        let uniform_layout = uniform_layout(device);
-        let pipeline = pipeline(device, format, &shader, &uniform_layout);
-        let unit_quad = unit_quad(device);
-        Self {
-            format,
-            pipeline,
-            uniform_layout,
-            unit_quad,
-        }
-    }
-
-    pub(crate) const fn format(&self) -> wgpu::TextureFormat {
-        self.format
-    }
-
-    pub(crate) fn paint_uploaded(
-        &self,
-        ctx: PaintCtx<'_>,
-        instances: UploadedRange,
-        uniform: wgpu::BufferBinding<'_>,
-    ) {
-        let PaintCtx {
-            device,
-            encoder,
-            view,
-            viewport,
-            clip,
-            scale,
-            ..
-        } = ctx;
-        let bind_group = bind_group(device, &self.uniform_layout, uniform);
-        let pass = encoder.begin_render_pass(
-            "sigil-renderer shadow paint pass",
-            &wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            },
-        );
-        if !crate::renderer::scissor::apply(pass, clip, scale, viewport) {
-            return;
-        }
-        pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &bind_group, &[]);
-        pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..instances.count);
-    }
-}
-
-fn shader(device: &wgpu::Device) -> wgpu::ShaderModule {
-    device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("sigil-renderer shadow paint shader"),
-        source: wgpu::ShaderSource::Wgsl(SHADOW_SHADER.into()),
-    })
-}
-
-fn pipeline(
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-    shader: &wgpu::ShaderModule,
-    uniform_layout: &wgpu::BindGroupLayout,
-) -> wgpu::RenderPipeline {
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("sigil-renderer shadow pipeline layout"),
-        bind_group_layouts: &[Some(uniform_layout)],
-        immediate_size: 0,
-    });
-    let targets = [Some(wgpu::ColorTargetState {
-        format,
-        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-        write_mask: wgpu::ColorWrites::ALL,
-    })];
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("sigil-renderer shadow pipeline"),
-        layout: Some(&layout),
-        vertex: vertex_state(shader),
-        fragment: Some(wgpu::FragmentState {
-            module: shader,
-            entry_point: Some("fs_main"),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            targets: &targets,
-        }),
-        primitive: wgpu::PrimitiveState::default(),
-        depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
-        multiview_mask: None,
-        cache: None,
-    })
-}
-
-fn vertex_state(shader: &wgpu::ShaderModule) -> wgpu::VertexState<'_> {
-    wgpu::VertexState {
-        module: shader,
-        entry_point: Some("vs_main"),
-        compilation_options: wgpu::PipelineCompilationOptions::default(),
-        buffers: &[Some(UNIT_QUAD_LAYOUT), Some(INSTANCE_LAYOUT)],
-    }
-}
-
-fn uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("sigil-renderer shadow uniforms layout"),
-        entries: &[wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            visibility: wgpu::ShaderStages::VERTEX,
-            ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: None,
-            },
-            count: None,
-        }],
-    })
-}
-
-fn bind_group(
-    device: &wgpu::Device,
-    layout: &wgpu::BindGroupLayout,
-    buffer: wgpu::BufferBinding<'_>,
-) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("sigil-renderer shadow uniforms bind group"),
-        layout,
-        entries: &[wgpu::BindGroupEntry {
-            binding: 0,
-            resource: wgpu::BindingResource::Buffer(buffer),
-        }],
-    })
-}
-
-fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer shadow unit quad"),
-        contents: bytemuck::cast_slice(&UNIT_QUAD_VERTICES),
-        usage: wgpu::BufferUsages::VERTEX,
-    })
-}
-
-const UNIT_QUAD_VERTEX_COUNT: u32 = 6;
-
-const UNIT_QUAD_VERTICES: [[f32; 2]; 6] = [
-    [0.0, 0.0],
-    [1.0, 0.0],
-    [1.0, 1.0],
-    [0.0, 0.0],
-    [1.0, 1.0],
-    [0.0, 1.0],
-];
-
-const UNIT_QUAD_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
-    array_stride: (core::mem::size_of::<f32>() as u64) * 2,
-    step_mode: wgpu::VertexStepMode::Vertex,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x2],
-};
-
 const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     array_stride: core::mem::size_of::<ShadowInstance>() as u64,
     step_mode: wgpu::VertexStepMode::Instance,
@@ -211,6 +35,66 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
         6 => Float32x4,
     ],
 };
+
+pub(crate) struct ShadowPipeline {
+    quad: QuadPipeline,
+    uniform_layout: wgpu::BindGroupLayout,
+}
+
+impl ShadowPipeline {
+    pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        let uniform_layout = buffer_layout(
+            device,
+            "sigil-renderer shadow uniforms layout",
+            wgpu::ShaderStages::VERTEX,
+            wgpu::BufferBindingType::Uniform,
+        );
+        let quad = QuadPipeline::new(
+            device,
+            format,
+            QuadDesc {
+                label: "sigil-renderer shadow",
+                wgsl: SHADOW_SHADER,
+                groups: &[Some(&uniform_layout)],
+                instance: INSTANCE_LAYOUT,
+                fs_entry: "fs_main",
+                blend: wgpu::BlendState::ALPHA_BLENDING,
+            },
+        );
+        Self {
+            quad,
+            uniform_layout,
+        }
+    }
+
+    pub(crate) const fn format(&self) -> wgpu::TextureFormat {
+        self.quad.format
+    }
+
+    pub(crate) fn paint_uploaded(
+        &self,
+        mut ctx: PaintCtx<'_>,
+        instances: UploadedRange,
+        uniform: wgpu::BufferBinding<'_>,
+    ) {
+        let bind_group = buffer_group(
+            ctx.device,
+            "sigil-renderer shadow uniforms bind group",
+            &self.uniform_layout,
+            uniform,
+        );
+        let Some(pass) = clipped_pass(&mut ctx, "sigil-renderer shadow paint pass") else {
+            return;
+        };
+        self.quad.draw(
+            pass,
+            &[&bind_group],
+            &[],
+            instances.buffer.slice(instances.bytes),
+            instances.count,
+        );
+    }
+}
 
 #[cfg(test)]
 #[path = "shadow_paint_glow_tests.rs"]

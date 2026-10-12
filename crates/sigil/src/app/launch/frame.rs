@@ -5,8 +5,6 @@ use crate::app::embed::Host;
 use crate::app::error::{AppResult, Error};
 use crate::app::{FrameHooks, FrameInfo};
 use crate::events::EventRouter;
-#[cfg(any(feature = "menu", feature = "media", feature = "hotkey"))]
-use crate::hal::Shell;
 use crate::reactive::Runtime;
 use crate::shell::{WinitShell, WinitWindowHandle};
 use crate::tasks::AsyncRuntime;
@@ -20,6 +18,13 @@ use super::event_wiring::{
 use super::menu_hwnd;
 use super::record::{SignalWrite, WindowRecord, WindowView};
 use super::scene_cache::PaintRequest;
+#[cfg(any(
+    feature = "menu",
+    feature = "tray",
+    feature = "media",
+    feature = "hotkey"
+))]
+use super::wake_fn;
 
 struct FrameEnv<'a> {
     shell: &'a mut WinitShell,
@@ -142,38 +147,24 @@ fn input_phase(
 )]
 fn install_shell_features(shell: &WinitShell, window_handle: WinitWindowHandle, title: &str) {
     #[cfg(feature = "menu")]
-    if crate::app::menu::has_pending() {
-        let waker = shell.waker();
-        if let Err(error) = crate::app::menu::install(menu_hwnd(shell, window_handle), move || {
-            let _ = waker.wake();
-        }) {
-            tracing::error!("sigil-app: cannot install native menu: {error}");
-        }
+    if crate::app::menu::has_pending()
+        && let Err(error) =
+            crate::app::menu::install(menu_hwnd(shell, window_handle), wake_fn(shell))
+    {
+        tracing::error!("sigil-app: cannot install native menu: {error}");
     }
     #[cfg(feature = "tray")]
     if crate::app::tray::has_pending() {
-        let waker = shell.waker();
-        crate::app::tray::install(move || {
-            let _ = waker.wake();
-        });
+        crate::app::tray::install(wake_fn(shell));
     }
     #[cfg(feature = "hotkey")]
-    {
-        let waker = shell.waker();
-        crate::app::hotkey::install(move || {
-            let _ = waker.wake();
-        });
-    }
+    crate::app::hotkey::install(wake_fn(shell));
     #[cfg(feature = "media")]
-    if !crate::app::media::is_installed() {
-        let waker = shell.waker();
-        if let Err(error) =
-            crate::app::media::install(title, menu_hwnd(shell, window_handle), move || {
-                let _ = waker.wake();
-            })
-        {
-            tracing::warn!("sigil-app: cannot install media controls: {error}");
-        }
+    if !crate::app::media::is_installed()
+        && let Err(error) =
+            crate::app::media::install(title, menu_hwnd(shell, window_handle), wake_fn(shell))
+    {
+        tracing::warn!("sigil-app: cannot install media controls: {error}");
     }
     #[cfg(not(any(
         feature = "menu",
@@ -231,18 +222,4 @@ fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &EventRouter, in
             paint_needed,
         );
     }
-}
-
-#[cfg(test)]
-pub(super) fn begin_effect(async_rt: &mut AsyncRuntime) {
-    crate::reactive::Runtime::begin_effect();
-    let _drained = async_rt.pump();
-}
-
-#[cfg(test)]
-pub(super) fn run_layout_if_dirty(dirty: bool, layout_pass: impl FnOnce()) -> bool {
-    if dirty {
-        layout_pass();
-    }
-    dirty
 }

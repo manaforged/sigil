@@ -32,10 +32,9 @@ pub(super) fn bind<Row: 'static>(
     );
     let extent_state = state.clone();
     let extent = derived(move || prefix + extent_state.content_extent());
-    let max = derived(move || (extent.get() - viewport.get()).max(0.0));
     HScroll {
         scroll_x: signal(0.0),
-        max,
+        max: derived(move || (extent.get() - viewport.get()).max(0.0)),
         extent,
         viewport,
         probe,
@@ -101,12 +100,8 @@ fn thumb(hs: HScroll) -> NodeBuilder {
             ev.capture_pointer();
             drag_anchor.set(Some((ev.position.x, scroll_x.peek())));
         })
-        .pointer_up(move |_| {
-            drag_anchor.set(None);
-        })
-        .pointer_move(move |ev| {
-            drag(hs, drag_anchor, ev);
-        })
+        .pointer_up(move |_| drag_anchor.set(None))
+        .pointer_move(move |ev| drag(hs, drag_anchor, ev))
 }
 
 fn drag(hs: HScroll, anchor: Signal<Option<(f32, f32)>>, ev: &mut PointerEvent) {
@@ -134,16 +129,15 @@ mod tests;
 impl<Row: 'static> TableState<Row> {
     fn content_extent(&self) -> f32 {
         let layout = self.column_layout().get();
-        let mut total = 0.0;
-        for (_, column) in self.visible_columns() {
-            total += match layout.widths.get(column.id()) {
-                Some(&px) => px.max(column.min_px()),
-                None => match column.col_width() {
-                    ColWidth::Fixed(px) => px.max(0.0),
-                    ColWidth::Fraction(_) => column.min_px().max(0.0),
-                },
-            };
-        }
-        total
+        self.visible_columns()
+            .into_iter()
+            .fold(0.0, |total, (_, column)| {
+                total
+                    + match (layout.widths.get(column.id()), column.col_width()) {
+                        (Some(&px), _) => px.max(column.min_px()),
+                        (None, ColWidth::Fixed(px)) => px.max(0.0),
+                        (None, ColWidth::Fraction(_)) => column.min_px().max(0.0),
+                    }
+            })
     }
 }

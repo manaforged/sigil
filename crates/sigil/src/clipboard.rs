@@ -76,13 +76,9 @@ pub fn clipboard() -> Rc<dyn Clipboard> {
 }
 
 pub(crate) fn write(clip: &dyn Clipboard, text: &str) -> Result<Delivery, ClipError> {
-    match clip.set(text) {
-        Ok(delivery) => Ok(delivery),
-        Err(err) => {
-            tracing::warn!(target: "sigil::clipboard", error = %err, "clipboard write failed");
-            Err(err)
-        }
-    }
+    clip.set(text).inspect_err(
+        |err| tracing::warn!(target: "sigil::clipboard", error = %err, "clipboard write failed"),
+    )
 }
 
 pub fn copy(text: &str) -> AppResult<Delivery> {
@@ -90,7 +86,9 @@ pub fn copy(text: &str) -> AppResult<Delivery> {
 }
 
 pub fn paste() -> AppResult<String> {
-    clipboard().get().ok_or_else(|| Error::io(Empty))
+    clipboard()
+        .get()
+        .ok_or_else(|| Error::io(ClipError::new("clipboard is empty")))
 }
 
 #[cfg(feature = "clipboard-image")]
@@ -102,17 +100,6 @@ pub fn image() -> AppResult<Option<crate::kernel::ImageSource>> {
 pub fn copy_image(image: &crate::kernel::ImageSource) -> Result<Delivery, ClipError> {
     clipboard().set_image(image)
 }
-
-#[derive(Debug)]
-struct Empty;
-
-impl std::fmt::Display for Empty {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("clipboard is empty")
-    }
-}
-
-impl std::error::Error for Empty {}
 
 #[cfg(test)]
 #[path = "clipboard_tests.rs"]

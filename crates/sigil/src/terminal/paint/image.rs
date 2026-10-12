@@ -51,10 +51,7 @@ impl Grid {
             .enumerate()
         {
             for (dx, (glyph, fg, bg)) in line.into_iter().enumerate() {
-                if let Some(cell) = self
-                    .index(col + dx, row + dy)
-                    .and_then(|index| self.cells.get_mut(index))
-                {
+                if let Some(cell) = self.cell_mut(col + dx, row + dy) {
                     *cell = Cell {
                         text: SmolStr::from(glyph.to_string()),
                         fg: Ink::Exact(fg),
@@ -94,10 +91,7 @@ impl Grid {
     }
 
     fn ink(&mut self, col: usize, row: usize, glyph: char, fg: Rgba8) {
-        if let Some(cell) = self
-            .index(col, row)
-            .and_then(|index| self.cells.get_mut(index))
-        {
+        if let Some(cell) = self.cell_mut(col, row) {
             cell.text = SmolStr::from(glyph.to_string());
             cell.fg = Ink::Exact(fg);
         }

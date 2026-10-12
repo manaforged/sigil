@@ -41,8 +41,7 @@ impl LayoutStyle {
 
     #[must_use]
     pub const fn fixed_size(mut self, width: f32, height: f32) -> Self {
-        self.0.size.width = Dimension::Px(width);
-        self.0.size.height = Dimension::Px(height);
+        self.0.size = Size::new(Dimension::Px(width), Dimension::Px(height));
         self.mark(LayoutFields::WIDTH.with(LayoutFields::HEIGHT))
     }
 
@@ -65,8 +64,7 @@ impl LayoutStyle {
 
     #[must_use]
     pub const fn fill(mut self) -> Self {
-        self.0.size.width = Dimension::Fill;
-        self.0.size.height = Dimension::Fill;
+        self.0.size = Size::splat(Dimension::Fill);
         self.mark(LayoutFields::WIDTH.with(LayoutFields::HEIGHT))
     }
 
@@ -93,19 +91,13 @@ impl LayoutStyle {
 
     #[must_use]
     pub fn min_size(mut self, width: impl Into<Dimension>, height: impl Into<Dimension>) -> Self {
-        self.0.min_size = Size {
-            width: width.into(),
-            height: height.into(),
-        };
+        self.0.min_size = Size::new(width.into(), height.into());
         self.mark(LayoutFields::MIN_WIDTH.with(LayoutFields::MIN_HEIGHT))
     }
 
     #[must_use]
     pub fn max_size(mut self, width: impl Into<Dimension>, height: impl Into<Dimension>) -> Self {
-        self.0.max_size = Size {
-            width: width.into(),
-            height: height.into(),
-        };
+        self.0.max_size = Size::new(width.into(), height.into());
         self.mark(LayoutFields::MAX_WIDTH.with(LayoutFields::MAX_HEIGHT))
     }
 

@@ -4,12 +4,9 @@ use crate::layout::style_data::{
 use crate::style::locale::Direction;
 
 pub(super) fn apply_direction(style: &mut StyleData, direction: Direction) {
-    if direction.is_rtl() {
-        mirror(style);
+    if !direction.is_rtl() {
+        return;
     }
-}
-
-fn mirror(style: &mut StyleData) {
     style.direction = Direction::Rtl;
     swap_sides(&mut style.padding);
     swap_sides(&mut style.margin);

@@ -14,7 +14,7 @@ use crate::geometry::{LogicalSize, Size};
 use crate::kernel::{Cx, TextContent};
 use crate::layout::{LayoutEngine, TextMeasure};
 use crate::reactive::{Runtime, signal};
-use crate::widgets::text_edit;
+use crate::widgets::text_edit::{TextEditBuilder, text_edit};
 
 #[test]
 fn external_caret_controls_the_next_edit() {
@@ -41,95 +41,62 @@ fn external_caret_controls_the_next_edit() {
 }
 
 #[test]
-fn inserted_text_undoes_and_redoes_after_rebuild() {
-    for selected in [false, true] {
-        Runtime::scope("insert-history", || {
+fn edits_undo_and_redo_after_rebuild() {
+    for (edit, edited, undone_at, edited_at) in history_cases() {
+        Runtime::scope("edit-history", || {
             let original = "before 🦀 after ";
             let value = signal("stale".to_string());
             let caret = signal(5);
             let state = TextEditState::new(value, caret);
             value.set(original.to_string());
             caret.set(7);
-            if selected {
-                state.select(11, true);
-            }
-            state.insert("café 日本語 ");
-            let inserted = if selected {
-                "before café 日本語  after "
-            } else {
-                "before café 日本語 🦀 after "
-            };
-            assert_eq!(value.peek(), inserted);
-            assert_eq!(caret.peek(), "before café 日本語 ".len());
+            edit(&state);
+            assert_eq!(value.peek(), edited);
+            assert_eq!(caret.peek(), edited_at);
             assert!(state.selection().is_none());
-            for (key, modifiers, expected, position) in [
-                (
-                    "z",
-                    ModifiersState::CONTROL,
-                    original,
-                    if selected { 11 } else { 7 },
-                ),
-                (
-                    "Z",
-                    ModifiersState::CONTROL | ModifiersState::SHIFT,
-                    inserted,
-                    "before café 日本語 ".len(),
-                ),
-            ] {
-                let mut cx = Cx::new_root();
-                let root = cx.add(text_edit(value).state(state.clone()));
-                let mut layout = LayoutEngine::with_text_measure(Box::new(Measure));
-                layout
-                    .compute(&mut cx, root, Size::fixed(400.0, 200.0))
-                    .expect("editor layout");
-                let mut router = EventRouter::new();
-                router.set_focus(&mut cx, Some(root));
-                router.route(&mut cx, &layout, shortcut(key, modifiers));
-                assert_eq!(value.peek(), expected);
-                assert_eq!(caret.peek(), position);
-            }
-        });
-    }
-}
-
-#[test]
-fn replacement_undo_restores_the_original_caret_after_rebuild() {
-    for replacement in ["edited café\n日本語 ", ""] {
-        Runtime::scope("replacement-history", || {
-            let original = "before 🦀 after ";
-            let value = signal("stale".to_string());
-            let caret = signal(5);
-            let state = TextEditState::new(value, caret);
-            value.set(original.to_string());
-            caret.set(7);
-            state.replace(replacement);
-            state.replace(replacement);
-            assert_eq!(value.peek(), replacement);
-            assert_eq!(caret.peek(), replacement.len());
-            for (key, modifiers, expected, position) in [
-                ("z", ModifiersState::CONTROL, original, 7),
-                (
-                    "Z",
-                    ModifiersState::CONTROL | ModifiersState::SHIFT,
-                    replacement,
-                    replacement.len(),
-                ),
-            ] {
-                let mut cx = Cx::new_root();
-                let root = cx.add(text_edit(value).state(state.clone()));
-                let mut layout = LayoutEngine::with_text_measure(Box::new(Measure));
-                layout
-                    .compute(&mut cx, root, Size::fixed(400.0, 200.0))
-                    .expect("editor layout");
-                let mut router = EventRouter::new();
-                router.set_focus(&mut cx, Some(root));
-                router.route(&mut cx, &layout, shortcut(key, modifiers));
+            let redo = ModifiersState::CONTROL | ModifiersState::SHIFT;
+            let steps = [
+                ("z", ModifiersState::CONTROL, original, undone_at),
+                ("Z", redo, edited, edited_at),
+            ];
+            for (key, modifiers, expected, position) in steps {
+                press(text_edit(value).state(state.clone()), key, modifiers);
                 assert_eq!(value.peek(), expected);
                 assert_eq!(caret.peek(), position);
                 assert!(state.selection().is_none());
             }
         });
     }
+}
+
+type HistoryCase = (fn(&TextEditState), &'static str, usize, usize);
+
+fn history_cases() -> [HistoryCase; 4] {
+    let typed = "before café 日本語 ".len();
+    [
+        (
+            |state| state.insert("café 日本語 "),
+            "before café 日本語 🦀 after ",
+            7,
+            typed,
+        ),
+        (
+            |state| {
+                state.select(11, true);
+                state.insert("café 日本語 ");
+            },
+            "before café 日本語  after ",
+            11,
+            typed,
+        ),
+        (
+            |state| (0..2).for_each(|_| state.replace("edited café\n日本語 ")),
+            "edited café\n日本語 ",
+            7,
+            "edited café\n日本語 ".len(),
+        ),
+        (|state| (0..2).for_each(|_| state.replace("")), "", 7, 0),
+    ]
 }
 
 struct Memory(Rc<RefCell<String>>);
@@ -163,39 +130,19 @@ fn editing_shortcuts_copy_cut_paste_and_restore_unicode() {
             let value = signal(original.to_string());
             let state = TextEditState::new(value, signal(original.len()));
             let copied = Rc::new(RefCell::new(String::new()));
+            let plain = ModifiersState::empty();
             for (key, shift, expected, clipboard) in [
-                ("a", false, original, ""),
-                ("c", false, original, original),
-                ("x", false, "", original),
-                ("v", false, original, original),
-                ("z", false, "", original),
-                ("Z", true, original, original),
+                ("a", plain, original, ""),
+                ("c", plain, original, original),
+                ("x", plain, "", original),
+                ("v", plain, original, original),
+                ("z", plain, "", original),
+                ("Z", ModifiersState::SHIFT, original, original),
             ] {
-                let mut cx = Cx::new_root();
-                let root = cx.add(
-                    text_edit(value)
-                        .state(state.clone())
-                        .clipboard(Memory(copied.clone())),
-                );
-                let mut layout = LayoutEngine::with_text_measure(Box::new(Measure));
-                layout
-                    .compute(&mut cx, root, Size::fixed(400.0, 200.0))
-                    .expect("editor layout");
-                let mut router = EventRouter::new();
-                router.set_focus(&mut cx, Some(root));
-                router.route(
-                    &mut cx,
-                    &layout,
-                    shortcut(
-                        key,
-                        modifiers
-                            | if shift {
-                                ModifiersState::SHIFT
-                            } else {
-                                ModifiersState::empty()
-                            },
-                    ),
-                );
+                let editor = text_edit(value)
+                    .state(state.clone())
+                    .clipboard(Memory(copied.clone()));
+                press(editor, key, modifiers | shift);
                 assert_eq!(value.peek(), expected, "{modifiers:?} {key}: editor text");
                 assert_eq!(
                     *copied.borrow(),
@@ -247,6 +194,18 @@ fn paste_without_a_readable_clipboard_leaves_the_key_to_the_host() {
             "Ctrl+V must reach the host when the clipboard cannot be read"
         );
     });
+}
+
+fn press(editor: TextEditBuilder, key: &str, modifiers: ModifiersState) {
+    let mut cx = Cx::new_root();
+    let root = cx.add(editor);
+    let mut layout = LayoutEngine::with_text_measure(Box::new(Measure));
+    layout
+        .compute(&mut cx, root, Size::fixed(400.0, 200.0))
+        .expect("editor layout");
+    let mut router = EventRouter::new();
+    router.set_focus(&mut cx, Some(root));
+    router.route(&mut cx, &layout, shortcut(key, modifiers));
 }
 
 fn shortcut(key: &str, modifiers: ModifiersState) -> ShellEvent {

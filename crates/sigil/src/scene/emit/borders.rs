@@ -10,11 +10,12 @@ use super::paint::NodePaint;
 pub(super) fn border_edges(style: &RenderStyle) -> [f32; 4] {
     let uniform = style.border_width.map_or(0.0, |px| f32::from(px.0));
     [
-        style.border_top.map_or(uniform, |px| f32::from(px.0)),
-        style.border_right.map_or(uniform, |px| f32::from(px.0)),
-        style.border_bottom.map_or(uniform, |px| f32::from(px.0)),
-        style.border_left.map_or(uniform, |px| f32::from(px.0)),
+        style.border_top,
+        style.border_right,
+        style.border_bottom,
+        style.border_left,
     ]
+    .map(|side| side.map_or(uniform, |px| f32::from(px.0)))
 }
 
 pub(super) fn border_color(style: &RenderStyle, theme: &Theme) -> Rgba8 {
@@ -50,41 +51,36 @@ pub(super) fn push_side_borders(
     paint: &NodePaint<'_>,
 ) {
     let style = paint.style;
-    let theme = paint.theme;
-    let [top, right, bottom, left] = border_edges(style);
-    if top <= 0.0 && right <= 0.0 && bottom <= 0.0 && left <= 0.0 {
+    let edges = border_edges(style);
+    let [top, right, bottom, left] = edges;
+    if edges.iter().all(|width| *width <= 0.0) || (top > 0.0 && borders_uniform(edges)) {
         return;
     }
-    if top > 0.0 && borders_uniform([top, right, bottom, left]) {
-        return;
-    }
-    let color = border_color(style, theme);
-    let fill = SceneRectStyle::new(color, CornerRadii::new(0.0, 0.0, 0.0, 0.0), style.opacity);
-    let bottom = bottom.min(rect.height);
-    let right = right.min(rect.width);
+    let color = border_color(style, paint.theme);
+    let fill = SceneRectStyle::new(color, CornerRadii::ZERO, style.opacity);
+    let Rect {
+        origin,
+        width,
+        height,
+    } = rect;
+    let (bottom, right) = (bottom.min(height), right.min(width));
     let sides = [
-        (
-            top,
-            Rect::new(rect.origin, rect.width, top.min(rect.height)),
-        ),
+        (top, Rect::new(origin, width, top.min(height))),
         (
             bottom,
             Rect::new(
-                Point::new(rect.origin.x, rect.origin.y + rect.height - bottom),
-                rect.width,
+                Point::new(origin.x, origin.y + height - bottom),
+                width,
                 bottom,
             ),
         ),
-        (
-            left,
-            Rect::new(rect.origin, left.min(rect.width), rect.height),
-        ),
+        (left, Rect::new(origin, left.min(width), height)),
         (
             right,
             Rect::new(
-                Point::new(rect.origin.x + rect.width - right, rect.origin.y),
+                Point::new(origin.x + width - right, origin.y),
                 right,
-                rect.height,
+                height,
             ),
         ),
     ];
@@ -93,8 +89,8 @@ pub(super) fn push_side_borders(
         outline: true,
         ..paint.cell()
     };
-    for (width, side) in sides {
-        if width > 0.0 {
+    for (edge, side) in sides {
+        if edge > 0.0 {
             scene.draw_rect_for_node(id, side, fill, cell);
             cell.border = None;
         }

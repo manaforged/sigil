@@ -40,15 +40,7 @@ pub(crate) fn scope_parts(caller: &'static str) -> Option<(OwnerHandle, SpawnPar
         tracing::warn!(target: "sigil::tasks", caller, "called outside a reactive scope; dropped the work");
         return None;
     };
-    let parts = HOST.with(|slot| slot.borrow().clone());
-    if parts.is_none() {
-        tracing::warn!(
-            target: "sigil::tasks",
-            caller,
-            "called before AsyncRuntime::install_current; dropped the work"
-        );
-    }
-    parts.map(|parts| (owner, parts))
+    host_parts(caller).map(|parts| (owner, parts))
 }
 
 #[must_use]

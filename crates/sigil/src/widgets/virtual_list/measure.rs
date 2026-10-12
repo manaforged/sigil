@@ -8,7 +8,7 @@ use crate::layout::LayoutReactiveExt;
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived, effect, signal};
 
-use super::render::{WidthSpec, width_apply};
+use super::render::WidthSpec;
 use super::{RowKey, bound_slice};
 
 pub(super) type Tops = Signal<Rc<Vec<f32>>>;
@@ -118,7 +118,7 @@ impl Measure {
         let measure = self.clone();
         effect(move || measure.record(key, size.get()));
         container()
-            .layout(width_apply(width, LayoutStyle::block()))
+            .layout(width.apply(LayoutStyle::block()))
             .size_reactive(size)
             .child(row)
     }

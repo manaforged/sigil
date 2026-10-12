@@ -3,20 +3,23 @@ use super::*;
 use crate::kernel::NodeType;
 use crate::reactive::Runtime;
 
+fn dialog_of(cx: &Cx, root: crate::kernel::NodeId) -> crate::kernel::NodeId {
+    cx.get(root)
+        .expect("root")
+        .children()
+        .iter()
+        .copied()
+        .find(|id| matches!(cx.get(*id).expect("child").a11y.role, Role::Dialog))
+        .expect("dialog")
+}
+
 #[test]
 fn sheet_docks_a_dialog_on_the_right() {
     Runtime::scope("sheet-right", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let root = cx.add(sheet(show).title("Filters"));
-        let frame = cx
-            .get(root)
-            .expect("root")
-            .children()
-            .iter()
-            .copied()
-            .find(|id| matches!(cx.get(*id).expect("child").a11y.role, Role::Dialog))
-            .expect("dialog");
+        let frame = dialog_of(&cx, root);
         let style = cx
             .get(frame)
             .expect("frame")
@@ -36,14 +39,7 @@ fn signal_title_drives_dialog_text_and_accessible_name() {
         let title = signal(String::from("Create entry"));
         let root = cx.add(modal(show).title(title));
 
-        let frame = cx
-            .get(root)
-            .expect("root")
-            .children()
-            .iter()
-            .copied()
-            .find(|id| matches!(cx.get(*id).expect("child").a11y.role, Role::Dialog))
-            .expect("dialog");
+        let frame = dialog_of(&cx, root);
         let name = match &cx.get(frame).expect("frame").a11y.name {
             AccessibleName::Derived(name) => *name,
             other => unreachable!("signal title must map to a derived name, got {other:?}"),

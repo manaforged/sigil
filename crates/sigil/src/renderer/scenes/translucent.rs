@@ -1,6 +1,4 @@
-use smallvec::smallvec;
-
-use crate::scene::{CommandScene, CornerRadii, GradientStop, SceneBuilder, SceneRectStyle};
+use crate::scene::{CommandScene, CornerRadii, SceneBuilder, SceneRectStyle};
 use crate::style::Color;
 
 use super::helpers::{draw_fill, linear_gradient, rect, rgba};
@@ -28,9 +26,9 @@ pub fn translucent() -> (CommandScene, (f32, f32), Color) {
         linear_gradient(
             (488.0, 48.0),
             (712.0, 272.0),
-            smallvec![
-                GradientStop::new(0.0, rgba(255, 120, 200, 64)),
-                GradientStop::new(1.0, rgba(255, 255, 255, 192)),
+            &[
+                (0.0, rgba(255, 120, 200, 64)),
+                (1.0, rgba(255, 255, 255, 192)),
             ],
         ),
     );

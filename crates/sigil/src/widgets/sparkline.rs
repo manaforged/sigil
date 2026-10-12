@@ -107,11 +107,6 @@ impl SparklineBuilder {
     }
 
     #[cfg(test)]
-    fn glyphs(&self) -> String {
-        self.graph().join("\n")
-    }
-
-    #[cfg(test)]
     fn runs(&self) -> Vec<Vec<(Tone, Layer, String)>> {
         self.shape.runs(&self.values.read())
     }

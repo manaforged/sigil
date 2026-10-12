@@ -61,15 +61,12 @@ impl<'a> MeasureScope<'a> {
     }
 
     pub(crate) fn write(&self, id: LocalId, value: ComputedBox) {
-        let idx = id.index as usize;
-        let Some(entry) = self.forest.nodes.get(idx) else {
-            return;
-        };
-        if !entry.alive || entry.tag != id.tag {
-            return;
-        }
-        if let Some(slot) = self.forest.boxes.get(idx) {
-            slot.write(value, self.forest.current_frame());
+        if let Some(cell) = self
+            .forest
+            .node(id)
+            .and_then(|_| self.forest.boxes.get(id.index as usize))
+        {
+            cell.write(value, self.forest.current_frame());
         }
     }
 
@@ -101,7 +98,7 @@ impl<'a> MeasureScope<'a> {
     ) -> Option<crate::layout::style_data::Size<f32>> {
         let text = node.text()?;
         let memo_key = text_memo_key(node.id(), known, wrap_to, text, self.text.font_generation());
-        if let Some(hit) = self.forest.text_memo_get(memo_key) {
+        if let Some(hit) = self.forest.text_memo.borrow_mut().get(memo_key) {
             return Some(hit);
         }
         let width = if text.wrap {
@@ -132,7 +129,7 @@ impl<'a> MeasureScope<'a> {
             width: known.width.unwrap_or(natural_w),
             height: known.height.unwrap_or(measured.height),
         };
-        self.forest.text_memo_store(memo_key, out);
+        self.forest.text_memo.borrow_mut().store(memo_key, out);
         Some(out)
     }
 }

@@ -21,15 +21,8 @@ use super::shared::{FIELD_VARIANT, disabled_a11y, disabled_now, reactive_style_s
 use crate::widgets::interaction::InteractionState;
 use scroll::{first_row, follow_caret, scroll_body, wheel};
 
-const ROW_H: f32 = 18.0;
-const CARET_W: f32 = 2.0;
 const CHANGE_BAR_W: f32 = 2.0;
-const DIGIT_W: f32 = 7.0;
 const GUTTER_PAD: f32 = space(2);
-const SELECTION: Token = Token::Accent;
-const RUN_CLASS: &str = "text-sm font-mono";
-const ROW_BUFFER: usize = 6;
-const DEFAULT_VIEWPORT_H: f32 = 1600.0;
 
 type KeyHandler = Rc<dyn Fn(&mut KeyEvent) + 'static>;
 
@@ -167,11 +160,11 @@ impl CodeEditBuilder {
             selection: self.selection,
         };
         let lines = self.lines;
-        let row_h = self.row_h.unwrap_or_else(|| line(ROW_H));
+        let row_h = self.row_h.unwrap_or_else(|| line(18.0));
         let traps_tab = self.on_key.is_some();
         let on_key = self.on_key.unwrap_or_else(|| Rc::new(|_| {}));
         let scroll_y = signal(0.0_f32);
-        let viewport = signal((0.0_f32, DEFAULT_VIEWPORT_H));
+        let viewport = signal((0.0_f32, 1600.0));
         let interaction = InteractionState::new(true);
         let disabled = self.disabled;
         let start = derived(move || first_row(scroll_y.get(), lines.get().len(), row_h));

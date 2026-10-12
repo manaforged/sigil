@@ -24,8 +24,6 @@ use model::{DiffRow, model};
 use rows::ROW_INSET;
 use selection::Picker;
 
-const ROW_ESTIMATE: f32 = 18.0;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiffView {
     Split,
@@ -151,7 +149,7 @@ impl DiffBuilder {
         let picker = shape.selection.map(|selection| Picker { selection, patch });
         let list = virtual_list(rows, move |_, row: &DiffRow| rows::render(row, picker))
             .measured()
-            .estimate(ROW_ESTIMATE)
+            .estimate(18.0)
             .shrink_to_content()
             .keyboard(false);
         let top = shape.clone();
@@ -168,7 +166,7 @@ impl DiffBuilder {
                 container()
                     .layout(root_layout())
                     .children_reactive(move || {
-                        built.with(|built| top.top_rows(built.added, built.removed))
+                        built.with(|built| vec![header::header(&top, built.added, built.removed)])
                     }),
             )
             .child(list);
@@ -179,12 +177,6 @@ impl DiffBuilder {
             root = root.style(self.style_accumulator);
         }
         root
-    }
-}
-
-impl DiffShape {
-    fn top_rows(&self, added: usize, removed: usize) -> Vec<NodeBuilder> {
-        vec![header::header(self, added, removed)]
     }
 }
 

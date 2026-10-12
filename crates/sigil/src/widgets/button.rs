@@ -4,14 +4,17 @@ use std::rc::Rc;
 
 use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{AccessibleName, TextContent};
-use crate::kernel::{NodeBuilder, Role, container};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::LayoutBuilderExt;
 use crate::reactive::Signal;
-use crate::style::{ControlSize, Metrics, NodeStyleExt, Radius, Style, Theme, Tone};
+use crate::style::{
+    ControlSize, Metrics, NodeStyleExt, PaintTarget, Radius, StateHost, Style, StyleSlot, Theme,
+    Tone,
+};
 
 use crate::widgets::interaction::InteractionState;
 
-use super::layout_ext::LayoutOverrides;
+use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::{
     Activate, BuilderMutator, activate_key_reactive, activate_pointer_reactive, noop_activate,
     or_disabled, reactive_style_state,
@@ -202,12 +205,7 @@ impl ButtonBuilder {
         let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
         let layout_overrides = self.layout_overrides.clone();
         let user_overlay = self.style_accumulator.take_state_overlay();
-        let mut node = self.base_node(
-            interaction,
-            Rc::clone(&activate),
-            user_overlay,
-            look_disabled,
-        );
+        let mut node = self.base_node(interaction, activate, user_overlay, look_disabled);
         for mutate in self.mutators {
             node = mutate(node);
         }
@@ -226,8 +224,7 @@ impl ButtonBuilder {
     ) -> NodeBuilder {
         let variant = self.resolved_fill().variant();
         let disabled = self.disabled;
-        let pointer_activate = Rc::clone(&activate);
-        let key_activate = Rc::clone(&activate);
+        let (pointer_activate, key_activate) = (Rc::clone(&activate), Rc::clone(&activate));
         let name = self
             .accessible
             .clone()
@@ -265,9 +262,31 @@ impl ButtonBuilder {
     }
 }
 
+impl PaintTarget for ButtonBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
+    }
+}
+
+impl WidgetLayoutExt for ButtonBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
+    }
+}
+
+impl StateHost for ButtonBuilder {}
+
+impl IntoNode for ButtonBuilder {
+    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
+        self.layout_overrides
+            .hooks()
+            .finish(self.into_node_builder())
+            .build(cx)
+    }
+}
+
 mod content;
 mod glyph;
-mod impls;
 mod parts;
 
 pub use glyph::ButtonGlyph;

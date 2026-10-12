@@ -14,19 +14,17 @@ pub struct FocusRing {
 impl FocusRing {
     #[must_use]
     pub const fn new(visible: Signal<bool>) -> Self {
-        Self {
-            visible: FocusRingVisibility::Reactive(visible),
-            color: Token::Ring.color(),
-            width: None,
-            offset: None,
-            opacity: 10_000,
-        }
+        Self::with_visibility(FocusRingVisibility::Reactive(visible))
     }
 
     #[must_use]
     pub const fn static_visible(visible: bool) -> Self {
+        Self::with_visibility(FocusRingVisibility::Static(visible))
+    }
+
+    const fn with_visibility(visible: FocusRingVisibility) -> Self {
         Self {
-            visible: FocusRingVisibility::Static(visible),
+            visible,
             color: Token::Ring.color(),
             width: None,
             offset: None,

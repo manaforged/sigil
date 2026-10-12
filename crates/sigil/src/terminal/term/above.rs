@@ -79,7 +79,11 @@ fn strip(line: &str) -> String {
     let mut chars = line.chars().peekable();
     while let Some(ch) = chars.next() {
         match ch {
-            '\x1b' => skip_escape(&mut chars),
+            '\x1b' => match chars.next() {
+                Some('[') => skip_csi(&mut chars),
+                Some(']' | 'P' | '^' | '_' | 'X') => skip_string(&mut chars),
+                _ => {}
+            },
             '\u{9b}' => skip_csi(&mut chars),
             '\u{90}' | '\u{98}' | '\u{9d}' | '\u{9e}' | '\u{9f}' => skip_string(&mut chars),
             '\t' => out.push(' '),
@@ -88,14 +92,6 @@ fn strip(line: &str) -> String {
         }
     }
     out
-}
-
-fn skip_escape(chars: &mut Peekable<Chars<'_>>) {
-    match chars.next() {
-        Some('[') => skip_csi(chars),
-        Some(']' | 'P' | '^' | '_' | 'X') => skip_string(chars),
-        _ => {}
-    }
 }
 
 fn skip_csi(chars: &mut Peekable<Chars<'_>>) {

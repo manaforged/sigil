@@ -48,9 +48,9 @@ pub(crate) struct IntrinsicMemo(RefCell<SmallVec<[(IntrinsicKey, f32); ENTRIES_P
 
 impl LayoutForest {
     pub(crate) fn intrinsic_get(&self, id: LocalId, key: IntrinsicKey) -> Option<f32> {
-        let memo = self.live_memo(id)?;
-        let entries = memo.0.borrow();
-        entries
+        self.live_memo(id)?
+            .0
+            .borrow()
             .iter()
             .find(|(stored, _)| *stored == key)
             .map(|(_, extent)| *extent)
@@ -74,15 +74,10 @@ impl LayoutForest {
     pub(crate) fn invalidate(&self, id: LocalId) {
         let mut current = Some(id);
         while let Some(at) = current {
-            let Some(node) = self.nodes.get(at.index as usize) else {
+            let Some(node) = self.node(at) else {
                 return;
             };
-            if !node.alive || node.tag != at.tag {
-                return;
-            }
-            if let Some(memo) = self.intrinsic.get(at.index as usize) {
-                memo.0.borrow_mut().clear();
-            }
+            self.forget(at.index as usize);
             current = node.parent;
         }
     }
@@ -101,21 +96,15 @@ impl LayoutForest {
 
     pub(super) fn adopt(&mut self, parent: LocalId, children: &[LocalId]) {
         for child in children {
-            if let Some(node) = self.nodes.get_mut(child.index as usize)
-                && node.alive
-                && node.tag == child.tag
-            {
+            if let Ok(node) = self.live_mut(*child) {
                 node.parent = Some(parent);
             }
         }
     }
 
     fn live_memo(&self, id: LocalId) -> Option<&IntrinsicMemo> {
-        let node = self.nodes.get(id.index as usize)?;
-        if !node.alive || node.tag != id.tag {
-            return None;
-        }
-        self.intrinsic.get(id.index as usize)
+        self.node(id)
+            .and_then(|_| self.intrinsic.get(id.index as usize))
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::layout::LayoutError;
-use crate::layout::flex::Position2;
+use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::{ComputedBox, NodeRef};
 use crate::layout::resolve::{InsetAxis, NodeEdges, dim_to_border_box, resolve_inset_axis};
 use crate::layout::style_data::{LengthPercentageAuto, StyleData};
@@ -16,8 +16,7 @@ pub(super) fn place_absolute(
     padding_origin: Position2,
 ) -> Result<(), LayoutError> {
     let style = child.style();
-    let cb_w = if ctx.axes.row { cb_main } else { cb_cross };
-    let cb_h = if ctx.axes.row { cb_cross } else { cb_main };
+    let CbSize { w: cb_w, h: cb_h } = CbSize::across(ctx.axes, cb_main, cb_cross);
     let edges = NodeEdges::build(style, cb_w);
     let margins = edges.margin.or_zero();
     let (w, h) = absolute_size(ctx, child, style, cb_w, cb_h);
@@ -125,15 +124,14 @@ fn shrink_fit(
             measured.map_or(0.0, |m| m.height) + edges.block_chrome(),
         ));
     }
-    let probe = FlexCtx {
-        solver: ctx.solver,
-        axes: ctx.axes,
-        cb: ctx.cb,
-        suppress_stretch: true,
-        assigned_w: None,
-        assigned_h: None,
-    };
-    layout_item_subtree(&probe, child.id(), Position2::new(0.0, 0.0), cb_w, cb_h).ok()?;
+    layout_item_subtree(
+        &ctx.probe(),
+        child.id(),
+        Position2::new(0.0, 0.0),
+        cb_w,
+        cb_h,
+    )
+    .ok()?;
     Some((
         probed_content_extent(ctx, child, ctx.axes.row, ctx.axes),
         probed_content_extent(ctx, child, !ctx.axes.row, ctx.axes),

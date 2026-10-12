@@ -2,11 +2,7 @@
 
 use super::dropdown;
 use crate::Host;
-use crate::events::EventRouter;
-use crate::events::KeyEventInit;
-use crate::events::PhysicalKey;
-use crate::events::PointerEventInit;
-use crate::events::ShellEvent;
+use crate::events::{EventRouter, KeyEventInit, PhysicalKey, PointerEventInit, ShellEvent};
 use crate::prelude::*;
 use crate::reactive::Runtime;
 
@@ -31,15 +27,7 @@ fn dropdown_selection_wins_over_controls_beneath_the_popup() {
         host.layout((400.0, 300.0)).unwrap();
         let mut router = EventRouter::new();
         click(&mut host, &mut router, Point::new(20.0, 16.0));
-        host.layout((400.0, 300.0)).unwrap();
-        let scene = host.scene((400.0, 300.0)).unwrap();
-        let option = &scene.find_text("Second").expect("open option").run;
-        click(
-            &mut host,
-            &mut router,
-            Point::new(option.rect.origin.x + 5.0, option.rect.origin.y + 5.0),
-        );
-        host.layout((400.0, 300.0)).unwrap();
+        click_text(&mut host, &mut router, "Second");
         assert_eq!(selected.peek(), 1);
         assert_eq!(changed.peek(), 1);
         assert_eq!(underneath.peek(), 0);
@@ -71,17 +59,7 @@ fn clicking_a_scrollable_dropdown_commits_the_visible_option() {
         host.layout((400.0, 300.0)).unwrap();
         let mut router = EventRouter::new();
         click(&mut host, &mut router, Point::new(20.0, 16.0));
-        let scene = host.scene((400.0, 300.0)).unwrap();
-        let option = &scene
-            .find_text("Canada")
-            .expect("visible Canada option")
-            .run;
-        click(
-            &mut host,
-            &mut router,
-            Point::new(option.rect.origin.x + 5.0, option.rect.origin.y + 5.0),
-        );
-        host.layout((400.0, 300.0)).unwrap();
+        click_text(&mut host, &mut router, "Canada");
         assert_eq!(
             changed.peek(),
             "Canada",
@@ -161,6 +139,16 @@ fn press_keys(host: &mut Host, router: &mut EventRouter, keys: &[Key]) {
         );
         host.layout((400.0, 300.0)).unwrap();
     }
+}
+
+fn click_text(host: &mut Host, router: &mut EventRouter, label: &str) {
+    let scene = host.scene((400.0, 300.0)).unwrap();
+    let option = &scene.find_text(label).expect("visible option").run;
+    click(
+        host,
+        router,
+        Point::new(option.rect.origin.x + 5.0, option.rect.origin.y + 5.0),
+    );
 }
 
 fn click(host: &mut Host, router: &mut EventRouter, position: Point) {

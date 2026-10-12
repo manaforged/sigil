@@ -29,6 +29,8 @@ pub(super) const fn split(_: &mut SceneBuilder, _: NodeId, run: GlyphRun) -> Gly
 
 #[cfg(feature = "scene")]
 pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> GlyphRun {
+    use crate::scene::command::{CellRect, SceneRectStyle};
+    use crate::scene::corner_radii::CornerRadii;
     let Some(runs) = run.style.runs.clone() else {
         return run;
     };
@@ -42,7 +44,10 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
         let face = &text_run.face;
         let rects = run_rects(&paragraph, &run, text_run.start, text_run.end);
         if let Some(background) = ink.background {
-            fill(scene, id, &rects, background, run.opacity);
+            let style = SceneRectStyle::new(background, CornerRadii::uniform(3.0), run.opacity);
+            for rect in &rects {
+                scene.draw_rect_for_node(id, *rect, style, CellRect::default());
+            }
         }
         if face.link.is_some() {
             underline(scene, &rects, ink.color.unwrap_or(run.color), &run);
@@ -87,26 +92,6 @@ fn run_rects(
             )
         })
         .collect()
-}
-
-#[cfg(feature = "scene")]
-fn fill(
-    scene: &mut SceneBuilder,
-    id: NodeId,
-    rects: &[crate::geometry::Rect],
-    color: crate::style::Rgba8,
-    opacity: u16,
-) {
-    use crate::scene::command::{CellRect, SceneRectStyle};
-    use crate::scene::corner_radii::CornerRadii;
-    for rect in rects {
-        scene.draw_rect_for_node(
-            id,
-            *rect,
-            SceneRectStyle::new(color, CornerRadii::uniform(3.0), opacity),
-            CellRect::default(),
-        );
-    }
 }
 
 #[cfg(feature = "scene")]

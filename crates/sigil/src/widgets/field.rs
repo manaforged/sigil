@@ -12,8 +12,10 @@ use super::number_field::{NumberFieldBuilder, NumericKind};
 use super::text_field::TextFieldBuilder;
 
 const FIELD_GAP: f32 = space(1);
-static ERROR_VISIBLE: &[StyleAtom] = &[];
-static ERROR_HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
+fn shown(visible: bool) -> &'static [StyleAtom] {
+    static HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
+    if visible { &[] } else { HIDDEN }
+}
 
 pub struct FieldBuilder<C> {
     label: TextContent,
@@ -128,13 +130,7 @@ fn label_row(label: TextContent, required: Option<Signal<bool>>) -> Box<dyn Into
                     text(theme_text(StringKey::RequiredMark))
                         .hittable(false)
                         .class(Token::Error11.text())
-                        .style_reactive(move || {
-                            if required.get() {
-                                ERROR_VISIBLE
-                            } else {
-                                ERROR_HIDDEN
-                            }
-                        }),
+                        .style_reactive(move || shown(required.get())),
                 ),
         ),
         None => node(label),
@@ -146,11 +142,5 @@ fn error_line(error: Signal<Option<String>>) -> crate::kernel::TextBuilder {
         .role(Role::Label)
         .class("text-xs font-medium")
         .class(Token::Error12.text())
-        .style_reactive(move || {
-            if error.get().is_some() {
-                ERROR_VISIBLE
-            } else {
-                ERROR_HIDDEN
-            }
-        })
+        .style_reactive(move || shown(error.get().is_some()))
 }

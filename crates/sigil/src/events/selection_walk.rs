@@ -10,7 +10,7 @@ use crate::style::{StyleBinding, TextStyle, Theme, text_style_for};
 
 use super::selection::{Endpoint, TextSelection, Unit};
 
-pub(super) fn hidden(node: &Node) -> bool {
+fn hidden(node: &Node) -> bool {
     node.get_extension::<StyleBinding>()
         .is_some_and(StyleBinding::hides)
 }
@@ -20,17 +20,11 @@ struct Inherit<'a> {
     text_style: Rc<TextStyle>,
 }
 
-fn default_theme() -> &'static Theme {
-    use std::sync::OnceLock;
-    static THEME: OnceLock<Theme> = OnceLock::new();
-    THEME.get_or_init(Theme::default)
-}
-
 pub(super) fn endpoint_at(cx: &Cx, region: NodeId, point: Point) -> Option<Endpoint> {
     let node = cx.get(region)?;
     let theme: &Theme = node
         .get_extension::<Theme>()
-        .map_or_else(|| default_theme(), |theme| theme);
+        .map_or_else(|| super::links::default_theme(), |theme| theme);
     let inherit = Inherit {
         theme,
         text_style: Rc::new(TextStyle::default()),
@@ -82,23 +76,11 @@ fn walk_text(
 type Gap = (f32, f32);
 
 fn gap(rect: Rect, point: Point) -> Gap {
-    let bottom = rect.origin.y + rect.height;
-    let right = rect.origin.x + rect.width;
-    let vertical = if point.y < rect.origin.y {
-        rect.origin.y - point.y
-    } else if point.y > bottom {
-        point.y - bottom
-    } else {
-        0.0
-    };
-    let horizontal = if point.x < rect.origin.x {
-        rect.origin.x - point.x
-    } else if point.x > right {
-        point.x - right
-    } else {
-        0.0
-    };
-    (vertical, horizontal)
+    let outside = |low: f32, extent: f32, at: f32| (low - at).max(at - (low + extent)).max(0.0);
+    (
+        outside(rect.origin.y, rect.height, point.y),
+        outside(rect.origin.x, rect.width, point.x),
+    )
 }
 
 pub(super) fn node_text(cx: &Cx, id: NodeId) -> Option<String> {
@@ -110,13 +92,9 @@ pub(super) fn node_text(cx: &Cx, id: NodeId) -> Option<String> {
 }
 
 pub(super) fn word_bounds(text: &str, byte: usize) -> Option<(usize, usize)> {
-    for (start, word) in text.unicode_word_indices() {
-        let end = start + word.len();
-        if byte >= start && byte < end {
-            return Some((start, end));
-        }
-    }
-    None
+    text.unicode_word_indices()
+        .map(|(start, word)| (start, start + word.len()))
+        .find(|(start, end)| (*start..*end).contains(&byte))
 }
 
 const CELL_EDGE: f32 = 0.01;
@@ -193,7 +171,7 @@ fn selected_range(
     (start < end).then_some((start, end))
 }
 
-pub(super) type TextNodes = (HashMap<NodeId, usize>, Vec<(NodeId, String)>);
+type TextNodes = (HashMap<NodeId, usize>, Vec<(NodeId, String)>);
 
 fn collect_text(cx: &Cx, id: NodeId, texts: &mut Vec<(NodeId, String)>) {
     let Some(node) = cx.get(id) else {
@@ -210,7 +188,7 @@ fn collect_text(cx: &Cx, id: NodeId, texts: &mut Vec<(NodeId, String)>) {
     }
 }
 
-pub(super) fn text_nodes(cx: &Cx, region: NodeId) -> TextNodes {
+fn text_nodes(cx: &Cx, region: NodeId) -> TextNodes {
     let mut texts = Vec::new();
     collect_text(cx, region, &mut texts);
     let order = texts

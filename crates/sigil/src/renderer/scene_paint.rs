@@ -1,10 +1,11 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use wgpu::util::DeviceExt as _;
-
 #[path = "rect_shader.rs"]
 mod rect_shader;
 
+use crate::renderer::fill_paint::setup::{
+    QuadDesc, QuadPipeline, buffer_group, buffer_layout, clipped_pass,
+};
 use crate::renderer::frame_upload::UploadedRange;
 use crate::renderer::scene_instance::RectInstance;
 use crate::renderer::split_encoder::SplitEncoder;
@@ -21,165 +22,64 @@ pub(crate) struct PaintCtx<'a> {
 }
 
 pub(crate) struct ScenePipeline {
-    format: wgpu::TextureFormat,
-    pipeline: wgpu::RenderPipeline,
+    quad: QuadPipeline,
     bind_group_layout: wgpu::BindGroupLayout,
-    unit_quad: wgpu::Buffer,
 }
 
 impl ScenePipeline {
-    #[allow(
-        clippy::too_many_lines,
-        reason = "one sequential pass; splitting would scatter the ordering it documents"
-    )]
     pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("sigil-renderer scene paint shader"),
-            source: wgpu::ShaderSource::Wgsl(RECT_SHADER.into()),
-        });
-
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("sigil-renderer scene uniforms layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sigil-renderer scene pipeline layout"),
-            bind_group_layouts: &[Some(&bind_group_layout)],
-            immediate_size: 0,
-        });
-
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("sigil-renderer scene pipeline"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vs_main"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                buffers: &[Some(UNIT_QUAD_LAYOUT), Some(INSTANCE_LAYOUT)],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fs_main"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState::default(),
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
-            multiview_mask: None,
-            cache: None,
-        });
-
-        let unit_quad = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("sigil-renderer scene unit quad"),
-            contents: bytemuck::cast_slice(&UNIT_QUAD_VERTICES),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
-        Self {
+        let bind_group_layout = buffer_layout(
+            device,
+            "sigil-renderer scene uniforms layout",
+            wgpu::ShaderStages::VERTEX,
+            wgpu::BufferBindingType::Uniform,
+        );
+        let quad = QuadPipeline::new(
+            device,
             format,
-            pipeline,
+            QuadDesc {
+                label: "sigil-renderer scene",
+                wgsl: RECT_SHADER,
+                groups: &[Some(&bind_group_layout)],
+                instance: INSTANCE_LAYOUT,
+                fs_entry: "fs_main",
+                blend: wgpu::BlendState::ALPHA_BLENDING,
+            },
+        );
+        Self {
+            quad,
             bind_group_layout,
-            unit_quad,
         }
     }
 
     pub(crate) const fn format(&self) -> wgpu::TextureFormat {
-        self.format
-    }
-
-    fn uniforms_bind_group(
-        &self,
-        device: &wgpu::Device,
-        uniform_buffer: wgpu::BufferBinding<'_>,
-    ) -> wgpu::BindGroup {
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("sigil-renderer scene uniforms bind group"),
-            layout: &self.bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(uniform_buffer),
-            }],
-        })
+        self.quad.format
     }
 
     pub(crate) fn paint_uploaded(
         &self,
-        ctx: PaintCtx<'_>,
+        mut ctx: PaintCtx<'_>,
         instances: UploadedRange,
         uniform: wgpu::BufferBinding<'_>,
     ) {
-        let PaintCtx {
-            device,
-            encoder,
-            view,
-            viewport,
-            clip,
-            scale,
-            ..
-        } = ctx;
-        let bind_group = self.uniforms_bind_group(device, uniform);
-
-        let pass = encoder.begin_render_pass(
-            "sigil-renderer scene paint pass",
-            &wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            },
+        let bind_group = buffer_group(
+            ctx.device,
+            "sigil-renderer scene uniforms bind group",
+            &self.bind_group_layout,
+            uniform,
         );
-        if !crate::renderer::scissor::apply(pass, clip, scale, viewport) {
+        let Some(pass) = clipped_pass(&mut ctx, "sigil-renderer scene paint pass") else {
             return;
-        }
-        pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &bind_group, &[]);
-        pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..instances.count);
+        };
+        self.quad.draw(
+            pass,
+            &[&bind_group],
+            &[],
+            instances.buffer.slice(instances.bytes),
+            instances.count,
+        );
     }
 }
-
-const UNIT_QUAD_VERTEX_COUNT: u32 = 6;
-
-const UNIT_QUAD_VERTICES: [[f32; 2]; 6] = [
-    [0.0, 0.0],
-    [1.0, 0.0],
-    [1.0, 1.0],
-    [0.0, 0.0],
-    [1.0, 1.0],
-    [0.0, 1.0],
-];
-
-const UNIT_QUAD_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
-    array_stride: (core::mem::size_of::<f32>() as u64) * 2,
-    step_mode: wgpu::VertexStepMode::Vertex,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x2],
-};
 
 const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     array_stride: core::mem::size_of::<RectInstance>() as u64,

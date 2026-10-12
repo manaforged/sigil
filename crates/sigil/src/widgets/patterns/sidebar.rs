@@ -13,8 +13,6 @@ use super::super::interactive::interactive;
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::splitter::{HANDLE_PX, KEY_STEP, cached_width_atom, resize_keys, to_i16};
 
-const SIDEBAR_DEFAULT: f32 = space(55);
-
 static SIDEBAR_CHROME: &[StyleAtom] = &[
     Token::SurfaceSubtle.bg(),
     StyleAtom::BorderRight(BORDER_WIDTH),
@@ -46,12 +44,15 @@ impl SidebarBuilder {
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        let start = self
-            .layout_overrides
-            .width_hint()
-            .unwrap_or(SIDEBAR_DEFAULT);
+        let start = self.layout_overrides.width_hint().unwrap_or(space(55));
         let column = container()
-            .layout(column_layout().grow(1.0).min_size(0.0, 0.0))
+            .layout(
+                LayoutStyle::flex_column()
+                    .padding(space(2))
+                    .gap(space(1))
+                    .grow(1.0)
+                    .min_size(0.0, 0.0),
+            )
             .child(self.child);
         let mut root = container()
             .role(Role::Navigation)
@@ -77,10 +78,6 @@ fn root_layout() -> LayoutStyle {
         .fill_height()
         .shrink(0.0)
         .align_items(AlignItems::Stretch)
-}
-
-fn column_layout() -> LayoutStyle {
-    LayoutStyle::flex_column().padding(space(2)).gap(space(1))
 }
 
 fn resize_handle(width: Signal<f32>, min: f32, max: f32) -> NodeBuilder {

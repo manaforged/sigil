@@ -64,19 +64,19 @@ fn anchored_menu(
     let height = rows
         .iter()
         .fold(PANEL_INSET * 2.0, |total, _| total + item_height);
-    let x = if viewport.width > 0.0 {
-        x.clamp(0.0, (viewport.width - PANEL_WIDTH).max(0.0))
-    } else {
-        x
-    };
-    let y = if viewport.height > 0.0 {
-        y.clamp(0.0, (viewport.height - height).max(0.0))
-    } else {
-        y
+    let fit = |at: f32, extent: f32, size: f32| {
+        if extent > 0.0 {
+            at.clamp(0.0, (extent - size).max(0.0))
+        } else {
+            at
+        }
     };
     let mut panel = menu(open)
         .label(theme_string(StringKey::ContextMenu))
-        .anchor(x, y);
+        .anchor(
+            fit(x, viewport.width, PANEL_WIDTH),
+            fit(y, viewport.height, height),
+        );
     if let Some(host) = host {
         panel = panel.host(host);
     }

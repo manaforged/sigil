@@ -19,20 +19,15 @@ pub(super) fn container_intrinsic_cross(
     {
         return Some(extent);
     }
-    let probe = FlexCtx {
-        solver: ctx.solver,
-        axes: ctx.axes,
-        cb: ctx.cb,
-        suppress_stretch: true,
-        assigned_w: None,
-        assigned_h: None,
-    };
-    let (w, h) = if axes.row {
-        (cb_main, cb_cross)
-    } else {
-        (cb_cross, cb_main)
-    };
-    layout_item_subtree(&probe, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
+    let cb = CbSize::across(axes, cb_main, cb_cross);
+    layout_item_subtree(
+        &ctx.probe(),
+        node.id(),
+        Position2::new(0.0, 0.0),
+        cb.w,
+        cb.h,
+    )
+    .ok()?;
     let extent = probed_content_extent(ctx, node, false, axes);
     ctx.solver
         .intrinsic_put(node.id(), cb_main, cb_cross, false, extent);
@@ -57,20 +52,15 @@ pub(super) fn container_intrinsic_main(
     let extent = if cheap {
         content_main_from_children(ctx, node, style, axes, cb_main, cb_cross)?
     } else {
-        let (w, h) = if axes.row {
-            (cb_main, cb_cross)
-        } else {
-            (cb_cross, cb_main)
-        };
-        let probe_ctx = FlexCtx {
-            solver: ctx.solver,
-            axes: ctx.axes,
-            cb: ctx.cb,
-            suppress_stretch: true,
-            assigned_w: None,
-            assigned_h: None,
-        };
-        layout_item_subtree(&probe_ctx, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
+        let cb = CbSize::across(axes, cb_main, cb_cross);
+        layout_item_subtree(
+            &ctx.probe(),
+            node.id(),
+            Position2::new(0.0, 0.0),
+            cb.w,
+            cb.h,
+        )
+        .ok()?;
         probed_content_extent(ctx, node, true, axes)
     };
     ctx.solver
@@ -87,15 +77,11 @@ fn content_main_from_children(
     cb_cross: f32,
 ) -> Option<f32> {
     let edges = NodeEdges::build(style, ctx.cb.w);
-    let chrome_main = if axes.row {
-        edges.inline_chrome()
-    } else {
-        edges.block_chrome()
-    };
+    let (chrome_main, _) = axes.chrome(&edges);
     let measured = inner_context(ctx, style, axes, cb_main, cb_cross);
-    let (inner_main, inner_cross) = measured.cb.along(axes);
+    let (inner_main, _) = measured.cb.along(axes);
     let forest = measured.solver.scope().forest();
-    let cb_inline = if axes.row { inner_main } else { inner_cross };
+    let cb_inline = measured.cb.w;
     let mut count = 0usize;
     let mut bases = 0.0_f32;
     for child_id in node.children() {
@@ -117,11 +103,7 @@ fn content_main_from_children(
             true,
         );
         let m = child_edges.margin.or_zero();
-        let margin_main = if axes.row {
-            m.left + m.right
-        } else {
-            m.top + m.bottom
-        };
+        let margin_main = axes.pick(m.left + m.right, m.top + m.bottom);
         let (min, max) = item_min_max_main(child_style, axes, inner_main, &child_edges);
         bases += clamp(inner, min, max) + margin_main;
         count += 1;
@@ -139,20 +121,14 @@ fn inner_context<'s, 'a>(
 ) -> FlexCtx<'s, 'a> {
     let mut measured = FlexCtx {
         axes,
-        cb: CbSize {
-            w: if axes.row { main } else { cross },
-            h: if axes.row { cross } else { main },
-        },
+        cb: CbSize::across(axes, main, cross),
         assigned_w: None,
         assigned_h: None,
         ..*ctx
     };
     let edges = NodeEdges::build(style, measured.cb.w);
     let (inner_main, inner_cross) = container_inner_size(&measured, style, &edges);
-    measured.cb = CbSize {
-        w: if axes.row { inner_main } else { inner_cross },
-        h: if axes.row { inner_cross } else { inner_main },
-    };
+    measured.cb = CbSize::across(axes, inner_main, inner_cross);
     measured
 }
 

@@ -69,20 +69,22 @@ pub enum LayerEffect {
 }
 
 pub(crate) fn transform_rect(transform: Transform, rect: Rect) -> Rect {
-    let p0 = transform_point(transform, rect.origin);
-    let p1 = transform_point(
-        transform,
-        Point::new(rect.origin.x + rect.width, rect.origin.y),
+    let (left, top) = (rect.origin.x, rect.origin.y);
+    let (right, bottom) = (left + rect.width, top + rect.height);
+    let points = [(left, top), (right, top), (left, bottom), (right, bottom)]
+        .map(|(x, y)| transform_point(transform, Point::new(x, y)));
+    let fold = |axis: fn(&Point) -> f32, start: f32, pick: fn(f32, f32) -> f32| {
+        points.iter().map(axis).fold(start, pick)
+    };
+    let (min_x, max_x) = (
+        fold(|p| p.x, f32::INFINITY, f32::min),
+        fold(|p| p.x, f32::NEG_INFINITY, f32::max),
     );
-    let p2 = transform_point(
-        transform,
-        Point::new(rect.origin.x, rect.origin.y + rect.height),
+    let (min_y, max_y) = (
+        fold(|p| p.y, f32::INFINITY, f32::min),
+        fold(|p| p.y, f32::NEG_INFINITY, f32::max),
     );
-    let p3 = transform_point(
-        transform,
-        Point::new(rect.origin.x + rect.width, rect.origin.y + rect.height),
-    );
-    bounding_rect([p0, p1, p2, p3])
+    Rect::new(Point::new(min_x, min_y), max_x - min_x, max_y - min_y)
 }
 
 #[allow(
@@ -94,12 +96,4 @@ pub(crate) fn transform_point(transform: Transform, point: Point) -> Point {
         transform[0][0].mul_add(point.x, transform[0][1].mul_add(point.y, transform[0][2])),
         transform[1][0].mul_add(point.x, transform[1][1].mul_add(point.y, transform[1][2])),
     )
-}
-
-fn bounding_rect(points: [Point; 4]) -> Rect {
-    let min_x = points.iter().map(|p| p.x).fold(f32::INFINITY, f32::min);
-    let max_x = points.iter().map(|p| p.x).fold(f32::NEG_INFINITY, f32::max);
-    let min_y = points.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);
-    let max_y = points.iter().map(|p| p.y).fold(f32::NEG_INFINITY, f32::max);
-    Rect::new(Point::new(min_x, min_y), max_x - min_x, max_y - min_y)
 }

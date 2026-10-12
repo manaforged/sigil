@@ -31,11 +31,9 @@ impl Date {
         if !(1..=12).contains(&month) {
             return None;
         }
-        let max = days_in_month(year, month);
-        if day == 0 || day > max {
-            return None;
-        }
-        Some(Self { year, month, day })
+        (1..=days_in_month(year, month))
+            .contains(&day)
+            .then_some(Self { year, month, day })
     }
 
     #[must_use]
@@ -84,9 +82,7 @@ impl DateFieldBuilder {
     }
 
     pub fn text_field(self) -> TextFieldBuilder {
-        let buffer = self.buffer;
-        let invalid = self.invalid;
-        let theme = self.theme;
+        let (buffer, invalid, theme) = (self.buffer, self.invalid, self.theme);
         self.inner.invalid_when(derived(move || {
             invalid.is_some_and(|flag| flag.get())
                 || Date::parse_in(&buffer.get(), &theme.locale()).is_none()
@@ -104,18 +100,9 @@ impl IntoNode for DateFieldBuilder {
 pub fn date_field(value: Signal<Date>) -> DateFieldBuilder {
     let theme = ActiveTheme::capture();
     let buffer = signal(value.peek().render_in(&theme.locale()));
-    let buf_for_value = buffer;
-    effect(move || {
-        let rendered = value.get().render_in(&theme.locale());
-        if buf_for_value.peek().as_str() != rendered {
-            buf_for_value.set(rendered);
-        }
-    });
+    effect(move || buffer.set(value.get().render_in(&theme.locale())));
     let inner = text_field(buffer).change(move |raw| {
-        let Some(parsed) = Date::parse_in(raw, &theme.locale()) else {
-            return;
-        };
-        if value.peek() != parsed {
+        if let Some(parsed) = Date::parse_in(raw, &theme.locale()) {
             value.set(parsed);
         }
     });

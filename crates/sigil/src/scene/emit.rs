@@ -160,43 +160,32 @@ impl<'t> EmitWalk<'_, 't> {
         rect: Rect,
         style: &RenderStyle,
     ) {
-        let Some(inner) = tighten_clip(clip, rect) else {
+        let Some(inner) = clip.map_or(Some(rect), |clip| clip.intersection(rect)) else {
             self.defer_top_layer(node, || inherited.clone());
             return;
         };
         let inner = inner.expand(1.0);
         let clip_radii = corner_radii_for(style.border_radius);
-        let cx = self.cx;
-        let deferred = &mut *self.deferred;
-        let selection = self.selection;
+        let (cx, deferred, selection) = (self.cx, &mut *self.deferred, self.selection);
+        let body = |scene: &mut SceneBuilder| {
+            EmitWalk {
+                scene,
+                cx,
+                deferred,
+                selection,
+            }
+            .push_children(node, inherited, Some(inner));
+        };
         if clip_radii.0.iter().any(|radius| *radius > 0.0) {
-            self.scene.with_composite_layer(
-                LayerScope {
-                    clip: rect,
-                    clip_radii,
-                    effect: LayerEffect::Identity,
-                    opacity: 1.0,
-                },
-                |scene| {
-                    let mut nested = EmitWalk {
-                        scene,
-                        cx,
-                        deferred,
-                        selection,
-                    };
-                    nested.push_children(node, inherited, Some(inner));
-                },
-            );
+            let scope = LayerScope {
+                clip: rect,
+                clip_radii,
+                effect: LayerEffect::Identity,
+                opacity: 1.0,
+            };
+            self.scene.with_composite_layer(scope, body);
         } else {
-            self.scene.with_clip(rect, |scene| {
-                let mut nested = EmitWalk {
-                    scene,
-                    cx,
-                    deferred,
-                    selection,
-                };
-                nested.push_children(node, inherited, Some(inner));
-            });
+            self.scene.with_clip(rect, body);
         }
     }
 
@@ -212,17 +201,8 @@ impl<'t> EmitWalk<'_, 't> {
 }
 
 fn outside_clip(node: &Node, clip: Option<Rect>) -> bool {
-    let Some(clip) = clip else {
-        return false;
-    };
-    let Some(result) = node.get_extension::<LayoutResult>() else {
-        return false;
-    };
-    !result.rect().intersects(clip)
-}
-
-fn tighten_clip(clip: Option<Rect>, rect: Rect) -> Option<Rect> {
-    clip.map_or(Some(rect), |clip| clip.intersection(rect))
+    clip.zip(node.get_extension::<LayoutResult>())
+        .is_some_and(|(clip, result)| !result.rect().intersects(clip))
 }
 
 fn has_laid_child(cx: &Cx, node: &Node) -> bool {

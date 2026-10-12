@@ -1,6 +1,6 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
 use crate::layout::LayoutReactiveExt;
-use crate::layout::LayoutStyle;
+use crate::layout::{Dimension, LayoutStyle, Overflow};
 use crate::layout::{LayoutBuilderExt, Position};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{NodeStyleExt, NumericAtomKind};
@@ -9,16 +9,14 @@ use std::ops::Deref;
 
 use super::keyboard::{KeyboardRuntime, attach_key_handlers};
 use super::measure::Measure;
-use super::paint;
-use super::render::{content_container, viewport_container, width_apply, width_spec};
+use super::render::{content_container, viewport_container, width_spec};
 use super::scroll::{self, apply_bound_scroll, attach_wheel};
 use super::selection::{SelectionRuntime, SelectionState};
 use super::strip::{BoundStrip, bound_strip};
-use super::viewport::{ViewportSize, apply_viewport_overrides};
 use super::window::{self, strip_height};
 use super::{
-    BoundCtx, BoundItems, BoundVisibleThunk, BuildAxes, DEFAULT_ROW_HEIGHT,
-    DEFAULT_VIEWPORT_HEIGHT, RowRender, Sizing, VirtualListBuilder, bound_slice,
+    BoundItems, BoundVisibleThunk, BuildAxes, DEFAULT_ROW_HEIGHT, DEFAULT_VIEWPORT_HEIGHT,
+    RowRender, Sizing, VirtualListBuilder, bound_slice,
 };
 
 impl<T, R> VirtualListBuilder<T, R>
@@ -37,49 +35,22 @@ where
         S: Deref + Clone + 'static,
         S::Target: AsRef<[T]>,
     {
-        let initial_rows = bound_slice(&signal.peek()).len();
         let live_rows = derived(move || bound_slice(&signal.get()).len());
-        let thunk: Box<BoundVisibleThunk<T, R>> = Box::new(move |ctx: BoundCtx<T, R>| {
-            let BoundCtx {
-                render,
-                row_height,
-                width,
-                selection,
-                scroll_y,
-                viewport_height,
-                overscan,
-                row_key,
-                measure,
-                tops,
-            } = ctx;
-            let render = std::rc::Rc::new(render);
-            container()
-                .layout(width_apply(width, LayoutStyle::block()))
-                .child(
-                    content_container(strip_height(viewport_height, row_height, overscan), width)
-                        .child(bound_strip(
-                            signal,
-                            scroll_y,
-                            BoundStrip {
-                                render: std::rc::Rc::clone(&render),
-                                row_height,
-                                viewport_height,
-                                overscan,
-                                width,
-                                selection,
-                                row_key: row_key.clone(),
-                                measure,
-                                tops,
-                            },
-                        )),
-                )
-        });
+        let thunk: Box<BoundVisibleThunk<T, R>> =
+            Box::new(move |spec: BoundStrip<T, R>, scroll_y| {
+                let height = strip_height(spec.viewport_height, spec.row_height, spec.overscan);
+                container()
+                    .layout(spec.width.apply(LayoutStyle::block()))
+                    .child(
+                        content_container(height, spec.width)
+                            .child(bound_strip(signal, scroll_y, spec)),
+                    )
+            });
         self.bound = Some(BoundItems {
             thunk,
             measure: Some(Box::new(move |row_key, estimate| {
                 Measure::new(signal, row_key, estimate)
             })),
-            initial_rows,
             live_rows,
             count: std::rc::Rc::new(move || bound_slice(&signal.peek()).len()),
         });
@@ -111,8 +82,14 @@ where
                 count.as_ref().map_or(0, |count| count())
             });
         }
-        let paint = self.take_paint();
-        paint::apply(self.build_bound(axes, measure), paint).size_reactive(axes.viewport)
+        let paint = std::mem::replace(&mut self.style_accumulator, crate::style::Style::new());
+        let root = self.build_bound(axes, measure);
+        let root = if paint.is_empty() {
+            root
+        } else {
+            root.style(paint)
+        };
+        root.size_reactive(axes.viewport)
     }
 
     fn axes(&mut self) -> (BuildAxes, Option<Measure>) {
@@ -156,22 +133,20 @@ where
             .bound
             .take()
             .expect("build_bound called without virtual_list_bind");
-        let shrinks = self.shrinks();
-        let selection = SelectionRuntime::new(axes.selection_state);
-        let content = (bound.thunk)(BoundCtx {
-            render: self.render,
-            row_height: axes.row_height,
-            width: axes.width,
-            selection,
-            scroll_y: axes.scroll_y,
-            viewport_height: axes.viewport_height,
-            overscan: self.overscan,
-            row_key: self.row_key,
-            measure,
-            tops: axes.tops,
-        });
-        let initial_rows = bound.initial_rows;
-        let live_rows = bound.live_rows;
+        let content = (bound.thunk)(
+            BoundStrip {
+                render: std::rc::Rc::new(self.render),
+                row_height: axes.row_height,
+                viewport_height: axes.viewport_height,
+                overscan: self.overscan,
+                width: axes.width,
+                selection: SelectionRuntime::new(axes.selection_state),
+                row_key: self.row_key,
+                measure,
+                tops: axes.tops,
+            },
+            axes.scroll_y,
+        );
         apply_bound_scroll(axes, self.initial_scroll, self.pin_bottom);
         let root = with_scrollbar(
             self.scrollbar,
@@ -181,26 +156,17 @@ where
         let root = apply_viewport_overrides(
             root,
             &self.layout_overrides,
-            ViewportSize {
-                height: axes.viewport_height,
-                width: self.viewport_width,
-                fill: self.sizing == Sizing::Fill,
-            },
+            axes.viewport_height,
+            self.viewport_width,
+            self.sizing == Sizing::Fill,
         );
-        let root = shrink_bound(root, axes, shrinks);
+        let root = shrink_bound(root, axes, self.sizing == Sizing::ShrinkToContent);
         let root = attach_wheel(root, axes);
         if self.keyboard_enabled {
-            attach_key_handlers(
-                root,
-                KeyboardRuntime::new(axes, initial_rows, Some(live_rows)),
-            )
+            attach_key_handlers(root, KeyboardRuntime::new(axes, bound.live_rows))
         } else {
             root
         }
-    }
-
-    const fn shrinks(&self) -> bool {
-        matches!(self.sizing, Sizing::ShrinkToContent)
     }
 
     fn ensure_row_tops(&mut self) {
@@ -240,14 +206,8 @@ fn with_scrollbar(show: bool, root: NodeBuilder, axes: BuildAxes) -> NodeBuilder
     if !show {
         return root;
     }
-    let viewport_height = derived(move || {
-        let measured = axes.viewport.get().1;
-        if measured > 0.0 {
-            measured
-        } else {
-            axes.viewport_height
-        }
-    });
+    let viewport_height =
+        derived(move || scroll::viewport_px(axes.viewport.get(), axes.viewport_height));
     root.child(
         container()
             .layout(
@@ -266,6 +226,30 @@ fn with_scrollbar(show: bool, root: NodeBuilder, axes: BuildAxes) -> NodeBuilder
                 true,
             )),
     )
+}
+
+fn apply_viewport_overrides(
+    root: NodeBuilder,
+    overrides: &super::LayoutOverrides,
+    height: f32,
+    width: Option<f32>,
+    fill: bool,
+) -> NodeBuilder {
+    let base = LayoutStyle::block().overflow_y(Overflow::Hidden);
+    let base = if fill {
+        base.width(Dimension::Fill)
+            .height(Dimension::Fill)
+            .grow(1.0)
+            .flex_basis(Dimension::Px(0.0))
+            .min_size(0.0, 0.0)
+    } else {
+        let base = base.height(height);
+        match width {
+            Some(w) => base.width(w),
+            None => base,
+        }
+    };
+    root.with(overrides.clone().apply(base))
 }
 
 fn shrink_bound(root: NodeBuilder, axes: BuildAxes, shrinks: bool) -> NodeBuilder {

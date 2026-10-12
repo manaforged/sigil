@@ -81,19 +81,6 @@ fn frameless_undecorates_but_stays_a_normal_window() {
 }
 
 #[test]
-fn overlay_attrs_are_unchanged_by_the_frameless_flag() {
-    let attrs = WinitShell::base_attrs(&spec(WindowOpts {
-        overlay: true,
-        ..WindowOpts::default()
-    }));
-
-    assert!(!attrs.decorations);
-    assert!(attrs.transparent);
-    assert!(!attrs.active);
-    assert_eq!(attrs.window_level, WindowLevel::AlwaysOnTop);
-}
-
-#[test]
 fn overlay_wins_when_both_flags_are_set() {
     let attrs = WinitShell::base_attrs(&spec(WindowOpts {
         overlay: true,
@@ -101,6 +88,8 @@ fn overlay_wins_when_both_flags_are_set() {
         ..WindowOpts::default()
     }));
 
+    assert!(!attrs.decorations);
+    assert!(attrs.transparent);
     assert!(!attrs.active);
     assert_eq!(attrs.window_level, WindowLevel::AlwaysOnTop);
 }

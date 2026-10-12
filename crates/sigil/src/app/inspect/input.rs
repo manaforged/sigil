@@ -7,20 +7,41 @@ use crate::events::{
 };
 use crate::geometry::Point;
 
+#[derive(Clone, Copy)]
+enum Op {
+    Click,
+    Pointer(PointerPhase),
+    Scroll,
+    Key,
+    Type,
+}
+
+fn parse_op(name: &str) -> Option<Op> {
+    Some(match name {
+        "click" => Op::Click,
+        "move" => Op::Pointer(PointerPhase::Move),
+        "down" => Op::Pointer(PointerPhase::Down),
+        "up" => Op::Pointer(PointerPhase::Up),
+        "scroll" => Op::Scroll,
+        "key" => Op::Key,
+        "type" => Op::Type,
+        _ => return None,
+    })
+}
+
 pub(super) fn events_of(request: &Value, unit: f32) -> Result<Vec<ShellEvent>, String> {
-    match request.get("op").and_then(Value::as_str) {
-        Some(op @ ("click" | "move" | "down" | "up")) => pointer_ops(request, op, unit),
-        Some("scroll") => scroll_op(request, unit),
-        Some("key") => Ok([
-            key_event(request, KeyPhase::Down),
-            key_event(request, KeyPhase::Up),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()),
-        Some("type") => type_ops(request),
-        Some(other) => Err(format!("unknown op {other}")),
-        None => Err("missing op".into()),
+    let name = request
+        .get("op")
+        .and_then(Value::as_str)
+        .ok_or("missing op")?;
+    match parse_op(name).ok_or_else(|| format!("unknown op {name}"))? {
+        Op::Click => Ok(click(request, unit)),
+        Op::Pointer(phase) => pointer(request, phase, unit, button(request, phase))
+            .map(|event| vec![event])
+            .ok_or_else(|| format!("{name} needs col/row or x/y")),
+        Op::Scroll => scroll_op(request, unit),
+        Op::Key => Ok(key_press(request)),
+        Op::Type => type_ops(request),
     }
 }
 
@@ -127,26 +148,16 @@ fn key_event(request: &Value, phase: KeyPhase) -> Option<ShellEvent> {
     })))
 }
 
-fn pointer_ops(request: &Value, op: &str, unit: f32) -> Result<Vec<ShellEvent>, String> {
-    let phase = match op {
-        "click" => {
-            let press = button(request, PointerPhase::Down);
-            return Ok([
-                pointer(request, PointerPhase::Move, unit, None),
-                pointer(request, PointerPhase::Down, unit, press),
-                pointer(request, PointerPhase::Up, unit, press),
-            ]
-            .into_iter()
-            .flatten()
-            .collect());
-        }
-        "move" => PointerPhase::Move,
-        "down" => PointerPhase::Down,
-        _ => PointerPhase::Up,
-    };
-    pointer(request, phase, unit, button(request, phase))
-        .map(|e| vec![e])
-        .ok_or_else(|| format!("{op} needs col/row or x/y"))
+fn click(request: &Value, unit: f32) -> Vec<ShellEvent> {
+    let press = button(request, PointerPhase::Down);
+    [
+        pointer(request, PointerPhase::Move, unit, None),
+        pointer(request, PointerPhase::Down, unit, press),
+        pointer(request, PointerPhase::Up, unit, press),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 fn scroll_op(request: &Value, unit: f32) -> Result<Vec<ShellEvent>, String> {
@@ -173,14 +184,13 @@ fn type_ops(request: &Value) -> Result<Vec<ShellEvent>, String> {
         .ok_or("type needs text")?;
     Ok(text
         .chars()
-        .flat_map(|ch| {
-            let req = json!({"key": ch.to_string()});
-            [
-                key_event(&req, KeyPhase::Down),
-                key_event(&req, KeyPhase::Up),
-            ]
-            .into_iter()
-            .flatten()
-        })
+        .flat_map(|ch| key_press(&json!({"key": ch.to_string()})))
         .collect())
+}
+
+fn key_press(request: &Value) -> Vec<ShellEvent> {
+    [KeyPhase::Down, KeyPhase::Up]
+        .into_iter()
+        .filter_map(|phase| key_event(request, phase))
+        .collect()
 }

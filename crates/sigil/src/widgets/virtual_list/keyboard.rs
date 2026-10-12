@@ -11,25 +11,16 @@ use super::window::RowHeights;
 #[derive(Clone, Copy)]
 pub(super) struct KeyboardRuntime {
     axes: BuildAxes,
-    total_rows: usize,
-    total_rows_live: Option<Signal<usize>>,
+    rows: Signal<usize>,
 }
 
 impl KeyboardRuntime {
-    pub(super) const fn new(
-        axes: BuildAxes,
-        total_rows: usize,
-        total_rows_live: Option<Signal<usize>>,
-    ) -> Self {
-        Self {
-            axes,
-            total_rows,
-            total_rows_live,
-        }
+    pub(super) const fn new(axes: BuildAxes, rows: Signal<usize>) -> Self {
+        Self { axes, rows }
     }
 
     fn count(self) -> usize {
-        self.total_rows_live.map_or(self.total_rows, Signal::peek)
+        self.rows.peek()
     }
 
     fn step(self, event: &mut KeyEvent, next: impl FnOnce(Self, usize) -> usize) {

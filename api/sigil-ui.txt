@@ -6789,6 +6789,7 @@ pub const fn sigil::Host::host_mode(&self) -> sigil::kernel::HostMode
 pub fn sigil::Host::layout(&mut self, viewport: (f32, f32)) -> core::result::Result<core::option::Option<sigil::kernel::NodeId>, sigil::layout::LayoutError>
 pub fn sigil::Host::mount(&mut self, app: impl sigil::kernel::IntoNode)
 pub fn sigil::Host::new() -> Self
+pub fn sigil::Host::perform(&mut self, router: &mut sigil::events::EventRouter, target: sigil::kernel::NodeId, request: &accesskit::ActionRequest)
 pub fn sigil::Host::repair_focus(&mut self, router: &mut sigil::events::EventRouter)
 pub const fn sigil::Host::root(&self) -> core::option::Option<sigil::kernel::NodeId>
 pub fn sigil::Host::route(&mut self, router: &mut sigil::events::EventRouter, event: sigil::events::ShellEvent)
@@ -6799,7 +6800,6 @@ pub fn sigil::Host::sync_hover(&mut self, router: &mut sigil::events::EventRoute
 pub fn sigil::Host::take_exit(&self) -> bool
 pub fn sigil::Host::theme(&self) -> &sigil::style::Theme
 pub fn sigil::Host::frame(&mut self, router: &mut sigil::events::EventRouter, viewport: (f32, f32), dt: f32, hooks: sigil::app::FrameHooks<'_>) -> sigil::app::FrameOutput
-pub fn sigil::Host::perform(&mut self, router: &mut sigil::events::EventRouter, target: sigil::kernel::NodeId, request: &accesskit::ActionRequest)
 impl core::default::Default for sigil::Host
 pub fn sigil::request_exit()
 pub fn sigil::run<C, F, N>(config: C, app: F) -> sigil::AppResult where C: core::convert::Into<sigil::AppConfig>, F: core::ops::function::Fn() -> N + 'static, N: sigil::kernel::IntoNode

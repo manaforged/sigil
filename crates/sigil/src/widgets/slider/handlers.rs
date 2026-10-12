@@ -7,7 +7,7 @@ use crate::reactive::Signal;
 
 use crate::widgets::interaction::InteractionState;
 
-use super::builder::{SliderRange, SliderRuntime, ValueChange};
+use super::builder::{SliderRuntime, ValueChange};
 
 pub(super) fn attach_key_handlers(
     mut node: NodeBuilder,
@@ -34,7 +34,7 @@ pub(super) fn attach_key_handlers(
         let edited = Rc::clone(&on_change);
         handlers.set_value_adjustment(Box::new(move |increase| {
             if !runtime.disabled() {
-                runtime.step_value(increase);
+                runtime.nudge(if increase { 1.0 } else { -1.0 });
                 on_change(runtime.value.peek());
             }
         }));
@@ -43,9 +43,7 @@ pub(super) fn attach_key_handlers(
                 return false;
             };
             if !runtime.disabled() {
-                runtime
-                    .value
-                    .set(quantize(runtime.range, *raw, runtime.step));
+                runtime.value.set(runtime.quantize(*raw));
                 edited(runtime.value.peek());
             }
             true
@@ -101,29 +99,17 @@ fn change_key(
     if !interaction.activate_key(event) || runtime.disabled() {
         return;
     }
-    match event.key {
-        LogicalKey::Named(Key::ArrowRight | Key::ArrowUp) => runtime.step_value(true),
-        LogicalKey::Named(Key::ArrowLeft | Key::ArrowDown) => runtime.step_value(false),
-        LogicalKey::Named(Key::PageUp) => runtime.page_step_value(true),
-        LogicalKey::Named(Key::PageDown) => runtime.page_step_value(false),
-        LogicalKey::Named(Key::Home) => runtime.jump_to_end(false),
-        LogicalKey::Named(Key::End) => runtime.jump_to_end(true),
+    let LogicalKey::Named(key) = &event.key else {
+        return;
+    };
+    match key {
+        Key::ArrowRight | Key::ArrowUp => runtime.nudge(1.0),
+        Key::ArrowLeft | Key::ArrowDown => runtime.nudge(-1.0),
+        Key::PageUp => runtime.nudge(10.0),
+        Key::PageDown => runtime.nudge(-10.0),
+        Key::Home => runtime.value.set(runtime.range.min),
+        Key::End => runtime.value.set(runtime.range.max),
         _ => return,
     }
     on_change(runtime.value.peek());
-}
-
-pub(super) fn quantize(range: SliderRange, raw: f32, step: f32) -> f32 {
-    let clamped = range.clamp(raw);
-    let step = normalized_step(step);
-    let steps = ((clamped - range.min) / step).round();
-    range.clamp(steps.mul_add(step, range.min))
-}
-
-pub(super) fn normalized_step(step: f32) -> f32 {
-    if step.is_finite() && step > 0.0 {
-        step
-    } else {
-        1.0
-    }
 }

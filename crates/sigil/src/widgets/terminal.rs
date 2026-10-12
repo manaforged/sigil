@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::events::{Key, KeyEvent, KeyPhase, LogicalKey, NodeEventsExt};
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{LayoutBuilderExt, LayoutStyle, rows};
@@ -10,7 +8,6 @@ use super::virtual_list::virtual_list;
 
 #[must_use]
 pub fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static) -> NodeBuilder {
-    let on_input = Rc::new(on_input);
     let list = virtual_list(lines, |_i, line| {
         container().child(text(line.clone()).class("font-mono text-sm"))
     })
@@ -26,13 +23,10 @@ pub fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static)
         .layout(LayoutStyle::flex_column().fill())
         .class("font-mono")
         .class(Token::Surface.bg())
-        .key_any({
-            let on_input = Rc::clone(&on_input);
-            move |event: &mut KeyEvent| {
-                if let Some(payload) = key_payload(event) {
-                    on_input(payload);
-                    event.stop_propagation();
-                }
+        .key_any(move |event: &mut KeyEvent| {
+            if let Some(payload) = key_payload(event) {
+                on_input(payload);
+                event.stop_propagation();
             }
         })
         .child(list)
@@ -48,11 +42,12 @@ fn key_payload(event: &KeyEvent) -> Option<String> {
         return Some(text.to_string());
     }
     match &event.key {
-        LogicalKey::Named(Key::Enter) => Some(String::from("\n")),
-        LogicalKey::Named(Key::Backspace) => Some(String::from("\u{7f}")),
-        LogicalKey::Named(Key::Tab) => Some(String::from("\t")),
+        LogicalKey::Named(Key::Enter) => Some("\n"),
+        LogicalKey::Named(Key::Backspace) => Some("\u{7f}"),
+        LogicalKey::Named(Key::Tab) => Some("\t"),
         _ => None,
     }
+    .map(String::from)
 }
 
 #[cfg(test)]

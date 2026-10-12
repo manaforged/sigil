@@ -1,7 +1,7 @@
 use crate::reactive::{Signal, signal};
 use crate::style::{
-    AnimatorOverlay, ColorAtomKind, ComponentId, Dimension, MillisU16, NumericAtomKind, Rgba8,
-    StateSlot, StateStyle, StyleAtom, Theme, TransitionId, merge_warning_count_for_component,
+    AnimatorOverlay, ColorAtomKind, ComponentId, Dimension, NumericAtomKind, Rgba8, StateSlot,
+    StateStyle, StyleAtom, Theme, merge_warning_count_for_component,
 };
 
 use crate::animation_runtime::binding_animate_color::{
@@ -141,7 +141,10 @@ fn install_impl(
     component_id: ComponentId,
     theme: Option<&Theme>,
 ) -> AttachedAnimators {
-    let Some(id) = first_transition_id(atoms) else {
+    let Some(id) = atoms.iter().find_map(|atom| match *atom {
+        StyleAtom::Transition(id) => Some(id),
+        _ => None,
+    }) else {
         return AttachedAnimators::empty();
     };
     let Some(config) = crate::animation_runtime::registry::config(id) else {
@@ -151,35 +154,25 @@ fn install_impl(
     let config = apply_duration_override(config, atoms);
 
     let hover_atoms = state_style.hovered();
-    let mut entries = Vec::new();
-    for kind in ANIMATABLE_KINDS {
-        let base_value = find_numeric(*kind, atoms);
-        let hover_value = find_numeric(*kind, hover_atoms);
-        let (Some(base), Some(hover)) = (base_value, hover_value) else {
-            continue;
-        };
-        if (base - hover).abs() < f32::EPSILON {
-            continue;
-        }
-        entries.push(build_entry(*kind, base, config));
-    }
-
+    let entries = ANIMATABLE_KINDS
+        .iter()
+        .filter_map(|&kind| {
+            let base = find_numeric(kind, atoms)?;
+            let hover = find_numeric(kind, hover_atoms)?;
+            ((base - hover).abs() >= f32::EPSILON).then(|| build_entry(kind, base, config))
+        })
+        .collect();
     let theme_snapshot = theme.map(ThemeSnapshot::from_theme);
-    let mut color_entries = Vec::new();
-    if let Some(snapshot) = theme_snapshot.as_ref() {
-        for kind in [ColorAtomKind::Background, ColorAtomKind::Text] {
-            let base_value = find_color(kind, atoms, snapshot);
-            let hover_value = find_color(kind, hover_atoms, snapshot);
-            let (Some(base), Some(hover)) = (base_value, hover_value) else {
-                continue;
-            };
-            if base == hover {
-                continue;
-            }
-            color_entries.push(build_color_entry(kind, base, config));
-        }
-    }
-
+    let color_entries = theme_snapshot.as_ref().map_or_else(Vec::new, |snapshot| {
+        [ColorAtomKind::Background, ColorAtomKind::Text]
+            .into_iter()
+            .filter_map(|kind| {
+                let base = find_color(kind, atoms, snapshot)?;
+                let hover = find_color(kind, hover_atoms, snapshot)?;
+                (base != hover).then(|| build_color_entry(kind, base, config))
+            })
+            .collect()
+    });
     AttachedAnimators {
         entries,
         color_entries,
@@ -199,37 +192,23 @@ const ANIMATABLE_KINDS: &[NumericAtomKind] = &[
 ];
 
 fn build_entry(kind: NumericAtomKind, initial: f32, config: AnimationConfig) -> AttachedAnimator {
-    let bound = signal(initial);
-    let animator = Animator::new(bound, config);
+    let signal = signal(initial);
     AttachedAnimator {
         kind,
-        signal: bound,
-        animator,
+        signal,
+        animator: Animator::new(signal, config),
         last_target: initial,
     }
 }
 
-fn first_transition_id(atoms: &[StyleAtom]) -> Option<TransitionId> {
-    atoms.iter().find_map(|atom| match *atom {
-        StyleAtom::Transition(id) => Some(id),
-        _ => None,
-    })
-}
-
-fn first_transition_duration(atoms: &[StyleAtom]) -> Option<MillisU16> {
-    atoms.iter().find_map(|atom| match *atom {
-        StyleAtom::TransitionDuration(ms) => Some(ms),
-        _ => None,
-    })
-}
-
 fn apply_duration_override(config: AnimationConfig, atoms: &[StyleAtom]) -> AnimationConfig {
-    let Some(ms) = first_transition_duration(atoms) else {
-        return config;
-    };
-    match config {
-        AnimationConfig::Tween { easing, .. } => AnimationConfig::Tween { ms: ms.0, easing },
-        AnimationConfig::Spring { .. } => config,
+    let duration = atoms.iter().find_map(|atom| match *atom {
+        StyleAtom::TransitionDuration(ms) => Some(ms.0),
+        _ => None,
+    });
+    match (config, duration) {
+        (AnimationConfig::Tween { easing, .. }, Some(ms)) => AnimationConfig::Tween { ms, easing },
+        _ => config,
     }
 }
 
@@ -275,25 +254,25 @@ fn emit_registry_miss(component_id: ComponentId) {
 
 pub(super) mod miss_counter {
     use std::collections::HashMap;
-    use std::sync::{Mutex, OnceLock};
+    use std::sync::{Mutex, MutexGuard, OnceLock};
 
     use crate::style::ComponentId;
 
-    static PER_COMPONENT: OnceLock<Mutex<HashMap<ComponentId, usize>>> = OnceLock::new();
+    fn counts() -> Option<MutexGuard<'static, HashMap<ComponentId, usize>>> {
+        static PER_COMPONENT: OnceLock<Mutex<HashMap<ComponentId, usize>>> = OnceLock::new();
+        PER_COMPONENT.get_or_init(Mutex::default).lock().ok()
+    }
 
     #[cfg(test)]
     #[must_use]
     pub(crate) fn for_component(component_id: ComponentId) -> usize {
-        let map = PER_COMPONENT.get_or_init(|| Mutex::new(HashMap::new()));
-        let Ok(map) = map.lock() else {
-            return 0;
-        };
-        map.get(&component_id).copied().unwrap_or(0)
+        counts()
+            .and_then(|map| map.get(&component_id).copied())
+            .unwrap_or(0)
     }
 
     pub(super) fn bump(component_id: ComponentId) {
-        let map = PER_COMPONENT.get_or_init(|| Mutex::new(HashMap::new()));
-        if let Ok(mut map) = map.lock() {
+        if let Some(mut map) = counts() {
             *map.entry(component_id).or_insert(0) += 1;
         }
     }

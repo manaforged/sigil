@@ -26,31 +26,25 @@ pub(super) fn create_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroup
     })
 }
 
-const QUAD_ATTRS: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![0 => Float32x2];
-
-const INSTANCE_ATTRS: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![
-    1 => Float32x2,
-    2 => Float32x2,
-    3 => Float32x2,
-    4 => Float32x4,
-    5 => Uint32,
-    6 => Float32,
+const BUFFERS: [Option<wgpu::VertexBufferLayout<'_>>; 2] = [
+    Some(wgpu::VertexBufferLayout {
+        array_stride: 8,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &wgpu::vertex_attr_array![0 => Float32x2],
+    }),
+    Some(wgpu::VertexBufferLayout {
+        array_stride: 48,
+        step_mode: wgpu::VertexStepMode::Instance,
+        attributes: &wgpu::vertex_attr_array![
+            1 => Float32x2,
+            2 => Float32x2,
+            3 => Float32x2,
+            4 => Float32x4,
+            5 => Uint32,
+            6 => Float32,
+        ],
+    }),
 ];
-
-const fn vertex_buffers<'a>() -> [Option<wgpu::VertexBufferLayout<'a>>; 2] {
-    [
-        Some(wgpu::VertexBufferLayout {
-            array_stride: 8,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &QUAD_ATTRS,
-        }),
-        Some(wgpu::VertexBufferLayout {
-            array_stride: 48,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &INSTANCE_ATTRS,
-        }),
-    ]
-}
 
 pub(super) fn create_pipeline(
     device: &wgpu::Device,
@@ -69,7 +63,7 @@ pub(super) fn create_pipeline(
         vertex: wgpu::VertexState {
             module: &shader,
             entry_point: Some("vs_main"),
-            buffers: &vertex_buffers(),
+            buffers: &BUFFERS,
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
@@ -82,10 +76,7 @@ pub(super) fn create_pipeline(
             })],
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         }),
-        primitive: wgpu::PrimitiveState {
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            ..Default::default()
-        },
+        primitive: wgpu::PrimitiveState::default(),
         depth_stencil: None,
         multisample: wgpu::MultisampleState::default(),
         multiview_mask: None,

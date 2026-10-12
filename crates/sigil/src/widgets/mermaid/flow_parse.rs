@@ -1,17 +1,17 @@
 use super::flow::{Dir, Edge, Graph, Node, Shape};
 
-pub(super) const MAX_EDGES: usize = 1024;
-pub(super) const MAX_STATEMENT_EDGES: usize = 256;
+const MAX_EDGES: usize = 1024;
+const MAX_STATEMENT_EDGES: usize = 256;
 
-pub(super) struct Link {
-    pub(super) label: String,
-    pub(super) dashed: bool,
-    pub(super) arrow: bool,
+struct Link {
+    label: String,
+    dashed: bool,
+    arrow: bool,
 }
 
-pub(super) type Detail = Option<(Vec<String>, Shape)>;
+type Detail = Option<(Vec<String>, Shape)>;
 
-pub(super) enum Part {
+enum Part {
     Nodes(Vec<(String, Detail)>),
     Link(Link),
 }
@@ -29,19 +29,16 @@ pub(super) fn parse(source: &str) -> Option<Graph> {
         state,
     };
     for line in lines {
-        if let Some((id, label)) = alias(line, state) {
-            graph.node(&id, Some((vec![label], Shape::Box)));
-            continue;
+        if let Some((id, label)) = alias(line).filter(|_| state) {
+            graph.node(id, Some((vec![label.to_string()], Shape::Box)));
+        } else if !skipped(line) {
+            graph.statement(line);
         }
-        if skipped(line) {
-            continue;
-        }
-        graph.statement(line);
     }
     Some(graph)
 }
 
-pub(super) fn header(line: &str) -> Option<(bool, Dir)> {
+fn header(line: &str) -> Option<(bool, Dir)> {
     let mut words = line.split_whitespace();
     let kind = words.next()?;
     let dir = match words.next().map(|word| word.trim_end_matches(';')) {
@@ -57,7 +54,7 @@ pub(super) fn header(line: &str) -> Option<(bool, Dir)> {
     }
 }
 
-pub(super) fn skipped(line: &str) -> bool {
+fn skipped(line: &str) -> bool {
     let head = line.split_whitespace().next().unwrap_or("");
     line.starts_with('}')
         || matches!(
@@ -77,20 +74,13 @@ pub(super) fn skipped(line: &str) -> bool {
         )
 }
 
-pub(super) fn alias(line: &str, state: bool) -> Option<(String, String)> {
-    if !state {
-        return None;
-    }
-    let rest = line.strip_prefix("state ")?.trim();
-    let (label, id) = rest.split_once(" as ")?;
-    Some((
-        id.trim().to_string(),
-        label.trim().trim_matches('"').to_string(),
-    ))
+fn alias(line: &str) -> Option<(&str, &str)> {
+    let (label, id) = line.strip_prefix("state ")?.trim().split_once(" as ")?;
+    Some((id.trim(), label.trim().trim_matches('"')))
 }
 
 impl Graph {
-    pub(super) fn statement(&mut self, line: &str) {
+    fn statement(&mut self, line: &str) {
         let (line, colon) = match (self.state, line.split_once(':')) {
             (true, Some((head, tail))) => (head.trim(), Some(tail.trim().to_string())),
             _ => (line, None),
@@ -129,7 +119,7 @@ impl Graph {
         }
     }
 
-    pub(super) fn node_or_terminal(&mut self, id: &str, detail: Detail, first: bool) -> usize {
+    fn node_or_terminal(&mut self, id: &str, detail: Detail, first: bool) -> usize {
         if id == "[*]" {
             let (key, glyph) = if first {
                 ("[*]start", "●")
@@ -141,7 +131,7 @@ impl Graph {
         self.node(id, detail)
     }
 
-    pub(super) fn node(&mut self, id: &str, detail: Detail) -> usize {
+    fn node(&mut self, id: &str, detail: Detail) -> usize {
         let index = self
             .nodes
             .iter()
@@ -164,7 +154,7 @@ impl Graph {
     }
 }
 
-pub(super) fn tokens(line: &str) -> Vec<Part> {
+fn tokens(line: &str) -> Vec<Part> {
     let chars: Vec<char> = line.chars().collect();
     let mut at = 0;
     let mut parts = Vec::new();
@@ -198,7 +188,7 @@ pub(super) fn tokens(line: &str) -> Vec<Part> {
     parts
 }
 
-pub(super) fn link_starts(chars: &[char], at: usize) -> bool {
+fn link_starts(chars: &[char], at: usize) -> bool {
     let first = chars.get(at).copied().unwrap_or(' ');
     let second = chars.get(at.saturating_add(1)).copied().unwrap_or(' ');
     match first {
@@ -208,26 +198,24 @@ pub(super) fn link_starts(chars: &[char], at: usize) -> bool {
     }
 }
 
-pub(super) fn run(chars: &[char], at: usize, set: &str) -> (String, usize) {
-    let mut end = at;
-    let mut text = String::new();
-    while let Some(ch) = chars.get(end).copied().filter(|ch| set.contains(*ch)) {
-        text.push(ch);
-        end = end.saturating_add(1);
-    }
+fn scan(chars: &[char], at: usize, keep: impl Fn(char) -> bool) -> (String, usize) {
+    let text: String = chars
+        .iter()
+        .skip(at)
+        .copied()
+        .take_while(|ch| keep(*ch))
+        .collect();
+    let end = at.saturating_add(text.chars().count());
     (text, end)
 }
 
-pub(super) fn skip_spaces(chars: &[char], mut at: usize) -> usize {
-    while chars.get(at).is_some_and(|ch| ch.is_whitespace()) {
-        at = at.saturating_add(1);
-    }
-    at
+fn run(chars: &[char], at: usize, set: &str) -> (String, usize) {
+    scan(chars, at, |ch| set.contains(ch))
 }
 
-pub(super) fn link(chars: &[char], at: usize) -> (Link, usize) {
+fn link(chars: &[char], at: usize) -> (Link, usize) {
     let (head, after) = run(chars, at, "-=.<>xo");
-    let mut cursor = skip_spaces(chars, after);
+    let mut cursor = scan(chars, after, char::is_whitespace).1;
     let mut label = String::new();
     let mut tail = String::new();
     if !head.contains('>') && !head.contains('x') && !head.contains('o') {
@@ -238,11 +226,8 @@ pub(super) fn link(chars: &[char], at: usize) -> (Link, usize) {
             cursor = after_tail;
         }
     } else if chars.get(cursor) == Some(&'|') {
-        let mut end = cursor.saturating_add(1);
-        while let Some(ch) = chars.get(end).copied().filter(|ch| *ch != '|') {
-            label.push(ch);
-            end = end.saturating_add(1);
-        }
+        let (text, end) = scan(chars, cursor.saturating_add(1), |ch| ch != '|');
+        label = text;
         cursor = end.saturating_add(1);
     }
     let both = format!("{head}{tail}");
@@ -254,7 +239,7 @@ pub(super) fn link(chars: &[char], at: usize) -> (Link, usize) {
     (link, cursor)
 }
 
-pub(super) fn inline_label(chars: &[char], at: usize) -> Option<(String, usize)> {
+fn inline_label(chars: &[char], at: usize) -> Option<(String, usize)> {
     let mut end = at;
     let mut text = String::new();
     while end < chars.len() {
@@ -275,20 +260,11 @@ pub(super) fn inline_label(chars: &[char], at: usize) -> Option<(String, usize)>
     None
 }
 
-pub(super) fn node_token(chars: &[char], at: usize) -> ((String, Detail), usize) {
+fn node_token(chars: &[char], at: usize) -> ((String, Detail), usize) {
     if chars.get(at..at.saturating_add(3)) == Some(&['[', '*', ']']) {
         return (("[*]".to_string(), None), at.saturating_add(3));
     }
-    let mut end = at;
-    let mut id = String::new();
-    while let Some(ch) = chars
-        .get(end)
-        .copied()
-        .filter(|ch| ch.is_alphanumeric() || *ch == '_')
-    {
-        id.push(ch);
-        end = end.saturating_add(1);
-    }
+    let (id, end) = scan(chars, at, |ch| ch.is_alphanumeric() || ch == '_');
     if id.is_empty() {
         return ((id, None), at);
     }
@@ -305,7 +281,7 @@ pub(super) fn node_token(chars: &[char], at: usize) -> ((String, Detail), usize)
     ((id, detail), close)
 }
 
-pub(super) fn group_end(chars: &[char], start: usize) -> usize {
+fn group_end(chars: &[char], start: usize) -> usize {
     let mut depth = 0_usize;
     let mut end = start;
     let mut quoted = false;
@@ -333,28 +309,27 @@ pub(super) fn group_end(chars: &[char], start: usize) -> usize {
     end
 }
 
-pub(super) fn shape_of(raw: &str, open: char) -> Shape {
-    if raw.starts_with("((") {
-        Shape::Circle
-    } else if raw.starts_with("([") {
-        Shape::Stadium
-    } else if raw.starts_with("[[") {
-        Shape::Subroutine
-    } else if raw.starts_with("[(") {
-        Shape::Cylinder
-    } else if raw.starts_with("{{") {
-        Shape::Hexagon
-    } else {
-        match open {
-            '{' => Shape::Diamond,
-            '(' => Shape::Round,
-            '>' => Shape::Flag,
-            _ => Shape::Box,
-        }
-    }
+fn shape_of(raw: &str, open: char) -> Shape {
+    let paired = [
+        ("((", Shape::Circle),
+        ("([", Shape::Stadium),
+        ("[[", Shape::Subroutine),
+        ("[(", Shape::Cylinder),
+        ("{{", Shape::Hexagon),
+    ];
+    let single = match open {
+        '{' => Shape::Diamond,
+        '(' => Shape::Round,
+        '>' => Shape::Flag,
+        _ => Shape::Box,
+    };
+    paired
+        .into_iter()
+        .find_map(|(prefix, shape)| raw.starts_with(prefix).then_some(shape))
+        .unwrap_or(single)
 }
 
-pub(super) fn label_lines(raw: &str) -> Vec<String> {
+fn label_lines(raw: &str) -> Vec<String> {
     let inner = raw
         .trim_start_matches(['[', '(', '{', '>', '/', '\\'])
         .trim_end_matches([']', ')', '}', '/', '\\'])

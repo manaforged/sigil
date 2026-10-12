@@ -1,3 +1,10 @@
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "coverage bytes and target sizes are bounded; float-to-byte rounding is the rasterizer contract"
+)]
+
 use skrifa::instance::{LocationRef, NormalizedCoord, Size};
 use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::{FontRef, GlyphId, MetadataProvider};
@@ -6,7 +13,6 @@ use tiny_skia::{
 };
 
 use crate::geometry::Point;
-use crate::hal::RenderedGlyph;
 use crate::renderer::glyph_place::{coverage_curve, pen_shift, text_gamma};
 use crate::renderer::oblique::Oblique;
 use crate::renderer::scene_command::{GlyphRun, Transform};
@@ -76,7 +82,11 @@ pub(super) fn run_paths(run: &GlyphRun, transform: Transform, scale: f32) -> Vec
                 x: pen.x + shift.x,
                 y: pen.y + shift.y,
             };
-            let coords = coords(g);
+            let coords: Vec<NormalizedCoord> = g
+                .variation_coords
+                .iter()
+                .map(|&c| NormalizedCoord::from_bits(c))
+                .collect();
             let mut sheared = Oblique::new(&mut pen, g.skew);
             let settings = DrawSettings::unhinted(Size::new(g.size), LocationRef::new(&coords));
             if glyph.draw(settings, &mut sheared).is_err() {
@@ -88,12 +98,6 @@ pub(super) fn run_paths(run: &GlyphRun, transform: Transform, scale: f32) -> Vec
     paths
 }
 
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    reason = "coverage bytes and target sizes are bounded; float-to-byte rounding is the rasterizer contract"
-)]
 pub(super) fn fill_glyphs(
     target: &mut Pixmap,
     paths: &[Path],
@@ -120,12 +124,6 @@ pub(super) fn fill_glyphs(
     }
 }
 
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    reason = "coverage bytes and target sizes are bounded; float-to-byte rounding is the rasterizer contract"
-)]
 fn curved_mask(target: &Pixmap, path: &Path, gamma: f32, brush: &Brush<'_>) -> Option<Mask> {
     let mut mask = Mask::new(target.width(), target.height())?;
     mask.fill_path(path, FillRule::Winding, true, brush.transform);
@@ -141,11 +139,4 @@ fn curved_mask(target: &Pixmap, path: &Path, gamma: f32, brush: &Brush<'_>) -> O
         *value = ((u16::from(curved) * u16::from(limit) + 127) / 255) as u8;
     }
     Some(mask)
-}
-
-fn coords(g: &RenderedGlyph) -> Vec<NormalizedCoord> {
-    g.variation_coords
-        .iter()
-        .map(|&c| NormalizedCoord::from_bits(c))
-        .collect()
 }

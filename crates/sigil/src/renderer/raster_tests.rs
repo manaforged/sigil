@@ -18,15 +18,19 @@ fn mask(glyph_id: u32, physical_px: f32, bin: u8) -> Option<GlyphMask> {
     )
 }
 
-fn glyph_a(font: &FontRef<'_>) -> u32 {
-    font.charmap().map('A').unwrap().to_u32()
+fn gid(ch: char) -> u32 {
+    FontRef::new(FIRA)
+        .unwrap()
+        .charmap()
+        .map(ch)
+        .unwrap()
+        .to_u32()
 }
 
 #[test]
 fn small_glyph_has_ink_and_sane_dims() {
-    let font = FontRef::new(FIRA).unwrap();
-    let gid = glyph_a(&font);
-    let mask = mask(gid, 12.0, 0).unwrap();
+    let a = gid('A');
+    let mask = mask(a, 12.0, 0).unwrap();
     assert!(mask.width > 0 && mask.width <= 16, "width {}", mask.width);
     assert!(
         mask.height > 0 && mask.height <= 16,
@@ -44,9 +48,7 @@ fn small_glyph_has_ink_and_sane_dims() {
 
 #[test]
 fn mask_is_not_vertically_flipped() {
-    let font = FontRef::new(FIRA).unwrap();
-    let gid = font.charmap().map('L').unwrap().to_u32();
-    let mask = mask(gid, 16.0, 0).unwrap();
+    let mask = mask(gid('L'), 16.0, 0).unwrap();
     let w = mask.width as usize;
     let row_ink = |r: usize| -> u32 {
         mask.data[r * w..(r + 1) * w]
@@ -64,10 +66,9 @@ fn mask_is_not_vertically_flipped() {
 
 #[test]
 fn subpixel_bins_shift_coverage() {
-    let font = FontRef::new(FIRA).unwrap();
-    let gid = glyph_a(&font);
-    let bin0 = mask(gid, 12.0, 0).unwrap();
-    let bin2 = mask(gid, 12.0, 2).unwrap();
+    let a = gid('A');
+    let bin0 = mask(a, 12.0, 0).unwrap();
+    let bin2 = mask(a, 12.0, 2).unwrap();
     assert!(
         bin0.width != bin2.width || bin0.data != bin2.data,
         "bin 0 and bin 2 rendered identical masks"
@@ -76,10 +77,9 @@ fn subpixel_bins_shift_coverage() {
 
 #[test]
 fn physical_size_scales_mask() {
-    let font = FontRef::new(FIRA).unwrap();
-    let gid = glyph_a(&font);
-    let s100 = mask(gid, 12.0, 0).unwrap();
-    let s200 = mask(gid, 24.0, 0).unwrap();
+    let a = gid('A');
+    let s100 = mask(a, 12.0, 0).unwrap();
+    let s200 = mask(a, 24.0, 0).unwrap();
     let ratio = f64::from(s200.height) / f64::from(s100.height);
     assert!(
         (1.6..=2.4).contains(&ratio),
@@ -89,7 +89,5 @@ fn physical_size_scales_mask() {
 
 #[test]
 fn outline_less_glyph_returns_none() {
-    let font = FontRef::new(FIRA).unwrap();
-    let space = font.charmap().map(' ').unwrap().to_u32();
-    assert!(mask(space, 12.0, 0).is_none());
+    assert!(mask(gid(' '), 12.0, 0).is_none());
 }

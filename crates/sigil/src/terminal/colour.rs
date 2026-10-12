@@ -22,15 +22,10 @@ pub(crate) fn cube(colour: Rgba8) -> u8 {
 
 fn nearest_level(channel: u8) -> (u8, u8) {
     const LEVELS: [u8; 6] = [0, 95, 135, 175, 215, 255];
-    let mut best = (LEVELS[0], 0_u8);
-    let mut delta = channel.abs_diff(LEVELS[0]);
-    for (index, level) in (1_u8..).zip(LEVELS.into_iter().skip(1)) {
-        if channel.abs_diff(level) < delta {
-            best = (level, index);
-            delta = channel.abs_diff(level);
-        }
-    }
-    best
+    (0_u8..)
+        .zip(LEVELS)
+        .min_by_key(|(_, level)| channel.abs_diff(*level))
+        .map_or((0, 0), |(index, level)| (level, index))
 }
 
 fn distance(colour: Rgba8, red: u8, green: u8, blue: u8) -> u32 {

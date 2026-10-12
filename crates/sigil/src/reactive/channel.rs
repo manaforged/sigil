@@ -54,7 +54,10 @@ impl<T: Clone + 'static> EventChannel<T> {
             on_cleanup(move || remove_sub(&inner, id));
         }
         let inner = Rc::clone(&self.inner);
-        Subscription::new(move || remove_sub(&inner, id))
+        Subscription {
+            cleanup: Some(Box::new(move || remove_sub(&inner, id))),
+            _not_send: core::marker::PhantomData,
+        }
     }
 }
 
@@ -62,15 +65,6 @@ impl<T: Clone + 'static> EventChannel<T> {
 pub struct Subscription {
     cleanup: Option<Box<dyn FnOnce()>>,
     _not_send: core::marker::PhantomData<*const ()>,
-}
-
-impl Subscription {
-    fn new(cleanup: impl FnOnce() + 'static) -> Self {
-        Self {
-            cleanup: Some(Box::new(cleanup)),
-            _not_send: core::marker::PhantomData,
-        }
-    }
 }
 
 impl core::fmt::Debug for Subscription {

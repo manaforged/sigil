@@ -2,18 +2,10 @@ use super::{LogicalSize, Scale};
 use crate::geometry::{PhysicalSize, Point};
 
 #[test]
-fn scale_new_clamps_zero_to_one() {
-    assert_eq!(Scale::new(0.0), Scale::ONE);
-}
-
-#[test]
-fn scale_new_clamps_negative_to_one() {
-    assert_eq!(Scale::new(-1.0), Scale::ONE);
-}
-
-#[test]
-fn scale_new_clamps_nan_to_one() {
-    assert_eq!(Scale::new(f32::NAN), Scale::ONE);
+fn scale_new_clamps_invalid_to_one() {
+    for bad in [0.0, -1.0, f32::NAN] {
+        assert_eq!(Scale::new(bad), Scale::ONE);
+    }
 }
 
 #[test]

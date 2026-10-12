@@ -11,9 +11,9 @@ pub struct IntervalId(pub(crate) u64);
 #[track_caller]
 pub fn interval(period: Duration, callback: impl Fn() + 'static) -> IntervalId {
     let owner = Owner::current().expect("interval called outside a reactive scope");
-    let now = REGISTRY.with(|r| r.borrow().now());
     let id = REGISTRY.with(|r| {
         let mut reg = r.borrow_mut();
+        let now = reg.now();
         let id = reg.allocate_id();
         reg.slots.push((
             id,
@@ -52,13 +52,8 @@ pub(crate) fn tick_intervals() -> usize {
             fired += 1;
         }
         REGISTRY.with(|r| {
-            if let Some(slot) = r
-                .borrow_mut()
-                .slots
-                .iter_mut()
-                .find(|(slot_id, _)| *slot_id == id)
-            {
-                slot.1.next_fire = now + slot.1.period;
+            if let Some(slot) = r.borrow_mut().slot_mut(id) {
+                slot.next_fire = now + slot.period;
             }
         });
     }
@@ -78,17 +73,20 @@ pub fn next_interval_deadline() -> Option<Instant> {
 
 #[cfg(any(test, feature = "test-clock"))]
 pub fn __test_set_clock(clock: Instant) {
-    crate::reactive::interval_registry::test_set_clock(clock);
+    REGISTRY.with(|r| r.borrow_mut().test_clock = Some(clock));
 }
 
 #[cfg(any(test, feature = "test-clock"))]
 pub fn __test_advance_clock(delta: Duration) {
-    crate::reactive::interval_registry::test_advance_clock(delta);
+    REGISTRY.with(|r| {
+        let mut reg = r.borrow_mut();
+        reg.test_clock = Some(reg.now() + delta);
+    });
 }
 
 #[cfg(any(test, feature = "test-clock"))]
 pub fn __test_clear_clock() {
-    crate::reactive::interval_registry::test_clear_clock();
+    REGISTRY.with(|r| r.borrow_mut().test_clock = None);
 }
 
 #[cfg(test)]

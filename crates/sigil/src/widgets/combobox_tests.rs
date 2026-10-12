@@ -4,17 +4,17 @@ use super::*;
 use crate::kernel::Cx;
 use crate::reactive::Runtime;
 
-fn options() -> Vec<String> {
-    [
-        "Accounts",
-        "Account History",
-        "Profile",
-        "Proxy Group",
-        "Proxy Rules",
-    ]
-    .iter()
-    .map(ToString::to_string)
-    .collect()
+fn with_state(name: &'static str, test: impl FnOnce(Combobox)) {
+    Runtime::scope(name, || {
+        let options = [
+            "Accounts",
+            "Account History",
+            "Profile",
+            "Proxy Group",
+            "Proxy Rules",
+        ];
+        test(Combobox::new(options.map(String::from).to_vec()));
+    });
 }
 
 fn labels(matches: &[(usize, String)]) -> Vec<&str> {
@@ -23,8 +23,12 @@ fn labels(matches: &[(usize, String)]) -> Vec<&str> {
 
 #[test]
 fn filter_matches_case_insensitive_substring() {
-    Runtime::scope("combobox-filter", || {
-        let state = Combobox::new(options());
+    with_state("combobox-filter", |state| {
+        assert_eq!(
+            state.filtered().len(),
+            5,
+            "empty query matches every option"
+        );
         state.edit_query("aCC");
         assert_eq!(labels(&state.filtered()), ["Accounts", "Account History"]);
         state.edit_query("proxy");
@@ -33,17 +37,8 @@ fn filter_matches_case_insensitive_substring() {
 }
 
 #[test]
-fn empty_query_matches_every_option() {
-    Runtime::scope("combobox-filter-empty", || {
-        let state = Combobox::new(options());
-        assert_eq!(state.filtered().len(), 5);
-    });
-}
-
-#[test]
 fn editing_opens_popup_and_resets_cursor() {
-    Runtime::scope("combobox-edit-opens", || {
-        let state = Combobox::new(options());
+    with_state("combobox-edit-opens", |state| {
         state.move_cursor(2);
         state.close();
         state.edit_query("pro");
@@ -53,11 +48,12 @@ fn editing_opens_popup_and_resets_cursor() {
 }
 
 #[test]
-fn clearing_text_clears_selection() {
-    Runtime::scope("combobox-clear", || {
-        let state = Combobox::new(options());
+fn editing_text_keeps_selection_only_on_the_exact_label() {
+    with_state("combobox-clear", |state| {
         state.commit(2);
         assert_eq!(state.selected(), Some(2));
+        state.edit_query("Profile");
+        assert_eq!(state.selected(), Some(2), "retyping the label keeps it");
         state.edit_query("");
         assert_eq!(state.selected(), None, "empty text clears the selection");
         state.commit(2);
@@ -71,19 +67,8 @@ fn clearing_text_clears_selection() {
 }
 
 #[test]
-fn retyping_exact_label_keeps_selection() {
-    Runtime::scope("combobox-retype", || {
-        let state = Combobox::new(options());
-        state.commit(2);
-        state.edit_query("Profile");
-        assert_eq!(state.selected(), Some(2));
-    });
-}
-
-#[test]
 fn commit_writes_value_closes_and_shows_label() {
-    Runtime::scope("combobox-commit", || {
-        let state = Combobox::new(options());
+    with_state("combobox-commit", |state| {
         state.edit_query("prox");
         state.commit(3);
         assert_eq!(state.selected(), Some(3));
@@ -95,8 +80,7 @@ fn commit_writes_value_closes_and_shows_label() {
 
 #[test]
 fn cursor_move_clamps_to_filtered_bounds() {
-    Runtime::scope("combobox-cursor-clamp", || {
-        let state = Combobox::new(options());
+    with_state("combobox-cursor-clamp", |state| {
         state.edit_query("proxy");
         for _ in 0..10 {
             state.move_cursor(1);
@@ -110,9 +94,12 @@ fn cursor_move_clamps_to_filtered_bounds() {
 }
 
 #[test]
-fn commit_cursor_commits_highlighted_row() {
-    Runtime::scope("combobox-commit-cursor", || {
-        let state = Combobox::new(options());
+fn commit_cursor_commits_highlighted_row_or_nothing() {
+    with_state("combobox-commit-cursor", |state| {
+        state.edit_query("zzz");
+        assert!(!state.commit_cursor());
+        assert_eq!(state.selected(), None);
+        assert!(state.is_open(), "failed commit leaves the popup open");
         state.edit_query("proxy");
         state.move_cursor(1);
         assert!(state.commit_cursor());
@@ -121,20 +108,8 @@ fn commit_cursor_commits_highlighted_row() {
 }
 
 #[test]
-fn commit_cursor_with_no_matches_is_noop() {
-    Runtime::scope("combobox-commit-empty", || {
-        let state = Combobox::new(options());
-        state.edit_query("zzz");
-        assert!(!state.commit_cursor());
-        assert_eq!(state.selected(), None);
-        assert!(state.is_open(), "failed commit leaves the popup open");
-    });
-}
-
-#[test]
 fn open_places_cursor_on_selected_row() {
-    Runtime::scope("combobox-open-cursor", || {
-        let state = Combobox::new(options());
+    with_state("combobox-open-cursor", |state| {
         state.commit(1);
         state.open();
         let under_cursor = state.filtered().get(state.cursor()).map(|(i, _)| *i);
@@ -148,8 +123,7 @@ fn open_places_cursor_on_selected_row() {
 
 #[test]
 fn widget_shows_popup_only_when_open_with_matches() {
-    Runtime::scope("combobox-build", || {
-        let state = Combobox::new(options());
+    with_state("combobox-build", |state| {
         let mut cx = Cx::new_root();
         let root = cx.add(combobox(state));
         cx.flush_reactive_children();

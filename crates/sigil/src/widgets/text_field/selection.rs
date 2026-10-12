@@ -9,6 +9,7 @@ use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom, TextStyle, Token};
 
 use crate::widgets::interaction::InteractionState;
 
+use super::super::text_edit::overlay_rect;
 use super::handlers::TextFieldRuntime;
 
 const CARET_W: f32 = 2.0;
@@ -37,7 +38,15 @@ pub(super) fn text_region(
                 .overflow_y(Overflow::Hidden),
         )
         .child(track(runtime.clone(), interaction, displayed));
-    attach_pointer(region, runtime, interaction)
+    let moved = runtime.clone();
+    region
+        .pointer_down(move |event| pointer_down(event, &runtime))
+        .pointer_move(move |event| pointer_move(event, &moved))
+        .pointer_up(move |event| {
+            if event.is_captured() {
+                let _ = interaction.release_pointer(event);
+            }
+        })
 }
 
 fn track(
@@ -54,8 +63,11 @@ fn track(
         .hittable(false)
         .layout(LayoutStyle::block())
         .position_reactive(track_pos)
-        .child(selection_layer(runtime.clone()))
-        .child(caret_layer(runtime, interaction))
+        .child({
+            let runtime = runtime.clone();
+            overlay_layer().children_reactive(move || selection_rects(&runtime))
+        })
+        .child(overlay_layer().children_reactive(move || caret_rects(&runtime, interaction)))
         .child(field_text(displayed, placeholder_visible))
 }
 
@@ -86,14 +98,6 @@ fn field_text(displayed: Signal<String>, placeholder_visible: Signal<bool>) -> T
         })
 }
 
-fn selection_layer(runtime: TextFieldRuntime) -> NodeBuilder {
-    overlay_layer().children_reactive(move || selection_rects(&runtime))
-}
-
-fn caret_layer(runtime: TextFieldRuntime, interaction: InteractionState) -> NodeBuilder {
-    overlay_layer().children_reactive(move || caret_rects(&runtime, interaction))
-}
-
 fn overlay_layer() -> NodeBuilder {
     container().hittable(false).layout(
         LayoutStyle::block()
@@ -109,26 +113,16 @@ fn selection_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
     let Some(anchor) = runtime.input.selection.get() else {
         return Vec::new();
     };
-    let (lo, hi) = if anchor <= caret {
-        (anchor, caret)
-    } else {
-        (caret, anchor)
-    };
-    let (layout, lo, hi) = runtime.layout_span(&value, lo, hi);
+    let (layout, lo, hi) = runtime.layout_span(&value, anchor.min(caret), anchor.max(caret));
     let style = runtime.input.text_style.get();
-    let geom = with_text_geometry(|engine| {
-        let start = engine.caret(&layout, &style, None, downstream(lo));
-        let end = engine.caret(&layout, &style, None, downstream(hi));
-        (start.x, end.x, start.top, start.height)
+    let span = with_text_geometry(|engine| {
+        let at = |byte| engine.caret(&layout, &style, None, downstream(byte));
+        (at(lo), at(hi))
     });
-    let Some((x0, x1, top, height)) = geom else {
+    let Some((start, end)) = span.filter(|(start, end)| end.x > start.x) else {
         return Vec::new();
     };
-    let width = x1 - x0;
-    if width <= 0.0 {
-        return Vec::new();
-    }
-    vec![rect(x0, top, width, height).class(SELECTION_ATOMS)]
+    vec![overlay_rect(start.x, start.top, end.x - start.x, start.height).class(SELECTION_ATOMS)]
 }
 
 fn caret_rects(runtime: &TextFieldRuntime, interaction: InteractionState) -> Vec<NodeBuilder> {
@@ -141,25 +135,11 @@ fn caret_rects(runtime: &TextFieldRuntime, interaction: InteractionState) -> Vec
         .composing_caret(&runtime.input.value.get(), runtime.input.caret.get());
     let (layout, caret, _) = runtime.layout_span(&composed, cursor, cursor);
     let style = runtime.input.text_style.get();
-    let geom = with_text_geometry(|engine| {
-        let pos = engine.caret(&layout, &style, None, downstream(caret));
-        (pos.x, pos.top, pos.height)
-    });
-    let Some((x, top, height)) = geom else {
+    let pos = with_text_geometry(|engine| engine.caret(&layout, &style, None, downstream(caret)));
+    let Some(pos) = pos else {
         return Vec::new();
     };
-    vec![rect(x, top, CARET_W, height).class(CARET_ATOMS)]
-}
-
-fn rect(x: f32, top: f32, width: f32, height: f32) -> NodeBuilder {
-    container().hittable(false).layout(
-        LayoutStyle::block()
-            .position(Position::Absolute)
-            .inset_left(x)
-            .inset_top(top)
-            .width(width)
-            .height(height),
-    )
+    vec![overlay_rect(pos.x, pos.top, CARET_W, pos.height).class(CARET_ATOMS)]
 }
 
 const fn downstream(byte: usize) -> HitPosition {
@@ -169,64 +149,45 @@ const fn downstream(byte: usize) -> HitPosition {
     }
 }
 
-fn attach_pointer(
-    node: NodeBuilder,
-    runtime: TextFieldRuntime,
-    interaction: InteractionState,
-) -> NodeBuilder {
-    let down = runtime.clone();
-    let moved = runtime;
-    node.pointer_down(move |event| pointer_down(event, &down))
-        .pointer_move(move |event| pointer_move(event, &moved))
-        .pointer_up(move |event| pointer_up(event, interaction))
-}
-
 fn pointer_down(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
-    if runtime.disabled() {
+    if runtime.input.disabled() {
         return;
     }
     let byte = runtime.hit(event.position.x);
-    let mut state = runtime.edit_mut();
+    let mut state = runtime.input.edit_mut();
     state.place_caret(byte);
     runtime.input.commit(&state);
-    drop(state);
     event.capture_pointer();
 }
 
 fn pointer_move(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
-    if !event.is_captured() || runtime.disabled() {
+    if !event.is_captured() || runtime.input.disabled() {
         return;
     }
     let byte = runtime.hit(event.position.x);
-    let mut state = runtime.edit_mut();
+    let mut state = runtime.input.edit_mut();
     state.extend_to(byte);
     runtime.input.commit(&state);
-    drop(state);
     event.stop_propagation();
-}
-
-fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
-    if event.is_captured() {
-        let _ = interaction.release_pointer(event);
-    }
 }
 
 impl TextFieldRuntime {
     fn hit(&self, x: f32) -> usize {
         let value = self.input.value.peek();
-        let text_x = x + self.input.scroll_x.peek();
+        let point = Point::new(x + self.input.scroll_x.peek(), 0.0);
         let style = self.input.text_style.peek();
         let hiding = super::mask::hiding_peek(self.password, self.reveal);
-        if hiding {
-            let layout = super::mask::mask_chars(&value);
-            let mask_byte = with_text_geometry(|engine| {
-                engine.hit(&layout, &style, None, Point::new(text_x, 0.0))
-            })
-            .map_or(0, |hit| hit.byte_index);
-            super::mask::unmask_byte(&value, mask_byte)
+        let layout = if hiding {
+            std::borrow::Cow::Owned(super::mask::mask_chars(&value))
         } else {
-            with_text_geometry(|engine| engine.hit(&value, &style, None, Point::new(text_x, 0.0)))
-                .map_or(0, |hit| hit.byte_index)
+            std::borrow::Cow::Borrowed(value.as_str())
+        };
+        let byte = with_text_geometry(|engine| engine.hit(&layout, &style, None, point))
+            .map_or(0, |hit| hit.byte_index);
+        if hiding {
+            super::mask::unmask_byte(&value, byte)
+        } else {
+            byte
         }
     }
 

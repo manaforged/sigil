@@ -4,24 +4,14 @@ use crate::style::{
     unknown_class_warning_count,
 };
 
+const SURFACE: StyleAtom = StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Surface));
+const ACCENT: StyleAtom = StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent));
+
 #[test]
 fn merge_last_wins() {
-    let merged = merge_classes(
-        &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-            Token::Surface,
-        ))],
-        &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-            Token::Accent,
-        ))],
-        1,
-    );
+    let merged = merge_classes(&[SURFACE], &[ACCENT], 1);
 
-    assert_eq!(
-        merged.as_slice(),
-        &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-            Token::Accent
-        ))]
-    );
+    assert_eq!(merged.as_slice(), &[ACCENT]);
 }
 
 #[test]
@@ -47,15 +37,7 @@ fn merge_padding_axis_override_keeps_other_sides() {
 fn merge_warns_once() {
     let component_id = 77;
     for _ in 0..1_000 {
-        let _merged = merge_classes(
-            &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Surface,
-            ))],
-            &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Accent,
-            ))],
-            component_id,
-        );
+        let _merged = merge_classes(&[SURFACE], &[ACCENT], component_id);
     }
 
     assert_eq!(merge_warning_count_for_component(component_id), 1);
@@ -76,7 +58,7 @@ fn merge_is_alloc_free_below_32() {
     let overrides = [
         StyleAtom::Width(Dimension::Full),
         StyleAtom::Height(Dimension::Auto),
-        StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
+        ACCENT,
         StyleAtom::TextThemeRef(ColorKey::Token(Token::OnAccent)),
     ];
 

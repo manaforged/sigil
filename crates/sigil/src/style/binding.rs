@@ -15,6 +15,7 @@ pub type ReactiveStateSlot = Rc<Cell<StateSlot>>;
 
 pub type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>;
 
+#[derive(Default)]
 pub struct StyleBinding {
     static_atoms: &'static [StyleAtom],
     dynamic_atoms: SmallVec<[StyleAtom; 16]>,
@@ -43,22 +44,6 @@ impl core::fmt::Debug for StyleBinding {
             .field("widget_channels", &self.widget_channels)
             .field("user_slots", &self.user_slots)
             .finish()
-    }
-}
-
-impl Default for StyleBinding {
-    fn default() -> Self {
-        Self {
-            static_atoms: &[],
-            dynamic_atoms: SmallVec::new(),
-            reactive_channels: SmallVec::new(),
-            attached_animators: OnceCell::new(),
-            state_overlay: None,
-            animated_values: SmallVec::new(),
-            state_overlay_slot: None,
-            widget_channels: None,
-            user_slots: SlotSet::EMPTY,
-        }
     }
 }
 
@@ -242,11 +227,7 @@ impl StyleBinding {
         let Some(overlay) = self.state_overlay.as_deref() else {
             return &[];
         };
-        let slot = self
-            .state_overlay_slot
-            .as_ref()
-            .map_or(StateSlot::Rest, |cell| cell.get());
-        overlay.atoms_for(slot)
+        overlay.atoms_for(self.interaction_slot())
     }
 
     pub fn set_state_overlay(&mut self, overlay: StyleOverlay, slot: ReactiveStateSlot) {

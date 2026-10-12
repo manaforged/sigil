@@ -7,16 +7,10 @@ use crate::terminal::graphics::Protocol;
 const TIMEOUT: Duration = Duration::from_secs(1);
 
 pub(super) fn ask(ask: Questions, backdrop: bool) -> Option<Answers> {
-    use std::io::{IsTerminal, Write};
-    let stdin = std::io::stdin();
-    if !stdin.is_terminal() || !std::io::stdout().is_terminal() || typing(&stdin)? {
-        return None;
-    }
-    let mut out = std::io::stdout().lock();
-    out.write_all(queries(ask, backdrop).as_bytes()).ok()?;
-    out.flush().ok()?;
-    drop(out);
-    let reply = read_reply(&stdin)?;
+    let reply = exchange(
+        |out| std::io::Write::write_all(out, queries(ask, backdrop).as_bytes()),
+        |_| false,
+    )?;
     Some(parse(&reply))
 }
 
@@ -24,9 +18,9 @@ pub(crate) fn exchange(
     query: impl FnOnce(&mut std::io::StdoutLock<'_>) -> std::io::Result<()>,
     done: impl Fn(&str) -> bool,
 ) -> Option<String> {
-    use std::io::{IsTerminal, Write};
+    use std::io::Write;
     let stdin = std::io::stdin();
-    if !stdin.is_terminal() || !std::io::stdout().is_terminal() || typing(&stdin)? {
+    if !terminal() || typing(&stdin)? {
         return None;
     }
     let mut out = std::io::stdout().lock();
@@ -34,18 +28,18 @@ pub(crate) fn exchange(
     out.write_all(b"\x1b[c").ok()?;
     out.flush().ok()?;
     drop(out);
-    let mut reply = Vec::new();
-    let finished = |text: &str| done(text) || da1(text).is_some();
-    collect(&stdin, &mut reply, Instant::now() + TIMEOUT, finished).then_some(())?;
-    Some(String::from_utf8_lossy(&reply).into_owned())
+    read_reply(&stdin, done)
 }
 
 pub(super) fn keys() -> Option<bool> {
+    terminal()
+        .then(crossterm::terminal::supports_keyboard_enhancement)?
+        .ok()
+}
+
+fn terminal() -> bool {
     use std::io::IsTerminal;
-    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
-        return None;
-    }
-    crossterm::terminal::supports_keyboard_enhancement().ok()
+    std::io::stdin().is_terminal() && std::io::stdout().is_terminal()
 }
 
 fn typing(stdin: &impl AsFd) -> Option<bool> {
@@ -72,43 +66,27 @@ fn queries(ask: Questions, backdrop: bool) -> String {
     if backdrop {
         text.push_str("\x1b]11;?\x1b\\");
     }
-    text.push_str("\x1b[c");
     text
 }
 
-fn read_reply(input: &impl AsFd) -> Option<String> {
+fn read_reply(input: &impl AsFd, done: impl Fn(&str) -> bool) -> Option<String> {
+    let deadline = Instant::now() + TIMEOUT;
     let mut reply = Vec::new();
-    if !collect(input, &mut reply, Instant::now() + TIMEOUT, |text| {
-        da1(text).is_some()
-    }) {
-        return None;
-    }
-    Some(String::from_utf8_lossy(&reply).into_owned())
-}
-
-fn collect(
-    input: &impl AsFd,
-    reply: &mut Vec<u8>,
-    deadline: Instant,
-    done: impl Fn(&str) -> bool,
-) -> bool {
     let mut chunk = [0_u8; 256];
-    while !done(&String::from_utf8_lossy(reply)) {
-        let Some(left) = deadline.checked_duration_since(Instant::now()) else {
-            return false;
-        };
-        if ready(input, left) != Some(true) {
-            return false;
+    loop {
+        {
+            let text = String::from_utf8_lossy(&reply);
+            if done(&text) || da1(&text).is_some() {
+                return Some(text.into_owned());
+            }
         }
-        let Ok(read) = rustix::io::read(input, &mut chunk) else {
-            return false;
-        };
-        let Some(bytes) = chunk.get(..read).filter(|bytes| !bytes.is_empty()) else {
-            return false;
-        };
-        reply.extend_from_slice(bytes);
+        let left = deadline.checked_duration_since(Instant::now())?;
+        if ready(input, left) != Some(true) {
+            return None;
+        }
+        let read = rustix::io::read(input, &mut chunk).ok()?;
+        reply.extend_from_slice(chunk.get(..read).filter(|bytes| !bytes.is_empty())?);
     }
-    true
 }
 
 fn ready(input: &impl AsFd, wait: Duration) -> Option<bool> {

@@ -105,7 +105,6 @@ pub(crate) fn cursor(
     let Some((col, row)) = at else {
         return queue!(out, cursor::Hide);
     };
-    let clip = |value: usize| u16::try_from(value).unwrap_or(u16::MAX);
     if !caret {
         return queue!(out, cursor::Hide, cursor::MoveTo(clip(col), clip(row)));
     }
@@ -197,22 +196,14 @@ impl Pen {
     }
 
     fn rest(&mut self, out: &mut impl Write) -> io::Result<()> {
-        if self
-            .style
-            .as_ref()
-            .is_some_and(|style| *style != Style::plain())
-        {
-            if self
-                .style
-                .as_ref()
-                .is_some_and(|style| style.link.is_some())
-            {
-                queue!(out, Print(CLOSE_LINK))?;
-            }
-            queue!(out, SetAttribute(Attribute::Reset))?;
-            self.style = Some(Style::plain());
+        let Some(style) = self.style.take_if(|style| *style != Style::plain()) else {
+            return Ok(());
+        };
+        if style.link.is_some() {
+            queue!(out, Print(CLOSE_LINK))?;
         }
-        Ok(())
+        self.style = Some(Style::plain());
+        queue!(out, SetAttribute(Attribute::Reset))
     }
 }
 
@@ -269,7 +260,6 @@ fn cells(
     pen: &mut Pen,
     caps: &Caps,
 ) -> io::Result<()> {
-    let clip = |value: usize| u16::try_from(value).unwrap_or(u16::MAX);
     queue!(out, cursor::MoveTo(clip(start), clip(row)))?;
     let fill = if tail {
         filled(row_cells, (start, end), caps)
@@ -333,11 +323,7 @@ fn switch(out: &mut impl Write, prev: Option<&Style>, next: &Style) -> io::Resul
     if prev.italic != next.italic {
         queue!(
             out,
-            SetAttribute(if next.italic {
-                Attribute::Italic
-            } else {
-                Attribute::NoItalic
-            })
+            SetAttribute(flag(next.italic, Attribute::Italic, Attribute::NoItalic))
         )?;
     }
     if prev.fg != next.fg {
@@ -353,11 +339,11 @@ fn lines(out: &mut impl Write, prev: &Style, next: &Style) -> io::Result<()> {
     if prev.strike != next.strike {
         queue!(
             out,
-            SetAttribute(if next.strike {
-                Attribute::CrossedOut
-            } else {
+            SetAttribute(flag(
+                next.strike,
+                Attribute::CrossedOut,
                 Attribute::NotCrossedOut
-            })
+            ))
         )?;
     }
     if prev.underline != next.underline {
@@ -383,6 +369,14 @@ fn lines(out: &mut impl Write, prev: &Style, next: &Style) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+const fn flag(on: bool, set: Attribute, unset: Attribute) -> Attribute {
+    if on { set } else { unset }
+}
+
+fn clip(value: usize) -> u16 {
+    u16::try_from(value).unwrap_or(u16::MAX)
 }
 
 fn terminal_inks(cell: &Cell) -> (Ink, Ink) {

@@ -15,4 +15,5 @@ pub(in crate::widgets) use handlers::{
     history_keys, move_caret, noop_change, submit_text, word_keys,
 };
 pub(in crate::widgets) use ime::attach_ime_handlers;
+pub(in crate::widgets) use render::overlay_rect;
 pub(crate) use render::splice_preedit;

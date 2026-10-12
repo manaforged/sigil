@@ -3,28 +3,18 @@ use unicode_bidi::BidiInfo;
 
 #[must_use]
 pub fn paragraph_levels(input: &str) -> SmallVec<[u8; 64]> {
-    if input.is_empty() {
-        return SmallVec::new();
-    }
-
     if is_latin_only(input) {
-        let mut out = SmallVec::new();
-        out.resize(input.len(), 0u8);
-        return out;
+        return SmallVec::from_elem(0, input.len());
     }
+    level_numbers(&BidiInfo::new(input, None).levels)
+}
 
-    let info = BidiInfo::new(input, None);
-    let mut out = SmallVec::with_capacity(info.levels.len());
-    out.extend(info.levels.iter().map(unicode_bidi::Level::number));
-    out
+fn level_numbers(levels: &[unicode_bidi::Level]) -> SmallVec<[u8; 64]> {
+    levels.iter().map(unicode_bidi::Level::number).collect()
 }
 
 fn is_latin_only(input: &str) -> bool {
-    input.chars().all(is_latin_or_neutral)
-}
-
-const fn is_latin_or_neutral(c: char) -> bool {
-    matches!(c as u32, 0x0000..=0x024F)
+    input.chars().all(|c| c <= '\u{024F}')
 }
 
 #[must_use]
@@ -54,7 +44,7 @@ pub struct ParagraphBidi<'a> {
 impl<'a> ParagraphBidi<'a> {
     #[must_use]
     pub fn new(text: &'a str) -> Self {
-        if text.is_empty() || is_latin_only(text) {
+        if is_latin_only(text) {
             return Self { text, info: None };
         }
         Self {
@@ -90,14 +80,10 @@ impl<'a> ParagraphBidi<'a> {
 
     #[must_use]
     pub fn levels(&self) -> SmallVec<[u8; 64]> {
-        let Some(info) = &self.info else {
-            let mut out = SmallVec::new();
-            out.resize(self.text.len(), 0u8);
-            return out;
-        };
-        let mut out = SmallVec::with_capacity(info.levels.len());
-        out.extend(info.levels.iter().map(unicode_bidi::Level::number));
-        out
+        self.info.as_ref().map_or_else(
+            || SmallVec::from_elem(0, self.text.len()),
+            |info| level_numbers(&info.levels),
+        )
     }
 
     #[must_use]
@@ -107,15 +93,11 @@ impl<'a> ParagraphBidi<'a> {
         line_end: usize,
         segment_ends: &[u32],
     ) -> SmallVec<[usize; 16]> {
-        if segment_ends.len() <= 1 {
-            return (0..segment_ends.len()).collect();
-        }
-        let Some(info) = &self.info else {
+        let Some(info) = self.info.as_ref().filter(|info| {
+            segment_ends.len() > 1 && line_start < line_end && line_end <= info.levels.len()
+        }) else {
             return (0..segment_ends.len()).collect();
         };
-        if line_end <= line_start || line_end > info.levels.len() {
-            return (0..segment_ends.len()).collect();
-        }
         let line_levels = info.reordered_levels(line_start..line_end);
         let levels: Vec<u8> = segment_ends
             .iter()

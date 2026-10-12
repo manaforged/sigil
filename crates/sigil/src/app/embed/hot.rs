@@ -74,18 +74,14 @@ fn on_patch(
     })
 }
 
-fn connect_devserver() {
-    static CONNECT: Once = Once::new();
-    CONNECT.call_once(dioxus_devtools::connect_subsecond);
-}
-
 impl Host {
     pub fn mount_hot<F, N>(&mut self, root: F)
     where
         F: Fn() -> N + 'static,
         N: IntoNode,
     {
-        connect_devserver();
+        static CONNECT: Once = Once::new();
+        CONNECT.call_once(dioxus_devtools::connect_subsecond);
         let mut hot = HotRoot::new(root, self.cx.root_owner());
         self.replace_root(|cx| hot.install(cx));
         self.hot = Some(hot);

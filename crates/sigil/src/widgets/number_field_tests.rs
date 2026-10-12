@@ -21,21 +21,15 @@ fn parse_and_clamp_float() {
 }
 
 #[test]
-fn number_field_builds_and_writes_clamped_value() {
-    Runtime::scope("number-field-build", || {
-        let value = signal(50i32);
-        let _builder = number_field(value, 0..=100);
-        assert_eq!(value.peek(), 50);
-    });
-}
-
-#[test]
-fn external_set_resyncs_display_after_clamp() {
+fn building_leaves_the_value_signal_alone() {
     Runtime::scope("number-field-resync", || {
-        let value = signal(150i32);
-        let _builder = number_field(value, 0..=100);
+        let inside = signal(50i32);
+        let _inside = number_field(inside, 0..=100);
+        assert_eq!(inside.peek(), 50);
+        let outside = signal(150i32);
+        let _outside = number_field(outside, 0..=100);
         assert_eq!(
-            value.peek(),
+            outside.peek(),
             150,
             "value signal itself is not mutated by display sync"
         );

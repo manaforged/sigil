@@ -5,37 +5,23 @@ use crate::profile::store;
 
 pub struct Span {
     phase: Phase,
-    start_us: Option<u64>,
-    start: Option<Instant>,
+    start: Option<(u64, Instant)>,
 }
 
 impl Span {
     pub(crate) fn new(phase: Phase) -> Self {
-        if store::enabled() {
-            Self {
-                phase,
-                start_us: Some(store::now_us()),
-                start: Some(Instant::now()),
-            }
-        } else {
-            Self {
-                phase,
-                start_us: None,
-                start: None,
-            }
+        Self {
+            phase,
+            start: store::enabled().then(|| (store::now_us(), Instant::now())),
         }
     }
 }
 
 impl Drop for Span {
     fn drop(&mut self) {
-        let (Some(start_us), Some(start)) = (self.start_us.take(), self.start.take()) else {
-            return;
-        };
-        store::complete(
-            self.phase,
-            start_us,
-            u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX),
-        );
+        if let Some((start_us, start)) = self.start.take() {
+            let elapsed = u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX);
+            store::complete(self.phase, start_us, elapsed);
+        }
     }
 }

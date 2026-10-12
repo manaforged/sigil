@@ -172,47 +172,32 @@ impl<Row> TableColumn<Row> {
     pub const fn is_numeric(&self) -> bool {
         self.numeric
     }
-}
 
-#[derive(Clone, Copy)]
-pub(super) struct CellSpec {
-    pub policy: ColWidth,
-    pub override_px: Option<f32>,
-    pub height: f32,
-    pub clip: bool,
-    pub min_px: f32,
-    pub align: ColAlign,
-    pub pad_x: f32,
-}
-
-pub(super) fn flex_cell(spec: CellSpec) -> LayoutStyle {
-    let CellSpec {
-        policy,
-        override_px,
-        height,
-        clip,
-        min_px,
-        align,
-        pad_x,
-    } = spec;
-    let mut style = LayoutStyle::flex_row().align_items(AlignItems::Center);
-    if align == ColAlign::End {
-        style = style.justify_content(JustifyContent::End);
-    }
-    if clip {
-        style = style.padding_x(pad_x).overflow_x(Overflow::Hidden);
-    }
-    let floor = min_px.max(0.0);
-    if let Some(px) = override_px {
-        return style.fixed_size(px.max(floor), height).shrink(0.0);
-    }
-    match policy {
-        ColWidth::Fixed(px) => style.fixed_size(px.max(0.0), height).shrink(0.0),
-        ColWidth::Fraction(fraction) => style
-            .height(height)
-            .flex_basis(Dimension::Px(0.0))
-            .grow(fraction.max(0.0))
-            .min_size(floor, height)
-            .shrink(1.0),
+    pub(super) fn cell_layout(
+        &self,
+        override_px: Option<f32>,
+        height: f32,
+        body_pad_x: Option<f32>,
+    ) -> LayoutStyle {
+        let mut style = LayoutStyle::flex_row().align_items(AlignItems::Center);
+        if let Some(pad_x) = body_pad_x {
+            if self.align == ColAlign::End {
+                style = style.justify_content(JustifyContent::End);
+            }
+            style = style.padding_x(pad_x).overflow_x(Overflow::Hidden);
+        }
+        let floor = self.min_width.max(0.0);
+        if let Some(px) = override_px {
+            return style.fixed_size(px.max(floor), height).shrink(0.0);
+        }
+        match self.width {
+            ColWidth::Fixed(px) => style.fixed_size(px.max(0.0), height).shrink(0.0),
+            ColWidth::Fraction(fraction) => style
+                .height(height)
+                .flex_basis(Dimension::Px(0.0))
+                .grow(fraction.max(0.0))
+                .min_size(floor, height)
+                .shrink(1.0),
+        }
     }
 }

@@ -27,11 +27,11 @@ mod private {
     impl Sealed for usize {}
 }
 
-macro_rules! impl_numeric_int {
-    ($t:ty) => {
+macro_rules! impl_numeric {
+    ($keep:expr => $($t:ty),+) => {$(
         impl NumericKind for $t {
             fn parse(input: &str, locale: &Locale) -> Option<Self> {
-                locale.normalize_number(input)?.parse::<Self>().ok()
+                locale.normalize_number(input)?.parse::<Self>().ok().filter($keep)
             }
             fn render(self, locale: &Locale) -> String {
                 locale.localize_number(&self.to_string())
@@ -40,35 +40,11 @@ macro_rules! impl_numeric_int {
                 self.clamp(*range.start(), *range.end())
             }
         }
-    };
+    )+};
 }
 
-impl_numeric_int!(i32);
-impl_numeric_int!(i64);
-impl_numeric_int!(usize);
-
-macro_rules! impl_numeric_float {
-    ($t:ty) => {
-        impl NumericKind for $t {
-            fn parse(input: &str, locale: &Locale) -> Option<Self> {
-                locale
-                    .normalize_number(input)?
-                    .parse::<Self>()
-                    .ok()
-                    .filter(|v| v.is_finite())
-            }
-            fn render(self, locale: &Locale) -> String {
-                locale.localize_number(&self.to_string())
-            }
-            fn clamp_to(self, range: &RangeInclusive<Self>) -> Self {
-                self.clamp(*range.start(), *range.end())
-            }
-        }
-    };
-}
-
-impl_numeric_float!(f32);
-impl_numeric_float!(f64);
+impl_numeric!(|_: &Self| true => i32, i64, usize);
+impl_numeric!(|v: &Self| v.is_finite() => f32, f64);
 
 pub struct NumberFieldBuilder<T: NumericKind> {
     inner: TextFieldBuilder,
@@ -92,11 +68,14 @@ impl<T: NumericKind> NumberFieldBuilder<T> {
     }
 
     pub fn text_field(self) -> TextFieldBuilder {
-        let buffer = self.buffer;
-        let range = self.range;
-        let invalid = self.invalid;
-        let theme = self.theme;
-        self.inner.invalid_when(derived(move || {
+        let Self {
+            inner,
+            buffer,
+            range,
+            invalid,
+            theme,
+        } = self;
+        inner.invalid_when(derived(move || {
             invalid.is_some_and(|flag| flag.get())
                 || !in_range(&buffer.get(), &range, &theme.locale())
         }))
@@ -124,13 +103,12 @@ pub fn number_field<T: NumericKind>(
     let buffer = signal(value.peek().render(&theme.locale()));
     let range = Rc::new(range);
 
-    let buf_for_value = buffer;
     let range_for_value = Rc::clone(&range);
     effect(move || {
         let clamped = value.get().clamp_to(&range_for_value);
         let rendered = clamped.render(&theme.locale());
-        if buf_for_value.peek().as_str() != rendered {
-            buf_for_value.set(rendered);
+        if buffer.peek().as_str() != rendered {
+            buffer.set(rendered);
         }
     });
 

@@ -63,12 +63,9 @@ pub(super) struct Surface<'a> {
 }
 
 pub(super) fn surface(grid: &mut Grid, surface: &Surface<'_>, cell: f32) {
+    let area = (surface.origin, surface.size, surface.rect);
     if let Some(glyph) = hairline(surface.rect, cell) {
-        grid.rule(
-            (surface.origin, surface.size, surface.rect),
-            glyph,
-            surface.ink,
-        );
+        grid.rule(area, glyph, surface.ink);
         return;
     }
     let opaque = match surface.ink {
@@ -77,11 +74,7 @@ pub(super) fn surface(grid: &mut Grid, surface: &Surface<'_>, cell: f32) {
         Ink::Bare => false,
     };
     if !opaque || !surface.halves {
-        grid.fill(
-            (surface.origin, surface.size, surface.rect),
-            surface.ink,
-            surface.theme,
-        );
+        grid.fill(area, surface.ink, surface.theme);
         return;
     }
     let visible = surface.visible;
@@ -116,21 +109,12 @@ fn halves(grid: &mut Grid, surface: &Surface<'_>, rows: &Split, cols: &Split) {
     ];
     for (span, glyph) in halves {
         if let Some(((col, width), (row, height))) = span {
-            grid.half(
+            grid.rule(
                 ((col, row), (width, height), surface.rect),
                 glyph,
                 surface.ink,
             );
         }
-    }
-}
-
-impl Grid {
-    fn half(&mut self, area: super::Area, glyph: &str, ink: Ink) {
-        self.each(area, |cell| {
-            cell.text = glyph.into();
-            cell.fg = ink;
-        });
     }
 }
 
@@ -237,21 +221,20 @@ fn clip_cells(
     clip: Rect,
     cell: f32,
 ) -> (std::ops::Range<usize>, std::ops::Range<usize>) {
-    let start_x = cell_edge(clip.origin.x / cell);
-    let start_y = cell_edge(clip.origin.y / cell);
-    let end_x = span(
-        start_x,
-        (clip.origin.x + clip.width) / cell,
-        clip.width,
-        grid.cols(),
-    );
-    let end_y = span(
-        start_y,
-        (clip.origin.y + clip.height) / cell,
-        clip.height,
-        grid.rows(),
-    );
-    (start_x..end_x, start_y..end_y)
+    let range = |start: f32, extent: f32, limit: usize| {
+        let first = cell_edge(start / cell);
+        let end = cell_edge((start + extent) / cell);
+        let end = if extent > 0.0 {
+            end.max(first + 1)
+        } else {
+            end
+        };
+        first..end.min(limit)
+    };
+    (
+        range(clip.origin.x, clip.width, grid.cols()),
+        range(clip.origin.y, clip.height, grid.rows()),
+    )
 }
 
 fn sides(border: &CellBorder, top: usize, bottom: usize) -> ([bool; 4], bool) {
@@ -336,16 +319,6 @@ impl Grid {
             .and_then(|index| self.edges.get(index))
             .is_some_and(Option::is_some)
     }
-}
-
-fn span(start: usize, edge: f32, extent: f32, limit: usize) -> usize {
-    let end = cell_edge(edge);
-    let end = if extent > 0.0 {
-        end.max(start + 1)
-    } else {
-        end
-    };
-    end.min(limit)
 }
 
 type Glyphs = [&'static str; 6];

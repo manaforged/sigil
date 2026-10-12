@@ -32,7 +32,6 @@ impl<E: StyledTextEngine> TextMeasure for TextEngineMeasure<E> {
             Dim::Fixed(w) => Some(w),
             Dim::MinContent | Dim::MaxContent => None,
         };
-
         let para = match self.engine.layout_paragraph_styled(&text, max_width, style) {
             Ok(para) => para,
             Err(err) => {
@@ -40,12 +39,10 @@ impl<E: StyledTextEngine> TextMeasure for TextEngineMeasure<E> {
                 return LogicalSize::default();
             }
         };
-
         let width = match space.width {
             Dim::Fixed(_) | Dim::MaxContent => para.width(),
             Dim::MinContent => para.min_content_width(),
         };
-
         LogicalSize::new(width, para.height())
     }
 

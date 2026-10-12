@@ -15,42 +15,11 @@ pub fn blocks_window(
     cols: usize,
     rows: usize,
 ) -> Vec<Vec<(Rgba8, Rgba8)>> {
-    let width = source.width() as usize;
-    let full = source.height() as usize;
-    let top = (window.0 as usize).min(full);
-    let height = (window.1 as usize).clamp(1, full.saturating_sub(top).max(1));
-    if cols == 0 || rows == 0 || width == 0 || full == 0 {
-        return Vec::new();
-    }
-    let rgba = source.rgba();
-    let pixel = |x: usize, y: usize| {
-        let line = top.saturating_add(y).min(full.saturating_sub(1));
-        let at = (line * width + x.min(width - 1)) * 4;
-        let [r, g, b, a] = rgba
-            .get(at..at + 4)
-            .and_then(|px| <[u8; 4]>::try_from(px).ok())
-            .unwrap_or_default();
-        let alpha = u32::from(a);
-        let over = |channel: u8| u8::try_from(u32::from(channel) * alpha / 255).unwrap_or(u8::MAX);
-        Rgba8 {
-            r: over(r),
-            g: over(g),
-            b: over(b),
-            a: 255,
-        }
-    };
-    (0..rows)
-        .map(|row| {
-            (0..cols)
-                .map(|col| {
-                    let x = col * width / cols;
-                    let upper = row * 2 * height / (rows * 2);
-                    let lower = (row * 2 + 1) * height / (rows * 2);
-                    (pixel(x, upper), pixel(x, lower))
-                })
-                .collect()
-        })
-        .collect()
+    cells(source, window, (cols, rows), |sample, col, row| {
+        let x = col * sample.width / cols;
+        let y = |half: usize| (row * 2 + half) * sample.height / (rows * 2);
+        (sample.pixel(x, y(0)), sample.pixel(x, y(1)))
+    })
 }
 
 #[must_use]
@@ -65,50 +34,74 @@ pub fn sextants_window(
     cols: usize,
     rows: usize,
 ) -> Vec<Vec<(char, Rgba8, Rgba8)>> {
-    let width = source.width() as usize;
-    let full = source.height() as usize;
-    let top = (window.0 as usize).min(full);
-    let height = (window.1 as usize).clamp(1, full.saturating_sub(top).max(1));
-    if cols == 0 || rows == 0 || width == 0 || full == 0 {
+    cells(source, window, (cols, rows), |sample, col, row| {
+        cell_glyph(std::array::from_fn(|index| {
+            let x = (col * 2 + index % 2) * sample.width / (cols * 2);
+            let y = (row * 3 + index / 2) * sample.height / (rows * 3);
+            sample.pixel(x, y)
+        }))
+    })
+}
+
+fn cells<T>(
+    source: &ImageSource,
+    window: (u32, u32),
+    (cols, rows): (usize, usize),
+    at: impl Fn(&Sample<'_>, usize, usize) -> T,
+) -> Vec<Vec<T>> {
+    let sample = Sample::new(source, window);
+    if cols == 0 || rows == 0 || sample.width == 0 || sample.full == 0 {
         return Vec::new();
     }
-    let rgba = source.rgba();
-    let pixel = |x: usize, y: usize| {
-        let line = top.saturating_add(y).min(full.saturating_sub(1));
-        let at = (line * width + x.min(width - 1)) * 4;
-        let [r, g, b, a] = rgba
+    (0..rows)
+        .map(|row| (0..cols).map(|col| at(&sample, col, row)).collect())
+        .collect()
+}
+
+pub(super) struct Sample<'a> {
+    rgba: &'a [u8],
+    pub(super) width: usize,
+    full: usize,
+    top: usize,
+    pub(super) height: usize,
+}
+
+impl<'a> Sample<'a> {
+    pub(super) fn new(source: &'a ImageSource, window: (u32, u32)) -> Self {
+        let full = source.height() as usize;
+        let top = (window.0 as usize).min(full);
+        Self {
+            rgba: source.rgba(),
+            width: source.width() as usize,
+            full,
+            top,
+            height: (window.1 as usize).clamp(1, full.saturating_sub(top).max(1)),
+        }
+    }
+
+    pub(super) fn texel(&self, x: usize, y: usize) -> [u8; 4] {
+        let line = self.top.saturating_add(y).min(self.full.saturating_sub(1));
+        let at = (line * self.width + x.min(self.width.saturating_sub(1))) * 4;
+        self.rgba
             .get(at..at + 4)
             .and_then(|px| <[u8; 4]>::try_from(px).ok())
-            .unwrap_or_default();
-        let alpha = u32::from(a);
-        let over = |channel: u8| u8::try_from(u32::from(channel) * alpha / 255).unwrap_or(u8::MAX);
-        Rgba8 {
-            r: over(r),
-            g: over(g),
-            b: over(b),
-            a: 255,
-        }
-    };
-    (0..rows)
-        .map(|row| {
-            (0..cols)
-                .map(|col| {
-                    let mut px = [Rgba8 {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 255,
-                    }; 6];
-                    for (index, slot) in px.iter_mut().enumerate() {
-                        let x = (col * 2 + index % 2) * width / (cols * 2);
-                        let y = (row * 3 + index / 2) * height / (rows * 3);
-                        *slot = pixel(x, y);
-                    }
-                    cell_glyph(px)
-                })
-                .collect()
-        })
-        .collect()
+            .unwrap_or_default()
+    }
+
+    fn pixel(&self, x: usize, y: usize) -> Rgba8 {
+        premultiplied(self.texel(x, y))
+    }
+}
+
+pub(super) fn premultiplied([r, g, b, a]: [u8; 4]) -> Rgba8 {
+    let alpha = u32::from(a);
+    let over = |channel: u8| u8::try_from(u32::from(channel) * alpha / 255).unwrap_or(u8::MAX);
+    Rgba8 {
+        r: over(r),
+        g: over(g),
+        b: over(b),
+        a: 255,
+    }
 }
 
 fn cell_glyph(px: [Rgba8; 6]) -> (char, Rgba8, Rgba8) {
@@ -203,9 +196,7 @@ fn chunk(out: &mut Vec<u8>, kind: [u8; 4], data: &[u8]) {
     out.extend_from_slice(&u32::try_from(data.len()).unwrap_or(u32::MAX).to_be_bytes());
     out.extend_from_slice(&kind);
     out.extend_from_slice(data);
-    let mut crc = crc32(0, &kind);
-    crc = crc32(crc, data);
-    out.extend_from_slice(&crc.to_be_bytes());
+    out.extend_from_slice(&crc32(crc32(0, &kind), data).to_be_bytes());
 }
 
 fn zlib_stored(data: &[u8]) -> Vec<u8> {
@@ -259,10 +250,9 @@ const fn crc_table() -> [u32; 256] {
 }
 
 fn crc32(start: u32, data: &[u8]) -> u32 {
-    let table = &CRC_TABLE;
     let mut crc = !start;
     for byte in data {
-        let entry = table
+        let entry = CRC_TABLE
             .get(((crc ^ u32::from(*byte)) & 0xff) as usize)
             .copied()
             .unwrap_or_default();

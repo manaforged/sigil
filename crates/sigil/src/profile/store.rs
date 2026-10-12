@@ -103,6 +103,14 @@ impl Store {
     fn now_us(&self) -> u64 {
         u64::try_from(self.origin.elapsed().as_micros()).unwrap_or(u64::MAX)
     }
+
+    fn push(&mut self, event: Event) {
+        if self.events.len() >= MAX_EVENTS {
+            self.events.pop_front();
+            self.dropped_events += 1;
+        }
+        self.events.push_back(event);
+    }
 }
 
 pub(crate) fn enabled() -> bool {
@@ -116,15 +124,11 @@ pub(crate) fn enabled() -> bool {
         ENV_ON => true,
         ENV_OFF => false,
         _ => {
-            let on = env_flag();
+            let on = dump_path().is_some();
             ENV.store(if on { ENV_ON } else { ENV_OFF }, Ordering::Relaxed);
             on
         }
     }
-}
-
-fn env_flag() -> bool {
-    env::var("SIGIL_PROFILE").is_ok_and(|value| !value.is_empty() && value != "0")
 }
 
 pub(crate) fn enable() {
@@ -146,25 +150,25 @@ pub(crate) fn reset() {
 
 pub(crate) fn dump_path() -> Option<PathBuf> {
     let value = env::var("SIGIL_PROFILE").ok()?;
-    if value.is_empty() || value == "0" {
-        return None;
+    match value.as_str() {
+        "" | "0" => None,
+        "1" => Some(PathBuf::from("sigil-profile.json")),
+        _ => Some(PathBuf::from(value)),
     }
-    if value == "1" {
-        return Some(PathBuf::from("sigil-profile.json"));
-    }
-    Some(PathBuf::from(value))
 }
 
 pub(crate) fn now_us() -> u64 {
     STORE.with(|cell| cell.borrow().now_us())
 }
 
-pub(crate) fn begin_frame(backend: BackendStatus) {
-    if !enabled() {
-        return;
+fn with_store(f: impl FnOnce(&mut Store)) {
+    if enabled() {
+        STORE.with(|cell| f(&mut cell.borrow_mut()));
     }
-    STORE.with(|cell| {
-        let mut store = cell.borrow_mut();
+}
+
+pub(crate) fn begin_frame(backend: BackendStatus) {
+    with_store(|store| {
         store.open_start = Some(Instant::now());
         store.open.cause = Cause::Idle;
         store.open.backend = Some(backend);
@@ -172,137 +176,84 @@ pub(crate) fn begin_frame(backend: BackendStatus) {
 }
 
 pub(crate) fn complete(phase: Phase, start_us: u64, dur_ns: u64) {
-    if !enabled() {
-        return;
-    }
-    STORE.with(|cell| {
-        let mut store = cell.borrow_mut();
-        let micros = (dur_ns / 1_000).max(1);
-        push_event(
-            &mut store,
-            Event::Complete {
-                phase,
-                tid: 1,
-                start_us,
-                dur_us: micros,
-            },
-        );
+    with_store(|store| {
+        store.push(Event::Complete {
+            phase,
+            tid: 1,
+            start_us,
+            dur_us: (dur_ns / 1_000).max(1),
+        });
         accumulate(&mut store.open.phases, phase, dur_ns);
     });
 }
 
 pub(crate) fn count_add(counter: Counter, n: u64) {
-    if !enabled() {
-        return;
-    }
-    STORE.with(|cell| {
-        accumulate(&mut cell.borrow_mut().open.counts, counter, n);
-    });
+    with_store(|store| accumulate(&mut store.open.counts, counter, n));
 }
 
 pub(crate) fn gauge(counter: Counter, value: u64) {
-    if !enabled() {
-        return;
-    }
-    STORE.with(|cell| {
-        let mut store = cell.borrow_mut();
-        if let Some((_, previous)) = store
-            .open
-            .counts
-            .iter_mut()
-            .find(|(key, _)| *key == counter)
-        {
-            *previous = value;
-        } else {
-            store.open.counts.push((counter, value));
+    with_store(|store| {
+        let counts = &mut store.open.counts;
+        match counts.iter_mut().find(|(key, _)| *key == counter) {
+            Some((_, previous)) => *previous = value,
+            None => counts.push((counter, value)),
         }
     });
 }
 
 pub(crate) fn with_open(f: impl FnOnce(&mut Frame)) {
-    if !enabled() {
-        return;
-    }
-    STORE.with(|cell| f(&mut cell.borrow_mut().open));
+    with_store(|store| f(&mut store.open));
 }
 
 pub(crate) fn interact(cause: Cause) {
-    if !enabled() {
-        return;
-    }
-    STORE.with(|cell| {
-        let mut store = cell.borrow_mut();
-        let ts = store.now_us();
+    with_store(|store| {
+        let ts_us = store.now_us();
         if cause.rank() >= store.open.cause.rank() {
             store.open.cause = cause;
         }
         let name = cause.name();
-        push_event(
-            &mut store,
-            Event::Instant {
-                name,
-                cat: "input",
-                ts_us: ts,
-            },
-        );
+        store.push(Event::Instant {
+            name,
+            cat: "input",
+            ts_us,
+        });
         if store.open_flow.is_none() {
             let id = store.next_flow;
             store.next_flow = store.next_flow.saturating_add(1);
-            store.open_flow = Some((name, id, ts));
-            push_event(
-                &mut store,
-                Event::FlowStart {
-                    name,
-                    id,
-                    ts_us: ts,
-                },
-            );
+            store.open_flow = Some((name, id, ts_us));
+            store.push(Event::FlowStart { name, id, ts_us });
         }
     });
 }
 
 pub(crate) fn tick_frame() {
-    if !enabled() {
-        return;
-    }
-    STORE.with(|cell| close_open_inner(&mut cell.borrow_mut(), true));
+    with_store(close_frame);
 }
 
 pub(crate) fn close_open() {
-    if !enabled() {
-        return;
-    }
-    STORE.with(|cell| {
-        let mut store = cell.borrow_mut();
-        if store.open.phases.is_empty() && store.open.counts.is_empty() {
-            return;
+    with_store(|store| {
+        if !store.open.phases.is_empty() || !store.open.counts.is_empty() {
+            close_frame(store);
         }
-        close_open_inner(&mut store, true);
     });
 }
 
-fn close_open_inner(store: &mut Store, warn: bool) {
+fn close_frame(store: &mut Store) {
     let end_us = store.now_us();
     if let Some((name, id, _)) = store.open_flow.take() {
-        push_event(
-            store,
-            Event::FlowFinish {
-                name,
-                id,
-                ts_us: end_us,
-            },
-        );
+        store.push(Event::FlowFinish {
+            name,
+            id,
+            ts_us: end_us,
+        });
     }
     let mut frame = std::mem::take(&mut store.open);
     for &(counter, value) in &frame.counts {
-        push_event(
-            store,
-            Event::Counter {
-                counter,
-                ts_us: end_us,
-                value,
-            },
-        );
+        store.push(Event::Counter {
+            counter,
+            ts_us: end_us,
+            value,
+        });
     }
     frame.index = store.next_index;
     frame.end_us = end_us;
@@ -310,29 +261,26 @@ fn close_open_inner(store: &mut Store, warn: bool) {
         u64::try_from(start.elapsed().as_nanos()).unwrap_or(0)
     });
     store.next_index = store.next_index.saturating_add(1);
-    if warn {
-        warn_slow(&frame);
-    }
+    warn_slow(&frame);
     if store.frames.len() >= MAX_FRAMES {
         store.frames.pop_front();
     }
     store.frames.push_back(frame);
 }
 
+#[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
 fn warn_slow(frame: &Frame) {
-    if frame.total_ns() <= FRAME_BUDGET_NS || frame.cause == Cause::Idle {
-        return;
-    }
-    if WARNS.load(Ordering::Relaxed) >= WARN_CAP {
+    if frame.total_ns() <= FRAME_BUDGET_NS
+        || frame.cause == Cause::Idle
+        || WARNS.load(Ordering::Relaxed) >= WARN_CAP
+    {
         return;
     }
     WARNS.fetch_add(1, Ordering::Relaxed);
-    #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
     let ms = frame.total_ns() as f64 / 1_000_000.0;
     let (hot, peak) = frame
         .hottest()
         .map_or(("", 0), |(phase, ns)| (phase.name(), ns));
-    #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
     let peak_ms = peak as f64 / 1_000_000.0;
     eprintln!(
         "sigil-profile: frame {} {} {ms:.1}ms {hot}={peak_ms:.1} cmds={}",
@@ -340,14 +288,6 @@ fn warn_slow(frame: &Frame) {
         frame.cause,
         frame.counter(Counter::SceneCmds)
     );
-}
-
-fn push_event(store: &mut Store, event: Event) {
-    if store.events.len() >= MAX_EVENTS {
-        store.events.pop_front();
-        store.dropped_events += 1;
-    }
-    store.events.push_back(event);
 }
 
 pub(crate) fn frames() -> Vec<Frame> {

@@ -2,7 +2,7 @@ use super::canvas::{Canvas, LEFT, UP};
 use super::flow::{Dir, Edge, Graph, Node, Rect, Shape};
 use super::flow_route::{Pen, between, entry, exit, route, span};
 
-pub(super) fn around(canvas: &mut Canvas, edge: &Edge, ends: (Rect, Rect), dir: Dir, lane: usize) {
+fn around(canvas: &mut Canvas, edge: &Edge, ends: (Rect, Rect), dir: Dir, lane: usize) {
     let (from, to) = ends;
     let pen = Pen {
         dir,
@@ -51,7 +51,7 @@ pub(super) const fn side(rect: Rect, dir: Dir) -> (usize, usize) {
     }
 }
 
-pub(super) fn through(canvas: &mut Canvas, rect: Rect, dir: Dir, dashed: bool) {
+fn through(canvas: &mut Canvas, rect: Rect, dir: Dir, dashed: bool) {
     let pen = Pen { dir, dashed };
     let (glyph, _) = pen.glyphs();
     if dir.vertical() {
@@ -71,7 +71,7 @@ pub(super) fn through(canvas: &mut Canvas, rect: Rect, dir: Dir, dashed: bool) {
     }
 }
 
-pub(super) fn shape(canvas: &mut Canvas, node: &Node, rect: Rect) {
+fn shape(canvas: &mut Canvas, node: &Node, rect: Rect) {
     let round = matches!(
         node.shape,
         Shape::Round | Shape::Stadium | Shape::Cylinder | Shape::Circle | Shape::Terminal
@@ -130,7 +130,7 @@ impl Graph {
         canvas.lines()
     }
 
-    pub(super) fn sizes(&self, rects: &[Rect]) -> (usize, usize, usize, Vec<Option<usize>>) {
+    fn sizes(&self, rects: &[Rect]) -> (usize, usize, usize, Vec<Option<usize>>) {
         let margin = self
             .edges
             .iter()
@@ -138,30 +138,12 @@ impl Graph {
             .max()
             .unwrap_or(0)
             .saturating_add(2);
-        let cols = rects
-            .iter()
-            .map(|rect| rect.x.saturating_add(rect.w))
-            .max()
-            .unwrap_or(0)
-            .saturating_add(margin);
-        let rows = rects
-            .iter()
-            .map(|rect| rect.y.saturating_add(rect.h))
-            .max()
-            .unwrap_or(0)
-            .saturating_add(1);
+        let far = |end: fn(&Rect) -> usize| rects.iter().map(end).max().unwrap_or(0);
+        let right = far(|rect| rect.x.saturating_add(rect.w));
+        let bottom = far(|rect| rect.y.saturating_add(rect.h));
+        let (cols, rows) = (right.saturating_add(margin), bottom.saturating_add(1));
         let lanes = self.lanes(rects);
-        let extent = rects
-            .iter()
-            .map(|rect| {
-                if self.dir.vertical() {
-                    rect.x.saturating_add(rect.w)
-                } else {
-                    rect.y.saturating_add(rect.h)
-                }
-            })
-            .max()
-            .unwrap_or(0);
+        let extent = if self.dir.vertical() { right } else { bottom };
         let back = match lanes.iter().flatten().count() {
             0 => 0,
             count => count.saturating_mul(2).saturating_add(2),
@@ -174,7 +156,7 @@ impl Graph {
         (cols, rows, extent, lanes)
     }
 
-    pub(super) fn lanes(&self, rects: &[Rect]) -> Vec<Option<usize>> {
+    fn lanes(&self, rects: &[Rect]) -> Vec<Option<usize>> {
         let mut next = 0_usize;
         let pen = Pen {
             dir: self.dir,

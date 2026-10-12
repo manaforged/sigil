@@ -4,7 +4,7 @@ use crate::events::{
     ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase, ShellEvent,
 };
 use crate::geometry::Point;
-use crossterm::event::{KeyModifiers, MouseButton as TermButton, MouseEvent, MouseEventKind};
+use crossterm::event::{MouseButton as TermButton, MouseEvent, MouseEventKind};
 
 const NOTCH: f32 = 3.0;
 
@@ -32,7 +32,10 @@ impl MouseTracking {
 
 #[must_use]
 pub fn cell_point(col: u16, row: u16) -> Point {
-    let cell = crate::Host::CELL;
+    centre(col, row, crate::Host::CELL)
+}
+
+fn centre(col: u16, row: u16, cell: f32) -> Point {
     Point::new((f32::from(col) + 0.5) * cell, (f32::from(row) + 0.5) * cell)
 }
 
@@ -69,14 +72,10 @@ pub fn wheel(col: u16, row: u16, lines: f32) -> ShellEvent {
 
 #[must_use]
 pub fn map_mouse(event: &MouseEvent, cell: f32, last: &mut Point) -> Option<ShellEvent> {
-    let at = Point::new(
-        (f32::from(event.column) + 0.5) * cell,
-        (f32::from(event.row) + 0.5) * cell,
-    );
+    let at = centre(event.column, event.row, cell);
     let delta = Point::new(at.x - last.x, at.y - last.y);
     *last = at;
-    let modifiers = modifiers(event.modifiers);
-
+    let modifiers = crate::terminal::keys::held(event.modifiers);
     let (phase, button) = match event.kind {
         MouseEventKind::Down(button) => (PointerPhase::Down, Some(button)),
         MouseEventKind::Up(button) => (PointerPhase::Up, Some(button)),
@@ -87,7 +86,6 @@ pub fn map_mouse(event: &MouseEvent, cell: f32, last: &mut Point) -> Option<Shel
         MouseEventKind::ScrollLeft => return Some(scroll(at, NOTCH, 0.0, modifiers)),
         MouseEventKind::ScrollRight => return Some(scroll(at, -NOTCH, 0.0, modifiers)),
     };
-
     let button = button.map(press);
     let held = match phase {
         PointerPhase::Up => MouseButtons::empty(),
@@ -121,10 +119,6 @@ const fn press(button: TermButton) -> MouseButton {
     }
 }
 
-#[cfg(test)]
-#[path = "mouse_tests.rs"]
-mod tests;
-
 const fn bit(button: MouseButton) -> MouseButtons {
     match button {
         MouseButton::Left => MouseButtons::LEFT,
@@ -136,16 +130,6 @@ const fn bit(button: MouseButton) -> MouseButtons {
     }
 }
 
-fn modifiers(from: KeyModifiers) -> ModifiersState {
-    let mut state = ModifiersState::empty();
-    if from.contains(KeyModifiers::SHIFT) {
-        state |= ModifiersState::SHIFT;
-    }
-    if from.contains(KeyModifiers::CONTROL) {
-        state |= ModifiersState::CONTROL;
-    }
-    if from.contains(KeyModifiers::ALT) {
-        state |= ModifiersState::ALT;
-    }
-    state
-}
+#[cfg(test)]
+#[path = "mouse_tests.rs"]
+mod tests;

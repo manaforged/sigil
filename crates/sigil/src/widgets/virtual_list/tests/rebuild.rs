@@ -83,17 +83,8 @@ fn scrolling_rebuilds_rows_at_most_once_per_block() {
 
 #[test]
 fn scrolled_rows_land_at_their_document_position() {
-    use crate::geometry::{LogicalSize, Size};
-    use crate::kernel::TextContent;
+    use crate::geometry::Size;
     use crate::layout::LayoutBuilderExt;
-    use crate::layout::{LayoutEngine, TextMeasure};
-
-    struct StubMeasure;
-    impl TextMeasure for StubMeasure {
-        fn measure(&self, _content: &TextContent, _space: Size) -> LogicalSize {
-            LogicalSize::new(0.0, 0.0)
-        }
-    }
 
     Runtime::scope("sigil-virtual-list-scrolled-position", || {
         let items = signal((0..1_000u32).collect::<Vec<_>>());
@@ -115,7 +106,7 @@ fn scrolled_rows_land_at_their_document_position() {
             .viewport_height(1_000.0)
             .viewport_width(800.0),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = engine();
         let size = Size::fixed(800.0, 1_000.0);
         layout.compute(&mut cx, root, size).expect("layout");
         for frame in 1..=30_u32 {
@@ -139,7 +130,7 @@ fn scrolled_rows_land_at_their_document_position() {
 #[test]
 fn measured_rows_release_collapsed_height_and_reexpand() {
     use crate::geometry::Size;
-    use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+    use crate::layout::{LayoutBuilderExt, LayoutStyle};
 
     Runtime::scope("measured-collapse", || {
         let items = signal(vec![24_u32, 24, 24]);
@@ -158,7 +149,7 @@ fn measured_rows_release_collapsed_height_and_reexpand() {
             .viewport_height(200.0)
             .content_height_bind(extent),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroMeasure));
+        let mut layout = engine();
         for (heights, expected) in [
             (vec![24, 24, 24], 72.0),
             (vec![24, 0, 0], 24.0),
@@ -180,23 +171,10 @@ fn measured_rows_release_collapsed_height_and_reexpand() {
     });
 }
 
-struct ZeroMeasure;
-
-impl crate::layout::TextMeasure for ZeroMeasure {
-    fn measure(
-        &self,
-        _content: &crate::kernel::TextContent,
-        _space: crate::geometry::Size,
-    ) -> crate::geometry::LogicalSize {
-        crate::geometry::LogicalSize::new(0.0, 0.0)
-    }
-}
-
 #[test]
 fn small_scroll_steps_rebuild_the_window_rarely_and_keep_rows_mounted() {
     use crate::geometry::Size;
     use crate::layout::LayoutBuilderExt;
-    use crate::layout::LayoutEngine;
     use std::cell::Cell;
 
     Runtime::scope("sigil-virtual-list-hysteresis", || {
@@ -218,7 +196,7 @@ fn small_scroll_steps_rebuild_the_window_rarely_and_keep_rows_mounted() {
             .viewport_height(480.0)
             .viewport_width(800.0),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroMeasure));
+        let mut layout = engine();
         let size = Size::fixed(800.0, 480.0);
         layout.compute(&mut cx, root, size).expect("layout");
         let mut rebuilds = 0;

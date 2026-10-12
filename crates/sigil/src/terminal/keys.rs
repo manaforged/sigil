@@ -11,14 +11,17 @@ pub(crate) const PASTE_GAP: std::time::Duration = std::time::Duration::from_mill
 
 #[must_use]
 pub fn key_down(key: impl Into<LogicalKey>) -> ShellEvent {
-    let key = key.into();
+    pressed_key(key.into(), None)
+}
+
+fn pressed_key(key: LogicalKey, text: Option<SmolStr>) -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {
         key,
         physical: PhysicalKey::Unidentified,
         modifiers: ModifiersState::empty(),
         repeat: false,
         phase: KeyPhase::Down,
-        text: None,
+        text,
     }))
 }
 
@@ -62,16 +65,15 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
 }
 
 pub(crate) fn push_key_text(events: &mut Vec<ShellEvent>, event: ShellEvent) {
-    let merged = match (events.last(), &event) {
-        (Some(last), next) => composed_text(last)
-            .zip(composed_text(next))
-            .map(|(head, tail)| text_key(&format!("{head}{tail}"))),
-        (None, _) => None,
-    };
+    let merged = events
+        .last()
+        .and_then(composed_text)
+        .zip(composed_text(&event))
+        .map(|(head, tail)| SmolStr::from(format!("{head}{tail}")));
     match merged {
-        Some(merged) => {
+        Some(text) => {
             events.pop();
-            events.push(merged);
+            events.push(pressed_key(LogicalKey::Character(text.clone()), Some(text)));
         }
         None => events.push(event),
     }
@@ -184,17 +186,6 @@ pub fn paste(text: &str) -> ShellEvent {
     ShellEvent::Paste(text.to_string())
 }
 
-fn text_key(text: &str) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(text.to_string()),
-        physical: PhysicalKey::Unidentified,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: Some(SmolStr::from(text)),
-    }))
-}
-
 const fn shifted(event: &crossterm::event::KeyEvent) -> KeyCode {
     match event.code {
         KeyCode::Char(ch)
@@ -207,55 +198,44 @@ const fn shifted(event: &crossterm::event::KeyEvent) -> KeyCode {
 }
 
 fn modifiers(event: &crossterm::event::KeyEvent) -> ModifiersState {
-    let mut state = ModifiersState::empty();
+    let mut state = held(event.modifiers);
     let shifted_char = matches!(event.code, KeyCode::Char(ch) if ch.is_uppercase());
-    if event.modifiers.contains(KeyModifiers::SHIFT)
-        || event.code == KeyCode::BackTab
-        || shifted_char
-    {
+    if event.code == KeyCode::BackTab || shifted_char {
         state |= ModifiersState::SHIFT;
-    }
-    if event.modifiers.contains(KeyModifiers::CONTROL) {
-        state |= ModifiersState::CONTROL;
-    }
-    if event.modifiers.contains(KeyModifiers::ALT) {
-        state |= ModifiersState::ALT;
-    }
-    if event
-        .modifiers
-        .intersects(KeyModifiers::SUPER | KeyModifiers::HYPER | KeyModifiers::META)
-    {
-        state |= ModifiersState::META;
     }
     state
 }
 
-fn logical(code: KeyCode) -> Option<LogicalKey> {
-    Some(match code {
-        KeyCode::Enter => LogicalKey::Named(Key::Enter),
-        KeyCode::Esc => LogicalKey::Named(Key::Escape),
-        KeyCode::Tab | KeyCode::BackTab => LogicalKey::Named(Key::Tab),
-        KeyCode::Backspace => LogicalKey::Named(Key::Backspace),
-        KeyCode::Delete => LogicalKey::Named(Key::Delete),
-        KeyCode::Left => LogicalKey::Named(Key::ArrowLeft),
-        KeyCode::Right => LogicalKey::Named(Key::ArrowRight),
-        KeyCode::Up => LogicalKey::Named(Key::ArrowUp),
-        KeyCode::Down => LogicalKey::Named(Key::ArrowDown),
-        KeyCode::Home => LogicalKey::Named(Key::Home),
-        KeyCode::End => LogicalKey::Named(Key::End),
-        KeyCode::PageUp => LogicalKey::Named(Key::PageUp),
-        KeyCode::PageDown => LogicalKey::Named(Key::PageDown),
-        KeyCode::F(number) => LogicalKey::Named(match format!("F{number}").parse() {
-            Ok(key) => key,
-            Err(_unsupported) => return None,
-        }),
-        KeyCode::Char(ch) => LogicalKey::character(ch.to_string()),
-        other => LogicalKey::Named(extra(other)?),
-    })
+pub(crate) fn held(from: KeyModifiers) -> ModifiersState {
+    let mut state = ModifiersState::empty();
+    state.set(ModifiersState::SHIFT, from.contains(KeyModifiers::SHIFT));
+    state.set(
+        ModifiersState::CONTROL,
+        from.contains(KeyModifiers::CONTROL),
+    );
+    state.set(ModifiersState::ALT, from.contains(KeyModifiers::ALT));
+    let meta = KeyModifiers::SUPER | KeyModifiers::HYPER | KeyModifiers::META;
+    state.set(ModifiersState::META, from.intersects(meta));
+    state
 }
 
-const fn extra(code: KeyCode) -> Option<Key> {
-    Some(match code {
+fn logical(code: KeyCode) -> Option<LogicalKey> {
+    let key = match code {
+        KeyCode::Char(ch) => return Some(LogicalKey::character(ch.to_string())),
+        KeyCode::Enter => Key::Enter,
+        KeyCode::Esc => Key::Escape,
+        KeyCode::Tab | KeyCode::BackTab => Key::Tab,
+        KeyCode::Backspace => Key::Backspace,
+        KeyCode::Delete => Key::Delete,
+        KeyCode::Left => Key::ArrowLeft,
+        KeyCode::Right => Key::ArrowRight,
+        KeyCode::Up => Key::ArrowUp,
+        KeyCode::Down => Key::ArrowDown,
+        KeyCode::Home => Key::Home,
+        KeyCode::End => Key::End,
+        KeyCode::PageUp => Key::PageUp,
+        KeyCode::PageDown => Key::PageDown,
+        KeyCode::F(number) => format!("F{number}").parse().ok()?,
         KeyCode::Insert => Key::Insert,
         KeyCode::CapsLock => Key::CapsLock,
         KeyCode::ScrollLock => Key::ScrollLock,
@@ -263,10 +243,11 @@ const fn extra(code: KeyCode) -> Option<Key> {
         KeyCode::PrintScreen => Key::PrintScreen,
         KeyCode::Pause => Key::Pause,
         KeyCode::Menu => Key::ContextMenu,
-        KeyCode::Media(media) => return media_key(media),
+        KeyCode::Media(media) => media_key(media)?,
         KeyCode::Modifier(modifier) => modifier_key(modifier),
         _ => return None,
-    })
+    };
+    Some(LogicalKey::Named(key))
 }
 
 const fn media_key(media: MediaKeyCode) -> Option<Key> {

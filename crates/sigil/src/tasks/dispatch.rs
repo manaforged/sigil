@@ -25,21 +25,21 @@ impl<T: Send + 'static> SignalWriter<T> {
     }
 
     pub fn set(&self, value: T) -> Result<(), ScheduleError> {
-        let signal = self.signal;
-        self.dispatcher.send(DispatchMessage {
-            owner: self.owner,
-            callback: Box::new(move || signal.into_signal().set_always(value)),
-        })
+        self.send(move |signal| signal.set_always(value))
     }
 
     pub fn update<F>(&self, update: F) -> Result<(), ScheduleError>
     where
         F: FnOnce(&mut T) + Send + 'static,
     {
+        self.send(move |signal| signal.update(update))
+    }
+
+    fn send(&self, write: impl FnOnce(Signal<T>) + Send + 'static) -> Result<(), ScheduleError> {
         let signal = self.signal;
         self.dispatcher.send(DispatchMessage {
             owner: self.owner,
-            callback: Box::new(move || signal.into_signal().update(update)),
+            callback: Box::new(move || write(signal.into_signal())),
         })
     }
 }
@@ -81,13 +81,7 @@ where
             Outcome::Panicked(message) => Status::Panicked(message),
             Outcome::Cancelled => return,
         };
-        let sent = dispatcher.send(DispatchMessage {
-            owner,
-            callback: Box::new(move || deliver(status)),
-        });
-        if sent.is_err() {
-            tracing::warn!(owner = ?owner.id(), "task result dropped: dispatcher closed");
-        }
+        dispatch_to_owner(&dispatcher, owner, move || deliver(status));
     });
     attach_task(parts, owner, task.clone());
     Some(task)

@@ -30,10 +30,11 @@ impl FocusManager {
             }
             self.scope_stack.pop();
             self.ring_generation = u64::MAX;
-            self.focused = top
-                .restore_to
-                .filter(|id| visible(cx, *id))
-                .or_else(|| first_focusable_in_document_order(cx));
+            self.focused = top.restore_to.filter(|id| visible(cx, *id)).or_else(|| {
+                first_in_document_order(cx, |id| {
+                    cx.get(id).is_some_and(|node| node.a11y.is_focusable())
+                })
+            });
         }
 
         let stack_roots: SmallVec<[NodeId; 4]> = self
@@ -88,12 +89,6 @@ fn initial_focus(cx: &Cx, scope_root: NodeId) -> Option<NodeId> {
         cx.get(scope_root)
             .is_some_and(|node| node.a11y.is_focusable())
             .then_some(scope_root)
-    })
-}
-
-fn first_focusable_in_document_order(cx: &Cx) -> Option<NodeId> {
-    first_in_document_order(cx, |id| {
-        cx.get(id).is_some_and(|node| node.a11y.is_focusable())
     })
 }
 

@@ -50,15 +50,9 @@ fn sync_inward(model: Model, runtime: &TextEditRuntime) {
             .and_then(Signal::get)
             .map(|point| byte_at(&lines, point));
         batch(|| {
-            if value.peek() != joined {
-                value.set(joined);
-            }
-            if caret.peek() != at {
-                caret.set(at);
-            }
-            if selection.peek() != anchor {
-                selection.set(anchor);
-            }
+            value.set(joined);
+            caret.set(at);
+            selection.set(anchor);
         });
     });
 }
@@ -84,9 +78,7 @@ fn sync_outward(model: Model, runtime: &TextEditRuntime) {
             {
                 signal.set(anchor.map(|byte| point_at(&lines, byte)));
             }
-            if model.lines.peek() != lines {
-                model.lines.set(lines);
-            }
+            model.lines.set(lines);
         });
     });
 }
@@ -97,8 +89,7 @@ pub(super) fn attach(
     viewport: Signal<(f32, f32)>,
     row_h: f32,
 ) -> NodeBuilder {
-    let edge = runtime.clone();
-    let line = runtime.clone();
+    let (edge, line) = (runtime.clone(), runtime.clone());
     let profile = KeyProfile {
         edge: Rc::new(move |event, end, extend| {
             let target = if end { LineMove::End } else { LineMove::Start };

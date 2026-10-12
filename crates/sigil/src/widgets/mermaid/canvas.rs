@@ -28,14 +28,13 @@ impl Canvas {
 
     pub(super) fn put(&mut self, x: usize, y: usize, ch: char) {
         if let Some(cell) = self.slot(x, y).and_then(|index| self.cells.get_mut(index)) {
-            let merged = join(*cell, ch);
-            cell.clone_from(&merged);
+            *cell = join(*cell, ch);
         }
     }
 
     pub(super) fn set(&mut self, x: usize, y: usize, ch: char) {
         if let Some(cell) = self.slot(x, y).and_then(|index| self.cells.get_mut(index)) {
-            cell.clone_from(&ch);
+            *cell = ch;
         }
     }
 
@@ -68,10 +67,9 @@ impl Canvas {
         }
         let right = x.saturating_add(width).saturating_sub(1);
         let bottom = y.saturating_add(height).saturating_sub(1);
+        let blank = " ".repeat(width);
         for row in y..=bottom {
-            for col in x..=right {
-                self.set(col, row, ' ');
-            }
+            self.text(x, row, &blank);
         }
         self.hline(x, right, y, '─');
         self.hline(x, right, bottom, '─');

@@ -1,10 +1,6 @@
-use wgpu::util::DeviceExt as _;
-
 use crate::profile::count;
 
 use super::RasterInstance;
-
-pub(super) const RASTER_SHADER: &str = include_str!("../raster_paint.wgsl");
 
 #[repr(C)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable, Copy, Clone)]
@@ -13,7 +9,7 @@ pub(super) struct SurfaceParams {
     pub(super) _pad: [f32; 2],
 }
 
-const UNIT_QUAD_VERTICES: [[f32; 2]; 6] = [
+pub(super) const UNIT_QUAD_VERTICES: [[f32; 2]; 6] = [
     [0.0, 0.0],
     [1.0, 0.0],
     [1.0, 1.0],
@@ -22,23 +18,18 @@ const UNIT_QUAD_VERTICES: [[f32; 2]; 6] = [
     [0.0, 1.0],
 ];
 
-pub(super) const UNIT_QUAD_VERTEX_COUNT: u32 = 6;
-
-const UNIT_QUAD_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
-    array_stride: (core::mem::size_of::<f32>() as u64) * 2,
-    step_mode: wgpu::VertexStepMode::Vertex,
-    attributes: &wgpu::vertex_attr_array![0 => Float32x2],
-};
-
-const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
-    array_stride: core::mem::size_of::<RasterInstance>() as u64,
-    step_mode: wgpu::VertexStepMode::Instance,
-    attributes: &wgpu::vertex_attr_array![
-        1 => Float32x4,
-        2 => Float32x4,
-        3 => Float32x4,
-    ],
-};
+const BUFFERS: [Option<wgpu::VertexBufferLayout<'_>>; 2] = [
+    Some(wgpu::VertexBufferLayout {
+        array_stride: (core::mem::size_of::<f32>() as u64) * 2,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &wgpu::vertex_attr_array![0 => Float32x2],
+    }),
+    Some(wgpu::VertexBufferLayout {
+        array_stride: core::mem::size_of::<RasterInstance>() as u64,
+        step_mode: wgpu::VertexStepMode::Instance,
+        attributes: &wgpu::vertex_attr_array![1 => Float32x4, 2 => Float32x4, 3 => Float32x4],
+    }),
+];
 
 pub(super) fn bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -81,7 +72,7 @@ pub(super) fn pipeline(
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("sigil-renderer raster text shader"),
-        source: wgpu::ShaderSource::Wgsl(RASTER_SHADER.into()),
+        source: wgpu::ShaderSource::Wgsl(include_str!("../raster_paint.wgsl").into()),
     });
     let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("sigil-renderer raster text pipeline layout"),
@@ -94,7 +85,7 @@ pub(super) fn pipeline(
         vertex: wgpu::VertexState {
             module: &shader,
             entry_point: Some("vs_main"),
-            buffers: &[Some(UNIT_QUAD_LAYOUT), Some(INSTANCE_LAYOUT)],
+            buffers: &BUFFERS,
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {
@@ -112,25 +103,6 @@ pub(super) fn pipeline(
         multisample: wgpu::MultisampleState::default(),
         multiview_mask: None,
         cache: None,
-    })
-}
-
-pub(super) fn sampler(device: &wgpu::Device) -> wgpu::Sampler {
-    device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("sigil-renderer raster text sampler"),
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Nearest,
-        min_filter: wgpu::FilterMode::Nearest,
-        ..Default::default()
-    })
-}
-
-pub(super) fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer raster text unit quad"),
-        contents: bytemuck::cast_slice(&UNIT_QUAD_VERTICES),
-        usage: wgpu::BufferUsages::VERTEX,
     })
 }
 

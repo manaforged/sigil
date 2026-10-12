@@ -1,5 +1,5 @@
 #![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
-use crate::profile::{count_add, enabled};
+use crate::profile::{Counter, count_add, enabled};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[non_exhaustive]
@@ -41,49 +41,22 @@ impl FrameStats {
             return;
         }
         for (name, value) in [
+            (Counter::SceneCmds, self.scene_commands as u64),
+            (Counter::GpuRects, self.rectangle_instances as u64),
+            (Counter::GpuGlyphs, self.glyph_runs as u64),
+            (Counter::GpuSprites, self.sprite_draws as u64),
+            (Counter::GpuLayers, self.offscreen_layers as u64),
+            (Counter::GpuLayerPixels, self.offscreen_pixels),
+            (Counter::GpuUploadBuffers, self.frame_upload_buffers as u64),
             (
-                crate::profile::Counter::SceneCmds,
-                self.scene_commands as u64,
-            ),
-            (
-                crate::profile::Counter::GpuRects,
-                self.rectangle_instances as u64,
-            ),
-            (crate::profile::Counter::GpuGlyphs, self.glyph_runs as u64),
-            (
-                crate::profile::Counter::GpuSprites,
-                self.sprite_draws as u64,
-            ),
-            (
-                crate::profile::Counter::GpuLayers,
-                self.offscreen_layers as u64,
-            ),
-            (
-                crate::profile::Counter::GpuLayerPixels,
-                self.offscreen_pixels,
-            ),
-            (
-                crate::profile::Counter::GpuUploadBuffers,
-                self.frame_upload_buffers as u64,
-            ),
-            (
-                crate::profile::Counter::GpuUploadCapacityBytes,
+                Counter::GpuUploadCapacityBytes,
                 self.frame_upload_capacity_bytes,
             ),
-            (
-                crate::profile::Counter::GpuUploadWrites,
-                self.frame_upload_writes as u64,
-            ),
-            (
-                crate::profile::Counter::GpuUploadBytes,
-                self.frame_uploaded_bytes,
-            ),
-            (
-                crate::profile::Counter::GpuRedrawnPixels,
-                self.redrawn_pixels,
-            ),
-            (crate::profile::Counter::RenderFrames, 1),
-            (crate::profile::Counter::GpuBatches, self.batches()),
+            (Counter::GpuUploadWrites, self.frame_upload_writes as u64),
+            (Counter::GpuUploadBytes, self.frame_uploaded_bytes),
+            (Counter::GpuRedrawnPixels, self.redrawn_pixels),
+            (Counter::RenderFrames, 1),
+            (Counter::GpuBatches, self.batches()),
         ] {
             count_add(name, value);
         }

@@ -2,7 +2,9 @@ use crate::geometry::{Point, Rect};
 use crate::scene::shape_glyph_run;
 use crate::scene::{CommandScene, SceneBuilder};
 use crate::style::Color;
-use crate::style::{Rgba8, TextLineHeight, TextStyle};
+use crate::style::{TextLineHeight, TextStyle};
+
+use super::helpers::{DARK, rgba};
 
 const LINES: [(&str, f32); 3] = [
     ("The quick brown fox jumps over the lazy dog", 14.0),
@@ -23,18 +25,9 @@ pub fn text() -> (CommandScene, (f32, f32), Color) {
             ..Default::default()
         };
         let rect = Rect::new(Point::new(16.0, y), 728.0, size * 1.5);
-        let ink = Rgba8 {
-            r: 236,
-            g: 240,
-            b: 245,
-            a: 255,
-        };
+        let ink = rgba(236, 240, 245, 255);
         scene.draw_glyph_run(shape_glyph_run(rect, line.to_owned(), ink, style, 10_000));
         y += size * 1.8;
     }
-    (
-        scene.finish(),
-        (760.0, 160.0),
-        Color::rgba(0.05, 0.06, 0.09, 1.0),
-    )
+    (scene.finish(), (760.0, 160.0), DARK)
 }

@@ -1,6 +1,6 @@
 use crate::events::EventRouter;
 use crate::events::{Key, KeyPhase, ShellEvent, WindowEvent};
-use crate::geometry::{PhysicalSize, Scale};
+use crate::geometry::PhysicalSize;
 use crate::hal::Shell as _;
 use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
@@ -13,9 +13,8 @@ use std::sync::Arc;
 
 use super::backend::{Backend, Surface};
 use super::record::WindowView;
-use super::{
-    clamp_physical_size, logical_size_from_viewport, resize_surface, scale_from_f64, set_viewport,
-};
+use super::{clamp_physical_size, resize_surface, scale_from_f64};
+use crate::geometry::LogicalSize;
 
 pub(super) struct DrainCtx<'a> {
     pub(super) view: &'a mut WindowView,
@@ -63,9 +62,10 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
     let inner = window.inner_size();
     if inner.width > 0 && inner.height > 0 {
         let physical = clamp_physical_size(PhysicalSize::new(inner.width, inner.height));
-        set_viewport(viewport, scale.to_logical(physical));
+        let logical = scale.to_logical(physical);
+        *viewport = (logical.width, logical.height);
     }
-    let logical = logical_size_from_viewport(*viewport);
+    let logical = LogicalSize::new(viewport.0, viewport.1);
 
     let new_surface = renderer.create_surface(Arc::clone(window), scale.to_physical(logical))?;
     tracing::info!(
@@ -114,7 +114,7 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
                 surface: &mut view.surface,
                 viewport: &mut view.viewport,
             };
-            handle_window_event(&mut window_ctx, window_event);
+            window_ctx.handle(window_event);
         }
         if let ShellEvent::Key(key_event) = &event
             && view.config.quit.esc
@@ -175,33 +175,26 @@ struct WindowEventCtx<'a> {
     viewport: &'a mut (f32, f32),
 }
 
-fn handle_window_event(ctx: &mut WindowEventCtx<'_>, event: &WindowEvent) {
-    match event {
-        WindowEvent::Resized(size) => handle_resized(ctx, *size),
-        WindowEvent::ScaleFactorChanged(scale) => handle_scale_changed(ctx, *scale),
-        WindowEvent::CloseRequested
-        | WindowEvent::Destroyed
-        | WindowEvent::Focused(_)
-        | WindowEvent::Occluded(_) => {}
+impl WindowEventCtx<'_> {
+    fn handle(&mut self, event: &WindowEvent) {
+        match *event {
+            WindowEvent::Resized(physical) => {
+                resize_surface(self.renderer, self.surface, physical);
+                let logical = self.cx.scale().to_logical(clamp_physical_size(physical));
+                *self.viewport = (logical.width, logical.height);
+            }
+            WindowEvent::ScaleFactorChanged(scale) => {
+                self.cx.set_scale(scale);
+                let logical = LogicalSize::new(self.viewport.0, self.viewport.1);
+                resize_surface(self.renderer, self.surface, scale.to_physical(logical));
+            }
+            WindowEvent::CloseRequested
+            | WindowEvent::Destroyed
+            | WindowEvent::Focused(_)
+            | WindowEvent::Occluded(_) => return,
+        }
+        Runtime::mark_frame_dirty();
     }
-}
-
-fn handle_resized(ctx: &mut WindowEventCtx<'_>, physical: PhysicalSize) {
-    resize_surface(ctx.renderer, ctx.surface, physical);
-    let scale = ctx.cx.scale();
-    let logical = scale.to_logical(clamp_physical_size(physical));
-    set_viewport(ctx.viewport, logical);
-    Runtime::mark_frame_dirty();
-}
-
-fn handle_scale_changed(ctx: &mut WindowEventCtx<'_>, scale: Scale) {
-    ctx.cx.set_scale(scale);
-    resize_surface(
-        ctx.renderer,
-        ctx.surface,
-        scale.to_physical(super::logical_size_from_viewport(*ctx.viewport)),
-    );
-    Runtime::mark_frame_dirty();
 }
 
 #[cfg(test)]

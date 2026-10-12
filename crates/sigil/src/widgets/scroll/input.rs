@@ -9,32 +9,29 @@ use super::SCROLL_LINE;
 
 #[derive(Clone, Copy)]
 enum Travel {
-    LineForward,
-    LineBack,
-    PageForward,
-    PageBack,
-    Start,
-    End,
+    Line(f32),
+    Page(f32),
+    To(bool),
 }
 
 const SCROLL_KEYS: [(Key, Travel); 6] = [
-    (Key::ArrowDown, Travel::LineForward),
-    (Key::ArrowUp, Travel::LineBack),
-    (Key::PageDown, Travel::PageForward),
-    (Key::PageUp, Travel::PageBack),
-    (Key::Home, Travel::Start),
-    (Key::End, Travel::End),
+    (Key::ArrowDown, Travel::Line(1.0)),
+    (Key::ArrowUp, Travel::Line(-1.0)),
+    (Key::PageDown, Travel::Page(1.0)),
+    (Key::PageUp, Travel::Page(-1.0)),
+    (Key::Home, Travel::To(false)),
+    (Key::End, Travel::To(true)),
 ];
 
 impl Travel {
     fn apply(self, event: &mut KeyEvent, scroll_y: Signal<f32>, max: f32, page: f32) {
         match self {
-            Self::LineForward => step(event, scroll_y, SCROLL_LINE, max),
-            Self::LineBack => step(event, scroll_y, -SCROLL_LINE, max),
-            Self::PageForward => step(event, scroll_y, page, max),
-            Self::PageBack => step(event, scroll_y, -page, max),
-            Self::Start => jump(event, scroll_y, 0.0),
-            Self::End => jump(event, scroll_y, max),
+            Self::Line(sign) => step(event, scroll_y, sign * SCROLL_LINE, max),
+            Self::Page(sign) => step(event, scroll_y, sign * page, max),
+            Self::To(end) => {
+                event.stop_propagation();
+                scroll_y.set(if end { max } else { 0.0 });
+            }
         }
     }
 }
@@ -74,11 +71,6 @@ fn step(event: &mut KeyEvent, scroll_y: Signal<f32>, delta: f32, max: f32) {
         scroll_y.set(next);
         event.stop_propagation();
     }
-}
-
-fn jump(event: &mut KeyEvent, scroll_y: Signal<f32>, target: f32) {
-    event.stop_propagation();
-    scroll_y.set(target);
 }
 
 #[derive(Clone, Copy)]
@@ -129,11 +121,11 @@ fn deltas(event: &ScrollEvent, height: f32, width: f32) -> (f32, f32) {
 fn apply(scroll: Signal<f32>, delta: f32, max: f32) -> bool {
     let current = scroll.peek();
     let next = (current - delta).clamp(0.0, max);
-    if (next - current).abs() > f32::EPSILON {
+    let moved = (next - current).abs() > f32::EPSILON;
+    if moved {
         scroll.set(next);
-        return true;
     }
-    false
+    moved
 }
 
 pub(crate) fn pin_to_bottom(

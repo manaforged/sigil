@@ -1,4 +1,6 @@
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 use std::io::{self, Write};
 
 use crate::kernel::ImageSource;
@@ -166,16 +168,6 @@ impl Painter {
         self.emit_mux(out, protocol, caps.mux, frame)
     }
 
-    #[cfg(test)]
-    pub(crate) fn emit_with(
-        &mut self,
-        out: &mut impl Write,
-        protocol: Protocol,
-        frame: Frame<'_>,
-    ) -> io::Result<()> {
-        self.emit_mux(out, protocol, None, frame)
-    }
-
     fn emit_mux(
         &mut self,
         out: &mut impl Write,
@@ -197,10 +189,11 @@ impl Painter {
                 let id = kitty_id(&old.source);
                 if next.iter().any(|place| kitty_id(&place.source) == id) {
                     if !next.iter().any(|place| place.same(old)) {
-                        kitty_unplace(out, id, kitty_place_id(old), mux)?;
+                        let pid = kitty_place_id(old);
+                        write_mux(out, &format!("\x1b_Ga=d,d=p,i={id},p={pid},q=2\x1b\\"), mux)?;
                     }
                 } else {
-                    kitty_delete(out, id, mux)?;
+                    write_mux(out, &format!("\x1b_Ga=d,d=I,i={id},q=2\x1b\\"), mux)?;
                     self.sent.remove(&id);
                 }
             }
@@ -227,48 +220,51 @@ impl Painter {
         mux: Option<Mux>,
         place: &Placement,
     ) -> io::Result<()> {
-        match protocol {
+        let (top, height) = place.window();
+        let (cols, rows) = (place.cols, place.rows);
+        let seq = match protocol {
             Protocol::Kitty => {
                 let id = kitty_id(&place.source);
                 if self.sent.insert(id) {
                     kitty_transmit(out, id, &place.source, mux)?;
                 }
-                kitty_place(out, id, place, mux)
+                let window = place
+                    .crop
+                    .map(|(row, span)| format!(",x=0,y={row},w={},h={span}", place.source.width()))
+                    .unwrap_or_default();
+                let pid = kitty_place_id(place);
+                Cow::Owned(format!(
+                    "\x1b_Ga=p,i={id},p={pid},c={cols},r={rows}{window},C=1,q=2\x1b\\"
+                ))
             }
-            Protocol::Iterm2 => iterm_place(out, self.cached(place), place, mux),
-            Protocol::Sixel => {
-                let (top, height) = place.window();
-                let key = (place.source.id(), top, height, place.cols, place.rows);
-                if !self.sixel.contains_key(&key) {
-                    if self.sixel.len() >= CACHE {
-                        self.sixel.clear();
-                    }
-                    self.sixel.insert(
-                        key,
-                        sixel::encode(&place.source, (top, height), place.cols, place.rows),
-                    );
-                }
-                let data = self.sixel.get(&key).map(String::as_str).unwrap_or_default();
-                sixel_place(out, data, place, mux)
+            Protocol::Iterm2 => {
+                let data = cached(&mut self.encoded, (place.source.id(), top, height), || {
+                    base64(&png_window(&place.source, top, height))
+                });
+                Cow::Owned(format!(
+                    "\x1b]1337;File=inline=1;width={cols};height={rows};preserveAspectRatio=0:{data}\x07"
+                ))
             }
-        }
+            Protocol::Sixel => Cow::Borrowed(cached(
+                &mut self.sixel,
+                (place.source.id(), top, height, cols, rows),
+                || sixel::encode(&place.source, (top, height), cols, rows),
+            )),
+        };
+        queue!(out, cursor::MoveTo(place.col, place.row))?;
+        write_mux(out, &seq, mux)
     }
+}
 
-    fn cached(&mut self, place: &Placement) -> &str {
-        let (top, height) = place.window();
-        let key = (place.source.id(), top, height);
-        if !self.encoded.contains_key(&key) {
-            if self.encoded.len() >= CACHE {
-                self.encoded.clear();
-            }
-            self.encoded
-                .insert(key, base64(&png_window(&place.source, top, height)));
-        }
-        self.encoded
-            .get(&key)
-            .map(String::as_str)
-            .unwrap_or_default()
+fn cached<K: Hash + Eq>(
+    map: &mut HashMap<K, String>,
+    key: K,
+    make: impl FnOnce() -> String,
+) -> &str {
+    if map.len() >= CACHE && !map.contains_key(&key) {
+        map.clear();
     }
+    map.entry(key).or_insert_with(make)
 }
 
 fn kitty_id(source: &ImageSource) -> u32 {
@@ -300,73 +296,19 @@ fn kitty_transmit(
     let chunks: Vec<&[u8]> = data.as_bytes().chunks(CHUNK).collect();
     for (index, chunk) in chunks.iter().enumerate() {
         let more = u8::from(index + 1 < chunks.len());
-        let mut seq = if index == 0 {
+        let head = if index == 0 {
             format!(
-                "\x1b_Ga=t,f=32,s={},v={},i={id},q=2,m={more};",
+                "a=t,f=32,s={},v={},i={id},q=2,m={more}",
                 source.width(),
                 source.height()
             )
         } else {
-            format!("\x1b_Gm={more};")
+            format!("m={more}")
         };
-        for &byte in *chunk {
-            seq.push(char::from(byte));
-        }
-        seq.push_str("\x1b\\");
-        write_mux(out, &seq, mux)?;
+        let body = std::str::from_utf8(chunk).unwrap_or_default();
+        write_mux(out, &format!("\x1b_G{head};{body}\x1b\\"), mux)?;
     }
     Ok(())
-}
-
-fn kitty_place(
-    out: &mut impl Write,
-    id: u32,
-    place: &Placement,
-    mux: Option<Mux>,
-) -> io::Result<()> {
-    queue!(out, cursor::MoveTo(place.col, place.row))?;
-    let window = place
-        .crop
-        .map(|(top, height)| format!(",x=0,y={top},w={},h={height}", place.source.width()))
-        .unwrap_or_default();
-    let pid = kitty_place_id(place);
-    let seq = format!(
-        "\x1b_Ga=p,i={id},p={pid},c={},r={}{window},C=1,q=2\x1b\\",
-        place.cols, place.rows
-    );
-    write_mux(out, &seq, mux)
-}
-
-fn kitty_unplace(out: &mut impl Write, id: u32, pid: u32, mux: Option<Mux>) -> io::Result<()> {
-    write_mux(out, &format!("\x1b_Ga=d,d=p,i={id},p={pid},q=2\x1b\\"), mux)
-}
-
-fn kitty_delete(out: &mut impl Write, id: u32, mux: Option<Mux>) -> io::Result<()> {
-    write_mux(out, &format!("\x1b_Ga=d,d=I,i={id},q=2\x1b\\"), mux)
-}
-
-fn iterm_place(
-    out: &mut impl Write,
-    data: &str,
-    place: &Placement,
-    mux: Option<Mux>,
-) -> io::Result<()> {
-    queue!(out, cursor::MoveTo(place.col, place.row))?;
-    let seq = format!(
-        "\x1b]1337;File=inline=1;width={};height={};preserveAspectRatio=0:{data}\x07",
-        place.cols, place.rows
-    );
-    write_mux(out, &seq, mux)
-}
-
-fn sixel_place(
-    out: &mut impl Write,
-    data: &str,
-    place: &Placement,
-    mux: Option<Mux>,
-) -> io::Result<()> {
-    queue!(out, cursor::MoveTo(place.col, place.row))?;
-    write_mux(out, data, mux)
 }
 
 pub(crate) fn write_mux(out: &mut impl Write, seq: &str, mux: Option<Mux>) -> io::Result<()> {

@@ -10,6 +10,7 @@ use crate::style::{
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::BuilderMutator;
+use super::content::wrap_with_content;
 use super::drag::DragState;
 use super::list::{StripSpec, build_tab_list};
 use super::tab::line_strip_height;
@@ -35,7 +36,7 @@ pub struct TabsBuilder {
     aria_label: String,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
-    contents: Vec<Option<Box<dyn IntoNode>>>,
+    contents: Vec<Box<dyn IntoNode>>,
     reorderable: bool,
     order: Option<Signal<Vec<usize>>>,
     closeable: bool,
@@ -74,7 +75,7 @@ impl TabsBuilder {
         N: IntoNode + 'static,
     {
         self.labels.push(label.into());
-        self.contents.push(Some(Box::new(content)));
+        self.contents.push(Box::new(content));
         self
     }
 
@@ -162,18 +163,15 @@ impl TabsBuilder {
 
     fn into_node_builder(mut self) -> NodeBuilder {
         let active = self.active.unwrap_or_else(|| signal(0));
-        let order_signal = self.order;
-        let drag = self.reorderable.then(DragState::new);
-        let user_overlay = self.style_accumulator.take_state_overlay();
         let labels = label_signal(self.labels, self.label_source.take());
         let spec = StripSpec {
             active,
-            disabled: Rc::new(self.disabled.clone()),
-            order: order_signal,
-            drag,
+            disabled: Rc::new(self.disabled),
+            order: self.order,
+            drag: self.reorderable.then(DragState::new),
             closeable: self.closeable,
-            close_handler: self.close_handler.as_ref().map(Rc::clone),
-            user_overlay,
+            close_handler: self.close_handler,
+            user_overlay: self.style_accumulator.take_state_overlay(),
             chrome: self.chrome,
         };
         let tab_list = apply_chrome(
@@ -181,16 +179,14 @@ impl TabsBuilder {
             self.list_justify,
             build_tab_list(labels, &self.aria_label, spec),
         );
-        let mut root = if self.contents.iter().any(Option::is_some) {
-            wrap_with_content(tab_list, active, self.contents)
-        } else {
+        let mut root = if self.contents.is_empty() {
             tab_list
+        } else {
+            wrap_with_content(tab_list, active, self.contents)
         };
-
         for mutate in self.mutators {
             root = mutate(root);
         }
-
         if !self.style_accumulator.is_empty() {
             root = root.style(self.style_accumulator);
         }
@@ -299,8 +295,6 @@ fn wrap_pill(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
                 .child(strip),
         )
 }
-
-use super::content::wrap_with_content;
 
 #[cfg(test)]
 #[path = "builder_tests.rs"]

@@ -13,33 +13,21 @@ static STATE: AtomicU8 = AtomicU8::new(UNSET);
 static SEEN: AtomicU8 = AtomicU8::new(UNSET);
 
 fn state() -> u8 {
-    match STATE.load(Ordering::Relaxed) {
-        UNSET => {
-            let on = env::var("SIGIL_HUD").is_ok_and(|value| !value.is_empty() && value != "0");
-            let next = if on { ON } else { OFF };
-            STATE.store(next, Ordering::Relaxed);
-            if on {
-                profile::enable();
-            }
-            next
-        }
-        state => state,
+    if STATE.load(Ordering::Relaxed) == UNSET {
+        set(env::var("SIGIL_HUD").is_ok_and(|value| !value.is_empty() && value != "0"));
     }
+    STATE.load(Ordering::Relaxed)
 }
 
-pub(crate) fn enabled() -> bool {
-    state() == ON
-}
-
-#[cfg(any(
-    all(feature = "inspect", any(feature = "desktop", feature = "terminal")),
-    all(test, feature = "terminal")
-))]
 pub(crate) fn set(on: bool) {
     STATE.store(if on { ON } else { OFF }, Ordering::Relaxed);
     if on {
         profile::enable();
     }
+}
+
+pub(crate) fn enabled() -> bool {
+    state() == ON
 }
 
 #[cfg(all(test, feature = "terminal"))]
@@ -60,17 +48,20 @@ pub(crate) const fn level(wall_ns: u64) -> u8 {
     }
 }
 
+#[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
 pub(crate) fn compact(frame: &Frame) -> String {
-    #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
-    let wall = frame.wall_ns as f64 / 1_000_000.0;
-    let mut line = format!("f{} {} {wall:.1}ms", frame.index, frame.cause);
+    let ms = |ns: u64| ns as f64 / 1_000_000.0;
+    let mut line = format!(
+        "f{} {} {:.1}ms",
+        frame.index,
+        frame.cause,
+        ms(frame.wall_ns)
+    );
     if let Some(backend) = frame.backend {
         let _ = write!(line, " [{backend}]");
     }
-    for (name, ns) in frame.phases.iter().take(4).copied() {
-        #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
-        let ms = ns as f64 / 1_000_000.0;
-        let _ = write!(line, " {name}={ms:.1}");
+    for &(name, ns) in frame.phases.iter().take(4) {
+        let _ = write!(line, " {name}={:.1}", ms(ns));
     }
     let nodes = frame.counter(crate::profile::Counter::TuiNodes)
         + frame.counter(crate::profile::Counter::SceneCmds);
@@ -90,36 +81,15 @@ mod overlay {
     use crate::scene::{CommandScene, SceneCommand};
     use crate::style::{Rgba8, TextStyle};
 
-    const OK: Rgba8 = Rgba8 {
-        r: 0x4c,
-        g: 0xc0,
-        b: 0x6a,
-        a: 0xff,
-    };
-    const WARN: Rgba8 = Rgba8 {
-        r: 0xe0,
-        g: 0xb0,
-        b: 0x40,
-        a: 0xff,
-    };
-    const ERR: Rgba8 = Rgba8 {
-        r: 0xe0,
-        g: 0x50,
-        b: 0x50,
-        a: 0xff,
-    };
-    const TEXT: Rgba8 = Rgba8 {
-        r: 0xc8,
-        g: 0xcd,
-        b: 0xd8,
-        a: 0xff,
-    };
-    const BACKDROP: Rgba8 = Rgba8 {
-        r: 0x08,
-        g: 0x0a,
-        b: 0x10,
-        a: 0xc0,
-    };
+    const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
+        Rgba8 { r, g, b, a }
+    }
+
+    const OK: Rgba8 = rgba(0x4c, 0xc0, 0x6a, 0xff);
+    const WARN: Rgba8 = rgba(0xe0, 0xb0, 0x40, 0xff);
+    const ERR: Rgba8 = rgba(0xe0, 0x50, 0x50, 0xff);
+    const TEXT: Rgba8 = rgba(0xc8, 0xcd, 0xd8, 0xff);
+    const BACKDROP: Rgba8 = rgba(0x08, 0x0a, 0x10, 0xc0);
     const BARS: usize = 64;
     const BAR_W: f32 = 4.0;
     const BAR_GAP: f32 = 1.0;
@@ -155,7 +125,7 @@ mod overlay {
     }
 
     #[allow(clippy::cast_precision_loss, reason = "≤64 bars → f32 is exact")]
-    pub(super) fn draw(scene: &mut CommandScene, viewport: (f32, f32)) {
+    pub(crate) fn overlay(scene: &mut CommandScene, viewport: (f32, f32)) {
         let frames = profile::frames();
         if frames.is_empty() {
             return;
@@ -200,6 +170,4 @@ mod overlay {
 }
 
 #[cfg(feature = "scene")]
-pub(crate) fn overlay(scene: &mut crate::scene::CommandScene, viewport: (f32, f32)) {
-    overlay::draw(scene, viewport);
-}
+pub(crate) use overlay::overlay;

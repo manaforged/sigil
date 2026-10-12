@@ -98,10 +98,7 @@ impl Term {
             return Ok(());
         }
         let redraw = core::mem::take(&mut self.redraw) | REDRAW.with(|flag| flag.replace(false));
-        if self.inline {
-            return paint_inline(&mut self.out, screen, redraw);
-        }
-        paint_frame(&mut self.out, screen, redraw)
+        paint_frame(&mut self.out, screen, redraw, self.inline)
     }
 
     pub(crate) fn pending(&self) -> bool {
@@ -164,20 +161,18 @@ fn enter_modes(inline: bool) -> io::Result<()> {
     }
     execute!(out, EnableBracketedPaste, EnableFocusChange, cursor::Hide)?;
     write_mouse(&mut out, MOUSE.with(Cell::get))?;
-    if current_caps().keyboard == Keyboard::Kitty {
+    let keyboard = current_caps().keyboard;
+    if keyboard == Keyboard::Kitty {
         KEYS_PUSHED.store(true, Ordering::Relaxed);
         drop(execute!(
-            io::stdout(),
+            out,
             PushKeyboardEnhancementFlags(keyboard_flags())
         ));
     }
-    let modify = modify_keys_sequence(
-        current_caps().keyboard,
-        MODIFY_KEYS_WANTED.load(Ordering::Relaxed),
-    );
+    let modify = modify_keys_sequence(keyboard, MODIFY_KEYS_WANTED.load(Ordering::Relaxed));
     if !modify.is_empty() {
         MODIFY_KEYS_SET.store(true, Ordering::Relaxed);
-        drop(execute!(io::stdout(), Print(modify)));
+        drop(execute!(out, Print(modify)));
     }
     TITLE.with(|slot| {
         slot.borrow()
@@ -209,25 +204,6 @@ fn write_title(title: &str) -> io::Result<()> {
     execute!(io::stdout(), SetTitle(title))
 }
 
-fn paint_inline(out: &mut impl Write, screen: &mut Screen, redraw: bool) -> io::Result<()> {
-    if !redraw && !screen.needs_flush() {
-        return Ok(());
-    }
-    let sync = screen.caps().sync;
-    if sync {
-        queue!(out, Print("\x1b[?2026h"))?;
-    }
-    if redraw {
-        screen.invalidate();
-    }
-    screen.flush_inline(out)?;
-    LIVE_ROWS.with(|rows| rows.set(u16::try_from(screen.rows()).unwrap_or(u16::MAX)));
-    if sync {
-        queue!(out, Print("\x1b[?2026l"))?;
-    }
-    out.flush()
-}
-
 fn ground(out: &mut impl Write) -> io::Result<()> {
     queue!(out, cursor::MoveToColumn(0))?;
     let Ok((_, row)) = cursor::position() else {
@@ -244,6 +220,7 @@ pub(crate) fn paint_frame(
     out: &mut impl Write,
     screen: &mut Screen,
     redraw: bool,
+    inline: bool,
 ) -> io::Result<()> {
     if !redraw && !screen.needs_flush() {
         return Ok(());
@@ -252,11 +229,18 @@ pub(crate) fn paint_frame(
     if sync {
         queue!(out, Print("\x1b[?2026h"))?;
     }
-    if redraw {
+    if redraw && !inline {
         queue!(out, Clear(ClearType::All))?;
+    }
+    if redraw {
         screen.invalidate();
     }
-    screen.flush(out)?;
+    if inline {
+        screen.flush_inline(out)?;
+        LIVE_ROWS.with(|rows| rows.set(u16::try_from(screen.rows()).unwrap_or(u16::MAX)));
+    } else {
+        screen.flush(out)?;
+    }
     if sync {
         queue!(out, Print("\x1b[?2026l"))?;
     }
@@ -267,23 +251,21 @@ pub(crate) fn restore() {
     if RESTORED.swap(true, Ordering::Relaxed) {
         return;
     }
+    let mut out = io::stdout();
     if KEYS_PUSHED.swap(false, Ordering::Relaxed) {
-        drop(execute!(io::stdout(), PopKeyboardEnhancementFlags));
+        drop(execute!(out, PopKeyboardEnhancementFlags));
     }
     if MODIFY_KEYS_SET.swap(false, Ordering::Relaxed) {
-        drop(execute!(io::stdout(), Print(MODIFY_KEYS_OFF)));
+        drop(execute!(out, Print(MODIFY_KEYS_OFF)));
     }
     if TITLED.swap(false, Ordering::Relaxed) {
-        drop(execute!(io::stdout(), SetTitle("")));
+        drop(execute!(out, SetTitle("")));
     }
     if BAR_CURSOR.load(Ordering::Relaxed) {
-        drop(execute!(
-            io::stdout(),
-            cursor::SetCursorStyle::DefaultUserShape
-        ));
+        drop(execute!(out, cursor::SetCursorStyle::DefaultUserShape));
     }
     drop(execute!(
-        io::stdout(),
+        out,
         Print("\x1b[?2026l"),
         DisableBracketedPaste,
         DisableFocusChange,
@@ -291,7 +273,7 @@ pub(crate) fn restore() {
         cursor::Show
     ));
     if !INLINE.swap(false, Ordering::Relaxed) {
-        drop(execute!(io::stdout(), LeaveAlternateScreen, EnableLineWrap));
+        drop(execute!(out, LeaveAlternateScreen, EnableLineWrap));
     }
     drop(disable_raw_mode());
 }
@@ -301,7 +283,7 @@ pub(crate) fn set_focused(yes: bool) {
 }
 
 pub fn suspend<R>(run: impl FnOnce() -> R) -> io::Result<R> {
-    if !LIVE.with(Cell::get) {
+    if !live() {
         return Ok(run());
     }
     let inline = INLINE.load(Ordering::Relaxed);
@@ -317,11 +299,10 @@ pub fn suspend<R>(run: impl FnOnce() -> R) -> io::Result<R> {
 
 pub fn set_title(title: &str) -> io::Result<()> {
     TITLE.with(|slot| *slot.borrow_mut() = Some(title.to_owned()));
-    if LIVE.with(Cell::get) {
-        write_title(title)
-    } else {
-        Ok(())
+    if live() {
+        write_title(title)?;
     }
+    Ok(())
 }
 
 pub(crate) fn live() -> bool {
@@ -338,11 +319,10 @@ pub fn set_mouse_capture(yes: bool) -> io::Result<()> {
 
 pub fn set_mouse_tracking(tracking: MouseTracking) -> io::Result<()> {
     MOUSE.with(|mouse| mouse.set(tracking));
-    if LIVE.with(Cell::get) {
-        write_mouse(&mut io::stdout(), tracking)
-    } else {
-        Ok(())
+    if live() {
+        write_mouse(&mut io::stdout(), tracking)?;
     }
+    Ok(())
 }
 
 fn write_mouse(out: &mut impl Write, tracking: MouseTracking) -> io::Result<()> {

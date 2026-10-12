@@ -8,7 +8,7 @@ use crate::kernel::NodeBuilder;
 use crate::layout::{CaretGeometry, with_text_geometry};
 use crate::reactive::{Signal, batch, effect, signal};
 
-use super::handlers::{TextEditRuntime, write_value};
+use super::handlers::TextEditRuntime;
 use super::render::{floor_char_boundary, splice_preedit};
 
 type CaretRectSlot = Rc<Cell<Option<Signal<Option<Rect>>>>>;
@@ -110,16 +110,12 @@ impl TextEditRuntime {
 
     fn apply_commit(&self, text: &str) {
         batch(|| {
-            self.ime.preedit.set(String::new());
-            self.ime.preedit_cursor.set(None);
-            if text.is_empty() {
-                return;
+            self.clear_preedit();
+            if !text.is_empty() {
+                let mut edit = self.edit_mut();
+                edit.insert_str(text);
+                self.sync_value(&edit);
             }
-            let mut edit = self.edit_mut();
-            edit.insert_str(text);
-            write_value(self.value, edit.as_str());
-            (self.change)(edit.as_str());
-            self.commit(&edit);
         });
     }
 
@@ -137,25 +133,18 @@ impl TextEditRuntime {
     }
 
     fn install_caret_anchor_sync(&self) {
-        let ime = self.ime.clone();
-        let disabled = self.disabled;
-        let value = self.value;
-        let caret = self.caret;
-        let text_style = self.text_style;
-        let content_size = self.content_size;
-        let scroll_y = self.scroll_y;
-        let scroll_x = self.scroll_x;
+        let rt = self.clone();
         let anchor = Rc::clone(&self.ime.caret_anchor);
         let caret_rect = self.ime.caret_rect.get();
         let (padding_x, padding_y) = self.content_padding;
         effect(move || {
-            if disabled.is_some_and(Signal::get) {
+            if rt.disabled.is_some_and(Signal::get) {
                 publish(&anchor, caret_rect, None);
                 return;
             }
-            let (composed, cursor) = ime.composing_caret(&value.get(), caret.get());
-            let width = (content_size.get().0 > 0.0).then_some(content_size.peek().0);
-            let style = text_style.get();
+            let (composed, cursor) = rt.ime.composing_caret(&rt.value.get(), rt.caret.get());
+            let width = rt.geometry_width();
+            let style = rt.text_style.get();
             let rect = with_text_geometry(|engine| {
                 let pos = engine.caret(
                     &composed,
@@ -167,8 +156,8 @@ impl TextEditRuntime {
                     },
                 );
                 CaretGeometry {
-                    x: (pos.x + padding_x - scroll_x.get()).max(0.0),
-                    top: pos.top + padding_y - scroll_y.get(),
+                    x: (pos.x + padding_x - rt.scroll_x.get()).max(0.0),
+                    top: pos.top + padding_y - rt.scroll_y.get(),
                     height: pos.height,
                 }
             });

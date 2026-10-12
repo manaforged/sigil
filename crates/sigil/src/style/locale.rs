@@ -15,23 +15,9 @@ impl Direction {
 
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
-        lookup(&DIRECTION_NAMES, name)
+        lookup(&[("ltr", Self::Ltr), ("rtl", Self::Rtl)], name)
     }
 }
-
-const DIRECTION_NAMES: [(&str, Direction); 2] = [("ltr", Direction::Ltr), ("rtl", Direction::Rtl)];
-
-const DATE_ORDER_NAMES: [(&str, DateOrder); 3] = [
-    ("ymd", DateOrder::Ymd),
-    ("dmy", DateOrder::Dmy),
-    ("mdy", DateOrder::Mdy),
-];
-
-const LOCALE_PRESETS: [(&str, Locale); 3] = [
-    ("en", Locale::en()),
-    ("de", Locale::de()),
-    ("ar", Locale::ar()),
-];
 
 fn lookup<T: Copy>(table: &[(&str, T)], name: &str) -> Option<T> {
     table
@@ -58,7 +44,10 @@ enum DatePart {
 impl DateOrder {
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
-        lookup(&DATE_ORDER_NAMES, name)
+        lookup(
+            &[("ymd", Self::Ymd), ("dmy", Self::Dmy), ("mdy", Self::Mdy)],
+            name,
+        )
     }
 
     const fn parts(self) -> [DatePart; 3] {
@@ -101,7 +90,10 @@ impl Locale {
 
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
-        lookup(&LOCALE_PRESETS, name)
+        lookup(
+            &[("en", Self::en()), ("de", Self::de()), ("ar", Self::ar())],
+            name,
+        )
     }
 
     #[must_use]

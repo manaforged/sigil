@@ -3,10 +3,6 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, space};
 
-const PANEL_MIN_HEIGHT: f32 = space(12);
-const DEFAULT_PADDING: f32 = space(4);
-const TITLE_GAP: f32 = space(2);
-
 pub struct PanelBuilder {
     pub title: Option<String>,
     pub padding: f32,
@@ -26,7 +22,7 @@ impl PanelBuilder {
     pub fn new() -> Self {
         Self {
             title: None,
-            padding: DEFAULT_PADDING,
+            padding: space(4),
             elevation: 1,
             content: None,
             style_accumulator: Style::new(),
@@ -61,12 +57,24 @@ impl PanelBuilder {
     fn into_node_builder(self) -> NodeBuilder {
         let mut root = container()
             .role(Role::GenericContainer)
-            .layout(self.layout_overrides.apply(panel_layout(self.padding)))
+            .layout(
+                self.layout_overrides.apply(
+                    LayoutStyle::flex_column()
+                        .padding(self.padding)
+                        .gap(space(2))
+                        .fill_width()
+                        .min_size(crate::layout::Dimension::Auto, space(12)),
+                ),
+            )
             .class(Radius::Md.atom())
             .class(surface_atoms(self.elevation));
 
         if let Some(title) = self.title {
-            root = root.child(panel_title(title));
+            root = root.child(
+                text(title)
+                    .class("text-sm font-medium")
+                    .class(Token::OnSurface.text()),
+            );
         }
 
         if let Some(child) = self.content {
@@ -106,20 +114,6 @@ impl IntoNode for PanelBuilder {
             .finish(self.into_node_builder())
             .build(cx)
     }
-}
-
-fn panel_layout(padding: f32) -> LayoutStyle {
-    LayoutStyle::flex_column()
-        .padding(padding)
-        .gap(TITLE_GAP)
-        .fill_width()
-        .min_size(crate::layout::Dimension::Auto, PANEL_MIN_HEIGHT)
-}
-
-fn panel_title(title: String) -> impl IntoNode {
-    text(title)
-        .class("text-sm font-medium")
-        .class(Token::OnSurface.text())
 }
 
 const fn surface_atoms(elevation: u32) -> &'static [StyleAtom] {

@@ -67,112 +67,56 @@ fn every_palette_composes_with_every_variant() {
 }
 
 #[test]
-fn on_accent_contrasts_with_dark_accent_on_dark_palette() {
-    let dark_accent = Rgba8 {
-        r: 0x20,
-        g: 0x22,
-        b: 0x2E,
-        a: 0xFF,
-    };
-    let palette = Palette::spellforge(dark_accent);
-    let theme = Theme::from_palette(palette, Variant::Normal);
-    let accent_brightness = perceived_brightness_u32(theme.accent);
-    let on_accent_brightness = perceived_brightness_u32(theme.on_accent);
-    let contrast = accent_brightness.abs_diff(on_accent_brightness);
-    assert!(
-        contrast > 7_500,
-        "on_accent too close to accent: accent_b={accent_brightness}, \
+fn on_accent_contrasts_with_dark_and_bright_accents() {
+    for accent in [rgb(0x20, 0x22, 0x2E), rgb(0xF6, 0xE9, 0xC4)] {
+        let theme = Theme::from_palette(Palette::spellforge(accent), Variant::Normal);
+        let accent_brightness = perceived_brightness_u32(theme.accent);
+        let on_accent_brightness = perceived_brightness_u32(theme.on_accent);
+        let contrast = accent_brightness.abs_diff(on_accent_brightness);
+        assert!(
+            contrast > 7_500,
+            "on_accent too close to accent: accent_b={accent_brightness}, \
              on_accent_b={on_accent_brightness}, contrast={contrast}",
-    );
-}
-
-#[test]
-fn on_accent_contrasts_with_bright_accent_on_bright_palette() {
-    let bright_accent = Rgba8 {
-        r: 0xF6,
-        g: 0xE9,
-        b: 0xC4,
-        a: 0xFF,
-    };
-    let palette = Palette::spellforge(bright_accent);
-    let theme = Theme::from_palette(palette, Variant::Normal);
-    let accent_brightness = perceived_brightness_u32(theme.accent);
-    let on_accent_brightness = perceived_brightness_u32(theme.on_accent);
-    let contrast = accent_brightness.abs_diff(on_accent_brightness);
-    assert!(
-        contrast > 7_500,
-        "on_accent too close to accent: accent_b={accent_brightness}, \
-             on_accent_b={on_accent_brightness}, contrast={contrast}",
-    );
+        );
+    }
 }
 
 #[test]
 fn console_dark_resolves_shadcn_tokens_to_captured_srgb() {
     let t = Theme::console_dark();
-    let rgba = |r, g, b, a| Rgba8 { r, g, b, a };
-    assert_eq!(
-        t.resolve_color(ColorKey::parse("background")),
-        rgba(10, 10, 10, 255)
-    );
-    assert_eq!(
-        t.resolve_color(ColorKey::parse("card")),
-        rgba(23, 23, 23, 255)
-    );
-    assert_eq!(
-        t.resolve_color(ColorKey::parse("primary")),
-        rgba(229, 229, 229, 255)
-    );
-    assert_eq!(
-        t.resolve_color(ColorKey::parse("muted-foreground")),
-        rgba(161, 161, 161, 255)
-    );
-    assert_eq!(
-        t.resolve_color(ColorKey::parse("destructive")),
-        rgba(255, 100, 103, 255)
-    );
-    assert_eq!(
-        t.resolve_color(ColorKey::parse("sidebar-primary")),
-        rgba(20, 71, 230, 255)
-    );
-    assert_eq!(
-        t.resolve_color(ColorKey::parse("accent")),
-        rgba(38, 38, 38, 255)
-    );
-    assert_eq!(
-        t.resolve_color(ColorKey::parse("border")),
-        rgba(245, 255, 255, 26)
-    );
+    for (name, expected) in [
+        ("background", rgb(10, 10, 10)),
+        ("card", rgb(23, 23, 23)),
+        ("primary", rgb(229, 229, 229)),
+        ("muted-foreground", rgb(161, 161, 161)),
+        ("destructive", rgb(255, 100, 103)),
+        ("sidebar-primary", rgb(20, 71, 230)),
+        ("accent", rgb(38, 38, 38)),
+        (
+            "border",
+            Rgba8 {
+                r: 245,
+                g: 255,
+                b: 255,
+                a: 26,
+            },
+        ),
+    ] {
+        assert_eq!(t.resolve_color(ColorKey::parse(name)), expected, "{name}");
+    }
 }
 
 #[test]
 fn dark_built_in_accent_unaffected_by_token_first_resolution() {
     let t = Theme::dark();
     assert_eq!(t.resolve_color(ColorKey::parse("accent")), t.accent);
-    assert_ne!(
-        t.resolve_color(ColorKey::parse("accent")),
-        Rgba8 {
-            r: 38,
-            g: 38,
-            b: 38,
-            a: 255
-        }
-    );
+    assert_ne!(t.resolve_color(ColorKey::parse("accent")), rgb(38, 38, 38));
 }
 
 #[test]
 fn runtime_token_rebinding_accent_wins_over_builtin() {
-    let gold = Rgba8 {
-        r: 0xE8,
-        g: 0xC0,
-        b: 0x60,
-        a: 255,
-    };
-    let navy = Rgba8 {
-        r: 0x0D,
-        g: 0x12,
-        b: 0x20,
-        a: 255,
-    };
+    let gold = rgb(0xE8, 0xC0, 0x60);
+    let navy = rgb(0x0D, 0x12, 0x20);
     let t = Theme::dark()
         .with_token("accent", ThemeValue::Color(gold))
         .with_token("on-accent", ThemeValue::Color(navy));

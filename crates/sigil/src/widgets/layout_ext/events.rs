@@ -10,165 +10,54 @@ use crate::kernel::NodeBuilder;
 use crate::layout::CaretGeometry;
 use crate::reactive::Signal;
 
+macro_rules! forward_handlers {
+    ($($name:ident($($arg:ty),*);)*) => {$(
+        fn $name<H: Fn($($arg),*) + 'static>(self, h: H) -> Self {
+            self.map_node(move |node| <NodeBuilder as NodeEventsExt>::$name(node, h))
+        }
+    )*};
+}
+
+macro_rules! forward_shortcuts {
+    ($($name:ident;)*) => {$(
+        fn $name<S, H>(self, shortcut: S, h: H) -> Self
+        where
+            S: Into<Shortcut>,
+            H: Fn(&mut KeyEvent) + 'static,
+        {
+            let shortcut = shortcut.into();
+            self.map_node(move |node| <NodeBuilder as NodeEventsExt>::$name(node, shortcut, h))
+        }
+    )*};
+}
+
 impl<T: WidgetLayoutExt> NodeEventsExt for T {
-    fn pointer_down<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut PointerEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::pointer_down(node, h))
+    forward_handlers! {
+        pointer_down(&mut PointerEvent);
+        pointer_down_capture(&mut PointerEvent);
+        pointer_up(&mut PointerEvent);
+        pointer_up_capture(&mut PointerEvent);
+        pointer_move(&mut PointerEvent);
+        pointer_move_capture(&mut PointerEvent);
+        pointer_enter(&mut PointerEvent);
+        pointer_leave(&mut PointerEvent);
+        file_drop(&FileDropEvent);
+        link(&str);
+        on_selection_copy(&str, &crate::AppResult<crate::clipboard::Delivery>);
+        on_scroll(&mut ScrollEvent);
+        key_any(&mut KeyEvent);
+        key_capture_any(&mut KeyEvent);
+        on_ime(&ImeEvent);
+        on_gesture(&mut GestureEvent);
+        on_paste(&mut PasteEvent);
+        focus_in();
+        focus_out();
     }
 
-    fn pointer_down_capture<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut PointerEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::pointer_down_capture(node, h))
-    }
-
-    fn pointer_up<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut PointerEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::pointer_up(node, h))
-    }
-
-    fn pointer_up_capture<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut PointerEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::pointer_up_capture(node, h))
-    }
-
-    fn pointer_move<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut PointerEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::pointer_move(node, h))
-    }
-
-    fn pointer_move_capture<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut PointerEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::pointer_move_capture(node, h))
-    }
-
-    fn pointer_enter<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut PointerEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::pointer_enter(node, h))
-    }
-
-    fn pointer_leave<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut PointerEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::pointer_leave(node, h))
-    }
-
-    fn file_drop<H>(self, h: H) -> Self
-    where
-        H: Fn(&FileDropEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::file_drop(node, h))
-    }
-
-    fn link<H>(self, h: H) -> Self
-    where
-        H: Fn(&str) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::link(node, h))
-    }
-
-    fn on_selection_copy<H>(self, h: H) -> Self
-    where
-        H: Fn(&str, &crate::AppResult<crate::clipboard::Delivery>) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::on_selection_copy(node, h))
-    }
-
-    fn on_scroll<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut ScrollEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::on_scroll(node, h))
-    }
-
-    fn key_any<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut KeyEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::key_any(node, h))
-    }
-
-    fn key_capture_any<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut KeyEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::key_capture_any(node, h))
-    }
-
-    fn on_ime<H>(self, h: H) -> Self
-    where
-        H: Fn(&ImeEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::on_ime(node, h))
-    }
-
-    fn on_gesture<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut GestureEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::on_gesture(node, h))
-    }
-
-    fn on_paste<H>(self, h: H) -> Self
-    where
-        H: Fn(&mut PasteEvent) + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::on_paste(node, h))
-    }
-
-    fn key<S, H>(self, shortcut: S, h: H) -> Self
-    where
-        S: Into<Shortcut>,
-        H: Fn(&mut KeyEvent) + 'static,
-    {
-        let shortcut = shortcut.into();
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::key(node, shortcut, h))
-    }
-
-    fn shortcut<S, H>(self, shortcut: S, h: H) -> Self
-    where
-        S: Into<Shortcut>,
-        H: Fn(&mut KeyEvent) + 'static,
-    {
-        let shortcut = shortcut.into();
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::shortcut(node, shortcut, h))
-    }
-
-    fn key_capture<S, H>(self, shortcut: S, h: H) -> Self
-    where
-        S: Into<Shortcut>,
-        H: Fn(&mut KeyEvent) + 'static,
-    {
-        let shortcut = shortcut.into();
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::key_capture(node, shortcut, h))
-    }
-
-    fn focus_in<H>(self, h: H) -> Self
-    where
-        H: Fn() + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::focus_in(node, h))
-    }
-
-    fn focus_out<H>(self, h: H) -> Self
-    where
-        H: Fn() + 'static,
-    {
-        self.map_node(move |node| <NodeBuilder as NodeEventsExt>::focus_out(node, h))
+    forward_shortcuts! {
+        key;
+        shortcut;
+        key_capture;
     }
 
     fn ime_caret(self, anchor: Rc<Cell<Option<CaretGeometry>>>) -> Self {

@@ -4,7 +4,7 @@ use crate::style::Tone;
 #[test]
 fn a_fixed_range_maps_the_floor_and_the_ceiling_to_the_end_glyphs() {
     let line = sparkline([0.0, 50.0, 100.0]).range(0.0, 100.0);
-    assert_eq!(line.glyphs(), "▁▄█");
+    assert_eq!(line.graph(), vec!["▁▄█".to_owned()]);
 }
 
 #[test]

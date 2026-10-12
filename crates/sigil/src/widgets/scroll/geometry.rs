@@ -7,7 +7,7 @@ use super::{SCROLLBAR_WIDTH, THUMB_MIN_HEIGHT, THUMB_REST_WIDTH, to_i16};
 
 const CACHE_CAP: usize = 256;
 
-type Cache = OnceLock<Mutex<HashMap<(i16, i16), &'static [StyleAtom]>>>;
+pub(crate) type Cache = OnceLock<Mutex<HashMap<(i16, i16), &'static [StyleAtom]>>>;
 
 pub(crate) fn thumb_metrics(extent: f32, viewport_height: f32) -> (f32, f32) {
     let height = viewport_height.max(0.0);
@@ -67,7 +67,7 @@ pub(crate) fn thumb_atoms_x((width, offset): (i16, i16)) -> &'static [StyleAtom]
     })
 }
 
-fn atoms(
+pub(crate) fn atoms(
     cache: &'static Cache,
     key: (i16, i16),
     build: impl FnOnce() -> Vec<StyleAtom>,

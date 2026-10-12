@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Mutex, OnceLock, PoisonError};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::kernel::{
@@ -15,7 +15,6 @@ use crate::style::{
 
 const TRACK_HEIGHT: f32 = 8.0;
 const INDETERMINATE_RATIO: f32 = 0.30;
-const CELL_RULE_THICKNESS: f32 = 1.0;
 
 static TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
 static FILL: &[StyleAtom] = &[Radius::Md.atom(), Token::Accent.bg()];
@@ -67,18 +66,18 @@ impl ProgressBuilder {
     #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         self.name = name.into();
-        self.caption = caption_text(&self.name);
+        self.caption = match &self.name {
+            AccessibleName::None => None,
+            AccessibleName::Static(value) => Some(TextContent::from(value.clone())),
+            AccessibleName::Derived(value) => Some(TextContent::from(*value)),
+        };
         self
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        let value = self.value;
-        let max = self.max;
+        let (value, max) = (self.value, self.max);
         let track_h = self.layout_overrides.height_hint().unwrap_or(TRACK_HEIGHT);
-        let is_indeterminate = self.indeterminate;
-        let style_accumulator = self.style_accumulator;
-
-        let fill = if is_indeterminate {
+        let fill = if self.indeterminate {
             indeterminate_fill(value, track_h)
         } else {
             determinate_fill(value, max, track_h, self.tone)
@@ -88,14 +87,22 @@ impl ProgressBuilder {
             .role(Role::ProgressIndicator)
             .label(self.name)
             .value(value, 0.0, max)
-            .layout(
-                self.layout_overrides
-                    .apply(track_layout(track_h, self.caption.is_some())),
-            )
+            .layout(self.layout_overrides.apply(if self.caption.is_some() {
+                LayoutStyle::flex_row()
+                    .height(track_h)
+                    .grow(1.0)
+                    .width(0.0)
+                    .align_items(AlignItems::Center)
+            } else {
+                LayoutStyle::flex_row()
+                    .height(track_h)
+                    .fill_width()
+                    .align_items(AlignItems::Center)
+            }))
             .class(TRACK)
             .child(fill);
-        if !style_accumulator.is_empty() {
-            node = node.style(style_accumulator);
+        if !self.style_accumulator.is_empty() {
+            node = node.style(self.style_accumulator);
         }
         match self.caption {
             Some(caption) => captioned_row(caption, node),
@@ -122,24 +129,6 @@ impl IntoNode for ProgressBuilder {
             .hooks()
             .finish(self.into_node_builder())
             .build(cx)
-    }
-}
-
-fn track_layout(track_h: f32, captioned: bool) -> LayoutStyle {
-    let base = LayoutStyle::flex_row().height(track_h);
-    let base = if captioned {
-        base.grow(1.0).width(0.0)
-    } else {
-        base.fill_width()
-    };
-    base.align_items(AlignItems::Center)
-}
-
-fn caption_text(name: &AccessibleName) -> Option<TextContent> {
-    match name {
-        AccessibleName::None => None,
-        AccessibleName::Static(value) => Some(TextContent::from(value.clone())),
-        AccessibleName::Derived(value) => Some(TextContent::from(*value)),
     }
 }
 
@@ -172,7 +161,7 @@ fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> N
 }
 
 fn empty_segment(units: Signal<u16>, track_h: f32) -> NodeBuilder {
-    let (height, paint) = CellForm::new((track_h, EMPTY), (CELL_RULE_THICKNESS, TRACK)).pick();
+    let (height, paint) = CellForm::new((track_h, EMPTY), (1.0, TRACK)).pick();
     container()
         .layout(LayoutStyle::block().height(height).width(0.0))
         .class(paint)
@@ -199,11 +188,14 @@ fn grow_units(ratio: f32) -> u16 {
 }
 
 fn grow_atoms(units: u16) -> &'static [StyleAtom] {
-    #[allow(
-        clippy::cast_possible_wrap,
-        reason = "values are bounded well inside the target range"
-    )]
-    cached_atoms(units as i16, || vec![StyleAtom::FlexGrow(units)])
+    static CACHE: OnceLock<Mutex<HashMap<u16, &'static [StyleAtom]>>> = OnceLock::new();
+    let mut map = CACHE
+        .get_or_init(Mutex::default)
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    map.entry(units).or_insert_with(|| -> &'static [StyleAtom] {
+        Box::leak(Box::new([StyleAtom::FlexGrow(units)]))
+    })
 }
 
 fn indeterminate_fill(phase: Signal<f32>, track_h: f32) -> NodeBuilder {
@@ -227,18 +219,4 @@ fn indeterminate_fill(phase: Signal<f32>, track_h: f32) -> NodeBuilder {
                 .class(FILL),
         )
         .child(spacer(trail))
-}
-
-fn cached_atoms(key: i16, build: impl FnOnce() -> Vec<StyleAtom>) -> &'static [StyleAtom] {
-    static CACHE: OnceLock<Mutex<HashMap<i16, &'static [StyleAtom]>>> = OnceLock::new();
-    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    let Ok(mut map) = cache.lock() else {
-        return Box::leak(build().into_boxed_slice());
-    };
-    if let Some(atoms) = map.get(&key).copied() {
-        return atoms;
-    }
-    let leaked: &'static [StyleAtom] = Box::leak(build().into_boxed_slice());
-    map.insert(key, leaked);
-    leaked
 }

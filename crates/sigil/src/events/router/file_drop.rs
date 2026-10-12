@@ -23,7 +23,7 @@ impl EventRouter {
             return;
         };
         for id in path.iter().rev().copied() {
-            if dispatch(cx, id, |handlers| handlers.invoke_file_drop(event)).unwrap_or(false) {
+            if dispatch(cx, id, |handlers| handlers.invoke_file_drop(event)) == Some(true) {
                 return;
             }
         }

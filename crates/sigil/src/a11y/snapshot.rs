@@ -31,9 +31,7 @@ fn walk(
     let Some(node) = lookup.get(&id) else {
         return;
     };
-    for _ in 0..depth {
-        out.push_str("  ");
-    }
+    out.push_str(&"  ".repeat(depth));
     write_node_line(node, id == focus, out);
     out.push('\n');
     for child in node.children() {

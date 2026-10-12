@@ -62,16 +62,10 @@ thread_local! {
 
 #[cfg(feature = "native-dialog")]
 pub(super) fn in_app() -> bool {
-    crate::app::is_grid() || !gui_available()
-}
-
-#[cfg(feature = "native-dialog")]
-fn gui_available() -> bool {
-    if cfg!(all(unix, not(target_os = "macos"))) {
-        std::env::var_os("DISPLAY").is_some() || std::env::var_os("WAYLAND_DISPLAY").is_some()
-    } else {
-        true
-    }
+    let headless = cfg!(all(unix, not(target_os = "macos")))
+        && std::env::var_os("DISPLAY").is_none()
+        && std::env::var_os("WAYLAND_DISPLAY").is_none();
+    crate::app::is_grid() || headless
 }
 
 pub(super) fn push_files(

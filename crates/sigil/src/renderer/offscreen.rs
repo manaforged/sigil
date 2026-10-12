@@ -1,22 +1,13 @@
 use crate::style::Color;
 
-use crate::renderer::blur_paint::BlurPipeline;
-use crate::renderer::decoration_paint::DecorationPipeline;
-use crate::renderer::device_state::ReadyState;
+use crate::renderer::device_state::PipelineCache;
 use crate::renderer::error::RendererError;
-use crate::renderer::fill_paint::FillPipeline;
 use crate::renderer::frame_stats::FrameStats;
-use crate::renderer::layer_composite::LayerCompositePipeline;
-use crate::renderer::layer_pool::{LayerHandle, LayerPool};
-use crate::renderer::raster_paint::RasterTextPipeline;
+use crate::renderer::layer_pool::LayerHandle;
 use crate::renderer::renderer::{ScreenSubmission, WgpuRenderer, record_clear};
 use crate::renderer::scene_command::CommandScene;
-use crate::renderer::scene_command::walk::{WalkCtx, WalkPending, walk_command_scene};
-use crate::renderer::scene_paint::ScenePipeline;
-use crate::renderer::shadow_paint::ShadowPipeline;
-use crate::renderer::slug::SlugTextPipeline;
+use crate::renderer::scene_command::walk::{WalkCtx, walk_command_scene};
 use crate::renderer::split_encoder::SplitEncoder;
-use crate::renderer::sprite_paint::SpritePipeline;
 
 #[derive(Clone, Copy)]
 pub struct OffscreenTarget<'a> {
@@ -49,38 +40,22 @@ impl WgpuRenderer {
         clear_color: Color,
     ) -> Result<(), RendererError> {
         self.last_frame_stats = FrameStats::default();
-        let Self {
-            state,
-            last_frame_stats,
-            ..
-        } = self;
         let mut encoder = target
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("sigil-renderer offscreen encoder"),
             });
         record_clear(&mut encoder, target.view, clear_color);
-        let mut retained = Vec::new();
         let mut encoder = SplitEncoder::new(target.device, target.queue, encoder);
-        let result = if let Ok(ready) = state.ready_mut()
+        let stats = &mut self.last_frame_stats;
+        let result = if let Ok(ready) = self.state.ready_mut()
             && ready.device == *target.device
         {
-            walk_with_ready(
-                ready,
-                &mut encoder,
-                &mut retained,
-                target,
-                scene,
-                last_frame_stats,
-            )
+            ready
+                .pipelines
+                .walk(&mut encoder, &mut Vec::new(), target, scene, stats)
         } else {
-            walk_with_temporary_pipelines(
-                &mut encoder,
-                &mut retained,
-                target,
-                scene,
-                last_frame_stats,
-            )
+            PipelineCache::default().walk(&mut encoder, &mut Vec::new(), target, scene, stats)
         };
         target
             .queue
@@ -89,42 +64,20 @@ impl WgpuRenderer {
     }
 }
 
-#[allow(
-    clippy::too_many_arguments,
-    reason = "the argument list mirrors the upstream API contract"
-)]
-fn walk_with_ready(
-    ready: &mut ReadyState,
-    encoder: &mut SplitEncoder,
-    retained: &mut Vec<LayerHandle>,
-    target: OffscreenTarget<'_>,
-    scene: &CommandScene,
-    stats: &mut FrameStats,
-) -> Result<(), RendererError> {
-    let ReadyState {
-        scene_pipelines,
-        fill_pipelines,
-        shadow_pipelines,
-        slug_pipelines,
-        raster_pipelines,
-        sprite_pipelines,
-        decoration_pipelines,
-        layer_pipelines,
-        blur_pipelines,
-        layer_pool,
-        pending,
-        ..
-    } = ready;
-    walk_command_scene(
-        WalkCtx {
-            device: target.device,
-            queue: target.queue,
-            encoder,
-            retained,
-            view: target.view,
-            viewport: target.viewport,
-            scale: target.scale,
-            format: target.format,
+impl PipelineCache {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the walk writes to the encoder, retained layers and stats"
+    )]
+    pub(crate) fn walk(
+        &mut self,
+        encoder: &mut SplitEncoder,
+        retained: &mut Vec<LayerHandle>,
+        target: OffscreenTarget<'_>,
+        scene: &CommandScene,
+        stats: &mut FrameStats,
+    ) -> Result<(), RendererError> {
+        let Self {
             scene_pipelines,
             fill_pipelines,
             shadow_pipelines,
@@ -136,57 +89,31 @@ fn walk_with_ready(
             blur_pipelines,
             layer_pool,
             pending,
-            stats,
-        },
-        scene,
-    )
-}
-
-#[allow(
-    clippy::redundant_pub_crate,
-    reason = "`offscreen` is a private module; pub(crate) reads cleaner than pub-and-then-re-export"
-)]
-pub(crate) fn walk_with_temporary_pipelines(
-    encoder: &mut SplitEncoder,
-    retained: &mut Vec<LayerHandle>,
-    target: OffscreenTarget<'_>,
-    scene: &CommandScene,
-    stats: &mut FrameStats,
-) -> Result<(), RendererError> {
-    let mut scene_pipelines = Vec::<ScenePipeline>::new();
-    let mut fill_pipelines = Vec::<FillPipeline>::new();
-    let mut shadow_pipelines = Vec::<ShadowPipeline>::new();
-    let mut slug_pipelines = Vec::<SlugTextPipeline>::new();
-    let mut raster_pipelines = Vec::<RasterTextPipeline>::new();
-    let mut sprite_pipelines = Vec::<SpritePipeline>::new();
-    let mut decoration_pipelines = Vec::<DecorationPipeline>::new();
-    let mut layer_pipelines = Vec::<LayerCompositePipeline>::new();
-    let mut blur_pipelines = Vec::<BlurPipeline>::new();
-    let mut layer_pool = Some(LayerPool::new());
-    let mut pending = WalkPending::default();
-    walk_command_scene(
-        WalkCtx {
-            device: target.device,
-            queue: target.queue,
-            encoder,
-            retained,
-            view: target.view,
-            viewport: target.viewport,
-            scale: target.scale,
-            format: target.format,
-            scene_pipelines: &mut scene_pipelines,
-            fill_pipelines: &mut fill_pipelines,
-            shadow_pipelines: &mut shadow_pipelines,
-            slug_pipelines: &mut slug_pipelines,
-            raster_pipelines: &mut raster_pipelines,
-            sprite_pipelines: &mut sprite_pipelines,
-            decoration_pipelines: &mut decoration_pipelines,
-            layer_pipelines: &mut layer_pipelines,
-            blur_pipelines: &mut blur_pipelines,
-            layer_pool: &mut layer_pool,
-            pending: &mut pending,
-            stats,
-        },
-        scene,
-    )
+        } = self;
+        walk_command_scene(
+            WalkCtx {
+                device: target.device,
+                queue: target.queue,
+                encoder,
+                retained,
+                view: target.view,
+                viewport: target.viewport,
+                scale: target.scale,
+                format: target.format,
+                scene_pipelines,
+                fill_pipelines,
+                shadow_pipelines,
+                slug_pipelines,
+                raster_pipelines,
+                sprite_pipelines,
+                decoration_pipelines,
+                layer_pipelines,
+                blur_pipelines,
+                layer_pool,
+                pending,
+                stats,
+            },
+            scene,
+        )
+    }
 }

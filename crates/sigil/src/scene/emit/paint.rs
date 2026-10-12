@@ -1,6 +1,7 @@
 use crate::geometry::{Point, Rect};
 use crate::kernel::{ImageCrop, Node, NodeId, NodeType, ThemedImage};
 use crate::scene::builder::SceneBuilder;
+use crate::scene::command::fills::TRANSPARENT;
 use crate::scene::command::{
     CellBorder, CellRect, DecorationKind, DrawImage, GlyphRun, GradientStop, LinearGradient,
     SceneDecorationStyle, SceneGradientStyle, SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
@@ -10,8 +11,8 @@ use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
 use crate::scene::style_adapter::{corner_radii_for, focus_ring_for, text_style_for};
 use crate::style::{
-    BgGradient, ColorAtom, Elevation, GradientAxis, RenderStyle, Rgba8, TextDecoration, TextStyle,
-    Theme, Tone,
+    BgGradient, Elevation, GradientAxis, RenderStyle, Rgba8, StyleEngine, TextDecoration,
+    TextStyle, Theme, Tone,
 };
 
 pub(super) fn push_focus_ring(
@@ -35,16 +36,10 @@ pub(super) fn push_focus_ring(
             .0
             .map(|radius| radius + offset),
     );
-    let transparent = Rgba8 {
-        r: 0,
-        g: 0,
-        b: 0,
-        a: 0,
-    };
     scene.draw_rect_for_node(
         id,
         ring_rect,
-        SceneRectStyle::new(transparent, radii, ring.opacity).with_stroke(Stroke {
+        SceneRectStyle::new(TRANSPARENT, radii, ring.opacity).with_stroke(Stroke {
             color: ring.color,
             width: ring.width,
             style: StrokeStyle::Solid,
@@ -121,20 +116,14 @@ fn push_text_decoration(
 
 fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &NodePaint<'_>) {
     let style = paint.style;
+    let radii = corner_radii_for(style.border_radius);
     if let Some(elevation) = style.shadow {
-        scene.draw_shadow(
-            rect,
-            corner_radii_for(style.border_radius),
-            elevation_shadow(elevation),
-        );
+        scene.draw_shadow(rect, radii, elevation_shadow(elevation));
     }
     let stroke = super::borders::border_stroke(style, paint.theme);
     if let Some(spec) = style.background_gradient {
-        let mut gradient_style = SceneGradientStyle::new(
-            gradient_fill(rect, spec, paint.theme),
-            corner_radii_for(style.border_radius),
-            style.opacity,
-        );
+        let fill = gradient_fill(rect, spec, paint.theme);
+        let mut gradient_style = SceneGradientStyle::new(fill, radii, style.opacity);
         let mut cell = paint.cell();
         if let Some(stroke) = stroke {
             gradient_style = gradient_style.with_stroke(stroke);
@@ -142,14 +131,8 @@ fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &Node
         }
         scene.draw_gradient_for_node(id, rect, gradient_style, cell);
     } else if style.background_color.is_some() || stroke.is_some() || paint.tone.is_some() {
-        let fill = style.background_color.unwrap_or(Rgba8 {
-            r: 0,
-            g: 0,
-            b: 0,
-            a: 0,
-        });
-        let mut rect_style =
-            SceneRectStyle::new(fill, corner_radii_for(style.border_radius), style.opacity);
+        let fill = style.background_color.unwrap_or(TRANSPARENT);
+        let mut rect_style = SceneRectStyle::new(fill, radii, style.opacity);
         let mut cell = paint.cell();
         if let Some(stroke) = stroke {
             rect_style = rect_style.with_stroke(stroke);
@@ -280,37 +263,29 @@ pub(super) const fn elevation_shadow(elevation: Elevation) -> Shadow {
 }
 
 fn gradient_fill(rect: Rect, spec: BgGradient, theme: &Theme) -> LinearGradient {
-    let mid_x = rect.origin.x + rect.width / 2.0;
-    let mid_y = rect.origin.y + rect.height / 2.0;
+    let (left, top) = (rect.origin.x, rect.origin.y);
+    let (right, bottom) = (left + rect.width, top + rect.height);
+    let (mid_x, mid_y) = (left + rect.width / 2.0, top + rect.height / 2.0);
     let (start, end) = match spec.axis {
-        GradientAxis::TopToBottom => (
-            Point::new(mid_x, rect.origin.y),
-            Point::new(mid_x, rect.origin.y + rect.height),
-        ),
-        GradientAxis::BottomToTop => (
-            Point::new(mid_x, rect.origin.y + rect.height),
-            Point::new(mid_x, rect.origin.y),
-        ),
-        GradientAxis::LeftToRight => (
-            Point::new(rect.origin.x, mid_y),
-            Point::new(rect.origin.x + rect.width, mid_y),
-        ),
-        GradientAxis::RightToLeft => (
-            Point::new(rect.origin.x + rect.width, mid_y),
-            Point::new(rect.origin.x, mid_y),
-        ),
+        GradientAxis::TopToBottom => ((mid_x, top), (mid_x, bottom)),
+        GradientAxis::BottomToTop => ((mid_x, bottom), (mid_x, top)),
+        GradientAxis::LeftToRight => ((left, mid_y), (right, mid_y)),
+        GradientAxis::RightToLeft => ((right, mid_y), (left, mid_y)),
     };
-    let stops: Vec<GradientStop> = spec
+    let engine = StyleEngine::new(theme);
+    let stops = spec
         .stops
         .iter()
-        .map(|stop| GradientStop::new(f32::from(stop.offset) / 1000.0, resolve(theme, stop.color)))
-        .collect();
-    LinearGradient::new(start, end, stops)
-}
-
-fn resolve(theme: &Theme, color: ColorAtom) -> Rgba8 {
-    match color {
-        ColorAtom::Rgba8(color) => color,
-        ColorAtom::ThemeRef(token) => theme.resolve_color(token),
-    }
+        .map(|stop| {
+            GradientStop::new(
+                f32::from(stop.offset) / 1000.0,
+                engine.resolve_color(stop.color),
+            )
+        })
+        .collect::<Vec<_>>();
+    LinearGradient::new(
+        Point::new(start.0, start.1),
+        Point::new(end.0, end.1),
+        stops,
+    )
 }

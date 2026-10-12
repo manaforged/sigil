@@ -136,28 +136,13 @@ pub(super) fn route(canvas: &mut Canvas, edge: &Edge, from: Rect, to: Rect, dir:
         }
         let (x5, y5) = pen.point(qp, qs);
         canvas.set(x5, y5, head);
-        label(
-            canvas,
-            &pen,
-            edge,
-            Anchor {
-                start: (pp, ps),
-                mid: (pp.saturating_add(qp)) / 2,
-                straight: true,
-            },
-        );
+        label(canvas, &pen, edge, (pp, ps), pp.saturating_add(qp) / 2);
         return;
     }
     jog(canvas, &pen, edge, [(pp, ps), (qp, qs)], head);
 }
 
-pub(super) fn jog(
-    canvas: &mut Canvas,
-    pen: &Pen,
-    edge: &Edge,
-    ends: [(usize, usize); 2],
-    head: char,
-) {
+fn jog(canvas: &mut Canvas, pen: &Pen, edge: &Edge, ends: [(usize, usize); 2], head: char) {
     let [(pp, ps), (qp, qs)] = ends;
     let mid = pp.saturating_add(qp) / 2;
     if let Some((low, high)) = span(pp, mid) {
@@ -176,35 +161,16 @@ pub(super) fn jog(
     }
     let (x8, y8) = pen.point(qp, qs);
     canvas.set(x8, y8, head);
-    label(
-        canvas,
-        pen,
-        edge,
-        Anchor {
-            start: (pp, ps),
-            mid,
-            straight: false,
-        },
-    );
+    label(canvas, pen, edge, (pp, ps), pp);
 }
 
-#[derive(Clone, Copy)]
-pub(super) struct Anchor {
-    pub(super) start: (usize, usize),
-    pub(super) mid: usize,
-    pub(super) straight: bool,
-}
-
-pub(super) fn label(canvas: &mut Canvas, pen: &Pen, edge: &Edge, anchor: Anchor) {
+fn label(canvas: &mut Canvas, pen: &Pen, edge: &Edge, start: (usize, usize), along: usize) {
     if edge.label.is_empty() {
         return;
     }
-    let (pp, ps) = anchor.start;
+    let (pp, ps) = start;
     let (x, y) = if pen.dir.vertical() {
-        pen.point(
-            if anchor.straight { anchor.mid } else { pp },
-            ps.saturating_add(2),
-        )
+        pen.point(along, ps.saturating_add(2))
     } else {
         pen.point(pp.saturating_add(1), ps.saturating_sub(1))
     };

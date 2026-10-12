@@ -25,16 +25,14 @@ impl LayoutStyle {
     #[must_use]
     pub fn padding_x(mut self, padding: impl Into<LengthPercentage>) -> Self {
         let padding = padding.into();
-        self.0.padding.left = padding;
-        self.0.padding.right = padding;
+        (self.0.padding.left, self.0.padding.right) = (padding, padding);
         self.mark(LayoutFields::PADDING_LEFT.with(LayoutFields::PADDING_RIGHT))
     }
 
     #[must_use]
     pub fn padding_y(mut self, padding: impl Into<LengthPercentage>) -> Self {
         let padding = padding.into();
-        self.0.padding.top = padding;
-        self.0.padding.bottom = padding;
+        (self.0.padding.top, self.0.padding.bottom) = (padding, padding);
         self.mark(LayoutFields::PADDING_TOP.with(LayoutFields::PADDING_BOTTOM))
     }
 
@@ -111,11 +109,7 @@ impl LayoutStyle {
 
     #[must_use]
     pub fn gap(mut self, gap: impl Into<LengthPercentage>) -> Self {
-        let gap = gap.into();
-        self.0.gap = Size {
-            width: gap,
-            height: gap,
-        };
+        self.0.gap = Size::splat(gap.into());
         self.mark(LayoutFields::GAP_X.with(LayoutFields::GAP_Y))
     }
 
@@ -128,16 +122,14 @@ impl LayoutStyle {
     #[must_use]
     pub fn margin_x(mut self, margin: impl Into<LengthPercentageAuto>) -> Self {
         let margin = margin.into();
-        self.0.margin.left = margin;
-        self.0.margin.right = margin;
+        (self.0.margin.left, self.0.margin.right) = (margin, margin);
         self.mark(LayoutFields::MARGIN_LEFT.with(LayoutFields::MARGIN_RIGHT))
     }
 
     #[must_use]
     pub fn margin_y(mut self, margin: impl Into<LengthPercentageAuto>) -> Self {
         let margin = margin.into();
-        self.0.margin.top = margin;
-        self.0.margin.bottom = margin;
+        (self.0.margin.top, self.0.margin.bottom) = (margin, margin);
         self.mark(LayoutFields::MARGIN_TOP.with(LayoutFields::MARGIN_BOTTOM))
     }
 

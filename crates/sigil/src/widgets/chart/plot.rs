@@ -13,15 +13,6 @@ pub(super) const AXIS: f32 = 32.0;
 const PLOT_PAD: f32 = space(2);
 const GROUP_GAP: f32 = space(2);
 pub(super) const X_AXIS: f32 = space(8);
-const PAD: f32 = space(3);
-const COMPACT_PAD: f32 = space(1);
-const COMPACT_HEIGHT: f32 = 120.0;
-const MIN_PLOT: f32 = space(8);
-const MID_TICK_MIN: f32 = space(12);
-const LEGEND: f32 = space(6);
-const MIN_LABEL_PX: f32 = 32.0;
-const FLUID_MAX_LABELS: usize = 12;
-const FLUID_COLUMNS: usize = 1024;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Frame {
@@ -31,29 +22,21 @@ pub(super) struct Frame {
 }
 
 impl Frame {
-    pub(super) const fn new(width: Option<f32>, height: f32, whole: bool) -> Self {
-        Self {
-            width,
-            height,
-            whole,
-        }
-    }
-
     pub(super) fn padding(self) -> f32 {
-        if self.height < COMPACT_HEIGHT {
-            COMPACT_PAD
+        if self.height < 120.0 {
+            space(1)
         } else {
-            PAD
+            space(3)
         }
     }
 
     fn inner(self, legend: bool) -> f32 {
-        let legend = if legend { LEGEND } else { 0.0 };
+        let legend = if legend { space(6) } else { 0.0 };
         2.0f32.mul_add(-self.padding(), self.height) - legend
     }
 
     fn shows_x_axis(self, legend: bool) -> bool {
-        self.inner(legend) >= X_AXIS + MIN_PLOT
+        self.inner(legend) >= X_AXIS + space(8)
     }
 
     fn plot_height(self, legend: bool) -> f32 {
@@ -71,9 +54,9 @@ impl Frame {
         reason = "the label budget is a small non-negative count"
     )]
     fn label_stride(self, count: usize) -> usize {
-        let budget = self.width.map_or(FLUID_MAX_LABELS, |width| {
+        let budget = self.width.map_or(12, |width| {
             let span = 2.0f32.mul_add(-(self.padding() + PLOT_PAD), width) - AXIS - space(2);
-            (span / MIN_LABEL_PX).floor().max(1.0) as usize
+            (span / 32.0).floor().max(1.0) as usize
         });
         count.div_ceil(budget.max(1)).max(1)
     }
@@ -84,8 +67,7 @@ impl Frame {
         reason = "a widget width is a small non-negative pixel count"
     )]
     fn columns(self) -> usize {
-        self.width
-            .map_or(FLUID_COLUMNS, |width| width.max(1.0) as usize)
+        self.width.map_or(1024, |width| width.max(1.0) as usize)
     }
 }
 
@@ -124,7 +106,7 @@ pub(super) fn draw(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
     }
     let midpoint = span.lo.midpoint(span.hi);
     let mid_tick =
-        frame.plot_height(has_legend) >= MID_TICK_MIN && (!frame.whole || midpoint.fract() == 0.0);
+        frame.plot_height(has_legend) >= space(12) && (!frame.whole || midpoint.fract() == 0.0);
     let mut nodes = vec![
         container()
             .layout(
@@ -167,13 +149,7 @@ impl Span {
         if mark == ChartMark::Candle {
             return Self::tight(series);
         }
-        let (mut peak, mut trough) = (0.0_f32, 0.0_f32);
-        for item in series {
-            for &value in item.values {
-                peak = peak.max(value);
-                trough = trough.min(value);
-            }
-        }
+        let (trough, peak) = bounds(series, (0.0, 0.0), |_| true);
         Self {
             lo: if trough < 0.0 {
                 -nice_max(-trough)
@@ -189,15 +165,7 @@ impl Span {
     }
 
     fn tight(series: &[ChartView<'_>]) -> Self {
-        let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
-        for item in series {
-            for &value in item.values {
-                if value.is_finite() {
-                    lo = lo.min(value);
-                    hi = hi.max(value);
-                }
-            }
-        }
+        let (lo, hi) = bounds(series, (f32::INFINITY, f32::NEG_INFINITY), f32::is_finite);
         if !(lo.is_finite() && hi.is_finite()) {
             return Self { lo: 0.0, hi: 1.0 };
         }
@@ -214,6 +182,14 @@ impl Span {
     pub(super) fn width(self) -> f32 {
         self.hi - self.lo
     }
+}
+
+fn bounds(series: &[ChartView<'_>], init: (f32, f32), keep: fn(f32) -> bool) -> (f32, f32) {
+    series
+        .iter()
+        .flat_map(|item| item.values.iter().copied())
+        .filter(|&value| keep(value))
+        .fold(init, |(lo, hi), value| (lo.min(value), hi.max(value)))
 }
 
 fn x_axis(labels: &[String], count: usize, gap: f32, stride: usize) -> NodeBuilder {
@@ -343,11 +319,12 @@ fn candles(series: &[ChartView<'_>], span: Span, columns: usize) -> NodeBuilder 
         .first()
         .map(|item| Candle::rows(item.values))
         .unwrap_or_default();
-    let mut layer = container().layout(LayoutStyle::block().fill());
-    for shape in marks::candles(&rows, span, columns) {
-        layer = layer.child(shape);
-    }
-    plot_area(layer)
+    let layer = container().layout(LayoutStyle::block().fill());
+    plot_area(
+        marks::candles(&rows, span, columns)
+            .into_iter()
+            .fold(layer, NodeBuilder::child),
+    )
 }
 
 fn plot_area(layer: NodeBuilder) -> NodeBuilder {

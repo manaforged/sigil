@@ -1,6 +1,7 @@
 mod hsv;
 
 use crate::style::Rgba8;
+use crate::style::scale::rgb;
 use hsv::{perceived_brightness, tint_toward_hue};
 
 pub(crate) const fn is_dark(c: Rgba8) -> bool {
@@ -32,10 +33,6 @@ pub struct Palette {
     pub success: Rgba8,
     pub warning: Rgba8,
     pub danger: Rgba8,
-}
-
-const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a: 255 }
 }
 
 impl Palette {

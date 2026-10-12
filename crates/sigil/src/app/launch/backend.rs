@@ -21,25 +21,6 @@ const ENV: &str = "SIGIL_BACKEND";
 const SURFACE_CLEAR: Color = Color::rgba(0.03, 0.04, 0.05, 1.0);
 const TRANSPARENT_CLEAR: Color = Color::rgba(0.0, 0.0, 0.0, 0.0);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Choice {
-    Auto,
-    Gpu,
-    Cpu,
-    Unknown,
-}
-
-impl Choice {
-    fn parse(value: &str) -> Self {
-        match value {
-            "" | "auto" => Self::Auto,
-            "wgpu" | "gpu" => Self::Gpu,
-            "cpu" => Self::Cpu,
-            _ => Self::Unknown,
-        }
-    }
-}
-
 pub(in crate::app) struct Backend {
     inner: Inner,
     fallback: bool,
@@ -61,36 +42,33 @@ pub(super) enum Surface {
 impl Backend {
     pub(in crate::app) fn from_env() -> Result<Self, RendererError> {
         let value = std::env::var(ENV).unwrap_or_default();
-        let choice = Choice::parse(&value);
-        if choice == Choice::Unknown {
-            tracing::warn!("sigil-app: {ENV}={value:?} is not cpu, wgpu, or auto; using auto");
-        }
-        let (inner, cause) = match choice {
-            Choice::Cpu => (Inner::Cpu(Box::default()), FallbackCause::ForcedByEnv),
-            Choice::Gpu | Choice::Auto => (
-                Inner::Wgpu(Box::new(WgpuRenderer::new()?)),
-                FallbackCause::None,
-            ),
-            Choice::Unknown => (
-                Inner::Wgpu(Box::new(WgpuRenderer::new()?)),
-                FallbackCause::UnknownEnv,
-            ),
+        let (cause, fallback) = match value.as_str() {
+            "cpu" => (FallbackCause::ForcedByEnv, false),
+            "wgpu" | "gpu" => (FallbackCause::None, false),
+            "" | "auto" => (FallbackCause::None, true),
+            _ => {
+                tracing::warn!("sigil-app: {ENV}={value:?} is not cpu, wgpu, or auto; using auto");
+                (FallbackCause::UnknownEnv, true)
+            }
         };
-        let kind = match inner {
-            Inner::Wgpu(_) => BackendKind::Gpu,
-            Inner::Cpu(_) => BackendKind::Cpu,
+        let (inner, kind) = if cause == FallbackCause::ForcedByEnv {
+            (Inner::Cpu(Box::default()), BackendKind::Cpu)
+        } else {
+            (
+                Inner::Wgpu(Box::new(WgpuRenderer::new()?)),
+                BackendKind::Gpu,
+            )
         };
-        let backend = Self {
+        Ok(Self {
             inner,
-            fallback: choice != Choice::Gpu && choice != Choice::Cpu,
+            fallback,
             status: BackendStatus {
                 kind,
                 fallback: cause,
             },
             #[cfg(target_arch = "wasm32")]
             device: None,
-        };
-        Ok(backend)
+        })
     }
 
     pub(super) const fn status(&self) -> BackendStatus {

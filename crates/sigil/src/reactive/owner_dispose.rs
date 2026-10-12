@@ -1,17 +1,18 @@
-use crate::reactive::runtime::{EffectKey, OwnerKey, RuntimeState, SignalKey, with_rt};
+use crate::reactive::arena::Arena;
+use crate::reactive::runtime::{
+    EffectKey, OwnerKey, OwnerSlot, RuntimeState, SignalKey, SignalSlot, with_rt,
+};
 
-fn take_owner_resources(key: OwnerKey) -> (Vec<SignalKey>, Vec<EffectKey>) {
-    with_rt(|rt| {
-        rt.owners
-            .get_mut(key)
-            .map(|o| {
-                (
-                    core::mem::take(&mut o.signals),
-                    core::mem::take(&mut o.effects),
-                )
-            })
-            .unwrap_or_default()
-    })
+pub(crate) fn unsubscribe(signals: &mut Arena<SignalSlot>, dep: SignalKey, effect: EffectKey) {
+    if let Some(sig) = signals.get_mut(dep)
+        && let Some(pos) = sig.subscribers.iter().position(|k| *k == effect)
+    {
+        sig.subscribers.swap_remove(pos);
+    }
+}
+
+fn has_resources(owner: &OwnerSlot) -> bool {
+    !owner.cleanups.is_empty() || !owner.signals.is_empty() || !owner.effects.is_empty()
 }
 
 impl RuntimeState {
@@ -41,18 +42,8 @@ impl RuntimeState {
     pub(crate) fn remove_effect(&mut self, eff_key: EffectKey) -> Option<OwnerKey> {
         let eff = self.effects.get_mut(eff_key)?;
         let run_owner = eff.run_owner.take();
-        let mut deps = eff.deps.clone();
-        for dep in &eff.prev_deps {
-            if !deps.contains(dep) {
-                deps.push(*dep);
-            }
-        }
-        for dep in deps {
-            if let Some(sig) = self.signals.get_mut(dep)
-                && let Some(pos) = sig.subscribers.iter().position(|k| *k == eff_key)
-            {
-                sig.subscribers.swap_remove(pos);
-            }
+        for &dep in eff.deps.iter().chain(&eff.prev_deps) {
+            unsubscribe(&mut self.signals, dep, eff_key);
         }
         self.effects.remove(eff_key);
         self.pending.retain(|p| *p != eff_key);
@@ -61,11 +52,12 @@ impl RuntimeState {
         run_owner
     }
 
-    fn remove_effects_and_signals(
-        &mut self,
-        signals: Vec<SignalKey>,
-        effects: Vec<EffectKey>,
-    ) -> Vec<OwnerKey> {
+    fn remove_owner_resources(&mut self, key: OwnerKey) -> Vec<OwnerKey> {
+        let Some(owner) = self.owners.get_mut(key) else {
+            return Vec::new();
+        };
+        let signals = core::mem::take(&mut owner.signals);
+        let effects = core::mem::take(&mut owner.effects);
         for sig_key in signals {
             self.signals.remove(sig_key);
         }
@@ -92,8 +84,7 @@ impl RuntimeState {
             let Some(owner) = self.owners.get(current) else {
                 continue;
             };
-            if !owner.cleanups.is_empty() || !owner.signals.is_empty() || !owner.effects.is_empty()
-            {
+            if has_resources(owner) {
                 return None;
             }
             owners.push(current);
@@ -104,48 +95,32 @@ impl RuntimeState {
         Some(owners)
     }
 
-    pub(crate) fn detach_from_parent(
-        &mut self,
-        key: OwnerKey,
-        parent: OwnerKey,
-        index_in_parent: Option<usize>,
-    ) {
-        let mut moved_child = None;
-        let mut reindex_children = None;
-
+    fn detach(&mut self, key: OwnerKey) {
+        let Some((parent, index)) = self
+            .owners
+            .get(key)
+            .and_then(|o| o.parent.map(|parent| (parent, o.index_in_parent)))
+        else {
+            return;
+        };
+        let Some(siblings) = self.owners.get_mut(parent).map(|p| &mut p.children) else {
+            return;
+        };
+        if let Some(index) = index
+            && siblings.get(index) == Some(&key)
         {
-            let Some(parent_slot) = self.owners.get_mut(parent) else {
-                return;
-            };
-            if let Some(index) = index_in_parent
-                && parent_slot
-                    .children
-                    .get(index)
-                    .is_some_and(|&child| child == key)
+            siblings.swap_remove(index);
+            if let Some(&moved) = siblings.get(index)
+                && let Some(slot) = self.owners.get_mut(moved)
             {
-                let last = parent_slot.children.last().copied();
-                parent_slot.children.swap_remove(index);
-                if let Some(last) = last
-                    && last != key
-                {
-                    moved_child = Some((last, index));
-                }
-            } else {
-                parent_slot.children.retain(|&child| child != key);
-                reindex_children = Some(parent_slot.children.clone());
+                slot.index_in_parent = Some(index);
             }
+            return;
         }
-
-        if let Some((child, index)) = moved_child
-            && let Some(slot) = self.owners.get_mut(child)
-        {
-            slot.index_in_parent = Some(index);
-        }
-        if let Some(children) = reindex_children {
-            for (index, child) in children.into_iter().enumerate() {
-                if let Some(slot) = self.owners.get_mut(child) {
-                    slot.index_in_parent = Some(index);
-                }
+        siblings.retain(|&child| child != key);
+        for (position, child) in siblings.clone().into_iter().enumerate() {
+            if let Some(slot) = self.owners.get_mut(child) {
+                slot.index_in_parent = Some(position);
             }
         }
     }
@@ -156,31 +131,18 @@ pub(crate) fn try_dispose_plain_subtree(key: OwnerKey) -> bool {
         let Some(root) = rt.owners.get(key) else {
             return true;
         };
-        let parent = root.parent.map(|parent| (parent, root.index_in_parent));
-
-        if root.children.is_empty()
-            && root.cleanups.is_empty()
-            && root.signals.is_empty()
-            && root.effects.is_empty()
-        {
-            if let Some((parent, index_in_parent)) = parent {
-                rt.detach_from_parent(key, parent, index_in_parent);
-            }
+        if has_resources(root) {
+            return false;
+        }
+        if root.children.is_empty() {
+            rt.detach(key);
             rt.owners.remove(key);
             return true;
         }
-
-        if !root.cleanups.is_empty() || !root.signals.is_empty() || !root.effects.is_empty() {
-            return false;
-        }
-
         let Some(owners) = rt.collect_plain_subtree(key) else {
             return false;
         };
-
-        if let Some((parent, index_in_parent)) = parent {
-            rt.detach_from_parent(key, parent, index_in_parent);
-        }
+        rt.detach(key);
         for owner in owners {
             rt.owners.remove(owner);
         }
@@ -243,20 +205,12 @@ pub(crate) fn dispose_owner(key: OwnerKey) {
 
     run_owner_cleanups(key);
 
-    let (signals, effects) = take_owner_resources(key);
-    let orphan_run_owners = with_rt(|rt| rt.remove_effects_and_signals(signals, effects));
+    let orphan_run_owners = with_rt(|rt| rt.remove_owner_resources(key));
     for run_owner in orphan_run_owners {
         dispose_owner(run_owner);
     }
-
     with_rt(|rt| {
-        let parent = rt
-            .owners
-            .get(key)
-            .and_then(|o| o.parent.map(|parent| (parent, o.index_in_parent)));
-        if let Some((parent, index_in_parent)) = parent {
-            rt.detach_from_parent(key, parent, index_in_parent);
-        }
+        rt.detach(key);
         rt.owners.remove(key);
     });
 }

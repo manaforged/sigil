@@ -1,93 +1,65 @@
 use std::borrow::Cow;
 use std::fmt::Display;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-#[non_exhaustive]
-pub enum StringKey {
-    Close,
-    Cancel,
-    Ok,
-    Search,
-    Dialog,
-    Loading,
-    RequiredMark,
-    Empty,
-    Avatar,
-    Chart,
-    NoData,
-    Series,
-    ChartSummary,
-    Sparkline,
-    SparklineSummary,
-    Heatmap,
-    HeatmapGrid,
-    CodeEditor,
-    CommandMenu,
-    StatusBar,
-    MenuBar,
-    ContextMenu,
-    KeyboardShortcuts,
-    ResizeSidebar,
-    ResizePanes,
-    TableMenu,
-    SortAscending,
-    SortDescending,
-    HideColumn,
-    Autosize,
-    MoveLeft,
-    MoveRight,
-    ShowAllColumns,
-    Select,
-    SelectAllRows,
-    SelectRow,
-    SavingOnExit,
+macro_rules! string_keys {
+    ($($key:ident $name:literal $english:literal,)*) => {
+        #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+        #[non_exhaustive]
+        pub enum StringKey {
+            $($key,)*
+        }
+
+        impl StringKey {
+            pub const ALL: [Self; 37] = [$(Self::$key,)*];
+        }
+
+        const NAMES: [(&str, StringKey); StringKey::ALL.len()] = [$(($name, StringKey::$key),)*];
+
+        const ENGLISH: [&str; StringKey::ALL.len()] = [$($english,)*];
+    };
+}
+
+string_keys! {
+    Close "close" "Close",
+    Cancel "cancel" "Cancel",
+    Ok "ok" "OK",
+    Search "search" "Search",
+    Dialog "dialog" "Dialog",
+    Loading "loading" "Loading",
+    RequiredMark "required_mark" "*",
+    Empty "empty" "Empty",
+    Avatar "avatar" "avatar",
+    Chart "chart" "Chart",
+    NoData "no_data" "No data",
+    Series "series" "Series {0}",
+    ChartSummary "chart_summary" "{0}: {1} values from {2} to {3}",
+    Sparkline "sparkline" "Sparkline",
+    SparklineSummary "sparkline_summary" "{0} to {1}, last {2}",
+    Heatmap "heatmap" "Heatmap",
+    HeatmapGrid "heatmap_grid" "{0} by {1} grid",
+    CodeEditor "code_editor" "Code editor",
+    CommandMenu "command_menu" "Command Menu",
+    StatusBar "status_bar" "Status bar",
+    MenuBar "menu_bar" "Menu bar",
+    ContextMenu "context_menu" "Context menu",
+    KeyboardShortcuts "keyboard_shortcuts" "Keyboard shortcuts",
+    ResizeSidebar "resize_sidebar" "Resize sidebar",
+    ResizePanes "resize_panes" "Resize panes",
+    TableMenu "table_menu" "Table menu",
+    SortAscending "sort_ascending" "Sort ascending",
+    SortDescending "sort_descending" "Sort descending",
+    HideColumn "hide_column" "Hide column",
+    Autosize "autosize" "Autosize",
+    MoveLeft "move_left" "Move left",
+    MoveRight "move_right" "Move right",
+    ShowAllColumns "show_all_columns" "Show all columns",
+    Select "select" "Select",
+    SelectAllRows "select_all_rows" "Select all visible rows",
+    SelectRow "select_row" "Select row {0}",
+    SavingOnExit "saving_on_exit" "Saving before closing",
 }
 
 impl StringKey {
-    pub const ALL: [Self; 37] = [
-        Self::Close,
-        Self::Cancel,
-        Self::Ok,
-        Self::Search,
-        Self::Dialog,
-        Self::Loading,
-        Self::RequiredMark,
-        Self::Empty,
-        Self::Avatar,
-        Self::Chart,
-        Self::NoData,
-        Self::Series,
-        Self::ChartSummary,
-        Self::Sparkline,
-        Self::SparklineSummary,
-        Self::Heatmap,
-        Self::HeatmapGrid,
-        Self::CodeEditor,
-        Self::CommandMenu,
-        Self::StatusBar,
-        Self::MenuBar,
-        Self::ContextMenu,
-        Self::KeyboardShortcuts,
-        Self::ResizeSidebar,
-        Self::ResizePanes,
-        Self::TableMenu,
-        Self::SortAscending,
-        Self::SortDescending,
-        Self::HideColumn,
-        Self::Autosize,
-        Self::MoveLeft,
-        Self::MoveRight,
-        Self::ShowAllColumns,
-        Self::Select,
-        Self::SelectAllRows,
-        Self::SelectRow,
-        Self::SavingOnExit,
-    ];
-
-    const fn index(self) -> usize {
-        self as usize
-    }
-
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {
         NAMES
@@ -96,86 +68,6 @@ impl StringKey {
             .map(|(_, key)| *key)
     }
 }
-
-const NAMES: [(&str, StringKey); StringKey::ALL.len()] = [
-    ("close", StringKey::Close),
-    ("cancel", StringKey::Cancel),
-    ("ok", StringKey::Ok),
-    ("search", StringKey::Search),
-    ("dialog", StringKey::Dialog),
-    ("loading", StringKey::Loading),
-    ("required_mark", StringKey::RequiredMark),
-    ("empty", StringKey::Empty),
-    ("avatar", StringKey::Avatar),
-    ("chart", StringKey::Chart),
-    ("no_data", StringKey::NoData),
-    ("series", StringKey::Series),
-    ("chart_summary", StringKey::ChartSummary),
-    ("sparkline", StringKey::Sparkline),
-    ("sparkline_summary", StringKey::SparklineSummary),
-    ("heatmap", StringKey::Heatmap),
-    ("heatmap_grid", StringKey::HeatmapGrid),
-    ("code_editor", StringKey::CodeEditor),
-    ("command_menu", StringKey::CommandMenu),
-    ("status_bar", StringKey::StatusBar),
-    ("menu_bar", StringKey::MenuBar),
-    ("context_menu", StringKey::ContextMenu),
-    ("keyboard_shortcuts", StringKey::KeyboardShortcuts),
-    ("resize_sidebar", StringKey::ResizeSidebar),
-    ("resize_panes", StringKey::ResizePanes),
-    ("table_menu", StringKey::TableMenu),
-    ("sort_ascending", StringKey::SortAscending),
-    ("sort_descending", StringKey::SortDescending),
-    ("hide_column", StringKey::HideColumn),
-    ("autosize", StringKey::Autosize),
-    ("move_left", StringKey::MoveLeft),
-    ("move_right", StringKey::MoveRight),
-    ("show_all_columns", StringKey::ShowAllColumns),
-    ("select", StringKey::Select),
-    ("select_all_rows", StringKey::SelectAllRows),
-    ("select_row", StringKey::SelectRow),
-    ("saving_on_exit", StringKey::SavingOnExit),
-];
-
-const ENGLISH: [&str; StringKey::ALL.len()] = [
-    "Close",
-    "Cancel",
-    "OK",
-    "Search",
-    "Dialog",
-    "Loading",
-    "*",
-    "Empty",
-    "avatar",
-    "Chart",
-    "No data",
-    "Series {0}",
-    "{0}: {1} values from {2} to {3}",
-    "Sparkline",
-    "{0} to {1}, last {2}",
-    "Heatmap",
-    "{0} by {1} grid",
-    "Code editor",
-    "Command Menu",
-    "Status bar",
-    "Menu bar",
-    "Context menu",
-    "Keyboard shortcuts",
-    "Resize sidebar",
-    "Resize panes",
-    "Table menu",
-    "Sort ascending",
-    "Sort descending",
-    "Hide column",
-    "Autosize",
-    "Move left",
-    "Move right",
-    "Show all columns",
-    "Select",
-    "Select all visible rows",
-    "Select row {0}",
-    "Saving before closing",
-];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Strings {
@@ -210,14 +102,14 @@ impl Strings {
     }
 
     pub fn set(&mut self, key: StringKey, value: impl Into<Cow<'static, str>>) {
-        if let Some(slot) = self.values.get_mut(key.index()) {
+        if let Some(slot) = self.values.get_mut(key as usize) {
             *slot = value.into();
         }
     }
 
     #[must_use]
     pub fn get(&self, key: StringKey) -> &str {
-        self.values.get(key.index()).map_or("", AsRef::as_ref)
+        self.values.get(key as usize).map_or("", AsRef::as_ref)
     }
 
     #[must_use]

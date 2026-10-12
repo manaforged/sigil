@@ -4,8 +4,7 @@ use crate::style::{ColorKey, ColorOrToken, Paint, Token};
 use crate::widgets::grapheme::{col_bytes, col_count};
 
 use super::{
-    CARET_W, CHANGE_BAR_W, ChangeKind, DIGIT_W, DiagSeverity, DiagSpan, GUTTER_PAD, HlSpan,
-    RUN_CLASS, SELECTION, SelRange, Window,
+    CHANGE_BAR_W, ChangeKind, DiagSeverity, DiagSpan, GUTTER_PAD, HlSpan, SelRange, Window,
 };
 
 type DiagRange = (usize, usize, DiagSeverity);
@@ -45,7 +44,7 @@ pub(super) fn gutter_width(total: usize) -> f32 {
         clippy::cast_precision_loss,
         reason = "pixel and digit-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
     )]
-    let numbers = digits as f32 * DIGIT_W;
+    let numbers = digits as f32 * 7.0;
     CHANGE_BAR_W + GUTTER_PAD + numbers + GUTTER_PAD
 }
 
@@ -131,24 +130,14 @@ pub(super) fn rows(
 }
 
 fn row_bounds(n: usize, spans: &[HlSpan], decor: RowDecor, diags: &[DiagRange]) -> Vec<usize> {
-    let mut bounds: Vec<usize> = Vec::with_capacity(spans.len() * 2 + diags.len() * 2 + 5);
-    bounds.push(0);
-    bounds.push(n);
-    for s in spans {
-        bounds.push(s.start.min(n));
-        bounds.push(s.end.min(n));
-    }
-    if let Some(c) = decor.caret_col {
-        bounds.push(c.min(n));
-    }
-    if let Some((lo, hi)) = decor.sel_cols {
-        bounds.push(lo.min(n));
-        bounds.push(hi.min(n));
-    }
-    for (start, end, _) in diags {
-        bounds.push((*start).min(n));
-        bounds.push((*end).min(n));
-    }
+    let mut bounds: Vec<usize> = [0, n]
+        .into_iter()
+        .chain(spans.iter().flat_map(|s| [s.start, s.end]))
+        .chain(decor.caret_col)
+        .chain(decor.sel_cols.into_iter().flat_map(<[usize; 2]>::from))
+        .chain(diags.iter().flat_map(|&(start, end, _)| [start, end]))
+        .map(|col| col.min(n))
+        .collect();
     bounds.sort_unstable();
     bounds.dedup();
     bounds
@@ -182,13 +171,24 @@ fn styled_row(
             .find(|s| s.start <= a && a < s.end)
             .map(|s| s.token);
         let seg = line[lo_byte..hi_byte].to_owned();
-        if sel_cols.is_some_and(|(lo, hi)| lo <= a && a < hi) {
-            row = row.child(selected_run(seg, token, row_h));
-        } else if let Some(severity) = worst_diag_at(a, diags) {
-            row = row.child(diag_run(seg, token, severity, row_h));
+        let tint = if sel_cols.is_some_and(|(lo, hi)| lo <= a && a < hi) {
+            Some(Token::Accent)
         } else {
-            row = row.child(run_text(seg, token));
-        }
+            diags
+                .iter()
+                .filter(|(start, end, _)| *start <= a && a < *end)
+                .map(|(_, _, severity)| *severity)
+                .max()
+                .map(DiagSeverity::tint_token)
+        };
+        row = match tint {
+            Some(tint) => row.child(
+                row_container(row_h)
+                    .class(tint.bg())
+                    .child(run_text(seg, token)),
+            ),
+            None => row.child(run_text(seg, token)),
+        };
     }
     if caret_col == Some(n) {
         row = row.child(caret_block(row_h));
@@ -235,47 +235,10 @@ fn number_text(number: usize, row_h: f32) -> NodeBuilder {
         )
 }
 
-fn worst_diag_at(a: usize, diags: &[DiagRange]) -> Option<DiagSeverity> {
-    diags
-        .iter()
-        .filter(|(start, end, _)| *start <= a && a < *end)
-        .map(|(_, _, severity)| *severity)
-        .max()
-}
-
-fn diag_run(
-    seg: String,
-    token: Option<&'static str>,
-    severity: DiagSeverity,
-    row_h: f32,
-) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .height(row_h)
-                .shrink(0.0)
-                .align_items(AlignItems::Center),
-        )
-        .class(severity.tint_token().bg())
-        .child(run_text(seg, token))
-}
-
-fn selected_run(seg: String, token: Option<&'static str>, row_h: f32) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .height(row_h)
-                .shrink(0.0)
-                .align_items(AlignItems::Center),
-        )
-        .class(SELECTION.bg())
-        .child(run_text(seg, token))
-}
-
 fn run_text(seg: String, token: Option<&'static str>) -> TextBuilder {
     text(seg)
         .nowrap()
-        .class(RUN_CLASS)
+        .class("text-sm font-mono")
         .text_color(ColorOrToken::Token(
             token.map_or(ColorKey::Token(Token::OnSurface), ColorKey::parse),
         ))
@@ -293,6 +256,6 @@ fn row_container(row_h: f32) -> NodeBuilder {
 
 fn caret_block(row_h: f32) -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_row().width(CARET_W).height(row_h * 0.8))
+        .layout(LayoutStyle::flex_row().width(2.0).height(row_h * 0.8))
         .class(Token::OnSurface.bg())
 }

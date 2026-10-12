@@ -37,33 +37,7 @@ impl Glyphs {
 }
 
 fn console(glyph: char) -> Option<char> {
-    let kept = matches!(
-        glyph,
-        '█' | '▀'
-            | '▄'
-            | '░'
-            | '▒'
-            | '▓'
-            | '─'
-            | '│'
-            | '┌'
-            | '┐'
-            | '└'
-            | '┘'
-            | '├'
-            | '┤'
-            | '┬'
-            | '┴'
-            | '┼'
-            | '↑'
-            | '↓'
-            | '←'
-            | '→'
-            | '▲'
-            | '▼'
-            | '·'
-            | '°'
-    );
+    let kept = "█▀▄░▒▓─│┌┐└┘├┤┬┴┼↑↓←→▲▼·°".contains(glyph);
     if kept {
         return Some(glyph);
     }

@@ -8,7 +8,7 @@ use crate::layout::style_data::{
 
 use super::FlexCtx;
 use super::flexible::resolve_flexible;
-use super::sizing::{container_cross_bounds, item_cross_basis, main_cross_size};
+use super::sizing::{container_cross_bounds, item_cross_basis};
 
 pub(super) fn place_lines(
     ctx: &FlexCtx<'_, '_>,
@@ -18,7 +18,7 @@ pub(super) fn place_lines(
     container_cross: f32,
 ) -> Result<Vec<PlacedItem>, LayoutError> {
     let line_count = lines.len();
-    let cross_definite = cross_is_definite(ctx, style);
+    let cross_definite = ctx.definite_along(style, !ctx.axes.row);
     for line in &mut lines {
         resolve_flexible(line, container_main);
         resolve_cross_sizes(ctx, line, container_cross)?;
@@ -28,7 +28,7 @@ pub(super) fn place_lines(
         clamp_single_line(ctx, style, &mut lines);
     }
     let total_lines_cross: f32 = lines.iter().map(|l| l.cross).sum();
-    let gap = cross_gap(ctx, style);
+    let gap = gap_along(ctx, style, !ctx.axes.row);
     let total_gaps = gap * line_count.saturating_sub(1) as f32;
     let cross_free = if cross_definite {
         (container_cross - total_lines_cross - total_gaps).max(0.0)
@@ -127,8 +127,6 @@ pub(crate) struct PlacedItem {
     pub(crate) cross_pos: f32,
     pub(crate) main_size: f32,
     pub(crate) cross_size: f32,
-    pub(crate) margin_main_start: f32,
-    pub(crate) margin_cross_start: f32,
 }
 
 fn place_line_items(
@@ -145,8 +143,7 @@ fn place_line_items(
     let gap = main_gap(ctx, style, item_count);
     let total_main = item_main_sum + gap * (item_count.saturating_sub(1) as f32);
     let free = (container_main - total_main).max(0.0);
-    let (main_origin, main_gap_extra) =
-        distribute_main(style.justify_content, free, item_count, container_main);
+    let (main_origin, main_gap_extra) = distribute_main(style.justify_content, free, item_count);
     let mut cursor = main_origin;
     let reversed = ctx.axes.reversed_main;
     for i in 0..item_count {
@@ -158,12 +155,10 @@ fn place_line_items(
         let cross_offset = cross_offset_for(item, style.align_items, line_cross, start_at_end);
         let placed = PlacedItem {
             id: item.id,
-            main_pos: cursor + item.margin_main_start(),
-            cross_pos: line_origin_cross + cross_offset + item.margin_cross_start(),
+            main_pos: cursor + item.margin_main_start,
+            cross_pos: line_origin_cross + cross_offset + item.margin_cross_start,
             main_size: item.main_size,
             cross_size: cross_size_for(item, style.align_items, line_cross, ctx.suppress_stretch),
-            margin_main_start: item.margin_main_start(),
-            margin_cross_start: item.margin_cross_start(),
         };
         out.push(placed);
         cursor += item.outer_main() + gap + main_gap_extra;
@@ -172,13 +167,17 @@ fn place_line_items(
 
 pub(crate) fn main_gap(ctx: &FlexCtx<'_, '_>, style: &StyleData, count: usize) -> f32 {
     if count <= 1 {
-        return 0.0;
-    }
-    let (cb_w, cb_h) = (ctx.cb.w, ctx.cb.h);
-    if ctx.axes.row {
-        crate::layout::snap::gap(resolve_lp(style.gap.width, cb_w))
+        0.0
     } else {
-        crate::layout::snap::row_gap(resolve_lp(style.gap.height, cb_h))
+        gap_along(ctx, style, ctx.axes.row)
+    }
+}
+
+pub(crate) fn gap_along(ctx: &FlexCtx<'_, '_>, style: &StyleData, row: bool) -> f32 {
+    if row {
+        crate::layout::snap::gap(resolve_lp(style.gap.width, ctx.cb.w))
+    } else {
+        crate::layout::snap::row_gap(resolve_lp(style.gap.height, ctx.cb.h))
     }
 }
 
@@ -191,12 +190,7 @@ fn line_cross_size(line: &FlexLine) -> f32 {
 
 fn distribute_cross(align: Option<AlignContent>, free: f32, line_count: usize) -> (f32, f32) {
     if line_count == 0 || free <= 0.0 {
-        let origin = match align {
-            Some(AlignContent::End) => free.max(0.0),
-            Some(AlignContent::Center) => free.max(0.0) / 2.0,
-            _ => 0.0,
-        };
-        return (origin, 0.0);
+        return (0.0, 0.0);
     }
     match align.unwrap_or(AlignContent::Stretch) {
         AlignContent::Start | AlignContent::Stretch => (0.0, 0.0),
@@ -220,23 +214,9 @@ fn distribute_cross(align: Option<AlignContent>, free: f32, line_count: usize) -
     }
 }
 
-fn distribute_main(
-    align: Option<JustifyContent>,
-    free: f32,
-    item_count: usize,
-    container_main: f32,
-) -> (f32, f32) {
-    let _ = container_main;
-    if item_count == 0 {
+fn distribute_main(align: Option<JustifyContent>, free: f32, item_count: usize) -> (f32, f32) {
+    if item_count == 0 || free <= 0.0 {
         return (0.0, 0.0);
-    }
-    if free <= 0.0 {
-        let origin = match align {
-            Some(JustifyContent::End) => 0.0,
-            Some(JustifyContent::Center) => 0.0,
-            _ => 0.0,
-        };
-        return (origin, 0.0);
     }
     match align.unwrap_or(JustifyContent::Start) {
         JustifyContent::Start | JustifyContent::Stretch => (0.0, 0.0),
@@ -292,29 +272,11 @@ fn cross_size_for(
     let align = item.align_self.or(container).unwrap_or(AlignItems::Stretch);
     let size =
         if !suppress_stretch && matches!(align, AlignItems::Stretch) && item.cross_size_was_auto {
-            (line_cross - item.margin_cross_start() - item.margin_cross_end()).max(0.0)
+            (line_cross - item.margin_cross_start - item.margin_cross_end).max(0.0)
         } else {
             item.cross_size
         };
     clamp(size, item.min_cross, item.max_cross).max(0.0)
-}
-
-fn cross_gap(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> f32 {
-    if ctx.axes.row {
-        crate::layout::snap::row_gap(resolve_lp(style.gap.height, ctx.cb.h))
-    } else {
-        crate::layout::snap::gap(resolve_lp(style.gap.width, ctx.cb.w))
-    }
-}
-
-fn cross_is_definite(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
-    let (_, size) = main_cross_size(style, ctx.axes);
-    let assigned = if ctx.axes.row {
-        ctx.assigned_h
-    } else {
-        ctx.assigned_w
-    };
-    assigned.is_some() || !matches!(size, Dimension::Auto)
 }
 
 fn aligned_line_cross(

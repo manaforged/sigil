@@ -221,13 +221,10 @@ fn map_input(event: Event, config: &AppConfig, pointer: &mut crate::geometry::Po
 }
 
 fn keyed(mapped: ShellEvent, config: &AppConfig) -> Input {
-    let suspend = match (&mapped, config.suspend.as_ref()) {
-        (ShellEvent::Key(key), Some(shortcut)) => {
-            key.phase == crate::events::KeyPhase::Down && shortcut.matches(key)
-        }
-        _ => false,
-    };
-    if suspend {
+    if let (ShellEvent::Key(key), Some(shortcut)) = (&mapped, &config.suspend)
+        && key.phase == crate::events::KeyPhase::Down
+        && shortcut.matches(key)
+    {
         Input::Suspend
     } else {
         Input::Event(mapped)
@@ -257,16 +254,9 @@ pub(crate) fn limit(config: &AppConfig, cols: &mut u16, rows: &mut u16) {
 
 fn quit(key: &crossterm::event::KeyEvent, config: &AppConfig) -> bool {
     use crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
-    if key.kind == KeyEventKind::Release {
-        return false;
-    }
-    if config.quit.ctrl_c
-        && key.modifiers.contains(KeyModifiers::CONTROL)
-        && matches!(key.code, KeyCode::Char('c'))
-    {
-        return true;
-    }
-    config.quit.esc && key.code == KeyCode::Esc
+    let ctrl_c = key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c');
+    key.kind != KeyEventKind::Release
+        && ((config.quit.ctrl_c && ctrl_c) || (config.quit.esc && key.code == KeyCode::Esc))
 }
 
 #[cfg(all(test, unix))]

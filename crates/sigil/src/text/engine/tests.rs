@@ -10,12 +10,22 @@ const FIRA_REGULAR: &[u8] = sigil_fonts::FIRA_SANS_REGULAR;
 const NOTO_HEBREW: &[u8] =
     include_bytes!("../../../tests/fixtures/text/NotoSansHebrew-Regular.ttf");
 
-fn fira_regular() -> Font {
-    Font::from_bytes(FIRA_REGULAR.to_vec(), 0).expect("FiraSans-Regular fixture must parse")
+fn font(bytes: &[u8]) -> Font {
+    Font::from_bytes(bytes.to_vec(), 0).expect("font fixture must parse")
 }
 
-fn noto_hebrew() -> Font {
-    Font::from_bytes(NOTO_HEBREW.to_vec(), 0).expect("NotoSansHebrew fixture must parse")
+fn chain() -> Vec<Font> {
+    vec![font(FIRA_REGULAR), font(NOTO_HEBREW)]
+}
+
+fn notdef_count(text: &str) -> usize {
+    crate::text::OwnedTextEngine::new(crate::text::TextConfig::default())
+        .layout_paragraph_styled(text, None, &crate::style::TextStyle::default())
+        .expect("layout")
+        .rendered_glyphs()
+        .iter()
+        .filter(|g| g.glyph_id == 0)
+        .count()
 }
 
 fn args(fragment: &str) -> PushRunArgs<'_> {
@@ -30,7 +40,7 @@ fn args(fragment: &str) -> PushRunArgs<'_> {
 
 #[test]
 fn split_coverage_segment_renders_fully_via_two_faces() {
-    let chain = vec![fira_regular(), noto_hebrew()];
+    let chain = chain();
     let fragment = "a\u{05D0}";
     let mut out = Vec::new();
     push_run(&args(fragment), &chain, &Style::regular(16.0), &mut out);
@@ -59,13 +69,13 @@ fn split_coverage_segment_renders_fully_via_two_faces() {
 
 #[test]
 fn primary_preference_never_swaps_when_primary_covers() {
-    let noto = noto_hebrew();
+    let noto = font(NOTO_HEBREW);
     assert!(
         noto.covers("abc"),
         "test precondition: NotoSansHebrew must also cover plain Latin \
          for this to be a meaningful primary-preference check",
     );
-    let chain = vec![fira_regular(), noto];
+    let chain = vec![font(FIRA_REGULAR), noto];
     let mut out = Vec::new();
     push_run(&args("abc"), &chain, &Style::regular(16.0), &mut out);
 
@@ -78,7 +88,7 @@ fn primary_preference_never_swaps_when_primary_covers() {
 
 #[test]
 fn shape_validated_falls_through_when_the_initial_pick_shapes_to_notdef() {
-    let chain = vec![fira_regular(), noto_hebrew()];
+    let chain = chain();
     let (slot, run) = shape_validated(
         &chain,
         0,
@@ -100,48 +110,36 @@ fn shape_validated_falls_through_when_the_initial_pick_shapes_to_notdef() {
 
 #[test]
 fn shape_validated_keeps_the_initial_pick_when_it_already_shapes_cleanly() {
-    let chain = vec![fira_regular(), noto_hebrew()];
+    let chain = chain();
     let (slot, run) = shape_validated(&chain, 0, "abc", 0, &Style::regular(16.0));
     assert_eq!(slot, 0);
     assert!(run.glyphs.iter().all(|g| g.id != GlyphId(0)));
 }
 
-fn assert_ignorable_control_stays_bounded(control: char) {
-    let fragment = format!("a{control}b");
-    let chain = vec![fira_regular(), noto_hebrew()];
-    let (slot, run) = shape_validated(&chain, 0, &fragment, 0, &Style::regular(16.0));
-    assert_eq!(
-        slot, 0,
-        "an ignorable control must not push shape_validated past the \
-         primary face (fragment {fragment:?})",
-    );
-    assert!(
-        !run_has_disallowed_notdef(&run, &fragment),
-        "an ignorable control's own .notdef must not count as a visible \
-         coverage failure (fragment {fragment:?}): {:?}",
-        run.glyphs.iter().map(|g| g.id).collect::<Vec<_>>(),
-    );
-}
-
 #[test]
-fn shape_validated_bounded_for_combining_grapheme_joiner() {
-    assert_ignorable_control_stays_bounded('\u{034F}');
-}
-
-#[test]
-fn shape_validated_bounded_for_word_joiner() {
-    assert_ignorable_control_stays_bounded('\u{2060}');
-}
-
-#[test]
-fn shape_validated_bounded_for_supplementary_variation_selector() {
-    assert_ignorable_control_stays_bounded('\u{E0100}');
+fn shape_validated_stays_bounded_for_ignorable_controls() {
+    let chain = chain();
+    for control in ['\u{034F}', '\u{2060}', '\u{E0100}'] {
+        let fragment = format!("a{control}b");
+        let (slot, run) = shape_validated(&chain, 0, &fragment, 0, &Style::regular(16.0));
+        assert_eq!(
+            slot, 0,
+            "an ignorable control must not push shape_validated past the \
+             primary face (fragment {fragment:?})",
+        );
+        assert!(
+            !run_has_disallowed_notdef(&run, &fragment),
+            "an ignorable control's own .notdef must not count as a visible \
+             coverage failure (fragment {fragment:?}): {:?}",
+            run.glyphs.iter().map(|g| g.id).collect::<Vec<_>>(),
+        );
+    }
 }
 
 #[test]
 fn registered_fallback_face_joins_the_chain() {
     let mut collection = super::FontCollection::with_default();
-    let hebrew = noto_hebrew();
+    let hebrew = font(NOTO_HEBREW);
     collection.fallbacks = vec![hebrew.clone()];
     let primary = collection.primary().clone();
     let chain = collection.fallback_chain(&primary, 400, "");
@@ -172,36 +170,18 @@ fn bundled_default_family_resolves_weight_500_to_medium() {
 #[cfg(target_os = "macos")]
 #[test]
 fn mixed_script_names_shape_without_notdef() {
-    let engine = crate::text::OwnedTextEngine::new(crate::text::TextConfig::default());
     for text in [
         "KW.M · 東京証券 株式会社",
         "مصرف الخليج الأول",
         "בנק הפועלים",
         "서울반도체",
     ] {
-        let para = engine
-            .layout_paragraph_styled(text, None, &crate::style::TextStyle::default())
-            .expect("layout");
-        let notdef = para
-            .rendered_glyphs()
-            .iter()
-            .filter(|g| g.glyph_id == 0)
-            .count();
-        assert_eq!(notdef, 0, "{text} shaped {notdef} notdef glyphs");
+        assert_eq!(notdef_count(text), 0, "{text} shaped notdef glyphs");
     }
 }
 
 #[test]
 fn ui_symbols_shape_without_notdef() {
-    let engine = crate::text::OwnedTextEngine::new(crate::text::TextConfig::default());
     let text = "⌘K ⌥⇧ ⌃ ✓ ✕ ▲ ▼ ◆ ★ ● ○ ↗";
-    let para = engine
-        .layout_paragraph_styled(text, None, &crate::style::TextStyle::default())
-        .expect("layout");
-    let notdef = para
-        .rendered_glyphs()
-        .iter()
-        .filter(|g| g.glyph_id == 0)
-        .count();
-    assert_eq!(notdef, 0, "{text} shaped {notdef} notdef glyphs");
+    assert_eq!(notdef_count(text), 0, "{text} shaped notdef glyphs");
 }

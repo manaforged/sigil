@@ -89,7 +89,7 @@ fn native_modifiers(modifiers: ModifiersState) -> NativeModifiers {
         .fold(NativeModifiers::empty(), |acc, (_, native)| acc | native)
 }
 
-fn native_named_key(key: Key) -> Option<NativeKey> {
+const fn native_named_key(key: Key) -> Option<NativeKey> {
     Some(match key {
         Key::Enter => NativeKey::Enter,
         Key::Tab => NativeKey::Tab,
@@ -97,12 +97,6 @@ fn native_named_key(key: Key) -> Option<NativeKey> {
         Key::Backspace => NativeKey::Backspace,
         Key::Delete => NativeKey::Delete,
         Key::Insert => NativeKey::Insert,
-        _ => native_navigation_key(key)?,
-    })
-}
-
-fn native_navigation_key(key: Key) -> Option<NativeKey> {
-    Some(match key {
         Key::Home => NativeKey::Home,
         Key::End => NativeKey::End,
         Key::PageUp => NativeKey::PageUp,
@@ -111,12 +105,6 @@ fn native_navigation_key(key: Key) -> Option<NativeKey> {
         Key::ArrowDown => NativeKey::ArrowDown,
         Key::ArrowLeft => NativeKey::ArrowLeft,
         Key::ArrowRight => NativeKey::ArrowRight,
-        _ => native_function_key(key)?,
-    })
-}
-
-const fn native_function_key(key: Key) -> Option<NativeKey> {
-    Some(match key {
         Key::F1 => NativeKey::F1,
         Key::F2 => NativeKey::F2,
         Key::F3 => NativeKey::F3,

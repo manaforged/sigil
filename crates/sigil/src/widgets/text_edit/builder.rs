@@ -159,57 +159,43 @@ impl TextEditBuilder {
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn into_node_builder(mut self) -> NodeBuilder {
         let value = self.value;
-        let disabled = self.disabled;
-        let placeholder = self.placeholder;
-        let mut style_accumulator = self.style_accumulator;
-        let mutators = self.mutators;
-        let layout_overrides = self.layout_overrides;
-        let change = self.change.unwrap_or_else(noop_change);
-        let submit = self.submit.unwrap_or_else(noop_change);
-        let clipboard = self.clipboard.unwrap_or_else(clipboard);
-
-        let enabled = !disabled_now(disabled);
-        let interaction = InteractionState::new(enabled);
-        let caret_visible = self.caret_visible.unwrap_or_else(|| signal(true));
+        let interaction = InteractionState::new(!disabled_now(self.disabled));
         let state = self.state.unwrap_or_else(|| {
-            TextEditState::new(
-                value,
-                self.caret_position
-                    .unwrap_or_else(|| signal(value.peek().len())),
-            )
+            let caret = self.caret_position;
+            TextEditState::new(value, caret.unwrap_or_else(|| signal(value.peek().len())))
         });
         let runtime = TextEditRuntime::new(
             state,
-            disabled,
-            change,
-            submit,
-            clipboard,
-            caret_visible,
+            self.disabled,
+            self.change.unwrap_or_else(noop_change),
+            self.submit.unwrap_or_else(noop_change),
+            self.clipboard.unwrap_or_else(clipboard),
+            self.caret_visible.unwrap_or_else(|| signal(true)),
             self.content_padding,
         );
-
         if let Some(target) = self.caret_rect {
             runtime.ime.report_caret_rect(target);
         }
-        let user_overlay = style_accumulator.take_state_overlay();
+        let overlay = self.style_accumulator.take_state_overlay();
         let node = build_base_node(
             &runtime,
-            &placeholder,
+            &self.placeholder,
             interaction,
-            user_overlay,
+            overlay,
             self.chrome,
         );
         let node = interaction.install(attach_key_handlers(node, runtime.clone(), self.submit_key));
-        let mut node = attach_ime_handlers(node, &runtime);
-        for mutate in mutators {
-            node = mutate(node);
+        let node = attach_ime_handlers(node, &runtime);
+        let mut node = self
+            .mutators
+            .into_iter()
+            .fold(node, |node, mutate| mutate(node));
+        if !self.style_accumulator.is_empty() {
+            node = node.style(self.style_accumulator);
         }
-        if !style_accumulator.is_empty() {
-            node = node.style(style_accumulator);
-        }
-        node.with(layout_overrides.apply(edit_layout()))
+        node.with(self.layout_overrides.apply(edit_layout()))
     }
 }
 

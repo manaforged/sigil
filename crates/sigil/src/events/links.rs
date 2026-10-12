@@ -18,7 +18,7 @@ pub(crate) struct LinkText {
     pub(crate) runs: TextRuns,
 }
 
-fn default_theme() -> &'static Theme {
+pub(super) fn default_theme() -> &'static Theme {
     use std::sync::OnceLock;
     static THEME: OnceLock<Theme> = OnceLock::new();
     THEME.get_or_init(Theme::default)
@@ -85,12 +85,7 @@ pub(crate) fn range_rects(text: &LinkText, start: usize, end: usize) -> Vec<Rect
 }
 
 pub(crate) fn link_at(cx: &Cx, path: &NodePath, global: Point) -> Option<Arc<str>> {
-    let id = path
-        .iter()
-        .rev()
-        .copied()
-        .find(|id| link_text(cx, *id).is_some())?;
-    let text = link_text(cx, id)?;
+    let text = path.iter().rev().find_map(|id| link_text(cx, *id))?;
     let local = Point::new(global.x - text.rect.origin.x, global.y - text.rect.origin.y);
     let byte = with_text_geometry(|geometry| {
         geometry
@@ -105,7 +100,7 @@ pub(crate) fn link_at(cx: &Cx, path: &NodePath, global: Point) -> Option<Arc<str
 
 pub(crate) fn activate(cx: &Cx, path: &NodePath, href: &str) {
     for id in path.iter().rev().copied() {
-        if dispatch(cx, id, |handlers| handlers.invoke_link(href)).unwrap_or(false) {
+        if dispatch(cx, id, |handlers| handlers.invoke_link(href)) == Some(true) {
             return;
         }
     }

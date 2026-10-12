@@ -6,12 +6,13 @@ use crate::renderer::device_state::ReadyState;
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::layer_pool::LayerHandle;
+use crate::renderer::offscreen::OffscreenTarget;
 use crate::renderer::scene_command::CommandScene;
 use crate::renderer::split_encoder::SplitEncoder;
 use crate::renderer::surface::WgpuSurface;
 use crate::style::Color;
 
-use super::submit::{acquire_frame, physical_pixels, surface_text_scale, walk_screen};
+use super::submit::{acquire_frame, physical_pixels, surface_text_scale};
 
 pub(crate) struct SurfaceFrame<'a> {
     pub(crate) scene: &'a CommandScene,
@@ -92,7 +93,7 @@ impl ReadyState {
             self.gpu_timer = timer;
         }
         self.queue.present(frame);
-        if let Some(pool) = self.layer_pool.as_mut() {
+        if let Some(pool) = self.pipelines.layer_pool.as_mut() {
             for handle in layers {
                 pool.release(handle);
             }
@@ -149,18 +150,19 @@ impl ReadyState {
                 (Cow::Borrowed(request.scene), physical_pixels(full, scale))
             }
         };
-        let device = self.device.clone();
-        let queue = self.queue.clone();
-        let result = walk_screen(
-            self,
-            &device,
-            &queue,
+        self.begin_frame();
+        let target = OffscreenTarget {
+            device: &self.device,
+            queue: &self.queue,
+            view,
+            format: recording.format,
+            viewport: request.viewport,
+            scale,
+        };
+        let result = self.pipelines.walk(
             &mut recording.encoder,
             &mut recording.layers,
-            view,
-            request.viewport,
-            scale,
-            recording.format,
+            target,
             &scene,
             recording.stats,
         );

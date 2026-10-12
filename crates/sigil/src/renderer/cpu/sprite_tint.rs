@@ -10,7 +10,7 @@ use tiny_skia::Pixmap;
 
 use crate::renderer::scene_command::{DrawSprite, SpriteKind};
 
-use super::shapes::{coverage_table, decode, stored};
+use super::shapes::{decode, rgba_table, stored};
 
 const SUBPIXEL_TAPS: [f32; 3] = [-1.0 / 3.0, 0.0, 1.0 / 3.0];
 
@@ -60,7 +60,7 @@ pub(super) fn tint(atlas: &Pixmap, region: Rect, draw: &DrawSprite) -> Option<Pi
         width: width as usize,
     };
     let c = draw.color;
-    let table = coverage_table([c.r, c.g, c.b].map(decode), f32::from(c.a) / 255.0);
+    let table = rgba_table(c, 1.0);
     let row_len = width as usize;
     let (dst, _) = out.data_mut().as_chunks_mut::<4>();
     for (index, px) in dst.iter_mut().enumerate() {

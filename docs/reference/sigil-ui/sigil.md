@@ -103,6 +103,7 @@
 | <code>layout(&amp;mut self, viewport: (f32, f32)) -&gt; Result&lt;Option&lt;<a href="sigil-kernel.html#nodeid">NodeId</a>&gt;, <a href="sigil-layout.html#layouterror">LayoutError</a>&gt;</code> |  |
 | <code>mount(&amp;mut self, app: impl <a href="sigil-kernel.html#intonode">IntoNode</a>)</code> |  |
 | <code>new() -&gt; Self</code> |  |
+| <code>perform(&amp;mut self, router: &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>, target: <a href="sigil-kernel.html#nodeid">NodeId</a>, request: &amp;ActionRequest)</code> |  |
 | <code>repair_focus(&amp;mut self, router: &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>)</code> |  |
 | <code>const root(&amp;self) -&gt; Option&lt;<a href="sigil-kernel.html#nodeid">NodeId</a>&gt;</code> |  |
 | <code>route(&amp;mut self, router: &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>, event: <a href="sigil-events.html#shellevent">ShellEvent</a>)</code> |  |
@@ -113,7 +114,6 @@
 | <code>take_exit(&amp;self) -&gt; bool</code> |  |
 | <code>theme(&amp;self) -&gt; &amp;<a href="sigil-style.html#theme">Theme</a></code> |  |
 | <code>frame(&amp;mut self, router: &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>, viewport: (f32, f32), dt: f32, hooks: <a href="sigil-app.html#framehooks">FrameHooks</a>&lt;'_&gt;) -&gt; <a href="sigil-app.html#frameoutput">FrameOutput</a></code> |  |
-| <code>perform(&amp;mut self, router: &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>, target: <a href="sigil-kernel.html#nodeid">NodeId</a>, request: &amp;ActionRequest)</code> |  |
 
 **Trait implementations:** <code>Default</code>
 

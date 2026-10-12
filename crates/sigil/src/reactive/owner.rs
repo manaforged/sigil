@@ -1,7 +1,32 @@
 use core::panic::Location;
 
 use crate::reactive::owner_dispose::dispose_owner;
-use crate::reactive::runtime::{OwnerKey, OwnerSlot, with_rt};
+use crate::reactive::runtime::{OwnerKey, OwnerSlot, RuntimeState, with_rt};
+
+impl RuntimeState {
+    pub(crate) fn insert_owner(
+        &mut self,
+        name: &'static str,
+        parent: Option<OwnerKey>,
+        location: &'static Location<'static>,
+    ) -> OwnerKey {
+        let index_in_parent = parent.and_then(|pk| self.owners.get(pk).map(|p| p.children.len()));
+        let key = self.owners.insert(OwnerSlot {
+            parent,
+            index_in_parent,
+            children: Vec::new(),
+            signals: Vec::new(),
+            effects: Vec::new(),
+            cleanups: Vec::new(),
+            name,
+            location,
+        });
+        if let Some(p) = parent.and_then(|pk| self.owners.get_mut(pk)) {
+            p.children.push(key);
+        }
+        key
+    }
+}
 
 struct OwnerWithGuard {
     prev: Option<OwnerKey>,
@@ -35,24 +60,7 @@ impl Owner {
                     "Owner::new with a disposed parent (id={pk:?}, creating {name:?} at {location})",
                 );
             }
-            let index_in_parent =
-                parent_key.and_then(|pk| rt.owners.get(pk).map(|p| p.children.len()));
-            let key = rt.owners.insert(OwnerSlot {
-                parent: parent_key,
-                index_in_parent,
-                children: Vec::new(),
-                signals: Vec::new(),
-                effects: Vec::new(),
-                cleanups: Vec::new(),
-                name,
-                location,
-            });
-            if let Some(pk) = parent_key
-                && let Some(p) = rt.owners.get_mut(pk)
-            {
-                p.children.push(key);
-            }
-            key
+            rt.insert_owner(name, parent_key, location)
         });
         Self {
             id: OwnerId(key),
@@ -73,17 +81,12 @@ impl Owner {
     #[track_caller]
     pub fn with<R>(self, f: impl FnOnce() -> R) -> R {
         let location = Location::caller();
-        let prev = with_rt(|rt| {
-            assert!(
-                rt.owners.contains(self.id.0),
-                "Owner::with on a disposed owner (id={:?}, at {location})",
-                self.id.0,
-            );
-            let previous = rt.current_owner;
-            rt.current_owner = Some(self.id.0);
-            previous
-        });
-        let _guard = OwnerWithGuard { prev };
+        let guard = enter(self.id);
+        assert!(
+            guard.is_some(),
+            "Owner::with on a disposed owner (id={:?}, at {location})",
+            self.id.0,
+        );
         f()
     }
 
@@ -97,20 +100,19 @@ pub(crate) fn is_live(id: OwnerId) -> bool {
     with_rt(|rt| rt.owners.contains(id.0))
 }
 
+fn enter(id: OwnerId) -> Option<OwnerWithGuard> {
+    with_rt(|rt| {
+        rt.owners.contains(id.0).then(|| OwnerWithGuard {
+            prev: rt.current_owner.replace(id.0),
+        })
+    })
+}
+
 #[track_caller]
 pub(crate) fn owner_by_id(id: OwnerId, f: impl FnOnce()) -> bool {
-    let prev = with_rt(|rt| {
-        if !rt.owners.contains(id.0) {
-            return None;
-        }
-        let previous = rt.current_owner;
-        rt.current_owner = Some(id.0);
-        Some(previous)
-    });
-    let Some(prev) = prev else {
+    let Some(_guard) = enter(id) else {
         return false;
     };
-    let _guard = OwnerWithGuard { prev };
     f();
     true
 }

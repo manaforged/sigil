@@ -20,17 +20,8 @@ fn viewport_fill_sets_root_dimensions_to_fill() {
 
 #[test]
 fn viewport_fill_tracks_parent_pane_measured_size() {
-    use crate::geometry::{LogicalSize, Size};
-    use crate::kernel::TextContent;
-    use crate::layout::LayoutBuilderExt;
-    use crate::layout::{LayoutEngine, LayoutStyle, TextMeasure};
-
-    struct StubMeasure;
-    impl TextMeasure for StubMeasure {
-        fn measure(&self, _content: &TextContent, _space: Size) -> LogicalSize {
-            LogicalSize::new(0.0, 0.0)
-        }
-    }
+    use crate::geometry::Size;
+    use crate::layout::{LayoutBuilderExt, LayoutStyle};
 
     Runtime::scope("sigil-virtual-list-viewport-fill-layout", || {
         let mut cx = Cx::new_root();
@@ -46,7 +37,7 @@ fn viewport_fill_tracks_parent_pane_measured_size() {
         );
         let viewport = cx.first_child(parent).expect("virtual_list root");
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = engine();
         layout
             .compute(&mut cx, parent, Size::fixed(800.0, 600.0))
             .expect("layout");

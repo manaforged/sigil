@@ -1,7 +1,7 @@
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
-use crate::geometry::PhysicalSize;
+use crate::geometry::{PhysicalSize, Point};
 use crate::hal::Renderer;
 use crate::style::Color;
 use tiny_skia::Pixmap;
@@ -9,6 +9,7 @@ use tiny_skia::Pixmap;
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::scene_command::CommandScene;
+use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::window_handle::{DisplayAndWindow, WindowHandle};
 
 mod bound;
@@ -31,6 +32,7 @@ use raster::RasterCache;
 
 type Shared = Arc<Box<dyn DisplayAndWindow>>;
 
+#[derive(Default)]
 pub struct CpuRenderer {
     glyphs: GlyphCache,
     raster: RasterCache,
@@ -53,23 +55,10 @@ impl CpuSurface {
     }
 }
 
-impl Default for CpuRenderer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl CpuRenderer {
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            glyphs: GlyphCache::default(),
-            raster: RasterCache::default(),
-            layers: Vec::new(),
-            covers: Vec::new(),
-            transparent: false,
-            stats: FrameStats::default(),
-        }
+        Self::default()
     }
 
     pub const fn set_transparent(&mut self, transparent: bool) {
@@ -102,16 +91,19 @@ impl CpuRenderer {
         self.raster.begin_frame();
         self.glyphs.begin_frame();
         self.stats.scene_commands = scene.commands.len();
+        let scratch = paint::Scratch {
+            glyphs: &mut self.glyphs,
+            raster: &mut self.raster,
+            stats: &mut self.stats,
+            pool: &mut self.layers,
+            covers: &mut self.covers,
+        };
         Painter::new(
             &mut target,
             scale,
-            &mut paint::Scratch {
-                glyphs: &mut self.glyphs,
-                raster: &mut self.raster,
-                stats: &mut self.stats,
-                pool: &mut self.layers,
-                covers: &mut self.covers,
-            },
+            Point::new(0.0, 0.0),
+            SceneState::default(),
+            scratch,
         )
         .walk(&scene.commands);
         Ok(target)

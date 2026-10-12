@@ -14,9 +14,10 @@ pub(crate) fn dispatch<T>(
     result
 }
 
-type PointerHandler = Box<dyn Fn(&mut PointerEvent) + 'static>;
-type KeyHandler = Box<dyn Fn(&mut KeyEvent) + 'static>;
-type ScrollHandler = Box<dyn Fn(&mut ScrollEvent) + 'static>;
+pub(crate) type Handler<E> = Box<dyn Fn(&mut E) + 'static>;
+type PointerHandler = Handler<PointerEvent>;
+type KeyHandler = Handler<KeyEvent>;
+type ScrollHandler = Handler<ScrollEvent>;
 type FocusHandler = Box<dyn Fn() + 'static>;
 type FileDropHandler = Box<dyn Fn(&FileDropEvent) + 'static>;
 type LinkHandler = Box<dyn Fn(&str) + 'static>;
@@ -32,32 +33,32 @@ pub(crate) enum A11yEdit {
     Select { anchor: usize, focus: usize },
 }
 
-struct KeyBinding {
-    shortcut: Shortcut,
-    handler: KeyHandler,
+pub(crate) struct KeyBinding {
+    pub(crate) shortcut: Shortcut,
+    pub(crate) handler: KeyHandler,
 }
 
 #[derive(Default)]
 pub struct EventHandlers {
-    pointer_down_capture: Vec<PointerHandler>,
-    pointer_down: Vec<PointerHandler>,
-    pointer_up_capture: Vec<PointerHandler>,
-    pointer_up: Vec<PointerHandler>,
-    pointer_move_capture: Vec<PointerHandler>,
-    pointer_move: Vec<PointerHandler>,
-    pointer_enter: Vec<PointerHandler>,
-    pointer_leave: Vec<PointerHandler>,
-    scroll: Vec<ScrollHandler>,
-    key_capture: Vec<KeyBinding>,
-    key_capture_any: Vec<KeyHandler>,
-    key: Vec<KeyBinding>,
-    key_any: Vec<KeyHandler>,
-    shortcut: Vec<KeyBinding>,
-    focus_in: Vec<FocusHandler>,
-    focus_out: Vec<FocusHandler>,
-    file_drop: Vec<FileDropHandler>,
-    link: Vec<LinkHandler>,
-    selection_copy: Vec<SelectionCopyHandler>,
+    pub(crate) pointer_down_capture: Vec<PointerHandler>,
+    pub(crate) pointer_down: Vec<PointerHandler>,
+    pub(crate) pointer_up_capture: Vec<PointerHandler>,
+    pub(crate) pointer_up: Vec<PointerHandler>,
+    pub(crate) pointer_move_capture: Vec<PointerHandler>,
+    pub(crate) pointer_move: Vec<PointerHandler>,
+    pub(crate) pointer_enter: Vec<PointerHandler>,
+    pub(crate) pointer_leave: Vec<PointerHandler>,
+    pub(crate) scroll: Vec<ScrollHandler>,
+    pub(crate) key_capture: Vec<KeyBinding>,
+    pub(crate) key_capture_any: Vec<KeyHandler>,
+    pub(crate) key: Vec<KeyBinding>,
+    pub(crate) key_any: Vec<KeyHandler>,
+    pub(crate) shortcut: Vec<KeyBinding>,
+    pub(crate) focus_in: Vec<FocusHandler>,
+    pub(crate) focus_out: Vec<FocusHandler>,
+    pub(crate) file_drop: Vec<FileDropHandler>,
+    pub(crate) link: Vec<LinkHandler>,
+    pub(crate) selection_copy: Vec<SelectionCopyHandler>,
     value_adjustment: Option<ValueAdjustment>,
     a11y_edit: Option<A11yEditHandler>,
 }
@@ -89,111 +90,8 @@ impl EventHandlers {
         true
     }
 
-    pub(crate) fn add_pointer_down_capture(&mut self, handler: PointerHandler) {
-        self.pointer_down_capture.push(handler);
-    }
-
-    pub(crate) fn add_pointer_down(&mut self, handler: PointerHandler) {
-        self.pointer_down.push(handler);
-    }
-
-    pub(crate) fn add_pointer_up_capture(&mut self, handler: PointerHandler) {
-        self.pointer_up_capture.push(handler);
-    }
-
-    pub(crate) fn add_pointer_up(&mut self, handler: PointerHandler) {
-        self.pointer_up.push(handler);
-    }
-
-    pub(crate) fn add_pointer_move_capture(&mut self, handler: PointerHandler) {
-        self.pointer_move_capture.push(handler);
-    }
-
-    pub(crate) fn add_pointer_move(&mut self, handler: PointerHandler) {
-        self.pointer_move.push(handler);
-    }
-
-    pub(crate) fn add_pointer_enter(&mut self, handler: PointerHandler) {
-        self.pointer_enter.push(handler);
-    }
-
-    pub(crate) fn add_pointer_leave(&mut self, handler: PointerHandler) {
-        self.pointer_leave.push(handler);
-    }
-
-    pub(crate) fn add_scroll(&mut self, handler: ScrollHandler) {
-        self.scroll.push(handler);
-    }
-    pub(crate) fn add_file_drop(&mut self, handler: FileDropHandler) {
-        self.file_drop.push(handler);
-    }
-    pub(crate) fn add_selection_copy(&mut self, handler: SelectionCopyHandler) {
-        self.selection_copy.push(handler);
-    }
-    pub(crate) fn invoke_selection_copy(
-        &self,
-        text: &str,
-        result: &crate::AppResult<crate::clipboard::Delivery>,
-    ) -> bool {
-        for handler in &self.selection_copy {
-            handler(text, result);
-        }
-        !self.selection_copy.is_empty()
-    }
-    pub(crate) fn add_link(&mut self, handler: LinkHandler) {
-        self.link.push(handler);
-    }
-    pub(crate) fn invoke_link(&self, href: &str) -> bool {
-        for handler in &self.link {
-            handler(href);
-        }
-        !self.link.is_empty()
-    }
-    pub(crate) fn invoke_file_drop(&self, event: &FileDropEvent) -> bool {
-        for handler in &self.file_drop {
-            handler(event);
-        }
-        !self.file_drop.is_empty()
-    }
-
-    pub(crate) fn invoke_scroll(&self, event: &mut ScrollEvent) -> bool {
-        let mut invoked = false;
-        for handler in &self.scroll {
-            handler(event);
-            invoked = true;
-            if event.propagation_stopped() {
-                return invoked;
-            }
-        }
-        invoked
-    }
-
-    pub(crate) fn add_key_capture(&mut self, shortcut: Shortcut, handler: KeyHandler) {
-        self.key_capture.push(KeyBinding { shortcut, handler });
-    }
-
-    pub(crate) fn add_key_capture_any(&mut self, handler: KeyHandler) {
-        self.key_capture_any.push(handler);
-    }
-
     pub(crate) fn add_key(&mut self, shortcut: Shortcut, handler: KeyHandler) {
         self.key.push(KeyBinding { shortcut, handler });
-    }
-
-    pub(crate) fn add_shortcut(&mut self, shortcut: Shortcut, handler: KeyHandler) {
-        self.shortcut.push(KeyBinding { shortcut, handler });
-    }
-
-    pub(crate) fn shortcuts(&self) -> impl Iterator<Item = &Shortcut> {
-        self.shortcut.iter().map(|binding| &binding.shortcut)
-    }
-
-    pub(crate) fn invoke_shortcut(&self, event: &mut KeyEvent) -> bool {
-        invoke_bindings(&self.shortcut, event)
-    }
-
-    pub(crate) fn add_key_any(&mut self, handler: KeyHandler) {
-        self.key_any.push(handler);
     }
 
     pub(crate) fn add_focus_in(&mut self, handler: FocusHandler) {
@@ -204,20 +102,47 @@ impl EventHandlers {
         self.focus_out.push(handler);
     }
 
+    pub(crate) fn invoke_selection_copy(
+        &self,
+        text: &str,
+        result: &crate::AppResult<crate::clipboard::Delivery>,
+    ) -> bool {
+        self.selection_copy
+            .iter()
+            .for_each(|handler| handler(text, result));
+        !self.selection_copy.is_empty()
+    }
+
+    pub(crate) fn invoke_link(&self, href: &str) -> bool {
+        self.link.iter().for_each(|handler| handler(href));
+        !self.link.is_empty()
+    }
+
+    pub(crate) fn invoke_file_drop(&self, event: &FileDropEvent) -> bool {
+        self.file_drop.iter().for_each(|handler| handler(event));
+        !self.file_drop.is_empty()
+    }
+
+    pub(crate) fn invoke_scroll(&self, event: &mut ScrollEvent) -> bool {
+        until_stopped(&self.scroll, event, ScrollEvent::propagation_stopped)
+    }
+
+    pub(crate) fn shortcuts(&self) -> impl Iterator<Item = &Shortcut> {
+        self.shortcut.iter().map(|binding| &binding.shortcut)
+    }
+
+    pub(crate) fn invoke_shortcut(&self, event: &mut KeyEvent) -> bool {
+        invoke_bindings(&self.shortcut, event)
+    }
+
     pub(crate) fn invoke_pointer(
         &self,
         phase: PointerPhase,
         capture: bool,
         event: &mut PointerEvent,
     ) {
-        let Some(handlers) = self.pointer_handlers(phase, capture) else {
-            return;
-        };
-        for handler in handlers {
-            handler(event);
-            if event.propagation_stopped() {
-                return;
-            }
+        if let Some(handlers) = self.pointer_handlers(phase, capture) {
+            until_stopped(handlers, event, PointerEvent::propagation_stopped);
         }
     }
 
@@ -227,30 +152,19 @@ impl EventHandlers {
         } else {
             (&self.key, &self.key_any)
         };
-        let mut invoked = invoke_bindings(bindings, event);
+        let invoked = invoke_bindings(bindings, event);
         if event.propagation_stopped() {
             return invoked;
         }
-        for handler in any {
-            handler(event);
-            invoked = true;
-            if event.propagation_stopped() {
-                return invoked;
-            }
-        }
-        invoked
+        until_stopped(any, event, KeyEvent::propagation_stopped) || invoked
     }
 
     pub(crate) fn invoke_focus_in(&self) {
-        for handler in &self.focus_in {
-            handler();
-        }
+        self.focus_in.iter().for_each(|handler| handler());
     }
 
     pub(crate) fn invoke_focus_out(&self) {
-        for handler in &self.focus_out {
-            handler();
-        }
+        self.focus_out.iter().for_each(|handler| handler());
     }
 
     fn pointer_handlers(&self, phase: PointerPhase, capture: bool) -> Option<&[PointerHandler]> {
@@ -268,6 +182,20 @@ impl EventHandlers {
     }
 }
 
+pub(crate) fn until_stopped<E>(
+    handlers: &[Handler<E>],
+    event: &mut E,
+    stopped: impl Fn(&E) -> bool,
+) -> bool {
+    for handler in handlers {
+        handler(event);
+        if stopped(event) {
+            break;
+        }
+    }
+    !handlers.is_empty()
+}
+
 fn invoke_bindings(bindings: &[KeyBinding], event: &mut KeyEvent) -> bool {
     let mut invoked = false;
     for binding in bindings {
@@ -277,7 +205,7 @@ fn invoke_bindings(bindings: &[KeyBinding], event: &mut KeyEvent) -> bool {
         (binding.handler)(event);
         invoked = true;
         if event.propagation_stopped() {
-            return invoked;
+            break;
         }
     }
     invoked

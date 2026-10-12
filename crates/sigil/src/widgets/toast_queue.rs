@@ -9,6 +9,8 @@ use crate::style::{Token, Tone, space};
 use super::dot::dot;
 use super::popup::SURFACE;
 
+const SWEEP_PERIOD: Duration = Duration::from_millis(250);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ToastLevel {
     Info,
@@ -38,7 +40,6 @@ pub struct ToastEntry {
 
 pub const TOAST_TTL: Duration = Duration::from_secs(4);
 pub const MAX_VISIBLE: usize = 4;
-const SWEEP_PERIOD: Duration = Duration::from_millis(250);
 
 #[derive(Debug, Clone, Copy)]
 pub struct ToastQueue {
@@ -99,39 +100,37 @@ impl ToastQueue {
 
 #[must_use]
 pub fn toast_queue(queue: ToastQueue) -> NodeBuilder {
-    interval(SWEEP_PERIOD, move || queue.dismiss_expired(Instant::now()));
+    interval(SWEEP_PERIOD, move || {
+        queue.dismiss_expired(Instant::now());
+    });
     container()
         .role(Role::Status)
-        .layout(stack_layout())
+        .layout(
+            LayoutStyle::flex_column()
+                .position(Position::Absolute)
+                .inset_bottom(space(4))
+                .inset_right(space(4))
+                .gap(space(2))
+                .align_items(AlignItems::End),
+        )
         .children_reactive(move || {
             queue
                 .visible()
                 .into_iter()
-                .map(toast_node)
+                .map(|entry| {
+                    container()
+                        .layout(
+                            LayoutStyle::flex_row()
+                                .align_items(AlignItems::Center)
+                                .gap(space(2))
+                                .padding(space(3)),
+                        )
+                        .class(SURFACE)
+                        .child(dot(entry.level.tone()))
+                        .child(text(entry.message).class(Token::OnSurface.text()))
+                })
                 .collect::<Vec<_>>()
         })
-}
-
-fn stack_layout() -> LayoutStyle {
-    LayoutStyle::flex_column()
-        .position(Position::Absolute)
-        .inset_bottom(space(4))
-        .inset_right(space(4))
-        .gap(space(2))
-        .align_items(AlignItems::End)
-}
-
-fn toast_node(entry: ToastEntry) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .align_items(AlignItems::Center)
-                .gap(space(2))
-                .padding(space(3)),
-        )
-        .class(SURFACE)
-        .child(dot(entry.level.tone()))
-        .child(text(entry.message).class(Token::OnSurface.text()))
 }
 
 #[cfg(test)]

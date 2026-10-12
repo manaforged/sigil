@@ -17,6 +17,8 @@ mod raster;
 use key::{OFFSET, hash_cmd, mix, mix_fill, mix_stroke};
 use raster::{build_ts_path, fill_shader, straight_rgba, stroke_path};
 
+type Resolved = (Option<PathFill>, Option<(Rgba8, f32)>, u64);
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PathColor {
     Rgba(Rgba8),
@@ -232,7 +234,7 @@ impl PathNode {
         });
     }
 
-    fn resolved(&self, theme: &Theme) -> (Option<PathFill>, Option<(Rgba8, f32)>) {
+    fn resolved(&self, theme: &Theme) -> Resolved {
         let fill = self.fill.as_ref().map(|fill| match fill {
             PathFill::Theme(token) => PathFill::Solid(theme.color(*token)),
             other => other.clone(),
@@ -240,15 +242,18 @@ impl PathNode {
         let stroke = self
             .stroke
             .map(|(color, width)| (color.resolve(theme), width));
-        (fill, stroke)
+        let key = self.intern_key(fill.as_ref(), stroke);
+        (fill, stroke, key)
     }
 
     fn intern_key(&self, fill: Option<&PathFill>, stroke: Option<(Rgba8, f32)>) -> u64 {
         let mut hash = OFFSET;
-        for byte in self.width.to_le_bytes() {
-            mix(&mut hash, byte);
-        }
-        for byte in self.height.to_le_bytes() {
+        for byte in self
+            .width
+            .to_le_bytes()
+            .into_iter()
+            .chain(self.height.to_le_bytes())
+        {
             mix(&mut hash, byte);
         }
         mix(&mut hash, u8::from(self.non_scaling));
@@ -267,8 +272,7 @@ impl PathNode {
         reason = "path extents are small positive integers"
     )]
     fn rasterize(&self, theme: &Theme) -> Option<ImageSource> {
-        let (fill, stroke) = self.resolved(theme);
-        let key = self.intern_key(fill.as_ref(), stroke);
+        let (fill, stroke, key) = self.resolved(theme);
         let scale = f32::from(self.scale.max(1));
         let pixels = |extent: u32| ((extent as f32) * scale).round() as u32;
         let target = (pixels(self.width), pixels(self.height), scale);
@@ -276,8 +280,7 @@ impl PathNode {
     }
 
     fn bind(self: &Rc<Self>, theme: &Theme) -> ImageRaster {
-        let (fill, stroke) = self.resolved(theme);
-        let key = self.intern_key(fill.as_ref(), stroke);
+        let (fill, stroke, key) = self.resolved(theme);
         let path = Rc::clone(self);
         ImageRaster::new(key, move |width, height, scale| {
             path.raster(fill.as_ref(), stroke, key, (width, height, scale))
@@ -288,10 +291,9 @@ impl PathNode {
         &self,
         fill: Option<&PathFill>,
         stroke: Option<(Rgba8, f32)>,
-        key: u64,
+        mut key: u64,
         size: RasterSize,
     ) -> Option<ImageSource> {
-        let mut key = key;
         for byte in size.0.to_le_bytes().into_iter().chain(size.1.to_le_bytes()) {
             mix(&mut key, byte);
         }

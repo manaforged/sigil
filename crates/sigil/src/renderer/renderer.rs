@@ -107,11 +107,11 @@ impl WgpuRenderer {
     pub fn pipeline_cache_counts(&self) -> Option<(usize, usize, usize, usize, usize)> {
         self.state.ready().ok().map(|ready| {
             (
-                ready.scene_pipelines.len(),
-                ready.fill_pipelines.len(),
-                ready.shadow_pipelines.len(),
-                ready.slug_pipelines.len(),
-                ready.sprite_pipelines.len(),
+                ready.pipelines.scene_pipelines.len(),
+                ready.pipelines.fill_pipelines.len(),
+                ready.pipelines.shadow_pipelines.len(),
+                ready.pipelines.slug_pipelines.len(),
+                ready.pipelines.sprite_pipelines.len(),
             )
         })
     }
@@ -122,7 +122,7 @@ impl WgpuRenderer {
         self.state
             .ready()
             .ok()
-            .map(|ready| ready.decoration_pipelines.len())
+            .map(|ready| ready.pipelines.decoration_pipelines.len())
     }
 
     #[cfg(any(test, feature = "kittest"))]
@@ -130,7 +130,7 @@ impl WgpuRenderer {
     pub fn layer_pool_ready_for_tests(&self) -> bool {
         self.state
             .ready()
-            .is_ok_and(|ready| ready.layer_pool.is_some())
+            .is_ok_and(|ready| ready.pipelines.layer_pool.is_some())
     }
 
     #[cfg(any(test, feature = "kittest"))]
@@ -160,7 +160,11 @@ impl WgpuRenderer {
         format: wgpu::TextureFormat,
     ) -> Result<(), RendererError> {
         let ready = self.state.ready_mut()?;
-        LayerCompositePipeline::for_format(&mut ready.layer_pipelines, &ready.device, format);
+        LayerCompositePipeline::for_format(
+            &mut ready.pipelines.layer_pipelines,
+            &ready.device,
+            format,
+        );
         Ok(())
     }
 
@@ -218,9 +222,6 @@ impl Renderer for WgpuRenderer {
         let surface = self.state.instance().create_surface(handle)?;
         let ready = self.state.ensure_ready(&surface)?;
         let caps = surface.get_capabilities(&ready.adapter);
-        if caps.formats.is_empty() {
-            return Err(RendererError::NoSupportedFormat);
-        }
         let format = caps
             .formats
             .iter()
@@ -232,11 +233,8 @@ impl Renderer for WgpuRenderer {
         let (width, height) = surface_extent(initial_size, ready.max_texture_dimension_2d());
         let config = wgpu::SurfaceConfiguration {
             color_space: wgpu::SurfaceColorSpace::Srgb,
-            usage: if caps.usages.contains(wgpu::TextureUsages::COPY_DST) {
-                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_DST
-            } else {
-                wgpu::TextureUsages::RENDER_ATTACHMENT
-            },
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | (caps.usages & wgpu::TextureUsages::COPY_DST),
             format,
             width,
             height,
@@ -282,26 +280,16 @@ impl Renderer for WgpuRenderer {
     }
 }
 
-const fn surface_extent(size: PhysicalSize, max_texture_dimension_2d: u32) -> (u32, u32) {
+fn surface_extent(size: PhysicalSize, max_texture_dimension_2d: u32) -> (u32, u32) {
     let max_extent = if max_texture_dimension_2d == 0 {
         u32::MAX
     } else {
         max_texture_dimension_2d
     };
     (
-        clamp_extent(size.width, max_extent),
-        clamp_extent(size.height, max_extent),
+        size.width.clamp(1, max_extent),
+        size.height.clamp(1, max_extent),
     )
-}
-
-const fn clamp_extent(value: u32, max_extent: u32) -> u32 {
-    if value == 0 {
-        1
-    } else if value > max_extent {
-        max_extent
-    } else {
-        value
-    }
 }
 
 fn select_alpha_mode(

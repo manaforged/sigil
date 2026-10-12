@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::io::Cursor;
 
 use crate::kernel::ImageSource;
@@ -31,63 +33,65 @@ fn source(width: u32, height: u32) -> ImageSource {
     ImageSource::from_rgba8(width, height, rgba).expect("source")
 }
 
-fn emit(painter: &mut Painter, protocol: Protocol, frame: Frame<'_>) -> String {
+fn emit(
+    painter: &mut Painter,
+    protocol: Protocol,
+    next: &[Placement],
+    rewritten: &[bool],
+    redraw: bool,
+) -> String {
     let mut out = Cursor::new(Vec::new());
-    painter.emit_with(&mut out, protocol, frame).expect("emit");
+    let frame = Frame {
+        next,
+        rewritten,
+        redraw,
+    };
+    painter
+        .emit_mux(&mut out, protocol, None, frame)
+        .expect("emit");
     String::from_utf8(out.into_inner()).expect("utf8")
 }
 
 #[test]
 fn detection_prefers_the_override_then_known_terminals() {
-    assert_eq!(
-        detect(env(&[
-            ("SIGIL_GRAPHICS", "kitty"),
-            ("TERM_PROGRAM", "Apple_Terminal")
-        ])),
-        Some(Protocol::Kitty)
-    );
-    assert_eq!(
-        detect(env(&[("SIGIL_GRAPHICS", "none"), ("KITTY_WINDOW_ID", "1")])),
-        None
-    );
-    assert_eq!(
-        detect(env(&[("TERM", "xterm-ghostty")])),
-        Some(Protocol::Kitty)
-    );
-    assert_eq!(
-        detect(env(&[("TERM_PROGRAM", "WezTerm")])),
-        Some(Protocol::Iterm2)
-    );
-    assert_eq!(
-        detect(env(&[("WEZTERM_EXECUTABLE", "/usr/bin/wezterm-gui")])),
-        Some(Protocol::Iterm2)
-    );
-    assert_eq!(
-        detect(env(&[("TERM_PROGRAM", "iTerm.app")])),
-        Some(Protocol::Iterm2)
-    );
-    assert_eq!(detect(env(&[("TERM_PROGRAM", "Apple_Terminal")])), None);
-    assert_eq!(
-        detect(env(&[("TMUX", "/tmp/x"), ("KITTY_WINDOW_ID", "1")])),
-        Some(Protocol::Kitty)
-    );
+    let cases: [(&[(&str, &str)], Option<Protocol>); 9] = [
+        (
+            &[
+                ("SIGIL_GRAPHICS", "kitty"),
+                ("TERM_PROGRAM", "Apple_Terminal"),
+            ],
+            Some(Protocol::Kitty),
+        ),
+        (
+            &[("SIGIL_GRAPHICS", "none"), ("KITTY_WINDOW_ID", "1")],
+            None,
+        ),
+        (
+            &[("SIGIL_GRAPHICS", "bogus"), ("KITTY_WINDOW_ID", "1")],
+            Some(Protocol::Kitty),
+        ),
+        (&[("TERM", "xterm-ghostty")], Some(Protocol::Kitty)),
+        (&[("TERM_PROGRAM", "WezTerm")], Some(Protocol::Iterm2)),
+        (
+            &[("WEZTERM_EXECUTABLE", "/usr/bin/wezterm-gui")],
+            Some(Protocol::Iterm2),
+        ),
+        (&[("TERM_PROGRAM", "iTerm.app")], Some(Protocol::Iterm2)),
+        (&[("TERM_PROGRAM", "Apple_Terminal")], None),
+        (
+            &[("TMUX", "/tmp/x"), ("KITTY_WINDOW_ID", "1")],
+            Some(Protocol::Kitty),
+        ),
+    ];
+    for (pairs, want) in cases {
+        assert_eq!(detect(env(pairs)), want, "{pairs:?}");
+    }
     assert_eq!(
         detect_mux(env(&[("TMUX", "/tmp/x"), ("STY", "123")])),
         Some(Mux::Tmux)
     );
     assert_eq!(detect_mux(env(&[("STY", "123")])), Some(Mux::Screen));
     assert_eq!(detect_mux(env(&[("TERM", "xterm")])), None);
-}
-
-#[test]
-fn an_unknown_graphics_override_falls_back_to_detection() {
-    assert_eq!(
-        detect(env(&[
-            ("SIGIL_GRAPHICS", "bogus"),
-            ("KITTY_WINDOW_ID", "1")
-        ])),
-        Some(Protocol::Kitty)
-    );
 }
 
 #[test]
@@ -110,30 +114,33 @@ fn png_round_trips_through_a_decoder() {
     assert_eq!(decoded.as_raw().as_slice(), image.rgba());
 }
 
-fn placed() -> Placement {
+fn placed(
+    at: (u16, u16),
+    size: (u16, u16),
+    source: ImageSource,
+    crop: Option<(u32, u32)>,
+) -> Placement {
     Placement {
-        col: 3,
-        row: 4,
-        cols: 10,
-        rows: 5,
-        source: source(2, 2),
-        crop: None,
+        col: at.0,
+        row: at.1,
+        cols: size.0,
+        rows: size.1,
+        source,
+        crop,
     }
 }
 
 #[test]
 fn kitty_transmits_once_and_places_at_the_cell() {
-    let place = placed();
+    let place = placed((3, 4), (10, 5), source(2, 2), None);
     let quiet = [false; 20];
     let mut painter = Painter::default();
     let first = emit(
         &mut painter,
         Protocol::Kitty,
-        Frame {
-            next: std::slice::from_ref(&place),
-            rewritten: &quiet,
-            redraw: false,
-        },
+        std::slice::from_ref(&place),
+        &quiet,
+        false,
     );
     assert!(first.contains("\x1b_Ga=t,f=32,s=2,v=2,i="), "{first:?}");
     assert!(first.contains(",c=10,r=5,C=1,q=2\x1b\\"), "{first:?}");
@@ -144,38 +151,32 @@ fn kitty_transmits_once_and_places_at_the_cell() {
     let unchanged = emit(
         &mut painter,
         Protocol::Kitty,
-        Frame {
-            next: std::slice::from_ref(&place),
-            rewritten: &quiet,
-            redraw: false,
-        },
+        std::slice::from_ref(&place),
+        &quiet,
+        false,
     );
     assert!(unchanged.is_empty(), "an unchanged placement is not resent");
 }
 
 #[test]
 fn kitty_replaces_after_a_touched_row_and_deletes_when_gone() {
-    let place = placed();
+    let place = placed((3, 4), (10, 5), source(2, 2), None);
     let quiet = [false; 20];
     let mut painter = Painter::default();
     drop(emit(
         &mut painter,
         Protocol::Kitty,
-        Frame {
-            next: std::slice::from_ref(&place),
-            rewritten: &quiet,
-            redraw: false,
-        },
+        std::slice::from_ref(&place),
+        &quiet,
+        false,
     ));
     let rewritten: Vec<bool> = (0..20).map(|row| row == 6).collect();
     let again = emit(
         &mut painter,
         Protocol::Kitty,
-        Frame {
-            next: std::slice::from_ref(&place),
-            rewritten: &rewritten,
-            redraw: false,
-        },
+        std::slice::from_ref(&place),
+        &rewritten,
+        false,
     );
     assert!(
         !again.contains("a=t,"),
@@ -185,37 +186,20 @@ fn kitty_replaces_after_a_touched_row_and_deletes_when_gone() {
         again.contains("a=p,"),
         "a touched row places again: {again:?}"
     );
-    let gone = emit(
-        &mut painter,
-        Protocol::Kitty,
-        Frame {
-            next: &[],
-            rewritten: &quiet,
-            redraw: false,
-        },
-    );
+    let gone = emit(&mut painter, Protocol::Kitty, &[], &quiet, false);
     assert!(gone.contains("\x1b_Ga=d,d=I,i="), "{gone:?}");
 }
 
 #[test]
 fn iterm_places_an_inline_png_sized_in_cells() {
-    let place = Placement {
-        col: 0,
-        row: 1,
-        cols: 8,
-        rows: 4,
-        source: source(3, 2),
-        crop: None,
-    };
+    let place = placed((0, 1), (8, 4), source(3, 2), None);
     let mut painter = Painter::default();
     let text = emit(
         &mut painter,
         Protocol::Iterm2,
-        Frame {
-            next: std::slice::from_ref(&place),
-            rewritten: &[false; 8],
-            redraw: true,
-        },
+        std::slice::from_ref(&place),
+        &[false; 8],
+        true,
     );
     assert!(
         text.contains("\x1b]1337;File=inline=1;width=8;height=4;preserveAspectRatio=0:iVBOR"),
@@ -239,23 +223,14 @@ fn blocks_sample_top_and_bottom_pixels_per_cell() {
 
 #[test]
 fn a_crop_selects_source_rows_for_every_protocol() {
-    let place = Placement {
-        col: 0,
-        row: 0,
-        cols: 4,
-        rows: 1,
-        source: source(4, 4),
-        crop: Some((2, 2)),
-    };
+    let place = placed((0, 0), (4, 1), source(4, 4), Some((2, 2)));
     let mut painter = Painter::default();
     let kitty = emit(
         &mut painter,
         Protocol::Kitty,
-        Frame {
-            next: std::slice::from_ref(&place),
-            rewritten: &[false; 4],
-            redraw: false,
-        },
+        std::slice::from_ref(&place),
+        &[false; 4],
+        false,
     );
     assert!(kitty.contains(",x=0,y=2,w=4,h=2,"), "{kitty:?}");
     let bytes = png_window(&place.source, 2, 2);

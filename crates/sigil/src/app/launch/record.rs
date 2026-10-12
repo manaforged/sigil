@@ -177,9 +177,7 @@ impl Windows {
         let Some(index) = self.records.iter().position(|r| r.view.handle == handle) else {
             return CloseOutcome::Kept;
         };
-        let record = self.records.remove(index);
-        unregister_window(record.view.id);
-        drop(record);
+        unregister_window(self.records.remove(index).view.id);
         CloseOutcome::Removed {
             last: self.records.is_empty(),
         }

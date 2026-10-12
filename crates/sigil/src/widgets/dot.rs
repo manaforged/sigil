@@ -2,7 +2,7 @@ use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::style::{ControlSize, NodeStyleExt, PaintTarget, StyleSlot};
-use crate::style::{Px, StyleAtom, Tone};
+use crate::style::{StyleAtom, Tone};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
@@ -61,51 +61,33 @@ fn cell_dot(tone: Tone, _size: ControlSize) -> (LayoutStyle, NodeBuilder) {
 }
 
 fn round_dot(tone: Tone, size: ControlSize) -> (LayoutStyle, NodeBuilder) {
-    let extent = match size {
-        ControlSize::Compact => 8.0,
-        ControlSize::Default => 12.0,
-        ControlSize::Wide | ControlSize::Grow => 16.0,
+    let extent: i16 = match size {
+        ControlSize::Compact => 8,
+        ControlSize::Default => 12,
+        ControlSize::Wide | ControlSize::Grow => 16,
     };
-    #[allow(
-        clippy::cast_possible_truncation,
-        reason = "extent is 8.0..=16.0 → half_radius 4..=8, exact i16."
-    )]
-    let half_radius = Px((extent / 2.0) as i16);
-    let inner_extent = (extent - 2.0_f32).max(2.0);
-    #[allow(
-        clippy::cast_possible_truncation,
-        reason = "inner_extent is 6.0..=14.0 → half 3..=7, exact i16."
-    )]
-    let inner_radius = Px((inner_extent / 2.0) as i16);
-    let inner = container()
-        .layout(dot_inner_layout(inner_extent))
-        .style(crate::style::Style::new().radius(inner_radius.0))
-        .tone(tone)
-        .class(DOT_FILL_ATOMS);
+    let (outer, inner) = (f32::from(extent), f32::from(extent - 2));
     let node = container()
-        .style(crate::style::Style::new().radius(half_radius.0))
+        .style(crate::style::Style::new().radius(extent / 2))
         .tone(tone)
         .class(DOT_RING_ATOMS)
-        .child(inner);
-    (dot_outer_layout(extent), node)
+        .child(
+            container()
+                .layout(LayoutStyle::flex_row().fixed_size(inner, inner))
+                .style(crate::style::Style::new().radius((extent - 2) / 2))
+                .tone(tone)
+                .class(DOT_FILL_ATOMS),
+        );
+    let layout = LayoutStyle::flex_row()
+        .fixed_size(outer, outer)
+        .align_items(AlignItems::Center)
+        .justify_content(JustifyContent::Center);
+    (layout, node)
 }
 
 static DOT_GLYPH_ATOMS: &[StyleAtom] = &[StyleAtom::FgToneStep(9)];
-
 static DOT_FILL_ATOMS: &[StyleAtom] = &[StyleAtom::BgToneStep(9)];
-
 static DOT_RING_ATOMS: &[StyleAtom] = &[StyleAtom::BgToneStep(11)];
-
-fn dot_outer_layout(extent: f32) -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .fixed_size(extent, extent)
-        .align_items(AlignItems::Center)
-        .justify_content(JustifyContent::Center)
-}
-
-fn dot_inner_layout(extent: f32) -> LayoutStyle {
-    LayoutStyle::flex_row().fixed_size(extent, extent)
-}
 
 impl PaintTarget for DotBuilder {
     fn style_slot(&mut self) -> StyleSlot<'_> {

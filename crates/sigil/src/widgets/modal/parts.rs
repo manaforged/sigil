@@ -9,22 +9,20 @@ use crate::style::{ControlSize, Paint, Token, space};
 use super::super::button::icon_button;
 use super::super::scroll::{SCROLLBAR_WIDTH, scroll};
 
-const TITLE_HEIGHT: f32 = 24.0;
 pub(super) const BODY_GUTTER: f32 = SCROLLBAR_WIDTH;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum CloseControl {
     Shown,
     Hidden,
 }
 
-const CLOSE_GLYPH: &str = "\u{00D7}";
-
 pub(super) fn dialog_header(title: TextContent, close: Option<Signal<bool>>) -> NodeBuilder {
     let row = container()
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .height(snap::line(TITLE_HEIGHT))
+                .height(snap::line(24.0))
                 .shrink(0.0)
                 .padding_right(BODY_GUTTER)
                 .gap(space(2))
@@ -39,7 +37,7 @@ pub(super) fn dialog_header(title: TextContent, close: Option<Signal<bool>>) -> 
         );
     match close {
         Some(show) => row.child(
-            icon_button(CLOSE_GLYPH, move || show.set(false))
+            icon_button("\u{00D7}", move || show.set(false))
                 .accessible(theme_label(StringKey::Close))
                 .size(ControlSize::Compact),
         ),

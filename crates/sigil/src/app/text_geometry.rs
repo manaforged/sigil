@@ -6,6 +6,8 @@ use crate::layout::{CaretGeometry, TextGeometry};
 use crate::style::TextStyle;
 use crate::text::OwnedTextEngine;
 
+use super::cell_text::floor_boundary;
+
 pub struct EngineGeometry {
     engine: Rc<OwnedTextEngine>,
 }
@@ -45,7 +47,7 @@ impl TextGeometry for EngineGeometry {
         width: Option<f32>,
         mut position: HitPosition,
     ) -> CaretGeometry {
-        position.byte_index = clamp_to_boundary(text, position.byte_index);
+        position.byte_index = floor_boundary(text, position.byte_index);
         self.engine
             .layout_paragraph_styled(text, width, style)
             .map_or_else(
@@ -66,26 +68,12 @@ impl TextGeometry for EngineGeometry {
         text: &str,
         style: &TextStyle,
         width: Option<f32>,
-        (anchor, focus): (HitPosition, HitPosition),
+        (mut anchor, mut focus): (HitPosition, HitPosition),
     ) -> Vec<Rect> {
-        let anchor = HitPosition {
-            byte_index: clamp_to_boundary(text, anchor.byte_index),
-            ..anchor
-        };
-        let focus = HitPosition {
-            byte_index: clamp_to_boundary(text, focus.byte_index),
-            ..focus
-        };
+        anchor.byte_index = floor_boundary(text, anchor.byte_index);
+        focus.byte_index = floor_boundary(text, focus.byte_index);
         self.engine
             .layout_paragraph_styled(text, width, style)
             .map_or_else(|_| Vec::new(), |para| para.selection_rects(anchor, focus))
     }
-}
-
-fn clamp_to_boundary(text: &str, byte: usize) -> usize {
-    let mut byte = byte.min(text.len());
-    while byte > 0 && !text.is_char_boundary(byte) {
-        byte -= 1;
-    }
-    byte
 }

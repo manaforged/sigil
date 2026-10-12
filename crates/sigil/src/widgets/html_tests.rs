@@ -60,10 +60,6 @@ fn html_unclosed_angle_keeps_text_once() {
         parse_html("a < b"),
         vec![Block::Paragraph(String::from("a < b"))]
     );
-}
-
-#[test]
-fn html_unclosed_angle_inside_paragraph_is_text() {
     assert_eq!(
         parse_html("<p>x < y</p>"),
         vec![Block::Paragraph(String::from("x < y"))]

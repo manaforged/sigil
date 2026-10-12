@@ -8,7 +8,7 @@ use crate::reactive::{Signal, derived, effect, untrack};
 
 use super::measure::Tops;
 use super::window::RowHeights;
-use super::{BuildAxes, InitialScroll, RowRender, VirtualListBuilder};
+use super::{BuildAxes, RowRender, ScrollAnchor, VirtualListBuilder};
 use crate::widgets::scroll::{WheelAxis, pin_to_bottom, wheel};
 
 impl<T, R> VirtualListBuilder<T, R>
@@ -164,16 +164,13 @@ fn same_item(before: Option<&Vec<u64>>, after: Option<&Vec<u64>>, row: usize) ->
         .unwrap_or(row)
 }
 
-pub(super) fn apply_bound_scroll(
-    axes: BuildAxes,
-    initial: Option<InitialScroll>,
-    pin_bottom: bool,
-) {
+pub(super) fn apply_bound_scroll(axes: BuildAxes, initial: Option<ScrollAnchor>, pin_bottom: bool) {
     if let Some(initial) = initial {
         let max = axes.max.peek();
         let target = match initial {
-            InitialScroll::End => max,
-            InitialScroll::Row(index) => row_span(axes, index).0.clamp(0.0, max),
+            ScrollAnchor::Top => 0.0,
+            ScrollAnchor::Bottom => max,
+            ScrollAnchor::Index(index) => row_span(axes, index).0.clamp(0.0, max),
         };
         axes.scroll_y.set(target);
     }

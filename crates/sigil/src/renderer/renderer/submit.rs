@@ -6,12 +6,11 @@ use crate::geometry::{Point, Rect};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::profile::gpu::snapshot;
 use crate::renderer::damage::{self, FrameKey, FullReason, Plan, Retained};
-use crate::renderer::device_state::{DeviceState, ReadyState};
+use crate::renderer::device_state::{DeviceState, PipelineCache, ReadyState};
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
-use crate::renderer::layer_pool::LayerHandle;
+use crate::renderer::offscreen::OffscreenTarget;
 use crate::renderer::scene_command::CommandScene;
-use crate::renderer::scene_command::walk::{WalkCtx, walk_command_scene};
 use crate::renderer::split_encoder::{SplitEncoder, clear_value};
 use crate::renderer::surface::WgpuSurface;
 
@@ -84,65 +83,6 @@ pub(crate) fn submit_clear(
     });
     record_clear(&mut enc, view, color);
     queue.submit(core::iter::once(enc.finish()));
-}
-
-#[allow(
-    clippy::too_many_arguments,
-    reason = "the argument list mirrors the upstream API contract"
-)]
-pub(super) fn walk_screen(
-    ready: &mut ReadyState,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut SplitEncoder,
-    retained: &mut Vec<LayerHandle>,
-    view: &wgpu::TextureView,
-    viewport: (f32, f32),
-    scale: f32,
-    format: wgpu::TextureFormat,
-    scene: &CommandScene,
-    stats: &mut FrameStats,
-) -> Result<(), RendererError> {
-    ready.begin_frame();
-    let ReadyState {
-        scene_pipelines,
-        fill_pipelines,
-        shadow_pipelines,
-        slug_pipelines,
-        raster_pipelines,
-        sprite_pipelines,
-        decoration_pipelines,
-        layer_pipelines,
-        blur_pipelines,
-        layer_pool,
-        pending,
-        ..
-    } = ready;
-    walk_command_scene(
-        WalkCtx {
-            device,
-            queue,
-            encoder,
-            retained,
-            view,
-            viewport,
-            scale,
-            format,
-            scene_pipelines,
-            fill_pipelines,
-            shadow_pipelines,
-            slug_pipelines,
-            raster_pipelines,
-            sprite_pipelines,
-            decoration_pipelines,
-            layer_pipelines,
-            blur_pipelines,
-            layer_pool,
-            pending,
-            stats,
-        },
-        scene,
-    )
 }
 
 #[allow(
@@ -322,44 +262,32 @@ impl WgpuRenderer {
         scene: &CommandScene,
         encoder: &mut SplitEncoder,
     ) -> Result<(), RendererError> {
-        let owns_device = self.device().is_some_and(|device| device == target.device);
-        if owns_device {
-            let ready = self.state.ready_mut()?;
-            walk_screen(
-                ready,
-                target.device,
-                target.queue,
-                encoder,
-                &mut self.frame_transients,
-                target.view,
-                target.viewport,
-                target.scale,
-                target.format,
-                scene,
-                &mut self.last_frame_stats,
-            )
+        let offscreen = OffscreenTarget::from(target);
+        let transients = &mut self.frame_transients;
+        let stats = &mut self.last_frame_stats;
+        if let DeviceState::Ready(ready) = &mut self.state
+            && ready.device == *target.device
+        {
+            ready.begin_frame();
+            ready
+                .pipelines
+                .walk(encoder, transients, offscreen, scene, stats)
         } else {
-            crate::renderer::offscreen::walk_with_temporary_pipelines(
-                encoder,
-                &mut self.frame_transients,
-                crate::renderer::offscreen::OffscreenTarget::from(target),
-                scene,
-                &mut self.last_frame_stats,
-            )
+            PipelineCache::default().walk(encoder, transients, offscreen, scene, stats)
         }
     }
 
     fn recycle_transients(&mut self) {
-        if let DeviceState::Ready(ready) = &mut self.state {
-            if let Some(pool) = ready.layer_pool.as_mut() {
-                for handle in self.frame_transients.drain(..) {
-                    pool.release(handle);
-                }
-            } else {
-                self.frame_transients.clear();
-            }
-        } else {
-            self.frame_transients.clear();
+        let pool = match &mut self.state {
+            DeviceState::Ready(ready) => ready.pipelines.layer_pool.as_mut(),
+            DeviceState::Uninitialized(_) => None,
+        };
+        match pool {
+            Some(pool) => self
+                .frame_transients
+                .drain(..)
+                .for_each(|handle| pool.release(handle)),
+            None => self.frame_transients.clear(),
         }
     }
 }

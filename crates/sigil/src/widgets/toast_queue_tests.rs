@@ -5,11 +5,15 @@ use crate::kernel::Cx;
 use crate::reactive::Runtime;
 
 #[test]
-fn push_appends_entries_oldest_first_newest_last() {
+fn visible_keeps_push_order_and_caps_at_max_visible() {
     Runtime::scope("toast-queue-push-order", || {
         let queue = ToastQueue::new();
-        queue.info("first");
-        queue.error("second");
+        queue.info("toast 0");
+        queue.error("toast 1");
+        for n in 2..6 {
+            queue.push(ToastLevel::Info, format!("toast {n}"));
+        }
+        queue.error("toast 6");
         let visible = queue.visible();
         let summary: Vec<(ToastLevel, &str)> = visible
             .iter()
@@ -17,8 +21,13 @@ fn push_appends_entries_oldest_first_newest_last() {
             .collect();
         assert_eq!(
             summary,
-            [(ToastLevel::Info, "first"), (ToastLevel::Error, "second")],
-            "oldest first, newest last"
+            [
+                (ToastLevel::Info, "toast 3"),
+                (ToastLevel::Info, "toast 4"),
+                (ToastLevel::Info, "toast 5"),
+                (ToastLevel::Error, "toast 6"),
+            ],
+            "oldest dropped, newest kept last"
         );
     });
 }
@@ -33,24 +42,6 @@ fn entries_expire_after_ttl() {
         assert_eq!(queue.visible().len(), 1, "fresh entry survives a sweep");
         queue.dismiss_expired(now + TOAST_TTL + Duration::from_secs(1));
         assert!(queue.visible().is_empty(), "entry past TTL is dropped");
-    });
-}
-
-#[test]
-fn visible_caps_at_max_visible_dropping_oldest() {
-    Runtime::scope("toast-queue-cap", || {
-        let queue = ToastQueue::new();
-        for n in 0..6 {
-            queue.push(ToastLevel::Info, format!("toast {n}"));
-        }
-        let visible = queue.visible();
-        let messages: Vec<&str> = visible.iter().map(|e| e.message.as_str()).collect();
-        assert_eq!(messages.len(), MAX_VISIBLE);
-        assert_eq!(
-            messages,
-            ["toast 2", "toast 3", "toast 4", "toast 5"],
-            "oldest two dropped, newest kept last"
-        );
     });
 }
 

@@ -1,5 +1,5 @@
 use crate::layout::LayoutError;
-use crate::layout::flex::Position2;
+use crate::layout::flex::{CbSize, Position2};
 use crate::layout::flex_algorithm::{FlexCtx, layout_item_subtree};
 use crate::layout::forest::{ComputedBox, NodeRef};
 use crate::layout::resolve::NodeEdges;
@@ -78,24 +78,7 @@ fn container_ok(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
             None | Some(AlignItems::Start | AlignItems::Stretch)
         )
         && style.gap_zero()
-        && main_definite(ctx, style)
-}
-
-const fn main_definite(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
-    let assigned = if ctx.axes.row {
-        ctx.assigned_w
-    } else {
-        ctx.assigned_h
-    };
-    if assigned.is_some() {
-        return true;
-    }
-    let main = if ctx.axes.row {
-        style.size.width
-    } else {
-        style.size.height
-    };
-    !matches!(main, Dimension::Auto)
+        && ctx.definite_along(style, ctx.axes.row)
 }
 
 fn zero_lp(value: LengthPercentage) -> bool {
@@ -126,28 +109,15 @@ const fn clamped(value: f32, min: Dimension, max: Dimension) -> f32 {
 }
 
 fn write_container(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>, edges: &NodeEdges, area: &Area) {
-    let (chrome_main, chrome_cross) = if ctx.axes.row {
-        (edges.inline_chrome(), edges.block_chrome())
-    } else {
-        (edges.block_chrome(), edges.inline_chrome())
-    };
-    let w = ctx.assigned_w.unwrap_or(if ctx.axes.row {
-        area.main + chrome_main
-    } else {
-        area.cross + chrome_cross
-    });
-    let h = ctx.assigned_h.unwrap_or(if ctx.axes.row {
-        area.cross + chrome_cross
-    } else {
-        area.main + chrome_main
-    });
+    let (chrome_main, chrome_cross) = ctx.axes.chrome(edges);
+    let size = CbSize::across(ctx.axes, area.main + chrome_main, area.cross + chrome_cross);
     ctx.solver.write(
         node.id(),
         ComputedBox {
             x: area.border_origin.x,
             y: area.border_origin.y,
-            w,
-            h,
+            w: ctx.assigned_w.unwrap_or(size.w),
+            h: ctx.assigned_h.unwrap_or(size.h),
         },
     );
 }
@@ -158,39 +128,23 @@ impl StyleData {
     }
 
     fn item_box(&self) -> Option<(f32, f32)> {
-        if self.flex_grow > 0.0 || self.order != 0 {
-            return None;
-        }
-        if !matches!(self.flex_basis, Dimension::Auto) {
-            return None;
-        }
-        if matches!(self.position, Position::Absolute) {
-            return None;
-        }
-        if !matches!(
-            self.align_self,
-            None | Some(AlignSelf::Start | AlignSelf::Stretch)
-        ) {
-            return None;
-        }
-        if !self.margins_zero() {
-            return None;
-        }
-        let Dimension::Px(width) = self.size.width else {
-            return None;
-        };
-        let Dimension::Px(height) = self.size.height else {
+        let plain = self.flex_grow <= 0.0
+            && self.order == 0
+            && matches!(self.flex_basis, Dimension::Auto)
+            && !matches!(self.position, Position::Absolute)
+            && matches!(
+                self.align_self,
+                None | Some(AlignSelf::Start | AlignSelf::Stretch)
+            )
+            && self.margins_zero();
+        let (Dimension::Px(width), Dimension::Px(height)) = (self.size.width, self.size.height)
+        else {
             return None;
         };
         #[expect(clippy::float_cmp, reason = "clamped returns the input or a bound")]
-        if clamped(width, self.min_size.width, self.max_size.width) != width {
-            return None;
-        }
-        #[expect(clippy::float_cmp, reason = "clamped returns the input or a bound")]
-        if clamped(height, self.min_size.height, self.max_size.height) != height {
-            return None;
-        }
-        Some((width, height))
+        let unclamped = clamped(width, self.min_size.width, self.max_size.width) == width
+            && clamped(height, self.min_size.height, self.max_size.height) == height;
+        (plain && unclamped).then_some((width, height))
     }
 
     fn margins_zero(&self) -> bool {

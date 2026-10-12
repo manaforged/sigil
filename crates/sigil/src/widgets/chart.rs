@@ -18,11 +18,6 @@ mod interact;
 mod marks;
 mod plot;
 
-const DEFAULT_HEIGHT: f32 = 180.0;
-const MIN_HEIGHT: f32 = 48.0;
-const MIN_WIDTH: f32 = 80.0;
-const SUMMARY_VALUES: usize = 64;
-
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ChartMark {
     #[default]
@@ -48,16 +43,6 @@ struct SeriesSource {
     name: String,
     values: Rc<dyn Reactive<Vec<f32>>>,
     tone: Tone,
-}
-
-impl SeriesSource {
-    fn read(&self) -> ChartSeries {
-        ChartSeries {
-            name: self.name.clone(),
-            values: self.values.read(),
-            tone: self.tone,
-        }
-    }
 }
 
 pub struct ChartBuilder {
@@ -163,25 +148,35 @@ impl ChartBuilder {
     }
 
     fn frame(&mut self) -> plot::Frame {
-        let width = self
-            .layout_overrides
-            .width_hint()
-            .map(|px| px.max(MIN_WIDTH));
+        let width = self.layout_overrides.width_hint().map(|px| px.max(80.0));
         let height = self
             .layout_overrides
             .height_hint()
-            .map_or(DEFAULT_HEIGHT, |px| px.max(MIN_HEIGHT));
+            .map_or(180.0, |px| px.max(48.0));
         if let Some(px) = width {
             self.layout_overrides.width(px);
         }
         self.layout_overrides.height(height);
-        plot::Frame::new(width, height, self.whole)
+        plot::Frame {
+            width,
+            height,
+            whole: self.whole,
+        }
     }
 
     fn into_node_builder(mut self) -> NodeBuilder {
         let frame = self.frame();
         let sources = std::mem::take(&mut self.series);
-        let series = derived(move || sources.iter().map(SeriesSource::read).collect::<Vec<_>>());
+        let series = derived(move || {
+            sources
+                .iter()
+                .map(|source| ChartSeries {
+                    name: source.name.clone(),
+                    values: source.values.read(),
+                    tone: source.tone,
+                })
+                .collect::<Vec<_>>()
+        });
         let labels = Rc::new(std::mem::take(&mut self.labels));
         let label_names = Rc::clone(&labels);
         let theme = ActiveTheme::capture();
@@ -242,20 +237,11 @@ fn content(
         .iter()
         .map(|item| ChartView {
             name: &item.name,
-            values: item
-                .values
-                .split_at((window.end * stride).min(item.values.len()))
-                .0
-                .split_at((window.start * stride).min(item.values.len()))
-                .1,
+            values: clip(&item.values, window.start * stride, window.end * stride),
             tone: item.tone,
         })
         .collect::<Vec<_>>();
-    let shown = labels
-        .split_at(window.end.min(labels.len()))
-        .0
-        .split_at(window.start.min(labels.len()))
-        .1;
+    let shown = clip(labels, window.start, window.end);
     plot::draw(
         &plot::Plot {
             series: &visible,
@@ -267,6 +253,11 @@ fn content(
         },
         interact,
     )
+}
+
+fn clip<T>(items: &[T], start: usize, end: usize) -> &[T] {
+    let end = end.min(items.len());
+    items.get(start.min(end)..end).unwrap_or_default()
 }
 
 fn empty() -> NodeBuilder {
@@ -294,8 +285,18 @@ fn summary(series: &[ChartSeries], labels: &[String], theme: ActiveTheme) -> Str
         } else {
             item.name.clone()
         };
-        if item.values.len() > SUMMARY_VALUES {
-            parts.push(span_summary(&name, &item.values, theme));
+        if item.values.len() > 64 {
+            let (low, high) = item
+                .values
+                .iter()
+                .filter(|value| value.is_finite())
+                .fold((f32::INFINITY, f32::NEG_INFINITY), |(low, high), &value| {
+                    (low.min(value), high.max(value))
+                });
+            parts.push(theme.fill(
+                StringKey::ChartSummary,
+                &[&name, &item.values.len(), &low, &high],
+            ));
             continue;
         }
         let values = item
@@ -312,20 +313,6 @@ fn summary(series: &[ChartSeries], labels: &[String], theme: ActiveTheme) -> Str
         parts.push(format!("{name}: {values}"));
     }
     parts.join("; ")
-}
-
-fn span_summary(name: &str, values: &[f32], theme: ActiveTheme) -> String {
-    let (mut low, mut high) = (f32::INFINITY, f32::NEG_INFINITY);
-    for &value in values {
-        if value.is_finite() {
-            low = low.min(value);
-            high = high.max(value);
-        }
-    }
-    theme.fill(
-        StringKey::ChartSummary,
-        &[&name, &values.len(), &low, &high],
-    )
 }
 
 impl IntoNode for ChartBuilder {
@@ -355,16 +342,8 @@ pub(crate) fn nice_max(max: f32) -> f32 {
     }
     let exp = 10f32.powf(max.log10().floor());
     let n = max / exp;
-    let nice = if n <= 1.0 {
-        1.0
-    } else if n <= 2.0 {
-        2.0
-    } else if n <= 5.0 {
-        5.0
-    } else {
-        10.0
-    };
-    nice * exp
+    let nice = [1.0, 2.0, 5.0].into_iter().find(|&step| n <= step);
+    nice.unwrap_or(10.0) * exp
 }
 
 #[cfg(test)]

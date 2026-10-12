@@ -101,20 +101,19 @@ pub(crate) fn replay(
         if entry.version != node.version()
             || entry.slot != slot_tag(node)
             || entry.inherit != inherit
-            || !same_size(entry.rect, rect)
+            || entry.rect[2..] != rect_key(rect)[2..]
         {
             return false;
         }
         crate::profile::count(crate::profile::Counter::EmitReplays);
-        let (dx, dy) = origin_delta(entry.rect, rect);
-        if dx == 0.0 && dy == 0.0 {
-            scene.extend_commands(entry.cmds.iter().cloned());
-            return true;
+        let dx = rect.origin.x - f32::from_bits(entry.rect[0]);
+        let dy = rect.origin.y - f32::from_bits(entry.rect[1]);
+        if dx != 0.0 || dy != 0.0 {
+            for command in &mut entry.cmds {
+                shift_command(command, dx, dy);
+            }
+            entry.rect = rect_key(rect);
         }
-        for command in &mut entry.cmds {
-            shift_command(command, dx, dy);
-        }
-        entry.rect = rect_key(rect);
         scene.extend_commands(entry.cmds.iter().cloned());
         true
     })
@@ -203,17 +202,6 @@ const fn rect_key(rect: Rect) -> [u32; 4] {
     ]
 }
 
-const fn same_size(stored: [u32; 4], rect: Rect) -> bool {
-    stored[2] == rect.width.to_bits() && stored[3] == rect.height.to_bits()
-}
-
-fn origin_delta(stored: [u32; 4], rect: Rect) -> (f32, f32) {
-    (
-        rect.origin.x - f32::from_bits(stored[0]),
-        rect.origin.y - f32::from_bits(stored[1]),
-    )
-}
-
 fn shift_rect(rect: Rect, dx: f32, dy: f32) -> Rect {
     Rect::new(
         Point::new(rect.origin.x + dx, rect.origin.y + dy),
@@ -234,12 +222,8 @@ fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
         SceneCommand::Gradient(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
         SceneCommand::Pattern(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
         SceneCommand::GlyphRun(draw) => draw.run.rect = shift_rect(draw.run.rect, dx, dy),
-        SceneCommand::Image(draw) => {
-            draw.destination = shift_rect(draw.destination, dx, dy);
-        }
-        SceneCommand::Sprite(draw) => {
-            draw.destination = shift_rect(draw.destination, dx, dy);
-        }
+        SceneCommand::Image(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
+        SceneCommand::Sprite(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
         SceneCommand::Decoration(draw) => draw.band = shift_rect(draw.band, dx, dy),
         SceneCommand::DrawShadow { rect, .. } => {
             rect[0] += dx;

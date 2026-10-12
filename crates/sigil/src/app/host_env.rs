@@ -39,33 +39,33 @@ impl Default for HostCaps {
 #[must_use]
 #[track_caller]
 pub fn viewport_size() -> Signal<LogicalSize> {
-    VIEWPORT.with(Cell::get).unwrap_or_else(detached_viewport)
-}
-
-fn detached_viewport() -> Signal<LogicalSize> {
-    DETACHED.with(|slot| {
-        slot.get().unwrap_or_else(|| {
-            let owner = Owner::new("sigil::detached_viewport", None);
-            let viewport = owner.with(|| signal(LogicalSize::default()));
-            slot.set(Some(viewport));
-            viewport
-        })
+    VIEWPORT.with(Cell::get).unwrap_or_else(|| {
+        detached(
+            &DETACHED,
+            "sigil::detached_viewport",
+            LogicalSize::default(),
+        )
     })
 }
 
 #[must_use]
 #[track_caller]
 pub fn display_scale() -> Signal<f32> {
-    SCALE.with(Cell::get).unwrap_or_else(detached_scale)
+    SCALE
+        .with(Cell::get)
+        .unwrap_or_else(|| detached(&DETACHED_SCALE, "sigil::detached_scale", 1.0))
 }
 
-fn detached_scale() -> Signal<f32> {
-    DETACHED_SCALE.with(|slot| {
+fn detached<T: 'static>(
+    slot: &'static std::thread::LocalKey<Cell<Option<Signal<T>>>>,
+    name: &'static str,
+    initial: T,
+) -> Signal<T> {
+    slot.with(|slot| {
         slot.get().unwrap_or_else(|| {
-            let owner = Owner::new("sigil::detached_scale", None);
-            let scale = owner.with(|| signal(1.0));
-            slot.set(Some(scale));
-            scale
+            let value = Owner::new(name, None).with(|| signal(initial));
+            slot.set(Some(value));
+            value
         })
     })
 }

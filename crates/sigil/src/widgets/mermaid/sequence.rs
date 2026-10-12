@@ -32,6 +32,7 @@ enum Event {
     Close,
 }
 
+#[derive(Default)]
 struct Diagram {
     participants: Vec<Participant>,
     events: Vec<Event>,
@@ -55,12 +56,7 @@ pub(super) fn draw(source: &str) -> Option<Vec<String>> {
     if lines.next()? != "sequenceDiagram" {
         return None;
     }
-    let mut diagram = Diagram {
-        participants: Vec::new(),
-        events: Vec::new(),
-        numbered: false,
-        boxes: 0,
-    };
+    let mut diagram = Diagram::default();
     for line in lines {
         diagram.line(line);
     }
@@ -70,35 +66,67 @@ pub(super) fn draw(source: &str) -> Option<Vec<String>> {
     Some(render(&diagram))
 }
 
+const IGNORED: &[&str] = &[
+    "activate",
+    "deactivate",
+    "title",
+    "links",
+    "link",
+    "properties",
+    "details",
+];
+
+#[derive(Clone, Copy)]
+enum Keyword {
+    Autonumber,
+    Declare,
+    Note,
+    Open,
+    Else,
+    Box,
+    End,
+    Ignored,
+}
+
+impl Keyword {
+    fn of(head: &str) -> Option<Self> {
+        Some(match head {
+            "autonumber" => Self::Autonumber,
+            "participant" | "actor" => Self::Declare,
+            "Note" | "note" => Self::Note,
+            "loop" | "alt" | "opt" | "par" | "critical" | "break" | "rect" => Self::Open,
+            "else" | "and" | "option" => Self::Else,
+            "box" => Self::Box,
+            "end" => Self::End,
+            _ if IGNORED.contains(&head) => Self::Ignored,
+            _ => return None,
+        })
+    }
+}
+
 impl Diagram {
     fn line(&mut self, line: &str) {
         let head = line.split_whitespace().next().unwrap_or("");
-        match head {
-            "autonumber" => self.numbered = true,
-            "participant" | "actor" => self.declare(line),
-            "Note" | "note" => self.note(line),
-            "loop" | "alt" | "opt" | "par" | "critical" | "break" | "rect" => {
-                self.events.push(Event::Open {
-                    kind: head.to_string(),
-                    text: line
-                        .get(head.len()..)
-                        .unwrap_or_default()
-                        .trim()
-                        .to_string(),
-                });
-            }
-            "else" | "and" | "option" => self.events.push(Event::Else {
-                text: line
-                    .get(head.len()..)
-                    .unwrap_or_default()
-                    .trim()
-                    .to_string(),
+        let text = || {
+            line.get(head.len()..)
+                .unwrap_or_default()
+                .trim()
+                .to_string()
+        };
+        match Keyword::of(head) {
+            Some(Keyword::Autonumber) => self.numbered = true,
+            Some(Keyword::Declare) => self.declare(line),
+            Some(Keyword::Note) => self.note(line),
+            Some(Keyword::Open) => self.events.push(Event::Open {
+                kind: head.to_string(),
+                text: text(),
             }),
-            "box" => self.boxes = self.boxes.saturating_add(1),
-            "end" if self.boxes > 0 => self.boxes = self.boxes.saturating_sub(1),
-            "end" => self.events.push(Event::Close),
-            "activate" | "deactivate" | "title" | "links" | "link" | "properties" | "details" => {}
-            _ => self.message(line),
+            Some(Keyword::Else) => self.events.push(Event::Else { text: text() }),
+            Some(Keyword::Box) => self.boxes = self.boxes.saturating_add(1),
+            Some(Keyword::End) if self.boxes > 0 => self.boxes = self.boxes.saturating_sub(1),
+            Some(Keyword::End) => self.events.push(Event::Close),
+            Some(Keyword::Ignored) => {}
+            None => self.message(line),
         }
     }
 
@@ -133,7 +161,8 @@ impl Diagram {
             return;
         };
         let text = text.trim().to_string();
-        let (from, to) = if let Some(names) = place.trim().strip_prefix("over ") {
+        let place = place.trim();
+        let (from, to) = if let Some(names) = place.strip_prefix("over ") {
             let mut ids = names.split(',').map(str::trim);
             let first = ids.next().unwrap_or_default();
             let second = ids.next().unwrap_or(first);
@@ -141,10 +170,10 @@ impl Diagram {
                 self.participant(first, None),
                 self.participant(second, None),
             )
-        } else if let Some(name) = place.trim().strip_prefix("left of ") {
+        } else if let Some(name) = place.strip_prefix("left of ") {
             let index = self.participant(name.trim(), None);
             (index.saturating_sub(usize::from(index > 0)), index)
-        } else if let Some(name) = place.trim().strip_prefix("right of ") {
+        } else if let Some(name) = place.strip_prefix("right of ") {
             let index = self.participant(name.trim(), None);
             (index, index.saturating_add(1))
         } else {
@@ -231,10 +260,7 @@ fn centres(diagram: &Diagram, margin: usize) -> (Vec<usize>, usize) {
     for (index, gap) in gaps.iter_mut().enumerate() {
         let halves = widths.get(index).copied().unwrap_or(0) / 2
             + widths.get(index.saturating_add(1)).copied().unwrap_or(0) / 2;
-        let need = halves.saturating_add(3);
-        if *gap < need {
-            gap.clone_from(&need);
-        }
+        *gap = (*gap).max(halves.saturating_add(3));
     }
     for event in &diagram.events {
         widen(&mut gaps, event, diagram.numbered);
@@ -276,7 +302,6 @@ fn widen(gaps: &mut [usize], event: &Event, numbered: bool) {
     if have < need
         && let Some(last) = gaps.get_mut(high.saturating_sub(1))
     {
-        let grown = last.saturating_add(need.saturating_sub(have));
-        last.clone_from(&grown);
+        *last = last.saturating_add(need.saturating_sub(have));
     }
 }

@@ -1,88 +1,35 @@
 use super::*;
 
 #[test]
-fn items_bind_initial_signal_value_builds_rows() {
-    Runtime::scope("sigil-vlist-items-bind-initial", || {
+fn items_bind_rows_follow_the_signal() {
+    Runtime::scope("sigil-vlist-items-bind", || {
         let items = signal(vec!["a", "b", "c"]);
         let mut cx = Cx::new_root();
         let root = cx.add(virtual_list_bind(items, |_, _| container()));
-        cx.flush_reactive_children();
-        let visible = bound_visible(&cx, root);
-        assert_eq!(
-            cx.child_count(visible),
-            3,
-            "3 rows for initial 3-item signal"
-        );
-    });
-}
-
-#[test]
-fn items_bind_signal_mutation_replaces_rows() {
-    Runtime::scope("sigil-vlist-items-bind-mutate", || {
-        let items = signal(vec!["a", "b", "c"]);
-        let mut cx = Cx::new_root();
-        let root = cx.add(virtual_list_bind(items, |_, _| container()));
-        cx.flush_reactive_children();
-        assert_eq!(
-            cx.child_count(bound_visible(&cx, root)),
-            3,
-            "3 rows before mutation"
-        );
-
-        items.set(vec!["x", "y"]);
-        cx.flush_reactive_children();
-        assert_eq!(
-            cx.child_count(bound_visible(&cx, root)),
-            2,
-            "2 rows after mutation to 2-item Vec"
-        );
+        for (next, expected) in [
+            (None, 3),
+            (Some(vec!["x", "y"]), 2),
+            (Some(Vec::new()), 0),
+            (Some(vec!["p", "q", "r"]), 3),
+            (Some(Vec::new()), 0),
+        ] {
+            if let Some(next) = next {
+                items.set(next);
+            }
+            cx.flush_reactive_children();
+            assert_eq!(cx.child_count(bound_visible(&cx, root)), expected);
+        }
     });
 }
 
 #[test]
 fn items_bind_static_path_still_works() {
-    Runtime::scope("sigil-vlist-items-bind-static-smoke", || {
-        let items: Vec<usize> = (0..5).collect();
-        let mut cx = Cx::new_root();
-        let root = cx.add(virtual_list(items, |_, _| container()));
-        cx.flush_reactive_children();
-        assert_eq!(
-            cx.child_count(bound_visible(&cx, root)),
-            5,
-            "all 5 rows visible in static path"
-        );
-    });
-}
-
-#[test]
-fn items_bind_empty_to_full_to_empty() {
-    Runtime::scope("sigil-vlist-items-bind-empty-cycle", || {
-        let items = signal(Vec::<&str>::new());
-        let mut cx = Cx::new_root();
-        let root = cx.add(virtual_list_bind(items, |_, _| container()));
-        cx.flush_reactive_children();
-        assert_eq!(
-            cx.child_count(bound_visible(&cx, root)),
-            0,
-            "0 rows for empty initial signal"
-        );
-
-        items.set(vec!["p", "q", "r"]);
-        cx.flush_reactive_children();
-        assert_eq!(
-            cx.child_count(bound_visible(&cx, root)),
-            3,
-            "3 rows after set to 3-item Vec"
-        );
-
-        items.set(Vec::new());
-        cx.flush_reactive_children();
-        assert_eq!(
-            cx.child_count(bound_visible(&cx, root)),
-            0,
-            "0 rows after clearing Vec"
-        );
-    });
+    let empty = mounted(|| virtual_list_bind(signal(Vec::<&str>::new()), |_, _| container()));
+    assert_eq!(empty, 0);
+    assert_eq!(
+        mounted(|| virtual_list((0..5).collect::<Vec<usize>>(), |_, _| container())),
+        5
+    );
 }
 
 #[test]

@@ -81,41 +81,23 @@ pub(crate) fn line_end(buffer: &str, caret: usize) -> usize {
 }
 
 pub(crate) fn word_start_before(buffer: &str, caret: usize) -> usize {
-    let mut chars = buffer[..caret].grapheme_indices(true).rev().peekable();
+    let mut graphemes = buffer[..caret].grapheme_indices(true).rev().peekable();
     let mut start = caret;
-    while let Some((index, ch)) = chars.peek().copied() {
-        if word(ch) {
-            break;
+    for want in [false, true] {
+        while let Some((index, _)) = graphemes.next_if(|(_, text)| word(text) == want) {
+            start = index;
         }
-        start = index;
-        chars.next();
-    }
-    while let Some((index, ch)) = chars.peek().copied() {
-        if !word(ch) {
-            break;
-        }
-        start = index;
-        chars.next();
     }
     start
 }
 
 pub(crate) fn word_end_after(buffer: &str, caret: usize) -> usize {
+    let mut graphemes = buffer[caret..].grapheme_indices(true).peekable();
     let mut end = caret;
-    let mut chars = buffer[caret..].grapheme_indices(true).peekable();
-    while let Some((index, ch)) = chars.peek().copied() {
-        if word(ch) {
-            break;
+    for want in [false, true] {
+        while let Some((index, text)) = graphemes.next_if(|(_, text)| word(text) == want) {
+            end = caret + index + text.len();
         }
-        end = caret + index + ch.len();
-        chars.next();
-    }
-    while let Some((index, ch)) = chars.peek().copied() {
-        if !word(ch) {
-            break;
-        }
-        end = caret + index + ch.len();
-        chars.next();
     }
     end
 }

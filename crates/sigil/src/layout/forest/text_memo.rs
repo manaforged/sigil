@@ -4,7 +4,7 @@ use std::hash::{Hash as _, Hasher as _};
 
 use ahash::AHasher;
 
-use super::{LayoutForest, LayoutText, LocalId};
+use super::{LayoutText, LocalId};
 use crate::kernel::TextContent;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -73,22 +73,5 @@ impl TextMemo {
             self.stale = std::mem::take(&mut self.live);
         }
         self.live.insert(key, size);
-    }
-}
-
-impl LayoutForest {
-    pub(super) fn text_memo_get(
-        &self,
-        key: TextMemoKey,
-    ) -> Option<crate::layout::style_data::Size<f32>> {
-        self.text_memo.borrow_mut().get(key)
-    }
-
-    pub(super) fn text_memo_store(
-        &self,
-        key: TextMemoKey,
-        size: crate::layout::style_data::Size<f32>,
-    ) {
-        self.text_memo.borrow_mut().store(key, size);
     }
 }

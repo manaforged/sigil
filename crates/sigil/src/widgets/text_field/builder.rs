@@ -10,9 +10,9 @@ use crate::widgets::interaction::InteractionState;
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, disabled_now};
-use super::super::text_edit::{FocusCaret, noop_change};
+use super::super::text_edit::{FocusCaret, TextEditRuntime, TextEditState, noop_change};
 use super::adorn::{Adornments, FocusTarget, clear_button};
-use super::handlers::{FieldConfig, TextFieldRuntime, attach_key_handlers};
+use super::handlers::{TextFieldRuntime, attach_key_handlers};
 use super::render::{FieldInputs, build_base_node, field_layout};
 use crate::clipboard::{Clipboard, clipboard};
 
@@ -174,18 +174,24 @@ impl TextFieldBuilder {
     }
 
     fn runtime(&mut self, column: f32) -> TextFieldRuntime {
-        TextFieldRuntime::new(FieldConfig {
-            value: self.value,
-            disabled: self.disabled,
-            change: self.change.take().unwrap_or_else(noop_change),
-            submit: self.submit.take().unwrap_or_else(noop_change),
-            clipboard: self.clipboard.take().unwrap_or_else(clipboard),
-            caret_visible: self.caret_visible.unwrap_or_else(|| signal(true)),
-            scroll: self.scroll_offset.unwrap_or_else(|| signal(0.0_f32)),
+        let input = TextEditRuntime::new(
+            TextEditState::new(self.value, signal(self.value.peek().len())),
+            self.disabled,
+            self.change.take().unwrap_or_else(noop_change),
+            self.submit.take().unwrap_or_else(noop_change),
+            self.clipboard.take().unwrap_or_else(clipboard),
+            self.caret_visible.unwrap_or_else(|| signal(true)),
+            (0.0, 0.0),
+        )
+        .single_line(
             column,
+            self.scroll_offset.unwrap_or_else(|| signal(0.0_f32)),
+        );
+        TextFieldRuntime {
+            input,
             password: self.password,
             reveal: self.reveal.unwrap_or_else(|| signal(false)),
-        })
+        }
     }
 
     pub(super) fn into_node_builder(mut self) -> (NodeBuilder, TextFieldRuntime) {
@@ -196,8 +202,6 @@ impl TextFieldBuilder {
         let clip_fail = runtime.input.clip_fail;
         let invalid = self.invalid;
         let inputs = FieldInputs {
-            value: self.value,
-            disabled: self.disabled,
             invalid: Some(derived(move || {
                 invalid.is_some_and(|flag| flag.get()) || clip_fail.get()
             })),
@@ -216,12 +220,11 @@ impl TextFieldBuilder {
             runtime.clone(),
             adorn,
         );
-        let node = interaction.install(attach_key_handlers(node, &runtime));
-        let node = match self.blur {
-            Some(blur) => node.focus_out(move || blur()),
-            None => node,
-        };
-        let mut node = self
+        let mut node = interaction.install(attach_key_handlers(node, &runtime));
+        if let Some(blur) = self.blur {
+            node = node.focus_out(move || blur());
+        }
+        node = self
             .mutators
             .into_iter()
             .fold(node, |node, mutate| mutate(node));

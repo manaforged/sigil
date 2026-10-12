@@ -3,10 +3,6 @@ use crate::icons::{BakedIcon, IconBaker, builtin};
 use super::{AtlasDesc, SpritePipeline};
 use crate::renderer::sprite_atlas::builtin_icon_index;
 
-pub(super) fn is_builtin_icon_atlas(raw_id: u32) -> bool {
-    builtin_icon_index(raw_id).is_some()
-}
-
 impl SpritePipeline {
     pub(crate) fn register_icon(
         &mut self,

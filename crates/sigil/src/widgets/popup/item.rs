@@ -1,7 +1,7 @@
 use crate::kernel::{IntoNode, NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::Signal;
-use crate::style::{ControlSize, DisplayKind, Metrics, Radius, StyleAtom, Token, Tone, space};
+use crate::style::{ControlSize, Metrics, Radius, StyleAtom, Token, Tone, space};
 
 use super::super::vector::path;
 
@@ -9,7 +9,6 @@ const GLYPH: f32 = space(4);
 
 static ROW_REST: &[StyleAtom] = &[Radius::Md.atom()];
 static ROW_HIGHLIGHT: &[StyleAtom] = &[Radius::Md.atom(), Token::SurfaceHover.bg()];
-static HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
 
 pub(crate) struct ItemSlots {
     pub(crate) label: String,
@@ -37,7 +36,18 @@ pub(crate) fn item_row(slots: ItemSlots, highlight: Signal<bool>) -> NodeBuilder
     let disabled = slots.disabled;
     let mut row = container()
         .label(slots.label.clone())
-        .layout(row_layout())
+        .layout({
+            let metrics = Metrics::current();
+            LayoutStyle::flex_row()
+                .fill_width()
+                .height(metrics.control_height(ControlSize::Default))
+                .shrink(0.0)
+                .padding_x(metrics.padding(ControlSize::Default))
+                .gap(metrics.gap(ControlSize::Default))
+                .align_items(AlignItems::Center)
+                .justify_content(JustifyContent::SpaceBetween)
+                .overflow_x(Overflow::Hidden)
+        })
         .style_reactive(move || {
             if !disabled && highlight.get() {
                 ROW_HIGHLIGHT
@@ -45,7 +55,18 @@ pub(crate) fn item_row(slots: ItemSlots, highlight: Signal<bool>) -> NodeBuilder
                 ROW_REST
             }
         })
-        .child(label_text(slots.label, disabled));
+        .child(
+            text(slots.label)
+                .layout(LayoutStyle::block().grow(1.0))
+                .class(
+                    if disabled {
+                        Token::OnSurfaceMuted
+                    } else {
+                        Token::OnSurface
+                    }
+                    .text(),
+                ),
+        );
     if let Some(hint) = slots.shortcut {
         row = row.child(
             text(hint)
@@ -62,30 +83,6 @@ pub(crate) fn item_row(slots: ItemSlots, highlight: Signal<bool>) -> NodeBuilder
     row
 }
 
-fn row_layout() -> LayoutStyle {
-    let metrics = Metrics::current();
-    LayoutStyle::flex_row()
-        .fill_width()
-        .height(metrics.control_height(ControlSize::Default))
-        .shrink(0.0)
-        .padding_x(metrics.padding(ControlSize::Default))
-        .gap(metrics.gap(ControlSize::Default))
-        .align_items(AlignItems::Center)
-        .justify_content(JustifyContent::SpaceBetween)
-        .overflow_x(Overflow::Hidden)
-}
-
-fn label_text(label: String, disabled: bool) -> impl IntoNode {
-    let tone = if disabled {
-        Token::OnSurfaceMuted
-    } else {
-        Token::OnSurface
-    };
-    text(label)
-        .layout(LayoutStyle::block().grow(1.0))
-        .class(tone.text())
-}
-
 fn glyph_slot() -> NodeBuilder {
     container().layout(
         LayoutStyle::flex_row()
@@ -98,24 +95,21 @@ fn glyph_slot() -> NodeBuilder {
 
 fn check_mark(checked: Signal<bool>) -> NodeBuilder {
     glyph_slot()
-        .style_reactive(move || if checked.get() { &[] } else { HIDDEN })
-        .child(check_glyph(GLYPH))
+        .style_reactive(move || super::shown(checked))
+        .child(
+            path(16, 16)
+                .move_to(3.5, 8.5)
+                .line_to(6.5, 11.5)
+                .line_to(12.5, 4.5)
+                .stroke(Tone::Neutral.solid(), 1.6)
+                .fit_size(GLYPH),
+        )
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ChevronDirection {
     Right,
     Down,
-}
-
-#[must_use]
-fn check_glyph(size: f32) -> impl IntoNode {
-    path(16, 16)
-        .move_to(3.5, 8.5)
-        .line_to(6.5, 11.5)
-        .line_to(12.5, 4.5)
-        .stroke(Tone::Neutral.solid(), 1.6)
-        .fit_size(size)
 }
 
 #[must_use]

@@ -87,17 +87,13 @@ fn parse_unknown_structural_error() {
 }
 
 #[test]
-fn parse_responsive_prefix_not_supported() {
+fn parse_state_and_responsive_prefixes_not_supported() {
     assert_eq!(
         parse_class_string("sm:p-16"),
         Err(ParseError::ResponsiveNotSupported {
             prefix: "sm".to_owned(),
         }),
     );
-}
-
-#[test]
-fn parse_pseudo_prefix_not_supported() {
     assert_eq!(
         parse_class_string("hover:bg-accent"),
         Err(ParseError::PseudoNotSupported {

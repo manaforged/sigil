@@ -177,9 +177,7 @@ pub(super) fn starts(line: &str) -> Option<(usize, usize)> {
             .parse()
             .ok()
     };
-    let old = start('-')?;
-    let new = start('+')?;
-    Some((old, new))
+    Some((start('-')?, start('+')?))
 }
 
 pub(super) fn group_name(header: &str) -> Option<&str> {

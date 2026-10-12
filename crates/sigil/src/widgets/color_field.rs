@@ -44,24 +44,19 @@ impl ColorFieldBuilder {
         let buffer = signal(to_hex(value.peek()));
         effect(move || {
             let rendered = to_hex(value.get());
-            if buffer.peek().as_str() != rendered {
-                buffer.set(rendered);
-            }
+            buffer.set(rendered);
         });
-        let invalid = self.invalid;
+        let (invalid, disabled) = (self.invalid, self.disabled);
         let field = text_field(buffer)
             .invalid_when(derived(move || {
                 invalid.is_some_and(|flag| flag.get()) || parse_hex(&buffer.get()).is_none()
             }))
             .change(move |raw| {
-                let Some(parsed) = parse_hex(raw) else {
-                    return;
-                };
-                if value.peek() != parsed {
+                if let Some(parsed) = parse_hex(raw) {
                     value.set(parsed);
                 }
             });
-        let field = match self.disabled {
+        let field = match disabled {
             Some(disabled) => field.disabled(disabled),
             None => field,
         }
@@ -78,7 +73,7 @@ impl ColorFieldBuilder {
                     .align_items(AlignItems::Center)
                     .gap(space(2)),
             )
-            .child(disabled_look(swatch(value), self.disabled))
+            .child(disabled_look(swatch(value), disabled))
             .child(field)
     }
 }
@@ -116,27 +111,13 @@ static NO_CHROME: &[StyleAtom] = &[];
 #[must_use]
 pub fn parse_hex(input: &str) -> Option<Rgba8> {
     let hex = input.trim().strip_prefix('#')?;
-    match hex.len() {
-        3 => {
-            let mut nibbles = hex.bytes();
-            let r = nibble(nibbles.next()?)?;
-            let g = nibble(nibbles.next()?)?;
-            let b = nibble(nibbles.next()?)?;
-            Some(Rgba8 {
-                r: r * 17,
-                g: g * 17,
-                b: b * 17,
-                a: 255,
-            })
-        }
-        6 => {
-            let r = byte(&hex[0..2])?;
-            let g = byte(&hex[2..4])?;
-            let b = byte(&hex[4..6])?;
-            Some(Rgba8 { r, g, b, a: 255 })
-        }
-        _ => None,
-    }
+    let digits = hex.bytes().map(nibble).collect::<Option<Vec<u8>>>()?;
+    let (r, g, b) = match *digits.as_slice() {
+        [r, g, b] => (r * 17, g * 17, b * 17),
+        [r1, r0, g1, g0, b1, b0] => (r1 * 16 + r0, g1 * 16 + g0, b1 * 16 + b0),
+        _ => return None,
+    };
+    Some(Rgba8 { r, g, b, a: 255 })
 }
 
 #[must_use]
@@ -151,10 +132,6 @@ const fn nibble(b: u8) -> Option<u8> {
         b'A'..=b'F' => Some(b - b'A' + 10),
         _ => None,
     }
-}
-
-fn byte(pair: &str) -> Option<u8> {
-    u8::from_str_radix(pair, 16).ok()
 }
 
 #[cfg(test)]

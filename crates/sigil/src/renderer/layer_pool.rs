@@ -21,6 +21,12 @@ pub struct LayerHandle {
     pub format: wgpu::TextureFormat,
 }
 
+impl LayerHandle {
+    fn bytes(&self) -> u64 {
+        LayerPool::bytes((self.width, self.height), self.format)
+    }
+}
+
 pub struct LayerPool {
     free: Vec<LayerHandle>,
     budget: Option<u64>,
@@ -95,7 +101,7 @@ impl LayerPool {
 
     pub fn release(&mut self, handle: LayerHandle) {
         if let Some(budget) = self.budget {
-            let bytes = Self::bytes((handle.width, handle.height), handle.format);
+            let bytes = handle.bytes();
             if bytes > budget {
                 return;
             }
@@ -110,15 +116,12 @@ impl LayerPool {
         let mut bytes = self.retained_bytes();
         while bytes > budget {
             let handle = self.free.remove(0);
-            bytes -= Self::bytes((handle.width, handle.height), handle.format);
+            bytes -= handle.bytes();
         }
     }
 
     fn retained_bytes(&self) -> u64 {
-        self.free
-            .iter()
-            .map(|handle| Self::bytes((handle.width, handle.height), handle.format))
-            .sum()
+        self.free.iter().map(LayerHandle::bytes).sum()
     }
 
     pub(crate) fn record_profile(&self) {

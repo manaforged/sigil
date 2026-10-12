@@ -55,23 +55,15 @@ pub(crate) fn subpixel_quantize(physical_pen_x: f32) -> (u8, f32) {
     if q >= bins { (0, 1.0) } else { (q as u8, 0.0) }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct HintKey {
-    pub font_id: u64,
-    pub font_index: u32,
-    pub physical_px_bits: u32,
-    pub coords: u64,
-}
-
 #[derive(Default)]
 pub(crate) struct Hinters {
-    map: HashMap<HintKey, Option<HintingInstance>>,
+    map: HashMap<RasterKey, Option<HintingInstance>>,
 }
 
 impl Hinters {
     fn get(
         &mut self,
-        key: HintKey,
+        key: RasterKey,
         outlines: &OutlineGlyphCollection<'_>,
         size: Size,
         coords: &[NormalizedCoord],
@@ -113,12 +105,14 @@ impl Hinters {
             .map(|&c| NormalizedCoord::from_bits(c))
             .collect();
 
-        let mut pen = ZenoPen::new(f32::from(key.bin % SUBPIXEL_BINS) / f32::from(SUBPIXEL_BINS));
-        let hint = HintKey {
-            font_id: key.font_id,
-            font_index: key.font_index,
-            physical_px_bits: key.physical_px_bits,
-            coords: key.coords,
+        let mut pen = ZenoPen {
+            commands: Vec::with_capacity(32),
+            dx: f32::from(key.bin % SUBPIXEL_BINS) / f32::from(SUBPIXEL_BINS),
+        };
+        let hint = RasterKey {
+            glyph_id: 0,
+            bin: 0,
+            ..*key
         };
         let mut sheared = Oblique::new(&mut pen, skew);
         let drawn = match self.get(hint, &outlines, size, &coords) {
@@ -156,13 +150,6 @@ struct ZenoPen {
 }
 
 impl ZenoPen {
-    fn new(dx: f32) -> Self {
-        Self {
-            commands: Vec::with_capacity(32),
-            dx,
-        }
-    }
-
     fn v(&self, x: f32, y: f32) -> Vector {
         Vector::new(x + self.dx, y)
     }

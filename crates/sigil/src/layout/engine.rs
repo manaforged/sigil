@@ -88,10 +88,12 @@ impl LayoutEngine {
     }
 
     fn fresh(&self, id: NodeId) -> Option<LayoutResult> {
-        let handle = self.core_to_handle.get(id.key()).copied()?;
+        let handle = self.handle(id).ok()?;
         let layout = self.drive.computed_box(handle)?;
-        let clips = self.drive.clips_content(handle);
-        Some(LayoutResult::from_resolved_box(&layout, clips))
+        Some(LayoutResult::from_resolved_box(
+            &layout,
+            self.drive.clips_content(handle),
+        ))
     }
 
     pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), LayoutError> {
@@ -218,13 +220,12 @@ impl LayoutEngine {
     }
 
     pub fn gc(&mut self, cx: &Cx) -> Result<(), LayoutError> {
-        let stale = self
+        let stale: Vec<_> = self
             .core_to_handle
             .keys()
             .map(NodeId::from_key)
             .filter(|id| cx.get(*id).is_none())
-            .collect::<Vec<_>>();
-
+            .collect();
         for id in stale {
             if self.core_to_handle.contains_key(id.key()) {
                 self.remove_mirror(id)?;
@@ -234,15 +235,9 @@ impl LayoutEngine {
     }
 
     fn remove_mirror(&mut self, id: NodeId) -> Result<(), LayoutError> {
-        let handle = self
-            .core_to_handle
-            .get(id.key())
-            .copied()
-            .ok_or(LayoutError::NodeMissing(id))?;
-        let subtree = self.drive.subtree_handles(handle)?;
-
-        for h in &subtree {
-            if let Some(core_id) = self.drive.kernel_for(*h) {
+        let handle = self.handle(id)?;
+        for h in self.drive.subtree_handles(handle)? {
+            if let Some(core_id) = self.drive.kernel_for(h) {
                 let _ = self.core_to_handle.remove(core_id.key());
                 let _ = self.synced_version.remove(core_id.key());
                 let _ = self.synced_text_sig.remove(core_id.key());

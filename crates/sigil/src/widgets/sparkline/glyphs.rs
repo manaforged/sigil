@@ -5,7 +5,6 @@ use super::{Layer, SparkFill, SparkMark};
 pub(super) const SPARKS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 const BLOCK_LEVELS: usize = 8;
 const BRAILLE_LEVELS: usize = 4;
-const BRAILLE_BASE: u32 = 0x2800;
 const BRAILLE_LEFT: [u32; 4] = [0x01, 0x02, 0x04, 0x40];
 const BRAILLE_RIGHT: [u32; 4] = [0x08, 0x10, 0x20, 0x80];
 const EMPTY: char = ' ';
@@ -26,8 +25,11 @@ pub(crate) fn spark_glyph(fraction: f32) -> char {
     clippy::cast_precision_loss,
     reason = "the fraction is clamped to 0..=1, so the level fits in usize"
 )]
-fn level(fraction: f32, levels: usize) -> usize {
-    (fraction.clamp(0.0, 1.0) * levels as f32).round() as usize
+fn levels(fractions: &[f32], levels: usize) -> Vec<usize> {
+    fractions
+        .iter()
+        .map(|fraction| (fraction.clamp(0.0, 1.0) * levels as f32).round() as usize)
+        .collect()
 }
 
 fn cell_fill(level: usize, row_from_bottom: usize, per_row: usize) -> usize {
@@ -44,10 +46,7 @@ pub(super) fn graph_rows(fractions: &[f32], rows: usize, mark: SparkMark) -> Vec
 }
 
 fn block_rows(fractions: &[f32], rows: usize) -> Vec<String> {
-    let levels: Vec<usize> = fractions
-        .iter()
-        .map(|fraction| level(*fraction, BLOCK_LEVELS * rows))
-        .collect();
+    let levels = levels(fractions, BLOCK_LEVELS * rows);
     (0..rows)
         .rev()
         .map(|row| {
@@ -66,24 +65,17 @@ fn block_cell(fill: usize) -> char {
 }
 
 fn braille_rows(fractions: &[f32], rows: usize) -> Vec<String> {
-    let levels: Vec<usize> = fractions
-        .iter()
-        .map(|fraction| level(*fraction, BRAILLE_LEVELS * rows))
-        .collect();
+    let levels = levels(fractions, BRAILLE_LEVELS * rows);
+    let fill = |pair: &[usize], side: usize, row| {
+        pair.get(side)
+            .map_or(0, |level| cell_fill(*level, row, BRAILLE_LEVELS))
+    };
     (0..rows)
         .rev()
         .map(|row| {
             levels
                 .chunks(2)
-                .map(|pair| {
-                    let left = pair
-                        .first()
-                        .map_or(0, |l| cell_fill(*l, row, BRAILLE_LEVELS));
-                    let right = pair
-                        .get(1)
-                        .map_or(0, |l| cell_fill(*l, row, BRAILLE_LEVELS));
-                    braille_cell(left, right)
-                })
+                .map(|pair| braille_cell(fill(pair, 0, row), fill(pair, 1, row)))
                 .collect()
         })
         .collect()
@@ -91,7 +83,7 @@ fn braille_rows(fractions: &[f32], rows: usize) -> Vec<String> {
 
 fn braille_cell(left: usize, right: usize) -> char {
     let bits = column_bits(&BRAILLE_LEFT, left) | column_bits(&BRAILLE_RIGHT, right);
-    char::from_u32(BRAILLE_BASE | bits).unwrap_or(EMPTY)
+    char::from_u32(0x2800 | bits).unwrap_or(EMPTY)
 }
 
 fn column_bits(column: &[u32; 4], fill: usize) -> u32 {

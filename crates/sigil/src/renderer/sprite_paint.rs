@@ -16,20 +16,20 @@ mod icon;
 mod image_pack;
 mod prepare;
 
+use crate::renderer::fill_paint::setup::{
+    QuadDesc, QuadPipeline, clipped_pass, linear_sampler, texture_layout,
+};
 use crate::renderer::frame_upload::UploadedRange;
 use crate::renderer::scene_command::{DrawSprite, SpriteKind, Transform};
 use crate::renderer::scene_instance::{BlendSpace, affine_rows};
 use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::sprite_atlas::{
     BUILTIN_ATLAS_HEIGHT, BUILTIN_ATLAS_WIDTH, BUILTIN_ICON_ATLAS_COUNT, builtin_atlas_rgba8,
+    builtin_icon_index,
 };
 
-use self::atlas::{AtlasDesc, AtlasEntry, MAX_ATLASES, push_atlas, valid_atlas_desc};
-use self::builder::{
-    UNIT_QUAD_VERTEX_COUNT, atlas_layout, pipeline, shader, uniform_bind_group, uniform_layout,
-    unit_quad,
-};
-use self::icon::is_builtin_icon_atlas;
+use self::atlas::{AtlasDesc, AtlasEntry, MAX_ATLASES, valid_atlas_desc};
+use self::builder::{INSTANCE_LAYOUT, uniform_bind_group, uniform_layout};
 use self::image_pack::ImagePack;
 pub(crate) use self::image_pack::PackedImage;
 pub(crate) use self::prepare::raster_scale;
@@ -61,12 +61,10 @@ struct SpriteUniforms {
 }
 
 pub(crate) struct SpritePipeline {
-    format: wgpu::TextureFormat,
-    pipeline: wgpu::RenderPipeline,
+    quad: QuadPipeline,
     uniform_layout: wgpu::BindGroupLayout,
     uniforms: Option<(wgpu::Buffer, wgpu::BindGroup)>,
     atlas_layout: wgpu::BindGroupLayout,
-    unit_quad: wgpu::Buffer,
     pub(super) atlases: Vec<AtlasEntry>,
     atlas_bind_groups: Vec<wgpu::BindGroup>,
     sampler: wgpu::Sampler,
@@ -78,29 +76,28 @@ pub(crate) struct SpritePipeline {
 
 impl SpritePipeline {
     pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader = shader(device);
         let uniform_layout = uniform_layout(device);
-        let atlas_layout = atlas_layout(device);
-        let pipeline = pipeline(device, format, &shader, &uniform_layout, &atlas_layout);
-        let unit_quad = unit_quad(device);
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("sigil-renderer sprite sampler"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            ..Default::default()
-        });
-        Self {
+        let atlas_layout = texture_layout(device, "sigil-renderer sprite atlas layout");
+        let quad = QuadPipeline::new(
+            device,
             format,
-            pipeline,
+            QuadDesc {
+                label: "sigil-renderer sprite",
+                wgsl: SPRITE_SHADER,
+                groups: &[Some(&uniform_layout), Some(&atlas_layout)],
+                instance: INSTANCE_LAYOUT,
+                fs_entry: "fs_main",
+                blend: wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+            },
+        );
+        Self {
+            quad,
             uniform_layout,
             uniforms: None,
             atlas_layout,
-            unit_quad,
             atlases: Vec::new(),
             atlas_bind_groups: Vec::new(),
-            sampler,
+            sampler: linear_sampler(device, "sigil-renderer sprite sampler"),
             builtin_atlas_slot: None,
             builtin_icon_slots: [None; BUILTIN_ICON_ATLAS_COUNT],
             image_slots: std::collections::HashMap::new(),
@@ -109,7 +106,7 @@ impl SpritePipeline {
     }
 
     pub(crate) const fn format(&self) -> wgpu::TextureFormat {
-        self.format
+        self.quad.format
     }
 
     pub(crate) fn register_atlas(
@@ -118,29 +115,11 @@ impl SpritePipeline {
         queue: &wgpu::Queue,
         desc: &AtlasDesc<'_>,
     ) -> u32 {
-        let AtlasDesc {
-            bytes,
-            width,
-            height,
-            format,
-        } = desc;
-        let (bytes, width, height, format) = (*bytes, *width, *height, *format);
-        if self.atlases.len() >= MAX_ATLASES || !valid_atlas_desc(bytes, width, height, format) {
+        if self.atlases.len() >= MAX_ATLASES || !valid_atlas_desc(desc) {
             return u32::MAX;
         }
         let id = u32::try_from(self.atlases.len()).unwrap_or(u32::MAX);
-        push_atlas(
-            device,
-            queue,
-            &self.atlas_layout,
-            &self.sampler,
-            &mut self.atlases,
-            &mut self.atlas_bind_groups,
-            bytes,
-            width,
-            height,
-            format,
-        );
+        self.push_atlas(device, queue, desc);
         id
     }
 
@@ -181,7 +160,7 @@ impl SpritePipeline {
         queue: &wgpu::Queue,
         raw_id: u32,
     ) -> Option<usize> {
-        if is_builtin_icon_atlas(raw_id) {
+        if builtin_icon_index(raw_id).is_some() {
             return self.resolve_builtin_icon_atlas(device, queue, raw_id);
         }
         if raw_id != BUILTIN_SPRITE_ATLAS_ID {
@@ -194,18 +173,15 @@ impl SpritePipeline {
             return None;
         }
         let slot = self.atlases.len();
-        let bytes = builtin_atlas_rgba8();
-        push_atlas(
+        self.push_atlas(
             device,
             queue,
-            &self.atlas_layout,
-            &self.sampler,
-            &mut self.atlases,
-            &mut self.atlas_bind_groups,
-            &bytes,
-            BUILTIN_ATLAS_WIDTH,
-            BUILTIN_ATLAS_HEIGHT,
-            wgpu::TextureFormat::Rgba8UnormSrgb,
+            &AtlasDesc {
+                bytes: &builtin_atlas_rgba8(),
+                width: BUILTIN_ATLAS_WIDTH,
+                height: BUILTIN_ATLAS_HEIGHT,
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            },
         );
         self.builtin_atlas_slot = Some(slot);
         Some(slot)
@@ -257,34 +233,16 @@ impl SpritePipeline {
         uniform_offset: u32,
     ) {
         let (_, uniform_bg) = self.uniforms.as_ref().expect("sprite uniforms initialized");
-        let pass = ctx.encoder.begin_render_pass(
-            "sigil-renderer sprite pass",
-            &wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: ctx.view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            },
-        );
-        if !crate::renderer::scissor::apply(pass, ctx.clip, ctx.scale, ctx.viewport) {
+        let Some(pass) = clipped_pass(ctx, "sigil-renderer sprite pass") else {
             return;
-        }
-        pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, uniform_bg, &[uniform_offset]);
-        pass.set_bind_group(1, atlas_bg, &[]);
-        pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes.clone()));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..1);
+        };
+        self.quad.draw(
+            pass,
+            &[uniform_bg, atlas_bg],
+            &[uniform_offset],
+            instances.buffer.slice(instances.bytes.clone()),
+            1,
+        );
     }
 }
 
@@ -307,38 +265,6 @@ const _: () = assert!(core::mem::size_of::<SpriteInstance>() == 96);
 const _: () = assert!(core::mem::size_of::<SpriteUniforms>() == 16);
 
 const SPRITE_SHADER: &str = include_str!("sprite_paint.wgsl");
-
-#[cfg(test)]
-pub(crate) const fn max_atlases_for_test() -> usize {
-    MAX_ATLASES
-}
-
-#[cfg(test)]
-impl SpritePipeline {
-    #[allow(
-        clippy::too_many_arguments,
-        reason = "the argument list mirrors the upstream API contract"
-    )]
-    pub(crate) fn register_atlas_for_test(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        bytes: &[u8],
-        width: u32,
-        height: u32,
-    ) -> u32 {
-        self.register_atlas(
-            device,
-            queue,
-            &AtlasDesc {
-                bytes,
-                width,
-                height,
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            },
-        )
-    }
-}
 
 #[cfg(test)]
 mod tests;

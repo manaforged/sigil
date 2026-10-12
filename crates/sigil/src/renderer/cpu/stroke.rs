@@ -29,12 +29,12 @@ pub(super) fn stroke(
     };
     let paint = solid(stroke.color, brush.opacity);
     let clip = brush.mask_for(&paint);
-    let dashed = match band.dash {
-        Some(dash) => match dash_mask(target, rect, dash, brush, clip) {
-            Some(mask) => Some(mask),
-            None => return,
-        },
-        None => None,
+    let dashed = match band
+        .dash
+        .map(|dash| dash_mask(target, rect, dash, brush, clip))
+    {
+        Some(None) => return,
+        found => found.flatten(),
     };
     target.fill_path(
         &path,

@@ -108,22 +108,7 @@ impl Screen {
             self.fresh = true;
         }
         let dt = self.dt;
-        let caps = self.caps;
-        let Self {
-            scene,
-            grid,
-            fresh,
-            dirty,
-            ..
-        } = self;
-        let cells = Cells {
-            scene,
-            grid,
-            fresh,
-            dirty,
-            caps,
-        };
-        let hooks = frame_hooks(cells, events, (cols, rows));
+        let hooks = frame_hooks(self, events, (cols, rows));
         let out = host.frame(router, view(cols, rows), dt, hooks);
         self.exited |= out.exit;
         if crate::hud::enabled() {
@@ -185,34 +170,38 @@ impl Screen {
     }
 
     pub fn flush(&mut self, out: &mut impl Write) -> io::Result<()> {
-        if !profile::enabled() {
-            return self.write(out);
-        }
-        let _phase = profile::span(profile::Phase::TuiWrite);
-        let mut measured = Measured::new(out);
-        let result = self.write(&mut measured);
-        profile::count_add(profile::Counter::TuiBytes, measured.bytes);
-        profile::count_add(profile::Counter::TuiWrites, measured.writes);
-        result
+        self.measure(out, false)
     }
 
     pub fn flush_inline(&mut self, out: &mut impl Write) -> io::Result<()> {
+        self.measure(out, true)
+    }
+
+    fn measure(&mut self, out: &mut impl Write, inline: bool) -> io::Result<()> {
         if !profile::enabled() {
-            return self.write_inline(out);
+            return self.emit(out, inline);
         }
         let _phase = profile::span(profile::Phase::TuiWrite);
         let mut measured = Measured::new(out);
-        let result = self.write_inline(&mut measured);
+        let result = self.emit(&mut measured, inline);
         profile::count_add(profile::Counter::TuiBytes, measured.bytes);
         profile::count_add(profile::Counter::TuiWrites, measured.writes);
         result
     }
 
-    fn write_inline(&mut self, out: &mut impl Write) -> io::Result<()> {
+    fn emit(&mut self, out: &mut impl Write, inline: bool) -> io::Result<()> {
         if !self.dirty {
             return Ok(());
         }
         self.dirty = false;
+        if inline {
+            self.write_inline(out)
+        } else {
+            self.write(out)
+        }
+    }
+
+    fn write_inline(&mut self, out: &mut impl Write) -> io::Result<()> {
         let prev = (!self.fresh).then_some(&self.prev);
         crate::terminal::write::inline(
             out,
@@ -228,10 +217,6 @@ impl Screen {
     }
 
     fn write(&mut self, out: &mut impl Write) -> io::Result<()> {
-        if !self.dirty {
-            return Ok(());
-        }
-        self.dirty = false;
         let full = self.fresh
             || self.prev.cols() != self.grid.cols()
             || self.prev.rows() != self.grid.rows();
@@ -293,26 +278,11 @@ impl Screen {
     }
 }
 
-struct Cells<'s> {
-    scene: &'s mut CommandScene,
-    grid: &'s mut Grid,
-    fresh: &'s mut bool,
-    dirty: &'s mut bool,
-    caps: Caps,
-}
-
 fn frame_hooks<'s>(
-    cells: Cells<'s>,
+    screen: &'s mut Screen,
     events: impl IntoIterator<Item = ShellEvent> + 's,
     size: (u16, u16),
 ) -> FrameHooks<'s> {
-    let Cells {
-        scene,
-        grid,
-        fresh,
-        dirty,
-        caps,
-    } = cells;
     let (cols, rows) = size;
     FrameHooks {
         input: Some(Box::new(move |host, router| {
@@ -329,21 +299,22 @@ fn frame_hooks<'s>(
             if !info.layout_ok {
                 return;
             }
+            let grid = &mut screen.grid;
             let resized = grid.cols() != usize::from(cols) || grid.rows() != usize::from(rows);
             let next = host.emit(view(cols, rows));
-            *dirty = next != *scene || resized || *fresh;
-            if *dirty {
+            screen.dirty = next != screen.scene || resized || screen.fresh;
+            if screen.dirty {
                 let _raster = profile::span(profile::Phase::TuiRaster);
                 grid.resize(cols, rows);
                 let marks = Marks::collect(host.cx(), router.focus(), &next, CELL);
                 let paint = Paint {
                     theme: host.theme(),
                     cell: CELL,
-                    caps,
+                    caps: screen.caps,
                     marks: &marks,
                 };
                 raster_with(grid, &next, &paint);
-                *scene = next;
+                screen.scene = next;
             }
         })),
         ..FrameHooks::default()

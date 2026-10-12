@@ -29,29 +29,14 @@ pub(super) struct CachedGlyph {
     pub slot: u32,
 }
 
+#[derive(Default)]
 pub(super) struct GlyphCache {
-    map: AHashMap<GlyphKey, CachedGlyph>,
+    pub(super) map: AHashMap<GlyphKey, CachedGlyph>,
     empty: AHashSet<GlyphKey>,
-    generation: u64,
+    pub(super) generation: u64,
 }
 
 impl GlyphCache {
-    pub(super) fn new() -> Self {
-        Self {
-            map: AHashMap::new(),
-            empty: AHashSet::new(),
-            generation: 0,
-        }
-    }
-
-    pub(super) const fn generation(&self) -> u64 {
-        self.generation
-    }
-
-    pub(super) fn get(&self, key: &GlyphKey) -> Option<&CachedGlyph> {
-        self.map.get(key)
-    }
-
     pub(super) fn contains(&self, key: &GlyphKey) -> bool {
         self.map.contains_key(key) || self.empty.contains(key)
     }
@@ -67,14 +52,6 @@ impl GlyphCache {
         );
         self.map.insert(key, CachedGlyph { band_data, slot });
         self.generation = self.generation.wrapping_add(1);
-    }
-
-    pub(super) fn len(&self) -> usize {
-        self.map.len()
-    }
-
-    pub(super) fn iter(&self) -> impl Iterator<Item = (&GlyphKey, &CachedGlyph)> {
-        self.map.iter()
     }
 }
 

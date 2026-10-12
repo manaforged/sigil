@@ -110,29 +110,25 @@ impl FocusManager {
         let previous = self.focused;
         self.focused = target;
         if let Some(previous) = previous {
-            fire_focus_out(cx, previous);
+            let _ = dispatch(cx, previous, EventHandlers::invoke_focus_out);
         }
         if let Some(next) = target {
-            fire_focus_in(cx, next);
+            let _ = dispatch(cx, next, EventHandlers::invoke_focus_in);
         }
     }
 
     pub(crate) fn focus_next(&mut self, cx: &mut Cx, layout: Option<&LayoutEngine>) {
-        self.ensure_ring(cx, layout);
-        let Some(next) = next_in_ring(&self.enabled_ring(cx), self.focused) else {
-            self.set_focus(cx, None);
-            return;
-        };
-        self.set_focus(cx, Some(next));
+        self.focus_step(cx, layout, true);
     }
 
     pub(crate) fn focus_prev(&mut self, cx: &mut Cx, layout: Option<&LayoutEngine>) {
+        self.focus_step(cx, layout, false);
+    }
+
+    fn focus_step(&mut self, cx: &mut Cx, layout: Option<&LayoutEngine>, forward: bool) {
         self.ensure_ring(cx, layout);
-        let Some(next) = prev_in_ring(&self.enabled_ring(cx), self.focused) else {
-            self.set_focus(cx, None);
-            return;
-        };
-        self.set_focus(cx, Some(next));
+        let next = step_in_ring(&self.enabled_ring(cx), self.focused, forward);
+        self.set_focus(cx, next);
     }
 
     pub(crate) fn focus_intent(&mut self, cx: &mut Cx, layout: &LayoutEngine, intent: FocusIntent) {
@@ -155,28 +151,22 @@ impl FocusManager {
     ) -> Option<NodeId> {
         let focused = self.focused?;
         let origin = node_center(cx, layout, focused)?;
-        let mut best: Option<(f32, NodeId)> = None;
-        for &candidate in &self.ring {
-            if candidate == focused
-                || !visible(cx, candidate)
-                || !cx
-                    .get(candidate)
-                    .is_some_and(|node| node.a11y.is_focusable())
-            {
-                continue;
-            }
-            let Some(center) = node_center(cx, layout, candidate) else {
-                continue;
-            };
-            let Some(cost) = intent_cost(intent, origin, center) else {
-                continue;
-            };
-            let better = best.is_none_or(|(best_cost, _)| cost < best_cost);
-            if better {
-                best = Some((cost, candidate));
-            }
-        }
-        best.map(|(_, id)| id)
+        self.ring
+            .iter()
+            .copied()
+            .filter(|&candidate| {
+                candidate != focused
+                    && visible(cx, candidate)
+                    && cx
+                        .get(candidate)
+                        .is_some_and(|node| node.a11y.is_focusable())
+            })
+            .filter_map(|candidate| {
+                let center = node_center(cx, layout, candidate)?;
+                Some((intent_cost(intent, origin, center)?, candidate))
+            })
+            .min_by(|a, b| a.0.total_cmp(&b.0))
+            .map(|(_, id)| id)
     }
 
     pub(crate) fn a11y_focus_update(&self) -> TreeUpdate {
@@ -235,33 +225,22 @@ impl FocusManager {
     }
 
     fn build_scoped_ring(&self, cx: &Cx) -> Vec<NodeId> {
-        let mut explicit = Vec::<FocusCandidate>::new();
-        let mut implicit = Vec::<FocusCandidate>::new();
-        let mut order = 0_usize;
-
+        let mut explicit = Vec::new();
+        let mut implicit = Vec::new();
         let walk_roots: SmallVec<[NodeId; 4]> = self.scope_stack.last().map_or_else(
             || cx.roots().iter().copied().collect(),
             |top| smallvec![top.scope_root],
         );
         for root in walk_roots {
-            collect_focusable(cx, root, &mut order, &mut explicit, &mut implicit);
+            collect_focusable(cx, root, &mut explicit, &mut implicit);
         }
-
-        explicit.sort_by_key(|candidate| (candidate.tab_index, candidate.order));
+        explicit.sort_by_key(|(tab_index, _)| *tab_index);
         explicit
             .into_iter()
+            .map(|(_, id)| id)
             .chain(implicit)
-            .map(|candidate| candidate.id)
             .collect()
     }
-}
-
-fn fire_focus_in(cx: &Cx, id: NodeId) {
-    let _ = dispatch(cx, id, EventHandlers::invoke_focus_in);
-}
-
-fn fire_focus_out(cx: &Cx, id: NodeId) {
-    let _ = dispatch(cx, id, EventHandlers::invoke_focus_out);
 }
 
 fn node_center(cx: &Cx, layout: &LayoutEngine, id: NodeId) -> Option<Point> {
@@ -286,9 +265,8 @@ fn intent_cost(intent: FocusIntent, origin: Point, candidate: Point) -> Option<f
 fn collect_focusable(
     cx: &Cx,
     id: NodeId,
-    order: &mut usize,
-    explicit: &mut Vec<FocusCandidate>,
-    implicit: &mut Vec<FocusCandidate>,
+    explicit: &mut Vec<(i32, NodeId)>,
+    implicit: &mut Vec<NodeId>,
 ) {
     if !visible(cx, id) {
         return;
@@ -297,55 +275,26 @@ fn collect_focusable(
         return;
     };
     if node.a11y.focusable {
-        let candidate = FocusCandidate {
-            id,
-            tab_index: node.a11y.tab_index.unwrap_or(0),
-            order: *order,
-        };
-        *order = order.saturating_add(1);
         match node.a11y.tab_index {
-            Some(index) if index >= 0 => explicit.push(candidate),
-            None => implicit.push(candidate),
+            Some(index) if index >= 0 => explicit.push((index, id)),
+            None => implicit.push(id),
             Some(_) => {}
         }
     }
     for child in node.children().iter().copied() {
-        collect_focusable(cx, child, order, explicit, implicit);
+        collect_focusable(cx, child, explicit, implicit);
     }
 }
 
-fn next_in_ring(ring: &[NodeId], focused: Option<NodeId>) -> Option<NodeId> {
-    if ring.is_empty() {
-        return None;
-    }
-    let index = focused
-        .and_then(|focused| ring.iter().position(|id| *id == focused))
-        .map_or(0, |index| (index + 1) % ring.len());
+fn step_in_ring(ring: &[NodeId], focused: Option<NodeId>, forward: bool) -> Option<NodeId> {
+    let len = ring.len();
+    let index = match focused.and_then(|focused| ring.iter().position(|id| *id == focused)) {
+        Some(index) if forward => (index + 1) % len,
+        Some(index) => (index + len - 1) % len,
+        None if forward => 0,
+        None => len.checked_sub(1)?,
+    };
     ring.get(index).copied()
-}
-
-fn prev_in_ring(ring: &[NodeId], focused: Option<NodeId>) -> Option<NodeId> {
-    if ring.is_empty() {
-        return None;
-    }
-    let index = focused
-        .and_then(|focused| ring.iter().position(|id| *id == focused))
-        .map_or_else(
-            || ring.len().saturating_sub(1),
-            |index| previous_index(index, ring.len()),
-        );
-    ring.get(index).copied()
-}
-
-const fn previous_index(index: usize, len: usize) -> usize {
-    if index == 0 { len - 1 } else { index - 1 }
-}
-
-#[derive(Clone, Copy)]
-struct FocusCandidate {
-    id: NodeId,
-    tab_index: i32,
-    order: usize,
 }
 
 #[cfg(test)]
