@@ -1,4 +1,4 @@
-use super::chart_parse::fence_block;
+use super::chart_parse::{ChartData, fence_block};
 pub(crate) use super::containers::{List, ListItem};
 use super::containers::{
     heading, image_line, list_marker, rule, take_list, take_quote, take_table,
@@ -6,26 +6,14 @@ use super::containers::{
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Block {
-    Heading {
-        level: u8,
-        text: String,
-    },
+    Heading { level: u8, text: String },
     Paragraph(String),
     Quote(Vec<Self>),
     List(List),
-    Code {
-        lang: String,
-        body: String,
-    },
+    Code { lang: String, body: String },
     Mermaid(String),
-    Chart {
-        title: Option<String>,
-        rows: Vec<(String, f64)>,
-    },
-    Image {
-        alt: String,
-        src: String,
-    },
+    Chart(ChartData),
+    Image { alt: String, src: String },
     Table(Vec<Vec<String>>),
     Rule,
 }

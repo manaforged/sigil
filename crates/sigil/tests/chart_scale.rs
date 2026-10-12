@@ -85,6 +85,89 @@ fn a_crosshair_reads_out_the_value_under_the_pointer() {
 }
 
 #[test]
+fn markdown_xycharts_preserve_the_line_mark() {
+    let mut ui = Harness::new(|| {
+        markdown(signal(
+            "```xychart\nx-axis [Alpha, Beta]\nline [7, 7]\n```".to_string(),
+        ))
+    })
+    .size(60, 30);
+    ui.settle();
+    drop(ui.get_by_role(Role::Figure, "Chart"));
+    assert!(ui.query(&Query::text("Alpha")).is_some());
+    assert!(ui.query(&Query::text("7")).is_none(), "line became bars");
+}
+
+#[test]
+fn markdown_xycharts_preserve_each_series() {
+    let mut ui = Harness::new(|| {
+        markdown(signal(
+            "```xychart\nx-axis [Alpha, Beta]\nbar [7, 9]\nbar [11, 13]\n```".to_string(),
+        ))
+    })
+    .size(60, 30);
+    ui.settle();
+    drop(ui.get_by_role(Role::Figure, "Chart"));
+    for value in ["7", "9", "11", "13"] {
+        assert!(ui.query(&Query::text(value)).is_some(), "lost {value}");
+    }
+}
+
+#[test]
+fn markdown_xycharts_keep_malformed_values_readable() {
+    let mut ui = Harness::new(|| {
+        markdown(signal(
+            "```xychart\nx-axis [Alpha, Beta]\nbar [invalid, 7]\n```".to_string(),
+        ))
+    })
+    .size(60, 30);
+    ui.settle();
+    assert!(ui.query(&Query::role(Role::Figure).name("Chart")).is_none());
+    assert!(ui.text().contains("invalid"));
+}
+
+#[test]
+fn markdown_xycharts_keep_mixed_marks_readable() {
+    let mut ui = Harness::new(|| {
+        markdown(signal(
+            "```xychart\nbar [7, 9]\nline [11, 13]\n```".to_string(),
+        ))
+    })
+    .size(60, 30);
+    ui.settle();
+    assert!(ui.query(&Query::role(Role::Figure).name("Chart")).is_none());
+    let shown = ui.text();
+    assert!(shown.contains("bar [7, 9]") && shown.contains("line [11, 13]"));
+}
+
+#[test]
+fn markdown_xycharts_do_not_drop_empty_value_slots() {
+    let mut ui =
+        Harness::new(|| markdown(signal("```xychart\nbar [7,,13]\n```".to_string()))).size(60, 30);
+    ui.settle();
+    assert!(ui.query(&Query::role(Role::Figure).name("Chart")).is_none());
+    assert!(ui.text().contains("7,,13"));
+}
+
+#[test]
+fn markdown_xycharts_keep_unrenderable_numbers_readable() {
+    let mut ui = Harness::new(|| markdown(signal("```xychart\nline [7, 1e100]\n```".to_string())))
+        .size(60, 30);
+    ui.settle();
+    assert!(ui.query(&Query::role(Role::Figure).name("Chart")).is_none());
+    assert!(ui.text().contains("1e100"));
+}
+
+#[test]
+fn markdown_charts_keep_nonfinite_rows_readable() {
+    let mut ui =
+        Harness::new(|| markdown(signal("```chart\nPassed: inf\n```".to_string()))).size(60, 30);
+    ui.settle();
+    assert!(ui.query(&Query::role(Role::Figure).name("Chart")).is_none());
+    assert!(ui.text().contains("Passed: inf"));
+}
+
+#[test]
 #[ignore = "needs a wgpu adapter"]
 fn rising_and_falling_candles_draw_in_two_colours() {
     let mut ui = Harness::new(|| {

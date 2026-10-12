@@ -13,13 +13,17 @@ pub(super) fn fence_block(lang: &str, body: String) -> Block {
     }
 }
 
-type ChartData = (Option<String>, Vec<(String, f64)>);
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct ChartData {
+    pub(super) title: Option<String>,
+    pub(super) labels: Vec<String>,
+    pub(super) values: Vec<f32>,
+    pub(super) series: Vec<Vec<f32>>,
+    pub(super) line: bool,
+}
 
 fn chart_block(body: &str, xychart: bool) -> Block {
-    chart_rows(body, xychart).map_or_else(
-        || Block::Mermaid(body.to_string()),
-        |(title, rows)| Block::Chart { title, rows },
-    )
+    chart_rows(body, xychart).map_or_else(|| Block::Mermaid(body.to_string()), Block::Chart)
 }
 
 fn chart_rows(source: &str, xychart: bool) -> Option<ChartData> {
@@ -50,42 +54,62 @@ fn chart_rows(source: &str, xychart: bool) -> Option<ChartData> {
         }
         rows.push(pair(line)?);
     }
-    (!rows.is_empty()).then_some((title, rows))
+    if rows.is_empty() {
+        return None;
+    }
+    let (labels, values) = rows.into_iter().unzip();
+    Some(ChartData {
+        title,
+        labels,
+        values,
+        series: Vec::new(),
+        line: false,
+    })
 }
 
 fn xychart_rows(lines: &[&str]) -> Option<ChartData> {
     let mut title = None;
     let mut labels = Vec::new();
-    let mut values = Vec::new();
+    let mut series = Vec::new();
+    let mut mark = None;
     for line in lines {
         if let Some(rest) = line.strip_prefix("title") {
             title = Some(rest.trim().trim_matches('"').to_string());
         } else if line.starts_with("x-axis") {
             labels = csv_items(line);
         } else if line.starts_with("bar") || line.starts_with("line") {
-            values = csv_items(line)
+            let is_line = line.starts_with("line");
+            if mark.is_some_and(|held| held != is_line) {
+                return None;
+            }
+            mark = Some(is_line);
+            let values = csv_items(line)
                 .into_iter()
-                .filter_map(|item| item.parse::<f64>().ok())
-                .collect();
+                .map(|item| item.parse::<f32>().ok().filter(|value| value.is_finite()))
+                .collect::<Option<Vec<_>>>()?;
+            if values.is_empty() {
+                return None;
+            }
+            series.push(values);
         }
     }
-    if values.is_empty() {
-        return None;
-    }
-    let rows = values
-        .iter()
-        .enumerate()
-        .map(|(i, value)| {
-            (
-                labels
-                    .get(i)
-                    .cloned()
-                    .unwrap_or_else(|| format!("{}", i + 1)),
-                *value,
-            )
+    let count = series.iter().map(Vec::len).max()?;
+    let labels = (0..count)
+        .map(|index| {
+            labels
+                .get(index)
+                .cloned()
+                .unwrap_or_else(|| (index + 1).to_string())
         })
         .collect();
-    Some((title, rows))
+    let mut series = series.into_iter();
+    Some(ChartData {
+        title,
+        labels,
+        values: series.next()?,
+        series: series.collect(),
+        line: mark?,
+    })
 }
 
 fn csv_items(line: &str) -> Vec<String> {
@@ -101,18 +125,18 @@ fn csv_items(line: &str) -> Vec<String> {
     line[open + 1..close]
         .split(',')
         .map(|item| item.trim().trim_matches('"').to_string())
-        .filter(|item| !item.is_empty())
         .collect()
 }
 
-fn pair(line: &str) -> Option<(String, f64)> {
-    if let Some((label, value)) = line.rsplit_once(':').or_else(|| line.rsplit_once(',')) {
-        let value: f64 = value.trim().parse().ok()?;
-        let label = label.trim().trim_matches('"').to_string();
-        return (!label.is_empty() && value >= 0.0).then_some((label, value));
-    }
-    let value = line.split_whitespace().next_back()?;
-    let label = line[..line.len() - value.len()].trim().trim_matches('"');
-    let value: f64 = value.parse().ok()?;
-    (!label.is_empty() && value >= 0.0).then_some((label.to_string(), value))
+fn pair(line: &str) -> Option<(String, f32)> {
+    let (label, value) = if let Some(pair) = line.rsplit_once(':').or_else(|| line.rsplit_once(','))
+    {
+        pair
+    } else {
+        let value = line.split_whitespace().next_back()?;
+        (&line[..line.len() - value.len()], value)
+    };
+    let label = label.trim().trim_matches('"').to_string();
+    let value: f32 = value.trim().parse().ok()?;
+    (!label.is_empty() && value.is_finite() && value >= 0.0).then_some((label, value))
 }
