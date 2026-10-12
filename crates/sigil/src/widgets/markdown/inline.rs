@@ -43,12 +43,16 @@ impl Inlines<'_> {
             return Some((span, i + url.len() + 2));
         }
         if rest.starts_with("**")
+            && opens(source, i + 2)
             && let Some(end) = find_from(&mut self.double, source, i + 2)
+                .filter(|&end| end > i + 2 && closes(source, end))
         {
             return Some((Span::Bold(source[i + 2..end].to_string()), end + 2));
         }
         if rest.starts_with('*')
+            && opens(source, i + 1)
             && let Some(end) = find_from(&mut self.star, source, i + 1)
+                .filter(|&end| end > i + 1 && closes(source, end))
         {
             return Some((Span::Italic(source[i + 1..end].to_string()), end + 1));
         }
@@ -94,6 +98,20 @@ pub(crate) fn parse_inlines(source: &str) -> Vec<Span> {
         out.push(Span::Text(String::new()));
     }
     out
+}
+
+fn opens(source: &str, at: usize) -> bool {
+    source
+        .get(at..)
+        .and_then(|rest| rest.chars().next())
+        .is_some_and(|ch| !ch.is_whitespace())
+}
+
+fn closes(source: &str, end: usize) -> bool {
+    source
+        .get(..end)
+        .and_then(|head| head.chars().next_back())
+        .is_some_and(|ch| !ch.is_whitespace())
 }
 
 fn flush_text(out: &mut Vec<Span>, text: &mut String) {

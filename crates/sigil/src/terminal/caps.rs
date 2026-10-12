@@ -1,6 +1,6 @@
 use crate::app::Ambiguous;
 use crate::terminal::glyphs::Glyphs;
-use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux, forced_graphics};
+use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
 
 mod ask;
 mod known;
@@ -104,7 +104,6 @@ impl Default for Caps {
 
 #[derive(Default)]
 struct Answers {
-    graphics: Option<Protocol>,
     sync: bool,
     kitty_keys: bool,
     backdrop: Option<Backdrop>,
@@ -156,9 +155,6 @@ impl Caps {
 
 impl Draft {
     const fn settle(mut self, answers: &Answers) -> Caps {
-        if self.ask.has(Question::Graphics) {
-            self.caps.graphics = answers.graphics;
-        }
         if self.ask.has(Question::Sync) {
             self.caps.sync = answers.sync;
         }
@@ -228,21 +224,17 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
             backdrop: backdrop(env),
             notices: known.map(Known::notices).unwrap_or_default(),
         },
-        ask: questions(env, (graphics, sync, keys), color, known),
+        ask: questions(env, (sync, keys), color, known),
     }
 }
 
 fn questions(
     env: &impl Fn(&str) -> Option<String>,
-    (graphics, sync, keys): (Option<Protocol>, Option<bool>, Option<bool>),
+    (sync, keys): (Option<bool>, Option<bool>),
     color: ColorDepth,
     known: Option<Known>,
 ) -> Questions {
     Questions::default()
-        .with(
-            Question::Graphics,
-            graphics.is_none() && forced_graphics(env).is_none(),
-        )
         .with(Question::Sync, sync.is_none())
         .with(Question::Keys, keys.is_none())
         .with(

@@ -1,6 +1,7 @@
-use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
+use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, cols, rows};
+use crate::reactive::derived;
 use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom, Tone, space};
 
 static NOTICE_BAND: &[StyleAtom] = &[
@@ -20,7 +21,11 @@ pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
         Tone::Success => (Role::Status, "Success"),
         Tone::Info | Tone::Primary | Tone::Neutral => (Role::Status, "Notice"),
     };
-    let band = container().role(role).label(name).tone(tone);
+    let body: TextContent = body.into();
+    let band = container()
+        .role(role)
+        .label(announced(name, &body))
+        .tone(tone);
     let band = CellForm::<fn(NodeBuilder, Tone) -> NodeBuilder>::new(
         |node, _| {
             node.layout(
@@ -35,6 +40,20 @@ pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
     )
     .pick()(band, tone);
     band.child(text(body).ellipsize().tone(tone).class(NOTICE_TEXT))
+}
+
+fn announced(name: &'static str, body: &TextContent) -> AccessibleName {
+    match body {
+        TextContent::Static(text) => format!("{name}: {text}").into(),
+        TextContent::Reactive(text) => {
+            let text = *text;
+            derived(move || format!("{name}: {}", text.get())).into()
+        }
+        TextContent::Compute(text) => {
+            let text = text.clone();
+            derived(move || format!("{name}: {}", text())).into()
+        }
+    }
 }
 
 fn cell_band(band: NodeBuilder, tone: Tone) -> NodeBuilder {
@@ -53,3 +72,7 @@ fn cell_band(band: NodeBuilder, tone: Tone) -> NodeBuilder {
     .class(NOTICE_CELL)
     .child(text(marker).tone(tone).class(NOTICE_TEXT))
 }
+
+#[cfg(test)]
+#[path = "notice_tests.rs"]
+mod tests;

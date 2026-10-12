@@ -2,7 +2,6 @@ use std::os::fd::AsFd;
 use std::time::{Duration, Instant};
 
 use super::{Answers, Backdrop, Known, Question, Questions, Version};
-use crate::terminal::graphics::Protocol;
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 
@@ -48,9 +47,6 @@ fn typing(stdin: &impl AsFd) -> Option<bool> {
 
 fn queries(ask: Questions, backdrop: bool) -> String {
     let mut text = String::new();
-    if ask.has(Question::Graphics) {
-        text.push_str("\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\");
-    }
     if ask.has(Question::Sync) {
         text.push_str("\x1b[?2026$p");
     }
@@ -96,15 +92,8 @@ fn ready(input: &impl AsFd, wait: Duration) -> Option<bool> {
     Some(poll(&mut fds, Some(&wait)).ok()? > 0)
 }
 
-fn parse(reply: &str) -> Answers {
+pub(super) fn parse(reply: &str) -> Answers {
     Answers {
-        graphics: if reply.contains("\x1b_Gi=31;OK") {
-            Some(Protocol::Kitty)
-        } else if da1(reply).is_some_and(|params| params.split(';').any(|param| param == "4")) {
-            Some(Protocol::Sixel)
-        } else {
-            None
-        },
         sync: reply
             .split("\x1b[?2026;")
             .skip(1)

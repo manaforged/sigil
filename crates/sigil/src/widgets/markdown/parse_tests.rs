@@ -76,3 +76,21 @@ fn task_items_carry_checked_state_and_drop_the_marker() {
         ]
     );
 }
+
+#[test]
+fn a_star_between_spaces_is_text_not_emphasis() {
+    assert_eq!(parse_inlines("a * b"), vec![Span::Text("a * b".into())]);
+    assert_eq!(parse_inlines("a ** b"), vec![Span::Text("a ** b".into())]);
+    assert_eq!(
+        parse_inlines("2 * 3 * 4"),
+        vec![Span::Text("2 * 3 * 4".into())]
+    );
+    assert_eq!(
+        parse_inlines("*x* and **y**"),
+        vec![
+            Span::Italic("x".into()),
+            Span::Text(" and ".into()),
+            Span::Bold("y".into()),
+        ]
+    );
+}

@@ -30,7 +30,7 @@ The terminal host selects an image protocol from the environment:
 - iTerm2 protocol: iTerm2 and Warp.
 - Sixel: foot, contour, mlterm, mintty, rio, yaft, and any `TERM` that contains `sixel`.
 
-If the environment names none of these, Sigil queries the terminal at start. If no protocol is found, images show as sextant glyphs.
+If the environment names none of these, images show as sextant glyphs. Sigil does not ask the terminal: a multiplexer can answer a graphics query for an outer terminal that cannot draw images.
 
 Inside tmux (`TMUX` is set), Sigil wraps each image sequence in the tmux passthrough form. tmux forwards it only when its `allow-passthrough` option is on:
 
@@ -40,7 +40,7 @@ tmux set -g allow-passthrough on
 
 Inside GNU screen (`STY` is set), Sigil does not send Kitty or Sixel images.
 
-To choose the protocol yourself, set `SIGIL_GRAPHICS` to `kitty`, `iterm2`, or `sixel`. Any other value turns images off and shows glyphs.
+To choose the protocol yourself, set `SIGIL_GRAPHICS` to `kitty`, `iterm2`, or `sixel`. `SIGIL_GRAPHICS=off` (or `none`) turns images off and shows glyphs. Other values are ignored.
 
 ## Colours are wrong in the terminal
 
