@@ -13,8 +13,11 @@ use super::super::popup::{self, ItemSlots, POPUP_GAP, item_row};
 use super::super::shared::disabled_now;
 use super::builder::IndexChange;
 
+const TRIGGER_HEIGHT: f32 = 32.0;
+const TRIGGER_ROWS: f32 = 3.0;
+
 pub(super) fn trigger_height() -> f32 {
-    CellForm::new(32.0, rows(3.0).px()).pick()
+    CellForm::new(TRIGGER_HEIGHT, rows(TRIGGER_ROWS).px()).pick()
 }
 pub(super) const POPUP_MAX_VISIBLE: usize = 6;
 

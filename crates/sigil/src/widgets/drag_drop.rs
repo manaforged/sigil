@@ -11,6 +11,8 @@ pub const DRAG_THRESHOLD_PX: f32 = 4.0;
 
 pub const DROP_TARGET_CLASS: &str = "bg-accent-4";
 
+const GHOST_OFFSET: (f32, f32) = (12.0, 10.0);
+
 type Armed<T> = Rc<RefCell<Option<((f32, f32), T)>>>;
 type Accepts<T> = Rc<dyn Fn(&T) -> bool>;
 type OnDrop<T> = Rc<dyn Fn(T)>;
@@ -217,7 +219,7 @@ where
     let pos_state = state.clone();
     let pos = derived(move || {
         let (x, y) = pos_state.position.get();
-        (x + 12.0, y + 10.0)
+        (x + GHOST_OFFSET.0, y + GHOST_OFFSET.1)
     });
     container()
         .hittable(false)

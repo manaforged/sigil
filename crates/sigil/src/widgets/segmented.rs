@@ -13,6 +13,8 @@ static SEGMENTED_FRAME: &[StyleAtom] = &[
 ];
 
 const SEGMENTED_HEIGHT: f32 = 32.0;
+const CELL_ACTIVE_OPEN: &str = "[";
+const CELL_ACTIVE_CLOSE: &str = "]";
 
 pub struct SegmentedBuilder {
     active: Signal<usize>,
@@ -88,7 +90,7 @@ fn segment(
     height: f32,
 ) -> NodeBuilder {
     let shown = if CellForm::new(false, selected).pick() {
-        format!("[{label}]")
+        format!("{CELL_ACTIVE_OPEN}{label}{CELL_ACTIVE_CLOSE}")
     } else {
         label.to_owned()
     };

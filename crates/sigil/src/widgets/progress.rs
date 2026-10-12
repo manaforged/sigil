@@ -15,6 +15,7 @@ use crate::style::{
 
 const TRACK_HEIGHT: f32 = 8.0;
 const INDETERMINATE_RATIO: f32 = 0.30;
+const CELL_RULE_THICKNESS: f32 = 1.0;
 
 static TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
 static FILL: &[StyleAtom] = &[Radius::Md.atom(), Token::Accent.bg()];
@@ -161,7 +162,7 @@ fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> N
 }
 
 fn empty_segment(units: Signal<u16>, track_h: f32) -> NodeBuilder {
-    let (height, paint) = CellForm::new((track_h, EMPTY), (1.0, TRACK)).pick();
+    let (height, paint) = CellForm::new((track_h, EMPTY), (CELL_RULE_THICKNESS, TRACK)).pick();
     container()
         .layout(LayoutStyle::block().height(height).width(0.0))
         .class(paint)

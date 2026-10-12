@@ -9,6 +9,7 @@ use crate::layout::{
     TextStyleCapture, rows, with_text_geometry,
 };
 use crate::reactive::{Signal, derived, effect};
+use crate::style::TransitionId;
 use crate::style::{
     BORDER_WIDTH, DISABLED_OPACITY, NodeStyleExt, NumericAtomKind, Px, Radius, StateStyle,
     StyleAtom, StyleOverlay, StyleVariant, Token, space,
@@ -23,7 +24,9 @@ use super::handlers::TextEditRuntime;
 mod selection;
 use selection::selection_layer;
 
-static TEXT_EDIT_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
+const TEXT_EDIT_TRANSITION: TransitionId = presets::SMOOTH;
+const DEFAULT_ROWS: f32 = 5.0;
+static TEXT_EDIT_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_EDIT_TRANSITION)];
 
 static EDIT_BASE: &[StyleAtom] = &[
     Token::SurfaceInset.bg(),
@@ -78,7 +81,7 @@ pub(super) fn build_base_node(
 pub(super) fn edit_layout() -> LayoutStyle {
     LayoutStyle::flex_column()
         .fill_width()
-        .height(CellForm::new(160.0, rows(5.0).px()).pick())
+        .height(CellForm::new(160.0, rows(DEFAULT_ROWS).px()).pick())
         .min_size(0.0, 0.0)
         .padding(1.0)
 }

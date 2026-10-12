@@ -227,8 +227,10 @@ where
     covers(mounted, visible, margin, total)
 }
 
+const MOUNT_BLOCKS_PER_PAGE: usize = 4;
+
 fn mount_block(viewport_height: f32, row_height: f32) -> usize {
-    (page_rows(viewport_height, row_height) / 4).max(1)
+    (page_rows(viewport_height, row_height) / MOUNT_BLOCKS_PER_PAGE).max(1)
 }
 
 fn keyed_rows<S, T, R>(

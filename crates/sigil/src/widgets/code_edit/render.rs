@@ -4,7 +4,8 @@ use crate::style::{ColorKey, ColorOrToken, Paint, Token};
 use crate::widgets::grapheme::{col_bytes, col_count};
 
 use super::{
-    CHANGE_BAR_W, ChangeKind, DiagSeverity, DiagSpan, GUTTER_PAD, HlSpan, SelRange, Window,
+    CHANGE_BAR_W, ChangeKind, DIGIT_W, DiagSeverity, DiagSpan, GUTTER_PAD, HlSpan, RUN_CLASS,
+    SELECTION, SelRange, Window,
 };
 
 type DiagRange = (usize, usize, DiagSeverity);
@@ -44,7 +45,7 @@ pub(super) fn gutter_width(total: usize) -> f32 {
         clippy::cast_precision_loss,
         reason = "pixel and digit-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
     )]
-    let numbers = digits as f32 * 7.0;
+    let numbers = digits as f32 * DIGIT_W;
     CHANGE_BAR_W + GUTTER_PAD + numbers + GUTTER_PAD
 }
 
@@ -172,7 +173,7 @@ fn styled_row(
             .map(|s| s.token);
         let seg = line[lo_byte..hi_byte].to_owned();
         let tint = if sel_cols.is_some_and(|(lo, hi)| lo <= a && a < hi) {
-            Some(Token::Accent)
+            Some(SELECTION)
         } else {
             diags
                 .iter()
@@ -238,7 +239,7 @@ fn number_text(number: usize, row_h: f32) -> NodeBuilder {
 fn run_text(seg: String, token: Option<&'static str>) -> TextBuilder {
     text(seg)
         .nowrap()
-        .class("text-sm font-mono")
+        .class(RUN_CLASS)
         .text_color(ColorOrToken::Token(
             token.map_or(ColorKey::Token(Token::OnSurface), ColorKey::parse),
         ))

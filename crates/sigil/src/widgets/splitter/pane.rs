@@ -7,6 +7,8 @@ use crate::widgets::scroll::to_i16;
 
 use super::drag::SplitterState;
 
+const ATOM_CACHE_CAP: usize = 512;
+
 pub(super) fn shares_free_space(initial_size: f32, grow: f32) -> f32 {
     if initial_size <= 0.0 && grow <= 0.0 {
         1.0
@@ -51,7 +53,7 @@ fn pane_layout(orientation: Orientation, size_px: f32, grow: f32) -> LayoutStyle
 
 pub(in crate::widgets) fn cached_width_atom(px: i16) -> &'static [StyleAtom] {
     static CACHE: Cache = Cache::new();
-    atoms(&CACHE, (px, 0), || {
+    atoms(&CACHE, ATOM_CACHE_CAP, (px, 0), || {
         vec![StyleAtom::Width(Dimension::Px(Px(px)))]
     })
 }
@@ -61,7 +63,7 @@ fn pane_size_atom(orientation: Orientation, size_px: f32) -> &'static [StyleAtom
     let px = to_i16(size_px);
     match orientation {
         Orientation::Horizontal => cached_width_atom(px),
-        Orientation::Vertical => atoms(&HEIGHTS, (px, 0), || {
+        Orientation::Vertical => atoms(&HEIGHTS, ATOM_CACHE_CAP, (px, 0), || {
             vec![StyleAtom::Height(Dimension::Px(Px(px)))]
         }),
     }

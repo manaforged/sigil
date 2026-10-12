@@ -13,6 +13,8 @@ use super::super::interactive::interactive;
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::splitter::{HANDLE_PX, KEY_STEP, cached_width_atom, resize_keys, to_i16};
 
+const SIDEBAR_DEFAULT: f32 = space(55);
+
 static SIDEBAR_CHROME: &[StyleAtom] = &[
     Token::SurfaceSubtle.bg(),
     StyleAtom::BorderRight(BORDER_WIDTH),
@@ -44,7 +46,10 @@ impl SidebarBuilder {
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        let start = self.layout_overrides.width_hint().unwrap_or(space(55));
+        let start = self
+            .layout_overrides
+            .width_hint()
+            .unwrap_or(SIDEBAR_DEFAULT);
         let column = container()
             .layout(
                 LayoutStyle::flex_column()

@@ -17,8 +17,14 @@ use super::select;
 use super::sort_mark::sort_mark;
 use super::state::{SortDir, TableState};
 
-pub(super) static HEADER_TEXT: &[StyleAtom] =
-    &[StyleAtom::FontWeight(500), Token::OnSurfaceMuted.text()];
+const RESIZE_HANDLE: f32 = space(2);
+const RING_INSET: f32 = -space(1);
+const HEADER_WEIGHT: u16 = 500;
+
+pub(super) static HEADER_TEXT: &[StyleAtom] = &[
+    StyleAtom::FontWeight(HEADER_WEIGHT),
+    Token::OnSurfaceMuted.text(),
+];
 const REORDER_THRESHOLD: f32 = 12.0;
 const REORDER_STEP: f32 = 80.0;
 
@@ -99,7 +105,7 @@ fn header_cell<Row: 'static>(
     let interaction = InteractionState::new(true);
     let cell = interaction
         .observe_style(row_states(cell, spec.disabled))
-        .focus_ring(interaction.focus_ring().offset(-space(1)));
+        .focus_ring(interaction.focus_ring().offset(RING_INSET));
     if column.is_sortable() {
         sortable_cell(state, id, visual, cell, chrome.clone())
     } else {
@@ -118,7 +124,7 @@ fn resize_handle<Row: 'static>(
         .hittable(true)
         .layout(
             LayoutStyle::block()
-                .fixed_size(space(2), height)
+                .fixed_size(RESIZE_HANDLE, height)
                 .position(Position::Absolute)
                 .inset_right(0.0)
                 .inset_top(0.0),

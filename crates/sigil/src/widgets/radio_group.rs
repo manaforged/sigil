@@ -200,20 +200,24 @@ fn selected_atoms(checked: Signal<bool>) -> &'static [StyleAtom] {
     }
 }
 
+const MARK_OUTER: f32 = 16.0;
+const MARK_CORE: f32 = 13.0;
+const MARK_INNER: f32 = 8.0;
+
 fn option_mark(checked: Signal<bool>, tone: Tone) -> NodeBuilder {
     let mark_inner = container()
-        .layout(LayoutStyle::flex_row().fixed_size(8.0, 8.0))
+        .layout(LayoutStyle::flex_row().fixed_size(MARK_INNER, MARK_INNER))
         .tone(tone)
         .style(Style::new().radius(4))
         .style_reactive(move || selected_atoms(checked));
     let mark_core = container()
-        .layout(centered_square(13.0))
+        .layout(centered_square(MARK_CORE))
         .style(Style::new().radius(7))
         .class(Token::Surface.bg())
         .child(mark_inner);
     container()
         .role(Role::GenericContainer)
-        .layout(centered_square(16.0))
+        .layout(centered_square(MARK_OUTER))
         .style(Style::new().radius(8))
         .tone(tone)
         .class(Token::Gray7.bg())

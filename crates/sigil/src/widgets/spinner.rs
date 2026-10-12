@@ -12,6 +12,17 @@ const PERIOD: Duration = Duration::from_millis(80);
 
 const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const WINDOW_FRAMES: [&str; 4] = ["◐", "◓", "◑", "◒"];
+#[cfg(feature = "scene")]
+const ARC_FRAMES: [&str; 8] = [
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path transform=\"rotate(0 12 12)\" d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path transform=\"rotate(45 12 12)\" d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path transform=\"rotate(90 12 12)\" d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path transform=\"rotate(135 12 12)\" d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path transform=\"rotate(180 12 12)\" d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path transform=\"rotate(225 12 12)\" d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path transform=\"rotate(270 12 12)\" d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>",
+    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path transform=\"rotate(315 12 12)\" d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>",
+];
 
 fn cycle(frames: &[&'static str], step: u64) -> &'static str {
     let len = u64::try_from(frames.len()).unwrap_or(1);
@@ -40,10 +51,10 @@ pub fn spinner() -> NodeBuilder {
     #[cfg(feature = "scene")]
     if !grid {
         return indicator.children_reactive(move || {
-            let degrees = tick.get() % 8 * 45;
-            [super::icon_svg(format!(
-                "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path transform=\"rotate({degrees} 12 12)\" d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>"
-            ))]
+            let at = usize::try_from(tick.get() % ARC_FRAMES.len() as u64).unwrap_or(0);
+            [super::icon_svg(
+                ARC_FRAMES.get(at).copied().unwrap_or_default(),
+            )]
         });
     }
     let frame = derived(move || {

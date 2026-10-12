@@ -9,6 +9,7 @@ use crate::style::{Dimension, PaintTarget, Px, Radius, Style, StyleAtom, StyleSl
 
 const TRACK_WIDTH: f32 = 160.0;
 const TRACK_HEIGHT: f32 = 8.0;
+const GAUGE_GAP: f32 = space(2);
 
 static TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
 
@@ -73,7 +74,7 @@ impl GaugeBuilder {
             .layout(
                 self.layout_overrides.apply(
                     LayoutStyle::flex_row()
-                        .gap(space(2))
+                        .gap(GAUGE_GAP)
                         .align_items(AlignItems::Center),
                 ),
             );

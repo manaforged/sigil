@@ -7,6 +7,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, tex
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived};
+use crate::style::TransitionId;
 use crate::style::{
     ControlSize, JustifyKind, Metrics, NodeStyleExt, PaintTarget, StateStyle, Style, StyleAtom,
     StyleOverlay, StyleSlot, StyleVariant, Theme, Token, space,
@@ -38,7 +39,11 @@ impl WidgetLayoutExt for ToggleBuilder {
 }
 
 static EMPTY_BASE: &[StyleAtom] = &[];
-static TOGGLE_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
+const TOGGLE_TRANSITION: TransitionId = presets::SMOOTH;
+const CELL_TRACK_COLS: f32 = 4.0;
+const CELL_TRACK_ON: &str = "[ ■]";
+const CELL_TRACK_OFF: &str = "[■ ]";
+static TOGGLE_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOGGLE_TRANSITION)];
 static TOGGLE_ON: &[StyleAtom] = &[
     Token::Accent.bg(),
     StyleAtom::JustifyContent(JustifyKind::End),
@@ -217,13 +222,18 @@ fn cell_track(on: Signal<bool>) -> NodeBuilder {
         .hittable(false)
         .layout(
             LayoutStyle::block()
-                .width(cols(4.0))
+                .width(cols(CELL_TRACK_COLS))
                 .height(rows(1.0))
                 .shrink(0.0),
         )
         .style_reactive(move || if on.get() { CELL_ON } else { CELL_OFF })
         .child(text(derived(move || {
-            if on.get() { "[ ■]" } else { "[■ ]" }.to_owned()
+            if on.get() {
+                CELL_TRACK_ON
+            } else {
+                CELL_TRACK_OFF
+            }
+            .to_owned()
         })))
 }
 

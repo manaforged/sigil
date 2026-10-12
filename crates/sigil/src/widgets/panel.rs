@@ -3,6 +3,10 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, space};
 
+const PANEL_MIN_HEIGHT: f32 = space(12);
+const DEFAULT_PADDING: f32 = space(4);
+const TITLE_GAP: f32 = space(2);
+
 pub struct PanelBuilder {
     pub title: Option<String>,
     pub padding: f32,
@@ -22,7 +26,7 @@ impl PanelBuilder {
     pub fn new() -> Self {
         Self {
             title: None,
-            padding: space(4),
+            padding: DEFAULT_PADDING,
             elevation: 1,
             content: None,
             style_accumulator: Style::new(),
@@ -61,9 +65,9 @@ impl PanelBuilder {
                 self.layout_overrides.apply(
                     LayoutStyle::flex_column()
                         .padding(self.padding)
-                        .gap(space(2))
+                        .gap(TITLE_GAP)
                         .fill_width()
-                        .min_size(crate::layout::Dimension::Auto, space(12)),
+                        .min_size(crate::layout::Dimension::Auto, PANEL_MIN_HEIGHT),
                 ),
             )
             .class(Radius::Md.atom())

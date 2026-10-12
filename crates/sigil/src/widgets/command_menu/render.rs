@@ -16,6 +16,7 @@ use super::super::text_field::{TextFieldBuilder, text_field};
 use super::builder::CommandMenuBuilder;
 use super::nav::{Entry, MenuLevel, Palette, SubmitObserver};
 
+const LEVEL_GAP: f32 = space(2);
 const FIELD_GAP: f32 = space(1);
 
 #[derive(Clone, Copy)]
@@ -89,7 +90,7 @@ pub(super) fn into_node_builder(parts: CommandMenuBuilder) -> NodeBuilder {
         .label(theme_label(StringKey::CommandMenu))
         .layout(
             LayoutStyle::flex_row()
-                .gap(space(2))
+                .gap(LEVEL_GAP)
                 .align_items(AlignItems::Start),
         )
         .children_reactive(move || {

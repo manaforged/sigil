@@ -4,8 +4,10 @@
 
 use std::sync::OnceLock;
 
+use crate::geometry::Rect;
 use crate::icons::{IconBaker, builtin};
 use crate::style::Color;
+use crate::style::Rgba8;
 
 mod backdrop_blur;
 mod effects;
@@ -230,23 +232,39 @@ pub fn sprite() -> (CommandScene, (f32, f32), Color) {
 pub fn icon() -> (CommandScene, (f32, f32), Color) {
     let _ = BUILTIN_ICONS.get_or_init(bake_builtin_icons);
     let mut scene = SceneBuilder::new();
-    for (index, tint) in (0_u32..).zip([
-        rgba(220, 80, 80, 255),
-        rgba(200, 200, 220, 255),
-        rgba(100, 220, 140, 255),
-        rgba(230, 200, 100, 255),
-        rgba(220, 100, 220, 255),
-    ]) {
-        let source = SpriteSource {
-            atlas: BUILTIN_ICON_ATLAS_BASE_ID + index,
-            region: rect(0.0, 0.0, 128.0, 128.0),
-            phase: 0.0,
-        };
-        let dest = rect(40.0 + index as f32 * 168.0, 80.0, 128.0, 128.0);
-        scene.draw_sprite(source, dest, SpriteKind::Mono, tint);
+    for (index, (dest, tint)) in ICON_DRAWS.into_iter().enumerate() {
+        scene.draw_sprite(icon_source(index), dest, SpriteKind::Mono, tint);
     }
     (scene.finish(), (1024.0, 320.0), DARK)
 }
+
+const ICON_DRAWS: [(Rect, Rgba8); 5] = [
+    (rect(40.0, 80.0, 128.0, 128.0), rgba(220, 80, 80, 255)),
+    (rect(208.0, 80.0, 128.0, 128.0), rgba(200, 200, 220, 255)),
+    (rect(376.0, 80.0, 128.0, 128.0), rgba(100, 220, 140, 255)),
+    (rect(544.0, 80.0, 128.0, 128.0), rgba(230, 200, 100, 255)),
+    (rect(712.0, 80.0, 128.0, 128.0), rgba(220, 100, 220, 255)),
+];
+
+fn icon_source(index: usize) -> SpriteSource {
+    let atlas = ICON_ATLAS_IDS
+        .get(index)
+        .copied()
+        .unwrap_or(BUILTIN_ICON_ATLAS_BASE_ID);
+    SpriteSource {
+        atlas,
+        region: rect(0.0, 0.0, 128.0, 128.0),
+        phase: 0.0,
+    }
+}
+
+const ICON_ATLAS_IDS: [u32; 5] = [
+    BUILTIN_ICON_ATLAS_BASE_ID,
+    BUILTIN_ICON_ATLAS_BASE_ID + 1,
+    BUILTIN_ICON_ATLAS_BASE_ID + 2,
+    BUILTIN_ICON_ATLAS_BASE_ID + 3,
+    BUILTIN_ICON_ATLAS_BASE_ID + 4,
+];
 
 #[must_use]
 pub fn decoration() -> (CommandScene, (f32, f32), Color) {

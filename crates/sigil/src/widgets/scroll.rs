@@ -26,6 +26,7 @@ enum Sizing {
 pub(crate) const THUMB_REST_WIDTH: f32 = space(1);
 pub(crate) const THUMB_MIN_HEIGHT: f32 = space(6);
 const SCROLL_LINE: f32 = space(10);
+const MIN_SCROLL_RANGE: f32 = 1.0;
 static VIEWPORT_ATOMS: &[StyleAtom] = &[Token::Surface.bg()];
 
 pub struct ScrollBuilder {
@@ -152,7 +153,7 @@ impl ScrollBuilder {
 }
 
 fn overflows(max_scroll: Signal<f32>) -> Signal<bool> {
-    derived(move || max_scroll.get() >= 1.0)
+    derived(move || max_scroll.get() >= MIN_SCROLL_RANGE)
 }
 
 fn resolve_extent(content: NodeBuilder, extent: Option<Signal<f32>>) -> (NodeBuilder, Signal<f32>) {

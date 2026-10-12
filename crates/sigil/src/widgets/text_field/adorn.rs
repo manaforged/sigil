@@ -18,10 +18,13 @@ pub(super) struct Adornments {
 
 pub(super) type FocusTarget = Rc<Cell<Option<NodeId>>>;
 
+const CLEAR_GLYPH: &str = "\u{d7}";
+const CLEAR_LABEL: &str = "Clear";
+
 pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusTarget) -> NodeBuilder {
     let value = runtime.input.value;
     let input = runtime.input.clone();
-    let button = icon_button("\u{d7}", move || {
+    let button = icon_button(CLEAR_GLYPH, move || {
         if input.disabled() {
             return;
         }
@@ -33,7 +36,7 @@ pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusTarget) -> N
             crate::events::request_focus(id);
         }
     })
-    .accessible("Clear");
+    .accessible(CLEAR_LABEL);
     container()
         .layout(
             LayoutStyle::flex_row()

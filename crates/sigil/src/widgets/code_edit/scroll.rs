@@ -4,7 +4,7 @@ use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
 
 use super::render::{GutterCtx, RowCtx, gutter_width, order, rows};
-use super::{Surface, Window};
+use super::{ROW_BUFFER, Surface, Window};
 
 pub(super) fn scroll_body(s: Surface, row_h: f32) -> NodeBuilder {
     container()
@@ -30,7 +30,7 @@ pub(super) fn scroll_body(s: Surface, row_h: f32) -> NodeBuilder {
             let diagnostics = s.diagnostics.map(|d| d.get()).unwrap_or_default();
             let win = Window {
                 start: s.start.get(),
-                budget: visible_rows(s.viewport.get().1, row_h) + 6,
+                budget: visible_rows(s.viewport.get().1, row_h) + ROW_BUFFER,
                 row_h,
             };
             rows(

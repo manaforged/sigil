@@ -18,10 +18,13 @@ use super::builder::{CloseHandler, STRIP_HEIGHT, StripChrome, TAB_HEIGHT};
 use super::drag::{DragState, install_label_drag_hooks};
 use crate::layout::snap::CellForm;
 
-const CLOSE_WIDTH: f32 = space(4);
+const CLOSE_AFFORDANCE_WIDTH: f32 = space(4);
+const TAB_PADDING_X: f32 = space(3);
+const LINE_STRIP: CellForm<f32> = CellForm::new(STRIP_HEIGHT, space(4));
+const CLOSE_GAP: CellForm<f32> = CellForm::new(space(1), 0.0);
 
 pub(super) fn line_strip_height() -> f32 {
-    CellForm::new(STRIP_HEIGHT, space(4)).pick()
+    LINE_STRIP.pick()
 }
 
 pub(super) fn tab_height(chrome: StripChrome) -> f32 {
@@ -125,11 +128,11 @@ fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
         container()
             .role(Role::Button)
             .label(AccessibleName::Static(String::from("Close tab")))
-            .layout(LayoutStyle::block().fixed_size(CLOSE_WIDTH, CLOSE_WIDTH))
+            .layout(LayoutStyle::block().fixed_size(CLOSE_AFFORDANCE_WIDTH, CLOSE_AFFORDANCE_WIDTH))
             .class(Radius::Sm.atom())
             .child(
                 text("\u{00D7}")
-                    .layout(LayoutStyle::block().width(CLOSE_WIDTH))
+                    .layout(LayoutStyle::block().width(CLOSE_AFFORDANCE_WIDTH))
                     .class(Token::OnSurface.text()),
             ),
     );
@@ -153,8 +156,8 @@ fn tab_frame(
         .layout(
             LayoutStyle::flex_row()
                 .height(tab_height(chrome))
-                .padding_x(space(3))
-                .gap(CellForm::new(space(1), 0.0).pick())
+                .padding_x(TAB_PADDING_X)
+                .gap(CLOSE_GAP.pick())
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )

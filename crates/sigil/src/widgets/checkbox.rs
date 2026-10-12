@@ -9,7 +9,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, c
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
     BORDER_WIDTH, ControlSize, Metrics, NodeStyleExt, PaintTarget, Px, StateHost, StateStyle,
-    Style, StyleAtom, StyleOverlay, StyleSlot, StyleVariant, Theme, Token, Tone,
+    Style, StyleAtom, StyleOverlay, StyleSlot, StyleVariant, Theme, Token, Tone, TransitionId,
 };
 
 use crate::widgets::interaction::InteractionState;
@@ -20,7 +20,9 @@ use super::shared::{
     control_row, control_surface, disabled_now, noop_bool_change,
 };
 
-const MARK_SIZE: f32 = 12.0;
+const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
+const CHECKBOX_BOX_SIZE: f32 = 16.0;
+const CHECKBOX_MARK_SIZE: f32 = 12.0;
 
 pub struct CheckboxBuilder {
     checked: Signal<bool>,
@@ -48,7 +50,7 @@ static BOX_BASE: &[StyleAtom] = &[
     StyleAtom::BorderRadius(Px(4)),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::Border.border(),
-    StyleAtom::Transition(presets::SMOOTH),
+    StyleAtom::Transition(CHECKBOX_TRANSITION),
 ];
 static CELL_FOCUS: &[StyleAtom] = &[Token::Accent.bg(), Token::OnAccent.text()];
 static CELL_DISABLED: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
@@ -267,7 +269,7 @@ pub(crate) fn checkbox_indicator(
 
 fn box_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
-        .fixed_size(16.0, 16.0)
+        .fixed_size(CHECKBOX_BOX_SIZE, CHECKBOX_BOX_SIZE)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center)
 }
@@ -294,7 +296,7 @@ fn cell_mark(mark: CheckMark) -> NodeBuilder {
 fn checkbox_mark(mark: CheckMark) -> NodeBuilder {
     container()
         .hittable(false)
-        .layout(LayoutStyle::block().fixed_size(MARK_SIZE, MARK_SIZE))
+        .layout(LayoutStyle::block().fixed_size(CHECKBOX_MARK_SIZE, CHECKBOX_MARK_SIZE))
         .style_reactive(move || {
             if mark.filled() {
                 MARK_VISIBLE
@@ -316,7 +318,7 @@ fn mark_path(partial: bool) -> NodeBuilder {
     };
     container().hittable(false).child(
         path.stroke(Token::OnAccent, 3.0)
-            .layout(LayoutStyle::block().fixed_size(MARK_SIZE, MARK_SIZE)),
+            .layout(LayoutStyle::block().fixed_size(CHECKBOX_MARK_SIZE, CHECKBOX_MARK_SIZE)),
     )
 }
 

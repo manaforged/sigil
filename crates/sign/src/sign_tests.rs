@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use super::{SignError, pack_cli, sign_file, sign_file_with_key};
 
 const PASSWORD: &str = "sigil-sign-test";
+const FIXTURE: &[u8] = b"sigil signing fixture";
 
 struct Fixture {
     dir: PathBuf,
@@ -21,7 +22,7 @@ impl Fixture {
         let key = dir.join("release.key");
         fs::write(&key, pair.sk.to_box(None)?.into_string())?;
         let package = dir.join("package.nupkg");
-        fs::write(&package, b"sigil signing fixture")?;
+        fs::write(&package, FIXTURE)?;
         Ok(Self {
             dir,
             key,

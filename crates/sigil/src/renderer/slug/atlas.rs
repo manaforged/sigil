@@ -5,7 +5,8 @@ use super::{
     cache::{GlyphCache, GlyphKey},
 };
 
-const BYTES_PER_GLYPH: u64 = FLOATS_TOTAL as u64 * 4;
+const F32S_PER_GLYPH: u64 = FLOATS_TOTAL as u64;
+const BYTES_PER_GLYPH: u64 = F32S_PER_GLYPH * 4;
 
 const INITIAL_ATLAS_BYTES: u64 = 8 * 1024 * 1024;
 

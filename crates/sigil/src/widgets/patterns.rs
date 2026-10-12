@@ -7,6 +7,9 @@ use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
 use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
 pub use super::notice::notice_band;
 
+const TOP_BAR_HEIGHT: f32 = space(12);
+const AVATAR_PX: f32 = space(7);
+
 static TOP_CHROME: &[StyleAtom] = &[
     Token::SurfaceSubtle.bg(),
     StyleAtom::BorderBottom(BORDER_WIDTH),
@@ -23,7 +26,7 @@ pub fn app_shell(
     let mut root = container()
         .role(Role::GenericContainer)
         .layout(LayoutStyle::flex_column().fill())
-        .child(chrome_section(space(12), TOP_CHROME, top))
+        .child(chrome_section(TOP_BAR_HEIGHT, TOP_CHROME, top))
         .child(
             container()
                 .role(Role::GenericContainer)
@@ -241,7 +244,7 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
         .label(name)
         .layout(
             LayoutStyle::flex_row()
-                .fixed_size(space(7), space(7))
+                .fixed_size(AVATAR_PX, AVATAR_PX)
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center)
                 .shrink(0.0),

@@ -53,6 +53,9 @@ pub(super) struct RowSpec {
     pub disabled: Option<Signal<bool>>,
 }
 
+const STRIPE: Token = Token::SurfaceInset;
+const NUMERIC_CLASS: &str = "tabular-nums";
+
 static REST: &[StyleAtom] = &[];
 static HOVER: &[StyleAtom] = &[Token::SurfaceHover.bg()];
 static PRESSED: &[StyleAtom] = &[Token::SurfacePressed.bg()];
@@ -122,7 +125,7 @@ fn build_row<Row: 'static>(
         .class("border-b")
         .class(Token::BorderSubtle.border());
     if spec.striped && visible_pos % 2 == 1 {
-        frame = frame.class(Token::SurfaceInset.bg());
+        frame = frame.class(STRIPE.bg());
     }
     let target = (row_index, spec.disabled);
     let cells = row_states(cells, is_selected, spec.disabled).pointer_down(select_pointer(
@@ -201,7 +204,7 @@ fn row_cells<Row: 'static>(
                     ))
                     .child(content.unwrap_or_else(|| Box::new(container())));
                 if column.is_numeric() {
-                    cell.class("tabular-nums")
+                    cell.class(NUMERIC_CLASS)
                 } else {
                     cell
                 }

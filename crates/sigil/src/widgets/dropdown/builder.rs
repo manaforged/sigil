@@ -9,7 +9,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, O
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
     BORDER_WIDTH, PaintTarget, Radius, StateHost, StateStyle, Style, StyleAtom, StyleOverlay,
-    StyleSlot, StyleVariant, Token, space,
+    StyleSlot, StyleVariant, Token, TransitionId, space,
 };
 
 use crate::widgets::interaction::InteractionState;
@@ -29,7 +29,10 @@ mod tests;
 
 pub(super) type IndexChange = Rc<dyn Fn(usize) + 'static>;
 
-static DROPDOWN_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
+const DROPDOWN_TRANSITION: TransitionId = presets::SMOOTH;
+const MIN_TRIGGER_WIDTH: f32 = space(24);
+const LABEL_HEIGHT: f32 = 24.0;
+static DROPDOWN_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(DROPDOWN_TRANSITION)];
 
 static TRIGGER_BASE: &[StyleAtom] = &[
     Token::Field.bg(),
@@ -173,7 +176,7 @@ fn dropdown_root(
         LayoutStyle::block()
             .fill_width()
             .height(ctx.trigger_height)
-            .min_size(space(24), 0.0),
+            .min_size(MIN_TRIGGER_WIDTH, 0.0),
     );
     listbox(
         container()
@@ -235,7 +238,7 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
             LayoutStyle::flex_row()
                 .grow(1.0)
                 .width(0.0)
-                .height(CellForm::new(24.0, rows(1.0).px()).pick())
+                .height(CellForm::new(LABEL_HEIGHT, rows(1.0).px()).pick())
                 .align_items(AlignItems::Center)
                 .overflow_x(Overflow::Hidden),
         )

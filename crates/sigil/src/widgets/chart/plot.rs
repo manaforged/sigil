@@ -13,6 +13,15 @@ pub(super) const AXIS: f32 = 32.0;
 const PLOT_PAD: f32 = space(2);
 const GROUP_GAP: f32 = space(2);
 pub(super) const X_AXIS: f32 = space(8);
+const PAD: f32 = space(3);
+const COMPACT_PAD: f32 = space(1);
+const COMPACT_HEIGHT: f32 = 120.0;
+const MIN_PLOT: f32 = space(8);
+const MID_TICK_MIN: f32 = space(12);
+const LEGEND: f32 = space(6);
+const MIN_LABEL_PX: f32 = 32.0;
+const FLUID_MAX_LABELS: usize = 12;
+const FLUID_COLUMNS: usize = 1024;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Frame {
@@ -23,20 +32,20 @@ pub(super) struct Frame {
 
 impl Frame {
     pub(super) fn padding(self) -> f32 {
-        if self.height < 120.0 {
-            space(1)
+        if self.height < COMPACT_HEIGHT {
+            COMPACT_PAD
         } else {
-            space(3)
+            PAD
         }
     }
 
     fn inner(self, legend: bool) -> f32 {
-        let legend = if legend { space(6) } else { 0.0 };
+        let legend = if legend { LEGEND } else { 0.0 };
         2.0f32.mul_add(-self.padding(), self.height) - legend
     }
 
     fn shows_x_axis(self, legend: bool) -> bool {
-        self.inner(legend) >= X_AXIS + space(8)
+        self.inner(legend) >= X_AXIS + MIN_PLOT
     }
 
     fn plot_height(self, legend: bool) -> f32 {
@@ -54,9 +63,9 @@ impl Frame {
         reason = "the label budget is a small non-negative count"
     )]
     fn label_stride(self, count: usize) -> usize {
-        let budget = self.width.map_or(12, |width| {
+        let budget = self.width.map_or(FLUID_MAX_LABELS, |width| {
             let span = 2.0f32.mul_add(-(self.padding() + PLOT_PAD), width) - AXIS - space(2);
-            (span / 32.0).floor().max(1.0) as usize
+            (span / MIN_LABEL_PX).floor().max(1.0) as usize
         });
         count.div_ceil(budget.max(1)).max(1)
     }
@@ -67,7 +76,8 @@ impl Frame {
         reason = "a widget width is a small non-negative pixel count"
     )]
     fn columns(self) -> usize {
-        self.width.map_or(1024, |width| width.max(1.0) as usize)
+        self.width
+            .map_or(FLUID_COLUMNS, |width| width.max(1.0) as usize)
     }
 }
 
@@ -106,7 +116,7 @@ pub(super) fn draw(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
     }
     let midpoint = span.lo.midpoint(span.hi);
     let mid_tick =
-        frame.plot_height(has_legend) >= space(12) && (!frame.whole || midpoint.fract() == 0.0);
+        frame.plot_height(has_legend) >= MID_TICK_MIN && (!frame.whole || midpoint.fract() == 0.0);
     let mut nodes = vec![
         container()
             .layout(

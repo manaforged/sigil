@@ -10,6 +10,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TopLayer, container
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::layout::{Popup, PopupSide, ViewportOverlay};
 use crate::reactive::{IntervalId, Signal, cancel_interval, interval, signal};
+use crate::style::TransitionId;
 use crate::style::{
     ControlSize, DisplayKind, Metrics, NodeStyleExt, PaintTarget, Style, StyleAtom, StyleSlot,
     Theme, Token, space,
@@ -19,7 +20,10 @@ use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::popup::{POPUP_GAP, surface};
 use super::shared::BuilderMutator;
 
-static BUBBLE_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
+const BUBBLE_MAX_WIDTH: f32 = space(60);
+
+const TOOLTIP_TRANSITION: TransitionId = presets::SMOOTH;
+static BUBBLE_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOOLTIP_TRANSITION)];
 
 pub struct TooltipBuilder {
     label: String,
@@ -249,7 +253,7 @@ fn build_bubble(
         })
         .layout(
             LayoutStyle::flex_column()
-                .max_width(space(60))
+                .max_width(BUBBLE_MAX_WIDTH)
                 .padding_x(metrics.padding(ControlSize::Compact))
                 .padding_y(metrics.overlay_padding())
                 .gap(metrics.overlay_padding())

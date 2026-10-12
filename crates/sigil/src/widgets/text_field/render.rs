@@ -7,6 +7,7 @@ use crate::kernel::{NodeBuilder, Role, TextContent, container};
 use crate::layout::TextStyleCapture;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived};
+use crate::style::TransitionId;
 use crate::style::{
     ColorAtom, ReactiveStateSlot, Rgba8, StateSlot, StyleAtom, StyleOverlay, space,
 };
@@ -18,7 +19,8 @@ use super::handlers::TextFieldRuntime;
 
 use super::super::shared::{FIELD_VARIANT, binary_style_state};
 
-static TEXT_FIELD_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
+const TEXT_FIELD_TRANSITION: TransitionId = presets::SMOOTH;
+static TEXT_FIELD_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_FIELD_TRANSITION)];
 
 static FIELD_INVALID: &[StyleAtom] = &[StyleAtom::BorderColor(ColorAtom::Rgba8(Rgba8 {
     r: 211,

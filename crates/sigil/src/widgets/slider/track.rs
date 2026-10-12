@@ -6,6 +6,7 @@ use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::Signal;
+use crate::style::TransitionId;
 use crate::style::{
     BORDER_WIDTH, BgGradient, ColorAtom, Elevation, GradientAxis, GradientStopKey, Rgba8,
     StateStyle, Style, StyleAtom, StyleVariant, Token,
@@ -17,10 +18,12 @@ use super::super::shared::binary_style_state;
 use super::builder::SliderRuntime;
 use crate::widgets::orientation::Orientation;
 
-static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
+const SLIDER_TRANSITION: TransitionId = presets::SMOOTH;
+static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(SLIDER_TRANSITION)];
 
 const THUMB_SIZE: f32 = 16.0;
 const TRACK_THICKNESS: f32 = 6.0;
+const CELL_THUMB: &str = "●";
 
 type ThumbForm = fn(InteractionState, Option<Signal<bool>>, bool) -> NodeBuilder;
 
@@ -169,7 +172,7 @@ fn cell_thumb(
                 .shrink(0.0),
         )
         .class(CELL_THUMB_ATOMS)
-        .child(text("●"))
+        .child(text(CELL_THUMB))
 }
 
 fn window_thumb(

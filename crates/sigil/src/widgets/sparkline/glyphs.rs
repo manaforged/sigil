@@ -5,6 +5,7 @@ use super::{Layer, SparkFill, SparkMark};
 pub(super) const SPARKS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 const BLOCK_LEVELS: usize = 8;
 const BRAILLE_LEVELS: usize = 4;
+const BRAILLE_BASE: u32 = 0x2800;
 const BRAILLE_LEFT: [u32; 4] = [0x01, 0x02, 0x04, 0x40];
 const BRAILLE_RIGHT: [u32; 4] = [0x08, 0x10, 0x20, 0x80];
 const EMPTY: char = ' ';
@@ -83,7 +84,7 @@ fn braille_rows(fractions: &[f32], rows: usize) -> Vec<String> {
 
 fn braille_cell(left: usize, right: usize) -> char {
     let bits = column_bits(&BRAILLE_LEFT, left) | column_bits(&BRAILLE_RIGHT, right);
-    char::from_u32(0x2800 | bits).unwrap_or(EMPTY)
+    char::from_u32(BRAILLE_BASE | bits).unwrap_or(EMPTY)
 }
 
 fn column_bits(column: &[u32; 4], fill: usize) -> u32 {

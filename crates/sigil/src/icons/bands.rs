@@ -3,13 +3,19 @@ use crate::icons::quadratic::QuadCurve;
 
 const NUM_BANDS: usize = 8;
 
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)]
+const NUM_BANDS_F32: f32 = NUM_BANDS as f32;
+
 pub(crate) struct BandBuffer {
     pub(crate) bands: [Vec<QuadCurve>; NUM_BANDS],
     pub(crate) band_height: f32,
 }
 
 pub(crate) fn build(quads: &[QuadCurve], view_box: ViewBox) -> BandBuffer {
-    let band_height = view_box.height / 8.0;
+    let band_height = view_box.height / NUM_BANDS_F32;
     let mut bands: [Vec<QuadCurve>; NUM_BANDS] = core::array::from_fn(|_| Vec::new());
 
     for &q in quads {

@@ -29,6 +29,7 @@ static FRAMED: &[StyleAtom] = &[
     Token::Surface.bg(),
 ];
 static UNFRAMED: &[StyleAtom] = &[Token::Surface.bg()];
+const DEFAULT_HEADER_HEIGHT: f32 = space(9);
 
 pub struct TableBuilder<Row: 'static> {
     state: TableState<Row>,
@@ -55,7 +56,7 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
     TableBuilder {
         state,
         row_height: space(9),
-        header_height: space(9),
+        header_height: DEFAULT_HEADER_HEIGHT,
         viewport_height: space(120),
         viewport_width: None,
         viewport_fill: false,

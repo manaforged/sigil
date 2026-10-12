@@ -18,6 +18,11 @@ mod interact;
 mod marks;
 mod plot;
 
+const DEFAULT_HEIGHT: f32 = 180.0;
+const MIN_HEIGHT: f32 = 48.0;
+const MIN_WIDTH: f32 = 80.0;
+const SUMMARY_VALUES: usize = 64;
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ChartMark {
     #[default]
@@ -148,11 +153,14 @@ impl ChartBuilder {
     }
 
     fn frame(&mut self) -> plot::Frame {
-        let width = self.layout_overrides.width_hint().map(|px| px.max(80.0));
+        let width = self
+            .layout_overrides
+            .width_hint()
+            .map(|px| px.max(MIN_WIDTH));
         let height = self
             .layout_overrides
             .height_hint()
-            .map_or(180.0, |px| px.max(48.0));
+            .map_or(DEFAULT_HEIGHT, |px| px.max(MIN_HEIGHT));
         if let Some(px) = width {
             self.layout_overrides.width(px);
         }
@@ -285,18 +293,8 @@ fn summary(series: &[ChartSeries], labels: &[String], theme: ActiveTheme) -> Str
         } else {
             item.name.clone()
         };
-        if item.values.len() > 64 {
-            let (low, high) = item
-                .values
-                .iter()
-                .filter(|value| value.is_finite())
-                .fold((f32::INFINITY, f32::NEG_INFINITY), |(low, high), &value| {
-                    (low.min(value), high.max(value))
-                });
-            parts.push(theme.fill(
-                StringKey::ChartSummary,
-                &[&name, &item.values.len(), &low, &high],
-            ));
+        if item.values.len() > SUMMARY_VALUES {
+            parts.push(span_summary(&name, &item.values, theme));
             continue;
         }
         let values = item
@@ -349,3 +347,17 @@ pub(crate) fn nice_max(max: f32) -> f32 {
 #[cfg(test)]
 #[path = "chart_tests.rs"]
 mod tests;
+
+fn span_summary(name: &str, values: &[f32], theme: ActiveTheme) -> String {
+    let (mut low, mut high) = (f32::INFINITY, f32::NEG_INFINITY);
+    for &value in values {
+        if value.is_finite() {
+            low = low.min(value);
+            high = high.max(value);
+        }
+    }
+    theme.fill(
+        StringKey::ChartSummary,
+        &[&name, &values.len(), &low, &high],
+    )
+}

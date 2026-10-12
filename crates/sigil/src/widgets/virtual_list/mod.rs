@@ -29,6 +29,7 @@ pub use selection::{SelectionMode, SelectionState};
 pub const DEFAULT_ROW_HEIGHT: f32 = 32.0;
 #[allow(unreachable_pub, reason = "intentional, reviewed trade-off")]
 pub const DEFAULT_VIEWPORT_HEIGHT: f32 = 480.0;
+const DEFAULT_OVERSCAN: usize = 1;
 
 type ItemHeightFn<T> = dyn Fn(usize, &T) -> f32 + 'static;
 pub(super) type RowKey<T> = std::rc::Rc<dyn Fn(usize, &T) -> u64>;
@@ -163,7 +164,7 @@ where
         viewport_height: DEFAULT_VIEWPORT_HEIGHT,
         viewport_width: None,
         sizing: Sizing::Fixed,
-        overscan: 1,
+        overscan: DEFAULT_OVERSCAN,
         scroll_y: None,
         scroll_x: None,
         focused_row: None,

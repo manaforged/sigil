@@ -219,7 +219,7 @@ impl<'a> GridSolver<'a> {
             .grid_template_rows
             .len()
             .max(children.len())
-            .clamp(1, 1024);
+            .clamp(1, MAX_ROW_SPAN);
         let specs: Vec<Spec> = children
             .iter()
             .map(|&c| self.child_spec(c, ncols, row_cap))
@@ -367,3 +367,5 @@ impl<'a> GridSolver<'a> {
         );
     }
 }
+
+const MAX_ROW_SPAN: usize = 1024;

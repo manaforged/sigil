@@ -6,6 +6,8 @@ use crate::style::{BORDER_WIDTH, ControlSize, Metrics, StyleAtom, Token, space};
 
 pub(crate) const STATUS_BAR_HEIGHT: f32 = space(7);
 const STATUS_BAR_GAP: f32 = space(3);
+const KV_ROW_GAP: f32 = space(3);
+const KV_KEY_COLS: f32 = 16.0;
 
 pub(crate) static STATUS_CHROME: &[StyleAtom] = &[
     Token::SurfaceSubtle.bg(),
@@ -56,14 +58,14 @@ pub fn kv_row(label: impl Into<TextContent>, value: impl IntoNode + 'static) -> 
             LayoutStyle::flex_row()
                 .fill_width()
                 .min_size(0.0, Metrics::current().control_height(ControlSize::Default))
-                .gap(space(3))
+                .gap(KV_ROW_GAP)
                 .align_items(AlignItems::Center),
         )
         .child(
             text(label)
                 .nowrap()
                 .ellipsize()
-                .layout(LayoutStyle::block().width(cols(16.0)).shrink(0.0))
+                .layout(LayoutStyle::block().width(cols(KV_KEY_COLS)).shrink(0.0))
                 .class("text-sm")
                 .class(Token::OnSurfaceMuted.text()),
         )

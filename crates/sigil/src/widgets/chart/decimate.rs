@@ -40,18 +40,28 @@ pub(super) fn min_max(values: &[f32], columns: usize) -> Vec<(usize, f32)> {
         let start = column * values.len() / columns;
         let end = ((column + 1) * values.len() / columns).max(start + 1);
         if let Some((low, high)) = extremes(values, start, end) {
-            let (first, last) = if low.0 <= high.0 {
-                (low, high)
-            } else {
-                (high, low)
-            };
-            points.push(first);
+            points.push(low.min_by_index(high));
             if low.0 != high.0 {
-                points.push(last);
+                points.push(low.max_by_index(high));
             }
         }
     }
     points
+}
+
+trait IndexOrder {
+    fn min_by_index(self, other: Self) -> Self;
+    fn max_by_index(self, other: Self) -> Self;
+}
+
+impl IndexOrder for (usize, f32) {
+    fn min_by_index(self, other: Self) -> Self {
+        if self.0 <= other.0 { self } else { other }
+    }
+
+    fn max_by_index(self, other: Self) -> Self {
+        if self.0 <= other.0 { other } else { self }
+    }
 }
 
 type Extremes = ((usize, f32), (usize, f32));
@@ -61,16 +71,20 @@ fn extremes(values: &[f32], start: usize, end: usize) -> Option<Extremes> {
     let mut points = bucket.iter().copied().enumerate();
     let (first, initial) = points.find(|(_, value)| value.is_finite())?;
     let seed = (start + first, initial);
-    Some(points.filter(|(_, value)| value.is_finite()).fold(
-        (seed, seed),
-        |(low, high), (offset, value)| {
-            let point = (start + offset, value);
-            (
-                if value < low.1 { point } else { low },
-                if value > high.1 { point } else { high },
-            )
-        },
-    ))
+    let (mut low, mut high) = (seed, seed);
+    for (offset, value) in points {
+        if !value.is_finite() {
+            continue;
+        }
+        let point = (start + offset, value);
+        if value < low.1 {
+            low = point;
+        }
+        if value > high.1 {
+            high = point;
+        }
+    }
+    Some((low, high))
 }
 
 pub(super) fn candles(rows: &[Candle], columns: usize) -> Vec<Candle> {

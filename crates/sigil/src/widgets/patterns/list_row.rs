@@ -15,6 +15,8 @@ use super::super::table::ColAlign;
 use super::activatable::activatable;
 
 const INDENT_COLS: f32 = 2.0;
+const CELL_COLLAPSED: &str = "▸";
+const CELL_EXPANDED: &str = "▾";
 
 pub(super) fn row_height() -> f32 {
     crate::layout::snap::line(24.0)
@@ -247,8 +249,8 @@ fn disclosure_slot(disclosure: Disclosure) -> NodeBuilder {
 
 fn cell_mark(direction: ChevronDirection) -> Box<dyn IntoNode> {
     let glyph = match direction {
-        ChevronDirection::Right => "▸",
-        ChevronDirection::Down => "▾",
+        ChevronDirection::Right => CELL_COLLAPSED,
+        ChevronDirection::Down => CELL_EXPANDED,
     };
     Box::new(
         container()

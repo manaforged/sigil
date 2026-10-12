@@ -10,6 +10,8 @@ use super::ButtonBuilder;
 use super::parts::{BUTTON_FRAME, ButtonFill, SOLID_FRAME, label_node};
 use crate::widgets::shared::ICON_GLYPH;
 
+const COMPACT_LABEL_HEIGHT: f32 = 32.0;
+
 impl ButtonBuilder {
     #[cfg(feature = "scene")]
     fn leading_icon(&self, svg: std::rc::Rc<str>) -> crate::widgets::icon::IconBuilder {
@@ -56,7 +58,7 @@ impl ButtonBuilder {
             || self
                 .layout_overrides
                 .height_hint()
-                .is_some_and(|px| px <= 32.0)
+                .is_some_and(|px| px <= COMPACT_LABEL_HEIGHT)
     }
 
     fn label_text(&self, compact: bool) -> crate::kernel::TextBuilder {

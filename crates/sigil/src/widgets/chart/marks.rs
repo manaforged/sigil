@@ -10,6 +10,12 @@ const VIEW_H: u32 = 200;
 const VIEW_W_F: f32 = 400.0;
 const VIEW_H_F: f32 = 200.0;
 const INSET: f32 = 4.0;
+const LINE_STROKE: f32 = 2.0;
+const WICK_STROKE: f32 = 1.0;
+const BODY_SHARE: f32 = 0.6;
+const MIN_BODY: f32 = 1.0;
+const RISING: Tone = Tone::Success;
+const FALLING: Tone = Tone::Error;
 
 pub(super) fn layer_layout() -> LayoutStyle {
     LayoutStyle::block()
@@ -50,7 +56,7 @@ pub(super) fn line(
         };
     }
     stroke
-        .stroke(tone.fill(), 2.0)
+        .stroke(tone.fill(), LINE_STROKE)
         .non_scaling_stroke()
         .layout(layer_layout())
 }
@@ -62,7 +68,7 @@ pub(super) fn line(
 pub(super) fn candles(rows: &[Candle], span: Span, columns: usize) -> [PathNode; 2] {
     let rows = decimate::candles(rows, columns);
     let count = rows.len();
-    let half = VIEW_W_F / count.max(1) as f32 * 0.6 / 2.0;
+    let half = VIEW_W_F / count.max(1) as f32 * BODY_SHARE / 2.0;
     let empty = (path(VIEW_W, VIEW_H), path(VIEW_W, VIEW_H));
     let (up, down) = rows
         .iter()
@@ -75,12 +81,12 @@ pub(super) fn candles(rows: &[Candle], span: Span, columns: usize) -> [PathNode;
                 (up, candle(down, x, half, *row, span))
             }
         });
-    [finish(up, Tone::Success), finish(down, Tone::Error)]
+    [finish(up, RISING), finish(down, FALLING)]
 }
 
 fn candle(shape: PathNode, x: f32, half: f32, row: Candle, span: Span) -> PathNode {
     let top = y_of(span, row.open.max(row.close));
-    let bottom = y_of(span, row.open.min(row.close)).max(top + 1.0);
+    let bottom = y_of(span, row.open.min(row.close)).max(top + MIN_BODY);
     shape
         .move_to(x, y_of(span, row.high))
         .line_to(x, y_of(span, row.low))
@@ -94,7 +100,7 @@ fn candle(shape: PathNode, x: f32, half: f32, row: Candle, span: Span) -> PathNo
 fn finish(shape: PathNode, tone: Tone) -> PathNode {
     shape
         .fill(tone.fill())
-        .stroke(tone.fill(), 1.0)
+        .stroke(tone.fill(), WICK_STROKE)
         .non_scaling_stroke()
         .layout(layer_layout())
 }

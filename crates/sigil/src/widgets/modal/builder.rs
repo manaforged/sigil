@@ -15,7 +15,7 @@ use crate::layout::{
     AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow, Position,
 };
 use crate::reactive::{Signal, effect_named, signal};
-use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot, Token, space};
+use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot, Token, TransitionId, space};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::popup::{self, footer};
@@ -23,11 +23,14 @@ use super::super::scroll::contain_scroll;
 use super::escape::{close_top_escape_modal, register_escape_modal};
 use super::parts::{BODY_GUTTER, CloseControl, dialog_body, dialog_header};
 
+const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
 const DIALOG_PADDING: f32 = space(4);
+const SHEET_WIDTH: f32 = 360.0;
+const SHEET_HEIGHT: f32 = 320.0;
 
-static BACKDROP_BASE: &[StyleAtom] = &[Token::Scrim.bg(), StyleAtom::Transition(presets::SMOOTH)];
+static BACKDROP_BASE: &[StyleAtom] = &[Token::Scrim.bg(), StyleAtom::Transition(MODAL_TRANSITION)];
 
-static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
+static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(MODAL_TRANSITION)];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Side {
@@ -330,8 +333,8 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
         .shrink(1.0);
     match side {
         None => base.min_size(420.0, 0.0),
-        Some(Side::Left | Side::Right) => base.fill_height().width(360.0),
-        Some(Side::Bottom) => base.fill_width().height(320.0),
+        Some(Side::Left | Side::Right) => base.fill_height().width(SHEET_WIDTH),
+        Some(Side::Bottom) => base.fill_width().height(SHEET_HEIGHT),
     }
 }
 
