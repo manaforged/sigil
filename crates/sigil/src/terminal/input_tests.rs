@@ -51,7 +51,10 @@ fn a_hang_up_while_not_listening_ends_the_wait_without_the_event_reader() -> std
     drop(closer.join());
     assert!(!ready);
     assert!(hup.load(Ordering::SeqCst), "no SIGHUP raised");
-    assert!(started.elapsed() < Duration::from_secs(2), "the wait ran to its limit");
+    assert!(
+        started.elapsed() < Duration::from_secs(2),
+        "the wait ran to its limit"
+    );
     Ok(())
 }
 
