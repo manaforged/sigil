@@ -1,6 +1,6 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::shadow_unrelated)]
 
-use super::{Clipboard, NoopClipboard, clipboard, install};
+use super::{Clipboard, NoopClipboard, clipboard, copy, install, paste};
 
 struct Memory(std::cell::RefCell<Option<String>>);
 
@@ -20,6 +20,13 @@ fn default_is_noop() {
     let clip = clipboard();
     assert!(clip.set("x").is_err());
     assert!(clip.get().is_none());
+    let err = super::write(&NoopClipboard, "x").expect_err("noop cannot store");
+    assert!(err.to_string().contains("installed"));
+    let err = copy("x").unwrap_err();
+    assert!(
+        err.to_string().contains("installed"),
+        "expected install error, got {err}"
+    );
 }
 
 #[test]
@@ -27,11 +34,7 @@ fn install_is_what_fields_read() {
     install(Memory(std::cell::RefCell::new(None)));
     clipboard().set("hi").expect("memory stores");
     assert_eq!(clipboard().get().as_deref(), Some("hi"));
+    copy("x").expect("memory stores");
+    assert_eq!(paste().expect("memory reads"), "x");
     install(NoopClipboard);
-}
-
-#[test]
-fn write_on_noop_returns_err() {
-    let err = super::write(&NoopClipboard, "x").expect_err("noop cannot store");
-    assert!(err.to_string().contains("installed"));
 }

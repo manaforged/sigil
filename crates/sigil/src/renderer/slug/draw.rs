@@ -12,6 +12,7 @@ use wgpu::util::DeviceExt as _;
 
 #[cfg(any(test, feature = "kittest"))]
 use crate::renderer::error::RendererError;
+use crate::renderer::fill_paint::setup::begin_pass;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::frame_upload::FrameUploads;
 use crate::renderer::slug::{
@@ -88,20 +89,17 @@ impl SlugTextPipeline {
     #[must_use]
     pub fn new(device: &wgpu::Device, surface_format: wgpu::TextureFormat) -> Self {
         let bgl = create_bind_group_layout(device);
-        let pipeline = create_pipeline(device, &bgl, surface_format);
-        let quad_vb = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("slug-quad-vb"),
-            contents: bytemuck::cast_slice(QUAD_UVS),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-        let atlas = GlyphAtlas::new(device);
         Self {
             format: surface_format,
-            pipeline,
+            pipeline: create_pipeline(device, &bgl, surface_format),
             bgl,
-            cache: GlyphCache::new(),
-            quad_vb,
-            atlas,
+            cache: GlyphCache::default(),
+            quad_vb: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("slug-quad-vb"),
+                contents: bytemuck::cast_slice(QUAD_UVS),
+                usage: wgpu::BufferUsages::VERTEX,
+            }),
+            atlas: GlyphAtlas::new(device),
         }
     }
 
@@ -125,18 +123,6 @@ impl SlugTextPipeline {
                 }),
         );
         let mut split = SplitEncoder::new(params.device, params.queue, real);
-        self.record_paragraph_in_frame(&mut split, params, None);
-        *encoder = split.into_inner();
-        Ok(())
-    }
-
-    #[cfg(any(test, feature = "kittest"))]
-    pub(crate) fn record_paragraph_in_frame(
-        &mut self,
-        encoder: &mut SplitEncoder,
-        params: &DrawParams<'_>,
-        frame: Option<&mut FrameStats>,
-    ) {
         let owned_glyphs;
         let glyphs = if let Some(glyphs) = params.glyphs {
             glyphs
@@ -144,19 +130,20 @@ impl SlugTextPipeline {
             owned_glyphs = params.paragraph.rendered_glyphs();
             &owned_glyphs
         };
-        let instances = self.instances_for(glyphs, params);
         let run = QueuedRun {
-            instances,
+            instances: self.instances_for(glyphs, params),
             clip: params.clip,
         };
-        let frame_params = RunFrame {
+        let frame = RunFrame {
             device: params.device,
             view: params.view,
             surface_width: params.surface_width,
             surface_height: params.surface_height,
             scale: params.scale,
         };
-        self.record_runs_in_frame(encoder, &frame_params, &[run], frame);
+        self.record_runs_in_frame(&mut split, &frame, &[run], None);
+        *encoder = split.into_inner();
+        Ok(())
     }
 
     pub(crate) fn instances_for(
@@ -169,7 +156,10 @@ impl SlugTextPipeline {
         }
         self.ensure_preprocessed(glyphs, params.paragraph);
         self.atlas.rebuild(params.device, params.queue, &self.cache);
-        self.build_instances(glyphs, params)
+        glyphs
+            .iter()
+            .filter_map(|g| self.instance(g, params))
+            .collect()
     }
 
     pub(crate) fn record_runs_in_frame(
@@ -188,26 +178,8 @@ impl SlugTextPipeline {
         }
         let uploaded = stats.and_then(|stats| FrameUploads::upload(encoder, &all, stats));
         let range = uploaded.unwrap_or_else(|| encoder.upload(&all));
-        let bind_group = make_bind_group(encoder, frame, &self.bgl, self.atlas.buffer());
-        let pass = encoder.begin_render_pass(
-            "slug-pass",
-            &wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: frame.view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            },
-        );
+        let bind_group = make_bind_group(encoder, frame, &self.bgl, &self.atlas.buffer);
+        let pass = begin_pass(encoder, "slug-pass", frame.view, wgpu::LoadOp::Load);
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
         pass.set_vertex_buffer(0, self.quad_vb.slice(..));
@@ -260,20 +232,9 @@ impl SlugTextPipeline {
         });
     }
 
-    fn build_instances(
-        &self,
-        glyphs: &[RenderedGlyph],
-        params: &DrawParams<'_>,
-    ) -> Vec<GlyphInstance> {
-        glyphs
-            .iter()
-            .filter_map(|g| self.instance(g, params))
-            .collect()
-    }
-
     fn instance(&self, glyph: &RenderedGlyph, params: &DrawParams<'_>) -> Option<GlyphInstance> {
         let key = GlyphKey::of(glyph);
-        let cached = self.cache.get(&key)?;
+        let cached = self.cache.map.get(&key)?;
         let atlas_offset = self.atlas.get_offset(&key)?;
         let bbox = cached.band_data.bbox;
         let upem = match cached.band_data.units_per_em {
@@ -292,7 +253,8 @@ impl SlugTextPipeline {
         let mapped = transform_point(params.transform, Point::new(corner.0, corner.1));
         let origin = [mapped.x, mapped.y];
         let (width, height) = (bbox.width() * scale, bbox.height() * scale);
-        let color = glyph_color(glyph, params);
+        let c = params.color.unwrap_or(glyph.color);
+        let color = [c.r, c.g, c.b, c.a];
         Some(GlyphInstance {
             origin,
             axis_x: [xx * width, yx * width],
@@ -305,11 +267,6 @@ impl SlugTextPipeline {
             ),
         })
     }
-}
-
-fn glyph_color(glyph: &RenderedGlyph, params: &DrawParams<'_>) -> [f32; 4] {
-    let color = params.color.unwrap_or(glyph.color);
-    [color.r, color.g, color.b, color.a]
 }
 
 fn make_bind_group(

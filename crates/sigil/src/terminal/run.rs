@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::app::{CellWidth, PanicPolicy, set_cell_width};
 use crate::events::EventRouter;
@@ -167,27 +167,26 @@ type Prepared = (
     Option<crate::app::ThemeWatcher>,
 );
 
-fn prepare(config: &AppConfig) -> AppResult<Prepared> {
+type Setup = (Prepared, Term, (SignalGuard, HookGuard), (u16, u16));
+
+fn setup(config: &AppConfig) -> AppResult<Setup> {
     crate::app::clear_exit();
     let mut async_rt =
         crate::tasks::AsyncRuntime::with_workers(config.task_workers).map_err(Error::task)?;
     let wake = Wake::install(&mut async_rt);
     async_rt.install_current();
-    Ok((
-        async_rt,
-        wake,
-        crate::app::launch_theme(config.theme_file.as_deref()),
-    ))
-}
-
-type Setup = (Prepared, Term, (SignalGuard, HookGuard), (u16, u16));
-
-fn setup(config: &AppConfig) -> AppResult<Setup> {
-    let prepared = prepare(config)?;
+    let theme = crate::app::launch_theme(config.theme_file.as_deref());
     let term = enter(config)?;
     let hooks = HookGuard::install();
     let signals = SignalGuard::install().map_err(Error::io)?;
-    Ok((prepared, term, (signals, hooks), term_size(config)?))
+    let (mut cols, mut rows) = crossterm::terminal::size().map_err(Error::io)?;
+    limit(config, &mut cols, &mut rows);
+    Ok((
+        (async_rt, wake, theme),
+        term,
+        (signals, hooks),
+        (cols, rows),
+    ))
 }
 
 fn live<N: IntoNode>(
@@ -206,7 +205,7 @@ fn live<N: IntoNode>(
     prime(&mut host, &mut router, cols, rows).map_err(Error::from)?;
     let mut screen = open_screen(config, (cols, rows), term.caps());
     let mut pointer = crate::geometry::Point::new(0.0, 0.0);
-    let (mut first, mut settle, mut last) = (true, true, std::time::Instant::now());
+    let (mut first, mut settle, mut last) = (true, true, Instant::now());
     loop {
         if crate::terminal::signals::stopped() {
             break;
@@ -252,37 +251,30 @@ fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Caps) -> Scre
     screen
 }
 
-fn term_size(config: &AppConfig) -> AppResult<(u16, u16)> {
-    let (mut cols, mut rows) = crossterm::terminal::size().map_err(Error::io)?;
-    limit(config, &mut cols, &mut rows);
-    Ok((cols, rows))
-}
-
 fn pump(host: &Host, async_rt: &mut crate::tasks::AsyncRuntime) -> usize {
     let _env = host.enter();
     async_rt.pump()
 }
 
-fn idle(settle: bool, woke: usize, term: &Term, inspect_pending: bool) -> bool {
-    !settle && woke == 0 && !frame_due() && !term.pending() && !inspect_pending
+fn idle(settle: bool, woke: usize, term: &Term, pending: bool) -> bool {
+    !settle && woke == 0 && !frame_due() && !term.pending() && !pending
 }
 
-fn due(deadline: Option<std::time::Instant>) -> bool {
-    deadline.is_some_and(|due| due <= std::time::Instant::now())
+fn due(deadline: Option<Instant>) -> bool {
+    deadline.is_some_and(|due| due <= Instant::now())
 }
 
 fn frame_due() -> bool {
     Runtime::frame_dirty()
         || crate::animation_runtime::active_count() > 0
-        || crate::reactive::next_interval_deadline()
-            .is_some_and(|due| due <= std::time::Instant::now())
+        || crate::reactive::next_interval_deadline().is_some_and(|due| due <= Instant::now())
 }
 
 fn turn_wait(
     tick: Duration,
     woke: usize,
-    last: std::time::Instant,
-    status: Option<std::time::Instant>,
+    last: Instant,
+    status: Option<Instant>,
 ) -> (Option<Duration>, bool) {
     if woke > 0 || frame_due() {
         return (Some(tick.saturating_sub(last.elapsed())), false);
@@ -291,15 +283,12 @@ fn turn_wait(
         (Some(a), Some(b)) => Some(a.min(b)),
         (a, b) => a.or(b),
     };
-    let wait = next.map(|due| {
-        due.saturating_duration_since(std::time::Instant::now())
-            .min(tick)
-    });
+    let wait = next.map(|due| due.saturating_duration_since(Instant::now()).min(tick));
     (wait, true)
 }
 
 struct Turn<'a> {
-    last: &'a mut std::time::Instant,
+    last: &'a mut Instant,
     screen: &'a mut Screen,
     host: &'a mut Host,
     router: &'a mut EventRouter,
@@ -318,21 +307,18 @@ impl Turn<'_> {
             Some(hook) if config.inline => (cols, hook().clamp(1, rows.max(1))),
             _ => (cols, rows),
         };
-        self.frame_and_present(config.panic_policy, incoming, size, hooks)
-    }
-
-    fn frame_and_present(
-        &mut self,
-        policy: PanicPolicy,
-        incoming: Vec<ShellEvent>,
-        size: (u16, u16),
-        hooks: &mut Hooks<'_>,
-    ) -> AppResult<()> {
         self.screen.set_dt(self.last.elapsed().as_secs_f32());
-        *self.last = std::time::Instant::now();
+        *self.last = Instant::now();
         profile::begin_frame(profile::BackendStatus::TERMINAL);
-        let recovered = frame_isolated(policy, self.screen, self.host, self.router, incoming, size)
-            .map_err(Error::io)?;
+        let recovered = frame_isolated(
+            config.panic_policy,
+            self.screen,
+            self.host,
+            self.router,
+            incoming,
+            size,
+        )
+        .map_err(Error::io)?;
         if recovered {
             restore();
             self.term.reenter().map_err(Error::io)?;

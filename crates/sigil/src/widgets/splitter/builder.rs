@@ -7,7 +7,7 @@ use crate::style::{
 use super::super::interactive::interactive;
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::drag::{SplitterState, install_handle_hooks};
+use super::drag::{PaneLimits, SplitterState, install_handle_hooks};
 use super::keys::install_handle_keys;
 use super::pane::{build_pane, shares_free_space};
 use crate::widgets::orientation::Orientation;
@@ -60,15 +60,8 @@ impl SplitterBuilder {
     }
 
     #[must_use]
-    pub fn child(mut self, node: impl IntoNode + 'static, initial_size: f32) -> Self {
-        self.panes.push(PaneEntry {
-            content: Box::new(node),
-            initial_size: initial_size.max(0.0),
-            min: 0.0,
-            max: f32::INFINITY,
-            grow: 0.0,
-        });
-        self
+    pub fn child(self, node: impl IntoNode + 'static, initial_size: f32) -> Self {
+        self.pane(node).initial(initial_size).commit()
     }
 
     pub fn pane(self, node: impl IntoNode + 'static) -> PaneBuilder {
@@ -121,27 +114,24 @@ impl SplitterBuilder {
     fn into_node_builder(self) -> NodeBuilder {
         let orientation = self.orientation;
         let count = self.panes.len();
-
-        let sizes: Vec<f32> = self.panes.iter().map(|p| p.initial_size).collect();
-        let mins: Vec<f32> = self.panes.iter().map(|p| p.min).collect();
-        let maxs: Vec<f32> = self.panes.iter().map(|p| p.max).collect();
         let grows: Vec<f32> = self
             .panes
             .iter()
             .map(|p| shares_free_space(p.initial_size, p.grow))
             .collect();
-
-        let state = SplitterState::new(orientation, sizes, mins, maxs, grows.clone());
-
-        for (handle_idx, pts) in self.snap_points {
-            state.set_snap(handle_idx, pts);
-        }
-        state.set_snap_threshold(self.snap_threshold);
-
-        if let Some(signal) = self.sizes_bind {
-            state.bind_sizes(signal);
-        }
-
+        let limits = PaneLimits {
+            sizes: self.panes.iter().map(|p| p.initial_size).collect(),
+            mins: self.panes.iter().map(|p| p.min).collect(),
+            maxs: self.panes.iter().map(|p| p.max).collect(),
+            grows: grows.clone(),
+        };
+        let state = SplitterState::new(
+            orientation,
+            limits,
+            self.snap_points,
+            self.snap_threshold,
+            self.sizes_bind,
+        );
         let root_layout = match orientation {
             Orientation::Horizontal => LayoutStyle::flex_row().align_items(AlignItems::Stretch),
             Orientation::Vertical => LayoutStyle::flex_column().align_items(AlignItems::Stretch),
@@ -152,13 +142,7 @@ impl SplitterBuilder {
             .layout(root_layout.clone());
 
         for (pane_idx, (entry, grow)) in self.panes.into_iter().zip(grows).enumerate() {
-            root = root.child(build_pane(
-                entry.content,
-                pane_idx,
-                orientation,
-                state,
-                grow,
-            ));
+            root = root.child(build_pane(entry.content, pane_idx, state, grow));
             if pane_idx + 1 < count {
                 root = root.child(build_handle(pane_idx, orientation, state));
             }

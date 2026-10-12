@@ -175,45 +175,33 @@ impl Grid {
             return;
         }
         for cell in &mut self.cells {
-            let mapped = match glyphs.text(&cell.text) {
-                Cow::Owned(text) => Some(SmolStr::from(text)),
-                Cow::Borrowed(_) => None,
+            let Cow::Owned(text) = glyphs.text(&cell.text) else {
+                continue;
             };
-            if let Some(text) = mapped {
-                cell.text = text;
-            }
+            cell.text = text.into();
         }
     }
 
     pub fn resize(&mut self, cols: u16, rows: u16) {
-        let cols = cols as usize;
-        let rows = rows as usize;
-        if self.cols == cols && self.rows == rows {
+        self.reshape(cols as usize, rows as usize, Cell::default());
+        self.cursor = None;
+    }
+
+    pub fn mirror(&mut self, other: &Self) {
+        self.reshape(other.cols, other.rows, Cell::blank());
+    }
+
+    fn reshape(&mut self, cols: usize, rows: usize, fill: Cell) {
+        if (self.cols, self.rows) == (cols, rows) {
             self.reset();
             return;
         }
         self.cols = cols;
         self.rows = rows;
-        self.cursor = None;
         self.cells.clear();
-        self.cells
-            .resize(cols.saturating_mul(rows), Cell::default());
+        self.cells.resize(cols.saturating_mul(rows), fill);
         self.edges.clear();
         self.edges.resize(cols.saturating_mul(rows), None);
-    }
-
-    pub fn mirror(&mut self, other: &Self) {
-        if self.cols == other.cols && self.rows == other.rows {
-            self.reset();
-            return;
-        }
-        self.cols = other.cols;
-        self.rows = other.rows;
-        self.cells.clear();
-        self.cells
-            .resize(self.cols.saturating_mul(self.rows), Cell::blank());
-        self.edges.clear();
-        self.edges.resize(self.cols.saturating_mul(self.rows), None);
     }
 
     #[must_use]
@@ -242,15 +230,12 @@ impl Grid {
     pub fn text(&self) -> String {
         let mut out = String::new();
         for row in 0..self.rows {
-            let start = row.saturating_mul(self.cols);
-            let end = start.saturating_add(self.cols);
-            let Some(slice) = self.cells.get(start..end) else {
-                continue;
-            };
-            let mut line: String = slice.iter().map(|cell| cell.text.as_str()).collect();
-            let trimmed = line.trim_end();
-            line.truncate(trimmed.len());
-            out.push_str(&line);
+            let line: String = self
+                .row(row)
+                .iter()
+                .map(|cell| cell.text.as_str())
+                .collect();
+            out.push_str(line.trim_end());
             if row + 1 < self.rows {
                 out.push('\n');
             }
@@ -269,15 +254,10 @@ impl Grid {
                 return;
             }
             for pad in 0..step {
-                let Some(cell) = self.index(x + pad, row).and_then(|i| self.cells.get_mut(i))
-                else {
+                let Some(cell) = self.cell_mut(x + pad, row) else {
                     return;
                 };
-                cell.text = if pad == 0 {
-                    crate::app::cell_glyph(grapheme).into()
-                } else {
-                    SmolStr::new_inline(CONTINUES)
-                };
+                cell.text = cell_text(grapheme, pad);
                 cell.fg = fg;
             }
             x += step;
@@ -285,10 +265,7 @@ impl Grid {
     }
 
     fn put(&mut self, col: usize, row: usize, text: &str, fg: Ink) {
-        let Some(i) = self.index(col, row) else {
-            return;
-        };
-        if let Some(cell) = self.cells.get_mut(i) {
+        if let Some(cell) = self.cell_mut(col, row) {
             if text != " " {
                 cell.text = text.into();
             }
@@ -345,11 +322,24 @@ impl Grid {
         }
     }
 
+    pub(super) fn cell_mut(&mut self, col: usize, row: usize) -> Option<&mut Cell> {
+        self.index(col, row)
+            .and_then(|index| self.cells.get_mut(index))
+    }
+
     pub(super) const fn index(&self, col: usize, row: usize) -> Option<usize> {
         if col >= self.cols || row >= self.rows {
             return None;
         }
         Some(row.saturating_mul(self.cols).saturating_add(col))
+    }
+}
+
+fn cell_text(grapheme: &str, pad: usize) -> SmolStr {
+    if pad == 0 {
+        crate::app::cell_glyph(grapheme).into()
+    } else {
+        SmolStr::new_inline(CONTINUES)
     }
 }
 

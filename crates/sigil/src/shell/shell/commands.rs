@@ -41,12 +41,7 @@ impl WinitShell {
         }
         self.event_window = handle;
         self.push_scale_factor_changed(id, factor);
-        self.push_event(
-            handle,
-            ShellEvent::Window(SigilWindowEvent::Resized(
-                crate::geometry::PhysicalSize::new(size.width, size.height),
-            )),
-        );
+        self.push_window_resized(size);
         self.request_redraws();
     }
 }

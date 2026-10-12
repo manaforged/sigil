@@ -14,21 +14,9 @@ pub(super) fn write_items(
     content_origin: Position2,
 ) -> Result<(), LayoutError> {
     for p in placed {
-        let (x, y, w, h) = if ctx.axes.row {
-            (
-                content_origin.x + p.main_pos,
-                content_origin.y + p.cross_pos,
-                p.main_size,
-                p.cross_size,
-            )
-        } else {
-            (
-                content_origin.x + p.cross_pos,
-                content_origin.y + p.main_pos,
-                p.cross_size,
-                p.main_size,
-            )
-        };
+        let pos = CbSize::across(ctx.axes, p.main_pos, p.cross_pos);
+        let CbSize { w, h } = CbSize::across(ctx.axes, p.main_size, p.cross_size);
+        let (x, y) = (content_origin.x + pos.w, content_origin.y + pos.h);
         ctx.solver.write(p.id, ComputedBox { x, y, w, h });
         layout_item_subtree(ctx, p.id, Position2::new(x, y), w, h)?;
     }
@@ -74,12 +62,7 @@ pub(crate) fn layout_item_subtree(
                 scope.text(),
                 scope.available(),
             );
-            let edges = NodeEdges::build(style, w);
-            let m = edges.margin.or_zero();
-            let pre = crate::layout::block::Position2 {
-                x: origin.x - m.left,
-                y: origin.y - m.top,
-            };
+            let pre = block_origin(style, origin, w);
             crate::layout::grid::GridSolver::new(nested).solve_at(node, w, pre)
         }
         Display::Block | Display::None => {
@@ -104,16 +87,10 @@ fn dispatch_block_subtree(
         width: w,
         height: h,
     };
-    let edges = NodeEdges::build(style, w);
-    let m = edges.margin.or_zero();
-    let pre = crate::layout::block::Position2 {
-        x: origin.x - m.left,
-        y: origin.y - m.top,
-    };
     solver.solve_at_assigned(
         node,
         cb,
-        pre,
+        block_origin(style, origin, w),
         Size {
             width: assigned_w,
             height: assigned_h,
@@ -129,11 +106,7 @@ pub(super) fn write_container(
     container_main: f32,
     placed: &[PlacedItem],
 ) {
-    let (chrome_main, chrome_cross) = if ctx.axes.row {
-        (edges.inline_chrome(), edges.block_chrome())
-    } else {
-        (edges.block_chrome(), edges.inline_chrome())
-    };
+    let (chrome_main, chrome_cross) = ctx.axes.chrome(edges);
     let style = node.style();
     let cross_explicit = match (
         ctx.axes.row,
@@ -150,30 +123,31 @@ pub(super) fn write_container(
         .map(|p| p.cross_pos + p.cross_size)
         .fold(0.0_f32, f32::max)
         + chrome_cross;
-    let axes = Axis2 {
-        row: !ctx.axes.row,
-        reversed_main: false,
-    };
-    let basis = if ctx.axes.row { ctx.cb.h } else { ctx.cb.w };
-    let (min, max) = item_min_max_main(style, axes, basis, edges);
+    let basis = ctx.axes.pick(ctx.cb.h, ctx.cb.w);
+    let (min, max) = item_min_max_main(style, ctx.axes.cross(), basis, edges);
     let cross_size = clamp(cross_explicit.unwrap_or(auto_cross), min, max);
-    let main_size = container_main + chrome_main;
-    let (w, h) = if ctx.axes.row {
-        (main_size, cross_size)
-    } else {
-        (cross_size, main_size)
-    };
-    let w = ctx.assigned_w.unwrap_or(w);
-    let h = ctx.assigned_h.unwrap_or(h);
+    let size = CbSize::across(ctx.axes, container_main + chrome_main, cross_size);
     ctx.solver.write(
         node.id(),
         ComputedBox {
             x: border_origin.x,
             y: border_origin.y,
-            w,
-            h,
+            w: ctx.assigned_w.unwrap_or(size.w),
+            h: ctx.assigned_h.unwrap_or(size.h),
         },
     );
+}
+
+fn block_origin(
+    style: &crate::layout::style_data::StyleData,
+    origin: Position2,
+    w: f32,
+) -> crate::layout::block::Position2 {
+    let m = NodeEdges::build(style, w).margin.or_zero();
+    crate::layout::block::Position2 {
+        x: origin.x - m.left,
+        y: origin.y - m.top,
+    }
 }
 
 fn assigned_size(

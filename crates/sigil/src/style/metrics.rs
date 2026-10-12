@@ -56,7 +56,7 @@ impl Metrics {
 
     #[must_use]
     pub fn control_height(self, size: ControlSize) -> f32 {
-        self.cell_or(match size {
+        self.cell.unwrap_or(match size {
             ControlSize::Compact => space(5) + 2.0,
             ControlSize::Default => space(7),
             ControlSize::Wide | ControlSize::Grow => space(9),
@@ -74,7 +74,7 @@ impl Metrics {
 
     #[must_use]
     pub fn padding(self, size: ControlSize) -> f32 {
-        self.cell_or(match size {
+        self.cell.unwrap_or(match size {
             ControlSize::Compact => space(1) + 2.0,
             ControlSize::Default => space(2) + 2.0,
             ControlSize::Wide | ControlSize::Grow => space(3) + 2.0,
@@ -83,7 +83,7 @@ impl Metrics {
 
     #[must_use]
     pub fn gap(self, size: ControlSize) -> f32 {
-        self.cell_or(match size {
+        self.cell.unwrap_or(match size {
             ControlSize::Compact => space(1),
             ControlSize::Default => space(2),
             ControlSize::Wide | ControlSize::Grow => space(3),
@@ -117,15 +117,11 @@ impl Metrics {
 
     #[must_use]
     pub fn icon_size(self) -> f32 {
-        self.cell_or(f32::from(ICON_SIZE.0))
+        self.cell.unwrap_or_else(|| f32::from(ICON_SIZE.0))
     }
 
     #[must_use]
     pub fn overlay_padding(self) -> f32 {
-        self.cell_or(space(1))
-    }
-
-    fn cell_or(self, window: f32) -> f32 {
-        self.cell.unwrap_or(window)
+        self.cell.unwrap_or(space(1))
     }
 }

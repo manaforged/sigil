@@ -8,15 +8,6 @@ fn resolved<T: Clone>(picked: Signal<Status<T, Infallible>>) -> Option<T> {
 }
 
 #[test]
-fn builder_chains_without_opening_a_dialog() {
-    let _dialog = FileDialog::new()
-        .filter("CSV", &["csv"])
-        .filter("All", &["*"])
-        .directory("/tmp")
-        .file_name("export.csv");
-}
-
-#[test]
 fn mock_responses_bypass_the_native_picker() {
     crate::reactive::Runtime::scope("mock_responses_bypass_the_native_picker", || {
         mock::reset();

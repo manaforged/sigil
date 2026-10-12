@@ -21,18 +21,8 @@ pub(crate) struct OwnerSlot {
 }
 
 pub(crate) struct SignalSlot {
-    #[expect(
-        dead_code,
-        reason = "construction-site owner; write path does not read it"
-    )]
-    pub(crate) owner: OwnerKey,
     pub(crate) value: Box<dyn Any>,
     pub(crate) subscribers: SmallVec<[EffectKey; 4]>,
-    #[expect(
-        dead_code,
-        reason = "construction-site location; write path does not read it"
-    )]
-    pub(crate) location: &'static Location<'static>,
 }
 
 pub(crate) struct EffectSlot {

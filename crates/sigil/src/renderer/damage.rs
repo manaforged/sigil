@@ -135,26 +135,20 @@ fn align(
             }
         });
         let (skip_old, skip_new) = skip.unwrap_or((1, 1));
-        old.iter_mut()
-            .skip(i)
-            .take(skip_old)
-            .for_each(|mark| *mark = true);
-        new.iter_mut()
-            .skip(j)
-            .take(skip_new)
-            .for_each(|mark| *mark = true);
+        mark(&mut old, i..i + skip_old);
+        mark(&mut new, j..j + skip_new);
         i += skip_old;
         j += skip_new;
     }
-    old.iter_mut()
-        .take(end_old)
-        .skip(i)
-        .for_each(|mark| *mark = true);
-    new.iter_mut()
-        .take(end_new)
-        .skip(j)
-        .for_each(|mark| *mark = true);
+    mark(&mut old, i..end_old);
+    mark(&mut new, j..end_new);
     (old, new)
+}
+
+fn mark(marks: &mut [bool], range: core::ops::Range<usize>) {
+    if let Some(marks) = marks.get_mut(range) {
+        marks.fill(true);
+    }
 }
 
 fn local_effect(effect: LayerEffect) -> bool {

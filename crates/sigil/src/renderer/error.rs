@@ -1,5 +1,7 @@
 use core::fmt;
 
+use crate::renderer::layer_pool::LayerError;
+
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum RendererError {
@@ -10,7 +12,7 @@ pub enum RendererError {
     SurfaceValidation,
     NotInitialized,
     InvalidViewport,
-    Layer(crate::renderer::layer_pool::LayerError),
+    Layer(LayerError),
     Software(String),
 }
 
@@ -33,10 +35,8 @@ impl fmt::Display for RendererError {
             Self::InvalidViewport => {
                 f.write_str("viewport dimensions must be strictly positive (width > 0, height > 0)")
             }
-            Self::Layer(crate::renderer::layer_pool::LayerError::Empty) => {
-                f.write_str("offscreen layer extent is zero")
-            }
-            Self::Layer(crate::renderer::layer_pool::LayerError::TooLarge { requested, max }) => {
+            Self::Layer(LayerError::Empty) => f.write_str("offscreen layer extent is zero"),
+            Self::Layer(LayerError::TooLarge { requested, max }) => {
                 write!(
                     f,
                     "offscreen layer {requested}px exceeds device limit {max}px"
@@ -51,13 +51,7 @@ impl core::error::Error for RendererError {
         match self {
             Self::DeviceRequest(e) => Some(e),
             Self::SurfaceCreate(e) => Some(e),
-            Self::NoAdapter
-            | Self::NoSupportedFormat
-            | Self::SurfaceValidation
-            | Self::NotInitialized
-            | Self::InvalidViewport
-            | Self::Layer(_)
-            | Self::Software(_) => None,
+            _ => None,
         }
     }
 }

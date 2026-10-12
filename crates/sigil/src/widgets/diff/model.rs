@@ -259,9 +259,11 @@ impl Side<'_> {
     }
 
     fn unified(&self, pairs: &[Pair], rows: &mut Vec<DiffRow>) {
-        let mut index = 0;
-        while let Some(pair) = pairs.get(index) {
-            if pair.kind != PairKind::Change {
+        let change = |pair: &Pair| pair.kind == PairKind::Change;
+        for group in pairs.chunk_by(|a, b| change(a) && change(b)) {
+            if let [pair] = group
+                && !change(pair)
+            {
                 rows.extend(match pair.kind {
                     PairKind::Note => Some(DiffRow::Meta(self.text(pair.left))),
                     _ => pair
@@ -269,29 +271,20 @@ impl Side<'_> {
                         .and_then(|line| self.cell(line, LineKind::Context, false, None))
                         .map(DiffRow::Unified),
                 });
-                index += 1;
                 continue;
             }
-            let run = pairs
-                .get(index..)
-                .unwrap_or_default()
-                .iter()
-                .take_while(|item| item.kind == PairKind::Change)
-                .count();
-            let group = pairs.get(index..index + run).unwrap_or_default();
             for kind in [LineKind::Removed, LineKind::Added] {
-                rows.extend(group.iter().filter_map(|change| {
-                    let (a, b) = self.ranges(change);
+                rows.extend(group.iter().filter_map(|entry| {
+                    let (a, b) = self.ranges(entry);
                     let (line, old, range) = if kind == LineKind::Removed {
-                        (change.left?, true, a)
+                        (entry.left?, true, a)
                     } else {
-                        (change.right?, false, b)
+                        (entry.right?, false, b)
                     };
                     self.cell(line, kind, old, Some(range))
                         .map(DiffRow::Unified)
                 }));
             }
-            index += run;
         }
     }
 }

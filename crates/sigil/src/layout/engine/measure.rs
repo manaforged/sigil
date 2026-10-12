@@ -63,10 +63,10 @@ impl LayoutEngine {
     }
 
     fn compute_mirror(&mut self, root: NodeId, available: Size) -> Result<(), LayoutError> {
-        let root_handle = self.handle(root)?;
+        let _solve = crate::profile::span(crate::profile::Phase::LayoutSolve);
+        self.drive.clear_intrinsic();
         self.drive
-            .measure_with_constraints(root_handle, to_available_space(available))?;
-        Ok(())
+            .measure_with_constraints(self.handle(root)?, to_available_space(available))
     }
 
     pub(super) fn remeasure_and_publish(
@@ -75,15 +75,9 @@ impl LayoutEngine {
         root: NodeId,
         available: Size,
     ) -> Result<(), LayoutError> {
-        {
-            let _solve = crate::profile::span(crate::profile::Phase::LayoutSolve);
-            self.drive.clear_intrinsic();
-            self.compute_mirror(root, available)?;
-        }
-        let mut ids = SmallVec::<[_; 32]>::new();
-        cx.visit_preorder(root, |id, _node| ids.push(id));
+        self.compute_mirror(root, available)?;
         let _attach = crate::profile::span(crate::profile::Phase::LayoutAttach);
-        self.attach_results(cx, ids)
+        self.attach_subtree_results(cx, root)
     }
 
     pub(super) fn full_sync_and_measure(
@@ -98,17 +92,10 @@ impl LayoutEngine {
             let _sync = crate::profile::span(crate::profile::Phase::LayoutSync);
             self.sync(cx, root)?;
         }
-        {
-            let _solve = crate::profile::span(crate::profile::Phase::LayoutSolve);
-            self.drive.clear_intrinsic();
-            self.compute_mirror(root, available)?;
-        }
-
-        let mut ids = SmallVec::<[_; 32]>::new();
-        cx.visit_preorder(root, |id, _node| ids.push(id));
+        self.compute_mirror(root, available)?;
         self.remove_stale_extensions(cx, previous_ids);
         let _attach = crate::profile::span(crate::profile::Phase::LayoutAttach);
-        self.attach_results(cx, ids)
+        self.attach_subtree_results(cx, root)
     }
 
     pub(super) fn remeasure_roots(
@@ -158,27 +145,17 @@ impl LayoutEngine {
             if self.published_result.get(id.key()).copied() == Some(result) {
                 continue;
             }
-            let bindings = {
-                let node = cx
-                    .get_mut_untracked(id)
-                    .ok_or(LayoutError::NodeMissing(id))?;
-                let _ = node.attach_untracked(result);
-                let size = node.get_extension::<crate::layout::SizeReactive>().copied();
-                let bounds = node
-                    .get_extension::<crate::layout::BoundsReactive>()
-                    .copied();
-                (size, bounds)
-            };
-            let (size_binding, bounds_binding) = bindings;
-            if size_binding.is_some() || bounds_binding.is_some() {
-                let rect = result.rect();
-                if let Some(sr) = size_binding {
-                    self.republished |= sr.publish((rect.width, rect.height));
-                }
-                if let Some(br) = bounds_binding {
-                    self.republished |=
-                        br.publish((rect.origin.x, rect.origin.y, rect.width, rect.height));
-                }
+            let node = cx
+                .get_mut_untracked(id)
+                .ok_or(LayoutError::NodeMissing(id))?;
+            let _ = node.attach_untracked(result);
+            let rect = result.rect();
+            if let Some(size) = node.get_extension::<crate::layout::SizeReactive>() {
+                self.republished |= size.publish((rect.width, rect.height));
+            }
+            if let Some(bounds) = node.get_extension::<crate::layout::BoundsReactive>() {
+                self.republished |=
+                    bounds.publish((rect.origin.x, rect.origin.y, rect.width, rect.height));
             }
             self.published_result.insert(id.key(), result);
         }
@@ -196,10 +173,9 @@ impl LayoutEngine {
                 continue;
             }
             self.published_result.remove(id.key());
-            if let Some(node) = cx.get_mut_untracked(id) {
-                if node.get_extension::<LayoutResult>().is_none() {
-                    continue;
-                }
+            if let Some(node) = cx.get_mut_untracked(id)
+                && node.get_extension::<LayoutResult>().is_some()
+            {
                 let _ = node.remove_extension::<LayoutResult>();
             }
         }

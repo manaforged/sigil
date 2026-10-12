@@ -31,14 +31,6 @@ pub(super) struct Frame {
 }
 
 impl Frame {
-    pub(super) const fn new(width: Option<f32>, height: f32, whole: bool) -> Self {
-        Self {
-            width,
-            height,
-            whole,
-        }
-    }
-
     pub(super) fn padding(self) -> f32 {
         if self.height < COMPACT_HEIGHT {
             COMPACT_PAD
@@ -343,11 +335,12 @@ fn candles(series: &[ChartView<'_>], span: Span, columns: usize) -> NodeBuilder 
         .first()
         .map(|item| Candle::rows(item.values))
         .unwrap_or_default();
-    let mut layer = container().layout(LayoutStyle::block().fill());
-    for shape in marks::candles(&rows, span, columns) {
-        layer = layer.child(shape);
-    }
-    plot_area(layer)
+    let layer = container().layout(LayoutStyle::block().fill());
+    plot_area(
+        marks::candles(&rows, span, columns)
+            .into_iter()
+            .fold(layer, NodeBuilder::child),
+    )
 }
 
 fn plot_area(layer: NodeBuilder) -> NodeBuilder {

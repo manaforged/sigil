@@ -1,6 +1,6 @@
 #![allow(clippy::float_cmp)]
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, container};
+use crate::kernel::{Cx, NodeBuilder, container};
 use crate::reactive::Runtime;
 
 use super::{Orientation, splitter};
@@ -50,45 +50,24 @@ fn fixed_pane_and_handle_keep_their_width_with_filling_content() {
     });
 }
 
-fn two_pane() -> impl IntoNode {
-    splitter(Orientation::Horizontal)
-        .child(container(), 120.0)
-        .child(container(), 200.0)
-}
-
 #[test]
-fn helper_returns_into_node() {
+fn splitter_and_pane_builders_convert_to_nodes() {
     Runtime::scope("splitter-into", || {
-        let mut cx = Cx::new_root();
-        let id = cx.add(two_pane());
-        assert!(cx.get(id).is_some());
-    });
-}
-
-#[test]
-fn splitter_converts_to_node_builder() {
-    Runtime::scope("splitter-from", || {
-        let node: NodeBuilder = splitter(Orientation::Horizontal)
-            .child(container(), 120.0)
-            .child(container(), 200.0)
-            .into();
-        let mut cx = Cx::new_root();
-        let id = cx.add(node);
-        assert!(cx.get(id).is_some());
-    });
-}
-
-#[test]
-fn pane_builder_converts_to_node_builder() {
-    Runtime::scope("pane-from", || {
-        let node: NodeBuilder = splitter(Orientation::Horizontal)
+        let two = || {
+            splitter(Orientation::Horizontal)
+                .child(container(), 120.0)
+                .child(container(), 200.0)
+        };
+        let pane: NodeBuilder = splitter(Orientation::Horizontal)
             .pane(container())
             .initial(120.0)
             .pane(container())
             .grow(1.0)
             .into();
+        let into: NodeBuilder = two().into();
         let mut cx = Cx::new_root();
-        let id = cx.add(node);
-        assert!(cx.get(id).is_some());
+        for id in [cx.add(two()), cx.add(into), cx.add(pane)] {
+            assert!(cx.get(id).is_some());
+        }
     });
 }

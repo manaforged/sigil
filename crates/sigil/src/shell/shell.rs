@@ -237,9 +237,20 @@ impl WinitShell {
         std::mem::take(&mut self.force_paint)
     }
 
-    const fn allocate_handle(&mut self) -> WinitWindowHandle {
-        let id = self.next_handle;
+    fn queue_window(
+        &mut self,
+        title: &str,
+        size: PendingWindowSize,
+        opts: WindowOpts,
+    ) -> WinitWindowHandle {
+        let handle = WinitWindowHandle::from_raw(self.next_handle);
         self.next_handle = self.next_handle.wrapping_add(1);
-        WinitWindowHandle::from_raw(id)
+        self.pending.push(PendingWindow {
+            handle,
+            title: title.to_owned(),
+            size,
+            opts,
+        });
+        handle
     }
 }

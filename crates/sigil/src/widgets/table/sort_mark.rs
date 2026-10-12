@@ -94,9 +94,7 @@ impl<Row: 'static> TableState<Row> {
         };
         self.sort(key.column, dir);
     }
-}
 
-impl<Row: 'static> TableState<Row> {
     fn sort_state(&self, column: &'static str, sortable: bool) -> Signal<SortMark> {
         let sort = self.sort_key();
         derived(move || match sort.get() {

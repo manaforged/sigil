@@ -1,34 +1,30 @@
+#![allow(clippy::indexing_slicing)]
+
 use super::*;
 
 #[test]
 fn click_is_left_down_then_up_at_cell_centre() {
-    let [down, up] = click(2, 3);
-    assert!(matches!(down, ShellEvent::Pointer(_)));
-    assert!(matches!(up, ShellEvent::Pointer(_)));
-    if let (ShellEvent::Pointer(first), ShellEvent::Pointer(second)) = (down, up) {
-        assert_eq!(first.phase, PointerPhase::Down);
-        assert_eq!(second.phase, PointerPhase::Up);
-        let at = cell_point(2, 3);
-        assert!((first.position.x - at.x).abs() < f32::EPSILON);
-        assert!((first.position.y - at.y).abs() < f32::EPSILON);
-    }
+    let pointers: Vec<PointerEvent> = click(2, 3)
+        .into_iter()
+        .filter_map(|event| match event {
+            ShellEvent::Pointer(pointer) => Some(pointer),
+            _ => None,
+        })
+        .collect();
+    let phases: Vec<PointerPhase> = pointers.iter().map(|pointer| pointer.phase).collect();
+    assert_eq!(phases, [PointerPhase::Down, PointerPhase::Up]);
+    assert_eq!(pointers[0].position, cell_point(2, 3));
 }
 
 #[test]
 fn wheel_scrolls_up_from_the_same_cell() {
-    let event = wheel(1, 1, 3.0);
-    assert!(matches!(
-        event,
+    let delta = match wheel(1, 1, 3.0) {
         ShellEvent::Scroll(ScrollEvent {
-            delta: ScrollDelta::Lines(_),
+            delta: ScrollDelta::Lines(delta),
             ..
-        })
-    ));
-    if let ShellEvent::Scroll(ScrollEvent {
-        delta: ScrollDelta::Lines(delta),
-        ..
-    }) = event
-    {
-        assert!((delta.y - 3.0).abs() < f32::EPSILON);
+        }) => Some(delta),
+        _ => None,
     }
+    .expect("wheel is a line scroll");
+    assert!((delta.y - 3.0).abs() < f32::EPSILON);
 }

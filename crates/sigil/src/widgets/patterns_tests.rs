@@ -6,90 +6,56 @@ use crate::kernel::container as kernel_container;
 use crate::reactive::Runtime;
 use crate::widgets::field;
 
-#[test]
-fn empty_state_has_title_and_body() {
-    Runtime::scope("empty-state", || {
+fn shape<N: IntoNode>(name: &'static str, make: impl FnOnce() -> N) -> (Role, usize) {
+    Runtime::scope(name, || {
         let mut cx = Cx::new_root();
-        let id = empty_state("No messages", "Send a message to start.").build(&mut cx);
-        let node = cx.get(id).expect("empty");
-        assert_eq!(node.a11y.role, Role::Status);
-        assert_eq!(node.children().len(), 2);
-    });
+        let id = make().build(&mut cx);
+        let node = cx.get(id).expect(name);
+        (node.a11y.role, node.children().len())
+    })
 }
 
 #[test]
-fn card_wraps_one_child() {
-    Runtime::scope("card-one-child", || {
-        let mut cx = Cx::new_root();
-        let id = card(kernel_container()).build(&mut cx);
-        let node = cx.get(id).expect("card");
-        assert_eq!(node.children().len(), 1);
-    });
+fn pattern_roots_have_their_role_and_children() {
+    assert_eq!(
+        shape("empty-state", || empty_state(
+            "No messages",
+            "Send a message to start."
+        )),
+        (Role::Status, 2)
+    );
+    assert_eq!(shape("card", || card(kernel_container())).1, 1);
+    assert_eq!(shape("avatar", || avatar("TG")).0, Role::Image);
+    assert_eq!(
+        shape("sidebar", || sidebar(kernel_container())).0,
+        Role::Navigation
+    );
+    assert_eq!(
+        shape("hint-overlay", || hint_overlay(&[("Ctrl+S", "Save")])),
+        (Role::GenericContainer, 1)
+    );
 }
 
 #[test]
-fn avatar_is_an_image_role() {
-    Runtime::scope("avatar-role", || {
-        let mut cx = Cx::new_root();
-        let id = avatar("TG").build(&mut cx);
-        let node = cx.get(id).expect("avatar");
-        assert_eq!(node.a11y.role, Role::Image);
-    });
+fn app_shell_appends_the_modal_as_a_fourth_child() {
+    let none = || app_shell(container(), container(), container(), None::<NodeBuilder>);
+    assert_eq!(shape("app-shell", none), (Role::GenericContainer, 3));
+    let some = || app_shell(container(), container(), container(), Some(container()));
+    assert_eq!(shape("app-shell-modal", some).1, 4);
 }
 
 #[test]
-fn sidebar_is_navigation() {
-    Runtime::scope("sidebar-role", || {
-        let mut cx = Cx::new_root();
-        let id = sidebar(kernel_container()).build(&mut cx);
-        let node = cx.get(id).expect("sidebar");
-        assert_eq!(node.a11y.role, Role::Navigation);
-    });
-}
-
-#[test]
-fn app_shell_without_modal_has_three_children() {
-    Runtime::scope("app-shell-no-modal", || {
-        let mut cx = Cx::new_root();
-        let id =
-            app_shell(container(), container(), container(), None::<NodeBuilder>).build(&mut cx);
-        let node = cx.get(id).expect("app-shell root exists");
-        assert_eq!(node.a11y.role, Role::GenericContainer);
-        assert_eq!(
-            node.children().len(),
-            3,
-            "without modal, app_shell is top + work + status"
-        );
-    });
-}
-
-#[test]
-fn app_shell_with_modal_has_four_children() {
-    Runtime::scope("app-shell-with-modal", || {
-        let mut cx = Cx::new_root();
-        let id = app_shell(container(), container(), container(), Some(container())).build(&mut cx);
-        let node = cx.get(id).expect("app-shell root exists");
-        assert_eq!(
-            node.children().len(),
-            4,
-            "with modal, app_shell appends the overlay as a 4th sibling"
-        );
-    });
-}
-
-#[test]
-fn field_holds_label_and_control_in_order() {
-    Runtime::scope("field-static-label", || {
-        let mut cx = Cx::new_root();
-        let id = field("Username", container()).build(&mut cx);
-        let node = cx.get(id).expect("field root exists");
-        assert_eq!(node.a11y.role, Role::GenericContainer);
-        assert_eq!(
-            node.children().len(),
-            2,
-            "field produces exactly label + control"
-        );
-    });
+fn field_holds_label_control_and_error_slot() {
+    use crate::widgets::text_field::text_field;
+    assert_eq!(
+        shape("field", || field("Username", container())),
+        (Role::GenericContainer, 2)
+    );
+    let validated = || {
+        let error: crate::reactive::Signal<Option<String>> = crate::reactive::signal(None);
+        field("Email", text_field(crate::reactive::signal(String::new()))).error(error)
+    };
+    assert_eq!(shape("validated-field", validated).1, 3);
 }
 
 #[test]
@@ -117,54 +83,17 @@ fn a_field_control_is_named_by_its_visible_label() {
 }
 
 #[test]
-fn validated_field_emits_three_children() {
-    use crate::widgets::text_field::text_field;
-    Runtime::scope("validated-field-shape", || {
-        let mut cx = Cx::new_root();
-        let error: crate::reactive::Signal<Option<String>> = crate::reactive::signal(None);
-        let value = crate::reactive::signal(String::new());
-        let id = field("Email", text_field(value))
-            .error(error)
-            .build(&mut cx);
-        let node = cx.get(id).expect("validated field root");
-        assert_eq!(
-            node.children().len(),
-            3,
-            "validated_field is label + control + error-slot",
-        );
-    });
-}
-
-#[test]
 fn kv_grid_emits_one_row_per_input() {
-    Runtime::scope("kv-grid-three-rows", || {
-        let mut cx = Cx::new_root();
-        let id = kv_grid([
-            ("Content-Type", "application/json"),
-            ("Status", "200 OK"),
-            ("Length", "1024"),
-        ])
-        .build(&mut cx);
-        let node = cx.get(id).expect("kv-grid root exists");
-        assert_eq!(
-            node.children().len(),
-            3,
-            "kv_grid produces one row child per input tuple"
-        );
-    });
-}
-
-#[test]
-fn kv_grid_empty_input_has_no_rows() {
-    Runtime::scope("kv-grid-empty", || {
-        let mut cx = Cx::new_root();
-        let id = kv_grid(Vec::<(&str, &str)>::new()).build(&mut cx);
-        let node = cx.get(id).expect("kv-grid root exists");
-        assert!(
-            node.children().is_empty(),
-            "empty input must produce zero rows"
-        );
-    });
+    let rows = [
+        ("Content-Type", "application/json"),
+        ("Status", "200 OK"),
+        ("Length", "1024"),
+    ];
+    assert_eq!(shape("kv-grid", || kv_grid(rows)).1, 3);
+    assert_eq!(
+        shape("kv-grid-empty", || kv_grid(Vec::<(&str, &str)>::new())).1,
+        0
+    );
 }
 
 #[test]
@@ -173,11 +102,4 @@ fn hint_overlay_records_entries() {
     assert_eq!(overlay.entries.len(), 3);
     assert_eq!(overlay.entries[0].0, "Ctrl+S");
     assert_eq!(overlay.entries[2].1, "Close");
-}
-
-#[test]
-fn hint_overlay_builds() {
-    Runtime::scope("hint-overlay-build", || {
-        let _node = hint_overlay(&[("Ctrl+S", "Save")]).into_node_builder();
-    });
 }

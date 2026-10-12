@@ -301,31 +301,12 @@ impl StateHost for NodeBuilder {}
 impl IntoNode for NodeBuilder {
     fn build(mut self, cx: &mut Cx) -> NodeId {
         let style = std::mem::take(&mut self.style);
-        let this = crate::style::attach_style(self, style);
-        this.build_node(cx)
-    }
-}
-
-impl NodeBuilder {
-    fn build_node(mut self, cx: &mut Cx) -> NodeId {
-        if let Some(widget) = self.wraps.take() {
-            return self.build_onto(widget, cx);
+        let mut this = crate::style::attach_style(self, style);
+        if let Some(widget) = this.wraps.take() {
+            return this.build_onto(widget, cx);
         }
-        let id = cx.new_node(self.kind, self.a11y);
-        if let Some(node) = cx.get_mut(id) {
-            for apply in self.pre_extensions {
-                apply(node);
-            }
-        }
-        for child in self.children {
-            let _ = cx.add_boxed_child(id, child);
-        }
-        if let Some(install) = self.reactive_children {
-            install(id);
-        }
-        for hook in self.on_added {
-            hook(cx, id);
-        }
-        id
+        let kind = std::mem::replace(&mut this.kind, NodeType::Container);
+        let id = cx.new_node(kind, std::mem::take(&mut this.a11y));
+        this.finish(cx, id)
     }
 }

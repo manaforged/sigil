@@ -9,10 +9,7 @@ pub fn notify(title: &str, body: &str) -> io::Result<()> {
         return Ok(());
     }
     let caps = current_caps();
-    let Some(seq) = notice(caps, title, body) else {
-        return Ok(());
-    };
-    send(caps, &seq)
+    notice(caps, title, body).map_or(Ok(()), |seq| send(caps, &seq))
 }
 
 pub fn progress(value: Option<u8>) -> io::Result<()> {

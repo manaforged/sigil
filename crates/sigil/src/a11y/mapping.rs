@@ -15,11 +15,15 @@ pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpd
     let mut top = Vec::new();
     let mut nodes = Vec::with_capacity(cx.len() + 1);
     for root in cx.roots().iter().copied() {
-        top_level(cx, root, &mut top);
+        flatten(cx, root, &mut top);
         walk_subtree(cx, root, bounds, &mut nodes);
     }
     super::modal_scope::hide_outside(cx, &mut nodes);
-    window.set_children(top);
+    window.set_children(
+        top.into_iter()
+            .map(NodeId::to_accesskit)
+            .collect::<Vec<_>>(),
+    );
     nodes.insert(0, (WINDOW_ROOT, window));
     let focus_ak = focus
         .map(NodeId::to_accesskit)
@@ -58,19 +62,6 @@ fn walk_subtree(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>, out: &mut Vec<(Ak
     }
 }
 
-fn top_level(cx: &Cx, id: NodeId, top: &mut Vec<AkNodeId>) {
-    let Some(kernel_node) = cx.get(id) else {
-        return;
-    };
-    if matches!(kernel_node.kind, NodeType::Fragment) {
-        for &child in kernel_node.children() {
-            top_level(cx, child, top);
-        }
-        return;
-    }
-    top.push(id.to_accesskit());
-}
-
 #[must_use]
 pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
     project(cx, id, bounds).0
@@ -83,11 +74,15 @@ fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<Run
     let a11y = &kernel_node.a11y;
     let mut ak = AkNode::new(a11y.role);
 
-    if a11y.labelled_by.is_none() {
-        apply_name(&mut ak, &a11y.name);
+    if a11y.labelled_by.is_none()
+        && let Some(label) = name_text(&a11y.name)
+    {
+        ak.set_label(label);
     }
     apply_text_content(&mut ak, kernel_node);
-    apply_description(&mut ak, a11y.description.as_ref());
+    if let Some(description) = a11y.description.as_ref().and_then(name_text) {
+        ak.set_description(description);
+    }
     apply_labelled_by(&mut ak, a11y);
     apply_actions(&mut ak, a11y);
     apply_state(&mut ak, a11y);
@@ -95,11 +90,11 @@ fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<Run
         ak.set_hidden();
     }
     apply_grid(&mut ak, a11y);
-    apply_bounds(&mut ak, id, bounds, f64::from(cx.scale().factor()));
+    let factor = f64::from(cx.scale().factor());
+    apply_bounds(&mut ak, id, bounds, factor);
     let runs = super::text::export(id, a11y, &mut ak);
     if runs.is_none() {
         apply_children(cx, kernel_node, &mut ak);
-        let factor = f64::from(cx.scale().factor());
         let links = super::links::export(cx, id, bounds, factor, &mut ak);
         if links.is_some() {
             return (ak, links);
@@ -122,11 +117,11 @@ fn apply_bounds(ak: &mut AkNode, id: NodeId, bounds: BoundsLookup<'_>, factor: f
     });
 }
 
-fn apply_name(ak: &mut AkNode, name: &AccessibleName) {
+fn name_text(name: &AccessibleName) -> Option<String> {
     match name {
-        AccessibleName::None => {}
-        AccessibleName::Static(text) => ak.set_label(text.clone()),
-        AccessibleName::Derived(signal) => ak.set_label(signal.peek()),
+        AccessibleName::None => None,
+        AccessibleName::Static(text) => Some(text.clone()),
+        AccessibleName::Derived(signal) => Some(signal.peek()),
     }
 }
 
@@ -136,15 +131,6 @@ fn apply_text_content(ak: &mut AkNode, node: &Node) {
     }
     if let NodeType::Text { content, .. } = &node.kind {
         ak.set_value(content.resolve());
-    }
-}
-
-fn apply_description(ak: &mut AkNode, description: Option<&AccessibleName>) {
-    let Some(desc) = description else { return };
-    match desc {
-        AccessibleName::Static(text) => ak.set_description(text.clone()),
-        AccessibleName::Derived(signal) => ak.set_description(signal.peek()),
-        AccessibleName::None => {}
     }
 }
 
@@ -266,18 +252,18 @@ fn apply_grid(ak: &mut AkNode, a11y: &A11yProps) {
 fn apply_children(cx: &Cx, node: &Node, ak: &mut AkNode) {
     let mut effective = Vec::with_capacity(node.children().len());
     for &child in node.children() {
-        collect_effective(cx, child, &mut effective);
+        flatten(cx, child, &mut effective);
     }
     for child_id in effective {
         ak.push_child(child_id.to_accesskit());
     }
 }
 
-fn collect_effective(cx: &Cx, id: NodeId, out: &mut Vec<NodeId>) {
+pub(super) fn flatten(cx: &Cx, id: NodeId, out: &mut Vec<NodeId>) {
     let Some(node) = cx.get(id) else { return };
     if matches!(node.kind, NodeType::Fragment) {
         for &grandchild in node.children() {
-            collect_effective(cx, grandchild, out);
+            flatten(cx, grandchild, out);
         }
     } else {
         out.push(id);

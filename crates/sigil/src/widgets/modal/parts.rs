@@ -11,13 +11,13 @@ use super::super::scroll::{SCROLLBAR_WIDTH, scroll};
 
 const TITLE_HEIGHT: f32 = 24.0;
 pub(super) const BODY_GUTTER: f32 = SCROLLBAR_WIDTH;
+const CLOSE_GLYPH: &str = "\u{00D7}";
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum CloseControl {
     Shown,
     Hidden,
 }
-
-const CLOSE_GLYPH: &str = "\u{00D7}";
 
 pub(super) fn dialog_header(title: TextContent, close: Option<Signal<bool>>) -> NodeBuilder {
     let row = container()

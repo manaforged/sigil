@@ -1,15 +1,9 @@
-use accesskit::{Node as AkNode, NodeId as AkNodeId, Role};
+use accesskit::{Node as AkNode, Role};
 
 use super::mapping::BoundsLookup;
-use super::text::RunNodes;
+use super::text::{RunNodes, child_id};
 use crate::events::links::{link_ranges, link_text, range_rects};
 use crate::kernel::{Cx, NodeId};
-
-fn link_id(owner: NodeId, index: usize) -> AkNodeId {
-    let index = u64::try_from(index).unwrap_or_default();
-    let tag = index.wrapping_mul(2).wrapping_add(2).wrapping_shl(32);
-    AkNodeId(owner.to_accesskit().0 ^ tag)
-}
 
 pub(super) fn export(
     cx: &Cx,
@@ -39,7 +33,7 @@ pub(super) fn export(
             x1: f64::from(origin.x + area.origin.x + area.width) * factor,
             y1: f64::from(origin.y + area.origin.y + area.height) * factor,
         });
-        let link = link_id(id, index);
+        let link = child_id(id, index, 2);
         ak.push_child(link);
         out.push((link, node));
     }

@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, OnceLock};
 
 use smallvec::SmallVec;
@@ -26,18 +27,41 @@ pub(crate) fn merge_classes(
     merged.into_iter().map(|(_slot, atom)| atom).collect()
 }
 
+static WARNED: OnceLock<Mutex<HashSet<(ResolvedSlot, ComponentId)>>> = OnceLock::new();
+static UNKNOWN_CLASS: AtomicUsize = AtomicUsize::new(0);
+
 #[must_use]
 pub(crate) fn merge_warning_count_for_component(component_id: ComponentId) -> usize {
-    diagnostic::warning_count_for_component(component_id)
+    WARNED
+        .get()
+        .and_then(|warned| warned.lock().ok())
+        .map_or(0, |warned| {
+            warned
+                .iter()
+                .filter(|(_slot, warned_component)| *warned_component == component_id)
+                .count()
+        })
 }
 
 #[must_use]
 pub fn unknown_class_warning_count() -> usize {
-    diagnostic::unknown_class_count()
+    UNKNOWN_CLASS.load(Ordering::Relaxed)
 }
 
 pub(crate) fn bump_unknown_class_count() {
-    diagnostic::bump_unknown_class();
+    UNKNOWN_CLASS.fetch_add(1, Ordering::Relaxed);
+}
+
+fn warn_conflict(slot: ResolvedSlot, component_id: ComponentId) {
+    let warned = WARNED.get_or_init(|| Mutex::new(HashSet::new()));
+    let Ok(mut warned) = warned.lock() else {
+        return;
+    };
+    if warned.insert((slot, component_id)) {
+        eprintln!(
+            "sigil-style merge conflict for component {component_id} slot {slot:?}; override wins",
+        );
+    }
 }
 
 fn insert_atom(
@@ -53,7 +77,7 @@ fn insert_atom(
             .find(|(existing, _atom)| *existing == slot)
         {
             if *existing_atom != expanded_atom && component_id != 0 {
-                diagnostic::warn_conflict(slot, component_id);
+                warn_conflict(slot, component_id);
             }
             *existing_atom = expanded_atom;
         } else {
@@ -62,125 +86,42 @@ fn insert_atom(
     }
 }
 
-#[allow(
-    clippy::too_many_lines,
-    reason = "exhaustive match on StyleAtom — the long no-op arm chain is intentional; a wildcard would silently swallow new atom kinds"
-)]
 fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
-    match atom {
-        StyleAtom::PaddingAll(px) => expand_padding_all(px, out),
-        StyleAtom::PaddingX(px) => expand_padding_x(px, out),
-        StyleAtom::PaddingY(px) => expand_padding_y(px, out),
-        StyleAtom::MarginAll(px) => expand_margin_all(px, out),
-        StyleAtom::MarginX(px) => expand_margin_x(px, out),
-        StyleAtom::MarginY(px) => expand_margin_y(px, out),
-        StyleAtom::PaddingTop(_)
-        | StyleAtom::PaddingRight(_)
-        | StyleAtom::PaddingBottom(_)
-        | StyleAtom::PaddingLeft(_)
-        | StyleAtom::MarginTop(_)
-        | StyleAtom::MarginRight(_)
-        | StyleAtom::MarginBottom(_)
-        | StyleAtom::MarginLeft(_)
-        | StyleAtom::Gap(_)
-        | StyleAtom::GapX(_)
-        | StyleAtom::GapY(_)
-        | StyleAtom::Width(_)
-        | StyleAtom::Height(_)
-        | StyleAtom::MinWidth(_)
-        | StyleAtom::MaxWidth(_)
-        | StyleAtom::MinHeight(_)
-        | StyleAtom::MaxHeight(_)
-        | StyleAtom::Display(_)
-        | StyleAtom::FlexDirection(_)
-        | StyleAtom::FlexWrap(_)
-        | StyleAtom::AlignItems(_)
-        | StyleAtom::JustifyContent(_)
-        | StyleAtom::FlexGrow(_)
-        | StyleAtom::FlexShrink(_)
-        | StyleAtom::GridColumns(_)
-        | StyleAtom::GridRows(_)
-        | StyleAtom::BackgroundColor(_)
-        | StyleAtom::BackgroundThemeRef(_)
-        | StyleAtom::BackgroundGradient(_)
-        | StyleAtom::TextColor(_)
-        | StyleAtom::TextThemeRef(_)
-        | StyleAtom::BorderRadius(_)
-        | StyleAtom::Radius(_)
-        | StyleAtom::BorderWidth(_)
-        | StyleAtom::BorderTop(_)
-        | StyleAtom::BorderRight(_)
-        | StyleAtom::BorderBottom(_)
-        | StyleAtom::BorderLeft(_)
-        | StyleAtom::BorderColor(_)
-        | StyleAtom::BorderThemeRef(_)
-        | StyleAtom::BorderToneStep(_)
-        | StyleAtom::Shadow(_)
-        | StyleAtom::Transform(_)
-        | StyleAtom::Opacity(_)
-        | StyleAtom::FontSize(_)
-        | StyleAtom::FontWeight(_)
-        | StyleAtom::FontItalic(_)
-        | StyleAtom::FontFamily(_)
-        | StyleAtom::LineHeight(_)
-        | StyleAtom::LetterSpacing(_)
-        | StyleAtom::TabularNums(_)
-        | StyleAtom::TextDecoration(_)
-        | StyleAtom::OverflowX(_)
-        | StyleAtom::OverflowY(_)
-        | StyleAtom::Transition(_)
-        | StyleAtom::TransitionDuration(_)
-        | StyleAtom::UnknownThemeRef(_)
-        | StyleAtom::BgToneStep(_)
-        | StyleAtom::FgToneStep(_)
-        | StyleAtom::FgOnSolid => out.push((slot(atom), atom)),
-    }
-}
-
-fn expand_padding_all(px: Px, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
-    out.extend([
-        (ResolvedSlot::PaddingTop, StyleAtom::PaddingTop(px)),
-        (ResolvedSlot::PaddingRight, StyleAtom::PaddingRight(px)),
-        (ResolvedSlot::PaddingBottom, StyleAtom::PaddingBottom(px)),
-        (ResolvedSlot::PaddingLeft, StyleAtom::PaddingLeft(px)),
-    ]);
-}
-
-fn expand_padding_x(px: Px, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
-    out.extend([
-        (ResolvedSlot::PaddingRight, StyleAtom::PaddingRight(px)),
-        (ResolvedSlot::PaddingLeft, StyleAtom::PaddingLeft(px)),
-    ]);
-}
-
-fn expand_padding_y(px: Px, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
-    out.extend([
-        (ResolvedSlot::PaddingTop, StyleAtom::PaddingTop(px)),
-        (ResolvedSlot::PaddingBottom, StyleAtom::PaddingBottom(px)),
-    ]);
-}
-
-fn expand_margin_all(px: Px, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
-    out.extend([
-        (ResolvedSlot::MarginTop, StyleAtom::MarginTop(px)),
-        (ResolvedSlot::MarginRight, StyleAtom::MarginRight(px)),
-        (ResolvedSlot::MarginBottom, StyleAtom::MarginBottom(px)),
-        (ResolvedSlot::MarginLeft, StyleAtom::MarginLeft(px)),
-    ]);
-}
-
-fn expand_margin_x(px: Px, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
-    out.extend([
-        (ResolvedSlot::MarginRight, StyleAtom::MarginRight(px)),
-        (ResolvedSlot::MarginLeft, StyleAtom::MarginLeft(px)),
-    ]);
-}
-
-fn expand_margin_y(px: Px, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
-    out.extend([
-        (ResolvedSlot::MarginTop, StyleAtom::MarginTop(px)),
-        (ResolvedSlot::MarginBottom, StyleAtom::MarginBottom(px)),
-    ]);
+    use ResolvedSlot as S;
+    use StyleAtom as A;
+    let (px, sides): (Px, &[S]) = match atom {
+        A::PaddingAll(px) => (
+            px,
+            &[
+                S::PaddingTop,
+                S::PaddingRight,
+                S::PaddingBottom,
+                S::PaddingLeft,
+            ],
+        ),
+        A::PaddingX(px) => (px, &[S::PaddingRight, S::PaddingLeft]),
+        A::PaddingY(px) => (px, &[S::PaddingTop, S::PaddingBottom]),
+        A::MarginAll(px) => (
+            px,
+            &[S::MarginTop, S::MarginRight, S::MarginBottom, S::MarginLeft],
+        ),
+        A::MarginX(px) => (px, &[S::MarginRight, S::MarginLeft]),
+        A::MarginY(px) => (px, &[S::MarginTop, S::MarginBottom]),
+        _ => return out.push((slot(atom), atom)),
+    };
+    out.extend(sides.iter().map(|&side| {
+        let expanded = match side {
+            S::PaddingTop => A::PaddingTop(px),
+            S::PaddingRight => A::PaddingRight(px),
+            S::PaddingBottom => A::PaddingBottom(px),
+            S::PaddingLeft => A::PaddingLeft(px),
+            S::MarginTop => A::MarginTop(px),
+            S::MarginRight => A::MarginRight(px),
+            S::MarginBottom => A::MarginBottom(px),
+            _ => A::MarginLeft(px),
+        };
+        (side, expanded)
+    }));
 }
 
 #[allow(
@@ -308,47 +249,4 @@ pub(crate) enum ResolvedSlot {
     Transition,
     TransitionDuration,
     UnknownThemeRef,
-}
-
-mod diagnostic {
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    use super::{ComponentId, HashSet, Mutex, OnceLock, ResolvedSlot};
-
-    static WARNED: OnceLock<Mutex<HashSet<(ResolvedSlot, ComponentId)>>> = OnceLock::new();
-    static UNKNOWN_CLASS: AtomicUsize = AtomicUsize::new(0);
-
-    pub(super) fn bump_unknown_class() {
-        UNKNOWN_CLASS.fetch_add(1, Ordering::Relaxed);
-    }
-
-    pub(super) fn unknown_class_count() -> usize {
-        UNKNOWN_CLASS.load(Ordering::Relaxed)
-    }
-
-    pub(super) fn warn_conflict(slot: ResolvedSlot, component_id: ComponentId) {
-        let warned = WARNED.get_or_init(|| Mutex::new(HashSet::new()));
-        let Ok(mut warned) = warned.lock() else {
-            return;
-        };
-        if warned.insert((slot, component_id)) {
-            eprintln!(
-                "sigil-style merge conflict for component {component_id} slot {slot:?}; override wins",
-            );
-        }
-    }
-
-    pub(super) fn warning_count_for_component(component_id: ComponentId) -> usize {
-        WARNED
-            .get()
-            .and_then(|warned| {
-                warned.lock().ok().map(|warned| {
-                    warned
-                        .iter()
-                        .filter(|(_slot, warned_component)| *warned_component == component_id)
-                        .count()
-                })
-            })
-            .unwrap_or(0)
-    }
 }

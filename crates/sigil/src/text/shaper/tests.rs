@@ -7,9 +7,7 @@
     clippy::cast_lossless
 )]
 
-use smallvec::SmallVec;
-
-use super::{FeatureTag, Font, Script, Shaper, Style, TextSegment, classify_segment_script};
+use super::{Font, Script, Shaper, Style, TextSegment, classify_segment_script};
 use crate::text::glyph::GlyphId;
 
 impl<'a> TextSegment<'a> {
@@ -65,36 +63,28 @@ const FIRA_BOLD: &[u8] = include_bytes!("../../../tests/fixtures/text/FiraSans-B
 const FIRA_ITALIC: &[u8] = include_bytes!("../../../tests/fixtures/text/FiraSans-Italic.ttf");
 const NOTO_CJK: &[u8] = include_bytes!("../../../tests/fixtures/text/NotoSansCJKjp-subset.otf");
 
-fn fira_regular() -> Font {
-    Font::from_bytes(FIRA_REGULAR.to_vec(), 0).expect("FiraSans-Regular fixture must parse")
+fn font(bytes: &[u8]) -> Font {
+    Font::from_bytes(bytes.to_vec(), 0).expect("font fixture must parse")
 }
 
-fn fira_bold() -> Font {
-    Font::from_bytes(FIRA_BOLD.to_vec(), 0).expect("FiraSans-Bold fixture must parse")
+fn shape(bytes: &[u8], text: &str, style: &Style) -> super::GlyphRun {
+    Shaper::new(&font(bytes)).shape(&TextSegment::ltr(text), style)
 }
 
-fn fira_italic() -> Font {
-    Font::from_bytes(FIRA_ITALIC.to_vec(), 0).expect("FiraSans-Italic fixture must parse")
-}
-
-fn noto_cjk() -> Font {
-    Font::from_bytes(NOTO_CJK.to_vec(), 0).expect("NotoSansCJKjp fixture must parse")
+fn shape16(bytes: &[u8], text: &str) -> super::GlyphRun {
+    shape(bytes, text, &Style::regular(16.0))
 }
 
 #[test]
 fn empty_input_yields_empty_run() {
-    let font = fira_regular();
-    let shaper = Shaper::new(&font);
-    let run = shaper.shape(&TextSegment::ltr(""), &Style::regular(16.0));
+    let run = shape16(FIRA_REGULAR, "");
     assert!(run.glyphs.is_empty(), "empty input must produce no glyphs");
     assert_eq!(run.width, 0.0);
 }
 
 #[test]
 fn single_ascii_char_maps_to_real_glyph() {
-    let font = fira_regular();
-    let shaper = Shaper::new(&font);
-    let run = shaper.shape(&TextSegment::ltr("a"), &Style::regular(16.0));
+    let run = shape16(FIRA_REGULAR, "a");
     assert_eq!(run.glyphs.len(), 1);
     let g = &run.glyphs[0];
     assert_ne!(g.id, GlyphId(0), "'a' must not be .notdef in FiraSans");
@@ -108,9 +98,7 @@ fn single_ascii_char_maps_to_real_glyph() {
 
 #[test]
 fn hello_word_is_five_glyphs_monotonic() {
-    let font = fira_regular();
-    let shaper = Shaper::new(&font);
-    let run = shaper.shape(&TextSegment::ltr("hello"), &Style::regular(16.0));
+    let run = shape16(FIRA_REGULAR, "hello");
     assert_eq!(run.glyphs.len(), 5, "5 ASCII chars → 5 glyphs");
     for (i, g) in run.glyphs.iter().enumerate() {
         assert_eq!(g.cluster, i as u32, "cluster {i} must equal byte offset");
@@ -128,10 +116,8 @@ fn hello_word_is_five_glyphs_monotonic() {
 
 #[test]
 fn size_doubles_advances_scale_proportional() {
-    let font = fira_regular();
-    let shaper = Shaper::new(&font);
-    let run_16 = shaper.shape(&TextSegment::ltr("hello"), &Style::regular(16.0));
-    let run_32 = shaper.shape(&TextSegment::ltr("hello"), &Style::regular(32.0));
+    let run_16 = shape16(FIRA_REGULAR, "hello");
+    let run_32 = shape(FIRA_REGULAR, "hello", &Style::regular(32.0));
     for (g16, g32) in run_16.glyphs.iter().zip(run_32.glyphs.iter()) {
         let ratio = g32.advance / g16.advance;
         assert!(
@@ -143,57 +129,42 @@ fn size_doubles_advances_scale_proportional() {
 
 #[test]
 fn bold_glyph_metrics_differ_from_regular() {
-    let reg_font = fira_regular();
-    let bold_font = fira_bold();
-    let reg = Shaper::new(&reg_font).shape(&TextSegment::ltr("Hello"), &Style::regular(16.0));
-    let bold = Shaper::new(&bold_font).shape(
-        &TextSegment::ltr("Hello"),
+    let reg = shape16(FIRA_REGULAR, "Hello");
+    let bold = shape(
+        FIRA_BOLD,
+        "Hello",
         &Style {
-            size_px: 16.0,
             weight: 700,
-            features: SmallVec::new(),
-            letter_spacing_em: 0.0,
+            ..Style::regular(16.0)
         },
     );
     assert_eq!(reg.glyphs.len(), bold.glyphs.len());
-    let some_wider = reg
-        .glyphs
-        .iter()
-        .zip(bold.glyphs.iter())
-        .any(|(r, b)| b.advance > r.advance);
     assert!(
-        some_wider,
+        reg.glyphs
+            .iter()
+            .zip(&bold.glyphs)
+            .any(|(r, b)| b.advance > r.advance),
         "at least one bold glyph must be wider than the regular equivalent",
     );
 }
 
 #[test]
 fn italic_glyph_stream_differs_from_regular() {
-    let reg_font = fira_regular();
-    let it_font = fira_italic();
-    let reg = Shaper::new(&reg_font).shape(&TextSegment::ltr("italic"), &Style::regular(16.0));
-    let it = Shaper::new(&it_font).shape(
-        &TextSegment::ltr("italic"),
-        &Style {
-            size_px: 16.0,
-            weight: 400,
-            features: SmallVec::new(),
-            letter_spacing_em: 0.0,
-        },
-    );
+    let reg = shape16(FIRA_REGULAR, "italic");
+    let it = shape16(FIRA_ITALIC, "italic");
     assert_eq!(reg.glyphs.len(), it.glyphs.len());
-    let any_diff = reg
-        .glyphs
-        .iter()
-        .zip(it.glyphs.iter())
-        .any(|(r, i)| r.id != i.id || (r.advance - i.advance).abs() > 0.01);
-    assert!(any_diff, "italic must produce a different glyph stream");
+    assert!(
+        reg.glyphs
+            .iter()
+            .zip(&it.glyphs)
+            .any(|(r, i)| r.id != i.id || (r.advance - i.advance).abs() > 0.01),
+        "italic must produce a different glyph stream"
+    );
 }
 
 #[test]
 fn notdef_for_unknown_codepoint_in_fira() {
-    let font = fira_regular();
-    let run = Shaper::new(&font).shape(&TextSegment::ltr("\u{5B57}"), &Style::regular(16.0));
+    let run = shape16(FIRA_REGULAR, "\u{5B57}");
     assert_eq!(run.glyphs.len(), 1);
     assert_eq!(run.glyphs[0].id, GlyphId(0), "missing codepoint → .notdef");
 }
@@ -201,8 +172,7 @@ fn notdef_for_unknown_codepoint_in_fira() {
 #[test]
 fn cjk_punctuation_classifies_and_routes_through_noto() {
     assert_eq!(classify('\u{3001}'), CodepointClass::CjkPunctuation);
-    let font = noto_cjk();
-    let run = Shaper::new(&font).shape(&TextSegment::ltr("\u{3001}"), &Style::regular(16.0));
+    let run = shape16(NOTO_CJK, "\u{3001}");
     assert_eq!(run.glyphs.len(), 1);
     assert_ne!(
         run.glyphs[0].id,
@@ -223,8 +193,7 @@ fn classify_emoji_block_check() {
 
 #[test]
 fn emoji_passthrough_produces_glyph_with_correct_cluster() {
-    let font = fira_regular();
-    let run = Shaper::new(&font).shape(&TextSegment::ltr("\u{1F389}"), &Style::regular(16.0));
+    let run = shape16(FIRA_REGULAR, "\u{1F389}");
     assert_eq!(
         run.glyphs.len(),
         1,
@@ -235,8 +204,7 @@ fn emoji_passthrough_produces_glyph_with_correct_cluster() {
 
 #[test]
 fn mixed_latin_and_cjk_punctuation_cluster_order() {
-    let font = noto_cjk();
-    let run = Shaper::new(&font).shape(&TextSegment::ltr("a\u{3002}b"), &Style::regular(16.0));
+    let run = shape16(NOTO_CJK, "a\u{3002}b");
     assert_eq!(run.glyphs.len(), 3);
     assert_eq!(run.glyphs[0].cluster, 0);
     assert_eq!(run.glyphs[1].cluster, 1);
@@ -249,8 +217,7 @@ fn mixed_latin_and_cjk_punctuation_cluster_order() {
 #[test]
 #[cfg(feature = "shaping-complex")]
 fn combining_mark_composes_into_single_glyph_via_harfrust() {
-    let font = fira_regular();
-    let run = Shaper::new(&font).shape(&TextSegment::ltr("e\u{0301}"), &Style::regular(16.0));
+    let run = shape16(FIRA_REGULAR, "e\u{0301}");
     assert_eq!(
         run.glyphs.len(),
         1,
@@ -268,8 +235,7 @@ fn combining_mark_composes_into_single_glyph_via_harfrust() {
 #[test]
 #[cfg(not(feature = "shaping-complex"))]
 fn combining_mark_clusters_with_base_glyph_owned_shaper() {
-    let font = fira_regular();
-    let run = Shaper::new(&font).shape(&TextSegment::ltr("e\u{0301}"), &Style::regular(16.0));
+    let run = shape16(FIRA_REGULAR, "e\u{0301}");
     assert_eq!(run.glyphs.len(), 2, "base + combining = 2 glyph positions");
     assert_eq!(run.glyphs[0].cluster, 0);
     assert_eq!(run.glyphs[1].cluster, 0, "mark shares base's cluster");
@@ -279,9 +245,8 @@ fn combining_mark_clusters_with_base_glyph_owned_shaper() {
 
 #[test]
 fn ltr_segment_clusters_are_byte_indices_monotonic() {
-    let font = fira_regular();
     let input = "abc def";
-    let run = Shaper::new(&font).shape(&TextSegment::ltr(input), &Style::regular(16.0));
+    let run = shape16(FIRA_REGULAR, input);
     assert_eq!(run.glyphs.len(), 7);
     for (i, g) in run.glyphs.iter().enumerate() {
         assert_eq!(g.cluster, i as u32);
@@ -301,12 +266,6 @@ fn shaper_is_send_sync() {
 }
 
 #[test]
-fn feature_tag_round_trips_bytes() {
-    let tag = FeatureTag(*b"liga");
-    assert_eq!(tag.0, *b"liga");
-}
-
-#[test]
 fn invalid_font_data_is_rejected() {
     let bogus = vec![0u8; 64];
     let err = Font::from_bytes(bogus, 0).expect_err("bogus bytes must fail");
@@ -315,58 +274,34 @@ fn invalid_font_data_is_rejected() {
 
 #[test]
 fn classify_segment_script_covers_g16_routing_cases() {
-    assert_eq!(
-        classify_segment_script(&TextSegment::ltr("abc")),
-        Script::Latin,
-    );
-    assert_eq!(
-        classify_segment_script(&TextSegment::ltr("\u{6F22}")),
-        Script::Cjk,
-    );
-    assert_eq!(
-        classify_segment_script(&TextSegment::ltr("\u{0627}")),
-        Script::Arabic,
-    );
-    assert_eq!(
-        classify_segment_script(&TextSegment::ltr("\u{05D0}")),
-        Script::Hebrew,
-    );
-    assert_eq!(
-        classify_segment_script(&TextSegment::ltr("\u{0915}")),
-        Script::Devanagari,
-    );
-    assert_eq!(
-        classify_segment_script(&TextSegment::ltr("\u{0E32}")),
-        Script::Thai,
-    );
-    assert_eq!(
-        classify_segment_script(&TextSegment::ltr("\u{1780}")),
-        Script::Khmer,
-    );
-    assert_eq!(
-        classify_segment_script(&TextSegment::ltr("\u{0E81}")),
-        Script::Lao,
-    );
-    assert_eq!(
-        classify_segment_script(&TextSegment::ltr("")),
-        Script::Common,
-    );
-    assert_eq!(
-        classify_segment_script(&TextSegment::ltr(" \u{0627}")),
-        Script::Arabic,
-    );
+    let cases = [
+        ("abc", Script::Latin),
+        ("\u{6F22}", Script::Cjk),
+        ("\u{0627}", Script::Arabic),
+        ("\u{05D0}", Script::Hebrew),
+        ("\u{0915}", Script::Devanagari),
+        ("\u{0E32}", Script::Thai),
+        ("\u{1780}", Script::Khmer),
+        ("\u{0E81}", Script::Lao),
+        ("", Script::Common),
+        (" \u{0627}", Script::Arabic),
+    ];
+    for (text, script) in cases {
+        assert_eq!(
+            classify_segment_script(&TextSegment::ltr(text)),
+            script,
+            "{text:?}"
+        );
+    }
 }
 
 #[test]
 fn script_is_complex_matches_g16_dispatch_set() {
-    assert!(Script::Arabic.is_complex());
-    assert!(Script::Hebrew.is_complex());
-    assert!(Script::Devanagari.is_complex());
-    assert!(Script::Khmer.is_complex());
-    assert!(Script::Thai.is_complex());
-    assert!(Script::Lao.is_complex());
-    assert!(!Script::Latin.is_complex());
-    assert!(!Script::Cjk.is_complex());
-    assert!(!Script::Common.is_complex());
-    assert!(!Script::Other.is_complex());
+    use Script::{Arabic, Cjk, Common, Devanagari, Hebrew, Khmer, Lao, Latin, Other, Thai};
+    for script in [Arabic, Hebrew, Devanagari, Khmer, Thai, Lao] {
+        assert!(script.is_complex(), "{script:?}");
+    }
+    for script in [Latin, Cjk, Common, Other] {
+        assert!(!script.is_complex(), "{script:?}");
+    }
 }

@@ -7,12 +7,12 @@
 )]
 
 use crate::geometry::{Point, Rect};
-use tiny_skia::Paint;
+use tiny_skia::{Paint, Path, Pixmap, Shader};
 
 use crate::renderer::scene_command::state::shadow_reach;
 use crate::renderer::scene_command::walk::{intersect_rect, transform_rect};
 use crate::renderer::scene_command::{
-    DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite, GlyphRun,
+    DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite, GlyphRun, Stroke,
     StrokeBand,
 };
 use crate::renderer::shadow_paint::Shadow;
@@ -20,199 +20,193 @@ use crate::scene::corner_radii::CornerRadii;
 
 use super::bound::{Bound, rounded_rect};
 use super::glyph_outline::{fill_glyphs, run_paths};
-use super::glyphs::{RunPlacement, glyph_table};
+use super::glyphs::RunPlacement;
 use super::paint::{Painter, brush, shader_brush};
 use super::pattern::Placement;
+use super::raster::RasterCache;
 use super::shadow::{ShadowPlacement, shadow};
-use super::shapes::{self, gradient, opacity_of, solid};
+use super::shapes::{self, Brush, gradient, opacity_of, rgba_table, solid};
 use super::stroke::stroke;
 use crate::renderer::glyph_place::GlyphMode;
 
+fn shader_paint(shader: Shader<'_>) -> Paint<'_> {
+    Paint {
+        shader,
+        anti_alias: true,
+        colorspace: shapes::BLEND_SPACE,
+        ..Paint::default()
+    }
+}
+
 impl Painter<'_> {
-    pub(super) fn sprite(&mut self, draw: &DrawSprite) {
-        let opacity = opacity_of(draw.opacity, self.state.current_opacity());
-        let bounds = transform_rect(self.state.current_transform(), draw.destination);
+    fn with_brush(
+        &mut self,
+        bounds: Rect,
+        opacity: f32,
+        shader: bool,
+        draw: impl FnOnce(&mut Pixmap, &mut RasterCache, &Brush<'_>) -> bool,
+    ) -> bool {
         let ctx = self.ctx();
         let Self {
             target,
             mask,
             raster,
-            stats,
             ..
         } = self;
-        let Some(brush) = shader_brush(mask, &ctx, bounds, opacity) else {
-            return;
+        let made = if shader {
+            shader_brush(mask, &ctx, bounds, opacity)
+        } else {
+            brush(mask, &ctx, bounds, opacity)
         };
-        raster.sprite(target, draw, draw.destination, &brush);
-        stats.sprite_draws += 1;
+        made.is_some_and(|b| draw(target, raster, &b))
+    }
+
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "a shape carries geometry, outline, opacity and its fill"
+    )]
+    fn shape(
+        &mut self,
+        rect: Rect,
+        radii: CornerRadii,
+        outline: Option<Stroke>,
+        opacity: f32,
+        shader: bool,
+        fill: impl FnOnce(&mut Pixmap, &mut RasterCache, &Path, &Brush<'_>, Bound),
+    ) -> bool {
+        let bounds = transform_rect(
+            self.state.current_transform(),
+            StrokeBand::ink(outline, rect),
+        );
+        self.with_brush(bounds, opacity, shader, |target, raster, brush| {
+            let bound = Bound::of(target, brush.transform);
+            if let Some(path) = rounded_rect(rect, radii, bound) {
+                fill(target, raster, &path, brush, bound);
+            }
+            if let Some(s) = outline {
+                stroke(target, rect, radii, s, brush);
+            }
+            true
+        })
+    }
+
+    fn placed(&self, rect: Rect) -> Rect {
+        transform_rect(self.state.current_transform(), rect)
+    }
+
+    pub(super) fn sprite(&mut self, draw: &DrawSprite) {
+        let opacity = opacity_of(draw.opacity, self.state.current_opacity());
+        let bounds = self.placed(draw.destination);
+        if self.with_brush(bounds, opacity, true, |target, raster, brush| {
+            raster.sprite(target, draw, draw.destination, brush);
+            true
+        }) {
+            self.stats.sprite_draws += 1;
+        }
     }
 
     pub(super) fn image(&mut self, draw: &DrawImage) {
         let opacity = opacity_of(draw.opacity, self.state.current_opacity());
-        let bounds = transform_rect(self.state.current_transform(), draw.destination);
-        let ctx = self.ctx();
-        let Self {
-            target,
-            mask,
-            raster,
-            stats,
-            ..
-        } = self;
-        let Some(brush) = shader_brush(mask, &ctx, bounds, opacity) else {
-            return;
-        };
-        raster.image(target, draw, ctx.scale, &brush);
-        stats.sprite_draws += 1;
+        let (bounds, scale) = (self.placed(draw.destination), self.scale);
+        if self.with_brush(bounds, opacity, true, |target, raster, brush| {
+            raster.image(target, draw, scale, brush);
+            true
+        }) {
+            self.stats.sprite_draws += 1;
+        }
     }
 
     pub(super) fn decoration(&mut self, draw: &DrawDecoration) {
         let opacity = self.state.current_opacity();
-        let bounds = transform_rect(self.state.current_transform(), draw.band);
-        let ctx = self.ctx();
-        let Self {
-            target,
-            mask,
-            stats,
-            ..
-        } = self;
-        let Some(brush) = brush(mask, &ctx, bounds, opacity) else {
-            return;
-        };
-        shapes::decoration(target, draw, &brush);
-        stats.decoration_instances += 1;
+        let bounds = self.placed(draw.band);
+        if self.with_brush(bounds, opacity, false, |target, _, brush| {
+            shapes::decoration(target, draw, brush);
+            true
+        }) {
+            self.stats.decoration_instances += 1;
+        }
     }
 
     pub(super) fn rect(&mut self, draw: &DrawRect) {
-        let bounds = transform_rect(
-            self.state.current_transform(),
-            StrokeBand::ink(draw.stroke, draw.rect),
-        );
         let opacity = opacity_of(draw.opacity, self.state.current_opacity());
-        let ctx = self.ctx();
-        let Self {
-            target,
-            mask,
-            stats,
-            ..
-        } = self;
-        let Some(brush) = brush(mask, &ctx, bounds, opacity) else {
-            return;
-        };
-        let bound = Bound::of(target, brush.transform);
-        if let Some(path) = rounded_rect(draw.rect, draw.border_radius, bound) {
-            shapes::fill(target, &path, &solid(draw.color, opacity), &brush);
+        if self.shape(
+            draw.rect,
+            draw.border_radius,
+            draw.stroke,
+            opacity,
+            false,
+            |target, _, path, brush, _| {
+                shapes::fill(target, path, &solid(draw.color, opacity), brush);
+            },
+        ) {
+            self.stats.rectangle_instances += 1;
         }
-        if let Some(s) = draw.stroke {
-            stroke(target, draw.rect, draw.border_radius, s, &brush);
-        }
-        stats.rectangle_instances += 1;
     }
 
     pub(super) fn gradient(&mut self, draw: &DrawGradient) {
-        let bounds = transform_rect(
-            self.state.current_transform(),
-            StrokeBand::ink(draw.stroke, draw.rect),
-        );
         let opacity = opacity_of(draw.opacity, self.state.current_opacity());
-        let ctx = self.ctx();
-        let Self {
-            target,
-            mask,
-            stats,
-            ..
-        } = self;
-        let Some(brush) = brush(mask, &ctx, bounds, opacity) else {
-            return;
-        };
-        let bound = Bound::of(target, brush.transform);
-        if let (Some(path), Some(shader)) = (
-            rounded_rect(draw.rect, draw.border_radius, bound),
-            gradient(&draw.gradient, opacity),
+        if self.shape(
+            draw.rect,
+            draw.border_radius,
+            draw.stroke,
+            opacity,
+            false,
+            |target, _, path, brush, _| {
+                if let Some(shader) = gradient(&draw.gradient, opacity) {
+                    shapes::fill(target, path, &shader_paint(shader), brush);
+                }
+            },
         ) {
-            let paint = Paint {
-                shader,
-                anti_alias: true,
-                colorspace: shapes::BLEND_SPACE,
-                ..Paint::default()
-            };
-            shapes::fill(target, &path, &paint, &brush);
+            self.stats.fill_instances += 1;
         }
-        if let Some(s) = draw.stroke {
-            stroke(target, draw.rect, draw.border_radius, s, &brush);
-        }
-        stats.fill_instances += 1;
     }
 
     pub(super) fn pattern(&mut self, draw: &DrawPattern) {
-        let bounds = transform_rect(
-            self.state.current_transform(),
-            StrokeBand::ink(draw.stroke, draw.rect),
-        );
         let opacity = opacity_of(draw.opacity, self.state.current_opacity());
-        let ctx = self.ctx();
-        let Self {
-            target,
-            mask,
-            raster,
-            stats,
-            ..
-        } = self;
-        let Some(brush) = shader_brush(mask, &ctx, bounds, opacity) else {
-            return;
-        };
-        let bound = Bound::of(target, brush.transform);
-        let place = Placement {
-            kind: draw.pattern,
-            rect: draw.rect,
-            transform: brush.transform,
-            opacity: brush.opacity,
-            bound,
-            size: [target.width(), target.height()],
-        };
-        if let Some(path) = rounded_rect(draw.rect, draw.border_radius, bound)
-            && let Some(shader) = raster.pattern(&place)
-        {
-            let paint = Paint {
-                shader,
-                anti_alias: true,
-                colorspace: shapes::BLEND_SPACE,
-                ..Paint::default()
-            };
-            shapes::fill(target, &path, &paint, &brush);
+        if self.shape(
+            draw.rect,
+            draw.border_radius,
+            draw.stroke,
+            opacity,
+            true,
+            |target, raster, path, brush, bound| {
+                let place = Placement {
+                    kind: draw.pattern,
+                    rect: draw.rect,
+                    transform: brush.transform,
+                    opacity: brush.opacity,
+                    bound,
+                    size: [target.width(), target.height()],
+                };
+                if let Some(shader) = raster.pattern(&place) {
+                    shapes::fill(target, path, &shader_paint(shader), brush);
+                }
+            },
+        ) {
+            self.stats.fill_instances += 1;
         }
-        if let Some(s) = draw.stroke {
-            stroke(target, draw.rect, draw.border_radius, s, &brush);
-        }
-        stats.fill_instances += 1;
     }
 
     pub(super) fn shadow(&mut self, rect: [f32; 4], radii: CornerRadii, s: &Shadow) {
-        let logical = Rect::new(Point::new(rect[0], rect[1]), rect[2], rect[3]);
-        let placed = transform_rect(self.state.current_transform(), logical);
-        let bounds = placed.expand(shadow_reach(s));
+        let placed = self.placed(Rect::new(Point::new(rect[0], rect[1]), rect[2], rect[3]));
         let opacity = self.state.current_opacity();
-        let ctx = self.ctx();
-        let Self {
-            target,
-            mask,
-            stats,
-            ..
-        } = self;
-        let Some(brush) = brush(mask, &ctx, bounds, opacity) else {
-            return;
-        };
-        let Some(coverage) = brush.coverage() else {
-            return;
-        };
         let place = ShadowPlacement {
             rect: placed,
             radii,
-            scale: ctx.scale,
-            offset: ctx.origin,
+            scale: self.scale,
+            offset: self.origin,
             opacity,
         };
-        shadow(target, s, &place, coverage);
-        stats.shadow_instances += 1;
+        let bounds = placed.expand(shadow_reach(s));
+        if self.with_brush(bounds, opacity, false, |target, _, brush| {
+            let Some(coverage) = brush.coverage() else {
+                return false;
+            };
+            shadow(target, s, &place, coverage);
+            true
+        }) {
+            self.stats.shadow_instances += 1;
+        }
     }
 
     pub(super) fn glyph_run(&mut self, run: &GlyphRun) {
@@ -231,30 +225,18 @@ impl Painter<'_> {
                     scale: self.scale,
                     offset: self.origin,
                     clip,
-                    table: glyph_table(run.color, opacity),
+                    table: rgba_table(run.color, opacity),
                 };
                 self.glyphs.draw_run(self.target, run, &place);
             }
             GlyphMode::Outline => {
                 let paths = run_paths(run, self.state.current_transform(), self.scale);
-                self.glyph_outline(run, &paths, plan.bounds, opacity);
+                self.with_brush(plan.bounds, opacity, false, |target, _, brush| {
+                    fill_glyphs(target, &paths, run, opacity, brush);
+                    true
+                });
             }
         }
         self.stats.glyph_runs += 1;
-    }
-
-    fn glyph_outline(
-        &mut self,
-        run: &GlyphRun,
-        paths: &[tiny_skia::Path],
-        bounds: Rect,
-        opacity: f32,
-    ) {
-        let ctx = self.ctx();
-        let Self { target, mask, .. } = self;
-        let Some(brush) = brush(mask, &ctx, bounds, opacity) else {
-            return;
-        };
-        fill_glyphs(target, paths, run, opacity, &brush);
     }
 }

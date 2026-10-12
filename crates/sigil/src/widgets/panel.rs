@@ -61,12 +61,24 @@ impl PanelBuilder {
     fn into_node_builder(self) -> NodeBuilder {
         let mut root = container()
             .role(Role::GenericContainer)
-            .layout(self.layout_overrides.apply(panel_layout(self.padding)))
+            .layout(
+                self.layout_overrides.apply(
+                    LayoutStyle::flex_column()
+                        .padding(self.padding)
+                        .gap(TITLE_GAP)
+                        .fill_width()
+                        .min_size(crate::layout::Dimension::Auto, PANEL_MIN_HEIGHT),
+                ),
+            )
             .class(Radius::Md.atom())
             .class(surface_atoms(self.elevation));
 
         if let Some(title) = self.title {
-            root = root.child(panel_title(title));
+            root = root.child(
+                text(title)
+                    .class("text-sm font-medium")
+                    .class(Token::OnSurface.text()),
+            );
         }
 
         if let Some(child) = self.content {
@@ -106,20 +118,6 @@ impl IntoNode for PanelBuilder {
             .finish(self.into_node_builder())
             .build(cx)
     }
-}
-
-fn panel_layout(padding: f32) -> LayoutStyle {
-    LayoutStyle::flex_column()
-        .padding(padding)
-        .gap(TITLE_GAP)
-        .fill_width()
-        .min_size(crate::layout::Dimension::Auto, PANEL_MIN_HEIGHT)
-}
-
-fn panel_title(title: String) -> impl IntoNode {
-    text(title)
-        .class("text-sm font-medium")
-        .class(Token::OnSurface.text())
 }
 
 const fn surface_atoms(elevation: u32) -> &'static [StyleAtom] {

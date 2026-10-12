@@ -18,8 +18,8 @@ mod gesture;
 mod keyboard;
 mod paste;
 
-pub(crate) use gesture::on_gesture;
-pub(crate) use paste::on_paste;
+pub(crate) use gesture::GestureHandlers;
+pub(crate) use paste::PasteHandlers;
 
 #[derive(Debug, Default)]
 pub struct EventRouter {
@@ -62,15 +62,26 @@ impl EventRouter {
     }
 
     fn route_scroll(&mut self, cx: &Cx, layout: &LayoutEngine, mut event: ScrollEvent) {
-        let Some(path) = self.hit_cache.hit_path(cx, layout, event.position) else {
+        self.bubble(cx, layout, event.position, |id, local| {
+            event.position = local;
+            let _ = dispatch(cx, id, |handlers| handlers.invoke_scroll(&mut event));
+            event.propagation_stopped()
+        });
+    }
+
+    fn bubble(
+        &mut self,
+        cx: &Cx,
+        layout: &LayoutEngine,
+        global: Point,
+        mut visit: impl FnMut(NodeId, Point) -> bool,
+    ) {
+        let Some(path) = self.hit_cache.hit_path(cx, layout, global) else {
             return;
         };
-        let global = event.position;
         let targets = pointer_targets(cx, layout, &path, self.hit_cache.uses_transforms());
         for target in targets.iter().rev().copied() {
-            event.position = local_point(cx, target, global);
-            let _ = dispatch(cx, target.id, |handlers| handlers.invoke_scroll(&mut event));
-            if event.propagation_stopped() {
+            if visit(target.id, local_point(cx, target, global)) {
                 return;
             }
         }
@@ -258,10 +269,15 @@ impl EventRouter {
     }
 
     fn update_hover(&mut self, cx: &Cx, next: &PointerTargets, source: &PointerEvent) {
-        if ids_match(&self.hover_targets, next) {
+        let common = self
+            .hover_targets
+            .iter()
+            .zip(next.iter())
+            .take_while(|(a, b)| a.id == b.id)
+            .count();
+        if common == next.len() && common == self.hover_targets.len() {
             return;
         }
-        let common = target_common_prefix_len(&self.hover_targets, next);
         if let Some(leaving) = self.hover_targets.get(common..) {
             for target in leaving.iter().rev().copied() {
                 dispatch_synthetic_target(cx, target, source, PointerPhase::Leave);
@@ -320,17 +336,6 @@ impl EventRouter {
             self.focus.set_focus(cx, target);
         }
     }
-}
-
-fn ids_match(left: &PointerTargets, right: &PointerTargets) -> bool {
-    left.len() == right.len() && left.iter().zip(right.iter()).all(|(a, b)| a.id == b.id)
-}
-
-fn target_common_prefix_len(left: &PointerTargets, right: &PointerTargets) -> usize {
-    left.iter()
-        .zip(right.iter())
-        .take_while(|(a, b)| a.id == b.id)
-        .count()
 }
 
 #[derive(Debug)]

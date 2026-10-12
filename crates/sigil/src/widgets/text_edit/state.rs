@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -28,45 +28,32 @@ impl TextEditState {
     }
 
     pub fn select(&self, byte: usize, extend: bool) {
-        let mut edit = self.edit.borrow_mut();
-        edit.sync_external(self.value.peek());
-        if edit.caret() != self.caret.peek() {
-            edit.place_caret(self.caret.peek());
-        }
+        let mut edit = synced(&self.edit, self.value, self.caret);
         if extend {
             edit.extend_to(byte);
         } else {
             edit.place_caret(byte);
         }
-        batch(|| {
-            self.caret.set(edit.caret());
-            self.selection.set(edit.selection());
-        });
+        self.publish(&edit, false);
     }
 
     pub fn insert(&self, text: &str) {
-        let mut edit = self.edit.borrow_mut();
-        edit.sync_external(self.value.peek());
-        if edit.caret() != self.caret.peek() {
-            edit.place_caret(self.caret.peek());
-        }
+        let mut edit = synced(&self.edit, self.value, self.caret);
         edit.insert_str(text);
-        batch(|| {
-            super::write_value(self.value, edit.as_str());
-            self.caret.set(edit.caret());
-            self.selection.set(edit.selection());
-        });
+        self.publish(&edit, true);
     }
 
     pub fn replace(&self, text: &str) {
-        let mut edit = self.edit.borrow_mut();
-        edit.sync_external(self.value.peek());
-        if edit.caret() != self.caret.peek() {
-            edit.place_caret(self.caret.peek());
-        }
+        let mut edit = synced(&self.edit, self.value, self.caret);
         edit.replace(text);
+        self.publish(&edit, true);
+    }
+
+    fn publish(&self, edit: &TextEdit, value: bool) {
         batch(|| {
-            super::write_value(self.value, edit.as_str());
+            if value {
+                super::write_value(self.value, edit.as_str());
+            }
             self.caret.set(edit.caret());
             self.selection.set(edit.selection());
         });
@@ -78,4 +65,17 @@ impl TextEditState {
         let caret = self.caret.get();
         Some(anchor.min(caret)..anchor.max(caret))
     }
+}
+
+pub(super) fn synced(
+    edit: &RefCell<TextEdit>,
+    value: Signal<String>,
+    caret: Signal<usize>,
+) -> RefMut<'_, TextEdit> {
+    let mut edit = edit.borrow_mut();
+    edit.sync_external(value.peek());
+    if edit.caret() != caret.peek() {
+        edit.place_caret(caret.peek());
+    }
+    edit
 }

@@ -1,14 +1,8 @@
-use std::path::PathBuf;
-
 use super::{Harness, Surface};
 use crate::gpu::{headless_renderer, render_scene_to_image};
 use crate::{Error, Rendered, assert_png_matches_golden, assert_text_matches_golden};
 
 pub const SNAPSHOT_MAX_DELTA_PCT: f32 = 0.5;
-
-fn manifest_dir() -> String {
-    std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_owned())
-}
 
 impl Harness {
     pub fn image(&mut self) -> Rendered {
@@ -34,26 +28,17 @@ impl Harness {
     #[track_caller]
     #[allow(clippy::print_stdout)]
     pub fn snapshot_with(&mut self, name: &str, max_delta_pct: f32) {
-        let dir = manifest_dir();
+        let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_owned());
+        let golden = crate::golden_path_in(&dir, name);
         if matches!(self.live().surface, Surface::Cells { .. }) {
             let text = self.text();
-            assert_text_matches_golden(&text, &text_golden(&dir, name));
+            assert_text_matches_golden(&text, &golden.with_extension("txt"));
             return;
         }
         match self.image() {
-            Ok(Some(image)) => {
-                assert_png_matches_golden(
-                    &image,
-                    &crate::golden_path_in(&dir, name),
-                    max_delta_pct,
-                );
-            }
+            Ok(Some(image)) => assert_png_matches_golden(&image, &golden, max_delta_pct),
             Ok(None) => println!("no GPU adapter — skipping snapshot {name}"),
             Err(err) => super::fail(format!("snapshot {name}: {err}")),
         }
     }
-}
-
-fn text_golden(dir: &str, name: &str) -> PathBuf {
-    crate::golden_path_in(dir, name).with_extension("txt")
 }

@@ -50,16 +50,6 @@ struct SeriesSource {
     tone: Tone,
 }
 
-impl SeriesSource {
-    fn read(&self) -> ChartSeries {
-        ChartSeries {
-            name: self.name.clone(),
-            values: self.values.read(),
-            tone: self.tone,
-        }
-    }
-}
-
 pub struct ChartBuilder {
     series: Vec<SeriesSource>,
     labels: Vec<String>,
@@ -175,13 +165,26 @@ impl ChartBuilder {
             self.layout_overrides.width(px);
         }
         self.layout_overrides.height(height);
-        plot::Frame::new(width, height, self.whole)
+        plot::Frame {
+            width,
+            height,
+            whole: self.whole,
+        }
     }
 
     fn into_node_builder(mut self) -> NodeBuilder {
         let frame = self.frame();
         let sources = std::mem::take(&mut self.series);
-        let series = derived(move || sources.iter().map(SeriesSource::read).collect::<Vec<_>>());
+        let series = derived(move || {
+            sources
+                .iter()
+                .map(|source| ChartSeries {
+                    name: source.name.clone(),
+                    values: source.values.read(),
+                    tone: source.tone,
+                })
+                .collect::<Vec<_>>()
+        });
         let labels = Rc::new(std::mem::take(&mut self.labels));
         let label_names = Rc::clone(&labels);
         let theme = ActiveTheme::capture();
@@ -242,20 +245,11 @@ fn content(
         .iter()
         .map(|item| ChartView {
             name: &item.name,
-            values: item
-                .values
-                .split_at((window.end * stride).min(item.values.len()))
-                .0
-                .split_at((window.start * stride).min(item.values.len()))
-                .1,
+            values: clip(&item.values, window.start * stride, window.end * stride),
             tone: item.tone,
         })
         .collect::<Vec<_>>();
-    let shown = labels
-        .split_at(window.end.min(labels.len()))
-        .0
-        .split_at(window.start.min(labels.len()))
-        .1;
+    let shown = clip(labels, window.start, window.end);
     plot::draw(
         &plot::Plot {
             series: &visible,
@@ -267,6 +261,11 @@ fn content(
         },
         interact,
     )
+}
+
+fn clip<T>(items: &[T], start: usize, end: usize) -> &[T] {
+    let end = end.min(items.len());
+    items.get(start.min(end)..end).unwrap_or_default()
 }
 
 fn empty() -> NodeBuilder {
@@ -314,20 +313,6 @@ fn summary(series: &[ChartSeries], labels: &[String], theme: ActiveTheme) -> Str
     parts.join("; ")
 }
 
-fn span_summary(name: &str, values: &[f32], theme: ActiveTheme) -> String {
-    let (mut low, mut high) = (f32::INFINITY, f32::NEG_INFINITY);
-    for &value in values {
-        if value.is_finite() {
-            low = low.min(value);
-            high = high.max(value);
-        }
-    }
-    theme.fill(
-        StringKey::ChartSummary,
-        &[&name, &values.len(), &low, &high],
-    )
-}
-
 impl IntoNode for ChartBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
         self.layout_overrides
@@ -355,18 +340,24 @@ pub(crate) fn nice_max(max: f32) -> f32 {
     }
     let exp = 10f32.powf(max.log10().floor());
     let n = max / exp;
-    let nice = if n <= 1.0 {
-        1.0
-    } else if n <= 2.0 {
-        2.0
-    } else if n <= 5.0 {
-        5.0
-    } else {
-        10.0
-    };
-    nice * exp
+    let nice = [1.0, 2.0, 5.0].into_iter().find(|&step| n <= step);
+    nice.unwrap_or(10.0) * exp
 }
 
 #[cfg(test)]
 #[path = "chart_tests.rs"]
 mod tests;
+
+fn span_summary(name: &str, values: &[f32], theme: ActiveTheme) -> String {
+    let (mut low, mut high) = (f32::INFINITY, f32::NEG_INFINITY);
+    for &value in values {
+        if value.is_finite() {
+            low = low.min(value);
+            high = high.max(value);
+        }
+    }
+    theme.fill(
+        StringKey::ChartSummary,
+        &[&name, &values.len(), &low, &high],
+    )
+}

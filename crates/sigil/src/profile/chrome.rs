@@ -6,7 +6,7 @@ use serde_json::{Value, json, to_writer};
 
 use crate::profile::event::Event;
 use crate::profile::key::{Counter, Phase};
-use crate::profile::store;
+use crate::profile::store::{self, Frame};
 
 pub(crate) fn write(path: &Path) -> io::Result<()> {
     if let Some(parent) = path.parent()
@@ -15,63 +15,59 @@ pub(crate) fn write(path: &Path) -> io::Result<()> {
         create_dir_all(parent)?;
     }
     let mut out = BufWriter::new(File::create(path)?);
+    let frames = store::frames();
     write!(out, "{{\"displayTimeUnit\":\"ms\",\"metadata\":")?;
     value(&mut out, &store::metadata())?;
     write!(out, ",\"frames\":[")?;
-    for (index, frame) in store::frames().iter().enumerate() {
-        if index > 0 {
-            write!(out, ",")?;
-        }
-        value(
-            &mut out,
-            &json!({
-                "index": frame.index, "cause": frame.cause.name(),
-                "wall_ns": frame.total_ns(),
-                "phases_ns": named(&frame.phases, Phase::name),
-                "counts": named(&frame.counts, Counter::name),
-                "gpu_passes_ns": frame.gpu_passes,
-                "backend": frame.backend.map(|status| status.to_string())
-            }),
-        )?;
-    }
+    list(&mut out, frames.iter().map(frame_value))?;
     write!(out, "],\"traceEvents\":[")?;
-    value(
-        &mut out,
-        &json!({
+    let names = [
+        json!({
             "name": "process_name", "ph": "M", "pid": 1,
             "args": {"name": "sigil"}
         }),
-    )?;
-    write!(out, ",")?;
-    value(
-        &mut out,
-        &json!({
+        json!({
             "name": "thread_name", "ph": "M", "pid": 1, "tid": 1,
             "args": {"name": "UI CPU (includes render submission)"}
         }),
+    ];
+    let attributions = frames.iter().flat_map(|frame| {
+        frame.hot.iter().map(|hot| {
+            json!({
+                "name": hot.hotspot.name(), "cat": "why", "ph": "i", "s": "t",
+                "ts": frame.end_us, "pid": 1, "tid": 1,
+                "args": {"hotspot": hot.hotspot.name(), "subject": hot.subject, "count": hot.count}
+            })
+        })
+    });
+    list(
+        &mut out,
+        names
+            .into_iter()
+            .chain(store::events().into_iter().map(event_value))
+            .chain(attributions),
     )?;
-    for event in store::events() {
-        write!(out, ",")?;
-        value(&mut out, &event_value(event))?;
-    }
-    write_attributions(&mut out)?;
     writeln!(out, "]}}")?;
     out.flush()
 }
 
-fn write_attributions(out: &mut BufWriter<File>) -> io::Result<()> {
-    for frame in store::frames() {
-        for hot in &frame.hot {
+fn frame_value(frame: &Frame) -> Value {
+    json!({
+        "index": frame.index, "cause": frame.cause.name(),
+        "wall_ns": frame.total_ns(),
+        "phases_ns": named(&frame.phases, Phase::name),
+        "counts": named(&frame.counts, Counter::name),
+        "gpu_passes_ns": frame.gpu_passes,
+        "backend": frame.backend.map(|status| status.to_string())
+    })
+}
+
+fn list(out: &mut BufWriter<File>, values: impl Iterator<Item = Value>) -> io::Result<()> {
+    for (index, item) in values.enumerate() {
+        if index > 0 {
             write!(out, ",")?;
-            value(
-                out,
-                &json!({
-                    "name": hot.hotspot.name(), "cat": "why", "ph": "i", "s": "t",
-                    "ts": frame.end_us, "pid": 1, "tid": 1,
-                    "args": {"hotspot": hot.hotspot.name(), "subject": hot.subject, "count": hot.count}
-                }),
-            )?;
         }
+        value(out, &item)?;
     }
     Ok(())
 }

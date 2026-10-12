@@ -28,10 +28,7 @@ where
     S: Clone + 'static,
 {
     let session = Rc::new(RefCell::new(None::<(f32, S)>));
-
-    let begin_state = Rc::clone(&session);
-    let move_state = Rc::clone(&session);
-
+    let (begin_state, move_state) = (Rc::clone(&session), Rc::clone(&session));
     node.pointer_down(move |event| {
         let axis_pos = axis_of(axis, event.position.x, event.position.y);
         *begin_state.borrow_mut() = Some((axis_pos, snapshot()));
@@ -50,9 +47,8 @@ where
         event.stop_propagation();
     })
     .pointer_up(move |event| {
-        let was_dragging = session.borrow().is_some();
-        session.borrow_mut().take();
-        if was_dragging {
+        let ended = session.borrow_mut().take();
+        if ended.is_some() {
             on_end();
         }
         event.stop_propagation();

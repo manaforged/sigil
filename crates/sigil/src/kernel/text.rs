@@ -38,10 +38,7 @@ impl TextContent {
     pub fn refresh(&self, out: &mut String) -> bool {
         match self {
             Self::Static(value) => replace(out, value),
-            Self::Reactive(signal) => match signal.try_peek() {
-                Some(value) => replace(out, &value),
-                None => replace(out, ""),
-            },
+            Self::Reactive(signal) => replace(out, &signal.try_peek().unwrap_or_default()),
             Self::Compute(compute) => replace(out, &compute()),
         }
     }
@@ -217,22 +214,16 @@ impl PaintTarget for TextBuilder {
 impl IntoNode for TextBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
         let this = self.flush_paint();
-        this.build_text(cx)
-    }
-}
-
-impl TextBuilder {
-    fn build_text(self, cx: &mut Cx) -> NodeId {
         let id = cx.new_node(
             NodeType::Text {
-                content: self.source.into_live(),
-                wrap: self.wrap,
-                ellipsis: self.ellipsis,
+                content: this.source.into_live(),
+                wrap: this.wrap,
+                ellipsis: this.ellipsis,
             },
-            self.a11y,
+            this.a11y,
         );
         if let Some(node) = cx.get_mut(id) {
-            for apply in self.pre_extensions {
+            for apply in this.pre_extensions {
                 apply(node);
             }
         }

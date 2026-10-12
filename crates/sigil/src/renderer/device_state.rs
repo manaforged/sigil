@@ -1,5 +1,3 @@
-#![allow(clippy::redundant_pub_crate)]
-
 #[cfg(feature = "desktop")]
 use crate::profile::{BackendKind, BackendStatus, FallbackCause};
 use crate::renderer::blur_paint::BlurPipeline;
@@ -26,11 +24,7 @@ pub(crate) enum DeviceState {
     Ready(Box<ReadyState>),
 }
 
-pub(crate) struct ReadyState {
-    pub(crate) instance: wgpu::Instance,
-    pub(crate) adapter: wgpu::Adapter,
-    pub(crate) device: wgpu::Device,
-    pub(crate) queue: wgpu::Queue,
+pub(crate) struct PipelineCache {
     pub(crate) scene_pipelines: Vec<ScenePipeline>,
     pub(crate) fill_pipelines: Vec<FillPipeline>,
     pub(crate) shadow_pipelines: Vec<ShadowPipeline>,
@@ -42,6 +36,32 @@ pub(crate) struct ReadyState {
     pub(crate) blur_pipelines: Vec<BlurPipeline>,
     pub(crate) layer_pool: Option<LayerPool>,
     pub(crate) pending: WalkPending,
+}
+
+impl Default for PipelineCache {
+    fn default() -> Self {
+        Self {
+            scene_pipelines: Vec::new(),
+            fill_pipelines: Vec::new(),
+            shadow_pipelines: Vec::new(),
+            slug_pipelines: Vec::new(),
+            raster_pipelines: Vec::new(),
+            sprite_pipelines: Vec::new(),
+            decoration_pipelines: Vec::new(),
+            layer_pipelines: Vec::new(),
+            blur_pipelines: Vec::new(),
+            layer_pool: Some(LayerPool::new()),
+            pending: WalkPending::default(),
+        }
+    }
+}
+
+pub(crate) struct ReadyState {
+    pub(crate) instance: wgpu::Instance,
+    pub(crate) adapter: wgpu::Adapter,
+    pub(crate) device: wgpu::Device,
+    pub(crate) queue: wgpu::Queue,
+    pub(crate) pipelines: PipelineCache,
     pub(crate) uploads: Option<UploadBuffers>,
     pub(crate) gpu_timer: Option<GpuTimer>,
     lost: Arc<AtomicBool>,
@@ -59,17 +79,7 @@ impl ReadyState {
             adapter,
             device,
             queue,
-            scene_pipelines: Vec::new(),
-            fill_pipelines: Vec::new(),
-            shadow_pipelines: Vec::new(),
-            slug_pipelines: Vec::new(),
-            raster_pipelines: Vec::new(),
-            sprite_pipelines: Vec::new(),
-            decoration_pipelines: Vec::new(),
-            layer_pipelines: Vec::new(),
-            blur_pipelines: Vec::new(),
-            layer_pool: Some(LayerPool::new()),
-            pending: WalkPending::default(),
+            pipelines: PipelineCache::default(),
             uploads: None,
             gpu_timer: None,
             lost,
@@ -79,10 +89,10 @@ impl ReadyState {
     }
 
     pub(crate) fn begin_frame(&mut self) {
-        for pipeline in &mut self.raster_pipelines {
+        for pipeline in &mut self.pipelines.raster_pipelines {
             pipeline.begin_frame(&self.queue);
         }
-        for pipeline in &mut self.sprite_pipelines {
+        for pipeline in &mut self.pipelines.sprite_pipelines {
             pipeline.begin_frame();
         }
     }
@@ -111,9 +121,7 @@ impl ReadyState {
 
 impl DeviceState {
     pub(crate) fn new() -> Self {
-        let instance =
-            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
-        Self::Uninitialized(instance)
+        Self::Uninitialized(new_instance())
     }
 
     pub(crate) fn instance(&self) -> &wgpu::Instance {
@@ -155,19 +163,13 @@ impl DeviceState {
         &mut self,
         surface: &wgpu::Surface<'_>,
     ) -> Result<&ReadyState, RendererError> {
-        self.ensure_ready_for(Some(surface))?;
-        match self {
-            Self::Ready(ready) => Ok(&**ready),
-            Self::Uninitialized(_) => unreachable!(),
-        }
+        self.ensure_ready_for(Some(surface)).map(|ready| &*ready)
     }
 
     #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn request_headless()
     -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), RendererError> {
-        let instance =
-            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
-        let (adapter, device, queue, _lost, _forced) = request_blocking(&instance, None)?;
+        let (adapter, device, queue, _lost, _forced) = request_blocking(&new_instance(), None)?;
         Ok((adapter, device, queue))
     }
 
@@ -187,11 +189,7 @@ impl DeviceState {
     }
 
     pub(crate) fn ensure_ready_headless(&mut self) -> Result<&mut ReadyState, RendererError> {
-        self.ensure_ready_for(None)?;
-        match self {
-            Self::Ready(ready) => Ok(&mut **ready),
-            Self::Uninitialized(_) => unreachable!(),
-        }
+        self.ensure_ready_for(None)
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -216,24 +214,12 @@ impl DeviceState {
     fn ensure_ready_for(
         &mut self,
         surface: Option<&wgpu::Surface<'_>>,
-    ) -> Result<(), RendererError> {
-        if matches!(self, Self::Uninitialized(_)) {
-            let placeholder = wgpu::Instance::new(
-                wgpu::InstanceDescriptor::new_without_display_handle_from_env(),
-            );
-            let instance = match core::mem::replace(self, Self::Uninitialized(placeholder)) {
-                Self::Uninitialized(i) => i,
-                Self::Ready(_) => unreachable!(),
-            };
-            match request_blocking(&instance, surface) {
-                Ok(parts) => *self = Self::Ready(ReadyState::boxed(instance, parts)),
-                Err(err) => {
-                    *self = Self::Uninitialized(instance);
-                    return Err(err);
-                }
-            }
+    ) -> Result<&mut ReadyState, RendererError> {
+        if let Self::Uninitialized(instance) = self {
+            let parts = request_blocking(instance, surface)?;
+            *self = Self::Ready(ReadyState::boxed(instance.clone(), parts));
         }
-        Ok(())
+        self.ready_mut()
     }
 }
 
@@ -247,8 +233,8 @@ pub(crate) type DeviceParts = (
 
 pub(crate) type OnLost = Arc<dyn Fn() + Send + Sync>;
 
-fn power_preference() -> wgpu::PowerPreference {
-    wgpu::PowerPreference::from_env().unwrap_or(wgpu::PowerPreference::LowPower)
+fn new_instance() -> wgpu::Instance {
+    wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env())
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -318,7 +304,8 @@ async fn request_adapter(
 ) -> Result<wgpu::Adapter, wgpu::RequestAdapterError> {
     instance
         .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: power_preference(),
+            power_preference: wgpu::PowerPreference::from_env()
+                .unwrap_or(wgpu::PowerPreference::LowPower),
             compatible_surface: surface,
             force_fallback_adapter,
             apply_limit_buckets: false,

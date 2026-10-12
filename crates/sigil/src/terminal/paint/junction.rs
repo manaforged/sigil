@@ -12,16 +12,16 @@ const HEAVY: [&str; 16] = [
     " ", "┃", "━", "┗", "┃", "┃", "┏", "┣", "━", "┛", "━", "┻", "┓", "┫", "┳", "╋",
 ];
 
+const ROUNDED: [(&str, u8); 4] = [
+    ("╰", UP | RIGHT),
+    ("╭", RIGHT | DOWN),
+    ("╮", DOWN | LEFT),
+    ("╯", UP | LEFT),
+];
+
 fn arms(glyph: &str) -> Option<(u8, bool)> {
-    let rounded = match glyph {
-        "╰" => Some(UP | RIGHT),
-        "╭" => Some(RIGHT | DOWN),
-        "╮" => Some(DOWN | LEFT),
-        "╯" => Some(UP | LEFT),
-        _ => None,
-    };
-    if let Some(bits) = rounded {
-        return Some((bits, false));
+    if let Some((_, bits)) = ROUNDED.iter().find(|(corner, _)| *corner == glyph) {
+        return Some((*bits, false));
     }
     let find = |table: &[&str; 16]| {
         table
@@ -58,10 +58,7 @@ fn set(grid: &mut Grid, (x, y): (usize, usize), bits: u8, heavy: bool) {
     let Some(glyph) = table.get(usize::from(bits)) else {
         return;
     };
-    let Some(index) = grid.index(x, y) else {
-        return;
-    };
-    if let Some(cell) = grid.cells.get_mut(index) {
+    if let Some(cell) = grid.cell_mut(x, y) {
         cell.text = (*glyph).into();
     }
 }

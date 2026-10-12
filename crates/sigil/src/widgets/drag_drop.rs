@@ -104,15 +104,16 @@ impl<T: Clone + 'static> DragState<T> {
         self.update_hover(at);
     }
 
-    fn track(&self, at: (f32, f32)) {
-        self.position.set(at);
-        self.update_hover(at);
-    }
-
     fn settle(&self, at: (f32, f32)) {
-        let drop = self
-            .payload()
-            .and_then(|payload| self.accepting_drop(at, &payload).map(|cb| (cb, payload)));
+        let drop = self.payload().and_then(|payload| {
+            self.targets
+                .borrow()
+                .targets
+                .iter()
+                .rev()
+                .find(|target| contains(target.bounds.peek(), at) && (target.accepts)(&payload))
+                .map(|target| (Rc::clone(&target.on_drop), payload))
+        });
         self.end();
         if let Some((on_drop, payload)) = drop {
             on_drop(payload);
@@ -123,16 +124,6 @@ impl<T: Clone + 'static> DragState<T> {
         self.active.set(false);
         self.payload.set_always(None);
         self.update_hover((0.0, 0.0));
-    }
-
-    fn accepting_drop(&self, at: (f32, f32), payload: &T) -> Option<OnDrop<T>> {
-        self.targets
-            .borrow()
-            .targets
-            .iter()
-            .rev()
-            .find(|target| contains(target.bounds.peek(), at) && (target.accepts)(payload))
-            .map(|target| Rc::clone(&target.on_drop))
     }
 
     fn update_hover(&self, at: (f32, f32)) {
@@ -277,7 +268,16 @@ fn drive<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) 
     move |event| {
         let at = (event.window_position.x, event.window_position.y);
         if state.is_active() {
-            drive_session(&state, event, at);
+            if !event.buttons.contains(MouseButtons::LEFT) {
+                state.cancel();
+                return;
+            }
+            if !event.is_captured() {
+                event.capture_pointer();
+            }
+            state.position.set(at);
+            state.update_hover(at);
+            event.stop_propagation();
             return;
         }
         if !event.buttons.contains(MouseButtons::LEFT) {
@@ -288,7 +288,7 @@ fn drive<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) 
             .armed
             .borrow()
             .as_ref()
-            .filter(|(down, _)| travelled(*down, at) >= DRAG_THRESHOLD_PX)
+            .filter(|(down, _)| (at.0 - down.0).hypot(at.1 - down.1) >= DRAG_THRESHOLD_PX)
             .map(|(_, payload)| payload.clone());
         if let Some(payload) = ready {
             state.armed.replace(None);
@@ -311,22 +311,6 @@ fn leave<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) 
     }
 }
 
-fn drive_session<T: Clone + 'static>(
-    state: &DragState<T>,
-    event: &mut PointerEvent,
-    at: (f32, f32),
-) {
-    if !event.buttons.contains(MouseButtons::LEFT) {
-        state.cancel();
-        return;
-    }
-    if !event.is_captured() {
-        event.capture_pointer();
-    }
-    state.track(at);
-    event.stop_propagation();
-}
-
 fn release<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent) + 'static {
     move |event| {
         state.armed.replace(None);
@@ -335,11 +319,6 @@ fn release<T: Clone + 'static>(state: DragState<T>) -> impl Fn(&mut PointerEvent
             event.stop_propagation();
         }
     }
-}
-
-fn travelled(down: (f32, f32), at: (f32, f32)) -> f32 {
-    let (dx, dy) = (at.0 - down.0, at.1 - down.1);
-    dx.hypot(dy)
 }
 
 fn contains(bounds: (f32, f32, f32, f32), at: (f32, f32)) -> bool {

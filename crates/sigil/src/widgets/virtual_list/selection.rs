@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use crate::events::{ModifiersState, MouseButton, PointerEvent};
+use crate::events::{MouseButton, PointerEvent};
 use crate::reactive::Signal;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -21,12 +21,6 @@ pub struct SelectionState {
 #[derive(Clone, Copy)]
 pub(super) struct SelectionRuntime {
     state: Signal<SelectionState>,
-}
-
-#[derive(Clone, Copy)]
-struct ClickModifiers {
-    extend: bool,
-    toggle: bool,
 }
 
 impl SelectionState {
@@ -110,10 +104,10 @@ impl SelectionRuntime {
         {
             return;
         }
-        let modifiers = ClickModifiers::from(event.modifiers);
-        self.state.update(|state| {
-            state.apply_click(index, modifiers.extend, modifiers.toggle);
-        });
+        let modifiers = event.modifiers;
+        let toggle = modifiers.ctrl() || modifiers.meta();
+        self.state
+            .update(|state| state.apply_click(index, modifiers.shift(), toggle));
         event.stop_propagation();
     }
 
@@ -122,20 +116,10 @@ impl SelectionRuntime {
     }
 
     pub(super) fn selected_signal(self, index: usize) -> Option<Signal<bool>> {
-        if self.state.peek().contains(index) {
-            Some(crate::reactive::signal(true))
-        } else {
-            None
-        }
-    }
-}
-
-impl From<ModifiersState> for ClickModifiers {
-    fn from(modifiers: ModifiersState) -> Self {
-        Self {
-            extend: modifiers.shift(),
-            toggle: modifiers.ctrl() || modifiers.meta(),
-        }
+        self.state
+            .peek()
+            .contains(index)
+            .then(|| crate::reactive::signal(true))
     }
 }
 

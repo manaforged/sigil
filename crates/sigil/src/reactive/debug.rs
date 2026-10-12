@@ -1,4 +1,4 @@
-use core::fmt::Write as _;
+use std::fmt::Write as _;
 
 use crate::reactive::owner::OwnerId;
 use crate::reactive::runtime::{OwnerKey, OwnerSlot, with_rt};
@@ -21,62 +21,48 @@ pub fn dump_owner_tree() -> String {
 #[must_use]
 pub fn dump_subtree(owner: OwnerId) -> String {
     let mut out = String::new();
-    let exists = with_rt(|rt| rt.owners.contains(owner.0));
-    if exists {
-        write_subtree(&mut out, owner.0, 0);
-    }
+    write_subtree(&mut out, owner.0, 0);
     out
 }
 
 fn write_subtree(out: &mut String, key: OwnerKey, depth: usize) {
-    let Some(rendered) = with_rt(|rt| rt.owners.get(key).map(|slot| render_line(slot, depth)))
-    else {
+    let Some(children) = with_rt(|rt| {
+        rt.owners.get(key).map(|slot| {
+            out.push_str(&render_line(slot, depth));
+            slot.children.clone()
+        })
+    }) else {
         return;
     };
-    out.push_str(&rendered);
-
-    let children = with_rt(|rt| {
-        rt.owners
-            .get(key)
-            .map(|slot| slot.children.clone())
-            .unwrap_or_default()
-    });
     for child in children {
         write_subtree(out, child, depth + 1);
     }
 }
 
 fn render_line(slot: &OwnerSlot, depth: usize) -> String {
-    let indent = "  ".repeat(depth);
-    let name = slot.name;
-    let file = slot.location.file();
-    let line = slot.location.line();
-
-    let mut parts: Vec<String> = Vec::new();
-    let signals = slot.signals.len();
-    let effects = slot.effects.len();
-    let cleanups = slot.cleanups.len();
-    let owners = slot.children.len();
-    if signals > 0 {
-        parts.push(format!("signals: {signals}"));
-    }
-    if effects > 0 {
-        parts.push(format!("effects: {effects}"));
-    }
-    if cleanups > 0 {
-        parts.push(format!("cleanups: {cleanups}"));
-    }
-    if owners > 0 {
-        parts.push(format!("owners: {owners}"));
-    }
-
-    let mut buf = String::new();
-    write!(buf, "{indent}{name}  at {file}:{line}").expect("writing to String is infallible");
+    let counts = [
+        ("signals", slot.signals.len()),
+        ("effects", slot.effects.len()),
+        ("cleanups", slot.cleanups.len()),
+        ("owners", slot.children.len()),
+    ];
+    let parts: Vec<String> = counts
+        .iter()
+        .filter(|(_, count)| *count > 0)
+        .map(|(label, count)| format!("{label}: {count}"))
+        .collect();
+    let mut line = format!(
+        "{}{}  at {}:{}",
+        "  ".repeat(depth),
+        slot.name,
+        slot.location.file(),
+        slot.location.line()
+    );
     if !parts.is_empty() {
-        write!(buf, "  [{}]", parts.join(", ")).expect("writing to String is infallible");
+        let _ = write!(line, "  [{}]", parts.join(", "));
     }
-    buf.push('\n');
-    buf
+    line.push('\n');
+    line
 }
 
 #[cfg(debug_assertions)]

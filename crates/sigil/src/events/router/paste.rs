@@ -1,47 +1,23 @@
 use crate::events::PasteEvent;
+use crate::events::handlers::until_stopped;
 use crate::events::hit_test::visible;
 use crate::events::pointer_dispatch::path_to_node;
-use crate::kernel::{Cx, NodeBuilder};
+use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
 
 use super::EventRouter;
 
-type PasteHandler = Box<dyn Fn(&mut PasteEvent) + 'static>;
+type PasteHandler = crate::events::handlers::Handler<PasteEvent>;
 
 #[derive(Default)]
 pub(crate) struct PasteHandlers {
-    handlers: Vec<PasteHandler>,
-}
-
-impl PasteHandlers {
-    fn invoke(&self, event: &mut PasteEvent) {
-        for handler in &self.handlers {
-            handler(event);
-            if event.propagation_stopped() {
-                return;
-            }
-        }
-    }
+    pub(crate) handlers: Vec<PasteHandler>,
 }
 
 impl core::fmt::Debug for PasteHandlers {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("PasteHandlers").finish_non_exhaustive()
     }
-}
-
-pub(crate) fn on_paste(
-    builder: NodeBuilder,
-    handler: impl Fn(&mut PasteEvent) + 'static,
-) -> NodeBuilder {
-    builder.mutate(move |node| {
-        if node.get_extension::<PasteHandlers>().is_none() {
-            let _ = node.attach(PasteHandlers::default());
-        }
-        if let Some(handlers) = node.get_extension_mut::<PasteHandlers>() {
-            handlers.handlers.push(Box::new(handler));
-        }
-    })
 }
 
 impl EventRouter {
@@ -57,7 +33,11 @@ impl EventRouter {
                 .get(id)
                 .and_then(|node| node.get_extension::<PasteHandlers>())
             {
-                handlers.invoke(&mut event);
+                until_stopped(
+                    &handlers.handlers,
+                    &mut event,
+                    PasteEvent::propagation_stopped,
+                );
             }
             if event.propagation_stopped() {
                 return;

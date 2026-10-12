@@ -87,22 +87,16 @@ impl<T> Arena<T> {
                 .get_mut(index as usize)
                 .expect("invariant: free list only holds indices of live slots");
             slot.value = Some(value);
-            return Key {
-                index,
-                generation: slot.generation,
-                _ty: PhantomData,
-            };
+            return Key::from_sendable(index, slot.generation);
         }
-        let index = u32::try_from(self.slots.len()).expect("arena overflow");
         self.slots.push(Slot {
             generation: 0,
             value: Some(value),
         });
-        Key {
-            index,
-            generation: 0,
-            _ty: PhantomData,
-        }
+        Key::from_sendable(
+            u32::try_from(self.slots.len() - 1).expect("arena overflow"),
+            0,
+        )
     }
 
     pub(crate) fn get(&self, key: Key<T>) -> Option<&T> {
@@ -138,15 +132,11 @@ impl<T> Arena<T> {
 
     pub(crate) fn keys(&self) -> impl Iterator<Item = Key<T>> + '_ {
         self.slots.iter().enumerate().filter_map(|(index, slot)| {
-            if slot.value.is_some() {
-                Some(Key {
-                    index: u32::try_from(index).expect("arena overflow"),
-                    generation: slot.generation,
-                    _ty: PhantomData,
-                })
-            } else {
-                None
-            }
+            slot.value.as_ref().map(|_| Key {
+                index: u32::try_from(index).expect("arena overflow"),
+                generation: slot.generation,
+                _ty: PhantomData,
+            })
         })
     }
 }

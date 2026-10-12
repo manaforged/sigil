@@ -30,6 +30,8 @@ mod tests;
 pub(super) type IndexChange = Rc<dyn Fn(usize) + 'static>;
 
 const DROPDOWN_TRANSITION: TransitionId = presets::SMOOTH;
+const MIN_TRIGGER_WIDTH: f32 = space(24);
+const LABEL_HEIGHT: f32 = 24.0;
 static DROPDOWN_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(DROPDOWN_TRANSITION)];
 
 static TRIGGER_BASE: &[StyleAtom] = &[
@@ -100,16 +102,12 @@ impl DropdownBuilder {
             .on_change
             .as_ref()
             .map_or_else(|| Rc::new(|_| {}), Rc::clone);
-
-        let selected = self.selected;
         let options = Rc::new(self.options);
-        let disabled = self.disabled;
-
         let ctx = OptionCtx {
-            selected,
+            selected: self.selected,
             open,
             cursor,
-            disabled,
+            disabled: self.disabled,
             width: self.layout_overrides.width_hint(),
             trigger_height: self
                 .layout_overrides
@@ -124,8 +122,7 @@ impl DropdownBuilder {
             self.style_accumulator,
             user_overlay,
         );
-        let popup_options = Rc::clone(&options);
-        let popup_on_change = Rc::clone(&on_change);
+        let (popup_options, popup_on_change) = (Rc::clone(&options), Rc::clone(&on_change));
         let root = dropdown_root(
             ctx,
             self.layout_overrides,
@@ -141,7 +138,6 @@ impl DropdownBuilder {
                 Vec::new()
             }
         });
-
         interaction.install(root)
     }
 }
@@ -203,17 +199,16 @@ fn build_trigger(
     styled: Style,
     user_overlay: StyleOverlay,
 ) -> NodeBuilder {
-    let label_options = Rc::clone(options);
-    let OptionCtx {
-        selected,
-        open,
-        cursor,
-        disabled,
-        width: _,
-        trigger_height: _,
-    } = ctx;
+    let (selected, open, cursor, disabled) = (ctx.selected, ctx.open, ctx.cursor, ctx.disabled);
     let mut node = container()
-        .layout(trigger_layout())
+        .layout(
+            LayoutStyle::flex_row()
+                .fill()
+                .padding_x(10.0)
+                .gap(space(2))
+                .align_items(AlignItems::Center)
+                .justify_content(JustifyContent::SpaceBetween),
+        )
         .class(Radius::Md.atom())
         .class(TRIGGER_VARIANT.base())
         .class(DROPDOWN_ANIM_BASE)
@@ -228,28 +223,12 @@ fn build_trigger(
             });
             activate_pointer_reactive(ev, interaction, disabled, &cb);
         })
-        .child(trigger_label(selected, label_options))
+        .child(trigger_label(selected, Rc::clone(options)))
         .child(chevron(ChevronDirection::Down, 16.0));
     if !styled.is_empty() {
         node = node.style(styled);
     }
     node
-}
-
-const MIN_TRIGGER_WIDTH: f32 = space(24);
-const LABEL_HEIGHT: f32 = 24.0;
-
-fn label_height() -> f32 {
-    CellForm::new(LABEL_HEIGHT, rows(1.0).px()).pick()
-}
-
-fn trigger_layout() -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .fill()
-        .padding_x(10.0)
-        .gap(space(2))
-        .align_items(AlignItems::Center)
-        .justify_content(JustifyContent::SpaceBetween)
 }
 
 fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl IntoNode {
@@ -259,7 +238,7 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
             LayoutStyle::flex_row()
                 .grow(1.0)
                 .width(0.0)
-                .height(label_height())
+                .height(CellForm::new(LABEL_HEIGHT, rows(1.0).px()).pick())
                 .align_items(AlignItems::Center)
                 .overflow_x(Overflow::Hidden),
         )

@@ -6,9 +6,10 @@ use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::Signal;
+use crate::style::TransitionId;
 use crate::style::{
     BORDER_WIDTH, BgGradient, ColorAtom, Elevation, GradientAxis, GradientStopKey, Rgba8,
-    StateStyle, Style, StyleAtom, StyleVariant, Token, TransitionId,
+    StateStyle, Style, StyleAtom, StyleVariant, Token,
 };
 
 use crate::widgets::interaction::InteractionState;
@@ -26,184 +27,101 @@ const CELL_THUMB: &str = "●";
 
 type ThumbForm = fn(InteractionState, Option<Signal<bool>>, bool) -> NodeBuilder;
 
+const fn rgba(r: u8, g: u8, b: u8, a: u8) -> ColorAtom {
+    ColorAtom::Rgba8(Rgba8 { r, g, b, a })
+}
+
+const fn vertical_gradient(stops: &'static [GradientStopKey]) -> StyleAtom {
+    StyleAtom::BackgroundGradient(BgGradient::new(GradientAxis::TopToBottom, stops))
+}
+
+const THUMB_BORDER: StyleAtom = StyleAtom::BorderWidth(BORDER_WIDTH);
+
 static TRACK_REST: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
 static TRACK_FILL: &[StyleAtom] = &[Token::Accent.bg()];
 static CELL_THUMB_ATOMS: &[StyleAtom] = &[Token::Accent.text()];
 static THUMB_REST: &[StyleAtom] = &[
     Token::OnAccent.bg(),
-    StyleAtom::BorderWidth(BORDER_WIDTH),
+    THUMB_BORDER,
     Token::Accent.border(),
     StyleAtom::Shadow(Elevation::Sm),
 ];
 static THUMB_HOVER: &[StyleAtom] = &[
     Token::OnAccent.bg(),
-    StyleAtom::BorderWidth(BORDER_WIDTH),
+    THUMB_BORDER,
     Token::AccentHover.border(),
     StyleAtom::Shadow(Elevation::Sm),
 ];
-static THUMB_DOWN: &[StyleAtom] = &[
-    Token::OnAccent.bg(),
-    StyleAtom::BorderWidth(BORDER_WIDTH),
-    Token::AccentHover.border(),
-    StyleAtom::Shadow(Elevation::Sm),
-];
-static THUMB_DISABLED: &[StyleAtom] = &[
-    Token::OnAccent.bg(),
-    StyleAtom::BorderWidth(BORDER_WIDTH),
-    Token::Gray8.border(),
-];
-
-const fn glass(color: Rgba8) -> ColorAtom {
-    ColorAtom::Rgba8(color)
-}
+static THUMB_DISABLED: &[StyleAtom] = &[Token::OnAccent.bg(), THUMB_BORDER, Token::Gray8.border()];
 
 static GLASS_TRACK_STOPS: &[GradientStopKey] = &[
-    GradientStopKey::new(
-        0,
-        glass(Rgba8 {
-            r: 148,
-            g: 163,
-            b: 184,
-            a: 66,
-        }),
-    ),
-    GradientStopKey::new(
-        500,
-        glass(Rgba8 {
-            r: 148,
-            g: 163,
-            b: 184,
-            a: 30,
-        }),
-    ),
-    GradientStopKey::new(
-        1000,
-        glass(Rgba8 {
-            r: 148,
-            g: 163,
-            b: 184,
-            a: 46,
-        }),
-    ),
+    GradientStopKey::new(0, rgba(148, 163, 184, 66)),
+    GradientStopKey::new(500, rgba(148, 163, 184, 30)),
+    GradientStopKey::new(1000, rgba(148, 163, 184, 46)),
 ];
-static GLASS_TRACK_REST: &[StyleAtom] = &[
-    StyleAtom::BackgroundGradient(BgGradient::new(
-        GradientAxis::TopToBottom,
-        GLASS_TRACK_STOPS,
-    )),
-    StyleAtom::BorderWidth(BORDER_WIDTH),
-    StyleAtom::BorderColor(glass(Rgba8 {
-        r: 148,
-        g: 163,
-        b: 184,
-        a: 90,
-    })),
-];
-
 static GLASS_FILL_STOPS: &[GradientStopKey] = &[
     GradientStopKey::new(0, Token::AccentHover.color()),
     GradientStopKey::new(1000, Token::Accent.color()),
 ];
-static GLASS_TRACK_FILL: &[StyleAtom] = &[StyleAtom::BackgroundGradient(BgGradient::new(
-    GradientAxis::TopToBottom,
-    GLASS_FILL_STOPS,
-))];
-
 static GLASS_THUMB_STOPS: &[GradientStopKey] = &[
-    GradientStopKey::new(
-        0,
-        glass(Rgba8 {
-            r: 255,
-            g: 255,
-            b: 255,
-            a: 250,
-        }),
-    ),
-    GradientStopKey::new(
-        500,
-        glass(Rgba8 {
-            r: 240,
-            g: 243,
-            b: 248,
-            a: 235,
-        }),
-    ),
-    GradientStopKey::new(
-        1000,
-        glass(Rgba8 {
-            r: 214,
-            g: 219,
-            b: 230,
-            a: 240,
-        }),
-    ),
+    GradientStopKey::new(0, rgba(255, 255, 255, 250)),
+    GradientStopKey::new(500, rgba(240, 243, 248, 235)),
+    GradientStopKey::new(1000, rgba(214, 219, 230, 240)),
 ];
+static GLASS_TRACK_REST: &[StyleAtom] = &[
+    vertical_gradient(GLASS_TRACK_STOPS),
+    THUMB_BORDER,
+    StyleAtom::BorderColor(rgba(148, 163, 184, 90)),
+];
+static GLASS_TRACK_FILL: &[StyleAtom] = &[vertical_gradient(GLASS_FILL_STOPS)];
+const GLASS_THUMB_BG: StyleAtom = vertical_gradient(GLASS_THUMB_STOPS);
 static GLASS_THUMB_REST: &[StyleAtom] = &[
-    StyleAtom::BackgroundGradient(BgGradient::new(
-        GradientAxis::TopToBottom,
-        GLASS_THUMB_STOPS,
-    )),
-    StyleAtom::BorderWidth(BORDER_WIDTH),
-    StyleAtom::BorderColor(glass(Rgba8 {
-        r: 255,
-        g: 255,
-        b: 255,
-        a: 140,
-    })),
+    GLASS_THUMB_BG,
+    THUMB_BORDER,
+    StyleAtom::BorderColor(rgba(255, 255, 255, 140)),
     StyleAtom::Shadow(Elevation::Md),
 ];
 static GLASS_THUMB_HOVER: &[StyleAtom] = &[
-    StyleAtom::BackgroundGradient(BgGradient::new(
-        GradientAxis::TopToBottom,
-        GLASS_THUMB_STOPS,
-    )),
-    StyleAtom::BorderWidth(BORDER_WIDTH),
-    StyleAtom::BorderColor(glass(Rgba8 {
-        r: 255,
-        g: 255,
-        b: 255,
-        a: 190,
-    })),
+    GLASS_THUMB_BG,
+    THUMB_BORDER,
+    StyleAtom::BorderColor(rgba(255, 255, 255, 190)),
     StyleAtom::Shadow(Elevation::Md),
 ];
 static GLASS_THUMB_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundGradient(BgGradient::new(
-        GradientAxis::TopToBottom,
-        GLASS_THUMB_STOPS,
-    )),
-    StyleAtom::BorderWidth(BORDER_WIDTH),
-    StyleAtom::BorderColor(glass(Rgba8 {
-        r: 255,
-        g: 255,
-        b: 255,
-        a: 60,
-    })),
+    GLASS_THUMB_BG,
+    THUMB_BORDER,
+    StyleAtom::BorderColor(rgba(255, 255, 255, 60)),
 ];
 
-fn value_ratio(runtime: SliderRuntime) -> f32 {
-    ((runtime.value.get() - runtime.range.min) / runtime.range.span()).clamp(0.0, 1.0)
-}
-
-pub(super) fn track_fill(runtime: SliderRuntime) -> NodeBuilder {
-    let layout = match runtime.orientation {
-        Orientation::Horizontal => LayoutStyle::block().height(TRACK_THICKNESS),
-        Orientation::Vertical => LayoutStyle::block().width(TRACK_THICKNESS),
+pub(super) fn track(runtime: SliderRuntime, filled: bool) -> NodeBuilder {
+    let layout = if filled {
+        LayoutStyle::block()
+    } else {
+        LayoutStyle::block().grow(1.0)
     };
-    container()
+    let layout = match runtime.orientation {
+        Orientation::Horizontal => layout.height(TRACK_THICKNESS),
+        Orientation::Vertical => layout.width(TRACK_THICKNESS),
+    };
+    let class = match (filled, runtime.glass) {
+        (true, true) => GLASS_TRACK_FILL,
+        (true, false) => TRACK_FILL,
+        (false, true) => GLASS_TRACK_REST,
+        (false, false) => TRACK_REST,
+    };
+    let node = container()
         .hittable(false)
         .layout(layout)
         .style(Style::new().radius(3))
-        .class(if runtime.glass {
-            GLASS_TRACK_FILL
-        } else {
-            TRACK_FILL
+        .class(class);
+    if filled {
+        node.style_reactive(move || {
+            let ratio = (runtime.value.get() - runtime.range.min) / runtime.range.span();
+            cached_fill_atoms(runtime.orientation, ratio)
         })
-        .style_reactive(move || fill_extent_atoms(runtime))
-}
-
-fn fill_extent_atoms(runtime: SliderRuntime) -> &'static [StyleAtom] {
-    let ratio = value_ratio(runtime);
-    cached_fill_atoms(runtime.orientation, ratio)
+    } else {
+        node
+    }
 }
 
 type FillAtomCache = Mutex<HashMap<(bool, u16), &'static [StyleAtom]>>;
@@ -217,7 +135,6 @@ fn cached_fill_atoms(orientation: Orientation, ratio: f32) -> &'static [StyleAto
         reason = "values are bounded to the target range before the cast"
     )]
     let scaled = (ratio.clamp(0.0, 1.0) * 10_000.0).round() as u16;
-    let key = (orientation == Orientation::Vertical, scaled);
     let build = || {
         let extent = crate::style::Dimension::Fraction(scaled);
         let atom = match orientation {
@@ -229,28 +146,8 @@ fn cached_fill_atoms(orientation: Orientation, ratio: f32) -> &'static [StyleAto
     let Ok(mut map) = cache.lock() else {
         return build();
     };
-    if let Some(atoms) = map.get(&key).copied() {
-        return atoms;
-    }
-    let leaked = build();
-    map.insert(key, leaked);
-    leaked
-}
-
-pub(super) fn track_rest(runtime: SliderRuntime) -> NodeBuilder {
-    let layout = match runtime.orientation {
-        Orientation::Horizontal => LayoutStyle::block().grow(1.0).height(TRACK_THICKNESS),
-        Orientation::Vertical => LayoutStyle::block().grow(1.0).width(TRACK_THICKNESS),
-    };
-    container()
-        .hittable(false)
-        .layout(layout)
-        .style(Style::new().radius(3))
-        .class(if runtime.glass {
-            GLASS_TRACK_REST
-        } else {
-            TRACK_REST
-        })
+    map.entry((orientation == Orientation::Vertical, scaled))
+        .or_insert_with(build)
 }
 
 pub(super) fn slider_thumb(
@@ -312,7 +209,7 @@ const fn slider_thumb_variant(glass: bool) -> StyleVariant {
                 THUMB_REST,
                 THUMB_HOVER,
                 THUMB_HOVER,
-                THUMB_DOWN,
+                THUMB_HOVER,
                 THUMB_DISABLED,
             ),
         )

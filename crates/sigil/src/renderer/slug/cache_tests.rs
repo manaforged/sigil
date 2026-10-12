@@ -28,20 +28,20 @@ fn key(glyph_id: u32) -> GlyphKey {
 
 #[test]
 fn slots_are_dense_stable_and_survive_reinsert() {
-    let mut cache = GlyphCache::new();
+    let mut cache = GlyphCache::default();
     cache.insert(key(10), band());
     cache.insert(key(20), band());
     cache.insert(key(30), band());
 
-    assert_eq!(cache.get(&key(10)).unwrap().slot, 0);
-    assert_eq!(cache.get(&key(20)).unwrap().slot, 1);
-    assert_eq!(cache.get(&key(30)).unwrap().slot, 2);
+    assert_eq!(cache.map.get(&key(10)).unwrap().slot, 0);
+    assert_eq!(cache.map.get(&key(20)).unwrap().slot, 1);
+    assert_eq!(cache.map.get(&key(30)).unwrap().slot, 2);
 
     cache.insert(key(20), band());
-    assert_eq!(cache.get(&key(20)).unwrap().slot, 1);
+    assert_eq!(cache.map.get(&key(20)).unwrap().slot, 1);
 
     cache.insert(key(40), band());
-    assert_eq!(cache.get(&key(40)).unwrap().slot, 3);
+    assert_eq!(cache.map.get(&key(40)).unwrap().slot, 3);
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn skewed_and_upright_glyphs_get_distinct_cache_entries() {
         variation_coords: Box::new([]),
         skew,
     };
-    let mut cache = GlyphCache::new();
+    let mut cache = GlyphCache::default();
     cache.insert(GlyphKey::of(&glyph(0.0)), band());
     assert!(cache.contains(&GlyphKey::of(&glyph(0.0))));
     assert!(

@@ -7,6 +7,7 @@ use super::{EventRouter, ShortcutIndex};
 use crate::events::focus::FocusManager;
 use crate::events::handlers::{EventHandlers, dispatch};
 use crate::events::hit_test::visible;
+use crate::events::pointer_dispatch::path_to_node;
 
 impl EventRouter {
     pub(crate) fn route_key(&mut self, cx: &mut Cx, layout: &LayoutEngine, mut event: KeyEvent) {
@@ -53,7 +54,9 @@ impl EventRouter {
             return;
         };
         let path = path_to_node(cx, focused);
-        dispatch_key_path(cx, &path, event);
+        if !run_phase(cx, path.iter().copied(), event, true) {
+            run_phase(cx, path.iter().rev().copied(), event, false);
+        }
     }
 
     fn route_tab(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: &mut KeyEvent) {
@@ -81,13 +84,6 @@ impl EventRouter {
     }
 }
 
-fn dispatch_key_path(cx: &Cx, path: &[NodeId], event: &mut KeyEvent) {
-    if run_phase(cx, path.iter().copied(), event, true) {
-        return;
-    }
-    run_phase(cx, path.iter().rev().copied(), event, false);
-}
-
 fn run_phase(
     cx: &Cx,
     path: impl Iterator<Item = NodeId>,
@@ -95,16 +91,12 @@ fn run_phase(
     capture: bool,
 ) -> bool {
     for id in path {
-        invoke_key(cx, id, event, capture);
+        let _ = dispatch(cx, id, |handlers| handlers.invoke_key(event, capture));
         if event.propagation_stopped() {
             return true;
         }
     }
     false
-}
-
-fn invoke_key(cx: &Cx, id: NodeId, event: &mut KeyEvent, capture: bool) -> bool {
-    dispatch(cx, id, |handlers| handlers.invoke_key(event, capture)).unwrap_or(false)
 }
 
 impl Default for ShortcutIndex {
@@ -131,25 +123,19 @@ impl ShortcutIndex {
 
     fn dispatch(&self, cx: &Cx, event: &mut KeyEvent, text_focused: bool) -> bool {
         for (shortcut, id) in &self.entries {
-            if !visible(cx, *id) {
+            if !visible(cx, *id) || (text_focused && shortcut.is_plain_char()) {
                 continue;
             }
-            if text_focused && shortcut.is_plain_char() {
-                continue;
-            }
-            if shortcut.matches(event) && invoke_shortcut(cx, *id, event) {
+            if shortcut.matches(event)
+                && dispatch(cx, *id, |handlers| {
+                    handlers.invoke_shortcut(event) || handlers.invoke_key(event, false)
+                }) == Some(true)
+            {
                 return true;
             }
         }
         false
     }
-}
-
-fn invoke_shortcut(cx: &Cx, id: NodeId, event: &mut KeyEvent) -> bool {
-    dispatch(cx, id, |handlers| {
-        handlers.invoke_shortcut(event) || handlers.invoke_key(event, false)
-    })
-    .unwrap_or(false)
 }
 
 impl Shortcut {
@@ -194,12 +180,13 @@ fn route_tab_key(
     layout: &LayoutEngine,
     event: &KeyEvent,
 ) -> bool {
-    if !event.is_tab_navigation() {
-        return false;
-    }
     if event.modifiers.shift() {
         focus.focus_prev(cx, Some(layout));
-    } else if traps_tab(focus, cx) {
+    } else if focus
+        .focus()
+        .and_then(|id| cx.get(id))
+        .is_some_and(|node| node.a11y.traps_tab)
+    {
         return false;
     } else {
         focus.focus_next(cx, Some(layout));
@@ -208,22 +195,4 @@ fn route_tab_key(
         crate::events::focus::reveal_focus(cx, layout, id);
     }
     true
-}
-
-fn traps_tab(focus: &FocusManager, cx: &Cx) -> bool {
-    focus
-        .focus()
-        .and_then(|id| cx.get(id))
-        .is_some_and(|node| node.a11y.traps_tab)
-}
-
-fn path_to_node(cx: &Cx, target: NodeId) -> SmallVec<[NodeId; 64]> {
-    let mut reversed = SmallVec::<[NodeId; 64]>::new();
-    let mut current = Some(target);
-    while let Some(id) = current {
-        reversed.push(id);
-        current = cx.parent(id);
-    }
-    reversed.reverse();
-    reversed
 }

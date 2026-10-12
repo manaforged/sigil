@@ -1,3 +1,5 @@
+use accesskit::ActionRequest;
+
 use crate::events::ShellEvent;
 use crate::events::hit_test::HitTestCache;
 use crate::events::{EventRouter, FocusIntent};
@@ -12,12 +14,8 @@ use crate::style::Theme;
 use super::cell_text::CellGeometry;
 #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
 mod hot;
-mod perform;
 use super::host_env::{EnvGuard, HostEnv};
 use crate::scene::{CommandScene, emit_scene_clipped};
-
-#[cfg(feature = "scene")]
-use crate::app::DefaultTextMeasure;
 
 pub type AccessibilityTree = accesskit::TreeUpdate;
 
@@ -41,13 +39,12 @@ pub struct Host {
 pub(crate) fn surface_holes(cx: &Cx, root: NodeId) -> Vec<(u64, Rect)> {
     let mut out = Vec::new();
     cx.visit_preorder(root, |_, node| {
-        let Some(hole) = node.get_extension::<Surface>() else {
-            return;
-        };
-        let Some(layout) = node.get_extension::<LayoutResult>() else {
-            return;
-        };
-        out.push((hole.key, layout.rect()));
+        if let (Some(hole), Some(layout)) = (
+            node.get_extension::<Surface>(),
+            node.get_extension::<LayoutResult>(),
+        ) {
+            out.push((hole.key, layout.rect()));
+        }
     });
     out
 }
@@ -62,15 +59,16 @@ impl Host {
     #[must_use]
     pub fn new() -> Self {
         #[cfg(feature = "scene")]
-        let geometry: Rc<dyn TextGeometry> = Rc::new(crate::app::EngineGeometry::new());
+        let (geometry, measure): (Rc<dyn TextGeometry>, Box<dyn TextMeasure>) = (
+            Rc::new(crate::app::EngineGeometry::new()),
+            Box::new(crate::app::DefaultTextMeasure::new()),
+        );
         #[cfg(not(feature = "scene"))]
-        let geometry: Rc<dyn TextGeometry> = Rc::new(CellGeometry::new(Self::CELL));
-        Self::with_env(
-            HostMode::Pixel,
-            (0.0, geometry),
-            Box::new(host_measure()),
-            true,
-        )
+        let (geometry, measure): (Rc<dyn TextGeometry>, Box<dyn TextMeasure>) = (
+            Rc::new(CellGeometry::new(Self::CELL)),
+            Box::new(CellGeometry::new(Self::CELL)),
+        );
+        Self::with_env(HostMode::Pixel, (0.0, geometry), measure, true)
     }
 
     pub const CELL: f32 = 8.0;
@@ -134,7 +132,9 @@ impl Host {
 
     pub fn mount(&mut self, app: impl crate::kernel::IntoNode) {
         #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
-        self.forget_hot();
+        {
+            self.hot = None;
+        }
         self.replace_root(|cx| cx.add(app));
     }
 
@@ -149,11 +149,6 @@ impl Host {
         self.mount_hot(app);
         #[cfg(not(all(feature = "hot", not(target_arch = "wasm32"))))]
         self.mount(app);
-    }
-
-    #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
-    fn forget_hot(&mut self) {
-        self.hot = None;
     }
 
     fn replace_root(&mut self, install: impl FnOnce(&mut Cx) -> NodeId) {
@@ -234,26 +229,32 @@ impl Host {
         crate::reactive::run_dispatch_deferred();
     }
 
-    pub fn apply_focus_requests(&mut self, router: &mut EventRouter) {
+    fn on_tree(&mut self, run: impl FnOnce(&mut Cx, &LayoutEngine)) {
         let _env = self.enter();
         if self.root.is_some() {
-            router.flush_focus_requests(&mut self.cx, &self.layout);
+            run(&mut self.cx, &self.layout);
         }
+    }
+
+    pub fn apply_focus_requests(&mut self, router: &mut EventRouter) {
+        self.on_tree(|cx, layout| router.flush_focus_requests(cx, layout));
     }
 
     pub fn repair_focus(&mut self, router: &mut EventRouter) {
-        let _env = self.enter();
-        if self.root.is_some() {
-            router.flush_focus_requests(&mut self.cx, &self.layout);
-            router.focus_if_needed(&mut self.cx, &self.layout);
-        }
+        self.on_tree(|cx, layout| {
+            router.flush_focus_requests(cx, layout);
+            router.focus_if_needed(cx, layout);
+        });
     }
 
     pub fn sync_hover(&mut self, router: &mut EventRouter) {
-        let _env = self.enter();
-        if self.root.is_some() {
-            router.reconcile_hover(&self.cx, &self.layout);
-        }
+        self.on_tree(|cx, layout| router.reconcile_hover(cx, layout));
+    }
+
+    pub fn perform(&mut self, router: &mut EventRouter, target: NodeId, request: &ActionRequest) {
+        self.on_tree(|cx, layout| {
+            crate::a11y::actions::apply(cx, router, layout, target, request);
+        });
     }
 
     #[must_use]
@@ -267,10 +268,7 @@ impl Host {
     }
 
     pub fn focus_intent(&mut self, router: &mut EventRouter, intent: FocusIntent) {
-        let _env = self.enter();
-        if self.root.is_some() {
-            router.focus_intent(&mut self.cx, &self.layout, intent);
-        }
+        self.on_tree(|cx, layout| router.focus_intent(cx, layout, intent));
     }
 
     pub fn layout(&mut self, viewport: (f32, f32)) -> Result<Option<NodeId>, LayoutError> {
@@ -334,14 +332,4 @@ pub(crate) fn emit_viewport_scene(cx: &Cx, root: NodeId, viewport: (f32, f32)) -
         root,
         Some(Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1)),
     )
-}
-
-#[cfg(feature = "scene")]
-fn host_measure() -> impl TextMeasure {
-    DefaultTextMeasure::new()
-}
-
-#[cfg(not(feature = "scene"))]
-fn host_measure() -> impl TextMeasure {
-    CellGeometry::new(Host::CELL)
 }

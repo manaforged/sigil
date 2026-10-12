@@ -30,7 +30,7 @@ pub(super) fn scroll_body(s: Surface, row_h: f32) -> NodeBuilder {
             let diagnostics = s.diagnostics.map(|d| d.get()).unwrap_or_default();
             let win = Window {
                 start: s.start.get(),
-                budget: render_budget(s.viewport.get().1, row_h),
+                budget: visible_rows(s.viewport.get().1, row_h) + ROW_BUFFER,
                 row_h,
             };
             rows(
@@ -61,10 +61,6 @@ fn visible_rows(viewport_h: f32, row_h: f32) -> usize {
     rows.max(1)
 }
 
-fn render_budget(viewport_h: f32, row_h: f32) -> usize {
-    visible_rows(viewport_h, row_h) + ROW_BUFFER
-}
-
 pub(super) fn wheel(
     ev: &mut ScrollEvent,
     scroll_y: Signal<f32>,
@@ -73,11 +69,10 @@ pub(super) fn wheel(
     row_h: f32,
 ) {
     let height = viewport.peek().1;
-    let max = max_scroll(lines.peek().len(), height, row_h);
     let y = crate::widgets::scroll::WheelAxis {
         offset: scroll_y,
         viewport: height,
-        max,
+        max: max_scroll(lines.peek().len(), height, row_h),
     };
     crate::widgets::scroll::wheel(ev, Some(y), None);
 }

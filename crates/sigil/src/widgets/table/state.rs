@@ -27,6 +27,15 @@ pub struct ColumnLayout {
     pub widths: HashMap<&'static str, f32>,
 }
 
+impl ColumnLayout {
+    fn natural(columns: usize) -> Self {
+        Self {
+            order: (0..columns).collect(),
+            ..Self::default()
+        }
+    }
+}
+
 pub(super) type RowEq<Row> = Rc<dyn Fn(&Row, &Row) -> bool>;
 
 type Remap<Row> =
@@ -88,7 +97,7 @@ impl<Row: 'static> TableState<Row> {
             retain_visible(&indices, selection, select_anchor);
             visible.set(indices);
         });
-        let order = (0..columns.len()).collect();
+        let layout = signal(Rc::new(ColumnLayout::natural(columns.len())));
         Self {
             rows,
             columns,
@@ -97,11 +106,7 @@ impl<Row: 'static> TableState<Row> {
             selection,
             select_anchor,
             visible,
-            layout: signal(Rc::new(ColumnLayout {
-                order,
-                hidden: HashSet::new(),
-                widths: HashMap::new(),
-            })),
+            layout,
             remap: None,
             row_eq: None,
         }
@@ -128,26 +133,14 @@ impl<Row: 'static> TableState<Row> {
         if Arc::ptr_eq(&previous, &rows) {
             return;
         }
+        let (selection, anchor) = (self.selection.peek(), self.select_anchor.peek());
         #[allow(
             clippy::cast_possible_truncation,
             reason = "values are bounded to the target range before the cast"
         )]
         let (selected, anchor) = self.remap.as_ref().map_or_else(
-            || {
-                identity::retain_in_range(
-                    rows.len() as u32,
-                    &self.selection.peek(),
-                    self.select_anchor.peek(),
-                )
-            },
-            |remap| {
-                remap(
-                    &previous,
-                    &rows,
-                    &self.selection.peek(),
-                    self.select_anchor.peek(),
-                )
-            },
+            || identity::retain_in_range(rows.len() as u32, &selection, anchor),
+            |remap| remap(&previous, &rows, &selection, anchor),
         );
         self.rows.set_always(rows);
         if *self.selection.peek() != selected {
@@ -186,27 +179,17 @@ impl<Row: 'static> TableState<Row> {
     }
 
     pub fn toggle_sort(&self, column: &'static str) {
-        let sortable = self
-            .columns
-            .iter()
-            .any(|col| col.id() == column && col.is_sortable());
-        if !sortable {
+        if !self.is_sortable(column) {
             return;
         }
-        let next = match self.sort.peek() {
+        let dir = match self.sort.peek() {
             Some(key) if key.column == column => match key.dir {
-                SortDir::Ascending => Some(SortKey {
-                    column,
-                    dir: SortDir::Descending,
-                }),
+                SortDir::Ascending => Some(SortDir::Descending),
                 SortDir::Descending => None,
             },
-            _ => Some(SortKey {
-                column,
-                dir: SortDir::Ascending,
-            }),
+            _ => Some(SortDir::Ascending),
         };
-        self.sort.set(next);
+        self.sort.set(dir.map(|dir| SortKey { column, dir }));
     }
 
     #[must_use]
@@ -276,71 +259,58 @@ impl<Row: 'static> TableState<Row> {
             .iter()
             .filter_map(|&index| {
                 let column = self.columns.get(index)?;
-                if layout.hidden.contains(column.id()) {
-                    None
-                } else {
-                    Some((index, column))
-                }
+                (!layout.hidden.contains(column.id())).then_some((index, column))
             })
             .collect()
     }
 
     pub fn move_column(&self, from: usize, to: usize) {
-        let mut layout = (*self.layout.peek()).clone();
-        let len = layout.order.len();
-        if from >= len || to >= len || from == to {
-            return;
-        }
-        let index = layout.order.remove(from);
-        layout.order.insert(to, index);
-        self.layout.set_always(Rc::new(layout));
+        self.edit_layout(|layout| {
+            let len = layout.order.len();
+            if from >= len || to >= len || from == to {
+                return false;
+            }
+            let index = layout.order.remove(from);
+            layout.order.insert(to, index);
+            true
+        });
     }
 
     pub fn hide_column(&self, id: &'static str) {
-        let visible = self.visible_columns().len();
-        if visible <= 1 {
-            return;
+        if self.visible_columns().len() > 1 {
+            self.edit_layout(|layout| {
+                layout.hidden.insert(id);
+                true
+            });
         }
-        let mut layout = (*self.layout.peek()).clone();
-        layout.hidden.insert(id);
-        self.layout.set_always(Rc::new(layout));
     }
 
     pub fn show_column(&self, id: &'static str) {
-        let mut layout = (*self.layout.peek()).clone();
-        if layout.hidden.remove(id) {
-            self.layout.set_always(Rc::new(layout));
-        }
+        self.edit_layout(|layout| layout.hidden.remove(id));
     }
 
     pub fn show_all_columns(&self) {
-        let mut layout = (*self.layout.peek()).clone();
-        if layout.hidden.is_empty() {
-            return;
-        }
-        layout.hidden.clear();
-        self.layout.set_always(Rc::new(layout));
+        self.edit_layout(|layout| {
+            let changed = !layout.hidden.is_empty();
+            layout.hidden.clear();
+            changed
+        });
     }
 
     pub fn pin_column_width(&self, id: &'static str, px: f32) {
-        let mut layout = (*self.layout.peek()).clone();
-        layout.widths.insert(id, px.max(MIN_COL_WIDTH));
-        self.layout.set_always(Rc::new(layout));
+        self.edit_layout(|layout| {
+            layout.widths.insert(id, px.max(MIN_COL_WIDTH));
+            true
+        });
     }
 
     pub fn clear_column_width(&self, id: &'static str) {
-        let mut layout = (*self.layout.peek()).clone();
-        if layout.widths.remove(id).is_some() {
-            self.layout.set_always(Rc::new(layout));
-        }
+        self.edit_layout(|layout| layout.widths.remove(id).is_some());
     }
 
     pub fn reset_columns(&self) {
-        self.layout.set_always(Rc::new(ColumnLayout {
-            order: (0..self.columns.len()).collect(),
-            hidden: HashSet::new(),
-            widths: HashMap::new(),
-        }));
+        self.layout
+            .set_always(Rc::new(ColumnLayout::natural(self.columns.len())));
     }
 
     #[must_use]
@@ -359,14 +329,22 @@ impl<Row: 'static> TableState<Row> {
     }
 
     pub fn sort(&self, column: &'static str, dir: SortDir) {
-        let sortable = self
-            .columns
-            .iter()
-            .any(|col| col.id() == column && col.is_sortable());
-        if !sortable {
-            return;
+        if self.is_sortable(column) {
+            self.sort.set(Some(SortKey { column, dir }));
         }
-        self.sort.set(Some(SortKey { column, dir }));
+    }
+
+    pub(super) fn is_sortable(&self, column: &str) -> bool {
+        self.columns
+            .iter()
+            .any(|col| col.id() == column && col.is_sortable())
+    }
+
+    fn edit_layout(&self, edit: impl FnOnce(&mut ColumnLayout) -> bool) {
+        let mut layout = (*self.layout.peek()).clone();
+        if edit(&mut layout) {
+            self.layout.set_always(Rc::new(layout));
+        }
     }
 }
 

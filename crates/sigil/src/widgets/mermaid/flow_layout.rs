@@ -47,7 +47,7 @@ pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usi
     (graph, ranks)
 }
 
-pub(super) fn size(node: &Node) -> (usize, usize) {
+fn size(node: &Node) -> (usize, usize) {
     if node.dummy {
         return (1, 1);
     }
@@ -67,22 +67,18 @@ pub(super) fn size(node: &Node) -> (usize, usize) {
     )
 }
 
-pub(super) fn offsets(
-    layers: &[Vec<usize>],
-    rank_size: &[usize],
-    gap: usize,
-    forward: bool,
-) -> Vec<usize> {
-    let mut offsets = vec![0_usize; layers.len()];
+fn offsets(layers: &[Vec<usize>], rank_size: &[usize], gap: usize, forward: bool) -> Vec<usize> {
+    let count = layers.len();
+    let mut offsets = vec![0_usize; count];
     let mut cursor = 0_usize;
-    let order: Vec<usize> = if forward {
-        (0..layers.len()).collect()
-    } else {
-        (0..layers.len()).rev().collect()
-    };
-    for rank in order {
+    for step in 0..count {
+        let rank = if forward {
+            step
+        } else {
+            count.saturating_sub(1).saturating_sub(step)
+        };
         if let Some(slot) = offsets.get_mut(rank) {
-            slot.clone_from(&cursor);
+            *slot = cursor;
         }
         cursor = cursor
             .saturating_add(rank_size.get(rank).copied().unwrap_or(1))
@@ -111,7 +107,7 @@ impl Graph {
         layers
     }
 
-    pub(super) fn sweep(&self, layers: &mut [Vec<usize>], rank: usize, down: bool) {
+    fn sweep(&self, layers: &mut [Vec<usize>], rank: usize, down: bool) {
         let neighbour = if down {
             rank.saturating_sub(1)
         } else {
@@ -137,11 +133,11 @@ impl Graph {
             .collect();
         keyed.sort_by_key(|(key, _)| *key);
         if let Some(slot) = layers.get_mut(rank) {
-            slot.clone_from(&keyed.into_iter().map(|(_, node)| node).collect());
+            *slot = keyed.into_iter().map(|(_, node)| node).collect();
         }
     }
 
-    pub(super) fn barycenter(
+    fn barycenter(
         &self,
         node: usize,
         positions: &HashMap<usize, usize>,
@@ -168,17 +164,20 @@ impl Graph {
     pub(super) fn place(&self, ranks: &[usize], layers: &[Vec<usize>]) -> Vec<Rect> {
         let sizes: Vec<(usize, usize)> = self.nodes.iter().map(size).collect();
         let vertical = self.dir.vertical();
-        let along = |node: usize| {
+        let oriented = |node: usize| {
             let (w, h) = sizes.get(node).copied().unwrap_or((1, 1));
-            if vertical { h } else { w }
+            if vertical { (h, w) } else { (w, h) }
         };
-        let across = |node: usize| {
-            let (w, h) = sizes.get(node).copied().unwrap_or((1, 1));
-            if vertical { w } else { h }
-        };
+        let across = |node: usize| oriented(node).1;
         let rank_size: Vec<usize> = layers
             .iter()
-            .map(|layer| layer.iter().map(|node| along(*node)).max().unwrap_or(1))
+            .map(|layer| {
+                layer
+                    .iter()
+                    .map(|node| oriented(*node).0)
+                    .max()
+                    .unwrap_or(1)
+            })
             .collect();
         let gap = if vertical { GAP_ROWS } else { GAP_COLS };
         let offsets = offsets(layers, &rank_size, gap, self.dir.forward());
@@ -187,35 +186,23 @@ impl Graph {
             .iter()
             .enumerate()
             .map(|(node, entry)| {
-                let (w, h) = sizes.get(node).copied().unwrap_or((1, 1));
                 let rank = ranks.get(node).copied().unwrap_or(0);
                 let offset = offsets.get(rank).copied().unwrap_or(0);
                 let span = rank_size.get(rank).copied().unwrap_or(1);
                 let at = positions.get(node).copied().unwrap_or(0);
-                if vertical {
-                    Rect {
-                        x: at,
-                        y: offset,
-                        w,
-                        h: if entry.dummy { span } else { h },
-                    }
+                let (long, wide) = oriented(node);
+                let long = if entry.dummy { span } else { long };
+                let ((x, w), (y, h)) = if vertical {
+                    ((at, wide), (offset, long))
                 } else {
-                    Rect {
-                        x: offset,
-                        y: at,
-                        w: if entry.dummy { span } else { w },
-                        h,
-                    }
-                }
+                    ((offset, long), (at, wide))
+                };
+                Rect { x, y, w, h }
             })
             .collect()
     }
 
-    pub(super) fn positions(
-        &self,
-        layers: &[Vec<usize>],
-        across: &dyn Fn(usize) -> usize,
-    ) -> Vec<usize> {
+    fn positions(&self, layers: &[Vec<usize>], across: &dyn Fn(usize) -> usize) -> Vec<usize> {
         let mut positions = vec![0_usize; self.nodes.len()];
         for layer in layers {
             let mut cursor = 0_usize;
@@ -226,7 +213,7 @@ impl Graph {
                     .map_or(cursor, |centre| centre.saturating_sub(extent / 2));
                 let at = desired.max(cursor);
                 if let Some(slot) = positions.get_mut(*node) {
-                    slot.clone_from(&at);
+                    *slot = at;
                 }
                 cursor = at.saturating_add(extent).saturating_add(SPACING);
             }
@@ -234,7 +221,7 @@ impl Graph {
         positions
     }
 
-    pub(super) fn parents(
+    fn parents(
         &self,
         node: usize,
         positions: &[usize],

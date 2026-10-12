@@ -101,14 +101,11 @@ fn filtered_indices<Row>(
     columns: &[TableColumn<Row>],
     quick_filter: &str,
 ) -> Vec<u32> {
-    if quick_filter.is_empty() {
-        return (0..rows.len() as u32).collect();
-    }
     let filters = columns
         .iter()
         .filter_map(TableColumn::filter)
         .collect::<Vec<_>>();
-    if filters.is_empty() {
+    if quick_filter.is_empty() || filters.is_empty() {
         return (0..rows.len() as u32).collect();
     }
     rows.iter()

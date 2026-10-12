@@ -2,9 +2,9 @@ use crate::geometry::{Point, Rect};
 use crate::renderer::decoration_paint::{DecorationPipeline, decoration_instance};
 use crate::renderer::fill_paint::FillPipeline;
 use crate::renderer::frame_upload::FrameUploads;
-use crate::renderer::scene_command::walk::{Walk, rect_from_fields, transform_rect};
+use crate::renderer::scene_command::walk::{Walk, pipeline_for, rect_from_fields, transform_rect};
 use crate::renderer::scene_command::{
-    DrawDecoration, DrawGradient, DrawPattern, DrawRect, Stroke, StrokeBand,
+    DrawDecoration, DrawGradient, DrawPattern, DrawRect, Stroke, StrokeBand, Transform,
 };
 use crate::renderer::scene_instance::{
     BlendSpace, draw_gradient_instance, draw_pattern_instance, draw_rect_instance,
@@ -17,25 +17,17 @@ use crate::scene::command::trim::{Trimmed, tile_phase, trim_to_view};
 
 const TRIM_PAD: f32 = 2.0;
 
-fn band_of(stroke: Option<Stroke>, rect: Rect) -> Option<StrokeBand> {
-    stroke.and_then(|s| StrokeBand::of(s, rect))
-}
-
 impl Walk<'_> {
     pub(super) fn queue_rect(&mut self, draw: &DrawRect) {
-        let transform = self.state.current_transform();
-        let ink = transform_rect(transform, StrokeBand::ink(draw.stroke, draw.rect));
-        if self.state.clip_rect(ink).is_none() {
-            return;
-        }
-        let Some(trimmed) = self.trimmed(draw.rect, draw.border_radius, draw.stroke) else {
+        let Some((transform, trimmed, dash)) =
+            self.trimmed(draw.rect, draw.border_radius, draw.stroke)
+        else {
             return;
         };
         let mut local = *draw;
         local.rect = trimmed.rect;
         local.border_radius = trimmed.radii;
         let space = BlendSpace::from_format(self.ctx.format);
-        let dash = trimmed.dash_origin(draw.rect, band_of(draw.stroke, draw.rect));
         let instance = draw_rect_instance(&local, self.state.current_opacity(), space);
         self.ctx
             .pending
@@ -60,7 +52,12 @@ impl Walk<'_> {
         let uniform = uploads
             .uniform()
             .expect("rect upload requires viewport uniform");
-        let pipeline = scene_pipeline_for(ctx.scene_pipelines, ctx.device, ctx.format);
+        let pipeline = pipeline_for(
+            ctx.scene_pipelines,
+            ctx.device,
+            ctx.format,
+            (ScenePipeline::format, ScenePipeline::new),
+        );
         pipeline.paint_uploaded(
             PaintCtx {
                 device: ctx.device,
@@ -78,12 +75,9 @@ impl Walk<'_> {
     }
 
     pub(super) fn queue_gradient(&mut self, draw: &DrawGradient) {
-        let transform = self.state.current_transform();
-        let ink = transform_rect(transform, StrokeBand::ink(draw.stroke, draw.rect));
-        if self.state.clip_rect(ink).is_none() {
-            return;
-        }
-        let Some(trimmed) = self.trimmed(draw.rect, draw.border_radius, draw.stroke) else {
+        let Some((transform, trimmed, dash)) =
+            self.trimmed(draw.rect, draw.border_radius, draw.stroke)
+        else {
             return;
         };
         let mut transformed = draw.clone();
@@ -100,7 +94,6 @@ impl Walk<'_> {
             u32::try_from(stops.len()).unwrap_or(u32::MAX),
             space,
         );
-        let dash = trimmed.dash_origin(draw.rect, band_of(draw.stroke, draw.rect));
         self.ctx.pending.stops.extend(stops);
         self.ctx
             .pending
@@ -124,7 +117,12 @@ impl Walk<'_> {
         let uniform = uploads
             .uniform()
             .expect("fill upload requires viewport uniform");
-        let pipeline = fill_pipeline_for(ctx.fill_pipelines, ctx.device, ctx.format);
+        let pipeline = pipeline_for(
+            ctx.fill_pipelines,
+            ctx.device,
+            ctx.format,
+            (FillPipeline::format, FillPipeline::new),
+        );
         pipeline.paint_uploaded(
             PaintCtx {
                 device: ctx.device,
@@ -144,19 +142,15 @@ impl Walk<'_> {
     }
 
     pub(super) fn queue_pattern(&mut self, draw: &DrawPattern) {
-        let transform = self.state.current_transform();
-        let ink = transform_rect(transform, StrokeBand::ink(draw.stroke, draw.rect));
-        if self.state.clip_rect(ink).is_none() {
-            return;
-        }
-        let Some(trimmed) = self.trimmed(draw.rect, draw.border_radius, draw.stroke) else {
+        let Some((transform, trimmed, dash)) =
+            self.trimmed(draw.rect, draw.border_radius, draw.stroke)
+        else {
             return;
         };
         let mut local = *draw;
         local.rect = trimmed.rect;
         local.border_radius = trimmed.radii;
         let phase = tile_phase(trimmed.shift, draw.pattern.tile_extent());
-        let dash = trimmed.dash_origin(draw.rect, band_of(draw.stroke, draw.rect));
         let space = BlendSpace::from_format(self.ctx.format);
         let instance = draw_pattern_instance(&local, self.state.current_opacity(), space);
         self.ctx.pending.fills.push(
@@ -167,16 +161,24 @@ impl Walk<'_> {
         );
     }
 
-    fn trimmed(&self, rect: Rect, radii: CornerRadii, stroke: Option<Stroke>) -> Option<Trimmed> {
-        let band = band_of(stroke, rect);
-        let whole = Trimmed::whole(rect, radii);
+    fn trimmed(
+        &self,
+        rect: Rect,
+        radii: CornerRadii,
+        stroke: Option<Stroke>,
+    ) -> Option<(Transform, Trimmed, [f32; 2])> {
+        let transform = self.state.current_transform();
+        self.state
+            .clip_rect(transform_rect(transform, StrokeBand::ink(stroke, rect)))?;
+        let band = stroke.and_then(|s| StrokeBand::of(s, rect));
         let margin = band.map_or(0.0, |b| b.inside + b.outside) + TRIM_PAD;
         let (width, height) = self.ctx.viewport;
         let area = Rect::new(Point::new(0.0, 0.0), width, height);
-        let Some(view) = self.state.local_view(area) else {
-            return Some(whole);
+        let trimmed = match self.state.local_view(area) {
+            Some(view) => trim_to_view(rect, radii, view, margin)?,
+            None => Trimmed::whole(rect, radii),
         };
-        trim_to_view(rect, radii, view, margin)
+        Some((transform, trimmed, trimmed.dash_origin(rect, band)))
     }
 
     pub(super) fn queue_shadow(&mut self, rect: [f32; 4], radii: CornerRadii, shadow: Shadow) {
@@ -209,7 +211,12 @@ impl Walk<'_> {
         let uniform = uploads
             .uniform()
             .expect("shadow upload requires viewport uniform");
-        let pipeline = shadow_pipeline_for(ctx.shadow_pipelines, ctx.device, ctx.format);
+        let pipeline = pipeline_for(
+            ctx.shadow_pipelines,
+            ctx.device,
+            ctx.format,
+            (ShadowPipeline::format, ShadowPipeline::new),
+        );
         pipeline.paint_uploaded(
             PaintCtx {
                 device: ctx.device,
@@ -259,7 +266,12 @@ impl Walk<'_> {
         let uniform = uploads
             .uniform()
             .expect("decoration upload requires viewport uniform");
-        let pipeline = decoration_pipeline_for(ctx.decoration_pipelines, ctx.device, ctx.format);
+        let pipeline = pipeline_for(
+            ctx.decoration_pipelines,
+            ctx.device,
+            ctx.format,
+            (DecorationPipeline::format, DecorationPipeline::new),
+        );
         pipeline.paint_uploaded(
             PaintCtx {
                 device: ctx.device,
@@ -275,72 +287,4 @@ impl Walk<'_> {
         );
         self.ctx.pending.decorations.clear();
     }
-}
-
-fn decoration_pipeline_for<'a>(
-    pipelines: &'a mut Vec<DecorationPipeline>,
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-) -> &'a mut DecorationPipeline {
-    let idx = pipelines
-        .iter()
-        .position(|p| p.format() == format)
-        .unwrap_or_else(|| {
-            pipelines.push(DecorationPipeline::new(device, format));
-            pipelines.len() - 1
-        });
-    pipelines
-        .get_mut(idx)
-        .expect("decoration pipeline index was just constructed from the vec")
-}
-
-fn shadow_pipeline_for<'a>(
-    pipelines: &'a mut Vec<ShadowPipeline>,
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-) -> &'a mut ShadowPipeline {
-    let idx = pipelines
-        .iter()
-        .position(|p| p.format() == format)
-        .unwrap_or_else(|| {
-            pipelines.push(ShadowPipeline::new(device, format));
-            pipelines.len() - 1
-        });
-    pipelines
-        .get_mut(idx)
-        .expect("shadow pipeline index was just constructed from the vec")
-}
-
-fn fill_pipeline_for<'a>(
-    pipelines: &'a mut Vec<FillPipeline>,
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-) -> &'a mut FillPipeline {
-    let idx = pipelines
-        .iter()
-        .position(|p| p.format() == format)
-        .unwrap_or_else(|| {
-            pipelines.push(FillPipeline::new(device, format));
-            pipelines.len() - 1
-        });
-    pipelines
-        .get_mut(idx)
-        .expect("fill pipeline index was just constructed from the vec")
-}
-
-fn scene_pipeline_for<'a>(
-    pipelines: &'a mut Vec<ScenePipeline>,
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-) -> &'a mut ScenePipeline {
-    let idx = pipelines
-        .iter()
-        .position(|p| p.format() == format)
-        .unwrap_or_else(|| {
-            pipelines.push(ScenePipeline::new(device, format));
-            pipelines.len() - 1
-        });
-    pipelines
-        .get_mut(idx)
-        .expect("scene pipeline index was just constructed from the vec")
 }

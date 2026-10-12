@@ -4,7 +4,9 @@
     clippy::float_cmp,
     clippy::many_single_char_names,
     clippy::too_many_lines,
-    clippy::doc_markdown
+    clippy::doc_markdown,
+    clippy::indexing_slicing,
+    clippy::type_complexity
 )]
 
 use super::*;
@@ -54,18 +56,33 @@ fn run(
     solver
 }
 
-fn flex_parent() -> StyleData {
+fn fixed(w: f32, h: f32) -> StyleData {
+    sized(Dimension::Px(w), Dimension::Px(h))
+}
+
+fn flex_box(w: f32, h: f32) -> StyleData {
     StyleData {
         display: Display::Flex,
+        ..fixed(w, h)
+    }
+}
+
+fn sized(w: Dimension, h: Dimension) -> StyleData {
+    StyleData {
+        size: StyleSize::new(w, h),
         ..StyleData::default()
     }
 }
 
-fn fixed(w: f32, h: f32) -> StyleData {
-    StyleData {
-        size: StyleSize::new(Dimension::Px(w), Dimension::Px(h)),
-        ..StyleData::default()
-    }
+fn kids(parent: StyleData, children: &[StyleData]) -> Vec<ComputedBox> {
+    let mut f = LayoutForest::new();
+    let root = f.insert(None, parent);
+    let ids: Vec<_> = children
+        .iter()
+        .map(|style| add_child(&mut f, root, style.clone()))
+        .collect();
+    let s = run(&f, root, 400.0, 400.0);
+    ids.into_iter().map(|id| s.boxed(id).unwrap()).collect()
 }
 
 fn add_child(

@@ -2,13 +2,14 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::{NodeEventsExt, PointerEvent};
+use crate::events::NodeEventsExt;
 use crate::kernel::{NodeBuilder, Role, TextContent, container};
 use crate::layout::TextStyleCapture;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived};
+use crate::style::TransitionId;
 use crate::style::{
-    ColorAtom, ReactiveStateSlot, Rgba8, StateSlot, StyleAtom, StyleOverlay, TransitionId, space,
+    ColorAtom, ReactiveStateSlot, Rgba8, StateSlot, StyleAtom, StyleOverlay, space,
 };
 
 use crate::widgets::interaction::InteractionState;
@@ -21,18 +22,14 @@ use super::super::shared::{FIELD_VARIANT, binary_style_state};
 const TEXT_FIELD_TRANSITION: TransitionId = presets::SMOOTH;
 static TEXT_FIELD_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_FIELD_TRANSITION)];
 
-pub(super) static FIELD_INVALID: &[StyleAtom] =
-    &[StyleAtom::BorderColor(ColorAtom::Rgba8(Rgba8 {
-        r: 211,
-        g: 47,
-        b: 47,
-        a: 255,
-    }))];
+static FIELD_INVALID: &[StyleAtom] = &[StyleAtom::BorderColor(ColorAtom::Rgba8(Rgba8 {
+    r: 211,
+    g: 47,
+    b: 47,
+    a: 255,
+}))];
 
-#[derive(Clone)]
 pub(super) struct FieldInputs {
-    pub(super) value: Signal<String>,
-    pub(super) disabled: Option<Signal<bool>>,
     pub(super) invalid: Option<Signal<bool>>,
     pub(super) overlay: StyleOverlay,
     pub(super) width: Option<f32>,
@@ -46,18 +43,11 @@ pub(super) fn build_base_node(
     runtime: TextFieldRuntime,
     adorn: Adornments,
 ) -> NodeBuilder {
-    let FieldInputs {
-        value,
-        disabled,
-        invalid,
-        overlay,
-        width,
-        height,
-    } = inputs;
-    let placeholder_str = text_content_untracked(placeholder);
-    let displayed = displayed_text(value, placeholder.clone(), &runtime);
+    let placeholder_str = placeholder.resolve();
+    let displayed = displayed_text(&runtime, placeholder.clone());
     let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
-    let channel = field_style_channel(interaction, disabled, invalid, Rc::clone(&slot_cell));
+    let disabled = runtime.input.disabled;
+    let channel = field_style_channel(interaction, disabled, inputs.invalid, Rc::clone(&slot_cell));
     let text_style = runtime.input.text_style;
     let mut node = container()
         .mutate(move |node| {
@@ -71,23 +61,27 @@ pub(super) fn build_base_node(
         .label(accessible_label(placeholder_str.as_str()));
     if !runtime.password {
         node = node
-            .text_value(value)
+            .text_value(runtime.input.value)
             .text_cursor(runtime.input.caret, runtime.input.selection);
     }
-    let edges = (
-        adorn.leading.is_some(),
-        adorn.trailing.is_some() || adorn.clear.is_some(),
-    );
-    let inner = field_inner(runtime, interaction, displayed, (width, height), edges);
+    let inner = container()
+        .layout(field_inner_layout(&inputs, &adorn))
+        .child(super::selection::text_region(
+            runtime,
+            interaction,
+            displayed,
+        ));
     let node = node
         .placeholder(placeholder_str)
         .layout(field_layout())
         .class(FIELD_VARIANT.base())
         .class(TEXT_FIELD_ANIM_BASE)
         .style_reactive(channel)
-        .state_overlay(overlay, slot_cell)
+        .state_overlay(inputs.overlay, slot_cell)
         .seal_style()
-        .pointer_up(move |event| pointer_up(event, interaction));
+        .pointer_up(move |event| {
+            let _ = interaction.release_pointer(event);
+        });
     adorn.wrap(node, inner)
 }
 
@@ -98,7 +92,7 @@ fn field_style_channel(
     slot_cell: ReactiveStateSlot,
 ) -> impl Fn() -> &'static [StyleAtom] {
     move || {
-        let state = field_state(interaction, disabled);
+        let state = binary_style_state(interaction, disabled);
         slot_cell.set(state.slot());
         if invalid.is_some_and(Signal::get) {
             FIELD_INVALID
@@ -115,27 +109,10 @@ pub(super) fn field_layout() -> LayoutStyle {
         .align_items(AlignItems::Center)
 }
 
-fn field_inner(
-    runtime: TextFieldRuntime,
-    interaction: InteractionState,
-    displayed: Signal<String>,
-    (width, height): (Option<f32>, Option<f32>),
-    edges: (bool, bool),
-) -> NodeBuilder {
-    container()
-        .layout(field_inner_layout(width, height, edges))
-        .child(super::selection::text_region(
-            runtime,
-            interaction,
-            displayed,
-        ))
-}
-
-fn field_inner_layout(
-    width: Option<f32>,
-    height: Option<f32>,
-    (leading, trailing): (bool, bool),
-) -> LayoutStyle {
+fn field_inner_layout(inputs: &FieldInputs, adorn: &Adornments) -> LayoutStyle {
+    let (width, height) = (inputs.width, inputs.height);
+    let leading = adorn.leading.is_some();
+    let trailing = adorn.trailing.is_some() || adorn.clear.is_some();
     let inset = crate::layout::snap::line(1.0);
     let padding_y = crate::layout::snap::detail(height.map_or(6.0, |height| {
         ((height - 2.0 - super::selection::line_height()) * 0.5).clamp(0.0, 6.0)
@@ -160,15 +137,8 @@ fn field_inner_layout(
         .padding_y(padding_y)
 }
 
-fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
-    let _ = interaction.release_pointer(event);
-}
-
-fn displayed_text(
-    value: Signal<String>,
-    placeholder: TextContent,
-    runtime: &TextFieldRuntime,
-) -> Signal<String> {
+fn displayed_text(runtime: &TextFieldRuntime, placeholder: TextContent) -> Signal<String> {
+    let value = runtime.input.value;
     let preedit = runtime.input.ime.preedit;
     let caret = runtime.input.caret;
     let password = runtime.password;
@@ -177,42 +147,25 @@ fn displayed_text(
         let current = value.get();
         let composing = preedit.get();
         let hiding = super::mask::hiding(password, reveal);
-        if !composing.is_empty() {
-            let spliced =
-                crate::widgets::text_edit::splice_preedit(&current, caret.get(), &composing);
-            if hiding {
-                super::mask::mask_chars(&spliced)
-            } else {
-                spliced
-            }
+        let shown = if !composing.is_empty() {
+            crate::widgets::text_edit::splice_preedit(&current, caret.get(), &composing)
         } else if current.is_empty() {
-            text_content(&placeholder)
-        } else if hiding {
-            super::mask::mask_chars(&current)
+            return placeholder.resolve();
         } else {
             current
+        };
+        if hiding {
+            super::mask::mask_chars(&shown)
+        } else {
+            shown
         }
     })
 }
 
-fn text_content(content: &TextContent) -> String {
-    content.resolve()
-}
-
-fn text_content_untracked(content: &TextContent) -> String {
-    content.resolve()
-}
-
 fn accessible_label(placeholder: &str) -> String {
-    (!placeholder.is_empty())
-        .then_some(placeholder)
-        .filter(|text| !text.is_empty())
-        .map_or_else(|| String::from("Text field"), ToOwned::to_owned)
-}
-
-fn field_state(
-    interaction: InteractionState,
-    disabled: Option<Signal<bool>>,
-) -> crate::style::StyleState {
-    binary_style_state(interaction, disabled)
+    if placeholder.is_empty() {
+        String::from("Text field")
+    } else {
+        placeholder.to_owned()
+    }
 }

@@ -4,15 +4,10 @@ use crate::renderer::error::RendererError;
 use crate::renderer::frame_upload::UploadCapacities;
 use crate::renderer::layer_pool::LayerPool;
 use crate::renderer::scene_command::state::SceneState;
-use crate::renderer::scene_command::walk::{Walk, WalkCtx, translation};
+use crate::renderer::scene_command::walk::{Walk, WalkCtx, pipeline_for, translation};
 use crate::renderer::scene_command::{CommandScene, SceneCommand};
 use crate::renderer::sprite_paint::SpritePipeline;
 
-#[path = "layer_walk/geometry.rs"]
-mod geometry;
-use geometry::{local_rect, physical_extent};
-#[path = "layer_walk/pipelines.rs"]
-mod pipelines;
 #[path = "layer_walk/tree.rs"]
 mod tree;
 use tree::{Node, build_tree};
@@ -46,34 +41,21 @@ struct Frame<'n> {
     target: Target,
     batch: &'n [Node<'n>],
     rest: &'n [Node<'n>],
-    prepare: Prepare<'n>,
+    scan: &'n [Node<'n>],
+    scan_target: Target,
+    layers: Vec<Option<Layer>>,
 }
 
 impl<'n> Frame<'n> {
     fn new(ctx: &WalkCtx<'_>, nodes: &'n [Node<'n>], target: Target) -> Self {
         let end = batch_len(nodes, target.bounds, ctx.scale, ctx.format);
         let (batch, rest) = nodes.split_at(end);
-        let prepare = Prepare::new(batch, &target);
         Self {
+            scan_target: target.clone(),
             target,
             batch,
             rest,
-            prepare,
-        }
-    }
-}
-
-struct Prepare<'n> {
-    nodes: &'n [Node<'n>],
-    target: Target,
-    layers: Vec<Option<Layer>>,
-}
-
-impl<'n> Prepare<'n> {
-    fn new(nodes: &'n [Node<'n>], target: &Target) -> Self {
-        Self {
-            nodes,
-            target: target.clone(),
+            scan: batch,
             layers: Vec::new(),
         }
     }
@@ -102,7 +84,7 @@ impl<'n> FrameStack<'n> {
                 self.nested.push(nested);
             } else if let Some(done) = self.nested.pop() {
                 let layer = close_layer(ctx, done.open)?;
-                self.top().prepare.layers.push(Some(layer));
+                self.top().layers.push(Some(layer));
             } else {
                 return Ok(());
             }
@@ -138,19 +120,13 @@ fn prepare_sprites(ctx: &mut WalkCtx<'_>, commands: &[SceneCommand]) {
     {
         return;
     }
-    let index = ctx
-        .sprite_pipelines
-        .iter()
-        .position(|pipeline| pipeline.format() == ctx.format)
-        .unwrap_or_else(|| {
-            ctx.sprite_pipelines
-                .push(SpritePipeline::new(ctx.device, ctx.format));
-            ctx.sprite_pipelines.len() - 1
-        });
-    ctx.sprite_pipelines
-        .get_mut(index)
-        .expect("sprite pipeline index was just constructed from the vec")
-        .prepare(ctx.device, ctx.queue, commands, ctx.scale);
+    pipeline_for(
+        ctx.sprite_pipelines,
+        ctx.device,
+        ctx.format,
+        (SpritePipeline::format, SpritePipeline::new),
+    )
+    .prepare(ctx.device, ctx.queue, commands, ctx.scale);
 }
 
 fn render_nodes(
@@ -173,17 +149,18 @@ fn advance<'n>(
     frame: &mut Frame<'n>,
 ) -> Result<Option<Nested<'n>>, RendererError> {
     loop {
-        if let Some(nested) = prepare_layers(ctx, &mut frame.prepare)? {
+        if let Some(nested) = prepare_layers(ctx, frame)? {
             return Ok(Some(nested));
         }
-        let prepared = std::mem::take(&mut frame.prepare.layers);
+        let prepared = std::mem::take(&mut frame.layers);
         render_batch(ctx, frame.batch, &mut frame.target, prepared);
         if frame.rest.is_empty() {
             return Ok(None);
         }
         let end = batch_len(frame.rest, frame.target.bounds, ctx.scale, ctx.format);
         (frame.batch, frame.rest) = frame.rest.split_at(end);
-        frame.prepare = Prepare::new(frame.batch, &frame.target);
+        frame.scan = frame.batch;
+        frame.scan_target = frame.target.clone();
     }
 }
 
@@ -236,35 +213,35 @@ fn render_batch(
 
 fn prepare_layers<'n>(
     ctx: &mut WalkCtx<'_>,
-    prepare: &mut Prepare<'n>,
+    frame: &mut Frame<'n>,
 ) -> Result<Option<Nested<'n>>, RendererError> {
-    while let Some((node, rest)) = prepare.nodes.split_first() {
-        prepare.nodes = rest;
+    while let Some((node, rest)) = frame.scan.split_first() {
+        frame.scan = rest;
         let (plan, children) = match node {
             Node::Command(_) => continue,
             Node::State(command) => {
-                let _ = prepare.target.state.apply(command);
+                let _ = frame.scan_target.state.apply(command);
                 continue;
             }
             Node::Layer { scope, children } => {
-                (layer_plan(*scope, &prepare.target, ctx.scale), children)
+                (layer_plan(*scope, &frame.scan_target, ctx.scale), children)
             }
             Node::Group {
                 opacity,
                 commands,
                 children,
             } => (
-                group_plan(*opacity, commands, &prepare.target, ctx.scale),
+                group_plan(*opacity, commands, &frame.scan_target, ctx.scale),
                 children,
             ),
         };
         let Some(plan) = plan else {
-            prepare.layers.push(None);
+            frame.layers.push(None);
             continue;
         };
         let (open, target) = open_layer(ctx, plan)?;
-        let frame = Frame::new(ctx, children, target);
-        return Ok(Some(Nested { open, frame }));
+        let child = Frame::new(ctx, children, target);
+        return Ok(Some(Nested { open, frame: child }));
     }
     Ok(None)
 }
@@ -327,3 +304,31 @@ const fn reborrow_ctx<'a>(
         stats: &mut *ctx.stats,
     }
 }
+
+const fn local_rect(rect: Rect, parent_origin: Point) -> Rect {
+    Rect::new(
+        Point::new(
+            rect.origin.x - parent_origin.x,
+            rect.origin.y - parent_origin.y,
+        ),
+        rect.width,
+        rect.height,
+    )
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
+)]
+fn physical_extent(rect: Rect, scale: f32) -> (u32, u32) {
+    let scale = scale.max(0.0);
+    (
+        (rect.width * scale).ceil().max(0.0) as u32,
+        (rect.height * scale).ceil().max(0.0) as u32,
+    )
+}
+
+#[cfg(test)]
+#[path = "layer_walk/geometry_tests.rs"]
+mod tests;

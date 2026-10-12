@@ -20,12 +20,16 @@ pub(crate) struct SizeReactive {
 
 impl SizeReactive {
     pub(crate) fn publish(self, size: (f32, f32)) -> bool {
-        let changed = self.size.try_peek().is_some_and(|current| current != size);
-        if changed {
-            self.size.set(size);
-        }
-        changed
+        publish_changed(self.size, size)
     }
+}
+
+fn publish_changed<T: Clone + PartialEq + 'static>(signal: Signal<T>, value: T) -> bool {
+    let changed = signal.try_peek().is_some_and(|current| current != value);
+    if changed {
+        signal.set(value);
+    }
+    changed
 }
 
 #[derive(Clone, Copy)]
@@ -35,14 +39,7 @@ pub struct BoundsReactive {
 
 impl BoundsReactive {
     pub fn publish(&self, bounds: (f32, f32, f32, f32)) -> bool {
-        let changed = self
-            .bounds
-            .try_peek()
-            .is_some_and(|current| current != bounds);
-        if changed {
-            self.bounds.set(bounds);
-        }
-        changed
+        publish_changed(self.bounds, bounds)
     }
 }
 

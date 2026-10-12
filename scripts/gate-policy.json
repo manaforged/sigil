@@ -7,13 +7,13 @@
   },
   "refusedEnv": ["SIGIL_ALLOW_NO_GPU", "SIGIL_REGEN_GOLDENS", "SIGIL_REGEN_ALLOW_CONTENT_LOSS"],
   "ratchet": {
-    "dead_code": { "lint": "dead_code", "max": 11 },
+    "dead_code": { "lint": "dead_code", "max": 9 },
     "unreachable_pub": { "lint": "unreachable_pub", "max": 17 },
-    "too_many_lines": { "lint": "clippy::too_many_lines", "max": 8 },
-    "too_many_arguments": { "lint": "clippy::too_many_arguments", "max": 21 },
+    "too_many_lines": { "lint": "clippy::too_many_lines", "max": 5 },
+    "too_many_arguments": { "lint": "clippy::too_many_arguments", "max": 19 },
     "panic": { "lint": "clippy::panic", "max": 4 },
     "unwrap_used": { "lint": "clippy::unwrap_used", "max": 0 },
-    "indexing_slicing": { "lint": "clippy::indexing_slicing", "max": 5 },
-    "expect_call": { "pattern": "\\.expect\\(", "max": 84 }
+    "indexing_slicing": { "lint": "clippy::indexing_slicing", "max": 4 },
+    "expect_call": { "pattern": "\\.expect\\(", "max": 62 }
   }
 }

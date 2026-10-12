@@ -22,16 +22,9 @@ pub(crate) fn test_atlas_size_override() -> (u32, u32) {
     )
 }
 
-fn initial_atlas_size() -> u32 {
-    match TEST_INITIAL_SIZE.load(Ordering::Relaxed) {
-        0 => CacheLimits::DEFAULT.atlas_initial,
-        v => v,
-    }
-}
-
-fn max_atlas_size() -> u32 {
-    match TEST_MAX_SIZE.load(Ordering::Relaxed) {
-        0 => CacheLimits::DEFAULT.atlas_max,
+fn size_or(size: &AtomicU32, default: u32) -> u32 {
+    match size.load(Ordering::Relaxed) {
+        0 => default,
         v => v,
     }
 }
@@ -65,8 +58,8 @@ static WARNED_ATLAS_FULL: AtomicBool = AtomicBool::new(false);
 
 pub(super) struct RasterAtlas {
     texture: wgpu::Texture,
-    view: wgpu::TextureView,
-    size: u32,
+    pub(super) view: wgpu::TextureView,
+    pub(super) size: u32,
     cursor_x: u32,
     cursor_y: u32,
     shelf_height: u32,
@@ -74,12 +67,12 @@ pub(super) struct RasterAtlas {
     frame: u64,
     compact_pending: bool,
     cache: AHashMap<RasterKey, CachedMask>,
-    blank: AHashSet<RasterKey>,
+    pub(super) blank: AHashSet<RasterKey>,
 }
 
 impl RasterAtlas {
     pub(super) fn new(device: &wgpu::Device) -> Self {
-        let size = initial_atlas_size();
+        let size = size_or(&TEST_INITIAL_SIZE, CacheLimits::DEFAULT.atlas_initial);
         let (texture, view) = create_texture(device, size);
         Self {
             texture,
@@ -94,18 +87,6 @@ impl RasterAtlas {
             cache: AHashMap::new(),
             blank: AHashSet::new(),
         }
-    }
-
-    pub(super) const fn view(&self) -> &wgpu::TextureView {
-        &self.view
-    }
-
-    pub(super) fn is_blank(&self, key: &RasterKey) -> bool {
-        self.blank.contains(key)
-    }
-
-    pub(super) fn mark_blank(&mut self, key: RasterKey) {
-        self.blank.insert(key);
     }
 
     pub(super) fn get(&mut self, key: &RasterKey) -> Option<Placement> {
@@ -173,24 +154,21 @@ impl RasterAtlas {
         Some(placement)
     }
 
+    #[allow(clippy::cast_precision_loss)]
     const fn placement(cached: &CachedMask) -> Placement {
         let r = cached.rect;
         Placement {
             px: [
-                f32_from_u32(r.x),
-                f32_from_u32(r.y),
-                f32_from_u32(r.x + r.w),
-                f32_from_u32(r.y + r.h),
+                r.x as f32,
+                r.y as f32,
+                (r.x + r.w) as f32,
+                (r.y + r.h) as f32,
             ],
             width: r.w,
             height: r.h,
             left: cached.left,
             top: cached.top,
         }
-    }
-
-    pub(super) const fn size(&self) -> u32 {
-        self.size
     }
 
     fn alloc_or_grow(
@@ -239,7 +217,7 @@ impl RasterAtlas {
     }
 
     fn grow(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let new_size = (self.size * 2).min(max_atlas_size());
+        let new_size = (self.size * 2).min(size_or(&TEST_MAX_SIZE, CacheLimits::DEFAULT.atlas_max));
         let (texture, view) = create_texture(device, new_size);
         for cached in self.cache.values() {
             upload(queue, &texture, cached.rect, &cached.data);
@@ -248,11 +226,6 @@ impl RasterAtlas {
         self.view = view;
         self.size = new_size;
     }
-}
-
-#[allow(clippy::cast_precision_loss)]
-const fn f32_from_u32(v: u32) -> f32 {
-    v as f32
 }
 
 fn upload(queue: &wgpu::Queue, texture: &wgpu::Texture, rect: AtlasRect, data: &[u8]) {

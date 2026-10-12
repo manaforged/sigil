@@ -50,9 +50,7 @@ impl Node {
 
     pub fn attach<T: 'static>(&mut self, value: T) -> Option<T> {
         self.bump_version();
-        self.extensions
-            .get_or_insert_with(|| Box::new(NodeExtensions::default()))
-            .attach(value)
+        self.attach_untracked(value)
     }
 
     pub fn attach_untracked<T: 'static>(&mut self, value: T) -> Option<T> {
@@ -68,7 +66,7 @@ impl Node {
 
     pub fn get_extension_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.bump_version();
-        self.extensions.as_mut().and_then(|bag| bag.get_mut::<T>())
+        self.get_extension_mut_untracked()
     }
 
     pub fn get_extension_mut_untracked<T: 'static>(&mut self) -> Option<&mut T> {
@@ -124,16 +122,10 @@ pub struct NodeExtensions {
 
 impl NodeExtensions {
     pub fn attach<T: 'static>(&mut self, value: T) -> Option<T> {
-        let tid = TypeId::of::<T>();
-        if let Some(slot) = self
-            .entries
-            .iter_mut()
-            .find(|entry| entry.0 == tid)
-            .and_then(|entry| entry.1.downcast_mut::<T>())
-        {
+        if let Some(slot) = self.get_mut::<T>() {
             return Some(core::mem::replace(slot, value));
         }
-        self.entries.push((tid, Box::new(value)));
+        self.entries.push((TypeId::of::<T>(), Box::new(value)));
         None
     }
 
@@ -158,18 +150,12 @@ impl NodeExtensions {
         let tid = TypeId::of::<T>();
         let position = self.entries.iter().position(|entry| entry.0 == tid)?;
         let (_, boxed) = self.entries.swap_remove(position);
-        Self::downcast_box::<T>(boxed)
+        boxed.downcast::<T>().ok().map(|value| *value)
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
-    }
-
-    fn downcast_box<T: 'static>(value: Box<dyn Any>) -> Option<T> {
-        value
-            .downcast::<T>()
-            .map_or_else(|_| None, |value| Some(*value))
     }
 }
 

@@ -7,7 +7,7 @@ use half::f16;
 
 use crate::renderer::scene_command::walk::IDENTITY;
 use crate::renderer::scene_command::{
-    DrawGradient, DrawPattern, DrawRect, GradientStop, PatternKind, Transform,
+    DrawGradient, DrawPattern, DrawRect, GradientStop, PatternKind, Stroke, StrokeBand, Transform,
 };
 use crate::renderer::shadow_paint::Shadow;
 use crate::scene::corner_radii::CornerRadii;
@@ -15,10 +15,7 @@ pub(crate) use crate::scene::shadow::{expanded_shadow_rect, srgb_channel_to_line
 
 mod helpers;
 
-use helpers::{
-    RectPaint, inflate, rect_fields, rect_instance_parts, shadow_color, stroke_fields,
-    stroke_outset,
-};
+use helpers::{inflate, rect_fields, shadow_color, stroke_fields};
 
 pub(crate) const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
@@ -50,16 +47,6 @@ impl BlendSpace {
             self.channel(color.g),
             self.channel(color.b),
             f32::from(color.a) / 255.0,
-        ]
-    }
-
-    pub(crate) fn rgba16f(self, color: Rgba8) -> [f16; 4] {
-        let [r, g, b, a] = self.rgba(color);
-        [
-            f16::from_f32(r),
-            f16::from_f32(g),
-            f16::from_f32(b),
-            f16::from_f32(a),
         ]
     }
 }
@@ -176,16 +163,21 @@ pub(crate) fn draw_rect_instance(
     opacity_scale: f32,
     space: BlendSpace,
 ) -> RectInstance {
-    rect_instance_parts(
-        draw.rect,
-        draw.border_radius,
-        RectPaint {
-            color: space.rgba(draw.color),
-            opacity: (f32::from(draw.opacity) / 10_000.0) * opacity_scale,
-            stroke: draw.stroke,
-            space,
-        },
-    )
+    let rect = draw.rect;
+    let (stroke_params, stroke_meta) = stroke_fields(draw.stroke, rect, space);
+    let outset = StrokeBand::reach(draw.stroke, rect);
+    let [xform_x, xform_y] = affine_rows(IDENTITY);
+    let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
+    RectInstance {
+        rect: rect_fields(inflate(rect, outset)),
+        color: space.rgba(draw.color),
+        corner_radii: draw.border_radius.normalized_for(rect.width, rect.height),
+        params: [opacity.clamp(0.0, 1.0), outset, 0.0, 0.0],
+        stroke_params,
+        stroke_meta,
+        xform_x,
+        xform_y,
+    }
 }
 
 pub(crate) fn draw_gradient_instance(
@@ -195,44 +187,18 @@ pub(crate) fn draw_gradient_instance(
     stop_count: u32,
     space: BlendSpace,
 ) -> FillInstance {
-    let (stroke_params, stroke_meta) = stroke_fields(draw.stroke, draw.rect, space);
-    let outset = stroke_outset(draw.stroke, draw.rect);
-    let inflated = inflate(draw.rect, outset);
-    let [xform_x, xform_y] = affine_rows(IDENTITY);
-    let Rect {
-        origin,
-        width,
-        height,
-    } = inflated;
+    let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
+    let base = fill_base(draw.rect, draw.border_radius, draw.stroke, opacity, space);
+    let (start, end) = (draw.gradient.start, draw.gradient.end);
     FillInstance {
-        rect: [origin.x, origin.y, width, height],
-        line: [
-            draw.gradient.start.x,
-            draw.gradient.start.y,
-            draw.gradient.end.x,
-            draw.gradient.end.y,
-        ],
-        corner_radii: draw
-            .border_radius
-            .normalized_for(draw.rect.width, draw.rect.height),
-        params: [
-            ((f32::from(draw.opacity) / 10_000.0) * opacity_scale).clamp(0.0, 1.0),
-            outset,
-            0.0,
-            0.0,
-        ],
+        line: [start.x, start.y, end.x, end.y],
         stop_range: [
             stop_offset,
             stop_count.min(MAX_GRADIENT_STOPS_U32),
             FILL_KIND_GRADIENT,
             0,
         ],
-        stroke_params,
-        stroke_meta,
-        pattern_a: [0.0; 4],
-        pattern_b: [0.0; 4],
-        xform_x,
-        xform_y,
+        ..base
     }
 }
 
@@ -241,29 +207,38 @@ pub(crate) fn draw_pattern_instance(
     opacity_scale: f32,
     space: BlendSpace,
 ) -> FillInstance {
-    let (stroke_params, stroke_meta) = stroke_fields(draw.stroke, draw.rect, space);
-    let outset = stroke_outset(draw.stroke, draw.rect);
-    let inflated = inflate(draw.rect, outset);
-    let [xform_x, xform_y] = affine_rows(IDENTITY);
-    let Rect {
-        origin,
-        width,
-        height,
-    } = inflated;
-    let opacity = ((f32::from(draw.opacity) / 10_000.0) * opacity_scale).clamp(0.0, 1.0);
+    let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
+    let base = fill_base(draw.rect, draw.border_radius, draw.stroke, opacity, space);
     let (fill_kind, line, pattern_a, pattern_b) = pack_pattern(draw.pattern, space);
     FillInstance {
-        rect: [origin.x, origin.y, width, height],
         line,
-        corner_radii: draw
-            .border_radius
-            .normalized_for(draw.rect.width, draw.rect.height),
-        params: [opacity, outset, 0.0, 0.0],
         stop_range: [0, 0, fill_kind, 0],
-        stroke_params,
-        stroke_meta,
         pattern_a,
         pattern_b,
+        ..base
+    }
+}
+
+fn fill_base(
+    rect: Rect,
+    radii: CornerRadii,
+    stroke: Option<Stroke>,
+    opacity: f32,
+    space: BlendSpace,
+) -> FillInstance {
+    let (stroke_params, stroke_meta) = stroke_fields(stroke, rect, space);
+    let outset = StrokeBand::reach(stroke, rect);
+    let [xform_x, xform_y] = affine_rows(IDENTITY);
+    FillInstance {
+        rect: rect_fields(inflate(rect, outset)),
+        line: [0.0; 4],
+        corner_radii: radii.normalized_for(rect.width, rect.height),
+        params: [opacity.clamp(0.0, 1.0), outset, 0.0, 0.0],
+        stop_range: [0; 4],
+        stroke_params,
+        stroke_meta,
+        pattern_a: [0.0; 4],
+        pattern_b: [0.0; 4],
         xform_x,
         xform_y,
     }
@@ -320,29 +295,29 @@ pub(crate) fn draw_shadow_instance(
 }
 
 pub(crate) fn gradient_stop_records(stops: &[GradientStop], space: BlendSpace) -> Vec<GpuStop> {
-    let mut records = Vec::with_capacity(stops.len().clamp(1, MAX_GRADIENT_STOPS));
-    for stop in stops.iter().take(MAX_GRADIENT_STOPS) {
-        records.push(gpu_stop(*stop, space));
-    }
-    if records.is_empty() {
-        records.push(gpu_stop(
-            GradientStop::new(
-                0.0,
-                Rgba8 {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    a: 0,
-                },
-            ),
-            space,
-        ));
-    }
-    records
+    let transparent = [GradientStop::new(
+        0.0,
+        Rgba8 {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        },
+    )];
+    let stops = if stops.is_empty() {
+        &transparent[..]
+    } else {
+        stops
+    };
+    stops
+        .iter()
+        .take(MAX_GRADIENT_STOPS)
+        .map(|stop| gpu_stop(*stop, space))
+        .collect()
 }
 
 fn gpu_stop(stop: GradientStop, space: BlendSpace) -> GpuStop {
-    let [r, g, b, a] = space.rgba16f(stop.color);
+    let [r, g, b, a] = space.rgba(stop.color).map(f16::from_f32);
     GpuStop {
         offset_bits: stop.offset.clamp(0.0, 1.0).to_bits(),
         rgba01: pack_f16_pair(r, g),

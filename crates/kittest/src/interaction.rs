@@ -59,10 +59,7 @@ pub(crate) fn advance(
         layout()
     };
     if frames != u32::MAX {
-        for _ in 0..frames {
-            frame()?;
-        }
-        return Ok(());
+        return (0..frames).try_for_each(|_| frame());
     }
     crate::settle::settle(|| sigil::animation_runtime::active_count() > 0, frame)
 }

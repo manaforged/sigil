@@ -10,27 +10,17 @@ type ImeEligible = Box<dyn Fn() -> bool>;
 
 #[derive(Default)]
 pub(crate) struct ImeHandlers {
-    handlers: Vec<ImeHandler>,
-    eligible: Option<ImeEligible>,
+    pub(crate) handlers: Vec<ImeHandler>,
+    pub(crate) eligible: Option<ImeEligible>,
 }
 
 impl ImeHandlers {
-    pub(crate) fn add(&mut self, handler: ImeHandler) {
-        self.handlers.push(handler);
-    }
-
-    pub(crate) fn set_eligible(&mut self, f: ImeEligible) {
-        self.eligible = Some(f);
-    }
-
     pub(crate) fn is_eligible(&self) -> bool {
         self.eligible.as_ref().is_none_or(|f| f())
     }
 
     pub(crate) fn invoke(&self, event: &ImeEvent) {
-        for handler in &self.handlers {
-            handler(event);
-        }
+        self.handlers.iter().for_each(|handler| handler(event));
     }
 }
 

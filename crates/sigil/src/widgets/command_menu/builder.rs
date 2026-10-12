@@ -5,30 +5,17 @@ use crate::style::{PaintTarget, Style, StyleSlot};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::Activate;
-use super::nav::SubmitObserver;
-use super::render::{MenuParts, into_node_builder};
-
-pub(super) enum EntryDef {
-    Leaf {
-        label: String,
-        action: Option<Activate>,
-        disabled: bool,
-    },
-    Submenu {
-        label: String,
-        disabled: bool,
-        def: LevelDef,
-    },
-}
+use super::nav::{Entry, SubmitObserver};
+use super::render::into_node_builder;
 
 #[derive(Default)]
 pub(super) struct LevelDef {
-    pub(super) entries: Vec<EntryDef>,
+    pub(super) entries: Vec<Entry>,
 }
 
 impl LevelDef {
     fn item(&mut self, label: impl Into<String>, action: impl Fn() + 'static) {
-        self.entries.push(EntryDef::Leaf {
+        self.entries.push(Entry::Leaf {
             label: label.into(),
             action: Some(Rc::new(action)),
             disabled: false,
@@ -36,15 +23,15 @@ impl LevelDef {
     }
 
     fn submenu(&mut self, label: impl Into<String>, def: Self) {
-        self.entries.push(EntryDef::Submenu {
+        self.entries.push(Entry::Submenu {
             label: label.into(),
             disabled: false,
-            def,
+            entries: Rc::new(def.entries),
         });
     }
 
     fn disabled(&mut self, label: impl Into<String>) {
-        self.entries.push(EntryDef::Leaf {
+        self.entries.push(Entry::Leaf {
             label: label.into(),
             action: None,
             disabled: true,
@@ -80,12 +67,12 @@ impl SubmenuBuilder {
 
 #[derive(Default)]
 pub struct CommandMenuBuilder {
-    level: LevelDef,
-    on_submit: Option<SubmitObserver>,
-    on_cancel: Option<Activate>,
-    placeholder: String,
-    style_accumulator: Style,
-    layout_overrides: LayoutOverrides,
+    pub(super) level: LevelDef,
+    pub(super) on_submit: Option<SubmitObserver>,
+    pub(super) on_cancel: Option<Activate>,
+    pub(super) placeholder: String,
+    pub(super) style_accumulator: Style,
+    pub(super) layout_overrides: LayoutOverrides,
 }
 
 #[must_use]
@@ -151,15 +138,6 @@ impl PaintTarget for CommandMenuBuilder {
 impl IntoNode for CommandMenuBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
         let hooks = self.layout_overrides.hooks();
-        hooks
-            .finish(into_node_builder(MenuParts {
-                level: self.level,
-                on_submit: self.on_submit,
-                on_cancel: self.on_cancel,
-                placeholder: self.placeholder,
-                style_accumulator: self.style_accumulator,
-                layout_overrides: self.layout_overrides,
-            }))
-            .build(cx)
+        hooks.finish(into_node_builder(self)).build(cx)
     }
 }

@@ -22,7 +22,7 @@ fn a_late_reply_is_read_to_its_end_before_input_starts() -> std::io::Result<()> 
             .write_all(b"\x1b]11;rgb:0a0a/0a0a/0a0a\x1b\\\x1b[?2026;2$y\x1b[?62;c")
             .map(|()| writer)
     });
-    let reply = super::read_reply(&reader);
+    let reply = super::read_reply(&reader, |_| false);
     let open = late
         .join()
         .map_err(|_| std::io::Error::other("writer panicked"))??;

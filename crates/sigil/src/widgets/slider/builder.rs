@@ -1,4 +1,3 @@
-use crate::reactive::Reactive;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -8,25 +7,17 @@ use crate::events::{NodeEventsExt, PointerEvent};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, cols, rows};
-use crate::reactive::Signal;
+use crate::reactive::{Reactive, Signal};
 use crate::style::{NodeStyleExt, PaintTarget, StateHost, Style, StyleOverlay, StyleSlot, Theme};
-
 use crate::widgets::interaction::InteractionState;
+use crate::widgets::orientation::Orientation;
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, control_surface, disabled_now};
-use super::handlers::{
-    attach_key_handlers, normalized_step, pointer_down, pointer_move, pointer_up, quantize,
-};
-use super::track::{slider_thumb, track_fill, track_rest};
+use super::handlers::{attach_key_handlers, pointer_down, pointer_move, pointer_up};
+use super::track::{slider_thumb, track};
 
 pub(super) type ValueChange = Rc<dyn Fn(f32) + 'static>;
-
-fn noop_value_change() -> ValueChange {
-    Rc::new(|_| {})
-}
-
-use crate::widgets::orientation::Orientation;
 
 const HORIZONTAL_WIDTH: f32 = 180.0;
 const HORIZONTAL_HEIGHT: f32 = 24.0;
@@ -51,14 +42,8 @@ pub(super) struct SliderRuntime {
 }
 
 pub struct SliderBuilder {
-    value: Signal<f32>,
-    range: SliderRange,
-    step: f32,
-    disabled: Option<Signal<bool>>,
+    runtime: SliderRuntime,
     on_change: Option<ValueChange>,
-    orientation: Orientation,
-    length: Option<f32>,
-    glass: bool,
     label: Option<String>,
     marks: Vec<String>,
     mutators: Vec<BuilderMutator>,
@@ -74,17 +59,21 @@ pub fn slider(value: Signal<f32>, range: RangeInclusive<f32>) -> SliderBuilder {
 impl SliderBuilder {
     #[must_use]
     pub fn new(value: Signal<f32>, range: RangeInclusive<f32>) -> Self {
-        let start = *range.start();
-        let end = *range.end();
+        let (start, end) = range.into_inner();
         Self {
-            value,
-            range: SliderRange::from_bounds(start, end),
-            step: 1.0,
-            disabled: None,
+            runtime: SliderRuntime {
+                value,
+                range: SliderRange {
+                    min: start.min(end),
+                    max: start.max(end),
+                },
+                step: 1.0,
+                disabled: None,
+                orientation: Orientation::Horizontal,
+                length: None,
+                glass: false,
+            },
             on_change: None,
-            orientation: Orientation::Horizontal,
-            length: None,
-            glass: false,
             label: None,
             marks: Vec::new(),
             mutators: Vec::new(),
@@ -95,7 +84,7 @@ impl SliderBuilder {
 
     #[must_use]
     pub const fn length(mut self, length: f32) -> Self {
-        self.length = Some(length);
+        self.runtime.length = Some(length);
         self
     }
 
@@ -113,13 +102,13 @@ impl SliderBuilder {
 
     #[must_use]
     pub const fn step(mut self, step: f32) -> Self {
-        self.step = step;
+        self.runtime.step = step;
         self
     }
 
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
-        self.disabled = Some(disabled.into_signal());
+        self.runtime.disabled = Some(disabled.into_signal());
         self
     }
 
@@ -131,13 +120,13 @@ impl SliderBuilder {
 
     #[must_use]
     pub const fn glass(mut self) -> Self {
-        self.glass = true;
+        self.runtime.glass = true;
         self
     }
 
     #[must_use]
     pub const fn orientation(mut self, orientation: Orientation) -> Self {
-        self.orientation = orientation;
+        self.runtime.orientation = orientation;
         self
     }
 
@@ -148,28 +137,28 @@ impl SliderBuilder {
     }
 
     fn into_node_builder(mut self) -> NodeBuilder {
-        let enabled = !disabled_now(self.disabled);
-        let interaction = InteractionState::new(enabled);
-        let on_change = self
-            .on_change
-            .as_ref()
-            .map_or_else(noop_value_change, Rc::clone);
-        let runtime = SliderRuntime::from_builder(&self);
+        let runtime = self.runtime;
+        let interaction = InteractionState::new(!runtime.disabled());
+        let on_change: ValueChange = self.on_change.take().unwrap_or_else(|| Rc::new(|_| {}));
         let user_overlay = self.style_accumulator.take_state_overlay();
-        let mut node = self.base_node(interaction, Rc::clone(&on_change), user_overlay);
+        let root = slider_root(&self, interaction, user_overlay);
+        let change = Rc::clone(&on_change);
+        let mut node = interaction.install(
+            attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change))
+                .pointer_down(move |event| pointer_down(event, interaction, runtime))
+                .pointer_move(move |event| pointer_move(event, interaction, runtime))
+                .pointer_up(move |event| pointer_up(event, interaction, runtime.value, &change)),
+        );
         for mutate in self.mutators {
             node = mutate(node);
         }
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
-        let node = match self.label {
-            Some(caption) => {
-                super::caption::with_caption(node, caption, self.orientation, self.length)
-            }
-            None => node,
-        };
-        if self.marks.is_empty() || self.orientation == Orientation::Vertical {
+        if let Some(caption) = self.label {
+            node = super::caption::with_caption(node, caption, runtime.orientation, runtime.length);
+        }
+        if self.marks.is_empty() || runtime.orientation == Orientation::Vertical {
             node
         } else {
             super::marks::with_marks(node, runtime, self.marks, on_change)
@@ -191,44 +180,6 @@ impl WidgetLayoutExt for SliderBuilder {
     }
 }
 
-impl SliderBuilder {
-    fn base_node(
-        &self,
-        interaction: InteractionState,
-        on_change: ValueChange,
-        user_overlay: StyleOverlay,
-    ) -> NodeBuilder {
-        let runtime = SliderRuntime::from_builder(self);
-        let node = attach_key_handlers(
-            slider_root(
-                runtime,
-                interaction,
-                user_overlay,
-                RootLook {
-                    label: self.accessible_label(),
-                    overrides: self.layout_overrides.clone(),
-                    captioned: self.label.is_some(),
-                },
-            ),
-            interaction,
-            runtime,
-            Rc::clone(&on_change),
-        )
-        .pointer_down(move |event| pointer_down(event, interaction, runtime))
-        .pointer_move(move |event| pointer_move(event, interaction, runtime))
-        .pointer_up(move |event| {
-            pointer_up(event, interaction, runtime.value, &on_change);
-        });
-        interaction.install(node)
-    }
-}
-
-impl SliderBuilder {
-    fn accessible_label(&self) -> String {
-        self.label.clone().unwrap_or_else(|| "Slider".to_owned())
-    }
-}
-
 impl IntoNode for SliderBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
         self.layout_overrides
@@ -239,37 +190,29 @@ impl IntoNode for SliderBuilder {
 }
 
 impl SliderRange {
-    pub(super) const fn from_bounds(start: f32, end: f32) -> Self {
-        Self {
-            min: start.min(end),
-            max: start.max(end),
-        }
-    }
-
     pub(super) fn span(self) -> f32 {
         (self.max - self.min).max(f32::EPSILON)
-    }
-
-    pub(super) const fn clamp(self, value: f32) -> f32 {
-        value.clamp(self.min, self.max)
     }
 }
 
 impl SliderRuntime {
-    pub(super) const fn from_builder(builder: &SliderBuilder) -> Self {
-        Self {
-            value: builder.value,
-            range: builder.range,
-            step: builder.step,
-            disabled: builder.disabled,
-            orientation: builder.orientation,
-            length: builder.length,
-            glass: builder.glass,
+    pub(super) fn disabled(self) -> bool {
+        disabled_now(self.disabled)
+    }
+
+    fn step_size(self) -> f32 {
+        if self.step.is_finite() && self.step > 0.0 {
+            self.step
+        } else {
+            1.0
         }
     }
 
-    pub(super) fn disabled(self) -> bool {
-        disabled_now(self.disabled)
+    pub(super) fn quantize(self, raw: f32) -> f32 {
+        let SliderRange { min, max } = self.range;
+        let step = self.step_size();
+        let steps = ((raw.clamp(min, max) - min) / step).round();
+        steps.mul_add(step, min).clamp(min, max)
     }
 
     pub(super) fn set_from_position(self, event: &PointerEvent) {
@@ -286,68 +229,41 @@ impl SliderRuntime {
             .range
             .span()
             .mul_add(ratio.clamp(0.0, 1.0), self.range.min);
-        self.value.set(quantize(self.range, raw, self.step));
+        self.value.set(self.quantize(raw));
     }
 
-    pub(super) fn step_value(self, increase: bool) {
-        let delta = normalized_step(self.step);
-        let signed = if increase { delta } else { -delta };
-        self.value
-            .set(quantize(self.range, self.value.peek() + signed, self.step));
+    pub(super) fn nudge(self, steps: f32) {
+        let delta = self.step_size() * steps;
+        self.value.set(self.quantize(self.value.peek() + delta));
     }
-
-    pub(super) fn page_step_value(self, increase: bool) {
-        let delta = normalized_step(self.step) * 10.0;
-        let signed = if increase { delta } else { -delta };
-        self.value
-            .set(quantize(self.range, self.value.peek() + signed, self.step));
-    }
-
-    pub(super) fn jump_to_end(self, max: bool) {
-        let target = if max { self.range.max } else { self.range.min };
-        self.value.set(target);
-    }
-}
-
-struct RootLook {
-    label: String,
-    overrides: LayoutOverrides,
-    captioned: bool,
 }
 
 fn slider_root(
-    runtime: SliderRuntime,
+    builder: &SliderBuilder,
     interaction: InteractionState,
-    user_overlay: StyleOverlay,
-    look: RootLook,
+    overlay: StyleOverlay,
 ) -> NodeBuilder {
-    let RootLook {
-        label,
-        overrides,
-        captioned,
-    } = look;
+    let runtime = builder.runtime;
+    let layout = slider_layout(runtime.orientation, runtime.length, builder.label.is_some());
     let root = container()
         .role(Role::Slider)
-        .label(label)
+        .label(builder.label.clone().unwrap_or_else(|| "Slider".to_owned()))
         .action(Action::Increment)
         .action(Action::Decrement)
         .value(runtime.value, runtime.range.min, runtime.range.max)
         .value_step(runtime.step)
-        .layout(overrides.apply(slider_layout(
-            runtime.orientation,
-            runtime.length,
-            captioned,
-        )));
-    let root = control_surface(root, interaction, runtime.disabled, user_overlay);
+        .layout(builder.layout_overrides.clone().apply(layout));
+    let root = control_surface(root, interaction, runtime.disabled, overlay);
+    let thumb = slider_thumb(interaction, runtime.disabled, runtime.glass);
     match runtime.orientation {
         Orientation::Horizontal => root
-            .child(track_fill(runtime))
-            .child(slider_thumb(interaction, runtime.disabled, runtime.glass))
-            .child(track_rest(runtime)),
+            .child(track(runtime, true))
+            .child(thumb)
+            .child(track(runtime, false)),
         Orientation::Vertical => root
-            .child(track_rest(runtime))
-            .child(slider_thumb(interaction, runtime.disabled, runtime.glass))
-            .child(track_fill(runtime)),
+            .child(track(runtime, false))
+            .child(thumb)
+            .child(track(runtime, true)),
     }
 }
 

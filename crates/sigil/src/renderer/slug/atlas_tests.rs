@@ -10,34 +10,33 @@ fn key(glyph_id: u32) -> GlyphKey {
     }
 }
 
+fn uploaded_layout() -> AtlasLayout {
+    let mut layout = AtlasLayout::new();
+    layout.offsets.insert(key(1), 0);
+    layout.offsets.insert(key(2), 7);
+    layout.last_generation = 7;
+    layout
+}
+
 #[test]
 fn current_generation_preserves_uploaded_offsets() {
-    let first = key(1);
-    let second = key(2);
-    let mut layout = AtlasLayout::new();
-    layout.record_offset(&first, 0);
-    layout.record_offset(&second, BYTES_PER_GLYPH);
-    layout.finish_upload(7);
-
-    let first_offset = layout.offset(&first);
-    let second_offset = layout.offset(&second);
-    let decision = layout.prepare_rebuild(2, 7);
-
-    assert!(matches!(decision, RebuildDecision::Current));
-    assert_eq!(layout.offset(&first), first_offset);
-    assert_eq!(layout.offset(&second), second_offset);
+    let mut layout = uploaded_layout();
+    let before = layout.offsets.clone();
+    assert!(matches!(
+        layout.prepare_rebuild(2, 7),
+        RebuildDecision::Current
+    ));
+    assert_eq!(layout.offsets, before);
 }
 
 #[test]
 fn new_generation_keeps_uploaded_offsets() {
-    let first = key(1);
-    let mut layout = AtlasLayout::new();
-    layout.record_offset(&first, 0);
-    layout.finish_upload(7);
-
-    let decision = layout.prepare_rebuild(2, 8);
-
-    assert!(matches!(decision, RebuildDecision::Upload { .. }));
-    assert_eq!(layout.offset(&first), Some(0));
-    assert_eq!(layout.offset(&key(2)), None);
+    let mut layout = uploaded_layout();
+    layout.offsets.remove(&key(2));
+    assert!(matches!(
+        layout.prepare_rebuild(2, 8),
+        RebuildDecision::Upload { .. }
+    ));
+    assert_eq!(layout.offsets.get(&key(1)), Some(&0));
+    assert_eq!(layout.offsets.get(&key(2)), None);
 }

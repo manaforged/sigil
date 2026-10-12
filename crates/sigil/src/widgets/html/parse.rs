@@ -43,12 +43,10 @@ fn strip_noise(source: &str) -> String {
         let script = starts_ci(after, "<script");
         if script || starts_ci(after, "<style") {
             let close = if script { "</script>" } else { "</style>" };
-            rest = after.get(end + 1..).unwrap_or("");
-            if let Some(idx) = find_ci(rest, close) {
-                rest = rest.get(idx + close.len()..).unwrap_or("");
-            } else {
-                rest = "";
-            }
+            let tail = after.get(end + 1..).unwrap_or("");
+            rest = find_ci(tail, close)
+                .and_then(|idx| tail.get(idx + close.len()..))
+                .unwrap_or("");
             continue;
         }
         out.push_str(&after[..=end]);
@@ -91,12 +89,13 @@ fn paragraph(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
 
 fn pre(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
     let (inner, eaten) = tagged(rest, ("<pre>", "</pre>"), tags)?;
-    let text = tagged(&inner, ("<code>", "</code>"), &mut CloseTags::default())
-        .map_or_else(|| decode(&inner), |(code, _)| decode(&code));
+    let code = tagged(&inner, ("<code>", "</code>"), &mut CloseTags::default())
+        .map_or(inner, |(code, _)| code);
+    let body = decode(&code);
     Some((
         Block::Code {
             lang: String::new(),
-            body: text,
+            body,
         },
         eaten,
     ))
@@ -106,17 +105,9 @@ fn list(rest: &str, tag: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
     let open = format!("<{tag}>");
     let close = format!("</{tag}>");
     let (inner, eaten) = tagged(rest, (&open, &close), tags)?;
-    let mut items = Vec::new();
-    let mut cursor = inner.as_str();
-    let mut inner_tags = CloseTags::default();
-    while let Some((item, used)) = tagged(cursor.trim_start(), ("<li>", "</li>"), &mut inner_tags) {
-        items.push(inner_text(&item));
-        let skip = cursor.len() - cursor.trim_start().len();
-        cursor = cursor.get(skip + used..).unwrap_or("");
-    }
-    let items = items
-        .into_iter()
-        .map(|item| ListItem::plain(vec![Block::Paragraph(item)]))
+    let items = repeated(&inner, ("<li>", "</li>"))
+        .iter()
+        .map(|item| ListItem::plain(vec![Block::Paragraph(inner_text(item))]))
         .collect();
     let start = (tag == "ol").then_some(1);
     Some((Block::List(List { start, items }), eaten))
@@ -124,15 +115,23 @@ fn list(rest: &str, tag: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
 
 fn table(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
     let (inner, eaten) = tagged(rest, ("<table>", "</table>"), tags)?;
-    let mut rows = Vec::new();
-    let mut cursor = inner.as_str();
-    let mut inner_tags = CloseTags::default();
-    while let Some((row, used)) = tagged(cursor.trim_start(), ("<tr>", "</tr>"), &mut inner_tags) {
-        rows.push(row_cells(&row));
+    let rows = repeated(&inner, ("<tr>", "</tr>"));
+    Some((
+        Block::Table(rows.iter().map(|row| row_cells(row)).collect()),
+        eaten,
+    ))
+}
+
+fn repeated(source: &str, pair: (&str, &str)) -> Vec<String> {
+    let mut items = Vec::new();
+    let mut cursor = source;
+    let mut tags = CloseTags::default();
+    while let Some((item, used)) = tagged(cursor.trim_start(), pair, &mut tags) {
+        items.push(item);
         let skip = cursor.len() - cursor.trim_start().len();
         cursor = cursor.get(skip + used..).unwrap_or("");
     }
-    Some((Block::Table(rows), eaten))
+    items
 }
 
 fn row_cells(row: &str) -> Vec<String> {

@@ -30,38 +30,19 @@ fn a_grid_is_one_image_node() {
 }
 
 #[test]
-fn closure_evaluated_eagerly_at_build() {
-    Runtime::scope("heatmap-eager", || {
-        use std::cell::Cell;
-        let calls = Cell::new(0usize);
-        let mut cx = Cx::new_root();
-        let _ = cx.add(heatmap(5, 6, |_, _| {
-            calls.set(calls.get() + 1);
-            rgba(1, 2, 3)
-        }));
-        assert_eq!(
-            calls.get(),
-            30,
-            "color() called once per cell at build time"
-        );
-    });
-}
-
-#[test]
-fn coordinates_cover_full_grid() {
+fn color_runs_once_per_cell_at_build() {
     Runtime::scope("heatmap-coords", || {
-        use std::cell::RefCell;
-        let seen: RefCell<Vec<(usize, usize)>> = RefCell::new(Vec::new());
+        let seen = std::cell::RefCell::new(Vec::new());
         let mut cx = Cx::new_root();
-        let _ = cx.add(heatmap(2, 3, |x, y| {
+        let _ = cx.add(heatmap(5, 6, |x, y| {
             seen.borrow_mut().push((x, y));
             rgba(0, 0, 0)
         }));
         let mut seen = seen.into_inner();
         seen.sort_unstable();
         let mut expected: Vec<(usize, usize)> =
-            (0..3).flat_map(|y| (0..2).map(move |x| (x, y))).collect();
+            (0..6).flat_map(|y| (0..5).map(move |x| (x, y))).collect();
         expected.sort_unstable();
-        assert_eq!(seen, expected);
+        assert_eq!(seen, expected, "color() called once per cell at build time");
     });
 }

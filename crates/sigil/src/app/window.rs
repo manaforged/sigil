@@ -42,7 +42,7 @@ thread_local! {
 
 impl WindowId {
     pub fn close(self) {
-        queue_command(Some(self), WindowCommand::Close);
+        self.command(WindowCommand::Close);
     }
 
     pub fn command(self, command: WindowCommand) {
@@ -95,10 +95,14 @@ fn current_signals() -> WindowSignals {
     let current = current_window().and_then(signals_for);
     current
         .or_else(|| SIGNALS.with(|cell| cell.borrow().first().map(|(_, s)| *s)))
-        .unwrap_or_else(|| WindowSignals {
-            focused: signal(true),
-            occluded: signal(false),
-        })
+        .unwrap_or_else(fresh_signals)
+}
+
+fn fresh_signals() -> WindowSignals {
+    WindowSignals {
+        focused: signal(true),
+        occluded: signal(false),
+    }
 }
 
 fn signals_for(id: WindowId) -> Option<WindowSignals> {
@@ -118,10 +122,7 @@ pub(crate) fn allocate_window_id() -> WindowId {
 }
 
 pub(crate) fn register_window(id: WindowId) -> WindowSignals {
-    let signals = WindowSignals {
-        focused: signal(true),
-        occluded: signal(false),
-    };
+    let signals = fresh_signals();
     SIGNALS.with(|cell| cell.borrow_mut().push((id, signals)));
     signals
 }

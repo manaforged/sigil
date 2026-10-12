@@ -71,14 +71,8 @@ fn mux_ignores_inherited_outer_terminal() {
     let outside = caps(&[("TERM", "xterm-256color"), ("KITTY_WINDOW_ID", "1")]);
     assert_eq!(outside.color, ColorDepth::Truecolor);
     assert_eq!(outside.keyboard, Keyboard::Kitty);
-}
-
-#[test]
-fn unknown_terminal_keeps_legacy_keys() {
-    assert_eq!(
-        caps(&[("TERM", "xterm-256color")]).keyboard,
-        Keyboard::Legacy
-    );
+    let unknown = caps(&[("TERM", "xterm-256color")]);
+    assert_eq!(unknown.keyboard, Keyboard::Legacy);
 }
 
 #[test]

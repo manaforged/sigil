@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
-use crate::events::{Key, NodeEventsExt};
-use crate::events::{KeyEvent, LogicalKey};
+use crate::events::{Key, KeyEvent, LogicalKey, NodeEventsExt};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 use crate::widgets::layout_ext::WidgetLayoutExt;
@@ -111,9 +110,11 @@ pub(crate) fn step(model: &dyn ListModel, forward: bool) {
         let end = from.min(len);
         (0..end).rev().find(|&i| model.enabled(i))
     };
-    if let Some(index) = next {
-        model.cursor().set(index);
-    }
+    let _ = move_to(model, next);
+}
+
+fn move_to(model: &dyn ListModel, found: Option<usize>) -> bool {
+    found.inspect(|&index| model.cursor().set(index)).is_some()
 }
 
 fn jump(model: &dyn ListModel, last: bool) -> bool {
@@ -123,10 +124,7 @@ fn jump(model: &dyn ListModel, last: bool) -> bool {
     } else {
         (0..len).find(|&i| model.enabled(i))
     };
-    found.is_some_and(|index| {
-        model.cursor().set(index);
-        true
-    })
+    move_to(model, found)
 }
 
 fn type_ahead(model: &dyn ListModel, ch: char) -> bool {
@@ -144,10 +142,7 @@ fn type_ahead(model: &dyn ListModel, ch: char) -> bool {
                     .label(i)
                     .is_some_and(|label| label.to_lowercase().starts_with(&needle))
         });
-    found.is_some_and(|index| {
-        model.cursor().set(index);
-        true
-    })
+    move_to(model, found)
 }
 
 #[must_use]

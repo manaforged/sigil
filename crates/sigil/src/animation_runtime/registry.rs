@@ -18,34 +18,23 @@ pub mod presets {
 
 #[must_use]
 pub const fn config(id: TransitionId) -> Option<AnimationConfig> {
-    Some(match id.0 {
-        0 => AnimationConfig::Spring {
-            preset: SpringPreset::Smooth,
-        },
-        1 => AnimationConfig::Spring {
-            preset: SpringPreset::Gentle,
-        },
-        2 => AnimationConfig::Spring {
-            preset: SpringPreset::Snappy,
-        },
-        3 => AnimationConfig::Spring {
-            preset: SpringPreset::Bouncy,
-        },
-        4 => AnimationConfig::Spring {
-            preset: SpringPreset::Stiff,
-        },
-        16 => AnimationConfig::Tween {
-            ms: 120,
-            easing: Easing::CubicInOut,
-        },
-        17 => AnimationConfig::Tween {
-            ms: 200,
-            easing: Easing::CubicInOut,
-        },
-        18 => AnimationConfig::Tween {
-            ms: 320,
-            easing: Easing::CubicInOut,
-        },
+    let preset = match id.0 {
+        0 => SpringPreset::Smooth,
+        1 => SpringPreset::Gentle,
+        2 => SpringPreset::Snappy,
+        3 => SpringPreset::Bouncy,
+        4 => SpringPreset::Stiff,
+        16 => return Some(cubic_in_out(120)),
+        17 => return Some(cubic_in_out(200)),
+        18 => return Some(cubic_in_out(320)),
         _ => return None,
-    })
+    };
+    Some(AnimationConfig::Spring { preset })
+}
+
+const fn cubic_in_out(ms: u16) -> AnimationConfig {
+    AnimationConfig::Tween {
+        ms,
+        easing: Easing::CubicInOut,
+    }
 }

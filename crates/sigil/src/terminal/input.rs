@@ -70,34 +70,36 @@ impl Wake {
         if hung_up(&input) {
             return Ok(hang_up());
         }
-        let Some(rx) = self
-            .rx
-            .as_ref()
-            .filter(|_| listen && wait.is_none_or(|wait| !wait.is_zero()))
-        else {
-            return pending(wait.unwrap_or(tick));
-        };
-        if pending(Duration::ZERO)? {
+        if ended(pending(Duration::ZERO))? {
             return Ok(true);
         }
-        let timeout = wait
+        let rx = self
+            .rx
+            .as_ref()
+            .filter(|_| listen && wait.is_none_or(|wait| !wait.is_zero()));
+        let limit = if rx.is_some() {
+            wait
+        } else {
+            Some(wait.unwrap_or(tick))
+        };
+        let timeout = limit
             .map(Timespec::try_from)
             .transpose()
             .map_err(io::Error::other)?;
-        let mut fds = [
-            PollFd::new(&input, PollFlags::IN),
-            PollFd::new(rx, PollFlags::IN),
-        ];
+        let mut fds = vec![PollFd::new(&input, PollFlags::IN)];
+        fds.extend(rx.map(|rx| PollFd::new(rx, PollFlags::IN)));
         match poll(&mut fds, timeout.as_ref()) {
             Ok(_) | Err(rustix::io::Errno::INTR) => {}
             Err(errno) => return Err(errno.into()),
         }
-        if closed(fds[0].revents()) {
+        if fds.first().is_some_and(|fd| closed(fd.revents())) {
             return Ok(hang_up());
         }
-        let mut sink = [0_u8; 64];
-        while matches!((&*rx).read(&mut sink), Ok(read) if read > 0) {}
-        pending(Duration::ZERO)
+        if let Some(rx) = rx {
+            let mut sink = [0_u8; 64];
+            while matches!((&*rx).read(&mut sink), Ok(read) if read > 0) {}
+        }
+        ended(pending(Duration::ZERO))
     }
 
     #[cfg(not(unix))]
@@ -125,6 +127,14 @@ pub(crate) fn hung_up(fd: impl rustix::fd::AsFd) -> bool {
 fn closed(revents: rustix::event::PollFlags) -> bool {
     use rustix::event::PollFlags;
     revents.intersects(PollFlags::HUP | PollFlags::ERR | PollFlags::NVAL)
+}
+
+#[cfg(unix)]
+fn ended(read: io::Result<bool>) -> io::Result<bool> {
+    match read {
+        Err(error) if error.kind() == io::ErrorKind::UnexpectedEof => Ok(hang_up()),
+        other => other,
+    }
 }
 
 #[cfg(unix)]
@@ -221,13 +231,10 @@ fn map_input(event: Event, config: &AppConfig, pointer: &mut crate::geometry::Po
 }
 
 fn keyed(mapped: ShellEvent, config: &AppConfig) -> Input {
-    let suspend = match (&mapped, config.suspend.as_ref()) {
-        (ShellEvent::Key(key), Some(shortcut)) => {
-            key.phase == crate::events::KeyPhase::Down && shortcut.matches(key)
-        }
-        _ => false,
-    };
-    if suspend {
+    if let (ShellEvent::Key(key), Some(shortcut)) = (&mapped, &config.suspend)
+        && key.phase == crate::events::KeyPhase::Down
+        && shortcut.matches(key)
+    {
         Input::Suspend
     } else {
         Input::Event(mapped)
@@ -257,16 +264,9 @@ pub(crate) fn limit(config: &AppConfig, cols: &mut u16, rows: &mut u16) {
 
 fn quit(key: &crossterm::event::KeyEvent, config: &AppConfig) -> bool {
     use crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
-    if key.kind == KeyEventKind::Release {
-        return false;
-    }
-    if config.quit.ctrl_c
-        && key.modifiers.contains(KeyModifiers::CONTROL)
-        && matches!(key.code, KeyCode::Char('c'))
-    {
-        return true;
-    }
-    config.quit.esc && key.code == KeyCode::Esc
+    let ctrl_c = key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c');
+    key.kind != KeyEventKind::Release
+        && ((config.quit.ctrl_c && ctrl_c) || (config.quit.esc && key.code == KeyCode::Esc))
 }
 
 #[cfg(all(test, unix))]

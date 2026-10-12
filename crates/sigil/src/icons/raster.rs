@@ -1,4 +1,4 @@
-use crate::icons::bands::{BandBuffer, NUM_BANDS};
+use crate::icons::bands::{BandBuffer, band_index};
 use crate::icons::parser::ViewBox;
 use crate::icons::quadratic::QuadCurve;
 
@@ -19,11 +19,13 @@ pub(super) fn rasterize(
     let mut ss_buf = vec![0u8; (ss_w * ss_h) as usize];
 
     for py in 0..ss_h {
-        let vy = ss_to_vb_y(py, ss_h, view_box);
-        let band_idx = y_to_band(vy, band_buf, view_box);
-        let band = band_buf.bands.get(band_idx).map_or(&[][..], Vec::as_slice);
+        let vy = ss_to_vb(py, ss_h, view_box.height);
+        let band = band_buf
+            .bands
+            .get(band_index(vy, band_buf.band_height))
+            .map_or(&[][..], Vec::as_slice);
         for px in 0..ss_w {
-            let vx = ss_to_vb_x(px, ss_w, view_box);
+            let vx = ss_to_vb(px, ss_w, view_box.width);
             if winding_number(vx, vy, band) != 0
                 && let Some(slot) = ss_buf.get_mut((py * ss_w + px) as usize)
             {
@@ -35,36 +37,13 @@ pub(super) fn rasterize(
     box_filter(&ss_buf, ss_w, width, height)
 }
 
-fn ss_to_vb_x(px: u32, ss_w: u32, vb: ViewBox) -> f32 {
+fn ss_to_vb(p: u32, ss_extent: u32, extent: f32) -> f32 {
     #[allow(
         clippy::cast_precision_loss,
         reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
     )]
-    let norm = (px as f32 + 0.5) / ss_w as f32;
-    vb.x + norm * vb.width
-}
-
-fn ss_to_vb_y(py: u32, ss_h: u32, vb: ViewBox) -> f32 {
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-    )]
-    let norm = (py as f32 + 0.5) / ss_h as f32;
-    vb.y + norm * vb.height
-}
-
-fn y_to_band(vy: f32, buf: &BandBuffer, view_box: ViewBox) -> usize {
-    if buf.band_height <= 0.0 {
-        return 0;
-    }
-    let offset = (vy - view_box.y).max(0.0);
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "values are bounded to the target range before the cast"
-    )]
-    let idx = (offset / buf.band_height) as usize;
-    idx.min(NUM_BANDS - 1)
+    let norm = (p as f32 + 0.5) / ss_extent as f32;
+    norm * extent
 }
 
 fn winding_number(vx: f32, vy: f32, band: &[QuadCurve]) -> i32 {

@@ -1,3 +1,5 @@
+#![allow(clippy::shadow_unrelated)]
+
 use crate::geometry::{Point, Rect};
 
 use super::{Cell, Grid, Ink, Pen, paint, row_bytes, terminal_inks};
@@ -10,12 +12,11 @@ use crate::style::{Rgba8, TextStyle, Theme, Tone};
 use crate::terminal::caps::{Caps, ColorDepth};
 use crate::terminal::paint::raster;
 
-const UNSET: Rgba8 = Rgba8 {
-    r: 0,
-    g: 0,
-    b: 0,
-    a: 0,
-};
+const UNSET: Rgba8 = rgba(0, 0, 0, 0);
+
+const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
+    Rgba8 { r, g, b, a }
+}
 
 fn area() -> Rect {
     Rect::new(Point::new(0.0, 0.0), 8.0 * 8.0, 8.0)
@@ -80,49 +81,12 @@ fn terminal_output_keeps_graphemes_in_their_display_columns() {
 #[test]
 fn a_colour_without_truecolor_lands_in_the_cube() {
     use crate::terminal::colour::cube;
+    assert_eq!(cube(rgba(255, 0, 0, 255)), 196);
+    assert_eq!(cube(rgba(0, 0, 255, 255)), 21);
+    assert_eq!(cube(rgba(0, 0, 0, 255)), 16);
+    assert_eq!(cube(rgba(255, 255, 255, 255)), 231);
     assert_eq!(
-        cube(Rgba8 {
-            r: 255,
-            g: 0,
-            b: 0,
-            a: 255
-        }),
-        196
-    );
-    assert_eq!(
-        cube(Rgba8 {
-            r: 0,
-            g: 0,
-            b: 255,
-            a: 255
-        }),
-        21
-    );
-    assert_eq!(
-        cube(Rgba8 {
-            r: 0,
-            g: 0,
-            b: 0,
-            a: 255
-        }),
-        16
-    );
-    assert_eq!(
-        cube(Rgba8 {
-            r: 255,
-            g: 255,
-            b: 255,
-            a: 255
-        }),
-        231
-    );
-    assert_eq!(
-        cube(Rgba8 {
-            r: 24,
-            g: 15,
-            b: 46,
-            a: 255,
-        }),
+        cube(rgba(24, 15, 46, 255)),
         234,
         "a dark violet is closer to xterm gray 28 than saturated blue"
     );
@@ -145,27 +109,14 @@ fn apple_terminal_honors_an_explicit_truecolor_capability() {
     assert_ne!(depth("Apple_Terminal", None), ColorDepth::Truecolor);
     assert_eq!(depth("WezTerm", Some("truecolor")), ColorDepth::Truecolor);
     assert_eq!(
-        paint(
-            Ink::Exact(Rgba8 {
-                r: 255,
-                g: 0,
-                b: 0,
-                a: 255,
-            }),
-            ColorDepth::Ansi256,
-        ),
+        paint(Ink::Exact(rgba(255, 0, 0, 255)), ColorDepth::Ansi256,),
         crossterm::style::Color::AnsiValue(196)
     );
 }
 
 #[test]
 fn a_resolved_colour_goes_out_as_truecolor() {
-    let exact = Rgba8 {
-        r: 210,
-        g: 40,
-        b: 90,
-        a: 255,
-    };
+    let exact = rgba(210, 40, 90, 255);
     assert_eq!(
         paint(Ink::Exact(exact), ColorDepth::Truecolor),
         crossterm::style::Color::Rgb {
@@ -190,18 +141,13 @@ fn a_resolved_colour_goes_out_as_truecolor() {
 }
 
 #[test]
-fn bold_text_sets_the_bold_attribute() {
+fn bold_and_italic_text_set_their_attributes() {
     let heavy = TextStyle {
         font_weight: 700,
         ..TextStyle::default()
     };
-    let grid = draw(vec![label("HEAVY", UNSET, heavy, None)], 20, 3);
-    let out = bytes(&grid, 0);
+    let out = bytes(&draw(vec![label("HEAVY", UNSET, heavy, None)], 20, 3), 0);
     assert!(out.contains("\u{1b}[1m"), "expected bold in {out:?}");
-}
-
-#[test]
-fn italic_text_sets_the_italic_attribute() {
     let slanted = TextStyle {
         italic: true,
         ..TextStyle::default()
@@ -214,15 +160,7 @@ fn italic_text_sets_the_italic_attribute() {
 
 fn bytes(grid: &Grid, row: usize) -> String {
     let mut out: Vec<u8> = Vec::new();
-    let mut pen = Pen::default();
-    row_bytes(
-        &mut out,
-        grid,
-        row,
-        &mut pen,
-        &crate::terminal::caps::Caps::default(),
-    )
-    .expect("write");
+    row_bytes(&mut out, grid, row, &mut Pen::default(), &Caps::default()).expect("write");
     String::from_utf8(out).expect("utf8")
 }
 
@@ -244,6 +182,10 @@ fn a_toned_glyph_uses_the_warning_colour() {
         assert!(out.contains("5;11m"), "expected a yellow SGR in {out:?}");
     }
     assert!(out.contains("\u{1b}[0m"), "expected a reset in {out:?}");
+    let cell = grid.get(0, 0).expect("first cell");
+    assert_eq!(cell.text, "S");
+    assert_eq!(cell.fg, Ink::Of(Tone::Warn));
+    assert_eq!(cell.bg, Ink::Bare, "the glyph must not sit on its own tone");
 }
 
 #[test]
@@ -257,15 +199,6 @@ fn an_untoned_row_sets_no_colour() {
             "an untoned row must inherit the user's palette, found {escape:?} in {out:?}"
         );
     }
-}
-
-#[test]
-fn toned_text_does_not_paint_its_own_background() {
-    let grid = draw(vec![plain("STRAY", Some(Tone::Warn))], 20, 3);
-    let cell = grid.get(0, 0).expect("first cell");
-    assert_eq!(cell.text, "S");
-    assert_eq!(cell.fg, Ink::Of(Tone::Warn));
-    assert_eq!(cell.bg, Ink::Bare, "the glyph must not sit on its own tone");
 }
 
 #[test]
@@ -340,32 +273,23 @@ fn the_cursor_shows_only_at_a_text_caret() -> std::io::Result<()> {
 
 #[test]
 fn a_painted_last_cell_keeps_its_background() {
-    let scrim = Rgba8 {
-        r: 10,
-        g: 8,
-        b: 20,
-        a: 255,
-    };
-    let star = Rgba8 {
-        r: 176,
-        g: 200,
-        b: 240,
-        a: 255,
-    };
-    let mut cells = Vec::new();
-    for column in 0..8 {
-        let (text, color) = if column == 5 {
-            ("·", star)
-        } else {
-            (" ", scrim)
-        };
-        cells.push(Cell {
-            text: text.into(),
-            fg: Ink::Exact(color),
-            bg: Ink::Exact(color),
-            ..Cell::blank()
-        });
-    }
+    let scrim = rgba(10, 8, 20, 255);
+    let star = rgba(176, 200, 240, 255);
+    let cells: Vec<Cell> = (0..8)
+        .map(|column| {
+            let (text, color) = if column == 5 {
+                ("·", star)
+            } else {
+                (" ", scrim)
+            };
+            Cell {
+                text: text.into(),
+                fg: Ink::Exact(color),
+                bg: Ink::Exact(color),
+                ..Cell::blank()
+            }
+        })
+        .collect();
     let mut grid = Grid::new(8, 1);
     grid.set_row(0, &cells);
     let out = bytes(&grid, 0);

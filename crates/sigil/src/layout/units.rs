@@ -1,6 +1,7 @@
 use crate::hal::{HitPosition, TextAffinity};
+use crate::layout::snap::cell;
 use crate::layout::style_data::{
-    Dimension, LengthPercentage, LengthPercentageAuto, Rect, Size, StyleData, TrackSize,
+    Dimension, LengthPercentage, LengthPercentageAuto, StyleData, TrackSize,
 };
 use crate::layout::text_geometry::with_text_geometry;
 use crate::style::{TextLineHeight, TextStyle};
@@ -66,10 +67,6 @@ impl IntoPx for TextLength {
     fn into_px(self) -> f32 {
         self.px()
     }
-}
-
-fn cell() -> Option<f32> {
-    crate::style::cell_size().filter(|cell| *cell > 0.0)
 }
 
 fn font_size() -> f32 {
@@ -149,31 +146,6 @@ const fn length_auto(
     }
 }
 
-fn dimensions(size: Size<Dimension>) -> Size<Dimension> {
-    Size::new(dimension(size.width), dimension(size.height))
-}
-
-fn edges(rect: Rect<LengthPercentage>) -> Rect<LengthPercentage> {
-    Rect {
-        left: length(rect.left),
-        right: length(rect.right),
-        top: length(rect.top),
-        bottom: length(rect.bottom),
-    }
-}
-
-const fn auto_edges(
-    rect: Rect<LengthPercentageAuto>,
-    fallback: LengthPercentageAuto,
-) -> Rect<LengthPercentageAuto> {
-    Rect {
-        left: length_auto(rect.left, fallback),
-        right: length_auto(rect.right, fallback),
-        top: length_auto(rect.top, fallback),
-        bottom: length_auto(rect.bottom, fallback),
-    }
-}
-
 const fn factor(value: f32, initial: f32) -> f32 {
     if value.is_finite() && value >= 0.0 {
         value
@@ -197,14 +169,18 @@ pub(crate) fn resolve_style(mut style: StyleData) -> StyleData {
     style.flex_grow = factor(style.flex_grow, initial.flex_grow);
     style.flex_shrink = factor(style.flex_shrink, initial.flex_shrink);
     style.flex_basis = dimension(style.flex_basis);
-    style.size = dimensions(style.size);
-    style.min_size = dimensions(style.min_size);
-    style.max_size = dimensions(style.max_size);
-    style.gap = Size::new(length(style.gap.width), length(style.gap.height));
-    style.padding = edges(style.padding);
-    style.border = edges(style.border);
-    style.margin = auto_edges(style.margin, LengthPercentageAuto::Px(0.0));
-    style.inset = auto_edges(style.inset, LengthPercentageAuto::Auto);
+    style.size = style.size.map(dimension);
+    style.min_size = style.min_size.map(dimension);
+    style.max_size = style.max_size.map(dimension);
+    style.gap = style.gap.map(length);
+    style.padding = style.padding.map(length);
+    style.border = style.border.map(length);
+    style.margin = style
+        .margin
+        .map(|v| length_auto(v, LengthPercentageAuto::Px(0.0)));
+    style.inset = style
+        .inset
+        .map(|v| length_auto(v, LengthPercentageAuto::Auto));
     for list in [
         &mut style.grid_template_columns,
         &mut style.grid_template_rows,

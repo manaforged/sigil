@@ -8,11 +8,10 @@ use crate::style::Metrics;
 
 use super::shared::ICON_GLYPH;
 
-const FRAME_COUNT: u64 = 10;
-const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-const WINDOW_FRAME_COUNT: u64 = 4;
-const WINDOW_FRAMES: [&str; 4] = ["◐", "◓", "◑", "◒"];
 const PERIOD: Duration = Duration::from_millis(80);
+
+const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const WINDOW_FRAMES: [&str; 4] = ["◐", "◓", "◑", "◒"];
 #[cfg(feature = "scene")]
 const ARC_FRAMES: [&str; 8] = [
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path transform=\"rotate(0 12 12)\" d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>",
@@ -25,13 +24,18 @@ const ARC_FRAMES: [&str; 8] = [
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"black\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path transform=\"rotate(315 12 12)\" d=\"M21 12a9 9 0 1 1-6.219-8.56\"/></svg>",
 ];
 
-#[must_use]
-pub fn spinner_frame(tick: u64) -> &'static str {
-    usize::try_from(tick % FRAME_COUNT)
+fn cycle(frames: &[&'static str], step: u64) -> &'static str {
+    let len = u64::try_from(frames.len()).unwrap_or(1);
+    usize::try_from(step % len)
         .ok()
-        .and_then(|at| FRAMES.get(at))
+        .and_then(|at| frames.get(at))
         .copied()
         .unwrap_or_default()
+}
+
+#[must_use]
+pub fn spinner_frame(tick: u64) -> &'static str {
+    cycle(&FRAMES, tick)
 }
 
 #[must_use]
@@ -57,18 +61,10 @@ pub fn spinner() -> NodeBuilder {
         if grid {
             spinner_frame(tick.get()).to_owned()
         } else {
-            window_frame(tick.get()).to_owned()
+            cycle(&WINDOW_FRAMES, tick.get() / 2).to_owned()
         }
     });
     indicator.child(text(frame).class(ICON_GLYPH))
-}
-
-fn window_frame(tick: u64) -> &'static str {
-    usize::try_from(tick / 2 % WINDOW_FRAME_COUNT)
-        .ok()
-        .and_then(|at| WINDOW_FRAMES.get(at))
-        .copied()
-        .unwrap_or_default()
 }
 
 #[cfg(test)]

@@ -3,8 +3,10 @@ mod item;
 use crate::kernel::{NodeBuilder, Role, TopLayer, container};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::layout::{Popup, PopupSide};
+use crate::reactive::Signal;
 use crate::style::{
-    BORDER_WIDTH, ControlSize, Metrics, OVERLAY_SHADOW, Radius, StyleAtom, Token, space,
+    BORDER_WIDTH, ControlSize, DisplayKind, Metrics, OVERLAY_SHADOW, Radius, StyleAtom, Token,
+    space,
 };
 
 pub(crate) use item::{ChevronDirection, ItemSlots, chevron, footer, item_row};
@@ -73,4 +75,12 @@ pub(crate) fn panel_height(rows: impl IntoIterator<Item = f32>) -> f32 {
     let item = Metrics::current().control_height(ControlSize::Default);
     let body = rows.into_iter().sum::<f32>().max(item);
     inset().mul_add(2.0, body)
+}
+
+pub(crate) fn shown(show: Signal<bool>) -> &'static [StyleAtom] {
+    if show.get() {
+        &[]
+    } else {
+        &[StyleAtom::Display(DisplayKind::None)]
+    }
 }

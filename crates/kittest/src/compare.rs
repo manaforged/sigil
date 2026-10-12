@@ -6,11 +6,14 @@ use crate::{Regen, Rendered, regen_mode};
 
 #[must_use]
 pub fn golden_path_in(manifest_dir: &str, stem: &str) -> PathBuf {
-    let mut p = PathBuf::from(manifest_dir);
-    p.push("tests");
-    p.push("goldens");
-    p.push(format!("{stem}.png"));
-    p
+    [
+        manifest_dir,
+        "tests",
+        "goldens",
+        format!("{stem}.png").as_str(),
+    ]
+    .iter()
+    .collect()
 }
 
 fn adapter_golden(golden: &Path) -> Option<PathBuf> {
@@ -23,14 +26,19 @@ fn adapter_golden(golden: &Path) -> Option<PathBuf> {
 #[allow(clippy::print_stdout)]
 fn write_golden(actual: &image::RgbaImage, golden: &Path) {
     guard_regen_does_not_erase_content(actual, golden);
-    if let Some(dir) = golden.parent() {
-        std::fs::create_dir_all(dir)
-            .unwrap_or_else(|err| fail(format!("create {}: {err}", dir.display())));
-    }
+    create_parent(golden);
     actual
         .save(golden)
         .unwrap_or_else(|err| fail(format!("write golden {}: {err}", golden.display())));
     println!("REGEN: wrote {}", golden.display());
+}
+
+#[track_caller]
+fn create_parent(path: &Path) {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)
+            .unwrap_or_else(|err| fail(format!("create {}: {err}", dir.display())));
+    }
 }
 
 #[track_caller]
@@ -120,10 +128,7 @@ pub fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_d
 #[allow(clippy::print_stdout)]
 pub fn assert_text_matches_golden(actual: &str, golden: &Path) {
     if regen_mode().is_some() {
-        if let Some(dir) = golden.parent() {
-            std::fs::create_dir_all(dir)
-                .unwrap_or_else(|err| fail(format!("create {}: {err}", dir.display())));
-        }
+        create_parent(golden);
         std::fs::write(golden, actual)
             .unwrap_or_else(|err| fail(format!("write golden {}: {err}", golden.display())));
         println!("REGEN: wrote {}", golden.display());
@@ -152,8 +157,7 @@ fn differing_percent(differing: u64, total: u64) -> f64 {
 }
 
 fn ink(image: &image::RgbaImage) -> usize {
-    use std::collections::HashMap;
-    let mut census: HashMap<[u8; 4], usize> = HashMap::new();
+    let mut census = std::collections::HashMap::<[u8; 4], usize>::new();
     for px in image.pixels() {
         *census.entry(px.0).or_default() += 1;
     }
@@ -194,12 +198,11 @@ fn guard_regen_does_not_erase_content(actual: &image::RgbaImage, golden: &Path) 
 
 #[track_caller]
 pub fn assert_goldens_differ_in(manifest_dir: &str, name_a: &str, name_b: &str) {
-    let path_a = golden_path_in(manifest_dir, name_a);
-    let path_b = golden_path_in(manifest_dir, name_b);
-    let bytes_a = std::fs::read(&path_a)
-        .unwrap_or_else(|err| fail(format!("read golden {}: {err}", path_a.display())));
-    let bytes_b = std::fs::read(&path_b)
-        .unwrap_or_else(|err| fail(format!("read golden {}: {err}", path_b.display())));
+    let [bytes_a, bytes_b] = [name_a, name_b].map(|name| {
+        let path = golden_path_in(manifest_dir, name);
+        std::fs::read(&path)
+            .unwrap_or_else(|err| fail(format!("read golden {}: {err}", path.display())))
+    });
     assert_ne!(
         bytes_a, bytes_b,
         "goldens '{name_a}' and '{name_b}' are byte-identical — the state \

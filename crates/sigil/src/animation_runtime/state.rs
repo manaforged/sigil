@@ -1,12 +1,11 @@
 use core::cell::RefCell;
 use slotmap::{SlotMap, new_key_type};
 
-use crate::animation::{Easing, SpringPreset};
 use crate::reactive::{Runtime, Signal, batch};
 
-use crate::animation_runtime::MotionPrefs;
 use crate::animation_runtime::animator::{SpringMotion, TweenMotion};
 use crate::animation_runtime::motion_state::Motion;
+use crate::animation_runtime::{AnimationConfig, MotionPrefs};
 
 new_key_type! {
     pub(crate) struct AnimatorId;
@@ -22,20 +21,16 @@ thread_local! {
     static ENTRIES: RefCell<SlotMap<AnimatorId, Entry>> = RefCell::new(SlotMap::with_key());
 }
 
-pub(crate) fn register_spring(signal: Signal<f32>, preset: SpringPreset) -> AnimatorId {
-    let motion = Motion::Spring(SpringMotion::from_preset(
-        signal.try_peek().unwrap_or_default(),
-        preset,
-    ));
-    register(signal, motion)
-}
-
-pub(crate) fn register_tween(signal: Signal<f32>, ms: u16, easing: Easing) -> AnimatorId {
-    let motion = Motion::Tween(TweenMotion::new(
-        signal.try_peek().unwrap_or_default(),
-        ms,
-        easing,
-    ));
+pub(crate) fn register_config(signal: Signal<f32>, config: AnimationConfig) -> AnimatorId {
+    let initial = signal.try_peek().unwrap_or_default();
+    let motion = match config {
+        AnimationConfig::Spring { preset } => {
+            Motion::Spring(SpringMotion::from_preset(initial, preset))
+        }
+        AnimationConfig::Tween { ms, easing } => {
+            Motion::Tween(TweenMotion::new(initial, ms, easing))
+        }
+    };
     register(signal, motion)
 }
 

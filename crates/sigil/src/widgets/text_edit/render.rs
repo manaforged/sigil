@@ -4,15 +4,17 @@ use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, fragment, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, rows};
-use crate::layout::{TextStyleCapture, with_text_geometry};
+use crate::layout::{
+    CaretGeometry, LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
+    TextStyleCapture, rows, with_text_geometry,
+};
 use crate::reactive::{Signal, derived, effect};
+use crate::style::TransitionId;
 use crate::style::{
     BORDER_WIDTH, DISABLED_OPACITY, NodeStyleExt, NumericAtomKind, Px, Radius, StateStyle,
-    StyleAtom, StyleOverlay, StyleVariant, TextStyle, Token, TransitionId, space,
+    StyleAtom, StyleOverlay, StyleVariant, Token, space,
 };
 
-use crate::layout::Position;
 use crate::widgets::interaction::InteractionState;
 
 use super::super::shared::binary_style_state;
@@ -23,6 +25,7 @@ mod selection;
 use selection::selection_layer;
 
 const TEXT_EDIT_TRANSITION: TransitionId = presets::SMOOTH;
+const DEFAULT_ROWS: f32 = 5.0;
 static TEXT_EDIT_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_EDIT_TRANSITION)];
 
 static EDIT_BASE: &[StyleAtom] = &[
@@ -38,9 +41,6 @@ static EDIT_DISABLED: &[StyleAtom] = &[
     StyleAtom::Opacity(DISABLED_OPACITY),
 ];
 
-const DEFAULT_HEIGHT: f32 = 160.0;
-const DEFAULT_ROWS: f32 = 5.0;
-
 pub(super) const fn content_padding() -> (f32, f32) {
     (space(3), space(2))
 }
@@ -54,13 +54,8 @@ pub(super) fn build_base_node(
 ) -> NodeBuilder {
     let value = runtime.value;
     let disabled = runtime.disabled;
-    let placeholder_str = text_content(placeholder);
-    let displayed = displayed_text(
-        value,
-        placeholder.clone(),
-        runtime.ime.preedit,
-        runtime.caret,
-    );
+    let placeholder_str = placeholder.resolve();
+    let lines = edit_lines(runtime, placeholder.clone());
     container()
         .mutate({
             let text_style = runtime.text_style;
@@ -77,22 +72,22 @@ pub(super) fn build_base_node(
         .class(Radius::Md.atom())
         .class(TEXT_EDIT_ANIM_BASE)
         .stateful_style(edit_variant(chrome), user_overlay, move || {
-            edit_state(interaction, disabled)
+            binary_style_state(interaction, disabled)
         })
         .seal_style()
-        .child(edit_inner(displayed, runtime, interaction))
+        .child(edit_inner(lines, runtime, interaction))
 }
 
 pub(super) fn edit_layout() -> LayoutStyle {
     LayoutStyle::flex_column()
         .fill_width()
-        .height(CellForm::new(DEFAULT_HEIGHT, rows(DEFAULT_ROWS).px()).pick())
+        .height(CellForm::new(160.0, rows(DEFAULT_ROWS).px()).pick())
         .min_size(0.0, 0.0)
         .padding(1.0)
 }
 
 fn edit_inner(
-    displayed: Signal<String>,
+    lines: TextBuilder,
     runtime: &TextEditRuntime,
     interaction: InteractionState,
 ) -> NodeBuilder {
@@ -108,7 +103,7 @@ fn edit_inner(
         .position_reactive(offset)
         .child(selection_layer(runtime))
         .child(caret_layer(runtime, interaction))
-        .child(edit_lines(displayed, runtime.text_style));
+        .child(lines);
     let content_size = runtime.content_size;
     let extent = derived(move || padding_y.mul_add(2.0, content_size.get().1));
     let body = container()
@@ -121,13 +116,21 @@ fn edit_inner(
         .animate(NumericAtomKind::Height, extent)
         .child(text_box);
     container()
-        .layout(edit_inner_layout())
+        .layout(
+            LayoutStyle::flex_column()
+                .fill_width()
+                .grow(1.0)
+                .min_size(0.0, 0.0)
+                .overflow_y(Overflow::Hidden),
+        )
         .size_reactive(runtime.viewport_size)
         .class(Radius::Sm.atom())
         .class(Token::Surface.bg())
-        .pointer_down(move |event| pointer_drag_start(event, &down, scroll_y))
-        .pointer_move(move |event| pointer_drag_move(event, &moved, scroll_y))
-        .pointer_up(move |event| pointer_up(event, interaction))
+        .pointer_down(move |event| pointer_drag(event, &down, scroll_y, true))
+        .pointer_move(move |event| pointer_drag(event, &moved, scroll_y, false))
+        .pointer_up(move |event| {
+            let _ = interaction.release_pointer(event);
+        })
         .child(body)
 }
 
@@ -138,124 +141,78 @@ fn caret_layer(runtime: &TextEditRuntime, interaction: InteractionState) -> Node
     let value = runtime.value;
     let caret = runtime.caret;
     let caret_visible = runtime.caret_visible;
-    let style = runtime.text_style;
-    let caret_affinity = runtime.caret_affinity;
-    let content_size = runtime.content_size;
-    let ime = runtime.ime.clone();
+    let runtime = runtime.clone();
     fragment()
         .layout(LayoutStyle::block())
         .children_reactive(move || {
             if !interaction.focus_visible().get() || !caret_visible.get() {
                 return Vec::new();
             }
-            let (buffer, byte) = ime.composing_caret(&value.get(), caret.get());
-            let content_width = content_size.get().0;
-            let width = (content_width > 0.0).then_some(content_width);
-            let text_style = style.get();
-            caret_rect(
-                &buffer,
-                &text_style,
-                width,
-                HitPosition {
-                    byte_index: byte,
-                    affinity: caret_affinity.get(),
-                },
-            )
-            .into_iter()
-            .collect()
+            let (buffer, byte) = runtime.ime.composing_caret(&value.get(), caret.get());
+            let Some(pos) = runtime.caret_geometry(&buffer, byte) else {
+                return Vec::new();
+            };
+            let height = pos.height.max(1.0);
+            vec![overlay_rect(pos.x, pos.top, CARET_W, height).class(CARET_ATOMS)]
         })
 }
 
-fn caret_rect(
-    buffer: &str,
-    style: &TextStyle,
-    width: Option<f32>,
-    position: HitPosition,
-) -> Option<NodeBuilder> {
-    let pos = with_text_geometry(|engine| engine.caret(buffer, style, width, position))?;
-    Some(
-        container().hittable(false).layout(
-            LayoutStyle::block()
-                .position(Position::Absolute)
-                .inset_left(pos.x)
-                .inset_top(pos.top)
-                .width(CARET_W)
-                .height(pos.height.max(1.0)),
-        ),
+pub(in crate::widgets) fn overlay_rect(x: f32, top: f32, width: f32, height: f32) -> NodeBuilder {
+    container().hittable(false).layout(
+        LayoutStyle::block()
+            .position(Position::Absolute)
+            .inset_left(x)
+            .inset_top(top)
+            .width(width)
+            .height(height),
     )
-    .map(|node: NodeBuilder| node.class(CARET_ATOMS))
 }
 
-fn edit_inner_layout() -> LayoutStyle {
-    LayoutStyle::flex_column()
-        .fill_width()
-        .grow(1.0)
-        .min_size(0.0, 0.0)
-        .overflow_y(Overflow::Hidden)
-}
-
-fn edit_lines(displayed: Signal<String>, text_style: Signal<TextStyle>) -> TextBuilder {
-    text(displayed)
-        .mutate(move |node| {
-            let _ = node.attach(TextStyleCapture::new(text_style));
-        })
-        .hittable(false)
-        .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0))
-        .class(Token::OnSurface.text())
-}
-
-fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
-    let _ = interaction.release_pointer(event);
-}
-
-fn pointer_drag_start(event: &mut PointerEvent, runtime: &TextEditRuntime, scroll_y: Signal<f32>) {
-    if runtime.disabled() {
+fn pointer_drag(
+    event: &mut PointerEvent,
+    runtime: &TextEditRuntime,
+    scroll_y: Signal<f32>,
+    down: bool,
+) {
+    if runtime.disabled() || !(down || event.is_captured()) {
         return;
     }
     let offset = runtime.offset_at_point(event.position.x, event.position.y, scroll_y.peek());
     let mut edit = runtime.edit_mut();
-    if event.modifiers.contains(ModifiersState::SHIFT) {
-        if edit.selection().is_none() {
-            runtime.anchor_affinity.set(runtime.caret_affinity.peek());
-        }
-        edit.extend_to(offset.byte_index);
-    } else {
-        edit.place_caret(offset.byte_index);
+    let extend = !down || event.modifiers.contains(ModifiersState::SHIFT);
+    if down && !extend {
         runtime.anchor_affinity.set(offset.affinity);
+    } else if down && edit.selection().is_none() {
+        runtime.anchor_affinity.set(runtime.caret_affinity.peek());
     }
+    edit.jump_to(offset.byte_index, extend);
     runtime.commit(&edit);
     runtime.caret_affinity.set(offset.affinity);
-    event.capture_pointer();
-}
-
-fn pointer_drag_move(event: &PointerEvent, runtime: &TextEditRuntime, scroll_y: Signal<f32>) {
-    if !event.is_captured() || runtime.disabled() {
-        return;
+    if down {
+        event.capture_pointer();
     }
-    let offset = runtime.offset_at_point(event.position.x, event.position.y, scroll_y.peek());
-    let mut edit = runtime.edit_mut();
-    edit.extend_to(offset.byte_index);
-    runtime.commit(&edit);
-    runtime.caret_affinity.set(offset.affinity);
 }
 
-fn displayed_text(
-    value: Signal<String>,
-    placeholder: TextContent,
-    preedit: Signal<String>,
-    caret: Signal<usize>,
-) -> Signal<String> {
-    derived(move || {
+fn edit_lines(runtime: &TextEditRuntime, placeholder: TextContent) -> TextBuilder {
+    let (value, preedit, caret) = (runtime.value, runtime.ime.preedit, runtime.caret);
+    let text_style = runtime.text_style;
+    text(derived(move || {
         let current = value.get();
         let composing = preedit.get();
         if !composing.is_empty() {
             splice_preedit(&current, caret.get(), &composing)
         } else if current.is_empty() {
-            text_content(&placeholder)
+            placeholder.resolve()
         } else {
             current
         }
+    }))
+    .mutate(move |node| {
+        let _ = node.attach(TextStyleCapture::new(text_style));
     })
+    .hittable(false)
+    .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0))
+    .class(Token::OnSurface.text())
 }
 
 pub(crate) fn splice_preedit(value: &str, caret: usize, preedit: &str) -> String {
@@ -275,22 +232,12 @@ pub(crate) fn floor_char_boundary(text: &str, byte: usize) -> usize {
     byte
 }
 
-fn text_content(content: &TextContent) -> String {
-    content.resolve()
-}
-
 fn accessible_label(placeholder: &str) -> String {
-    (!placeholder.is_empty())
-        .then_some(placeholder)
-        .filter(|text| !text.is_empty())
-        .map_or_else(|| String::from("Text editor"), ToOwned::to_owned)
-}
-
-fn edit_state(
-    interaction: InteractionState,
-    disabled: Option<Signal<bool>>,
-) -> crate::style::StyleState {
-    binary_style_state(interaction, disabled)
+    if placeholder.is_empty() {
+        String::from("Text editor")
+    } else {
+        placeholder.to_owned()
+    }
 }
 
 fn edit_variant(chrome: bool) -> StyleVariant {
@@ -299,41 +246,33 @@ fn edit_variant(chrome: bool) -> StyleVariant {
         return StyleVariant::new(&[], StateStyle::EMPTY);
     }
     StyleVariant::new(
-        crate::layout::snap::CellForm::new(EDIT_BASE, CELL_BASE).pick(),
+        CellForm::new(EDIT_BASE, CELL_BASE).pick(),
         StateStyle::new(EDIT_REST, EDIT_FOCUS, EDIT_HOVER, EDIT_DOWN, EDIT_DISABLED),
     )
 }
 
 impl TextEditRuntime {
+    fn caret_geometry(&self, buffer: &str, byte: usize) -> Option<CaretGeometry> {
+        let style = self.text_style.get();
+        let position = HitPosition {
+            byte_index: byte,
+            affinity: self.caret_affinity.get(),
+        };
+        let width = self.geometry_width();
+        with_text_geometry(|engine| engine.caret(buffer, &style, width, position))
+    }
+
     fn scroll_into_view(&self) -> Signal<f32> {
         let scroll_y = self.scroll_y;
-        let value = self.value;
-        let caret = self.caret;
-        let text_style = self.text_style;
-        let caret_affinity = self.caret_affinity;
-        let content_size = self.content_size;
         let viewport_size = self.viewport_size;
         let (_, padding_y) = self.content_padding;
+        let runtime = self.clone();
         effect(move || {
-            let buffer = value.get();
-            let byte = caret.get().min(buffer.len());
-            let content_width = content_size.get().0;
-            let width = (content_width > 0.0).then_some(content_width);
-            let style = text_style.get();
-            let pos = with_text_geometry(|engine| {
-                engine.caret(
-                    &buffer,
-                    &style,
-                    width,
-                    HitPosition {
-                        byte_index: byte,
-                        affinity: caret_affinity.get(),
-                    },
-                )
-            })
-            .unwrap_or_default();
+            let buffer = runtime.value.get();
+            let byte = runtime.caret.get().min(buffer.len());
+            let pos = runtime.caret_geometry(&buffer, byte).unwrap_or_default();
             let visible = padding_y.mul_add(-2.0, viewport_size.get().1).max(1.0);
-            let max_scroll = (content_size.get().1 - visible).max(0.0);
+            let max_scroll = (runtime.content_size.get().1 - visible).max(0.0);
             let cur = scroll_y.peek();
             let next = if pos.top < cur {
                 pos.top

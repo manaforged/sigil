@@ -54,16 +54,12 @@ pub(super) fn with_selection(
 }
 
 impl WidthSpec {
-    fn apply(self, style: LayoutStyle) -> LayoutStyle {
+    pub(super) fn apply(self, style: LayoutStyle) -> LayoutStyle {
         match self {
             Self::Fixed(px) => style.width(px),
             Self::Stretch => style.width(Dimension::Percent(1.0)),
         }
     }
-}
-
-pub(super) fn width_apply(width: WidthSpec, style: LayoutStyle) -> LayoutStyle {
-    width.apply(style)
 }
 
 pub(super) fn width_spec(width: Option<f32>) -> WidthSpec {

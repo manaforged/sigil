@@ -13,15 +13,18 @@ use super::*;
 use crate::reactive::Runtime;
 use crate::reactive::{effect_named, on_cleanup, signal};
 
+fn counter() -> (Rc<Cell<u32>>, impl Fn() + 'static) {
+    let count = Rc::new(Cell::new(0_u32));
+    let writer = Rc::clone(&count);
+    (count, move || writer.set(writer.get() + 1))
+}
+
 #[test]
 fn interval_fires_after_period_elapses() {
     Runtime::scope("interval::fires_after_period", || {
         __test_set_clock(Instant::now());
-        let count = Rc::new(Cell::new(0_u32));
-        let writer = Rc::clone(&count);
-        let _id = interval(Duration::from_millis(100), move || {
-            writer.set(writer.get() + 1);
-        });
+        let (count, tick) = counter();
+        let _id = interval(Duration::from_millis(100), tick);
 
         assert_eq!(tick_intervals(), 0);
         assert_eq!(count.get(), 0);
@@ -41,13 +44,9 @@ fn interval_fires_after_period_elapses() {
 #[test]
 fn interval_is_cancelled_when_owner_disposed() {
     __test_set_clock(Instant::now());
-    let count = Rc::new(Cell::new(0_u32));
-    let writer = Rc::clone(&count);
-
+    let (count, tick) = counter();
     Runtime::scope("interval::cancel_on_dispose", || {
-        interval(Duration::from_millis(50), move || {
-            writer.set(writer.get() + 1);
-        });
+        interval(Duration::from_millis(50), tick);
     });
     __test_advance_clock(Duration::from_millis(500));
     assert_eq!(tick_intervals(), 0);
@@ -109,11 +108,8 @@ fn panic_in_callback_does_not_zombify_slot() {
 fn cancel_interval_removes_slot_immediately() {
     Runtime::scope("interval::cancel_explicit", || {
         __test_set_clock(Instant::now());
-        let count = Rc::new(Cell::new(0_u32));
-        let writer = Rc::clone(&count);
-        let id = interval(Duration::from_millis(10), move || {
-            writer.set(writer.get() + 1);
-        });
+        let (count, tick) = counter();
+        let id = interval(Duration::from_millis(10), tick);
         cancel_interval(id);
         __test_advance_clock(Duration::from_millis(100));
         assert_eq!(tick_intervals(), 0);

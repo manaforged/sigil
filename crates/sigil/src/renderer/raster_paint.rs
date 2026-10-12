@@ -3,18 +3,21 @@ use crate::hal::RenderedGlyph;
 use crate::style::Color;
 use crate::text::Paragraph;
 
+use crate::renderer::fill_paint::setup::begin_pass;
 use crate::renderer::raster::{Hinters, RasterKey, subpixel_quantize};
+pub(crate) use crate::renderer::slug::RunFrame as RasterFrame;
+use crate::renderer::split_encoder::SplitEncoder;
 
 mod atlas;
-mod batch;
 mod setup;
 
+use atlas::RasterAtlas;
 #[cfg(any(test, feature = "kittest"))]
 pub use atlas::set_test_atlas_size_override;
 #[cfg(any(test, feature = "kittest"))]
 pub(crate) use atlas::test_atlas_size_override;
-use atlas::{Placement, RasterAtlas};
-use setup::{bind_group, bind_group_layout, pipeline, sampler, unit_quad};
+use setup::{SurfaceParams, UNIT_QUAD_VERTICES, bind_group, bind_group_layout, pipeline};
+use wgpu::util::DeviceExt as _;
 
 pub(crate) struct RasterDrawParams<'a> {
     pub(crate) device: &'a wgpu::Device,
@@ -36,14 +39,6 @@ pub(crate) struct RasterInstance {
 
 const _: () = assert!(core::mem::size_of::<RasterInstance>() == 48);
 
-pub(crate) struct RasterFrame<'a> {
-    pub(crate) device: &'a wgpu::Device,
-    pub(crate) view: &'a wgpu::TextureView,
-    pub(crate) surface_width: f32,
-    pub(crate) surface_height: f32,
-    pub(crate) scale: f32,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct RasterGroup {
     pub(crate) clip: Option<Rect>,
@@ -61,6 +56,12 @@ pub(crate) struct RasterTextPipeline {
     uniforms: Option<(wgpu::Buffer, wgpu::TextureView, wgpu::BindGroup)>,
 }
 
+enum GlyphOutcome {
+    Placed(RasterInstance),
+    Blank,
+    AtlasFull,
+}
+
 impl RasterTextPipeline {
     #[must_use]
     pub(crate) fn new(device: &wgpu::Device, surface_format: wgpu::TextureFormat) -> Self {
@@ -68,8 +69,19 @@ impl RasterTextPipeline {
         Self {
             format: surface_format,
             pipeline: pipeline(device, &bgl, surface_format),
-            sampler: sampler(device),
-            quad_vb: unit_quad(device),
+            sampler: device.create_sampler(&wgpu::SamplerDescriptor {
+                label: Some("sigil-renderer raster text sampler"),
+                address_mode_u: wgpu::AddressMode::ClampToEdge,
+                address_mode_v: wgpu::AddressMode::ClampToEdge,
+                mag_filter: wgpu::FilterMode::Nearest,
+                min_filter: wgpu::FilterMode::Nearest,
+                ..Default::default()
+            }),
+            quad_vb: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("sigil-renderer raster text unit quad"),
+                contents: bytemuck::cast_slice(&UNIT_QUAD_VERTICES),
+                usage: wgpu::BufferUsages::VERTEX,
+            }),
             atlas: RasterAtlas::new(device),
             hinters: Hinters::default(),
             uniforms: None,
@@ -93,70 +105,41 @@ impl RasterTextPipeline {
         if params.glyphs.is_empty() {
             return (Vec::new(), Vec::new());
         }
-        let mut all_instances: Vec<RasterInstance> = Vec::new();
-        let mut leftover: Vec<RenderedGlyph> = Vec::new();
+        let mut instances = Vec::new();
+        let mut leftover = Vec::new();
         let mut claimed = vec![false; params.glyphs.len()];
         let mut any_face = false;
         params
             .paragraph
             .for_each_font(|font_id, font_bytes, font_index| {
                 any_face = true;
-                let result = self.place_glyphs_for_face(params, font_id, font_bytes, font_index);
-                all_instances.extend(result.instances);
-                leftover.extend(result.leftover);
-                for idx in result.claimed_indices {
-                    if let Some(slot) = claimed.get_mut(idx) {
-                        *slot = true;
+                for (g, slot) in params.glyphs.iter().zip(&mut claimed) {
+                    if g.font_id != font_id || g.font_index != font_index {
+                        continue;
+                    }
+                    *slot = true;
+                    match self.place_one(params, font_bytes, g) {
+                        GlyphOutcome::Placed(instance) => instances.push(instance),
+                        GlyphOutcome::Blank => {}
+                        GlyphOutcome::AtlasFull => leftover.push(g.clone()),
                     }
                 }
             });
         if !any_face {
             return (Vec::new(), params.glyphs.to_vec());
         }
-        for (g, was_claimed) in params.glyphs.iter().zip(&claimed) {
-            if !was_claimed {
-                leftover.push(g.clone());
-            }
-        }
-        (all_instances, leftover)
+        leftover.extend(
+            params
+                .glyphs
+                .iter()
+                .zip(&claimed)
+                .filter(|(_, claimed)| !**claimed)
+                .map(|(g, _)| g.clone()),
+        );
+        (instances, leftover)
     }
 
-    fn place_glyphs_for_face(
-        &mut self,
-        params: &RasterDrawParams<'_>,
-        font_id: u64,
-        font_bytes: &[u8],
-        font_index: u32,
-    ) -> FaceRasterResult {
-        let color = [
-            params.color.r,
-            params.color.g,
-            params.color.b,
-            params.color.a,
-        ];
-        let mut instances = Vec::new();
-        let mut leftover = Vec::new();
-        let mut claimed_indices = Vec::new();
-        for (idx, g) in params.glyphs.iter().enumerate() {
-            if g.font_id != font_id || g.font_index != font_index {
-                continue;
-            }
-            claimed_indices.push(idx);
-            match self.place_one(params, font_bytes, g) {
-                GlyphOutcome::Placed(instance) => {
-                    instances.push(RasterInstance { color, ..instance });
-                }
-                GlyphOutcome::Blank => {}
-                GlyphOutcome::AtlasFull => leftover.push(g.clone()),
-            }
-        }
-        FaceRasterResult {
-            instances,
-            leftover,
-            claimed_indices,
-        }
-    }
-
+    #[allow(clippy::cast_precision_loss)]
     fn place_one(
         &mut self,
         params: &RasterDrawParams<'_>,
@@ -164,21 +147,20 @@ impl RasterTextPipeline {
         g: &RenderedGlyph,
     ) -> GlyphOutcome {
         let scale = params.scale.max(1.0);
-        let physical_px = g.size * scale;
         let physical_pen_x = (params.origin.0 + g.x) * scale;
         let (bin, carry) = subpixel_quantize(physical_pen_x);
-        let key = RasterKey::new(g, physical_px, bin);
+        let key = RasterKey::new(g, g.size * scale, bin);
         let placement = if let Some(p) = self.atlas.get(&key) {
             p
         } else {
-            if self.atlas.is_blank(&key) {
+            if self.atlas.blank.contains(&key) {
                 return GlyphOutcome::Blank;
             }
             let Some(mask) = self
                 .hinters
                 .rasterize(font_bytes, &key, &g.variation_coords, g.skew)
             else {
-                self.atlas.mark_blank(key);
+                self.atlas.blank.insert(key);
                 return GlyphOutcome::Blank;
             };
             let Some(p) = self.atlas.insert(params.device, params.queue, key, mask) else {
@@ -186,58 +168,65 @@ impl RasterTextPipeline {
             };
             p
         };
-        let physical_baseline_y = (params.origin.1 + g.y) * scale;
-        GlyphOutcome::Placed(quad_instance(
-            &placement,
-            physical_pen_x + carry,
-            physical_baseline_y,
-            scale,
-        ))
+        let quad_x = (physical_pen_x + carry).floor() + placement.left as f32;
+        let quad_y = ((params.origin.1 + g.y) * scale).round() - placement.top as f32;
+        let c = params.color;
+        GlyphOutcome::Placed(RasterInstance {
+            quad_rect: [
+                quad_x / scale,
+                quad_y / scale,
+                placement.width as f32 / scale,
+                placement.height as f32 / scale,
+            ],
+            uv_rect: placement.px,
+            color: [c.r, c.g, c.b, c.a],
+        })
     }
 
-    fn prepare_uniforms(&mut self, device: &wgpu::Device, uniform: wgpu::Buffer) {
-        let view = self.atlas.view();
+    pub(crate) fn draw_batch(
+        &mut self,
+        encoder: &mut SplitEncoder,
+        frame: &RasterFrame<'_>,
+        instances: &mut [RasterInstance],
+        groups: &[RasterGroup],
+    ) {
+        if instances.is_empty() {
+            return;
+        }
+        normalize_uvs(instances, self.atlas.size);
+        let (uniform, offset, _) = encoder.uniform(&SurfaceParams {
+            surface_size: [frame.surface_width.max(1.0), frame.surface_height.max(1.0)],
+            _pad: [0.0, 0.0],
+        });
+        let view = &self.atlas.view;
         if self
             .uniforms
             .as_ref()
             .is_none_or(|(buffer, atlas, _)| *buffer != uniform || atlas != view)
         {
-            let group = bind_group(device, &self.bgl, &uniform, view, &self.sampler);
+            let group = bind_group(frame.device, &self.bgl, &uniform, view, &self.sampler);
             self.uniforms = Some((uniform, view.clone(), group));
         }
-    }
-}
-
-struct FaceRasterResult {
-    instances: Vec<RasterInstance>,
-    leftover: Vec<RenderedGlyph>,
-    claimed_indices: Vec<usize>,
-}
-
-enum GlyphOutcome {
-    Placed(RasterInstance),
-    Blank,
-    AtlasFull,
-}
-
-#[allow(clippy::cast_precision_loss)]
-fn quad_instance(
-    placement: &Placement,
-    physical_pen_x: f32,
-    physical_baseline_y: f32,
-    scale: f32,
-) -> RasterInstance {
-    let quad_x = physical_pen_x.floor() + placement.left as f32;
-    let quad_y = physical_baseline_y.round() - placement.top as f32;
-    RasterInstance {
-        quad_rect: [
-            quad_x / scale,
-            quad_y / scale,
-            placement.width as f32 / scale,
-            placement.height as f32 / scale,
-        ],
-        uv_rect: placement.px,
-        color: [0.0; 4],
+        let Some((_, _, bind)) = self.uniforms.as_ref() else {
+            return;
+        };
+        let uploaded = encoder.upload(instances);
+        let size = frame.view.texture().size();
+        let pass = begin_pass(encoder, "raster-text-pass", frame.view, wgpu::LoadOp::Load);
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, bind, &[offset]);
+        pass.set_vertex_buffer(0, self.quad_vb.slice(..));
+        pass.set_vertex_buffer(1, uploaded.buffer.slice(uploaded.bytes));
+        let viewport = (frame.surface_width, frame.surface_height);
+        for group in groups {
+            if group.clip.is_none() {
+                pass.set_scissor_rect(0, 0, size.width, size.height);
+            }
+            if crate::renderer::scissor::apply(pass, group.clip, frame.scale, viewport) {
+                pass.draw(0..6, group.range.clone());
+            }
+        }
+        pass.set_scissor_rect(0, 0, size.width, size.height);
     }
 }
 
@@ -249,29 +238,6 @@ fn normalize_uvs(instances: &mut [RasterInstance], atlas_size: u32) {
             *c /= s;
         }
     }
-}
-
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-fn scissor_rect(
-    clip: Rect,
-    scale: f32,
-    surface_w: f32,
-    surface_h: f32,
-) -> Option<(u32, u32, u32, u32)> {
-    let fb_w = (surface_w * scale).max(0.0);
-    let fb_h = (surface_h * scale).max(0.0);
-    let x0 = (clip.origin.x * scale).floor().clamp(0.0, fb_w);
-    let y0 = (clip.origin.y * scale).floor().clamp(0.0, fb_h);
-    let x1 = ((clip.origin.x + clip.width) * scale)
-        .ceil()
-        .clamp(0.0, fb_w);
-    let y1 = ((clip.origin.y + clip.height) * scale)
-        .ceil()
-        .clamp(0.0, fb_h);
-    if x1 <= x0 || y1 <= y0 {
-        return None;
-    }
-    Some((x0 as u32, y0 as u32, (x1 - x0) as u32, (y1 - y0) as u32))
 }
 
 #[cfg(test)]

@@ -62,7 +62,7 @@ fn subtree_len(cx: &Cx, root: NodeId) -> u64 {
     nodes
 }
 
-fn contains(cx: &Cx, ancestor: NodeId, id: NodeId) -> bool {
+pub(super) fn contains(cx: &Cx, ancestor: NodeId, id: NodeId) -> bool {
     let mut current = Some(id);
     while let Some(node) = current {
         if node == ancestor {

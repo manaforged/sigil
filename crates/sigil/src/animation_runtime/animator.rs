@@ -20,32 +20,18 @@ pub struct Animator {
 impl Animator {
     #[must_use]
     pub fn new(signal: Signal<f32>, config: AnimationConfig) -> Self {
-        if MotionPrefs::reduced() {
-            return Self {
-                id: None,
-                signal,
-                config,
-            };
-        }
-        let id = match config {
-            AnimationConfig::Spring { preset } => state::register_spring(signal, preset),
-            AnimationConfig::Tween { ms, easing } => state::register_tween(signal, ms, easing),
-        };
         Self {
-            id: Some(id),
+            id: (!MotionPrefs::reduced()).then(|| state::register_config(signal, config)),
             signal,
             config,
         }
     }
 
     pub(crate) fn set_config(&mut self, config: AnimationConfig) {
-        if self.config == config {
-            return;
+        if self.config != config {
+            self.cancel();
+            self.config = config;
         }
-        if let Some(id) = self.id.take() {
-            id.deregister();
-        }
-        self.config = config;
     }
 
     pub fn target(&mut self, value: f32) {
@@ -54,18 +40,15 @@ impl Animator {
             return;
         }
         if MotionPrefs::reduced() {
-            if let Some(id) = self.id.take() {
-                id.deregister();
-            }
+            self.cancel();
             self.signal.try_set(value);
             Runtime::mark_frame_dirty();
             return;
         }
-        let id = *self.id.get_or_insert_with(|| match self.config {
-            AnimationConfig::Spring { preset } => state::register_spring(self.signal, preset),
-            AnimationConfig::Tween { ms, easing } => state::register_tween(self.signal, ms, easing),
-        });
-        id.retarget(value);
+        let (signal, config) = (self.signal, self.config);
+        self.id
+            .get_or_insert_with(|| state::register_config(signal, config))
+            .retarget(value);
     }
 
     pub fn pause(&mut self) {
@@ -108,9 +91,7 @@ impl Animator {
 
 impl Drop for Animator {
     fn drop(&mut self) {
-        if let Some(id) = self.id.take() {
-            id.deregister();
-        }
+        self.cancel();
     }
 }
 
@@ -124,9 +105,7 @@ impl SpringMotion {
             spring: Spring::from_preset(initial, preset),
         }
     }
-}
 
-impl SpringMotion {
     pub(crate) const fn finish(&mut self) {
         self.spring.reset(self.spring.target());
     }
@@ -176,9 +155,7 @@ impl TweenMotion {
             tween: None,
         }
     }
-}
 
-impl TweenMotion {
     pub(crate) const fn finish(&mut self) {
         if let Some(tween) = self.tween.take() {
             self.current = tween.to();

@@ -11,51 +11,24 @@ fn to(step: Step) -> Option<usize> {
 }
 
 #[test]
-fn pure_ltr_moves_logically() {
-    assert_eq!(
-        to(ParagraphBidi::new("abc").visual_step(1, true)),
-        Some(2),
-        "Right = forward"
-    );
-    assert_eq!(
-        to(ParagraphBidi::new("abc").visual_step(1, false)),
-        Some(0),
-        "Left = backward"
-    );
-    assert_eq!(
-        to(ParagraphBidi::new("abc").visual_step(0, false)),
-        None,
-        "Left edge"
-    );
-    assert_eq!(
-        to(ParagraphBidi::new("abc").visual_step(3, true)),
-        None,
-        "Right edge"
-    );
-}
-
-#[test]
-fn pure_rtl_reverses() {
-    assert_eq!(
-        to(ParagraphBidi::new(HE).visual_step(0, false)),
-        Some(2),
-        "RTL Left = forward"
-    );
-    assert_eq!(
-        to(ParagraphBidi::new(HE).visual_step(0, true)),
-        None,
-        "RTL visual-right edge"
-    );
-    assert_eq!(
-        to(ParagraphBidi::new(HE).visual_step(6, true)),
-        Some(4),
-        "RTL Right = backward"
-    );
-    assert_eq!(
-        to(ParagraphBidi::new(HE).visual_step(6, false)),
-        None,
-        "RTL visual-left edge"
-    );
+fn single_run_steps_follow_direction() {
+    let cases = [
+        ("abc", 1, true, Some(2)),
+        ("abc", 1, false, Some(0)),
+        ("abc", 0, false, None),
+        ("abc", 3, true, None),
+        (HE, 0, false, Some(2)),
+        (HE, 0, true, None),
+        (HE, 6, true, Some(4)),
+        (HE, 6, false, None),
+    ];
+    for (text, caret, right, want) in cases {
+        assert_eq!(
+            to(ParagraphBidi::new(text).visual_step(caret, right)),
+            want,
+            "{text:?} caret {caret} right {right}"
+        );
+    }
 }
 
 #[test]

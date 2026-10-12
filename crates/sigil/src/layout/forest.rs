@@ -73,12 +73,6 @@ pub(crate) struct LayoutText {
     pub(crate) ellipsis: bool,
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct TextFlags {
-    pub(crate) wrap: bool,
-    pub(crate) ellipsis: bool,
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct ComputedBox {
     pub(crate) x: f32,
@@ -95,12 +89,6 @@ pub(crate) struct LayoutForest {
     frame: u32,
     text_memo: std::cell::RefCell<TextMemo>,
     intrinsic: Vec<IntrinsicMemo>,
-}
-
-impl Default for LayoutForest {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl LayoutForest {
@@ -131,52 +119,37 @@ impl LayoutForest {
     }
 
     pub(crate) fn insert(&mut self, kernel: Option<NodeId>, style: StyleData) -> LocalId {
-        if let Some(slot) = self.free.pop() {
-            let idx = slot.index as usize;
-            let node = LayoutNode {
-                kernel,
-                style: crate::layout::units::resolve_style(style),
-                text: None,
-                children: SmallVec::new(),
-                parent: None,
-                tag: slot.tag,
-                alive: true,
-            };
-            let node_slot = self
-                .nodes
-                .get_mut(idx)
-                .expect("free-list slot points inside nodes slab");
-            *node_slot = node;
-            let box_slot = self
-                .boxes
-                .get_mut(idx)
-                .expect("free-list slot points inside boxes slab");
-            box_slot.reset();
-            self.forget(idx);
-            return slot;
-        }
-        let index = u32::try_from(self.nodes.len()).expect("forest slab exceeds u32::MAX");
-        let id = LocalId { index, tag: 0 };
-        self.nodes.push(LayoutNode {
+        let slot = self.free.pop();
+        let id = slot.unwrap_or_else(|| LocalId {
+            index: u32::try_from(self.nodes.len()).expect("forest slab exceeds u32::MAX"),
+            tag: 0,
+        });
+        let node = LayoutNode {
             kernel,
             style: crate::layout::units::resolve_style(style),
             text: None,
             children: SmallVec::new(),
             parent: None,
-            tag: 0,
+            tag: id.tag,
             alive: true,
-        });
-        self.boxes.push(BoxCell::new(ComputedBox::default()));
-        self.intrinsic.push(IntrinsicMemo::default());
+        };
+        let idx = id.index as usize;
+        if let Some(entry) = slot.and_then(|_| self.nodes.get_mut(idx)) {
+            *entry = node;
+            if let Some(cell) = self.boxes.get(idx) {
+                cell.reset();
+            }
+            self.forget(idx);
+        } else {
+            self.nodes.push(node);
+            self.boxes.push(BoxCell::new(ComputedBox::default()));
+            self.intrinsic.push(IntrinsicMemo::default());
+        }
         id
     }
 
     pub(crate) fn set_style(&mut self, id: LocalId, style: StyleData) -> Result<(), LayoutError> {
-        let slot = self.slot(id)?;
-        let entry = self
-            .nodes
-            .get_mut(slot)
-            .expect("slot() validated the index is in-bounds");
+        let entry = self.live_mut(id)?;
         let resolved = crate::layout::units::resolve_style(style);
         if entry.style != resolved {
             entry.style = resolved;
@@ -190,11 +163,7 @@ impl LayoutForest {
         id: LocalId,
         text: Option<LayoutText>,
     ) -> Result<(), LayoutError> {
-        let slot = self.slot(id)?;
-        let entry = self
-            .nodes
-            .get_mut(slot)
-            .expect("slot() validated the index is in-bounds");
+        let entry = self.live_mut(id)?;
         let same = match (&entry.text, &text) {
             (Some(old), Some(new)) => old.same_source(new),
             (None, None) => true,
@@ -216,43 +185,30 @@ impl LayoutForest {
     }
 
     pub(crate) fn node(&self, id: LocalId) -> Option<&LayoutNode> {
-        let idx = id.index as usize;
-        let entry = self.nodes.get(idx)?;
-        if entry.alive && entry.tag == id.tag {
-            Some(entry)
-        } else {
-            None
-        }
+        self.nodes
+            .get(id.index as usize)
+            .filter(|entry| entry.alive && entry.tag == id.tag)
     }
 
     pub(crate) fn boxed(&self, id: LocalId) -> Option<ComputedBox> {
-        let idx = id.index as usize;
-        let entry = self.nodes.get(idx)?;
-        if entry.alive && entry.tag == id.tag {
-            self.boxes.get(idx).map(BoxCell::get)
-        } else {
-            None
-        }
+        self.node(id)
+            .and_then(|_| self.boxes.get(id.index as usize))
+            .map(BoxCell::get)
     }
 
     pub(crate) fn frame_for(&self, id: LocalId) -> Option<u32> {
-        let idx = id.index as usize;
-        let entry = self.nodes.get(idx)?;
-        if entry.alive && entry.tag == id.tag {
-            self.boxes.get(idx).map(BoxCell::frame)
-        } else {
-            None
-        }
+        self.node(id)
+            .and_then(|_| self.boxes.get(id.index as usize))
+            .map(BoxCell::frame)
     }
 
     pub(crate) fn write(&mut self, id: LocalId, value: ComputedBox) -> Result<(), LayoutError> {
-        let slot = self.slot(id)?;
+        self.node(id).ok_or_else(|| stale(id))?;
         let frame = self.frame;
-        let cell = self
-            .boxes
-            .get_mut(slot)
-            .expect("slot() validated the index is in-bounds");
-        cell.write(value, frame);
+        self.boxes
+            .get_mut(id.index as usize)
+            .ok_or_else(|| stale(id))?
+            .write(value, frame);
         Ok(())
     }
 
@@ -260,21 +216,19 @@ impl LayoutForest {
         self.node(id).map(|_| NodeRef { forest: self, id })
     }
 
-    fn slot(&self, id: LocalId) -> Result<usize, LayoutError> {
-        let idx = id.index as usize;
-        let entry = self
-            .nodes
-            .get(idx)
-            .filter(|n| n.alive && n.tag == id.tag)
-            .ok_or_else(|| {
-                LayoutError::LayoutInvalid(format!(
-                    "stale layout-forest id index={} tag={}",
-                    id.index, id.tag
-                ))
-            })?;
-        let _ = entry;
-        Ok(idx)
+    fn live_mut(&mut self, id: LocalId) -> Result<&mut LayoutNode, LayoutError> {
+        self.nodes
+            .get_mut(id.index as usize)
+            .filter(|entry| entry.alive && entry.tag == id.tag)
+            .ok_or_else(|| stale(id))
     }
+}
+
+fn stale(id: LocalId) -> LayoutError {
+    LayoutError::LayoutInvalid(format!(
+        "stale layout-forest id index={} tag={}",
+        id.index, id.tag
+    ))
 }
 
 #[derive(Clone, Copy, Debug)]

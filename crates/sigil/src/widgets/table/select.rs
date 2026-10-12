@@ -22,20 +22,13 @@ enum Mark {
 }
 
 pub(super) fn header_cell<Row: 'static>(state: &TableState<Row>, height: f32) -> NodeBuilder {
-    let mark = header_mark(state.clone());
     let toggle = state.clone();
-    container()
-        .role(Role::ColumnHeader)
-        .label(theme_label(StringKey::Select))
-        .column_index(1)
-        .layout(cell_layout(height))
-        .child(select_box(
-            mark,
-            theme_string(StringKey::SelectAllRows),
-            move || {
-                toggle.toggle_all();
-            },
-        ))
+    let check = select_box(
+        header_mark(state.clone()),
+        theme_string(StringKey::SelectAllRows),
+        move || toggle.toggle_all(),
+    );
+    select_cell(Role::ColumnHeader, height, check).label(theme_label(StringKey::Select))
 }
 
 pub(super) fn row_cell<Row: 'static>(
@@ -52,17 +45,26 @@ pub(super) fn row_cell<Row: 'static>(
         }
     });
     let toggle = state.clone();
+    let check = select_box(
+        mark,
+        ActiveTheme::capture().fill(StringKey::SelectRow, &[&(row + 1)]),
+        move || toggle.toggle_selected(row),
+    );
+    select_cell(Role::GridCell, height, check)
+}
+
+fn select_cell(role: Role, height: f32, check: NodeBuilder) -> NodeBuilder {
     container()
-        .role(Role::GridCell)
+        .role(role)
         .column_index(1)
-        .layout(cell_layout(height))
-        .child(select_box(
-            mark,
-            ActiveTheme::capture().fill(StringKey::SelectRow, &[&(row + 1)]),
-            move || {
-                toggle.toggle_selected(row);
-            },
-        ))
+        .layout(
+            LayoutStyle::flex_row()
+                .fixed_size(WIDTH, height)
+                .shrink(0.0)
+                .align_items(AlignItems::Center)
+                .justify_content(JustifyContent::Center),
+        )
+        .child(check)
 }
 
 fn select_box(
@@ -104,14 +106,6 @@ fn select_box(
             }
         });
     interaction.observe_style(node)
-}
-
-fn cell_layout(height: f32) -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .fixed_size(WIDTH, height)
-        .shrink(0.0)
-        .align_items(AlignItems::Center)
-        .justify_content(JustifyContent::Center)
 }
 
 fn header_mark<Row: 'static>(state: TableState<Row>) -> Signal<Mark> {

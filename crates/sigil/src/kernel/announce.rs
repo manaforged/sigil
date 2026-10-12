@@ -58,35 +58,19 @@ impl Cx {
             hittable: false,
             ..A11yProps::default()
         };
-        let id = self.spawn_live_region(a11y);
-        self.live_region = Some(id);
-        id
-    }
-
-    fn spawn_live_region(&mut self, a11y: A11yProps) -> NodeId {
-        let parent_owner = self.root_owner();
-        let owner = Owner::new("sigil-kernel::live-region", Some(parent_owner));
-        let id = owner.with(|| self.insert_live_region_node(a11y, owner.id()));
-        self.register_live_region_owner(id, owner);
-        id
-    }
-
-    fn insert_live_region_node(
-        &mut self,
-        a11y: A11yProps,
-        owner_id: crate::reactive::OwnerId,
-    ) -> NodeId {
-        NodeId(
-            self.nodes
-                .insert(Node::new(NodeType::Container, a11y, owner_id)),
-        )
-    }
-
-    fn register_live_region_owner(&mut self, id: NodeId, owner: Owner) {
+        let owner = Owner::new("sigil-kernel::live-region", Some(self.root_owner()));
+        let id = owner.with(|| {
+            NodeId(
+                self.nodes
+                    .insert(Node::new(NodeType::Container, a11y, owner.id())),
+            )
+        });
         self.owner_for_node.insert(id, owner);
         self.roots.push(id);
         self.dirty.insert(id);
         self.mutation_generation = self.mutation_generation.wrapping_add(1);
+        self.live_region = Some(id);
+        id
     }
 }
 

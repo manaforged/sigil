@@ -91,18 +91,14 @@ impl CellGeometry {
     }
 
     fn ranges(&self, text: &str, width: Option<f32>) -> Vec<(usize, usize)> {
-        let max_cells = width.and_then(|value| {
-            if self.px <= 0.0 {
-                return None;
-            }
-            let cells = (value / self.px).floor();
+        let max_cells = width.filter(|_| self.px > 0.0).map(|value| {
             #[allow(
                 clippy::cast_possible_truncation,
                 clippy::cast_sign_loss,
                 reason = "the positive cell count is bounded by the available terminal width"
             )]
-            let cells = cells as usize;
-            Some(cells.max(1))
+            let cells = (value / self.px).floor() as usize;
+            cells.max(1)
         });
         ranges(text, max_cells)
     }
@@ -238,16 +234,12 @@ impl TextGeometry for CellGeometry {
             }
             let from = lo.clamp(start, end);
             let to = hi.clamp(start, end);
-            let line_width = cells_to_px(text.get(start..end).map_or(0, cell_width), self.px);
-            let x = if text_selected {
-                cells_to_px(text.get(start..from).map_or(0, cell_width), self.px)
+            let span =
+                |a: usize, b: usize| cells_to_px(text.get(a..b).map_or(0, cell_width), self.px);
+            let (x, mut selected) = if text_selected {
+                (span(start, from), span(from, to))
             } else {
-                line_width
-            };
-            let mut selected = if text_selected {
-                cells_to_px(text.get(from..to).map_or(0, cell_width), self.px)
-            } else {
-                0.0
+                (span(start, end), 0.0)
             };
             if newline_selected {
                 selected += self.px;
@@ -282,7 +274,7 @@ fn hard_lines(text: &str) -> Vec<(usize, usize)> {
     let mut start = 0;
     let mut index = 0;
     while let Some(ch) = text.get(index..).and_then(|rest| rest.chars().next()) {
-        if matches!(ch, '\n' | '\r' | '\u{2028}' | '\u{2029}') {
+        if HARD_BREAKS.contains(&ch) {
             out.push((start, index));
             index += ch.len_utf8();
             if ch == '\r' && text.get(index..).is_some_and(|rest| rest.starts_with('\n')) {
@@ -293,11 +285,7 @@ fn hard_lines(text: &str) -> Vec<(usize, usize)> {
             index += ch.len_utf8();
         }
     }
-    if out.is_empty() {
-        out.push((0, text.len()));
-    } else {
-        out.push((start, text.len()));
-    }
+    out.push((start, text.len()));
     out
 }
 
@@ -308,10 +296,9 @@ fn wrap_range(
     max_cells: Option<usize>,
     breaks: &[usize],
 ) -> Vec<(usize, usize)> {
-    if start == end || max_cells.is_none() {
+    let Some(max_cells) = max_cells.filter(|_| start != end) else {
         return vec![(start, end)];
-    }
-    let max_cells = max_cells.unwrap_or(usize::MAX);
+    };
     let mut out = Vec::new();
     let mut line_start = start;
     while line_start < end {
@@ -359,13 +346,11 @@ fn break_positions(text: &str) -> Vec<usize> {
         .collect()
 }
 
+const HARD_BREAKS: [char; 4] = ['\n', '\r', '\u{2028}', '\u{2029}'];
+
 fn hard_break_at(text: &str, byte: usize) -> bool {
-    text.get(byte..).is_some_and(|rest| {
-        rest.starts_with('\n')
-            || rest.starts_with('\r')
-            || rest.starts_with('\u{2028}')
-            || rest.starts_with('\u{2029}')
-    })
+    text.get(byte..)
+        .is_some_and(|rest| rest.starts_with(HARD_BREAKS))
 }
 
 fn cells_to_px(cells: usize, px: f32) -> f32 {
@@ -377,7 +362,7 @@ fn cells_to_px(cells: usize, px: f32) -> f32 {
     cells * px
 }
 
-fn floor_boundary(text: &str, byte: usize) -> usize {
+pub(super) fn floor_boundary(text: &str, byte: usize) -> usize {
     let mut byte = byte.min(text.len());
     while byte > 0 && !text.is_char_boundary(byte) {
         byte -= 1;

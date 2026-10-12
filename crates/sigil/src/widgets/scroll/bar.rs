@@ -26,11 +26,7 @@ pub(crate) fn scrollbar(
     let page = move |ev: &mut PointerEvent| {
         let (thumb_h, max_travel) = geometry::thumb_metrics(extent.peek(), viewport_height.peek());
         let max = max_scroll.peek();
-        let thumb_top = if max > 0.0 && max_travel > 0.0 {
-            scroll_y.peek().clamp(0.0, max) / max * max_travel
-        } else {
-            0.0
-        };
+        let thumb_top = thumb_offset(scroll_y.peek(), max, max_travel);
         if ev.position.y >= thumb_top && ev.position.y < thumb_top + thumb_h {
             return;
         }
@@ -58,6 +54,14 @@ pub(crate) fn scrollbar(
         .child(thumb)
 }
 
+fn thumb_offset(scroll_y: f32, max: f32, max_travel: f32) -> f32 {
+    if max > 0.0 {
+        scroll_y.clamp(0.0, max) / max * max_travel
+    } else {
+        0.0
+    }
+}
+
 fn scrollbar_thumb(
     scroll_y: Signal<f32>,
     max_scroll: Signal<f32>,
@@ -69,13 +73,10 @@ fn scrollbar_thumb(
         derived(move || to_i16(geometry::thumb_metrics(extent.get(), viewport_height.get()).0));
     let position = derived(move || {
         let (_, max_travel) = geometry::thumb_metrics(extent.get(), viewport_height.get());
-        let max = max_scroll.get();
-        let t = if max > 0.0 {
-            scroll_y.get().clamp(0.0, max) / max
-        } else {
-            0.0
-        };
-        (0.0, (t * max_travel).round())
+        (
+            0.0,
+            thumb_offset(scroll_y.get(), max_scroll.get(), max_travel).round(),
+        )
     });
     let drag_anchor = signal::<Option<(f32, f32)>>(None);
     let thick = derived(move || hovered.get() || drag_anchor.get().is_some());
@@ -110,10 +111,8 @@ fn scrollbar_thumb(
             if max_travel <= 0.0 || max <= 0.0 {
                 return;
             }
-            let drag_dy = ev.position.y - anchor_y;
-            let offset_dy = drag_dy * (max / max_travel);
-            let next = (anchor_scroll + offset_dy).clamp(0.0, max);
-            scroll_y.set(next);
+            let offset_dy = (ev.position.y - anchor_y) * (max / max_travel);
+            scroll_y.set((anchor_scroll + offset_dy).clamp(0.0, max));
             ev.stop_propagation();
         })
 }

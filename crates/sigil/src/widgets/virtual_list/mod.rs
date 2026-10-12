@@ -7,13 +7,11 @@
 mod build;
 mod keyboard;
 mod measure;
-mod paint;
 mod render;
 mod row;
 mod scroll;
 mod selection;
 mod strip;
-mod viewport;
 mod window;
 
 use crate::kernel::{IntoNode, NodeBuilder};
@@ -25,7 +23,6 @@ use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::scroll::ScrollAxis;
 use super::table::Identifiable;
 pub use row::RowRender;
-use selection::SelectionRuntime;
 pub use selection::{SelectionMode, SelectionState};
 
 #[allow(unreachable_pub, reason = "intentional, reviewed trade-off")]
@@ -37,26 +34,13 @@ const DEFAULT_OVERSCAN: usize = 1;
 type ItemHeightFn<T> = dyn Fn(usize, &T) -> f32 + 'static;
 pub(super) type RowKey<T> = std::rc::Rc<dyn Fn(usize, &T) -> u64>;
 
-struct BoundCtx<T, R> {
-    render: R,
-    row_height: f32,
-    width: render::WidthSpec,
-    selection: SelectionRuntime,
-    scroll_y: Signal<f32>,
-    viewport_height: f32,
-    overscan: usize,
-    row_key: Option<RowKey<T>>,
-    measure: Option<measure::Measure>,
-    tops: Option<measure::Tops>,
-}
-
-type BoundVisibleThunk<T, R> = dyn FnOnce(BoundCtx<T, R>) -> NodeBuilder + 'static;
+type BoundVisibleThunk<T, R> =
+    dyn FnOnce(strip::BoundStrip<T, R>, Signal<f32>) -> NodeBuilder + 'static;
 type MeasureThunk<T> = dyn FnOnce(Option<RowKey<T>>, f32) -> measure::Measure + 'static;
 
 struct BoundItems<T, R> {
     thunk: Box<BoundVisibleThunk<T, R>>,
     measure: Option<Box<MeasureThunk<T>>>,
-    initial_rows: usize,
     live_rows: Signal<usize>,
     count: std::rc::Rc<dyn Fn() -> usize>,
 }
@@ -108,7 +92,7 @@ where
     item_height: Option<Box<ItemHeightFn<T>>>,
     row_tops: Vec<f32>,
     layout_overrides: LayoutOverrides,
-    initial_scroll: Option<InitialScroll>,
+    initial_scroll: Option<ScrollAnchor>,
     pin_bottom: bool,
     follow: Option<Signal<usize>>,
     content_height_bind: Option<Signal<f32>>,
@@ -124,12 +108,6 @@ enum Sizing {
     Fixed,
     Fill,
     ShrinkToContent,
-}
-
-#[derive(Clone, Copy)]
-enum InitialScroll {
-    End,
-    Row(usize),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -360,7 +338,7 @@ where
     #[must_use]
     pub const fn follow_end(mut self, on: bool) -> Self {
         if on {
-            self.initial_scroll = Some(InitialScroll::End);
+            self.initial_scroll = Some(ScrollAnchor::Bottom);
         }
         self.pin_bottom = on;
         self
@@ -368,7 +346,7 @@ where
 
     #[must_use]
     pub const fn scroll_into_view(mut self, index: usize) -> Self {
-        self.initial_scroll = Some(InitialScroll::Row(index));
+        self.initial_scroll = Some(ScrollAnchor::Index(index));
         self
     }
 
@@ -376,8 +354,7 @@ where
     pub const fn initial_scroll(mut self, anchor: ScrollAnchor) -> Self {
         self.initial_scroll = match anchor {
             ScrollAnchor::Top => None,
-            ScrollAnchor::Bottom => Some(InitialScroll::End),
-            ScrollAnchor::Index(n) => Some(InitialScroll::Row(n)),
+            anchor => Some(anchor),
         };
         self
     }
@@ -386,6 +363,12 @@ where
     pub const fn follow_row(mut self, target: Signal<usize>) -> Self {
         self.follow = Some(target);
         self
+    }
+}
+
+impl<T: 'static, R: RowRender<T>> crate::style::PaintTarget for VirtualListBuilder<T, R> {
+    fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
+        crate::style::StyleSlot(&mut self.style_accumulator)
     }
 }
 

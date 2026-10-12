@@ -18,10 +18,6 @@ fn pool_starts_empty() {
     let pool = LayerPool::new();
     assert_eq!(pool.len(), 0);
     assert!(pool.is_empty());
-}
-
-#[test]
-fn max_entries_constant() {
     assert_eq!(LayerPool::MAX_ENTRIES, 4);
 }
 

@@ -5,7 +5,7 @@ use crate::kernel::Cx;
 use crate::reactive::{Runtime, signal};
 
 #[test]
-fn group_carries_radio_group_role() {
+fn group_and_option_rows_carry_radio_roles() {
     Runtime::scope("radio-group-role", || {
         let mut cx = Cx::new_root();
         let selected = signal(String::from("a"));
@@ -13,19 +13,9 @@ fn group_carries_radio_group_role() {
             .option("a", "A")
             .option("b", "B")
             .build(&mut cx);
-        let node = cx.get(id).expect("group node");
-        assert_eq!(node.a11y.role, crate::kernel::Role::RadioGroup);
-        assert_eq!(node.children().len(), 2, "two option rows");
-    });
-}
-
-#[test]
-fn option_rows_carry_radio_button_role() {
-    Runtime::scope("radio-group-option-role", || {
-        let mut cx = Cx::new_root();
-        let selected = signal(String::from("a"));
-        let id = radio_group(selected).option("a", "A").build(&mut cx);
         let group = cx.get(id).expect("group node");
+        assert_eq!(group.a11y.role, crate::kernel::Role::RadioGroup);
+        assert_eq!(group.children().len(), 2, "two option rows");
         let row = cx.get(group.children()[0]).expect("row node");
         assert_eq!(row.a11y.role, crate::kernel::Role::RadioButton);
     });

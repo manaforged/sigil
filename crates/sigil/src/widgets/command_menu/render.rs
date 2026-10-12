@@ -4,15 +4,17 @@ use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{ControlSize, Metrics, Style, space};
+use std::rc::Rc;
+
+use crate::style::{ControlSize, Metrics, space};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::listbox::{ListModel, listbox};
 use super::super::popup::{self, ItemSlots, item_row};
 use super::super::shared::Activate;
 use super::super::text_field::{TextFieldBuilder, text_field};
-use super::builder::LevelDef;
-use super::nav::{Entry, MenuLevel, Palette, SubmitObserver, into_runtime};
+use super::builder::CommandMenuBuilder;
+use super::nav::{Entry, MenuLevel, Palette, SubmitObserver};
 
 const LEVEL_GAP: f32 = space(2);
 const FIELD_GAP: f32 = space(1);
@@ -21,15 +23,6 @@ const FIELD_GAP: f32 = space(1);
 struct Active {
     focused: Signal<bool>,
     pointed: Signal<bool>,
-}
-
-impl Active {
-    fn new() -> Self {
-        Self {
-            focused: signal(false),
-            pointed: signal(false),
-        }
-    }
 }
 
 struct CommandModel {
@@ -80,20 +73,13 @@ impl ListModel for CommandModel {
     }
 }
 
-pub(super) struct MenuParts {
-    pub(super) level: LevelDef,
-    pub(super) on_submit: Option<SubmitObserver>,
-    pub(super) on_cancel: Option<Activate>,
-    pub(super) placeholder: String,
-    pub(super) style_accumulator: Style,
-    pub(super) layout_overrides: LayoutOverrides,
-}
-
-pub(super) fn into_node_builder(parts: MenuParts) -> NodeBuilder {
-    let palette = Palette::new(into_runtime(parts.level));
-    let active = Active::new();
+pub(super) fn into_node_builder(parts: CommandMenuBuilder) -> NodeBuilder {
+    let palette = Palette::new(Rc::new(parts.level.entries));
     let chrome = PanelChrome {
-        active,
+        active: Active {
+            focused: signal(false),
+            pointed: signal(false),
+        },
         palette,
         layout_overrides: parts.layout_overrides,
         on_submit: parts.on_submit.clone(),
@@ -102,7 +88,11 @@ pub(super) fn into_node_builder(parts: MenuParts) -> NodeBuilder {
     let root = container()
         .role(Role::Menu)
         .label(theme_label(StringKey::CommandMenu))
-        .layout(root_layout())
+        .layout(
+            LayoutStyle::flex_row()
+                .gap(LEVEL_GAP)
+                .align_items(AlignItems::Start),
+        )
         .children_reactive(move || {
             let levels = palette.stack.get();
             let top = levels.len().saturating_sub(1);
@@ -151,24 +141,15 @@ fn query_field(chrome: &PanelChrome, depth: usize) -> TextFieldBuilder {
         .submit(move |_| palette.activate(on_submit.as_ref()))
 }
 
-fn root_layout() -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .gap(LEVEL_GAP)
-        .align_items(AlignItems::Start)
-}
-
 fn panel_layout(row_count: usize, with_field: bool) -> LayoutStyle {
     let item_height = Metrics::current().control_height(ControlSize::Default);
     let rows = f32::from(u16::try_from(row_count).unwrap_or(u16::MAX));
-    let field = if with_field {
-        item_height + FIELD_GAP
-    } else {
-        0.0
-    };
+    let gap = if with_field { FIELD_GAP } else { 0.0 };
+    let field = if with_field { item_height + gap } else { 0.0 };
     LayoutStyle::flex_column()
         .height(popup::panel_height([rows * item_height, field]))
         .padding(Metrics::current().overlay_padding())
-        .gap(if with_field { FIELD_GAP } else { 0.0 })
+        .gap(gap)
         .shrink(0.0)
         .align_items(AlignItems::Stretch)
 }
@@ -188,12 +169,10 @@ fn build_level_panel(
     } else {
         layout.width(popup::PANEL_WIDTH)
     };
-    let panel = popup::surface(Role::Menu).with(layout);
-    let panel = if is_top {
-        panel.child(query_field(chrome, depth))
-    } else {
-        panel
-    };
+    let mut panel = popup::surface(Role::Menu).with(layout);
+    if is_top {
+        panel = panel.child(query_field(chrome, depth));
+    }
     panel.child(level_rows(level, chrome))
 }
 

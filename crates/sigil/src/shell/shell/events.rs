@@ -17,9 +17,8 @@ use winit::{
     window::WindowId,
 };
 
-use crate::shell::dpi::{
-    logical_point_from_f64, scale_for_window_id, scale_from_f64, set_scale_for_window_id,
-};
+use crate::shell::WinitWindowHandle;
+use crate::shell::dpi::{logical_point_from_f64, scale_from_f64};
 use crate::shell::event_map::{
     map_modifiers, map_mouse_button, map_scroll_delta, map_scroll_phase, map_touch_pointer_phase,
     mouse_button_bit,
@@ -29,15 +28,22 @@ use crate::shell::key_map::{map_logical_key, map_physical_key};
 use super::WinitShell;
 
 impl WinitShell {
+    fn window_scale(&self, handle: WinitWindowHandle) -> Scale {
+        self.window_scales
+            .iter()
+            .find_map(|(stored, scale)| (*stored == handle).then_some(*scale))
+            .unwrap_or(Scale::ONE)
+    }
+
     pub(crate) fn buffer_window_event(
         &mut self,
         window_id: WindowId,
         event: WinitWindowEvent,
     ) -> bool {
-        let scale = scale_for_window_id(&self.windows, &self.window_scales, window_id);
         let Some(handle) = self.handle_for(window_id) else {
             return false;
         };
+        let scale = self.window_scale(handle);
         self.event_window = handle;
         match event {
             WinitWindowEvent::Resized(size) => self.push_window_resized(size),
@@ -55,8 +61,7 @@ impl WinitShell {
                 self.push_scroll(delta, phase, scale)
             }
             WinitWindowEvent::MouseInput { state, button, .. } => {
-                self.push_mouse_input(state, button);
-                true
+                self.push_mouse_input(state, button)
             }
             WinitWindowEvent::Touch(touch) => {
                 self.push_touch(&touch, scale);
@@ -72,15 +77,6 @@ impl WinitShell {
             WinitWindowEvent::Occluded(occluded) => {
                 self.push_window(SigilWindowEvent::Occluded(occluded))
             }
-            event @ (WinitWindowEvent::HoveredFile(_)
-            | WinitWindowEvent::DroppedFile(_)
-            | WinitWindowEvent::HoveredFileCancelled) => self.buffer_file_drop(event),
-            _ => false,
-        }
-    }
-
-    fn buffer_file_drop(&mut self, event: WinitWindowEvent) -> bool {
-        match event {
             WinitWindowEvent::HoveredFile(path) => {
                 self.push_file_drop(Some(path), FileDropPhase::Hovered)
             }
@@ -94,7 +90,7 @@ impl WinitShell {
         }
     }
 
-    fn buffer_gesture(&mut self, event: &WinitWindowEvent, scale: crate::geometry::Scale) -> bool {
+    fn buffer_gesture(&mut self, event: &WinitWindowEvent, scale: Scale) -> bool {
         match *event {
             WinitWindowEvent::PinchGesture { delta, phase, .. } => {
                 self.push_gesture(GestureKind::Pinch(delta), phase)
@@ -132,19 +128,15 @@ impl WinitShell {
         window_id: WindowId,
         scale_factor: f64,
     ) -> bool {
-        let zoom = self
-            .window_zooms
-            .iter()
-            .find_map(|(stored, zoom)| {
-                (self
-                    .windows
-                    .iter()
-                    .any(|(handle, window)| *handle == *stored && window.id() == window_id))
-                .then_some(*zoom)
-            })
-            .unwrap_or(1.0);
+        let handle = self.handle_for(window_id);
+        let zoom = handle.map_or(1.0, |handle| self.window_zoom(handle));
         let scale = scale_from_f64(scale_factor * f64::from(zoom));
-        set_scale_for_window_id(&self.windows, &mut self.window_scales, window_id, scale);
+        if let Some(handle) = handle {
+            match self.window_scales.iter_mut().find(|(s, _)| *s == handle) {
+                Some((_, stored)) => *stored = scale,
+                None => self.window_scales.push((handle, scale)),
+            }
+        }
         self.push_window(SigilWindowEvent::ScaleFactorChanged(scale))
     }
 
@@ -176,16 +168,14 @@ impl WinitShell {
             ElementState::Released => KeyPhase::Up,
         };
         let text = event.text.as_ref().map(|text| SmolStr::new(text.as_str()));
-        let key = ShellEvent::Key(SigilKeyEvent::new(KeyEventInit {
+        self.push(ShellEvent::Key(SigilKeyEvent::new(KeyEventInit {
             key: map_logical_key(event.logical_key),
             physical: map_physical_key(event.physical_key),
             modifiers: self.modifiers,
             repeat: event.repeat,
             phase,
             text,
-        }));
-        self.events.push((self.event_window, key));
-        true
+        })))
     }
 
     pub(super) fn push_ime(&mut self, event: WinitIme) -> bool {
@@ -195,17 +185,12 @@ impl WinitShell {
             WinitIme::Commit(text) => ImeEvent::Commit(SmolStr::new(&text)),
             WinitIme::Disabled => ImeEvent::Disabled,
         };
-        self.events
-            .push((self.event_window, ShellEvent::Ime(event)));
-        true
+        self.push(ShellEvent::Ime(event))
     }
 
     pub(super) fn push_file_drop(&mut self, path: Option<PathBuf>, phase: FileDropPhase) -> bool {
         let path = path.map(|p| p.to_string_lossy().into_owned());
-        let window = self.event_window;
-        self.events
-            .push((window, ShellEvent::FileDrop(FileDropEvent { path, phase })));
-        true
+        self.push(ShellEvent::FileDrop(FileDropEvent { path, phase }))
     }
 
     pub(super) fn push_cursor_move(
@@ -213,22 +198,19 @@ impl WinitShell {
         position: winit::dpi::PhysicalPosition<f64>,
         scale: Scale,
     ) -> bool {
-        let next = logical_point_from_f64(position.x, position.y, scale);
-        let delta = Point::new(
-            next.x - self.pointer_position.x,
-            next.y - self.pointer_position.y,
-        );
-        self.pointer_position = next;
-        self.push_pointer(PointerPhase::Move, delta, None, PointerKind::Mouse);
-        true
+        let delta = self.move_pointer(logical_point_from_f64(position.x, position.y, scale));
+        self.push_pointer(PointerPhase::Move, delta, None, PointerKind::Mouse)
     }
 
     pub(super) fn push_pointer_phase(&mut self, phase: PointerPhase) -> bool {
-        self.push_pointer(phase, Point::new(0.0, 0.0), None, PointerKind::Mouse);
-        true
+        self.push_pointer(phase, Point::new(0.0, 0.0), None, PointerKind::Mouse)
     }
 
-    pub(super) fn push_mouse_input(&mut self, state: ElementState, button: WinitMouseButton) {
+    pub(super) fn push_mouse_input(
+        &mut self,
+        state: ElementState,
+        button: WinitMouseButton,
+    ) -> bool {
         let button = map_mouse_button(button);
         if let Some(bit) = mouse_button_bit(button) {
             match state {
@@ -245,16 +227,15 @@ impl WinitShell {
             Point::new(0.0, 0.0),
             Some(button),
             PointerKind::Mouse,
-        );
+        )
     }
 
     pub(super) fn push_touch(&mut self, touch: &WinitTouch, scale: Scale) {
-        let next = logical_point_from_f64(touch.location.x, touch.location.y, scale);
-        let delta = Point::new(
-            next.x - self.pointer_position.x,
-            next.y - self.pointer_position.y,
-        );
-        self.pointer_position = next;
+        let delta = self.move_pointer(logical_point_from_f64(
+            touch.location.x,
+            touch.location.y,
+            scale,
+        ));
         #[allow(
             clippy::cast_possible_truncation,
             reason = "normalized force is in 0.0..=1.0"
@@ -268,8 +249,21 @@ impl WinitShell {
                 PointerKind::Touch,
             )
             .with_contact(touch.id, pressure, None);
-        self.events
-            .push((self.event_window, ShellEvent::Pointer(event)));
+        self.push(ShellEvent::Pointer(event));
+    }
+
+    fn move_pointer(&mut self, next: Point) -> Point {
+        let delta = Point::new(
+            next.x - self.pointer_position.x,
+            next.y - self.pointer_position.y,
+        );
+        self.pointer_position = next;
+        delta
+    }
+
+    fn push(&mut self, event: ShellEvent) -> bool {
+        self.events.push((self.event_window, event));
+        true
     }
 
     fn push_pointer(
@@ -278,10 +272,9 @@ impl WinitShell {
         delta: Point,
         button: Option<MouseButton>,
         kind: PointerKind,
-    ) {
+    ) -> bool {
         let event = self.pointer_event(phase, delta, button, kind);
-        self.events
-            .push((self.event_window, ShellEvent::Pointer(event)));
+        self.push(ShellEvent::Pointer(event))
     }
 
     const fn pointer_event(
@@ -303,14 +296,12 @@ impl WinitShell {
     }
 
     pub(super) fn push_gesture(&mut self, kind: GestureKind, phase: TouchPhase) -> bool {
-        let gesture = ShellEvent::Gesture(GestureEvent::new(GestureEventInit {
+        self.push(ShellEvent::Gesture(GestureEvent::new(GestureEventInit {
             kind,
             phase: map_scroll_phase(phase),
             position: self.pointer_position,
             modifiers: self.modifiers,
-        }));
-        self.events.push((self.event_window, gesture));
-        true
+        })))
     }
 
     pub(super) fn push_scroll(
@@ -319,13 +310,11 @@ impl WinitShell {
         phase: TouchPhase,
         scale: Scale,
     ) -> bool {
-        let scroll = ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
+        self.push(ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
             position: self.pointer_position,
             delta: map_scroll_delta(delta, scale),
             modifiers: self.modifiers,
             phase: map_scroll_phase(phase),
-        }));
-        self.events.push((self.event_window, scroll));
-        true
+        })))
     }
 }

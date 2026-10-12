@@ -1,6 +1,5 @@
 use crate::kernel::Node;
 use crate::reactive::{Runtime, Signal, effect_named};
-use smallvec::SmallVec;
 
 use crate::style::merge::SlotSet;
 use crate::style::{
@@ -53,7 +52,7 @@ pub(super) fn install_class(node: &mut Node, source: ClassSource) {
         let incoming_atoms = incoming.all_atoms();
         binding.note_user(SlotSet::of(&incoming_atoms));
         let merged = merge_classes(&existing, &incoming_atoms, 0);
-        binding.replace_owned(smallvec16(merged));
+        binding.replace_owned(merged.into_iter().collect());
         return;
     }
     let _previous = node.attach(incoming);
@@ -103,8 +102,4 @@ fn binding_from_source(source: ClassSource) -> StyleBinding {
         ClassSource::Owned(atoms) => StyleBinding::owned_atoms(*atoms),
         ClassSource::RawString(input) => StyleBinding::static_atoms(parse_classes(input)),
     }
-}
-
-fn smallvec16(atoms: SmallVec<[StyleAtom; 32]>) -> SmallVec<[StyleAtom; 16]> {
-    atoms.into_iter().collect()
 }

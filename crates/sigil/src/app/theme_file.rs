@@ -80,31 +80,19 @@ fn single_char(value: &toml::Value) -> Option<char> {
     chars.next().is_none().then_some(first)
 }
 
-#[allow(
-    clippy::cast_possible_truncation,
-    reason = "values are bounded to the target range before the cast"
-)]
 fn parse_hex(hex: &str) -> Option<Rgba8> {
     let digits = hex
         .strip_prefix('#')
         .or_else(|| hex.strip_prefix("0x"))
         .unwrap_or(hex);
     let value = u32::from_str_radix(digits, 16).ok()?;
-    match digits.len() {
-        6 => Some(Rgba8 {
-            r: (value >> 16) as u8,
-            g: (value >> 8) as u8,
-            b: value as u8,
-            a: 255,
-        }),
-        8 => Some(Rgba8 {
-            r: (value >> 24) as u8,
-            g: (value >> 16) as u8,
-            b: (value >> 8) as u8,
-            a: value as u8,
-        }),
-        _ => None,
-    }
+    let rgba = match digits.len() {
+        6 => (value << 8) | 0xff,
+        8 => value,
+        _ => return None,
+    };
+    let [r, g, b, a] = rgba.to_be_bytes();
+    Some(Rgba8 { r, g, b, a })
 }
 
 pub(super) fn watcher(

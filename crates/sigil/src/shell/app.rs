@@ -58,9 +58,7 @@ where
         if !self.materialise_pending(event_loop) {
             return;
         }
-        for (_, window) in self.shell.windows() {
-            window.request_redraw();
-        }
+        self.shell.request_redraws();
     }
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, _event: WakeEvent) {
@@ -71,9 +69,7 @@ where
         self.shell.pending_wake().store(false, Ordering::Release);
 
         self.app_redraw_pending = true;
-        for (_, window) in self.shell.windows() {
-            window.request_redraw();
-        }
+        self.shell.request_redraws();
         self.run_hidden(event_loop);
     }
 

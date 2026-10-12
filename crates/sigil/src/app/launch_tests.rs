@@ -1,23 +1,20 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::shadow_unrelated)]
 
 use std::fmt;
 use std::time::{Duration, Instant};
 
 use crate::animation_runtime::{Animator, MotionPrefs, active_count, config, presets};
 use crate::events::ShellEvent;
-use crate::geometry::{LogicalSize, PhysicalSize, Scale};
+use crate::geometry::{LogicalSize, PhysicalSize};
 use crate::hal::Shell;
-use crate::kernel::{Cx, container};
-use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+use crate::kernel::container;
+use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Runtime, signal};
 use crate::tasks::{AsyncRuntime, signal_writer};
 
 use crate::Host;
 use crate::app::config::AppConfig;
-use crate::app::launch::{
-    AnimationClock, begin_effect, create_initial_window, layout_for_scale, run_layout_if_dirty,
-};
-use crate::app::text_measure::DefaultTextMeasure;
+use crate::app::launch::{AnimationClock, create_initial_window};
 
 #[test]
 fn completion_rebuilds_before_accessibility_reads_replaced_controls() {
@@ -32,36 +29,26 @@ fn completion_rebuilds_before_accessibility_reads_replaced_controls() {
         });
         host.layout((200.0, 100.0)).unwrap();
         let router = crate::events::EventRouter::new();
-        let before = host.accessibility_tree(&router);
-        assert!(
-            before
+        let shows = |host: &Host, text: &str| {
+            host.accessibility_tree(&router)
                 .nodes
                 .iter()
-                .any(|(_, node)| node.value() == Some("Profile 0"))
-        );
+                .any(|(_, node)| node.value() == Some(text))
+        };
+        assert!(shows(&host, "Profile 0"));
         let mut async_rt = AsyncRuntime::new().unwrap();
         async_rt.install_current();
         signal_writer(revision).set(1).unwrap();
 
-        begin_effect(&mut async_rt);
+        Runtime::begin_effect();
+        let _ = async_rt.pump();
         Runtime::begin_layout();
-        run_layout_if_dirty(Runtime::frame_dirty(), || {
+        if Runtime::frame_dirty() {
             host.layout((200.0, 100.0)).unwrap();
-        });
+        }
         Runtime::begin_paint();
-        let after = host.accessibility_tree(&router);
-        assert!(
-            after
-                .nodes
-                .iter()
-                .any(|(_, node)| node.value() == Some("Profile 1"))
-        );
-        assert!(
-            !after
-                .nodes
-                .iter()
-                .any(|(_, node)| node.value() == Some("Profile 0"))
-        );
+        assert!(shows(&host, "Profile 1"));
+        assert!(!shows(&host, "Profile 0"));
         Runtime::end_frame();
     });
 }
@@ -149,22 +136,51 @@ impl Shell for MockShell {
 }
 
 #[test]
-fn initial_window_passes_logical_size_and_default_opts() {
-    let mut shell = MockShell::default();
-    let config = AppConfig::new("test").size(720, 480);
-    let logical = LogicalSize::new(720.0, 480.0);
-
-    let handle = create_initial_window(&mut shell, &config, logical).unwrap();
-
-    assert_eq!(handle, 0);
-    assert_eq!(
-        shell.calls,
-        vec![CreateCall::With(
-            "test".to_owned(),
-            logical,
-            crate::app::WindowOpts::default()
-        )]
-    );
+fn initial_window_threads_config_into_logical_size_and_opts() {
+    let anchor = crate::app::Anchor::BottomCenter { margin: 64.0 };
+    let opts = crate::app::WindowOpts::default;
+    let cases = [
+        (AppConfig::new("test").size(720, 480), opts()),
+        (
+            AppConfig::new("pill")
+                .size(200, 48)
+                .overlay(true)
+                .anchor(anchor),
+            crate::app::WindowOpts {
+                overlay: true,
+                anchor: Some(anchor),
+                ..opts()
+            },
+        ),
+        (
+            AppConfig::new("zoom").user_zoom(1.1),
+            crate::app::WindowOpts {
+                user_zoom: Some(1.1),
+                ..opts()
+            },
+        ),
+        (
+            AppConfig::new("frameless").size(1280, 720).frameless(true),
+            crate::app::WindowOpts {
+                frameless: true,
+                ..opts()
+            },
+        ),
+    ];
+    for (config, expected) in cases {
+        let mut shell = MockShell::default();
+        let logical = super::logical_size_from_config(config.window_size());
+        let handle = create_initial_window(&mut shell, &config, logical).unwrap();
+        assert_eq!(handle, 0);
+        assert_eq!(
+            shell.calls,
+            vec![CreateCall::With(
+                config.title().to_owned(),
+                logical,
+                expected
+            )]
+        );
+    }
 }
 
 #[test]
@@ -180,100 +196,7 @@ fn native_initial_window_ignores_web_canvas() {
 }
 
 #[test]
-fn initial_window_threads_overlay_opts() {
-    let mut shell = MockShell::default();
-    let anchor = crate::app::Anchor::BottomCenter { margin: 64.0 };
-    let config = AppConfig::new("pill")
-        .size(200, 48)
-        .overlay(true)
-        .anchor(anchor);
-    let logical = LogicalSize::new(200.0, 48.0);
-
-    create_initial_window(&mut shell, &config, logical).unwrap();
-
-    assert_eq!(
-        shell.calls,
-        vec![CreateCall::With(
-            "pill".to_owned(),
-            logical,
-            crate::app::WindowOpts {
-                overlay: true,
-                frameless: false,
-                anchor: Some(anchor),
-                user_zoom: None,
-                ..crate::app::WindowOpts::default()
-            }
-        )]
-    );
-}
-
-#[test]
-fn initial_window_threads_user_zoom() {
-    let mut shell = MockShell::default();
-    let config = AppConfig::new("zoom").user_zoom(1.1);
-    let logical = LogicalSize::new(720.0, 480.0);
-
-    create_initial_window(&mut shell, &config, logical).unwrap();
-
-    assert_eq!(
-        shell.calls,
-        vec![CreateCall::With(
-            "zoom".to_owned(),
-            logical,
-            crate::app::WindowOpts {
-                user_zoom: Some(1.1),
-                ..crate::app::WindowOpts::default()
-            }
-        )]
-    );
-}
-
-#[test]
-fn initial_window_threads_frameless_opts() {
-    let mut shell = MockShell::default();
-    let config = AppConfig::new("frameless").size(1280, 720).frameless(true);
-    let logical = LogicalSize::new(1280.0, 720.0);
-
-    create_initial_window(&mut shell, &config, logical).unwrap();
-
-    assert_eq!(
-        shell.calls,
-        vec![CreateCall::With(
-            "frameless".to_owned(),
-            logical,
-            crate::app::WindowOpts {
-                overlay: false,
-                frameless: true,
-                anchor: None,
-                user_zoom: None,
-                ..crate::app::WindowOpts::default()
-            }
-        )]
-    );
-}
-
-#[test]
-fn layout_for_scale_keeps_logical_rects_stable() {
-    Runtime::scope("test", || {
-        let mut cx = Cx::new_root();
-        let root = cx.add(container().layout(LayoutStyle::block().fixed_size(720.0, 480.0)));
-        let logical = LogicalSize::new(720.0, 480.0);
-        let mut layout = LayoutEngine::with_text_measure(Box::new(DefaultTextMeasure::new()));
-
-        layout_for_scale(&mut cx, root, &mut layout, Scale::ONE, logical).unwrap();
-        let one_x = layout.result(root).unwrap().rect();
-
-        layout_for_scale(&mut cx, root, &mut layout, Scale::new(2.0), logical).unwrap();
-        let two_x = layout.result(root).unwrap().rect();
-
-        assert_eq!(one_x, two_x);
-        assert_eq!(two_x.width.to_bits(), 720.0_f32.to_bits());
-        assert_eq!(two_x.height.to_bits(), 480.0_f32.to_bits());
-    });
-}
-
-#[test]
-fn host_layout_matches_layout_for_scale() {
+fn host_layout_keeps_the_logical_viewport() {
     Runtime::scope("host-layout", || {
         let mut host = crate::Host::new();
         host.mount(move || container().layout(LayoutStyle::block().fixed_size(720.0, 480.0)));
@@ -282,34 +205,6 @@ fn host_layout_matches_layout_for_scale() {
         let rect = engine.result(root).unwrap().rect();
         assert_eq!(rect.width.to_bits(), 720.0_f32.to_bits());
         assert_eq!(rect.height.to_bits(), 480.0_f32.to_bits());
-    });
-}
-
-#[test]
-fn layout_gate_skips_clean_input_and_runs_only_for_dirty_frames() {
-    Runtime::scope("layout_gate", || {
-        let mut passes = 0;
-
-        Runtime::begin_effect();
-        Runtime::begin_layout();
-        assert!(!run_layout_if_dirty(false, || passes += 1));
-        Runtime::begin_paint();
-        Runtime::end_frame();
-        assert_eq!(passes, 0, "clean input must not enter layout");
-
-        Runtime::begin_effect();
-        Runtime::mark_frame_dirty();
-        Runtime::begin_layout();
-        assert!(run_layout_if_dirty(Runtime::frame_dirty(), || passes += 1));
-        Runtime::begin_paint();
-        Runtime::end_frame();
-
-        Runtime::begin_effect();
-        Runtime::begin_layout();
-        assert!(run_layout_if_dirty(true, || passes += 1));
-        Runtime::begin_paint();
-        Runtime::end_frame();
-        assert_eq!(passes, 2);
     });
 }
 

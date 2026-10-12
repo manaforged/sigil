@@ -1,9 +1,11 @@
 use std::rc::Rc;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
+use crate::kernel::{
+    Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, TextContent, container, text,
+};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Reactive;
-use crate::style::{Token, Tone, space};
+use crate::style::{StyleAtom, Token, Tone, space};
 
 use super::patterns::card;
 use super::sparkline::sparkline;
@@ -72,31 +74,25 @@ impl StatBuilder {
             .role(Role::Group)
             .label(name)
             .layout(LayoutStyle::flex_column().fill_width().gap(space(1)))
-            .child(
-                text(self.label)
-                    .nowrap()
-                    .ellipsize()
-                    .class("text-sm")
-                    .class(Token::OnSurfaceMuted.text()),
-            )
+            .child(caption_text(
+                self.label,
+                "text-sm",
+                Token::OnSurfaceMuted.text(),
+            ))
             .child(value);
         if let Some((change, tone)) = self.delta {
-            body = body.child(
-                text(change)
-                    .nowrap()
-                    .ellipsize()
-                    .class("text-xs tabular-nums")
-                    .class(tone.solid().text()),
-            );
+            body = body.child(caption_text(
+                change,
+                "text-xs tabular-nums",
+                tone.solid().text(),
+            ));
         }
         if let Some(caption) = self.caption {
-            body = body.child(
-                text(caption)
-                    .nowrap()
-                    .ellipsize()
-                    .class("text-xs")
-                    .class(Token::OnSurfaceMuted.text()),
-            );
+            body = body.child(caption_text(
+                caption,
+                "text-xs",
+                Token::OnSurfaceMuted.text(),
+            ));
         }
         if let Some(values) = self.trend {
             let line = sparkline(move || values.read()).tone(self.tone.unwrap_or(Tone::Primary));
@@ -107,6 +103,10 @@ impl StatBuilder {
         }
         card(body).into_node_builder()
     }
+}
+
+fn caption_text(content: TextContent, size: &'static str, ink: StyleAtom) -> TextBuilder {
+    text(content).nowrap().ellipsize().class(size).class(ink)
 }
 
 impl From<StatBuilder> for NodeBuilder {

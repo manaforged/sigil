@@ -21,20 +21,20 @@ pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
         Tone::Info | Tone::Primary | Tone::Neutral => (Role::Status, "Notice"),
     };
     let band = container().role(role).label(name).tone(tone);
-    let band = CellForm::<fn(NodeBuilder, Tone) -> NodeBuilder>::new(window_band, cell_band).pick()(
-        band, tone,
-    );
-    band.child(text(body).ellipsize().tone(tone).class(NOTICE_TEXT))
-}
-
-fn window_band(band: NodeBuilder, _tone: Tone) -> NodeBuilder {
-    band.layout(
-        LayoutStyle::flex_row()
-            .fill_width()
-            .padding_x(space(3))
-            .padding_y(space(2)),
+    let band = CellForm::<fn(NodeBuilder, Tone) -> NodeBuilder>::new(
+        |node, _| {
+            node.layout(
+                LayoutStyle::flex_row()
+                    .fill_width()
+                    .padding_x(space(3))
+                    .padding_y(space(2)),
+            )
+            .class(NOTICE_BAND)
+        },
+        cell_band,
     )
-    .class(NOTICE_BAND)
+    .pick()(band, tone);
+    band.child(text(body).ellipsize().tone(tone).class(NOTICE_TEXT))
 }
 
 fn cell_band(band: NodeBuilder, tone: Tone) -> NodeBuilder {

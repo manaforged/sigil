@@ -29,10 +29,14 @@ impl Scale {
     }
 
     #[must_use]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )]
     pub fn to_logical(self, physical: PhysicalSize) -> LogicalSize {
         LogicalSize::new(
-            physical_axis_to_logical(physical.width, self.0),
-            physical_axis_to_logical(physical.height, self.0),
+            physical.width as f32 / self.0,
+            physical.height as f32 / self.0,
         )
     }
 
@@ -57,53 +61,15 @@ impl LogicalSize {
 
 #[allow(
     clippy::cast_possible_truncation,
-    clippy::cast_precision_loss,
     clippy::cast_sign_loss,
-    reason = "values are bounded to the target range before the cast"
+    reason = "the cast saturates and the value is at least one"
 )]
 fn logical_axis_to_physical(logical: f32, scale: f32) -> u32 {
-    let physical = round_ties_even(logical * scale);
-    if !physical.is_finite() || physical < 1.0 {
-        1
-    } else if physical >= u32::MAX as f32 {
-        u32::MAX
-    } else {
+    let physical = (logical * scale).round_ties_even();
+    if physical.is_finite() && physical >= 1.0 {
         physical as u32
-    }
-}
-
-#[allow(
-    clippy::cast_precision_loss,
-    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-)]
-fn physical_axis_to_logical(physical: u32, scale: f32) -> f32 {
-    physical as f32 / scale
-}
-
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_precision_loss,
-    clippy::cast_sign_loss,
-    reason = "values are bounded to the target range before the cast"
-)]
-fn round_ties_even(value: f32) -> f32 {
-    if !value.is_finite() {
-        return value;
-    }
-
-    let truncated_i = value as i64;
-    let truncated = truncated_i as f32;
-    let fraction = value - truncated;
-    let abs_fraction = fraction.abs();
-    let step = if value < 0.0 { -1.0 } else { 1.0 };
-    if abs_fraction < 0.5 {
-        truncated
-    } else if abs_fraction > 0.5 {
-        truncated + step
-    } else if truncated_i % 2 == 0 {
-        truncated
     } else {
-        truncated + step
+        1
     }
 }
 

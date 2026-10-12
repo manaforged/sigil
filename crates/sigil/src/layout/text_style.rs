@@ -112,10 +112,7 @@ pub(crate) fn inherited_text_style(cx: &Cx, id: NodeId) -> TextStyle {
 }
 
 pub(crate) fn theme_for(node: &Node) -> &Theme {
-    node.get_extension::<Theme>().unwrap_or_else(default_theme)
-}
-
-fn default_theme<'theme>() -> &'theme Theme {
     static DEFAULT_THEME: OnceLock<Theme> = OnceLock::new();
-    DEFAULT_THEME.get_or_init(Theme::default)
+    node.get_extension::<Theme>()
+        .unwrap_or_else(|| DEFAULT_THEME.get_or_init(Theme::default))
 }

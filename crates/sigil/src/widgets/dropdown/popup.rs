@@ -107,15 +107,17 @@ pub(super) fn build_popup(
         Some(width) => base.width(width),
         None => base.fill_width(),
     });
-    let mut list = container().layout(LayoutStyle::flex_column().fill_width().height(extent));
-    for (index, label) in options.iter().enumerate() {
-        list = list.child(build_option(
-            index,
-            label.clone(),
-            ctx,
-            Rc::clone(on_change),
-        ));
-    }
+    let list = options.iter().enumerate().fold(
+        container().layout(LayoutStyle::flex_column().fill_width().height(extent)),
+        |list, (index, label)| {
+            list.child(build_option(
+                index,
+                label.clone(),
+                ctx,
+                Rc::clone(on_change),
+            ))
+        },
+    );
     if count > POPUP_MAX_VISIBLE {
         frame.child(scrolled(
             list,

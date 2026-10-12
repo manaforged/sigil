@@ -3,12 +3,12 @@ use crate::style::metrics::{Metrics, Radius};
 use crate::style::palette::{Palette, is_dark, pick_higher_contrast};
 use crate::style::scale::{
     ColorScale, ScaleRole, amber_dark, amber_light, blue_dark, blue_light, cyan_dark, cyan_light,
-    green_dark, green_light, ruby_dark, ruby_light, slate_dark, slate_light,
+    green_dark, green_light, rgb, ruby_dark, ruby_light, slate_dark, slate_light,
 };
 use crate::style::strings::Strings;
 use crate::style::variant::{FontFamilyHint, Variant};
 use crate::style::{ControlSize, Dimension, LengthPercentage, Px, Rgba8};
-use mix::{alpha_mix, rgba, shift};
+use mix::{alpha_mix, shift};
 
 pub(crate) mod ambient;
 mod color;
@@ -171,7 +171,7 @@ impl Theme {
 
     fn from_scales(scales: &[ColorScale; 6]) -> Self {
         let [gray, accent_scale, success, warn, error, info] = *scales;
-        let on_solid = rgba(255, 255, 255);
+        let on_solid = rgb(255, 255, 255);
         Self {
             gray,
             accent_scale,
@@ -189,7 +189,7 @@ impl Theme {
             surface_pressed_strong: gray.step(6),
             on_surface: gray.step(12),
             border: gray.step(7),
-            missing_token_fallback: rgba(255, 0, 255),
+            missing_token_fallback: rgb(255, 0, 255),
             tokens: TokenTable::default(),
             metrics: Metrics::current(),
             direction: Direction::Ltr,
@@ -217,13 +217,6 @@ impl Theme {
         };
         let on_accent = pick_higher_contrast(palette.primary, palette.text, palette.background);
         Self {
-            gray: slate_light(),
-            accent_scale: blue_light(),
-            success: green_light(),
-            warn: amber_light(),
-            error: ruby_light(),
-            info: cyan_light(),
-            on_solid: rgba(255, 255, 255),
             accent: palette.primary,
             accent_hover: shift(palette.primary, hover_shift),
             on_accent,
@@ -233,12 +226,7 @@ impl Theme {
             surface_pressed_strong: shift(palette.background, hover_shift.saturating_mul(3)),
             on_surface: palette.text,
             border: alpha_mix(palette.text, palette.background, 0.35),
-            missing_token_fallback: rgba(255, 0, 255),
-            tokens: TokenTable::default(),
-            metrics: Metrics::current(),
-            direction: Direction::Ltr,
-            locale: Locale::default(),
-            strings: Strings::default(),
+            ..Self::light()
         }
     }
 

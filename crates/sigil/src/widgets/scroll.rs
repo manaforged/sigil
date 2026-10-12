@@ -23,12 +23,6 @@ enum Sizing {
     Fit,
 }
 
-impl Sizing {
-    fn floor(self, extent: Signal<f32>, viewport: Signal<f32>) -> Signal<f32> {
-        if self == Self::Fit { extent } else { viewport }
-    }
-}
-
 pub(crate) const THUMB_REST_WIDTH: f32 = space(1);
 pub(crate) const THUMB_MIN_HEIGHT: f32 = space(6);
 const SCROLL_LINE: f32 = space(10);
@@ -121,7 +115,11 @@ impl ScrollBuilder {
             scroll_y.set(max_scroll.peek());
             pin_to_bottom(scroll_y, max_scroll, || true);
         }
-        let floor = sizing.floor(extent, viewport_height);
+        let floor = if sizing == Sizing::Fit {
+            extent
+        } else {
+            viewport_height
+        };
         let body = wrap_content(content, scroll_y, max_scroll, extent, floor);
         let track = scrollbar(
             scroll_y,
@@ -260,13 +258,10 @@ fn wrap_content(
         .style_reactive(move || geometry::content_atoms(height.get()))
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "values are bounded to the target range before the cast"
+)]
 pub(crate) fn to_i16(px: f32) -> i16 {
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "values are bounded to the target range before the cast"
-    )]
-    {
-        px.clamp(f32::from(i16::MIN), f32::from(i16::MAX)).round() as i16
-    }
+    px.clamp(f32::from(i16::MIN), f32::from(i16::MAX)).round() as i16
 }

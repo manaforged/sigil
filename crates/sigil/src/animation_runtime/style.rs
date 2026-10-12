@@ -268,18 +268,9 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
     if binding.animator_overlay().is_none() && !binding.has_transition() {
         return;
     }
-    let mut current = Some(id);
-    let mut theme = None;
-    while let Some(ancestor) = current {
-        theme = cx
-            .get(ancestor)
-            .and_then(|parent| parent.get_extension::<Theme>());
-        if theme.is_some() {
-            break;
-        }
-        current = cx.parent(ancestor);
-    }
-    let theme = theme.unwrap_or_else(|| DEFAULT_THEME.get_or_init(Theme::default));
+    let theme = std::iter::successors(Some(id), |&at| cx.parent(at))
+        .find_map(|ancestor| cx.get(ancestor)?.get_extension::<Theme>())
+        .unwrap_or_else(|| DEFAULT_THEME.get_or_init(Theme::default));
     let tone = node
         .get_extension::<ToneContext>()
         .copied()
@@ -292,16 +283,9 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
 }
 
 fn inherited_text(cx: &Cx, target: NodeId, theme: &Theme) -> Rgba8 {
-    let mut current = cx.parent(target);
-    while let Some(id) = current {
-        if let Some(node) = cx.get(id)
-            && let Some(color) = crate::style::render_style_for(id, node, theme, None).text_color
-        {
-            return color;
-        }
-        current = cx.parent(id);
-    }
-    theme.on_surface
+    std::iter::successors(cx.parent(target), |&id| cx.parent(id))
+        .find_map(|id| crate::style::render_style_for(id, cx.get(id)?, theme, None).text_color)
+        .unwrap_or(theme.on_surface)
 }
 
 fn transition_config(atoms: &[StyleAtom]) -> Option<AnimationConfig> {

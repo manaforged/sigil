@@ -51,7 +51,13 @@ impl SidebarBuilder {
             .width_hint()
             .unwrap_or(SIDEBAR_DEFAULT);
         let column = container()
-            .layout(column_layout().grow(1.0).min_size(0.0, 0.0))
+            .layout(
+                LayoutStyle::flex_column()
+                    .padding(space(2))
+                    .gap(space(1))
+                    .grow(1.0)
+                    .min_size(0.0, 0.0),
+            )
             .child(self.child);
         let mut root = container()
             .role(Role::Navigation)
@@ -77,10 +83,6 @@ fn root_layout() -> LayoutStyle {
         .fill_height()
         .shrink(0.0)
         .align_items(AlignItems::Stretch)
-}
-
-fn column_layout() -> LayoutStyle {
-    LayoutStyle::flex_column().padding(space(2)).gap(space(1))
 }
 
 fn resize_handle(width: Signal<f32>, min: f32, max: f32) -> NodeBuilder {

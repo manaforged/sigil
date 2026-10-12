@@ -18,7 +18,7 @@ pub(super) struct IntervalSlot {
 pub(super) struct Registry {
     next_id: u64,
     pub(super) slots: Vec<(IntervalId, IntervalSlot)>,
-    test_clock: Option<Instant>,
+    pub(super) test_clock: Option<Instant>,
 }
 
 impl Registry {
@@ -40,6 +40,13 @@ impl Registry {
         self.test_clock.unwrap_or_else(Instant::now)
     }
 
+    pub(super) fn slot_mut(&mut self, id: IntervalId) -> Option<&mut IntervalSlot> {
+        self.slots
+            .iter_mut()
+            .find(|(slot_id, _)| *slot_id == id)
+            .map(|(_, slot)| slot)
+    }
+
     pub(super) fn remove(&mut self, id: IntervalId) -> Vec<(IntervalId, IntervalSlot)> {
         let (gone, kept) = core::mem::take(&mut self.slots)
             .into_iter()
@@ -54,22 +61,15 @@ thread_local! {
 }
 
 pub(super) fn invoke_by_id(id: IntervalId, owner: OwnerId) -> bool {
-    let cb = REGISTRY.with(|r| {
-        let mut reg = r.borrow_mut();
-        reg.slots
-            .iter_mut()
-            .find(|(slot_id, _)| *slot_id == id)
-            .map(|slot| {
-                let stub: Box<dyn Fn()> = Box::new(|| {});
-                core::mem::replace(&mut slot.1.callback, stub)
-            })
-    });
-    let Some(cb) = cb else {
+    let Some(cb) = REGISTRY.with(|r| {
+        let stub: Box<dyn Fn()> = Box::new(|| {});
+        r.borrow_mut()
+            .slot_mut(id)
+            .map(|slot| core::mem::replace(&mut slot.callback, stub))
+    }) else {
         return false;
     };
-    let cb_ref = &*cb;
-    let result = catch_unwind(AssertUnwindSafe(|| owner_by_id(owner, cb_ref)));
-    let ran = result.unwrap_or_else(|_| {
+    let ran = catch_unwind(AssertUnwindSafe(|| owner_by_id(owner, &*cb))).unwrap_or_else(|_| {
         eprintln!(
             "[sigil-reactive] interval callback panicked (id={}); \
              slot restored, callback will re-run on next tick",
@@ -79,33 +79,9 @@ pub(super) fn invoke_by_id(id: IntervalId, owner: OwnerId) -> bool {
         true
     });
     REGISTRY.with(|r| {
-        if let Some(slot) = r
-            .borrow_mut()
-            .slots
-            .iter_mut()
-            .find(|(slot_id, _)| *slot_id == id)
-        {
-            slot.1.callback = cb;
+        if let Some(slot) = r.borrow_mut().slot_mut(id) {
+            slot.callback = cb;
         }
     });
     ran
-}
-
-#[cfg(any(test, feature = "test-clock"))]
-pub(super) fn test_set_clock(clock: Instant) {
-    REGISTRY.with(|r| r.borrow_mut().test_clock = Some(clock));
-}
-
-#[cfg(any(test, feature = "test-clock"))]
-pub(super) fn test_advance_clock(delta: Duration) {
-    REGISTRY.with(|r| {
-        let mut reg = r.borrow_mut();
-        let base = reg.test_clock.unwrap_or_else(Instant::now);
-        reg.test_clock = Some(base + delta);
-    });
-}
-
-#[cfg(any(test, feature = "test-clock"))]
-pub(super) fn test_clear_clock() {
-    REGISTRY.with(|r| r.borrow_mut().test_clock = None);
 }

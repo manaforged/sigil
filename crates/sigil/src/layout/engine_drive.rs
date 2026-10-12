@@ -1,15 +1,14 @@
 #![allow(clippy::redundant_pub_crate)]
 #![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 
-use crate::kernel::TextContent;
-use crate::style::TextStyle;
+use crate::kernel::NodeId;
 use smallvec::SmallVec;
 
 use crate::layout::block::BlockSolver;
 use crate::layout::error::LayoutError;
 use crate::layout::flex::FlexSolver;
 use crate::layout::forest::{
-    AvailableSpace, ComputedBox, LayoutForest, LayoutText, LocalId, MeasureScope,
+    AvailableSpace, ComputedBox, LayoutForest, LayoutText, LocalId, MeasureScope, NodeRef,
 };
 use crate::layout::measure::TextMeasure;
 use crate::layout::style_data::{Display, Overflow, Size, StyleData};
@@ -44,15 +43,11 @@ impl LayoutDrive {
         NodeHandle(self.forest.insert(None, style))
     }
 
-    pub(crate) fn insert_with_kernel(
-        &mut self,
-        kernel: crate::kernel::NodeId,
-        style: StyleData,
-    ) -> NodeHandle {
+    pub(crate) fn insert_with_kernel(&mut self, kernel: NodeId, style: StyleData) -> NodeHandle {
         NodeHandle(self.forest.insert(Some(kernel), style))
     }
 
-    pub(crate) fn kernel_for(&self, handle: NodeHandle) -> Option<crate::kernel::NodeId> {
+    pub(crate) fn kernel_for(&self, handle: NodeHandle) -> Option<NodeId> {
         self.forest.refer(handle.0)?.kernel()
     }
 
@@ -67,16 +62,8 @@ impl LayoutDrive {
     pub(crate) fn set_text(
         &mut self,
         node: NodeHandle,
-        content: Option<TextContent>,
-        style: Option<TextStyle>,
-        flags: crate::layout::forest::TextFlags,
+        text: Option<LayoutText>,
     ) -> Result<(), LayoutError> {
-        let text = content.map(|content| LayoutText {
-            content,
-            style,
-            wrap: flags.wrap,
-            ellipsis: flags.ellipsis,
-        });
         self.forest.set_text(node.0, text)
     }
 
@@ -136,8 +123,10 @@ impl LayoutDrive {
 
     #[cfg(any(test, feature = "kittest"))]
     pub fn measure(&mut self, root: NodeHandle, viewport: Size<f32>) -> Result<(), LayoutError> {
-        let avail = AvailableSpace::definite(viewport.width, viewport.height);
-        self.measure_with_constraints(root, avail)
+        self.measure_with_constraints(
+            root,
+            AvailableSpace::definite(viewport.width, viewport.height),
+        )
     }
 
     pub(crate) fn measure_with_constraints(
@@ -160,12 +149,9 @@ impl LayoutDrive {
         width: f32,
         height: f32,
     ) -> Result<(), LayoutError> {
-        let root_id = root.0;
-        let handle = self
-            .forest
-            .refer(root_id)
-            .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale measure root {root_id:?}")))?;
+        let handle = self.measure_root(root)?;
         let scope = MeasureScope::new(&self.forest, self.text.as_ref(), avail);
+        let origin = crate::layout::block::Position2 { x: 0.0, y: 0.0 };
         match handle.style().display {
             Display::Flex => FlexSolver::new(scope).solve_at_area(
                 handle,
@@ -175,15 +161,13 @@ impl LayoutDrive {
                 },
                 crate::layout::flex::Position2::new(0.0, 0.0),
             ),
-            Display::Grid => crate::layout::grid::GridSolver::new(scope).solve_at(
-                handle,
-                width,
-                crate::layout::block::Position2 { x: 0.0, y: 0.0 },
-            ),
+            Display::Grid => {
+                crate::layout::grid::GridSolver::new(scope).solve_at(handle, width, origin)
+            }
             Display::Block | Display::None => BlockSolver::new(scope).solve_at_assigned(
                 handle,
                 Size { width, height },
-                crate::layout::block::Position2 { x: 0.0, y: 0.0 },
+                origin,
                 Size {
                     width: Some(width),
                     height: None,
@@ -197,51 +181,28 @@ impl LayoutDrive {
         root: NodeHandle,
         avail: AvailableSpace,
     ) -> Result<(), LayoutError> {
-        let root_id = root.0;
-        let handle = self
-            .forest
-            .refer(root_id)
-            .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale measure root {root_id:?}")))?;
-        let display = handle.style().display;
-        if matches!(display, Display::None) {
-            MeasureScope::new(&self.forest, self.text.as_ref(), avail).write(
-                root_id,
-                ComputedBox {
-                    x: 0.0,
-                    y: 0.0,
-                    w: 0.0,
-                    h: 0.0,
-                },
-            );
-            return Ok(());
-        }
+        let handle = self.measure_root(root)?;
         let scope = MeasureScope::new(&self.forest, self.text.as_ref(), avail);
-        match display {
-            Display::Flex => {
-                let solver = FlexSolver::new(scope);
-                solver.solve(handle)?;
+        match handle.style().display {
+            Display::None => {
+                scope.write(root.0, ComputedBox::default());
+                Ok(())
             }
-            Display::Grid => {
-                let solver = crate::layout::grid::GridSolver::new(scope);
-                solver.solve(handle)?;
-            }
-            Display::Block | Display::None => {
-                let solver = BlockSolver::new(scope);
-                solver.solve(handle)?;
-            }
+            Display::Flex => FlexSolver::new(scope).solve(handle),
+            Display::Grid => crate::layout::grid::GridSolver::new(scope).solve(handle),
+            Display::Block => BlockSolver::new(scope).solve(handle),
         }
-        Ok(())
+    }
+
+    fn measure_root(&self, root: NodeHandle) -> Result<NodeRef<'_>, LayoutError> {
+        self.forest
+            .refer(root.0)
+            .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale measure root {:?}", root.0)))
     }
 
     #[must_use]
     pub(crate) fn stored_box(&self, node: NodeHandle) -> Option<ResolvedBox> {
-        let cb = self.forest.boxed(node.0)?;
-        Some(ResolvedBox {
-            x: cb.x,
-            y: cb.y,
-            w: cb.w,
-            h: cb.h,
-        })
+        self.forest.boxed(node.0).map(resolved)
     }
 
     pub(crate) fn write_box(
@@ -249,15 +210,7 @@ impl LayoutDrive {
         node: NodeHandle,
         cb: ResolvedBox,
     ) -> Result<(), LayoutError> {
-        self.forest.write(
-            node.0,
-            ComputedBox {
-                x: cb.x,
-                y: cb.y,
-                w: cb.w,
-                h: cb.h,
-            },
-        )
+        self.forest.write(node.0, computed(cb))
     }
 
     #[must_use]
@@ -265,13 +218,7 @@ impl LayoutDrive {
         if self.forest.frame_for(node.0)? != self.forest.current_frame() {
             return None;
         }
-        let cb = self.forest.boxed(node.0)?;
-        Some(ResolvedBox {
-            x: cb.x,
-            y: cb.y,
-            w: cb.w,
-            h: cb.h,
-        })
+        self.stored_box(node)
     }
 
     #[must_use]
@@ -290,25 +237,22 @@ impl LayoutDrive {
         if dx == 0.0 && dy == 0.0 {
             return Ok(());
         }
-        let mut handles = Vec::new();
-        self.collect_subtree(root, &mut handles)?;
+        let handles = self.subtree_handles(root)?;
         let root_frame = self.forest.frame_for(root.0).unwrap_or(0);
         for handle in handles {
             if self.forest.frame_for(handle.0).unwrap_or(0) < root_frame {
                 continue;
             }
-            let Some(box_) = self.stored_box(handle) else {
-                continue;
-            };
-            self.forest.write(
-                handle.0,
-                ComputedBox {
-                    x: box_.x + dx,
-                    y: box_.y + dy,
-                    w: box_.w,
-                    h: box_.h,
-                },
-            )?;
+            if let Some(cb) = self.forest.boxed(handle.0) {
+                self.forest.write(
+                    handle.0,
+                    ComputedBox {
+                        x: cb.x + dx,
+                        y: cb.y + dy,
+                        ..cb
+                    },
+                )?;
+            }
         }
         Ok(())
     }
@@ -326,6 +270,24 @@ impl LayoutDrive {
             self.collect_subtree(NodeHandle(*child), out)?;
         }
         Ok(())
+    }
+}
+
+const fn resolved(cb: ComputedBox) -> ResolvedBox {
+    ResolvedBox {
+        x: cb.x,
+        y: cb.y,
+        w: cb.w,
+        h: cb.h,
+    }
+}
+
+const fn computed(cb: ResolvedBox) -> ComputedBox {
+    ComputedBox {
+        x: cb.x,
+        y: cb.y,
+        w: cb.w,
+        h: cb.h,
     }
 }
 

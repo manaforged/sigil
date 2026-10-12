@@ -2,12 +2,11 @@ use crate::animation_runtime::presets;
 use crate::kernel::{AccessibleName, TextBuilder, TextContent, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{
-    BORDER_WIDTH, ControlSize, Elevation, GHOST_VARIANT, Metrics, NodeStyleExt, SOFT_VARIANT,
-    SOLID_VARIANT, StyleAtom, StyleVariant, Tone, TransitionId,
+    BORDER_WIDTH, Elevation, GHOST_VARIANT, NodeStyleExt, SOFT_VARIANT, SOLID_VARIANT, StyleAtom,
+    StyleVariant, Tone, TransitionId,
 };
 
-pub(super) const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
-const COMPACT_LABEL_HEIGHT: f32 = 32.0;
+const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
 
 #[derive(Clone, Copy)]
 pub(super) enum ButtonWidth {
@@ -58,11 +57,6 @@ pub(super) static LABEL_TEXT_SOFT: &[StyleAtom] = &[
     StyleAtom::LetterSpacing(-10),
 ];
 
-pub(super) fn compact_label(height: f32, override_height: Option<f32>) -> bool {
-    height < Metrics::current().control_height(ControlSize::Default)
-        || override_height.is_some_and(|px| px <= COMPACT_LABEL_HEIGHT)
-}
-
 pub(super) fn label_node(
     label: TextContent,
     tone: Tone,
@@ -95,9 +89,5 @@ impl ButtonFill {
             Self::Solid => LABEL_TEXT_SOLID,
             Self::Soft | Self::Ghost | Self::Outline => LABEL_TEXT_SOFT,
         }
-    }
-
-    pub(super) const fn frame(self) -> bool {
-        !matches!(self, Self::Ghost)
     }
 }

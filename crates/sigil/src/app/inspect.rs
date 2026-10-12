@@ -12,6 +12,8 @@ use crate::events::ShellEvent;
 
 mod input;
 
+use input::events_of;
+
 const ENV: &str = "SIGIL_INSPECT";
 const DEFAULT_ADDR: &str = "127.0.0.1:5761";
 
@@ -69,13 +71,6 @@ fn bind(wake: Option<Wake>) -> Option<Inspect> {
     Some(inspect)
 }
 
-fn is_event(op: &str) -> bool {
-    matches!(
-        op,
-        "click" | "down" | "up" | "move" | "scroll" | "key" | "type"
-    )
-}
-
 impl Inspect {
     #[cfg(feature = "terminal")]
     pub(crate) fn has_pending(&self) -> bool {
@@ -120,11 +115,12 @@ impl Inspect {
             }
         };
         let (reply, rx) = mpsc::channel();
-        let queue = match request
-            .get("op")
-            .and_then(Value::as_str)
-            .filter(|op| is_event(op))
-        {
+        let queue = match request.get("op").and_then(Value::as_str).filter(|op| {
+            matches!(
+                *op,
+                "click" | "down" | "up" | "move" | "scroll" | "key" | "type"
+            )
+        }) {
             Some(_) => &self.events,
             None => &self.queries,
         };
@@ -144,10 +140,14 @@ impl Inspect {
 
     #[cfg(feature = "terminal")]
     pub(crate) fn drain_events(&self, out: &mut Vec<ShellEvent>, unit: f32) {
+        self.drain(unit, |events| out.extend(events));
+    }
+
+    fn drain(&self, unit: f32, mut sink: impl FnMut(Vec<ShellEvent>)) {
         while let Some(pending) = pop(&self.events) {
             let response = match events_of(&pending.request, unit) {
                 Ok(events) => {
-                    out.extend(events);
+                    sink(events);
                     json!({"ok": true})
                 }
                 Err(error) => json!({"ok": false, "error": error}),
@@ -156,22 +156,13 @@ impl Inspect {
         }
     }
 
-    pub(crate) fn service(&self, host: &mut Host, router: &mut EventRouter, view: View<'_>) {
+    pub(crate) fn service(&self, host: &mut Host, router: &mut EventRouter, mut view: View<'_>) {
         let _env = host.enter();
-        let unit = view.cell.unwrap_or(1.0);
-        while let Some(pending) = pop(&self.events) {
-            let response = match events_of(&pending.request, unit) {
-                Ok(events) => {
-                    for event in events {
-                        host.route(router, event);
-                    }
-                    json!({"ok": true})
-                }
-                Err(error) => json!({"ok": false, "error": error}),
-            };
-            drop(pending.reply.send(response));
-        }
-        let mut view = view;
+        self.drain(view.cell.unwrap_or(1.0), |events| {
+            for event in events {
+                host.route(router, event);
+            }
+        });
         while let Some(pending) = pop(&self.queries) {
             drop(
                 pending
@@ -346,50 +337,33 @@ fn tree_json(host: &mut Host, router: &EventRouter, cell: Option<f32>) -> Value 
 }
 
 fn node_json(node: &accesskit::Node, focused: bool, factor: f64) -> Value {
+    let bounds = node
+        .bounds()
+        .map(|b| json!([b.x0 / factor, b.y0 / factor, b.x1 / factor, b.y1 / factor]));
+    let optional = [
+        ("name", node.label().map(|name| json!(name))),
+        ("description", node.description().map(|desc| json!(desc))),
+        ("bounds", bounds),
+        ("focused", focused.then_some(json!(true))),
+        ("selected", node.is_selected().map(|sel| json!(sel))),
+        ("expanded", node.is_expanded().map(|exp| json!(exp))),
+        (
+            "toggled",
+            node.toggled().map(|tog| json!(format!("{tog:?}"))),
+        ),
+        ("value", node.value().map(|val| json!(format!("{val:?}")))),
+        ("numeric", node.numeric_value().map(|num| json!(num))),
+    ];
     let mut entry = serde_json::Map::new();
     entry.insert("role".into(), json!(format!("{:?}", node.role())));
     entry.insert(
         "children".into(),
         json!(node.children().iter().map(|c| c.0).collect::<Vec<u64>>()),
     );
-    if let Some(name) = node.label() {
-        entry.insert("name".into(), json!(name));
-    }
-    if let Some(desc) = node.description() {
-        entry.insert("description".into(), json!(desc));
-    }
-    if let Some(bounds) = node.bounds() {
-        entry.insert(
-            "bounds".into(),
-            json!([
-                bounds.x0 / factor,
-                bounds.y0 / factor,
-                bounds.x1 / factor,
-                bounds.y1 / factor,
-            ]),
-        );
-    }
-    if focused {
-        entry.insert("focused".into(), json!(true));
-    }
-    if let Some(sel) = node.is_selected() {
-        entry.insert("selected".into(), json!(sel));
-    }
-    if let Some(exp) = node.is_expanded() {
-        entry.insert("expanded".into(), json!(exp));
-    }
-    if let Some(tog) = node.toggled() {
-        entry.insert("toggled".into(), json!(format!("{tog:?}")));
-    }
-    if let Some(val) = node.value() {
-        entry.insert("value".into(), json!(format!("{val:?}")));
-    }
-    if let Some(num) = node.numeric_value() {
-        entry.insert("numeric".into(), json!(num));
-    }
+    entry.extend(
+        optional
+            .into_iter()
+            .filter_map(|(key, value)| Some((key.to_owned(), value?))),
+    );
     Value::Object(entry)
-}
-
-fn events_of(request: &Value, unit: f32) -> Result<Vec<ShellEvent>, String> {
-    input::events_of(request, unit)
 }

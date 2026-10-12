@@ -7,38 +7,20 @@ use crate::reactive::Runtime;
 use super::{Player, progress_ratio};
 
 #[test]
-fn progress_ratio_is_zero_on_empty_total() {
-    assert_eq!(progress_ratio(Duration::from_secs(1), Duration::ZERO), 0.0);
+fn progress_ratio_is_zero_on_empty_total_and_clamps_at_one() {
+    let secs = Duration::from_secs;
+    assert_eq!(progress_ratio(secs(1), Duration::ZERO), 0.0);
+    assert_eq!(progress_ratio(secs(3), secs(2)), 1.0);
+    assert!((progress_ratio(secs(1), secs(2)) - 0.5).abs() < 0.001);
 }
 
 #[test]
-fn progress_ratio_clamps_at_one() {
-    assert_eq!(
-        progress_ratio(Duration::from_secs(3), Duration::from_secs(2)),
-        1.0
-    );
-}
-
-#[test]
-fn progress_ratio_half() {
-    assert!((progress_ratio(Duration::from_secs(1), Duration::from_secs(2)) - 0.5).abs() < 0.001);
-}
-
-#[test]
-fn tick_without_a_sink_leaves_progress() {
-    Runtime::scope("audio-tick", || {
+fn tick_and_toggle_without_a_sink_leave_the_player_idle() {
+    Runtime::scope("audio-idle", || {
         let player = Player::new();
         player.tick();
-        assert_eq!(player.progress.peek(), 0.0);
-        assert!(!player.playing.peek());
-    });
-}
-
-#[test]
-fn toggle_without_a_sink_leaves_playing() {
-    Runtime::scope("audio-toggle", || {
-        let player = Player::new();
         player.toggle();
+        assert_eq!(player.progress.peek(), 0.0);
         assert!(!player.playing.peek());
     });
 }

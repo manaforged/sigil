@@ -1,5 +1,6 @@
 use crate::geometry::{Dim, Size};
 use crate::kernel::{Cx, NodeId, NodeType};
+use crate::profile::Counter;
 use ahash::AHashSet;
 use smallvec::SmallVec;
 
@@ -63,21 +64,15 @@ impl LayoutEngine {
             .copied()
             .filter(|id| !self.steady.contains(id) && !self.text_kept_size(cx, *id))
             .collect();
-        crate::profile::count_add(
-            crate::profile::Counter::LayoutDirtyNodes,
-            dirty.len() as u64,
-        );
-        crate::profile::count_add(
-            crate::profile::Counter::LayoutResizedNodes,
-            resized.len() as u64,
-        );
+        crate::profile::count_add(Counter::LayoutDirtyNodes, dirty.len() as u64);
+        crate::profile::count_add(Counter::LayoutResizedNodes, resized.len() as u64);
         for id in &resized {
             if let Ok(handle) = self.handle(*id) {
                 self.drive.invalidate(handle);
             }
         }
         let roots = self.containment_roots(cx, &resized, root, &repositioned);
-        crate::profile::count_add(crate::profile::Counter::LayoutRoots, roots.len() as u64);
+        crate::profile::count_add(Counter::LayoutRoots, roots.len() as u64);
         attribution::note_resized(cx, &resized);
         attribution::note_roots(cx, &roots, &resized);
         Ok(roots)
@@ -89,8 +84,14 @@ impl LayoutEngine {
         root: NodeId,
         available: Size,
     ) -> Result<(), LayoutError> {
-        let origins: SmallVec<[(f32, f32); 4]> =
-            roots.iter().map(|&r| self.published_origin(r)).collect();
+        let origins: SmallVec<[(f32, f32); 4]> = roots
+            .iter()
+            .map(|id| {
+                self.published_result
+                    .get(id.key())
+                    .map_or((0.0, 0.0), |res| (res.rect().origin.x, res.rect().origin.y))
+            })
+            .collect();
         self.remeasure_roots(roots, root, available)?;
         for (&subroot, &(px, py)) in roots.iter().zip(origins.iter()) {
             let handle = self.handle(subroot)?;
@@ -168,15 +169,6 @@ impl LayoutEngine {
         }
     }
 
-    fn published_origin(&self, id: NodeId) -> (f32, f32) {
-        self.published_result
-            .get(id.key())
-            .map_or((0.0, 0.0), |res| {
-                let origin = res.rect().origin;
-                (origin.x, origin.y)
-            })
-    }
-
     fn position_changed(&self, cx: &Cx, id: NodeId) -> bool {
         cx.get(id)
             .and_then(|node| node.get_extension::<crate::layout::ReactivePosition>())
@@ -184,16 +176,16 @@ impl LayoutEngine {
     }
 
     fn moved_only(&self, cx: &Cx, id: NodeId) -> bool {
-        let Some(node) = cx.get(id) else {
-            return false;
-        };
-        let Some(pos) = node.get_extension::<crate::layout::ReactivePosition>() else {
-            return false;
-        };
-        self.positions
-            .get(id.key())
-            .is_some_and(|prior| *prior != pos.get())
-            && self.synced_version.get(id.key()).copied() == Some(node.version())
+        cx.get(id).is_some_and(|node| {
+            self.synced_version.get(id.key()).copied() == Some(node.version())
+                && node
+                    .get_extension::<crate::layout::ReactivePosition>()
+                    .is_some_and(|pos| {
+                        self.positions
+                            .get(id.key())
+                            .is_some_and(|prior| *prior != pos.get())
+                    })
+        })
     }
 
     pub(super) fn translate_moved(
@@ -209,7 +201,7 @@ impl LayoutEngine {
             .collect();
         dirty.retain(|id| !moved.contains(id));
         for id in moved.iter().copied() {
-            crate::profile::count(crate::profile::Counter::LayoutTranslate);
+            crate::profile::count(Counter::LayoutTranslate);
             self.translate(cx, id)?;
         }
         Ok(moved)
@@ -287,20 +279,17 @@ impl LayoutEngine {
     }
 
     fn has_definite_size(cx: &Cx, id: NodeId) -> bool {
-        let Some(node) = cx.get(id) else {
-            return false;
-        };
-        let style = node
-            .get_extension::<LayoutStyle>()
-            .cloned()
-            .unwrap_or_default();
         let definite = |dim: Dimension| {
             matches!(
                 dim,
                 Dimension::Px(_) | Dimension::Percent(_) | Dimension::Fill | Dimension::Text(_)
             )
         };
-        definite(style.data().size.width) && definite(style.data().size.height)
+        cx.get(id)
+            .and_then(|node| node.get_extension::<LayoutStyle>())
+            .is_some_and(|style| {
+                definite(style.data().size.width) && definite(style.data().size.height)
+            })
     }
 }
 

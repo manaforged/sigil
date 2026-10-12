@@ -1,10 +1,11 @@
+use std::rc::Rc;
+
 use crate::events::NodeEventsExt;
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::style::Token;
 
 use super::builder::{SliderRuntime, ValueChange};
-use super::handlers::quantize;
 
 pub(super) fn with_marks(
     slider: NodeBuilder,
@@ -37,20 +38,18 @@ fn row(runtime: SliderRuntime, marks: Vec<String>, on_change: ValueChange) -> No
                 .enumerate()
                 .map(|(index, mark)| {
                     #[expect(clippy::cast_precision_loss, reason = "mark counts are small")]
-                    let at = quantize(
-                        runtime.range,
+                    let at = runtime.quantize(
                         runtime
                             .range
                             .span()
                             .mul_add(index as f32 / last as f32, runtime.range.min),
-                        runtime.step,
                     );
                     let tone = if (at - current).abs() < f32::EPSILON {
                         Token::Accent11
                     } else {
                         Token::Gray10
                     };
-                    let change = std::rc::Rc::clone(&on_change);
+                    let change = Rc::clone(&on_change);
                     container()
                         .child(text(mark.clone()).class("text-xs").class(tone.text()))
                         .pointer_down(move |event| {

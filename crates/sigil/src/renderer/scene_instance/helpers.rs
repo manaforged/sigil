@@ -1,49 +1,8 @@
 use crate::geometry::Rect;
 
-use crate::renderer::scene_command::walk::IDENTITY;
 use crate::renderer::scene_command::{Stroke, StrokeBand};
-use crate::scene::corner_radii::CornerRadii;
 
-use super::{BlendSpace, RectInstance, affine_rows};
-
-#[derive(Clone, Copy)]
-pub(super) struct RectPaint {
-    pub(super) color: [f32; 4],
-    pub(super) opacity: f32,
-    pub(super) stroke: Option<Stroke>,
-    pub(super) space: BlendSpace,
-}
-
-pub(super) fn rect_instance_parts(
-    rect: Rect,
-    corner_radii: CornerRadii,
-    paint: RectPaint,
-) -> RectInstance {
-    let RectPaint {
-        color,
-        opacity,
-        stroke,
-        space,
-    } = paint;
-    let (stroke_params, stroke_meta) = stroke_fields(stroke, rect, space);
-    let outset = stroke_outset(stroke, rect);
-    let inflated = inflate(rect, outset);
-    let [xform_x, xform_y] = affine_rows(IDENTITY);
-    RectInstance {
-        rect: rect_fields(inflated),
-        color,
-        corner_radii: corner_radii.normalized_for(rect.width, rect.height),
-        params: [opacity.clamp(0.0, 1.0), outset, 0.0, 0.0],
-        stroke_params,
-        stroke_meta,
-        xform_x,
-        xform_y,
-    }
-}
-
-pub(super) fn stroke_outset(stroke: Option<Stroke>, rect: Rect) -> f32 {
-    StrokeBand::reach(stroke, rect)
-}
+use super::BlendSpace;
 
 pub(super) fn inflate(rect: Rect, outset: f32) -> Rect {
     if outset <= 0.0 {

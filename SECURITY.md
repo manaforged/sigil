@@ -18,7 +18,6 @@ Sigil parses these inputs. Parsing runs on the UI thread unless the entry says o
 | `html` | A subset parser with no CSS and no scripts. The 1 MiB limit applies. |
 | SVG icons | Parsed with `usvg`. The 1 MiB limit applies. A source with element nesting deeper than 128 is rejected before `usvg` runs. External and embedded image references are not resolved. |
 | `mermaid` | The 1 MiB limit applies. The parser reads at most 256 lines of at most 512 characters, and at most 1024 flowchart edges. Output is cut to 512 lines of 1024 characters. |
-| Class strings (`.class("...")`) | Split on spaces and parsed token by token. An unknown class panics in a debug build. In a release build it logs one warning and has no effect. The parser keeps at most 4096 distinct theme token names for the life of the process. After that, a new `bg-`, `text-`, or `border-` theme name counts as an unknown class. |
 | Theme TOML (`parse_theme`, `AppConfig::theme_file`, `watch_theme`) | Parsed with the `toml` crate. `base` must be `light`, `dark`, or `console_dark`. Each `[tokens]` value must be a hex colour. An invalid file is ignored and the current theme stays. `watch_theme` watches the file on a background thread, waits for writes to stop (at most 1 s), then reads and parses the file on the UI thread. There is no file size limit. |
 | `open` (feature `desktop`) | Accepts only targets that start with `http://`, `https://`, or `mailto:`, case-insensitive. It rejects every other target, including file paths. |
 | PTY output (`Session`, feature `pty`) | A background thread reads the child output in 4 KiB chunks into a `vt100` parser with a 24 x 80 screen and no scrollback. The UI receives the screen as plain text rows. |
@@ -31,8 +30,8 @@ The `fuzz/` crate holds six `cargo-fuzz` targets:
 
 | Target | Entry point |
 | --- | --- |
-| `markdown` | `markdown` widget, built and flushed in a `Cx` |
-| `html` | `html` widget, built and flushed in a `Cx` |
+| `markdown` | `markdown` widget, built and flushed in a fresh node tree |
+| `html` | `html` widget, built and flushed in a fresh node tree |
 | `svg_icon` | `IconBaker::bake` at 24 x 24 |
 | `mermaid` | `mermaid` |
 | `style_class` | `parse_class_string` and `parse_stateful_token` |
@@ -69,6 +68,6 @@ A crash input goes to `fuzz/artifacts/<target>/`. Minimize it with `cargo +night
 
 - `sign_file` and `sign_file_with_key` produce a standard minisign signature over the package bytes. The `.sig` file is the plain minisign envelope. The trusted comment is `file:<name>\tversion:<version>`, and the signature covers it.
 - `verify_file` checks the signature against the public key, then checks that the trusted comment names the file. A signature moved to another file name fails.
-- Rollback: `verify_file` refuses a package signed for another version when the caller passes `expected_version`. Without it, an older signed package still verifies. The updater must pass the version it expects to install.
+- Rollback: `verify_file` takes the expected version as a required argument and refuses a package signed for any other version, so an older signed package does not verify. `sigil-pack verify` requires `--version`.
 - `sigil-pack sign` and `sigil-pack genkey` read the key password from `SIGIL_PACK_PASSWORD` and refuse a `--password` flag. `sign` refuses to write the signature through a symbolic link or over a non-regular file. `genkey` creates the secret key with mode 0600 and never overwrites a file.
 - Bundle copies open the source once and check that the opened file is the one that passed the symlink check (device and inode on Unix). Output files are created new; an existing path fails.

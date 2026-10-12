@@ -200,7 +200,13 @@ fn row_frame(depth: u16, indent_cols: f32, disclosure: Disclosure) -> NodeBuilde
             .align_items(AlignItems::Center),
     );
     if depth > 0 {
-        row = row.child(indent(depth, indent_cols));
+        row = row.child(
+            container().layout(
+                LayoutStyle::block()
+                    .width(cols(indent_cols * f32::from(depth)))
+                    .shrink(0.0),
+            ),
+        );
     }
     if matches!(disclosure, Disclosure::Collapsed | Disclosure::Expanded) {
         row = row.expanded(signal(disclosure == Disclosure::Expanded));
@@ -221,14 +227,6 @@ fn leading_slot(content: Box<dyn IntoNode>) -> NodeBuilder {
         .child(content)
 }
 
-fn indent(depth: u16, indent_cols: f32) -> NodeBuilder {
-    container().layout(
-        LayoutStyle::block()
-            .width(cols(indent_cols * f32::from(depth)))
-            .shrink(0.0),
-    )
-}
-
 fn disclosure_slot(disclosure: Disclosure) -> NodeBuilder {
     let slot = container().layout(
         LayoutStyle::flex_row()
@@ -237,17 +235,16 @@ fn disclosure_slot(disclosure: Disclosure) -> NodeBuilder {
             .align_items(AlignItems::Center)
             .justify_content(JustifyContent::Center),
     );
-    let mark =
-        CellForm::<fn(ChevronDirection) -> Box<dyn IntoNode>>::new(window_mark, cell_mark).pick();
+    let mark = CellForm::<fn(ChevronDirection) -> Box<dyn IntoNode>>::new(
+        |direction| Box::new(chevron(direction, space(3))),
+        cell_mark,
+    )
+    .pick();
     match disclosure {
         Disclosure::Collapsed => slot.child(mark(ChevronDirection::Right)),
         Disclosure::Expanded => slot.child(mark(ChevronDirection::Down)),
         Disclosure::None | Disclosure::Leaf => slot,
     }
-}
-
-fn window_mark(direction: ChevronDirection) -> Box<dyn IntoNode> {
-    Box::new(chevron(direction, space(3)))
 }
 
 fn cell_mark(direction: ChevronDirection) -> Box<dyn IntoNode> {

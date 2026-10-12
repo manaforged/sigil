@@ -50,14 +50,6 @@ impl DragState {
         if width > 1.0 { width } else { 80.0 }
     }
 
-    const fn current(self) -> Option<u16> {
-        self.inner.current.get()
-    }
-
-    fn set_current(self, visual_index: u16) {
-        self.inner.current.set(Some(visual_index));
-    }
-
     fn end(self) {
         let source = self.inner.source.take();
         let current = self.inner.current.take();
@@ -70,18 +62,6 @@ impl DragState {
 
     pub(super) const fn consume_just_dragged(self) -> bool {
         self.inner.just_dragged.replace(false)
-    }
-
-    const fn is_dragging(self) -> bool {
-        self.inner.source.get().is_some()
-    }
-
-    const fn order(self) -> Option<Signal<Vec<usize>>> {
-        self.inner.order.get()
-    }
-
-    const fn count(self) -> u16 {
-        self.inner.count.get()
     }
 }
 
@@ -96,45 +76,27 @@ pub(super) fn install_label_drag_hooks(
         event.capture_pointer();
     })
     .pointer_move(move |event| {
-        if !drag.is_dragging() {
-            return;
-        }
-        let Some(current) = drag.current() else {
+        let inner = drag.inner;
+        let (Some(_), Some(current)) = (inner.source.get(), inner.current.get()) else {
             return;
         };
         let tab_width = drag.tab_width();
         let tab_list_x = f32::from(current).mul_add(tab_width, event.position.x);
-        let target = visual_index_for(tab_list_x, tab_width, drag.count());
+        let target = (1..inner.count.get())
+            .take_while(|&probe| tab_list_x >= f32::from(probe) * tab_width)
+            .last()
+            .unwrap_or(0);
         if target != current {
-            apply_swap(drag.order(), current, target, usize::from(drag.count()));
-            drag.set_current(target);
+            apply_swap(
+                inner.order.get(),
+                current,
+                target,
+                usize::from(inner.count.get()),
+            );
+            inner.current.set(Some(target));
         }
     })
-    .pointer_up(move |_event| {
-        drag.end();
-    })
-}
-
-fn visual_index_for(x: f32, tab_width: f32, count: u16) -> u16 {
-    if count == 0 {
-        return 0;
-    }
-    let max = count.saturating_sub(1);
-    let mut bucket: u16 = 0;
-    let mut probe: u16 = 1;
-    while probe <= max {
-        let left = f32::from(probe) * tab_width;
-        if x >= left {
-            bucket = probe;
-        } else {
-            break;
-        }
-        probe = probe.saturating_add(1);
-        if probe == u16::MAX {
-            break;
-        }
-    }
-    bucket.min(max)
+    .pointer_up(move |_| drag.end())
 }
 
 fn apply_swap(order: Option<Signal<Vec<usize>>>, from: u16, to: u16, count: usize) {
@@ -145,10 +107,9 @@ fn apply_swap(order: Option<Signal<Vec<usize>>>, from: u16, to: u16, count: usiz
     if next.len() != count {
         next = (0..count).collect();
     }
-    let from_idx = usize::from(from);
-    let to_idx = usize::from(to);
-    if from_idx < next.len() && to_idx < next.len() {
-        next.swap(from_idx, to_idx);
+    let (from, to) = (usize::from(from), usize::from(to));
+    if from < next.len() && to < next.len() {
+        next.swap(from, to);
         signal.set(next);
     }
 }

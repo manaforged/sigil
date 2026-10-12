@@ -48,7 +48,7 @@ pub const fn click(x: f32, y: f32) -> [ShellEvent; 3] {
 
 #[must_use]
 pub fn key_event(key: impl Into<LogicalKey>, physical: PhysicalKey, phase: KeyPhase) -> ShellEvent {
-    chord_event(key.into(), physical, ModifiersState::empty(), phase)
+    chord_event(key.into(), physical, ModifiersState::empty(), phase, None)
 }
 
 #[must_use]
@@ -62,7 +62,7 @@ pub fn chord(
     physical: PhysicalKey,
     modifiers: ModifiersState,
 ) -> ShellEvent {
-    chord_event(key.into(), physical, modifiers, KeyPhase::Down)
+    chord_event(key.into(), physical, modifiers, KeyPhase::Down, None)
 }
 
 fn chord_event(
@@ -70,6 +70,7 @@ fn chord_event(
     physical: PhysicalKey,
     modifiers: ModifiersState,
     phase: KeyPhase,
+    text: Option<&str>,
 ) -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {
         key,
@@ -77,7 +78,7 @@ fn chord_event(
         modifiers,
         repeat: false,
         phase,
-        text: None,
+        text: text.map(Into::into),
     }))
 }
 
@@ -86,21 +87,21 @@ pub fn press(key: impl Into<LogicalKey>, modifiers: ModifiersState) -> [ShellEve
     let key = key.into();
     let unknown = PhysicalKey::Unidentified;
     [
-        chord_event(key.clone(), unknown, modifiers, KeyPhase::Down),
-        chord_event(key, unknown, modifiers, KeyPhase::Up),
+        chord_event(key.clone(), unknown, modifiers, KeyPhase::Down, None),
+        chord_event(key, unknown, modifiers, KeyPhase::Up, None),
     ]
 }
 
 #[must_use]
 pub fn type_char(ch: &str, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(ch),
+    let key = LogicalKey::character(ch);
+    chord_event(
+        key,
         physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: Some(ch.into()),
-    }))
+        ModifiersState::empty(),
+        KeyPhase::Down,
+        Some(ch),
+    )
 }
 
 #[must_use]

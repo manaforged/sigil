@@ -7,7 +7,7 @@
 )]
 
 use crate::geometry::{Point, Rect};
-use tiny_skia::{FillRule, Mask, Pixmap, Transform as TsTransform};
+use tiny_skia::{Mask, Pixmap, Transform as TsTransform};
 
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::scene_command::SceneCommand;
@@ -15,7 +15,7 @@ use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::{IDENTITY, intersect_rect};
 use crate::scene::corner_radii::CornerRadii;
 
-use super::bound::{Bound, rounded_rect};
+use super::bound::rect_mask;
 use super::glyphs::GlyphCache;
 use super::raster::RasterCache;
 use super::shapes::{Brush, cover, ts_transform};
@@ -56,21 +56,33 @@ pub(super) struct Ctx {
 }
 
 impl<'a> Painter<'a> {
-    pub(super) fn new(target: &'a mut Pixmap, scale: f32, scratch: &'a mut Scratch<'a>) -> Self {
+    pub(super) const fn new(
+        target: &'a mut Pixmap,
+        scale: f32,
+        origin: Point,
+        state: SceneState,
+        Scratch {
+            glyphs,
+            raster,
+            stats,
+            pool,
+            covers,
+        }: Scratch<'a>,
+    ) -> Self {
         Self {
             target,
             scale,
-            origin: Point::new(0.0, 0.0),
-            state: SceneState::default(),
+            origin,
+            state,
             mask: Masks {
                 clip: None,
-                covers: &mut *scratch.covers,
+                covers,
                 faded: None,
             },
-            glyphs: &mut *scratch.glyphs,
-            raster: &mut *scratch.raster,
-            stats: &mut *scratch.stats,
-            pool: &mut *scratch.pool,
+            glyphs,
+            raster,
+            stats,
+            pool,
         }
     }
 
@@ -80,21 +92,14 @@ impl<'a> Painter<'a> {
         origin: Point,
         state: SceneState,
     ) -> Painter<'b> {
-        Painter {
-            target,
-            scale: self.scale,
-            origin,
-            state,
-            mask: Masks {
-                clip: None,
-                covers: &mut *self.mask.covers,
-                faded: None,
-            },
+        let scratch = Scratch {
             glyphs: &mut *self.glyphs,
             raster: &mut *self.raster,
             stats: &mut *self.stats,
             pool: &mut *self.pool,
-        }
+            covers: &mut *self.mask.covers,
+        };
+        Painter::new(target, self.scale, origin, state, scratch)
     }
 
     pub(super) fn walk(&mut self, commands: &[SceneCommand]) {
@@ -244,11 +249,8 @@ fn coverage<'m>(
         return Some((None, cover(covers, ctx.width, ctx.height)));
     };
     if cache.as_ref().is_none_or(|(rect, _)| *rect != clip) {
-        let mut mask = Mask::new(ctx.width, ctx.height)?;
         let transform = ts_transform(IDENTITY, ctx.scale, ctx.origin);
-        let bound = Bound::new(transform, ctx.width, ctx.height);
-        let path = rounded_rect(clip, CornerRadii::ZERO, bound)?;
-        mask.fill_path(&path, FillRule::Winding, true, transform);
+        let mask = rect_mask(clip, CornerRadii::ZERO, transform, (ctx.width, ctx.height))?;
         *cache = Some((clip, mask));
     }
     Some((cache.as_ref().map(|(_, m)| m), None))

@@ -23,6 +23,12 @@ impl TextMeasure for StubMeasure {
     }
 }
 
+fn accent(width: f32, height: f32) -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::block().fixed_size(width, height))
+        .class("bg-accent")
+}
+
 fn lay_out(cx: &mut Cx, root: NodeId) {
     LayoutEngine::with_text_measure(Box::new(StubMeasure))
         .compute(cx, root, Size::fixed(320.0, 240.0))
@@ -35,17 +41,9 @@ fn collect_instances_drops_text_items() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::flex_row().fixed_size(120.0, 48.0))
-            .child(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(60.0, 48.0))
-                    .class("bg-accent"),
-            )
+            .child(accent(60.0, 48.0))
             .child(text("dropped"))
-            .child(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(60.0, 48.0))
-                    .class("bg-accent"),
-            ),
+            .child(accent(60.0, 48.0)),
     );
     lay_out(&mut cx, root);
     let instances = collect_rect_instances(&emit_scene(&cx, root));
@@ -58,21 +56,13 @@ fn emit_scene_skips_surface_hole_and_its_children() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::flex_row().fixed_size(120.0, 48.0))
-            .child(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(60.0, 48.0))
-                    .class("bg-accent"),
-            )
+            .child(accent(60.0, 48.0))
             .child(
                 container()
                     .layout(LayoutStyle::block().fixed_size(60.0, 48.0))
                     .with(Surface { key: 1 })
                     .class("bg-accent")
-                    .child(
-                        container()
-                            .layout(LayoutStyle::block().fixed_size(40.0, 24.0))
-                            .class("bg-accent"),
-                    ),
+                    .child(accent(40.0, 24.0)),
             ),
     );
     lay_out(&mut cx, root);
@@ -83,11 +73,7 @@ fn emit_scene_skips_surface_hole_and_its_children() {
 #[test]
 fn rect_instance_carries_position_and_color() {
     let mut cx = Cx::new_root();
-    let root = cx.add(
-        container()
-            .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .class("bg-accent"),
-    );
+    let root = cx.add(accent(120.0, 48.0));
     lay_out(&mut cx, root);
     let instances = collect_rect_instances(&emit_scene(&cx, root));
     assert_eq!(instances.len(), 1);
@@ -101,29 +87,26 @@ fn rect_instance_carries_position_and_color() {
 }
 
 #[test]
-fn draw_rect_instance_packs_solid_centered_stroke() {
-    let stroke = stroke(StrokeStyle::Solid, StrokeAlign::Centered, 2.0);
-    let inst = draw_rect_instance(
-        &DrawRect::new(rect(), rect_style(stroke)),
-        1.0,
-        BlendSpace::Gamma,
-    );
-
-    assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
-    assert_array_close(inst.stroke_meta, [1.0, 1.0, 0.0, 0.0]);
-}
-
-#[test]
-fn draw_rect_instance_packs_dashed_inside_stroke() {
-    let stroke = stroke(StrokeStyle::Dashed(6.0), StrokeAlign::Inside, 3.0);
-    let inst = draw_rect_instance(
-        &DrawRect::new(rect(), rect_style(stroke)),
-        1.0,
-        BlendSpace::Gamma,
-    );
-
-    assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
-    assert_array_close(inst.stroke_meta, [3.0, 0.0, 9.0, 6.0]);
+fn draw_rect_instance_packs_solid_and_dashed_strokes() {
+    for (style, align, width, meta) in [
+        (
+            StrokeStyle::Solid,
+            StrokeAlign::Centered,
+            2.0,
+            [1.0, 1.0, 0.0, 0.0],
+        ),
+        (
+            StrokeStyle::Dashed(6.0),
+            StrokeAlign::Inside,
+            3.0,
+            [3.0, 0.0, 9.0, 6.0],
+        ),
+    ] {
+        let draw = DrawRect::new(rect(), rect_style(stroke(style, align, width)));
+        let inst = draw_rect_instance(&draw, 1.0, BlendSpace::Gamma);
+        assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
+        assert_array_close(inst.stroke_meta, meta);
+    }
 }
 
 #[test]
@@ -155,18 +138,14 @@ fn stroke_color_uses_fill_blend_space_conversion() {
 
 #[test]
 fn draw_rect_instance_packs_corner_radii() {
-    let style = SceneRectStyle::new(color(), CornerRadii::top(8.0), 10_000);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), style), 1.0, BlendSpace::Linear);
-
-    assert_array_close(inst.corner_radii, [8.0, 8.0, 0.0, 0.0]);
-}
-
-#[test]
-fn draw_rect_instance_packs_uniform_corner_radii() {
-    let style = SceneRectStyle::new(color(), CornerRadii::uniform(6.0), 10_000);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), style), 1.0, BlendSpace::Linear);
-
-    assert_array_close(inst.corner_radii, [6.0, 6.0, 6.0, 6.0]);
+    for (radii, expected) in [
+        (CornerRadii::top(8.0), [8.0, 8.0, 0.0, 0.0]),
+        (CornerRadii::uniform(6.0), [6.0; 4]),
+    ] {
+        let style = SceneRectStyle::new(color(), radii, 10_000);
+        let inst = draw_rect_instance(&DrawRect::new(rect(), style), 1.0, BlendSpace::Linear);
+        assert_array_close(inst.corner_radii, expected);
+    }
 }
 
 #[test]
@@ -233,38 +212,10 @@ fn draw_inner_shadow_instance_encodes_kind_and_surface_quad() {
     assert_array_close(inst.shadow_meta, [1.0, 0.0, 0.0, 0.0]);
 }
 
-#[test]
-fn inner_shadow_coverage_is_inside_only() {
-    let inside_alpha = inner_shadow_alpha_for_test(Point::new(2.0, 24.0), rect(), 4.0, 0.5);
-    let outside_alpha = inner_shadow_alpha_for_test(Point::new(-1.0, 24.0), rect(), 4.0, 0.5);
-
-    assert!(inside_alpha > 0.0);
-    assert!(outside_alpha.abs() < 1e-6);
-}
-
 fn assert_array_close(actual_values: [f32; 4], expected_values: [f32; 4]) {
     for (actual, expected) in actual_values.into_iter().zip(expected_values) {
         assert!((actual - expected).abs() < 1e-6);
     }
-}
-
-fn inner_shadow_alpha_for_test(sample: Point, surface: Rect, spread: f32, color_alpha: f32) -> f32 {
-    if sample.x < surface.origin.x
-        || sample.y < surface.origin.y
-        || sample.x > surface.origin.x + surface.width
-        || sample.y > surface.origin.y + surface.height
-    {
-        return 0.0;
-    }
-    let inner_left = surface.origin.x + spread;
-    let inner_right = surface.origin.x + surface.width - spread;
-    let inner_top = surface.origin.y + spread;
-    let inner_bottom = surface.origin.y + surface.height - spread;
-    let inside_inner = sample.x >= inner_left
-        && sample.x <= inner_right
-        && sample.y >= inner_top
-        && sample.y <= inner_bottom;
-    color_alpha * if inside_inner { 0.0 } else { 1.0 }
 }
 
 fn rect_style(stroke: Stroke) -> SceneRectStyle {

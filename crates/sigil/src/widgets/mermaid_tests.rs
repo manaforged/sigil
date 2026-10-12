@@ -4,6 +4,12 @@ fn joined(source: &str) -> String {
     draw(source).join("\n")
 }
 
+fn assert_has(body: &str, needles: &[&str]) {
+    for needle in needles {
+        assert!(body.contains(needle), "{needle} missing:\n{body}");
+    }
+}
+
 fn column(lines: &[String], needle: &str) -> Option<(usize, usize)> {
     lines.iter().enumerate().find_map(|(row, line)| {
         line.find(needle)
@@ -16,11 +22,7 @@ fn flowchart_top_down_draws_boxes_and_an_arrow_between_ranks() {
     let lines =
         draw("graph TD\n    A[Start] --> B{Ready?}\n    B -->|yes| C(Go)\n    B -->|no| A\n");
     let body = lines.join("\n");
-    assert!(body.contains("Start"), "{body}");
-    assert!(body.contains("Ready?"), "{body}");
-    assert!(body.contains("Go"), "{body}");
-    assert!(body.contains('▼'), "arrow head missing:\n{body}");
-    assert!(body.contains("yes"), "edge label missing:\n{body}");
+    assert_has(&body, &["Start", "Ready?", "Go", "▼", "yes", "╱", "╲", "╭"]);
     let (start_row, _) = column(&lines, "Start").expect("start");
     let (ready_row, _) = column(&lines, "Ready?").expect("ready");
     let (go_row, _) = column(&lines, "Go").expect("go");
@@ -28,18 +30,13 @@ fn flowchart_top_down_draws_boxes_and_an_arrow_between_ranks() {
         start_row < ready_row && ready_row < go_row,
         "ranks stack downward:\n{body}"
     );
-    assert!(
-        body.contains('╱') && body.contains('╲'),
-        "diamond corners:\n{body}"
-    );
-    assert!(body.contains('╭'), "round corners:\n{body}");
 }
 
 #[test]
 fn flowchart_left_right_points_right() {
     let lines = draw("flowchart LR\n    A --> B --> C\n");
     let body = lines.join("\n");
-    assert!(body.contains('▶'), "{body}");
+    assert_has(&body, &["▶"]);
     let (a_row, a_col) = column(&lines, "A").expect("a");
     let (c_row, c_col) = column(&lines, "C").expect("c");
     assert_eq!(a_row, c_row, "one rank row:\n{body}");
@@ -62,8 +59,7 @@ fn a_long_edge_runs_through_the_middle_rank_without_a_gap() {
 fn state_diagram_marks_start_and_end() {
     let body =
         joined("stateDiagram-v2\n    [*] --> Idle\n    Idle --> Busy: go\n    Busy --> [*]\n");
-    assert!(body.contains('●') && body.contains('◉'), "{body}");
-    assert!(body.contains("go"), "{body}");
+    assert_has(&body, &["●", "◉", "go"]);
 }
 
 #[test]
@@ -71,12 +67,19 @@ fn sequence_draws_lifelines_messages_notes_and_frames() {
     let source = "sequenceDiagram\n    autonumber\n    participant A as Alice\n    participant B as Bob\n    A->>B: hello there\n    B-->>A: hi\n    Note over A,B: a note\n    loop retry\n        A->>A: think\n    end\n";
     let lines = draw(source);
     let body = lines.join("\n");
-    assert!(body.contains("Alice") && body.contains("Bob"), "{body}");
-    assert!(body.contains("1. hello there"), "{body}");
-    assert!(body.contains('▶') && body.contains('◀'), "{body}");
-    assert!(body.contains("a note"), "{body}");
-    assert!(body.contains("loop retry"), "{body}");
-    assert!(body.contains('┆'), "lifelines:\n{body}");
+    assert_has(
+        &body,
+        &[
+            "Alice",
+            "Bob",
+            "1. hello there",
+            "▶",
+            "◀",
+            "a note",
+            "loop retry",
+            "┆",
+        ],
+    );
     let first = lines.first().map(String::as_str).unwrap_or_default();
     let last = lines.last().map(String::as_str).unwrap_or_default();
     assert!(
@@ -88,15 +91,13 @@ fn sequence_draws_lifelines_messages_notes_and_frames() {
 #[test]
 fn pie_renders_shares_as_bars() {
     let body = joined("pie title Pets\n    \"Dogs\" : 60\n    \"Cats\" : 40\n");
-    assert!(body.contains("Pets"), "{body}");
-    assert!(body.contains("60.0%") && body.contains("40.0%"), "{body}");
-    assert!(body.contains('█') && body.contains('░'), "{body}");
+    assert_has(&body, &["Pets", "60.0%", "40.0%", "█", "░"]);
 }
 
 #[test]
 fn unknown_kinds_are_framed_verbatim() {
     let body = joined("gantt\n    title Plan\n");
-    assert!(body.contains("gantt") && body.contains('┌'), "{body}");
+    assert_has(&body, &["gantt", "┌"]);
 }
 
 #[test]

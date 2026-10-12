@@ -1,12 +1,11 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use smallvec::smallvec;
 
 use super::*;
 use crate::reactive::owner_by_id;
 
-#[test]
-fn replace_children_drops_ids_the_kernel_no_longer_holds() {
+fn three_nodes() -> (Cx, [NodeId; 3]) {
     let mut cx = Cx::new_root();
     let root = cx.root_owner();
     let mut ids = Vec::new();
@@ -15,12 +14,13 @@ fn replace_children_drops_ids_the_kernel_no_longer_holds() {
             ids.push(cx.new_node(NodeType::Container, A11yProps::default()));
         }
     }));
-    let [parent, live, dead] = ids.as_slice() else {
-        panic!("three nodes mounted");
-    };
-    let parent = *parent;
-    let live = *live;
-    let dead = *dead;
+    let ids = ids.try_into().expect("three nodes mounted");
+    (cx, ids)
+}
+
+#[test]
+fn replace_children_drops_ids_the_kernel_no_longer_holds() {
+    let (mut cx, [parent, live, dead]) = three_nodes();
     assert!(cx.remove(dead));
     cx.replace_children(parent, smallvec![live, dead]);
     let children = &cx
@@ -37,20 +37,7 @@ fn replace_children_drops_ids_the_kernel_no_longer_holds() {
 
 #[test]
 fn replace_children_reparents_adopted_nodes_without_stale_handles() {
-    let mut cx = Cx::new_root();
-    let root = cx.root_owner();
-    let mut ids = Vec::new();
-    assert!(owner_by_id(root, || {
-        for _ in 0..3 {
-            ids.push(cx.new_node(NodeType::Container, A11yProps::default()));
-        }
-    }));
-    let [a, b, x] = ids.as_slice() else {
-        panic!("three nodes mounted");
-    };
-    let a = *a;
-    let b = *b;
-    let x = *x;
+    let (mut cx, [a, b, x]) = three_nodes();
     cx.replace_children(a, smallvec![x]);
     assert_eq!(
         cx.nodes.get(x.key()).and_then(|node| node.parent),

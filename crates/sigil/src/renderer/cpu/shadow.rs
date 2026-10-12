@@ -135,22 +135,14 @@ pub(super) fn blur(pixmap: &mut Pixmap, sigma: f32) {
 }
 
 fn to_linear([r, g, b, a]: [u8; 4]) -> [f32; 4] {
-    [
-        srgb::decode(r),
-        srgb::decode(g),
-        srgb::decode(b),
-        f32::from(a) / 255.0,
-    ]
+    let [r, g, b] = [r, g, b].map(srgb::decode);
+    [r, g, b, f32::from(a) / 255.0]
 }
 
 fn to_encoded([r, g, b, a]: [f32; 4]) -> [u8; 4] {
     let byte = |v: f32| (v * 255.0).round().clamp(0.0, 255.0) as u8;
-    [
-        byte(srgb::encode(r)),
-        byte(srgb::encode(g)),
-        byte(srgb::encode(b)),
-        byte(a),
-    ]
+    let [r, g, b] = [r, g, b].map(|v| byte(srgb::encode(v)));
+    [r, g, b, byte(a)]
 }
 
 #[derive(Clone, Copy)]
@@ -178,31 +170,33 @@ fn box_pass(src: &[[f32; 4]], dst: &mut [[f32; 4]], dims: Dims, horizontal: bool
     };
     let radius = dims.radius;
     let window = (2 * radius + 1) as f32;
-    let sample = |line: usize, i: usize| -> [f32; 4] {
-        src.get(dims.at(horizontal, line, i))
+    let add = |sum: &mut [f32; 4], line: usize, i: usize, subtract: bool| {
+        let sample = src
+            .get(dims.at(horizontal, line, i))
             .copied()
-            .unwrap_or_default()
+            .unwrap_or_default();
+        for (acc, v) in sum.iter_mut().zip(sample) {
+            if subtract {
+                *acc -= v;
+            } else {
+                *acc += v;
+            }
+        }
     };
     for line in 0..lines {
         let mut sum = [0.0_f32; 4];
         for i in 0..=radius.min(len.saturating_sub(1)) {
-            for (acc, v) in sum.iter_mut().zip(sample(line, i)) {
-                *acc += v;
-            }
+            add(&mut sum, line, i, false);
         }
         for i in 0..len {
             if let Some(out) = dst.get_mut(dims.at(horizontal, line, i)) {
                 *out = sum.map(|v| v / window);
             }
             if i + radius + 1 < len {
-                for (acc, v) in sum.iter_mut().zip(sample(line, i + radius + 1)) {
-                    *acc += v;
-                }
+                add(&mut sum, line, i + radius + 1, false);
             }
             if i >= radius {
-                for (acc, v) in sum.iter_mut().zip(sample(line, i - radius)) {
-                    *acc -= v;
-                }
+                add(&mut sum, line, i - radius, true);
             }
         }
     }

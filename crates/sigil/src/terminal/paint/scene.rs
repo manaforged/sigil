@@ -42,7 +42,6 @@ pub fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &Paint<'_>) {
     let mut walk = Walk {
         grid,
         paint,
-        theme: paint.theme,
         cell: if paint.cell <= 0.0 { 1.0 } else { paint.cell },
         clips: Vec::new(),
         alphas: Vec::new(),
@@ -97,7 +96,6 @@ fn blend(a: Rgba8, b: Rgba8, t: f32) -> Rgba8 {
 struct Walk<'a> {
     grid: &'a mut Grid,
     paint: &'a Paint<'a>,
-    theme: &'a Theme,
     cell: f32,
     clips: Vec<Rect>,
     alphas: Vec<f32>,
@@ -216,7 +214,7 @@ impl Walk<'_> {
                     size,
                     ink,
                     halves: draw.leaf && draw.border.is_none(),
-                    theme: self.theme,
+                    theme: self.paint.theme,
                 };
                 decoration::surface(self.grid, &surface, self.cell);
             }
@@ -229,7 +227,7 @@ impl Walk<'_> {
             };
             let edge = Edge {
                 clip: self.clip(),
-                theme: self.theme,
+                theme: self.paint.theme,
                 borders: self.paint.caps.borders,
                 cell: self.cell,
             };
@@ -267,7 +265,7 @@ impl Walk<'_> {
             ink: self.ink(self.fade(run.color, run.opacity), run.tone),
             face: self.face(draw),
             link: self.paint.marks.link(run.node),
-            theme: self.theme,
+            theme: self.paint.theme,
             runs: run.style.runs.as_ref().map(|runs| (runs, run.inks())),
             hyperlinks: self.paint.caps.hyperlinks,
         };
@@ -294,18 +292,12 @@ impl Walk<'_> {
         if color.a == 0 {
             return;
         }
-        super::marks::decorate(
-            self.grid,
-            &super::marks::line(
-                &DrawDecoration {
-                    band: self.space.map(draw.band),
-                    ..*draw
-                },
-                color,
-            ),
-            self.clip(),
-            self.cell,
-        );
+        let line = DrawDecoration {
+            band: self.space.map(draw.band),
+            color,
+            ..*draw
+        };
+        super::marks::decorate(self.grid, &line, self.clip(), self.cell);
     }
 
     fn image(&mut self, draw: &DrawImage) {

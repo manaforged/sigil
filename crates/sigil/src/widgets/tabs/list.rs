@@ -8,9 +8,9 @@ use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived, effect, untrack};
 use crate::style::{StyleOverlay, space};
 
-use super::builder::{CloseHandler, StripChrome, TAB_HEIGHT};
+use super::builder::{CloseHandler, StripChrome};
 use super::drag::DragState;
-use super::tab::{build_tab, line_strip_height};
+use super::tab::{build_tab, tab_height};
 
 type TabIds = Rc<RefCell<Vec<Option<NodeId>>>>;
 
@@ -25,9 +25,9 @@ struct Roving {
 impl Roving {
     fn enabled(&self) -> Vec<usize> {
         (0..self.order.len())
-            .filter(|visual| {
+            .filter(|&visual| {
                 self.order
-                    .get(*visual)
+                    .get(visual)
                     .is_some_and(|original| !self.disabled.contains(original))
             })
             .collect()
@@ -76,33 +76,6 @@ fn roving_target(enabled: &[usize], from: usize, key: Key) -> Option<usize> {
     enabled.get(index).copied()
 }
 
-fn accessible_label(label: &str) -> AccessibleName {
-    if label.is_empty() {
-        AccessibleName::Static(String::from("Tabs"))
-    } else {
-        AccessibleName::Static(label.to_owned())
-    }
-}
-
-fn tab_list_layout(chrome: StripChrome) -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .height(if matches!(chrome, StripChrome::Line) {
-            line_strip_height()
-        } else {
-            TAB_HEIGHT
-        })
-        .shrink(0.0)
-        .gap(space(1))
-        .align_items(AlignItems::Center)
-}
-
-fn visual_order(order: Option<Signal<Vec<usize>>>, count: usize) -> Vec<usize> {
-    order
-        .map(|sig| sig.peek())
-        .filter(|current| current.len() == count)
-        .unwrap_or_else(|| (0..count).collect())
-}
-
 #[derive(Clone)]
 pub(super) struct StripSpec {
     pub(super) active: Signal<usize>,
@@ -120,25 +93,32 @@ pub(super) fn build_tab_list(
     aria_label: &str,
     spec: StripSpec,
 ) -> NodeBuilder {
-    clamp_active(labels, spec.active);
+    let active = spec.active;
+    effect(move || {
+        let count = labels.get().len();
+        if count > 0 && active.peek() >= count {
+            active.set(count - 1);
+        }
+    });
+    let name = if aria_label.is_empty() {
+        "Tabs"
+    } else {
+        aria_label
+    };
     container()
         .role(Role::TabList)
-        .label(accessible_label(aria_label))
-        .layout(tab_list_layout(spec.chrome))
+        .label(AccessibleName::Static(name.to_owned()))
+        .layout(
+            LayoutStyle::flex_row()
+                .height(tab_height(spec.chrome))
+                .shrink(0.0)
+                .gap(space(1))
+                .align_items(AlignItems::Center),
+        )
         .children_reactive(move || {
             let labels = labels.get();
             untrack(|| tab_children(&spec, &labels))
         })
-}
-
-fn clamp_active(labels: Signal<Vec<String>>, active: Signal<usize>) {
-    effect(move || {
-        let count = labels.get().len();
-        let current = active.peek();
-        if count > 0 && current >= count {
-            active.set(count - 1);
-        }
-    });
 }
 
 fn tab_children(spec: &StripSpec, labels: &[String]) -> Vec<NodeBuilder> {
@@ -146,7 +126,12 @@ fn tab_children(spec: &StripSpec, labels: &[String]) -> Vec<NodeBuilder> {
     let active = spec.active;
     let roving = Roving {
         active,
-        order: Rc::new(visual_order(spec.order, count)),
+        order: Rc::new(
+            spec.order
+                .map(|order| order.peek())
+                .filter(|current| current.len() == count)
+                .unwrap_or_else(|| (0..count).collect()),
+        ),
         disabled: Rc::clone(&spec.disabled),
         ids: Rc::new(RefCell::new(vec![None; count])),
     };
@@ -168,7 +153,7 @@ fn tab_children(spec: &StripSpec, labels: &[String]) -> Vec<NodeBuilder> {
                 &spec.disabled,
                 spec.drag,
                 spec.closeable,
-                spec.close_handler.as_ref().map(Rc::clone),
+                spec.close_handler.clone(),
                 spec.user_overlay.clone(),
                 spec.chrome,
             );

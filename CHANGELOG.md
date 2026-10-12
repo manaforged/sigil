@@ -54,6 +54,36 @@ First release.
 - Each crate's docs.rs page shows its README, and the README examples run as doctests.
 - `sigil-kittest`: a PNG golden harness for apps that depend on Sigil.
 - `sigil-fonts`: the default fonts (Fira Sans, Cascadia Mono, and a Noto Color Emoji subset) under the SIL Open Font License 1.1. `sigil-ui` is MIT and pulls `sigil-fonts` in only with the `scene` feature.
+- Code hot reload behind the opt-in `hot` feature. Under `dx serve --hot-patch`, `sigil::run` patches the binary crate through `subsecond` and mounts the root again without a restart. Signals made outside the root closure keep their values, and focus returns to the node with the same role and name path. `Host::mount_hot` gives the same to an embed host. Not on wasm. See [Hot reload](docs/guide/hot-reload.md).
+- `show(cond, then, otherwise)` and `for_each(items, key, render)` in the prelude. `for_each` reconciles by key, so a row whose key stays keeps its node and state.
+- `.autofocus()` on `NodeBuilder` (through `NodeEventsExt`) and on `TextFieldBuilder` focuses the node when it mounts.
+- Inline terminal host. `AppConfig::inline(true)` draws the live region in the normal screen below the prompt instead of the alternate screen, so earlier output stays in scrollback. `Hooks::region_rows` sets the height of the live region each frame. `sigil::terminal::print_above` writes lines above the live region into scrollback.
+- `highlight(language, source)` and `hl_spans(language, source)`: one syntax highlighter for rust, sh, toml, json, python, js/ts, and diff. Rules live in a TOML file and colours come from theme tokens. Other languages stay monochrome. Markdown code fences use it on both hosts, and `code_edit(..).highlights(..)` accepts `hl_spans` output.
+- `HostCaps` and `Host::set_caps`: widgets read what the host can show through `HostCaps::current()`.
+- Hosts. `sigil::run(config, tree)` opens a window (feature `desktop`, the default) or runs the same tree in a terminal with `AppConfig::new(title).terminal()` (feature `terminal`). `Host` embeds the tree in another event loop: it routes events, lays out, returns a `CommandScene`, and reports `surface(key)` holes.
+- Window renderer on wgpu, with a CPU renderer. `SIGIL_BACKEND` selects `auto`, `wgpu`, or `cpu`. `auto` falls back to the CPU renderer when the GPU surface fails.
+- Terminal host: Kitty, iTerm2, and Sixel image protocols with a glyph fallback, colour depth detection that honours `NO_COLOR`, bracketed paste, mouse capture, `suspend`, `set_title`, `bell`, `focused`, an OSC 52 clipboard, and `terminal::Hooks` for an external event pump.
+- Reactive state: `signal`, `derived`, `effect`, `batch`, `EventChannel`, and `interval` for periodic callbacks.
+- Tasks: `spawn` runs async work into a `Signal<Status>`. `signal_writer` moves results from other threads to the UI thread.
+- Widgets: controls, fields, collections, documents (`markdown`, `html`, `mermaid`, `diff`, `code_edit`), data display (`chart`, `gauge`, `heatmap`), application chrome, and overlays. The [widgets guide](docs/guide/widgets.md) lists each group.
+- Layout on flexbox and grid, with `rows`, `cols`, and `em` text units.
+- Styling: typed `Paint` methods and state variants, theme colours through `Token`, and shared metrics. `parse_theme`, `set_theme`, `watch_theme`, and `AppConfig::theme_file` load a TOML theme and reload it when the file changes.
+- Accessibility through AccessKit: roles, names, and live regions. `Host::accessibility_tree` exposes the tree to tests and automation.
+- Clipboard: `copy`, `paste`, and `install`. `OsClipboard` (feature `clipboard`) uses the system clipboard. `clipboard-image` reads images.
+- `open` passes `http`, `https`, and `mailto` URLs to the OS handler.
+- Native dialogs, menus, and tray icons (features `dialog`, `menu`, `tray`), audio playback (`audio`), and pseudo-terminal sessions (`pty`).
+- `sigil-sign`: `macos_app` and `windows_dir` build app bundles. `sign_file` signs update packages with minisign and binds the file name and version in the trusted comment. `verify_file` checks the signature, the file name, and the expected version, which the caller must pass. The `.sig` file is the plain minisign envelope. The `sigil-pack` command runs the same steps, with `sign`, `verify`, and `genkey DIR`.
+- `sigil-kittest`: visual golden tests that render a widget offscreen in a chosen interaction state and compare it with a committed PNG.
+- `AppConfig::on_exit` runs a hook once when the app exits: on the last window close, on Quit from the macOS menu or Dock, and at Windows sign-out, shutdown, or restart. While the hook runs, Windows shows the app's saving reason. Closing the last window no longer waits for running blocking tasks.
+- `sigil_sign::CodeSign::sign` and `sigil-pack codesign --file PATH` sign a standalone macOS executable without an app bundle. A symbolic link target is refused.
+- `AppBundle::provisioning_profile` and `sigil-pack macos --provisioning-profile PATH` embed a provisioning profile in a macOS app bundle before it is signed.
+- `ChartBuilder::whole_numbers` marks values as whole numbers, so the y axis labels no fractional tick such as 0.5.
+- Right-to-left layout and locales: `ThemeBuilder::direction`, `locale`, and `strings`, and the theme file keys `direction`, `locale`, and `[strings]`. A right-to-left theme mirrors flex rows, block and grid layout, padding, margins, insets, and `align_self`. Number and date fields read the locale, and built-in widget labels come from `Strings`.
+- Multiple windows: `app::open_window` opens a window on the same event loop, and `CloseAction` sets whether closing it closes, hides, or keeps it. `app::notify`, `app::media`, and `app::hotkey` (features of the same names) post notifications, answer media keys, and register global hotkeys. `tray::update` changes the tray icon after install.
+- `app::Player` keeps one output device and plays tracks back to back: `queue`, `append`, and `play_bytes`, with `volume` and `duration` signals.
+- `diff` renders rows through a virtual list, so a patch of thousands of lines stays fast. Code lines are highlighted by the file's language, `Patch` is public, and `DiffBuilder::select` binds a `Selection` that hunk and line clicks update.
+- `ChartBuilder::candles`, `x_range`, and `crosshair` add candlestick marks, a bound zoom range, and a pointer readout. A line chart of 100,000 points builds at frame rate, and a heatmap draws as one image.
+- Gestures and touch: `NodeEventsExt::on_gesture` receives trackpad pinch, rotate, pan, and double tap. `PointerEvent` carries `pointer_id`, pressure, and tilt. `Shortcut` implements `FromStr` and parses the names its label prints.
 
 ### Changed
 
@@ -112,7 +142,7 @@ First release.
 - `text_edit` takes `.autofocus()` and `.focus_when(signal)`, as `text_field` does, so an app focuses an editor without a node id.
 
 - Every public item has one path. `sigil::prelude` is the only module that re-exports items from elsewhere, and it holds the names app code uses: widget functions, core types, and the extension traits that method calls need. The `events`, `kernel`, `layout`, and `style` preludes, the `render` module, and the crate root re-exports are removed. This is a breaking change.
-- The crate root holds the entry points: `run`, `Host`, `AppConfig`, `AppResult`, `Error`, `request_exit`, and `root`. Other application items are in `sigil::app`.
+- The crate root holds the entry points: `run`, `Host`, `AppConfig`, `AppResult`, `Error`, and `request_exit`. Other application items are in `sigil::app`.
 - Input and window events are in `sigil::events`. Points, rectangles, sizes, and the scale factor are in the new `sigil::geometry`. `Color` is in `sigil::style`. `sigil::hal` keeps only the backend traits and the types in their signatures. This is a breaking change.
 - Smaller moves to one path: `profile` and `bidi` are only at the crate root; `NumericAtomKind` is in `style`; `ImageBuilder` is in `kernel`; `LayoutError` is in `layout`; `DefaultFonts`, `TextTuning`, and their setters are in `app`.
 - `widgets::patterns` is removed; its widgets are in `sigil::widgets`. The second `tooltip(target, hint)` is removed; use `tooltip(hint).child(target)`.
@@ -137,7 +167,7 @@ First release.
 - The app root fills the viewport on both hosts when its width or height is auto. A root no longer needs `fixed_size` to match the window.
 - `TextFieldBuilder::focus_when` no longer focuses on mount when the signal is already nonzero; use `.autofocus()`. This is a breaking change.
 - `NodeBuilder::on_added` runs every hook it receives, in order, instead of only the last one.
-- Scene types have one path: `sigil::scene`. `sigil::renderer` no longer re-exports `CommandScene`, `SceneBuilder`, `SceneCommand`, the draw payloads, the style structs, `emit_scene`, or `shape_glyph_run`, and `renderer::style` and `renderer::prelude` are removed. `sigil::render` keeps its re-exports for embedders. This is a breaking change.
+- Scene types have one path: `sigil::scene`. `sigil::renderer` no longer re-exports `CommandScene`, `SceneBuilder`, `SceneCommand`, the draw payloads, the style structs, `emit_scene`, or `shape_glyph_run`, and `renderer::style` and `renderer::prelude` are removed. This is a breaking change.
 - `sigil::layout` exports `Display`, `Position`, `FlexDirection`, `JustifyContent`, `AlignItems`, `AlignSelf`, `LengthPercentage`, and `LengthPercentageAuto` under those names only. The `Style*` aliases are removed. This is a breaking change.
 - Renderer, layout, and text plumbing is no longer public: `renderer::submit_clear`, `renderer::scenes`, `SlugTextPipeline`, `DrawParams`, `LayerPool`, `LayerHandle`, `FrameStats`, `last_frame_stats`, `BUILTIN_SPRITE_ATLAS_ID`, the `WgpuRenderer` pipeline-count and headless methods, `layout::LayoutDrive`, `NodeHandle`, `ResolvedBox`, `TextEngineMeasure`, `SizeReactive`, `TextStyleCapture`, `set_text_geometry`, `with_text_geometry`, `layout::style_adapter`, `text::color_glyph`, `text::glyph`, `text::FontCollection`, `OwnedTextEngine::fonts`, `text::SansWeight`, `shell::WAKE_DELIVERED_COUNT`, `events::invoke_node`, `icons::QuadCurve`, `icons::cubic_to_quadratics`, `ANIMATION_REGISTRY_MISS`, `binding_animate::miss_counter`, and `unsupported_style_warning_count_for`. Test support stays reachable with feature `kittest`. This is a breaking change.
 - `text::segment`, `WgpuRenderer::submit_world`, `WorldSubmission`, and `RendererError::InvalidViewProj` are removed. `submit_world` checked its arguments and drew nothing; use `unicode-segmentation` in place of `text::segment`. This is a breaking change.
@@ -229,26 +259,8 @@ First release.
 - `image_bytes` decoded the image again on every call. Decoded images now share one bounded cache with rasterized vector icons.
 - Each frame cleared the target in a separate pass before drawing. The clear now happens in the first draw pass, which saves one full-target store and load per frame on tile-based GPUs.
 - Every frame redrew the whole window, even when only a caret, a hovered row, or one label changed. The renderer now compares each frame with the one before, redraws up to three changed regions into a kept back buffer, and copies it to the window. A layer blur, a rotated layer, or a change to most of the scene still redraws the whole frame. The `gpu.redrawn_pixels` profile counter and `FrameStats::redrawn_pixels` report the pixels drawn.
+- On Windows, AltGr characters such as `@`, `{`, and `€` type in the terminal host, and a multi-line paste arrives as one paste instead of submitting each line.
+- The terminal host draws a control character in widget text as a space, so no escape, bell, tab, or newline byte from text reaches the terminal.
+- In a submit-on-Enter editor, Alt+Enter and Ctrl+J insert a newline beside Shift+Enter, so multi-line input works in terminals that send Shift+Enter as Enter.
+- `request_exit` called outside a frame, for example from a tray or menu callback, now ends the event loop. An exit request survives a frame whose paint panics.
 
-### Added
-
-- Code hot reload behind the opt-in `hot` feature. Under `dx serve --hot-patch`, `sigil::run` patches the binary crate through `subsecond` and mounts the root again without a restart. Signals made outside the root closure keep their values, and focus returns to the node with the same role and name path. `Host::mount_hot` gives the same to an embed host. Not on wasm. See [Hot reload](docs/guide/hot-reload.md).
-- `show(cond, then, otherwise)` and `for_each(items, key, render)` in the prelude. `for_each` reconciles by key, so a row whose key stays keeps its node and state.
-- `.autofocus()` on `NodeBuilder` (through `NodeEventsExt`) and on `TextFieldBuilder` focuses the node when it mounts.
-- Inline terminal host. `AppConfig::inline(true)` draws the live region in the normal screen below the prompt instead of the alternate screen, so earlier output stays in scrollback. `Hooks::region_rows` sets the height of the live region each frame. `sigil::terminal::print_above` writes lines above the live region into scrollback.
-- `highlight(language, source)` and `hl_spans(language, source)`: one syntax highlighter for rust, sh, toml, json, python, js/ts, and diff. Rules live in a TOML file and colours come from theme tokens. Other languages stay monochrome. Markdown code fences use it on both hosts, and `code_edit(..).highlights(..)` accepts `hl_spans` output.
-- `HostCaps` and `Host::set_caps`: widgets read what the host can show through `HostCaps::current()`.
-- Hosts. `sigil::run(config, tree)` opens a window (feature `desktop`, the default) or runs the same tree in a terminal with `AppConfig::new(title).terminal()` (feature `terminal`). `Host` embeds the tree in another event loop: it routes events, lays out, returns a `CommandScene`, and reports `surface(key)` holes.
-- Window renderer on wgpu, with a CPU renderer. `SIGIL_BACKEND` selects `auto`, `wgpu`, or `cpu`. `auto` falls back to the CPU renderer when the GPU surface fails.
-- Terminal host: Kitty, iTerm2, and Sixel image protocols with a glyph fallback, colour depth detection that honours `NO_COLOR`, bracketed paste, mouse capture, `suspend`, `set_title`, `bell`, `focused`, an OSC 52 clipboard, and `terminal::Hooks` for an external event pump.
-- Reactive state: `signal`, `derived`, `effect`, `batch`, `EventChannel`, and `interval` for periodic callbacks.
-- Tasks: `spawn` runs async work into a `Signal<Status>`. `signal_writer` and `post` move results from other threads to the UI thread.
-- Widgets: controls, fields, collections, documents (`markdown`, `html`, `mermaid`, `diff`, `code_edit`), data display (`chart`, `gauge`, `heatmap`), application chrome, and overlays. The [widgets guide](docs/guide/widgets.md) lists each group.
-- Layout on flexbox and grid, with `rows`, `cols`, and `em` text units.
-- Styling: typed `Paint` methods and state variants, theme colours through `Token`, and shared metrics. `parse_theme`, `set_theme`, `watch_theme`, and `AppConfig::theme_file` load a TOML theme and reload it when the file changes.
-- Accessibility through AccessKit: roles, names, and live regions. `Host::accessibility_tree` exposes the tree to tests and automation.
-- Clipboard: `copy`, `paste`, and `install`. `OsClipboard` (feature `clipboard`) uses the system clipboard. `clipboard-image` reads images.
-- `open` passes `http`, `https`, and `mailto` URLs to the OS handler.
-- Native dialogs, menus, and tray icons (features `dialog`, `menu`, `tray`), audio playback (`audio`), and pseudo-terminal sessions (`pty`).
-- `sigil-sign`: `macos_app` and `windows_dir` build app bundles. `sign_file` signs update packages with minisign and binds the file name and version in the trusted comment. `verify_file` checks the signature, the file name, and an optional expected version. The `.sig` file is the plain minisign envelope. The `sigil-pack` command runs the same steps, with `sign`, `verify`, and `genkey DIR`.
-- `sigil-kittest`: visual golden tests that render a widget offscreen in a chosen interaction state and compare it with a committed PNG.

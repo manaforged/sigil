@@ -3,7 +3,7 @@ use std::fmt::Write as _;
 
 use crate::profile::attr::Attribution;
 use crate::profile::key::{Cause, Counter, Hotspot};
-use crate::profile::report::{ns_ms, pct};
+use crate::profile::report::{distinct, ns_ms, spread};
 use crate::profile::store::{Frame, INTERACT_BUDGET_NS};
 
 const TOP_PASSES: usize = 12;
@@ -23,17 +23,13 @@ pub(super) fn write_gpu_passes(out: &mut String, frames: &[Frame]) {
     if labels.is_empty() {
         return;
     }
-    let mut rows: Vec<(&'static str, f64, f64, f64)> = labels
+    let mut rows: Vec<(&'static str, [f64; 4])> = labels
         .into_iter()
-        .map(|(label, mut samples)| {
-            samples.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
-            let max = samples.last().copied().unwrap_or(0.0);
-            (label, pct(&samples, 50), pct(&samples, 95), max)
-        })
+        .map(|(label, samples)| (label, spread(samples)))
         .collect();
-    rows.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+    rows.sort_by(|a, b| b.1[0].partial_cmp(&a.1[0]).unwrap_or(Ordering::Equal));
     out.push_str("\ngpu passes          p50      p95      max\n");
-    for (label, p50, p95, max) in rows.into_iter().take(TOP_PASSES) {
+    for (label, [p50, p95, max, _]) in rows.into_iter().take(TOP_PASSES) {
         let _ = writeln!(out, "{label:<16} {p50:>8.3} {p95:>8.3} {max:>8.3}");
     }
 }
@@ -80,12 +76,7 @@ pub(super) fn write_why(out: &mut String, frames: &[Frame]) {
     if aggs.is_empty() {
         return;
     }
-    let mut hotspots: Vec<Hotspot> = Vec::new();
-    for agg in &aggs {
-        if !hotspots.contains(&agg.hotspot) {
-            hotspots.push(agg.hotspot);
-        }
-    }
+    let hotspots = distinct(aggs.iter().map(|agg| agg.hotspot));
     out.push_str("\nwhy\n");
     for hotspot in hotspots {
         for agg in aggs

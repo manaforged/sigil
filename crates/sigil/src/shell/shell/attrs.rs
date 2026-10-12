@@ -96,11 +96,7 @@ impl WinitShell {
     }
 
     pub(crate) fn materialise_pending(&mut self, active: &ActiveEventLoop) {
-        if self.pending.is_empty() {
-            return;
-        }
-        let pending = std::mem::take(&mut self.pending);
-        for spec in pending {
+        for spec in std::mem::take(&mut self.pending) {
             let attrs = Self::window_attrs(&spec, active);
             #[cfg(target_arch = "wasm32")]
             let attrs = self.web_attrs(attrs);
@@ -134,6 +130,11 @@ impl WinitShell {
     }
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    reason = "values are bounded to the target range before the cast"
+)]
 fn anchor_origin(
     anchor: Anchor,
     monitor_pos: (i32, i32),
@@ -143,20 +144,8 @@ fn anchor_origin(
 ) -> (i32, i32) {
     match anchor {
         Anchor::BottomCenter { margin } => {
-            #[allow(
-                clippy::cast_possible_truncation,
-                reason = "values are bounded to the target range before the cast"
-            )]
             let margin_px = (f64::from(margin) * scale).round() as i32;
-            #[allow(
-                clippy::cast_possible_wrap,
-                reason = "values are bounded well inside the target range"
-            )]
             let x = monitor_pos.0 + (monitor_size.0 as i32 - window_size.0 as i32) / 2;
-            #[allow(
-                clippy::cast_possible_wrap,
-                reason = "values are bounded well inside the target range"
-            )]
             let y = monitor_pos.1 + monitor_size.1 as i32 - window_size.1 as i32 - margin_px;
             (x, y)
         }

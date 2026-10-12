@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::events::{Key, ModifiersState, MouseButton, NodeEventsExt, PointerEvent};
-use crate::kernel::{IntoNode, NodeBuilder, Role, container};
+use crate::events::{Key, MouseButton, NodeEventsExt, PointerEvent};
+use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived};
 use crate::style::{StateStyle, StyleAtom, StyleVariant, Token};
@@ -10,7 +10,7 @@ use super::super::interaction::InteractionState;
 use super::super::patterns::{ROW_SELECTED, ROW_SELECTED_HOVER};
 use super::super::shared::{DIMMED, disabled_a11y, reactive_style_state};
 use super::chrome::{ContextKind, TableChrome};
-use super::columns::{CellSpec, flex_cell};
+use super::header::track_layout;
 use super::hscroll::HScroll;
 use super::select;
 use super::state::{RowEq, TableState};
@@ -53,6 +53,9 @@ pub(super) struct RowSpec {
     pub disabled: Option<Signal<bool>>,
 }
 
+const STRIPE: Token = Token::SurfaceInset;
+const NUMERIC_CLASS: &str = "tabular-nums";
+
 static REST: &[StyleAtom] = &[];
 static HOVER: &[StyleAtom] = &[Token::SurfaceHover.bg()];
 static PRESSED: &[StyleAtom] = &[Token::SurfacePressed.bg()];
@@ -74,8 +77,6 @@ static SELECTED_ROW: StyleVariant = StyleVariant::new(
         SELECTED_DISABLED,
     ),
 );
-const STRIPE: Token = Token::SurfaceInset;
-const NUMERIC_CLASS: &str = "tabular-nums";
 
 pub(super) fn body_row<Row: 'static>(
     state: TableState<Row>,
@@ -83,8 +84,8 @@ pub(super) fn body_row<Row: 'static>(
     chrome: TableChrome<Row>,
     hscroll: HScroll,
 ) -> impl Fn(usize, &u32) -> NodeBuilder {
-    move |visible_pos: usize, row_index: &u32| {
-        build_row(&state, spec, &chrome, hscroll, (visible_pos, *row_index))
+    move |visible_pos: usize, &row_index: &u32| {
+        build_row(&state, spec, &chrome, hscroll, (visible_pos, row_index))
     }
 }
 
@@ -93,9 +94,8 @@ fn build_row<Row: 'static>(
     spec: RowSpec,
     chrome: &TableChrome<Row>,
     hscroll: HScroll,
-    slot: (usize, u32),
+    (visible_pos, row_index): (usize, u32),
 ) -> NodeBuilder {
-    let (visible_pos, row_index) = slot;
     let row_height = spec.row_height;
     if state.rows().peek().get(row_index as usize).is_none() {
         return container();
@@ -127,17 +127,13 @@ fn build_row<Row: 'static>(
     if spec.striped && visible_pos % 2 == 1 {
         frame = frame.class(STRIPE.bg());
     }
+    let target = (row_index, spec.disabled);
     let cells = row_states(cells, is_selected, spec.disabled).pointer_down(select_pointer(
         state.clone(),
         chrome.clone(),
-        (row_index, spec.disabled),
+        target,
     ));
-    frame.child(activate_key(
-        cells,
-        state,
-        chrome,
-        (row_index, spec.disabled),
-    ))
+    frame.child(activate_key(cells, state, chrome, target))
 }
 
 fn activate_key<Row: 'static>(
@@ -197,20 +193,16 @@ fn row_cells<Row: 'static>(
             .visible_columns()
             .into_iter()
             .map(|(def_index, column)| {
-                let override_px = layout.widths.get(column.id()).copied();
-                let cell = body_cell(
-                    column.cell_render().map(|render| render(live_row)),
-                    def_index + offset,
-                    flex_cell(CellSpec {
-                        policy: column.col_width(),
-                        override_px,
-                        height: spec.row_height,
-                        clip: true,
-                        min_px: column.min_px(),
-                        align: column.alignment(),
-                        pad_x: spec.pad_x,
-                    }),
-                );
+                let content = column.cell_render().map(|render| render(live_row));
+                let cell = container()
+                    .role(Role::GridCell)
+                    .column_index(def_index + offset + 1)
+                    .layout(column.cell_layout(
+                        layout.widths.get(column.id()).copied(),
+                        spec.row_height,
+                        Some(spec.pad_x),
+                    ))
+                    .child(content.unwrap_or_else(|| Box::new(container())));
                 if column.is_numeric() {
                     cell.class(NUMERIC_CLASS)
                 } else {
@@ -228,21 +220,6 @@ fn row_layout(height: f32, pad_x: f32) -> LayoutStyle {
         .align_items(AlignItems::Center)
         .padding_x(pad_x)
         .overflow_x(Overflow::Hidden)
-}
-
-fn track_layout(height: f32) -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .grow(1.0)
-        .height(height)
-        .align_items(AlignItems::Center)
-}
-
-fn body_cell(content: Option<Box<dyn IntoNode>>, index: usize, layout: LayoutStyle) -> NodeBuilder {
-    container()
-        .role(Role::GridCell)
-        .column_index(index + 1)
-        .layout(layout)
-        .child(content.unwrap_or_else(|| Box::new(container())))
 }
 
 fn select_pointer<Row: 'static>(
@@ -272,22 +249,15 @@ fn select_pointer<Row: 'static>(
         {
             return;
         }
-        state.apply_click(row_index, event.modifiers);
-        if !(event.modifiers.shift() || event.modifiers.ctrl() || event.modifiers.meta()) {
+        let modifiers = event.modifiers;
+        if modifiers.shift() {
+            state.select_range_to(row_index);
+        } else if modifiers.ctrl() || modifiers.meta() {
+            state.toggle_selected(row_index);
+        } else {
+            state.select_only(row_index);
             chrome.activate(&state, row_index);
         }
         event.stop_propagation();
-    }
-}
-
-impl<Row: 'static> TableState<Row> {
-    fn apply_click(&self, row_index: u32, modifiers: ModifiersState) {
-        if modifiers.shift() {
-            self.select_range_to(row_index);
-        } else if modifiers.ctrl() || modifiers.meta() {
-            self.toggle_selected(row_index);
-        } else {
-            self.select_only(row_index);
-        }
     }
 }

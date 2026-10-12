@@ -52,13 +52,14 @@ fn shortcuts_copy_cut_paste_and_restore_unicode() {
                 .expect("field layout");
             let mut router = EventRouter::new();
             router.set_focus(&mut cx, Some(root));
+            let plain = ModifiersState::empty();
             for (key, shift, expected, clipboard) in [
-                ("a", false, original, ""),
-                ("c", false, original, original),
-                ("x", false, "", original),
-                ("v", false, original, original),
-                ("z", false, "", original),
-                ("Z", true, original, original),
+                ("a", plain, original, ""),
+                ("c", plain, original, original),
+                ("x", plain, "", original),
+                ("v", plain, original, original),
+                ("z", plain, "", original),
+                ("Z", ModifiersState::SHIFT, original, original),
             ] {
                 router.route(
                     &mut cx,
@@ -66,12 +67,7 @@ fn shortcuts_copy_cut_paste_and_restore_unicode() {
                     ShellEvent::Key(KeyEvent::new(KeyEventInit {
                         key: LogicalKey::character(key),
                         physical: PhysicalKey::Unidentified,
-                        modifiers: modifiers
-                            | if shift {
-                                ModifiersState::SHIFT
-                            } else {
-                                ModifiersState::empty()
-                            },
+                        modifiers: modifiers | shift,
                         repeat: false,
                         phase: KeyPhase::Down,
                         text: None,

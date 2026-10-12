@@ -3,88 +3,104 @@
 use crate::renderer::frame_upload::UploadedRange;
 use crate::renderer::scene_paint::PaintCtx;
 
-mod setup;
+pub(crate) mod setup;
 
-use setup::{
-    UNIT_QUAD_VERTEX_COUNT, pipeline, shader, stops_bind_group, stops_layout, uniform_bind_group,
-    uniform_layout, unit_quad,
+use setup::{QuadDesc, QuadPipeline, buffer_group, buffer_layout, clipped_pass};
+
+const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
+    array_stride: core::mem::size_of::<crate::renderer::scene_instance::FillInstance>() as u64,
+    step_mode: wgpu::VertexStepMode::Instance,
+    attributes: &wgpu::vertex_attr_array![
+        1 => Float32x4,
+        2 => Float32x4,
+        3 => Float32x4,
+        4 => Float32x4,
+        5 => Uint32x4,
+        6 => Float32x4,
+        7 => Float32x4,
+        8 => Float32x4,
+        9 => Float32x4,
+        10 => Float32x4,
+        11 => Float32x4,
+    ],
 };
 
 pub(crate) struct FillPipeline {
-    format: wgpu::TextureFormat,
-    pipeline: wgpu::RenderPipeline,
+    quad: QuadPipeline,
     uniform_layout: wgpu::BindGroupLayout,
     stops_layout: wgpu::BindGroupLayout,
-    unit_quad: wgpu::Buffer,
 }
 
 impl FillPipeline {
     pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader = shader(device);
-        let uniform_layout = uniform_layout(device);
-        let stops_layout = stops_layout(device);
-        let pipeline = pipeline(device, format, &shader, &uniform_layout, &stops_layout);
-        let unit_quad = unit_quad(device);
-        Self {
+        let uniform_layout = buffer_layout(
+            device,
+            "sigil-renderer fill paint uniform layout",
+            wgpu::ShaderStages::VERTEX,
+            wgpu::BufferBindingType::Uniform,
+        );
+        let stops_layout = buffer_layout(
+            device,
+            "sigil-renderer fill paint stops layout",
+            wgpu::ShaderStages::FRAGMENT,
+            wgpu::BufferBindingType::Storage { read_only: true },
+        );
+        let quad = QuadPipeline::new(
+            device,
             format,
-            pipeline,
+            QuadDesc {
+                label: "sigil-renderer fill paint",
+                wgsl: include_str!("fill_paint.wgsl"),
+                groups: &[Some(&uniform_layout), Some(&stops_layout)],
+                instance: INSTANCE_LAYOUT,
+                fs_entry: "fs_main",
+                blend: wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+            },
+        );
+        Self {
+            quad,
             uniform_layout,
             stops_layout,
-            unit_quad,
         }
     }
 
     pub(crate) const fn format(&self) -> wgpu::TextureFormat {
-        self.format
+        self.quad.format
     }
 
     pub(crate) fn paint_uploaded(
         &self,
-        ctx: PaintCtx<'_>,
+        mut ctx: PaintCtx<'_>,
         instances: UploadedRange,
         stops: &UploadedRange,
         uniform: wgpu::BufferBinding<'_>,
     ) {
-        let PaintCtx {
-            device,
-            encoder,
-            view,
-            viewport,
-            clip,
-            scale,
-            ..
-        } = ctx;
-        let uniform_bg = uniform_bind_group(device, &self.uniform_layout, uniform);
-        let stops_bg = stops_bind_group(device, &self.stops_layout, stops);
-
-        let pass = encoder.begin_render_pass(
-            "sigil-renderer fill paint pass",
-            &wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
+        let uniform_bg = buffer_group(
+            ctx.device,
+            "sigil-renderer fill paint uniform bind group",
+            &self.uniform_layout,
+            uniform,
+        );
+        let stops_bg = buffer_group(
+            ctx.device,
+            "sigil-renderer fill paint stops bind group",
+            &self.stops_layout,
+            wgpu::BufferBinding {
+                buffer: &stops.buffer,
+                offset: stops.bytes.start,
+                size: wgpu::BufferSize::new(stops.bytes.end - stops.bytes.start),
             },
         );
-        if !crate::renderer::scissor::apply(pass, clip, scale, viewport) {
+        let Some(pass) = clipped_pass(&mut ctx, "sigil-renderer fill paint pass") else {
             return;
-        }
-        pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &uniform_bg, &[]);
-        pass.set_bind_group(1, &stops_bg, &[]);
-        pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..instances.count);
+        };
+        self.quad.draw(
+            pass,
+            &[&uniform_bg, &stops_bg],
+            &[],
+            instances.buffer.slice(instances.bytes),
+            instances.count,
+        );
     }
 }
 

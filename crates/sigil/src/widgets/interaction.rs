@@ -1,5 +1,4 @@
-use crate::events::MouseButton;
-use crate::events::{KeyEvent, NodeEventsExt, PointerEvent};
+use crate::events::{KeyEvent, MouseButton, NodeEventsExt, PointerEvent};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 use crate::style::{FocusRing, NodeStyleExt, StyleState};
@@ -76,19 +75,16 @@ impl InteractionState {
     pub(crate) fn observe_style(self, node: NodeBuilder) -> NodeBuilder {
         node.focus_in(move || self.on_focus_in())
             .focus_out(move || self.on_focus_out())
-            .pointer_enter(move |_| self.set_hovered(true))
-            .pointer_leave(move |_| {
-                self.set_hovered(false);
-                self.set_pressed(false);
-            })
+            .pointer_enter(move |_| set_if_changed(self.hovered, true))
+            .pointer_leave(move |_| self.leave())
             .pointer_down(move |event| {
                 if event.button == Some(MouseButton::Left) {
-                    self.set_pressed(true);
+                    set_if_changed(self.pressed, true);
                 }
             })
             .pointer_up(move |event| {
                 if event.button == Some(MouseButton::Left) {
-                    self.set_pressed(false);
+                    set_if_changed(self.pressed, false);
                 }
             })
     }
@@ -98,7 +94,7 @@ impl InteractionState {
             return false;
         }
         let was_pressed = self.pressed.peek();
-        self.set_pressed(false);
+        set_if_changed(self.pressed, false);
         if self.enabled {
             event.stop_propagation();
         }
@@ -118,53 +114,42 @@ impl InteractionState {
 
     fn pointer_enter(self, event: &mut PointerEvent) {
         if self.enabled {
-            self.set_hovered(true);
+            set_if_changed(self.hovered, true);
             event.stop_propagation();
         }
     }
 
     fn pointer_leave(self, event: &mut PointerEvent) {
         if self.enabled {
-            self.set_hovered(false);
-            self.set_pressed(false);
+            self.leave();
             event.stop_propagation();
         }
+    }
+
+    fn leave(self) {
+        set_if_changed(self.hovered, false);
+        set_if_changed(self.pressed, false);
     }
 
     fn pointer_down(self, event: &mut PointerEvent) {
         if self.enabled && event.button == Some(MouseButton::Left) {
-            self.set_pressed(true);
+            set_if_changed(self.pressed, true);
             event.stop_propagation();
         }
     }
 
-    fn set_hovered(self, next: bool) {
-        set_if_changed(self.hovered, next);
-    }
-
-    fn set_pressed(self, next: bool) {
-        set_if_changed(self.pressed, next);
-    }
-
-    fn set_focused(self, next: bool) {
-        set_if_changed(self.focused, next);
-    }
-
     fn on_focus_in(self) {
-        self.set_focused(true);
+        set_if_changed(self.focused, true);
         set_if_changed(self.ring_visible, crate::events::focus_from_keyboard());
     }
 
     fn on_focus_out(self) {
-        self.set_focused(false);
+        set_if_changed(self.focused, false);
         set_if_changed(self.ring_visible, false);
     }
 }
 
-fn set_if_changed<T>(signal: Signal<T>, next: T)
-where
-    T: Clone + PartialEq + 'static,
-{
+fn set_if_changed<T: Clone + PartialEq + 'static>(signal: Signal<T>, next: T) {
     if signal.peek() != next {
         signal.set(next);
     }

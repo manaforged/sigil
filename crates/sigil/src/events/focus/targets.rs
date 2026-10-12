@@ -73,22 +73,13 @@ impl FocusManager {
 }
 
 pub(crate) fn is_self_or_ancestor(cx: &Cx, ancestor: NodeId, id: NodeId) -> bool {
-    let mut current = Some(id);
-    while let Some(node_id) = current {
-        if node_id == ancestor {
-            return true;
-        }
-        current = cx.parent(node_id);
-    }
-    false
+    std::iter::successors(Some(id), |node| cx.parent(*node)).any(|node| node == ancestor)
 }
 
 fn document_root(cx: &Cx, id: NodeId) -> NodeId {
-    let mut current = id;
-    while let Some(parent) = cx.parent(current) {
-        current = parent;
-    }
-    current
+    std::iter::successors(Some(id), |node| cx.parent(*node))
+        .last()
+        .unwrap_or(id)
 }
 
 const fn rects_intersect(a: Rect, b: Rect) -> bool {

@@ -8,22 +8,14 @@ use super::HlSpan;
 use super::grapheme::col_count;
 use crate::style::{TextFace, TextRun, Token};
 
-const LANGUAGES: &str = include_str!("highlight/languages.toml");
-
-static CATALOG: LazyLock<Vec<Lang>> = LazyLock::new(|| catalog(LANGUAGES));
+static CATALOG: LazyLock<Vec<Lang>> =
+    LazyLock::new(|| catalog(include_str!("highlight/languages.toml")));
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Highlight {
     pub start: usize,
     pub end: usize,
     pub token: Token,
-}
-
-#[derive(Default)]
-struct Classes {
-    comment: Option<Token>,
-    string: Option<Token>,
-    number: Option<Token>,
 }
 
 #[derive(Default)]
@@ -36,7 +28,9 @@ struct Lang {
     words: HashMap<String, Token>,
     prefixes: Vec<(String, Token)>,
     markers: Vec<(String, Token)>,
-    classes: Classes,
+    comment: Option<Token>,
+    string: Option<Token>,
+    number: Option<Token>,
 }
 
 #[must_use]
@@ -180,11 +174,9 @@ fn lang(name: &str, spec: &Table, style: &impl Fn(&str) -> Option<Token>) -> Lan
         words: grouped(spec, "words", style).into_iter().collect(),
         prefixes: longest_first(spec, "prefixes", style),
         markers: longest_first(spec, "markers", style),
-        classes: Classes {
-            comment: style("comment"),
-            string: style("string"),
-            number: style("number"),
-        },
+        comment: style("comment"),
+        string: style("string"),
+        number: style("number"),
     }
 }
 
@@ -274,13 +266,13 @@ impl Lang {
         let found = line[i..].find(close).filter(|_| !close.is_empty());
         marks.open = found.is_none();
         let end = found.map_or(line.len(), |at| i + at + close.len());
-        marks.push(i, end, self.classes.comment)
+        marks.push(i, end, self.comment)
     }
 
     fn token_at(&self, line: &str, i: usize, ch: char, marks: &mut Marks) -> usize {
         let rest = &line[i..];
         if self.line_comments.iter().any(|mark| rest.starts_with(mark)) {
-            return marks.push(i, line.len(), self.classes.comment);
+            return marks.push(i, line.len(), self.comment);
         }
         if let Some((opener, _)) = self
             .block_comment
@@ -288,15 +280,15 @@ impl Lang {
             .filter(|(opener, _)| rest.starts_with(opener.as_str()))
         {
             marks.open = true;
-            return marks.push(i, i + opener.len(), self.classes.comment);
+            return marks.push(i, i + opener.len(), self.comment);
         }
         if self.strings.contains(&ch) {
             let end = string_end(line, i + ch.len_utf8(), ch);
-            return marks.push(i, end, self.classes.string);
+            return marks.push(i, end, self.string);
         }
         if ch.is_ascii_digit() {
             let end = scan(line, i, |c| is_word(c) || c == '.');
-            return marks.push(i, end, self.classes.number.filter(|_| self.numbers));
+            return marks.push(i, end, self.number.filter(|_| self.numbers));
         }
         if is_word(ch) {
             let end = scan(line, i, is_word);

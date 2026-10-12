@@ -1,3 +1,5 @@
+#![allow(clippy::indexing_slicing)]
+
 use super::*;
 
 impl LayoutNode {
@@ -7,212 +9,13 @@ impl LayoutNode {
 }
 
 impl LayoutForest {
-    pub(crate) fn empty(&self) -> bool {
-        self.count() == 0
-    }
-
     pub(crate) const fn slab(&self) -> usize {
         self.nodes.len()
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum LayoutPass {
-    Measure,
-    Arrange,
-}
-
-impl AvailableSpace {
-    #[must_use]
-    pub(crate) const fn unbounded() -> Self {
-        Self {
-            w: SpaceConstraint::MaxContent,
-            h: SpaceConstraint::MaxContent,
-        }
-    }
-}
-
-#[test]
-fn empty_forest_has_no_nodes() {
-    let f = LayoutForest::new();
-    assert!(f.empty());
-    assert_eq!(f.count(), 0);
-    assert_eq!(f.slab(), 0);
-}
-
-#[test]
-fn insert_returns_indexable_id() {
-    let mut f = LayoutForest::new();
-    let id = f.insert(None, StyleData::default());
-    assert_eq!(id.slot(), 0);
-    assert_eq!(id.era(), 0);
-    assert_eq!(f.count(), 1);
-    assert!(f.node(id).is_some());
-    assert_eq!(f.node(id).unwrap().children(), &[]);
-}
-
-#[test]
-fn attach_records_children_in_insert_order() {
-    let mut f = LayoutForest::new();
-    let parent = f.insert(None, StyleData::default());
-    let a = f.insert(None, StyleData::default());
-    let b = f.insert(None, StyleData::default());
-    let c = f.insert(None, StyleData::default());
-    f.attach(parent, a).unwrap();
-    f.attach(parent, b).unwrap();
-    f.attach(parent, c).unwrap();
-    let kids = f.node(parent).unwrap().children();
-    assert_eq!(kids, &[a, b, c]);
-}
-
-#[test]
-fn freed_slot_bumps_generation_and_invalidates_stale_id() {
-    let mut f = LayoutForest::new();
-    let first = f.insert(None, StyleData::default());
-    assert_eq!(first.era(), 0);
-    f.free(first).unwrap();
-    assert!(f.node(first).is_none());
-    let reused = f.insert(None, StyleData::default());
-    assert_eq!(reused.slot(), first.slot());
-    assert_eq!(reused.era(), 1);
-    assert!(f.node(reused).is_some());
-    assert!(f.node(first).is_none());
-}
-
-#[test]
-fn free_then_reinsert_does_not_grow_slab() {
-    let mut f = LayoutForest::new();
-    let a = f.insert(None, StyleData::default());
-    let b = f.insert(None, StyleData::default());
-    assert_eq!(f.slab(), 2);
-    f.free(a).unwrap();
-    let _c = f.insert(None, StyleData::default());
-    assert_eq!(f.slab(), 2);
-    let _ = b;
-}
-
-#[test]
-fn computed_box_slab_is_independently_indexable() {
-    let mut f = LayoutForest::new();
-    let a = f.insert(None, StyleData::default());
-    let b = f.insert(None, StyleData::default());
-    let box_a = ComputedBox {
-        x: 1.0,
-        y: 2.0,
-        w: 3.0,
-        h: 4.0,
-    };
-    let box_b = ComputedBox {
-        x: 5.0,
-        y: 6.0,
-        w: 7.0,
-        h: 8.0,
-    };
-    f.write(a, box_a).unwrap();
-    f.write(b, box_b).unwrap();
-    assert_eq!(f.boxed(a), Some(box_a));
-    assert_eq!(f.boxed(b), Some(box_b));
-    let updated = ComputedBox {
-        x: 9.0,
-        ..ComputedBox::default()
-    };
-    f.write(a, updated).unwrap();
-    assert_eq!(f.boxed(a), Some(updated));
-    assert_eq!(f.boxed(b), Some(box_b));
-}
-
-#[test]
-fn write_to_stale_id_errors() {
-    let mut f = LayoutForest::new();
-    let id = f.insert(None, StyleData::default());
-    f.free(id).unwrap();
-    let err = f.write(id, ComputedBox::default()).unwrap_err();
-    assert!(matches!(err, LayoutError::LayoutInvalid(_)));
-}
-
-#[test]
-fn node_ref_exposes_children_and_kernel_link() {
-    let mut f = LayoutForest::new();
-    let parent = f.insert(None, StyleData::default());
-    let child = f.insert(None, StyleData::default());
-    f.attach(parent, child).unwrap();
-    let n = f.refer(parent).unwrap();
-    assert_eq!(n.id(), parent);
-    assert_eq!(n.children(), &[child]);
-    assert!(n.kernel().is_none());
-}
-
-#[test]
-fn measure_scope_borrows_forest_and_constraints() {
-    struct NullText;
-    impl TextMeasure for NullText {
-        fn measure(
-            &self,
-            _: &crate::kernel::TextContent,
-            _: crate::geometry::Size,
-        ) -> crate::geometry::LogicalSize {
-            crate::geometry::LogicalSize::default()
-        }
-    }
-    let f = LayoutForest::new();
-    let t = NullText;
-    let avail = AvailableSpace::definite(100.0, 50.0);
-    let scope = MeasureScope::new(&f, &t, avail);
-    assert_eq!(scope.available(), avail);
-    assert!(scope.forest().empty());
-    let _ = scope.text();
-}
-
-#[test]
-fn available_space_helpers_round_trip() {
-    let a = AvailableSpace::definite(10.0, 20.0);
-    match (a.w, a.h) {
-        (SpaceConstraint::Definite(w), SpaceConstraint::Definite(h)) => {
-            assert!((w - 10.0).abs() < f32::EPSILON);
-            assert!((h - 20.0).abs() < f32::EPSILON);
-        }
-        _ => panic!("expected definite axes"),
-    }
-    let u = AvailableSpace::unbounded();
-    assert!(matches!(u.w, SpaceConstraint::MaxContent));
-    assert!(matches!(u.h, SpaceConstraint::MaxContent));
-}
-
-#[test]
-fn layout_pass_variants_are_distinct() {
-    assert_ne!(LayoutPass::Measure, LayoutPass::Arrange);
-}
-
-#[test]
-fn node_ref_style_returns_style_passed_at_insert() {
-    let mut f = LayoutForest::new();
-    let style = StyleData {
-        flex_grow: 2.5,
-        display: crate::layout::style_data::Display::Flex,
-        ..StyleData::default()
-    };
-    let id = f.insert(None, style.clone());
-    let n = f.refer(id).unwrap();
-    assert_eq!(n.style(), &style);
-    assert!((n.style().flex_grow - 2.5).abs() < f32::EPSILON);
-    assert_eq!(n.style().display, crate::layout::style_data::Display::Flex);
-}
-
-#[test]
-fn freed_slot_resets_style_to_default() {
-    let mut f = LayoutForest::new();
-    let style = StyleData {
-        flex_grow: 7.0,
-        ..StyleData::default()
-    };
-    let id = f.insert(None, style);
-    f.free(id).unwrap();
-    let reused = f.insert(None, StyleData::default());
-    let n = f.refer(reused).unwrap();
-    assert!((n.style().flex_grow - 0.0).abs() < f32::EPSILON);
-}
-
 struct NullText;
+
 impl TextMeasure for NullText {
     fn measure(
         &self,
@@ -223,90 +26,119 @@ impl TextMeasure for NullText {
     }
 }
 
-#[test]
-fn measure_scope_can_scatter_write_without_mut() {
+fn forest(count: usize) -> (LayoutForest, Vec<LocalId>) {
     let mut f = LayoutForest::new();
-    let id = f.insert(None, StyleData::default());
-    let t = NullText;
-    let scope = MeasureScope::new(&f, &t, AvailableSpace::unbounded());
-    let value = ComputedBox {
-        x: 1.0,
-        y: 2.0,
-        w: 3.0,
-        h: 4.0,
+    let ids = (0..count)
+        .map(|_| f.insert(None, StyleData::default()))
+        .collect();
+    (f, ids)
+}
+
+const fn cb(x: f32, y: f32, w: f32, h: f32) -> ComputedBox {
+    ComputedBox { x, y, w, h }
+}
+
+const UNBOUNDED: AvailableSpace = AvailableSpace {
+    w: SpaceConstraint::MaxContent,
+    h: SpaceConstraint::MaxContent,
+};
+
+#[test]
+fn insert_and_attach_build_an_indexable_tree() {
+    let (empty, _) = forest(0);
+    assert_eq!((empty.count(), empty.slab()), (0, 0));
+    let (mut tree, ids) = forest(4);
+    let [parent, a, b, c] = ids[..] else {
+        panic!("four ids")
     };
-    scope.write(id, value);
-    assert_eq!(f.boxed(id), Some(value));
+    assert_eq!((parent.slot(), parent.era()), (0, 0));
+    assert_eq!(tree.node(parent).unwrap().children(), &[]);
+    for child in [a, b, c] {
+        tree.attach(parent, child).unwrap();
+    }
+    assert_eq!(tree.node(parent).unwrap().children(), &[a, b, c]);
+    let node = tree.refer(parent).unwrap();
+    assert_eq!(node.id(), parent);
+    assert_eq!(node.children(), &[a, b, c]);
+    assert!(node.kernel().is_none());
+    let style = StyleData {
+        flex_grow: 2.5,
+        display: crate::layout::style_data::Display::Flex,
+        ..StyleData::default()
+    };
+    let styled = tree.insert(None, style.clone());
+    assert_eq!(tree.refer(styled).unwrap().style(), &style);
 }
 
 #[test]
-fn scatter_writes_to_distinct_ids_are_independent() {
-    let mut forest = LayoutForest::new();
-    let a = forest.insert(None, StyleData::default());
-    let b = forest.insert(None, StyleData::default());
-    let c = forest.insert(None, StyleData::default());
-    let text = NullText;
-    let scope = MeasureScope::new(&forest, &text, AvailableSpace::unbounded());
-    let ba = ComputedBox {
-        x: 1.0,
-        y: 1.0,
-        w: 1.0,
-        h: 1.0,
-    };
-    let bb = ComputedBox {
-        x: 2.0,
-        y: 2.0,
-        w: 2.0,
-        h: 2.0,
-    };
-    let bc = ComputedBox {
-        x: 3.0,
-        y: 3.0,
-        w: 3.0,
-        h: 3.0,
-    };
-    scope.write(a, ba);
-    scope.write(b, bb);
-    scope.write(c, bc);
-    assert_eq!(forest.boxed(a), Some(ba));
-    assert_eq!(forest.boxed(b), Some(bb));
-    assert_eq!(forest.boxed(c), Some(bc));
-}
-
-#[test]
-fn write_to_stale_id_is_silent_no_op() {
+fn freed_slot_is_reused_with_a_new_era_and_default_style() {
     let mut f = LayoutForest::new();
-    let id = f.insert(None, StyleData::default());
-    let seeded = ComputedBox {
-        x: 42.0,
-        ..ComputedBox::default()
-    };
-    f.write(id, seeded).unwrap();
-    f.free(id).unwrap();
-    let reused = f.insert(None, StyleData::default());
-    assert_eq!(reused.slot(), id.slot());
-    assert_ne!(reused.era(), id.era());
-    let t = NullText;
-    let scope = MeasureScope::new(&f, &t, AvailableSpace::unbounded());
-    scope.write(
-        id,
-        ComputedBox {
-            x: -1.0,
-            ..ComputedBox::default()
+    let first = f.insert(
+        None,
+        StyleData {
+            flex_grow: 7.0,
+            ..StyleData::default()
         },
     );
+    let _other = f.insert(None, StyleData::default());
+    f.write(first, cb(42.0, 0.0, 0.0, 0.0)).unwrap();
+    f.free(first).unwrap();
+    assert!(f.node(first).is_none());
+    assert!(matches!(
+        f.write(first, ComputedBox::default()).unwrap_err(),
+        LayoutError::LayoutInvalid(_)
+    ));
+    let reused = f.insert(None, StyleData::default());
+    assert_eq!((reused.slot(), reused.era()), (first.slot(), 1));
+    assert_eq!(f.slab(), 2);
+    assert!(f.node(reused).is_some());
+    assert!(f.node(first).is_none());
+    let n = f.refer(reused).unwrap();
+    assert!((n.style().flex_grow - 0.0).abs() < f32::EPSILON);
+    assert_eq!(n.style().display, crate::layout::style_data::Display::Block);
+    let scope = MeasureScope::new(&f, &NullText, UNBOUNDED);
+    scope.write(first, cb(-1.0, 0.0, 0.0, 0.0));
     assert_eq!(f.boxed(reused), Some(ComputedBox::default()));
-    assert!(f.boxed(id).is_none());
+    assert!(f.boxed(first).is_none());
 }
 
 #[test]
-fn node_ref_style_on_stale_id_falls_back_to_default() {
-    let mut f = LayoutForest::new();
-    let id = f.insert(None, StyleData::default());
-    f.free(id).unwrap();
-    let live = f.insert(None, StyleData::default());
-    let n = f.refer(live).unwrap();
-    assert_eq!(n.style().display, crate::layout::style_data::Display::Block);
+fn boxes_are_written_per_id_directly_and_through_a_scope() {
+    let (mut f, ids) = forest(3);
+    let boxes = [cb(1.0, 2.0, 3.0, 4.0), cb(5.0, 6.0, 7.0, 8.0)];
+    for (id, value) in ids.iter().zip(boxes) {
+        f.write(*id, value).unwrap();
+    }
+    assert_eq!(f.boxed(ids[0]), Some(boxes[0]));
+    assert_eq!(f.boxed(ids[1]), Some(boxes[1]));
+    let updated = cb(9.0, 0.0, 0.0, 0.0);
+    f.write(ids[0], updated).unwrap();
+    assert_eq!(f.boxed(ids[0]), Some(updated));
+    assert_eq!(f.boxed(ids[1]), Some(boxes[1]));
+    let avail = AvailableSpace::definite(100.0, 50.0);
+    let scope = MeasureScope::new(&f, &NullText, avail);
+    assert_eq!(scope.available(), avail);
+    assert_eq!(scope.forest().count(), 3);
+    let _ = scope.text();
+    let scattered = [1.0, 2.0, 3.0].map(|v| cb(v, v, v, v));
+    for (id, value) in ids.iter().zip(scattered) {
+        scope.write(*id, value);
+    }
+    for (id, value) in ids.iter().zip(scattered) {
+        assert_eq!(f.boxed(*id), Some(value));
+    }
+}
+
+#[test]
+fn definite_space_keeps_both_axes() {
+    let a = AvailableSpace::definite(10.0, 20.0);
+    match (a.w, a.h) {
+        (SpaceConstraint::Definite(w), SpaceConstraint::Definite(h)) => {
+            assert!((w - 10.0).abs() < f32::EPSILON);
+            assert!((h - 20.0).abs() < f32::EPSILON);
+        }
+        _ => panic!("expected definite axes"),
+    }
 }
 
 #[test]

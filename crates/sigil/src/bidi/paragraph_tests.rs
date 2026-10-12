@@ -61,11 +61,12 @@ fn visual_order_for_line_diverges_from_paragraph_wide_reorder_at_a_wrap_point() 
 }
 
 #[test]
-fn latin_only_all_zero() {
-    let input = "hello world";
-    let levels = paragraph_levels(input);
-    assert_eq!(levels.len(), input.len());
-    assert!(levels.iter().all(|&l| l == 0), "Latin must be level 0");
+fn latin_and_numeric_input_is_all_zero() {
+    for input in ["hello world", "123 456", "caf\u{00E9}"] {
+        let levels = paragraph_levels(input);
+        assert_eq!(levels.len(), input.len());
+        assert!(levels.iter().all(|&l| l == 0), "{input} must be level 0");
+    }
 }
 
 #[test]
@@ -113,29 +114,10 @@ fn arabic_with_ascii_neutrals() {
 }
 
 #[test]
-fn all_numeric_is_zero() {
-    let input = "123 456";
-    let levels = paragraph_levels(input);
-    assert_eq!(levels.len(), input.len());
-    assert!(
-        levels.iter().all(|&l| l == 0),
-        "ASCII numerics must be level 0 (LTR paragraph)",
-    );
-}
-
-#[test]
 fn lrm_mark_does_not_panic() {
     let input = "ab\u{200E}cd";
     let levels = paragraph_levels(input);
     assert_eq!(levels.len(), input.len());
     assert_eq!(levels[0], 0);
     assert_eq!(levels[1], 0);
-}
-
-#[test]
-fn latin_extended_stays_fast_path() {
-    let input = "caf\u{00E9}";
-    let levels = paragraph_levels(input);
-    assert_eq!(levels.len(), input.len());
-    assert!(levels.iter().all(|&l| l == 0));
 }

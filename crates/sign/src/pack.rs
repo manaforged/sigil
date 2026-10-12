@@ -78,15 +78,15 @@ pub(crate) fn one_component(name: &str) -> Result<&Path, PackError> {
 }
 
 fn relative_inside(root: &Path, rel: &Path) -> Result<PathBuf, PackError> {
-    if rel.is_absolute() {
-        return Err(PackError::Escape(rel.to_path_buf()));
+    let inside = !rel.is_absolute()
+        && rel
+            .components()
+            .all(|part| matches!(part, Component::Normal(_) | Component::CurDir));
+    if inside {
+        Ok(root.join(rel))
+    } else {
+        Err(PackError::Escape(rel.to_path_buf()))
     }
-    for part in rel.components() {
-        if !matches!(part, Component::Normal(_) | Component::CurDir) {
-            return Err(PackError::Escape(rel.to_path_buf()));
-        }
-    }
-    Ok(root.join(rel))
 }
 
 fn refuse_link(path: &Path) -> Result<fs::Metadata, PackError> {
@@ -145,10 +145,6 @@ fn previous_bundle(dest: &Path) -> bool {
             .is_ok_and(|plist| plist.contains(PLIST_MARKER))
 }
 
-fn mark_bundle(dest: &Path) -> Result<(), PackError> {
-    write_new(&dest.join(".sigil-pack"), b"sigil-pack\n", 0o644).map_err(PackError::Io)
-}
-
 fn prepare_dest(dest: &Path) -> Result<(), PackError> {
     let meta = match fs::symlink_metadata(dest) {
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
@@ -159,8 +155,7 @@ fn prepare_dest(dest: &Path) -> Result<(), PackError> {
         return Err(PackError::Occupied(dest.to_path_buf()));
     }
     if meta.is_dir() && previous_bundle(dest) {
-        fs::remove_dir_all(dest).map_err(PackError::Io)?;
-        return Ok(());
+        return fs::remove_dir_all(dest).map_err(PackError::Io);
     }
     if meta.is_dir() && fs::read_dir(dest).map_err(PackError::Io)?.next().is_none() {
         return Ok(());
@@ -168,13 +163,13 @@ fn prepare_dest(dest: &Path) -> Result<(), PackError> {
     Err(PackError::Occupied(dest.to_path_buf()))
 }
 
-fn info_plist(app: &AppBundle<'_>, with_icon: bool) -> String {
+fn info_plist(app: &AppBundle<'_>) -> String {
     let name = xml(app.name);
     let ident = xml(app.identifier);
     let version = xml(app.version);
     let exe = xml(app.exe_name);
     let min = xml(app.min_system);
-    let icon = if with_icon {
+    let icon = if app.icon.is_some() {
         "<key>CFBundleIconFile</key><string>icon.icns</string>\n"
     } else {
         ""
@@ -222,11 +217,10 @@ impl CodeSign<'_> {
             .args(self.args(path))
             .status()
             .map_err(PackError::Io)?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(PackError::Codesign(status.to_string()))
-        }
+        status
+            .success()
+            .then_some(())
+            .ok_or_else(|| PackError::Codesign(status.to_string()))
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -242,13 +236,9 @@ impl CodeSign<'_> {
         let mut args: Vec<OsString> = vec!["--force".into(), "--sign".into()];
         match self.identity {
             Some(identity) => {
-                args.push(identity.into());
-                args.push("--options".into());
-                args.push("runtime".into());
-                args.push("--timestamp".into());
+                args.extend([identity, "--options", "runtime", "--timestamp"].map(OsString::from));
                 if let Some(entitlements) = self.entitlements {
-                    args.push("--entitlements".into());
-                    args.push(entitlements.into());
+                    args.extend(["--entitlements".into(), entitlements.into()]);
                 }
             }
             None => args.push("-".into()),
@@ -284,7 +274,7 @@ pub fn macos_app(
     }
     write_new(
         &dest.join("Contents/Info.plist"),
-        info_plist(app, app.icon.is_some()).as_bytes(),
+        info_plist(app).as_bytes(),
         0o644,
     )
     .map_err(PackError::Io)?;
@@ -317,5 +307,5 @@ pub fn windows_dir(
     for copy in resources {
         copy_tree(copy.from, &relative_inside(dest, copy.to)?)?;
     }
-    mark_bundle(dest)
+    write_new(&dest.join(".sigil-pack"), b"sigil-pack\n", 0o644).map_err(PackError::Io)
 }

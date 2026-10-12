@@ -12,27 +12,11 @@ use super::selection::Picker;
 pub(super) const GUTTER_W: f32 = 56.0;
 pub(super) const ROW_INSET: f32 = space(2);
 
-const fn tones(kind: LineKind) -> (Option<Token>, Token, Option<Token>) {
+const fn look(kind: LineKind) -> (Option<Token>, Token, &'static str, char) {
     match kind {
-        LineKind::Removed => (Some(Token::Error3), Token::Error11, None),
-        LineKind::Added => (Some(Token::Success3), Token::Success11, None),
-        LineKind::Context | LineKind::Note => (None, Token::Gray11, None),
-    }
-}
-
-const fn line_state(kind: LineKind) -> &'static str {
-    match kind {
-        LineKind::Removed => "removed",
-        LineKind::Added => "added",
-        LineKind::Context | LineKind::Note => "unchanged",
-    }
-}
-
-const fn gutter_mark(kind: LineKind) -> char {
-    match kind {
-        LineKind::Removed => '-',
-        LineKind::Added => '+',
-        LineKind::Context | LineKind::Note => ' ',
+        LineKind::Removed => (Some(Token::Error3), Token::Error11, "removed", '-'),
+        LineKind::Added => (Some(Token::Success3), Token::Success11, "added", '+'),
+        LineKind::Context | LineKind::Note => (None, Token::Gray11, "unchanged", ' '),
     }
 }
 
@@ -72,25 +56,30 @@ pub(super) fn text_row(body: String, class: &'static str, tone: Token) -> NodeBu
         )
 }
 
-fn segments(cell: &Cell, fg: Token, hit: Option<Token>) -> Vec<NodeBuilder> {
+fn segments(cell: &Cell, fg: Token) -> Vec<NodeBuilder> {
     let marks = cell
         .language
         .and_then(|language| highlight(language, &cell.body).into_iter().next())
         .unwrap_or_default();
+    let len = cell.body.len();
     let part = |range: Range<usize>| {
         let slice = cell.body.get(range.clone()).unwrap_or_default().to_string();
-        container()
-            .layout(LayoutStyle::block().min_size(0.0, 0.0))
-            .child(
-                text(slice)
-                    .nowrap()
-                    .runs(text_runs(&marks, range))
-                    .ellipsize()
-                    .class("text-xs font-mono")
-                    .class(fg.text()),
-            )
+        let last = range.end == len;
+        let body = text(slice)
+            .nowrap()
+            .runs(text_runs(&marks, range))
+            .class("text-xs font-mono")
+            .class(fg.text());
+        if last {
+            container()
+                .layout(LayoutStyle::block().min_size(0.0, 0.0))
+                .child(body.ellipsize())
+        } else {
+            container()
+                .layout(LayoutStyle::block().shrink(0.0))
+                .child(body)
+        }
     };
-    let len = cell.body.len();
     let Some(range) = cell
         .range
         .clone()
@@ -98,22 +87,15 @@ fn segments(cell: &Cell, fg: Token, hit: Option<Token>) -> Vec<NodeBuilder> {
     else {
         return vec![part(0..len)];
     };
-    [
-        (0..range.start, false),
-        (range.clone(), true),
-        (range.end..len, false),
-    ]
-    .into_iter()
-    .filter(|(slice, _)| !slice.is_empty())
-    .map(|(slice, mark)| match hit.filter(|_| mark) {
-        Some(hit) => part(slice).class(hit.bg()),
-        None => part(slice),
-    })
-    .collect()
+    [0..range.start, range.clone(), range.end..len]
+        .into_iter()
+        .filter(|slice| !slice.is_empty())
+        .map(part)
+        .collect()
 }
 
 pub(super) fn source_row(cell: &Cell, picker: Option<Picker>) -> NodeBuilder {
-    let (bg, fg, hit) = tones(cell.kind);
+    let (bg, fg, state, mark) = look(cell.kind);
     let row = container().layout(
         LayoutStyle::flex_row()
             .fill_width()
@@ -126,19 +108,14 @@ pub(super) fn source_row(cell: &Cell, picker: Option<Picker>) -> NodeBuilder {
         Some(bg) => row.class(bg.bg()),
         None => row,
     };
-    let row = row
-        .role(Role::ListItem)
-        .description(line_state(cell.kind))
-        .child(
-            text(format!("{:>4} {} ", cell.number, gutter_mark(cell.kind)))
-                .nowrap()
-                .layout(LayoutStyle::block().width(GUTTER_W).shrink(0.0))
-                .class("text-xs font-mono")
-                .class(Token::Gray9.text()),
-        );
-    let row = segments(cell, fg, hit)
-        .into_iter()
-        .fold(row, NodeBuilder::child);
+    let row = row.role(Role::ListItem).description(state).child(
+        text(format!("{:>4} {} ", cell.number, mark))
+            .nowrap()
+            .layout(LayoutStyle::block().width(GUTTER_W).shrink(0.0))
+            .class("text-xs font-mono")
+            .class(Token::Gray9.text()),
+    );
+    let row = segments(cell, fg).into_iter().fold(row, NodeBuilder::child);
     match picker.filter(|_| cell.kind.is_change()) {
         Some(picker) => picker.line(row, cell.id),
         None => row,

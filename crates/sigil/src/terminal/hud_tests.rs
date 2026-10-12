@@ -3,12 +3,17 @@ use crate::hud::set;
 use crate::profile;
 use crate::terminal::paint::Grid;
 
-#[test]
-fn hud_paints_sparkline_and_last_frame() {
-    let _alone = crate::hud::TEST_LOCK
+fn hud_on() -> std::sync::MutexGuard<'static, ()> {
+    let alone = crate::hud::TEST_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     set(true);
+    alone
+}
+
+#[test]
+fn hud_paints_sparkline_and_last_frame() {
+    let _alone = hud_on();
     profile::begin_frame(profile::BackendStatus::TERMINAL);
     {
         let _span = profile::span(crate::profile::Phase::Effect);
@@ -26,10 +31,7 @@ fn hud_paints_sparkline_and_last_frame() {
 
 #[test]
 fn hud_stays_blank_without_frames() {
-    let _alone = crate::hud::TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    set(true);
+    let _alone = hud_on();
     profile::reset();
     let mut grid = Grid::new(80, 24);
     draw(&mut grid);
@@ -40,10 +42,7 @@ fn hud_stays_blank_without_frames() {
 #[test]
 fn hud_names_the_backend_fallback() {
     use crate::profile::{BackendKind, BackendStatus, FallbackCause};
-    let _alone = crate::hud::TEST_LOCK
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    set(true);
+    let _alone = hud_on();
     profile::begin_frame(BackendStatus {
         kind: BackendKind::Cpu,
         fallback: FallbackCause::NoAdapter,

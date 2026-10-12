@@ -118,15 +118,12 @@ impl Combobox {
             self.cursor.set(0);
             return;
         }
-        let current = self.cursor.peek();
-        let next = if delta.is_negative() {
-            current.saturating_sub(delta.unsigned_abs() as usize)
-        } else {
-            current
-                .saturating_add(usize::try_from(delta).unwrap_or_default())
-                .min(len - 1)
-        };
-        self.cursor.set(next);
+        let next = self
+            .cursor
+            .peek()
+            .saturating_add_signed(isize::try_from(delta).unwrap_or_default());
+        self.cursor
+            .set(if delta < 0 { next } else { next.min(len - 1) });
     }
 
     pub fn commit(self, index: usize) {
@@ -276,10 +273,10 @@ fn build_popup(state: Combobox, matches: Vec<(usize, String)>) -> NodeBuilder {
             .inset_top(FIELD_HEIGHT + POPUP_GAP)
             .inset_left(0.0),
     );
-    let mut list = container().layout(LayoutStyle::flex_column().fill_width().height(extent));
-    for (row, (index, label)) in matches.into_iter().enumerate() {
-        list = list.child(build_row(state, row, index, label));
-    }
+    let list = matches.into_iter().enumerate().fold(
+        container().layout(LayoutStyle::flex_column().fill_width().height(extent)),
+        |list, (row, (index, label))| list.child(build_row(state, row, index, label)),
+    );
     if count > MAX_VISIBLE {
         frame.child(scrolled(
             list,

@@ -3,11 +3,9 @@ use crate::layout::{LayoutError, StyleData};
 
 impl LayoutForest {
     pub(crate) fn free(&mut self, id: LocalId) -> Result<(), LayoutError> {
-        let slot = self.slot(id)?;
+        self.live_mut(id)?;
         self.detach(id);
-        let Some(entry) = self.nodes.get_mut(slot) else {
-            return Err(stale(id));
-        };
+        let entry = self.live_mut(id)?;
         let next_tag = entry.tag.wrapping_add(1);
         let children = std::mem::take(&mut entry.children);
         entry.alive = false;
@@ -17,7 +15,7 @@ impl LayoutForest {
         entry.parent = None;
         entry.tag = next_tag;
         self.orphan(id, &children);
-        self.forget(slot);
+        self.forget(id.index as usize);
         self.free.push(LocalId {
             index: id.index,
             tag: next_tag,
@@ -27,12 +25,8 @@ impl LayoutForest {
 
     #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn attach(&mut self, parent: LocalId, child: LocalId) -> Result<(), LayoutError> {
-        let _ = self.slot(child)?;
-        let slot = self.slot(parent)?;
-        let Some(entry) = self.nodes.get_mut(slot) else {
-            return Err(stale(parent));
-        };
-        entry.children.push(child);
+        self.live_mut(child)?;
+        self.live_mut(parent)?.children.push(child);
         self.adopt(parent, &[child]);
         self.invalidate(parent);
         Ok(())
@@ -44,12 +38,9 @@ impl LayoutForest {
         children: &[LocalId],
     ) -> Result<(), LayoutError> {
         for child in children {
-            let _ = self.slot(*child)?;
+            self.live_mut(*child)?;
         }
-        let slot = self.slot(parent)?;
-        let Some(entry) = self.nodes.get_mut(slot) else {
-            return Err(stale(parent));
-        };
+        let entry = self.live_mut(parent)?;
         if entry.children.as_slice() == children {
             return Ok(());
         }
@@ -64,31 +55,20 @@ impl LayoutForest {
         let Some(parent) = self.node(id).and_then(|node| node.parent) else {
             return;
         };
-        if self.node(parent).is_none() {
+        let Ok(entry) = self.live_mut(parent) else {
             return;
-        }
-        if let Some(entry) = self.nodes.get_mut(parent.index as usize) {
-            entry.children.retain(|child| *child != id);
-        }
+        };
+        entry.children.retain(|child| *child != id);
         self.invalidate(parent);
     }
 
     fn orphan(&mut self, parent: LocalId, children: &[LocalId]) {
         for child in children {
-            if let Some(node) = self.nodes.get_mut(child.index as usize)
-                && node.alive
-                && node.tag == child.tag
+            if let Ok(node) = self.live_mut(*child)
                 && node.parent == Some(parent)
             {
                 node.parent = None;
             }
         }
     }
-}
-
-fn stale(id: LocalId) -> LayoutError {
-    LayoutError::LayoutInvalid(format!(
-        "stale layout-forest id index={} tag={}",
-        id.index, id.tag
-    ))
 }

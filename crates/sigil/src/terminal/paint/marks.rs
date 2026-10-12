@@ -80,15 +80,9 @@ fn within(cx: &Cx, mut id: NodeId, focus: NodeId) -> bool {
     false
 }
 
-pub(super) struct Line {
-    pub(super) band: crate::geometry::Rect,
-    pub(super) kind: DecorationKind,
-    pub(super) color: Rgba8,
-}
-
 pub(super) fn decorate(
     grid: &mut Grid,
-    line: &Line,
+    line: &DrawDecoration,
     clip: Option<crate::geometry::Rect>,
     size: f32,
 ) {
@@ -115,10 +109,7 @@ pub(super) fn decorate(
         Ink::Bare
     };
     for col in cell_edge(left / size)..cell_edge(right / size) {
-        let Some(index) = grid.index(col, row) else {
-            continue;
-        };
-        let Some(cell) = grid.cells.get_mut(index) else {
+        let Some(cell) = grid.cell_mut(col, row) else {
             continue;
         };
         match line.kind {
@@ -129,13 +120,5 @@ pub(super) fn decorate(
         if !matches!(line.kind, DecorationKind::Strikethrough) {
             cell.underline_ink = ink;
         }
-    }
-}
-
-pub(super) const fn line(draw: &DrawDecoration, color: Rgba8) -> Line {
-    Line {
-        band: draw.band,
-        kind: draw.kind,
-        color,
     }
 }

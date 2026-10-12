@@ -4,55 +4,45 @@ use super::*;
 use crate::kernel::{Cx, IntoNode, NodeType};
 use crate::reactive::Runtime;
 
-#[test]
-fn chip_uses_label_role_and_holds_text_child() {
-    Runtime::scope("chip-build-static", || {
-        let mut cx = Cx::new_root();
-        let id = chip("INFO", Tone::Info).build(&mut cx);
-        let node = cx.get(id).expect("chip node exists");
-        assert_eq!(node.a11y.role, crate::kernel::Role::Label);
-        assert_eq!(node.children().len(), 1, "chip wraps a single text child");
-        let text_child = cx.get(node.children()[0]).expect("chip text child exists");
-        assert!(
-            matches!(text_child.kind, NodeType::Text { .. }),
-            "chip child is the static label text node"
-        );
-    });
-}
+const TONES: [Tone; 6] = [
+    Tone::Neutral,
+    Tone::Primary,
+    Tone::Info,
+    Tone::Success,
+    Tone::Warn,
+    Tone::Error,
+];
 
 #[test]
-fn owned_label_reaches_text_child() {
-    Runtime::scope("chip-build-owned", || {
+fn chip_is_a_label_holding_its_text() {
+    Runtime::scope("chip-build", || {
         let mut cx = Cx::new_root();
-        let id = chip(String::from("ERROR"), Tone::Error).build(&mut cx);
-        let node = cx.get(id).expect("chip node exists");
-        assert_eq!(node.children().len(), 1, "chip wraps one text child");
-        let text_child = cx.get(node.children()[0]).expect("chip text child exists");
-        match &text_child.kind {
-            NodeType::Text { content, .. } => {
-                assert_eq!(
+        for tone in TONES {
+            let id = chip(String::from("ERROR"), tone).build(&mut cx);
+            let node = cx.get(id).expect("chip node exists");
+            assert_eq!(node.a11y.role, crate::kernel::Role::Label);
+            assert_eq!(
+                node.children().len(),
+                1,
+                "{tone:?} chip wraps one text child"
+            );
+            let text_child = cx.get(node.children()[0]).expect("chip text child exists");
+            match &text_child.kind {
+                NodeType::Text { content, .. } => assert_eq!(
                     content.as_static_str(),
                     Some("ERROR"),
                     "owned label String reaches the text child verbatim"
-                );
+                ),
+                other => panic!("expected NodeType::Text, got {other:?}"),
             }
-            other => panic!("expected NodeType::Text, got {other:?}"),
         }
     });
 }
 
 #[test]
 fn tone_class_strings_are_distinct() {
-    let tones = [
-        Tone::Neutral,
-        Tone::Primary,
-        Tone::Info,
-        Tone::Success,
-        Tone::Warn,
-        Tone::Error,
-    ];
-    for (i, a) in tones.iter().enumerate() {
-        for b in &tones[i + 1..] {
+    for (i, a) in TONES.iter().enumerate() {
+        for b in &TONES[i + 1..] {
             assert_ne!(
                 chip_class(*a),
                 chip_class(*b),
@@ -103,17 +93,6 @@ fn every_tone_clears_wcag_aa_contrast() {
 }
 
 #[test]
-fn badge_is_a_pill_chip() {
-    Runtime::scope("badge-pill", || {
-        let mut cx = Cx::new_root();
-        let id = chip("NEW", Tone::Primary).build(&mut cx);
-        let node = cx.get(id).expect("badge node exists");
-        assert_eq!(node.a11y.role, crate::kernel::Role::Label);
-        assert_eq!(node.children().len(), 1);
-    });
-}
-
-#[test]
 fn activate_promotes_the_chip_to_a_button() {
     Runtime::scope("chip-activate-role", || {
         let mut cx = Cx::new_root();
@@ -121,28 +100,5 @@ fn activate_promotes_the_chip_to_a_button() {
         let node = cx.get(id).expect("chip node exists");
         assert_eq!(node.a11y.role, crate::kernel::Role::Button);
         assert!(node.a11y.focusable, "an activatable chip takes focus");
-    });
-}
-
-#[test]
-fn every_tone_renders_one_text_child() {
-    Runtime::scope("chip-build-all-tones", || {
-        let mut cx = Cx::new_root();
-        for tone in [
-            Tone::Neutral,
-            Tone::Primary,
-            Tone::Info,
-            Tone::Success,
-            Tone::Warn,
-            Tone::Error,
-        ] {
-            let id = chip("x", tone).build(&mut cx);
-            let node = cx.get(id).expect("chip node exists");
-            assert_eq!(
-                node.children().len(),
-                1,
-                "{tone:?} chip should wrap exactly one text child"
-            );
-        }
     });
 }

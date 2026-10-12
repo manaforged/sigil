@@ -7,7 +7,7 @@
 )]
 
 use crate::geometry::{Point, Rect};
-use tiny_skia::{FillRule, Mask, Pixmap, Transform as TsTransform};
+use tiny_skia::{Mask, Pixmap, Transform as TsTransform};
 
 use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::scene_command::state::SceneState;
@@ -15,7 +15,7 @@ use crate::renderer::scene_command::walk::{IDENTITY, transform_rect};
 use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Transform};
 use crate::scene::corner_radii::CornerRadii;
 
-use super::bound::{Bound, rounded_rect};
+use super::bound::rect_mask;
 use super::paint::{Painter, fade};
 use super::shadow::blur;
 use super::shapes::{blit, cover, ts_transform};
@@ -42,7 +42,13 @@ impl Painter<'_> {
 
     pub(super) fn layer(&mut self, scope: LayerScope, children: &[SceneCommand]) {
         if let Some(effect) = SceneState::inline_transform(&scope) {
-            self.inline_layer(effect, scope.clip, children);
+            self.state.push_transform(effect);
+            self.state.push_clip(scope.clip);
+            if !self.state.clipped_out() {
+                self.walk(children);
+            }
+            self.state.pop_clip();
+            self.state.pop_transform();
             return;
         }
         if let LayerEffect::Transform(transform) = scope.effect {
@@ -50,16 +56,6 @@ impl Painter<'_> {
             return;
         }
         self.untransformed_layer(scope, children);
-    }
-
-    fn inline_layer(&mut self, effect: Transform, clip: Rect, children: &[SceneCommand]) {
-        self.state.push_transform(effect);
-        self.state.push_clip(clip);
-        if !self.state.clipped_out() {
-            self.walk(children);
-        }
-        self.state.pop_clip();
-        self.state.pop_transform();
     }
 
     fn area(&self) -> Rect {
@@ -75,10 +71,10 @@ impl Painter<'_> {
             return;
         };
         let state = self.state.group_state(bounds);
-        let Some((layer, x0, y0)) = self.render_region(bounds, state, children) else {
+        let Some((layer, at)) = self.render_region(bounds, state, children) else {
             return;
         };
-        self.composite(&layer, translate(x0, y0), opacity, None);
+        self.composite(&layer, at, opacity, None);
         self.release_pixmap(layer);
     }
 
@@ -89,7 +85,7 @@ impl Painter<'_> {
         };
         let state = SceneState::new(Some(bounds), self.state.current_transform(), 1.0);
         let region = SceneState::layer_region(bounds, self.area(), self.scale);
-        let Some((mut layer, x0, y0)) = self.render_region(region, state, children) else {
+        let Some((mut layer, at)) = self.render_region(region, state, children) else {
             return;
         };
         if let LayerEffect::LayerBlur { sigma } = scope.effect {
@@ -99,7 +95,7 @@ impl Painter<'_> {
         let mask = rounded
             .then(|| self.layer_mask(clip_logical, scope.clip_radii))
             .flatten();
-        self.composite(&layer, translate(x0, y0), scope.opacity, mask.as_ref());
+        self.composite(&layer, at, scope.opacity, mask.as_ref());
         self.release_pixmap(layer);
     }
 
@@ -133,7 +129,7 @@ impl Painter<'_> {
         bounds: Rect,
         state: SceneState,
         children: &[SceneCommand],
-    ) -> Option<(Pixmap, i32, i32)> {
+    ) -> Option<(Pixmap, TsTransform)> {
         let x0 = bounds.origin.x.mul_add(self.scale, -self.origin.x).round();
         let y0 = bounds.origin.y.mul_add(self.scale, -self.origin.y).round();
         let x1 = (bounds.origin.x + bounds.width)
@@ -149,7 +145,8 @@ impl Painter<'_> {
             state,
         )
         .walk(children);
-        Some((layer, x0 as i32, y0 as i32))
+        let at = TsTransform::from_translate(x0 as i32 as f32, y0 as i32 as f32);
+        Some((layer, at))
     }
 
     fn transformed_layer(
@@ -192,32 +189,20 @@ impl Painter<'_> {
 
     fn layer_mask(&self, clip: Rect, radii: CornerRadii) -> Option<Mask> {
         let transform = ts_transform(IDENTITY, self.scale, self.origin);
-        let (width, height) = (self.target.width(), self.target.height());
-        let path = rounded_rect(clip, radii, Bound::new(transform, width, height))?;
-        let mut mask = Mask::new(width, height)?;
-        mask.fill_path(&path, FillRule::Winding, true, transform);
-        Some(mask)
+        rect_mask(
+            clip,
+            radii,
+            transform,
+            (self.target.width(), self.target.height()),
+        )
     }
 }
 
-fn translate(x: i32, y: i32) -> TsTransform {
-    TsTransform::from_translate(x as f32, y as f32)
-}
-
-fn source_mask(
-    scope: LayerScope,
-    bounds: Rect,
-    (width, height): (u32, u32),
-    scale: f32,
-) -> Option<Mask> {
+fn source_mask(scope: LayerScope, bounds: Rect, size: (u32, u32), scale: f32) -> Option<Mask> {
     if scope.clip_radii.0.iter().all(|radius| *radius <= 0.0) {
         return None;
     }
     let origin = Point::new(bounds.origin.x * scale, bounds.origin.y * scale);
     let transform = ts_transform(IDENTITY, scale, origin);
-    let bound = Bound::new(transform, width, height);
-    let path = rounded_rect(scope.clip, scope.clip_radii, bound)?;
-    let mut mask = Mask::new(width, height)?;
-    mask.fill_path(&path, FillRule::Winding, true, transform);
-    Some(mask)
+    rect_mask(scope.clip, scope.clip_radii, transform, size)
 }

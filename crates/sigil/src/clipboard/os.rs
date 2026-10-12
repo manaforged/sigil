@@ -17,13 +17,11 @@ impl Clipboard for OsClipboard {
     }
 
     fn get(&self) -> Option<String> {
-        match platform::paste() {
-            Ok(text) => Some(text),
-            Err(err) => {
-                tracing::warn!(target: "sigil::clipboard", error = %err, "clipboard read failed");
-                None
-            }
-        }
+        platform::paste()
+            .inspect_err(
+                |err| tracing::warn!(target: "sigil::clipboard", error = %err, "clipboard read failed"),
+            )
+            .ok()
     }
 
     #[cfg(feature = "clipboard-image")]

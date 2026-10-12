@@ -19,12 +19,6 @@ where
     }
 }
 
-#[allow(
-    clippy::redundant_pub_crate,
-    reason = "pub(crate) is load-bearing: DisplayAndWindow shows up in \
-              WindowHandle::into_inner's signature which is consumed by \
-              the sibling `renderer` module."
-)]
 pub(crate) trait DisplayAndWindow: HasWindowHandle + HasDisplayHandle + Send + Sync {}
 
 impl<T> DisplayAndWindow for T where T: HasWindowHandle + HasDisplayHandle + Send + Sync {}

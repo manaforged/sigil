@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used, clippy::float_cmp)]
+#![allow(clippy::unwrap_used, clippy::float_cmp, clippy::shadow_unrelated)]
 
 use super::*;
 use crate::Host;
@@ -13,10 +13,12 @@ fn nice_max_steps_are_1_2_5() {
 }
 
 #[test]
-fn empty_chart_builds() {
+fn empty_and_line_charts_build() {
     Runtime::scope("chart-empty", || {
         let mut cx = Cx::new_root();
         let id = chart([]).build(&mut cx);
+        assert!(cx.get(id).is_some());
+        let id = chart([1.0, 4.0, 2.0, 8.0]).line().build(&mut cx);
         assert!(cx.get(id).is_some());
     });
 }
@@ -31,15 +33,6 @@ fn bar_chart_builds() {
         host.layout((320.0, 200.0)).unwrap();
         let scene = host.scene((320.0, 200.0)).unwrap();
         assert!(scene.find_text("Mon").is_some());
-    });
-}
-
-#[test]
-fn line_chart_builds() {
-    Runtime::scope("chart-line", || {
-        let mut cx = Cx::new_root();
-        let id = chart([1.0, 4.0, 2.0, 8.0]).line().build(&mut cx);
-        assert!(cx.get(id).is_some());
     });
 }
 

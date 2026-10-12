@@ -9,7 +9,7 @@ use winit::dpi::{LogicalPosition as WinitLogicalPosition, LogicalSize as WinitLo
 use crate::app::WindowOpts;
 use crate::shell::{ShellError, WinitWindowHandle, app::WinitApp, waker::WinitWaker};
 
-use super::{PendingWindow, PendingWindowSize, WinitShell};
+use super::{PendingWindowSize, WinitShell};
 
 impl Shell for WinitShell {
     type Error = ShellError;
@@ -33,14 +33,11 @@ impl Shell for WinitShell {
         title: &str,
         initial_size: PhysicalSize,
     ) -> Result<Self::Window, Self::Error> {
-        let handle = self.allocate_handle();
-        self.pending.push(PendingWindow {
-            handle,
-            title: title.to_owned(),
-            size: PendingWindowSize::Physical(initial_size),
-            opts: WindowOpts::default(),
-        });
-        Ok(handle)
+        Ok(self.queue_window(
+            title,
+            PendingWindowSize::Physical(initial_size),
+            WindowOpts::default(),
+        ))
     }
 
     fn create_window_logical(
@@ -48,14 +45,11 @@ impl Shell for WinitShell {
         title: &str,
         initial: LogicalSize,
     ) -> Result<Self::Window, Self::Error> {
-        let handle = self.allocate_handle();
-        self.pending.push(PendingWindow {
-            handle,
-            title: title.to_owned(),
-            size: PendingWindowSize::Logical(initial),
-            opts: WindowOpts::default(),
-        });
-        Ok(handle)
+        Ok(self.queue_window(
+            title,
+            PendingWindowSize::Logical(initial),
+            WindowOpts::default(),
+        ))
     }
 
     fn create_window_with(
@@ -64,14 +58,7 @@ impl Shell for WinitShell {
         initial: LogicalSize,
         opts: WindowOpts,
     ) -> Result<Self::Window, Self::Error> {
-        let handle = self.allocate_handle();
-        self.pending.push(PendingWindow {
-            handle,
-            title: title.to_owned(),
-            size: PendingWindowSize::Logical(initial),
-            opts,
-        });
-        Ok(handle)
+        Ok(self.queue_window(title, PendingWindowSize::Logical(initial), opts))
     }
 
     fn drain_events(&mut self) -> std::vec::IntoIter<ShellEvent> {

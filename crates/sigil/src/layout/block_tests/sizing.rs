@@ -1,80 +1,53 @@
 use super::*;
 
-#[test]
-fn border_box_width_includes_padding() {
+fn root_box(style: StyleData, w: f32, h: f32) -> (f32, f32) {
     let mut f = LayoutForest::new();
-    let style = StyleData {
-        size: StyleSize::new(Dimension::Px(100.0), Dimension::Px(50.0)),
-        padding: Rect::splat(LengthPercentage::Px(10.0)),
-        box_sizing: BoxSizing::BorderBox,
-        ..StyleData::default()
-    };
     let root = f.insert(None, style);
-    let s = run(&f, root, 400.0, 300.0);
-    let b = s.boxed(root).unwrap();
-    assert!(near(b.w, 100.0));
-    assert!(near(b.h, 50.0));
+    let b = run(&f, root, w, h).boxed(root).unwrap();
+    (b.w, b.h)
 }
 
 #[test]
-fn content_box_width_adds_padding() {
-    let mut f = LayoutForest::new();
-    let style = StyleData {
-        size: StyleSize::new(Dimension::Px(100.0), Dimension::Px(50.0)),
-        padding: Rect::splat(LengthPercentage::Px(10.0)),
-        box_sizing: BoxSizing::ContentBox,
-        ..StyleData::default()
-    };
-    let root = f.insert(None, style);
-    let s = run(&f, root, 400.0, 300.0);
-    let b = s.boxed(root).unwrap();
-    assert!(near(b.w, 120.0));
-    assert!(near(b.h, 70.0));
+fn box_sizing_decides_whether_padding_adds() {
+    for (sizing, w, h) in [
+        (BoxSizing::BorderBox, 100.0, 50.0),
+        (BoxSizing::ContentBox, 120.0, 70.0),
+    ] {
+        let style = StyleData {
+            padding: Rect::splat(LengthPercentage::Px(10.0)),
+            box_sizing: sizing,
+            ..px(100.0, 50.0)
+        };
+        let (bw, bh) = root_box(style, 400.0, 300.0);
+        assert!(near(bw, w) && near(bh, h));
+    }
 }
 
 #[test]
-fn min_width_floors_below_preferred() {
-    let mut f = LayoutForest::new();
-    let style = StyleData {
-        size: StyleSize::new(Dimension::Px(50.0), Dimension::Px(50.0)),
+fn min_width_floors_and_max_height_caps() {
+    let floored = StyleData {
         min_size: StyleSize::new(Dimension::Px(100.0), Dimension::Auto),
-        ..StyleData::default()
+        ..px(50.0, 50.0)
     };
-    let root = f.insert(None, style);
-    let s = run(&f, root, 400.0, 300.0);
-    let b = s.boxed(root).unwrap();
-    assert!(near(b.w, 100.0));
-}
-
-#[test]
-fn max_height_caps_above_preferred() {
-    let mut f = LayoutForest::new();
-    let style = StyleData {
-        size: StyleSize::new(Dimension::Px(50.0), Dimension::Px(500.0)),
+    assert!(near(root_box(floored, 400.0, 300.0).0, 100.0));
+    let capped = StyleData {
         max_size: StyleSize::new(Dimension::Auto, Dimension::Px(120.0)),
-        ..StyleData::default()
+        ..px(50.0, 500.0)
     };
-    let root = f.insert(None, style);
-    let s = run(&f, root, 400.0, 300.0);
-    let b = s.boxed(root).unwrap();
-    assert!(near(b.h, 120.0));
+    assert!(near(root_box(capped, 400.0, 300.0).1, 120.0));
 }
 
 #[test]
 fn percent_width_resolves_against_containing_block() {
     let mut f = LayoutForest::new();
-    let parent_style = StyleData {
-        size: StyleSize::new(Dimension::Px(400.0), Dimension::Px(200.0)),
-        ..StyleData::default()
-    };
-    let child_style = StyleData {
-        size: StyleSize::new(Dimension::Percent(0.5), Dimension::Px(30.0)),
-        ..StyleData::default()
-    };
-    let parent = f.insert(None, parent_style);
-    let child = f.insert(None, child_style);
-    f.attach(parent, child).unwrap();
-    let s = run(&f, parent, 1000.0, 800.0);
-    let bc = s.boxed(child).unwrap();
-    assert!(near(bc.w, 200.0));
+    let parent = f.insert(None, px(400.0, 200.0));
+    let child = kid(
+        &mut f,
+        parent,
+        sized(Dimension::Percent(0.5), Dimension::Px(30.0)),
+    );
+    assert!(near(
+        run(&f, parent, 1000.0, 800.0).boxed(child).unwrap().w,
+        200.0
+    ));
 }

@@ -9,11 +9,7 @@ use crate::events::EventRouter;
 struct ZeroTextMeasure;
 
 impl TextMeasure for ZeroTextMeasure {
-    fn measure(
-        &self,
-        _content: &crate::kernel::TextContent,
-        _space: crate::geometry::Size,
-    ) -> crate::geometry::LogicalSize {
+    fn measure(&self, _: &crate::kernel::TextContent, _: Size) -> crate::geometry::LogicalSize {
         crate::geometry::LogicalSize::default()
     }
 }
@@ -47,54 +43,46 @@ fn document_root_walks_to_the_topmost_ancestor() {
     assert_eq!(document_root(&cx, child), root);
 }
 
-#[test]
-fn is_hittable_target_rejects_a_zero_area_node() {
+fn laid_out(child: crate::kernel::NodeBuilder) -> (Cx, NodeId, LayoutEngine) {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .child(
-                container()
-                    .focusable(true)
-                    .layout(LayoutStyle::block().fixed_size(0.0, 0.0)),
-            ),
+            .child(child),
     );
-    let target = cx.nth_child(root, 0).expect("zero-size child");
+    let target = cx.nth_child(root, 0).expect("child must exist");
     let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroTextMeasure));
     layout
         .compute(&mut cx, root, Size::fixed(100.0, 100.0))
-        .expect("layout");
-    let focus = FocusManager::default();
+        .expect("layout must succeed");
+    (cx, target, layout)
+}
+
+#[test]
+fn is_hittable_target_rejects_a_zero_area_node() {
+    let (cx, target, layout) = laid_out(
+        container()
+            .focusable(true)
+            .layout(LayoutStyle::block().fixed_size(0.0, 0.0)),
+    );
     assert!(
-        !focus.is_hittable_target(&cx, &layout, target),
+        !FocusManager::default().is_hittable_target(&cx, &layout, target),
         "collapsed (zero-area) node must not accept synthetic clicks"
     );
 }
 
 #[test]
 fn is_hittable_target_rejects_a_node_outside_the_viewport() {
-    let mut cx = Cx::new_root();
-    let root = cx.add(
-        container()
-            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .child(
-                container().focusable(true).layout(
-                    LayoutStyle::block()
-                        .fixed_size(10.0, 10.0)
-                        .position(Position::Absolute)
-                        .with_layout(|style| {
-                            style.inset.left = LengthPercentageAuto::Px(500.0);
-                            style.inset.top = LengthPercentageAuto::Px(500.0);
-                        }),
-                ),
-            ),
+    let (cx, outside, layout) = laid_out(
+        container().focusable(true).layout(
+            LayoutStyle::block()
+                .fixed_size(10.0, 10.0)
+                .position(Position::Absolute)
+                .with_layout(|style| {
+                    style.inset.left = LengthPercentageAuto::Px(500.0);
+                    style.inset.top = LengthPercentageAuto::Px(500.0);
+                }),
+        ),
     );
-    let outside = cx.nth_child(root, 0).expect("child must exist");
-    let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroTextMeasure));
-    layout
-        .compute(&mut cx, root, Size::fixed(100.0, 100.0))
-        .expect("layout must succeed");
-    let router = EventRouter::new();
-
-    assert!(!router.is_click_target(&cx, &layout, outside));
+    assert!(!EventRouter::new().is_click_target(&cx, &layout, outside));
 }

@@ -54,7 +54,7 @@ fn remaining_free(items: &[FlexItem], frozen: &[bool], container_main: f32, gap_
             } else {
                 item.flex_basis_resolved
             };
-            base + item.margin_main_start() + item.margin_main_end()
+            base + item.margin_main_start + item.margin_main_end
         })
         .sum();
     container_main - used - gap_total

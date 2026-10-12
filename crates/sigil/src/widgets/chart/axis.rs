@@ -38,10 +38,7 @@ fn tick(value: String) -> impl IntoNode + 'static {
 
 pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
     let mut row = container().layout(LayoutStyle::flex_row().gap(space(3)));
-    for item in series {
-        if item.name.is_empty() {
-            continue;
-        }
+    for item in series.iter().filter(|item| !item.name.is_empty()) {
         row = row.child(
             container()
                 .layout(

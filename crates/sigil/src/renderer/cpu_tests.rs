@@ -27,39 +27,36 @@ fn rect(x: f32, y: f32, w: f32, h: f32) -> Rect {
     Rect::new(Point::new(x, y), w, h)
 }
 
-fn scene(commands: Vec<SceneCommand>) -> CommandScene {
-    CommandScene { commands }
+const WHITE: Color = Color::rgba(1.0, 1.0, 1.0, 1.0);
+
+fn draw(
+    commands: Vec<SceneCommand>,
+    clear: Color,
+    viewport: (f32, f32),
+    size: (u32, u32),
+) -> (Pixmap, CpuRenderer) {
+    let mut renderer = CpuRenderer::new();
+    let scene = CommandScene { commands };
+    let out = renderer
+        .render(&scene, clear, viewport, PhysicalSize::new(size.0, size.1))
+        .unwrap();
+    (out, renderer)
+}
+
+fn solid(rect: Rect) -> SceneCommand {
+    SceneCommand::Rect(DrawRect::new(rect, SceneRectStyle::solid(RED)))
 }
 
 #[test]
 fn clear_color_fills_the_target() {
-    let mut renderer = CpuRenderer::new();
-    let out = renderer
-        .render(
-            &scene(vec![]),
-            Color::rgba(0.0, 0.0, 1.0, 1.0),
-            (4.0, 4.0),
-            PhysicalSize::new(4, 4),
-        )
-        .unwrap();
+    let (out, _) = draw(vec![], Color::rgba(0.0, 0.0, 1.0, 1.0), (4.0, 4.0), (4, 4));
     assert_eq!(pixel(&out, 0, 0), [0, 0, 255, 255]);
 }
 
 #[test]
 fn rect_lands_at_physical_scale() {
-    let mut renderer = CpuRenderer::new();
-    let commands = vec![SceneCommand::Rect(DrawRect::new(
-        rect(1.0, 1.0, 2.0, 2.0),
-        SceneRectStyle::solid(RED),
-    ))];
-    let out = renderer
-        .render(
-            &scene(commands),
-            Color::rgba(1.0, 1.0, 1.0, 1.0),
-            (4.0, 4.0),
-            PhysicalSize::new(8, 8),
-        )
-        .unwrap();
+    let commands = vec![solid(rect(1.0, 1.0, 2.0, 2.0))];
+    let (out, renderer) = draw(commands, WHITE, (4.0, 4.0), (8, 8));
     assert_eq!(pixel(&out, 3, 3), [255, 0, 0, 255]);
     assert_eq!(pixel(&out, 1, 1), [255, 255, 255, 255]);
     assert_eq!(pixel(&out, 6, 6), [255, 255, 255, 255]);
@@ -68,69 +65,36 @@ fn rect_lands_at_physical_scale() {
 
 #[test]
 fn clip_limits_a_rect_to_the_pushed_bounds() {
-    let mut renderer = CpuRenderer::new();
     let commands = vec![
         SceneCommand::PushClip(rect(0.0, 0.0, 2.0, 4.0)),
-        SceneCommand::Rect(DrawRect::new(
-            rect(0.0, 0.0, 4.0, 4.0),
-            SceneRectStyle::solid(RED),
-        )),
+        solid(rect(0.0, 0.0, 4.0, 4.0)),
         SceneCommand::PopClip,
     ];
-    let out = renderer
-        .render(
-            &scene(commands),
-            Color::rgba(1.0, 1.0, 1.0, 1.0),
-            (4.0, 4.0),
-            PhysicalSize::new(4, 4),
-        )
-        .unwrap();
+    let (out, _) = draw(commands, WHITE, (4.0, 4.0), (4, 4));
     assert_eq!(pixel(&out, 1, 2), [255, 0, 0, 255]);
     assert_eq!(pixel(&out, 3, 2), [255, 255, 255, 255]);
 }
 
 #[test]
 fn transform_moves_the_rect() {
-    let mut renderer = CpuRenderer::new();
     let commands = vec![
         SceneCommand::PushTransform([[1.0, 0.0, 2.0], [0.0, 1.0, 0.0]]),
-        SceneCommand::Rect(DrawRect::new(
-            rect(0.0, 0.0, 1.0, 4.0),
-            SceneRectStyle::solid(RED),
-        )),
+        solid(rect(0.0, 0.0, 1.0, 4.0)),
         SceneCommand::PopTransform,
     ];
-    let out = renderer
-        .render(
-            &scene(commands),
-            Color::rgba(1.0, 1.0, 1.0, 1.0),
-            (4.0, 4.0),
-            PhysicalSize::new(4, 4),
-        )
-        .unwrap();
+    let (out, _) = draw(commands, WHITE, (4.0, 4.0), (4, 4));
     assert_eq!(pixel(&out, 2, 0), [255, 0, 0, 255]);
     assert_eq!(pixel(&out, 0, 0), [255, 255, 255, 255]);
 }
 
 #[test]
 fn opacity_layer_scales_alpha() {
-    let mut renderer = CpuRenderer::new();
     let commands = vec![
         SceneCommand::SaveLayer { opacity: 0.5 },
-        SceneCommand::Rect(DrawRect::new(
-            rect(0.0, 0.0, 4.0, 4.0),
-            SceneRectStyle::solid(RED),
-        )),
+        solid(rect(0.0, 0.0, 4.0, 4.0)),
         SceneCommand::RestoreLayer,
     ];
-    let out = renderer
-        .render(
-            &scene(commands),
-            Color::rgba(1.0, 1.0, 1.0, 1.0),
-            (4.0, 4.0),
-            PhysicalSize::new(4, 4),
-        )
-        .unwrap();
+    let (out, _) = draw(commands, WHITE, (4.0, 4.0), (4, 4));
     let [r, g, b, _] = pixel(&out, 1, 1);
     assert_eq!(r, 255);
     assert!((180..=195).contains(&g), "g={g}");
@@ -140,7 +104,6 @@ fn opacity_layer_scales_alpha() {
 #[test]
 fn glyph_run_paints_ink_inside_its_rect() {
     use crate::style::TextStyle;
-    let mut renderer = CpuRenderer::new();
     let run = crate::scene::shape_glyph_run(
         rect(2.0, 2.0, 60.0, 30.0),
         "III".to_owned(),
@@ -151,14 +114,7 @@ fn glyph_run_paints_ink_inside_its_rect() {
     let commands = vec![SceneCommand::GlyphRun(
         crate::renderer::scene_command::DrawGlyphRun::new(run),
     )];
-    let out = renderer
-        .render(
-            &scene(commands),
-            Color::rgba(1.0, 1.0, 1.0, 1.0),
-            (64.0, 34.0),
-            PhysicalSize::new(128, 68),
-        )
-        .unwrap();
+    let (out, renderer) = draw(commands, WHITE, (64.0, 34.0), (128, 68));
     let ink = out
         .pixels()
         .iter()

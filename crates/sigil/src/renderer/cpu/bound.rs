@@ -4,7 +4,9 @@
 )]
 
 use crate::geometry::{Point, Rect};
-use tiny_skia::{Path, PathBuilder, Pixmap, Point as TsPoint, Transform as TsTransform};
+use tiny_skia::{
+    FillRule, Mask, Path, PathBuilder, Pixmap, Point as TsPoint, Transform as TsTransform,
+};
 
 use crate::renderer::scene_command::walk::intersect_rect;
 use crate::scene::corner_radii::CornerRadii;
@@ -82,19 +84,24 @@ impl Bound {
     }
 }
 
-fn corners(rect: Rect) -> [(f32, f32); 4] {
+pub(super) fn corners(rect: Rect) -> [(f32, f32); 4] {
     let (x0, y0) = (rect.origin.x, rect.origin.y);
     let (x1, y1) = (x0 + rect.width, y0 + rect.height);
     [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
 }
 
-fn hull(transform: TsTransform, corners: [(f32, f32); 4]) -> Option<Rect> {
+pub(super) fn extent(transform: TsTransform, corners: [(f32, f32); 4]) -> [f32; 4] {
     let mut points = corners.map(|(x, y)| TsPoint::from_xy(x, y));
     transform.map_points(&mut points);
     let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
     for p in points {
         (x0, y0, x1, y1) = (x0.min(p.x), y0.min(p.y), x1.max(p.x), y1.max(p.y));
     }
+    [x0, y0, x1, y1]
+}
+
+fn hull(transform: TsTransform, corners: [(f32, f32); 4]) -> Option<Rect> {
+    let [x0, y0, x1, y1] = extent(transform, corners);
     let rect = Rect::new(Point::new(x0, y0), x1 - x0, y1 - y0);
     [x0, y0, x1, y1, rect.width, rect.height]
         .iter()
@@ -125,6 +132,18 @@ pub(super) fn rounded_rect(rect: Rect, radii: CornerRadii, bound: Bound) -> Opti
     outline::clipped(rect, radii, clipped, bound.device_scale())
 }
 
+pub(super) fn rect_mask(
+    rect: Rect,
+    radii: CornerRadii,
+    transform: TsTransform,
+    (width, height): (u32, u32),
+) -> Option<Mask> {
+    let path = rounded_rect(rect, radii, Bound::new(transform, width, height))?;
+    let mut mask = Mask::new(width, height)?;
+    mask.fill_path(&path, FillRule::Winding, true, transform);
+    Some(mask)
+}
+
 fn path_of(rect: Rect, radii: [f32; 4]) -> Option<Path> {
     let (left, top, width, height) = (rect.origin.x, rect.origin.y, rect.width, rect.height);
     let [tl, tr, br, bl] = CornerRadii(radii).normalized_for(width, height);
@@ -136,24 +155,21 @@ fn path_of(rect: Rect, radii: [f32; 4]) -> Option<Path> {
     let mut b = PathBuilder::new();
     b.move_to(left + tl, top);
     b.line_to(right - tr, top);
-    arc(&mut b, tr, (right, top + tr), 0);
+    arc(&mut b, tr, (right, top + tr), ARC_DIRS[0]);
     b.line_to(right, bottom - br);
-    arc(&mut b, br, (right - br, bottom), 1);
+    arc(&mut b, br, (right - br, bottom), ARC_DIRS[1]);
     b.line_to(left + bl, bottom);
-    arc(&mut b, bl, (left, bottom - bl), 2);
+    arc(&mut b, bl, (left, bottom - bl), ARC_DIRS[2]);
     b.line_to(left, top + tl);
-    arc(&mut b, tl, (left + tl, top), 3);
+    arc(&mut b, tl, (left + tl, top), ARC_DIRS[3]);
     b.close();
     b.finish()
 }
 
-fn arc(b: &mut PathBuilder, r: f32, to: (f32, f32), corner: usize) {
+fn arc(b: &mut PathBuilder, r: f32, to: (f32, f32), [d0, d1]: [(f32, f32); 2]) {
     if r <= 0.0 {
         return;
     }
-    let Some([d0, d1]) = ARC_DIRS.get(corner).copied() else {
-        return;
-    };
     let from = (
         (d0.0 + d1.0).mul_add(-r, to.0),
         (d0.1 + d1.1).mul_add(-r, to.1),

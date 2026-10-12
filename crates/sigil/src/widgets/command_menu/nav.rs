@@ -4,7 +4,6 @@ use crate::reactive::{Owner, OwnerId, Signal, owner_by_id, signal};
 
 use super::super::fuzzy::fuzzy_score;
 use super::super::shared::Activate;
-use super::builder::{EntryDef, LevelDef};
 
 pub(super) type SubmitObserver = Rc<dyn Fn(&str)>;
 
@@ -57,34 +56,6 @@ impl MenuLevel {
         let index = *self.shown.peek().get(row)?;
         self.entries.get(index)
     }
-}
-
-pub(super) fn into_runtime(def: LevelDef) -> Rc<Vec<Entry>> {
-    Rc::new(
-        def.entries
-            .into_iter()
-            .map(|entry| match entry {
-                EntryDef::Leaf {
-                    label,
-                    action,
-                    disabled,
-                } => Entry::Leaf {
-                    label,
-                    action,
-                    disabled,
-                },
-                EntryDef::Submenu {
-                    label,
-                    disabled,
-                    def: nested,
-                } => Entry::Submenu {
-                    label,
-                    disabled,
-                    entries: into_runtime(nested),
-                },
-            })
-            .collect(),
-    )
 }
 
 fn first_enabled(entries: &[Entry], shown: &[usize]) -> usize {

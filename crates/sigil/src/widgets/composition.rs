@@ -37,20 +37,17 @@ where
         )
         .class(STATUS_CHROME);
     for (index, child) in children.into_iter().enumerate() {
-        root = root.child(status_slot(Some(index) == last).child(child));
+        let layout = LayoutStyle::flex_row()
+            .gap(STATUS_BAR_GAP)
+            .align_items(AlignItems::Center);
+        let layout = if Some(index) == last {
+            layout.grow(1.0).justify_content(JustifyContent::End)
+        } else {
+            layout.shrink(0.0)
+        };
+        root = root.child(container().layout(layout).child(child));
     }
     root
-}
-
-fn status_slot(trailing: bool) -> NodeBuilder {
-    let layout = LayoutStyle::flex_row()
-        .gap(STATUS_BAR_GAP)
-        .align_items(AlignItems::Center);
-    container().layout(if trailing {
-        layout.grow(1.0).justify_content(JustifyContent::End)
-    } else {
-        layout.shrink(0.0)
-    })
 }
 
 #[must_use]

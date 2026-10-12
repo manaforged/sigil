@@ -58,14 +58,6 @@ pub enum Erase {
     Default,
 }
 
-fn erase_for(term: Option<&str>) -> Erase {
-    if term.is_some_and(|term| term.starts_with("screen")) {
-        Erase::Default
-    } else {
-        Erase::Background
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Caps {
     pub color: ColorDepth,
@@ -197,44 +189,42 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
     let mux = detect_mux(env);
     let known = known::known(env, mux);
     let sync = known.map(|term| !matches!(term, Known::Vte | Known::Apple));
-    let keys = known.map(|term| {
-        matches!(
-            term,
-            Known::Kitty
-                | Known::Ghostty
-                | Known::WezTerm
-                | Known::Iterm
-                | Known::Foot
-                | Known::Alacritty
-        )
-    });
+    let keys = known.map(Known::kitty_keys);
     let graphics = detect(env);
     let glyphs = glyphs(env);
     let color = color_depth(env, known);
+    let modern = known.is_some_and(|term| term != Known::Apple);
     Draft {
         caps: Caps {
             color,
             graphics,
             mux,
             keyboard: keyboard(keys),
-            hyperlinks: known.is_some_and(|term| term != Known::Apple),
-            underline_styles: known.is_some_and(|term| {
-                !matches!(
-                    term,
-                    Known::Apple | Known::Alacritty | Known::WindowsTerminal
-                )
-            }),
-            borders: borders(glyphs),
-            glyphs,
-            ambiguous: ambiguous(env),
-            erase: erase_for(env("TERM").as_deref()),
-            cursor: if known.is_some_and(|term| term != Known::Apple) {
-                Cursor::Bar
-            } else {
-                Cursor::Block
+            hyperlinks: modern,
+            underline_styles: known.is_some_and(Known::underline_styles),
+            borders: match glyphs {
+                Glyphs::Ascii => Borders::Ascii,
+                Glyphs::Console => Borders::Light,
+                Glyphs::Unicode => Borders::Rounded,
             },
+            glyphs,
+            ambiguous: if flag(env, "SIGIL_AMBIGUOUS_WIDE") {
+                Ambiguous::Wide
+            } else {
+                Ambiguous::Narrow
+            },
+            erase: if env("TERM").is_some_and(|term| term.starts_with("screen")) {
+                Erase::Default
+            } else {
+                Erase::Background
+            },
+            cursor: if modern { Cursor::Bar } else { Cursor::Block },
             sync: sync.unwrap_or(true),
-            clipboard: clip_route(env),
+            clipboard: if cfg!(target_os = "macos") && env("SSH_TTY").is_none() {
+                ClipRoute::Pbcopy
+            } else {
+                ClipRoute::Osc52
+            },
             backdrop: backdrop(env),
             notices: known.map(Known::notices).unwrap_or_default(),
         },
@@ -264,11 +254,7 @@ fn questions(
 }
 
 fn forced_color(env: &impl Fn(&str) -> Option<String>) -> Option<ColorDepth> {
-    color_override(&env("SIGIL_COLOR")?)
-}
-
-fn color_override(value: &str) -> Option<ColorDepth> {
-    match value.trim().to_ascii_lowercase().as_str() {
+    match env("SIGIL_COLOR")?.trim().to_ascii_lowercase().as_str() {
         "truecolor" | "24bit" => Some(ColorDepth::Truecolor),
         "256" => Some(ColorDepth::Ansi256),
         "16" => Some(ColorDepth::Ansi16),
@@ -338,30 +324,6 @@ const fn keyboard(known: Option<bool>) -> Keyboard {
         Keyboard::Kitty
     } else {
         Keyboard::Legacy
-    }
-}
-
-fn ambiguous(env: &impl Fn(&str) -> Option<String>) -> Ambiguous {
-    if flag(env, "SIGIL_AMBIGUOUS_WIDE") {
-        Ambiguous::Wide
-    } else {
-        Ambiguous::Narrow
-    }
-}
-
-const fn borders(glyphs: Glyphs) -> Borders {
-    match glyphs {
-        Glyphs::Ascii => Borders::Ascii,
-        Glyphs::Console => Borders::Light,
-        Glyphs::Unicode => Borders::Rounded,
-    }
-}
-
-fn clip_route(env: &impl Fn(&str) -> Option<String>) -> ClipRoute {
-    if cfg!(target_os = "macos") && env("SSH_TTY").is_none() {
-        ClipRoute::Pbcopy
-    } else {
-        ClipRoute::Osc52
     }
 }
 

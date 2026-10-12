@@ -29,11 +29,7 @@ const MODIFIER_TOKENS: [(ModifiersState, &str); 4] = [
 
 pub fn register(shortcut: &Shortcut) -> AppResult<EventChannel<KeyPhase>> {
     let hotkey = to_hotkey(shortcut)?;
-    if let Some(channel) = REGISTERED.with(|map| {
-        map.borrow()
-            .get(&hotkey.id())
-            .map(|entry| entry.channel.clone())
-    }) {
+    if let Some(channel) = channel_of(hotkey.id()) {
         return Ok(channel);
     }
     with_manager(|manager| manager.register(hotkey))?;
@@ -78,15 +74,14 @@ pub(crate) fn pump() {
             HotKeyState::Pressed => KeyPhase::Down,
             HotKeyState::Released => KeyPhase::Up,
         };
-        let channel = REGISTERED.with(|map| {
-            map.borrow()
-                .get(&event.id())
-                .map(|entry| entry.channel.clone())
-        });
-        if let Some(channel) = channel {
+        if let Some(channel) = channel_of(event.id()) {
             channel.emit(phase);
         }
     }
+}
+
+fn channel_of(id: u32) -> Option<EventChannel<KeyPhase>> {
+    REGISTERED.with(|map| map.borrow().get(&id).map(|entry| entry.channel.clone()))
 }
 
 fn with_manager(
@@ -94,13 +89,11 @@ fn with_manager(
 ) -> AppResult<()> {
     MANAGER.with(|slot| {
         let mut slot = slot.borrow_mut();
-        if slot.is_none() {
-            *slot = Some(GlobalHotKeyManager::new().map_err(Error::new)?);
-        }
-        slot.as_ref().map_or_else(
-            || Err(unsupported()),
-            |manager| op(manager).map_err(Error::new),
-        )
+        let manager = match &mut *slot {
+            Some(manager) => manager,
+            empty => empty.insert(GlobalHotKeyManager::new().map_err(Error::new)?),
+        };
+        op(manager).map_err(Error::new)
     })
 }
 
@@ -120,10 +113,6 @@ fn to_hotkey(shortcut: &Shortcut) -> AppResult<HotKey> {
     }
     text.parse::<HotKey>()
         .map_err(|err| Error::with_kind(ErrorKind::Config, err))
-}
-
-fn unsupported() -> Error {
-    Error::new(std::io::Error::from(std::io::ErrorKind::Unsupported))
 }
 
 #[cfg(test)]

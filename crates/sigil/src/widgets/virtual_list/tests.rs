@@ -66,6 +66,31 @@ fn top_row(cx: &Cx, layout: &crate::layout::LayoutEngine, root: NodeId) -> Optio
     best.map(|(_, index)| index)
 }
 
+struct ZeroMeasure;
+
+impl crate::layout::TextMeasure for ZeroMeasure {
+    fn measure(
+        &self,
+        _content: &crate::kernel::TextContent,
+        _space: crate::geometry::Size,
+    ) -> crate::geometry::LogicalSize {
+        crate::geometry::LogicalSize::default()
+    }
+}
+
+fn engine() -> crate::layout::LayoutEngine {
+    crate::layout::LayoutEngine::with_text_measure(Box::new(ZeroMeasure))
+}
+
+fn mounted<T: 'static, R: RowRender<T>>(list: impl FnOnce() -> VirtualListBuilder<T, R>) -> usize {
+    Runtime::scope("sigil-virtual-list-mounted", || {
+        let mut cx = Cx::new_root();
+        let root = cx.add(list());
+        cx.flush_reactive_children();
+        cx.child_count(bound_visible(&cx, root))
+    })
+}
+
 mod binding;
 mod rebuild;
 mod scroll;

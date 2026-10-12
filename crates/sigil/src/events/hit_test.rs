@@ -26,8 +26,7 @@ pub(crate) struct HitTestCache {
 #[derive(Clone, Copy, Debug)]
 struct HitItem {
     id: NodeId,
-    rect: Rect,
-    has_rect: bool,
+    rect: Option<Rect>,
     hittable: bool,
 }
 
@@ -62,7 +61,7 @@ impl HitTestCache {
     ) -> Option<NodePath> {
         self.refresh(cx, layout);
         let hit = self.hit(cx, position)?;
-        Some(build_path(cx, hit))
+        Some(crate::events::pointer_dispatch::path_to_node(cx, hit))
     }
 
     fn refresh(&mut self, cx: &Cx, layout: &LayoutEngine) {
@@ -74,15 +73,11 @@ impl HitTestCache {
         let _refresh = crate::profile::span(crate::profile::Phase::HitRefresh);
         self.items.clear();
         self.transforms.clear();
-        let ctx = EmitCtx { cx, layout };
-        let mut deferred = NodePath::new();
-        for root in cx.roots().iter().copied() {
-            emit(&ctx, root, None, self, &mut deferred);
-        }
+        let mut deferred: NodePath = cx.roots().iter().copied().collect();
         let mut next = 0;
         while let Some(id) = deferred.get(next).copied() {
             next += 1;
-            emit(&ctx, id, None, self, &mut deferred);
+            emit(cx, layout, id, None, self, &mut deferred);
         }
         self.transformed = self.transforms.iter().any(|item| item.transformed);
         self.cx_generation = cx_generation;
@@ -96,9 +91,8 @@ impl HitTestCache {
     fn hit(&mut self, cx: &Cx, position: Point) -> Option<NodeId> {
         if !self.uses_transforms() {
             return self.items.iter().rev().find_map(|item| {
-                (item.has_rect
-                    && item.hittable
-                    && contains(item.rect, position)
+                (item.hittable
+                    && item.rect.is_some_and(|rect| contains(rect, position))
                     && visible(cx, item.id)
                     && inside_clips(cx, item.id, position))
                 .then_some(item.id)
@@ -116,11 +110,12 @@ impl HitTestCache {
                 .items
                 .get(index)
                 .expect("hit index belongs to the cache");
-            if !item.has_rect || !item.hittable {
+            let Some(rect) = item.rect.filter(|_| item.hittable) else {
                 continue;
-            }
-            let local = self.position_at(cx, index, position);
-            if local.is_some_and(|point| contains(item.rect, point))
+            };
+            if self
+                .position_at(cx, index, position)
+                .is_some_and(|point| contains(rect, point))
                 && visible(cx, item.id)
                 && inside_clips(cx, item.id, position)
             {
@@ -153,12 +148,13 @@ impl HitTestCache {
                 .expect("ancestor index belongs to the cache");
             let item = self.items.get(index).expect("ancestor has a hit item");
             if transform.transformed
+                && let Some(rect) = item.rect
                 && let Some(binding) = cx
                     .get(item.id)
                     .and_then(|node| node.get_extension::<StyleBinding>())
             {
-                local = local
-                    .and_then(|point| Transform2D::for_binding(binding).inverse(point, item.rect));
+                local =
+                    local.and_then(|point| Transform2D::for_binding(binding).inverse(point, rect));
             }
             transform.query = self.query;
             transform.position = local;
@@ -213,39 +209,26 @@ fn inside_clips(cx: &Cx, target: NodeId, position: Point) -> bool {
     true
 }
 
-fn build_path(cx: &Cx, target: NodeId) -> NodePath {
-    let mut path = NodePath::new();
-    let mut current = Some(target);
-    while let Some(id) = current {
-        path.push(id);
-        current = cx.parent(id);
-    }
-    path.reverse();
-    path
-}
-
-struct EmitCtx<'a> {
-    cx: &'a Cx,
-    layout: &'a LayoutEngine,
-}
-
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the walk threads two outputs beside its inputs"
+)]
 fn emit(
-    ctx: &EmitCtx<'_>,
+    cx: &Cx,
+    layout: &LayoutEngine,
     id: NodeId,
     parent: Option<usize>,
     cache: &mut HitTestCache,
     deferred: &mut NodePath,
 ) {
-    let Some(node) = ctx.cx.get(id) else {
+    let Some(node) = cx.get(id) else {
         return;
     };
-    let rect = ctx.layout.result(id).map(|result| result.rect());
-
+    let rect = layout.result(id).map(|result| result.rect());
     let index = cache.items.len();
     cache.items.push(HitItem {
         id,
-        rect: rect.unwrap_or_else(|| Rect::new(Point::new(0.0, 0.0), 0.0, 0.0)),
-        has_rect: rect.is_some(),
+        rect,
         hittable: node.a11y.hittable,
     });
     cache.transforms.push(HitTransform {
@@ -257,16 +240,14 @@ fn emit(
         query: 0,
         position: None,
     });
-
     for child in node.children().iter().copied() {
-        if ctx
-            .cx
+        if cx
             .get(child)
             .is_some_and(|child_node| child_node.get_extension::<TopLayer>().is_some())
         {
             deferred.push(child);
         } else {
-            emit(ctx, child, Some(index), cache, deferred);
+            emit(cx, layout, child, Some(index), cache, deferred);
         }
     }
 }

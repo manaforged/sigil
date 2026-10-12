@@ -5,17 +5,46 @@
     clippy::redundant_pub_crate
 )]
 
+use bytemuck::{Pod, Zeroable};
+use wgpu::util::DeviceExt as _;
+
 use crate::renderer::blur_shader::BLUR_SHADER;
 use crate::renderer::error::RendererError;
+use crate::renderer::fill_paint::setup::{
+    QuadDesc, QuadPipeline, begin_pass, buffer_group, buffer_layout, linear_sampler, texture_group,
+    texture_layout,
+};
 use crate::renderer::layer_pool::{LayerHandle, LayerPool};
 use crate::renderer::split_encoder::SplitEncoder;
 
-mod setup;
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+struct BlurUniforms {
+    viewport: [f32; 2],
+    params: [f32; 2],
+}
 
-use setup::{
-    BlurInstance, BlurUniforms, UNIT_QUAD_VERTEX_COUNT, make_instance_buffer, make_pipeline,
-    make_texture_bind_group, make_texture_layout, make_uniform_bind_group, make_uniform_buffer,
-    make_uniform_layout, make_unit_quad,
+const _: () = assert!(core::mem::size_of::<BlurUniforms>() == 16);
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+struct BlurInstance {
+    dest: [f32; 4],
+    uv_max: [f32; 2],
+    opacity: f32,
+    _pad: f32,
+}
+
+const _: () = assert!(core::mem::size_of::<BlurInstance>() == 32);
+
+const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
+    array_stride: core::mem::size_of::<BlurInstance>() as u64,
+    step_mode: wgpu::VertexStepMode::Instance,
+    attributes: &wgpu::vertex_attr_array![
+        1 => Float32x4,
+        2 => Float32x2,
+        3 => Float32,
+    ],
 };
 
 pub(crate) const BLUR_PASSES: u32 = 3;
@@ -31,48 +60,43 @@ pub(crate) fn box_radius(sigma: f32) -> u32 {
 }
 
 pub(crate) struct BlurPipeline {
-    format: wgpu::TextureFormat,
-    box_pipeline: wgpu::RenderPipeline,
+    quad: QuadPipeline,
     uniform_layout: wgpu::BindGroupLayout,
     texture_layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
-    unit_quad: wgpu::Buffer,
 }
 
 impl BlurPipeline {
     pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("sigil-renderer blur shader"),
-            source: wgpu::ShaderSource::Wgsl(BLUR_SHADER.into()),
-        });
-        let uniform_layout = make_uniform_layout(device);
-        let texture_layout = make_texture_layout(device);
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("sigil-renderer blur sampler"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            ..Default::default()
-        });
-        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("sigil-renderer blur pipeline layout"),
-            bind_group_layouts: &[Some(&uniform_layout), Some(&texture_layout)],
-            immediate_size: 0,
-        });
-        let box_pipeline = make_pipeline(device, format, &shader, &layout, "fs_box");
-        Self {
+        let uniform_layout = buffer_layout(
+            device,
+            "sigil-renderer blur uniforms layout",
+            wgpu::ShaderStages::VERTEX_FRAGMENT,
+            wgpu::BufferBindingType::Uniform,
+        );
+        let texture_layout = texture_layout(device, "sigil-renderer blur texture layout");
+        let quad = QuadPipeline::new(
+            device,
             format,
-            box_pipeline,
+            QuadDesc {
+                label: "sigil-renderer blur",
+                wgsl: BLUR_SHADER,
+                groups: &[Some(&uniform_layout), Some(&texture_layout)],
+                instance: INSTANCE_LAYOUT,
+                fs_entry: "fs_box",
+                blend: wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+            },
+        );
+        Self {
+            quad,
             uniform_layout,
             texture_layout,
-            sampler,
-            unit_quad: make_unit_quad(device),
+            sampler: linear_sampler(device, "sigil-renderer blur sampler"),
         }
     }
 
     pub(crate) const fn format(&self) -> wgpu::TextureFormat {
-        self.format
+        self.quad.format
     }
 
     pub(crate) fn apply(
@@ -87,9 +111,9 @@ impl BlurPipeline {
             return Ok(None);
         }
         let pair = [
-            pool.acquire(ctx.device, src.w, src.h, self.format)
+            pool.acquire(ctx.device, src.w, src.h, self.quad.format)
                 .map_err(RendererError::Layer)?,
-            pool.acquire(ctx.device, src.w, src.h, self.format)
+            pool.acquire(ctx.device, src.w, src.h, self.quad.format)
                 .map_err(RendererError::Layer)?,
         ];
         let viewport = (src.w as f32, src.h as f32);
@@ -134,42 +158,46 @@ impl BlurPipeline {
             opacity: 1.0,
             _pad: 0.0,
         };
-        let uniform_buf = make_uniform_buffer(
+        let uniforms = BlurUniforms {
+            viewport: [vw.max(1.0), vh.max(1.0)],
+            params,
+        };
+        let uniform_buf = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("sigil-renderer blur uniforms"),
+                contents: bytemuck::bytes_of(&uniforms),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+        let uniform_bg = buffer_group(
             ctx.device,
-            &BlurUniforms {
-                viewport: [vw.max(1.0), vh.max(1.0)],
-                params,
-            },
+            "sigil-renderer blur uniforms bind group",
+            &self.uniform_layout,
+            uniform_buf.as_entire_buffer_binding(),
         );
-        let uniform_bg = make_uniform_bind_group(ctx.device, &self.uniform_layout, &uniform_buf);
-        let instance_buf = make_instance_buffer(ctx.device, &instance);
-        let tex_bg =
-            make_texture_bind_group(ctx.device, &self.texture_layout, src.view, &self.sampler);
-        let pass = ctx.encoder.begin_render_pass(
-            "sigil-renderer blur pass",
-            &wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: dst.view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            },
+        let instance_buf = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("sigil-renderer blur instance buffer"),
+                contents: bytemuck::bytes_of(&instance),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+        let tex_bg = texture_group(
+            ctx.device,
+            "sigil-renderer blur texture bind group",
+            &self.texture_layout,
+            src.view,
+            &self.sampler,
         );
-        pass.set_pipeline(&self.box_pipeline);
-        pass.set_bind_group(0, &uniform_bg, &[]);
-        pass.set_bind_group(1, &tex_bg, &[]);
-        pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instance_buf.slice(..));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..1);
+        let load = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
+        let pass = begin_pass(ctx.encoder, "sigil-renderer blur pass", dst.view, load);
+        self.quad.draw(
+            pass,
+            &[&uniform_bg, &tex_bg],
+            &[],
+            instance_buf.slice(..),
+            1,
+        );
     }
 }
 

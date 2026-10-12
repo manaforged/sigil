@@ -2,7 +2,7 @@ use core::panic::Location;
 
 use crate::reactive::owner_dispose::dispose_owner;
 use crate::reactive::phase::DrawPhase;
-use crate::reactive::runtime::{Runtime, with_rt};
+use crate::reactive::runtime::{Runtime, RuntimeState, with_rt};
 
 impl Runtime {
     pub fn recover_from_panic() {
@@ -49,53 +49,20 @@ impl Runtime {
     }
 
     pub fn begin_effect() {
-        with_rt(|rt| {
-            debug_assert_eq!(
-                rt.phase,
-                DrawPhase::Idle,
-                "Runtime::begin_effect called from phase {:?}, expected Idle",
-                rt.phase,
-            );
-            rt.phase = DrawPhase::Effect;
-            rt.frame_dirty = false;
-        });
+        advance("begin_effect", DrawPhase::Idle, DrawPhase::Effect);
+        with_rt(|rt| rt.frame_dirty = false);
     }
 
     pub fn begin_layout() {
-        with_rt(|rt| {
-            debug_assert_eq!(
-                rt.phase,
-                DrawPhase::Effect,
-                "Runtime::begin_layout called from phase {:?}, expected Effect",
-                rt.phase,
-            );
-            rt.phase = DrawPhase::Layout;
-        });
+        advance("begin_layout", DrawPhase::Effect, DrawPhase::Layout);
     }
 
     pub fn begin_paint() {
-        with_rt(|rt| {
-            debug_assert_eq!(
-                rt.phase,
-                DrawPhase::Layout,
-                "Runtime::begin_paint called from phase {:?}, expected Layout",
-                rt.phase,
-            );
-            rt.phase = DrawPhase::Paint;
-        });
+        advance("begin_paint", DrawPhase::Layout, DrawPhase::Paint);
     }
 
     pub fn end_frame() {
-        with_rt(|rt| {
-            debug_assert_eq!(
-                rt.phase,
-                DrawPhase::Paint,
-                "Runtime::end_frame called from phase {:?}, expected Paint",
-                rt.phase,
-            );
-            rt.phase = DrawPhase::Effect;
-        });
-        with_rt(|rt| rt.phase = DrawPhase::Idle);
+        advance("end_frame", DrawPhase::Paint, DrawPhase::Idle);
     }
 
     #[must_use]
@@ -108,7 +75,18 @@ impl Runtime {
     }
 }
 
-fn clear_dead_current(rt: &mut crate::reactive::runtime::RuntimeState) {
+fn advance(api: &'static str, from: DrawPhase, to: DrawPhase) {
+    with_rt(|rt| {
+        debug_assert_eq!(
+            rt.phase, from,
+            "Runtime::{api} called from phase {:?}, expected {from:?}",
+            rt.phase,
+        );
+        rt.phase = to;
+    });
+}
+
+fn clear_dead_current(rt: &mut RuntimeState) {
     if rt.current_owner.is_some_and(|key| !rt.owners.contains(key)) {
         rt.current_owner = None;
     }

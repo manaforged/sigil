@@ -153,7 +153,6 @@ impl<K: TreeKey> TreeBuilder<K> {
         flatten::bind(self.nodes, &state);
         keys::sync_cursor(&state);
         let render_state = state.clone();
-        let key_state = state.clone();
         let label = self.label;
         let mut list = virtual_list(state.rows, move |index, item: &TreeRow<K>| {
             row::render(&render_state, index, item)
@@ -165,7 +164,7 @@ impl<K: TreeKey> TreeBuilder<K> {
             .estimate(ROW_ESTIMATE)
             .viewport_fill()
             .map_node(move |node| {
-                let node = keys::attach(node.role(Role::Tree), &key_state);
+                let node = keys::attach(node.role(Role::Tree), &state);
                 match label {
                     Some(label) => node.label(row::accessible_name(&label)),
                     None => node,
@@ -186,6 +185,7 @@ impl<K: TreeKey> IntoNode for TreeBuilder<K> {
     }
 }
 
+#[derive(Clone)]
 struct TreeState<K: TreeKey> {
     rows: Signal<Vec<TreeRow<K>>>,
     expanded: Signal<Vec<K>>,
@@ -193,17 +193,4 @@ struct TreeState<K: TreeKey> {
     cursor: Signal<usize>,
     activate: Option<Activate<K>>,
     indent: Option<f32>,
-}
-
-impl<K: TreeKey> Clone for TreeState<K> {
-    fn clone(&self) -> Self {
-        Self {
-            rows: self.rows,
-            expanded: self.expanded,
-            selected: self.selected,
-            cursor: self.cursor,
-            activate: self.activate.clone(),
-            indent: self.indent,
-        }
-    }
 }

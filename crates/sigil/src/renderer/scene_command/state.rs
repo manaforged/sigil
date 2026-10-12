@@ -42,8 +42,13 @@ impl SceneState {
             SceneCommand::PopClip => self.pop_clip(),
             SceneCommand::PushTransform(transform) => self.push_transform(*transform),
             SceneCommand::PopTransform => self.pop_transform(),
-            SceneCommand::SaveLayer { opacity } => self.save_layer(*opacity),
-            SceneCommand::RestoreLayer => self.restore_layer(),
+            SceneCommand::SaveLayer { opacity } => self
+                .opacities
+                .push(self.current_opacity() * opacity.clamp(0.0, 1.0)),
+            SceneCommand::RestoreLayer if self.opacities.len() > 1 => {
+                let _ = self.opacities.pop();
+            }
+            SceneCommand::RestoreLayer => {}
             _ => return false,
         }
         true
@@ -68,17 +73,6 @@ impl SceneState {
     pub(crate) fn pop_transform(&mut self) {
         if self.transforms.len() > 1 {
             let _ = self.transforms.pop();
-        }
-    }
-
-    pub(crate) fn save_layer(&mut self, opacity: f32) {
-        self.opacities
-            .push(self.current_opacity() * opacity.clamp(0.0, 1.0));
-    }
-
-    pub(crate) fn restore_layer(&mut self) {
-        if self.opacities.len() > 1 {
-            let _ = self.opacities.pop();
         }
     }
 
@@ -142,29 +136,19 @@ impl SceneState {
     }
 
     pub(crate) fn layer_end(commands: &[SceneCommand], start: usize) -> usize {
-        let mut depth = 0_usize;
-        for (offset, command) in commands.iter().enumerate().skip(start) {
-            match command {
-                SceneCommand::PushLayer(_) => depth += 1,
-                SceneCommand::PopLayer if depth == 0 => return offset,
-                SceneCommand::PopLayer => depth -= 1,
-                _ => {}
-            }
-        }
-        commands.len()
+        matching_end(commands, start, |command| match command {
+            SceneCommand::PushLayer(_) => Some(true),
+            SceneCommand::PopLayer => Some(false),
+            _ => None,
+        })
     }
 
     pub(crate) fn group_end(commands: &[SceneCommand], start: usize) -> usize {
-        let mut depth = 0_usize;
-        for (offset, command) in commands.iter().enumerate().skip(start) {
-            match command {
-                SceneCommand::SaveLayer { .. } => depth += 1,
-                SceneCommand::RestoreLayer if depth == 0 => return offset,
-                SceneCommand::RestoreLayer => depth -= 1,
-                _ => {}
-            }
-        }
-        commands.len()
+        matching_end(commands, start, |command| match command {
+            SceneCommand::SaveLayer { .. } => Some(true),
+            SceneCommand::RestoreLayer => Some(false),
+            _ => None,
+        })
     }
 
     pub(crate) fn draw_bounds(
@@ -240,6 +224,23 @@ impl SceneState {
                 )
         })
     }
+}
+
+fn matching_end(
+    commands: &[SceneCommand],
+    start: usize,
+    opens: fn(&SceneCommand) -> Option<bool>,
+) -> usize {
+    let mut depth = 0_usize;
+    for (offset, command) in commands.iter().enumerate().skip(start) {
+        match opens(command) {
+            Some(true) => depth += 1,
+            Some(false) if depth == 0 => return offset,
+            Some(false) => depth -= 1,
+            None => {}
+        }
+    }
+    commands.len()
 }
 
 #[cfg(test)]

@@ -1,15 +1,12 @@
-use crate::animation::AnimationDirection;
-use crate::animation::AnimationFill;
-use crate::animation_runtime::MotionPrefs;
-use crate::reactive::Runtime;
 use std::cell::RefCell;
 use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::animation::{Keyframe, Keyframes};
-use crate::animation_runtime::{Playback, active_count, tick};
+use crate::animation::{AnimationDirection, AnimationFill, Keyframe, Keyframes};
+use crate::animation_runtime::{MotionPrefs, Playback, active_count, tick};
 use crate::prelude::*;
+use crate::reactive::Runtime;
 
 fn frames() -> Keyframes {
     Keyframes::new(
@@ -18,20 +15,35 @@ fn frames() -> Keyframes {
     )
 }
 
+fn twice(direction: AnimationDirection) -> Keyframes {
+    frames()
+        .repeat(NonZeroU32::new(2).expect("two iterations"))
+        .direction(direction)
+}
+
+#[track_caller]
+fn assert_at(value: Signal<f32>, expected: f32) {
+    assert_eq!(value.peek().to_bits(), expected.to_bits());
+}
+
+fn seek_ms(playback: &mut Playback, ms: u64) {
+    playback.seek(Duration::from_millis(ms));
+}
+
 #[test]
 fn paused_playback_holds_its_value_and_resumes_from_that_position() {
     Runtime::scope("playback-pause", || {
         let value = signal(0.0);
         let mut playback = Playback::new(value, frames());
         tick(0.25);
-        assert_eq!(value.peek().to_bits(), 25.0_f32.to_bits());
+        assert_at(value, 25.0);
         playback.pause();
         tick(0.5);
-        assert_eq!(value.peek().to_bits(), 25.0_f32.to_bits());
+        assert_at(value, 25.0);
         assert_eq!(active_count(), 0);
         playback.resume();
         tick(0.25);
-        assert_eq!(value.peek().to_bits(), 50.0_f32.to_bits());
+        assert_at(value, 50.0);
     });
 }
 
@@ -39,21 +51,15 @@ fn paused_playback_holds_its_value_and_resumes_from_that_position() {
 fn seeking_across_delay_and_alternate_reverse_cycles_preserves_the_endpoint() {
     Runtime::scope("playback-direction", || {
         let value = signal(7.0);
-        let mut playback = Playback::new(
-            value,
-            frames()
-                .delay(Duration::from_millis(500))
-                .repeat(NonZeroU32::new(2).expect("two iterations"))
-                .direction(AnimationDirection::AlternateReverse)
-                .fill(AnimationFill::Both),
-        );
-        assert_eq!(value.peek().to_bits(), 100.0_f32.to_bits());
-        playback.seek(Duration::from_millis(750));
-        assert_eq!(value.peek().to_bits(), 75.0_f32.to_bits());
-        playback.seek(Duration::from_millis(1750));
-        assert_eq!(value.peek().to_bits(), 25.0_f32.to_bits());
-        playback.seek(Duration::from_millis(2500));
-        assert_eq!(value.peek().to_bits(), 100.0_f32.to_bits());
+        let frames = twice(AnimationDirection::AlternateReverse)
+            .delay(Duration::from_millis(500))
+            .fill(AnimationFill::Both);
+        let mut playback = Playback::new(value, frames);
+        assert_at(value, 100.0);
+        for (ms, expected) in [(750, 75.0), (1750, 25.0), (2500, 100.0)] {
+            seek_ms(&mut playback, ms);
+            assert_at(value, expected);
+        }
         assert!(playback.finished());
         assert_eq!(active_count(), 0);
     });
@@ -63,17 +69,15 @@ fn seeking_across_delay_and_alternate_reverse_cycles_preserves_the_endpoint() {
 fn no_fill_restores_the_original_value_after_playback_finishes() {
     Runtime::scope("playback-no-fill", || {
         let value = signal(7.0);
-        let playback = Playback::new(
-            value,
-            frames()
-                .delay(Duration::from_millis(500))
-                .fill(AnimationFill::None),
-        );
-        assert_eq!(value.peek().to_bits(), 7.0_f32.to_bits());
+        let frames = frames()
+            .delay(Duration::from_millis(500))
+            .fill(AnimationFill::None);
+        let playback = Playback::new(value, frames);
+        assert_at(value, 7.0);
         tick(0.75);
-        assert_eq!(value.peek().to_bits(), 25.0_f32.to_bits());
+        assert_at(value, 25.0);
         tick(0.75);
-        assert_eq!(value.peek().to_bits(), 7.0_f32.to_bits());
+        assert_at(value, 7.0);
         assert!(playback.finished());
         assert_eq!(active_count(), 0);
     });
@@ -87,12 +91,12 @@ fn cancellation_restores_the_original_value_until_explicitly_restarted() {
         tick(0.25);
         playback.cancel();
         tick(1.0);
-        assert_eq!(value.peek().to_bits(), 7.0_f32.to_bits());
+        assert_at(value, 7.0);
         assert!(playback.finished());
         assert_eq!(active_count(), 0);
         playback.restart();
         tick(0.25);
-        assert_eq!(value.peek().to_bits(), 25.0_f32.to_bits());
+        assert_at(value, 25.0);
         assert!(!playback.finished());
     });
 }
@@ -105,7 +109,7 @@ fn dropping_playback_stops_updates_to_the_bound_value() {
         tick(0.25);
         drop(playback);
         tick(0.25);
-        assert_eq!(value.peek().to_bits(), 25.0_f32.to_bits());
+        assert_at(value, 25.0);
         assert_eq!(active_count(), 0);
     });
 }
@@ -117,7 +121,7 @@ fn reduced_motion_finishes_even_a_paused_animation() {
         let mut playback = Playback::new(value, frames());
         playback.pause();
         MotionPrefs::set(true);
-        assert_eq!(value.peek().to_bits(), 100.0_f32.to_bits());
+        assert_at(value, 100.0);
         assert!(playback.finished());
         assert_eq!(active_count(), 0);
         MotionPrefs::set(false);
@@ -127,15 +131,12 @@ fn reduced_motion_finishes_even_a_paused_animation() {
 #[test]
 fn effects_observe_a_complete_animation_frame_without_borrowing_the_registry() {
     Runtime::scope("playback-batch", || {
-        let x = signal(0.0);
-        let y = signal(0.0);
+        let (x, y) = (signal(0.0), signal(0.0));
         let _x = Playback::new(x, frames());
         let _y = Playback::new(y, frames());
         let seen = Rc::new(RefCell::new(Vec::new()));
         let sink = Rc::clone(&seen);
-        effect(move || {
-            sink.borrow_mut().push((x.get(), y.get(), active_count()));
-        });
+        effect(move || sink.borrow_mut().push((x.get(), y.get(), active_count())));
         seen.borrow_mut().clear();
         tick(0.25);
         assert_eq!(&*seen.borrow(), &[(25.0, 25.0, 2)]);
@@ -155,10 +156,10 @@ fn playback_interpolates_each_keyframe_segment_in_its_own_time_range() {
             Duration::from_secs(1),
         );
         let mut playback = Playback::new(value, frames);
-        playback.seek(Duration::from_millis(125));
-        assert_eq!(value.peek().to_bits(), 40.0_f32.to_bits());
-        playback.seek(Duration::from_millis(625));
-        assert_eq!(value.peek().to_bits(), 90.0_f32.to_bits());
+        seek_ms(&mut playback, 125);
+        assert_at(value, 40.0);
+        seek_ms(&mut playback, 625);
+        assert_at(value, 90.0);
     });
 }
 
@@ -166,18 +167,13 @@ fn playback_interpolates_each_keyframe_segment_in_its_own_time_range() {
 fn reverse_playback_runs_backwards_on_every_iteration() {
     Runtime::scope("playback-reverse", || {
         let value = signal(7.0);
-        let mut playback = Playback::new(
-            value,
-            frames()
-                .repeat(NonZeroU32::new(2).expect("two iterations"))
-                .direction(AnimationDirection::Reverse),
-        );
-        for elapsed in [250, 1250] {
-            playback.seek(Duration::from_millis(elapsed));
-            assert_eq!(value.peek().to_bits(), 75.0_f32.to_bits());
+        let mut playback = Playback::new(value, twice(AnimationDirection::Reverse));
+        for ms in [250, 1250] {
+            seek_ms(&mut playback, ms);
+            assert_at(value, 75.0);
         }
         playback.finish();
-        assert_eq!(value.peek().to_bits(), 0.0_f32.to_bits());
+        assert_at(value, 0.0);
         assert!(playback.finished());
     });
 }
@@ -186,51 +182,32 @@ fn reverse_playback_runs_backwards_on_every_iteration() {
 fn alternate_playback_returns_to_its_start_after_two_iterations() {
     Runtime::scope("playback-alternate", || {
         let value = signal(7.0);
-        let mut playback = Playback::new(
-            value,
-            frames()
-                .repeat(NonZeroU32::new(2).expect("two iterations"))
-                .direction(AnimationDirection::Alternate),
-        );
-        playback.seek(Duration::from_millis(250));
-        assert_eq!(value.peek().to_bits(), 25.0_f32.to_bits());
-        playback.seek(Duration::from_millis(1250));
-        assert_eq!(value.peek().to_bits(), 75.0_f32.to_bits());
-        playback.seek(Duration::from_secs(2));
-        assert_eq!(value.peek().to_bits(), 0.0_f32.to_bits());
+        let mut playback = Playback::new(value, twice(AnimationDirection::Alternate));
+        for (ms, expected) in [(250, 25.0), (1250, 75.0), (2000, 0.0)] {
+            seek_ms(&mut playback, ms);
+            assert_at(value, expected);
+        }
         assert!(playback.finished());
     });
 }
 
 #[test]
-fn backwards_fill_applies_during_delay_but_restores_the_value_at_completion() {
-    Runtime::scope("playback-backwards-fill", || {
-        let value = signal(7.0);
-        let mut playback = Playback::new(
-            value,
-            frames()
-                .delay(Duration::from_millis(500))
-                .fill(AnimationFill::Backwards),
-        );
-        assert_eq!(value.peek().to_bits(), 0.0_f32.to_bits());
-        playback.seek(Duration::from_millis(750));
-        assert_eq!(value.peek().to_bits(), 25.0_f32.to_bits());
-        playback.finish();
-        assert_eq!(value.peek().to_bits(), 7.0_f32.to_bits());
-    });
-}
-
-#[test]
-fn forwards_fill_preserves_the_initial_value_during_delay_and_holds_the_end() {
-    Runtime::scope("playback-forwards-fill", || {
-        let value = signal(7.0);
-        let mut playback = Playback::new(value, frames().delay(Duration::from_millis(500)));
-        assert_eq!(value.peek().to_bits(), 7.0_f32.to_bits());
-        playback.seek(Duration::from_millis(750));
-        assert_eq!(value.peek().to_bits(), 25.0_f32.to_bits());
-        playback.finish();
-        assert_eq!(value.peek().to_bits(), 100.0_f32.to_bits());
-    });
+fn fill_mode_decides_the_value_during_delay_and_after_finish() {
+    for (fill, during_delay, after) in [
+        (AnimationFill::Backwards, 0.0, 7.0),
+        (AnimationFill::Forwards, 7.0, 100.0),
+    ] {
+        Runtime::scope("playback-fill", || {
+            let value = signal(7.0);
+            let frames = frames().delay(Duration::from_millis(500)).fill(fill);
+            let mut playback = Playback::new(value, frames);
+            assert_at(value, during_delay);
+            seek_ms(&mut playback, 750);
+            assert_at(value, 25.0);
+            playback.finish();
+            assert_at(value, after);
+        });
+    }
 }
 
 #[test]

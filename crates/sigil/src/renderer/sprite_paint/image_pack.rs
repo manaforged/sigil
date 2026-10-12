@@ -153,7 +153,7 @@ impl SpritePipeline {
         queue: &wgpu::Queue,
         desc: &AtlasDesc<'_>,
     ) -> Option<u32> {
-        if !valid_atlas_desc(desc.bytes, desc.width, desc.height, desc.format) {
+        if !valid_atlas_desc(desc) {
             return None;
         }
         let slot = self.image_pack.free_dedicated.pop()?;

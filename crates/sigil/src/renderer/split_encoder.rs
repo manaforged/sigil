@@ -4,7 +4,7 @@ use std::mem::replace;
 
 use crate::profile::count;
 use crate::renderer::decoration_paint::DecorationInstance;
-use crate::renderer::frame_upload::{UploadBuffers, UploadedRange};
+use crate::renderer::frame_upload::{UploadBuffer, UploadBuffers, UploadedRange};
 use crate::renderer::layer_composite::LayerInstance;
 use crate::renderer::raster_paint::RasterInstance;
 use crate::renderer::renderer::record_clear;
@@ -115,18 +115,14 @@ impl SplitEncoder {
     }
 
     pub(crate) fn upload<T: bytemuck::Pod>(&mut self, values: &[T]) -> UploadedRange {
-        let (buffer, bytes, allocated_bytes) = self.uploads.vertices.write(
-            &self.device,
+        let alignment = wgpu::COPY_BUFFER_ALIGNMENT;
+        write_range(
+            &mut self.uploads.vertices,
             &self.queue,
-            bytemuck::cast_slice(values),
-            wgpu::COPY_BUFFER_ALIGNMENT,
-        );
-        UploadedRange {
-            buffer,
-            bytes,
-            count: u32::try_from(values.len()).expect("draw count exceeds u32"),
-            allocated_bytes,
-        }
+            &self.device,
+            values,
+            alignment,
+        )
     }
 
     pub(crate) fn uniform<T: bytemuck::Pod>(&mut self, value: &T) -> (wgpu::Buffer, u32, u64) {
@@ -144,24 +140,24 @@ impl SplitEncoder {
     }
 
     pub(crate) fn storage<T: bytemuck::Pod>(&mut self, values: &[T]) -> UploadedRange {
-        let (buffer, bytes, allocated_bytes) = self.uploads.storage.write(
-            &self.device,
+        let alignment = self.storage_alignment;
+        write_range(
+            &mut self.uploads.storage,
             &self.queue,
-            bytemuck::cast_slice(values),
-            self.storage_alignment,
-        );
-        UploadedRange {
-            buffer,
-            bytes,
-            count: u32::try_from(values.len()).expect("stop count exceeds u32"),
-            allocated_bytes,
-        }
+            &self.device,
+            values,
+            alignment,
+        )
     }
 
-    pub(crate) fn clear(&mut self, view: &wgpu::TextureView, color: Color) {
+    fn end_pass(&mut self) {
         self.flush_clear();
         drop(self.pass.take());
         self.target = None;
+    }
+
+    pub(crate) fn clear(&mut self, view: &wgpu::TextureView, color: Color) {
+        self.end_pass();
         self.pending_clear = Some((view.clone(), color));
     }
 
@@ -233,9 +229,7 @@ impl SplitEncoder {
     }
 
     pub(crate) fn copy_texture(&mut self, source: &wgpu::Texture, destination: &wgpu::Texture) {
-        self.flush_clear();
-        drop(self.pass.take());
-        self.target = None;
+        self.end_pass();
         self.encoder.copy_texture_to_texture(
             source.as_image_copy(),
             destination.as_image_copy(),
@@ -244,8 +238,7 @@ impl SplitEncoder {
     }
 
     pub(crate) fn submit(mut self) -> (UploadBuffers, Option<GpuTimer>) {
-        self.flush_clear();
-        drop(self.pass.take());
+        self.end_pass();
         self.flush();
         if let Some(timer) = self.timer.as_mut() {
             timer.terminate(&self.device, &mut self.encoder);
@@ -266,8 +259,7 @@ impl SplitEncoder {
     }
 
     pub(crate) fn into_inner(mut self) -> wgpu::CommandEncoder {
-        self.flush_clear();
-        drop(self.pass.take());
+        self.end_pass();
         self.flush();
         self.encoder
     }
@@ -276,6 +268,23 @@ impl SplitEncoder {
         self.uploads.vertices.flush(&self.queue);
         self.uploads.uniforms.flush(&self.queue);
         self.uploads.storage.flush(&self.queue);
+    }
+}
+
+fn write_range<T: bytemuck::Pod>(
+    buffer: &mut UploadBuffer,
+    queue: &wgpu::Queue,
+    device: &wgpu::Device,
+    values: &[T],
+    alignment: u64,
+) -> UploadedRange {
+    let (buffer, bytes, allocated_bytes) =
+        buffer.write(device, queue, bytemuck::cast_slice(values), alignment);
+    UploadedRange {
+        buffer,
+        bytes,
+        count: u32::try_from(values.len()).expect("upload count exceeds u32"),
+        allocated_bytes,
     }
 }
 

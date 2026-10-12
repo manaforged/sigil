@@ -174,49 +174,39 @@ impl<'a> Walk<'a> {
     }
 
     fn queue_batchable(&mut self, command: &SceneCommand) -> bool {
-        match command {
+        let keep = match command {
             SceneCommand::GlyphRun(draw) => {
                 self.queue_glyph_run(draw);
-                true
+                return true;
             }
             SceneCommand::Rect(draw) => {
                 if self.glyphs_under(transform_rect(self.state.current_transform(), draw.rect)) {
                     self.flush_glyphs();
                 }
-                self.flush_shapes_except(Shape::Rect);
-                self.queue_rect(draw);
-                true
+                Shape::Rect
             }
-            SceneCommand::Gradient(draw) => {
-                self.flush_glyphs();
-                self.flush_shapes_except(Shape::Fill);
-                self.queue_gradient(draw);
-                true
-            }
-            SceneCommand::Pattern(draw) => {
-                self.flush_glyphs();
-                self.flush_shapes_except(Shape::Fill);
-                self.queue_pattern(draw);
-                true
-            }
+            SceneCommand::Gradient(_) | SceneCommand::Pattern(_) => Shape::Fill,
+            SceneCommand::DrawShadow { .. } => Shape::Shadow,
+            SceneCommand::Decoration(_) => Shape::Decoration,
+            _ => return false,
+        };
+        if keep != Shape::Rect {
+            self.flush_glyphs();
+        }
+        self.flush_shapes_except(keep);
+        match command {
+            SceneCommand::Rect(draw) => self.queue_rect(draw),
+            SceneCommand::Gradient(draw) => self.queue_gradient(draw),
+            SceneCommand::Pattern(draw) => self.queue_pattern(draw),
             SceneCommand::DrawShadow {
                 rect,
                 radii,
                 shadow,
-            } => {
-                self.flush_glyphs();
-                self.flush_shapes_except(Shape::Shadow);
-                self.queue_shadow(*rect, *radii, *shadow);
-                true
-            }
-            SceneCommand::Decoration(draw) => {
-                self.flush_glyphs();
-                self.flush_shapes_except(Shape::Decoration);
-                self.queue_decoration(draw);
-                true
-            }
-            _ => false,
+            } => self.queue_shadow(*rect, *radii, *shadow),
+            SceneCommand::Decoration(draw) => self.queue_decoration(draw),
+            _ => {}
         }
+        true
     }
 
     fn flush_shapes_except(&mut self, keep: Shape) {
@@ -285,4 +275,27 @@ pub(crate) fn intersect_rect(left: Rect, right: Rect) -> Option<Rect> {
     let x1 = (left.origin.x + left.width).min(right.origin.x + right.width);
     let y1 = (left.origin.y + left.height).min(right.origin.y + right.height);
     (x1 > x0 && y1 > y0).then(|| Rect::new(Point::new(x0, y0), x1 - x0, y1 - y0))
+}
+
+pub(super) type PipelineFns<P> = (
+    fn(&P) -> wgpu::TextureFormat,
+    fn(&wgpu::Device, wgpu::TextureFormat) -> P,
+);
+
+pub(super) fn pipeline_for<'a, P>(
+    pipelines: &'a mut Vec<P>,
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    (of, new): PipelineFns<P>,
+) -> &'a mut P {
+    let index = pipelines
+        .iter()
+        .position(|p| of(p) == format)
+        .unwrap_or_else(|| {
+            pipelines.push(new(device, format));
+            pipelines.len() - 1
+        });
+    pipelines
+        .get_mut(index)
+        .expect("pipeline index was just constructed from the vec")
 }

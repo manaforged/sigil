@@ -37,19 +37,15 @@ impl<K: TreeKey> PartialEq for TreeRow<K> {
 }
 
 pub(super) fn bind<K: TreeKey>(nodes: NodesFn<K>, state: &TreeState<K>) {
-    let rows = state.rows;
-    let expanded = state.expanded;
-    let selected = state.selected;
+    let (rows, expanded, selected) = (state.rows, state.expanded, state.selected);
     effect(move || {
-        let roots = nodes();
-        let open = expanded.get();
-        let current = selected.get();
+        let (roots, open, current) = (nodes(), expanded.get(), selected.get());
         let mut out = Vec::new();
-        let walk = Walk {
+        Walk {
             open: &open,
             selected: current.as_ref(),
-        };
-        walk.visit(&roots, 0, None, &mut out);
+        }
+        .visit(&roots, 0, None, &mut out);
         rows.update(|value| *value = out);
     });
 }

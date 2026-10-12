@@ -1,6 +1,7 @@
 use wgpu::util::DeviceExt as _;
 
-use super::builder::atlas_bind_group;
+use super::SpritePipeline;
+use crate::renderer::fill_paint::setup::texture_group;
 
 pub(super) const MAX_ATLASES: usize = 16;
 
@@ -17,31 +18,18 @@ pub(crate) struct AtlasEntry {
     pub(super) height: u32,
 }
 
-#[allow(
-    clippy::too_many_arguments,
-    reason = "the argument list mirrors the upstream API contract"
-)]
-pub(super) fn push_atlas(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    layout: &wgpu::BindGroupLayout,
-    sampler: &wgpu::Sampler,
-    atlases: &mut Vec<AtlasEntry>,
-    atlas_bind_groups: &mut Vec<wgpu::BindGroup>,
-    bytes: &[u8],
-    width: u32,
-    height: u32,
-    format: wgpu::TextureFormat,
-) {
-    let desc = AtlasDesc {
-        bytes,
-        width,
-        height,
-        format,
-    };
-    let (entry, bind_group) = build_atlas(device, queue, layout, sampler, &desc);
-    atlases.push(entry);
-    atlas_bind_groups.push(bind_group);
+impl SpritePipeline {
+    pub(super) fn push_atlas(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        desc: &AtlasDesc<'_>,
+    ) {
+        let (entry, bind_group) =
+            build_atlas(device, queue, &self.atlas_layout, &self.sampler, desc);
+        self.atlases.push(entry);
+        self.atlas_bind_groups.push(bind_group);
+    }
 }
 
 pub(super) fn build_atlas(
@@ -71,7 +59,13 @@ pub(super) fn build_atlas(
         desc.bytes,
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let bind_group = atlas_bind_group(device, layout, &view, sampler);
+    let bind_group = texture_group(
+        device,
+        "sigil-renderer sprite atlas bind group",
+        layout,
+        &view,
+        sampler,
+    );
     let entry = AtlasEntry {
         texture,
         width: desc.width,
@@ -80,12 +74,13 @@ pub(super) fn build_atlas(
     (entry, bind_group)
 }
 
-pub(super) fn valid_atlas_desc(
-    bytes: &[u8],
-    width: u32,
-    height: u32,
-    format: wgpu::TextureFormat,
-) -> bool {
+pub(super) fn valid_atlas_desc(desc: &AtlasDesc<'_>) -> bool {
+    let AtlasDesc {
+        bytes,
+        width,
+        height,
+        format,
+    } = *desc;
     if bytes.is_empty()
         || width == 0
         || height == 0

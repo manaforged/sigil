@@ -1,6 +1,7 @@
 use super::mix::{alpha_mix, ramp_accent};
 use super::{Theme, ThemeValue};
 use crate::style::palette::is_dark;
+use crate::style::scale::rgb;
 use crate::style::{ColorKey, Rgba8, Token};
 
 const SCRIM: Rgba8 = Rgba8 {
@@ -159,18 +160,8 @@ impl Theme {
 }
 
 const LEGIBLE: f32 = 4.5;
-const WHITE: Rgba8 = Rgba8 {
-    r: 255,
-    g: 255,
-    b: 255,
-    a: 255,
-};
-const BLACK: Rgba8 = Rgba8 {
-    r: 0,
-    g: 0,
-    b: 0,
-    a: 255,
-};
+const WHITE: Rgba8 = rgb(255, 255, 255);
+const BLACK: Rgba8 = rgb(0, 0, 0);
 
 fn luminance(color: Rgba8) -> f32 {
     let channel = |value: u8| {

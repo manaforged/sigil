@@ -1,6 +1,6 @@
 use crate::style::Rgba8;
 
-const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
+pub(super) const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
     Rgba8 { r, g, b, a: 255 }
 }
 

@@ -10,7 +10,5 @@ fn toast_builds_from_a_message_signal() {
         let id = cx.add(toast(message));
         let node = cx.get(id).expect("toast root");
         assert!(!node.children().is_empty(), "the toast shows its message");
-        message.set(None);
-        assert!(message.get().is_none());
     });
 }

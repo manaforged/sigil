@@ -76,7 +76,15 @@ impl MenuBarBuilder {
         let mut bar = container()
             .role(Role::GenericContainer)
             .label(theme_label(StringKey::MenuBar))
-            .with(self.layout_overrides.apply(bar_layout(self.fill)))
+            .with(self.layout_overrides.apply({
+                let row = LayoutStyle::flex_row();
+                let row = if self.fill { row.fill_width() } else { row };
+                row.height(TRIGGER_H)
+                    .shrink(0.0)
+                    .padding_x(space(1))
+                    .gap(space(1))
+                    .align_items(AlignItems::Center)
+            }))
             .class(BAR_SURFACE);
 
         if !self.style_accumulator.is_empty() {
@@ -112,16 +120,6 @@ impl IntoNode for MenuBarBuilder {
     }
 }
 
-fn bar_layout(fill: bool) -> LayoutStyle {
-    let row = LayoutStyle::flex_row();
-    let row = if fill { row.fill_width() } else { row };
-    row.height(TRIGGER_H)
-        .shrink(0.0)
-        .padding_x(space(1))
-        .gap(space(1))
-        .align_items(AlignItems::Center)
-}
-
 #[allow(
     clippy::cast_precision_loss,
     reason = "char counts are tiny; exactness is irrelevant at pixel scale"
@@ -138,10 +136,10 @@ fn slot_node(
     open_idx: Signal<Option<usize>>,
     host: Option<OwnerId>,
 ) -> NodeBuilder {
-    let trigger = interactive_trigger(slot.label.clone(), index, open_idx);
+    let width = trigger_width(&slot.label);
+    let trigger = interactive_trigger(slot.label, index, open_idx);
     let rows = slot.rows;
     let height = panel_height(&rows);
-    let width = trigger_width(&slot.label);
     container()
         .layout(
             LayoutStyle::flex_row()
@@ -153,7 +151,15 @@ fn slot_node(
         .child(trigger)
         .children_reactive(move || {
             if open_idx.get() == Some(index) {
-                vec![slot_popup(&rows, height, open_idx, host)]
+                let close: Rc<dyn Fn()> = Rc::new(move || open_idx.set(None));
+                vec![
+                    menu_panel(rows.clone(), close, PopupSide::Below, host).layout(panel_layout(
+                        TRIGGER_H + POPUP_GAP,
+                        0.0,
+                        PANEL_WIDTH,
+                        height,
+                    )),
+                ]
             } else {
                 Vec::new()
             }
@@ -195,21 +201,6 @@ fn interactive_trigger(
     interactive(inner)
         .hover(|s| s.bg(Token::SurfaceHover))
         .pressed(|s| s.bg(Token::SurfacePressed))
-}
-
-fn slot_popup(
-    rows: &[Row],
-    height: f32,
-    open_idx: Signal<Option<usize>>,
-    host: Option<OwnerId>,
-) -> NodeBuilder {
-    let close: Rc<dyn Fn()> = Rc::new(move || open_idx.set(None));
-    menu_panel(rows.to_vec(), close, PopupSide::Below, host).layout(panel_layout(
-        TRIGGER_H + POPUP_GAP,
-        0.0,
-        PANEL_WIDTH,
-        height,
-    ))
 }
 
 #[cfg(test)]

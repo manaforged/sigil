@@ -63,12 +63,11 @@ impl Interact {
 
     pub(super) fn attach(
         &self,
-        plot: NodeBuilder,
+        mut plot: NodeBuilder,
         total: usize,
         pad: f32,
         values: impl FnOnce() -> Rc<[f32]>,
     ) -> NodeBuilder {
-        let mut plot = plot;
         if self.crosshair {
             plot = plot.child(self.overlay(values(), pad));
         }
@@ -82,9 +81,11 @@ impl Interact {
     fn pointer(&self, plot: NodeBuilder, total: usize, pad: f32) -> NodeBuilder {
         let (probe, crosshair, range) = (self.probe, self.crosshair, self.range);
         let width = Rc::clone(&self.width);
-        let drag = Rc::clone(&self.drag);
-        let down_drag = Rc::clone(&self.drag);
-        let up_drag = Rc::clone(&self.drag);
+        let (drag, down_drag, up_drag) = (
+            Rc::clone(&self.drag),
+            Rc::clone(&self.drag),
+            Rc::clone(&self.drag),
+        );
         plot.pointer_move(move |event: &mut PointerEvent| {
             width.set(event.target_size.width);
             if crosshair {

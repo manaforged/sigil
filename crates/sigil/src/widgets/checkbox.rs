@@ -40,10 +40,8 @@ static EMPTY_BASE: &[StyleAtom] = &[];
 static PRIMARY_CHECKED: &[StyleAtom] = &[Token::Accent.bg(), Token::Accent.border()];
 static PRIMARY_CHECKED_HOVER: &[StyleAtom] =
     &[Token::AccentHover.bg(), Token::AccentHover.border()];
-static PRIMARY_CHECKED_DOWN: &[StyleAtom] = &[Token::Accent.bg(), Token::Accent.border()];
 static NEUTRAL_CHECKED: &[StyleAtom] = &[Token::Gray9.bg(), Token::Gray9.border()];
 static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[Token::Gray10.bg(), Token::Gray10.border()];
-static NEUTRAL_CHECKED_DOWN: &[StyleAtom] = &[Token::Gray10.bg(), Token::Gray10.border()];
 static UNCHECKED: &[StyleAtom] = &[Token::Field.bg()];
 static UNCHECKED_HOVER: &[StyleAtom] = &[Token::SurfacePressed.bg()];
 static UNCHECKED_DOWN: &[StyleAtom] = &[Token::SurfacePressedStrong.bg()];
@@ -156,12 +154,15 @@ impl CheckboxBuilder {
         let partial = self.partial.unwrap_or_else(|| signal(false));
         let disabled = self.disabled;
         let tone = self.tone;
-        let pointer_change = Rc::clone(&on_change);
-        let enter_change = Rc::clone(&on_change);
-        let space_change = on_change;
+        let (pointer_change, enter_change) = (Rc::clone(&on_change), Rc::clone(&on_change));
         let root = container()
             .role(Role::CheckBox)
-            .label(accessible_label(self.label.as_ref()))
+            .label(
+                self.label
+                    .as_ref()
+                    .and_then(TextContent::as_static_str)
+                    .map_or_else(|| String::from("Checkbox"), ToOwned::to_owned),
+            )
             .checked(checked)
             .layout(checkbox_layout(self.label.is_some()));
         let mut node = control_surface(root, interaction, disabled, user_overlay)
@@ -172,7 +173,7 @@ impl CheckboxBuilder {
                 activate_binary_key(event, interaction, disabled, checked, &enter_change);
             })
             .key(LogicalKey::character(" "), move |event| {
-                activate_binary_key(event, interaction, disabled, checked, &space_change);
+                activate_binary_key(event, interaction, disabled, checked, &on_change);
             })
             .child(checkbox_indicator(
                 CheckMark { checked, partial },
@@ -180,8 +181,12 @@ impl CheckboxBuilder {
                 tone,
                 interaction,
             ));
-        if let Some(label_source) = self.label.clone() {
-            node = node.child(checkbox_label(label_source));
+        if let Some(label) = self.label.clone() {
+            node = node.child(
+                text(label)
+                    .nowrap()
+                    .layout(LayoutStyle::block().fill_width()),
+            );
         }
         interaction.install(node)
     }
@@ -317,49 +322,29 @@ fn mark_path(partial: bool) -> NodeBuilder {
     )
 }
 
-fn checkbox_label(source: TextContent) -> impl IntoNode {
-    crate::kernel::text(source)
-        .nowrap()
-        .layout(LayoutStyle::block().fill_width())
-}
-
-fn accessible_label(label: Option<&TextContent>) -> String {
-    label
-        .and_then(TextContent::as_static_str)
-        .map_or_else(|| String::from("Checkbox"), ToOwned::to_owned)
-}
-
 const fn checkbox_variant(tone: Tone, checked: bool) -> StyleVariant {
-    match (tone, checked) {
-        (Tone::Neutral, true) => StyleVariant::new(
-            EMPTY_BASE,
-            StateStyle::new(
-                NEUTRAL_CHECKED,
-                NEUTRAL_CHECKED_HOVER,
-                NEUTRAL_CHECKED_HOVER,
-                NEUTRAL_CHECKED_DOWN,
-                NEUTRAL_CHECKED,
-            ),
+    let (rest, hover, down, disabled) = match (tone, checked) {
+        (Tone::Neutral, true) => (
+            NEUTRAL_CHECKED,
+            NEUTRAL_CHECKED_HOVER,
+            NEUTRAL_CHECKED_HOVER,
+            NEUTRAL_CHECKED,
         ),
-        (_, true) => StyleVariant::new(
-            EMPTY_BASE,
-            StateStyle::new(
-                PRIMARY_CHECKED,
-                PRIMARY_CHECKED_HOVER,
-                PRIMARY_CHECKED_HOVER,
-                PRIMARY_CHECKED_DOWN,
-                PRIMARY_CHECKED,
-            ),
+        (_, true) => (
+            PRIMARY_CHECKED,
+            PRIMARY_CHECKED_HOVER,
+            PRIMARY_CHECKED,
+            PRIMARY_CHECKED,
         ),
-        (_, false) => StyleVariant::new(
-            EMPTY_BASE,
-            StateStyle::new(
-                UNCHECKED,
-                UNCHECKED_HOVER,
-                UNCHECKED_HOVER,
-                UNCHECKED_DOWN,
-                CHECKBOX_DISABLED,
-            ),
+        (_, false) => (
+            UNCHECKED,
+            UNCHECKED_HOVER,
+            UNCHECKED_DOWN,
+            CHECKBOX_DISABLED,
         ),
-    }
+    };
+    StyleVariant::new(
+        EMPTY_BASE,
+        StateStyle::new(rest, hover, hover, down, disabled),
+    )
 }

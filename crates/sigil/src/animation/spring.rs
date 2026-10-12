@@ -111,16 +111,12 @@ impl Spring {
     const MAX_SUBSTEPS: u16 = 256;
 
     pub fn step(&mut self, dt: f32) {
-        if self.is_settled() {
-            self.value = self.target;
-            self.velocity = 0.0;
+        if self.snap_if_settled() || !dt.is_finite() || dt <= 0.0 {
             return;
         }
-        if !dt.is_finite() || dt <= 0.0 {
-            return;
-        }
-        let raw_steps = (dt / Self::MAX_SUBSTEP_DT).floor();
-        let clamped = raw_steps.clamp(0.0, f32::from(Self::MAX_SUBSTEPS));
+        let clamped = (dt / Self::MAX_SUBSTEP_DT)
+            .floor()
+            .clamp(0.0, f32::from(Self::MAX_SUBSTEPS));
         #[allow(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
@@ -129,9 +125,7 @@ impl Spring {
         let whole_steps = clamped as u16;
         for _ in 0..whole_steps {
             self.integrate(Self::MAX_SUBSTEP_DT);
-            if self.is_settled() {
-                self.value = self.target;
-                self.velocity = 0.0;
+            if self.snap_if_settled() {
                 return;
             }
         }
@@ -139,11 +133,17 @@ impl Spring {
         let tail = (dt - consumed).min(Self::MAX_SUBSTEP_DT);
         if tail.is_sign_positive() && tail > f32::EPSILON {
             self.integrate(tail);
-            if self.is_settled() {
-                self.value = self.target;
-                self.velocity = 0.0;
-            }
+            self.snap_if_settled();
         }
+    }
+
+    fn snap_if_settled(&mut self) -> bool {
+        let settled = self.is_settled();
+        if settled {
+            self.value = self.target;
+            self.velocity = 0.0;
+        }
+        settled
     }
 
     fn integrate(&mut self, dt: f32) {

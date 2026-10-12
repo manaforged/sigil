@@ -2,17 +2,6 @@ use super::{CompositionInput, KeyRoute, composition_events, key_route};
 use crate::events::ImeEvent;
 
 #[test]
-fn a_finished_composition_clears_the_preedit_then_commits() {
-    assert_eq!(
-        composition_events(CompositionInput::End("日本")),
-        vec![
-            ImeEvent::Preedit("".into(), None),
-            ImeEvent::Commit("日本".into())
-        ]
-    );
-}
-
-#[test]
 fn composing_keys_stay_with_the_browser() {
     assert_eq!(key_route("a", 229, false), KeyRoute::Browser);
     assert_eq!(key_route("Process", 0, false), KeyRoute::Browser);

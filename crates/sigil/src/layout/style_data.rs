@@ -91,6 +91,10 @@ impl<T: Copy> Size<T> {
             height: value,
         }
     }
+
+    pub(crate) fn map(self, f: impl Fn(T) -> T) -> Self {
+        Self::new(f(self.width), f(self.height))
+    }
 }
 
 #[allow(
@@ -113,6 +117,15 @@ impl<T: Copy> Rect<T> {
             right: value,
             top: value,
             bottom: value,
+        }
+    }
+
+    pub(crate) fn map(self, f: impl Fn(T) -> T) -> Self {
+        Self {
+            left: f(self.left),
+            right: f(self.right),
+            top: f(self.top),
+            bottom: f(self.bottom),
         }
     }
 }
@@ -288,6 +301,7 @@ impl Default for StyleData {
     clippy::unwrap_used,
     clippy::panic,
     clippy::cognitive_complexity,
+    clippy::float_cmp,
     reason = "test/instrumentation context; the invariant is proven by the caller"
 )]
 #[path = "style_data_tests.rs"]

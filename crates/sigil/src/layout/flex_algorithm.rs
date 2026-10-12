@@ -25,12 +25,10 @@ mod sizing;
 mod subtree;
 
 use absolute::place_absolute;
-pub(crate) use placement::main_gap;
 use placement::place_lines;
-pub(crate) use sizing::{
-    align_self_of, automatic_min_main, item_cross_basis, item_main_basis, item_min_max_main,
-};
-use sizing::{container_inner_size, main_cross_size};
+pub(crate) use placement::{gap_along, main_gap};
+use sizing::container_inner_size;
+pub(crate) use sizing::{automatic_min_main, item_cross_basis, item_main_basis, item_min_max_main};
 pub(crate) use subtree::layout_item_subtree;
 use subtree::{write_container, write_items};
 
@@ -42,24 +40,31 @@ pub(crate) struct Axis2 {
 
 impl Axis2 {
     pub(crate) const fn for_direction(direction: FlexDirection) -> Self {
-        match direction {
-            FlexDirection::Row => Self {
-                row: true,
-                reversed_main: false,
-            },
-            FlexDirection::RowReverse => Self {
-                row: true,
-                reversed_main: true,
-            },
-            FlexDirection::Column => Self {
-                row: false,
-                reversed_main: false,
-            },
-            FlexDirection::ColumnReverse => Self {
-                row: false,
-                reversed_main: true,
-            },
+        Self {
+            row: matches!(direction, FlexDirection::Row | FlexDirection::RowReverse),
+            reversed_main: matches!(
+                direction,
+                FlexDirection::RowReverse | FlexDirection::ColumnReverse
+            ),
         }
+    }
+
+    pub(crate) const fn cross(self) -> Self {
+        Self {
+            row: !self.row,
+            reversed_main: false,
+        }
+    }
+
+    pub(crate) fn pick<T>(self, row: T, column: T) -> T {
+        if self.row { row } else { column }
+    }
+
+    pub(crate) fn chrome(self, edges: &NodeEdges) -> (f32, f32) {
+        self.pick(
+            (edges.inline_chrome(), edges.block_chrome()),
+            (edges.block_chrome(), edges.inline_chrome()),
+        )
     }
 }
 
@@ -70,6 +75,26 @@ pub(crate) struct FlexCtx<'s, 'a> {
     pub(crate) suppress_stretch: bool,
     pub(crate) assigned_w: Option<f32>,
     pub(crate) assigned_h: Option<f32>,
+}
+
+impl FlexCtx<'_, '_> {
+    pub(crate) const fn probe(&self) -> Self {
+        Self {
+            suppress_stretch: true,
+            assigned_w: None,
+            assigned_h: None,
+            ..*self
+        }
+    }
+
+    pub(crate) fn definite_along(&self, style: &StyleData, row: bool) -> bool {
+        let (assigned, dim) = if row {
+            (self.assigned_w, style.size.width)
+        } else {
+            (self.assigned_h, style.size.height)
+        };
+        assigned.is_some() || !matches!(dim, Dimension::Auto)
+    }
 }
 
 pub(crate) fn layout_root(
@@ -90,11 +115,7 @@ pub(crate) fn layout_root(
         border_origin.x + edges.border.left + edges.padding.left,
         border_origin.y + edges.border.top + edges.padding.top,
     );
-    let (content_w, content_h) = if ctx.axes.row {
-        (container_main, container_cross)
-    } else {
-        (container_cross, container_main)
-    };
+    let content = CbSize::across(ctx.axes, container_main, container_cross);
     let area = crate::layout::flex_pack::Area {
         border_origin,
         content_origin,
@@ -105,8 +126,8 @@ pub(crate) fn layout_root(
         return Ok(());
     }
     let padding_box = crate::layout::style_data::Size {
-        width: content_w + edges.padding.left + edges.padding.right,
-        height: content_h + edges.padding.top + edges.padding.bottom,
+        width: content.w + edges.padding.left + edges.padding.right,
+        height: content.h + edges.padding.top + edges.padding.bottom,
     };
     let items = build_items(
         ctx,
@@ -116,27 +137,18 @@ pub(crate) fn layout_root(
         padding_box,
         border_origin,
     )?;
-    let container_main =
-        if main_is_definite(ctx, style) || !matches!(style.flex_wrap, FlexWrap::NoWrap) {
-            container_main
-        } else {
-            content_main_size(ctx, style, &items, &edges)
-        };
+    let container_main = if ctx.definite_along(style, ctx.axes.row)
+        || !matches!(style.flex_wrap, FlexWrap::NoWrap)
+    {
+        container_main
+    } else {
+        content_main_size(ctx, style, &items, &edges)
+    };
     let lines = collect_lines(ctx, items, style, container_main);
     let placed = place_lines(ctx, lines, style, container_main, container_cross)?;
     write_items(ctx, &placed, content_origin)?;
     write_container(ctx, node, &edges, border_origin, container_main, &placed);
     Ok(())
-}
-
-fn main_is_definite(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
-    let (size_main, _) = main_cross_size(style, ctx.axes);
-    let assigned_main = if ctx.axes.row {
-        ctx.assigned_w
-    } else {
-        ctx.assigned_h
-    };
-    assigned_main.is_some() || !matches!(size_main, Dimension::Auto)
 }
 
 fn filled_width(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>) -> Option<f32> {
@@ -162,15 +174,11 @@ fn content_main_size(
         .iter()
         .map(|item| {
             clamp(item.flex_basis_resolved, item.min_main, item.max_main)
-                + item.margin_main_start()
-                + item.margin_main_end()
+                + item.margin_main_start
+                + item.margin_main_end
         })
         .sum();
-    let chrome = if ctx.axes.row {
-        edges.inline_chrome()
-    } else {
-        edges.block_chrome()
-    };
+    let (chrome, _) = ctx.axes.chrome(edges);
     let (min, max) = item_min_max_main(style, ctx.axes, ctx.cb.along(ctx.axes).0, edges);
     let size = bases + gap * (count.saturating_sub(1) as f32) + chrome;
     (clamp(size, min, max) - chrome).max(0.0)

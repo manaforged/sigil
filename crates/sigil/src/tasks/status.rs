@@ -1,24 +1,12 @@
 use std::error::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Status<T, E = Box<dyn Error + Send + Sync>> {
     Idle,
     Pending,
     Ok(T),
     Err(E),
     Panicked(String),
-}
-
-impl<T: Clone, E: Clone> Clone for Status<T, E> {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Idle => Self::Idle,
-            Self::Pending => Self::Pending,
-            Self::Ok(v) => Self::Ok(v.clone()),
-            Self::Err(e) => Self::Err(e.clone()),
-            Self::Panicked(m) => Self::Panicked(m.clone()),
-        }
-    }
 }
 
 impl<T, E> Status<T, E> {

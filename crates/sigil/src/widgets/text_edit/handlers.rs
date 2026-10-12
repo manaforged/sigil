@@ -107,13 +107,7 @@ impl TextEditRuntime {
     }
 
     pub(in crate::widgets) fn edit_mut(&self) -> RefMut<'_, TextEdit> {
-        let mut edit = self.edit.borrow_mut();
-        edit.sync_external(self.value.peek());
-        let caret = self.caret.peek();
-        if caret != edit.caret() {
-            edit.place_caret(caret);
-        }
-        edit
+        state::synced(&self.edit, self.value, self.caret)
     }
 
     pub(in crate::widgets) fn place_on_focus(&self, at: FocusCaret) {
@@ -158,7 +152,10 @@ impl TextEditRuntime {
                 .then(|| text.to_owned());
         }
         let text = text.replace("\r\n", "\n").replace('\r', "\n");
-        (text != "\n" && is_printable(&text)).then_some(text)
+        let printable = text
+            .chars()
+            .all(|ch| !ch.is_control() || matches!(ch, '\t' | '\n'));
+        (printable && !text.is_empty() && text != "\n").then_some(text)
     }
 }
 
@@ -191,12 +188,12 @@ pub(super) fn attach_key_handlers(
             move_vertical(event, &line, step, extend);
         })),
     };
-    let node = keymap::edit_keys(node, &runtime, &profile);
+    let node = edit_keys(node, &runtime, &profile);
     let node = enter_keys(node, &runtime, submit_key);
-    let node = commands::clipboard_keys(node, &runtime);
+    let node = clipboard_keys(node, &runtime);
     let node = word_keys(node, &runtime);
-    let node = commands::history_keys(node, runtime.clone());
-    commands::attach_a11y_edit(node, runtime)
+    let node = history_keys(node, runtime.clone());
+    attach_a11y_edit(node, runtime)
 }
 
 fn enter_keys(node: NodeBuilder, runtime: &TextEditRuntime, submit_key: SubmitKey) -> NodeBuilder {
@@ -217,9 +214,11 @@ fn enter_keys(node: NodeBuilder, runtime: &TextEditRuntime, submit_key: SubmitKe
     };
     let node = newlines.into_iter().fold(node, |node, shortcut| {
         let enter = runtime.clone();
-        node.key(shortcut, move |event| insert_newline(event, &enter))
+        node.key(shortcut, move |event| {
+            edit_value(event, &enter, |edit| edit.insert_str("\n"));
+        })
     });
-    node.key(send, move |event| commands::submit_text(event, &submit))
+    node.key(send, move |event| submit_text(event, &submit))
 }
 
 pub(in crate::widgets) fn insert_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
@@ -245,16 +244,6 @@ pub(in crate::widgets) fn insert_text(event: &mut KeyEvent, runtime: &TextEditRu
     event.stop_propagation();
 }
 
-fn insert_newline(event: &mut KeyEvent, runtime: &TextEditRuntime) {
-    event.stop_propagation();
-    if runtime.disabled() {
-        return;
-    }
-    let mut edit = runtime.edit_mut();
-    edit.insert_str("\n");
-    runtime.sync_value(&edit);
-}
-
 pub(in crate::widgets) fn edit_value(
     event: &mut KeyEvent,
     runtime: &TextEditRuntime,
@@ -265,9 +254,9 @@ pub(in crate::widgets) fn edit_value(
         return;
     }
     let mut state = runtime.edit_mut();
-    let before = (state.len(), state.is_empty());
+    let before = state.len();
     edit(&mut state);
-    if (state.len(), state.is_empty()) == before {
+    if state.len() == before {
         runtime.commit(&state);
     } else {
         runtime.sync_value(&state);
@@ -289,7 +278,6 @@ pub(in crate::widgets) fn move_caret(
         if extend && !had_selection {
             runtime.anchor_affinity.set(affinity);
         }
-        debug_assert!(state.caret() <= state.len());
         runtime.commit(&state);
     }
 }
@@ -299,11 +287,4 @@ pub(super) fn write_value(value: Signal<String>, next: &str) {
         current.clear();
         current.push_str(next);
     });
-}
-
-fn is_printable(text: &str) -> bool {
-    !text.is_empty()
-        && text
-            .chars()
-            .all(|ch| !ch.is_control() || matches!(ch, '\t' | '\n'))
 }

@@ -58,12 +58,15 @@ pub(crate) fn stop() {
 pub(crate) const fn stop() {}
 
 #[cfg(unix)]
+fn release(flag: &AtomicBool) {
+    let _painting = painting();
+    flag.store(true, Ordering::Relaxed);
+    crate::terminal::term::restore();
+}
+
+#[cfg(unix)]
 fn pause() {
-    {
-        let _painting = painting();
-        SUSPENDED.store(true, Ordering::Relaxed);
-        crate::terminal::term::restore();
-    }
+    release(&SUSPENDED);
     drop(signal_hook::low_level::emulate_default_handler(
         signal_hook::consts::SIGTSTP,
     ));
@@ -78,11 +81,7 @@ fn proceed() {
 
 #[cfg(unix)]
 pub(crate) fn halt() {
-    {
-        let _painting = painting();
-        HALTED.store(true, Ordering::Relaxed);
-        crate::terminal::term::restore();
-    }
+    release(&HALTED);
     wake();
 }
 

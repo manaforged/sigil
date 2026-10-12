@@ -5,7 +5,7 @@ use crate::renderer::glyph_place::GlyphMode;
 use crate::renderer::raster_paint::{
     RasterDrawParams, RasterFrame, RasterGroup, RasterInstance, RasterTextPipeline,
 };
-use crate::renderer::scene_command::walk::{QueuedGlyphs, Walk, transform_rect};
+use crate::renderer::scene_command::walk::{QueuedGlyphs, Walk, pipeline_for, transform_rect};
 use crate::renderer::scene_command::{
     DrawGlyphRun, DrawImage, DrawSprite, GlyphRun, SpriteKind, SpriteSource,
 };
@@ -31,8 +31,12 @@ impl Walk<'_> {
             transform,
         };
         let clip = self.state.current_clip();
-        let pipeline =
-            sprite_pipeline_for(self.ctx.sprite_pipelines, self.ctx.device, self.ctx.format);
+        let pipeline = pipeline_for(
+            self.ctx.sprite_pipelines,
+            self.ctx.device,
+            self.ctx.format,
+            (SpritePipeline::format, SpritePipeline::new),
+        );
         pipeline.paint_sprite(
             &mut PaintCtx {
                 device: self.ctx.device,
@@ -63,8 +67,12 @@ impl Walk<'_> {
             return;
         };
         let packed = {
-            let pipeline =
-                sprite_pipeline_for(self.ctx.sprite_pipelines, self.ctx.device, self.ctx.format);
+            let pipeline = pipeline_for(
+                self.ctx.sprite_pipelines,
+                self.ctx.device,
+                self.ctx.format,
+                (SpritePipeline::format, SpritePipeline::new),
+            );
             pipeline.register_image(self.ctx.device, self.ctx.queue, &source)
         };
         if packed.is_none() {
@@ -139,7 +147,12 @@ impl Walk<'_> {
         (color, clip): (Color, Option<crate::geometry::Rect>),
     ) -> Vec<GlyphInstance> {
         let ctx = &mut self.ctx;
-        let pipeline = slug_pipeline_for(ctx.slug_pipelines, ctx.device, ctx.format);
+        let pipeline = pipeline_for(
+            ctx.slug_pipelines,
+            ctx.device,
+            ctx.format,
+            (SlugTextPipeline::format, SlugTextPipeline::new),
+        );
         pipeline.instances_for(
             glyphs,
             &DrawParams {
@@ -167,7 +180,12 @@ impl Walk<'_> {
         color: Color,
     ) -> (Vec<RasterInstance>, Option<Vec<RenderedGlyph>>) {
         let ctx = &mut self.ctx;
-        let pipeline = raster_pipeline_for(ctx.raster_pipelines, ctx.device, ctx.format);
+        let pipeline = pipeline_for(
+            ctx.raster_pipelines,
+            ctx.device,
+            ctx.format,
+            (RasterTextPipeline::format, RasterTextPipeline::new),
+        );
         let (raster, leftover) = pipeline.place_paragraph(&RasterDrawParams {
             device: ctx.device,
             queue: ctx.queue,
@@ -196,7 +214,12 @@ impl Walk<'_> {
                 .filter(|run| !run.instances.is_empty()),
         );
         ctx.stats.text_draws += ctx.pending.runs.len();
-        let pipeline = slug_pipeline_for(ctx.slug_pipelines, ctx.device, ctx.format);
+        let pipeline = pipeline_for(
+            ctx.slug_pipelines,
+            ctx.device,
+            ctx.format,
+            (SlugTextPipeline::format, SlugTextPipeline::new),
+        );
         pipeline.record_runs_in_frame(
             &mut *ctx.encoder,
             &RunFrame {
@@ -239,7 +262,12 @@ impl Walk<'_> {
             return;
         }
         ctx.stats.text_draws += pending.raster_groups.len();
-        let pipeline = raster_pipeline_for(ctx.raster_pipelines, ctx.device, ctx.format);
+        let pipeline = pipeline_for(
+            ctx.raster_pipelines,
+            ctx.device,
+            ctx.format,
+            (RasterTextPipeline::format, RasterTextPipeline::new),
+        );
         pipeline.draw_batch(
             &mut *ctx.encoder,
             &RasterFrame {
@@ -253,57 +281,6 @@ impl Walk<'_> {
             &pending.raster_groups,
         );
     }
-}
-
-fn raster_pipeline_for<'a>(
-    pipelines: &'a mut Vec<RasterTextPipeline>,
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-) -> &'a mut RasterTextPipeline {
-    let idx = pipelines
-        .iter()
-        .position(|p| p.format() == format)
-        .unwrap_or_else(|| {
-            pipelines.push(RasterTextPipeline::new(device, format));
-            pipelines.len() - 1
-        });
-    pipelines
-        .get_mut(idx)
-        .expect("raster pipeline index was just constructed from the vec")
-}
-
-fn slug_pipeline_for<'a>(
-    pipelines: &'a mut Vec<SlugTextPipeline>,
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-) -> &'a mut SlugTextPipeline {
-    let idx = pipelines
-        .iter()
-        .position(|p| p.format() == format)
-        .unwrap_or_else(|| {
-            pipelines.push(SlugTextPipeline::new(device, format));
-            pipelines.len() - 1
-        });
-    pipelines
-        .get_mut(idx)
-        .expect("slug pipeline index was just constructed from the vec")
-}
-
-fn sprite_pipeline_for<'a>(
-    pipelines: &'a mut Vec<SpritePipeline>,
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-) -> &'a mut SpritePipeline {
-    let idx = pipelines
-        .iter()
-        .position(|p| p.format() == format)
-        .unwrap_or_else(|| {
-            pipelines.push(SpritePipeline::new(device, format));
-            pipelines.len() - 1
-        });
-    pipelines
-        .get_mut(idx)
-        .expect("sprite pipeline index was just constructed from the vec")
 }
 
 fn glyph_run_color(run: &GlyphRun, opacity_scale: f32, space: BlendSpace) -> Color {

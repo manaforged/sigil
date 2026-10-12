@@ -116,7 +116,6 @@ impl Cx {
             self.link_parent(parent, node_id);
         } else if !self.roots.contains(&node_id) {
             self.roots.push(node_id);
-            self.mark_dirty(node_id);
             self.bump_generation();
         }
         node_id
@@ -253,13 +252,11 @@ impl Cx {
     }
 
     pub fn dirty(&self) -> impl Iterator<Item = NodeId> + '_ {
-        let from_set = self.dirty.iter().copied();
-        let from_keys: Box<dyn Iterator<Item = NodeId> + '_> = if self.dirty_all {
-            Box::new(self.nodes.keys().map(NodeId))
-        } else {
-            Box::new(std::iter::empty())
-        };
-        from_keys.chain(from_set)
+        self.dirty_all
+            .then(|| self.nodes.keys().map(NodeId))
+            .into_iter()
+            .flatten()
+            .chain(self.dirty.iter().copied())
     }
 
     #[must_use]
@@ -332,9 +329,7 @@ impl Cx {
                 continue;
             };
             visit(id, node);
-            for child in node.children.iter().rev().copied() {
-                stack.push(child);
-            }
+            stack.extend(node.children.iter().rev().copied());
         }
     }
 

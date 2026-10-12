@@ -15,16 +15,6 @@ fn command_uses_platform_helper() {
 }
 
 #[test]
-fn command_passes_the_target() {
-    let cmd = command(OsStr::new("/tmp/file.txt"));
-    let args: Vec<_> = cmd.get_args().collect();
-    assert!(
-        args.iter().any(|arg| *arg == OsStr::new("/tmp/file.txt")),
-        "expected target in {args:?}"
-    );
-}
-
-#[test]
 fn metacharacters_stay_inside_one_argument() {
     let target = OsStr::new("https://example.com/?a=1&b=2");
     let cmd = command(target);

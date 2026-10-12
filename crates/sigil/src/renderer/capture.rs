@@ -34,13 +34,6 @@ impl ImageTarget {
     fn scale(self) -> f32 {
         self.size.width as f32 / self.viewport.0.max(1.0)
     }
-
-    const fn extent(self) -> CaptureExtent {
-        CaptureExtent {
-            width: self.size.width,
-            height: self.size.height,
-        }
-    }
 }
 
 pub fn render_to_image(
@@ -68,7 +61,10 @@ fn gpu_pixels(
         let ready = renderer.state.ensure_ready_headless()?;
         (ready.device.clone(), ready.queue.clone())
     };
-    let extent = target.extent();
+    let extent = CaptureExtent {
+        width: target.size.width,
+        height: target.size.height,
+    };
     let texture = capture_texture(&device, extent);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     renderer.render_command_scene_offscreen(
@@ -194,19 +190,12 @@ fn map_readback(
 
 fn strip_padding(mapped: &[u8], layout: ReadbackLayout) -> Vec<u8> {
     let unpadded = layout.unpadded_bytes_per_row as usize;
-    let padded = layout.padded_bytes_per_row as usize;
-    let height = layout.extent.height as usize;
-    let mut pixels = vec![0; unpadded * height];
-    for row in 0..height {
-        let src = row * padded;
-        let dst = row * unpadded;
-        #[allow(
-            clippy::indexing_slicing,
-            reason = "ranges derive from ReadbackLayout, which sizes both buffers"
-        )]
-        pixels[dst..dst + unpadded].copy_from_slice(&mapped[src..src + unpadded]);
-    }
-    pixels
+    mapped
+        .chunks((layout.padded_bytes_per_row as usize).max(1))
+        .take(layout.extent.height as usize)
+        .flat_map(|row| row.get(..unpadded).unwrap_or_default())
+        .copied()
+        .collect()
 }
 
 #[derive(Clone, Copy)]
@@ -222,10 +211,8 @@ impl ReadbackLayout {
         Self {
             extent,
             unpadded_bytes_per_row,
-            padded_bytes_per_row: align_to(
-                unpadded_bytes_per_row,
-                wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
-            ),
+            padded_bytes_per_row: unpadded_bytes_per_row
+                .next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT),
         }
     }
 }
@@ -234,13 +221,4 @@ impl ReadbackLayout {
 pub struct CaptureExtent {
     pub width: u32,
     pub height: u32,
-}
-
-const fn align_to(value: u32, alignment: u32) -> u32 {
-    let remainder = value % alignment;
-    if remainder == 0 {
-        value
-    } else {
-        value + alignment - remainder
-    }
 }

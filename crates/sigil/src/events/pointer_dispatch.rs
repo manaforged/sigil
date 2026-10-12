@@ -29,22 +29,17 @@ pub(crate) fn dispatch_pointer_path(
     event: &mut PointerEvent,
     global_position: Point,
 ) -> Option<NodeId> {
+    let down = targets.iter().map(|target| (*target, true));
+    let up = targets.iter().rev().map(|target| (*target, false));
     let mut capture_requester = None;
-    for target in targets.iter().copied() {
-        if invoke_pointer(cx, target, event, true, global_position) && capture_requester.is_none() {
-            capture_requester = Some(target.id);
-        }
-        if event.propagation_stopped() {
-            return capture_requester;
-        }
-    }
-    for target in targets.iter().rev().copied() {
-        if invoke_pointer(cx, target, event, false, global_position) && capture_requester.is_none()
+    for (target, capture) in down.chain(up) {
+        if invoke_pointer(cx, target, event, capture, global_position)
+            && capture_requester.is_none()
         {
             capture_requester = Some(target.id);
         }
         if event.propagation_stopped() {
-            return capture_requester;
+            break;
         }
     }
     capture_requester
@@ -71,14 +66,22 @@ pub(crate) fn dispatch_synthetic_target(
 }
 
 pub(crate) const fn synthetic_leave_source() -> PointerEvent {
+    mouse_event(Point::new(0.0, 0.0), None, PointerPhase::Leave)
+}
+
+const fn mouse_event(
+    position: Point,
+    button: Option<MouseButton>,
+    phase: PointerPhase,
+) -> PointerEvent {
     PointerEvent::new(PointerEventInit {
-        position: Point::new(0.0, 0.0),
+        position,
         delta: Point::new(0.0, 0.0),
         kind: PointerKind::Mouse,
-        button: None,
+        button,
         buttons: MouseButtons::empty(),
         modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Leave,
+        phase,
     })
 }
 
@@ -99,11 +102,12 @@ pub(crate) fn pointer_targets(
                 .get_extension::<StyleBinding>()
                 .is_some_and(StyleBinding::may_transform);
         }
-        let rect = layout.result(id).map(|result| result.rect());
-        let origin = rect.map_or(Point::new(0.0, 0.0), |r| r.origin);
-        let size = rect.map_or(LogicalSize::new(0.0, 0.0), |r| {
-            LogicalSize::new(r.width, r.height)
-        });
+        let (origin, size) = layout
+            .result(id)
+            .map(|result| result.rect())
+            .map_or((Point::new(0.0, 0.0), LogicalSize::new(0.0, 0.0)), |r| {
+                (r.origin, LogicalSize::new(r.width, r.height))
+            });
         targets.push(PointerTarget {
             id,
             origin,
@@ -124,15 +128,7 @@ pub(crate) fn invoke_node(cx: &Cx, layout: &LayoutEngine, target: NodeId) {
     ] {
         let button =
             matches!(phase, PointerPhase::Down | PointerPhase::Up).then_some(MouseButton::Left);
-        let mut event = PointerEvent::new(PointerEventInit {
-            position: target.origin,
-            delta: Point::new(0.0, 0.0),
-            kind: PointerKind::Mouse,
-            button,
-            buttons: MouseButtons::empty(),
-            modifiers: ModifiersState::empty(),
-            phase,
-        });
+        let mut event = mouse_event(target.origin, button, phase);
         dispatch_pointer_target(cx, target, &mut event, target.origin);
     }
 }
@@ -187,12 +183,7 @@ fn invoke_pointer(
 }
 
 pub(crate) fn path_to_node(cx: &Cx, target: NodeId) -> NodePath {
-    let mut reversed = NodePath::new();
-    let mut current = Some(target);
-    while let Some(id) = current {
-        reversed.push(id);
-        current = cx.parent(id);
-    }
-    reversed.reverse();
-    reversed
+    let mut path: NodePath = std::iter::successors(Some(target), |id| cx.parent(*id)).collect();
+    path.reverse();
+    path
 }

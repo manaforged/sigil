@@ -1,8 +1,8 @@
 use crate::geometry::Rect;
 use crate::hal::HitPosition;
-use crate::kernel::{NodeBuilder, container, fragment};
+use crate::kernel::{NodeBuilder, fragment};
 use crate::layout::with_text_geometry;
-use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom};
 
 use super::TextEditRuntime;
@@ -45,15 +45,6 @@ fn selection_rects(runtime: &TextEditRuntime) -> Vec<NodeBuilder> {
 }
 
 fn selection_rect(rect: Rect) -> NodeBuilder {
-    container()
-        .hittable(false)
-        .layout(
-            LayoutStyle::block()
-                .position(Position::Absolute)
-                .inset_left(rect.origin.x)
-                .inset_top(rect.origin.y)
-                .width(rect.width)
-                .height(rect.height),
-        )
+    super::overlay_rect(rect.origin.x, rect.origin.y, rect.width, rect.height)
         .class(SELECTION_ATOMS)
 }

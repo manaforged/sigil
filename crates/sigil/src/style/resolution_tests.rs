@@ -7,6 +7,18 @@ use crate::style::{
     Token, Transform2D, TransitionId,
 };
 
+fn applied(theme: &Theme, atoms: &[StyleAtom]) -> RenderStyle {
+    let mut render = RenderStyle::default();
+    StyleEngine::new(theme).apply(atoms, &mut render);
+    render
+}
+
+fn binding(cx: &Cx, id: crate::kernel::NodeId) -> &StyleBinding {
+    cx.get(id)
+        .and_then(|node| node.get_extension::<StyleBinding>())
+        .unwrap()
+}
+
 #[test]
 fn atom_size_within_budget() {
     assert!(
@@ -19,15 +31,12 @@ fn atom_size_within_budget() {
 #[test]
 fn theme_ref_resolves() {
     let theme = Theme::default();
-    let engine = StyleEngine::new(&theme);
-    let mut render = RenderStyle::default();
-
-    engine.apply(
+    let render = applied(
+        &theme,
         &[
             StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
             StyleAtom::TextColor(ColorAtom::ThemeRef(ColorKey::Token(Token::OnAccent))),
         ],
-        &mut render,
     );
 
     assert_eq!(render.background_color, Some(theme.accent));
@@ -37,16 +46,12 @@ fn theme_ref_resolves() {
 #[cfg(debug_assertions)]
 #[test]
 fn unknown_token_panics_dev() {
-    let theme = Theme::default();
-    let engine = StyleEngine::new(&theme);
-    let mut render = RenderStyle::default();
-
-    let err = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        engine.apply(
+    let err = std::panic::catch_unwind(|| {
+        applied(
+            &Theme::default(),
             &[StyleAtom::BackgroundThemeRef(ColorKey::Custom("accnet"))],
-            &mut render,
-        );
-    }))
+        )
+    })
     .unwrap_err();
     let message = err.downcast_ref::<String>().unwrap();
 
@@ -59,12 +64,9 @@ fn unknown_token_panics_dev() {
 #[test]
 fn unknown_token_falls_back_release() {
     let theme = Theme::default();
-    let engine = StyleEngine::new(&theme);
-    let mut render = RenderStyle::default();
-
-    engine.apply(
+    let render = applied(
+        &theme,
         &[StyleAtom::BackgroundThemeRef(ColorKey::Custom("accnet"))],
-        &mut render,
     );
 
     assert_eq!(render.background_color, Some(theme.missing_token_fallback));
@@ -86,19 +88,15 @@ fn apply_is_alloc_free() {
 
 #[test]
 fn concrete_color_applies() {
-    let theme = Theme::default();
-    let engine = StyleEngine::new(&theme);
     let color = Rgba8 {
         r: 1,
         g: 2,
         b: 3,
         a: 4,
     };
-    let mut render = RenderStyle::default();
-
-    engine.apply(
+    let render = applied(
+        &Theme::default(),
         &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(color))],
-        &mut render,
     );
 
     assert_eq!(render.background_color, Some(color));
@@ -204,10 +202,7 @@ fn class_string_attaches_binding() {
     for _ in 0..10 {
         let mut cx = Cx::new_root();
         let id = cx.add(container().class("p-16 rounded-md bg-accent"));
-        let binding = cx
-            .get(id)
-            .and_then(|node| node.get_extension::<StyleBinding>())
-            .unwrap();
+        let binding = binding(&cx, id);
         ptrs.push(binding.static_slice().as_ptr());
         assert_eq!(binding.dynamic_slice(), &[]);
     }
@@ -222,10 +217,7 @@ fn class_string_attaches_binding() {
 fn class_string_attaches_to_text_binding() {
     let mut cx = Cx::new_root();
     let id = cx.add(text("label").class("text-on-surface"));
-    let binding = cx
-        .get(id)
-        .and_then(|node| node.get_extension::<StyleBinding>())
-        .unwrap();
+    let binding = binding(&cx, id);
 
     assert_eq!(
         binding.static_slice(),
@@ -238,10 +230,7 @@ fn class_string_attaches_to_text_binding() {
 fn style_struct_attaches_binding() {
     let mut cx = Cx::new_root();
     let id = cx.add(container().style(Style::new().radius(8)));
-    let binding = cx
-        .get(id)
-        .and_then(|node| node.get_extension::<StyleBinding>())
-        .unwrap();
+    let binding = binding(&cx, id);
 
     assert_eq!(binding.static_slice(), &[]);
     assert_eq!(binding.dynamic_slice(), &[StyleAtom::BorderRadius(Px(8))]);

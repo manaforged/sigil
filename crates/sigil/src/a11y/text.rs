@@ -11,9 +11,9 @@ struct Run<'a> {
     text: &'a str,
 }
 
-fn run_id(owner: NodeId, line: usize) -> AkNodeId {
-    let line = u64::try_from(line).unwrap_or_default();
-    let tag = line.wrapping_mul(2).wrapping_add(1).wrapping_shl(32);
+pub(super) fn child_id(owner: NodeId, index: usize, kind: u64) -> AkNodeId {
+    let index = u64::try_from(index).unwrap_or_default();
+    let tag = index.wrapping_mul(2).wrapping_add(kind).wrapping_shl(32);
     AkNodeId(owner.to_accesskit().0 ^ tag)
 }
 
@@ -22,7 +22,7 @@ fn runs(owner: NodeId, text: &str) -> Vec<Run<'_>> {
     let mut start = 0;
     for (line, piece) in text.split_inclusive('\n').enumerate() {
         out.push(Run {
-            id: run_id(owner, line),
+            id: child_id(owner, line, 1),
             start,
             text: piece,
         });
@@ -30,7 +30,7 @@ fn runs(owner: NodeId, text: &str) -> Vec<Run<'_>> {
     }
     if out.is_empty() || text.ends_with('\n') {
         out.push(Run {
-            id: run_id(owner, out.len()),
+            id: child_id(owner, out.len(), 1),
             start,
             text: "",
         });

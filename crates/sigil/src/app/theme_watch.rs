@@ -1,4 +1,3 @@
-use std::fmt;
 use std::path::PathBuf;
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -15,7 +14,9 @@ const MAX_DEBOUNCE: Duration = Duration::from_secs(1);
 
 pub fn watch_theme(path: impl Into<PathBuf>) -> AppResult<ThemeWatcher> {
     let Some(dispatcher) = crate::tasks::current::dispatcher() else {
-        return Err(Error::task(NoRuntime));
+        return Err(Error::task(std::io::Error::other(
+            "watch_theme needs AsyncRuntime::install_current",
+        )));
     };
     let owner = Owner::new("sigil::watch_theme", None);
     let target = OwnerHandle::from_id(owner.id());
@@ -69,14 +70,3 @@ fn reload(
         });
     }
 }
-
-#[derive(Debug)]
-struct NoRuntime;
-
-impl fmt::Display for NoRuntime {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("watch_theme needs AsyncRuntime::install_current")
-    }
-}
-
-impl std::error::Error for NoRuntime {}

@@ -58,11 +58,9 @@ pub(super) fn retain_in_range(
     selected: &HashSet<u32>,
     anchor: Option<u32>,
 ) -> (HashSet<u32>, Option<u32>) {
-    let kept = selected
-        .iter()
-        .copied()
-        .filter(|&index| index < next_len)
-        .collect();
-    let anchor = anchor.filter(|&index| index < next_len);
-    (kept, anchor)
+    let in_range = |&index: &u32| index < next_len;
+    (
+        selected.iter().copied().filter(in_range).collect(),
+        anchor.filter(in_range),
+    )
 }

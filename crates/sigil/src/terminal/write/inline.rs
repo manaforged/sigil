@@ -4,7 +4,7 @@ use crossterm::style::Print;
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
 
-use super::{Pen, Style, same_row};
+use super::{Pen, Style, clip, same_row};
 use crate::terminal::caps::{Caps, Cursor};
 use crate::terminal::paint::Grid;
 
@@ -17,7 +17,6 @@ pub(crate) fn inline(
 ) -> io::Result<()> {
     let rows = next.rows();
     let painted = last_rows.max(rows);
-    let clip = |value: usize| u16::try_from(value).unwrap_or(u16::MAX);
     queue!(out, cursor::MoveToColumn(0))?;
     if last_rows > 1 {
         queue!(out, cursor::MoveUp(clip(last_rows - 1)))?;
@@ -66,11 +65,7 @@ fn inline_cursor(
     }
     let rise = painted - 1 - row;
     if rise > 0 {
-        queue!(out, cursor::MoveUp(u16::try_from(rise).unwrap_or(u16::MAX)))?;
+        queue!(out, cursor::MoveUp(clip(rise)))?;
     }
-    queue!(
-        out,
-        cursor::MoveToColumn(u16::try_from(col).unwrap_or(u16::MAX)),
-        cursor::Show
-    )
+    queue!(out, cursor::MoveToColumn(clip(col)), cursor::Show)
 }

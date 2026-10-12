@@ -89,8 +89,11 @@ fn segment(
     selected: bool,
     height: f32,
 ) -> NodeBuilder {
-    let shown =
-        CellForm::<fn(&str, bool) -> String>::new(window_label, cell_label).pick()(label, selected);
+    let shown = if CellForm::new(false, selected).pick() {
+        format!("{CELL_ACTIVE_OPEN}{label}{CELL_ACTIVE_CLOSE}")
+    } else {
+        label.to_owned()
+    };
     let choice = button(shown)
         .accessible(label.to_owned())
         .height(height)
@@ -101,18 +104,6 @@ fn segment(
         choice.ghost()
     };
     container().child(choice)
-}
-
-fn window_label(label: &str, _selected: bool) -> String {
-    label.to_owned()
-}
-
-fn cell_label(label: &str, selected: bool) -> String {
-    if selected {
-        format!("{CELL_ACTIVE_OPEN}{label}{CELL_ACTIVE_CLOSE}")
-    } else {
-        label.to_owned()
-    }
 }
 
 impl PaintTarget for SegmentedBuilder {

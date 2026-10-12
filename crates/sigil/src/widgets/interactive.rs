@@ -1,7 +1,6 @@
 use crate::kernel::NodeBuilder;
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
-use crate::reactive::Reactive;
-use crate::reactive::Signal;
+use crate::reactive::{Reactive, Signal};
 use crate::style::{ClassSource, NodeStyleExt, PaintTarget, Style, StyleSlot};
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -53,12 +52,10 @@ impl InteractiveBuilder {
         if !base_atoms.is_empty() {
             node = node.class(ClassSource::Owned(Box::new(base_atoms)));
         }
-        let node = state_surface(node, interaction, self.disabled, overlay);
-        let node = if self.focusable {
-            node.focus_ring(interaction.focus_ring())
-        } else {
-            node
-        };
+        let mut node = state_surface(node, interaction, self.disabled, overlay);
+        if self.focusable {
+            node = node.focus_ring(interaction.focus_ring());
+        }
         hooks.finish(interaction.observe_style(node))
     }
 }

@@ -80,16 +80,15 @@ fn strip_layout<T, R>(spec: &BoundStrip<T, R>) -> LayoutStyle {
     let style = LayoutStyle::block()
         .position(Position::Absolute)
         .inset_left(0.0);
-    let style = if spec.tops.is_some() {
-        style
-    } else {
-        style.height(strip_height(
+    let style = match spec.tops {
+        Some(_) => style,
+        None => style.height(strip_height(
             spec.viewport_height,
             spec.row_height,
             spec.overscan,
-        ))
+        )),
     };
-    super::render::width_apply(spec.width, style)
+    spec.width.apply(style)
 }
 
 fn strip_position<T, R>(
@@ -187,21 +186,12 @@ where
 {
     let items = signal.peek();
     let slice: &[T] = (*items).as_ref();
-    let window = spec.tops.map_or_else(
-        || {
-            let heights = RowHeights::fixed(slice.len(), spec.row_height);
-            visible_window(scroll_y, heights, spec.viewport_height, overscan)
-        },
-        |tops| {
-            let tops = tops.peek();
-            visible_window(
-                scroll_y,
-                RowHeights::Tops(&tops),
-                spec.viewport_height,
-                overscan,
-            )
-        },
+    let tops = spec.tops.map(|tops| tops.peek());
+    let heights = tops.as_deref().map_or_else(
+        || RowHeights::fixed(slice.len(), spec.row_height),
+        |tops| RowHeights::Tops(tops),
     );
+    let window = visible_window(scroll_y, heights, spec.viewport_height, overscan);
     (window, slice.len())
 }
 

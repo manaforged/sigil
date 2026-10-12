@@ -15,11 +15,17 @@ pub(super) struct Device {
     interval: Option<IntervalId>,
 }
 
-impl Drop for Device {
-    fn drop(&mut self) {
+impl Device {
+    fn stop_ticking(&mut self) {
         if let Some(id) = self.interval.take() {
             cancel_interval(id);
         }
+    }
+}
+
+impl Drop for Device {
+    fn drop(&mut self) {
+        self.stop_ticking();
     }
 }
 
@@ -42,45 +48,44 @@ impl Player {
     }
 
     pub fn toggle(&self) {
-        let next = {
-            let device = self.device.borrow();
-            let Some(device) = device.as_ref() else {
-                return;
-            };
-            if device.sink.is_paused() {
+        let resumed = self.device.borrow().as_ref().map(|device| {
+            let resume = device.sink.is_paused();
+            if resume {
                 device.sink.play();
-                true
             } else {
                 device.sink.pause();
-                false
             }
-        };
-        self.playing.set(next);
+            resume
+        });
+        if let Some(playing) = resumed {
+            self.playing.set(playing);
+        }
+    }
+
+    fn new_sink(&self, stream: &MixerDeviceSink) -> RodioPlayer {
+        let sink = RodioPlayer::connect_new(stream.mixer());
+        sink.set_volume(rodio::Float::from(self.volume.peek()));
+        sink
     }
 
     fn open(&self) -> crate::AppResult<()> {
         let mut slot = self.device.borrow_mut();
-        if slot.is_some() {
-            return Ok(());
+        if slot.is_none() {
+            let stream = DeviceSinkBuilder::open_default_sink().map_err(crate::Error::io)?;
+            *slot = Some(Device {
+                sink: self.new_sink(&stream),
+                stream,
+                durations: VecDeque::new(),
+                interval: None,
+            });
         }
-        let stream = DeviceSinkBuilder::open_default_sink().map_err(crate::Error::io)?;
-        let sink = RodioPlayer::connect_new(stream.mixer());
-        sink.set_volume(rodio::Float::from(self.volume.peek()));
-        *slot = Some(Device {
-            stream,
-            sink,
-            durations: VecDeque::new(),
-            interval: None,
-        });
         Ok(())
     }
 
     pub(super) fn reset(&self) -> crate::AppResult<()> {
         self.open()?;
         if let Some(device) = self.device.borrow_mut().as_mut() {
-            let sink = RodioPlayer::connect_new(device.stream.mixer());
-            sink.set_volume(rodio::Float::from(self.volume.peek()));
-            device.sink = sink;
+            device.sink = self.new_sink(&device.stream);
             device.durations.clear();
         }
         self.progress.set(0.0);
@@ -92,9 +97,7 @@ impl Player {
         if let Some(device) = self.device.borrow_mut().as_mut() {
             device.sink.stop();
             device.durations.clear();
-            if let Some(id) = device.interval.take() {
-                cancel_interval(id);
-            }
+            device.stop_ticking();
         }
         self.playing.set(false);
         self.progress.set(0.0);
@@ -156,9 +159,7 @@ impl Player {
             if current.is_some_and(|total| !total.is_zero()) {
                 self.progress.try_set(1.0);
             }
-            if let Some(id) = device.interval.take() {
-                cancel_interval(id);
-            }
+            device.stop_ticking();
             return;
         }
         let Some(total) = current.filter(|total| !total.is_zero()) else {
@@ -178,42 +179,26 @@ impl Player {
         let ratio = ratio.clamp(0.0, 1.0);
         {
             let slot = self.device.borrow();
-            let device = slot.as_ref().ok_or_else(|| crate::Error::io(NoSink))?;
+            let device = slot
+                .as_ref()
+                .ok_or_else(|| io_error("Player::seek needs Player::play_path"))?;
             let total = device
                 .durations
                 .front()
                 .copied()
                 .flatten()
                 .filter(|total| !total.is_zero())
-                .ok_or_else(|| crate::Error::io(NoDuration))?;
+                .ok_or_else(|| io_error("Player::seek needs a known duration"))?;
             device
                 .sink
                 .try_seek(total.mul_f32(ratio))
-                .map_err(|err| crate::Error::io(std::io::Error::other(err.to_string())))?;
+                .map_err(|err| io_error(err.to_string()))?;
         }
         self.progress.set(ratio);
         Ok(())
     }
 }
 
-#[derive(Debug)]
-struct NoSink;
-
-impl std::fmt::Display for NoSink {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("Player::seek needs Player::play_path")
-    }
+fn io_error(message: impl Into<String>) -> crate::Error {
+    crate::Error::io(std::io::Error::other(message.into()))
 }
-
-impl std::error::Error for NoSink {}
-
-#[derive(Debug)]
-struct NoDuration;
-
-impl std::fmt::Display for NoDuration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("Player::seek needs a known duration")
-    }
-}
-
-impl std::error::Error for NoDuration {}
