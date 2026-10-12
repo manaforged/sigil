@@ -159,7 +159,13 @@ impl Span {
         if mark == ChartMark::Candle {
             return Self::tight(series);
         }
-        let (trough, peak) = bounds(series, (0.0, 0.0), |_| true);
+        let (mut peak, mut trough) = (0.0_f32, 0.0_f32);
+        for item in series {
+            for &value in item.values {
+                peak = peak.max(value);
+                trough = trough.min(value);
+            }
+        }
         Self {
             lo: if trough < 0.0 {
                 -nice_max(-trough)
@@ -175,7 +181,15 @@ impl Span {
     }
 
     fn tight(series: &[ChartView<'_>]) -> Self {
-        let (lo, hi) = bounds(series, (f32::INFINITY, f32::NEG_INFINITY), f32::is_finite);
+        let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+        for item in series {
+            for &value in item.values {
+                if value.is_finite() {
+                    lo = lo.min(value);
+                    hi = hi.max(value);
+                }
+            }
+        }
         if !(lo.is_finite() && hi.is_finite()) {
             return Self { lo: 0.0, hi: 1.0 };
         }
@@ -192,14 +206,6 @@ impl Span {
     pub(super) fn width(self) -> f32 {
         self.hi - self.lo
     }
-}
-
-fn bounds(series: &[ChartView<'_>], init: (f32, f32), keep: fn(f32) -> bool) -> (f32, f32) {
-    series
-        .iter()
-        .flat_map(|item| item.values.iter().copied())
-        .filter(|&value| keep(value))
-        .fold(init, |(lo, hi), value| (lo.min(value), hi.max(value)))
 }
 
 fn x_axis(labels: &[String], count: usize, gap: f32, stride: usize) -> NodeBuilder {
