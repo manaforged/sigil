@@ -126,7 +126,7 @@ The terminal rasteriser draws the same `CommandScene` as the window renderer. Ea
 
 | Scene command | Terminal form | Fallback |
 | --- | --- | --- |
-| Solid fill, rounded rect | Cell background. An edge that ends inside a cell uses a half-block glyph (`▀`, `▄`, `▌`, `▐`). | truecolor, then 256, then 16 colors |
+| Solid fill, rounded rect | Cell background. A top or bottom edge that ends inside a cell uses an eighth-block glyph (`▁` to `▇`) in the fill colour over the colour already in that cell, so stacked fills keep their own colours. A side edge that ends inside a cell uses a half-block glyph (`▌`, `▐`). A fill thinner than a quarter cell is a line (`─`, `│`). | truecolor, then 256, then 16 colors |
 | Border | Box-drawing glyphs. A fill inside the bordered box keeps the border cells. A divider that meets a side becomes a tee (`├`, `┤`). | heavy or rounded, then light, then ASCII |
 | Text run | Bold (weight 700 or more), dim (weight below 400), italic, underline, strikethrough | The terminal drops what it does not support |
 | Underline styles | Curly underline (`SGR 4:3`) and underline color (`SGR 58`) | Plain underline (`SGR 4`) |

@@ -6,7 +6,8 @@ use crate::scene::{
 use crate::style::{Rgba8, Theme, Tone};
 use crate::terminal::caps::{Caps, ColorDepth};
 
-use super::decoration::{self, Edge, Surface};
+use super::decoration::{self, Edge};
+use super::fill::{self, Surface};
 use super::marks::Marks;
 use super::paint_clip::{Text, image_crop, paint_text};
 use super::transform::Space;
@@ -90,6 +91,16 @@ fn blend(a: Rgba8, b: Rgba8, t: f32) -> Rgba8 {
         g: mix(a.g, b.g),
         b: mix(a.b, b.b),
         a: mix(a.a, b.a),
+    }
+}
+
+fn span(start: f32, extent: f32) -> (usize, usize) {
+    let first = cell_edge(start);
+    let end = cell_edge(start + extent);
+    if end > first {
+        (first, end - first)
+    } else {
+        (floor_cell(extent.mul_add(0.5, start)), 1)
     }
 }
 
@@ -183,14 +194,8 @@ impl Walk<'_> {
             None => rect,
         };
         let cell = self.cell;
-        let col = cell_edge(visible.origin.x / cell);
-        let row = cell_edge(visible.origin.y / cell);
-        let width = cell_edge((visible.origin.x + visible.width) / cell)
-            .saturating_sub(col)
-            .max(1);
-        let height = cell_edge((visible.origin.y + visible.height) / cell)
-            .saturating_sub(row)
-            .max(1);
+        let (col, width) = span(visible.origin.x / cell, visible.width / cell);
+        let (row, height) = span(visible.origin.y / cell, visible.height / cell);
         Some((visible, (col, row), (width, height)))
     }
 
@@ -216,7 +221,7 @@ impl Walk<'_> {
                     halves: draw.leaf && draw.border.is_none(),
                     theme: self.paint.theme,
                 };
-                decoration::surface(self.grid, &surface, self.cell);
+                fill::surface(self.grid, &surface, self.cell);
             }
         }
         if let Some(border) = draw.border {
