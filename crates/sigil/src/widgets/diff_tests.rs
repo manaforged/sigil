@@ -30,3 +30,11 @@ fn an_added_line_keeps_the_split_divider_on_the_empty_side() {
         .expect("added row");
     assert_eq!(added.matches('│').count(), 3, "divider missing:\n{grid}");
 }
+
+#[test]
+fn a_cut_changed_line_ends_in_one_ellipsis() {
+    let patch = "@@ -1,2 +1,2 @@\n def add(a, b):\n-    return a - b\n+    return a + b\n";
+    let grid = crate::terminal::present(move || diff(patch), 44, 8, &[]).expect("layout");
+    assert!(grid.contains("return"), "changed line missing:\n{grid}");
+    assert!(!grid.contains("……"), "doubled ellipsis:\n{grid}");
+}

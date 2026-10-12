@@ -61,20 +61,25 @@ fn segments(cell: &Cell, fg: Token) -> Vec<NodeBuilder> {
         .language
         .and_then(|language| highlight(language, &cell.body).into_iter().next())
         .unwrap_or_default();
+    let len = cell.body.len();
     let part = |range: Range<usize>| {
         let slice = cell.body.get(range.clone()).unwrap_or_default().to_string();
-        container()
-            .layout(LayoutStyle::block().min_size(0.0, 0.0))
-            .child(
-                text(slice)
-                    .nowrap()
-                    .runs(text_runs(&marks, range))
-                    .ellipsize()
-                    .class("text-xs font-mono")
-                    .class(fg.text()),
-            )
+        let last = range.end == len;
+        let body = text(slice)
+            .nowrap()
+            .runs(text_runs(&marks, range))
+            .class("text-xs font-mono")
+            .class(fg.text());
+        if last {
+            container()
+                .layout(LayoutStyle::block().min_size(0.0, 0.0))
+                .child(body.ellipsize())
+        } else {
+            container()
+                .layout(LayoutStyle::block().shrink(0.0))
+                .child(body)
+        }
     };
-    let len = cell.body.len();
     let Some(range) = cell
         .range
         .clone()
