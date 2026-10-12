@@ -1,6 +1,6 @@
 # Sigil
 
-A UI framework written in Rust. One widget tree runs in a window, in a terminal, or inside another engine's loop.
+A GUI and TUI framework written in Rust. One widget tree runs in a window, in a terminal, or inside another engine's loop.
 
 - **One tree, three hosts**: `sigil::run` opens a window, or paints a character grid with the `terminal` feature, and `Host` embeds the tree in another engine.
 - **GPU or CPU**: a wgpu renderer, and a CPU renderer for machines without a GPU.
@@ -8,7 +8,7 @@ A UI framework written in Rust. One widget tree runs in a window, in a terminal,
 - **Batteries included**: 67 components, including markdown, tables, trees, charts, mermaid diagrams, and a code editor.
 - **Accessible**: the window host exposes the widget tree to screen readers through AccessKit.
 
-[Book](docs/book) | [API map](docs/api.md) | [Examples](crates/sigil/examples) | [Guides](docs/guide)
+[Book](docs/SUMMARY.md) | [API map](docs/api.md) | [Examples](crates/sigil/examples) | [Guides](docs/guide)
 
 ![The workbench example application](docs/workbench.png)
 

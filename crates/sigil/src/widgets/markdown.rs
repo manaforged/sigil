@@ -12,7 +12,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived};
-use crate::style::{Radius, Token, space};
+use crate::style::{Radius, Token, Tone as ChartTone, space};
 
 use super::layout_ext::WidgetLayoutExt;
 use std::rc::Rc;
@@ -123,19 +123,14 @@ fn styled_block(block: Block, tone: Tone) -> NodeBuilder {
         Block::List(list) => render::list(list, tone, styled_block),
         Block::Code { lang, body } => render::code(&lang, &body),
         Block::Mermaid(body) => super::mermaid::mermaid(body),
-        Block::Chart { title, rows } => chart_node(title, &rows),
+        Block::Chart(data) => chart_node(data),
         Block::Image { alt, src } => image_node(&alt, &src),
         Block::Table(rows) => table::table(&rows),
         Block::Rule => render::rule(),
     }
 }
 
-#[expect(
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    reason = "chart labels are display values"
-)]
-fn chart_node(title: Option<String>, rows: &[(String, f64)]) -> NodeBuilder {
+fn chart_node(data: chart_parse::ChartData) -> NodeBuilder {
     let mut column = container()
         .layout(
             LayoutStyle::flex_column()
@@ -144,19 +139,17 @@ fn chart_node(title: Option<String>, rows: &[(String, f64)]) -> NodeBuilder {
                 .gap(space(1)),
         )
         .class([Token::Field.bg(), Radius::Md.atom()]);
-    if let Some(title) = title {
+    if let Some(title) = data.title {
         column = column.child(text(title).class("text-xs").class(Token::Gray11.text()));
     }
-    column.child(
-        super::chart::chart(
-            rows.iter()
-                .map(|(_, value)| *value as f32)
-                .collect::<Vec<_>>(),
-        )
-        .labels(rows.iter().map(|(name, _)| name.clone()))
-        .height(8.0 * (rows.len() as f32 + 3.0))
-        .width(480.0),
-    )
+    let mut chart = super::chart::chart(data.values).labels(data.labels);
+    if data.line {
+        chart = chart.line();
+    }
+    for values in data.series {
+        chart = chart.series("", values, ChartTone::Primary);
+    }
+    column.child(chart)
 }
 
 fn image_node(alt: &str, src: &str) -> NodeBuilder {

@@ -59,6 +59,28 @@ fn mermaid_fence_paints_boxes() {
 }
 
 #[test]
+fn markdown_chart_keeps_labels_and_bars_in_a_narrow_terminal() {
+    use sigil::widgets::markdown;
+    for cols in [40, 60, 110] {
+        let grid = painted(
+            || {
+                markdown(signal(
+                    "```chart\nResults\nPassed: 8\nFailed: 2\n```".to_string(),
+                ))
+            },
+            cols,
+            40,
+        );
+        let shown = grid.text();
+        assert!(
+            shown.contains("Passed") && shown.contains("Failed"),
+            "{cols}:\n{shown}"
+        );
+        assert!(fill_cells(&grid) > 0, "no bars at {cols}:\n{shown}");
+    }
+}
+
+#[test]
 fn a_chip_cell_paints_on_its_own_row() {
     use sigil::style::Tone;
     use sigil::widgets::{ColWidth, TableColumn, TableState, chip, table};
