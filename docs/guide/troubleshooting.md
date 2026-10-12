@@ -40,7 +40,7 @@ tmux set -g allow-passthrough on
 
 Inside GNU screen (`STY` is set), Sigil does not send Kitty or Sixel images.
 
-To choose the protocol yourself, set `SIGIL_GRAPHICS` to `kitty`, `iterm2`, or `sixel`. Any other value turns images off and shows glyphs.
+To choose the protocol yourself, set `SIGIL_GRAPHICS` to `kitty`, `iterm2`, or `sixel`. `SIGIL_GRAPHICS=off` (or `none`) turns images off and shows glyphs. Other values are ignored.
 
 ## Colours are wrong in the terminal
 

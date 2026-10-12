@@ -43,7 +43,7 @@ pub fn detect_mux(env: impl Fn(&str) -> Option<String>) -> Option<Mux> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Forced {
+enum Forced {
     Off,
     On(Protocol),
 }
@@ -53,7 +53,7 @@ impl std::str::FromStr for Forced {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.trim().to_ascii_lowercase().as_str() {
-            "none" => Ok(Self::Off),
+            "none" | "off" => Ok(Self::Off),
             "kitty" => Ok(Self::On(Protocol::Kitty)),
             "iterm2" | "iterm" => Ok(Self::On(Protocol::Iterm2)),
             "sixel" => Ok(Self::On(Protocol::Sixel)),
@@ -62,7 +62,7 @@ impl std::str::FromStr for Forced {
     }
 }
 
-pub(crate) fn forced_graphics(env: &impl Fn(&str) -> Option<String>) -> Option<Forced> {
+fn forced_graphics(env: &impl Fn(&str) -> Option<String>) -> Option<Forced> {
     env("SIGIL_GRAPHICS")?.parse().ok()
 }
 

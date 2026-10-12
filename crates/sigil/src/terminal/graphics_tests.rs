@@ -245,3 +245,13 @@ fn a_crop_selects_source_rows_for_every_protocol() {
         .expect("cell");
     assert_eq!((top.g, bottom.g), (80, 120));
 }
+
+#[test]
+fn sigil_graphics_off_beats_a_named_terminal() {
+    let env = |key: &str| match key {
+        "SIGIL_GRAPHICS" => Some("off".to_string()),
+        "KITTY_WINDOW_ID" => Some("1".to_string()),
+        _ => None,
+    };
+    assert_eq!(detect(env), None);
+}

@@ -50,3 +50,19 @@ fn a_truecolor_echo_and_a_version_reply_are_read() {
     assert!(!plain.truecolor);
     assert!(matches!(plain.version, Version::Silent));
 }
+
+#[test]
+fn the_startup_probe_never_writes_an_image_query() {
+    use crate::terminal::caps::{Question, Questions};
+    let every = [
+        Question::Sync,
+        Question::Keys,
+        Question::Color,
+        Question::Version,
+    ]
+    .into_iter()
+    .fold(Questions::default(), |ask, question| {
+        ask.with(question, true)
+    });
+    assert!(!super::queries(every, true).contains("\x1b_G"));
+}
