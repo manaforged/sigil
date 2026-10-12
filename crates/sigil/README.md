@@ -1,6 +1,6 @@
 # sigil-ui
 
-UI in Rust. One widget tree. Open it in a window with `sigil::run`, embed it with `sigil::Host`, or paint it on a character grid with `sigil::run(AppConfig::new(title).terminal(), tree)` (feature `terminal`).
+GUI and TUI framework in Rust. One widget tree. Open it in a window with `sigil::run`, embed it with `sigil::Host`, or paint it on a character grid with `sigil::run(AppConfig::new(title).terminal(), tree)` (feature `terminal`).
 
 The package is `sigil-ui` because `sigil` is taken on crates.io. The library name is `sigil`, so imports read `sigil::`.
 
