@@ -253,3 +253,27 @@ fn slider_and_progress_show_their_labels() {
     );
     assert!(grid.contains("Volume") && grid.contains("Upload"), "{grid}");
 }
+
+#[test]
+fn a_one_cell_segmented_control_stays_on_its_row() {
+    let grid = present(
+        || {
+            let labels = vec!["24h".to_owned(), "7d".to_owned()];
+            container()
+                .layout(LayoutStyle::flex_column())
+                .child(
+                    container()
+                        .layout(LayoutStyle::flex_row().height(sigil::Host::CELL))
+                        .child(text("range "))
+                        .child(segmented(signal(0), labels).height(sigil::Host::CELL)),
+                )
+                .child(text("below"))
+        },
+        40,
+        4,
+        &[],
+    );
+    let range = row_of(&grid, "range");
+    assert!(line_with(&grid, "range").contains("[24h]"), "{grid}");
+    assert_eq!(row_of(&grid, "below"), range + 1, "{grid}");
+}

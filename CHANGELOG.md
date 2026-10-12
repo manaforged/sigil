@@ -220,6 +220,7 @@ First release.
 
 ### Fixed
 
+- `segmented` in a terminal is one cell tall when its height is one cell, so it stays on its own row instead of drawing over the row below.
 - Terminal fills that end inside a cell draw that part as an eighth block in their own colour, so a short segment in a stacked bar chart shows as a partial block on its neighbour. Before, a fill a quarter to half a cell tall drew as a `─` line, and a fill under one cell could draw one row outside its own bounds.
 - A measured `virtual_list` with `key_by` keeps the same item at the top when items are inserted above it, such as older chat history loaded on scroll. Before, it held the row index, so the view jumped by the number inserted.
 - Accessibility bounds follow transforms: a node inside a scaled or moved parent reports where it is drawn. Before, it reported its untransformed layout box, so screen readers highlighted the wrong place on a canvas.
