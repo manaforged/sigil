@@ -121,6 +121,15 @@ fn a_slider_thumb_is_one_cell_not_a_box() {
 }
 
 #[test]
+fn a_slider_track_fills_whole_cells() {
+    let grid = present(|| slider(signal(0.4), 0.0..=1.0), 40, 3, &[]);
+    assert!(
+        !grid.contains(['▁', '▂', '▃', '▄', '▅', '▆', '▇']),
+        "{grid}"
+    );
+}
+
+#[test]
 fn the_active_segment_is_marked() {
     let grid = present(
         || segmented(signal(1), vec!["Day".into(), "Week".into(), "Month".into()]),
