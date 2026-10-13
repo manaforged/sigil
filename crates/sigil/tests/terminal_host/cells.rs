@@ -277,3 +277,50 @@ fn a_one_cell_segmented_control_stays_on_its_row() {
     assert!(line_with(&grid, "range").contains("[24h]"), "{grid}");
     assert_eq!(row_of(&grid, "below"), range + 1, "{grid}");
 }
+
+#[test]
+fn a_canvas_half_cell_fill_paints_a_half_block() {
+    let grid = present(
+        || {
+            sigil::widgets::canvas(|scene, area| {
+                let cell = sigil::Host::CELL;
+                let top = sigil::geometry::Rect::new(area.origin, cell * 4.0, cell);
+                scene.draw_rect(
+                    top,
+                    sigil::scene::SceneRectStyle::solid(Rgba8 {
+                        r: 200,
+                        g: 40,
+                        b: 40,
+                        a: 255,
+                    }),
+                );
+                let lower = sigil::geometry::Rect::new(
+                    sigil::geometry::Point::new(area.origin.x, area.origin.y + cell / 2.0),
+                    cell * 4.0,
+                    cell / 2.0,
+                );
+                scene.draw_rect(
+                    lower,
+                    sigil::scene::SceneRectStyle::solid(Rgba8 {
+                        r: 40,
+                        g: 40,
+                        b: 200,
+                        a: 255,
+                    }),
+                );
+            })
+            .layout(
+                LayoutStyle::block()
+                    .width(sigil::Host::CELL * 4.0)
+                    .height(sigil::Host::CELL),
+            )
+        },
+        8,
+        2,
+        &[],
+    );
+    assert!(
+        grid.lines().next().is_some_and(|line| line.contains('▄')),
+        "{grid}"
+    );
+}

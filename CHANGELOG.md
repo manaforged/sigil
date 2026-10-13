@@ -221,6 +221,7 @@ First release.
 
 ### Fixed
 
+- A `canvas` fill that covers part of a terminal cell paints as a half or eighth block, as a leaf node's background does, instead of filling the whole cell.
 - The terminal host rewrites only the changed parts of a row. Changes more than eight cells apart go out as separate spans, so a few moving glyphs no longer resend the whole row.
 - The terminal host paints at 60 Hz by default instead of 30 Hz, so motion and typing update on every display frame. `AppConfig::frame_interval` still sets another rate.
 - `segmented` in a terminal is one cell tall when its height is one cell, so it stays on its own row instead of drawing over the row below.
