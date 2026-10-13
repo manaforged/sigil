@@ -30,6 +30,18 @@ impl SceneBuilder {
             .push(SceneCommand::Rect(DrawRect::new(rect, style)));
     }
 
+    pub(crate) const fn recorded(&self) -> usize {
+        self.commands.len()
+    }
+
+    pub(crate) fn mark_leaf_from(&mut self, start: usize) {
+        for command in self.commands.iter_mut().skip(start) {
+            if let SceneCommand::Rect(draw) = command {
+                draw.leaf = true;
+            }
+        }
+    }
+
     pub fn draw_gradient(&mut self, rect: Rect, style: SceneGradientStyle) {
         self.commands
             .push(SceneCommand::Gradient(DrawGradient::new(rect, style)));

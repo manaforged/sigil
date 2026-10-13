@@ -6,6 +6,7 @@ use criterion as _;
 pub(crate) mod animator;
 pub(crate) mod binding_animate;
 pub(crate) mod binding_animate_color;
+pub(crate) mod clock;
 pub(crate) mod config;
 pub(crate) mod keyframes;
 pub(crate) mod motion;
@@ -23,6 +24,8 @@ pub use binding_animate::{
     install_animators_themed,
 };
 pub use binding_animate_color::{lerp_rgba8, linear_channel_to_srgb, srgb_channel_to_linear};
+pub(crate) use clock::tick_clocks;
+pub use clock::{clock, running_clocks};
 pub use config::AnimationConfig;
 pub use motion::MotionPrefs;
 pub use playback::Playback;

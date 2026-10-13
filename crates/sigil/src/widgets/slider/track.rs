@@ -3,7 +3,7 @@ use std::sync::{Mutex, OnceLock};
 
 use crate::animation_runtime::presets;
 use crate::kernel::{NodeBuilder, container, text};
-use crate::layout::snap::CellForm;
+use crate::layout::snap::{self, CellForm};
 use crate::layout::{LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::Signal;
 use crate::style::TransitionId;
@@ -99,9 +99,10 @@ pub(super) fn track(runtime: SliderRuntime, filled: bool) -> NodeBuilder {
     } else {
         LayoutStyle::block().grow(1.0)
     };
+    let thickness = snap::track(TRACK_THICKNESS);
     let layout = match runtime.orientation {
-        Orientation::Horizontal => layout.height(TRACK_THICKNESS),
-        Orientation::Vertical => layout.width(TRACK_THICKNESS),
+        Orientation::Horizontal => layout.height(thickness),
+        Orientation::Vertical => layout.width(thickness),
     };
     let class = match (filled, runtime.glass) {
         (true, true) => GLASS_TRACK_FILL,

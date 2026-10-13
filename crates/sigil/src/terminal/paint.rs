@@ -8,6 +8,7 @@ use std::borrow::Cow;
 use unicode_segmentation::UnicodeSegmentation;
 
 mod decoration;
+mod fill;
 mod image;
 mod junction;
 mod marks;

@@ -42,7 +42,7 @@ this table.
 | `prelude` | `mod prelude` | The application import surface. |
 | `a11y` | `mod a11y` | Accessibility tree construction. |
 | `animation` | `mod animation` | Easing, springs, and keyframes. |
-| `animation_runtime` | `mod animation_runtime` | Animators that drive signals each frame. |
+| `animation_runtime` | `mod animation_runtime` | Animators that drive signals each frame; `clock() -> Signal<f64>` is a signal of seconds that advances by the real frame time on every painted frame while its owner lives, and `running_clocks()` counts live clocks. A clock keeps the host painting but does not count in `active_count()`, so settling ignores it. Reduced motion does not stop a clock; check `MotionPrefs::reduced()` to hold motion still. |
 | `app` | `mod app` | Application host, configuration, and theme files. |
 | `bidi` | `mod bidi` | Bidirectional text: paragraph levels, visual order, and `ParagraphBidi::visual_step` for caret motion. `text::bidi` re-exports it. |
 | `clipboard` | `mod clipboard` | Clipboard trait and the installed clipboard. |
@@ -69,7 +69,7 @@ this table.
 | `dialog::open_file`, `dialog::save_file`, `dialog::pick_folder` | `fn() -> Picked<PathBuf>` | `FileDialog::new()` with one pick. |
 | `dialog::message`, `dialog::confirm` | `fn(title, body) -> Signal<Status<bool, Infallible>>` | An alert with OK, or OK and Cancel. Resolves `Ok(true)` on OK. |
 | `dialog::mock` | `push_path`, `push_paths`, `push_alert`, `reset` (`cfg(test)` or feature `kittest`) | Queues the next dialog answers. A queued answer resolves the signal at once and opens no dialog. |
-| `AppConfig` | `struct AppConfig`; `From<&str>`, `From<String>`; `AppConfig::new(title)`; host: `window()` (feature `desktop`), `terminal()` (feature `terminal`), `canvas(id)` (feature `desktop`); window: `size(w, h)`, `window_size() -> (u32, u32)`, and with feature `desktop` `min_size(w, h)`, `user_zoom(f32)`, `frameless(bool)`, `overlay(bool)`, `anchor(Anchor)`; `theme_file(path)`, `panic_policy(PanicPolicy)`, `quit_on_ctrl_c(bool)`, `frame_interval(Duration)` | Run configuration: title, size, host, theme file, web canvas. A title converts to a config with the defaults; `AppConfig::new(title)` starts the builder. `window()` selects the window host and `terminal()` the terminal host. Without a call, the host is the window when feature `desktop` is on, else the terminal. A host method exists only with its feature, so a build without that host does not compile the call. `canvas` names the web canvas element. `user_zoom` scales the UI; the default is 1.0. `frameless(true)` removes the window frame. `overlay(true)` opens a transparent accessory window; `anchor` places it on the screen. `theme_file` loads the theme from a file and reloads it when the file changes. `quit_on_ctrl_c` is true by default. `frame_interval` sets the wait between terminal host frames; the default is 33 ms. |
+| `AppConfig` | `struct AppConfig`; `From<&str>`, `From<String>`; `AppConfig::new(title)`; host: `window()` (feature `desktop`), `terminal()` (feature `terminal`), `canvas(id)` (feature `desktop`); window: `size(w, h)`, `window_size() -> (u32, u32)`, and with feature `desktop` `min_size(w, h)`, `user_zoom(f32)`, `frameless(bool)`, `overlay(bool)`, `anchor(Anchor)`; `theme_file(path)`, `panic_policy(PanicPolicy)`, `quit_on_ctrl_c(bool)`, `frame_interval(Duration)` | Run configuration: title, size, host, theme file, web canvas. A title converts to a config with the defaults; `AppConfig::new(title)` starts the builder. `window()` selects the window host and `terminal()` the terminal host. Without a call, the host is the window when feature `desktop` is on, else the terminal. A host method exists only with its feature, so a build without that host does not compile the call. `canvas` names the web canvas element. `user_zoom` scales the UI; the default is 1.0. `frameless(true)` removes the window frame. `overlay(true)` opens a transparent accessory window; `anchor` places it on the screen. `theme_file` loads the theme from a file and reloads it when the file changes. `quit_on_ctrl_c` is true by default. `frame_interval` sets the wait between terminal host frames; the default is 1/60 s (60 Hz). |
 | `AppResult` | `type AppResult<T> = Result<T, Error>` | Result of the application functions. |
 | `Error` | `struct Error` | Opaque application error. |
 | `Host` | `struct Host` | Embed host: build, route, lay out, and paint one tree. `set_caps(HostCaps)` tells widgets what the host can show. |
@@ -616,6 +616,7 @@ use sigil::animation_runtime::AnimationConfig;
 use sigil::animation_runtime::Animator;
 use sigil::animation_runtime::MotionPrefs;
 use sigil::animation_runtime::Playback;
+use sigil::animation_runtime::clock;
 use sigil::style::NumericAtomKind;
 use sigil::prelude::*;
 use std::time::Duration;
@@ -628,6 +629,7 @@ fn tree() -> impl IntoNode {
     let frames = Keyframes::new([Keyframe::new(0.0, 0.0), Keyframe::new(1.0, 1.0)], Duration::from_millis(300));
     let _ = (AnimationDirection::Alternate, AnimationFill::Forwards, MotionPrefs::reduced());
     let _ = Playback::new(opacity, frames);
+    let _seconds: Signal<f64> = clock();
     container().animate(NumericAtomKind::Opacity, opacity)
 }
 
@@ -848,7 +850,7 @@ fn main() {
 | `icon` | `fn icon(glyph: impl IntoIconSource) -> IconBuilder` | An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, or a text glyph. |
 | `Icon` | `enum Icon` (105 variants); `Icon::ALL`, `name()`, `svg()` | The bundled Lucide icon set (ISC). `name` is the kebab-case file name and `svg` the SVG source (feature `scene`). |
 | `path` | `const fn path(width: u32, height: u32) -> PathNode` | A vector path. |
-| `widgets::canvas`, `widgets::CanvasBuilder` | `fn canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static) -> CanvasBuilder`; `redraw_on(Signal<u64>)`, `layout(LayoutStyle)` | Custom drawing: the closure records scene commands for the node's rect when the node paints, clipped to that rect. It runs again on resize and each time the `redraw_on` signal changes. The terminal host paints the same commands to cells. |
+| `widgets::canvas`, `widgets::CanvasBuilder` | `fn canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static) -> CanvasBuilder`; `redraw_on(Signal<u64>)`, `layout(LayoutStyle)` | Custom drawing: the closure records scene commands for the node's rect when the node paints, clipped to that rect. It runs again on resize and each time the `redraw_on` signal changes. The terminal host paints the same commands to cells; a fill that covers part of a cell paints as a half or eighth block. |
 | `widgets::PathNode::draw` | `fn draw(self, scene: &mut SceneBuilder, destination: Rect, theme: &Theme)` | Record a vector path into a `canvas` scene. It rasterizes again at the drawn size. |
 | `PathNode` | `move_to`, `line_to`, `quad_to`, `cubic_to`, `close`, `fill`, `fill_linear(start, end, stops: Vec<(f32, Rgba8)>)`, `fill_radial(center, radius, stops)`, `stroke`, `non_scaling_stroke` | Builder of a vector path. `fill_linear` and `fill_radial` fill with a gradient. The host rasterizes the path at the laid-out size times the device scale. `non_scaling_stroke` keeps the stroke width in logical px under any fit, with round joins and caps. |
 | `image_rgba` | `fn image_rgba(width: u32, height: u32, rgba: Vec<u8>) -> Option<ImageBuilder>` | An image from RGBA bytes. |
@@ -1571,7 +1573,7 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | Handle pasted text on a node | `.on_paste(f)` from `NodeEventsExt` |
 | Check whether the terminal window has focus | `sigil::terminal::focused() -> bool` |
 | Send Ctrl+C to the tree instead of exiting | `AppConfig::quit_on_ctrl_c(false)` |
-| Set the terminal frame interval (default 33 ms) | `AppConfig::frame_interval(Duration)` |
+| Set the terminal frame interval (default 1/60 s, 60 Hz) | `AppConfig::frame_interval(Duration)` |
 | `Drags`, `Off` | `sigil::terminal::set_mouse_capture(yes) -> io::Result<()>` |
 | Pick which terminal mouse reports the app receives | `sigil::terminal::set_mouse_tracking(tracking: MouseTracking) -> io::Result<()>` |
 | Render one terminal frame to a string | `sigil::terminal::present(tree, cols, rows, events)` |

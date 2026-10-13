@@ -16,7 +16,11 @@ pub(crate) struct CanvasPaint {
 
 impl CanvasPaint {
     pub(crate) fn record(&self, scene: &mut SceneBuilder, rect: Rect) {
-        scene.with_clip(rect, |scene| (self.record)(scene, rect));
+        scene.with_clip(rect, |scene| {
+            let start = scene.recorded();
+            (self.record)(scene, rect);
+            scene.mark_leaf_from(start);
+        });
     }
 
     pub(crate) fn version(&self) -> u64 {

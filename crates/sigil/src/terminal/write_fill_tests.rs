@@ -72,3 +72,54 @@ fn control_characters_in_text_never_reach_the_terminal() {
     assert!(!shown.chars().any(char::is_control), "{shown:?}");
     assert!(shown.starts_with('a'), "{shown:?}");
 }
+
+fn band(top: f32, bottom: f32, ink: Rgba8) -> SceneCommand {
+    SceneCommand::Rect(
+        DrawRect::new(
+            Rect::new(Point::new(0.0, top), 16.0, bottom - top),
+            SceneRectStyle::solid(ink),
+        )
+        .with_cell(CellRect {
+            leaf: true,
+            ..CellRect::default()
+        }),
+    )
+}
+
+#[test]
+fn a_sliver_stacked_on_a_bar_keeps_its_colour_in_partial_blocks() {
+    let dark = rgba(6, 4, 11, 255);
+    let green = rgba(90, 200, 120, 255);
+    let blue = rgba(105, 140, 210, 255);
+    let backdrop = SceneCommand::Rect(DrawRect::new(
+        Rect::new(Point::new(0.0, 0.0), 16.0, 48.0),
+        SceneRectStyle::solid(dark),
+    ));
+    let grid = draw(
+        vec![
+            backdrop,
+            band(13.0, 16.0, green),
+            band(16.0, 20.0, rgba(220, 200, 100, 255)),
+            band(20.0, 48.0, blue),
+        ],
+        2,
+        6,
+    );
+    let cell = |row| grid.get(0, row).expect("plot cell");
+    assert_eq!(cell(1).text, "▃");
+    assert_eq!(cell(1).fg, Ink::Exact(green));
+    assert_eq!(cell(1).bg, Ink::Exact(dark));
+    assert_eq!(cell(2).text, "▄");
+    assert_eq!(cell(2).fg, Ink::Exact(blue));
+    assert_eq!(cell(2).bg, Ink::Exact(rgba(220, 200, 100, 255)));
+    assert_eq!((cell(3).text.as_str(), cell(3).bg), (" ", Ink::Exact(blue)));
+    assert!(!grid.text().contains('─'), "{}", grid.text());
+}
+
+#[test]
+fn a_sliver_at_the_floor_stays_inside_its_bounds() {
+    let ink = rgba(220, 200, 100, 255);
+    let grid = draw(vec![band(30.0, 31.0, ink)], 2, 6);
+    assert_eq!(grid.get(0, 3).expect("sliver row").text, "─");
+    assert_eq!(grid.get(0, 4).expect("row below").text, " ");
+}

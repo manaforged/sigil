@@ -241,3 +241,9 @@ fn animation_clock_advances_until_idle_and_rearms() {
         );
     });
 }
+
+#[test]
+fn the_terminal_host_paints_at_sixty_hertz_by_default() {
+    let config = crate::AppConfig::new("hz");
+    assert_eq!(config.frame_interval, Duration::from_micros(16_667));
+}

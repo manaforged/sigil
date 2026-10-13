@@ -4,7 +4,7 @@ use crate::style::{Rgba8, Theme};
 use crate::terminal::caps::Borders;
 use smol_str::SmolStr;
 
-use super::{Cell, Grid, Ink, cell_edge, floor_cell};
+use super::{Cell, Grid, Ink, cell_edge};
 
 pub(super) fn background(cell: &mut Cell, ink: Ink, theme: &Theme) {
     if let Ink::Exact(over) = ink {
@@ -50,122 +50,6 @@ fn blend(ink: Ink, over: Rgba8, foreground: bool, theme: &Theme) -> Ink {
         b: channel(over.b, under.b),
         a: 255,
     })
-}
-
-pub(super) struct Surface<'a> {
-    pub(super) rect: Rect,
-    pub(super) visible: Rect,
-    pub(super) origin: (usize, usize),
-    pub(super) size: (usize, usize),
-    pub(super) ink: Ink,
-    pub(super) halves: bool,
-    pub(super) theme: &'a Theme,
-}
-
-pub(super) fn surface(grid: &mut Grid, surface: &Surface<'_>, cell: f32) {
-    let area = (surface.origin, surface.size, surface.rect);
-    if let Some(glyph) = hairline(surface.rect, cell) {
-        grid.rule(area, glyph, surface.ink);
-        return;
-    }
-    let opaque = match surface.ink {
-        Ink::Exact(color) => color.a == 255,
-        Ink::Of(_) => true,
-        Ink::Bare => false,
-    };
-    if !opaque || !surface.halves {
-        grid.fill(area, surface.ink, surface.theme);
-        return;
-    }
-    let visible = surface.visible;
-    let rows = split(
-        visible.origin.y / cell,
-        (visible.origin.y + visible.height) / cell,
-    );
-    let cols = split(
-        visible.origin.x / cell,
-        (visible.origin.x + visible.width) / cell,
-    );
-    grid.fill(
-        (
-            (cols.full.0, rows.full.0),
-            (cols.span(), rows.span()),
-            surface.rect,
-        ),
-        surface.ink,
-        surface.theme,
-    );
-    halves(grid, surface, &rows, &cols);
-}
-
-fn halves(grid: &mut Grid, surface: &Surface<'_>, rows: &Split, cols: &Split) {
-    let across = (cols.full.0, cols.span());
-    let down = (rows.full.0, rows.span());
-    let halves = [
-        (rows.start.map(|row| (across, (row, 1))), "▄"),
-        (rows.end.map(|row| (across, (row, 1))), "▀"),
-        (cols.start.map(|col| ((col, 1), down)), "▐"),
-        (cols.end.map(|col| ((col, 1), down)), "▌"),
-    ];
-    for (span, glyph) in halves {
-        if let Some(((col, width), (row, height))) = span {
-            grid.rule(
-                ((col, row), (width, height), surface.rect),
-                glyph,
-                surface.ink,
-            );
-        }
-    }
-}
-
-struct Split {
-    full: (usize, usize),
-    start: Option<usize>,
-    end: Option<usize>,
-}
-
-impl Split {
-    const fn span(&self) -> usize {
-        self.full.1.saturating_sub(self.full.0)
-    }
-}
-
-fn split(start: f32, end: f32) -> Split {
-    let head = start - start.floor();
-    let tail = end - end.floor();
-    let half_start = (0.25..0.75).contains(&head) && end - start >= 2.0;
-    let half_end = (0.25..0.75).contains(&tail) && end - start >= 2.0;
-    let first = if half_start {
-        floor_cell(start) + 1
-    } else {
-        cell_edge(start)
-    };
-    let last = if half_end {
-        floor_cell(end)
-    } else {
-        cell_edge(end)
-    };
-    let last = if half_start || half_end {
-        last
-    } else {
-        last.max(first + 1)
-    };
-    Split {
-        full: (first, last.max(first)),
-        start: half_start.then(|| floor_cell(start)),
-        end: half_end.then(|| floor_cell(end)),
-    }
-}
-
-fn hairline(rect: Rect, cell: f32) -> Option<&'static str> {
-    let stem = cell * 0.5;
-    if rect.height > 0.0 && rect.height < stem {
-        return Some("─");
-    }
-    if rect.width > 0.0 && rect.width < stem {
-        return Some("│");
-    }
-    None
 }
 
 pub(super) struct Edge<'a> {

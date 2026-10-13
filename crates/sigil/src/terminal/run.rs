@@ -267,6 +267,7 @@ fn due(deadline: Option<Instant>) -> bool {
 fn frame_due() -> bool {
     Runtime::frame_dirty()
         || crate::animation_runtime::active_count() > 0
+        || crate::animation_runtime::running_clocks() > 0
         || crate::reactive::next_interval_deadline().is_some_and(|due| due <= Instant::now())
 }
 

@@ -10,10 +10,12 @@ use crossterm::{cursor, queue};
 use crate::terminal::caps::{Caps, ColorDepth, Cursor, Erase};
 use crate::terminal::colour::paint;
 use crate::terminal::paint::{CONTINUES, Cell, Grid, Ink, Underline};
-use crate::terminal::scroll::Shift;
 use smol_str::SmolStr;
 
+mod diff;
 mod inline;
+
+pub(crate) use diff::dirty;
 
 pub(crate) use inline::inline;
 
@@ -62,24 +64,6 @@ pub(crate) fn all(out: &mut impl Write, grid: &Grid, caps: &Caps) -> io::Result<
     let mut pen = Pen::default();
     for row in 0..grid.rows() {
         row_bytes(out, grid, row, &mut pen, caps)?;
-    }
-    pen.rest(out)
-}
-
-pub(crate) fn dirty(out: &mut impl Write, prev: &Grid, next: &Grid, caps: &Caps) -> io::Result<()> {
-    let shift = Shift::find(prev, next);
-    let mut pen = Pen::default();
-    if let Some(shift) = shift {
-        shift.emit(out)?;
-        pen.style = Some(Style::plain());
-    }
-    for row in 0..next.rows() {
-        let old = shift.map_or_else(|| Some(prev.row(row)), |shift| shift.source(prev, row));
-        match old {
-            Some(old) if same_row(old, next.row(row), caps) => {}
-            Some(old) => span(out, (old, row), next, &mut pen, caps)?,
-            None => row_bytes(out, next, row, &mut pen, caps)?,
-        }
     }
     pen.rest(out)
 }
@@ -216,41 +200,6 @@ fn row_bytes(
 ) -> io::Result<()> {
     let end = grid.painted_width(row);
     cells(out, grid.row(row), (row, 0, end, true), pen, caps)
-}
-
-fn span(
-    out: &mut impl Write,
-    (old, row): (&[Cell], usize),
-    next: &Grid,
-    pen: &mut Pen,
-    caps: &Caps,
-) -> io::Result<()> {
-    let new = next.row(row);
-    let differs = |index: usize| match (old.get(index), new.get(index)) {
-        (Some(was), Some(now)) => !same_cell(was, now, caps),
-        _ => false,
-    };
-    let joined = |index: usize| {
-        old.get(index).is_some_and(|cell| cell.text == CONTINUES)
-            || new.get(index).is_some_and(|cell| cell.text == CONTINUES)
-    };
-    let Some(mut start) = (0..new.len()).find(|&index| differs(index)) else {
-        return Ok(());
-    };
-    let mut end = (0..new.len())
-        .rev()
-        .find(|&index| differs(index))
-        .map_or(start, |index| index + 1);
-    while start > 0 && joined(start) {
-        start -= 1;
-    }
-    while joined(end) {
-        end += 1;
-    }
-    let width = next.painted_width(row);
-    let tail = end >= width;
-    let stop = if tail { width } else { end };
-    cells(out, new, (row, start, stop, tail), pen, caps)
 }
 
 fn cells(

@@ -235,11 +235,13 @@ pub fn sigil::animation_runtime::Playback::resume(&mut self)
 pub fn sigil::animation_runtime::Playback::seek(&mut self, elapsed: core::time::Duration)
 impl core::ops::drop::Drop for sigil::animation_runtime::Playback
 pub fn sigil::animation_runtime::active_count() -> usize
+pub fn sigil::animation_runtime::clock() -> sigil::reactive::Signal<f64>
 pub const fn sigil::animation_runtime::config(id: sigil::style::TransitionId) -> core::option::Option<sigil::animation_runtime::AnimationConfig>
 pub fn sigil::animation_runtime::install_animators(atoms: &[sigil::style::StyleAtom], state_style: sigil::style::StateStyle, component_id: sigil::style::ComponentId) -> sigil::animation_runtime::AttachedAnimators
 pub fn sigil::animation_runtime::install_animators_themed(atoms: &[sigil::style::StyleAtom], state_style: sigil::style::StateStyle, component_id: sigil::style::ComponentId, theme: &sigil::style::Theme) -> sigil::animation_runtime::AttachedAnimators
 pub fn sigil::animation_runtime::lerp_rgba8(a: sigil::style::Rgba8, b: sigil::style::Rgba8, t: f32) -> sigil::style::Rgba8
 pub fn sigil::animation_runtime::linear_channel_to_srgb(v: f32) -> u8
+pub fn sigil::animation_runtime::running_clocks() -> usize
 pub fn sigil::animation_runtime::srgb_channel_to_linear(c: u8) -> f32
 pub fn sigil::animation_runtime::tick(dt: f32)
 pub mod sigil::app

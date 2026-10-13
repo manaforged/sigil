@@ -10,6 +10,7 @@ First release.
 
 ### Added
 
+- `animation_runtime::clock()`: a `Signal<f64>` of elapsed seconds that advances by the real frame time on every painted frame while its owner lives, so continuous motion runs at the host's frame rate instead of a timer of its own. A clock keeps the host painting but does not hold `active_count()` up, so settling ignores it. `running_clocks()` counts live clocks.
 - `NodeEventsExt::on_selection_copy` reports the text and clipboard result when a `selectable_text` region copies a selection (drag-to-copy in a terminal, or Cmd/Ctrl+C), so an app can confirm the copy.
 - `Icon`: the Lucide icon set (98 icons, ISC with the Feather-derived MIT portion), typed, so `icon(Icon::Folder)` draws a stroke icon tinted by the text colour. The nine older built-in icons now come from the same set.
 - `tree(nodes)` with `TreeNode`: an explorer or outline tree with icons, toned status, controlled expansion and selection, arrow-key navigation, Left/Right to collapse and expand, Enter to activate, and tree and tree-item accessibility roles.
@@ -220,6 +221,11 @@ First release.
 
 ### Fixed
 
+- A `canvas` fill that covers part of a terminal cell paints as a half or eighth block, as a leaf node's background does, instead of filling the whole cell.
+- The terminal host rewrites only the changed parts of a row. Changes more than eight cells apart go out as separate spans, so a few moving glyphs no longer resend the whole row.
+- The terminal host paints at 60 Hz by default instead of 30 Hz, so motion and typing update on every display frame. `AppConfig::frame_interval` still sets another rate.
+- `segmented` in a terminal is one cell tall when its height is one cell, so it stays on its own row instead of drawing over the row below.
+- Terminal fills that end inside a cell draw that part as an eighth block in their own colour, so a short segment in a stacked bar chart shows as a partial block on its neighbour. Before, a fill a quarter to half a cell tall drew as a `─` line, and a fill under one cell could draw one row outside its own bounds.
 - A measured `virtual_list` with `key_by` keeps the same item at the top when items are inserted above it, such as older chat history loaded on scroll. Before, it held the row index, so the view jumped by the number inserted.
 - Accessibility bounds follow transforms: a node inside a scaled or moved parent reports where it is drawn. Before, it reported its untransformed layout box, so screen readers highlighted the wrong place on a canvas.
 - Links in `markdown` can be clicked and reached by assistive technology: each is a `Link` node with its URL and the area of its text, and a click on it calls the nearest `NodeEventsExt::link` handler. Before, links were zero-size nodes with nothing to click.

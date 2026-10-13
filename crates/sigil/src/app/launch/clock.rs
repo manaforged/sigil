@@ -1,8 +1,8 @@
 use web_time::Instant;
 
-use crate::animation_runtime::active_count as active_animation_count;
 #[cfg(test)]
 use crate::animation_runtime::tick as tick_animations;
+use crate::animation_runtime::{active_count as active_animation_count, running_clocks};
 
 const NOMINAL_FRAME_SECS: f32 = 1.0 / 60.0;
 
@@ -13,7 +13,7 @@ pub(crate) struct AnimationClock {
 
 impl AnimationClock {
     pub(crate) fn elapsed(&mut self, now: Instant) -> f32 {
-        if active_animation_count() == 0 {
+        if active_animation_count() == 0 && running_clocks() == 0 {
             self.previous = None;
             return NOMINAL_FRAME_SECS;
         }

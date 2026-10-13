@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::animation_runtime::active_count as active_animation_count;
+use crate::animation_runtime::{active_count as active_animation_count, running_clocks};
 use crate::geometry::{LogicalSize, PhysicalSize, Scale};
 use crate::hal::Shell;
 use crate::reactive::{Owner, Runtime, next_interval_deadline};
@@ -134,7 +134,7 @@ fn drive(shell: WinitShell, mut state: LoopState, owner: Owner) -> AppResult<()>
 }
 
 fn request_animation_frame(shell: &WinitShell, handle: Option<WinitWindowHandle>) {
-    if active_animation_count() > 0
+    if (active_animation_count() > 0 || running_clocks() > 0)
         && let Some(window) = handle.and_then(|handle| shell.window_for(handle))
     {
         window.request_redraw();

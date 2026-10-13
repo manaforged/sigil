@@ -1,5 +1,5 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::snap::CellForm;
+use crate::layout::snap::{self, CellForm};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot};
@@ -49,7 +49,7 @@ impl SegmentedBuilder {
             .layout_overrides
             .height_hint()
             .unwrap_or(SEGMENTED_HEIGHT);
-        let inner = (height - 6.0).max(16.0);
+        let inner = CellForm::new((height - 6.0).max(16.0), height).pick();
         let mut node = container()
             .role(Role::RadioGroup)
             .with(
@@ -58,7 +58,7 @@ impl SegmentedBuilder {
                         .height(height)
                         .shrink(0.0)
                         .gap(2.0)
-                        .padding(2.0)
+                        .padding(snap::detail(2.0))
                         .align_items(AlignItems::Center),
                 ),
             )

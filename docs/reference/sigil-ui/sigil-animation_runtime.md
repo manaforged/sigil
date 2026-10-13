@@ -11,11 +11,13 @@
 | [`AnimationConfig`](#animationconfig) | enum |  |
 | [`AnimatorStatus`](#animatorstatus) | enum |  |
 | [`active_count`](#active_count) | fn |  |
+| [`clock`](#clock) | fn |  |
 | [`config`](#config) | fn |  |
 | [`install_animators`](#install_animators) | fn |  |
 | [`install_animators_themed`](#install_animators_themed) | fn |  |
 | [`lerp_rgba8`](#lerp_rgba8) | fn |  |
 | [`linear_channel_to_srgb`](#linear_channel_to_srgb) | fn |  |
+| [`running_clocks`](#running_clocks) | fn |  |
 | [`srgb_channel_to_linear`](#srgb_channel_to_linear) | fn |  |
 | [`tick`](#tick) | fn |  |
 
@@ -145,6 +147,11 @@
 <pre>pub fn <a href="#active_count">active_count</a>() -&gt; usize</pre>
 
 
+### `clock`
+
+<pre>pub fn <a href="#clock">clock</a>() -&gt; <a href="sigil-reactive.html#signal">Signal</a>&lt;f64&gt;</pre>
+
+
 ### `config`
 
 <pre>pub const fn <a href="#config">config</a>(id: <a href="sigil-style.html#transitionid">TransitionId</a>) -&gt; Option&lt;<a href="#animationconfig">AnimationConfig</a>&gt;</pre>
@@ -168,6 +175,11 @@
 ### `linear_channel_to_srgb`
 
 <pre>pub fn <a href="#linear_channel_to_srgb">linear_channel_to_srgb</a>(v: f32) -&gt; u8</pre>
+
+
+### `running_clocks`
+
+<pre>pub fn <a href="#running_clocks">running_clocks</a>() -&gt; usize</pre>
 
 
 ### `srgb_channel_to_linear`
