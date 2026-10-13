@@ -26,7 +26,7 @@ pub(crate) struct QuitKeys {
     pub(crate) ctrl_c: bool,
 }
 
-pub(crate) const FRAME_INTERVAL: std::time::Duration = std::time::Duration::from_millis(33);
+pub(crate) const FRAME_INTERVAL: std::time::Duration = std::time::Duration::from_micros(16_667);
 
 #[cfg(feature = "terminal")]
 #[derive(Clone, Default)]
