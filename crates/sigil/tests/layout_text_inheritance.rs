@@ -136,7 +136,7 @@ fn ancestor_typography_change_remeasures_descendant_text() {
     assert!(
         !target_styles.is_empty(),
         "descendant text must re-measure when an ancestor's typography changes \
-         (its own Node::version is unchanged — this is the DR-056 cascade)"
+         (its own Node::version is unchanged)"
     );
     for style in target_styles {
         assert_eq!(style.font_size, 20.0, "re-measure must see text-xl");

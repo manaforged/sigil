@@ -97,9 +97,9 @@ container()
 
 | Method | Sets |
 | --- | --- |
-| `bg`, `background_gradient` | Background colour or gradient |
-| `text_color` | Text colour |
-| `border_color`, `border_w`, `border_top`, `border_right`, `border_bottom`, `border_left` | Border colour and width in px |
+| `bg`, `background_gradient` | Background color or gradient |
+| `text_color` | Text color |
+| `border_color`, `border_w`, `border_top`, `border_right`, `border_bottom`, `border_left` | Border color and width in px |
 | `rounded(Radius)` | Corner radius |
 | `shadow(Elevation)` | Drop shadow |
 | `opacity(f32)` | Opacity, 0.0 to 1.0 |
@@ -112,7 +112,7 @@ Spacing and size numbers are pixels. `LayoutStyle` sets padding, margin, gap, si
 
 ### Typed theme tokens
 
-`Token` names every theme colour. `bg`, `text_color`, and `border_color` take a `Token` or an `Rgba8`. Theme tokens come from the active theme. Dark mode is a theme swap, not a restyle.
+`Token` names every theme color. `bg`, `text_color`, and `border_color` take a `Token` or an `Rgba8`. Theme tokens come from the active theme. Dark mode is a theme swap, not a restyle.
 
 | Group | Tokens |
 | --- | --- |
@@ -124,7 +124,7 @@ Spacing and size numbers are pixels. `LayoutStyle` sets padding, margin, gap, si
 | Overlays | `Overlay`, `OverlayBorder`, `Scrim` |
 | Scales | `Gray1`..`Gray12`, `Accent1`..`Accent12`, `Success1`.., `Warn1`.., `Error1`.., `Info1`.. |
 
-`Token::color` returns a `ColorAtom`. `Theme::color(token)` resolves a token to a colour. Widgets resolve tokens when they paint, so a theme swap recolours a built tree.
+`Token::color` returns a `ColorAtom`. `Theme::color(token)` resolves a token to a color. Widgets resolve tokens when they paint, so a theme swap recolours a built tree.
 
 Shared metrics:
 
@@ -133,7 +133,7 @@ Shared metrics:
 | Spacing step | `space(n)` | `n` × 4 px |
 | Radius family | `Radius::{Sm, Base, Md, Lg, Full}` | 2, 4, 6, 8, 9999 px; 0 on a character grid |
 | Border width | `BORDER_WIDTH` | 1 px |
-| Focus ring | `FocusRing` default | 2 px wide, 2 px offset, colour `Ring` |
+| Focus ring | `FocusRing` default | 2 px wide, 2 px offset, color `Ring` |
 | Overlay | `Token::Overlay`, `Token::OverlayBorder`, `OVERLAY_SHADOW`, `Metrics::overlay_padding` | fill, border, `Elevation::Md`, 4 px |
 | Disabled | `DISABLED_OPACITY` | 50 % |
 | Icon glyph | `ICON_SIZE`, `Metrics::icon_size` | 20 px font size; one cell on a character grid |

@@ -122,11 +122,11 @@ Borders:
 
 ## Scene mapping
 
-The terminal rasteriser draws the same `CommandScene` as the window renderer. Each scene command has one terminal form and one fallback.
+The terminal rasterizer draws the same `CommandScene` as the window renderer. Each scene command has one terminal form and one fallback.
 
 | Scene command | Terminal form | Fallback |
 | --- | --- | --- |
-| Solid fill, rounded rect | Cell background. A top or bottom edge that ends inside a cell uses an eighth-block glyph (`▁` to `▇`) in the fill colour over the colour already in that cell, so stacked fills keep their own colours. A side edge that ends inside a cell uses a half-block glyph (`▌`, `▐`). A fill thinner than a quarter cell is a line (`─`, `│`). | truecolor, then 256, then 16 colors |
+| Solid fill, rounded rect | Cell background. A top or bottom edge that ends inside a cell uses an eighth-block glyph (`▁` to `▇`) in the fill color over the color already in that cell, so stacked fills keep their own colors. A side edge that ends inside a cell uses a half-block glyph (`▌`, `▐`). A fill thinner than a quarter cell is a line (`─`, `│`). | truecolor, then 256, then 16 colors |
 | Border | Box-drawing glyphs. A fill inside the bordered box keeps the border cells. A divider that meets a side becomes a tee (`├`, `┤`). | heavy or rounded, then light, then ASCII |
 | Text run | Bold (weight 700 or more), dim (weight below 400), italic, underline, strikethrough | The terminal drops what it does not support |
 | Underline styles | Curly underline (`SGR 4:3`) and underline color (`SGR 58`) | Plain underline (`SGR 4`) |
@@ -138,7 +138,7 @@ The terminal rasteriser draws the same `CommandScene` as the window renderer. Ea
 | Caret | Terminal cursor: a steady bar at the caret cell | Block cursor |
 | Selection | Selection background blended over the text | none |
 
-A caret is a filled box of at most half a cell wide inside the focused node. The rasteriser hides the terminal cursor when no caret is visible.
+A caret is a filled box of at most half a cell wide inside the focused node. The rasterizer hides the terminal cursor when no caret is visible.
 
 The writer compares cells after it maps their colors to the detected color depth. A row whose output bytes do not change is not written again, so a color transition at 256 colors sends a row only when a cell changes on screen.
 

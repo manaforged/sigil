@@ -34,7 +34,7 @@ fn button_default() -> Result<(), sigil_kittest::Error> {
 }
 ```
 
-`render_widget_to_png(build, mode, size_px, hit_point)` returns `Result<Option<RgbaImage>, Error>`. The hit point must land inside the widget for `Hover`, `Pressed`, and `Clicked` to take effect. For `Disabled`, build the widget disabled, for example `button("Save").enabled(false)`; the harness sends no events in that mode.
+`render_widget_to_png(build, mode, size_px, hit_point)` returns `Result<Option<RgbaImage>, Error>`. The hit point must land inside the widget for `Hover`, `Pressed`, and `Clicked` to take effect. For `Disabled`, build the widget disabled, for example `button("Save").disabled(true)`; the harness sends no events in that mode.
 
 `golden_path!(stem)` resolves `tests/goldens/<stem>.png` under the calling crate's manifest directory. `assert_goldens_differ!(a, b)` fails when two goldens are identical.
 

@@ -61,7 +61,7 @@ A GUI-only API compiles out of a TUI-only build because its feature is off. You 
 
 Paint the window with every tool it has: shadows, blur, gradients, rounded corners, images, and pixel sizes. The terminal host keeps what a cell can show and drops the rest: a shadow, a blur, or a gradient is omitted, a rounded box becomes rounded box-drawing glyphs, and an image goes through the terminal graphics protocol or sextant glyphs. The [Terminal host](terminal.md#scene-mapping) page lists each mapping. You do not add a terminal branch to keep a GUI style.
 
-The window host paints the theme's `Surface` colour behind the tree, so an area the tree leaves unpainted follows the theme. A transparent window skips it. The terminal host leaves unpainted cells to the terminal's own background.
+The window host paints the theme's `Surface` color behind the tree, so an area the tree leaves unpainted follows the theme. A transparent window skips it. The terminal host leaves unpainted cells to the terminal's own background.
 
 Give text-sized lengths in `rows`, `cols`, or `em`, and give picture sizes in pixels. Then the terminal gets whole cells and the window gets text-height controls from the same code. See [Units](units.md).
 

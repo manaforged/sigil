@@ -71,9 +71,9 @@
 - [Example story-03-form](reference/sigil-ui/examples/story-03-form.html): `cargo run -p sigil-ui --example story-03-form`
 - [Example story-04-todo](reference/sigil-ui/examples/story-04-todo.html): `cargo run -p sigil-ui --example story-04-todo`
 - [Example story-05-nav](reference/sigil-ui/examples/story-05-nav.html): `cargo run -p sigil-ui --example story-05-nav`
-- [Example story-07-async](reference/sigil-ui/examples/story-07-async.html): `cargo run -p sigil-ui --example story-07-async`
-- [Example story-08-component](reference/sigil-ui/examples/story-08-component.html): `cargo run -p sigil-ui --example story-08-component`
-- [Example story-09-test](reference/sigil-ui/examples/story-09-test.html): `cargo run -p sigil-ui --example story-09-test`
+- [Example story-06-async](reference/sigil-ui/examples/story-06-async.html): `cargo run -p sigil-ui --example story-06-async`
+- [Example story-07-component](reference/sigil-ui/examples/story-07-component.html): `cargo run -p sigil-ui --example story-07-component`
+- [Example story-08-test](reference/sigil-ui/examples/story-08-test.html): `cargo run -p sigil-ui --example story-08-test`
 - [Example text_field_demo](reference/sigil-ui/examples/text_field_demo.html): `cargo run -p sigil-ui --example text_field_demo`
 - [Example todo-terminal](reference/sigil-ui/examples/todo-terminal.html): `cargo run -p sigil-ui --example todo-terminal --features terminal`
 - [Example toggle_demo](reference/sigil-ui/examples/toggle_demo.html): `cargo run -p sigil-ui --example toggle_demo`

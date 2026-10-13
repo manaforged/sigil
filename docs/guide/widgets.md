@@ -1,6 +1,6 @@
 # Widgets
 
-The catalog ships in `sigil`. Every widget constructs from a lowercase function and chains a builder. Widgets take typed styling: the `Paint` methods for colour, border, radius, shadow, and font, and `StateVariants` for hover, focus, press, and disabled paint. `WidgetLayoutExt` sizing applies where the builder implements it (containers and most controls); `virtual_list`, `table`, `slider`, and `code_edit` size via `.viewport_height()`/`.row_height()` or `.layout()` instead. Widgets join focus, accessibility, and IME where relevant. See the rustdoc for the full builder surface.
+The catalog ships in `sigil`. Every widget constructs from a lowercase function and chains a builder. Widgets take typed styling: the `Paint` methods for color, border, radius, shadow, and font, and `StateVariants` for hover, focus, press, and disabled paint. `WidgetLayoutExt` sizing applies where the builder implements it (containers and most controls); `virtual_list`, `table`, `slider`, and `code_edit` size via `.viewport_height()`/`.row_height()` or `.layout()` instead. Focusable widgets publish accessibility roles and accept IME input. The rustdoc lists every builder method.
 
 The family pages carry signatures, options, and behavior notes:
 
@@ -41,7 +41,7 @@ The family pages carry signatures, options, and behavior notes:
 - **chip(label, Tone)**: the same `Tone` as buttons. `.tone(..)` also takes a signal or closure. `.activate(Fn())` makes it a button; without `.activate` it stays a label.
 - **field(label, control)**: a label above a control; `.error(..)` adds an error line. Use it for forms.
 - **icon(glyph)**, **dot(Tone)**, **divider_horizontal()**, and **divider_vertical()**.
-- **code_edit(...)**.
+- **code_edit(lines, caret)**: a line-oriented code editor that renders only the visible rows. See [Documents](widgets/documents.md#code_edit).
 - **markdown(Signal\<String\>)**: a read-only document: headings, paragraphs, lists, fenced code, pipe tables, plus `**bold**`, `` `code` ``, and `[label](url)`. Not an in-place editor.
 - **html(Signal\<String\>)**: the same nodes as `markdown`, from an HTML subset (`h1`-`h3`, `p`, `ul`/`ol`/`li`, `pre`/`code`, `a`, `strong`/`em`, `table`). Scripts and styles are dropped. Not a browser.
 - **markdown_edit(Signal\<String\>)**: a source `text_edit` plus a live `markdown` preview. The caret stays in the source string.

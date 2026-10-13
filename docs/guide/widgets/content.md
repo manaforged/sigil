@@ -14,7 +14,7 @@ text(move || format!("Count: {}", count.get())).nowrap();
 # };
 ```
 
-`TextBuilder` options: `.wrap()` (default) / `.nowrap()` / `.ellipsize()` (single line with truncation), `.role(Role)` (default `Role::Label`), `.label(name)` and `.description(text)` for accessibility, `.focusable(bool)`, `.tab_index(i32)`, `.keyboard_shortcut(Shortcut)`, `.hittable(bool)`, and `.mutate(f)` for raw node edits. Font and colour come from the `Paint` methods: `.font_size(14.0)`, `.font_weight(600)`, `.font_family(FontFamily::Mono)`, `.text_color(Token::OnSurfaceMuted)`.
+`TextBuilder` options: `.wrap()` (default) / `.nowrap()` / `.ellipsize()` (single line with truncation), `.role(Role)` (default `Role::Label`), `.label(name)` and `.description(text)` for accessibility, `.focusable(bool)`, `.tab_index(i32)`, `.keyboard_shortcut(Shortcut)`, `.hittable(bool)`, and `.mutate(f)` for raw node edits. Font and color come from the `Paint` methods: `.font_size(14.0)`, `.font_weight(600)`, `.font_family(FontFamily::Mono)`, `.text_color(Token::OnSurfaceMuted)`.
 
 ## icon
 
@@ -24,7 +24,7 @@ text(move || format!("Count: {}", count.get())).nowrap();
 - `.size(Size)`: Compact 16 px, Default 20 px, Wide/Grow 24 px, with matching text size.
 - `.label(name)`: assistive name; always set it when the icon stands alone.
 
-`icon_svg(svg) -> IconBuilder` draws an SVG path instead of a glyph. The icon takes its colour from `.tone(Tone)` at paint time, so a theme switch recolours it. Dark themes draw it light.
+`icon_svg(svg) -> IconBuilder` draws an SVG path instead of a glyph. The icon takes its color from `.tone(Tone)` at paint time, so a theme switch recolours it. Dark themes draw it light.
 
 `icon_button(glyph, activate)` (see [Controls](controls.md)) is the interactive counterpart.
 
@@ -67,7 +67,7 @@ Values are `impl Reactive<Vec<f32>>`: a `Vec`, an array, a signal, or a closure.
 
 ## Small content helpers
 
-These helpers in `sigil::widgets` paint fixed content: `section_label(title)`, `empty_state(title, body)`, `notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`, and `spacer()`. [Chrome](chrome.md#small-composites) describes each one. `divider_horizontal()` and `divider_vertical()` draw 1 px rules in the border colour; `divider_vertical().height(px)` draws a short tick, such as between toolbar items.
+These helpers in `sigil::widgets` paint fixed content: `section_label(title)`, `empty_state(title, body)`, `notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`, and `spacer()`. [Chrome](chrome.md#small-composites) describes each one. `divider_horizontal()` and `divider_vertical()` draw 1 px rules in the border color; `divider_vertical().height(px)` draws a short tick, such as between toolbar items.
 
 ## States, keys, and accessibility
 
@@ -88,7 +88,7 @@ Content nodes have one visual state: the visual catalog captures only the defaul
 
 - Text keeps bold, dim, italic, underline, and strikethrough when the terminal supports them. `font_size` does not change the cell size.
 - Images use the Kitty, iTerm2, or Sixel protocol when the terminal has one. Other terminals get sextant glyphs. See [Terminal host](../terminal.md).
-- A `path` rasterises to an image, so it follows the image rules.
+- A `path` rasterizes to an image, so it follows the image rules.
 - A chart paints bars as cell fills. Keep labels short.
 - A 1 px divider paints as a rule glyph, not a full cell block.
 

@@ -167,8 +167,8 @@ mod doc_snippets {
     pub struct GuideArchPlatform;
     #[doc = include_str!("../../../docs/guide/arch/state.md")]
     pub struct GuideArchState;
-    #[doc = include_str!("../../../docs/guide/decisions/DR-058-signals-over-entity.md")]
-    pub struct GuideDecisionsDr058SignalsOverEntity;
+    #[doc = include_str!("../../../docs/guide/decisions/DR-001-signals-over-entity.md")]
+    pub struct GuideDecisionsDr001SignalsOverEntity;
     #[doc = include_str!("../../../docs/guide/decisions/README.md")]
     pub struct GuideDecisionsReadme;
     #[cfg_attr(feature = "desktop", doc = include_str!("../../../docs/guide/hot-reload.md"))]

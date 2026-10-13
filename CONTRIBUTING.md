@@ -23,7 +23,9 @@ Run the same gate that CI runs before you push:
 scripts/gate.sh
 ```
 
-The gate needs `node`, `cargo-hack`, `cargo-deny`, `cargo-fuzz`, `mdbook`, and `wasm-bindgen-test-runner`. It names the install command for a missing tool. It installs the MSRV and nightly toolchains through `rustup`.
+The gate needs `node`, `cargo-hack`, `cargo-deny`, `cargo-fuzz`, `cargo-truesight`, `mdbook`, and `wasm-bindgen-test-runner`. It names the install command for a missing tool. It installs the MSRV and nightly toolchains through `rustup`. Install `cargo-truesight` at the revision CI pins in `.github/workflows/ci.yml`.
+
+`api/*.txt`, `docs/reference/`, and `docs/llms.txt` are generated from the public API. `cargo truesight sync` rewrites them, and `cargo truesight check` fails when one is stale. `node tools/profile.mjs report TRACE` summarizes a `SIGIL_PROFILE` trace, and `crates/sigil/perf_budgets.toml` holds the budgets the perf gate test reads.
 
 On a machine with a GPU adapter, run the hardware tier too:
 

@@ -41,7 +41,7 @@ Read these before you write a helper. Most jobs already have a function.
 | [Recipes](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, host hooks, and screen readers. |
 | [GUI and TUI](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/hosts.md) | Build for the window, the terminal, or both. |
 | [Testing](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/testing.md) | Drive the UI from a test with `sigil_kittest::Harness`. |
-| [Troubleshooting](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/troubleshooting.md) | No GPU, images in tmux, and terminal colour. |
+| [Troubleshooting](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/troubleshooting.md) | No GPU, images in tmux, and terminal color. |
 
 ## Write the app
 
@@ -66,7 +66,7 @@ fn app() -> impl IntoNode {
 - State lives in signals. `signal(value)` creates one. `get` inside a closure subscribes that closure, `peek` reads without subscribing, and `set` and `update` write.
 - Text that changes takes a closure: `text(move || ...)`. A plain string never updates.
 - `show(cond, then, otherwise)` switches between subtrees. `for_each(items, key, render)` renders a keyed list.
-- Colours come from the theme: pass a `Token` such as `Token::Surface` or `Token::Accent` to `bg`, `text_color`, or `border_color`. Do not hard-code colours.
+- Colors come from the theme: pass a `Token` such as `Token::Surface` or `Token::Accent` to `bg`, `text_color`, or `border_color`. Do not hard-code colors.
 - Async work uses `task` (reruns and cancels) or `spawn` (runs once). Inside one, `tasks::blocking` runs blocking work and `tasks::sleep` waits.
 - Write signals on the UI thread. From another thread, use `signal_writer`, or `tasks::on_message` for a channel.
 - Public event, command, error, and config types are `#[non_exhaustive]`. Match them with a `_` arm, and build `AppConfig` with its builder methods.
@@ -96,7 +96,7 @@ Clone this repository to run them. Each one is a small, complete app.
 ```bash
 cargo run -p sigil-ui --example story-02-counter
 cargo run -p sigil-ui --example story-04-todo
-cargo run -p sigil-ui --example story-07-async
+cargo run -p sigil-ui --example story-06-async
 cargo run -p sigil-ui --example hello-terminal --features terminal
 cargo run -p sigil-ui --example chat-both --features terminal,desktop
 ```

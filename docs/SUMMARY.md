@@ -39,8 +39,8 @@
 # Decisions
 
 - [Decision records](guide/decisions/README.md)
-  - [DR-058 Signals over entities](guide/decisions/DR-058-signals-over-entity.md)
-  - [DR-059 Web backends](guide/decisions/DR-059-web-backends.md)
+  - [DR-001 Signals over entities](guide/decisions/DR-001-signals-over-entity.md)
+  - [DR-002 Web backends](guide/decisions/DR-002-web-backends.md)
 
 # API reference
 
@@ -113,9 +113,9 @@
         - [story-03-form](reference/sigil-ui/examples/story-03-form.md)
         - [story-04-todo](reference/sigil-ui/examples/story-04-todo.md)
         - [story-05-nav](reference/sigil-ui/examples/story-05-nav.md)
-        - [story-07-async](reference/sigil-ui/examples/story-07-async.md)
-        - [story-08-component](reference/sigil-ui/examples/story-08-component.md)
-        - [story-09-test](reference/sigil-ui/examples/story-09-test.md)
+        - [story-06-async](reference/sigil-ui/examples/story-06-async.md)
+        - [story-07-component](reference/sigil-ui/examples/story-07-component.md)
+        - [story-08-test](reference/sigil-ui/examples/story-08-test.md)
         - [text_field_demo](reference/sigil-ui/examples/text_field_demo.md)
         - [todo-terminal](reference/sigil-ui/examples/todo-terminal.md)
         - [toggle_demo](reference/sigil-ui/examples/toggle_demo.md)

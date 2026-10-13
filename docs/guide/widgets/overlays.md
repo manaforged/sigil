@@ -12,7 +12,7 @@ Popups stay inside the window. A list popup opens below its trigger and flips ab
 
 ## Keyboard in lists
 
-`menu`, `menu_bar` panels, `dropdown`, `combobox`, and `command_menu` share one list behaviour:
+`menu`, `menu_bar` panels, `dropdown`, `combobox`, and `command_menu` share one list behavior:
 
 - Arrow Up and Arrow Down move the highlight and skip disabled rows.
 - Home and End jump to the first and last enabled row.

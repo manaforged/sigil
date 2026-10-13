@@ -70,7 +70,7 @@ The visible buffer is a separate string signal. Edits parse on every change; par
 
 ## color_field
 
-`color_field(Signal<Rgba8>) -> ColorFieldBuilder`. A swatch plus a hex text field. Accepts `#rgb` and `#rrggbb`; writes `Rgba8` with alpha 255. The swatch is one control height square. `.disabled(Signal<bool>)` disables the field and dims the swatch. `.invalid_when(Signal<bool>)` paints the field error frame; it also shows while the text is not a hex colour. `parse_hex(&str) -> Option<Rgba8>` and `to_hex(Rgba8) -> String` are the helpers the widget itself uses.
+`color_field(Signal<Rgba8>) -> ColorFieldBuilder`. A swatch plus a hex text field. Accepts `#rgb` and `#rrggbb`; writes `Rgba8` with alpha 255. The swatch is one control height square. `.disabled(Signal<bool>)` disables the field and dims the swatch. `.invalid_when(Signal<bool>)` paints the field error frame; it also shows while the text is not a hex color. `parse_hex(&str) -> Option<Rgba8>` and `to_hex(Rgba8) -> String` are the helpers the widget itself uses.
 
 ## combobox
 
@@ -108,7 +108,7 @@ Enter opens or commits, Escape closes, the arrows move the cursor, and pointer e
 
 ## field
 
-`field(label, control)` stacks a label over any control. `.error(reactive)` adds an error line under a text, number, or colour field. The error is a `Signal<Option<String>>` or a closure that returns one. While it is `Some`, the field paints its invalid frame and shows the message.
+`field(label, control)` stacks a label over any control. `.error(reactive)` adds an error line under a text, number, or color field. The error is a `Signal<Option<String>>` or a closure that returns one. While it is `Some`, the field paints its invalid frame and shows the message.
 
 ## States, keys, and accessibility
 

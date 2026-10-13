@@ -126,7 +126,7 @@ fn main() -> AppResult<()> {
 }
 ```
 
-A theme file is TOML. `base` selects `light`, `dark`, or `console_dark`. The `[tokens]` table sets token colours as `#rrggbb` or `#rrggbbaa`. `parse_theme` returns `None` if the document is not valid.
+A theme file is TOML. `base` selects `light`, `dark`, or `console_dark`. The `[tokens]` table sets token colors as `#rrggbb` or `#rrggbbaa`. `parse_theme` returns `None` if the document is not valid.
 
 A theme file also carries the language settings. `direction` is `"ltr"` or `"rtl"`. `locale = "en"`, `"de"`, or `"ar"` selects a built-in locale; a `[locale]` table sets fields one by one: `preset` (the built-in locale to start from), `decimal`, `group` (`""` for no grouping), `zero` and `date_separator` as single characters, `group_size` from 1 to 255, and `date_order` as `"ymd"`, `"dmy"`, or `"mdy"`. The `[strings]` table replaces built-in labels by their snake_case name, for example `close = "Schließen"`. An unknown name or value makes `parse_theme` return `None`.
 
@@ -187,7 +187,7 @@ fn main() -> AppResult<()> {
 }
 ```
 
-`Token` names each theme colour. The `Paint` methods `bg`, `text_color`, and `border_color` take a token, so a misspelled token does not compile.
+`Token` names each theme color. The `Paint` methods `bg`, `text_color`, and `border_color` take a token, so a misspelled token does not compile.
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -334,7 +334,7 @@ fn main() -> AppResult<()> {
 For work the user starts, such as a Load button, `task` builds a new future on each `run()`. The status starts `Status::Idle`. `run()` sets `Status::Pending` and aborts the run it replaces; a result from a replaced run is dropped, so a slow first load cannot overwrite a newer one.
 
 ```rust,ignore
-{{#include ../../crates/sigil/examples/story-07-async.rs}}
+{{#include ../../crates/sigil/examples/story-06-async.rs}}
 ```
 
 ### Stream a measured transcript

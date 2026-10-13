@@ -156,7 +156,7 @@ pub(crate) mod slot_shadow {
 fn main() {
     println!();
     println!("=========================================================");
-    println!("  sigil-reactive Tier 5 (memory + leaks) — DR-009");
+    println!("  sigil-reactive memory and leaks");
     println!("=========================================================");
     println!();
     memory_benches::report_slot_sizes();
