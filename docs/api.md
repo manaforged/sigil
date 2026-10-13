@@ -1,12 +1,8 @@
 # Sigil API map
 
-This page lists every item that `sigil` exports at the crate root and
-in `sigil::prelude`. Each item has a signature, a one-line purpose, and
-an example. Every example on this page compiles as a doctest of the
-`sigil` crate.
+This page lists every item that `sigil` exports at the crate root and in `sigil::prelude`. Each item has a signature, a one-line purpose, and an example. Every example on this page compiles as a doctest of the `sigil` crate.
 
-The package is `sigil-ui`. The library is `sigil`. The API can change
-between 0.x releases.
+The package is `sigil-ui`. The library is `sigil`. The API can change between 0.x releases.
 
 [Install](https://github.com/manaforged/sigil#install) gives the dependency line.
 
@@ -24,17 +20,11 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-The default feature `desktop` gives the window host. The feature
-`terminal` gives the terminal host. A terminal-only program uses
-`default-features = false, features = ["terminal"]`. The README lists
-every Cargo feature. For task-oriented examples, see
-[Recipes](guide/recipes.md).
+The default feature `desktop` gives the window host. The feature `terminal` gives the terminal host. A terminal-only program uses `default-features = false, features = ["terminal"]`. The [crate README](../crates/sigil/README.md#features) lists every Cargo feature. For task-oriented examples, see [Recipes](guide/recipes.md).
 
 ## Crate root
 
-Modules are public so that you can name an item by its path, for
-example `sigil::style::Token`. Prefer the prelude and the functions in
-this table.
+Modules are public so that you can name an item by its path, for example `sigil::style::Token`. Prefer the prelude and the functions in this table.
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
@@ -134,9 +124,7 @@ fn main() -> sigil::AppResult<()> {
 # fn main() {}
 ```
 
-The modules `bidi`, `icons`, `profile`, `renderer`, `shell`, and
-`text` have no stable entry point in 0.1. Use them only through the
-functions above.
+The modules `bidi`, `icons`, `profile`, `renderer`, `shell`, and `text` have no stable entry point in 0.1. Use them only through the functions above.
 
 Feature-gated root items:
 
@@ -346,14 +334,9 @@ fn main() {
 }
 ```
 
-A row or column is as wide as its content. When a child fills, with a
-`Fill` width or a `grow` factor in a row, the container takes the width
-that its parent offers, and a row shares that width among its children.
-A `text_field` fills, so a row with a field and a button keeps the
-button on screen.
+A row or column is as wide as its content. When a child fills, with a `Fill` width or a `grow` factor in a row, the container takes the width that its parent offers, and a row shares that width among its children. A `text_field` fills, so a row with a field and a button keeps the button on screen.
 
-See [Units](guide/units.md) for the rules that map `rows`, `cols`, and
-`em` to pixels and cells.
+See [Units](guide/units.md) for the rules that map `rows`, `cols`, and `em` to pixels and cells.
 
 ### State
 
@@ -539,32 +522,26 @@ fn main() {
 | `NodeStyleExt` | `theme`, `tone`, `focus_ring`, `presence(Signal<bool>, AnimationConfig)`, `animate`, `visible_when(impl Reactive<bool>)`, `paint_when(impl Reactive<bool>, \|s\| ..)` | Theme, tone, focus ring, presence, and animation of a `NodeBuilder`. `visible_when` keeps the node mounted and hides it while the source is false; `show` mounts and unmounts instead. `paint_when` applies the paint from its closure while the source is true. `presence` animates the node in and out. |
 | `Paint` | `bg(c)`, `background_gradient(g)`, `text_color(c)`, `border_color(c)`, `border_w(px)`, `border_top/right/bottom/left(px)`, `rounded(Radius)`, `shadow(Elevation)`, `opacity(f32)`, `font_size(f32)`, `font_weight(u16)`, `font_italic(bool)`, `font_family(FontFamily)`, `line_height_px(px)`, `letter_spacing_em(em)`, `tabular_nums(bool)`, `underline()`, `line_through()`, `transition(id)`, `duration(ms)` | Typed paint on nodes, text, widget builders, and state closures. `c` is `impl Into<ColorOrToken>`. Sealed. |
 | `StateVariants` | `fn rest(f)`, `hover(f)`, `focus(f)`, `pressed(f)`, `disabled_style(f)`; `f: FnOnce(StateStyleBuilder) -> StateStyleBuilder` | Paint per interaction state. Works on a plain node, a text node, and a widget. Sealed. |
-| `Token` | `enum Token { Accent, Surface, OnSurface, Border, .. }` | A theme colour. Pass it to `bg`, `text_color`, or `border_color`. |
+| `Token` | `enum Token { Accent, Surface, OnSurface, Border, .. }` | A theme color. Pass it to `bg`, `text_color`, or `border_color`. |
 | `Radius` | `enum Radius { None, Sm, Base, Md, Lg, Full }` | Corner radius from the theme: 2, 4, 6, 8, and 9999 px. 0 on a character grid. |
 | `Elevation` | `enum Elevation { Sm, Base, Md, Lg, Xl }` | Shadow depth from the theme. |
 | `ControlSize` | `enum ControlSize { Compact, Default, Wide, Grow }` | Size step of a control, as in `button(..).size(ControlSize::Compact)`. |
 | `FontFamily` | `enum FontFamily { Sans, Mono, Serif, Icon, Display }` | Font family for `font_family`. |
-| `Rgba8` | `struct Rgba8 { r, g, b, a: u8 }` | An 8-bit RGBA colour. |
-| `ColorAtom` | `enum ColorAtom { Rgba8(Rgba8), ThemeRef(ColorKey) }` | A colour or a theme colour key. |
+| `Rgba8` | `struct Rgba8 { r, g, b, a: u8 }` | An 8-bit RGBA color. |
+| `ColorAtom` | `enum ColorAtom { Rgba8(Rgba8), ThemeRef(ColorKey) }` | A color or a theme color key. |
 | `Token::scale` / `Token::scale_step` | `fn scale(ScaleRole, u8) -> Option<Token>`, `fn scale_step(self) -> Option<(ScaleRole, u8)>` | Map a scale role and step 1..=12 to its token and back. |
 | `Theme` | `Theme::light()`, `Theme::dark()`, `Theme::console_dark()`; `with_direction(Direction)`, `with_locale(Locale)`, `with_strings(Strings)` | Theme values. The direction, locale, and strings apply to the whole tree: a right-to-left theme mirrors padding, margins, insets, flex row order, and start/end alignment; `number_field` and `date_field` parse and format with the locale; built-in labels such as Close and Cancel come from the strings. |
 | `style::Direction` | `enum Direction { Ltr, Rtl }`; `is_rtl()`, `Direction::from_name("ltr" | "rtl")` | Layout direction. `.with(Direction::Ltr)` on a node keeps it and its children left to right in a right-to-left theme, as `code_edit` does. |
 | `style::Locale`, `style::DateOrder` | `struct Locale { decimal, group, group_size, zero, date_order, date_separator }`; `Locale::en()`, `de()`, `ar()`, `new(decimal, group)`, `with_date(order, sep)`, `with_zero(char)`, `with_group_size(u8)`; `parse_number`, `format_number`, `parse_date`, `format_date`; `Locale::from_name("en" | "de" | "ar")`; `enum DateOrder { Ymd, Dmy, Mdy }`, `DateOrder::from_name` | Number and date rules as data. `Locale::default()` is `.` decimals, no grouping, and year-month-day with `-`. |
 | `style::Strings`, `style::StringKey` | `struct Strings`; `Strings::english()`, `from_table(&[(StringKey, &str)])`, `with(key, value)`, `set`, `get(key)`, `fill(key, args)`; `enum StringKey`, `StringKey::from_name` (snake_case, for example `"close"`) | The built-in labels a theme carries, with English defaults. `fill` replaces `{0}`, `{1}` placeholders. |
-| `Theme::resolve_color` | `fn resolve_color(&self, key: ColorKey) -> Rgba8` | Resolve a colour key. Order: runtime override, theme table, built-in value. An unknown `Custom` name panics in debug builds and paints `missing_token_fallback` with one `tracing` warning per name in release builds. |
+| `Theme::resolve_color` | `fn resolve_color(&self, key: ColorKey) -> Rgba8` | Resolve a color key. Order: runtime override, theme table, built-in value. An unknown `Custom` name panics in debug builds and paints `missing_token_fallback` with one `tracing` warning per name in release builds. |
 | `Theme::color` | `fn color(&self, token: Token) -> Rgba8` | `resolve_color` for a built-in token. |
-| `Theme::register_token` / `with_token` | `fn register_token(&mut self, name: &str, value: ThemeValue) -> Option<ThemeValue>` | Set a runtime override. A built-in token name also updates the matching base colour field. |
+| `Theme::register_token` / `with_token` | `fn register_token(&mut self, name: &str, value: ThemeValue) -> Option<ThemeValue>` | Set a runtime override. A built-in token name also updates the matching base color field. |
 | `Theme::with_theme_tokens` | `fn with_theme_tokens(self, tokens: &phf::Map<&'static str, ThemeValue>) -> Self` | Fill the theme table layer from static data. |
-| `Tone` | `enum Tone { Neutral, Primary, Info, Success, Warn, Error }`; `token(step: u8) -> Token`, `shade()`, `fill()`, `solid()` | Semantic colour family. `token` returns the tone's colour-scale step (1–12); `shade` is step 4 (tinted background), `fill` step 9 (solid fill), `solid` step 11 (text and strokes). |
-| `FocusRing` | `FocusRing::static_visible(bool)`; `theme_color(Token)` | Focus ring settings. `theme_color` sets the ring colour from a theme token. |
+| `Tone` | `enum Tone { Neutral, Primary, Info, Success, Warn, Error }`; `token(step: u8) -> Token`, `shade()`, `fill()`, `solid()` | Semantic color family. `token` returns the tone's color-scale step (1–12); `shade` is step 4 (tinted background), `fill` step 9 (solid fill), `solid` step 11 (text and strokes). |
+| `FocusRing` | `FocusRing::static_visible(bool)`; `theme_color(Token)` | Focus ring settings. `theme_color` sets the ring color from a theme token. |
 
-Paint calls write to one store per node. A later call wins for each
-property that it sets, whether it is a `Paint` method, a state variant,
-or `.layout`. A background, border, or size that you set on a widget
-holds in every state, over the widget's own defaults. To keep a
-widget's hover and press feedback in another colour, set `.tone(..)`
-instead of a colour. On a widget builder, the `Paint` methods win over
-`width`, `height`, `grow`, and `layout` for the same property.
+Paint calls write to one store per node. A later call wins for each property that it sets, whether it is a `Paint` method, a state variant, or `.layout`. A background, border, or size that you set on a widget holds in every state, over the widget's own defaults. To keep a widget's hover and press feedback in another color, set `.tone(..)` instead of a color. On a widget builder, the `Paint` methods win over `width`, `height`, `grow`, and `layout` for the same property.
 
 ```rust,no_run
 use sigil::style::ColorOrToken;
@@ -656,7 +633,7 @@ fn main() {
 | `NumericKind` | `trait NumericKind` | Number types that `number_field` accepts. |
 | `date_field` | `fn date_field(value: Signal<Date>) -> DateFieldBuilder` | A date input. |
 | `Date` | `struct Date { year: i32, month: u8, day: u8 }`; `parse_in(&str, &Locale)`, `render_in(&Locale)` | A calendar date. `parse` and `render` use `Locale::default()`. |
-| `color_field` | `fn color_field(value: Signal<Rgba8>) -> ColorFieldBuilder` | A colour input. |
+| `color_field` | `fn color_field(value: Signal<Rgba8>) -> ColorFieldBuilder` | A color input. |
 | `field` | `fn field<C: IntoNode>(label, control: C) -> FieldBuilder<C>`; `.error(impl Reactive<Option<String>>)` when `C: FieldControl`; `.required(impl Reactive<bool>)` | A label above a control. `.required` marks the control required for screen readers and shows a marker after the label while it is true. `.error` shows the message under the control and paints the control invalid while it is `Some`. The control is marked invalid while an error shows and is described by the message. |
 | `chip` | `fn chip(label, tone: Tone) -> ChipBuilder`; `.dot()`, `.leading(node)` | A small tag. `dot` puts a dot in the chip's tone before the label, for status pills; `leading` puts any node, such as an icon, before it. |
 | `interactive` | `fn interactive(inner: NodeBuilder) -> InteractiveBuilder` | Make any node hoverable, pressable, and focusable. |
@@ -730,7 +707,7 @@ fn main() {
 | `SelectionMode` | `enum SelectionMode { None, Single, Multi, Extend }` | Selection mode of a list. |
 | `list_row` | `fn list_row(selected: bool, title, detail) -> NodeBuilder` | One row of a list. |
 | `list_row_with` | `fn list_row_with(selected: bool, title, slots: ListRowSlots) -> NodeBuilder` | A list row with a marker, status, and columns. With `slots.activate` set, the row takes keyboard focus and runs it on Enter, Space, or a click. |
-| `ListRowSlots` | `struct ListRowSlots { depth, disclosure, marker, marker_tone, leading, status, status_tone, badge, columns, shrink, title_width, indent, tone, activate: Option<Rc<dyn Fn()>> }` | Optional parts of a list row. `title_width` gives the title a fixed width so columns line up after it. `leading` places a node, such as an icon, before the title. `marker_tone` and `status_tone` colour the marker and status text per row. `badge: Option<(TextContent, Tone)>` draws a count pill after the status. `indent` sets the columns per depth level (default 2). |
+| `ListRowSlots` | `struct ListRowSlots { depth, disclosure, marker, marker_tone, leading, status, status_tone, badge, columns, shrink, title_width, indent, tone, activate: Option<Rc<dyn Fn()>> }` | Optional parts of a list row. `title_width` gives the title a fixed width so columns line up after it. `leading` places a node, such as an icon, before the title. `marker_tone` and `status_tone` color the marker and status text per row. `badge: Option<(TextContent, Tone)>` draws a count pill after the status. `indent` sets the columns per depth level (default 2). |
 | `Disclosure` | `enum Disclosure { None, Leaf, Collapsed, Expanded }` | The tree chevron slot of a list row. |
 | `kv_grid` | `fn kv_grid(rows: impl IntoIterator<Item = (impl Into<TextContent>, impl Into<TextContent>)>) -> NodeBuilder` | A two-column key/value grid. Keys and values can be reactive. |
 | `kv_row` | `fn kv_row(label, value: impl IntoNode + 'static) -> NodeBuilder` | One key/value row. |
@@ -743,7 +720,7 @@ fn main() {
 | `markdown_edit` | `fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder` | A markdown editor with preview. |
 | `html` | `fn html(source: Signal<String>) -> NodeBuilder` | Rendered HTML subset. |
 | `mermaid` | `fn mermaid(source: impl Reactive<String>) -> NodeBuilder` | A rendered mermaid diagram. A signal or closure source draws the diagram again when it changes. |
-| `diff` | `fn diff(patch: impl DiffSource + 'static) -> DiffBuilder`; `.select(Signal<Selection>)` | A rendered unified diff of text or a parsed `Patch`. A signal or closure source renders the rows again when it changes. Rows render through `virtual_list`, so a long patch builds only the visible rows. Code is coloured by the language of the file path. With `select`, a click on a hunk header selects the hunk and a click or Shift+click selects changed lines, for staging. |
+| `diff` | `fn diff(patch: impl DiffSource + 'static) -> DiffBuilder`; `.select(Signal<Selection>)` | A rendered unified diff of text or a parsed `Patch`. A signal or closure source renders the rows again when it changes. Rows render through `virtual_list`, so a long patch builds only the visible rows. Code is colored by the language of the file path. With `select`, a click on a hunk header selects the hunk and a click or Shift+click selects changed lines, for staging. |
 | `Patch`, `Hunk`, `Line`, `LineKind`, `LineId` | `Patch::parse(&str) -> Patch`; `struct Patch { hunks, trailer }`, `line(LineId)`, `changes()`, `hunk_changes(usize)`; `struct Hunk { meta, path, header, old_start, new_start, lines }`; `struct Line { kind, text, old, new }`; `enum LineKind { Context, Removed, Added, Note }` | The parsed unified diff that `diff` renders. |
 | `Selection`, `DiffSource` | `struct Selection { hunks: BTreeSet<usize>, lines: BTreeSet<LineId>, .. }`, `contains`, `select_hunk`, `select_line`; `trait DiffSource` for text, `Patch`, and `Signal<Patch>` | What the user selected in a `diff`, and the sources `diff` accepts. |
 | `DiffView` | `enum DiffView { Split, Unified }` | Diff view: side-by-side or unified rows. |
@@ -843,7 +820,7 @@ fn main() {
 | `gauge` | `fn gauge(value: Signal<f32>) -> GaugeBuilder` | A labelled meter bar that shows a value against a maximum. |
 | `chart` | `fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder`; `ChartBuilder::candles(rows: impl Reactive<Vec<(f32, f32, f32, f32)>>)`, `.x_range(Signal<Range<f32>>)`, `.crosshair()` | A bar, line, or candle chart. A line with more points than the plot has pixel columns keeps the low and high point of each column, so 100k points draw as one short path. `candles` takes `(open, high, low, close)` rows. `x_range` binds the visible range in point units: the wheel zooms around the pointer and a drag pans. `crosshair` draws rules and the value under the pointer. A signal or closure source draws the chart again when it changes, like `sparkline`. The chart fills its parent's width unless `.width()` is set; at small heights it thins x-axis labels and hides the axis row before the plot gets too small. |
 | `sparkline` | `fn sparkline(values: impl Reactive<Vec<f32>>) -> SparklineBuilder` | A sparkline. By default, one block glyph per value on one text row. A signal or closure source draws the graph again when it changes. |
-| `heatmap` | `fn heatmap<F: Fn(usize, usize) -> Rgba8>(grid_w, grid_h, color: F) -> NodeBuilder` | A grid of coloured cells, drawn as one image that fills its box. |
+| `heatmap` | `fn heatmap<F: Fn(usize, usize) -> Rgba8>(grid_w, grid_h, color: F) -> NodeBuilder` | A grid of colored cells, drawn as one image that fills its box. |
 | `dot` | `fn dot(tone: Tone) -> DotBuilder` | A status dot. |
 | `avatar` | `fn avatar(initials) -> NodeBuilder` | Initials in a circle. |
 | `spinner` | `fn spinner() -> NodeBuilder` | A busy indicator named "Loading". |
@@ -961,9 +938,9 @@ Public items outside the prelude. Import them by path.
 | Name | Signature | Purpose |
 | --- | --- | --- |
 | `tasks::panic_message` | `fn panic_message(payload: &(dyn Any + Send)) -> &str` | Text of a panic payload; `"<non-string panic payload>"` when it is not a string. |
-| `animation_runtime::install_animators_themed` | `fn install_animators_themed(atoms: &[StyleAtom], state_style: StateStyle, component_id: ComponentId, theme: &Theme) -> AttachedAnimators` | Like `install_animators`, with token colours resolved against `theme`. |
-| `animation_runtime::AttachedColorAnimator` | `struct AttachedColorAnimator { kind: ColorAtomKind, channels: [Signal<f32>; 4], animators: [Animator; 4] }` | One animated colour atom: one signal and animator per RGBA channel. |
-| `animation_runtime::lerp_rgba8` | `fn lerp_rgba8(a: Rgba8, b: Rgba8, t: f32) -> Rgba8` | Mix two sRGB colours in linear light. `t` is clamped to 0..=1. |
+| `animation_runtime::install_animators_themed` | `fn install_animators_themed(atoms: &[StyleAtom], state_style: StateStyle, component_id: ComponentId, theme: &Theme) -> AttachedAnimators` | Like `install_animators`, with token colors resolved against `theme`. |
+| `animation_runtime::AttachedColorAnimator` | `struct AttachedColorAnimator { kind: ColorAtomKind, channels: [Signal<f32>; 4], animators: [Animator; 4] }` | One animated color atom: one signal and animator per RGBA channel. |
+| `animation_runtime::lerp_rgba8` | `fn lerp_rgba8(a: Rgba8, b: Rgba8, t: f32) -> Rgba8` | Mix two sRGB colors in linear light. `t` is clamped to 0..=1. |
 | `animation_runtime::linear_channel_to_srgb` | `fn linear_channel_to_srgb(v: f32) -> u8` | Encode a linear channel in 0..=1 as an sRGB byte. |
 | `a11y::RecordingBridge` | `struct RecordingBridge { pending_actions: VecDeque<(NodeId, ActionRequest)> }`; `new()`, `action(target, request)`, `last_published()`, `published_count()` | An `A11yBridge` that records published trees and queues actions, for tests. |
 | `a11y::BoundsLookup` | `type BoundsLookup<'a> = &'a dyn Fn(NodeId) -> Option<Rect>` | Node bounds source for `a11y::tree`. |
@@ -1002,9 +979,9 @@ Public items outside the prelude. Import them by path.
 | `scene::SceneBuilder::with_layer` | `fn with_layer(&mut self, opacity: f32, body: impl FnOnce(&mut Self))` | Draw `body` into a layer composited at `opacity`. |
 | `scene::SceneBuilder::with_transform` | `fn with_transform(&mut self, transform: Transform, body: impl FnOnce(&mut Self))` | Draw `body` under `transform`. |
 | `app::dialog::FileDialog` | `FileDialog::new()`; `filter(name, extensions)`, `directory(dir)`, `file_name(name)`; `open_file()`, `save_file()`, `pick_folder() -> Picked<PathBuf>`, `open_files() -> Picked<Vec<PathBuf>>` | File picker (feature `dialog`). The result signal starts `Pending` and resolves without blocking the frame loop. The in-app picker runs on every host; `native-dialog` opens the OS dialog on the window host. |
-| `style::palette::Palette` | `struct Palette { background, text, primary, success, warning, danger: Rgba8 }`; `obsidian()`, `terminal()`, `aetherlight()`, `voltglyph()`, `mythril()`, `frostkeep()`, `vellum()`, `embergrove()`, `verdigris()`, `faewine()`, `crystalline()`, `spellforge(accent: Rgba8)` | Named six-colour palettes. `spellforge` derives a palette from one accent colour. |
-| `style::scale` | `const fn {slate, blue, green, amber, ruby, cyan, iris}_{light, dark}() -> ColorScale` | Twelve-step colour scales for `Theme`. |
-| `style::Theme::with_gray_scale` | `with_gray_scale`, `with_accent_scale`, `with_success_scale`, `with_warn_scale`, `with_error_scale`, `with_info_scale` (each `const fn(self, scale: ColorScale) -> Self`) | Replace one colour scale of a theme. |
+| `style::palette::Palette` | `struct Palette { background, text, primary, success, warning, danger: Rgba8 }`; `obsidian()`, `terminal()`, `aetherlight()`, `voltglyph()`, `mythril()`, `frostkeep()`, `vellum()`, `embergrove()`, `verdigris()`, `faewine()`, `crystalline()`, `spellforge(accent: Rgba8)` | Named six-color palettes. `spellforge` derives a palette from one accent color. |
+| `style::scale` | `const fn {slate, blue, green, amber, ruby, cyan, iris}_{light, dark}() -> ColorScale` | Twelve-step color scales for `Theme`. |
+| `style::Theme::with_gray_scale` | `with_gray_scale`, `with_accent_scale`, `with_success_scale`, `with_warn_scale`, `with_error_scale`, `with_info_scale` (each `const fn(self, scale: ColorScale) -> Self`) | Replace one color scale of a theme. |
 | `style::font_family_hint` | `const fn font_family_hint(variant: Variant) -> FontFamilyHint` | The font family a theme variant asks for. |
 | `layout::LayoutStyle` | `grid_columns(Vec<TrackSize>)`, `grid_rows(Vec<TrackSize>)`, `grid_area(col, row)`, `grid_dense()`, `max_height(impl Into<Dimension>)`, `with_layout(f: impl FnOnce(&mut StyleData))` | Grid tracks and placement, and direct access to the layout data. |
 | `style::Metrics::icon_size` | `fn icon_size(self) -> f32` | Icon size in points, or one cell on the terminal host. |
@@ -1100,9 +1077,9 @@ Public items outside the prelude. Import them by path.
 | `app::DefaultFonts` | `struct DefaultFonts` | Font bytes for the sans, mono, icon, and display faces. |
 | `app::set_default_fonts` | `fn set_default_fonts(fonts: DefaultFonts)` | Replace the bundled fonts. |
 | `app::use_system_fonts` | `fn use_system_fonts()` | Use the operating system fonts. |
-| `app::TextTuning` | `struct TextTuning` | Text rasterisation settings. |
-| `app::text_tuning` | `fn text_tuning() -> TextTuning` | Read the text rasterisation settings. |
-| `app::set_text_tuning` | `fn set_text_tuning(tuning: TextTuning)` | Set the text rasterisation settings. |
+| `app::TextTuning` | `struct TextTuning` | Text rasterization settings. |
+| `app::text_tuning` | `fn text_tuning() -> TextTuning` | Read the text rasterization settings. |
+| `app::set_text_tuning` | `fn set_text_tuning(tuning: TextTuning)` | Set the text rasterization settings. |
 
 ## Module `bidi`
 
@@ -1325,13 +1302,13 @@ fn main() -> AppResult<()> {
 | --- | --- | --- |
 | `scene::SceneCommand` | `enum SceneCommand { PushClip(Rect), PopClip, PushTransform(Transform), PopTransform, SaveLayer { opacity }, RestoreLayer, PushLayer(LayerScope), PopLayer, Rect(DrawRect), Gradient(DrawGradient), Pattern(DrawPattern), DrawShadow { rect, radii, shadow }, GlyphRun(DrawGlyphRun), Sprite(DrawSprite), Image(DrawImage), Decoration(DrawDecoration) }` | One draw or state command in a `CommandScene`. Both hosts consume the same command list. |
 | `scene::emit_scene`, `scene::emit_scene_clipped` | `fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene`; `fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene` | Walk the laid-out tree from `root` and return its draw commands. The clipped form skips nodes outside `clip`. |
-| `scene::paint_backdrop` | `fn paint_backdrop(scene: &mut CommandScene, theme: &Theme, viewport: (f32, f32))` | Put a rectangle of the theme's `Token::Surface` colour under every command in `scene`, as an opaque window paints behind its tree. |
+| `scene::paint_backdrop` | `fn paint_backdrop(scene: &mut CommandScene, theme: &Theme, viewport: (f32, f32))` | Put a rectangle of the theme's `Token::Surface` color under every command in `scene`, as an opaque window paints behind its tree. |
 | `scene::DrawRect`, `scene::CellRect` | `struct DrawRect { node, rect, color, border_radius, opacity, stroke, tone, leaf, border, outline }`; `struct CellRect { tone, leaf, border, outline }` | A filled rectangle command. `CellRect` holds the cell-grid hints (tone, leaf, border, outline) that the terminal host reads. |
-| `scene::DrawGradient`, `scene::LinearGradient`, `scene::GradientStop` | `struct DrawGradient { node, rect, gradient, border_radius, opacity, stroke, .. }`; `LinearGradient::new(start: Point, end: Point, stops)`; `GradientStop::new(offset: f32, color: Rgba8)` | A rectangle filled with a linear gradient between two points through ordered colour stops. |
+| `scene::DrawGradient`, `scene::LinearGradient`, `scene::GradientStop` | `struct DrawGradient { node, rect, gradient, border_radius, opacity, stroke, .. }`; `LinearGradient::new(start: Point, end: Point, stops)`; `GradientStop::new(offset: f32, color: Rgba8)` | A rectangle filled with a linear gradient between two points through ordered color stops. |
 | `scene::DrawPattern`, `scene::PatternKind` | `struct DrawPattern { node, rect, pattern, border_radius, opacity, stroke }`; `enum PatternKind { Slash { color, period, line_width }, Checker { color_a, color_b, cell } }` | A rectangle filled with a repeating slash or checker pattern. |
-| `scene::PatternKind::normalized`, `scene::PatternKind::tile_extent` | `fn normalized(self) -> PatternKind`; `fn tile_extent(self) -> f32` | The pattern both renderers paint: `period` and `cell` clamped to 1..=1024 logical pixels (NaN becomes 1), `line_width` clamped to 0..=period (NaN becomes 0). Tiles are anchored at the top-left corner of the drawn rect, in logical pixels, independent of device scale. Colours are straight sRGB and each cell keeps its own alpha. `tile_extent` is one repeat: `period` for a slash, `2 * cell` for a checker. |
-| `scene::LinearGradient::normalized` | `fn normalized(&self) -> LinearGradient` | The gradient both renderers paint: stops sorted by offset, offsets clamped to 0..=1 with the colour at each clamp point kept, and a zero-length line or no stops reduced to one solid stop (the last stop's colour, or transparent). |
-| `scene::PaintFill` | `enum PaintFill { Solid(Rgba8), LinearGradient(LinearGradient), Pattern(PatternKind) }` | The fill of a painted area: solid colour, gradient, or pattern. |
+| `scene::PatternKind::normalized`, `scene::PatternKind::tile_extent` | `fn normalized(self) -> PatternKind`; `fn tile_extent(self) -> f32` | The pattern both renderers paint: `period` and `cell` clamped to 1..=1024 logical pixels (NaN becomes 1), `line_width` clamped to 0..=period (NaN becomes 0). Tiles are anchored at the top-left corner of the drawn rect, in logical pixels, independent of device scale. Colors are straight sRGB and each cell keeps its own alpha. `tile_extent` is one repeat: `period` for a slash, `2 * cell` for a checker. |
+| `scene::LinearGradient::normalized` | `fn normalized(&self) -> LinearGradient` | The gradient both renderers paint: stops sorted by offset, offsets clamped to 0..=1 with the color at each clamp point kept, and a zero-length line or no stops reduced to one solid stop (the last stop's color, or transparent). |
+| `scene::PaintFill` | `enum PaintFill { Solid(Rgba8), LinearGradient(LinearGradient), Pattern(PatternKind) }` | The fill of a painted area: solid color, gradient, or pattern. |
 | `scene::DrawImage` | `struct DrawImage { node, source: ImageSource, fit: ObjectFit, destination: Rect, opacity: u16, crop: Option<ImageCrop>, raster: Option<ImageRaster> }` | An image command fitted into a destination rectangle, with optional crop. With a `raster` and no crop, both renderers draw pixels made at the physical destination size, snapped to the device pixel grid; `source` is the fallback. |
 | `scene::DrawImage::source_at` | `fn source_at(&self, scale: f32) -> (ImageSource, Rect)` | The image and destination to paint at `scale`. With a `raster` and no crop, the pixels are made at the device size (each side at most 4096) and the rectangle snaps to the device pixel grid; otherwise `source` and `destination`. Embedders that paint `DrawImage` call this. |
 | `scene::DrawSprite`, `scene::SpriteSource`, `scene::SpriteKind` | `DrawSprite::new(style: &SceneSpriteStyle)`; `struct SpriteSource { atlas: u32, region: Rect, phase: f32 }`; `enum SpriteKind { Mono, Subpixel, Poly }` | A region of a glyph or icon atlas drawn into a destination rectangle. |
@@ -1343,7 +1320,7 @@ fn main() -> AppResult<()> {
 | `scene::Stroke`, `scene::StrokeStyle`, `scene::StrokeAlign` | `struct Stroke { color: Rgba8, width: f32, style: StrokeStyle, align: StrokeAlign }`; `enum StrokeStyle { Solid, Dashed(f32) }`; `enum StrokeAlign { Centered, Inside, Outside }` | An outline on a rectangle, gradient, or pattern, with dash and alignment. A width that is not finite and positive draws nothing. `Inside` and `Centered` strokes reach at most half the shorter side inward. `Dashed(gap)` draws dashes of `max(3 * width, 1)` separated by `gap`; a gap below 1/16 or not finite draws a solid stroke. |
 | `scene::LayerScope`, `scene::LayerEffect` | `struct LayerScope { clip: Rect, clip_radii: CornerRadii, effect: LayerEffect, opacity: f32 }`; `enum LayerEffect { Identity, Transform(Transform), LayerBlur { sigma } }` | A composited layer: its clip, opacity, and a transform or blur effect. Used with `SceneBuilder::push_layer`. |
 | `scene::CornerRadii` | `struct CornerRadii(pub [f32; 4])`; `ZERO`, `new(tl, tr, br, bl)`, `uniform(r)`, `top(r)`, `bottom(r)`, `left(r)`, `right(r)`, `normalized_for(w, h) -> [f32; 4]` | Per-corner radii in the order top-left, top-right, bottom-right, bottom-left. `normalized_for` clamps negative and NaN radii to 0 and scales them down proportionally, as CSS does, so adjacent radii fit each side. Both renderers use it. |
-| `scene::Shadow`, `scene::ShadowKind` | `Shadow::new(offset: [f32; 2], blur: f32, spread: f32, color: [f32; 4])`, `Shadow::glow(color: Rgba8, spread, blur)`, `.with_kind(kind)`; `enum ShadowKind { Outer, Inner, Glow }` | A box shadow with linear colour, offset, blur, and spread. `glow` builds a centred glow from an sRGB colour. |
+| `scene::Shadow`, `scene::ShadowKind` | `Shadow::new(offset: [f32; 2], blur: f32, spread: f32, color: [f32; 4])`, `Shadow::glow(color: Rgba8, spread, blur)`, `.with_kind(kind)`; `enum ShadowKind { Outer, Inner, Glow }` | A box shadow with linear color, offset, blur, and spread. `glow` builds a centred glow from an sRGB color. |
 
 ## Module `shell`
 
@@ -1389,8 +1366,8 @@ fn main() -> AppResult<()> {
 | `style::variant::VariantTokens` | `struct VariantTokens { radius: u16, shadows: bool, hover_lift: bool, font: FontFamilyHint }` | Holds the radius, shadow, hover, and font settings of a theme variant. |
 | `style::SOLID_VARIANT`, `style::SOFT_VARIANT`, `style::GHOST_VARIANT` | `const SOLID_VARIANT: StyleVariant` (same for soft and ghost) | Built-in solid, soft, and ghost style variants with their per-state atoms. |
 | `style::Px` | `struct Px(pub i16)` | A pixel length in a style atom. |
-| `style::ColorOrToken` | `enum ColorOrToken { Rgba(Rgba8), Token(ColorKey), Atom(ColorAtom) }` | Colour argument of the `Paint` methods. Converts from `Token`, `Rgba8`, and `ColorAtom`. |
-| `style::ColorKey` | `enum ColorKey { Token(Token), Custom(&'static str) }`, `ColorKey::parse(name)` | Typed key of a theme colour. `parse` maps a built-in name to `Token` and any other name to `Custom`. |
+| `style::ColorOrToken` | `enum ColorOrToken { Rgba(Rgba8), Token(ColorKey), Atom(ColorAtom) }` | Color argument of the `Paint` methods. Converts from `Token`, `Rgba8`, and `ColorAtom`. |
+| `style::ColorKey` | `enum ColorKey { Token(Token), Custom(&'static str) }`, `ColorKey::parse(name)` | Typed key of a theme color. `parse` maps a built-in name to `Token` and any other name to `Custom`. |
 | `style::TokenTable` | `struct TokenTable { overrides: TokenLayer, theme: TokenLayer }` | The runtime override and theme layers of `Theme::tokens`. |
 | `style::TokenLayer` | `color(ColorKey)`, `value(&str)`, `insert(&str, ThemeValue)`, `names()` | One layer: a fixed array per `Token` plus a map for custom names. |
 | `style::ThemeValue` | `enum ThemeValue { Color(Rgba8), Px(f32), Ms(u16) }` | One theme token value. |
@@ -1412,10 +1389,10 @@ fn main() -> AppResult<()> {
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
-| `terminal::Caps` | `struct Caps { color, graphics: Option<Protocol>, mux: Option<Mux>, keyboard, hyperlinks, underline_styles, borders, glyphs: Glyphs, ambiguous: Ambiguous, erase: Erase, cursor, sync, clipboard, backdrop, notices: Notices }`; `Caps::detect(env)`, `Caps::probe()`, `.host() -> HostCaps` | Terminal capabilities. `detect` reads environment variables; `probe` also queries the terminal. When the environment leaves the colour depth below truecolor, `probe` asks the terminal (DECRQSS) and trusts a kitty keyboard reply. When the environment names no terminal, as behind ssh or a multiplexer, `probe` asks for its version (XTVERSION); any answer turns hyperlinks on and a known name sets `notices`. Inside tmux or screen, only `TERM`, `COLORTERM`, and the probe identify the terminal; variables inherited from the outer terminal are ignored. `detect` picks the key protocol from the terminal name; `probe` asks the current terminal for the kitty keyboard protocol (`CSI ? u`) and uses `Legacy` when it does not answer, whatever the name. `probe` skips its other queries while typed input is waiting. `erase` is `Erase::Default` for `TERM=screen*`, which does not erase with the current background. `SIGIL_COLOR=truecolor\|256\|16\|none` forces the colour depth; `SIGIL_ASCII=1` forces `Glyphs::Ascii`; `SIGIL_AMBIGUOUS_WIDE=1` sets `Ambiguous::Wide`. |
+| `terminal::Caps` | `struct Caps { color, graphics: Option<Protocol>, mux: Option<Mux>, keyboard, hyperlinks, underline_styles, borders, glyphs: Glyphs, ambiguous: Ambiguous, erase: Erase, cursor, sync, clipboard, backdrop, notices: Notices }`; `Caps::detect(env)`, `Caps::probe()`, `.host() -> HostCaps` | Terminal capabilities. `detect` reads environment variables; `probe` also queries the terminal. When the environment leaves the color depth below truecolor, `probe` asks the terminal (DECRQSS) and trusts a kitty keyboard reply. When the environment names no terminal, as behind ssh or a multiplexer, `probe` asks for its version (XTVERSION); any answer turns hyperlinks on and a known name sets `notices`. Inside tmux or screen, only `TERM`, `COLORTERM`, and the probe identify the terminal; variables inherited from the outer terminal are ignored. `detect` picks the key protocol from the terminal name; `probe` asks the current terminal for the kitty keyboard protocol (`CSI ? u`) and uses `Legacy` when it does not answer, whatever the name. `probe` skips its other queries while typed input is waiting. `erase` is `Erase::Default` for `TERM=screen*`, which does not erase with the current background. `SIGIL_COLOR=truecolor\|256\|16\|none` forces the color depth; `SIGIL_ASCII=1` forces `Glyphs::Ascii`; `SIGIL_AMBIGUOUS_WIDE=1` sets `Ambiguous::Wide`. |
 | `terminal::caps` | `fn caps() -> Option<Caps>` | The capabilities the terminal host probed when it entered raw mode, for the current thread. `None` before the terminal host starts, after it exits, and in a window. Read `Caps::backdrop` here to pick a light or dark theme; a second `Caps::probe` before `sigil::run` runs in cooked mode and leaves reply bytes on stdin. |
 | `terminal::Erase` | `enum Erase { Background, Default }` | How clearing to the end of a line fills the cleared cells. `Default` (GNU screen) makes the writer send spaces for tinted row tails. |
-| `terminal::ColorDepth`, `terminal::Keyboard`, `terminal::ClipRoute`, `terminal::Borders`, `terminal::Cursor` | `enum ColorDepth { Truecolor, Ansi256, Ansi16, Monochrome }`; `enum Keyboard { Legacy, Kitty }`; `enum ClipRoute { Pbcopy, Osc52 }`; `enum Borders { Rounded, Light, Ascii }`; `enum Cursor { Bar, Block }` | Capability fields of `Caps`: colour depth, key protocol, clipboard route, border glyph set, and caret shape. |
+| `terminal::ColorDepth`, `terminal::Keyboard`, `terminal::ClipRoute`, `terminal::Borders`, `terminal::Cursor` | `enum ColorDepth { Truecolor, Ansi256, Ansi16, Monochrome }`; `enum Keyboard { Legacy, Kitty }`; `enum ClipRoute { Pbcopy, Osc52 }`; `enum Borders { Rounded, Light, Ascii }`; `enum Cursor { Bar, Block }` | Capability fields of `Caps`: color depth, key protocol, clipboard route, border glyph set, and caret shape. |
 | `terminal::Backdrop` | `enum Backdrop { Dark, Light }`; `Caps::backdrop: Option<Backdrop>` | Terminal background brightness. `Caps::detect` reads it from `COLORFGBG`; `None` means unknown. With no theme file set, the terminal host uses the dark theme on `Dark`. |
 | `terminal::Glyphs`, `terminal::glyphs` | `enum Glyphs { Unicode, Console, Ascii }`; `fn glyphs() -> Glyphs`; `Glyphs::glyph(self, char) -> char`; `Glyphs::text(self, &str) -> Cow<'_, str>` | Glyph set of the terminal and its one glyph map. `Ascii` for a non-UTF-8 locale, `TERM=dumb`, or `TERM=vt100`; `Console` for `TERM=linux`, which keeps box drawing and full and shade blocks and maps eighth blocks and braille to the nearest supported glyph; `Unicode` otherwise. The terminal host maps every painted cell through it. `glyphs()` reads the process environment, so apps pick glyphs through the same map. |
 | `terminal::install_clipboard` | `fn install_clipboard(caps: Caps)` | Install the process clipboard for the terminal host, routed by `caps.clipboard`. |
@@ -1428,12 +1405,12 @@ fn main() -> AppResult<()> {
 | `terminal::key_down`, `terminal::map_key` | `fn key_down(key: impl Into<LogicalKey>) -> ShellEvent`; `fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent>` | Build a key-press event, or translate a crossterm key event to a shell event. |
 | `terminal::cell_point`, `terminal::pointer`, `terminal::wheel`, `terminal::map_mouse` | `fn cell_point(col: u16, row: u16) -> Point`; `fn pointer(phase: PointerPhase, col: u16, row: u16) -> ShellEvent`; `fn wheel(col: u16, row: u16, lines: f32) -> ShellEvent`; `fn map_mouse(event: &MouseEvent, cell: f32, last: &mut Point) -> Option<ShellEvent>` | Convert cell coordinates to layout points and build pointer and wheel events, or translate a crossterm mouse event. |
 | `terminal::Cell`, `terminal::CONTINUES` | `struct Cell { text, fg: Ink, bg: Ink, bold, italic, dim, lines: Lines, underline_ink: Ink, link: Option<SmolStr> }`; `Cell::blank()`; `const CONTINUES: &str = ""` | One grid cell. A cell whose text is `CONTINUES` is the trailing half of a wide glyph. |
-| `terminal::Ink`, `terminal::Underline` | `enum Ink { Bare, Of(Tone), Exact(Rgba8) }`; `enum Underline { None, Straight, Curly }` | Cell colour (unset, theme tone, or exact RGBA) and underline shape. |
-| `terminal::Marks` | `Marks::collect(cx: &Cx, focus: Option<NodeId>, scene: &CommandScene, cell: f32) -> Marks` | Collect link targets and the caret node from a frame so the rasteriser can mark those cells. |
+| `terminal::Ink`, `terminal::Underline` | `enum Ink { Bare, Of(Tone), Exact(Rgba8) }`; `enum Underline { None, Straight, Curly }` | Cell color (unset, theme tone, or exact RGBA) and underline shape. |
+| `terminal::Marks` | `Marks::collect(cx: &Cx, focus: Option<NodeId>, scene: &CommandScene, cell: f32) -> Marks` | Collect link targets and the caret node from a frame so the rasterizer can mark those cells. |
 | `terminal::Paint`, `terminal::raster_into`, `terminal::raster_with` | `struct Paint<'a> { theme: &Theme, cell: f32, caps: Caps, marks: &Marks }`; `fn raster_into(grid: &mut Grid, scene: &CommandScene, theme: &Theme, cell: f32)`; `fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &Paint<'_>)` | Draw a scene into an existing grid. `raster_with` takes capabilities and marks as well as the theme. |
 | `terminal::EventPump`, `terminal::AfterFrame` | `type EventPump<'a> = Box<dyn FnMut(&mut Vec<ShellEvent>) + 'a>`; `type AfterFrame<'a> = Box<dyn FnMut(&mut Host, &mut EventRouter, &Screen) + 'a>` | Callback types for `Hooks`: inject extra events before a frame, and run code after a frame is drawn. |
 | `terminal::calibrate` | `fn calibrate(out: &mut impl Write) -> io::Result<()>` | Measure how the terminal renders wide glyphs and set the cell width rule to match. |
-| `terminal::render` | `fn render(out: &mut impl Write, prev: &Grid, next: &Grid, depth: ColorDepth) -> io::Result<()>` | Write the escape sequences that turn the `prev` grid into `next` at the given colour depth. |
+| `terminal::render` | `fn render(out: &mut impl Write, prev: &Grid, next: &Grid, depth: ColorDepth) -> io::Result<()>` | Write the escape sequences that turn the `prev` grid into `next` at the given color depth. |
 
 ## Module `testing`
 
@@ -1461,7 +1438,7 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | --- | --- | --- |
 | `widgets::ButtonGlyph` | `enum ButtonGlyph { Text(TextContent), Icon(Icon) }`; `From` text and `From<Icon>` | What `icon_button` shows. |
 | `widgets::spinner_frame` | `fn spinner_frame(tick: u64) -> &'static str` | The spinner glyph for a tick count. |
-| `widgets::icon_svg` | `fn icon_svg(svg: impl Into<Rc<str>>) -> IconBuilder` | An SVG icon. Its colour comes from the tone and the active theme at paint time. |
+| `widgets::icon_svg` | `fn icon_svg(svg: impl Into<Rc<str>>) -> IconBuilder` | An SVG icon. Its color comes from the tone and the active theme at paint time. |
 | `widgets::TreeNode` | `struct TreeNode<K>`; `new(id, label)`, `.leading(icon)`, `.status(text, Tone)`, `.detail(text)`, `.tone(RowTone)`, `.children(iter)`, `.child(node)` | One node of a `tree`. `leading` takes an `Icon` or a text glyph. |
 | `widgets::TreeBuilder` | `struct TreeBuilder<K>`; `.expanded(Signal<Vec<K>>)`, `.selected(Signal<Option<K>>)`, `.activate(impl Fn(&K))`, `.indent(cols)`, `.label(name)` | Builder of a `tree`. `indent` sets the columns per nesting level. Without `expanded` the tree keeps its own expansion; `selected` follows the keyboard cursor; without `activate`, Enter toggles folders. Takes the `WidgetLayoutExt` overrides and fills its viewport by default. |
 | `widgets::TreeKey` | `trait TreeKey: Clone + Eq + Hash + 'static` | The key type of tree nodes; implemented for every such type. |
@@ -1491,7 +1468,7 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | `widgets::FocusCaret` | `enum FocusCaret { Keep, End, SelectAll }` | Where `TextFieldBuilder::focus_caret` puts the caret when `autofocus` or `focus_when` focuses the field. |
 | `widgets::NumberFieldBuilder` | `struct NumberFieldBuilder<T>`; `disabled(impl Reactive<bool>)`, `invalid_when(impl Reactive<bool>)`, `text_field() -> TextFieldBuilder` | Builder of a numeric input. `text_field()` returns the inner text field, invalid while the text is out of range, for further text field options. |
 | `widgets::DateFieldBuilder` | `struct DateFieldBuilder`; `disabled(impl Reactive<bool>)`, `invalid_when(impl Reactive<bool>)`, `text_field() -> TextFieldBuilder` | Builder of a date input. `text_field()` returns the inner text field, invalid while the text is not a date. |
-| `widgets::ColorFieldBuilder` | `struct ColorFieldBuilder`; `disabled(impl Reactive<bool>)`, `invalid_when(impl Reactive<bool>)` | Builder of a colour input. |
+| `widgets::ColorFieldBuilder` | `struct ColorFieldBuilder`; `disabled(impl Reactive<bool>)`, `invalid_when(impl Reactive<bool>)` | Builder of a color input. |
 | `widgets::ChipBuilder` | `struct ChipBuilder`; `tone(impl Reactive<Tone>)`, `activate(f)`; `into_node_builder() -> NodeBuilder`, `layout(LayoutStyle) -> NodeBuilder` | Builder of a chip. A signal or closure passed to `tone` retints the chip when it changes. `layout` returns a `NodeBuilder`, so it comes last. |
 | `widgets::InteractiveBuilder` | `struct InteractiveBuilder`; `focusable(bool)`, `disabled(impl Reactive<bool>)`, `into_node_builder() -> NodeBuilder` | Builder of an interactive node. |
 | `widgets::interaction::InteractionState` | `InteractionState::new(enabled: bool)` | Hover, press, and focus signals. |
@@ -1524,8 +1501,8 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | `widgets::TooltipBuilder` | `struct TooltipBuilder`; `TooltipBuilder::new(label)`, `child(target)`, `shortcut(Option<text>)`, `delay(ms)`, `clamp_top()`, `theme(Theme)` | Builder of a tooltip. `child` is the node that shows the tooltip on hover. `clamp_top()` shows the tooltip below the target instead of above. |
 | `widgets::ToastEntry` | `struct ToastEntry { level: ToastLevel, message: String }` | One queued toast. |
 | `widgets::ToastLevel` | `enum ToastLevel { Info, Success, Warning, Error }` | Toast severity. |
-| `widgets::ProgressBuilder` | `struct ProgressBuilder`; `tone(t)`, `label(name)`, `indeterminate()`; `ProgressBuilder::new(Signal<f32>, max)` | Builder of a progress bar. `tone` colours the fill. `WidgetLayoutExt::height` sets the track height (default 8 px). In a terminal, a height under one cell draws the bar as a `─` line. |
-| `widgets::GaugeBuilder` | `struct GaugeBuilder`; `GaugeBuilder::new(Signal<f32>)`, `max(f32)`, `label(text)`, `warn(ratio)` | Builder of a gauge. `warn` paints the fill in the warning colour while value / max is below the ratio. |
+| `widgets::ProgressBuilder` | `struct ProgressBuilder`; `tone(t)`, `label(name)`, `indeterminate()`; `ProgressBuilder::new(Signal<f32>, max)` | Builder of a progress bar. `tone` colors the fill. `WidgetLayoutExt::height` sets the track height (default 8 px). In a terminal, a height under one cell draws the bar as a `─` line. |
+| `widgets::GaugeBuilder` | `struct GaugeBuilder`; `GaugeBuilder::new(Signal<f32>)`, `max(f32)`, `label(text)`, `warn(ratio)` | Builder of a gauge. `warn` paints the fill in the warning color while value / max is below the ratio. |
 | `widgets::ChartBuilder` | `bar()`, `line()`, `labels(impl IntoIterator<Item = impl Into<String>>)`, `series(name, values: impl Reactive<Vec<f32>>, tone)`; `tone(Tone)` | Builder of a chart. `WidgetLayoutExt::width` and `height` set its size (default 280×180, minimum 80×48). |
 | `style::ControlSize` | `enum ControlSize { Compact, Default, Wide, Grow }` | Size step of a control. `Metrics` and `Theme` map it to height, width, padding, gap, and radius. |
 | `widgets::ChartMark` | `enum ChartMark { Bar, Line, Candle }` | Chart mark. |
@@ -1536,7 +1513,7 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | `widgets::IconBuilder` | `tone(t)`, `size(s)`, `px(px)`, `strong()`; `IconBuilder::new(glyph)`, `label(text)` | Builder of an icon. `px` sets an exact icon size. `strong` uses the high-contrast step of the tone scale. |
 | `widgets::PathCmd` | `enum PathCmd { MoveTo, LineTo, QuadTo, CubicTo, Close }` | One path command. |
 | `widgets::PathFill` | `enum PathFill { Solid, Theme, Linear, Radial }` | Path fill paint. `Theme(Token)` resolves at paint time. |
-| `widgets::PathColor` | `enum PathColor { Rgba(Rgba8), Token(Token) }` | Colour of `fill` and `stroke`. A `Token` follows the active theme. |
+| `widgets::PathColor` | `enum PathColor { Rgba(Rgba8), Token(Token) }` | Color of `fill` and `stroke`. A `Token` follows the active theme. |
 | `widgets::DRAG_THRESHOLD_PX` | `const DRAG_THRESHOLD_PX: f32 = 4.0` | Pointer travel before a drag starts. |
 | `widgets::DROP_TARGET_CLASS` | `const DROP_TARGET_CLASS: &str` | Class on a drop target under the pointer. |
 
@@ -1586,13 +1563,12 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | Load data on demand and show loading and errors | `task(make)`, `Task::run`, `Task::cancel`, `Task::status`, `kernel::match_status` |
 | Stream results from a backend thread | `signal_writer(signal)`, `SignalWriter::update` |
 | Apply a theme | `parse_theme`, `set_theme`, `watch_theme`, `AppConfig::theme_file` |
-| Name a theme colour in code | `sigil::style::Token` (`Token::Surface.bg()`, `Token::Ring.color()`) |
+| Name a theme color in code | `sigil::style::Token` (`Token::Surface.bg()`, `Token::Ring.color()`) |
 | Theme a table header or row divider | `Token::TableHeader` (`table-header`), `Token::BorderSubtle` (`border-subtle`) |
 
-## Terminal rasteriser
+## Terminal rasterizer
 
-The terminal host draws the same `CommandScene` as the window. Widgets
-do not branch on the host. The rasteriser maps each command to cells:
+The terminal host draws the same `CommandScene` as the window. Widgets do not branch on the host. The rasterizer maps each command to cells:
 
 | Scene command | Cells |
 | --- | --- |
@@ -1604,8 +1580,7 @@ do not branch on the host. The rasteriser maps each command to cells:
 | `SaveLayer`, `PushLayer` | Blend fills, borders, and text against the cell below, with the active theme. |
 | Shadow, gradient, pattern, sprite, decoration | Not drawn. |
 
-TopLayer content comes last in the scene, so it draws above clipped
-content.
+TopLayer content comes last in the scene, so it draws above clipped content.
 
 ## App bundles
 
@@ -1654,10 +1629,7 @@ Package `sigil-kittest`, library `sigil_kittest`. Guide: [Testing](guide/testing
 
 ## Inspection
 
-With the `inspect` cargo feature, an app exposes a local control socket
-when `SIGIL_INSPECT` is set. `SIGIL_INSPECT=1` binds `127.0.0.1:5761`;
-any other value is an address to bind. The socket speaks one JSON
-object per line, one reply per request.
+With the `inspect` cargo feature, an app exposes a local control socket when `SIGIL_INSPECT` is set. `SIGIL_INSPECT=1` binds `127.0.0.1:5761`; any other value is an address to bind. The socket speaks one JSON object per line, one reply per request.
 
 | `op` | Request | Reply |
 | --- | --- | --- |
@@ -1676,43 +1648,25 @@ object per line, one reply per request.
 | `profile_on`, `profile_off` | – | Enable or stop frame collection without restarting. |
 | `hud` | `on` (default true) | Draws the frame-HUD overlay: a sparkline, the active backend with any fallback cause, and last-frame phase readout top-right. Terminal host draws cells; the desktop host overlays scene commands at paint. Enabling turns profiling on. |
 
-Requests are serviced between frames on the UI thread, so replies
-reflect the tree as last laid out. The socket is loopback by
-convention; the feature is off without the environment variable.
+Requests are serviced between frames on the UI thread, so replies reflect the tree as last laid out. The socket is loopback by convention; the feature is off without the environment variable.
 
 ## Conventions
 
 - Make reactive writes on the thread that owns the runtime. From
   another thread, use `signal_writer`, or `on_message` for a channel.
 - `sigil::run` installs the OS clipboard on the window host. The
-  terminal host installs an OSC 52 clipboard; on a local macOS terminal
-  it writes with `pbcopy` and reads with `pbpaste`. Over OSC 52 the
-  clipboard cannot be read, so a text input leaves Ctrl+V to the app and
-  the terminal's own paste arrives as a paste event. An embed host calls
-  `install(OsClipboard)` itself.
+  terminal host installs an OSC 52 clipboard; on a local macOS terminal it writes with `pbcopy` and reads with `pbpaste`. Over OSC 52 the clipboard cannot be read, so a text input leaves Ctrl+V to the app and the terminal's own paste arrives as a paste event. An embed host calls `install(OsClipboard)` itself.
 - Public event, command, error, and config types are
-  `#[non_exhaustive]`. Match them with a `_` arm. Build `AppConfig`
-  with its builder methods.
+  `#[non_exhaustive]`. Match them with a `_` arm. Build `AppConfig` with its builder methods.
 - The renderer API takes `wgpu` types. `sigil::wgpu` re-exports the
   `wgpu` version that `sigil-ui` uses.
 - `SIGIL_BACKEND` accepts `auto`, `wgpu`, and `cpu`. See
   [Troubleshooting](guide/troubleshooting.md).
 - `sigil::profile` keys are typed. `span(Phase)` times a phase and
-  `count(Counter)`, `count_add(Counter, n)`, and `gauge(Counter, v)`
-  record counters. `Phase::category()` returns a `Category`. `name()`
-  and `Display` give the trace text. `Frame::counter(Counter)` reads a
-  counter; `Frame::phases` and `Frame::counts` hold `PhaseTime` and
-  `CounterValue` pairs.
+  `count(Counter)`, `count_add(Counter, n)`, and `gauge(Counter, v)` record counters. `Phase::category()` returns a `Category`. `name()` and `Display` give the trace text. `Frame::counter(Counter)` reads a counter; `Frame::phases` and `Frame::counts` hold `PhaseTime` and `CounterValue` pairs.
 - `profile::begin_frame(BackendStatus)` opens a frame for one host. A
-  `BackendStatus` is a `BackendKind` (`Gpu`, `GpuSoftware`, `Cpu`,
-  `Terminal`) and a `FallbackCause` (`None`, `NoAdapter`, `DeviceError`,
-  `ForcedByEnv`, `UnknownEnv`). `BackendStatus::TERMINAL` is the terminal
-  host's status. `Frame::backend` holds the status of the
-  host that drew that frame, so a window host and a terminal host in one
-  process keep separate statuses.
+  `BackendStatus` is a `BackendKind` (`Gpu`, `GpuSoftware`, `Cpu`, `Terminal`) and a `FallbackCause` (`None`, `NoAdapter`, `DeviceError`, `ForcedByEnv`, `UnknownEnv`). `BackendStatus::TERMINAL` is the terminal host's status. `Frame::backend` holds the status of the host that drew that frame, so a window host and a terminal host in one process keep separate statuses.
 - `profile::interact(Cause)` marks the input that caused a frame.
-  `Cause` is `Idle`, `Pointer`, `Hover`, `Key`, `Scroll`, `Ime`,
-  `Resize`, `A11y`, `Expose`, or `Input`. When several inputs land in one
-  frame, the highest `Cause::rank()` wins. `Frame::cause` holds it.
+  `Cause` is `Idle`, `Pointer`, `Hover`, `Key`, `Scroll`, `Ime`, `Resize`, `A11y`, `Expose`, or `Input`. When several inputs land in one frame, the highest `Cause::rank()` wins. `Frame::cause` holds it.
 - Parsers for markdown, HTML, SVG, and theme files run on the UI
   thread. See `SECURITY.md` for the input surfaces.

@@ -181,7 +181,7 @@ pub fn bench_streaming_session_10_seconds() {
     } else {
         "FAIL"
     };
-    println!("  Budget = ≤ 10 MB (DR-009 10-min target; 10s scaled) → {verdict}");
+    println!("  Budget = ≤ 10 MB (10-minute target, scaled to the run) → {verdict}");
     let projected_10min = (peak_delta as f64) * (60.0 * 10.0 / SECONDS as f64);
     println!(
         "  Naive 10-min projection (linear) = {}",

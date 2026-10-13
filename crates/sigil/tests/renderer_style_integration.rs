@@ -239,7 +239,7 @@ fn container_font_classes_cascade_to_child_glyph_style() {
     let run = find_text(&scene, "Doom").expect("child glyph run emitted");
     assert_eq!(
         run.run.style.font_size, 18.0,
-        "a bare text child must inherit the ancestor's text-lg (DR-056)"
+        "a bare text child must inherit the ancestor's text-lg"
     );
     assert_eq!(run.run.style.font_weight, 700, "font-bold must inherit");
     assert_eq!(run.run.style.font_family, "mono", "font-mono must inherit");

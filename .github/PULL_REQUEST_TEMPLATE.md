@@ -16,8 +16,5 @@
 
 ## Gate
 
-- [ ] `cargo fmt --check`
-- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
-- [ ] `cargo test --workspace --no-fail-fast`
-- [ ] `cargo deny check`
+- [ ] `scripts/gate.sh` passes
 - [ ] Goldens re-baked for visual changes

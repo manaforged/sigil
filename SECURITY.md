@@ -18,7 +18,7 @@ Sigil parses these inputs. Parsing runs on the UI thread unless the entry says o
 | `html` | A subset parser with no CSS and no scripts. The 1 MiB limit applies. |
 | SVG icons | Parsed with `usvg`. The 1 MiB limit applies. A source with element nesting deeper than 128 is rejected before `usvg` runs. External and embedded image references are not resolved. |
 | `mermaid` | The 1 MiB limit applies. The parser reads at most 256 lines of at most 512 characters, and at most 1024 flowchart edges. Output is cut to 512 lines of 1024 characters. |
-| Theme TOML (`parse_theme`, `AppConfig::theme_file`, `watch_theme`) | Parsed with the `toml` crate. `base` must be `light`, `dark`, or `console_dark`. Each `[tokens]` value must be a hex colour. An invalid file is ignored and the current theme stays. `watch_theme` watches the file on a background thread, waits for writes to stop (at most 1 s), then reads and parses the file on the UI thread. There is no file size limit. |
+| Theme TOML (`parse_theme`, `AppConfig::theme_file`, `watch_theme`) | Parsed with the `toml` crate. `base` must be `light`, `dark`, or `console_dark`. Each `[tokens]` value must be a hex color. An invalid file is ignored and the current theme stays. `watch_theme` watches the file on a background thread, waits for writes to stop (at most 1 s), then reads and parses the file on the UI thread. There is no file size limit. |
 | `open` (feature `desktop`) | Accepts only targets that start with `http://`, `https://`, or `mailto:`, case-insensitive. It rejects every other target, including file paths. |
 | PTY output (`Session`, feature `pty`) | A background thread reads the child output in 4 KiB chunks into a `vt100` parser with a 24 x 80 screen and no scrollback. The UI receives the screen as plain text rows. |
 | Clipboard (`paste`) | Returns the clipboard text as a `String`. A terminal bracketed paste arrives as one key event. `text_field` ignores a paste that contains a newline. |
@@ -37,7 +37,7 @@ The `fuzz/` crate holds six `cargo-fuzz` targets:
 | `style_class` | `parse_class_string` and `parse_stateful_token` |
 | `scene_render` | `CpuRenderer::render` on generated scenes |
 
-On 2026-09-24 each parser target ran for 1 hour on x86_64 Linux with AddressSanitizer and `-max_len=1048576`. The `markdown` target found two faults, which are fixed:
+On 2026-09-24 each of the five parser targets below ran for 1 hour on x86_64 Linux with AddressSanitizer and `-max_len=1048576`. The `markdown` target found two faults, which are fixed:
 
 - Deeply nested quotes and lists overflowed the stack. The parser now flattens nesting deeper than 16 levels into a paragraph.
 - The path raster cache held up to 256 entries of any size and grew past 2 GiB. The cache now also holds at most 64 MiB of pixels.

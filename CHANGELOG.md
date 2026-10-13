@@ -32,7 +32,7 @@ First public release.
 - Multi-line input through `text_edit`, with selection, reactive focus, and configurable submission keys.
 - Numeric input through `number_field`, with range limits and locale-aware parsing.
 - Date input through `date_field`, using the theme's date format.
-- Colour input through `color_field`, with a swatch and hexadecimal entry.
+- Color input through `color_field`, with a swatch and hexadecimal entry.
 - Form labels and validation through `field`, with required markers, error messages, and accessible descriptions.
 - Choice fields through `dropdown` and searchable `combobox`.
 - Sortable, filterable tables through `table` and `TableState`, with row selection and configurable columns.
@@ -52,7 +52,7 @@ First public release.
 - Metric tiles through `stat`, with optional change indicators, captions, and trend lines.
 - Bar, line, and candlestick plots through `chart`, with negative values, zoom, pan, and pointer readouts.
 - Compact trend graphs through `sparkline`, accepting static or reactive values.
-- Colour grids through `heatmap`.
+- Color grids through `heatmap`.
 - Key/value displays through `kv_grid`, with reactive labels and values.
 - `markdown` renders headings, links, code, tables, and read-only task lists. `markdown_edit` provides editing with a preview.
 - `html` renders a subset of HTML.
@@ -66,7 +66,7 @@ First public release.
 #### Styling and themes
 
 - Typed styling through `Paint` and `StateVariants`, including typography, borders, shadows, and paint for hover, focus, press, and disabled states.
-- Light, dark, and console themes through `Theme`, with shared metrics, semantic colours through `Token`, and colour families through `Tone`.
+- Light, dark, and console themes through `Theme`, with shared metrics, semantic colors through `Token`, and color families through `Tone`.
 - Theme switching and TOML theme files through `parse_theme`, `set_theme`, `watch_theme`, and `AppConfig::theme_file`, including reload when the file changes.
 - Right-to-left layout, locale-aware numbers and dates, and translated widget labels through theme direction, `style::Locale`, and `style::Strings`.
 
@@ -94,7 +94,7 @@ First public release.
 #### Terminal host
 
 - The same widget tree on a character grid through `AppConfig::terminal`, with a configurable frame interval.
-- Terminal capability detection through `terminal::caps`, including colour depth, background brightness, keyboard protocols, and glyph fallbacks.
+- Terminal capability detection through `terminal::caps`, including color depth, background brightness, keyboard protocols, and glyph fallbacks.
 - Images through Kitty, iTerm2, and Sixel protocols, with a glyph fallback.
 - Keyboard input, bracketed and multi-line paste, mouse clicks and drags, and OSC 52 clipboard support.
 - Inline mode through `AppConfig::inline`, preserving scrollback. `terminal::print_above` writes output above the live region.
@@ -130,5 +130,5 @@ First public release.
 
 #### Fonts and icons
 
-- Bundled Fira Sans, Cascadia Mono, and a Noto Color Emoji subset in `sigil-fonts` under SIL Open Font License 1.1. The DejaVu Sans symbol subset uses the Bitstream Vera licence; the crate licence is OFL-1.1 AND Bitstream-Vera.
-- Lucide icons through `Icon` and `icon`, tinted by the active text colour.
+- Bundled Fira Sans, Cascadia Mono, and a Noto Color Emoji subset in `sigil-fonts` under SIL Open Font License 1.1. The DejaVu Sans symbol subset uses the Bitstream Vera license; the crate license is OFL-1.1 AND Bitstream-Vera.
+- Lucide icons through `Icon` and `icon`, tinted by the active text color.
