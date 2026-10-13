@@ -1,11 +1,11 @@
 ---
-id: DR-059
+id: DR-002
 status: accepted
 covers: Web rendering backends and where web tasks run
 relates: [docs/guide/web.md]
 ---
 
-# DR-059: WebGPU with a CPU floor; tasks stay on the page thread
+# DR-002: WebGPU with a CPU floor; tasks stay on the page thread
 
 **Status:** Accepted
 

@@ -25,7 +25,7 @@ Key options:
 - `.activate(Fn())`: the click/activation handler.
 - `.enabled(bool)`: static disable; the node is not focusable.
 - `.disabled(Signal<bool>)`: reactive disable.
-- `.pending(Signal<bool>)`: ignores activation and leaves the focus order while true, and shows a spinner before the label. The label keeps its full colour; only `.disabled()` paints the disabled state. Activation is blocked while either is true.
+- `.pending(Signal<bool>)`: ignores activation and leaves the focus order while true, and shows a spinner before the label. The label keeps its full color; only `.disabled()` paints the disabled state. Activation is blocked while either is true.
 - `.accessible(name)`: assistive name when the label is a glyph.
 
 Activation fires on left-button release while the press began inside and the pointer is still over, and on Enter or Space while focused. The node is `Role::Button`, focusable, and carries a keyboard focus ring. `button`, `icon_button`, `text_field`, and `dropdown` share one focus ring: the `FocusRing` that `InteractionState` installs.

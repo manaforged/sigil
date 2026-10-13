@@ -3,7 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
-#[path = "../examples/story-08-component.rs"]
+#[path = "../examples/story-07-component.rs"]
 #[allow(dead_code)]
 mod component;
 #[path = "../examples/story-03-form.rs"]
@@ -12,13 +12,13 @@ mod form;
 #[path = "../examples/story-01-hello.rs"]
 #[allow(dead_code)]
 mod hello;
-#[path = "../examples/story-07-async.rs"]
+#[path = "../examples/story-06-async.rs"]
 #[allow(dead_code)]
 mod loading;
 #[path = "../examples/story-05-nav.rs"]
 #[allow(dead_code)]
 mod nav;
-#[path = "../examples/story-09-test.rs"]
+#[path = "../examples/story-08-test.rs"]
 #[allow(dead_code)]
 mod testing;
 #[path = "../examples/story-04-todo.rs"]

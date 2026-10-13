@@ -80,7 +80,7 @@ table(state).striped().viewport_fill();
 
 `TableBuilder` options: `.row_height(len)`, `.header_height(px)`, `.viewport_height(len)`, `.viewport_width(px)`, `.viewport_fill()`, `.density(Density)` (sets row+header height and padding together: `Grid` 24/28 px with 8 px padding, `Compact` 28/32 px, `Default` 36/36 px), `.striped()`, `.scroll_bind(Signal<f32>)`, `.row_menu(Fn(&Row) -> Vec<MenuItem>)` (context menu), `.empty(Fn() -> NodeBuilder)` (shown when `visible` is empty), `.selectable_checkboxes()` (adds a selection column).
 
-The header uses `surface-inset`, a strong bottom border, and extra-small medium-weight `on-surface-muted` titles, so it reads apart from the regular `on-surface` body text. The sort arrow uses the same size and colour as the title.
+The header uses `surface-inset`, a strong bottom border, and extra-small medium-weight `on-surface-muted` titles, so it reads apart from the regular `on-surface` body text. The sort arrow uses the same size and color as the title.
 
 ## heatmap
 

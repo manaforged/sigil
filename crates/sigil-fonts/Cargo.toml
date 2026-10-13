@@ -9,7 +9,8 @@ authors.workspace = true
 description = "The fonts Sigil draws with by default: Fira Sans, Cascadia Mono, a Noto Color Emoji subset, and a DejaVu Sans symbol subset."
 keywords = ["fonts", "ui", "sigil"]
 categories = ["gui"]
-include = ["src/**", "fonts/**", "/Cargo.toml"]
+readme = "README.md"
+include = ["src/**", "fonts/**", "/Cargo.toml", "/README.md"]
 
 [lib]
 name = "sigil_fonts"

@@ -5,14 +5,14 @@ A GUI and TUI framework written in Rust. One widget tree runs in a window, in a 
 - **One tree, three hosts**: `sigil::run` opens a window, or paints a character grid with the `terminal` feature, and `Host` embeds the tree in another engine.
 - **GPU or CPU**: a wgpu renderer, and a CPU renderer for machines without a GPU.
 - **Web too**: the same app builds for `wasm32`, drawing with WebGPU or into a 2D canvas.
-- **Batteries included**: 67 components, including markdown, tables, trees, charts, mermaid diagrams, and a code editor.
+- **Widgets**: markdown, tables, trees, charts, mermaid diagrams, a code editor, and the usual controls and fields.
 - **Accessible**: the window host exposes the widget tree to screen readers through AccessKit.
 
-[Book](docs/SUMMARY.md) | [API map](docs/api.md) | [Examples](crates/sigil/examples) | [Guides](docs/guide)
+[Book](docs/guide/README.md) | [API map](docs/api.md) | [Examples](docs/reference/sigil-ui/examples/index.md)
 
 ![The workbench example application](docs/workbench.png)
 
-Status: unreleased. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input; fuzz targets cover them, but the runs so far are short. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
+Status: 0.1 is the first release. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input; fuzz targets cover them, but the runs so far are short. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
 
 ## Requirements
 
@@ -91,7 +91,7 @@ The [`sigil-ui` README](crates/sigil/README.md#features) lists every feature. `d
 
 - Headless machines run the terminal host and the test suite. The window host needs a GPU adapter, unless `SIGIL_BACKEND=cpu` selects the CPU renderer. `auto` is the default; `wgpu` requires an adapter.
 - No mobile host. The web host has no system fonts, no clipboard paste, and no accessibility tree, and it runs tasks on the page's one thread; see [Web host](docs/guide/web.md).
-- The terminal host has no rounded corners and no shadows. It composes CJK input through the terminal's own input method. Images render through the terminal graphics protocol on Kitty, Ghostty, WezTerm, Konsole, iTerm2, Warp, and Sixel terminals. Other terminals show sextant glyphs.
+- The terminal host has no rounded corners and no shadows. It composes CJK input through the terminal's own input method. Images use the Kitty, iTerm2, or Sixel graphics protocol when the terminal supports one; [Terminal host](docs/guide/terminal.md) lists the detection. Other terminals show sextant glyphs.
 - Six fuzz targets cover the markdown, HTML, SVG, mermaid, class-string and scene-render inputs. Read [SECURITY.md](SECURITY.md) before you pass them untrusted input.
 - `sigil-pack macos` ad-hoc codesigns unless you pass a signing identity. Ad-hoc signing is not Developer ID or notarization.
 
@@ -100,7 +100,7 @@ The [`sigil-ui` README](crates/sigil/README.md#features) lists every feature. `d
 | Read | For |
 | --- | --- |
 | [User guide](docs/guide/README.md) | Task pages in reading order. Build the book with `mdbook serve docs`. |
-| [Troubleshooting](docs/guide/troubleshooting.md) | No GPU, images in tmux, and terminal colour. |
+| [Troubleshooting](docs/guide/troubleshooting.md) | No GPU, images in tmux, and terminal color. |
 | [GUI and TUI](docs/guide/hosts.md) | Build for the window, the terminal, or both; host-only APIs; how to split host code. |
 | [Recipes](docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, terminal hooks, and screen readers. |
 | [API map](docs/api.md) | Every exported item with its signature and an example, in one Markdown file. |

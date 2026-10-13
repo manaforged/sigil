@@ -83,7 +83,7 @@ A target is a label, a `Node`, or a `Point` in layout points. A label waits up t
 The harness installs a task runtime, so `task`, `spawn`, and `signal_writer` work in a test. Each frame applies the results that finished; `expect_text` waits for them:
 
 ```rust,ignore
-{{#include ../../crates/sigil/examples/story-07-async.rs}}
+{{#include ../../crates/sigil/examples/story-06-async.rs}}
 ```
 
 ```rust,ignore

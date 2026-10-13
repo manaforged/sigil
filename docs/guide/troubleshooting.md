@@ -42,18 +42,18 @@ Inside GNU screen (`STY` is set), Sigil does not send Kitty or Sixel images.
 
 To choose the protocol yourself, set `SIGIL_GRAPHICS` to `kitty`, `iterm2`, or `sixel`. `SIGIL_GRAPHICS=off` (or `none`) turns images off and shows glyphs. Other values are ignored.
 
-## Colours are wrong in the terminal
+## Colors are wrong in the terminal
 
-The terminal host picks a colour depth once, at start:
+The terminal host picks a color depth once, at start:
 
-1. If `NO_COLOR` is set and not empty, it uses no colour.
-2. If `TERM` is `dumb`, it uses no colour.
-3. If `COLORTERM` contains `truecolor` or `24bit`, or `TERM` ends in `-direct`, it uses 24-bit colour. A recognised terminal other than Apple Terminal also gets 24-bit colour.
-4. If `TERM` contains `256`, or the terminal is Apple Terminal, it uses 256 colours.
-5. If `TERM` is set, it uses 16 colours.
-6. On Windows with no `TERM`, it uses 24-bit colour. Elsewhere it uses no colour.
+1. If `NO_COLOR` is set and not empty, it uses no color.
+2. If `TERM` is `dumb`, it uses no color.
+3. If `COLORTERM` contains `truecolor` or `24bit`, or `TERM` ends in `-direct`, it uses 24-bit color. A recognised terminal other than Apple Terminal also gets 24-bit color.
+4. If `TERM` contains `256`, or the terminal is Apple Terminal, it uses 256 colors.
+5. If `TERM` is set, it uses 16 colors.
+6. On Windows with no `TERM`, it uses 24-bit color. Elsewhere it uses no color.
 
-If your terminal supports 24-bit colour but Sigil uses fewer colours, set `COLORTERM=truecolor`.
+If your terminal supports 24-bit color but Sigil uses fewer colors, set `COLORTERM=truecolor`.
 
 Box borders use ASCII when `TERM` is `dumb` or when the locale (`LC_ALL`, `LC_CTYPE`, or `LANG`) is not UTF-8.
 

@@ -32,4 +32,4 @@ Each node can reuse the previous frame's commands when its content key matches. 
 
 ## Goldens
 
-Visual changes re-bake the goldens. The harness renders a widget through `WgpuRenderer::render_command_scene_offscreen`, reads the pixels back, and compares them to a committed PNG under `crates/sigil/tests/goldens/`. If no GPU adapter is available, the test skips.
+Visual changes re-bake the goldens. The harness renders a widget through `WgpuRenderer::render_command_scene_offscreen`, reads the pixels back, and compares them to a committed PNG under `crates/sigil/tests/goldens/`. Without a GPU adapter the test fails, unless `SIGIL_ALLOW_NO_GPU=1` is set, which skips it.

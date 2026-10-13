@@ -1,11 +1,11 @@
 ---
-id: DR-058
+id: DR-001
 status: accepted
 covers: Signals as the product surface; Entity and notify are shared machinery
-relates: [DR-040, DR-046, docs/guide/arch/state.md]
+relates: [docs/guide/arch/state.md]
 ---
 
-# DR-058: Signals over entities
+# DR-001: Signals over entities
 
 **Status:** Accepted
 
