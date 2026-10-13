@@ -42,7 +42,7 @@ this table.
 | `prelude` | `mod prelude` | The application import surface. |
 | `a11y` | `mod a11y` | Accessibility tree construction. |
 | `animation` | `mod animation` | Easing, springs, and keyframes. |
-| `animation_runtime` | `mod animation_runtime` | Animators that drive signals each frame. |
+| `animation_runtime` | `mod animation_runtime` | Animators that drive signals each frame; `clock() -> Signal<f64>` is a signal of seconds that advances by the real frame time on every painted frame while its owner lives, and `running_clocks()` counts live clocks. A clock keeps the host painting but does not count in `active_count()`, so settling ignores it. Reduced motion does not stop a clock; check `MotionPrefs::reduced()` to hold motion still. |
 | `app` | `mod app` | Application host, configuration, and theme files. |
 | `bidi` | `mod bidi` | Bidirectional text: paragraph levels, visual order, and `ParagraphBidi::visual_step` for caret motion. `text::bidi` re-exports it. |
 | `clipboard` | `mod clipboard` | Clipboard trait and the installed clipboard. |
@@ -616,6 +616,7 @@ use sigil::animation_runtime::AnimationConfig;
 use sigil::animation_runtime::Animator;
 use sigil::animation_runtime::MotionPrefs;
 use sigil::animation_runtime::Playback;
+use sigil::animation_runtime::clock;
 use sigil::style::NumericAtomKind;
 use sigil::prelude::*;
 use std::time::Duration;
@@ -628,6 +629,7 @@ fn tree() -> impl IntoNode {
     let frames = Keyframes::new([Keyframe::new(0.0, 0.0), Keyframe::new(1.0, 1.0)], Duration::from_millis(300));
     let _ = (AnimationDirection::Alternate, AnimationFill::Forwards, MotionPrefs::reduced());
     let _ = Playback::new(opacity, frames);
+    let _seconds: Signal<f64> = clock();
     container().animate(NumericAtomKind::Opacity, opacity)
 }
 

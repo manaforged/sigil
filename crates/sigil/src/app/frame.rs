@@ -1,4 +1,6 @@
-use crate::animation_runtime::{active_count as active_animation_count, tick as tick_animations};
+use crate::animation_runtime::{
+    active_count as active_animation_count, running_clocks, tick as tick_animations, tick_clocks,
+};
 use crate::app::embed::Host;
 use crate::app::exit::take_exit;
 use crate::events::EventRouter;
@@ -55,10 +57,7 @@ impl Host {
         #[cfg(feature = "dialog")]
         self.sync_dialogs();
         let intervals = tick_intervals();
-        let animating = active_animation_count() > 0;
-        if animating {
-            tick_animations(dt.min(MAX_ANIMATION_FRAME_SECS));
-        }
+        let animating = advance(dt.min(MAX_ANIMATION_FRAME_SECS));
         self.publish_viewport(viewport);
         let exit = ExitOnUnwind(take_exit());
         Runtime::begin_layout();
@@ -94,6 +93,15 @@ impl Host {
             layout,
         }
     }
+}
+
+fn advance(dt: f32) -> bool {
+    let animating = active_animation_count() > 0;
+    if animating {
+        tick_animations(dt);
+    }
+    tick_clocks(dt);
+    animating || running_clocks() > 0
 }
 
 struct ExitOnUnwind(bool);

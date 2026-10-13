@@ -10,6 +10,7 @@ First release.
 
 ### Added
 
+- `animation_runtime::clock()`: a `Signal<f64>` of elapsed seconds that advances by the real frame time on every painted frame while its owner lives, so continuous motion runs at the host's frame rate instead of a timer of its own. A clock keeps the host painting but does not hold `active_count()` up, so settling ignores it. `running_clocks()` counts live clocks.
 - `NodeEventsExt::on_selection_copy` reports the text and clipboard result when a `selectable_text` region copies a selection (drag-to-copy in a terminal, or Cmd/Ctrl+C), so an app can confirm the copy.
 - `Icon`: the Lucide icon set (98 icons, ISC with the Feather-derived MIT portion), typed, so `icon(Icon::Folder)` draws a stroke icon tinted by the text colour. The nine older built-in icons now come from the same set.
 - `tree(nodes)` with `TreeNode`: an explorer or outline tree with icons, toned status, controlled expansion and selection, arrow-key navigation, Left/Right to collapse and expand, Enter to activate, and tree and tree-item accessibility roles.
