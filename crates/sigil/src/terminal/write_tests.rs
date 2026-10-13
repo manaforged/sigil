@@ -304,3 +304,41 @@ mod fills;
 
 #[path = "write_link_tests.rs"]
 mod links;
+
+#[test]
+fn a_row_with_changes_far_apart_rewrites_only_the_changed_cells() {
+    let caps = Caps::default();
+    let row: Vec<Cell> = (0..40)
+        .map(|index| Cell {
+            text: if index % 2 == 0 { "x" } else { "y" }.into(),
+            ..Cell::blank()
+        })
+        .collect();
+    let mut prev = Grid::new(40, 1);
+    prev.set_row(0, &row);
+    let changed: Vec<Cell> = row
+        .iter()
+        .enumerate()
+        .map(|(index, cell)| match index {
+            2 => Cell {
+                text: "A".into(),
+                ..cell.clone()
+            },
+            37 => Cell {
+                text: "B".into(),
+                ..cell.clone()
+            },
+            _ => cell.clone(),
+        })
+        .collect();
+    let mut next = Grid::new(40, 1);
+    next.set_row(0, &changed);
+    let mut out = Vec::new();
+    super::dirty(&mut out, &prev, &next, &caps).expect("write");
+    let text = String::from_utf8(out).expect("utf8");
+    assert!(text.contains('A') && text.contains('B'), "{text:?}");
+    assert!(
+        !text.contains("xyxyxy"),
+        "rewrote the unchanged middle: {text:?}"
+    );
+}
