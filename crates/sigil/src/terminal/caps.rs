@@ -239,7 +239,18 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
 
 const APPLE_TERMINAL: &str = "com.apple.Terminal";
 
+const FILL_NAMES: [(&str, Fills); 2] = [("whole", Fills::Whole), ("partial", Fills::Partial)];
+
 fn fills(env: &impl Fn(&str) -> Option<String>, known: Option<Known>) -> Fills {
+    let forced = env("SIGIL_FILLS").and_then(|value| {
+        FILL_NAMES
+            .iter()
+            .find(|(name, _)| value.trim().eq_ignore_ascii_case(name))
+            .map(|(_, fills)| *fills)
+    });
+    if let Some(fills) = forced {
+        return fills;
+    }
     if known == Some(Known::Apple) || env("__CFBundleIdentifier").as_deref() == Some(APPLE_TERMINAL)
     {
         Fills::Whole

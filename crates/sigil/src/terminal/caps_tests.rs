@@ -148,3 +148,19 @@ fn terminal_app_fills_whole_cells_even_behind_a_multiplexer() {
     assert_eq!(fills(&[("TERM_PROGRAM", "ghostty")]), Fills::Partial);
     assert_eq!(fills(&[]), Fills::Partial);
 }
+
+#[test]
+fn sigil_fills_overrides_the_detected_fills() {
+    let fills = |vars: &[(&str, &str)]| caps(vars).fills;
+    assert_eq!(
+        fills(&[
+            ("TERM_PROGRAM", "Apple_Terminal"),
+            ("SIGIL_FILLS", "partial")
+        ]),
+        Fills::Partial
+    );
+    assert_eq!(
+        fills(&[("TERM_PROGRAM", "ghostty"), ("SIGIL_FILLS", "whole")]),
+        Fills::Whole
+    );
+}
