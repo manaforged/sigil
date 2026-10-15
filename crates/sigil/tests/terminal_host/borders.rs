@@ -128,3 +128,20 @@ fn whole_cell_fills_paint_no_partial_blocks() {
     let whole = inset_plate(sigil::terminal::Fills::Whole);
     assert!(!whole.contains(partial), "whole fills only:\n{whole}");
 }
+
+#[test]
+fn a_thick_rounded_border_stays_heavy() {
+    let grid = present(
+        || {
+            container()
+                .layout(sigil::layout::LayoutStyle::block().padding_x(8.0))
+                .border_w(8)
+                .rounded(Radius::Md)
+                .child(text("inside"))
+        },
+        30,
+        8,
+        &[],
+    );
+    assert!(grid.contains('┏') && !grid.contains('╭'), "{grid}");
+}
