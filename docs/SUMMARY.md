@@ -41,6 +41,7 @@
 - [Decision records](guide/decisions/README.md)
   - [DR-001 Signals over entities](guide/decisions/DR-001-signals-over-entity.md)
   - [DR-002 Web backends](guide/decisions/DR-002-web-backends.md)
+  - [DR-003 Absolute origins](guide/decisions/DR-003-absolute-origin.md)
 
 # API reference
 

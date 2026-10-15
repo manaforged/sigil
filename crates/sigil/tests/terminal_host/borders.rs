@@ -145,3 +145,46 @@ fn a_thick_rounded_border_stays_heavy() {
     );
     assert!(grid.contains('┏') && !grid.contains('╭'), "{grid}");
 }
+
+fn padded_backdrop(backdrop: sigil::layout::LayoutStyle) -> usize {
+    let grid = painted(
+        move || {
+            container()
+                .layout(sigil::layout::LayoutStyle::block().padding(8.0))
+                .child(
+                    container()
+                        .layout(backdrop.clone())
+                        .bg(sigil::prelude::Token::Accent),
+                )
+                .child(text("one"))
+                .child(text("two"))
+                .child(text("three"))
+        },
+        30,
+        12,
+    );
+    (0..grid.rows())
+        .filter(|&row| {
+            grid.row(row)
+                .get(2)
+                .is_some_and(|cell| cell.bg != sigil::terminal::Ink::Bare)
+        })
+        .count()
+}
+
+#[test]
+fn a_stretched_backdrop_covers_its_parents_content_box() {
+    let pinned = sigil::layout::LayoutStyle::block()
+        .position(sigil::layout::Position::Absolute)
+        .inset(0.0);
+    assert_eq!(padded_backdrop(pinned), 3, "block backdrop");
+    let lowered = sigil::layout::LayoutStyle::flex_column()
+        .position(sigil::layout::Position::Absolute)
+        .inset(0.0)
+        .inset_top(8.0);
+    assert_eq!(
+        padded_backdrop(lowered),
+        2,
+        "flex backdrop with a top inset"
+    );
+}

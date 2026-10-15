@@ -1,7 +1,8 @@
 use super::{BlockSolver, Position2};
 use crate::layout::LayoutError;
 use crate::layout::block_size::SizeIntent;
-use crate::layout::forest::{ComputedBox, NodeRef};
+use crate::layout::flex::{CbSize, FlexSolver, Position2 as FlexPosition};
+use crate::layout::forest::{ComputedBox, MeasureScope, NodeRef};
 use crate::layout::resolve::{InsetAxis, NodeEdges, resolve_inset_axis, stretched};
 use crate::layout::style_data::{Display, Position, Size, StyleData};
 
@@ -54,8 +55,7 @@ impl BlockSolver<'_> {
             padding_origin.x + edges.margin.left.unwrap_or(0.0),
             padding_origin.y + edges.margin_top(),
         );
-        let (box_w, box_h) =
-            self.size_absolute(child, &edges, &intent, (inner_cb, padding_box), provisional)?;
+        let (box_w, box_h) = self.size_absolute(child, &edges, &intent, inner_cb, provisional)?;
         let (x, y) =
             resolve_absolute_xy(style, &edges, padding_origin, padding_box, (box_w, box_h));
         let dx = x - provisional.x;
@@ -77,22 +77,37 @@ impl BlockSolver<'_> {
         child: NodeRef<'_>,
         edges: &NodeEdges,
         intent: &SizeIntent,
-        (inner_cb, padding_box): (Size<f32>, Size<f32>),
+        inner_cb: Size<f32>,
         provisional: Position2,
     ) -> Result<(f32, f32), LayoutError> {
         let style = child.style();
         let margins = edges.margin.left.unwrap_or(0.0) + edges.margin.right.unwrap_or(0.0);
         let stretch_w = stretched(
             [style.inset.left, style.inset.right],
-            padding_box.width,
+            inner_cb.width,
             margins,
         );
         let stretch_h = stretched(
             [style.inset.top, style.inset.bottom],
-            padding_box.height,
+            inner_cb.height,
             edges.margin_top() + edges.margin.bottom.unwrap_or(0.0),
         );
-        if matches!(child.style().display, Display::Flex | Display::Grid) {
+        let display = child.style().display;
+        if matches!(display, Display::Flex) && (stretch_w.is_some() || stretch_h.is_some()) {
+            let area = CbSize {
+                w: stretch_w.unwrap_or(inner_cb.width),
+                h: stretch_h.unwrap_or(inner_cb.height),
+            };
+            let origin = FlexPosition::new(
+                provisional.x - edges.margin.left.unwrap_or(0.0),
+                provisional.y - edges.margin_top(),
+            );
+            let scope = &self.scope;
+            let nested = MeasureScope::new(scope.forest(), scope.text(), scope.available());
+            FlexSolver::new(nested).solve_at_area(child, area, origin)?;
+            return self.computed_size(child);
+        }
+        if matches!(display, Display::Flex | Display::Grid) {
             self.solve_nested(child, inner_cb, provisional)?;
             return self.computed_size(child);
         }
