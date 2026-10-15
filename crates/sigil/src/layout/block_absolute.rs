@@ -2,11 +2,45 @@ use super::{BlockSolver, Position2};
 use crate::layout::LayoutError;
 use crate::layout::block_size::SizeIntent;
 use crate::layout::forest::{ComputedBox, NodeRef};
-use crate::layout::resolve::{InsetAxis, NodeEdges, resolve_inset_axis};
-use crate::layout::style_data::{Display, Size, StyleData};
+use crate::layout::resolve::{InsetAxis, NodeEdges, resolve_inset_axis, stretched};
+use crate::layout::style_data::{Display, Position, Size, StyleData};
 
 impl BlockSolver<'_> {
-    pub(super) fn place_absolute(
+    pub(super) fn place_absolutes(
+        &self,
+        node: NodeRef<'_>,
+        (w, h): (f32, f32),
+        border_origin: Position2,
+        edges: &NodeEdges,
+    ) -> Result<(), LayoutError> {
+        let padding_box = Size {
+            width: (w - edges.border.left - edges.border.right).max(0.0),
+            height: (h - edges.border.top - edges.border.bottom).max(0.0),
+        };
+        let inner_cb = Size {
+            width: (w - edges.inline_chrome()).max(0.0),
+            height: (h - edges.block_chrome()).max(0.0),
+        };
+        let origin = Position2::new(
+            border_origin.x + edges.border.left + edges.padding.left,
+            border_origin.y + edges.border.top + edges.padding.top,
+        );
+        let forest = self.scope.forest();
+        for child_id in node.children() {
+            let Some(child) = forest.refer(*child_id) else {
+                continue;
+            };
+            let style = child.style();
+            if matches!(style.position, Position::Absolute)
+                && !matches!(style.display, Display::None)
+            {
+                self.place_absolute(child, inner_cb, padding_box, origin)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn place_absolute(
         &self,
         child: NodeRef<'_>,
         inner_cb: Size<f32>,
@@ -20,7 +54,8 @@ impl BlockSolver<'_> {
             padding_origin.x + edges.margin.left.unwrap_or(0.0),
             padding_origin.y + edges.margin_top(),
         );
-        let (box_w, box_h) = self.size_absolute(child, &edges, &intent, inner_cb, provisional)?;
+        let (box_w, box_h) =
+            self.size_absolute(child, &edges, &intent, (inner_cb, padding_box), provisional)?;
         let (x, y) =
             resolve_absolute_xy(style, &edges, padding_origin, padding_box, (box_w, box_h));
         let dx = x - provisional.x;
@@ -42,9 +77,21 @@ impl BlockSolver<'_> {
         child: NodeRef<'_>,
         edges: &NodeEdges,
         intent: &SizeIntent,
-        inner_cb: Size<f32>,
+        (inner_cb, padding_box): (Size<f32>, Size<f32>),
         provisional: Position2,
     ) -> Result<(f32, f32), LayoutError> {
+        let style = child.style();
+        let margins = edges.margin.left.unwrap_or(0.0) + edges.margin.right.unwrap_or(0.0);
+        let stretch_w = stretched(
+            [style.inset.left, style.inset.right],
+            padding_box.width,
+            margins,
+        );
+        let stretch_h = stretched(
+            [style.inset.top, style.inset.bottom],
+            padding_box.height,
+            edges.margin_top() + edges.margin.bottom.unwrap_or(0.0),
+        );
         if matches!(child.style().display, Display::Flex | Display::Grid) {
             self.solve_nested(child, inner_cb, provisional)?;
             return self.computed_size(child);
@@ -52,15 +99,20 @@ impl BlockSolver<'_> {
         let auto_w =
             (inner_cb.width - edges.margin.left.unwrap_or(0.0) - edges.margin.right.unwrap_or(0.0))
                 .max(0.0);
-        let box_w = intent.w.clamp(intent.w.preferred.unwrap_or(auto_w));
+        let box_w = intent
+            .w
+            .clamp(intent.w.preferred.or(stretch_w).unwrap_or(auto_w));
         let inner_w = (box_w - edges.inline_chrome()).max(0.0);
         let inner_cb_child = Size {
             width: inner_w,
-            height: intent.h.preferred.unwrap_or(inner_cb.height),
+            height: intent.h.preferred.or(stretch_h).unwrap_or(inner_cb.height),
         };
         let content_h = self.layout_children(child, inner_cb_child, provisional, edges)?;
         let auto_h = content_h + edges.block_chrome();
-        let box_h = intent.h.clamp(intent.h.preferred.unwrap_or(auto_h));
+        let box_h = intent
+            .h
+            .clamp(intent.h.preferred.or(stretch_h).unwrap_or(auto_h));
+        self.place_absolutes(child, (box_w, box_h), provisional, edges)?;
         Ok((box_w, box_h))
     }
 

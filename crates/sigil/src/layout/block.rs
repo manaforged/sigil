@@ -163,6 +163,9 @@ impl BlockSolver<'_> {
                 .clamp(intent.h.preferred.unwrap_or(auto_h).max(0.0))
         });
         self.scope.write(node.id(), ComputedBox { x, y, w, h });
+        if text_size.is_none() {
+            self.place_absolutes(node, (w, h), border_origin, &edges)?;
+        }
         Ok(Resolved { box_h: h, edges })
     }
 
@@ -177,10 +180,6 @@ impl BlockSolver<'_> {
             border_origin.x + edges.border.left + edges.padding.left,
             border_origin.y + edges.border.top + edges.padding.top,
         );
-        let padding_box = Size {
-            width: inner_cb.width + edges.padding.left + edges.padding.right,
-            height: inner_cb.height + edges.padding.top + edges.padding.bottom,
-        };
         let mut cursor_y = 0.0_f32;
         let mut open = OpenMargin::sealed();
         for child_id in parent.children() {
@@ -192,7 +191,6 @@ impl BlockSolver<'_> {
                 continue;
             }
             if matches!(style.position, Position::Absolute) {
-                self.place_absolute(child, inner_cb, padding_box, origin)?;
                 continue;
             }
             let child_edges = NodeEdges::build(style, inner_cb.width);

@@ -170,6 +170,16 @@ pub(crate) fn resolve_inset_axis(a: InsetAxis) -> f32 {
     }
 }
 
+pub(crate) fn stretched(
+    [leading, trailing]: [LengthPercentageAuto; 2],
+    cb_dim: f32,
+    margins: f32,
+) -> Option<f32> {
+    let leading = resolve_lp_auto(leading, cb_dim)?;
+    let trailing = resolve_lp_auto(trailing, cb_dim)?;
+    Some((cb_dim - leading - trailing - margins).max(0.0))
+}
+
 #[cfg(test)]
 #[allow(
     clippy::unwrap_used,
