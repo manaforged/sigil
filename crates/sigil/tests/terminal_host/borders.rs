@@ -74,3 +74,57 @@ fn an_absolute_backdrop_stretches_to_an_auto_height_parent() {
         "flex parent"
     );
 }
+
+fn inset_plate(fills: sigil::terminal::Fills) -> String {
+    sigil::reactive::Runtime::scope("terminal-fills", || {
+        let mut host = sigil::Host::cells();
+        host.mount(|| {
+            sigil::widgets::canvas(|scene, area| {
+                let rect = sigil::geometry::Rect::new(
+                    sigil::geometry::Point::new(area.origin.x + 4.0, area.origin.y + 4.0),
+                    120.0,
+                    76.0,
+                );
+                scene.draw_rect(
+                    rect,
+                    sigil::scene::SceneRectStyle::solid(sigil::prelude::Rgba8 {
+                        r: 105,
+                        g: 140,
+                        b: 210,
+                        a: 255,
+                    }),
+                );
+            })
+            .layout(
+                sigil::layout::LayoutStyle::block()
+                    .width(160.0)
+                    .height(96.0),
+            )
+        });
+        let caps = sigil::terminal::Caps {
+            fills,
+            ..sigil::terminal::Caps::default()
+        };
+        let mut screen = sigil::terminal::Screen::with_caps(30, 12, caps);
+        let mut router = sigil::events::EventRouter::new();
+        screen
+            .frame(&mut host, &mut router, [], (30, 12))
+            .expect("frame");
+        screen
+            .frame(&mut host, &mut router, [], (30, 12))
+            .expect("frame")
+            .text()
+    })
+}
+
+#[test]
+fn whole_cell_fills_paint_no_partial_blocks() {
+    let partial = ['▄', '▀', '▐', '▌'];
+    let exact = inset_plate(sigil::terminal::Fills::Partial);
+    assert!(
+        exact.contains(partial),
+        "partial fills draw edges:\n{exact}"
+    );
+    let whole = inset_plate(sigil::terminal::Fills::Whole);
+    assert!(!whole.contains(partial), "whole fills only:\n{whole}");
+}

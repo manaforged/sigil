@@ -19,6 +19,7 @@
 | [`ColorDepth`](#colordepth) | enum |  |
 | [`Cursor`](#cursor) | enum |  |
 | [`Erase`](#erase) | enum |  |
+| [`Fills`](#fills) | enum |  |
 | [`FocusCursor`](#focuscursor) | enum |  |
 | [`Glyphs`](#glyphs) | enum |  |
 | [`Ink`](#ink) | enum |  |
@@ -104,6 +105,7 @@
 | <code>color: <a href="#colordepth">ColorDepth</a></code> |  |
 | <code>cursor: <a href="#cursor">Cursor</a></code> |  |
 | <code>erase: <a href="#erase">Erase</a></code> |  |
+| <code>fills: <a href="#fills">Fills</a></code> |  |
 | <code>glyphs: <a href="#glyphs">Glyphs</a></code> |  |
 | <code>graphics: Option&lt;<a href="#protocol">Protocol</a>&gt;</code> |  |
 | <code>hyperlinks: bool</code> |  |
@@ -341,6 +343,18 @@
 | --- | --- |
 | <code>Background</code> |  |
 | <code>Default</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
+### `Fills`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Partial</code> |  |
+| <code>Whole</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 

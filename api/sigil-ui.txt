@@ -5466,6 +5466,15 @@ impl core::cmp::PartialEq for sigil::terminal::Erase
 impl core::fmt::Debug for sigil::terminal::Erase
 impl core::marker::Copy for sigil::terminal::Erase
 impl core::marker::StructuralPartialEq for sigil::terminal::Erase
+pub enum sigil::terminal::Fills
+pub sigil::terminal::Fills::Partial
+pub sigil::terminal::Fills::Whole
+impl core::clone::Clone for sigil::terminal::Fills
+impl core::cmp::Eq for sigil::terminal::Fills
+impl core::cmp::PartialEq for sigil::terminal::Fills
+impl core::fmt::Debug for sigil::terminal::Fills
+impl core::marker::Copy for sigil::terminal::Fills
+impl core::marker::StructuralPartialEq for sigil::terminal::Fills
 pub enum sigil::terminal::FocusCursor
 pub sigil::terminal::FocusCursor::Follow
 pub sigil::terminal::FocusCursor::Off
@@ -5591,6 +5600,7 @@ pub sigil::terminal::Caps::clipboard: sigil::terminal::ClipRoute
 pub sigil::terminal::Caps::color: sigil::terminal::ColorDepth
 pub sigil::terminal::Caps::cursor: sigil::terminal::Cursor
 pub sigil::terminal::Caps::erase: sigil::terminal::Erase
+pub sigil::terminal::Caps::fills: sigil::terminal::Fills
 pub sigil::terminal::Caps::glyphs: sigil::terminal::Glyphs
 pub sigil::terminal::Caps::graphics: core::option::Option<sigil::terminal::Protocol>
 pub sigil::terminal::Caps::hyperlinks: bool

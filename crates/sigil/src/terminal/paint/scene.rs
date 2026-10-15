@@ -4,7 +4,7 @@ use crate::scene::{
     LinearGradient, SceneCommand,
 };
 use crate::style::{Rgba8, Theme, Tone};
-use crate::terminal::caps::{Caps, ColorDepth};
+use crate::terminal::caps::{Caps, ColorDepth, Fills};
 
 use super::decoration::{self, Edge};
 use super::fill::{self, Surface};
@@ -218,7 +218,9 @@ impl Walk<'_> {
                     origin,
                     size,
                     ink,
-                    halves: draw.leaf && draw.border.is_none(),
+                    halves: draw.leaf
+                        && draw.border.is_none()
+                        && self.paint.caps.fills == Fills::Partial,
                     theme: self.paint.theme,
                 };
                 fill::surface(self.grid, &surface, self.cell);

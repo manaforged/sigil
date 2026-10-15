@@ -47,6 +47,12 @@ pub enum Borders {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Fills {
+    Partial,
+    Whole,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cursor {
     Bar,
     Block,
@@ -75,6 +81,7 @@ pub struct Caps {
     pub clipboard: ClipRoute,
     pub backdrop: Option<Backdrop>,
     pub notices: Notices,
+    pub fills: Fills,
 }
 
 impl Default for Caps {
@@ -98,6 +105,7 @@ impl Default for Caps {
                 notify: None,
                 progress: false,
             },
+            fills: Fills::Partial,
         }
     }
 }
@@ -223,8 +231,20 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
             },
             backdrop: backdrop(env),
             notices: known.map(Known::notices).unwrap_or_default(),
+            fills: fills(env, known),
         },
         ask: questions(env, (sync, keys), color, known),
+    }
+}
+
+const APPLE_TERMINAL: &str = "com.apple.Terminal";
+
+fn fills(env: &impl Fn(&str) -> Option<String>, known: Option<Known>) -> Fills {
+    if known == Some(Known::Apple) || env("__CFBundleIdentifier").as_deref() == Some(APPLE_TERMINAL)
+    {
+        Fills::Whole
+    } else {
+        Fills::Partial
     }
 }
 
