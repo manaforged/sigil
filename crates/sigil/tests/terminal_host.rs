@@ -87,3 +87,5 @@ mod table;
 mod transforms;
 #[path = "terminal_host/wrap.rs"]
 mod wrap;
+#[path = "terminal_host/borders.rs"]
+mod borders;
