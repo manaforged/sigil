@@ -215,8 +215,8 @@ const ASCII: Glyphs = ["+", "+", "+", "+", "-", "|"];
 fn line(border: &CellBorder, borders: Borders) -> Glyphs {
     match borders {
         Borders::Ascii => ASCII,
-        Borders::Rounded if border.rounded => ROUNDED,
         Borders::Rounded if border.widths.iter().any(|width| *width >= 2.0) => HEAVY,
+        Borders::Rounded if border.rounded => ROUNDED,
         Borders::Light | Borders::Rounded => LIGHT,
     }
 }

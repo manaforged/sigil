@@ -92,9 +92,6 @@ impl Metrics {
 
     #[must_use]
     pub const fn radius(self, radius: Radius) -> Px {
-        if self.cell.is_some() {
-            return Px(0);
-        }
         match radius {
             Radius::None => Px(0),
             Radius::Sm => Px(2),

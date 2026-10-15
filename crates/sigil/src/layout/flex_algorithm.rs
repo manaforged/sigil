@@ -24,7 +24,7 @@ mod placement;
 mod sizing;
 mod subtree;
 
-use absolute::place_absolute;
+use absolute::place_absolutes;
 use placement::place_lines;
 pub(crate) use placement::{gap_along, main_gap};
 use sizing::container_inner_size;
@@ -115,7 +115,6 @@ pub(crate) fn layout_root(
         border_origin.x + edges.border.left + edges.padding.left,
         border_origin.y + edges.border.top + edges.padding.top,
     );
-    let content = CbSize::across(ctx.axes, container_main, container_cross);
     let area = crate::layout::flex_pack::Area {
         border_origin,
         content_origin,
@@ -125,18 +124,7 @@ pub(crate) fn layout_root(
     if crate::layout::flex_pack::pack_definite(ctx, node, &edges, &area)? {
         return Ok(());
     }
-    let padding_box = crate::layout::style_data::Size {
-        width: content.w + edges.padding.left + edges.padding.right,
-        height: content.h + edges.padding.top + edges.padding.bottom,
-    };
-    let items = build_items(
-        ctx,
-        node,
-        container_main,
-        container_cross,
-        padding_box,
-        border_origin,
-    )?;
+    let items = build_items(ctx, node, container_main, container_cross)?;
     let container_main = if ctx.definite_along(style, ctx.axes.row)
         || !matches!(style.flex_wrap, FlexWrap::NoWrap)
     {
@@ -148,7 +136,7 @@ pub(crate) fn layout_root(
     let placed = place_lines(ctx, lines, style, container_main, container_cross)?;
     write_items(ctx, &placed, content_origin)?;
     write_container(ctx, node, &edges, border_origin, container_main, &placed);
-    Ok(())
+    place_absolutes(ctx, node, &edges, border_origin)
 }
 
 fn filled_width(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>) -> Option<f32> {
@@ -189,8 +177,6 @@ fn build_items(
     parent: NodeRef<'_>,
     container_main: f32,
     container_cross: f32,
-    padding_box: crate::layout::style_data::Size<f32>,
-    padding_origin: Position2,
 ) -> Result<Vec<FlexItem>, LayoutError> {
     let forest = ctx.solver.scope().forest();
     let children = parent.children();
@@ -204,14 +190,6 @@ fn build_items(
             continue;
         }
         if matches!(style.position, Position::Absolute) {
-            place_absolute(
-                ctx,
-                child,
-                container_main,
-                container_cross,
-                padding_box,
-                padding_origin,
-            )?;
             continue;
         }
         items.push(FlexItem::build(ctx, child, container_main, container_cross));

@@ -71,6 +71,8 @@ fn counter() -> impl IntoNode {
         }))
 }
 
+#[path = "terminal_host/borders.rs"]
+mod borders;
 #[path = "terminal_host/cells.rs"]
 mod cells;
 #[path = "terminal_host/frames.rs"]

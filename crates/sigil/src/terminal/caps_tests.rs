@@ -1,4 +1,4 @@
-use super::{Caps, ColorDepth, Erase, Keyboard};
+use super::{Caps, ColorDepth, Erase, Fills, Keyboard};
 use crate::app::Ambiguous;
 use crate::terminal::glyphs::Glyphs;
 
@@ -132,4 +132,35 @@ fn a_query_answer_never_turns_on_images() {
     let answers = super::probe::parse("\x1b_Gi=31;OK\x1b\\\x1b[?62;4;22c");
     let caps = super::draft(&env).settle(&answers);
     assert_eq!(caps.graphics, None);
+}
+
+#[test]
+fn terminal_app_fills_whole_cells_even_behind_a_multiplexer() {
+    let fills = |vars: &[(&str, &str)]| caps(vars).fills;
+    assert_eq!(fills(&[("TERM_PROGRAM", "Apple_Terminal")]), Fills::Whole);
+    assert_eq!(
+        fills(&[
+            ("TERM_PROGRAM", "herdr"),
+            ("__CFBundleIdentifier", "com.apple.Terminal")
+        ]),
+        Fills::Whole
+    );
+    assert_eq!(fills(&[("TERM_PROGRAM", "ghostty")]), Fills::Partial);
+    assert_eq!(fills(&[]), Fills::Partial);
+}
+
+#[test]
+fn sigil_fills_overrides_the_detected_fills() {
+    let fills = |vars: &[(&str, &str)]| caps(vars).fills;
+    assert_eq!(
+        fills(&[
+            ("TERM_PROGRAM", "Apple_Terminal"),
+            ("SIGIL_FILLS", "partial")
+        ]),
+        Fills::Partial
+    );
+    assert_eq!(
+        fills(&[("TERM_PROGRAM", "ghostty"), ("SIGIL_FILLS", "whole")]),
+        Fills::Whole
+    );
 }

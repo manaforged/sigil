@@ -20,7 +20,7 @@ mod write;
 
 pub use access::{Access, FocusCursor};
 pub use caps::{
-    Backdrop, Borders, Caps, ClipRoute, ColorDepth, Cursor, Erase, Keyboard, Notices, Notify,
+    Backdrop, Borders, Caps, ClipRoute, ColorDepth, Cursor, Erase, Fills, Keyboard, Notices, Notify,
 };
 pub use clipboard::install_clipboard;
 pub use glyphs::{Glyphs, glyphs};
