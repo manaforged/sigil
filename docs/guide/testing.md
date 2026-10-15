@@ -133,10 +133,13 @@ ui.snapshot("save_button");
 
 ## Real terminals
 
-The cell grid that tests read is what the terminal host sends, not what a terminal draws. Terminals differ in how they draw block and box glyphs from the font, so check a terminal screen in the terminals your users run. On macOS, `scripts/term-shot.sh` runs a command in a new Terminal.app or Ghostty window at a set size, waits, saves a PNG of that window, and closes it:
+The cell grid that tests read is what the terminal host sends, not what a terminal draws. Terminals differ in how they draw block and box glyphs from the font, so check a terminal screen in the terminals your users run. On macOS, `scripts/term-shot.sh` runs a command in a new Terminal.app, Ghostty, or iTerm window at a set size, waits, saves a PNG of that window, and closes it:
 
 ```sh
-scripts/term-shot.sh --app Terminal --size 120x36 --wait 4 --out splash.png -- cargo run --example hello-counter
+scripts/term-shot.sh --app Terminal --size 120x36 --font SFMono-Regular --font-size 11 \
+  --env SIGIL_FILLS=whole --keys ctrl+o --wait 4 --out settings.png -- cargo run --example hello-counter
 ```
 
-The shell that runs it needs Screen Recording permission for `screencapture`; where only Peekaboo holds that permission, the script captures through Peekaboo's bridge instead.
+`--font` and `--font-size` set the window's font in Terminal.app through a temporary profile that is deleted afterwards, and in Ghostty through its command line; iTerm uses its default profile. `--env` exports a variable inside the new window, which does not inherit the calling shell's environment. `--keys` sends key chords to the captured window just before the capture and needs Peekaboo.
+
+The shell that runs it needs Screen Recording permission for `screencapture`; where only Peekaboo holds that permission, the script captures through Peekaboo's bridge instead. A first launch of Ghostty or iTerm can stop on a macOS prompt that a person answers once.
