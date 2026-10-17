@@ -66,3 +66,88 @@ fn an_unchanged_subtree_is_copied() {
         assert_eq!(idle_walked, 0, "an idle frame walked {idle_walked} nodes");
     });
 }
+
+#[test]
+fn a_keyed_swap_still_copies_its_static_sibling() {
+    Runtime::scope("emit-keyed-sibling", || {
+        let word = signal(String::from("one"));
+        let mut host = Host::cells();
+        host.mount(move || {
+            container()
+                .layout(LayoutStyle::flex_column().fill_width())
+                .child((0..12).fold(
+                    container().layout(LayoutStyle::flex_column()),
+                    |column, row| column.child(text(format!("still {row}"))),
+                ))
+                .child(
+                    container()
+                        .layout(LayoutStyle::flex_row())
+                        .children_keyed(move || {
+                            let shown = word.get();
+                            vec![(shown.clone(), text(shown))]
+                        }),
+                )
+        });
+        host.layout(VIEW).expect("layout");
+        let delta = host.cx().take_delta();
+        let (first, _) = host.emit_since(VIEW, &delta, &CommandScene::default());
+        word.set(String::from("two"));
+        host.layout(VIEW).expect("layout");
+        let changed = host.cx().take_delta();
+        let mut second = CommandScene::default();
+        let (walked, copied) = counted(|| {
+            let (scene, _) = host.emit_since(VIEW, &changed, &first);
+            second = scene;
+        });
+        assert_eq!(
+            second,
+            host.emit(VIEW),
+            "the incremental emit differs from a fresh one"
+        );
+        assert!(
+            copied >= 12,
+            "a keyed swap re-emitted its static sibling: walked {walked}, copied {copied}"
+        );
+    });
+}
+
+#[test]
+fn an_idle_frame_keeps_the_copies_for_the_next_change() {
+    Runtime::scope("emit-after-idle", || {
+        let word = signal(String::from("one"));
+        let mut host = Host::cells();
+        host.mount(move || {
+            container()
+                .layout(LayoutStyle::flex_column().fill_width())
+                .child((0..12).fold(
+                    container().layout(LayoutStyle::flex_column()),
+                    |column, row| column.child(text(format!("still {row}"))),
+                ))
+                .child(text(word))
+        });
+        host.layout(VIEW).expect("layout");
+        let delta = host.cx().take_delta();
+        let (first, _) = host.emit_since(VIEW, &delta, &CommandScene::default());
+        host.layout(VIEW).expect("layout");
+        let idle = host.cx().take_delta();
+        let (second, diff) = host.emit_since(VIEW, &idle, &first);
+        assert!(diff.unchanged());
+        word.set(String::from("two"));
+        host.layout(VIEW).expect("layout");
+        let changed = host.cx().take_delta();
+        let mut third = CommandScene::default();
+        let (walked, copied) = counted(|| {
+            let (scene, _) = host.emit_since(VIEW, &changed, &second);
+            third = scene;
+        });
+        assert_eq!(
+            third,
+            host.emit(VIEW),
+            "the incremental emit differs from a fresh one"
+        );
+        assert!(
+            copied >= 12,
+            "a change after an idle frame re-emitted the unchanged column: walked {walked}, copied {copied}"
+        );
+    });
+}

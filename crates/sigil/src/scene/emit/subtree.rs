@@ -134,13 +134,23 @@ impl<'t> EmitWalk<'_, 't> {
             new: start,
             len: span.len,
         });
-        self.track.next.insert(
-            id,
-            Span {
-                start,
-                ..span.clone()
-            },
-        );
+        let next = &mut self.track.next;
+        let (old, end) = (span.start, span.start + span.len);
+        self.cx.visit_preorder(id, |inner, _| {
+            if let Some(kept) = prior
+                .spans
+                .get(&inner)
+                .filter(|kept| kept.start >= old && kept.start + kept.len <= end)
+            {
+                next.insert(
+                    inner,
+                    Span {
+                        start: kept.start - old + start,
+                        ..kept.clone()
+                    },
+                );
+            }
+        });
         true
     }
 
