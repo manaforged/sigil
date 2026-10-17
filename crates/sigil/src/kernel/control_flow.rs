@@ -2,7 +2,6 @@ use std::cell::{Cell, RefCell};
 use std::hash::Hash;
 use std::rc::Rc;
 
-use crate::kernel::reactive_children::Survivor;
 use crate::kernel::{Cx, NodeId};
 use crate::kernel::{IntoNode, NodeBuilder, container, fragment, node};
 use crate::reactive::{Reactive, Signal, derived};
@@ -19,18 +18,15 @@ where
     A: IntoNode + 'static,
     B: IntoNode + 'static,
 {
-    fragment().keyed_children(
-        move || {
-            let branch = cond.read();
-            let child = if branch {
-                node(then())
-            } else {
-                node(otherwise())
-            };
-            [(branch, child)]
-        },
-        Survivor::Keep,
-    )
+    fragment().keyed_children(move || {
+        let branch = cond.read();
+        let child = if branch {
+            node(then())
+        } else {
+            node(otherwise())
+        };
+        [(branch, child)]
+    })
 }
 
 #[must_use]
@@ -109,39 +105,33 @@ impl<K: Clone + PartialEq + 'static> SwitchBuilder<K> {
         if keep_alive {
             mount_kept(views, slot)
         } else {
-            fragment().keyed_children(
-                move || {
-                    slot.get()
-                        .and_then(|i| views.get(i).map(|view| (i, view())))
-                },
-                Survivor::Keep,
-            )
+            fragment().keyed_children(move || {
+                slot.get()
+                    .and_then(|i| views.get(i).map(|view| (i, view())))
+            })
         }
     }
 }
 
 fn mount_kept(views: Vec<View>, slot: Signal<Option<usize>>) -> NodeBuilder {
     let visited = RefCell::new(Vec::<usize>::new());
-    fragment().keyed_children(
-        move || {
-            let mut seen = visited.borrow_mut();
-            if let Some(active) = slot.get()
-                && !seen.contains(&active)
-            {
-                seen.push(active);
-            }
-            seen.iter()
-                .filter_map(|&i| views.get(i).map(|view| (i, Rc::clone(view))))
-                .map(|(i, view)| {
-                    let page = container()
-                        .child(move || view())
-                        .visible_when(move || slot.get() == Some(i));
-                    (i, page)
-                })
-                .collect::<Vec<_>>()
-        },
-        Survivor::Keep,
-    )
+    fragment().keyed_children(move || {
+        let mut seen = visited.borrow_mut();
+        if let Some(active) = slot.get()
+            && !seen.contains(&active)
+        {
+            seen.push(active);
+        }
+        seen.iter()
+            .filter_map(|&i| views.get(i).map(|view| (i, Rc::clone(view))))
+            .map(|(i, view)| {
+                let page = container()
+                    .child(move || view())
+                    .visible_when(move || slot.get() == Some(i));
+                (i, page)
+            })
+            .collect::<Vec<_>>()
+    })
 }
 
 impl<K: Clone + PartialEq + 'static> IntoNode for SwitchBuilder<K> {

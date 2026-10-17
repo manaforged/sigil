@@ -15,12 +15,6 @@ pub(crate) type PriorNodes = SmallVec<[NodeId; 4]>;
 type KeyedIncoming<K> = Vec<(K, Option<Box<dyn ErasedComponent>>)>;
 type Fates = SmallVec<[Fate; 4]>;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Survivor {
-    Patch,
-    Keep,
-}
-
 pub(crate) struct DeferredRebuild {
     pub(crate) parent: NodeId,
     pub(crate) apply: RebuildFn,
@@ -131,7 +125,7 @@ where
     });
 }
 
-pub(crate) fn install_keyed<F, I, K, N>(parent: NodeId, mut f: F, survivor: Survivor)
+pub(crate) fn install_keyed<F, I, K, N>(parent: NodeId, mut f: F)
 where
     F: FnMut() -> I + 'static,
     I: IntoIterator<Item = (K, N)>,
@@ -146,13 +140,7 @@ where
                 .map(|(key, child)| (key, Some(Box::new(child) as Box<dyn ErasedComponent>)))
                 .collect()
         });
-        enqueue_keyed(
-            parent,
-            Rc::clone(&prior),
-            incoming,
-            survivor,
-            Some(generation),
-        );
+        enqueue_keyed(parent, Rc::clone(&prior), incoming, Some(generation));
     });
 }
 
@@ -203,14 +191,13 @@ pub fn schedule_keyed_rebuild<K, N>(
             )
         })
         .collect();
-    enqueue_keyed(parent, prior, incoming, Survivor::Patch, None);
+    enqueue_keyed(parent, prior, incoming, None);
 }
 
 fn enqueue_keyed<K: Clone + Eq + Hash + 'static>(
     parent: NodeId,
     prior: Rc<RefCell<Vec<(K, NodeId)>>>,
     incoming: KeyedIncoming<K>,
-    survivor: Survivor,
     generation: Option<Owner>,
 ) {
     let mut slot = Some(incoming);
@@ -223,23 +210,17 @@ fn enqueue_keyed<K: Clone + Eq + Hash + 'static>(
                 parent,
                 &prior,
                 slot.take().unwrap_or_default(),
-                survivor,
                 &mut generation,
             );
         }),
     });
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "one keyed apply needs the list, its prior ids, the incoming items, the survivor rule, and the generation guard"
-)]
 fn apply_keyed<K: Clone + Eq + Hash>(
     cx: &mut Cx,
     parent: NodeId,
     prior: &RefCell<Vec<(K, NodeId)>>,
     incoming: KeyedIncoming<K>,
-    survivor: Survivor,
     generation: &mut GenerationGuard,
 ) {
     if stale(cx, parent, generation) {
@@ -247,7 +228,7 @@ fn apply_keyed<K: Clone + Eq + Hash>(
     }
     let old = std::mem::take(&mut *prior.borrow_mut());
     let mut live: AHashMap<K, NodeId> = old.into_iter().collect();
-    let (mut next, fates) = mount_keyed(cx, parent, incoming, &mut live, survivor);
+    let (mut next, fates) = mount_keyed(cx, parent, incoming, &mut live);
     for id in live.into_values() {
         cx.remove_counted(id);
     }
@@ -316,7 +297,6 @@ fn mount_keyed<K: Clone + Eq + Hash>(
     parent: NodeId,
     incoming: KeyedIncoming<K>,
     live: &mut AHashMap<K, NodeId>,
-    survivor: Survivor,
 ) -> (Vec<(K, NodeId)>, Fates) {
     let mut seen = AHashSet::new();
     let mut next = Vec::with_capacity(incoming.len());
@@ -326,7 +306,8 @@ fn mount_keyed<K: Clone + Eq + Hash>(
             continue;
         }
         let existing = live.remove(&key);
-        let builder = survivor_builder(cx, survivor, existing, builder);
+        let alive = existing.is_some_and(|id| cx.nodes.contains_key(id.key()));
+        let builder = builder.filter(|_| !alive);
         let Some(fate) = cx.reconcile_child(parent, existing, builder, Unpatched::Keep) else {
             continue;
         };
@@ -334,19 +315,6 @@ fn mount_keyed<K: Clone + Eq + Hash>(
         next.push((key, fate.id()));
     }
     (next, fates)
-}
-
-fn survivor_builder(
-    cx: &Cx,
-    survivor: Survivor,
-    existing: Option<NodeId>,
-    builder: Option<Box<dyn ErasedComponent>>,
-) -> Option<Box<dyn ErasedComponent>> {
-    let alive = existing.is_some_and(|id| cx.nodes.contains_key(id.key()));
-    match survivor {
-        Survivor::Keep if alive => None,
-        Survivor::Keep | Survivor::Patch => builder,
-    }
 }
 
 impl Cx {

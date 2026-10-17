@@ -4,7 +4,6 @@ use accesskit::{Action, Role, SortDirection};
 use smallvec::SmallVec;
 
 use crate::kernel::component::{ErasedComponent, IntoNode, Patch};
-use crate::kernel::reactive_children::Survivor;
 use crate::kernel::{
     A11yProps, AccessibleName, Cx, Node, NodeId, NodeType, TextCursor, reactive_children,
 };
@@ -262,11 +261,11 @@ impl NodeBuilder {
         K: Clone + Eq + std::hash::Hash + 'static,
         N: IntoNode + 'static,
     {
-        self.keyed_children(f, Survivor::Patch)
+        self.keyed_children(f)
     }
 
     #[must_use]
-    pub(crate) fn keyed_children<F, I, K, N>(mut self, f: F, survivor: Survivor) -> Self
+    pub(crate) fn keyed_children<F, I, K, N>(mut self, f: F) -> Self
     where
         F: Fn() -> I + 'static,
         I: IntoIterator<Item = (K, N)>,
@@ -274,7 +273,7 @@ impl NodeBuilder {
         N: IntoNode + 'static,
     {
         self.reactive_children = Some(Box::new(move |parent| {
-            reactive_children::install_keyed(parent, f, survivor);
+            reactive_children::install_keyed(parent, f);
         }));
         self
     }

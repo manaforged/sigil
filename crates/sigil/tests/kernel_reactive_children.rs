@@ -338,3 +338,32 @@ fn keyed_rebuild_keeps_mounted_rows_passed_without_a_node() {
         assert!(cx.get(one).is_none(), "the missing key unmounts");
     });
 }
+
+#[test]
+fn a_keyed_survivor_keeps_its_node_untouched() {
+    use sigil::profile::{self, BackendStatus, Counter};
+    Runtime::scope("sigil_kernel_children_keyed_keep", || {
+        let items = signal(vec![1_u8, 2, 3]);
+        let mut cx = Cx::new_root();
+        let parent = cx.add(container().children_keyed(move || {
+            items
+                .get()
+                .into_iter()
+                .map(|item| (item, text(format!("row {item}"))))
+        }));
+        cx.flush_reactive_children();
+        let before = child_ids(&cx, parent);
+        profile::enable();
+        profile::reset();
+        profile::begin_frame(BackendStatus::TERMINAL);
+        items.set(vec![1, 2, 3]);
+        cx.flush_reactive_children();
+        profile::tick_frame();
+        let patched = profile::frames()
+            .last()
+            .map_or(u64::MAX, |frame| frame.counter(Counter::KernelPatched));
+        profile::disable();
+        assert_eq!(child_ids(&cx, parent), before);
+        assert_eq!(patched, 0, "a surviving key was patched");
+    });
+}
