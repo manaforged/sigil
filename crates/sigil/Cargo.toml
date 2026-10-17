@@ -139,6 +139,7 @@ serde = { workspace = true }
 pollster = { workspace = true }
 proptest = { workspace = true }
 taffy = "0.14"
+vt100 = "0.16"
 wgpu = { workspace = true }
 
 [target.'cfg(windows)'.dev-dependencies]

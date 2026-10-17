@@ -122,6 +122,7 @@ struct Side {
     host: Host,
     router: EventRouter,
     screen: Screen,
+    term: vt100::Parser,
 }
 
 impl Side {
@@ -137,6 +138,7 @@ impl Side {
             host,
             router: EventRouter::new(),
             screen,
+            term: vt100::Parser::new(size.1, size.0, 0),
         }
     }
 
@@ -145,14 +147,44 @@ impl Side {
             self.host.reset_emit();
             self.screen.invalidate();
         }
-        let shown = ansi(
+        let grid = ansi(
             self.screen
                 .frame(&mut self.host, &mut self.router, events, size)
                 .expect("frame"),
         );
-        self.screen.flush(&mut std::io::sink()).expect("flush");
-        shown
+        let mut bytes = Vec::new();
+        self.screen.flush(&mut bytes).expect("flush");
+        self.term.screen_mut().set_size(size.1, size.0);
+        self.term.process(&bytes);
+        format!("{grid}\nterminal:\n{}", seen(self.term.screen(), size))
     }
+}
+
+fn seen(term: &vt100::Screen, (cols, rows): (u16, u16)) -> String {
+    let mut shown = String::new();
+    for row in 0..rows {
+        for col in 0..cols {
+            let Some(cell) = term.cell(row, col) else {
+                continue;
+            };
+            let text = if cell.has_contents() {
+                cell.contents()
+            } else {
+                " "
+            };
+            shown.push_str(&format!(
+                "{text}{:?}{:?}{}{}{}{}|",
+                cell.fgcolor(),
+                cell.bgcolor(),
+                u8::from(cell.bold()),
+                u8::from(cell.italic()),
+                u8::from(cell.underline()),
+                u8::from(cell.inverse()),
+            ));
+        }
+        shown.push('\n');
+    }
+    shown
 }
 
 fn state() -> State {
