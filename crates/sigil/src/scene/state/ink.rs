@@ -1,8 +1,11 @@
 use crate::geometry::{Point, Rect};
+#[cfg(feature = "scene")]
+use crate::scene::command::Transform;
 use crate::scene::command::effects::transform_rect;
-use crate::scene::command::{LayerEffect, SceneCommand, Stroke, Transform};
+use crate::scene::command::{LayerEffect, SceneCommand, Stroke};
 use crate::scene::shadow::Shadow;
 
+#[cfg(feature = "scene")]
 pub(crate) fn invert(transform: Transform) -> Option<Transform> {
     let [[a, b, tx], [c, d, ty]] = transform;
     let det = a.mul_add(d, -(b * c));

@@ -1,25 +1,24 @@
-#![cfg_attr(
-    not(feature = "scene"),
-    allow(
-        dead_code,
-        reason = "the terminal uses the ink bounds; the GPU renderer uses the rest"
-    )
-)]
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum FullReason {
+    #[cfg(feature = "scene")]
     FirstFrame,
+    #[cfg(feature = "scene")]
     Untracked,
     NoBackbuffer,
+    #[cfg(feature = "scene")]
     TranslucentClear,
+    #[cfg(feature = "scene")]
     ViewportResized,
+    #[cfg(feature = "scene")]
     KeyChanged,
     NonLocalLayerEffect,
     ChangedShare,
     UnboundedChange,
+    #[cfg(feature = "scene")]
     RegionShare,
 }
 
+#[cfg(feature = "scene")]
 impl FullReason {
     pub(crate) const fn name(self) -> &'static str {
         match self {

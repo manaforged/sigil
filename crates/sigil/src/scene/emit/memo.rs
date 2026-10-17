@@ -114,17 +114,12 @@ impl EmitMemo {
         dirty
     }
 
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "one commit records the spans, the selection, the scene length and the root"
-    )]
     pub(super) fn commit(
         &mut self,
         cx: &Cx,
         root: NodeId,
-        spans: AHashMap<NodeId, Span>,
+        (spans, len): (AHashMap<NodeId, Span>, usize),
         selection: &HashMap<NodeId, (usize, usize)>,
-        len: usize,
     ) {
         self.spans = spans;
         self.selected = selection.keys().copied().collect();

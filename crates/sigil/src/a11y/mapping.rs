@@ -12,10 +12,7 @@ pub(super) const WINDOW_ROOT: AkNodeId = AkNodeId(u64::MAX);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum TreeScope {
     Full,
-    #[cfg_attr(
-        not(feature = "terminal"),
-        expect(dead_code, reason = "only the terminal reads the reduced scope")
-    )]
+    #[cfg(feature = "terminal")]
     Reading,
 }
 

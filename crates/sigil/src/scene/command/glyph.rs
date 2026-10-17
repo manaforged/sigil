@@ -91,6 +91,7 @@ impl GlyphRun {
     }
 
     #[cfg(not(feature = "scene"))]
+    #[cfg(any(test, feature = "terminal"))]
     #[expect(
         clippy::unnecessary_wraps,
         reason = "one signature with the shaped version, which can find no ink"

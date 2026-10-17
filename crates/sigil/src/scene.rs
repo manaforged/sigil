@@ -2,11 +2,14 @@ pub(crate) mod backdrop;
 pub(crate) mod builder;
 pub(crate) mod command;
 pub(crate) mod corner_radii;
+#[cfg(any(test, feature = "scene", feature = "terminal"))]
 pub(crate) mod damage;
 pub(crate) mod emit;
 pub(crate) mod emit_cache;
+#[cfg(any(test, feature = "scene", feature = "terminal"))]
 pub(crate) mod geometry;
 pub(crate) mod shadow;
+#[cfg(any(test, feature = "scene", feature = "terminal"))]
 pub(crate) mod state;
 pub(crate) mod style_adapter;
 

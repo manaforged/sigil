@@ -2,14 +2,18 @@ use core::ops::Range;
 
 use smallvec::SmallVec;
 
+#[cfg(feature = "scene")]
+mod budget;
 mod changed;
 mod reason;
+#[cfg(any(test, feature = "terminal"))]
 mod regions;
 
 #[cfg(feature = "scene")]
+pub(crate) use budget::Budget;
+#[cfg(feature = "scene")]
 pub(crate) use changed::command_ink;
 pub(crate) use reason::FullReason;
-pub(crate) use regions::Budget;
 
 use crate::geometry::Rect;
 use crate::scene::{CommandScene, LayerEffect, SceneCommand};
@@ -27,25 +31,23 @@ pub(crate) enum Damage<R> {
 
 type Inks = SmallVec<[Rect; 16]>;
 
-#[cfg_attr(
-    not(feature = "scene"),
-    expect(dead_code, reason = "the GPU renderer plans regions with it")
-)]
+#[cfg(feature = "scene")]
 pub(crate) fn scene_damage<R: FromIterator<Rect>>(
     (previous, next): (&CommandScene, &CommandScene),
     (area, scale): (Rect, f32),
     budget: Budget,
 ) -> Damage<R> {
     match changed_inks(previous, next, (area, scale)) {
-        Damage::Regions(inks) => regions::regions(&inks, area, scale, budget),
+        Damage::Regions(inks) => budget::regions(&inks, area, scale, budget),
         Damage::Unchanged => Damage::Unchanged,
         Damage::Full(reason) => Damage::Full(reason),
     }
 }
 
+#[cfg(any(test, feature = "terminal"))]
 const TERMINAL_SCALE: f32 = 1.0;
 
-#[cfg_attr(not(test), allow(dead_code, reason = "the terminal screen wires it"))]
+#[cfg(any(test, feature = "terminal"))]
 pub(crate) fn cell_damage(
     (previous, next): (&CommandScene, &CommandScene),
     area: Rect,

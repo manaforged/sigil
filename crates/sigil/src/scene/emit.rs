@@ -61,9 +61,8 @@ pub(crate) fn emit_scene_since(
     memo.commit(
         cx,
         root,
-        std::mem::take(&mut track.next),
+        (std::mem::take(&mut track.next), scene.commands.len()),
         &selection,
-        scene.commands.len(),
     );
     (scene, diff)
 }

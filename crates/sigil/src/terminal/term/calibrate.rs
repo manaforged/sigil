@@ -10,15 +10,20 @@ use crate::app::{CellWidth, set_cell_width};
 
 const MODIFIER: &str = "👍🏽";
 const SAMPLES: [&str; 4] = [MODIFIER, "\u{200d}", "\u{200c}", "1\u{fe0f}\u{20e3}"];
+#[cfg(unix)]
 const HOME: &str = "\r\x1b[2K";
+#[cfg(unix)]
 const REPORT: &str = "\x1b[6n";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) enum Measured {
     #[default]
     Unmeasured,
+    #[cfg(unix)]
     Silent,
+    #[cfg(unix)]
     Wrapped,
+    #[cfg(unix)]
     Columns([usize; 4]),
 }
 
@@ -30,7 +35,7 @@ pub(crate) fn keep(measured: Measured) {
     MEASURED.set(measured);
 }
 
-#[cfg_attr(not(unix), allow(dead_code))]
+#[cfg(unix)]
 pub(crate) fn query() -> String {
     let mut text = format!("{HOME}{REPORT}");
     for sample in SAMPLES {
@@ -42,7 +47,7 @@ pub(crate) fn query() -> String {
     text
 }
 
-#[cfg_attr(not(unix), allow(dead_code))]
+#[cfg(unix)]
 pub(crate) fn measure(reports: &[(u16, u16)]) -> Measured {
     let Some((&(row, _), rest)) = reports.split_first() else {
         return Measured::Silent;
@@ -63,13 +68,16 @@ pub(crate) fn measure(reports: &[(u16, u16)]) -> Measured {
 pub fn calibrate(out: &mut impl Write) -> io::Result<()> {
     set_cell_width(CellWidth::Unicode);
     let [modifier, joiner, nonjoiner, keycap] = match MEASURED.get() {
+        #[cfg(unix)]
         Measured::Columns(columns) => columns,
+        #[cfg(unix)]
         Measured::Silent => {
             return Err(io::Error::new(
                 io::ErrorKind::TimedOut,
                 "terminal did not report the cursor position",
             ));
         }
+        #[cfg(unix)]
         Measured::Wrapped => return Err(wrapped()),
         Measured::Unmeasured => live(out)?,
     };

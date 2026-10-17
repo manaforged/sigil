@@ -3,11 +3,13 @@ use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
 use crate::terminal::term::Measured;
 
+#[cfg(unix)]
 mod ask;
 mod known;
 #[cfg(unix)]
 mod probe;
 
+#[cfg(unix)]
 use ask::{Question, Questions, Version};
 pub(in crate::terminal) use known::{Known, known_env};
 pub use known::{Notices, Notify};
@@ -111,7 +113,7 @@ impl Default for Caps {
     }
 }
 
-#[cfg_attr(not(unix), allow(dead_code))]
+#[cfg(unix)]
 #[derive(Default)]
 struct Answers {
     sync: bool,
@@ -122,9 +124,9 @@ struct Answers {
     measured: Measured,
 }
 
-#[cfg_attr(not(unix), allow(dead_code))]
 struct Draft {
     caps: Caps,
+    #[cfg(unix)]
     ask: Questions,
 }
 
@@ -166,11 +168,11 @@ fn ask_terminal(mut draft: Draft) -> (Caps, Measured) {
 }
 
 #[cfg(not(unix))]
-const fn ask_terminal(draft: Draft) -> (Caps, Measured) {
-    (draft.caps, Measured::Unmeasured)
+const fn ask_terminal(Draft { caps }: Draft) -> (Caps, Measured) {
+    (caps, Measured::Unmeasured)
 }
 
-#[cfg_attr(not(unix), allow(dead_code))]
+#[cfg(unix)]
 impl Draft {
     const fn settle(mut self, answers: &Answers) -> Caps {
         if self.ask.has(Question::Sync) {
@@ -243,6 +245,7 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
             notices: known.map(Known::notices).unwrap_or_default(),
             fills: fills(env, known),
         },
+        #[cfg(unix)]
         ask: questions(env, (sync, keys), color, known),
     }
 }
@@ -269,6 +272,7 @@ fn fills(env: &impl Fn(&str) -> Option<String>, known: Option<Known>) -> Fills {
     }
 }
 
+#[cfg(unix)]
 fn questions(
     env: &impl Fn(&str) -> Option<String>,
     (sync, keys): (Option<bool>, Option<bool>),
