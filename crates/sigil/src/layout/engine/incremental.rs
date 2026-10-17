@@ -1,5 +1,5 @@
 use crate::geometry::{Dim, Size};
-use crate::kernel::{Cx, NodeId, NodeType};
+use crate::kernel::{Cx, DeltaKind, NodeId, NodeType};
 use crate::profile::Counter;
 use ahash::AHashSet;
 use smallvec::SmallVec;
@@ -160,7 +160,9 @@ impl LayoutEngine {
         let mut ids = SmallVec::<[_; 32]>::new();
         cx.visit_preorder(id, |node, _| ids.push(node));
         for node in ids {
-            self.published_result.remove(node.key());
+            if self.published_result.remove(node.key()).is_some() {
+                cx.delta.record(node, DeltaKind::Layout);
+            }
             if let Some(kernel) = cx.get_mut_untracked(node)
                 && kernel.get_extension::<LayoutResult>().is_some()
             {

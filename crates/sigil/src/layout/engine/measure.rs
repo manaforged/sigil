@@ -1,5 +1,5 @@
 use crate::geometry::{Dim, Size};
-use crate::kernel::{Cx, NodeId};
+use crate::kernel::{Cx, DeltaKind, NodeId};
 use smallvec::SmallVec;
 
 use crate::layout::forest::{AvailableSpace, SpaceConstraint};
@@ -145,6 +145,7 @@ impl LayoutEngine {
             if self.published_result.get(id.key()).copied() == Some(result) {
                 continue;
             }
+            cx.delta.record(id, DeltaKind::Layout);
             let node = cx
                 .get_mut_untracked(id)
                 .ok_or(LayoutError::NodeMissing(id))?;
@@ -172,7 +173,9 @@ impl LayoutEngine {
             if still_fresh {
                 continue;
             }
-            self.published_result.remove(id.key());
+            if self.published_result.remove(id.key()).is_some() {
+                cx.delta.record(id, DeltaKind::Layout);
+            }
             if let Some(node) = cx.get_mut_untracked(id)
                 && node.get_extension::<LayoutResult>().is_some()
             {
