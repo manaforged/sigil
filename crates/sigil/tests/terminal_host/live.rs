@@ -6,6 +6,7 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::{LayoutBuilderExt, Paint, Signal};
 use sigil::reactive::{Runtime, signal};
 use sigil::style::{StateVariants, Token};
+use std::fmt::Write as _;
 use std::time::Duration;
 
 use sigil::terminal::{Access, ColorDepth, Grid, Screen, render};
@@ -172,7 +173,8 @@ fn seen(term: &vt100::Screen, (cols, rows): (u16, u16)) -> String {
             } else {
                 " "
             };
-            shown.push_str(&format!(
+            let _ = write!(
+                shown,
                 "{text}{:?}{:?}{}{}{}{}|",
                 cell.fgcolor(),
                 cell.bgcolor(),
@@ -180,7 +182,7 @@ fn seen(term: &vt100::Screen, (cols, rows): (u16, u16)) -> String {
                 u8::from(cell.italic()),
                 u8::from(cell.underline()),
                 u8::from(cell.inverse()),
-            ));
+            );
         }
         shown.push('\n');
     }
