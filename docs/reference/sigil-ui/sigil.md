@@ -97,6 +97,7 @@
 | <code>cells() -&gt; Self</code> |  |
 | <code>const cx(&amp;mut self) -&gt; &amp;mut <a href="sigil-kernel.html#cx">Cx</a></code> |  |
 | <code>emit(&amp;mut self, viewport: (f32, f32)) -&gt; <a href="sigil-scene.html#commandscene">CommandScene</a></code> |  |
+| <code>emit_since(&amp;mut self, viewport: (f32, f32), delta: &amp;<a href="sigil-kernel.html#framedelta">FrameDelta</a>, prev: &amp;<a href="sigil-scene.html#commandscene">CommandScene</a>) -&gt; (<a href="sigil-scene.html#commandscene">CommandScene</a>, <a href="sigil-scene.html#emitdiff">EmitDiff</a>)</code> |  |
 | <code>focus_intent(&amp;mut self, router: &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>, intent: <a href="sigil-events.html#focusintent">FocusIntent</a>)</code> |  |
 | <code>hit_path(&amp;mut self, x: f32, y: f32) -&gt; Vec&lt;<a href="sigil-kernel.html#nodeid">NodeId</a>&gt;</code> |  |
 | <code>const host_mode(&amp;self) -&gt; <a href="sigil-kernel.html#hostmode">HostMode</a></code> |  |
@@ -105,6 +106,7 @@
 | <code>new() -&gt; Self</code> |  |
 | <code>perform(&amp;mut self, router: &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>, target: <a href="sigil-kernel.html#nodeid">NodeId</a>, request: &amp;ActionRequest)</code> |  |
 | <code>repair_focus(&amp;mut self, router: &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>)</code> |  |
+| <code>reset_emit(&amp;mut self)</code> |  |
 | <code>const root(&amp;self) -&gt; Option&lt;<a href="sigil-kernel.html#nodeid">NodeId</a>&gt;</code> |  |
 | <code>route(&amp;mut self, router: &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>, event: <a href="sigil-events.html#shellevent">ShellEvent</a>)</code> |  |
 | <code>scene(&amp;mut self, viewport: (f32, f32)) -&gt; Result&lt;<a href="sigil-scene.html#commandscene">CommandScene</a>, <a href="sigil-layout.html#layouterror">LayoutError</a>&gt;</code> |  |

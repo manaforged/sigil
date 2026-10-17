@@ -5,6 +5,7 @@
 | [`NodeBuilder`](#nodebuilder) | struct |  |
 | [`A11yProps`](#a11yprops) | struct |  |
 | [`Cx`](#cx) | struct |  |
+| [`FrameDelta`](#framedelta) | struct |  |
 | [`ImageBuilder`](#imagebuilder) | struct |  |
 | [`ImageCrop`](#imagecrop) | struct |  |
 | [`ImageRaster`](#imageraster) | struct |  |
@@ -12,6 +13,7 @@
 | [`Node`](#node) | struct |  |
 | [`NodeExtensions`](#nodeextensions) | struct |  |
 | [`NodeId`](#nodeid) | struct |  |
+| [`NodeTag`](#nodetag) | struct |  |
 | [`StatusView`](#statusview) | struct |  |
 | [`Surface`](#surface) | struct |  |
 | [`SwitchBuilder`](#switchbuilder) | struct |  |
@@ -19,6 +21,7 @@
 | [`TextCursor`](#textcursor) | struct |  |
 | [`TopLayer`](#toplayer) | struct |  |
 | [`AccessibleName`](#accessiblename) | enum |  |
+| [`DeltaKind`](#deltakind) | enum |  |
 | [`FocusScopeKind`](#focusscopekind) | enum |  |
 | [`HostMode`](#hostmode) | enum |  |
 | [`NodeType`](#nodetype) | enum |  |
@@ -173,8 +176,28 @@
 | <code>dump_tree(&amp;self, root: <a href="#nodeid">NodeId</a>) -&gt; String</code> |  |
 | <code>flush_announcements(&amp;mut self)</code> |  |
 | <code>flush_reactive_children(&amp;mut self)</code> |  |
+| <code>take_delta(&amp;mut self) -&gt; <a href="#framedelta">FrameDelta</a></code> |  |
 
 **Trait implementations:** <code>Drop</code>
+
+
+### `FrameDelta`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>is_empty(&amp;self) -&gt; bool</code> |  |
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>layout: AHashSet&lt;<a href="#nodeid">NodeId</a>&gt;</code> |  |
+| <code>paint: AHashSet&lt;<a href="#nodeid">NodeId</a>&gt;</code> |  |
+| <code>structure: bool</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
 
 
 ### `ImageBuilder`
@@ -243,6 +266,7 @@
 | <code>get_extension_mut_untracked&lt;T: 'static&gt;(&amp;mut self) -&gt; Option&lt;&amp;mut T&gt;</code> |  |
 | <code>const parent(&amp;self) -&gt; Option&lt;<a href="#nodeid">NodeId</a>&gt;</code> |  |
 | <code>remove_extension&lt;T: 'static&gt;(&amp;mut self) -&gt; Option&lt;T&gt;</code> |  |
+| <code>const tag(&amp;self) -&gt; Option&lt;<a href="#nodetag">NodeTag</a>&gt;</code> |  |
 | <code>const version(&amp;self) -&gt; u32</code> |  |
 
 **Fields**
@@ -281,6 +305,18 @@
 | <code>to_accesskit(self) -&gt; NodeId</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>Ord</code>, <code>PartialEq</code>, <code>PartialOrd</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
+### `NodeTag`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>const id(self) -&gt; <a href="#nodeid">NodeId</a></code> |  |
+| <code>record(self, kind: <a href="#deltakind">DeltaKind</a>)</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `StatusView`
@@ -374,6 +410,24 @@
 | <code>Static(String)</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>From&lt;&amp;'static str&gt;</code>, <code>From&lt;String&gt;</code>, <code>From&lt;<a href="sigil-reactive.html#signal">Signal</a>&lt;String&gt;&gt;</code>, <code>Debug</code>
+
+
+### `DeltaKind`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>const layout_if(affects_layout: bool) -&gt; Self</code> |  |
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Layout</code> |  |
+| <code>Paint</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `FocusScopeKind`

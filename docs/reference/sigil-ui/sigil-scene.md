@@ -14,6 +14,7 @@
 | [`DrawPattern`](#drawpattern) | struct |  |
 | [`DrawRect`](#drawrect) | struct |  |
 | [`DrawSprite`](#drawsprite) | struct |  |
+| [`EmitDiff`](#emitdiff) | struct |  |
 | [`GlyphRun`](#glyphrun) | struct |  |
 | [`GradientStop`](#gradientstop) | struct |  |
 | [`LayerScope`](#layerscope) | struct |  |
@@ -282,6 +283,23 @@
 | <code>source: <a href="#spritesource">SpriteSource</a></code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
+
+
+### `EmitDiff`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>const unchanged(&amp;self) -&gt; bool</code> |  |
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>changed: Vec&lt;(Range&lt;usize&gt;, Range&lt;usize&gt;)&gt;</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
 
 
 ### `GlyphRun`
