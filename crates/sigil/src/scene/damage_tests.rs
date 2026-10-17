@@ -66,3 +66,18 @@ fn an_unchanged_scene_has_no_damage() {
         Damage::Unchanged
     ));
 }
+
+#[test]
+fn scattered_changes_fall_back_to_a_full_raster() {
+    let steady: Vec<(f32, f32, Rgba8)> = (0..600).map(|_| (1000.0, 0.0, RED)).collect();
+    let spots = |color: Rgba8| {
+        (0..13_u8)
+            .flat_map(|col| {
+                (0..6_u8).map(move |row| (f32::from(col) * 24.0, f32::from(row) * 16.0, color))
+            })
+            .chain(steady.iter().copied())
+            .collect::<Vec<_>>()
+    };
+    let found = regions(&scene(&spots(RED)), &scene(&spots(BLUE)));
+    assert!(matches!(found, Damage::Full(_)), "{found:?}");
+}

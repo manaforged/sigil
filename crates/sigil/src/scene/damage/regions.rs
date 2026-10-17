@@ -1,7 +1,10 @@
-use super::Damage;
+use super::{Damage, FullReason};
 use crate::geometry::{Point, Rect};
 use crate::scene::geometry::intersect_rect;
 use crate::scene::state::snap_out;
+
+const MAX_CELL_WINDOWS: usize = 64;
+const MAX_CELL_SHARE: f32 = 0.5;
 
 pub(super) fn cells(
     inks: &[Rect],
@@ -20,6 +23,10 @@ pub(super) fn cells(
     }
     if merged.is_empty() {
         return Damage::Unchanged;
+    }
+    let covered: f32 = merged.iter().map(|rect| rect.width * rect.height).sum();
+    if merged.len() > MAX_CELL_WINDOWS || covered > area.width * area.height * MAX_CELL_SHARE {
+        return Damage::Full(FullReason::RegionShare);
     }
     Damage::Regions(merged)
 }

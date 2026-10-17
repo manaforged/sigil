@@ -14,7 +14,6 @@ pub(crate) enum FullReason {
     NonLocalLayerEffect,
     ChangedShare,
     UnboundedChange,
-    #[cfg(feature = "scene")]
     RegionShare,
 }
 
