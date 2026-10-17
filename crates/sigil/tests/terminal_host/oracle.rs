@@ -350,3 +350,38 @@ fn a_moved_spot_rasters_only_its_window() {
         "a one-word move rastered {rastered} of {screen} cells; its two 7x4 windows hold 56"
     );
 }
+
+#[test]
+fn two_frames_before_one_flush_keep_both_changes() {
+    let shown = Runtime::scope("oracle-unflushed", || {
+        let mut model = Model {
+            lines: (0..ROWS).map(|row| format!("row {row}")).collect(),
+            ..Model::default()
+        };
+        let state = signal(model.clone());
+        let mut host = Host::cells();
+        let mut router = EventRouter::new();
+        host.mount(move || tree(state));
+        let mut screen = Screen::new(COLS, ROWS);
+        for _ in 0..2 {
+            screen
+                .frame(&mut host, &mut router, [], (COLS, ROWS))
+                .expect("frame");
+            screen.flush(&mut std::io::sink()).expect("flush");
+        }
+        model.lines[1] = String::from("first");
+        state.set(model.clone());
+        screen
+            .frame(&mut host, &mut router, [], (COLS, ROWS))
+            .expect("frame");
+        model.lines[9] = String::from("second");
+        state.set(model.clone());
+        let grid = screen
+            .frame(&mut host, &mut router, [], (COLS, ROWS))
+            .expect("frame");
+        (String::from_utf8_lossy(&ansi(grid)).into_owned(), model)
+    });
+    let (incremental, model) = shown;
+    let fresh = String::from_utf8_lossy(&truth(&model)).into_owned();
+    assert_eq!(incremental, fresh, "an unflushed frame lost its change");
+}

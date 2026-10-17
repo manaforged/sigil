@@ -108,7 +108,7 @@ impl Screen {
         profile::count(profile::Counter::TuiFrames);
         profile::count_add(profile::Counter::WorkloadCols, u64::from(cols));
         profile::count_add(profile::Counter::WorkloadRows, u64::from(rows));
-        if crate::hud::take_state_change() {
+        if crate::hud::take_state_change() || self.dirty {
             self.fresh = true;
         }
         let dt = self.dt;
