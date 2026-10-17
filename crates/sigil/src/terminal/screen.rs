@@ -157,9 +157,9 @@ impl Screen {
             self.damage = Some(Damage::new(Vec::new(), false));
         }
         if self.dirty {
-            self.announcer.apply(&mut self.grid, raw, focus);
+            let rows = self.announcer.apply(&mut self.grid, raw, focus);
             if let Some(damage) = &mut self.damage {
-                damage.touch(self.grid.rows().saturating_sub(1));
+                rows.into_iter().flatten().for_each(|row| damage.touch(row));
             }
         }
     }
@@ -361,8 +361,9 @@ fn raster(screen: &mut Screen, next: &CommandScene, paint: &Paint<'_>, (cols, ro
     match damage {
         SceneDamage::Regions(regions) => {
             screen.grid.clone_from(&screen.prev);
-            screen.announcer.restore(&mut screen.grid);
-            let touched = raster_regions(&mut screen.grid, next, paint, &regions);
+            let restored = screen.announcer.restore(&mut screen.grid);
+            let mut touched = raster_regions(&mut screen.grid, next, paint, &regions);
+            touched.extend(restored);
             screen.damage = Some(Damage::new(touched, false));
         }
         SceneDamage::Unchanged | SceneDamage::Full(_) => {
