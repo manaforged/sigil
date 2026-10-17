@@ -1,4 +1,4 @@
-use super::{Changes, Damage, cell_damage};
+use super::{Damage, cell_damage};
 use crate::geometry::{Point, Rect};
 use crate::scene::command::{CommandScene, DrawRect, SceneCommand, SceneRectStyle};
 use crate::style::Rgba8;
@@ -34,29 +34,28 @@ fn scene(rects: &[(f32, f32, Rgba8)]) -> CommandScene {
 }
 
 fn regions(before: &CommandScene, after: &CommandScene) -> Damage<Vec<Rect>> {
-    cell_damage((before, after), Changes::Diff, area(), CELL)
+    cell_damage((before, after), area(), CELL)
 }
 
 #[test]
 fn a_one_command_change_damages_exactly_its_cells() {
     let before = scene(&[(0.0, 0.0, RED), (80.0, 40.0, RED)]);
     let after = scene(&[(0.0, 0.0, RED), (80.0, 40.0, BLUE)]);
-    match regions(&before, &after) {
-        Damage::Regions(found) => {
-            assert_eq!(found, vec![Rect::new(Point::new(80.0, 40.0), 16.0, 8.0)]);
-        }
-        other => panic!("expected one region, got {other:?}"),
-    }
+    assert_eq!(
+        regions(&before, &after),
+        Damage::Regions(vec![Rect::new(Point::new(80.0, 40.0), 16.0, 8.0)])
+    );
 }
 
 #[test]
 fn two_distant_changes_give_two_regions() {
     let before = scene(&[(0.0, 0.0, RED), (240.0, 80.0, RED)]);
     let after = scene(&[(0.0, 0.0, BLUE), (240.0, 80.0, BLUE)]);
-    match regions(&before, &after) {
-        Damage::Regions(found) => assert_eq!(found.len(), 2, "{found:?}"),
-        other => panic!("expected two regions, got {other:?}"),
-    }
+    let found = regions(&before, &after);
+    assert!(
+        matches!(&found, Damage::Regions(found) if found.len() == 2),
+        "{found:?}"
+    );
 }
 
 #[test]

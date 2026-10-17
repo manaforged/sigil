@@ -362,10 +362,12 @@ fn a_row_limited_write_matches_the_full_write() {
     }
     let mut next = prev.clone();
     let mut changed = base.clone();
-    changed[7] = Cell {
-        text: "Z".into(),
-        ..Cell::default()
-    };
+    if let Some(cell) = changed.get_mut(7) {
+        *cell = Cell {
+            text: "Z".into(),
+            ..Cell::default()
+        };
+    }
     next.set_row(41, &changed);
     let mut full = Vec::new();
     super::dirty(&mut full, &prev, &next, &caps, None).expect("write");

@@ -6,7 +6,9 @@
     clippy::expect_used,
     clippy::unwrap_used,
     clippy::panic,
-    clippy::too_many_lines
+    clippy::too_many_lines,
+    clippy::indexing_slicing,
+    clippy::cast_precision_loss
 )]
 
 use sigil::events::{Key, ShellEvent};

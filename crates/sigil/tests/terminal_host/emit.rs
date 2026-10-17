@@ -43,10 +43,10 @@ fn an_unchanged_subtree_is_copied() {
         let (first, _) = host.emit_since(VIEW, &delta, &CommandScene::default());
         word.set(String::from("two"));
         host.layout(VIEW).expect("layout");
-        let delta = host.cx().take_delta();
+        let changed = host.cx().take_delta();
         let mut second = CommandScene::default();
         let (walked, copied) = counted(|| {
-            let (scene, diff) = host.emit_since(VIEW, &delta, &first);
+            let (scene, diff) = host.emit_since(VIEW, &changed, &first);
             assert!(!diff.unchanged());
             second = scene;
         });
@@ -57,9 +57,9 @@ fn an_unchanged_subtree_is_copied() {
         );
         assert!(copied > 0, "nothing was copied (walked {walked})");
         host.layout(VIEW).expect("layout");
-        let delta = host.cx().take_delta();
+        let idle = host.cx().take_delta();
         let (idle_walked, _) = counted(|| {
-            let (third, diff) = host.emit_since(VIEW, &delta, &second);
+            let (third, diff) = host.emit_since(VIEW, &idle, &second);
             assert!(diff.unchanged());
             assert_eq!(third, second);
         });

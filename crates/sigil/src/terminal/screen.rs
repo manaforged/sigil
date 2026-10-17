@@ -9,7 +9,7 @@ use crate::profile;
 use crate::scene::CommandScene;
 
 use crate::geometry::{Point, Rect};
-use crate::scene::damage::{Changes, Damage, cell_damage};
+use crate::scene::damage::{Damage, cell_damage};
 use crate::terminal::access::{Access, Announcer, Place, Speech};
 use crate::terminal::caps::Caps;
 use crate::terminal::paint::{Grid, Marks, Paint, raster_regions, raster_with};
@@ -335,7 +335,7 @@ fn raster(screen: &mut Screen, next: &CommandScene, paint: &Paint<'_>, (cols, ro
         f32::from(rows) * CELL,
     );
     let damage = if retained {
-        cell_damage((&screen.scene, next), Changes::Diff, area, (CELL, CELL))
+        cell_damage((&screen.scene, next), area, (CELL, CELL))
     } else {
         Damage::Full(crate::scene::damage::FullReason::NoBackbuffer)
     };

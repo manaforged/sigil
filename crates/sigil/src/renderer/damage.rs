@@ -9,7 +9,7 @@ use crate::renderer::scene_command::walk::intersect_rect;
 use crate::renderer::scene_command::{CommandScene, LayerScope, SceneCommand};
 use crate::scene::command::payloads::DrawRect;
 use crate::scene::corner_radii::CornerRadii;
-use crate::scene::damage::{Budget, Changes, Damage, command_ink, scene_damage};
+use crate::scene::damage::{Budget, Damage, command_ink, scene_damage};
 use crate::style::{Color, Rgba8};
 
 const FULL_OPACITY: u16 = 10_000;
@@ -54,12 +54,7 @@ impl Retained {
             return Plan::Full(FullReason::KeyChanged);
         }
         let area = Rect::new(Point::new(0.0, 0.0), key.viewport.0, key.viewport.1);
-        scene_damage(
-            (&self.scene, scene),
-            Changes::Diff,
-            (area, key.scale),
-            GPU_BUDGET,
-        )
+        scene_damage((&self.scene, scene), (area, key.scale), GPU_BUDGET)
     }
 }
 

@@ -49,12 +49,15 @@ fn a_frame_with_no_change_has_an_empty_delta() {
     Runtime::scope("delta-empty", || {
         let lit = signal(false);
         let mut cx = Cx::new_root();
-        cx.add(
+        let root = cx.add(
             container()
                 .paint_when(lit, |style| style.bg(Token::Accent))
                 .child(text("still")),
         );
-        drop(cx.take_delta());
+        assert!(
+            !cx.take_delta().is_empty(),
+            "mounting {root:?} left no delta"
+        );
         assert!(cx.take_delta().is_empty());
     });
 }

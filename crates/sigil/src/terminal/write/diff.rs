@@ -12,9 +12,12 @@ pub(crate) struct Damage {
 }
 
 impl Damage {
-    #[expect(
-        dead_code,
-        reason = "the screen passes damaged rows once announcer rows are tracked"
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "the screen passes damaged rows once announcer rows are tracked"
+        )
     )]
     pub(crate) fn new(mut rows: Vec<usize>, moved: bool) -> Self {
         rows.sort_unstable();

@@ -160,15 +160,15 @@ fn frames(steps: &[Step], full: bool) -> Vec<String> {
     Runtime::scope("live-oracle", || {
         let shared = state();
         let mut size = (48_u16, 16_u16);
-        let mut side = Side::new(shared, size);
+        let mut host = Side::new(shared, size);
         for _ in 0..2 {
-            side.frame(Vec::new(), size, full);
+            host.frame(Vec::new(), size, full);
         }
         steps
             .iter()
             .map(|step| {
                 apply(shared, step, &mut size);
-                side.frame(events(step), size, full)
+                host.frame(events(step), size, full)
             })
             .collect()
     })

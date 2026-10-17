@@ -25,20 +25,6 @@ pub(crate) enum Damage<R> {
     Full(FullReason),
 }
 
-#[cfg_attr(not(test), allow(dead_code, reason = "the terminal screen wires it"))]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct ChangedRange {
-    pub(crate) old: Range<usize>,
-    pub(crate) new: Range<usize>,
-}
-
-#[cfg_attr(not(test), allow(dead_code, reason = "the terminal screen wires it"))]
-#[derive(Clone, Copy)]
-pub(crate) enum Changes<'a> {
-    Diff,
-    Ranges(&'a [ChangedRange]),
-}
-
 type Inks = SmallVec<[Rect; 16]>;
 
 #[cfg_attr(
@@ -47,11 +33,10 @@ type Inks = SmallVec<[Rect; 16]>;
 )]
 pub(crate) fn scene_damage<R: FromIterator<Rect>>(
     (previous, next): (&CommandScene, &CommandScene),
-    changes: Changes<'_>,
     (area, scale): (Rect, f32),
     budget: Budget,
 ) -> Damage<R> {
-    match changed_inks(previous, next, changes, (area, scale)) {
+    match changed_inks(previous, next, (area, scale)) {
         Damage::Regions(inks) => regions::regions(&inks, area, scale, budget),
         Damage::Unchanged => Damage::Unchanged,
         Damage::Full(reason) => Damage::Full(reason),
@@ -63,11 +48,10 @@ const TERMINAL_SCALE: f32 = 1.0;
 #[cfg_attr(not(test), allow(dead_code, reason = "the terminal screen wires it"))]
 pub(crate) fn cell_damage(
     (previous, next): (&CommandScene, &CommandScene),
-    changes: Changes<'_>,
     area: Rect,
     cell: (f32, f32),
 ) -> Damage<Vec<Rect>> {
-    match changed_inks(previous, next, changes, (area, TERMINAL_SCALE)) {
+    match changed_inks(previous, next, (area, TERMINAL_SCALE)) {
         Damage::Regions(inks) => regions::cells(&inks, area, cell, TERMINAL_SCALE.recip()),
         Damage::Unchanged => Damage::Unchanged,
         Damage::Full(reason) => Damage::Full(reason),
@@ -77,7 +61,6 @@ pub(crate) fn cell_damage(
 fn changed_inks(
     previous: &CommandScene,
     next: &CommandScene,
-    changes: Changes<'_>,
     (area, scale): (Rect, f32),
 ) -> Damage<Inks> {
     let (before, after) = (&previous.commands, &next.commands);
@@ -86,7 +69,7 @@ fn changed_inks(
     ) {
         return Damage::Full(FullReason::NonLocalLayerEffect);
     }
-    let Some((old, new)) = marks(before, after, changes) else {
+    let Some((old, new)) = diff_marks(before, after) else {
         return Damage::Unchanged;
     };
     let marked = old.iter().chain(&new).filter(|mark| **mark).count();
@@ -105,26 +88,6 @@ fn changed_inks(
         }
     }
     Damage::Regions(inks)
-}
-
-fn marks(
-    before: &[SceneCommand],
-    after: &[SceneCommand],
-    changes: Changes<'_>,
-) -> Option<(Vec<bool>, Vec<bool>)> {
-    match changes {
-        Changes::Diff => diff_marks(before, after),
-        Changes::Ranges([]) => None,
-        Changes::Ranges(ranges) => {
-            let mut old = vec![false; before.len()];
-            let mut new = vec![false; after.len()];
-            for range in ranges {
-                mark(&mut old, clamp(&range.old, before.len()));
-                mark(&mut new, clamp(&range.new, after.len()));
-            }
-            Some((old, new))
-        }
-    }
 }
 
 fn diff_marks(before: &[SceneCommand], after: &[SceneCommand]) -> Option<(Vec<bool>, Vec<bool>)> {
@@ -183,10 +146,6 @@ fn mark(marks: &mut [bool], range: Range<usize>) {
     if let Some(marks) = marks.get_mut(range) {
         marks.fill(true);
     }
-}
-
-fn clamp(range: &Range<usize>, len: usize) -> Range<usize> {
-    range.start.min(len)..range.end.min(len)
 }
 
 fn local_effect(effect: LayerEffect) -> bool {
