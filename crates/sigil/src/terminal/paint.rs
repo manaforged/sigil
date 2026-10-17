@@ -229,22 +229,32 @@ impl Grid {
             col..col.saturating_add(width).min(self.cols),
             row..row.saturating_add(height).min(self.rows),
         );
+        let mut spans = Vec::new();
         for y in ys {
-            for x in xs.clone() {
-                let Some(index) = self.index(x, y) else {
-                    continue;
-                };
-                let edge = self.edges.get(index).copied().flatten();
-                if edge.is_some_and(|edge| encloses(edge, inner)) {
-                    continue;
-                }
-                if let Some(slot) = self.edges.get_mut(index) {
-                    *slot = None;
-                }
-                if let Some(cell) = self.cells.get_mut(index) {
-                    paint(cell);
+            if let Some(mask) = &self.mask {
+                mask.spans(y, &mut spans);
+            } else {
+                spans.clear();
+                spans.push(xs.clone());
+            }
+            for span in &spans {
+                for x in span.start.max(xs.start)..span.end.min(xs.end) {
+                    self.fill_cell(row_index(self.cols, x, y), inner, &mut paint);
                 }
             }
+        }
+    }
+
+    fn fill_cell(&mut self, index: usize, inner: Frame, paint: &mut impl FnMut(&mut Cell)) {
+        let edge = self.edges.get(index).copied().flatten();
+        if edge.is_some_and(|edge| encloses(edge, inner)) {
+            return;
+        }
+        if let Some(slot) = self.edges.get_mut(index) {
+            *slot = None;
+        }
+        if let Some(cell) = self.cells.get_mut(index) {
+            paint(cell);
         }
     }
 
@@ -278,6 +288,10 @@ impl Grid {
         }
         Some(row.saturating_mul(self.cols).saturating_add(col))
     }
+}
+
+const fn row_index(cols: usize, x: usize, y: usize) -> usize {
+    y.saturating_mul(cols).saturating_add(x)
 }
 
 fn map_glyph(cell: &mut Cell, glyphs: Glyphs) {
