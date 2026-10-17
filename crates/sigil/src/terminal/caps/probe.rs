@@ -7,10 +7,6 @@ use crate::terminal::term::{calibration, measure};
 
 const TIMEOUT: Duration = Duration::from_millis(500);
 
-pub(super) fn ask(ask: Questions, backdrop: bool) -> Option<Answers> {
-    ask_on(&quiet_terminal()?, std::io::stdout().lock(), ask, backdrop)
-}
-
 pub(super) fn ask_on(
     input: &impl AsFd,
     out: impl Write,
@@ -50,7 +46,7 @@ pub(super) fn converse(
     read_reply(input, done)
 }
 
-fn quiet_terminal() -> Option<std::io::Stdin> {
+pub(super) fn quiet_terminal() -> Option<std::io::Stdin> {
     let stdin = std::io::stdin();
     if !terminal() || typing(&stdin)? {
         return None;

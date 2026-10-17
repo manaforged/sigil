@@ -72,6 +72,7 @@ impl Term {
         let guard = EnterGuard;
         RESTORED.store(false, Ordering::Relaxed);
         enable_raw_mode()?;
+        enter_screen(inline)?;
         let (caps, measured) = Caps::measure();
         calibrate::keep(measured);
         CAPS.with(|slot| slot.set(Some(caps)));
@@ -116,6 +117,7 @@ impl Term {
     }
 
     pub(crate) fn reenter(&mut self) -> io::Result<()> {
+        enter_screen(self.inline)?;
         enter_modes(self.inline)?;
         if self.inline {
             ground(&mut self.out)?;
@@ -157,14 +159,19 @@ fn keyboard_flags() -> KeyboardEnhancementFlags {
         | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES
 }
 
+fn enter_screen(inline: bool) -> io::Result<()> {
+    INLINE.store(inline, Ordering::Relaxed);
+    if !inline {
+        execute!(io::stdout(), EnterAlternateScreen, DisableLineWrap)?;
+    }
+    Ok(())
+}
+
 fn enter_modes(inline: bool) -> io::Result<()> {
     INLINE.store(inline, Ordering::Relaxed);
     RESTORED.store(false, Ordering::Relaxed);
     enable_raw_mode()?;
     let mut out = io::stdout();
-    if !inline {
-        execute!(out, EnterAlternateScreen, DisableLineWrap)?;
-    }
     execute!(out, EnableBracketedPaste, EnableFocusChange, cursor::Hide)?;
     write_mouse(&mut out, MOUSE.with(Cell::get))?;
     let keyboard = current_caps().keyboard;
@@ -295,6 +302,7 @@ pub fn suspend<R>(run: impl FnOnce() -> R) -> io::Result<R> {
     let inline = INLINE.load(Ordering::Relaxed);
     restore();
     let result = run();
+    enter_screen(inline)?;
     enter_modes(inline)?;
     if inline {
         ground(&mut io::stdout())?;

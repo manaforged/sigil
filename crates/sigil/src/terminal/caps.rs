@@ -156,7 +156,10 @@ fn ask_terminal(mut draft: Draft) -> (Caps, Measured) {
     let backdrop = draft.caps.backdrop.is_none();
     draft.caps.keyboard = Keyboard::Legacy;
     draft.ask = draft.ask.with(Question::Keys, true);
-    match probe::ask(draft.ask, backdrop) {
+    let Some(input) = probe::quiet_terminal() else {
+        return (draft.caps, Measured::Unmeasured);
+    };
+    match probe::ask_on(&input, std::io::stdout().lock(), draft.ask, backdrop) {
         Some(answers) => (draft.settle(&answers), answers.measured),
         None => (draft.caps, Measured::Silent),
     }
