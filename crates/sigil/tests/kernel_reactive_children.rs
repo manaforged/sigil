@@ -36,7 +36,7 @@ fn children_reactive_initial_build_adds_children() {
 }
 
 #[test]
-fn children_reactive_signal_mutation_replaces_children() {
+fn children_reactive_signal_mutation_patches_and_extends() {
     Runtime::scope("sigil_kernel_children_reactive_mutate", || {
         let items = signal(vec!["a", "b", "c"]);
         let mut cx = Cx::new_root();
@@ -51,16 +51,62 @@ fn children_reactive_signal_mutation_replaces_children() {
 
         let after = child_ids(&cx, parent);
         assert_eq!(after.len(), 4, "new children count reflects mutated Vec");
-        for old in &before {
-            assert!(
-                !after.contains(old),
-                "positional rebuild: prior id {old:?} must not survive"
-            );
-            assert!(
-                cx.get(*old).is_none(),
-                "prior child {old:?} must be removed from arena"
-            );
-        }
+        assert_eq!(
+            &after[..3],
+            &before[..],
+            "same-kind children keep their ids"
+        );
+        let texts: Vec<String> = after.iter().map(|id| text_value(&cx, *id)).collect();
+        assert_eq!(texts, ["x", "y", "z", "w"]);
+    });
+}
+
+#[test]
+fn children_reactive_equal_builders_keep_ids() {
+    Runtime::scope("sigil_kernel_children_reactive_equal", || {
+        let items = signal(vec![1_u8, 2, 3]);
+        let mut cx = Cx::new_root();
+        let parent = cx.add(
+            container().children_reactive(move || items.get().into_iter().map(|_| container())),
+        );
+        cx.flush_reactive_children();
+        let before = child_ids(&cx, parent);
+        let generation = cx.mutation_generation();
+
+        items.set(vec![4, 5, 6]);
+        cx.flush_reactive_children();
+
+        assert_eq!(
+            child_ids(&cx, parent),
+            before,
+            "equal builders keep their nodes"
+        );
+        assert_eq!(cx.mutation_generation(), generation, "no structural change");
+    });
+}
+
+#[test]
+fn children_reactive_kind_change_remounts() {
+    Runtime::scope("sigil_kernel_children_reactive_kind", || {
+        let as_text = signal(true);
+        let mut cx = Cx::new_root();
+        let parent = cx.add(container().children_reactive(move || {
+            if as_text.get() {
+                vec![node(text("t"))]
+            } else {
+                vec![node(container())]
+            }
+        }));
+        cx.flush_reactive_children();
+        let before = child_ids(&cx, parent);
+
+        as_text.set(false);
+        cx.flush_reactive_children();
+
+        let after = child_ids(&cx, parent);
+        assert_eq!(after.len(), 1);
+        assert_ne!(after, before, "a different kind gets a new node");
+        assert!(cx.get(before[0]).is_none(), "the old node is removed");
     });
 }
 
@@ -180,7 +226,7 @@ fn children_keyed_drops_missing_and_mounts_new() {
 }
 
 #[test]
-fn children_reactive_reorder_visibly_rebuilds() {
+fn children_reactive_reorder_patches_in_place() {
     Runtime::scope("sigil_kernel_children_reactive_reorder", || {
         let items = signal(vec!["a", "b", "c"]);
         let mut cx = Cx::new_root();
@@ -193,13 +239,9 @@ fn children_reactive_reorder_visibly_rebuilds() {
         cx.flush_reactive_children();
         let after = child_ids(&cx, parent);
 
-        assert_eq!(after.len(), 3, "same count post-reorder");
-        for old in &before {
-            assert!(
-                !after.contains(old),
-                "reorder must not preserve identity: prior id {old:?} reappeared"
-            );
-        }
+        assert_eq!(after, before, "positions keep their nodes");
+        let texts: Vec<String> = after.iter().map(|id| text_value(&cx, *id)).collect();
+        assert_eq!(texts, ["c", "b", "a"], "each position shows its new text");
     });
 }
 

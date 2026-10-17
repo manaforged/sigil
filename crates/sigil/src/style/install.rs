@@ -1,4 +1,4 @@
-use crate::kernel::Node;
+use crate::kernel::{DeltaKind, Node};
 use crate::reactive::{Runtime, Signal, effect_named};
 
 use crate::style::merge::SlotSet;
@@ -15,11 +15,16 @@ pub(super) fn install_animation(node: &mut Node, kind: NumericAtomKind, value: S
         binding.bind_animation(kind, value);
         let _previous = node.attach(binding);
     }
+    let tag = node.tag();
+    let delta = DeltaKind::layout_if(kind.affects_layout());
     effect_named("sigil-style::animation", move || {
         assert!(
             value.get().is_finite(),
             "animated style values must be finite"
         );
+        if let Some(tag) = tag {
+            tag.record(delta);
+        }
         Runtime::mark_frame_dirty();
     });
 }
@@ -90,8 +95,21 @@ where
     }
 
     let effect_state = reactive.clone();
+    let current = reactive.atoms();
+    let tag = node.tag();
     crate::reactive::effect_named("sigil-style::style_reactive", move || {
-        effect_state.set_slice(f());
+        let next = f();
+        let previous = current.get();
+        effect_state.set_slice(next);
+        if let Some(tag) = tag
+            && previous != next
+        {
+            let layout = previous
+                .iter()
+                .chain(next)
+                .any(|atom| atom.affects_layout());
+            tag.record(DeltaKind::layout_if(layout));
+        }
     });
     let _previous = node.attach(reactive);
 }

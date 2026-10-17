@@ -4,6 +4,7 @@ use crate::animation_runtime::{
 use crate::app::embed::Host;
 use crate::app::exit::take_exit;
 use crate::events::EventRouter;
+use crate::kernel::FrameDelta;
 use crate::layout::LayoutError;
 use crate::reactive::{Runtime, tick_intervals};
 
@@ -14,6 +15,7 @@ pub struct FrameInfo {
     pub dirty: bool,
     pub animating: bool,
     pub layout_ok: bool,
+    pub delta: FrameDelta,
 }
 
 pub struct FrameOutput {
@@ -80,6 +82,7 @@ impl Host {
             dirty: Runtime::frame_dirty(),
             animating,
             layout_ok,
+            delta: self.cx().take_delta(),
         };
         if let Some(paint) = hooks.paint {
             paint(self, router, &info);

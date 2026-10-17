@@ -5,18 +5,21 @@ use std::rc::Rc;
 use ahash::{AHashMap, AHashSet};
 use smallvec::SmallVec;
 
+use crate::kernel::builder::{Fate, Unpatched};
 use crate::kernel::component::{ErasedComponent, IntoNode};
 use crate::kernel::{Cx, NodeId};
 use crate::reactive::{Owner, OwnerId, is_live, on_cleanup};
 
 type RebuildFn = Box<dyn FnMut(&mut Cx)>;
-type PriorNodes = SmallVec<[NodeId; 4]>;
+pub(crate) type PriorNodes = SmallVec<[NodeId; 4]>;
 type KeyedIncoming<K> = Vec<(K, Option<Box<dyn ErasedComponent>>)>;
-type KeyedMount<K> = (
-    Vec<(K, NodeId)>,
-    SmallVec<[NodeId; 4]>,
-    SmallVec<[NodeId; 4]>,
-);
+type Fates = SmallVec<[Fate; 4]>;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Survivor {
+    Patch,
+    Keep,
+}
 
 pub(crate) struct DeferredRebuild {
     pub(crate) parent: NodeId,
@@ -25,6 +28,7 @@ pub(crate) struct DeferredRebuild {
 
 thread_local! {
     static PENDING: RefCell<Vec<DeferredRebuild>> = const { RefCell::new(Vec::new()) };
+    static SEEDS: RefCell<Vec<(NodeId, PriorNodes)>> = const { RefCell::new(Vec::new()) };
 }
 
 fn enqueue(rebuild: DeferredRebuild) {
@@ -48,6 +52,24 @@ pub(crate) fn drain_pending() -> Vec<DeferredRebuild> {
     PENDING.with(|cell| std::mem::take(&mut *cell.borrow_mut()))
 }
 
+pub(crate) fn seed(parent: NodeId, ids: PriorNodes) {
+    if ids.is_empty() {
+        return;
+    }
+    SEEDS.with(|cell| cell.borrow_mut().push((parent, ids)));
+}
+
+pub(crate) fn take_seed(parent: NodeId) -> PriorNodes {
+    SEEDS.with(|cell| {
+        let mut seeds = cell.borrow_mut();
+        seeds
+            .iter()
+            .position(|(owner, _)| *owner == parent)
+            .map(|index| seeds.swap_remove(index).1)
+            .unwrap_or_default()
+    })
+}
+
 fn generation_owner() -> Owner {
     Owner::new(
         "sigil-kernel::children-generation",
@@ -56,6 +78,12 @@ fn generation_owner() -> Owner {
 }
 
 struct GenerationGuard(Option<Owner>);
+
+impl GenerationGuard {
+    fn superseded(&self) -> bool {
+        self.0.is_some_and(|owner| !is_live(owner.id()))
+    }
+}
 
 impl Drop for GenerationGuard {
     fn drop(&mut self) {
@@ -77,7 +105,7 @@ where
     I: IntoIterator<Item = N>,
     N: IntoNode + 'static,
 {
-    let prior: Rc<RefCell<PriorNodes>> = Rc::new(RefCell::new(SmallVec::<[NodeId; 4]>::new()));
+    let prior: Rc<RefCell<PriorNodes>> = Rc::new(RefCell::new(take_seed(parent)));
     crate::reactive::effect_named("sigil-kernel::children_reactive", move || {
         let generation = generation_owner();
         let builders: Vec<Box<dyn ErasedComponent>> = generation.with(|| {
@@ -103,7 +131,7 @@ where
     });
 }
 
-pub(crate) fn install_keyed<F, I, K, N>(parent: NodeId, mut f: F)
+pub(crate) fn install_keyed<F, I, K, N>(parent: NodeId, mut f: F, survivor: Survivor)
 where
     F: FnMut() -> I + 'static,
     I: IntoIterator<Item = (K, N)>,
@@ -118,8 +146,18 @@ where
                 .map(|(key, child)| (key, Some(Box::new(child) as Box<dyn ErasedComponent>)))
                 .collect()
         });
-        enqueue_keyed(parent, Rc::clone(&prior), incoming, Some(generation));
+        enqueue_keyed(
+            parent,
+            Rc::clone(&prior),
+            incoming,
+            survivor,
+            Some(generation),
+        );
     });
+}
+
+fn stale(cx: &Cx, parent: NodeId, generation: &GenerationGuard) -> bool {
+    cx.nodes.get(parent.key()).is_none() || generation.superseded()
 }
 
 fn apply_positional(
@@ -130,18 +168,22 @@ fn apply_positional(
     generation: &mut GenerationGuard,
 ) {
     let prior_ids = std::mem::take(&mut *prior.borrow_mut());
-    if cx.nodes.get(parent.key()).is_none() {
+    if stale(cx, parent, generation) {
         return;
     }
-    for id in prior_ids {
-        cx.remove(id);
+    let old: PriorNodes = prior_ids
+        .into_iter()
+        .filter(|id| cx.nodes.contains_key(id.key()))
+        .collect();
+    for id in old.iter().skip(builders.len()) {
+        cx.remove_counted(*id);
     }
-    let mut new_ids = SmallVec::<[NodeId; 4]>::with_capacity(builders.len());
-    for child in builders {
-        new_ids.push(cx.add_boxed_child(parent, child));
+    let mut fates = Fates::with_capacity(builders.len());
+    for (index, builder) in builders.into_iter().enumerate() {
+        let existing = old.get(index).copied();
+        fates.extend(cx.reconcile_child(parent, existing, Some(builder), Unpatched::Remount));
     }
-    pin_generation(cx, generation.0.take(), &new_ids);
-    *prior.borrow_mut() = new_ids;
+    *prior.borrow_mut() = settle(cx, parent, &fates, generation);
 }
 
 pub fn schedule_keyed_rebuild<K, N>(
@@ -161,13 +203,14 @@ pub fn schedule_keyed_rebuild<K, N>(
             )
         })
         .collect();
-    enqueue_keyed(parent, prior, incoming, None);
+    enqueue_keyed(parent, prior, incoming, Survivor::Patch, None);
 }
 
 fn enqueue_keyed<K: Clone + Eq + Hash + 'static>(
     parent: NodeId,
     prior: Rc<RefCell<Vec<(K, NodeId)>>>,
     incoming: KeyedIncoming<K>,
+    survivor: Survivor,
     generation: Option<Owner>,
 ) {
     let mut slot = Some(incoming);
@@ -180,35 +223,56 @@ fn enqueue_keyed<K: Clone + Eq + Hash + 'static>(
                 parent,
                 &prior,
                 slot.take().unwrap_or_default(),
+                survivor,
                 &mut generation,
             );
         }),
     });
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one keyed apply needs the list, its prior ids, the incoming items, the survivor rule, and the generation guard"
+)]
 fn apply_keyed<K: Clone + Eq + Hash>(
     cx: &mut Cx,
     parent: NodeId,
     prior: &RefCell<Vec<(K, NodeId)>>,
     incoming: KeyedIncoming<K>,
+    survivor: Survivor,
     generation: &mut GenerationGuard,
 ) {
-    if cx.nodes.get(parent.key()).is_none() {
+    if stale(cx, parent, generation) {
         return;
     }
     let old = std::mem::take(&mut *prior.borrow_mut());
     let mut live: AHashMap<K, NodeId> = old.into_iter().collect();
-    let (next, order, fresh) = mount_keyed(cx, parent, incoming, &mut live);
+    let (mut next, fates) = mount_keyed(cx, parent, incoming, &mut live, survivor);
     for id in live.into_values() {
-        cx.remove(id);
+        cx.remove_counted(id);
     }
-    let keyed: AHashSet<NodeId> = order.iter().copied().collect();
-    let prefix = static_prefix(cx, parent, &keyed);
-    cx.replace_children(parent, prefix.iter().chain(&order).copied().collect());
-    let mut next = next;
+    settle(cx, parent, &fates, generation);
     next.retain(|(_, id)| cx.nodes.get(id.key()).is_some());
     *prior.borrow_mut() = next;
+}
+
+fn settle(
+    cx: &mut Cx,
+    parent: NodeId,
+    fates: &[Fate],
+    generation: &mut GenerationGuard,
+) -> PriorNodes {
+    let order: PriorNodes = fates.iter().map(|fate| fate.id()).collect();
+    let keep: AHashSet<NodeId> = order.iter().copied().collect();
+    let prefix = cx.others(parent, &keep);
+    cx.replace_children(parent, prefix.iter().chain(&order).copied().collect());
+    let fresh: PriorNodes = fates
+        .iter()
+        .filter(|fate| fate.is_fresh())
+        .map(|fate| fate.id())
+        .collect();
     pin_generation(cx, generation.0.take(), &fresh);
+    order
 }
 
 fn pin_generation(cx: &Cx, generation: Option<Owner>, fresh: &[NodeId]) {
@@ -247,54 +311,41 @@ fn pin_generation(cx: &Cx, generation: Option<Owner>, fresh: &[NodeId]) {
     }
 }
 
-fn static_prefix(cx: &Cx, parent: NodeId, keyed: &AHashSet<NodeId>) -> SmallVec<[NodeId; 4]> {
-    cx.nodes
-        .get(parent.key())
-        .map(|node| {
-            node.children
-                .iter()
-                .copied()
-                .filter(|id| !keyed.contains(id))
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
 fn mount_keyed<K: Clone + Eq + Hash>(
     cx: &mut Cx,
     parent: NodeId,
     incoming: KeyedIncoming<K>,
     live: &mut AHashMap<K, NodeId>,
-) -> KeyedMount<K> {
+    survivor: Survivor,
+) -> (Vec<(K, NodeId)>, Fates) {
     let mut seen = AHashSet::new();
     let mut next = Vec::with_capacity(incoming.len());
-    let mut order = SmallVec::<[NodeId; 4]>::new();
-    let mut fresh = SmallVec::<[NodeId; 4]>::new();
+    let mut fates = Fates::new();
     for (key, builder) in incoming {
         if !seen.insert(key.clone()) {
             continue;
         }
-        let Some((id, mounted)) = take_or_mount(cx, parent, live.remove(&key), builder) else {
+        let existing = live.remove(&key);
+        let builder = survivor_builder(cx, survivor, existing, builder);
+        let Some(fate) = cx.reconcile_child(parent, existing, builder, Unpatched::Keep) else {
             continue;
         };
-        if mounted {
-            fresh.push(id);
-        }
-        order.push(id);
-        next.push((key, id));
+        fates.push(fate);
+        next.push((key, fate.id()));
     }
-    (next, order, fresh)
+    (next, fates)
 }
 
-fn take_or_mount(
-    cx: &mut Cx,
-    parent: NodeId,
+fn survivor_builder(
+    cx: &Cx,
+    survivor: Survivor,
     existing: Option<NodeId>,
     builder: Option<Box<dyn ErasedComponent>>,
-) -> Option<(NodeId, bool)> {
-    match existing {
-        Some(id) if cx.nodes.get(id.key()).is_some() => Some((id, false)),
-        _ => builder.map(|builder| (cx.add_boxed_child(parent, builder), true)),
+) -> Option<Box<dyn ErasedComponent>> {
+    let alive = existing.is_some_and(|id| cx.nodes.contains_key(id.key()));
+    match survivor {
+        Survivor::Keep if alive => None,
+        Survivor::Keep | Survivor::Patch => builder,
     }
 }
 

@@ -7,6 +7,7 @@ use slotmap::{DefaultKey, SlotMap};
 use smallvec::SmallVec;
 
 use crate::kernel::component::{ErasedComponent, IntoNode};
+use crate::kernel::delta::{DeltaKind, FrameDelta, NodeTag};
 use crate::kernel::{A11yProps, Node, NodeId, NodeType};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -22,6 +23,8 @@ pub struct Cx {
     pub(crate) owner_for_node: AHashMap<NodeId, Owner>,
     pub(crate) dirty: AHashSet<NodeId>,
     dirty_all: bool,
+    pub(crate) delta: FrameDelta,
+    pub(crate) delta_generation: u64,
     root_owner: Owner,
     pub(crate) roots: SmallVec<[NodeId; 4]>,
     pub(crate) mutation_generation: u64,
@@ -41,6 +44,8 @@ impl Cx {
             owner_for_node: AHashMap::new(),
             dirty: AHashSet::new(),
             dirty_all: false,
+            delta: FrameDelta::default(),
+            delta_generation: 0,
             root_owner,
             roots: SmallVec::new(),
             mutation_generation: 0,
@@ -88,7 +93,10 @@ impl Cx {
             );
             self.root_owner()
         });
-        let id = NodeId(self.nodes.insert(Node::new(kind, a11y, owner)));
+        let cx = self.instance_id;
+        let id = NodeId(self.nodes.insert_with_key(|key| {
+            Node::new(kind, a11y, owner).tagged(NodeTag::new(cx, NodeId(key)))
+        }));
         self.mark_dirty(id);
         self.bump_generation();
         id
@@ -367,12 +375,14 @@ impl Cx {
 
     fn mark_dirty(&mut self, id: NodeId) {
         self.dirty.insert(id);
+        self.delta.record(id, DeltaKind::Layout);
     }
 }
 
 impl Drop for Cx {
     fn drop(&mut self) {
         self.root_owner.dispose();
+        super::delta::discard_pending(self.instance_id);
     }
 }
 

@@ -3,6 +3,7 @@ use std::any::{Any, TypeId};
 use crate::reactive::OwnerId;
 use smallvec::SmallVec;
 
+use crate::kernel::delta::NodeTag;
 use crate::kernel::{A11yProps, NodeId, TextContent};
 
 #[derive(Debug, Clone, Copy)]
@@ -22,6 +23,7 @@ pub struct Node {
     pub owner: OwnerId,
     pub(crate) extensions: Option<Box<NodeExtensions>>,
     pub(crate) version: u32,
+    tag: Option<NodeTag>,
 }
 
 impl Node {
@@ -34,7 +36,18 @@ impl Node {
             owner,
             extensions: None,
             version: 1,
+            tag: None,
         }
+    }
+
+    pub(crate) const fn tagged(mut self, tag: NodeTag) -> Self {
+        self.tag = Some(tag);
+        self
+    }
+
+    #[must_use]
+    pub const fn tag(&self) -> Option<NodeTag> {
+        self.tag
     }
 
     #[inline]
