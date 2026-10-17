@@ -30,14 +30,18 @@ pub(crate) fn raster_regions(
     scene: &CommandScene,
     paint: &Paint<'_>,
     regions: &[Rect],
-) {
+) -> Vec<usize> {
+    let mut rows = Vec::new();
     if regions.is_empty() {
-        return;
+        return rows;
     }
     SCRATCH.with(|scratch| {
-        let copied = scratch.borrow_mut().raster(grid, scene, paint, regions);
+        let copied = scratch
+            .borrow_mut()
+            .raster(grid, scene, paint, (regions, &mut rows));
         count_add(Counter::TuiCellsRastered, copied);
     });
+    rows
 }
 
 impl Scratch {
@@ -46,7 +50,7 @@ impl Scratch {
         grid: &mut Grid,
         scene: &CommandScene,
         paint: &Paint<'_>,
-        regions: &[Rect],
+        (regions, rows): (&[Rect], &mut Vec<usize>),
     ) -> u64 {
         let cell = if paint.cell <= 0.0 { 1.0 } else { paint.cell };
         self.reach.clear();
@@ -59,17 +63,26 @@ impl Scratch {
         mask.set(self.reach.iter().map(|rect| window(grid, *rect, cell)));
         prepare(&mut fresh, grid, mask, &mut self.spans);
         walk(&mut fresh, scene, paint, Some(&self.reach));
-        let copied = self.copy(grid, &fresh, paint.caps.glyphs);
+        let copied = self.copy(grid, &fresh, paint.caps.glyphs, rows);
         std::mem::swap(&mut grid.images, &mut fresh.images);
         grid.cursor = fresh.cursor;
         self.grid = Some(fresh);
         copied
     }
 
-    fn copy(&mut self, grid: &mut Grid, fresh: &Grid, glyphs: Glyphs) -> u64 {
+    fn copy(
+        &mut self,
+        grid: &mut Grid,
+        fresh: &Grid,
+        glyphs: Glyphs,
+        rows: &mut Vec<usize>,
+    ) -> u64 {
         let mut copied = 0_u64;
         for y in self.windows.rows() {
             self.windows.spans(y, &mut self.spans);
+            if !self.spans.is_empty() {
+                rows.push(y);
+            }
             for span in &self.spans {
                 for x in span.clone() {
                     copied += u64::from(copy_cell(grid, fresh, (x, y), glyphs));

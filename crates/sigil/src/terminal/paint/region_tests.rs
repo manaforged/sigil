@@ -69,7 +69,7 @@ fn region_raster_matches_a_full_raster() {
         Rect::new(Point::new(96.0, 48.0), 32.0, 16.0),
         Rect::new(Point::new(176.0, 16.0), 32.0, 16.0),
     ];
-    raster_regions(&mut retained, &after, &paint, &moved);
+    let _rows = raster_regions(&mut retained, &after, &paint, &moved);
     let mut fresh = Grid::new(40, 12);
     raster_with(&mut fresh, &after, &paint);
     assert_eq!(

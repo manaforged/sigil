@@ -9,13 +9,13 @@ use crate::profile;
 use crate::scene::CommandScene;
 
 use crate::geometry::{Point, Rect};
-use crate::scene::damage::{Damage, cell_damage};
+use crate::scene::damage::{Damage as SceneDamage, cell_damage};
 use crate::terminal::access::{Access, Announcer, Place, Speech};
 use crate::terminal::caps::Caps;
 use crate::terminal::paint::{Grid, Marks, Paint, raster_regions, raster_with};
 use crate::terminal::run::view;
 use crate::terminal::transcript::Transcript;
-use crate::terminal::write::Measured;
+use crate::terminal::write::{Damage, Measured};
 
 const CELL: f32 = Host::CELL;
 
@@ -32,6 +32,7 @@ pub struct Screen {
     caps: Caps,
     live_rows: usize,
     announcer: Announcer,
+    damage: Option<Damage>,
 }
 
 impl Screen {
@@ -50,6 +51,7 @@ impl Screen {
             caps: Caps::default(),
             live_rows: 0,
             announcer: Announcer::default(),
+            damage: None,
         }
     }
 
@@ -110,11 +112,13 @@ impl Screen {
             self.fresh = true;
         }
         let dt = self.dt;
+        self.damage = None;
         let hooks = frame_hooks(self, events, (cols, rows));
         let out = host.frame(router, view(cols, rows), dt, hooks);
         self.exited |= out.exit;
         if crate::hud::enabled() {
             crate::terminal::hud::draw(&mut self.grid);
+            self.damage = None;
             if !self.dirty && !self.fresh && !self.unchanged() {
                 self.dirty = true;
             }
@@ -150,16 +154,25 @@ impl Screen {
         if !raw && (changed || matches!(focus, Place::Move(at) if at != self.prev.cursor())) {
             self.grid.clone_from(&self.prev);
             self.dirty = true;
+            self.damage = Some(Damage::new(Vec::new(), false));
         }
         if self.dirty {
             self.announcer.apply(&mut self.grid, raw, focus);
+            if let Some(damage) = &mut self.damage {
+                damage.touch(self.grid.rows().saturating_sub(1));
+            }
         }
     }
 
     fn unchanged(&self) -> bool {
         self.prev.cursor() == self.grid.cursor()
             && self.prev.images() == self.grid.images()
-            && crate::terminal::write::unchanged(&self.prev, &self.grid, None, &self.caps)
+            && crate::terminal::write::unchanged(
+                &self.prev,
+                &self.grid,
+                self.damage.as_ref(),
+                &self.caps,
+            )
     }
 
     #[must_use]
@@ -246,7 +259,13 @@ impl Screen {
             self.prev.mirror(&self.grid);
             crate::terminal::write::all(out, &self.grid, &self.caps)?;
         } else {
-            crate::terminal::write::dirty(out, &self.prev, &self.grid, &self.caps, None)?;
+            crate::terminal::write::dirty(
+                out,
+                &self.prev,
+                &self.grid,
+                &self.caps,
+                self.damage.as_ref(),
+            )?;
         }
         self.painter.emit(
             out,
@@ -337,15 +356,16 @@ fn raster(screen: &mut Screen, next: &CommandScene, paint: &Paint<'_>, (cols, ro
     let damage = if retained {
         cell_damage((&screen.scene, next), area, (CELL, CELL))
     } else {
-        Damage::Full(crate::scene::damage::FullReason::NoBackbuffer)
+        SceneDamage::Full(crate::scene::damage::FullReason::NoBackbuffer)
     };
     match damage {
-        Damage::Regions(regions) => {
+        SceneDamage::Regions(regions) => {
             screen.grid.clone_from(&screen.prev);
             screen.announcer.restore(&mut screen.grid);
-            raster_regions(&mut screen.grid, next, paint, &regions);
+            let touched = raster_regions(&mut screen.grid, next, paint, &regions);
+            screen.damage = Some(Damage::new(touched, false));
         }
-        Damage::Unchanged | Damage::Full(_) => {
+        SceneDamage::Unchanged | SceneDamage::Full(_) => {
             screen.grid.resize(cols, rows);
             raster_with(&mut screen.grid, next, paint);
         }

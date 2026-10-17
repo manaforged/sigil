@@ -12,17 +12,16 @@ pub(crate) struct Damage {
 }
 
 impl Damage {
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the screen passes damaged rows once announcer rows are tracked"
-        )
-    )]
     pub(crate) fn new(mut rows: Vec<usize>, moved: bool) -> Self {
         rows.sort_unstable();
         rows.dedup();
         Self { rows, moved }
+    }
+
+    pub(crate) fn touch(&mut self, row: usize) {
+        if let Err(at) = self.rows.binary_search(&row) {
+            self.rows.insert(at, row);
+        }
     }
 
     pub(crate) fn rows(&self, total: usize) -> impl Iterator<Item = usize> + '_ {

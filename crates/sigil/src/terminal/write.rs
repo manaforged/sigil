@@ -15,7 +15,7 @@ use smol_str::SmolStr;
 mod diff;
 mod inline;
 
-pub(crate) use diff::{dirty, unchanged};
+pub(crate) use diff::{Damage, dirty, unchanged};
 
 pub(crate) use inline::inline;
 
