@@ -334,11 +334,46 @@ fn a_row_with_changes_far_apart_rewrites_only_the_changed_cells() {
     let mut next = Grid::new(40, 1);
     next.set_row(0, &changed);
     let mut out = Vec::new();
-    super::dirty(&mut out, &prev, &next, &caps).expect("write");
+    super::dirty(&mut out, &prev, &next, &caps, None).expect("write");
     let text = String::from_utf8(out).expect("utf8");
     assert!(text.contains('A') && text.contains('B'), "{text:?}");
     assert!(
         !text.contains("xyxyxy"),
         "rewrote the unchanged middle: {text:?}"
+    );
+}
+
+#[test]
+fn a_row_limited_write_matches_the_full_write() {
+    let caps = Caps::default();
+    let base: Vec<Cell> = (0..20)
+        .map(|index| Cell {
+            text: if index % 2 == 0 {
+                "x".into()
+            } else {
+                "y".into()
+            },
+            ..Cell::default()
+        })
+        .collect();
+    let mut prev = Grid::new(20, 64);
+    for row in 0..64 {
+        prev.set_row(row, &base);
+    }
+    let mut next = prev.clone();
+    let mut changed = base.clone();
+    changed[7] = Cell {
+        text: "Z".into(),
+        ..Cell::default()
+    };
+    next.set_row(41, &changed);
+    let mut full = Vec::new();
+    super::dirty(&mut full, &prev, &next, &caps, None).expect("write");
+    let mut limited = Vec::new();
+    let damage = super::diff::Damage::new(vec![41], false);
+    super::dirty(&mut limited, &prev, &next, &caps, Some(&damage)).expect("write");
+    assert_eq!(
+        String::from_utf8_lossy(&limited),
+        String::from_utf8_lossy(&full)
     );
 }

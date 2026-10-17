@@ -40,9 +40,20 @@ pub fn raster_into(grid: &mut Grid, scene: &CommandScene, theme: &Theme, cell: f
 
 pub fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &Paint<'_>) {
     grid.reset();
+    walk(grid, scene, paint, None);
+    grid.map_glyphs(paint.caps.glyphs);
+}
+
+pub(super) fn walk(
+    grid: &mut Grid,
+    scene: &CommandScene,
+    paint: &Paint<'_>,
+    only: Option<&[Rect]>,
+) {
     let mut walk = Walk {
         grid,
         paint,
+        only,
         cell: if paint.cell <= 0.0 { 1.0 } else { paint.cell },
         clips: Vec::new(),
         alphas: Vec::new(),
@@ -51,7 +62,6 @@ pub fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &Paint<'_>) {
     for command in &scene.commands {
         walk.command(command);
     }
-    grid.map_glyphs(paint.caps.glyphs);
 }
 
 fn gradient_flat(gradient: &LinearGradient) -> Rgba8 {
@@ -104,9 +114,14 @@ fn span(start: f32, extent: f32) -> (usize, usize) {
     }
 }
 
+fn reach(rect: Rect, border: Option<CellBorder>) -> Rect {
+    border.map_or(rect, |border| rect.union(border.rect))
+}
+
 struct Walk<'a> {
     grid: &'a mut Grid,
     paint: &'a Paint<'a>,
+    only: Option<&'a [Rect]>,
     cell: f32,
     clips: Vec<Rect>,
     alphas: Vec<f32>,
@@ -145,15 +160,38 @@ impl Walk<'_> {
             }
             SceneCommand::PushTransform(transform) => self.space.push(*transform),
             SceneCommand::PopTransform => self.space.pop(),
-            SceneCommand::Rect(draw) => self.rect(draw),
-            SceneCommand::Gradient(draw) => self.gradient(draw),
-            SceneCommand::GlyphRun(draw) => self.text(draw),
+            SceneCommand::Rect(draw) => {
+                let caret = self.paint.marks.caret(draw.node);
+                if caret || self.wanted(reach(draw.rect, draw.border)) {
+                    self.rect(draw);
+                }
+            }
+            SceneCommand::Gradient(draw) => {
+                if self.wanted(reach(draw.rect, draw.border)) {
+                    self.gradient(draw);
+                }
+            }
+            SceneCommand::GlyphRun(draw) => {
+                if self.wanted(draw.run.rect) {
+                    self.text(draw);
+                }
+            }
             SceneCommand::Image(draw) => self.image(draw),
-            SceneCommand::Decoration(draw) => self.decoration(draw),
+            SceneCommand::Decoration(draw) => {
+                if self.wanted(draw.band) {
+                    self.decoration(draw);
+                }
+            }
             SceneCommand::Pattern(_)
             | SceneCommand::DrawShadow { .. }
             | SceneCommand::Sprite(_) => {}
         }
+    }
+
+    fn wanted(&self, rect: Rect) -> bool {
+        let rect = self.space.map(rect);
+        self.only
+            .is_none_or(|only| only.iter().any(|region| region.intersects(rect)))
     }
 
     fn clip(&self) -> Option<Rect> {

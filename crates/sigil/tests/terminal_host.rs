@@ -79,6 +79,8 @@ mod cells;
 mod frames;
 #[path = "terminal_host/keys.rs"]
 mod keys;
+#[path = "terminal_host/oracle.rs"]
+mod oracle;
 #[path = "terminal_host/paint.rs"]
 mod paint;
 #[path = "terminal_host/select.rs"]

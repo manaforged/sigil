@@ -1,12 +1,13 @@
 use crate::geometry::Rect;
 
-use crate::style::{Rgba8, Theme, Tone};
+use crate::style::Theme;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::Placement;
 use smol_str::SmolStr;
 use std::borrow::Cow;
 use unicode_segmentation::UnicodeSegmentation;
 
+mod cell;
 mod decoration;
 mod fill;
 mod image;
@@ -14,91 +15,17 @@ mod junction;
 mod marks;
 #[path = "paint_clip.rs"]
 mod paint_clip;
+mod region;
 mod scene;
 mod transform;
 
+pub(super) use cell::Face;
+pub use cell::{Cell, Ink, Lines, Underline};
 pub use marks::Marks;
+pub(crate) use region::raster_regions;
 pub use scene::{Paint, raster, raster_into, raster_with};
 
 pub const CONTINUES: &str = "";
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum Ink {
-    #[default]
-    Bare,
-    Of(Tone),
-    Exact(Rgba8),
-}
-
-impl Ink {
-    const fn pick(colour: Rgba8, tone: Option<Tone>) -> Self {
-        match (colour, tone) {
-            (colour, _) if colour.a > 0 => Self::Exact(colour),
-            (_, Some(tone)) => Self::Of(tone),
-            (_, None) => Self::Bare,
-        }
-    }
-
-    pub(crate) const fn set(self) -> bool {
-        !matches!(self, Self::Bare)
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Underline {
-    #[default]
-    None,
-    Straight,
-    Curly,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Lines {
-    pub underline: Underline,
-    pub strike: bool,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Cell {
-    pub text: SmolStr,
-    pub fg: Ink,
-    pub bg: Ink,
-    pub bold: bool,
-    pub italic: bool,
-    pub dim: bool,
-    pub lines: Lines,
-    pub underline_ink: Ink,
-    pub link: Option<SmolStr>,
-}
-
-impl Cell {
-    #[must_use]
-    pub const fn blank() -> Self {
-        Self {
-            text: SmolStr::new_inline(" "),
-            fg: Ink::Bare,
-            bg: Ink::Bare,
-            bold: false,
-            italic: false,
-            dim: false,
-            lines: Lines {
-                underline: Underline::None,
-                strike: false,
-            },
-            underline_ink: Ink::Bare,
-            link: None,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Default)]
-pub(super) struct Face {
-    pub(super) bold: bool,
-    pub(super) italic: bool,
-    pub(super) dim: bool,
-    pub(super) underline: Underline,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Grid {
@@ -176,15 +103,14 @@ impl Grid {
             return;
         }
         for cell in &mut self.cells {
-            let Cow::Owned(text) = glyphs.text(&cell.text) else {
-                continue;
-            };
-            cell.text = text.into();
+            map_glyph(cell, glyphs);
         }
     }
 
     pub fn resize(&mut self, cols: u16, rows: u16) {
-        self.reshape(cols as usize, rows as usize, Cell::default());
+        if (self.cols, self.rows) != (cols as usize, rows as usize) {
+            self.reshape(cols as usize, rows as usize, Cell::default());
+        }
         self.cursor = None;
     }
 
@@ -333,6 +259,12 @@ impl Grid {
             return None;
         }
         Some(row.saturating_mul(self.cols).saturating_add(col))
+    }
+}
+
+fn map_glyph(cell: &mut Cell, glyphs: Glyphs) {
+    if let Cow::Owned(text) = glyphs.text(&cell.text) {
+        cell.text = text.into();
     }
 }
 
