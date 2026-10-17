@@ -83,6 +83,8 @@ mod frames;
 mod keys;
 #[path = "terminal_host/layout.rs"]
 mod layout;
+#[path = "terminal_host/live.rs"]
+mod live;
 #[path = "terminal_host/oracle.rs"]
 mod oracle;
 #[path = "terminal_host/paint.rs"]
