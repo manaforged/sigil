@@ -300,7 +300,7 @@ fn a_patched_text_node_emits_its_new_text() {
 }
 
 #[test]
-fn a_moved_spot_rasters_only_the_cells_around_it() {
+fn a_moved_spot_rasters_only_its_window() {
     use sigil::profile::{self, BackendStatus, Counter};
     let rastered = Runtime::scope("oracle-counters", || {
         let mut model = Model {
@@ -346,7 +346,7 @@ fn a_moved_spot_rasters_only_the_cells_around_it() {
     let screen = u64::from(COLS) * u64::from(ROWS);
     assert!(rastered > 0, "the move was not rastered at all");
     assert!(
-        rastered < screen / 3,
-        "a one-word move rastered {rastered} of {screen} cells"
+        rastered <= 56,
+        "a one-word move rastered {rastered} of {screen} cells; its two 7x4 windows hold 56"
     );
 }

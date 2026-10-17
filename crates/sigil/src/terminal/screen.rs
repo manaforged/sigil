@@ -300,12 +300,13 @@ fn frame_hooks<'s>(
         paint: Some(Box::new(move |host, router, info| {
             let _phase = profile::span(profile::Phase::TuiPaint);
             if !info.layout_ok {
+                host.reset_emit();
                 return;
             }
             let resized =
                 screen.grid.cols() != usize::from(cols) || screen.grid.rows() != usize::from(rows);
-            let next = host.emit(view(cols, rows));
-            screen.dirty = next != screen.scene || resized || screen.fresh;
+            let (next, diff) = host.emit_since(view(cols, rows), &info.delta, &screen.scene);
+            screen.dirty = !diff.unchanged() || resized || screen.fresh;
             if screen.dirty {
                 let _raster = profile::span(profile::Phase::TuiRaster);
                 let marks = Marks::collect(host.cx(), router.focus(), &next, CELL);

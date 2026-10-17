@@ -187,6 +187,11 @@ pub(super) fn paint_text(grid: &mut Grid, node: &Text<'_>, rect: Rect, cell: f32
 impl Grid {
     fn run(&mut self, run: &Run<'_>) {
         let last = run.last.min(self.cols);
+        let (open, rows) = self.bound(0..last, run.row..run.row.saturating_add(1));
+        if open.is_empty() || rows.is_empty() {
+            return;
+        }
+        let mask = self.mask.as_ref();
         let start = run.row.saturating_mul(self.cols);
         let Some(line) = self.cells.get_mut(start..start.saturating_add(last)) else {
             return;
@@ -202,7 +207,11 @@ impl Grid {
             }
             let styled = styled(run, offset);
             for pad in 0..step {
-                if let Some(cell) = line.get_mut(x.saturating_add(pad)) {
+                let at = x.saturating_add(pad);
+                if mask.is_some_and(|mask| !mask.holds(at, run.row)) {
+                    continue;
+                }
+                if let Some(cell) = line.get_mut(at) {
                     cell.text = cell_text(text, pad);
                     paint_cell(cell, run.node.theme, &styled);
                 }

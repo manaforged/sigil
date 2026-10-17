@@ -58,6 +58,8 @@ pub(crate) fn scene_damage<R: FromIterator<Rect>>(
     }
 }
 
+const TERMINAL_SCALE: f32 = 1.0;
+
 #[cfg_attr(not(test), allow(dead_code, reason = "the terminal screen wires it"))]
 pub(crate) fn cell_damage(
     (previous, next): (&CommandScene, &CommandScene),
@@ -65,8 +67,8 @@ pub(crate) fn cell_damage(
     area: Rect,
     cell: (f32, f32),
 ) -> Damage<Vec<Rect>> {
-    match changed_inks(previous, next, changes, (area, 1.0)) {
-        Damage::Regions(inks) => regions::cells(&inks, area, cell),
+    match changed_inks(previous, next, changes, (area, TERMINAL_SCALE)) {
+        Damage::Regions(inks) => regions::cells(&inks, area, cell, TERMINAL_SCALE.recip()),
         Damage::Unchanged => Damage::Unchanged,
         Damage::Full(reason) => Damage::Full(reason),
     }

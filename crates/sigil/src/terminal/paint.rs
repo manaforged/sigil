@@ -5,6 +5,7 @@ use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::Placement;
 use smol_str::SmolStr;
 use std::borrow::Cow;
+use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
 mod cell;
@@ -13,6 +14,7 @@ mod fill;
 mod image;
 mod junction;
 mod marks;
+mod mask;
 #[path = "paint_clip.rs"]
 mod paint_clip;
 mod region;
@@ -36,6 +38,7 @@ pub struct Grid {
     images: Vec<Placement>,
     graphics: bool,
     cursor: Option<(usize, usize)>,
+    mask: Option<mask::Mask>,
 }
 
 impl Grid {
@@ -51,6 +54,7 @@ impl Grid {
             images: Vec::new(),
             graphics: false,
             cursor: None,
+            mask: None,
         }
     }
 
@@ -221,8 +225,12 @@ impl Grid {
     fn each(&mut self, area: Area, mut paint: impl FnMut(&mut Cell)) {
         let ((col, row), (width, height), inside) = area;
         let inner = frame(inside);
-        for y in row..row.saturating_add(height).min(self.rows) {
-            for x in col..col.saturating_add(width).min(self.cols) {
+        let (xs, ys) = self.bound(
+            col..col.saturating_add(width).min(self.cols),
+            row..row.saturating_add(height).min(self.rows),
+        );
+        for y in ys {
+            for x in xs.clone() {
                 let Some(index) = self.index(x, y) else {
                     continue;
                 };
@@ -254,8 +262,18 @@ impl Grid {
             .and_then(|index| self.cells.get_mut(index))
     }
 
-    pub(super) const fn index(&self, col: usize, row: usize) -> Option<usize> {
+    pub(super) fn bound(&self, xs: Range<usize>, ys: Range<usize>) -> (Range<usize>, Range<usize>) {
+        match &self.mask {
+            Some(mask) => mask.clamp(xs, ys),
+            None => (xs, ys),
+        }
+    }
+
+    pub(super) fn index(&self, col: usize, row: usize) -> Option<usize> {
         if col >= self.cols || row >= self.rows {
+            return None;
+        }
+        if self.mask.as_ref().is_some_and(|mask| !mask.holds(col, row)) {
             return None;
         }
         Some(row.saturating_mul(self.cols).saturating_add(col))

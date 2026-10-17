@@ -43,11 +43,17 @@ pub(super) fn regions<R: FromIterator<Rect>>(
 }
 
 #[cfg_attr(not(test), allow(dead_code, reason = "the terminal screen wires it"))]
-pub(super) fn cells(inks: &[Rect], area: Rect, (width, height): (f32, f32)) -> Damage<Vec<Rect>> {
+pub(super) fn cells(
+    inks: &[Rect],
+    area: Rect,
+    (width, height): (f32, f32),
+    antialias: f32,
+) -> Damage<Vec<Rect>> {
     let mut merged: Vec<Rect> = Vec::new();
     for rect in inks
         .iter()
-        .filter_map(|ink| intersect_rect(*ink, area))
+        .map(|ink| unpadded(*ink, antialias))
+        .filter_map(|ink| intersect_rect(ink, area))
         .map(|rect| snap_cells(rect, area.origin, (width, height)))
     {
         absorb(&mut merged, rect);
@@ -56,6 +62,25 @@ pub(super) fn cells(inks: &[Rect], area: Rect, (width, height): (f32, f32)) -> D
         return Damage::Unchanged;
     }
     Damage::Regions(merged)
+}
+
+#[cfg_attr(not(test), allow(dead_code, reason = "the terminal screen wires it"))]
+fn unpadded(ink: Rect, antialias: f32) -> Rect {
+    let x = if ink.width > 2.0 * antialias {
+        antialias
+    } else {
+        0.0
+    };
+    let y = if ink.height > 2.0 * antialias {
+        antialias
+    } else {
+        0.0
+    };
+    Rect::new(
+        Point::new(ink.origin.x + x, ink.origin.y + y),
+        (-2.0_f32).mul_add(x, ink.width),
+        (-2.0_f32).mul_add(y, ink.height),
+    )
 }
 
 #[cfg_attr(not(test), allow(dead_code, reason = "the terminal screen wires it"))]
