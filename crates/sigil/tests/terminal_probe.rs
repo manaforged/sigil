@@ -12,6 +12,8 @@ use std::time::{Duration, Instant};
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use sigil::kernel::text;
 use sigil::prelude::AppConfig;
+use sigil::reactive::signal;
+use sigil::widgets::text_edit;
 
 const CHILD: &str = "SIGIL_TERMINAL_PROBE_CHILD";
 const ALTERNATE: &[u8] = b"\x1b[?1049h";
@@ -31,13 +33,24 @@ fn probe_child() {
     .expect("run");
 }
 
+#[test]
+fn editor_child() {
+    if std::env::var_os(CHILD).is_none() {
+        return;
+    }
+    sigil::run(AppConfig::new("probe").size(40, 12).terminal(), || {
+        text_edit(signal(String::new())).autofocus()
+    })
+    .expect("run");
+}
+
 fn position(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack
         .windows(needle.len())
         .position(|window| window == needle)
 }
 
-fn run_child() -> Vec<u8> {
+fn run_child(name: &str, script: impl FnOnce(&Mutex<Box<dyn Write + Send>>)) -> Vec<u8> {
     let pair = native_pty_system()
         .openpty(PtySize {
             rows: 12,
@@ -47,7 +60,7 @@ fn run_child() -> Vec<u8> {
         })
         .expect("pty");
     let mut command = CommandBuilder::new(std::env::current_exe().expect("test binary"));
-    command.args(["probe_child", "--exact", "--nocapture", "--test-threads=1"]);
+    command.args([name, "--exact", "--nocapture", "--test-threads=1"]);
     command.env_clear();
     for (key, value) in [
         ("PATH", "/usr/bin:/bin"),
@@ -76,6 +89,7 @@ fn run_child() -> Vec<u8> {
         }
     });
     std::thread::sleep(Duration::from_secs(2));
+    script(&writer);
     writer.lock().unwrap().write_all(b"\x03").ok();
     let deadline = Instant::now() + Duration::from_secs(5);
     while child.try_wait().ok().flatten().is_none() && Instant::now() < deadline {
@@ -88,7 +102,7 @@ fn run_child() -> Vec<u8> {
 
 #[test]
 fn startup_probing_leaves_the_callers_screen_alone() {
-    let output = run_child();
+    let output = run_child("probe_child", |_| {});
     let entered = position(&output, ALTERNATE).expect("the app entered the alternate screen");
     let erased = position(&output, ERASE_LINE);
     assert!(
@@ -102,5 +116,28 @@ fn startup_probing_leaves_the_callers_screen_alone() {
         screen.screen().contents().contains("keep"),
         "the caller's text is gone after exit: {:?}",
         screen.screen().contents()
+    );
+}
+
+#[test]
+fn a_reply_split_across_reads_is_not_typed() {
+    let output = run_child("editor_child", |writer| {
+        for part in [&b"\x1bP>|xter"[..], b"m(390)\x1b\\", b"ok"] {
+            writer.lock().unwrap().write_all(part).ok();
+            std::thread::sleep(Duration::from_millis(200));
+        }
+        std::thread::sleep(Duration::from_millis(300));
+    });
+    let mut screen = vt100::Parser::new(12, 40, 0);
+    let entered = position(&output, ALTERNATE).expect("the app entered the alternate screen");
+    screen.process(&output[entered..]);
+    let shown = screen.screen().contents();
+    assert!(
+        shown.contains("ok"),
+        "the typed text never arrived: {shown:?}"
+    );
+    assert!(
+        !shown.contains("390"),
+        "a split terminal reply was typed: {shown:?}"
     );
 }
