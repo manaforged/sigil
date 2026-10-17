@@ -130,7 +130,7 @@ fn a_reply_split_across_reads_is_not_typed() {
     });
     let mut screen = vt100::Parser::new(12, 40, 0);
     let entered = position(&output, ALTERNATE).expect("the app entered the alternate screen");
-    screen.process(&output[entered..]);
+    screen.process(output.get(entered..).unwrap_or_default());
     let shown = screen.screen().contents();
     assert!(
         shown.contains("ok"),
