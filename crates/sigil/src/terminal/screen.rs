@@ -342,6 +342,7 @@ fn raster(screen: &mut Screen, next: &CommandScene, paint: &Paint<'_>, (cols, ro
     match damage {
         Damage::Regions(regions) => {
             screen.grid.clone_from(&screen.prev);
+            screen.announcer.restore(&mut screen.grid);
             raster_regions(&mut screen.grid, next, paint, &regions);
         }
         Damage::Unchanged | Damage::Full(_) => {

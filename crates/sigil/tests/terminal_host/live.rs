@@ -6,7 +6,9 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::{LayoutBuilderExt, Paint, Signal};
 use sigil::reactive::{Runtime, signal};
 use sigil::style::{StateVariants, Token};
-use sigil::terminal::{ColorDepth, Grid, Screen, render};
+use std::time::Duration;
+
+use sigil::terminal::{Access, ColorDepth, Grid, Screen, render};
 use sigil::widgets::{button, modal, text_edit, virtual_list};
 use sigil_kittest::input::{pointer_move, scroll_lines, tab, type_char};
 
@@ -123,13 +125,18 @@ struct Side {
 }
 
 impl Side {
-    fn new(state: State, size: (u16, u16)) -> Self {
+    fn new(state: State, size: (u16, u16), status: Duration) -> Self {
         let mut host = Host::cells();
         host.mount(move || tree(state));
+        let mut screen = Screen::new(size.0, size.1);
+        screen.set_access(Access {
+            status,
+            ..Access::default()
+        });
         Self {
             host,
             router: EventRouter::new(),
-            screen: Screen::new(size.0, size.1),
+            screen,
         }
     }
 
@@ -160,7 +167,7 @@ fn frames(steps: &[Step], full: bool) -> Vec<String> {
     Runtime::scope("live-oracle", || {
         let shared = state();
         let mut size = (48_u16, 16_u16);
-        let mut host = Side::new(shared, size);
+        let mut host = Side::new(shared, size, Access::default().status);
         for _ in 0..2 {
             host.frame(Vec::new(), size, full);
         }
@@ -200,4 +207,32 @@ proptest! {
         let mismatch = diverged(&steps);
         prop_assert!(mismatch.is_none(), "{}", mismatch.unwrap_or_default());
     }
+}
+
+fn expiring(full: bool) -> Vec<String> {
+    Runtime::scope("live-status", || {
+        let shared = state();
+        let mut size = (48_u16, 16_u16);
+        let status = Duration::from_millis(20);
+        let mut host = Side::new(shared, size, status);
+        let steps = [
+            Step::Status(String::from("ready")),
+            Step::Modal,
+            Step::Status(String::from("next")),
+            Step::Status(String::from("more")),
+        ];
+        steps
+            .iter()
+            .map(|step| {
+                std::thread::sleep(status * 3);
+                apply(shared, step, &mut size);
+                host.frame(Vec::new(), size, full)
+            })
+            .collect()
+    })
+}
+
+#[test]
+fn an_expired_status_clears_on_a_damaged_frame() {
+    assert_eq!(expiring(false), expiring(true));
 }
