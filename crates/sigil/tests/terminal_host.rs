@@ -99,6 +99,8 @@ mod live;
 mod oracle;
 #[path = "terminal_host/paint.rs"]
 mod paint;
+#[path = "terminal_host/retained.rs"]
+mod retained;
 #[path = "terminal_host/select.rs"]
 mod select;
 #[path = "terminal_host/table.rs"]

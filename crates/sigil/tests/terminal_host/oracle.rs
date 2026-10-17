@@ -8,8 +8,8 @@ use sigil::reactive::{Runtime, derived, signal};
 use sigil::style::{NodeStyleExt, Rgba8, Token};
 use sigil::terminal::{ColorDepth, Grid, Screen, render};
 
-const COLS: u16 = 40;
-const ROWS: u16 = 12;
+pub(super) const COLS: u16 = 40;
+pub(super) const ROWS: u16 = 12;
 const INKS: [Rgba8; 4] = [
     Rgba8 {
         r: 250,
@@ -38,18 +38,18 @@ const INKS: [Rgba8; 4] = [
 ];
 
 #[derive(Clone, Debug, PartialEq)]
-struct Spot {
-    x: u16,
-    y: u16,
-    word: String,
-    ink: usize,
+pub(super) struct Spot {
+    pub(super) x: u16,
+    pub(super) y: u16,
+    pub(super) word: String,
+    pub(super) ink: usize,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
-struct Model {
-    spots: Vec<Spot>,
-    lines: Vec<String>,
-    accent: bool,
+pub(super) struct Model {
+    pub(super) spots: Vec<Spot>,
+    pub(super) lines: Vec<String>,
+    pub(super) accent: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -130,7 +130,7 @@ fn placed(spot: &Spot) -> impl IntoNode + use<> {
         .child(text(spot.word.clone()).nowrap().text_color(INKS[spot.ink]))
 }
 
-fn tree(model: Signal<Model>) -> impl IntoNode {
+pub(super) fn tree(model: Signal<Model>) -> impl IntoNode {
     let accent = derived(move || model.with(|model| model.accent));
     container()
         .layout(LayoutStyle::block().fill_width().fill_height())
@@ -163,13 +163,13 @@ fn tree(model: Signal<Model>) -> impl IntoNode {
         )
 }
 
-fn ansi(grid: &Grid) -> Vec<u8> {
+pub(super) fn ansi(grid: &Grid) -> Vec<u8> {
     let mut out = Vec::new();
     render(&mut out, &Grid::new(0, 0), grid, ColorDepth::Truecolor).expect("render");
     out
 }
 
-fn truth(model: &Model) -> Vec<u8> {
+pub(super) fn truth(model: &Model) -> Vec<u8> {
     Runtime::scope("oracle-truth", || {
         let state = signal(model.clone());
         let mut host = Host::cells();
@@ -297,92 +297,4 @@ fn a_patched_text_node_emits_its_new_text() {
         let second = host.emit((320.0, 96.0));
         assert!(second.find_text("a").is_some(), "{second:?}");
     });
-}
-
-#[test]
-fn a_moved_spot_rasters_only_its_window() {
-    use sigil::profile::{self, BackendStatus, Counter};
-    let rastered = Runtime::scope("oracle-counters", || {
-        let mut model = Model {
-            lines: (0..ROWS)
-                .map(|row| format!("row {row} steady text"))
-                .collect(),
-            spots: vec![Spot {
-                x: 2,
-                y: 2,
-                word: "star".to_string(),
-                ink: 1,
-            }],
-            accent: false,
-        };
-        let state = signal(model.clone());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
-        host.mount(move || tree(state));
-        let mut screen = Screen::new(COLS, ROWS);
-        let mut sink = std::io::sink();
-        for _ in 0..2 {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
-            screen.flush(&mut sink).expect("flush");
-        }
-        let _profiled = crate::profiled();
-        profile::enable();
-        profile::reset();
-        profile::begin_frame(BackendStatus::TERMINAL);
-        model.spots[0].x = 20;
-        state.set(model.clone());
-        screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
-        screen.flush(&mut sink).expect("flush");
-        profile::tick_frame();
-        let counted = profile::frames()
-            .last()
-            .map_or(u64::MAX, |frame| frame.counter(Counter::TuiCellsRastered));
-        profile::disable();
-        counted
-    });
-    let screen = u64::from(COLS) * u64::from(ROWS);
-    assert!(rastered > 0, "the move was not rastered at all");
-    assert!(
-        rastered <= 56,
-        "a one-word move rastered {rastered} of {screen} cells; its two 7x4 windows hold 56"
-    );
-}
-
-#[test]
-fn two_frames_before_one_flush_keep_both_changes() {
-    let shown = Runtime::scope("oracle-unflushed", || {
-        let mut model = Model {
-            lines: (0..ROWS).map(|row| format!("row {row}")).collect(),
-            ..Model::default()
-        };
-        let state = signal(model.clone());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
-        host.mount(move || tree(state));
-        let mut screen = Screen::new(COLS, ROWS);
-        for _ in 0..2 {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
-            screen.flush(&mut std::io::sink()).expect("flush");
-        }
-        model.lines[1] = String::from("first");
-        state.set(model.clone());
-        screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
-        model.lines[9] = String::from("second");
-        state.set(model.clone());
-        let grid = screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
-        (String::from_utf8_lossy(&ansi(grid)).into_owned(), model)
-    });
-    let (incremental, model) = shown;
-    let fresh = String::from_utf8_lossy(&truth(&model)).into_owned();
-    assert_eq!(incremental, fresh, "an unflushed frame lost its change");
 }
