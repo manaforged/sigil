@@ -17,7 +17,7 @@ use super::subtree::{Copied, Span};
 struct Seen {
     version: u32,
     layout: Option<LayoutResult>,
-    volatile: (u8, u64, u64, bool),
+    volatile: (u8, u64, u64, u64, bool),
 }
 
 #[derive(Default)]
@@ -134,20 +134,27 @@ impl EmitMemo {
     }
 }
 
-fn volatile_key(node: &Node) -> (u8, u64, u64, bool) {
-    let animated = node
-        .get_extension::<StyleBinding>()
-        .and_then(StyleBinding::animator_overlay)
-        .map_or(
-            0,
-            crate::style::animator_overlay::AnimatorOverlay::cache_key,
-        );
+fn volatile_key(node: &Node) -> (u8, u64, u64, u64, bool) {
+    let binding = node.get_extension::<StyleBinding>();
+    let animated = binding.and_then(StyleBinding::animator_overlay).map_or(
+        0,
+        crate::style::animator_overlay::AnimatorOverlay::cache_key,
+    );
     (
         emit_cache::slot_tag(node),
         animated,
+        binding.map_or(0, channels_key),
         node.get_extension::<CanvasPaint>()
             .map_or(0, CanvasPaint::version),
         node.get_extension::<FocusRing>()
             .is_some_and(FocusRing::visible),
     )
+}
+
+fn channels_key(binding: &StyleBinding) -> u64 {
+    let mut hasher = ahash::AHasher::default();
+    for atoms in binding.reactive_channels() {
+        std::ptr::hash(atoms, &mut hasher);
+    }
+    std::hash::Hasher::finish(&hasher)
 }
