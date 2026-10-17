@@ -1,5 +1,10 @@
-use super::Plan;
-use crate::profile::{Counter, Hotspot, attribute, count};
+#![cfg_attr(
+    not(feature = "scene"),
+    allow(
+        dead_code,
+        reason = "the terminal uses the ink bounds; the GPU renderer uses the rest"
+    )
+)]
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum FullReason {
@@ -28,17 +33,6 @@ impl FullReason {
             Self::ChangedShare => "changed share over threshold",
             Self::UnboundedChange => "unbounded change",
             Self::RegionShare => "damage area over threshold",
-        }
-    }
-}
-
-pub(crate) fn note_plan(plan: &Plan) {
-    match plan {
-        Plan::Unchanged => count(Counter::GpuPlanUnchanged),
-        Plan::Regions(_) => count(Counter::GpuPlanRegions),
-        Plan::Full(reason) => {
-            count(Counter::GpuPlanFull);
-            attribute(Hotspot::GpuFullRepaint, 1, || reason.name().to_owned());
         }
     }
 }

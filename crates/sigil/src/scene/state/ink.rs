@@ -1,7 +1,7 @@
 use crate::geometry::{Point, Rect};
-use crate::renderer::scene_command::walk::transform_rect;
-use crate::renderer::scene_command::{LayerEffect, SceneCommand, Stroke, Transform};
-use crate::renderer::shadow_paint::Shadow;
+use crate::scene::command::effects::transform_rect;
+use crate::scene::command::{LayerEffect, SceneCommand, Stroke, Transform};
+use crate::scene::shadow::Shadow;
 
 pub(crate) fn invert(transform: Transform) -> Option<Transform> {
     let [[a, b, tx], [c, d, ty]] = transform;

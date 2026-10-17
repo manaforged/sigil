@@ -77,6 +77,29 @@ impl GlyphRun {
     }
 
     #[cfg(feature = "scene")]
+    pub(crate) fn ink_rect(&self) -> Option<Rect> {
+        let Some(paragraph) = self.paragraph() else {
+            return Some(self.rect);
+        };
+        let origin = self.rect.origin;
+        let ink = paragraph.ink_rect()?;
+        Some(Rect::new(
+            crate::geometry::Point::new(origin.x + ink.origin.x, origin.y + ink.origin.y),
+            ink.width,
+            ink.height,
+        ))
+    }
+
+    #[cfg(not(feature = "scene"))]
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "one signature with the shaped version, which can find no ink"
+    )]
+    pub(crate) const fn ink_rect(&self) -> Option<Rect> {
+        Some(self.rect)
+    }
+
+    #[cfg(feature = "scene")]
     pub(crate) fn paragraph(&self) -> Option<&Paragraph> {
         self.shared.paragraph.as_ref()
     }

@@ -1,12 +1,23 @@
+#![cfg_attr(
+    not(feature = "scene"),
+    allow(
+        dead_code,
+        reason = "the terminal uses the ink bounds; the GPU renderer uses the rest"
+    )
+)]
+
 use smallvec::{SmallVec, smallvec};
 
 use crate::geometry::Rect;
-use crate::renderer::scene_command::walk::{IDENTITY, compose, intersect_rect, transform_rect};
-use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Transform};
+use crate::scene::command::effects::transform_rect;
+use crate::scene::command::{LayerEffect, LayerScope, SceneCommand, Transform};
+use crate::scene::geometry::{IDENTITY, compose, intersect_rect};
 
 mod frame;
 mod ink;
-pub(crate) use ink::{ink_rect, invert, shadow_reach, snap_out};
+#[cfg(feature = "scene")]
+pub(crate) use ink::shadow_reach;
+pub(crate) use ink::{ink_rect, invert, snap_out};
 
 pub(crate) const MAX_BLUR_REACH: f32 = 1024.0;
 pub(crate) const MAX_LAYER_EXTENT: f32 = 8191.0;

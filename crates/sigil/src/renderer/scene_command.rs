@@ -3,7 +3,7 @@
 mod draw_handlers;
 mod layer_walk;
 mod primitive;
-pub(crate) mod state;
+pub(crate) use crate::scene::state;
 pub(crate) mod walk;
 
 pub(crate) use crate::scene::command::{
