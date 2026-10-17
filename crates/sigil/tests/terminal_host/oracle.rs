@@ -327,6 +327,7 @@ fn a_moved_spot_rasters_only_its_window() {
                 .expect("frame");
             screen.flush(&mut sink).expect("flush");
         }
+        let _profiled = crate::profiled();
         profile::enable();
         profile::reset();
         profile::begin_frame(BackendStatus::TERMINAL);

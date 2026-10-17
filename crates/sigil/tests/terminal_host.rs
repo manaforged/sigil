@@ -11,6 +11,14 @@
     clippy::cast_precision_loss
 )]
 
+static PROFILED: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn profiled() -> std::sync::MutexGuard<'static, ()> {
+    PROFILED
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 use sigil::events::{Key, ShellEvent};
 use sigil::kernel::IntoNode;
 use sigil::kernel::{container, text};
