@@ -66,3 +66,49 @@ fn the_startup_probe_never_writes_an_image_query() {
     });
     assert!(!super::queries(every, true).contains("\x1b_G"));
 }
+
+fn every_question() -> super::Questions {
+    use super::{Question, Questions};
+    [
+        Question::Sync,
+        Question::Keys,
+        Question::Color,
+        Question::Version,
+    ]
+    .into_iter()
+    .fold(Questions::default(), |ask, question| {
+        ask.with(question, true)
+    })
+}
+
+#[test]
+fn a_silent_terminal_costs_one_deadline() -> std::io::Result<()> {
+    use std::os::unix::net::UnixStream;
+    let (input, _quiet) = UnixStream::pair()?;
+    let mut sent = Vec::new();
+    let started = std::time::Instant::now();
+    let answers = super::ask_on(&input, &mut sent, every_question(), true);
+    let spent = started.elapsed();
+    assert!(answers.is_none());
+    assert!(
+        spent < std::time::Duration::from_millis(800),
+        "a silent terminal held startup for {spent:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn every_startup_query_goes_out_in_one_exchange() -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::net::UnixStream;
+    let (input, mut terminal) = UnixStream::pair()?;
+    terminal.write_all(b"\x1b[?62;c")?;
+    let mut sent = Vec::new();
+    drop(super::ask_on(&input, &mut sent, every_question(), true));
+    let text = String::from_utf8_lossy(&sent);
+    assert_eq!(text.matches("\x1b[?u").count(), 1, "{text:?}");
+    assert_eq!(text.matches("\x1b[c").count(), 1, "{text:?}");
+    assert!(text.ends_with("\x1b[c"), "{text:?}");
+    assert!(text.contains("\x1b[6n"), "{text:?}");
+    Ok(())
+}

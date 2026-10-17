@@ -21,8 +21,13 @@ use crate::terminal::screen::Screen;
 use crate::terminal::signals;
 
 mod above;
+mod calibrate;
 
 pub use above::{PrintAboveError, print_above};
+pub(crate) use calibrate::Measured;
+pub use calibrate::calibrate;
+#[cfg(unix)]
+pub(crate) use calibrate::{measure, query as calibration};
 
 const BUFFER: usize = 64 * 1024;
 const MODIFY_KEYS_ON: &str = "\x1b[>4;2m";
@@ -67,7 +72,8 @@ impl Term {
         let guard = EnterGuard;
         RESTORED.store(false, Ordering::Relaxed);
         enable_raw_mode()?;
-        let caps = Caps::probe();
+        let (caps, measured) = Caps::measure();
+        calibrate::keep(measured);
         CAPS.with(|slot| slot.set(Some(caps)));
         BAR_CURSOR.store(caps.cursor == Cursor::Bar, Ordering::Relaxed);
         enter_modes(inline)?;

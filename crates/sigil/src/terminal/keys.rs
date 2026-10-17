@@ -95,6 +95,7 @@ fn composed_text(event: &ShellEvent) -> Option<&str> {
 enum Reply {
     Osc,
     Apc,
+    Dcs,
 }
 
 pub(crate) fn strip_replies(events: &mut Vec<Event>) {
@@ -124,12 +125,12 @@ pub(crate) fn strip_replies(events: &mut Vec<Event>) {
 
 fn opener(event: &Event) -> Option<Reply> {
     let (code, modifiers) = pressed(event)?;
-    if modifiers != KeyModifiers::ALT {
-        return None;
-    }
     match code {
-        KeyCode::Char(']') => Some(Reply::Osc),
-        KeyCode::Char('_') => Some(Reply::Apc),
+        KeyCode::Char(']') if modifiers == KeyModifiers::ALT => Some(Reply::Osc),
+        KeyCode::Char('_') if modifiers == KeyModifiers::ALT => Some(Reply::Apc),
+        KeyCode::Char('P') if modifiers == KeyModifiers::ALT | KeyModifiers::SHIFT => {
+            Some(Reply::Dcs)
+        }
         _ => None,
     }
 }

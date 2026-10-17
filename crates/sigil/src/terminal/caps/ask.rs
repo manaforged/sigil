@@ -31,10 +31,6 @@ impl Questions {
         }
     }
 
-    pub(super) const fn none(self) -> bool {
-        self.0 == 0
-    }
-
     pub(super) const fn has(self, question: Question) -> bool {
         self.0 & (1 << question as u8) != 0
     }
