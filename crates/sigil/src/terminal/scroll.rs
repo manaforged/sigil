@@ -27,6 +27,9 @@ impl Shift {
         }
         let sign = |grid: &Grid| -> Vec<u64> { (0..rows).map(|row| sign(grid.row(row))).collect() };
         let (old, new) = (sign(prev), sign(next));
+        if old.iter().zip(&new).filter(|(was, now)| was != now).count() < MIN_GAIN {
+            return None;
+        }
         let mut best = None;
         let mut most = MIN_GAIN - 1;
         for by in 1..rows {

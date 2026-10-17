@@ -259,12 +259,26 @@ impl Host {
 
     #[must_use]
     pub fn accessibility_tree(&self, router: &EventRouter) -> AccessibilityTree {
+        self.accessibility_tree_scoped(router, crate::a11y::mapping::TreeScope::Full)
+    }
+
+    #[must_use]
+    pub(crate) fn accessibility_tree_scoped(
+        &self,
+        router: &EventRouter,
+        scope: crate::a11y::mapping::TreeScope,
+    ) -> AccessibilityTree {
         let _env = self.enter();
-        crate::a11y::tree(&self.cx, router.focus(), &|id| {
-            self.layout
-                .result(id)
-                .map(|result| crate::events::hit_test::visual_bounds(&self.cx, id, result.rect()))
-        })
+        crate::a11y::mapping::tree_scoped(
+            &self.cx,
+            router.focus(),
+            &|id| {
+                self.layout.result(id).map(|result| {
+                    crate::events::hit_test::visual_bounds(&self.cx, id, result.rect())
+                })
+            },
+            scope,
+        )
     }
 
     pub fn focus_intent(&mut self, router: &mut EventRouter, intent: FocusIntent) {

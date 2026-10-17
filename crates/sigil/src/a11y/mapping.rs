@@ -9,16 +9,57 @@ pub type BoundsLookup<'a> = &'a dyn Fn(NodeId) -> Option<Rect>;
 
 pub(super) const WINDOW_ROOT: AkNodeId = AkNodeId(u64::MAX);
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum TreeScope {
+    Full,
+    Reading,
+}
+
+struct Walk<'a> {
+    bounds: BoundsLookup<'a>,
+    scope: TreeScope,
+    focus: Option<NodeId>,
+}
+
+impl Walk<'_> {
+    fn keeps(&self, id: NodeId, node: &Node) -> bool {
+        self.scope == TreeScope::Full
+            || self.focus == Some(id)
+            || node
+                .a11y
+                .live
+                .or_else(|| default_live(node.a11y.role))
+                .is_some()
+    }
+}
+
 #[must_use]
 pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpdate {
+    tree_scoped(cx, focus, bounds, TreeScope::Full)
+}
+
+#[must_use]
+pub(crate) fn tree_scoped(
+    cx: &Cx,
+    focus: Option<NodeId>,
+    bounds: BoundsLookup<'_>,
+    scope: TreeScope,
+) -> TreeUpdate {
+    let walk = Walk {
+        bounds,
+        scope,
+        focus,
+    };
     let mut window = AkNode::new(accesskit::Role::Window);
     let mut top = Vec::new();
     let mut nodes = Vec::with_capacity(cx.len() + 1);
     for root in cx.roots().iter().copied() {
         flatten(cx, root, &mut top);
-        walk_subtree(cx, root, bounds, &mut nodes);
+        walk_subtree(cx, root, &walk, &mut nodes);
     }
-    super::modal_scope::hide_outside(cx, &mut nodes);
+    if scope == TreeScope::Full {
+        super::modal_scope::hide_outside(cx, &mut nodes);
+    }
     window.set_children(
         top.into_iter()
             .map(NodeId::to_accesskit)
@@ -37,29 +78,41 @@ pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpd
     }
 }
 
-fn walk_subtree(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>, out: &mut Vec<(AkNodeId, AkNode)>) {
+fn walk_subtree(cx: &Cx, id: NodeId, walk: &Walk<'_>, out: &mut Vec<(AkNodeId, AkNode)>) {
     let Some(kernel_node) = cx.get(id) else {
         return;
     };
     if matches!(kernel_node.kind, NodeType::Fragment) {
         for &child in kernel_node.children() {
-            walk_subtree(cx, child, bounds, out);
+            walk_subtree(cx, child, walk, out);
         }
         return;
     }
-    let (projected, runs) = project(cx, id, bounds);
-    let ak_id = id.to_accesskit();
-    out.push((ak_id, projected));
-    if let Some(runs) = runs {
-        out.extend(runs);
+    let has_runs = if walk.keeps(id, kernel_node) {
+        let (projected, runs) = project(cx, id, walk.bounds);
+        out.push((id.to_accesskit(), projected));
+        runs.map(|runs| out.extend(runs)).is_some()
+    } else {
+        opens_runs(cx, id, kernel_node, walk.bounds)
+    };
+    if has_runs {
         for control in embedded_controls(cx, kernel_node) {
-            walk_subtree(cx, control, bounds, out);
+            walk_subtree(cx, control, walk, out);
         }
         return;
     }
     for &child in kernel_node.children() {
-        walk_subtree(cx, child, bounds, out);
+        walk_subtree(cx, child, walk, out);
     }
+}
+
+fn opens_runs(cx: &Cx, id: NodeId, node: &Node, bounds: BoundsLookup<'_>) -> bool {
+    let mut scratch = AkNode::new(node.a11y.role);
+    if super::text::export(id, &node.a11y, &mut scratch).is_some() {
+        return true;
+    }
+    let factor = f64::from(cx.scale().factor());
+    super::links::export(cx, id, bounds, factor, &mut scratch).is_some()
 }
 
 #[must_use]
@@ -286,3 +339,7 @@ fn collect_controls(cx: &Cx, node: &Node, out: &mut Vec<NodeId>) {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "mapping_tests.rs"]
+mod tests;

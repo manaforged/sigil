@@ -117,7 +117,12 @@ impl Screen {
                 self.dirty = true;
             }
         }
-        let update = host.accessibility_tree(router);
+        let scope = if self.transcript.records() {
+            crate::a11y::mapping::TreeScope::Full
+        } else {
+            crate::a11y::mapping::TreeScope::Reading
+        };
+        let update = host.accessibility_tree_scoped(router, scope);
         self.listen(&update);
         if self.dirty && !self.fresh && self.unchanged() {
             self.dirty = false;
