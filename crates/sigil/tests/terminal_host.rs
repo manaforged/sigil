@@ -75,10 +75,14 @@ fn counter() -> impl IntoNode {
 mod borders;
 #[path = "terminal_host/cells.rs"]
 mod cells;
+#[path = "terminal_host/emit.rs"]
+mod emit;
 #[path = "terminal_host/frames.rs"]
 mod frames;
 #[path = "terminal_host/keys.rs"]
 mod keys;
+#[path = "terminal_host/layout.rs"]
+mod layout;
 #[path = "terminal_host/oracle.rs"]
 mod oracle;
 #[path = "terminal_host/paint.rs"]

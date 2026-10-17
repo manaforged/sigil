@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::geometry::Rect;
-use crate::kernel::{Cx, Node, NodeId, Surface, TopLayer};
+use crate::kernel::{Cx, FrameDelta, Node, NodeId, Surface, TopLayer};
 use crate::layout::LayoutResult;
 use crate::style::{RenderStyle, Rgba8, StyleBinding, TextStyle, Theme, ToneContext};
 use crate::widgets::CanvasPaint;
@@ -17,7 +18,12 @@ mod runs;
 mod selection;
 use paint::{NodePaint, push_focus_ring, push_node};
 mod effects;
+mod memo;
+mod subtree;
 mod top_layer;
+pub use memo::EmitDiff;
+pub(crate) use memo::EmitMemo;
+use subtree::{Prior, Track};
 
 const VIEW_OVERSCAN: f32 = 64.0;
 
@@ -28,11 +34,53 @@ pub fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene {
 
 #[must_use]
 pub fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene {
+    let selection = crate::events::selection::ranges(cx);
+    let mut track = Track::off();
+    run(cx, root, clip, &selection, &mut track)
+}
+
+pub(crate) fn emit_scene_since(
+    cx: &Cx,
+    root: NodeId,
+    clip: Option<Rect>,
+    (delta, prev): (&FrameDelta, &CommandScene),
+    memo: &mut EmitMemo,
+) -> (CommandScene, EmitDiff) {
+    let selection = crate::events::selection::ranges(cx);
+    let usable = memo.usable(cx, root, &prev.commands);
+    let dirty = memo.dirty(cx, root, delta, &selection);
+    let spans = std::mem::take(&mut memo.spans);
+    let prior = usable.then_some(Prior {
+        commands: &prev.commands,
+        spans: &spans,
+        dirty: &dirty,
+    });
+    let mut track = Track::recording(prior);
+    let scene = run(cx, root, clip, &selection, &mut track);
+    let diff = EmitDiff::between(&prev.commands, &scene.commands, &track.copies);
+    memo.commit(
+        cx,
+        root,
+        std::mem::take(&mut track.next),
+        &selection,
+        scene.commands.len(),
+    );
+    (scene, diff)
+}
+
+fn run<'t>(
+    cx: &'t Cx,
+    root: NodeId,
+    clip: Option<Rect>,
+    selection: &HashMap<NodeId, (usize, usize)>,
+    track: &mut Track<'t>,
+) -> CommandScene {
     let clip = clip.map(|rect| rect.expand(VIEW_OVERSCAN));
     let mut scene = SceneBuilder::new();
-    let selection = crate::events::selection::ranges(cx);
+    let theme = default_inherited_theme();
     let inherited = Inherited {
-        theme: default_inherited_theme(),
+        theme,
+        theme_stamp: std::ptr::from_ref(theme) as u64,
         text_color: None,
         text_style: Rc::new(TextStyle::default()),
     };
@@ -41,7 +89,8 @@ pub fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandS
         scene: &mut scene,
         cx,
         deferred: &mut deferred,
-        selection: &selection,
+        selection,
+        track,
     };
     walk.push_subtree(root, &inherited, clip);
     let mut next = 0;
@@ -56,22 +105,34 @@ struct EmitWalk<'a, 't> {
     scene: &'a mut SceneBuilder,
     cx: &'t Cx,
     deferred: &'a mut Vec<(NodeId, Inherited<'t>, Option<Rect>)>,
-    selection: &'a std::collections::HashMap<NodeId, (usize, usize)>,
+    selection: &'a HashMap<NodeId, (usize, usize)>,
+    track: &'a mut Track<'t>,
 }
 
 #[derive(Clone)]
 struct Inherited<'t> {
     theme: &'t Theme,
+    theme_stamp: u64,
     text_color: Option<Rgba8>,
     text_style: Rc<TextStyle>,
 }
 
 impl<'t> EmitWalk<'_, 't> {
     fn push_subtree(&mut self, id: NodeId, inherited: &Inherited<'t>, clip: Option<Rect>) {
+        if self.copy_subtree(id, inherited, clip) {
+            return;
+        }
+        let open = self.open_span();
+        self.walk_subtree(id, inherited, clip);
+        self.close_span(id, inherited, clip, &open);
+    }
+
+    fn walk_subtree(&mut self, id: NodeId, inherited: &Inherited<'t>, clip: Option<Rect>) {
         let Some(node) = self.cx.get(id) else {
             return;
         };
         crate::profile::count(crate::profile::Counter::EmitNodes);
+        self.track.walked();
         if skips_paint(node) {
             return;
         }
@@ -167,12 +228,14 @@ impl<'t> EmitWalk<'_, 't> {
         let inner = inner.expand(1.0);
         let clip_radii = corner_radii_for(style.border_radius);
         let (cx, deferred, selection) = (self.cx, &mut *self.deferred, self.selection);
+        let track = &mut *self.track;
         let body = |scene: &mut SceneBuilder| {
             EmitWalk {
                 scene,
                 cx,
                 deferred,
                 selection,
+                track,
             }
             .push_children(node, inherited, Some(inner));
         };
@@ -247,8 +310,17 @@ fn child_inherited<'t>(
             || Rc::clone(&inherited.text_style),
             |binding| emit_cache::layered_text(&inherited.text_style, binding),
         );
+    let (theme, theme_stamp) =
+        node.get_extension::<Theme>()
+            .map_or((inherited.theme, inherited.theme_stamp), |theme| {
+                (
+                    theme,
+                    std::ptr::from_ref(theme) as u64 ^ u64::from(node.version()).rotate_left(32),
+                )
+            });
     Inherited {
-        theme: node.get_extension::<Theme>().unwrap_or(inherited.theme),
+        theme,
+        theme_stamp,
         text_color: style.text_color.or(inherited.text_color),
         text_style,
     }

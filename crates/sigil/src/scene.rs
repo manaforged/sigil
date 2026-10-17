@@ -22,5 +22,5 @@ pub use command::{
     SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle, TextFlow, Transform,
 };
 pub use corner_radii::CornerRadii;
-pub use emit::{emit_scene, emit_scene_clipped};
+pub use emit::{EmitDiff, emit_scene, emit_scene_clipped};
 pub use shadow::{Shadow, ShadowKind};
