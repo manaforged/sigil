@@ -11,13 +11,11 @@ pub struct IntervalId(pub(crate) u64);
 
 #[track_caller]
 pub fn interval(period: Duration, callback: impl Fn() + 'static) -> IntervalId {
-    let owner = Owner::current().expect("interval called outside a reactive scope");
-    register(owner, period, Some(period), Box::new(callback))
+    register(period, Some(period), Box::new(callback))
 }
 
 #[track_caller]
 pub fn timeout(delay: Duration, callback: impl FnOnce() + 'static) -> IntervalId {
-    let owner = Owner::current().expect("timeout called outside a reactive scope");
     let once = RefCell::new(Some(callback));
     let fire = move || {
         let taken = once.borrow_mut().take();
@@ -25,15 +23,12 @@ pub fn timeout(delay: Duration, callback: impl FnOnce() + 'static) -> IntervalId
             run();
         }
     };
-    register(owner, delay, None, Box::new(fire))
+    register(delay, None, Box::new(fire))
 }
 
-fn register(
-    owner: OwnerId,
-    delay: Duration,
-    period: Option<Duration>,
-    callback: Box<dyn Fn()>,
-) -> IntervalId {
+#[track_caller]
+fn register(delay: Duration, period: Option<Duration>, callback: Box<dyn Fn()>) -> IntervalId {
+    let owner = Owner::current().expect("interval or timeout called outside a reactive scope");
     let id = REGISTRY.with(|r| {
         let mut reg = r.borrow_mut();
         let now = reg.now();

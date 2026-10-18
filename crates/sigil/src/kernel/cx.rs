@@ -284,9 +284,10 @@ impl Cx {
         self.dirty_all = false;
     }
 
-    pub const fn mark_mutated(&mut self) {
+    pub fn mark_mutated(&mut self) {
         self.bump_generation();
         self.dirty_all = true;
+        self.marked.get_mut().rescan();
     }
 
     #[must_use]

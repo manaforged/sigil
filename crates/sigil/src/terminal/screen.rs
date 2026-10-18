@@ -89,6 +89,15 @@ impl Screen {
 
     pub const fn set_access(&mut self, access: Access) {
         self.announcer.access = access;
+        self.projection.last = Projected::Never;
+    }
+
+    pub(crate) const fn keep_pending(&mut self) {
+        self.fresh = true;
+        if !self.dirty {
+            core::mem::swap(&mut self.prev, &mut self.grid);
+            self.dirty = true;
+        }
     }
 
     pub(crate) const fn speak_above(&mut self, yes: bool) {

@@ -1,4 +1,4 @@
-use ahash::AHashSet;
+use ahash::{AHashMap, AHashSet};
 use smallvec::SmallVec;
 
 use crate::kernel::{Cx, Node, NodeId};
@@ -8,11 +8,16 @@ use crate::style::StyleBinding;
 #[derive(Default)]
 pub(crate) struct Marked {
     ids: AHashSet<NodeId>,
+    rescan: bool,
 }
 
 impl Marked {
     pub(super) fn touch(&mut self, id: NodeId) {
         self.ids.insert(id);
+    }
+
+    pub(super) const fn rescan(&mut self) {
+        self.rescan = true;
     }
 }
 
@@ -30,17 +35,33 @@ fn hides(node: &Node) -> bool {
 impl Cx {
     pub(crate) fn marked_preorder(&self, roots: &[NodeId]) -> Vec<NodeId> {
         let mut marked = self.marked.borrow_mut();
+        if core::mem::take(&mut marked.rescan) {
+            for root in self.roots().iter().copied() {
+                self.visit_preorder(root, |id, _| {
+                    marked.ids.insert(id);
+                });
+            }
+        }
         marked.ids.retain(|id| self.get(*id).is_some_and(is_marked));
+        let order: AHashMap<NodeId, usize> = roots
+            .iter()
+            .enumerate()
+            .map(|(index, root)| (*root, index))
+            .collect();
         let mut hits: Vec<(SmallVec<[usize; 16]>, NodeId)> = marked
             .ids
             .iter()
-            .filter_map(|id| self.tree_path(*id, roots).map(|path| (path, *id)))
+            .filter_map(|id| self.tree_path(*id, &order).map(|path| (path, *id)))
             .collect();
         hits.sort_unstable_by(|a, b| a.0.cmp(&b.0));
         hits.into_iter().map(|(_, id)| id).collect()
     }
 
-    fn tree_path(&self, id: NodeId, roots: &[NodeId]) -> Option<SmallVec<[usize; 16]>> {
+    fn tree_path(
+        &self,
+        id: NodeId,
+        roots: &AHashMap<NodeId, usize>,
+    ) -> Option<SmallVec<[usize; 16]>> {
         let mut path = SmallVec::new();
         let mut current = id;
         loop {
@@ -48,20 +69,22 @@ impl Cx {
             if hides(node) {
                 return None;
             }
-            // complexity: bounded by the handful of window roots
-            if let Some(index) = roots.iter().position(|root| *root == current) {
-                path.push(index);
+            if let Some(index) = roots.get(&current) {
+                path.push(*index);
                 path.reverse();
                 return Some(path);
             }
             let parent = node.parent?;
-            let index = self
-                .get(parent)?
-                .children
-                .iter()
-                .position(|child| *child == current)?;
+            let index = self.child_index(parent, current)?;
             path.push(index);
             current = parent;
         }
+    }
+
+    fn child_index(&self, parent: NodeId, child: NodeId) -> Option<usize> {
+        self.get(parent)?
+            .children
+            .iter()
+            .position(|kid| *kid == child)
     }
 }

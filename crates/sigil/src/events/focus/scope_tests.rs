@@ -163,3 +163,20 @@ fn a_scope_set_on_a_mounted_node_is_pushed() {
     focus.sync_scopes(&mut cx, None);
     assert_eq!(focus.scope_depth(), 1);
 }
+
+#[test]
+fn a_scope_set_untracked_is_found_after_a_broadcast_mutation() {
+    let mut cx = Cx::new_root();
+    let root = cx.add(sized(100.0).child(focusable()).child(sized(50.0)));
+    let later = cx.nth_child(root, 1).expect("child should exist");
+    let mut focus = FocusManager::default();
+    focus.sync_scopes(&mut cx, None);
+    assert_eq!(focus.scope_depth(), 0);
+    cx.get_mut_untracked(later)
+        .expect("mounted")
+        .a11y
+        .focus_scope = Some(FocusScopeKind::Modal);
+    cx.mark_mutated();
+    focus.sync_scopes(&mut cx, None);
+    assert_eq!(focus.scope_depth(), 1);
+}

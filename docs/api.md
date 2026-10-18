@@ -1566,7 +1566,7 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | Bind a key that fires from anywhere | `.shortcut(shortcut, handler)` from `NodeEventsExt` |
 | See every key before the focused descendant | `.key_capture_any(handler)`; call `event.stop_propagation()` to keep the key from the target |
 | Run a callback on a fixed period | `interval(Duration, f) -> IntervalId`, `sigil::reactive::cancel_interval` |
-| Run a callback once after a delay | `timeout(Duration, f) -> IntervalId` |
+| Run a callback once after a delay | `sigil::reactive::timeout(Duration, f) -> IntervalId` |
 | Load data on demand and show loading and errors | `task(make)`, `Task::run`, `Task::cancel`, `Task::status`, `kernel::match_status` |
 | Stream results from a backend thread | `signal_writer(signal)`, `SignalWriter::update` |
 | Apply a theme | `parse_theme`, `set_theme`, `watch_theme`, `AppConfig::theme_file` |

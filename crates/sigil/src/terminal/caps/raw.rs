@@ -6,7 +6,7 @@ pub(super) struct Raw {
 
 impl Raw {
     pub(super) fn enter() -> std::io::Result<Self> {
-        let restore = !is_raw_mode_enabled().unwrap_or(true);
+        let restore = !is_raw_mode_enabled()?;
         if restore {
             enable_raw_mode()?;
         }
