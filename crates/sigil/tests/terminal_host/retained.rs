@@ -150,3 +150,51 @@ fn an_overflowing_word_clears_when_it_changes() {
         "an overflowing word left old cells behind"
     );
 }
+
+struct Broken;
+
+impl std::io::Write for Broken {
+    fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+        Err(std::io::Error::other("terminal went away"))
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[test]
+fn a_failed_flush_does_not_leave_stale_rows() {
+    let shown = Runtime::scope("retained-broken-flush", || {
+        let mut model = Model {
+            lines: (0..ROWS).map(|row| format!("row {row}")).collect(),
+            ..Model::default()
+        };
+        let state = signal(model.clone());
+        let mut host = Host::cells();
+        let mut router = EventRouter::new();
+        host.mount(move || tree(state));
+        let mut screen = Screen::new(COLS, ROWS);
+        for _ in 0..2 {
+            screen
+                .frame(&mut host, &mut router, [], (COLS, ROWS))
+                .expect("frame");
+            screen.flush(&mut std::io::sink()).expect("flush");
+        }
+        model.lines[1] = String::from("first");
+        state.set(model.clone());
+        screen
+            .frame(&mut host, &mut router, [], (COLS, ROWS))
+            .expect("frame");
+        assert!(screen.flush(&mut Broken).is_err());
+        model.lines[9] = String::from("second");
+        state.set(model.clone());
+        let grid = screen
+            .frame(&mut host, &mut router, [], (COLS, ROWS))
+            .expect("frame");
+        (String::from_utf8_lossy(&ansi(grid)).into_owned(), model)
+    });
+    let (incremental, model) = shown;
+    let fresh = String::from_utf8_lossy(&truth(&model)).into_owned();
+    assert_eq!(incremental, fresh, "a failed flush left a stale row");
+}

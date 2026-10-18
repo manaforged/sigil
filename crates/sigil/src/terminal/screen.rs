@@ -210,11 +210,15 @@ impl Screen {
             return Ok(());
         }
         self.dirty = false;
-        if inline {
+        let written = if inline {
             self.write_inline(out)
         } else {
             self.write(out)
+        };
+        if written.is_err() {
+            self.fresh = true;
         }
+        written
     }
 
     fn write_inline(&mut self, out: &mut impl Write) -> io::Result<()> {
