@@ -173,13 +173,14 @@ impl LayoutEngine {
             if still_fresh {
                 continue;
             }
-            if self.published_result.remove(id.key()).is_some() {
+            let published = self.published_result.remove(id.key()).is_some();
+            let attached = cx
+                .get_mut_untracked(id)
+                .filter(|node| node.get_extension::<LayoutResult>().is_some())
+                .and_then(crate::kernel::Node::remove_extension::<LayoutResult>)
+                .is_some();
+            if published || attached {
                 cx.delta.record(id, DeltaKind::Layout);
-            }
-            if let Some(node) = cx.get_mut_untracked(id)
-                && node.get_extension::<LayoutResult>().is_some()
-            {
-                let _ = node.remove_extension::<LayoutResult>();
             }
         }
     }

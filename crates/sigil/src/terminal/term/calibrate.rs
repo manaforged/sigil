@@ -14,6 +14,10 @@ const SAMPLES: [&str; 4] = [MODIFIER, "\u{200d}", "\u{200c}", "1\u{fe0f}\u{20e3}
 const HOME: &str = "\r\x1b[2K";
 #[cfg(unix)]
 const REPORT: &str = "\x1b[6n";
+#[cfg(unix)]
+const PROBE_ROW: &str = "\x1b[2H";
+#[cfg(unix)]
+const KEY_REPORT_ROW: u16 = 1;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) enum Measured {
@@ -27,6 +31,11 @@ pub(crate) enum Measured {
     Columns([usize; 4]),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ProbeRow {
+    Fixed,
+}
+
 thread_local! {
     static MEASURED: Cell<Measured> = const { Cell::new(Measured::Unmeasured) };
 }
@@ -36,8 +45,10 @@ pub(crate) fn keep(measured: Measured) {
 }
 
 #[cfg(unix)]
-pub(crate) fn query() -> String {
-    let mut text = format!("{HOME}{REPORT}");
+pub(crate) fn query(ProbeRow::Fixed: ProbeRow) -> String {
+    let mut text = String::from(PROBE_ROW);
+    text.push_str(HOME);
+    text.push_str(REPORT);
     for sample in SAMPLES {
         text.push_str(HOME);
         text.push_str(sample);
@@ -49,6 +60,21 @@ pub(crate) fn query() -> String {
 
 #[cfg(unix)]
 pub(crate) fn measure(reports: &[(u16, u16)]) -> Measured {
+    let Some(start) = reports
+        .iter()
+        .position(|&(row, col)| row != KEY_REPORT_ROW || col == 0)
+    else {
+        return Measured::Silent;
+    };
+    let keys = reports
+        .get(start)
+        .is_some_and(|&(row, _)| row != KEY_REPORT_ROW);
+    let reports: Vec<_> = reports
+        .iter()
+        .skip(start)
+        .copied()
+        .filter(|&(row, _)| !keys || row != KEY_REPORT_ROW)
+        .collect();
     let Some((&(row, _), rest)) = reports.split_first() else {
         return Measured::Silent;
     };
@@ -122,3 +148,7 @@ fn probe(out: &mut impl Write, home: (u16, u16), text: &str) -> io::Result<usize
     }
     Ok(usize::from(col))
 }
+
+#[cfg(all(test, unix))]
+#[path = "calibrate_tests.rs"]
+mod tests;

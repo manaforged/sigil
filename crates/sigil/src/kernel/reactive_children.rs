@@ -5,7 +5,7 @@ use std::rc::Rc;
 use ahash::{AHashMap, AHashSet};
 use smallvec::SmallVec;
 
-use crate::kernel::builder::{Fate, Unpatched};
+use crate::kernel::builder::Fate;
 use crate::kernel::component::{ErasedComponent, IntoNode};
 use crate::kernel::{Cx, NodeId};
 use crate::reactive::{Owner, OwnerId, is_live, on_cleanup};
@@ -169,7 +169,7 @@ fn apply_positional(
     let mut fates = Fates::with_capacity(builders.len());
     for (index, builder) in builders.into_iter().enumerate() {
         let existing = old.get(index).copied();
-        fates.extend(cx.reconcile_child(parent, existing, Some(builder), Unpatched::Remount));
+        fates.extend(cx.reconcile_child(parent, existing, Some(builder)));
     }
     *prior.borrow_mut() = settle(cx, parent, &fates, generation);
 }
@@ -308,7 +308,7 @@ fn mount_keyed<K: Clone + Eq + Hash>(
         let existing = live.remove(&key);
         let alive = existing.is_some_and(|id| cx.nodes.contains_key(id.key()));
         let builder = builder.filter(|_| !alive);
-        let Some(fate) = cx.reconcile_child(parent, existing, builder, Unpatched::Keep) else {
+        let Some(fate) = cx.reconcile_child(parent, existing, builder) else {
             continue;
         };
         fates.push(fate);

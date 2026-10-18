@@ -55,7 +55,6 @@ impl FrameDelta {
     fn absorb(&mut self, other: Self) {
         self.paint.extend(other.paint);
         self.layout.extend(other.layout);
-        self.structure |= other.structure;
     }
 }
 

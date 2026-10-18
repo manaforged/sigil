@@ -1,4 +1,4 @@
-use crate::kernel::{AccessibleName, Cx, NodeId};
+use crate::kernel::{AccessibleName, Cx, FrameDelta, NodeId};
 use crate::scene::{CommandScene, DecorationKind, DrawDecoration, DrawRect, SceneCommand};
 use crate::style::Rgba8;
 use smol_str::SmolStr;
@@ -9,12 +9,29 @@ use super::{Grid, Ink, Underline, cell_edge, floor_cell};
 pub struct Marks {
     links: Vec<(NodeId, SmolStr)>,
     caret: Option<NodeId>,
+    focus: Option<NodeId>,
 }
 
 impl Marks {
     #[must_use]
+    pub(crate) fn stale(&self, cx: &Cx, focus: Option<NodeId>, delta: &FrameDelta) -> bool {
+        let touched = |id: &NodeId| delta.paint.contains(id) || delta.layout.contains(id);
+        delta.structure
+            || focus != self.focus
+            || self.links.iter().any(|(id, _)| touched(id))
+            || delta
+                .paint
+                .iter()
+                .chain(&delta.layout)
+                .any(|id| link(cx, *id).is_some())
+    }
+
+    #[must_use]
     pub fn collect(cx: &Cx, focus: Option<NodeId>, scene: &CommandScene, cell: f32) -> Self {
-        let mut marks = Self::default();
+        let mut marks = Self {
+            focus,
+            ..Self::default()
+        };
         for command in &scene.commands {
             match command {
                 SceneCommand::GlyphRun(draw) => {
@@ -42,6 +59,10 @@ impl Marks {
         self.links
             .iter()
             .find_map(|(id, url)| (*id == node).then_some(url))
+    }
+
+    pub(crate) fn same_links(&self, other: &Self) -> bool {
+        self.links == other.links
     }
 
     pub(super) fn caret(&self, node: Option<NodeId>) -> bool {

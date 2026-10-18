@@ -1,6 +1,5 @@
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
-use crate::style::StyleBinding;
 use smallvec::SmallVec;
 
 use crate::events::focus::targets::is_self_or_ancestor;
@@ -15,10 +14,11 @@ impl FocusManager {
         reason = "intentional, reviewed trade-off"
     )]
     pub(crate) fn sync_scopes(&mut self, cx: &mut Cx, layout: Option<&LayoutEngine>) {
-        let mut current = Vec::new();
-        for root in cx.roots().iter().copied() {
-            collect_scope_roots(cx, root, &mut current);
-        }
+        let mut current = cx.marked_preorder(cx.roots());
+        current.retain(|id| {
+            cx.get(*id)
+                .is_some_and(|node| node.a11y.focus_scope.is_some())
+        });
         if let Some(layout) = layout {
             current.retain(|id| layout.result(*id).is_some());
         }
@@ -58,24 +58,6 @@ impl FocusManager {
             }
             self.ring_generation = u64::MAX;
         }
-    }
-}
-
-fn collect_scope_roots(cx: &Cx, id: NodeId, out: &mut Vec<NodeId>) {
-    let Some(node) = cx.get(id) else {
-        return;
-    };
-    if node
-        .get_extension::<StyleBinding>()
-        .is_some_and(StyleBinding::hides)
-    {
-        return;
-    }
-    if node.a11y.focus_scope.is_some() {
-        out.push(id);
-    }
-    for child in node.children().iter().copied() {
-        collect_scope_roots(cx, child, out);
     }
 }
 

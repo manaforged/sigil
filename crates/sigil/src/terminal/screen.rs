@@ -1,21 +1,20 @@
 use std::io::{self, Write};
 
 use crate::Host;
-use crate::app::FrameHooks;
 use crate::events::EventRouter;
 use crate::events::ShellEvent;
 use crate::layout::LayoutError;
 use crate::profile;
 use crate::scene::CommandScene;
 
-use crate::geometry::{Point, Rect};
-use crate::scene::damage::{Damage as SceneDamage, cell_damage};
 use crate::terminal::access::{Access, Announcer, Place, Speech};
 use crate::terminal::caps::Caps;
-use crate::terminal::paint::{Grid, Marks, Paint, raster_regions, raster_with};
+use crate::terminal::paint::{Grid, Marks};
 use crate::terminal::run::view;
 use crate::terminal::transcript::Transcript;
 use crate::terminal::write::{Damage, Measured};
+
+mod raster;
 
 const CELL: f32 = Host::CELL;
 
@@ -33,6 +32,22 @@ pub struct Screen {
     live_rows: usize,
     announcer: Announcer,
     damage: Option<Damage>,
+    marks: Marks,
+    stale: Option<Vec<usize>>,
+    projection: Projection,
+}
+
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+enum Projected {
+    #[default]
+    Never,
+    Focus(Option<crate::kernel::NodeId>),
+}
+
+#[derive(Default)]
+pub(super) struct Projection {
+    pub(super) quiet: bool,
+    last: Projected,
 }
 
 impl Screen {
@@ -52,6 +67,9 @@ impl Screen {
             live_rows: 0,
             announcer: Announcer::default(),
             damage: None,
+            marks: Marks::default(),
+            stale: None,
+            projection: Projection::default(),
         }
     }
 
@@ -71,6 +89,15 @@ impl Screen {
 
     pub const fn set_access(&mut self, access: Access) {
         self.announcer.access = access;
+        self.projection.last = Projected::Never;
+    }
+
+    pub(crate) const fn keep_pending(&mut self) {
+        self.fresh = true;
+        if !self.dirty {
+            core::mem::swap(&mut self.prev, &mut self.grid);
+            self.dirty = true;
+        }
     }
 
     pub(crate) const fn speak_above(&mut self, yes: bool) {
@@ -113,34 +140,61 @@ impl Screen {
         }
         let dt = self.dt;
         self.damage = None;
-        let hooks = frame_hooks(self, events, (cols, rows));
+        self.projection.quiet = !crate::reactive::Runtime::frame_dirty();
+        let hooks = raster::frame_hooks(self, events, (cols, rows));
         let out = host.frame(router, view(cols, rows), dt, hooks);
         self.exited |= out.exit;
         if crate::hud::enabled() {
             crate::terminal::hud::draw(&mut self.grid);
             self.damage = None;
+            self.stale = None;
             if !self.dirty && !self.fresh && !self.unchanged() {
                 self.dirty = true;
             }
         }
-        let scope = if self.transcript.records() {
-            crate::a11y::mapping::TreeScope::Full
-        } else {
-            crate::a11y::mapping::TreeScope::Reading
-        };
-        let update = host.accessibility_tree_scoped(router, scope);
-        self.listen(&update);
+        let update = self.read_tree(host, router);
+        if self.dirty {
+            self.stale = self
+                .damage
+                .as_ref()
+                .map(|damage| damage.rows(usize::MAX).collect());
+        }
         if self.dirty && !self.fresh && self.unchanged() {
             self.dirty = false;
             core::mem::swap(&mut self.prev, &mut self.grid);
         }
-        if self.dirty {
-            self.transcript.emit(&update, &self.grid);
+        if self.dirty
+            && let Some(update) = &update
+        {
+            self.transcript.emit(update, &self.grid);
         }
         profile::count_add(profile::Counter::TuiDirty, u64::from(self.dirty));
         profile::count_add(profile::Counter::TuiNodes, self.scene.commands.len() as u64);
         out.layout?;
         Ok(if self.dirty { &self.grid } else { &self.prev })
+    }
+
+    fn read_tree(&mut self, host: &Host, router: &EventRouter) -> Option<accesskit::TreeUpdate> {
+        let records = self.transcript.records();
+        let skip = self.projection.quiet
+            && self.projection.last == Projected::Focus(router.focus())
+            && !records
+            && self
+                .announcer
+                .deadline()
+                .is_none_or(|due| due > std::time::Instant::now());
+        if skip {
+            return None;
+        }
+        let scope = if records {
+            crate::a11y::mapping::TreeScope::Full
+        } else {
+            crate::a11y::mapping::TreeScope::Reading
+        };
+        let update = host.accessibility_tree_scoped(router, scope);
+        self.projection.last = Projected::Focus(router.focus());
+        self.listen(&update);
+        Some(update)
     }
 
     fn listen(&mut self, update: &accesskit::TreeUpdate) {
@@ -150,9 +204,10 @@ impl Screen {
         if raw {
             self.announcer.caret = self.grid.cursor().is_some();
         }
-        let focus = self.announcer.focus_cell(&self.grid, &reading);
+        let shown = if raw { &self.grid } else { &self.prev };
+        let focus = self.announcer.focus_cell(shown, &reading);
         if !raw && (changed || matches!(focus, Place::Move(at) if at != self.prev.cursor())) {
-            self.grid.clone_from(&self.prev);
+            self.grid.sync_rows(&self.prev, self.stale.as_deref());
             self.dirty = true;
             self.damage = Some(Damage::new(Vec::new(), false));
         }
@@ -210,11 +265,16 @@ impl Screen {
             return Ok(());
         }
         self.dirty = false;
-        if inline {
+        let written = if inline {
             self.write_inline(out)
         } else {
             self.write(out)
+        };
+        if written.is_err() {
+            self.fresh = true;
+            self.dirty = true;
         }
+        written
     }
 
     fn write_inline(&mut self, out: &mut impl Write) -> io::Result<()> {
@@ -228,6 +288,7 @@ impl Screen {
         )?;
         self.live_rows = self.grid.rows();
         self.fresh = false;
+        self.stale = None;
         core::mem::swap(&mut self.prev, &mut self.grid);
         Ok(())
     }
@@ -241,21 +302,14 @@ impl Screen {
         } else {
             0
         };
-        let rewritten: Vec<bool> = (0..tracked)
-            .map(|row| {
-                full || !crate::terminal::write::same_row(
-                    self.prev.row(row),
-                    self.grid.row(row),
-                    &self.caps,
-                )
-            })
-            .collect();
+        let rewritten = self.rewritten(tracked, full);
         profile::count_add(
             profile::Counter::TuiRowsWritten,
             rewritten.iter().filter(|row| **row).count() as u64,
         );
         if full {
             self.fresh = false;
+            self.stale = None;
             self.prev.mirror(&self.grid);
             crate::terminal::write::all(out, &self.grid, &self.caps)?;
         } else {
@@ -281,6 +335,24 @@ impl Screen {
         Ok(())
     }
 
+    fn rewritten(&self, tracked: usize, full: bool) -> Vec<bool> {
+        let differs = |row: usize| {
+            !crate::terminal::write::same_row(self.prev.row(row), self.grid.row(row), &self.caps)
+        };
+        self.damage.as_ref().filter(|_| !full).map_or_else(
+            || (0..tracked).map(|row| full || differs(row)).collect(),
+            |damage| {
+                let mut rewritten = vec![false; tracked];
+                for row in damage.rows(tracked) {
+                    if let Some(slot) = rewritten.get_mut(row) {
+                        *slot = differs(row);
+                    }
+                }
+                rewritten
+            },
+        )
+    }
+
     #[must_use]
     pub const fn rows(&self) -> usize {
         self.grid.rows()
@@ -297,78 +369,5 @@ impl Screen {
     #[must_use]
     pub const fn needs_flush(&self) -> bool {
         self.dirty
-    }
-}
-
-fn frame_hooks<'s>(
-    screen: &'s mut Screen,
-    events: impl IntoIterator<Item = ShellEvent> + 's,
-    size: (u16, u16),
-) -> FrameHooks<'s> {
-    let (cols, rows) = size;
-    FrameHooks {
-        input: Some(Box::new(move |host, router| {
-            let _phase = profile::span(profile::Phase::Effect);
-            for event in events {
-                profile::interact(profile::Cause::Input);
-                profile::count(profile::Counter::TuiEvents);
-                host.route(router, event);
-            }
-            None
-        })),
-        paint: Some(Box::new(move |host, router, info| {
-            let _phase = profile::span(profile::Phase::TuiPaint);
-            if !info.layout_ok {
-                host.reset_emit();
-                return;
-            }
-            let resized =
-                screen.grid.cols() != usize::from(cols) || screen.grid.rows() != usize::from(rows);
-            let (next, diff) = host.emit_since(view(cols, rows), &info.delta, &screen.scene);
-            screen.dirty = !diff.unchanged() || resized || screen.fresh;
-            if screen.dirty {
-                let _raster = profile::span(profile::Phase::TuiRaster);
-                let marks = Marks::collect(host.cx(), router.focus(), &next, CELL);
-                let paint = Paint {
-                    theme: host.theme(),
-                    cell: CELL,
-                    caps: screen.caps,
-                    marks: &marks,
-                };
-                raster(screen, &next, &paint, (cols, rows));
-                screen.scene = next;
-            }
-        })),
-        ..FrameHooks::default()
-    }
-}
-
-fn raster(screen: &mut Screen, next: &CommandScene, paint: &Paint<'_>, (cols, rows): (u16, u16)) {
-    let retained = !screen.fresh
-        && screen.prev.cols() == usize::from(cols)
-        && screen.prev.rows() == usize::from(rows)
-        && screen.prev.images().is_empty();
-    let area = Rect::new(
-        Point::new(0.0, 0.0),
-        f32::from(cols) * CELL,
-        f32::from(rows) * CELL,
-    );
-    let damage = if retained {
-        cell_damage((&screen.scene, next), area, (CELL, CELL))
-    } else {
-        SceneDamage::Full(crate::scene::damage::FullReason::NoBackbuffer)
-    };
-    match damage {
-        SceneDamage::Regions(regions) => {
-            screen.grid.clone_from(&screen.prev);
-            let restored = screen.announcer.restore(&mut screen.grid);
-            let mut touched = raster_regions(&mut screen.grid, next, paint, &regions);
-            touched.extend(restored);
-            screen.damage = Some(Damage::new(touched, false));
-        }
-        SceneDamage::Unchanged | SceneDamage::Full(_) => {
-            screen.grid.resize(cols, rows);
-            raster_with(&mut screen.grid, next, paint);
-        }
     }
 }

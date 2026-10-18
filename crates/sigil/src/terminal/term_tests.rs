@@ -32,6 +32,7 @@ fn committing_lines_above_the_live_region_repaints_it() -> io::Result<()> {
 #[test]
 fn reentry_restores_inline_mode() {
     let _serial = SERIAL.lock().unwrap_or_else(PoisonError::into_inner);
+    INLINE.store(false, Ordering::Relaxed);
     let entered = enter_modes(true);
     let inline = INLINE.load(Ordering::Relaxed);
     restore();
@@ -124,4 +125,38 @@ fn restore_resets_modify_other_keys_once_after_it_was_set() {
     assert!(!MODIFY_KEYS_SET.load(Ordering::Relaxed));
     restore();
     assert!(!MODIFY_KEYS_SET.load(Ordering::Relaxed));
+}
+
+struct FailingFlush(Vec<u8>);
+
+impl Write for FailingFlush {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Err(io::Error::other("the terminal went away"))
+    }
+}
+
+#[test]
+fn a_frame_whose_final_flush_fails_is_written_again() {
+    crate::reactive::Runtime::scope("term-flush-retry", || {
+        let mut host = crate::Host::cells();
+        host.mount(|| crate::kernel::text("hello"));
+        let mut router = crate::events::EventRouter::new();
+        let mut screen = Screen::new(20, 4);
+        screen
+            .frame(&mut host, &mut router, [], (20, 4))
+            .expect("frame");
+        assert!(paint_frame(&mut FailingFlush(Vec::new()), &mut screen, false, false).is_err());
+        let mut out = Vec::new();
+        paint_frame(&mut out, &mut screen, false, false).expect("retry");
+        assert!(
+            String::from_utf8_lossy(&out).contains("hello"),
+            "the retry wrote {} bytes",
+            out.len()
+        );
+    });
 }

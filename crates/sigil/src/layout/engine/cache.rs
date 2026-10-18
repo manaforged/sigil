@@ -115,14 +115,13 @@ impl AnimationForce {
         if cx.dirty_all() {
             return Self::All;
         }
-        let dirty: AHashSet<NodeId> = cx.dirty().collect();
-        if dirty.contains(&root) {
+        if cx.dirty.contains(&root) {
             return Self::All;
         }
         if key.cx_generation == cx.mutation_generation() {
             return Self::None;
         }
-        Self::Under(dirty)
+        Self::Under(cx.dirty.clone())
     }
 
     fn covers(&self, cx: &Cx, id: NodeId) -> bool {

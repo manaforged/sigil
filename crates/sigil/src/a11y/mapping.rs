@@ -60,6 +60,8 @@ pub(crate) fn tree_scoped(
     }
     if scope == TreeScope::Full {
         super::modal_scope::hide_outside(cx, &mut nodes);
+    } else {
+        retain_emitted(&mut top, &mut nodes);
     }
     window.set_children(
         top.into_iter()
@@ -89,31 +91,51 @@ fn walk_subtree(cx: &Cx, id: NodeId, walk: &Walk<'_>, out: &mut Vec<(AkNodeId, A
         }
         return;
     }
-    let has_runs = if walk.keeps(id, kernel_node) {
+    let kept = walk.keeps(id, kernel_node);
+    let at = out.len();
+    let has_runs = if kept {
         let (projected, runs) = project(cx, id, walk.bounds);
         out.push((id.to_accesskit(), projected));
         runs.map(|runs| out.extend(runs)).is_some()
     } else {
         opens_runs(cx, id, kernel_node, walk.bounds)
     };
+    let below = out.len();
     if has_runs {
         for control in embedded_controls(cx, kernel_node) {
             walk_subtree(cx, control, walk, out);
         }
-        return;
+    } else {
+        for &child in kernel_node.children() {
+            walk_subtree(cx, child, walk, out);
+        }
     }
-    for &child in kernel_node.children() {
-        walk_subtree(cx, child, walk, out);
+    if !kept && out.len() > below {
+        let (projected, runs) = project(cx, id, walk.bounds);
+        let own = std::iter::once((id.to_accesskit(), projected)).chain(runs.into_iter().flatten());
+        let _ = out.splice(at..at, own);
     }
 }
 
 fn opens_runs(cx: &Cx, id: NodeId, node: &Node, bounds: BoundsLookup<'_>) -> bool {
-    let mut scratch = AkNode::new(node.a11y.role);
-    if super::text::export(id, &node.a11y, &mut scratch).is_some() {
-        return true;
+    super::text::has_runs(id, &node.a11y) || super::links::has_links(cx, id, bounds)
+}
+
+fn retain_emitted(top: &mut Vec<NodeId>, nodes: &mut [(AkNodeId, AkNode)]) {
+    let emitted: ahash::AHashSet<AkNodeId> = nodes.iter().map(|(id, _)| *id).collect();
+    top.retain(|id| emitted.contains(&id.to_accesskit()));
+    for (_, node) in nodes {
+        if node.children().iter().all(|child| emitted.contains(child)) {
+            continue;
+        }
+        let kept: Vec<AkNodeId> = node
+            .children()
+            .iter()
+            .copied()
+            .filter(|child| emitted.contains(child))
+            .collect();
+        node.set_children(kept);
     }
-    let factor = f64::from(cx.scale().factor());
-    super::links::export(cx, id, bounds, factor, &mut scratch).is_some()
 }
 
 #[must_use]

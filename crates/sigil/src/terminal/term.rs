@@ -10,8 +10,8 @@ use crossterm::event::{
 };
 use crossterm::style::Print;
 use crossterm::terminal::{
-    Clear, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen,
-    SetTitle, disable_raw_mode, enable_raw_mode,
+    DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen, SetTitle,
+    disable_raw_mode, enable_raw_mode,
 };
 use crossterm::{cursor, execute, queue};
 
@@ -22,10 +22,12 @@ use crate::terminal::signals;
 
 mod above;
 mod calibrate;
+mod frame;
+pub(crate) use frame::paint_frame;
 
 pub use above::{PrintAboveError, print_above};
-pub(crate) use calibrate::Measured;
 pub use calibrate::calibrate;
+pub(crate) use calibrate::{Measured, ProbeRow};
 #[cfg(unix)]
 pub(crate) use calibrate::{measure, query as calibration};
 
@@ -68,12 +70,11 @@ impl Term {
         );
         TITLE.with(|slot| *slot.borrow_mut() = Some(config.title.clone()));
         set_owner(Some(std::thread::current().id()));
-        signals::resume();
         let guard = EnterGuard;
         RESTORED.store(false, Ordering::Relaxed);
         enable_raw_mode()?;
         enter_screen(inline)?;
-        let (caps, measured) = Caps::measure();
+        let (caps, measured) = Caps::measure((!inline).then_some(ProbeRow::Fixed));
         calibrate::keep(measured);
         CAPS.with(|slot| slot.set(Some(caps)));
         BAR_CURSOR.store(caps.cursor == Cursor::Bar, Ordering::Relaxed);
@@ -225,37 +226,6 @@ fn ground(out: &mut impl Write) -> io::Result<()> {
     let rows = crossterm::terminal::size().map_or(0, |(_, rows)| rows);
     for _ in row..rows.saturating_sub(1) {
         queue!(out, Print("\n"))?;
-    }
-    out.flush()
-}
-
-pub(crate) fn paint_frame(
-    out: &mut impl Write,
-    screen: &mut Screen,
-    redraw: bool,
-    inline: bool,
-) -> io::Result<()> {
-    if !redraw && !screen.needs_flush() {
-        return Ok(());
-    }
-    let sync = screen.caps().sync;
-    if sync {
-        queue!(out, Print("\x1b[?2026h"))?;
-    }
-    if redraw && !inline {
-        queue!(out, Clear(ClearType::All))?;
-    }
-    if redraw {
-        screen.invalidate();
-    }
-    if inline {
-        screen.flush_inline(out)?;
-        LIVE_ROWS.with(|rows| rows.set(u16::try_from(screen.rows()).unwrap_or(u16::MAX)));
-    } else {
-        screen.flush(out)?;
-    }
-    if sync {
-        queue!(out, Print("\x1b[?2026l"))?;
     }
     out.flush()
 }

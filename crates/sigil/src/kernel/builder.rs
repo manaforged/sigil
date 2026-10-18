@@ -11,7 +11,7 @@ use crate::style::{PaintTarget, StateHost, Style, StyleSlot};
 
 mod patch;
 
-pub(crate) use patch::{Fate, Unpatched};
+pub(crate) use patch::Fate;
 
 type NodeMutator = Box<dyn FnOnce(&mut Node)>;
 type ReactiveChildrenInstall = Box<dyn FnOnce(NodeId)>;

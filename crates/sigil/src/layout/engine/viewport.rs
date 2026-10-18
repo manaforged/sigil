@@ -1,10 +1,9 @@
 use smallvec::SmallVec;
 
 use crate::geometry::{Dim, Rect, Size};
-use crate::kernel::{Cx, NodeId};
+use crate::kernel::{Cx, DeltaKind, NodeId};
 use crate::layout::LayoutError;
 use crate::layout::snap;
-use crate::style::StyleBinding;
 
 use super::LayoutEngine;
 use super::attribution::contains;
@@ -97,9 +96,15 @@ impl LayoutEngine {
                 .copied()
                 .unwrap_or((0.0, 0.0));
             self.popup_offsets.insert(node.key(), (ox + dx, oy + dy));
-            if let Some(target) = cx.get_mut_untracked(node) {
-                target.attach_untracked(result.translated(dx, dy));
+            let placed = result.translated(dx, dy);
+            let Some(target) = cx.get_mut_untracked(node) else {
+                continue;
+            };
+            if target.get_extension::<crate::layout::LayoutResult>() == Some(&placed) {
+                continue;
             }
+            target.attach_untracked(placed);
+            cx.delta.record(node, DeltaKind::Layout);
         }
     }
 }
@@ -170,23 +175,16 @@ fn clamp_axis(value: f32, size: f32, limit: f32, gap: f32) -> f32 {
     value.min(limit - size - gap).max(gap.min(value).max(0.0))
 }
 
-fn collect(cx: &Cx, id: NodeId, found: &mut Found) {
-    let Some(node) = cx.get(id) else {
-        return;
-    };
-    if node
-        .get_extension::<StyleBinding>()
-        .is_some_and(StyleBinding::hides)
-    {
-        return;
-    }
-    if node.get_extension::<ViewportOverlay>().is_some() {
-        found.overlays.push(id);
-    }
-    if let Some(popup) = node.get_extension::<Popup>() {
-        found.popups.push((id, *popup));
-    }
-    for child in node.children() {
-        collect(cx, *child, found);
+fn collect(cx: &Cx, root: NodeId, found: &mut Found) {
+    for id in cx.marked_preorder(&[root]) {
+        let Some(node) = cx.get(id) else {
+            continue;
+        };
+        if node.get_extension::<ViewportOverlay>().is_some() {
+            found.overlays.push(id);
+        }
+        if let Some(popup) = node.get_extension::<Popup>() {
+            found.popups.push((id, *popup));
+        }
     }
 }

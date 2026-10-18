@@ -48,23 +48,25 @@ impl Transcript {
             .then(|| update.nodes.iter().find(|(id, _)| *id == update.focus))
             .flatten()
             .and_then(|(_, node)| spot(node, cell));
-        let mut live = HashMap::new();
         let mut spoken = Vec::new();
-        for (id, node) in &update.nodes {
-            let Some(label) = node.label().filter(|label| !label.trim().is_empty()) else {
-                continue;
-            };
-            if node.live().is_none_or(|politeness| politeness == Live::Off) {
-                continue;
-            }
+        let mut same = self.live.is_some();
+        let mut count = 0;
+        for (id, label) in live_labels(update) {
+            count += 1;
             if let Some(seen) = &self.live
                 && seen.get(id).map(String::as_str) != Some(label)
             {
                 spoken.push(label.to_string());
+                same = false;
             }
-            live.insert(*id, label.to_string());
         }
-        self.live = Some(live);
+        if !same || self.live.as_ref().is_none_or(|seen| seen.len() != count) {
+            self.live = Some(
+                live_labels(update)
+                    .map(|(id, label)| (*id, label.to_string()))
+                    .collect(),
+            );
+        }
         Reading { focus, spoken }
     }
 
@@ -89,6 +91,15 @@ impl Transcript {
         }
         self.rows = rows;
     }
+}
+
+fn live_labels(update: &TreeUpdate) -> impl Iterator<Item = (&AkNodeId, &str)> {
+    update.nodes.iter().filter_map(|(id, node)| {
+        let label = node.label().filter(|label| !label.trim().is_empty())?;
+        node.live()
+            .is_some_and(|politeness| politeness != Live::Off)
+            .then_some((id, label))
+    })
 }
 
 fn open(value: &str) -> Option<File> {

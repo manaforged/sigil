@@ -160,13 +160,14 @@ impl LayoutEngine {
         let mut ids = SmallVec::<[_; 32]>::new();
         cx.visit_preorder(id, |node, _| ids.push(node));
         for node in ids {
-            if self.published_result.remove(node.key()).is_some() {
+            let published = self.published_result.remove(node.key()).is_some();
+            let attached = cx
+                .get_mut_untracked(node)
+                .filter(|kernel| kernel.get_extension::<LayoutResult>().is_some())
+                .and_then(crate::kernel::Node::remove_extension::<LayoutResult>)
+                .is_some();
+            if published || attached {
                 cx.delta.record(node, DeltaKind::Layout);
-            }
-            if let Some(kernel) = cx.get_mut_untracked(node)
-                && kernel.get_extension::<LayoutResult>().is_some()
-            {
-                let _ = kernel.remove_extension::<LayoutResult>();
             }
         }
     }

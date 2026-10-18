@@ -87,10 +87,14 @@ mod borders;
 mod cells;
 #[path = "terminal_host/emit.rs"]
 mod emit;
+#[path = "terminal_host/faults.rs"]
+mod faults;
 #[path = "terminal_host/frames.rs"]
 mod frames;
 #[path = "terminal_host/keys.rs"]
 mod keys;
+#[path = "terminal_host/layers.rs"]
+mod layers;
 #[path = "terminal_host/layout.rs"]
 mod layout;
 #[path = "terminal_host/live.rs"]
@@ -99,6 +103,10 @@ mod live;
 mod oracle;
 #[path = "terminal_host/paint.rs"]
 mod paint;
+#[path = "terminal_host/patching.rs"]
+mod patching;
+#[path = "terminal_host/precise.rs"]
+mod precise;
 #[path = "terminal_host/retained.rs"]
 mod retained;
 #[path = "terminal_host/select.rs"]

@@ -1,5 +1,6 @@
 use super::parse;
 use crate::terminal::caps::Backdrop;
+use crate::terminal::term::ProbeRow::Fixed;
 
 #[test]
 fn an_osc_11_reply_sets_the_backdrop_from_its_luma() {
@@ -17,7 +18,7 @@ fn a_late_reply_is_read_to_its_end_before_input_starts() -> std::io::Result<()> 
     use std::os::unix::net::UnixStream;
     let (reader, mut writer) = UnixStream::pair()?;
     let late = std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_millis(400));
+        std::thread::sleep(super::TIMEOUT / 10);
         writer
             .write_all(b"\x1b]11;rgb:0a0a/0a0a/0a0a\x1b\\\x1b[?2026;2$y\x1b[?62;c")
             .map(|()| writer)
@@ -26,7 +27,7 @@ fn a_late_reply_is_read_to_its_end_before_input_starts() -> std::io::Result<()> 
     let open = late
         .join()
         .map_err(|_| std::io::Error::other("writer panicked"))??;
-    let left = super::ready(&reader, std::time::Duration::ZERO);
+    let left = super::ready(&reader, std::time::Duration::ZERO).ok();
     drop(open);
     assert_eq!(
         reply.map(|reply| parse(&reply).backdrop),
@@ -87,7 +88,7 @@ fn a_silent_terminal_costs_one_deadline() -> std::io::Result<()> {
     let (input, _quiet) = UnixStream::pair()?;
     let mut sent = Vec::new();
     let started = std::time::Instant::now();
-    let answers = super::ask_on(&input, &mut sent, every_question(), true);
+    let answers = super::ask_on(&input, &mut sent, every_question(), (true, Some(Fixed)));
     let waited = started.elapsed();
     assert!(answers.is_none());
     assert!(
@@ -104,11 +105,71 @@ fn every_startup_query_goes_out_in_one_exchange() -> std::io::Result<()> {
     let (input, mut terminal) = UnixStream::pair()?;
     terminal.write_all(b"\x1b[?62;c")?;
     let mut sent = Vec::new();
-    let _answers = super::ask_on(&input, &mut sent, every_question(), true);
+    let _answers = super::ask_on(&input, &mut sent, every_question(), (true, Some(Fixed)));
     let text = String::from_utf8_lossy(&sent);
     assert_eq!(text.matches("\x1b[?u").count(), 1, "{text:?}");
     assert_eq!(text.matches("\x1b[c").count(), 1, "{text:?}");
     assert!(text.ends_with("\x1b[c"), "{text:?}");
     assert!(text.contains("\x1b[6n"), "{text:?}");
     Ok(())
+}
+
+#[test]
+fn a_reply_split_at_any_byte_reads_the_same() -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::net::UnixStream;
+    let whole: &[u8] = b"\x1b[?2026;2$y\x1b[?1u\x1bP1$r38:2:1:2:3m\x1b\\\x1bP>|ghostty 1.2.0\x1b\\\x1b]11;rgb:0a0a/0a0a/0a0a\x1b\\\x1b[3;1R\x1b[3;3R\x1b[3;1R\x1b[3;1R\x1b[3;3R\x1b[?62;22c";
+    let expected = parse(&String::from_utf8_lossy(whole));
+    assert!(
+        expected.sync && expected.kitty_keys && expected.truecolor,
+        "{expected:?}"
+    );
+    assert!(
+        matches!(expected.version, super::Version::Named(_)),
+        "{expected:?}"
+    );
+    assert!(
+        matches!(expected.measured, super::super::Measured::Columns(_)),
+        "{expected:?}"
+    );
+    for split in 1..whole.len() {
+        let (reader, mut writer) = UnixStream::pair()?;
+        let (head, tail) = whole.split_at(split);
+        writer.write_all(head)?;
+        let late = std::thread::spawn({
+            let tail = tail.to_vec();
+            move || {
+                std::thread::park_timeout(std::time::Duration::from_millis(2));
+                writer.write_all(&tail).map(|()| writer)
+            }
+        });
+        let reply = super::read_reply(&reader, |_| false);
+        let _open = late
+            .join()
+            .map_err(|_| std::io::Error::other("writer panicked"))??;
+        let got = reply.map(|reply| parse(&reply));
+        assert_eq!(got.as_ref(), Some(&expected), "split at byte {split}");
+    }
+    Ok(())
+}
+
+#[test]
+fn a_modified_f3_during_the_probe_leaves_the_widths_alone() {
+    let reports = [
+        "\x1b[2;1R",
+        "\x1b[2;3R",
+        "\x1b[2;1R",
+        "\x1b[2;1R",
+        "\x1b[2;3R",
+    ];
+    let clean = parse(&reports.concat()).measured;
+    assert!(
+        matches!(clean, super::super::Measured::Columns(_)),
+        "{clean:?}"
+    );
+    for at in 0..=reports.len() {
+        let mut typed = reports.to_vec();
+        typed.insert(at, "\x1b[1;5R");
+        assert_eq!(parse(&typed.concat()).measured, clean, "key at {at}");
+    }
 }

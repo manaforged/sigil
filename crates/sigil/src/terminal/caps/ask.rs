@@ -1,7 +1,7 @@
 #[cfg(unix)]
 use super::Known;
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(super) enum Version {
     #[default]
     Silent,

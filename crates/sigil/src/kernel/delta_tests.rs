@@ -14,6 +14,7 @@ fn a_colour_write_records_only_its_node_as_paint() {
         assert!(delta.paint.contains(&id), "{delta:?}");
         assert!(delta.layout.is_empty(), "{delta:?}");
         assert!(!delta.structure, "{delta:?}");
+        assert!(!delta.is_empty(), "{delta:?}");
     });
 }
 
@@ -28,6 +29,7 @@ fn a_reactive_text_write_records_its_node_as_layout() {
         let delta = cx.take_delta();
         assert!(delta.layout.contains(&id), "{delta:?}");
         assert!(!delta.structure, "{delta:?}");
+        assert!(!delta.is_empty(), "{delta:?}");
     });
 }
 
@@ -59,5 +61,21 @@ fn a_frame_with_no_change_has_an_empty_delta() {
             "mounting {root:?} left no delta"
         );
         assert!(cx.take_delta().is_empty());
+    });
+}
+
+#[test]
+fn dropping_a_tree_forgets_its_pending_changes() {
+    Runtime::scope("delta-drop", || {
+        let lit = signal(false);
+        let mut cx = Cx::new_root();
+        let _id = cx.add(container().paint_when(lit, |style| style.bg(Token::Accent)));
+        drop(cx.take_delta());
+        lit.set(true);
+        let instance = cx.instance_id();
+        let pending = || super::PENDING.with(|cell| cell.borrow().contains_key(&instance));
+        assert!(pending(), "the colour write was not recorded as pending");
+        drop(cx);
+        assert!(!pending(), "a dropped tree kept its pending changes");
     });
 }

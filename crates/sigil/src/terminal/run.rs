@@ -134,9 +134,10 @@ fn setup(config: &AppConfig) -> AppResult<Setup> {
     let wake = Wake::install(&mut async_rt);
     async_rt.install_current();
     let theme = crate::app::launch_theme(config.theme_file.as_deref());
-    let term = enter(config)?;
+    crate::terminal::signals::resume();
     let hooks = HookGuard::install();
     let signals = SignalGuard::install().map_err(Error::io)?;
+    let term = enter(config)?;
     let (mut cols, mut rows) = crossterm::terminal::size().map_err(Error::io)?;
     limit(config, &mut cols, &mut rows);
     Ok((

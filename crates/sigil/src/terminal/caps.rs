@@ -1,13 +1,14 @@
 use crate::app::Ambiguous;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
-use crate::terminal::term::Measured;
+use crate::terminal::term::{Measured, ProbeRow};
 
 #[cfg(unix)]
 mod ask;
 mod known;
 #[cfg(unix)]
 mod probe;
+mod raw;
 
 #[cfg(unix)]
 use ask::{Question, Questions, Version};
@@ -114,7 +115,7 @@ impl Default for Caps {
 }
 
 #[cfg(unix)]
-#[derive(Default)]
+#[derive(Debug, Default, PartialEq)]
 struct Answers {
     sync: bool,
     kitty_keys: bool,
@@ -145,30 +146,39 @@ impl Caps {
 
     #[must_use]
     pub fn probe() -> Self {
-        Self::measure().0
+        let env = |key: &str| std::env::var(key).ok();
+        let Ok(_raw) = raw::Raw::enter() else {
+            return Self::detect(env);
+        };
+        Self::measure(None).0
     }
 
-    pub(in crate::terminal) fn measure() -> (Self, Measured) {
-        ask_terminal(draft(&|key: &str| std::env::var(key).ok()))
+    pub(in crate::terminal) fn measure(widths: Option<ProbeRow>) -> (Self, Measured) {
+        ask_terminal(draft(&|key: &str| std::env::var(key).ok()), widths)
     }
 }
 
 #[cfg(unix)]
-fn ask_terminal(mut draft: Draft) -> (Caps, Measured) {
+fn ask_terminal(mut draft: Draft, widths: Option<ProbeRow>) -> (Caps, Measured) {
     let backdrop = draft.caps.backdrop.is_none();
-    draft.caps.keyboard = Keyboard::Legacy;
     draft.ask = draft.ask.with(Question::Keys, true);
     let Some(input) = probe::quiet_terminal() else {
         return (draft.caps, Measured::Unmeasured);
     };
-    match probe::ask_on(&input, std::io::stdout().lock(), draft.ask, backdrop) {
-        Some(answers) => (draft.settle(&answers), answers.measured),
+    match probe::ask_on(
+        &input,
+        std::io::stdout().lock(),
+        draft.ask,
+        (backdrop, widths),
+    ) {
+        Some(answers) if widths.is_some() => (draft.settle(&answers), answers.measured),
+        Some(answers) => (draft.settle(&answers), Measured::Unmeasured),
         None => (draft.caps, Measured::Silent),
     }
 }
 
 #[cfg(not(unix))]
-const fn ask_terminal(Draft { caps }: Draft) -> (Caps, Measured) {
+const fn ask_terminal(Draft { caps }: Draft, _: Option<ProbeRow>) -> (Caps, Measured) {
     (caps, Measured::Unmeasured)
 }
 
@@ -181,8 +191,12 @@ impl Draft {
         if self.caps.backdrop.is_none() {
             self.caps.backdrop = answers.backdrop;
         }
-        if self.ask.has(Question::Keys) && answers.kitty_keys {
-            self.caps.keyboard = Keyboard::Kitty;
+        if self.ask.has(Question::Keys) {
+            self.caps.keyboard = if answers.kitty_keys {
+                Keyboard::Kitty
+            } else {
+                Keyboard::Legacy
+            };
         }
         if self.ask.has(Question::Color) && (answers.truecolor || answers.kitty_keys) {
             self.caps.color = ColorDepth::Truecolor;
@@ -377,3 +391,8 @@ fn backdrop(env: &impl Fn(&str) -> Option<String>) -> Option<Backdrop> {
 #[cfg(test)]
 #[path = "caps_tests.rs"]
 mod tests;
+
+#[cfg(all(fuzzing, unix))]
+pub(crate) fn fuzz_reply(reply: &str) {
+    std::hint::black_box(probe::parse(reply));
+}

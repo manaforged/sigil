@@ -274,14 +274,8 @@ impl TextEditRuntime {
             let visible = padding_y.mul_add(-2.0, viewport_size.get().1).max(1.0);
             let max_scroll = (runtime.content_size.get().1 - visible).max(0.0);
             let cur = scroll_y.peek();
-            let next = if pos.top < cur {
-                pos.top
-            } else if pos.top + pos.height > cur + visible {
-                pos.top + pos.height - visible
-            } else {
-                cur
-            };
-            let next = next.clamp(0.0, max_scroll);
+            let next = crate::widgets::scroll::nearest((pos.top, pos.height), cur, visible)
+                .clamp(0.0, max_scroll);
             if (next - cur).abs() > f32::EPSILON {
                 scroll_y.set(next);
             }

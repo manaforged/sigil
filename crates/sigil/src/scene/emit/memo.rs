@@ -4,6 +4,7 @@ use std::ops::Range;
 use ahash::{AHashMap, AHashSet};
 use slotmap::{DefaultKey, SecondaryMap};
 
+use crate::geometry::Rect;
 use crate::kernel::{Cx, FrameDelta, Node, NodeId};
 use crate::layout::LayoutResult;
 use crate::scene::command::SceneCommand;
@@ -11,7 +12,7 @@ use crate::scene::emit_cache;
 use crate::style::{FocusRing, StyleBinding};
 use crate::widgets::CanvasPaint;
 
-use super::subtree::{Copied, Span};
+use super::subtree::{Copied, Span, rect_bits};
 
 #[derive(Clone, Copy, PartialEq)]
 struct Seen {
@@ -24,10 +25,13 @@ struct Seen {
 pub(crate) struct EmitMemo {
     seen: SecondaryMap<DefaultKey, Seen>,
     pub(super) spans: AHashMap<NodeId, Span>,
-    selected: Vec<NodeId>,
+    selected: HashMap<NodeId, (usize, usize)>,
+    watched: Vec<NodeId>,
     prev_len: Option<usize>,
     root: Option<NodeId>,
     scale: u32,
+    clip: Option<[u32; 4]>,
+    theme_epoch: u64,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -80,6 +84,26 @@ impl EmitMemo {
             && self.scale == cx.scale().factor().to_bits()
     }
 
+    pub(crate) fn clean(
+        &self,
+        cx: &Cx,
+        (root, clip): (NodeId, Option<Rect>),
+        (delta, prev_len): (&FrameDelta, usize),
+        selection: &HashMap<NodeId, (usize, usize)>,
+    ) -> bool {
+        delta.is_empty()
+            && self.prev_len == Some(prev_len)
+            && self.root == Some(root)
+            && self.scale == cx.scale().factor().to_bits()
+            && self.clip == clip.map(rect_bits)
+            && self.theme_epoch == emit_cache::theme_epoch()
+            && self.selected == *selection
+            && self
+                .watched
+                .iter()
+                .all(|id| cx.get(*id).map(seen_of) == self.seen.get(id.key()).copied())
+    }
+
     pub(super) fn dirty(
         &mut self,
         cx: &Cx,
@@ -88,15 +112,15 @@ impl EmitMemo {
         selection: &HashMap<NodeId, (usize, usize)>,
     ) -> AHashSet<NodeId> {
         let mut direct: Vec<NodeId> = delta.paint.iter().chain(&delta.layout).copied().collect();
-        direct.extend(self.selected.iter().copied());
+        direct.extend(self.selected.keys().copied());
         direct.extend(selection.keys().copied());
-        let seen = &mut self.seen;
+        let (seen, watched) = (&mut self.seen, &mut self.watched);
+        watched.clear();
         cx.visit_preorder(root, |id, node| {
-            let now = Seen {
-                version: node.version(),
-                layout: node.get_extension::<LayoutResult>().copied(),
-                volatile: volatile_key(node),
-            };
+            let now = seen_of(node);
+            if watches(node) {
+                watched.push(id);
+            }
             if seen.insert(id.key(), now) != Some(now) {
                 direct.push(id);
             }
@@ -118,15 +142,32 @@ impl EmitMemo {
         &mut self,
         cx: &Cx,
         root: NodeId,
-        (spans, len): (AHashMap<NodeId, Span>, usize),
+        (spans, len, clip): (AHashMap<NodeId, Span>, usize, Option<Rect>),
         selection: &HashMap<NodeId, (usize, usize)>,
     ) {
         self.spans = spans;
-        self.selected = selection.keys().copied().collect();
+        self.selected.clone_from(selection);
         self.prev_len = Some(len);
         self.root = Some(root);
         self.scale = cx.scale().factor().to_bits();
+        self.clip = clip.map(rect_bits);
+        self.theme_epoch = emit_cache::theme_epoch();
     }
+}
+
+fn seen_of(node: &Node) -> Seen {
+    Seen {
+        version: node.version(),
+        layout: node.get_extension::<LayoutResult>().copied(),
+        volatile: volatile_key(node),
+    }
+}
+
+fn watches(node: &Node) -> bool {
+    node.get_extension::<StyleBinding>()
+        .is_some_and(StyleBinding::has_reactive)
+        || node.get_extension::<CanvasPaint>().is_some()
+        || node.get_extension::<FocusRing>().is_some()
 }
 
 fn volatile_key(node: &Node) -> (u8, u64, u64, u64, bool) {

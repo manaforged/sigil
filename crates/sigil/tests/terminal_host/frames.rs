@@ -157,3 +157,29 @@ fn only_a_change_sends_bytes() {
         );
     });
 }
+
+#[test]
+fn a_width_only_resize_repaints_at_the_new_width() {
+    sigil::reactive::Runtime::scope("frames-resize", || {
+        let mut host = sigil::Host::cells();
+        host.mount(|| sigil::kernel::text("fixed"));
+        let mut router = sigil::events::EventRouter::new();
+        let mut screen = sigil::terminal::Screen::new(20, 5);
+        for _ in 0..2 {
+            screen
+                .frame(&mut host, &mut router, [], (20, 5))
+                .expect("frame");
+            screen.flush(&mut std::io::sink()).expect("flush");
+        }
+        let wider = screen
+            .frame(&mut host, &mut router, [], (30, 5))
+            .expect("frame")
+            .cols();
+        assert_eq!(wider, 30);
+        let taller = screen
+            .frame(&mut host, &mut router, [], (30, 8))
+            .expect("frame")
+            .rows();
+        assert_eq!(taller, 8);
+    });
+}

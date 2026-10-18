@@ -59,12 +59,16 @@ fn an_unchanged_subtree_is_copied() {
         assert!(copied > 0, "nothing was copied (walked {walked})");
         host.layout(VIEW).expect("layout");
         let idle = host.cx().take_delta();
-        let (idle_walked, _) = counted(|| {
+        let (idle_walked, idle_copied) = counted(|| {
             let (third, diff) = host.emit_since(VIEW, &idle, &second);
             assert!(diff.unchanged());
             assert_eq!(third, second);
         });
         assert_eq!(idle_walked, 0, "an idle frame walked {idle_walked} nodes");
+        assert_eq!(
+            idle_copied, 0,
+            "an idle frame copied {idle_copied} commands"
+        );
     });
 }
 
@@ -202,5 +206,36 @@ fn a_reactive_atoms_write_reaches_the_next_emit() {
             host.emit(VIEW),
             "a reactive atoms write kept the old paint"
         );
+    });
+}
+
+#[test]
+fn a_host_with_nothing_mounted_reports_the_last_scene_gone() {
+    Runtime::scope("emit-rootless", || {
+        let mut shown = Host::cells();
+        shown.mount(|| container().child(text("before")));
+        let before = shown.scene(VIEW).expect("scene");
+        assert!(!before.commands.is_empty());
+        let mut empty = Host::cells();
+        let delta = empty.cx().take_delta();
+        let (scene, diff) = empty.emit_since(VIEW, &delta, &before);
+        assert!(scene.commands.is_empty());
+        assert!(!diff.unchanged(), "an emptied scene reported no change");
+    });
+}
+
+#[test]
+fn a_scale_change_emits_fresh_geometry() {
+    Runtime::scope("emit-scale", || {
+        let mut host = Host::cells();
+        host.mount(|| container().child(text("scaled")));
+        host.layout(VIEW).expect("layout");
+        let delta = host.cx().take_delta();
+        let (first, _) = host.emit_since(VIEW, &delta, &CommandScene::default());
+        host.cx().set_scale(sigil::geometry::Scale::new(2.0));
+        host.layout(VIEW).expect("layout");
+        let rescaled = host.cx().take_delta();
+        let (second, _) = host.emit_since(VIEW, &rescaled, &first);
+        assert_eq!(second, host.emit(VIEW), "a scale change reused old paint");
     });
 }

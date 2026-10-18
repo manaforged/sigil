@@ -156,3 +156,20 @@ fn a_late_version_reply_is_not_typed() {
         ]
     );
 }
+
+#[test]
+fn plain_bracket_underscore_and_capital_p_are_typed_not_held() {
+    for opener in [
+        key(KeyCode::Char(']'), KeyModifiers::NONE),
+        key(KeyCode::Char('_'), KeyModifiers::NONE),
+        key(KeyCode::Char('P'), KeyModifiers::SHIFT),
+        key(KeyCode::Char('P'), KeyModifiers::ALT),
+    ] {
+        let mut events = vec![opener.clone()];
+        events.extend(typed_keys("ab"));
+        events.push(key(KeyCode::Char('\\'), KeyModifiers::ALT));
+        let before = events.clone();
+        strip_replies(&mut events);
+        assert_eq!(events, before, "{opener:?} swallowed typed keys");
+    }
+}

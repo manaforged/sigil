@@ -12,11 +12,11 @@ use crate::layout::{LayoutEngine, LayoutError, LayoutResult, TextGeometry, TextM
 use crate::style::Theme;
 
 use super::cell_text::CellGeometry;
+mod emit;
 #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
 mod hot;
 use super::host_env::{EnvGuard, HostEnv};
-use crate::kernel::FrameDelta;
-use crate::scene::emit::{EmitDiff, EmitMemo, emit_scene_since};
+use crate::scene::emit::EmitMemo;
 use crate::scene::{CommandScene, emit_scene_clipped};
 
 pub type AccessibilityTree = accesskit::TreeUpdate;
@@ -333,35 +333,6 @@ impl Host {
         self.root.map_or_else(CommandScene::default, |root| {
             emit_viewport_scene(&self.cx, root, viewport)
         })
-    }
-
-    #[must_use]
-    pub fn emit_since(
-        &mut self,
-        viewport: (f32, f32),
-        delta: &FrameDelta,
-        prev: &CommandScene,
-    ) -> (CommandScene, EmitDiff) {
-        let _env = self.enter();
-        self.apply_pending_theme();
-        let Some(root) = self.root else {
-            self.emitted = EmitMemo::default();
-            return (
-                CommandScene::default(),
-                EmitDiff::between_scenes(&prev.commands, &[]),
-            );
-        };
-        emit_scene_since(
-            &self.cx,
-            root,
-            Some(viewport_rect(viewport)),
-            (delta, prev),
-            &mut self.emitted,
-        )
-    }
-
-    pub fn reset_emit(&mut self) {
-        self.emitted = EmitMemo::default();
     }
 
     pub fn scene(&mut self, viewport: (f32, f32)) -> Result<CommandScene, LayoutError> {

@@ -46,7 +46,7 @@ impl SpanKey {
     }
 }
 
-const fn rect_bits(rect: Rect) -> [u32; 4] {
+pub(super) const fn rect_bits(rect: Rect) -> [u32; 4] {
     [
         rect.origin.x.to_bits(),
         rect.origin.y.to_bits(),
