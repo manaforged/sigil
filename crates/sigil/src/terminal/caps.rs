@@ -1,13 +1,14 @@
 use crate::app::Ambiguous;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
-use crate::terminal::term::Measured;
+use crate::terminal::term::{Measured, ProbeRow};
 
 #[cfg(unix)]
 mod ask;
 mod known;
 #[cfg(unix)]
 mod probe;
+mod raw;
 
 #[cfg(unix)]
 use ask::{Question, Questions, Version};
@@ -145,20 +146,20 @@ impl Caps {
 
     #[must_use]
     pub fn probe() -> Self {
-        let cooked = !crossterm::terminal::is_raw_mode_enabled().unwrap_or(true);
-        drop(cooked.then(crossterm::terminal::enable_raw_mode));
-        let caps = Self::measure(false).0;
-        drop(cooked.then(crossterm::terminal::disable_raw_mode));
-        caps
+        let env = |key: &str| std::env::var(key).ok();
+        let Ok(_raw) = raw::Raw::enter() else {
+            return Self::detect(env);
+        };
+        Self::measure(None).0
     }
 
-    pub(in crate::terminal) fn measure(widths: bool) -> (Self, Measured) {
+    pub(in crate::terminal) fn measure(widths: Option<ProbeRow>) -> (Self, Measured) {
         ask_terminal(draft(&|key: &str| std::env::var(key).ok()), widths)
     }
 }
 
 #[cfg(unix)]
-fn ask_terminal(mut draft: Draft, widths: bool) -> (Caps, Measured) {
+fn ask_terminal(mut draft: Draft, widths: Option<ProbeRow>) -> (Caps, Measured) {
     let backdrop = draft.caps.backdrop.is_none();
     draft.ask = draft.ask.with(Question::Keys, true);
     let Some(input) = probe::quiet_terminal() else {
@@ -170,15 +171,14 @@ fn ask_terminal(mut draft: Draft, widths: bool) -> (Caps, Measured) {
         draft.ask,
         (backdrop, widths),
     ) {
-        Some(answers) if widths => (draft.settle(&answers), answers.measured),
+        Some(answers) if widths.is_some() => (draft.settle(&answers), answers.measured),
         Some(answers) => (draft.settle(&answers), Measured::Unmeasured),
-        None if widths => (draft.caps, Measured::Silent),
-        None => (draft.caps, Measured::Unmeasured),
+        None => (draft.caps, Measured::Silent),
     }
 }
 
 #[cfg(not(unix))]
-const fn ask_terminal(Draft { caps }: Draft, _: bool) -> (Caps, Measured) {
+const fn ask_terminal(Draft { caps }: Draft, _: Option<ProbeRow>) -> (Caps, Measured) {
     (caps, Measured::Unmeasured)
 }
 

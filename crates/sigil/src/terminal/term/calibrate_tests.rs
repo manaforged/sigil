@@ -23,3 +23,19 @@ fn a_modifier_as_wide_as_unicode_keeps_unicode_widths() -> std::io::Result<()> {
     assert_eq!(cell_width("\u{200d}"), 0);
     Ok(())
 }
+
+#[test]
+fn an_inline_row_on_the_first_line_still_measures() {
+    assert_eq!(
+        measure(&[(1, 0), (1, 4), (1, 1), (1, 1), (1, 2)]),
+        Measured::Columns([4, 1, 1, 2])
+    );
+}
+
+#[test]
+fn key_reports_before_the_probe_row_are_skipped() {
+    assert_eq!(
+        measure(&[(1, 4), (2, 0), (2, 4), (1, 4), (2, 1), (2, 1), (2, 2)]),
+        Measured::Columns([4, 1, 1, 2])
+    );
+}

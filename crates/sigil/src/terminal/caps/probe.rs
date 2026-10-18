@@ -3,7 +3,7 @@ use std::os::fd::AsFd;
 use std::time::{Duration, Instant};
 
 use super::{Answers, Backdrop, Known, Question, Questions, Version};
-use crate::terminal::term::{calibration, measure};
+use crate::terminal::term::{ProbeRow, calibration, measure};
 
 const TIMEOUT: Duration = Duration::from_millis(500);
 
@@ -11,11 +11,11 @@ pub(super) fn ask_on(
     input: &impl AsFd,
     out: impl Write,
     ask: Questions,
-    (backdrop, widths): (bool, bool),
+    (backdrop, widths): (bool, Option<ProbeRow>),
 ) -> Option<Answers> {
     let mut query = queries(ask, backdrop);
-    if widths {
-        query.push_str(&calibration());
+    if let Some(row) = widths {
+        query.push_str(&calibration(row));
     }
     let reply = converse(
         input,
