@@ -270,3 +270,72 @@ fn expiring(full: bool) -> Vec<String> {
 fn an_expired_status_clears_on_a_damaged_frame() {
     assert_eq!(expiring(false), expiring(true));
 }
+
+const SETTLE: usize = 30;
+
+fn edit() -> impl Strategy<Value = Step> {
+    prop_oneof![
+        (0..40_usize, word()).prop_map(|(at, word)| Step::Row(at, word)),
+        word().prop_map(Step::Push),
+        Just(Step::Pop),
+        word().prop_map(Step::Status),
+        (24..60_u16, 8..20_u16).prop_map(|(cols, rows)| Step::Resize(cols, rows)),
+    ]
+}
+
+fn settled(state: State, size: (u16, u16)) -> String {
+    let mut host = Side::new(state, size, Duration::ZERO);
+    for _ in 0..SETTLE {
+        host.frame(Vec::new(), size, false);
+    }
+    ansi(
+        host.screen
+            .frame(&mut host.host, &mut host.router, [], size)
+            .expect("frame"),
+    )
+}
+
+fn edited(steps: &[Step]) -> (String, String) {
+    let incremental = Runtime::scope("live-edited", || {
+        let shared = state();
+        let mut size = (48_u16, 16_u16);
+        let mut host = Side::new(shared, size, Duration::ZERO);
+        for _ in 0..2 {
+            host.frame(Vec::new(), size, false);
+        }
+        for step in steps {
+            apply(shared, step, &mut size);
+            host.frame(Vec::new(), size, false);
+        }
+        for _ in 0..SETTLE {
+            host.frame(Vec::new(), size, false);
+        }
+        let grid = host
+            .screen
+            .frame(&mut host.host, &mut host.router, [], size)
+            .expect("frame");
+        (ansi(grid), size)
+    });
+    let (shown, size) = incremental;
+    let fresh = Runtime::scope("live-mounted", || {
+        let shared = state();
+        let mut ignored = (48_u16, 16_u16);
+        for step in steps {
+            apply(shared, step, &mut ignored);
+        }
+        settled(shared, size)
+    });
+    (shown, fresh)
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+
+    #[test]
+    fn edits_to_a_live_tree_match_a_tree_mounted_at_the_end(
+        steps in proptest::collection::vec(edit(), 1..24),
+    ) {
+        let (incremental, fresh) = edited(&steps);
+        prop_assert_eq!(incremental, fresh);
+    }
+}
