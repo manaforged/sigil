@@ -1,12 +1,15 @@
 use crate::app::Ambiguous;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
+use crate::terminal::term::Measured;
 
+#[cfg(unix)]
 mod ask;
 mod known;
 #[cfg(unix)]
 mod probe;
 
+#[cfg(unix)]
 use ask::{Question, Questions, Version};
 pub(in crate::terminal) use known::{Known, known_env};
 pub use known::{Notices, Notify};
@@ -110,6 +113,7 @@ impl Default for Caps {
     }
 }
 
+#[cfg(unix)]
 #[derive(Default)]
 struct Answers {
     sync: bool,
@@ -117,10 +121,12 @@ struct Answers {
     backdrop: Option<Backdrop>,
     truecolor: bool,
     version: Version,
+    measured: Measured,
 }
 
 struct Draft {
     caps: Caps,
+    #[cfg(unix)]
     ask: Questions,
 }
 
@@ -139,28 +145,34 @@ impl Caps {
 
     #[must_use]
     pub fn probe() -> Self {
-        let draft = draft(&|key: &str| std::env::var(key).ok());
-        #[cfg(unix)]
-        let draft = {
-            let mut draft = draft;
-            draft.caps.keyboard = keyboard(probe::keys());
-            draft
-        };
-        let backdrop = draft.caps.backdrop.is_none();
-        if draft.ask.none() && !backdrop {
-            return draft.caps;
-        }
-        #[cfg(unix)]
-        let answers = probe::ask(draft.ask, backdrop);
-        #[cfg(not(unix))]
-        let answers: Option<Answers> = None;
-        match answers {
-            Some(answers) => draft.settle(&answers),
-            None => draft.caps,
-        }
+        Self::measure().0
+    }
+
+    pub(in crate::terminal) fn measure() -> (Self, Measured) {
+        ask_terminal(draft(&|key: &str| std::env::var(key).ok()))
     }
 }
 
+#[cfg(unix)]
+fn ask_terminal(mut draft: Draft) -> (Caps, Measured) {
+    let backdrop = draft.caps.backdrop.is_none();
+    draft.caps.keyboard = Keyboard::Legacy;
+    draft.ask = draft.ask.with(Question::Keys, true);
+    let Some(input) = probe::quiet_terminal() else {
+        return (draft.caps, Measured::Unmeasured);
+    };
+    match probe::ask_on(&input, std::io::stdout().lock(), draft.ask, backdrop) {
+        Some(answers) => (draft.settle(&answers), answers.measured),
+        None => (draft.caps, Measured::Silent),
+    }
+}
+
+#[cfg(not(unix))]
+const fn ask_terminal(Draft { caps }: Draft) -> (Caps, Measured) {
+    (caps, Measured::Unmeasured)
+}
+
+#[cfg(unix)]
 impl Draft {
     const fn settle(mut self, answers: &Answers) -> Caps {
         if self.ask.has(Question::Sync) {
@@ -233,6 +245,7 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
             notices: known.map(Known::notices).unwrap_or_default(),
             fills: fills(env, known),
         },
+        #[cfg(unix)]
         ask: questions(env, (sync, keys), color, known),
     }
 }
@@ -259,6 +272,7 @@ fn fills(env: &impl Fn(&str) -> Option<String>, known: Option<Known>) -> Fills {
     }
 }
 
+#[cfg(unix)]
 fn questions(
     env: &impl Fn(&str) -> Option<String>,
     (sync, keys): (Option<bool>, Option<bool>),

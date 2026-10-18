@@ -170,19 +170,23 @@ pub(crate) fn content_key(node: &Node) -> u64 {
     hasher.finish()
 }
 
+pub(crate) fn theme_epoch() -> u64 {
+    THEME_EPOCH.with(Cell::get)
+}
+
 pub(crate) fn theme_changed() {
     THEME_EPOCH.with(|epoch| epoch.set(epoch.get().wrapping_add(1)));
 }
 
 pub(crate) fn inherit_key(theme: &Theme, text_color: Option<Rgba8>, text_style: &TextStyle) -> u64 {
-    let theme_p = std::ptr::from_ref(theme) as u64 ^ THEME_EPOCH.with(Cell::get).rotate_left(37);
+    let theme_p = std::ptr::from_ref(theme) as u64 ^ theme_epoch().rotate_left(37);
     let color = text_color.map_or(0, |c| u64::from(u32::from_le_bytes([c.r, c.g, c.b, c.a])));
     let size = u64::from(text_style.font_size.to_bits());
     let weight = u64::from(text_style.font_weight);
     theme_p ^ color.rotate_left(7) ^ size.rotate_left(17) ^ weight.rotate_left(27)
 }
 
-fn slot_tag(node: &Node) -> u8 {
+pub(crate) fn slot_tag(node: &Node) -> u8 {
     node.get_extension::<StyleBinding>()
         .map_or(0, |binding| match binding.interaction_slot() {
             crate::style::StateSlot::Rest => 0,

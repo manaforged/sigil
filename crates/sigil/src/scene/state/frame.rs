@@ -1,7 +1,8 @@
 use crate::geometry::Rect;
-use crate::renderer::scene_command::walk::{compose, transform_rect};
-use crate::renderer::scene_command::{LayerEffect, LayerScope, Transform};
+use crate::scene::command::effects::transform_rect;
+use crate::scene::command::{LayerEffect, LayerScope, Transform};
 use crate::scene::corner_radii::CornerRadii;
+use crate::scene::geometry::compose;
 
 use super::{MAX_LAYER_EXTENT, SceneState};
 

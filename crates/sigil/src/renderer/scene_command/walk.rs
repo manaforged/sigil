@@ -18,8 +18,7 @@ use crate::renderer::slug::{QueuedRun, SlugTextPipeline};
 use crate::renderer::split_encoder::SplitEncoder;
 use crate::renderer::sprite_paint::SpritePipeline;
 pub(crate) use crate::scene::command::effects::transform_rect;
-
-pub(crate) const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+pub(crate) use crate::scene::geometry::{IDENTITY, compose, intersect_rect};
 
 pub(crate) struct WalkCtx<'a> {
     pub(crate) device: &'a wgpu::Device,
@@ -249,32 +248,9 @@ pub(super) const fn translation(tx: f32, ty: f32) -> Transform {
     [[1.0, 0.0, tx], [0.0, 1.0, ty]]
 }
 
-pub(crate) fn compose(parent: Transform, child: Transform) -> Transform {
-    [
-        [
-            parent[0][0].mul_add(child[0][0], parent[0][1] * child[1][0]),
-            parent[0][0].mul_add(child[0][1], parent[0][1] * child[1][1]),
-            parent[0][0].mul_add(child[0][2], parent[0][1].mul_add(child[1][2], parent[0][2])),
-        ],
-        [
-            parent[1][0].mul_add(child[0][0], parent[1][1] * child[1][0]),
-            parent[1][0].mul_add(child[0][1], parent[1][1] * child[1][1]),
-            parent[1][0].mul_add(child[0][2], parent[1][1].mul_add(child[1][2], parent[1][2])),
-        ],
-    ]
-}
-
 pub(super) const fn rect_from_fields(fields: [f32; 4]) -> Rect {
     let [x, y, width, height] = fields;
     Rect::new(Point::new(x, y), width, height)
-}
-
-pub(crate) fn intersect_rect(left: Rect, right: Rect) -> Option<Rect> {
-    let x0 = left.origin.x.max(right.origin.x);
-    let y0 = left.origin.y.max(right.origin.y);
-    let x1 = (left.origin.x + left.width).min(right.origin.x + right.width);
-    let y1 = (left.origin.y + left.height).min(right.origin.y + right.height);
-    (x1 > x0 && y1 > y0).then(|| Rect::new(Point::new(x0, y0), x1 - x0, y1 - y0))
 }
 
 pub(super) type PipelineFns<P> = (

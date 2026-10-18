@@ -1,104 +1,33 @@
 use crate::geometry::Rect;
 
-use crate::style::{Rgba8, Theme, Tone};
+use crate::style::Theme;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::Placement;
 use smol_str::SmolStr;
 use std::borrow::Cow;
+use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
+mod cell;
 mod decoration;
 mod fill;
 mod image;
 mod junction;
 mod marks;
+mod mask;
 #[path = "paint_clip.rs"]
 mod paint_clip;
+mod region;
 mod scene;
 mod transform;
 
+pub(super) use cell::Face;
+pub use cell::{Cell, Ink, Lines, Underline};
 pub use marks::Marks;
+pub(crate) use region::raster_regions;
 pub use scene::{Paint, raster, raster_into, raster_with};
 
 pub const CONTINUES: &str = "";
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum Ink {
-    #[default]
-    Bare,
-    Of(Tone),
-    Exact(Rgba8),
-}
-
-impl Ink {
-    const fn pick(colour: Rgba8, tone: Option<Tone>) -> Self {
-        match (colour, tone) {
-            (colour, _) if colour.a > 0 => Self::Exact(colour),
-            (_, Some(tone)) => Self::Of(tone),
-            (_, None) => Self::Bare,
-        }
-    }
-
-    pub(crate) const fn set(self) -> bool {
-        !matches!(self, Self::Bare)
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Underline {
-    #[default]
-    None,
-    Straight,
-    Curly,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Lines {
-    pub underline: Underline,
-    pub strike: bool,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Cell {
-    pub text: SmolStr,
-    pub fg: Ink,
-    pub bg: Ink,
-    pub bold: bool,
-    pub italic: bool,
-    pub dim: bool,
-    pub lines: Lines,
-    pub underline_ink: Ink,
-    pub link: Option<SmolStr>,
-}
-
-impl Cell {
-    #[must_use]
-    pub const fn blank() -> Self {
-        Self {
-            text: SmolStr::new_inline(" "),
-            fg: Ink::Bare,
-            bg: Ink::Bare,
-            bold: false,
-            italic: false,
-            dim: false,
-            lines: Lines {
-                underline: Underline::None,
-                strike: false,
-            },
-            underline_ink: Ink::Bare,
-            link: None,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Default)]
-pub(super) struct Face {
-    pub(super) bold: bool,
-    pub(super) italic: bool,
-    pub(super) dim: bool,
-    pub(super) underline: Underline,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Grid {
@@ -109,6 +38,7 @@ pub struct Grid {
     images: Vec<Placement>,
     graphics: bool,
     cursor: Option<(usize, usize)>,
+    mask: Option<mask::Mask>,
 }
 
 impl Grid {
@@ -124,6 +54,7 @@ impl Grid {
             images: Vec::new(),
             graphics: false,
             cursor: None,
+            mask: None,
         }
     }
 
@@ -176,15 +107,14 @@ impl Grid {
             return;
         }
         for cell in &mut self.cells {
-            let Cow::Owned(text) = glyphs.text(&cell.text) else {
-                continue;
-            };
-            cell.text = text.into();
+            map_glyph(cell, glyphs);
         }
     }
 
     pub fn resize(&mut self, cols: u16, rows: u16) {
-        self.reshape(cols as usize, rows as usize, Cell::default());
+        if (self.cols, self.rows) != (cols as usize, rows as usize) {
+            self.reshape(cols as usize, rows as usize, Cell::default());
+        }
         self.cursor = None;
     }
 
@@ -295,22 +225,36 @@ impl Grid {
     fn each(&mut self, area: Area, mut paint: impl FnMut(&mut Cell)) {
         let ((col, row), (width, height), inside) = area;
         let inner = frame(inside);
-        for y in row..row.saturating_add(height).min(self.rows) {
-            for x in col..col.saturating_add(width).min(self.cols) {
-                let Some(index) = self.index(x, y) else {
-                    continue;
-                };
-                let edge = self.edges.get(index).copied().flatten();
-                if edge.is_some_and(|edge| encloses(edge, inner)) {
-                    continue;
-                }
-                if let Some(slot) = self.edges.get_mut(index) {
-                    *slot = None;
-                }
-                if let Some(cell) = self.cells.get_mut(index) {
-                    paint(cell);
+        let (xs, ys) = self.bound(
+            col..col.saturating_add(width).min(self.cols),
+            row..row.saturating_add(height).min(self.rows),
+        );
+        let mut spans = Vec::new();
+        for y in ys {
+            if let Some(mask) = &self.mask {
+                mask.spans(y, &mut spans);
+            } else {
+                spans.clear();
+                spans.push(xs.clone());
+            }
+            for span in &spans {
+                for x in span.start.max(xs.start)..span.end.min(xs.end) {
+                    self.fill_cell(row_index(self.cols, x, y), inner, &mut paint);
                 }
             }
+        }
+    }
+
+    fn fill_cell(&mut self, index: usize, inner: Frame, paint: &mut impl FnMut(&mut Cell)) {
+        let edge = self.edges.get(index).copied().flatten();
+        if edge.is_some_and(|edge| encloses(edge, inner)) {
+            return;
+        }
+        if let Some(slot) = self.edges.get_mut(index) {
+            *slot = None;
+        }
+        if let Some(cell) = self.cells.get_mut(index) {
+            paint(cell);
         }
     }
 
@@ -328,11 +272,31 @@ impl Grid {
             .and_then(|index| self.cells.get_mut(index))
     }
 
-    pub(super) const fn index(&self, col: usize, row: usize) -> Option<usize> {
+    pub(super) fn bound(&self, xs: Range<usize>, ys: Range<usize>) -> (Range<usize>, Range<usize>) {
+        match &self.mask {
+            Some(mask) => mask.clamp(xs, ys),
+            None => (xs, ys),
+        }
+    }
+
+    pub(super) fn index(&self, col: usize, row: usize) -> Option<usize> {
         if col >= self.cols || row >= self.rows {
             return None;
         }
+        if self.mask.as_ref().is_some_and(|mask| !mask.holds(col, row)) {
+            return None;
+        }
         Some(row.saturating_mul(self.cols).saturating_add(col))
+    }
+}
+
+const fn row_index(cols: usize, x: usize, y: usize) -> usize {
+    y.saturating_mul(cols).saturating_add(x)
+}
+
+fn map_glyph(cell: &mut Cell, glyphs: Glyphs) {
+    if let Cow::Owned(text) = glyphs.text(&cell.text) {
+        cell.text = text.into();
     }
 }
 

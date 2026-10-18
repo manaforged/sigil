@@ -4,6 +4,7 @@ use std::rc::Rc;
 use smallvec::SmallVec;
 
 use crate::animation_runtime::style::StyleAnimator;
+use crate::kernel::NodeTag;
 use crate::reactive::Signal;
 use crate::style::merge::SlotSet;
 use crate::style::{
@@ -198,10 +199,16 @@ impl StyleBinding {
         }
     }
 
-    pub(crate) fn update_animations(&self, theme: &Theme, tone: Tone, inherited_text: Rgba8) {
+    pub(crate) fn update_animations(
+        &self,
+        theme: &Theme,
+        tone: Tone,
+        inherited_text: Rgba8,
+        tag: Option<NodeTag>,
+    ) {
         let atoms: SmallVec<[StyleAtom; 32]> = self.cascade().collect();
         if self.attached_animators.get().is_none()
-            && let Some(animator) = StyleAnimator::new(&atoms)
+            && let Some(animator) = StyleAnimator::new(&atoms, tag)
         {
             let _ = self.attached_animators.set(Box::new(animator));
         }

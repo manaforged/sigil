@@ -38,6 +38,10 @@ impl Transcript {
         }
     }
 
+    pub(crate) const fn records(&self) -> bool {
+        self.out.is_some()
+    }
+
     pub(crate) fn read(&mut self, update: &TreeUpdate, cell: f32) -> Reading {
         let root = update.tree.as_ref().map(|tree| tree.root);
         let focus = (Some(update.focus) != root)

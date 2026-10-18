@@ -136,3 +136,23 @@ fn a_burst_of_typed_lines_reads_as_one_paste() {
     assert_eq!(burst_paste(&tail, false), None);
     assert_eq!(burst_paste(&tail, true).as_deref(), Some("ok\n"));
 }
+
+#[test]
+fn a_late_version_reply_is_not_typed() {
+    let mut events = vec![key(KeyCode::Char('a'), KeyModifiers::NONE)];
+    events.push(key(
+        KeyCode::Char('P'),
+        KeyModifiers::ALT | KeyModifiers::SHIFT,
+    ));
+    events.extend(typed_keys(">|xterm(390)"));
+    events.push(key(KeyCode::Char('\\'), KeyModifiers::ALT));
+    events.push(key(KeyCode::Char('b'), KeyModifiers::NONE));
+    strip_replies(&mut events);
+    assert_eq!(
+        events,
+        vec![
+            key(KeyCode::Char('a'), KeyModifiers::NONE),
+            key(KeyCode::Char('b'), KeyModifiers::NONE)
+        ]
+    );
+}

@@ -1,39 +1,53 @@
 use smallvec::SmallVec;
 
-use super::{AA_MARGIN, FullReason, MAX_REGION_SHARE, MAX_REGIONS, Plan, Regions};
+use super::{Damage, FullReason};
 use crate::geometry::Rect;
-use crate::renderer::scene_command::state::snap_out;
-use crate::renderer::scene_command::walk::intersect_rect;
+use crate::scene::geometry::intersect_rect;
+use crate::scene::state::snap_out;
 
 const EXACT_MERGE_LIMIT: usize = 24;
 
-pub(super) fn regions(inks: &[Rect], area: Rect, scale: f32) -> Plan {
-    let rects: SmallVec<[Rect; 16]> = inks
+type Rects = SmallVec<[Rect; 16]>;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Budget {
+    pub(crate) max_regions: usize,
+    pub(crate) margin: f32,
+    pub(crate) max_share: f32,
+}
+
+pub(super) fn regions<R: FromIterator<Rect>>(
+    inks: &[Rect],
+    area: Rect,
+    scale: f32,
+    budget: Budget,
+) -> Damage<R> {
+    let rects: Rects = inks
         .iter()
-        .filter_map(|ink| intersect_rect(ink.expand(AA_MARGIN), area))
+        .filter_map(|ink| intersect_rect(ink.expand(budget.margin), area))
         .map(|rect| snap_out(rect, area.origin, scale))
         .collect();
     if rects.is_empty() {
-        return Plan::Unchanged;
+        return Damage::Unchanged;
     }
     let merged = if rects.len() <= EXACT_MERGE_LIMIT {
-        merge_exact(rects)
+        merge_exact(rects, budget.max_regions)
     } else {
-        merge_greedy(&rects)
+        merge_greedy(&rects, budget.max_regions)
     };
     let covered: f32 = merged.iter().map(|rect| rect.width * rect.height).sum();
-    if covered > area.width * area.height * MAX_REGION_SHARE {
-        return Plan::Full(FullReason::RegionShare);
+    if covered > area.width * area.height * budget.max_share {
+        return Damage::Full(FullReason::RegionShare);
     }
-    Plan::Regions(merged)
+    Damage::Regions(merged.into_iter().collect())
 }
 
-fn merge_exact(mut rects: SmallVec<[Rect; 16]>) -> Regions {
+fn merge_exact(mut rects: Rects, cap: usize) -> Rects {
     while rects.len() > 1 {
         let Some((a, b, cost)) = cheapest_merge(&rects) else {
             break;
         };
-        if rects.len() <= MAX_REGIONS && cost > 0.0 {
+        if rects.len() <= cap && cost > 0.0 {
             break;
         }
         let removed = rects.swap_remove(b);
@@ -41,18 +55,18 @@ fn merge_exact(mut rects: SmallVec<[Rect; 16]>) -> Regions {
             *kept = kept.union(removed);
         }
     }
-    rects.into_iter().collect()
+    rects
 }
 
-fn merge_greedy(rects: &[Rect]) -> Regions {
-    let mut merged: Regions = SmallVec::new();
+fn merge_greedy(rects: &[Rect], cap: usize) -> Rects {
+    let mut merged = Rects::new();
     for rect in rects {
         if let Some(home) = merged
             .iter_mut()
             .find(|region| intersect_rect(**region, *rect).is_some())
         {
             *home = home.union(*rect);
-        } else if merged.len() < MAX_REGIONS {
+        } else if merged.len() < cap {
             merged.push(*rect);
         } else if let Some(home) = merged
             .iter_mut()

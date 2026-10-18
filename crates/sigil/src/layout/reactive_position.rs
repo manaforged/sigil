@@ -1,4 +1,4 @@
-use crate::kernel::NodeBuilder;
+use crate::kernel::{DeltaKind, NodeBuilder};
 use crate::reactive::Signal;
 
 #[derive(Clone, Copy)]
@@ -58,6 +58,13 @@ impl LayoutReactiveExt for NodeBuilder {
     fn position_reactive(self, pos: Signal<(f32, f32)>) -> Self {
         self.mutate(move |node| {
             let _ = node.attach(ReactivePosition { pos });
+            let tag = node.tag();
+            crate::reactive::effect_named("sigil-layout::position_delta", move || {
+                let _ = pos.get();
+                if let Some(tag) = tag {
+                    tag.record(DeltaKind::Layout);
+                }
+            });
         })
     }
 

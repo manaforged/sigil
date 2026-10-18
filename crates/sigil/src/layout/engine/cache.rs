@@ -3,22 +3,20 @@ use crate::kernel::{Cx, Node, NodeId};
 use crate::layout::cache_key::{
     AvailableKey, CacheDecision, LayoutCacheKey, layout_input_signature, reactive_layout_signature,
 };
+use ahash::AHashSet;
 
 use super::LayoutEngine;
 
 impl LayoutEngine {
     pub(super) fn prepare_animations(&mut self, cx: &Cx, root: NodeId) {
         let _prepare = crate::profile::span(crate::profile::Phase::LayoutPrepare);
-        let force = self
-            .cached_key
-            .is_none_or(|key| key.cx_generation != cx.mutation_generation())
-            || cx.dirty().any(|id| id == root);
+        let force = AnimationForce::new(self.cached_key, cx, root);
         for key in self.reactive_layout.iter().copied() {
             let id = NodeId::from_key(key);
             let Some(signature) = cx.get(id).and_then(Node::animation_signature) else {
                 continue;
             };
-            if !force && self.prepared.get(key) == Some(&signature) {
+            if !force.covers(cx, id) && self.prepared.get(key) == Some(&signature) {
                 continue;
             }
             crate::animation_runtime::style::prepare(cx, id);
@@ -98,6 +96,41 @@ impl LayoutEngine {
             }
             if !dirty.contains(&id) {
                 dirty.push(id);
+            }
+        }
+    }
+}
+
+enum AnimationForce {
+    None,
+    All,
+    Under(AHashSet<NodeId>),
+}
+
+impl AnimationForce {
+    fn new(cached: Option<LayoutCacheKey>, cx: &Cx, root: NodeId) -> Self {
+        let Some(key) = cached else {
+            return Self::All;
+        };
+        if cx.dirty_all() {
+            return Self::All;
+        }
+        let dirty: AHashSet<NodeId> = cx.dirty().collect();
+        if dirty.contains(&root) {
+            return Self::All;
+        }
+        if key.cx_generation == cx.mutation_generation() {
+            return Self::None;
+        }
+        Self::Under(dirty)
+    }
+
+    fn covers(&self, cx: &Cx, id: NodeId) -> bool {
+        match self {
+            Self::None => false,
+            Self::All => true,
+            Self::Under(dirty) => {
+                std::iter::successors(Some(id), |&at| cx.parent(at)).any(|at| dirty.contains(&at))
             }
         }
     }

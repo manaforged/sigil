@@ -1,7 +1,32 @@
 use crate::kernel::{Cx, NodeId};
 
+#[derive(Debug)]
+pub enum Patch<T> {
+    Patched,
+    Mismatch(T),
+    Unsupported(T),
+}
+
+impl<T> Patch<T> {
+    pub(crate) fn map<U>(self, wrap: impl FnOnce(T) -> U) -> Patch<U> {
+        match self {
+            Self::Patched => Patch::Patched,
+            Self::Mismatch(value) => Patch::Mismatch(wrap(value)),
+            Self::Unsupported(value) => Patch::Unsupported(wrap(value)),
+        }
+    }
+}
+
 pub trait IntoNode: IntoNodeBox {
     fn build(self, cx: &mut Cx) -> NodeId;
+
+    #[doc(hidden)]
+    fn patch(self, _cx: &mut Cx, _existing: NodeId) -> Patch<Self>
+    where
+        Self: Sized,
+    {
+        Patch::Unsupported(self)
+    }
 }
 
 pub trait IntoNodeBox {
@@ -96,13 +121,26 @@ into_node_builder!(
 
 pub(crate) trait ErasedComponent {
     fn build_box(self: Box<Self>, cx: &mut Cx) -> NodeId;
+
+    fn patch_box(self: Box<Self>, cx: &mut Cx, existing: NodeId)
+    -> Patch<Box<dyn ErasedComponent>>;
 }
 
 impl<T> ErasedComponent for T
 where
-    T: IntoNode,
+    T: IntoNode + 'static,
 {
     fn build_box(self: Box<Self>, cx: &mut Cx) -> NodeId {
         IntoNodeBox::build_box(self, cx)
+    }
+
+    fn patch_box(
+        self: Box<Self>,
+        cx: &mut Cx,
+        existing: NodeId,
+    ) -> Patch<Box<dyn ErasedComponent>> {
+        (*self)
+            .patch(cx, existing)
+            .map(|value| Box::new(value) as Box<dyn ErasedComponent>)
     }
 }

@@ -3,11 +3,15 @@ use crate::reactive::Signal;
 use accesskit::{Action, Role, SortDirection};
 use smallvec::SmallVec;
 
-use crate::kernel::component::{ErasedComponent, IntoNode};
+use crate::kernel::component::{ErasedComponent, IntoNode, Patch};
 use crate::kernel::{
     A11yProps, AccessibleName, Cx, Node, NodeId, NodeType, TextCursor, reactive_children,
 };
 use crate::style::{PaintTarget, StateHost, Style, StyleSlot};
+
+mod patch;
+
+pub(crate) use patch::{Fate, Unpatched};
 
 type NodeMutator = Box<dyn FnOnce(&mut Node)>;
 type ReactiveChildrenInstall = Box<dyn FnOnce(NodeId)>;
@@ -250,7 +254,18 @@ impl NodeBuilder {
     }
 
     #[must_use]
-    pub fn children_keyed<F, I, K, N>(mut self, f: F) -> Self
+    pub fn children_keyed<F, I, K, N>(self, f: F) -> Self
+    where
+        F: Fn() -> I + 'static,
+        I: IntoIterator<Item = (K, N)>,
+        K: Clone + Eq + std::hash::Hash + 'static,
+        N: IntoNode + 'static,
+    {
+        self.keyed_children(f)
+    }
+
+    #[must_use]
+    pub(crate) fn keyed_children<F, I, K, N>(mut self, f: F) -> Self
     where
         F: Fn() -> I + 'static,
         I: IntoIterator<Item = (K, N)>,
@@ -308,5 +323,9 @@ impl IntoNode for NodeBuilder {
         let kind = std::mem::replace(&mut this.kind, NodeType::Container);
         let id = cx.new_node(kind, std::mem::take(&mut this.a11y));
         this.finish(cx, id)
+    }
+
+    fn patch(self, cx: &mut Cx, existing: NodeId) -> Patch<Self> {
+        self.patch_onto(cx, existing)
     }
 }

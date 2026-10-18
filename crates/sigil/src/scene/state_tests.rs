@@ -1,7 +1,7 @@
 use super::SceneState;
 use crate::geometry::{Point, Rect};
-use crate::renderer::scene_command::SceneCommand;
-use crate::renderer::scene_command::walk::IDENTITY;
+use crate::scene::command::SceneCommand;
+use crate::scene::geometry::IDENTITY;
 
 #[test]
 fn a_stray_pop_keeps_the_layer_bounds_clip() {

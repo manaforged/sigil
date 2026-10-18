@@ -115,7 +115,7 @@ fn clip_cells(
         };
         first..end.min(limit)
     };
-    (
+    grid.bound(
         range(clip.origin.x, clip.width, grid.cols()),
         range(clip.origin.y, clip.height, grid.rows()),
     )

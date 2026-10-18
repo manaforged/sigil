@@ -1,17 +1,12 @@
-use std::io::{self, Write};
 use std::time::{Duration, Instant};
 
-use crate::app::{CellWidth, PanicPolicy, set_cell_width};
+use crate::app::PanicPolicy;
 use crate::events::EventRouter;
 use crate::events::ShellEvent;
 use crate::kernel::IntoNode;
 use crate::layout::LayoutError;
 use crate::reactive::Runtime;
 use crate::{AppConfig, AppResult, Error, Host};
-use crossterm::style::Print;
-use crossterm::terminal::{Clear, ClearType};
-use crossterm::{cursor, execute};
-use unicode_width::UnicodeWidthStr;
 
 use crate::profile;
 use crate::terminal::caps::Caps;
@@ -19,49 +14,12 @@ use crate::terminal::input::{Incoming, Wake, gather_input, limit};
 use crate::terminal::paint::Grid;
 use crate::terminal::screen::Screen;
 use crate::terminal::signals::SignalGuard;
+pub use crate::terminal::term::calibrate;
 #[cfg(test)]
 use crate::terminal::term::paint_frame;
 use crate::terminal::term::{HookGuard, Term, restore};
 
 pub(crate) const CELL: f32 = crate::Host::CELL;
-
-pub fn calibrate(out: &mut impl Write) -> io::Result<()> {
-    set_cell_width(CellWidth::Unicode);
-    let home = cursor::position()?;
-    let modifier = probe(out, home, "👍🏽")?;
-    if modifier > UnicodeWidthStr::width("👍🏽") {
-        let joiner = probe(out, home, "\u{200d}")?;
-        let nonjoiner = probe(out, home, "\u{200c}")?;
-        let keycap = probe(out, home, "1\u{fe0f}\u{20e3}")?.saturating_sub(1);
-        set_cell_width(CellWidth::Scalar {
-            joiner,
-            nonjoiner,
-            keycap,
-        });
-    }
-    execute!(
-        out,
-        cursor::MoveTo(0, home.1),
-        Clear(ClearType::CurrentLine)
-    )
-}
-
-fn probe(out: &mut impl Write, home: (u16, u16), text: &str) -> io::Result<usize> {
-    execute!(
-        out,
-        cursor::MoveTo(0, home.1),
-        Clear(ClearType::CurrentLine),
-        Print(text)
-    )?;
-    let (col, row) = cursor::position()?;
-    if row != home.1 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "terminal width probe wrapped",
-        ));
-    }
-    Ok(usize::from(col))
-}
 
 pub type EventPump<'a> = Box<dyn FnMut(&mut Vec<ShellEvent>) + 'a>;
 

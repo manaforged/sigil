@@ -1,13 +1,15 @@
-use super::Plan;
-use crate::profile::{Counter, Hotspot, attribute, count};
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum FullReason {
+    #[cfg(feature = "scene")]
     FirstFrame,
+    #[cfg(feature = "scene")]
     Untracked,
     NoBackbuffer,
+    #[cfg(feature = "scene")]
     TranslucentClear,
+    #[cfg(feature = "scene")]
     ViewportResized,
+    #[cfg(feature = "scene")]
     KeyChanged,
     NonLocalLayerEffect,
     ChangedShare,
@@ -15,6 +17,7 @@ pub(crate) enum FullReason {
     RegionShare,
 }
 
+#[cfg(feature = "scene")]
 impl FullReason {
     pub(crate) const fn name(self) -> &'static str {
         match self {
@@ -28,17 +31,6 @@ impl FullReason {
             Self::ChangedShare => "changed share over threshold",
             Self::UnboundedChange => "unbounded change",
             Self::RegionShare => "damage area over threshold",
-        }
-    }
-}
-
-pub(crate) fn note_plan(plan: &Plan) {
-    match plan {
-        Plan::Unchanged => count(Counter::GpuPlanUnchanged),
-        Plan::Regions(_) => count(Counter::GpuPlanRegions),
-        Plan::Full(reason) => {
-            count(Counter::GpuPlanFull);
-            attribute(Hotspot::GpuFullRepaint, 1, || reason.name().to_owned());
         }
     }
 }

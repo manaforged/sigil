@@ -83,23 +83,31 @@ impl Announcer {
         Place::Move(reading.focus.as_ref().and_then(|spot| locate(grid, spot)))
     }
 
-    pub(crate) fn apply(&mut self, grid: &mut Grid, raw: bool, focus: Place) {
-        if let Some((row, cells)) = self.under.take()
-            && !raw
-        {
-            grid.set_row(row, &cells);
-        }
+    pub(crate) fn restore(&mut self, grid: &mut Grid) -> Option<usize> {
+        let (row, cells) = self.under.take()?;
+        grid.set_row(row, &cells);
+        Some(row)
+    }
+
+    pub(crate) fn apply(&mut self, grid: &mut Grid, raw: bool, focus: Place) -> [Option<usize>; 2] {
+        let restored = if raw {
+            self.under = None;
+            None
+        } else {
+            self.restore(grid)
+        };
         if let Place::Move(cell) = focus {
             grid.place_cursor(cell);
         }
         let Some((message, _)) = &self.status else {
-            return;
+            return [restored, None];
         };
         let cols = grid.cols();
         let row = grid.rows().saturating_sub(1);
         self.under = Some((row, grid.row(row).to_vec()));
         grid.set_row(row, &vec![Cell::blank(); cols]);
         grid.overlay_text(0, row, message, Ink::Of(Tone::Neutral));
+        [restored, Some(row)]
     }
 }
 

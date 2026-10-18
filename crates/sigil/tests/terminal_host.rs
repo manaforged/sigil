@@ -6,8 +6,18 @@
     clippy::expect_used,
     clippy::unwrap_used,
     clippy::panic,
-    clippy::too_many_lines
+    clippy::too_many_lines,
+    clippy::indexing_slicing,
+    clippy::cast_precision_loss
 )]
+
+static PROFILED: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn profiled() -> std::sync::MutexGuard<'static, ()> {
+    PROFILED
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
 
 use sigil::events::{Key, ShellEvent};
 use sigil::kernel::IntoNode;
@@ -75,12 +85,22 @@ fn counter() -> impl IntoNode {
 mod borders;
 #[path = "terminal_host/cells.rs"]
 mod cells;
+#[path = "terminal_host/emit.rs"]
+mod emit;
 #[path = "terminal_host/frames.rs"]
 mod frames;
 #[path = "terminal_host/keys.rs"]
 mod keys;
+#[path = "terminal_host/layout.rs"]
+mod layout;
+#[path = "terminal_host/live.rs"]
+mod live;
+#[path = "terminal_host/oracle.rs"]
+mod oracle;
 #[path = "terminal_host/paint.rs"]
 mod paint;
+#[path = "terminal_host/retained.rs"]
+mod retained;
 #[path = "terminal_host/select.rs"]
 mod select;
 #[path = "terminal_host/table.rs"]

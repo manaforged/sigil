@@ -289,6 +289,7 @@ pub(crate) fn visual_bounds(cx: &Cx, target: NodeId, rect: Rect) -> Rect {
             continue;
         };
         if let Some(binding) = node.get_extension::<StyleBinding>()
+            && (binding.may_transform() || binding.animator_overlay().is_some())
             && let Some(result) = node.get_extension::<crate::layout::LayoutResult>()
         {
             let transform = Transform2D::for_binding(binding);

@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::sync::OnceLock;
 
+use smallvec::SmallVec;
+
 use crate::animation_runtime::binding_animate::{
     AttachedAnimator, AttachedColorAnimator, find_numeric,
 };
@@ -8,8 +10,8 @@ use crate::animation_runtime::binding_animate_color::{
     build_color_entry, read_color, retarget_color_entry,
 };
 use crate::animation_runtime::{AnimationConfig, Animator, config};
-use crate::kernel::{Cx, NodeId};
-use crate::reactive::{owner_by_id, signal};
+use crate::kernel::{Cx, DeltaKind, NodeId, NodeTag};
+use crate::reactive::{Signal, effect_named, owner_by_id, signal};
 use crate::style::{
     AnimatorOverlay, ColorAtomKind, NumericAtomKind, RenderStyle, Rgba8, StateSlot, StyleAtom,
     StyleBinding, StyleEngine, Theme, Tone, ToneContext,
@@ -67,15 +69,30 @@ impl State {
 
 pub(crate) struct StyleAnimator {
     state: RefCell<State>,
+    tag: Option<NodeTag>,
 }
 
 impl StyleAnimator {
-    pub(crate) fn new(atoms: &[StyleAtom]) -> Option<Self> {
+    pub(crate) fn new(atoms: &[StyleAtom], tag: Option<NodeTag>) -> Option<Self> {
         transition_config(atoms)?;
         Some(Self {
             state: RefCell::new(State::default()),
+            tag,
         })
     }
+}
+
+fn record_on(tag: Option<NodeTag>, signals: &[Signal<f32>], kind: DeltaKind) {
+    let Some(tag) = tag else {
+        return;
+    };
+    let signals: SmallVec<[Signal<f32>; 4]> = signals.iter().copied().collect();
+    effect_named("sigil-animation::style_delta", move || {
+        for signal in &signals {
+            signal.track();
+        }
+        tag.record(kind);
+    });
 }
 
 impl AnimatorOverlay for StyleAnimator {
@@ -150,16 +167,21 @@ impl AnimatorOverlay for StyleAnimator {
             state.reset(previous, inherited_text);
         }
         state.enabled = true;
-        update_numeric(&mut state.numeric, previous, target, config);
-        update_colors(&mut state.colors, previous, target, config, inherited_text);
+        update_numeric(&mut state.numeric, (previous, target), config, self.tag);
+        update_colors(
+            &mut state.colors,
+            (previous, target),
+            config,
+            (inherited_text, self.tag),
+        );
     }
 }
 
 fn update_numeric(
     entries: &mut Vec<AttachedAnimator>,
-    previous: Targets,
-    target: Targets,
+    (previous, target): (Targets, Targets),
     config: AnimationConfig,
+    tag: Option<NodeTag>,
 ) {
     for ((kind, from), to) in NumericAtomKind::ALL
         .into_iter()
@@ -183,6 +205,7 @@ fn update_numeric(
             entry.animator.target(to);
         } else {
             let value = signal(from);
+            record_on(tag, &[value], DeltaKind::layout_if(kind.affects_layout()));
             let mut animator = Animator::new(value, config);
             animator.target(to);
             entries.push(AttachedAnimator {
@@ -197,10 +220,9 @@ fn update_numeric(
 
 fn update_colors(
     entries: &mut Vec<AttachedColorAnimator>,
-    previous: Targets,
-    target: Targets,
+    (previous, target): (Targets, Targets),
     config: AnimationConfig,
-    inherited_text: Rgba8,
+    (inherited_text, tag): (Rgba8, Option<NodeTag>),
 ) {
     for ((kind, from), to) in ColorAtomKind::ALL
         .into_iter()
@@ -222,6 +244,7 @@ fn update_colors(
             retarget_color_entry(entry, to);
         } else {
             let mut entry = build_color_entry(kind, from.unwrap_or(fallback), config);
+            record_on(tag, &entry.channels, DeltaKind::Paint);
             retarget_color_entry(&mut entry, to);
             entries.push(entry);
         }
@@ -278,7 +301,7 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
         .tone;
     let inherited_text = inherited_text(cx, id, theme);
     owner_by_id(node.owner, || {
-        binding.update_animations(theme, tone, inherited_text);
+        binding.update_animations(theme, tone, inherited_text, node.tag());
     });
 }
 

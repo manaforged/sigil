@@ -8,12 +8,14 @@ use crate::layout::LayoutError;
 use crate::profile;
 use crate::scene::CommandScene;
 
+use crate::geometry::{Point, Rect};
+use crate::scene::damage::{Damage as SceneDamage, cell_damage};
 use crate::terminal::access::{Access, Announcer, Place, Speech};
 use crate::terminal::caps::Caps;
-use crate::terminal::paint::{Grid, Marks, Paint, raster_with};
+use crate::terminal::paint::{Grid, Marks, Paint, raster_regions, raster_with};
 use crate::terminal::run::view;
 use crate::terminal::transcript::Transcript;
-use crate::terminal::write::Measured;
+use crate::terminal::write::{Damage, Measured};
 
 const CELL: f32 = Host::CELL;
 
@@ -30,6 +32,7 @@ pub struct Screen {
     caps: Caps,
     live_rows: usize,
     announcer: Announcer,
+    damage: Option<Damage>,
 }
 
 impl Screen {
@@ -48,6 +51,7 @@ impl Screen {
             caps: Caps::default(),
             live_rows: 0,
             announcer: Announcer::default(),
+            damage: None,
         }
     }
 
@@ -104,20 +108,27 @@ impl Screen {
         profile::count(profile::Counter::TuiFrames);
         profile::count_add(profile::Counter::WorkloadCols, u64::from(cols));
         profile::count_add(profile::Counter::WorkloadRows, u64::from(rows));
-        if crate::hud::take_state_change() {
+        if crate::hud::take_state_change() || self.dirty {
             self.fresh = true;
         }
         let dt = self.dt;
+        self.damage = None;
         let hooks = frame_hooks(self, events, (cols, rows));
         let out = host.frame(router, view(cols, rows), dt, hooks);
         self.exited |= out.exit;
         if crate::hud::enabled() {
             crate::terminal::hud::draw(&mut self.grid);
+            self.damage = None;
             if !self.dirty && !self.fresh && !self.unchanged() {
                 self.dirty = true;
             }
         }
-        let update = host.accessibility_tree(router);
+        let scope = if self.transcript.records() {
+            crate::a11y::mapping::TreeScope::Full
+        } else {
+            crate::a11y::mapping::TreeScope::Reading
+        };
+        let update = host.accessibility_tree_scoped(router, scope);
         self.listen(&update);
         if self.dirty && !self.fresh && self.unchanged() {
             self.dirty = false;
@@ -143,20 +154,25 @@ impl Screen {
         if !raw && (changed || matches!(focus, Place::Move(at) if at != self.prev.cursor())) {
             self.grid.clone_from(&self.prev);
             self.dirty = true;
+            self.damage = Some(Damage::new(Vec::new(), false));
         }
         if self.dirty {
-            self.announcer.apply(&mut self.grid, raw, focus);
+            let rows = self.announcer.apply(&mut self.grid, raw, focus);
+            if let Some(damage) = &mut self.damage {
+                rows.into_iter().flatten().for_each(|row| damage.touch(row));
+            }
         }
     }
 
     fn unchanged(&self) -> bool {
-        self.prev.cols() == self.grid.cols()
-            && self.prev.rows() == self.grid.rows()
-            && self.prev.cursor() == self.grid.cursor()
+        self.prev.cursor() == self.grid.cursor()
             && self.prev.images() == self.grid.images()
-            && (0..self.grid.rows()).all(|row| {
-                crate::terminal::write::same_row(self.prev.row(row), self.grid.row(row), &self.caps)
-            })
+            && crate::terminal::write::unchanged(
+                &self.prev,
+                &self.grid,
+                self.damage.as_ref(),
+                &self.caps,
+            )
     }
 
     #[must_use]
@@ -243,7 +259,13 @@ impl Screen {
             self.prev.mirror(&self.grid);
             crate::terminal::write::all(out, &self.grid, &self.caps)?;
         } else {
-            crate::terminal::write::dirty(out, &self.prev, &self.grid, &self.caps)?;
+            crate::terminal::write::dirty(
+                out,
+                &self.prev,
+                &self.grid,
+                &self.caps,
+                self.damage.as_ref(),
+            )?;
         }
         self.painter.emit(
             out,
@@ -297,15 +319,15 @@ fn frame_hooks<'s>(
         paint: Some(Box::new(move |host, router, info| {
             let _phase = profile::span(profile::Phase::TuiPaint);
             if !info.layout_ok {
+                host.reset_emit();
                 return;
             }
-            let grid = &mut screen.grid;
-            let resized = grid.cols() != usize::from(cols) || grid.rows() != usize::from(rows);
-            let next = host.emit(view(cols, rows));
-            screen.dirty = next != screen.scene || resized || screen.fresh;
+            let resized =
+                screen.grid.cols() != usize::from(cols) || screen.grid.rows() != usize::from(rows);
+            let (next, diff) = host.emit_since(view(cols, rows), &info.delta, &screen.scene);
+            screen.dirty = !diff.unchanged() || resized || screen.fresh;
             if screen.dirty {
                 let _raster = profile::span(profile::Phase::TuiRaster);
-                grid.resize(cols, rows);
                 let marks = Marks::collect(host.cx(), router.focus(), &next, CELL);
                 let paint = Paint {
                     theme: host.theme(),
@@ -313,10 +335,40 @@ fn frame_hooks<'s>(
                     caps: screen.caps,
                     marks: &marks,
                 };
-                raster_with(grid, &next, &paint);
+                raster(screen, &next, &paint, (cols, rows));
                 screen.scene = next;
             }
         })),
         ..FrameHooks::default()
+    }
+}
+
+fn raster(screen: &mut Screen, next: &CommandScene, paint: &Paint<'_>, (cols, rows): (u16, u16)) {
+    let retained = !screen.fresh
+        && screen.prev.cols() == usize::from(cols)
+        && screen.prev.rows() == usize::from(rows)
+        && screen.prev.images().is_empty();
+    let area = Rect::new(
+        Point::new(0.0, 0.0),
+        f32::from(cols) * CELL,
+        f32::from(rows) * CELL,
+    );
+    let damage = if retained {
+        cell_damage((&screen.scene, next), area, (CELL, CELL))
+    } else {
+        SceneDamage::Full(crate::scene::damage::FullReason::NoBackbuffer)
+    };
+    match damage {
+        SceneDamage::Regions(regions) => {
+            screen.grid.clone_from(&screen.prev);
+            let restored = screen.announcer.restore(&mut screen.grid);
+            let mut touched = raster_regions(&mut screen.grid, next, paint, &regions);
+            touched.extend(restored);
+            screen.damage = Some(Damage::new(touched, false));
+        }
+        SceneDamage::Unchanged | SceneDamage::Full(_) => {
+            screen.grid.resize(cols, rows);
+            raster_with(&mut screen.grid, next, paint);
+        }
     }
 }

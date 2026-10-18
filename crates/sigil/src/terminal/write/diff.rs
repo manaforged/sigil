@@ -5,14 +5,64 @@ use crate::terminal::caps::Caps;
 use crate::terminal::paint::{Cell, Grid};
 use crate::terminal::scroll::Shift;
 
-pub(crate) fn dirty(out: &mut impl Write, prev: &Grid, next: &Grid, caps: &Caps) -> io::Result<()> {
-    let shift = Shift::find(prev, next);
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Damage {
+    rows: Vec<usize>,
+    moved: bool,
+}
+
+impl Damage {
+    pub(crate) fn new(mut rows: Vec<usize>, moved: bool) -> Self {
+        rows.sort_unstable();
+        rows.dedup();
+        Self { rows, moved }
+    }
+
+    pub(crate) fn touch(&mut self, row: usize) {
+        if let Err(at) = self.rows.binary_search(&row) {
+            self.rows.insert(at, row);
+        }
+    }
+
+    pub(crate) fn rows(&self, total: usize) -> impl Iterator<Item = usize> + '_ {
+        self.rows
+            .iter()
+            .copied()
+            .take_while(move |row| *row < total)
+    }
+}
+
+pub(crate) fn unchanged(prev: &Grid, next: &Grid, damage: Option<&Damage>, caps: &Caps) -> bool {
+    let same = |row: usize| same_row(prev.row(row), next.row(row), caps);
+    prev.cols() == next.cols()
+        && prev.rows() == next.rows()
+        && damage.map_or_else(
+            || (0..next.rows()).all(same),
+            |damage| damage.rows(next.rows()).all(same),
+        )
+}
+
+pub(crate) fn dirty(
+    out: &mut impl Write,
+    prev: &Grid,
+    next: &Grid,
+    caps: &Caps,
+    damage: Option<&Damage>,
+) -> io::Result<()> {
+    let shift = match damage {
+        Some(damage) if !damage.moved => None,
+        _ => Shift::find(prev, next),
+    };
     let mut pen = Pen::default();
     if let Some(shift) = shift {
         shift.emit(out)?;
         pen.style = Some(Style::plain());
     }
-    for row in 0..next.rows() {
+    let rows: Box<dyn Iterator<Item = usize>> = match damage.filter(|_| shift.is_none()) {
+        Some(damage) => Box::new(damage.rows(next.rows())),
+        None => Box::new(0..next.rows()),
+    };
+    for row in rows {
         let old = shift.map_or_else(|| Some(prev.row(row)), |shift| shift.source(prev, row));
         match old {
             Some(old) if same_row(old, next.row(row), caps) => {}

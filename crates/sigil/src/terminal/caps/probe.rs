@@ -1,39 +1,57 @@
+use std::io::Write;
 use std::os::fd::AsFd;
 use std::time::{Duration, Instant};
 
 use super::{Answers, Backdrop, Known, Question, Questions, Version};
+use crate::terminal::term::{calibration, measure};
 
-const TIMEOUT: Duration = Duration::from_secs(1);
+const TIMEOUT: Duration = Duration::from_millis(500);
 
-pub(super) fn ask(ask: Questions, backdrop: bool) -> Option<Answers> {
-    let reply = exchange(
-        |out| std::io::Write::write_all(out, queries(ask, backdrop).as_bytes()),
+pub(super) fn ask_on(
+    input: &impl AsFd,
+    out: impl Write,
+    ask: Questions,
+    backdrop: bool,
+) -> Option<Answers> {
+    let mut query = queries(ask, backdrop);
+    query.push_str(&calibration());
+    let reply = converse(
+        input,
+        out,
+        |batch| batch.write_all(query.as_bytes()),
         |_| false,
     )?;
     Some(parse(&reply))
 }
 
 pub(crate) fn exchange(
-    query: impl FnOnce(&mut std::io::StdoutLock<'_>) -> std::io::Result<()>,
+    query: impl FnOnce(&mut Vec<u8>) -> std::io::Result<()>,
     done: impl Fn(&str) -> bool,
 ) -> Option<String> {
-    use std::io::Write;
+    converse(&quiet_terminal()?, std::io::stdout().lock(), query, done)
+}
+
+pub(super) fn converse(
+    input: &impl AsFd,
+    mut out: impl Write,
+    query: impl FnOnce(&mut Vec<u8>) -> std::io::Result<()>,
+    done: impl Fn(&str) -> bool,
+) -> Option<String> {
+    let mut batch = Vec::new();
+    query(&mut batch).ok()?;
+    batch.extend_from_slice(b"\x1b[c");
+    out.write_all(&batch).ok()?;
+    out.flush().ok()?;
+    drop(out);
+    read_reply(input, done)
+}
+
+pub(super) fn quiet_terminal() -> Option<std::io::Stdin> {
     let stdin = std::io::stdin();
     if !terminal() || typing(&stdin)? {
         return None;
     }
-    let mut out = std::io::stdout().lock();
-    query(&mut out).ok()?;
-    out.write_all(b"\x1b[c").ok()?;
-    out.flush().ok()?;
-    drop(out);
-    read_reply(&stdin, done)
-}
-
-pub(super) fn keys() -> Option<bool> {
-    terminal()
-        .then(crossterm::terminal::supports_keyboard_enhancement)?
-        .ok()
+    Some(stdin)
 }
 
 fn terminal() -> bool {
@@ -104,7 +122,20 @@ pub(super) fn parse(reply: &str) -> Answers {
         version: dcs(reply, "\x1bP>|").map_or(Version::Silent, |name| {
             Known::from_version(name).map_or(Version::Unnamed, Version::Named)
         }),
+        measured: measure(&cursor_reports(reply)),
     }
+}
+
+fn cursor_reports(reply: &str) -> Vec<(u16, u16)> {
+    reply
+        .split("\x1b[")
+        .skip(1)
+        .filter_map(|rest| {
+            let (row, rest) = rest.split_once(';')?;
+            let (col, _) = rest.split_once('R')?;
+            Some((row.parse().ok()?, col.parse::<u16>().ok()?.checked_sub(1)?))
+        })
+        .collect()
 }
 
 fn dcs<'a>(reply: &'a str, intro: &str) -> Option<&'a str> {

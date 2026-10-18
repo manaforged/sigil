@@ -15,6 +15,8 @@ use super::cell_text::CellGeometry;
 #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
 mod hot;
 use super::host_env::{EnvGuard, HostEnv};
+use crate::kernel::FrameDelta;
+use crate::scene::emit::{EmitDiff, EmitMemo, emit_scene_since};
 use crate::scene::{CommandScene, emit_scene_clipped};
 
 pub type AccessibilityTree = accesskit::TreeUpdate;
@@ -29,6 +31,7 @@ pub struct Host {
     theme: Theme,
     visual_transforms: bool,
     hits: HitTestCache,
+    emitted: EmitMemo,
     env: HostEnv,
     #[cfg(feature = "dialog")]
     dialogs: Vec<super::dialog::layer::Mounted>,
@@ -100,6 +103,7 @@ impl Host {
             theme: Theme::default(),
             visual_transforms,
             hits: HitTestCache::default(),
+            emitted: EmitMemo::default(),
             env,
             #[cfg(feature = "dialog")]
             dialogs: Vec::new(),
@@ -259,12 +263,26 @@ impl Host {
 
     #[must_use]
     pub fn accessibility_tree(&self, router: &EventRouter) -> AccessibilityTree {
+        self.accessibility_tree_scoped(router, crate::a11y::mapping::TreeScope::Full)
+    }
+
+    #[must_use]
+    pub(crate) fn accessibility_tree_scoped(
+        &self,
+        router: &EventRouter,
+        scope: crate::a11y::mapping::TreeScope,
+    ) -> AccessibilityTree {
         let _env = self.enter();
-        crate::a11y::tree(&self.cx, router.focus(), &|id| {
-            self.layout
-                .result(id)
-                .map(|result| crate::events::hit_test::visual_bounds(&self.cx, id, result.rect()))
-        })
+        crate::a11y::mapping::tree_scoped(
+            &self.cx,
+            router.focus(),
+            &|id| {
+                self.layout.result(id).map(|result| {
+                    crate::events::hit_test::visual_bounds(&self.cx, id, result.rect())
+                })
+            },
+            scope,
+        )
     }
 
     pub fn focus_intent(&mut self, router: &mut EventRouter, intent: FocusIntent) {
@@ -317,6 +335,35 @@ impl Host {
         })
     }
 
+    #[must_use]
+    pub fn emit_since(
+        &mut self,
+        viewport: (f32, f32),
+        delta: &FrameDelta,
+        prev: &CommandScene,
+    ) -> (CommandScene, EmitDiff) {
+        let _env = self.enter();
+        self.apply_pending_theme();
+        let Some(root) = self.root else {
+            self.emitted = EmitMemo::default();
+            return (
+                CommandScene::default(),
+                EmitDiff::between_scenes(&prev.commands, &[]),
+            );
+        };
+        emit_scene_since(
+            &self.cx,
+            root,
+            Some(viewport_rect(viewport)),
+            (delta, prev),
+            &mut self.emitted,
+        )
+    }
+
+    pub fn reset_emit(&mut self) {
+        self.emitted = EmitMemo::default();
+    }
+
     pub fn scene(&mut self, viewport: (f32, f32)) -> Result<CommandScene, LayoutError> {
         let _env = self.enter();
         let Some(root) = self.layout(viewport)? else {
@@ -327,9 +374,9 @@ impl Host {
 }
 
 pub(crate) fn emit_viewport_scene(cx: &Cx, root: NodeId, viewport: (f32, f32)) -> CommandScene {
-    emit_scene_clipped(
-        cx,
-        root,
-        Some(Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1)),
-    )
+    emit_scene_clipped(cx, root, Some(viewport_rect(viewport)))
+}
+
+const fn viewport_rect(viewport: (f32, f32)) -> Rect {
+    Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1)
 }

@@ -19,16 +19,6 @@ pub(crate) struct GlyphPlan {
 }
 
 impl GlyphRun {
-    pub(crate) fn ink_rect(&self) -> Option<Rect> {
-        let origin = self.rect.origin;
-        let ink = self.paragraph()?.ink_rect()?;
-        Some(Rect::new(
-            Point::new(origin.x + ink.origin.x, origin.y + ink.origin.y),
-            ink.width,
-            ink.height,
-        ))
-    }
-
     pub(crate) fn plan(&self, transform: Transform, scale: f32) -> Option<GlyphPlan> {
         invert(transform)?;
         if self.positioned_glyphs().is_empty() {

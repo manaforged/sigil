@@ -109,6 +109,7 @@
 | Field | Description |
 | --- | --- |
 | <code>animating: bool</code> |  |
+| <code>delta: <a href="sigil-kernel.html#framedelta">FrameDelta</a></code> |  |
 | <code>dirty: bool</code> |  |
 | <code>layout_ok: bool</code> |  |
 

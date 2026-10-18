@@ -36,6 +36,7 @@ impl<'t> EmitWalk<'_, 't> {
         let cx = self.cx;
         let deferred = &mut *self.deferred;
         let selection = self.selection;
+        let track = &mut *self.track;
         self.scene.with_composite_layer(
             LayerScope {
                 clip: bounds,
@@ -49,6 +50,7 @@ impl<'t> EmitWalk<'_, 't> {
                     cx,
                     deferred,
                     selection,
+                    track,
                 }
                 .push_contents(id, inherited, None, &style);
             },

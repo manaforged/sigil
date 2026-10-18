@@ -18,7 +18,7 @@ where
     A: IntoNode + 'static,
     B: IntoNode + 'static,
 {
-    fragment().children_keyed(move || {
+    fragment().keyed_children(move || {
         let branch = cond.read();
         let child = if branch {
             node(then())
@@ -105,7 +105,7 @@ impl<K: Clone + PartialEq + 'static> SwitchBuilder<K> {
         if keep_alive {
             mount_kept(views, slot)
         } else {
-            fragment().children_keyed(move || {
+            fragment().keyed_children(move || {
                 slot.get()
                     .and_then(|i| views.get(i).map(|view| (i, view())))
             })
@@ -115,7 +115,7 @@ impl<K: Clone + PartialEq + 'static> SwitchBuilder<K> {
 
 fn mount_kept(views: Vec<View>, slot: Signal<Option<usize>>) -> NodeBuilder {
     let visited = RefCell::new(Vec::<usize>::new());
-    fragment().children_keyed(move || {
+    fragment().keyed_children(move || {
         let mut seen = visited.borrow_mut();
         if let Some(active) = slot.get()
             && !seen.contains(&active)

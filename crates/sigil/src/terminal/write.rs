@@ -15,7 +15,7 @@ use smol_str::SmolStr;
 mod diff;
 mod inline;
 
-pub(crate) use diff::dirty;
+pub(crate) use diff::{Damage, dirty, unchanged};
 
 pub(crate) use inline::inline;
 
@@ -54,7 +54,7 @@ pub fn render(out: &mut impl Write, prev: &Grid, next: &Grid, depth: ColorDepth)
         ..Caps::default()
     };
     if prev.cols() == next.cols() && prev.rows() == next.rows() {
-        dirty(out, prev, next, &caps)
+        dirty(out, prev, next, &caps, None)
     } else {
         all(out, next, &caps)
     }

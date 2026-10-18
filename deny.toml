@@ -39,6 +39,9 @@ ignore = [
     # decorations). winit's transitive tree; we render text with our own
     # skrifa/HarfRust stack and never touch ab_glyph at runtime.
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser via sctk-adwaita/winit; not our text path" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant via zbus 5 in accesskit_unix; merged into zbus 6, no release of accesskit uses it yet; drop when accesskit_unix moves to zbus 6" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names via zbus 5 in accesskit_unix; merged into zbus 6, no release of accesskit uses it yet; drop when accesskit_unix moves to zbus 6" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive via zbus 5 in accesskit_unix; merged into zbus 6, no release of accesskit uses it yet; drop when accesskit_unix moves to zbus 6" },
     ]
 
 # --- licenses ---------------------------------------------------------------

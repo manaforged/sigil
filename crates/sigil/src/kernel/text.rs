@@ -2,10 +2,11 @@ use std::fmt;
 use std::rc::Rc;
 
 use crate::events::Shortcut;
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, derived, effect_named};
 use accesskit::Role;
 
-use crate::kernel::{A11yProps, AccessibleName, Cx, IntoNode, NodeId, NodeType};
+use crate::kernel::component::Patch;
+use crate::kernel::{A11yProps, AccessibleName, Cx, DeltaKind, IntoNode, Node, NodeId, NodeType};
 use crate::style::{PaintTarget, Style, StyleSlot};
 
 type TextMutator = Box<dyn FnOnce(&mut crate::kernel::Node)>;
@@ -214,9 +215,14 @@ impl PaintTarget for TextBuilder {
 impl IntoNode for TextBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
         let this = self.flush_paint();
+        let content = this.source.into_live();
+        let live = match &content {
+            TextContent::Reactive(signal) => Some(*signal),
+            TextContent::Static(_) | TextContent::Compute(_) => None,
+        };
         let id = cx.new_node(
             NodeType::Text {
-                content: this.source.into_live(),
+                content,
                 wrap: this.wrap,
                 ellipsis: this.ellipsis,
             },
@@ -227,7 +233,50 @@ impl IntoNode for TextBuilder {
                 apply(node);
             }
         }
+        track_delta(cx, id, live);
         id
+    }
+
+    fn patch(self, cx: &mut Cx, existing: NodeId) -> Patch<Self> {
+        if !matches!(
+            cx.get(existing).map(|node| &node.kind),
+            Some(NodeType::Text { .. })
+        ) {
+            return Patch::Mismatch(self);
+        }
+        cx.refill(existing, |cx| {
+            let this = self.flush_paint();
+            let content = this.source.into_live();
+            let live = match &content {
+                TextContent::Reactive(signal) => Some(*signal),
+                TextContent::Static(_) | TextContent::Compute(_) => None,
+            };
+            cx.reset_node(
+                existing,
+                NodeType::Text {
+                    content,
+                    wrap: this.wrap,
+                    ellipsis: this.ellipsis,
+                },
+                this.a11y,
+            );
+            if let Some(node) = cx.get_mut(existing) {
+                for apply in this.pre_extensions {
+                    apply(node);
+                }
+            }
+            track_delta(cx, existing, live);
+        });
+        Patch::Patched
+    }
+}
+
+fn track_delta(cx: &Cx, id: NodeId, live: Option<Signal<String>>) {
+    if let (Some(signal), Some(tag)) = (live, cx.get(id).and_then(Node::tag)) {
+        effect_named("sigil-kernel::text_delta", move || {
+            signal.track();
+            tag.record(DeltaKind::Layout);
+        });
     }
 }
 
@@ -239,3 +288,7 @@ fn replace(out: &mut String, value: &str) -> bool {
     out.push_str(value);
     true
 }
+
+#[cfg(test)]
+#[path = "text_patch_tests.rs"]
+mod patch_tests;
