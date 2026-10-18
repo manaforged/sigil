@@ -101,6 +101,8 @@ mod live;
 mod oracle;
 #[path = "terminal_host/paint.rs"]
 mod paint;
+#[path = "terminal_host/patching.rs"]
+mod patching;
 #[path = "terminal_host/precise.rs"]
 mod precise;
 #[path = "terminal_host/retained.rs"]
