@@ -32,6 +32,7 @@ pub struct Cx {
     host_mode: HostMode,
     pub(crate) live_region: Option<NodeId>,
     pub(crate) top_layer_memo: super::top_layer::TopLayerMemo,
+    marked: std::cell::RefCell<marked::Marked>,
 }
 
 impl Cx {
@@ -53,6 +54,7 @@ impl Cx {
             host_mode: HostMode::default(),
             top_layer_memo: std::cell::RefCell::new(None),
             live_region: None,
+            marked: std::cell::RefCell::default(),
         }
     }
 
@@ -330,51 +332,13 @@ impl Cx {
         self.nodes.is_empty()
     }
 
-    pub fn visit_preorder(&self, root: NodeId, mut visit: impl FnMut(NodeId, &Node)) {
-        let mut stack = vec![root];
-        while let Some(id) = stack.pop() {
-            let Some(node) = self.nodes.get(id.key()) else {
-                continue;
-            };
-            visit(id, node);
-            stack.extend(node.children.iter().rev().copied());
-        }
-    }
-
-    #[must_use]
-    pub fn parent(&self, id: NodeId) -> Option<NodeId> {
-        self.nodes.get(id.key()).and_then(|node| node.parent)
-    }
-
-    #[must_use]
-    pub fn first_child(&self, id: NodeId) -> Option<NodeId> {
-        self.nodes
-            .get(id.key())
-            .and_then(|node| node.children.first().copied())
-    }
-
-    #[cfg(any(test, feature = "kittest"))]
-    #[must_use]
-    pub fn nth_child(&self, id: NodeId, n: usize) -> Option<NodeId> {
-        self.nodes
-            .get(id.key())
-            .and_then(|node| node.children.get(n).copied())
-    }
-
-    #[cfg(any(test, feature = "kittest"))]
-    #[must_use]
-    pub fn child_count(&self, id: NodeId) -> usize {
-        self.nodes
-            .get(id.key())
-            .map_or(0, |node| node.children.len())
-    }
-
     const fn bump_generation(&mut self) {
         self.mutation_generation = self.mutation_generation.wrapping_add(1);
     }
 
     fn mark_dirty(&mut self, id: NodeId) {
         self.dirty.insert(id);
+        self.marked.get_mut().touch(id);
         self.delta.record(id, DeltaKind::Layout);
     }
 }
@@ -393,6 +357,8 @@ fn next_instance_id() -> u64 {
 
 #[path = "cx_dump.rs"]
 mod dump;
+mod marked;
+mod tree;
 
 #[cfg(test)]
 #[path = "cx_tests.rs"]
