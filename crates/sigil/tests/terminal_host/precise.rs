@@ -125,3 +125,52 @@ fn a_change_hidden_behind_a_cover_writes_nothing() {
         );
     });
 }
+
+fn linked(url: sigil::prelude::Signal<String>, tick: sigil::prelude::Signal<u32>) -> Host {
+    let mut host = Host::cells();
+    host.mount(move || {
+        container().children_reactive(move || {
+            vec![
+                container().child(text("docs").description(url.get())),
+                container().child(text(format!("n {}", tick.get()))),
+            ]
+        })
+    });
+    host
+}
+
+#[test]
+fn a_changed_link_target_reaches_the_terminal() {
+    for other in [false, true] {
+        Runtime::scope("precise-link", || {
+            let (url, tick) = (signal(String::from("https://a.test")), signal(0_u32));
+            let mut host = linked(url, tick);
+            let mut router = EventRouter::new();
+            let caps = Caps {
+                hyperlinks: true,
+                ..Caps::default()
+            };
+            let mut screen = Screen::with_caps(COLS, ROWS, caps);
+            for _ in 0..3 {
+                screen
+                    .frame(&mut host, &mut router, [], (COLS, ROWS))
+                    .expect("frame");
+                screen.flush(&mut std::io::sink()).expect("flush");
+            }
+            url.set(String::from("https://b.test"));
+            if other {
+                tick.set(1);
+            }
+            let mut written = Vec::new();
+            screen
+                .frame(&mut host, &mut router, [], (COLS, ROWS))
+                .expect("frame");
+            screen.flush(&mut written).expect("flush");
+            let written = String::from_utf8_lossy(&written);
+            assert!(
+                written.contains("https://b.test"),
+                "other change {other}: {written:?}"
+            );
+        });
+    }
+}

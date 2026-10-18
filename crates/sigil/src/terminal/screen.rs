@@ -33,6 +33,7 @@ pub struct Screen {
     live_rows: usize,
     announcer: Announcer,
     damage: Option<Damage>,
+    marks: Marks,
 }
 
 impl Screen {
@@ -52,6 +53,7 @@ impl Screen {
             live_rows: 0,
             announcer: Announcer::default(),
             damage: None,
+            marks: Marks::default(),
         }
     }
 
@@ -331,25 +333,38 @@ fn frame_hooks<'s>(
                 screen.grid.cols() != usize::from(cols) || screen.grid.rows() != usize::from(rows);
             let (next, diff) = host.emit_since(view(cols, rows), &info.delta, &screen.scene);
             screen.dirty = !diff.unchanged() || resized || screen.fresh;
+            if !screen.dirty && info.delta.is_empty() {
+                return;
+            }
+            let marks = Marks::collect(host.cx(), router.focus(), &next, CELL);
+            let relinked = !marks.same_links(&screen.marks);
+            screen.dirty |= relinked;
             if screen.dirty {
                 let _raster = profile::span(profile::Phase::TuiRaster);
-                let marks = Marks::collect(host.cx(), router.focus(), &next, CELL);
                 let paint = Paint {
                     theme: host.theme(),
                     cell: CELL,
                     caps: screen.caps,
                     marks: &marks,
                 };
-                raster(screen, &next, &paint, (cols, rows));
+                raster(screen, &next, &paint, (cols, rows), relinked);
                 screen.scene = next;
             }
+            screen.marks = marks;
         })),
         ..FrameHooks::default()
     }
 }
 
-fn raster(screen: &mut Screen, next: &CommandScene, paint: &Paint<'_>, (cols, rows): (u16, u16)) {
-    let retained = !screen.fresh
+fn raster(
+    screen: &mut Screen,
+    next: &CommandScene,
+    paint: &Paint<'_>,
+    (cols, rows): (u16, u16),
+    whole: bool,
+) {
+    let retained = !whole
+        && !screen.fresh
         && screen.prev.cols() == usize::from(cols)
         && screen.prev.rows() == usize::from(rows)
         && screen.prev.images().is_empty();

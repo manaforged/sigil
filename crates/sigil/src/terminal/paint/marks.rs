@@ -44,6 +44,10 @@ impl Marks {
             .find_map(|(id, url)| (*id == node).then_some(url))
     }
 
+    pub(crate) fn same_links(&self, other: &Self) -> bool {
+        self.links == other.links
+    }
+
     pub(super) fn caret(&self, node: Option<NodeId>) -> bool {
         node.is_some() && node == self.caret
     }
