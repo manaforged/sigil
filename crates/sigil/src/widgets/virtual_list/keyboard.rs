@@ -76,13 +76,7 @@ impl KeyboardRuntime {
         let (top, height) = self.span(focused);
         let viewport = self.viewport();
         let current = scroll_y.peek();
-        let target = if top < current {
-            top
-        } else if top + height > current + viewport {
-            top + height - viewport
-        } else {
-            current
-        };
+        let target = crate::widgets::scroll::nearest((top, height), current, viewport);
         scroll_y.set(target.clamp(0.0, self.axes.max.peek()));
     }
 }

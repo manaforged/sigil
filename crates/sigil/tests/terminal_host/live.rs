@@ -70,6 +70,7 @@ fn tree(state: State) -> impl IntoNode {
                 ),
         )
         .child(text_edit(signal(String::from("edit"))))
+        .child(text_edit(signal(String::from("note"))))
         .child(
             virtual_list(state.rows, |_, row: &String| {
                 container().child(text(row.clone()))
@@ -148,16 +149,21 @@ impl Side {
             self.host.reset_emit();
             self.screen.invalidate();
         }
-        let grid = ansi(
-            self.screen
-                .frame(&mut self.host, &mut self.router, events, size)
-                .expect("frame"),
-        );
+        let grid = self
+            .screen
+            .frame(&mut self.host, &mut self.router, events, size)
+            .expect("frame");
+        let (cells, cursor) = (ansi(grid), grid.cursor());
         let mut bytes = Vec::new();
         self.screen.flush(&mut bytes).expect("flush");
         self.term.screen_mut().set_size(size.1, size.0);
         self.term.process(&bytes);
-        format!("{grid}\nterminal:\n{}", seen(self.term.screen(), size))
+        let term = self.term.screen();
+        format!(
+            "{cells}\ncursor {cursor:?}\nterminal {:?}:\n{}",
+            (!term.hide_cursor()).then(|| term.cursor_position()),
+            seen(term, size)
+        )
     }
 }
 
@@ -344,4 +350,10 @@ proptest! {
         let (incremental, fresh) = edited(&steps);
         prop_assert_eq!(incremental, fresh);
     }
+}
+
+#[test]
+fn an_editor_squeezed_by_a_resize_matches_one_mounted_at_that_size() {
+    let (incremental, fresh) = edited(&[Step::Resize(24, 8)]);
+    assert_eq!(incremental, fresh);
 }

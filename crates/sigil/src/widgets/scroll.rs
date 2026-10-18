@@ -172,12 +172,21 @@ pub(crate) fn reveal_row(scroll_y: Signal<f32>, row: Signal<usize>, height: f32,
     effect_named("sigil::scroll::reveal_row", move || {
         let top = f32::from(u16::try_from(row.get()).unwrap_or(u16::MAX)) * height;
         let offset = scroll_y.peek();
-        if top < offset {
-            scroll_y.set(top);
-        } else if top + height > offset + viewport {
-            scroll_y.set(top + height - viewport);
+        let next = nearest((top, height), offset, viewport);
+        if (next - offset).abs() > f32::EPSILON {
+            scroll_y.set(next);
         }
     });
+}
+
+pub(crate) fn nearest((top, height): (f32, f32), current: f32, viewport: f32) -> f32 {
+    if top < current || height > viewport {
+        top
+    } else if top + height > current + viewport {
+        top + height - viewport
+    } else {
+        current
+    }
 }
 
 fn viewport_signals(

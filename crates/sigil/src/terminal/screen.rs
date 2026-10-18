@@ -150,7 +150,8 @@ impl Screen {
         if raw {
             self.announcer.caret = self.grid.cursor().is_some();
         }
-        let focus = self.announcer.focus_cell(&self.grid, &reading);
+        let shown = if raw { &self.grid } else { &self.prev };
+        let focus = self.announcer.focus_cell(shown, &reading);
         if !raw && (changed || matches!(focus, Place::Move(at) if at != self.prev.cursor())) {
             self.grid.clone_from(&self.prev);
             self.dirty = true;
