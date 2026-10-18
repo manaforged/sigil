@@ -387,3 +387,8 @@ fn backdrop(env: &impl Fn(&str) -> Option<String>) -> Option<Backdrop> {
 #[cfg(test)]
 #[path = "caps_tests.rs"]
 mod tests;
+
+#[cfg(all(fuzzing, unix))]
+pub(crate) fn fuzz_reply(reply: &str) {
+    std::hint::black_box(probe::parse(reply));
+}

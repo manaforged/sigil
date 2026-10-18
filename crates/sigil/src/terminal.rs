@@ -7,6 +7,10 @@ mod graphics;
 pub(crate) mod hud;
 mod input;
 mod keys;
+#[cfg(all(fuzzing, unix))]
+pub(crate) use caps::fuzz_reply;
+#[cfg(fuzzing)]
+pub(crate) use keys::fuzz_strip;
 mod mouse;
 mod notify;
 mod paint;

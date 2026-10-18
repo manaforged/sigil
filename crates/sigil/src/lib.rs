@@ -95,6 +95,16 @@ pub mod fuzzing {
     pub fn parse_stateful_token(input: &str) -> bool {
         crate::style::parse_stateful_token(input).is_ok()
     }
+
+    #[cfg(all(feature = "terminal", unix))]
+    pub fn probe_reply(input: &str) {
+        crate::terminal::fuzz_reply(input);
+    }
+
+    #[cfg(feature = "terminal")]
+    pub fn reply_filter(input: &[u8]) {
+        crate::terminal::fuzz_strip(input);
+    }
 }
 
 pub mod prelude {

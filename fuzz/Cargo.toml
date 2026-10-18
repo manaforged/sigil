@@ -9,7 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-sigil = { package = "sigil-ui", path = "../crates/sigil", default-features = false, features = ["scene"] }
+sigil = { package = "sigil-ui", path = "../crates/sigil", default-features = false, features = ["scene", "terminal"] }
 sigil-kittest = { path = "../crates/kittest" }
 
 [workspace]
@@ -52,6 +52,20 @@ bench = false
 [[bin]]
 name = "scene_render"
 path = "fuzz_targets/scene_render.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "probe_reply"
+path = "fuzz_targets/probe_reply.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "reply_filter"
+path = "fuzz_targets/reply_filter.rs"
 test = false
 doc = false
 bench = false

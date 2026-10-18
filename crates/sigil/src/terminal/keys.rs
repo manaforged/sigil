@@ -289,3 +289,37 @@ const fn modifier_key(modifier: ModifierKeyCode) -> Key {
 #[cfg(test)]
 #[path = "keys_tests.rs"]
 mod tests;
+
+#[cfg(fuzzing)]
+pub(crate) fn fuzz_strip(input: &[u8]) {
+    let events: Vec<Event> = input.iter().map(|byte| fuzz_event(*byte)).collect();
+    let mut once = events.clone();
+    strip_replies(&mut once);
+    let mut rest = events.iter();
+    assert!(
+        once.iter().all(|kept| rest.any(|event| event == kept)),
+        "the reply filter invented or reordered input"
+    );
+    if events.iter().all(|event| opener(event).is_none()) {
+        assert_eq!(once, events, "input without a reply opener changed");
+    }
+    let mut twice = once.clone();
+    strip_replies(&mut twice);
+    assert_eq!(twice, once, "the reply filter is not idempotent");
+}
+
+#[cfg(fuzzing)]
+fn fuzz_event(byte: u8) -> Event {
+    let (code, modifiers) = match byte % 8 {
+        0 => (KeyCode::Char(']'), KeyModifiers::ALT),
+        1 => (KeyCode::Char('_'), KeyModifiers::ALT),
+        2 => (KeyCode::Char('P'), KeyModifiers::ALT | KeyModifiers::SHIFT),
+        3 => (KeyCode::Char('\\'), KeyModifiers::ALT),
+        4 => (KeyCode::Char('g'), KeyModifiers::CONTROL),
+        _ => (
+            KeyCode::Char(char::from(b'a' + byte / 8 % 26)),
+            KeyModifiers::NONE,
+        ),
+    };
+    Event::Key(crossterm::event::KeyEvent::new(code, modifiers))
+}

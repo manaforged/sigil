@@ -1,7 +1,6 @@
 # Fuzz targets
 
-Six libFuzzer targets. Five cover the parsers that read text input, and
-`scene_render` covers the CPU renderer.
+Eight libFuzzer targets. Seven cover the parsers that read text or terminal input, and `scene_render` covers the CPU renderer.
 
 | Target | Parser |
 | --- | --- |
@@ -10,6 +9,8 @@ Six libFuzzer targets. Five cover the parsers that read text input, and
 | `mermaid` | `widgets::mermaid` |
 | `style_class` | `style::parse_class_string`, `style::parse_stateful_token` |
 | `svg_icon` | `icons::IconBaker::bake` |
+| `probe_reply` | the terminal startup reply parser; it must not panic |
+| `reply_filter` | the filter that keeps late terminal replies out of input; it may only drop events, never add or reorder them, leaves input with no reply opener unchanged, and gives the same result run twice |
 | `scene_render` | `renderer::CpuRenderer::render` on scenes from `sigil_kittest::scene_gen::generate` |
 
 ## Requirements
