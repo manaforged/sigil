@@ -161,7 +161,7 @@ impl Side {
     }
 }
 
-fn seen(term: &vt100::Screen, (cols, rows): (u16, u16)) -> String {
+pub(super) fn seen(term: &vt100::Screen, (cols, rows): (u16, u16)) -> String {
     let mut shown = String::new();
     for row in 0..rows {
         for col in 0..cols {

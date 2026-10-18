@@ -87,6 +87,8 @@ mod borders;
 mod cells;
 #[path = "terminal_host/emit.rs"]
 mod emit;
+#[path = "terminal_host/faults.rs"]
+mod faults;
 #[path = "terminal_host/frames.rs"]
 mod frames;
 #[path = "terminal_host/keys.rs"]
