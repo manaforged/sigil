@@ -351,7 +351,6 @@ See [Units](guide/units.md) for the rules that map `rows`, `cols`, and `em` to p
 | `effect` | `fn effect<F: FnMut() + 'static>(f: F)` | Run `f` now and after each change it reads. |
 | `Reactive` | `trait Reactive<T>`; `fn read(&self) -> T`; `fn into_signal(self) -> Signal<T>` | A value source: a `Signal<T>`, a closure `Fn() -> T`, or a plain value (`bool`, `String`, `&'static str` as `Reactive<String>`, `Vec<T>` or `[T; N]` as `Reactive<Vec<T>>`). Show/hide, `invalid_when`, and the content widgets `diff`, `mermaid`, and `sparkline` take one. `disabled` on every widget takes one, so `.disabled(move \|\| name.get().is_empty())` needs no `derived`. |
 | `interval` | `fn interval(period: Duration, callback: impl Fn() + 'static) -> IntervalId` | Run `callback` on a fixed period. |
-| `timeout` | `fn timeout(delay: Duration, callback: impl FnOnce() + 'static) -> IntervalId` | Run `callback` once after `delay`. Cancelled with its owner or by `sigil::reactive::cancel_interval`. |
 | `IntervalId` | `struct IntervalId` | Handle for `sigil::reactive::cancel_interval`. |
 
 ```rust,no_run
@@ -948,6 +947,7 @@ Public items outside the prelude. Import them by path.
 | `animation_runtime::linear_channel_to_srgb` | `fn linear_channel_to_srgb(v: f32) -> u8` | Encode a linear channel in 0..=1 as an sRGB byte. |
 | `a11y::RecordingBridge` | `struct RecordingBridge { pending_actions: VecDeque<(NodeId, ActionRequest)> }`; `new()`, `action(target, request)`, `last_published()`, `published_count()` | An `A11yBridge` that records published trees and queues actions, for tests. |
 | `a11y::BoundsLookup` | `type BoundsLookup<'a> = &'a dyn Fn(NodeId) -> Option<Rect>` | Node bounds source for `a11y::tree`. |
+| `reactive::timeout` | `fn timeout(delay: Duration, callback: impl FnOnce() + 'static) -> IntervalId` | Run `callback` once after `delay`. Cancelled with its owner or by `sigil::reactive::cancel_interval`. |
 | `reactive::next_interval_deadline` | `fn next_interval_deadline() -> Option<Instant>` | Earliest next fire time of the registered intervals and timeouts. An embed host loop sleeps until it. |
 | `AppConfig::inline` | `const fn inline(self, yes: bool) -> Self` | Run the terminal host in the normal screen below the prompt instead of the alternate screen. |
 | `AppConfig::modify_other_keys` | `const fn modify_other_keys(self, yes: bool) -> Self` | Terminal host. Turn on xterm modifyOtherKeys level 2 when the terminal lacks the kitty keyboard protocol, so Shift+Enter and Ctrl+letter arrive as their own keys. Off by default; reset on exit, suspend, and panic. Needs a crossterm that decodes `CSI 27 ; mod ; code ~`. |

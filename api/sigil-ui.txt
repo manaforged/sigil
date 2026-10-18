@@ -1572,7 +1572,6 @@ pub fn sigil::kernel::Cx::add_child<C: sigil::kernel::IntoNode>(&mut self, paren
 pub fn sigil::kernel::Cx::clear_dirty(&mut self)
 pub fn sigil::kernel::Cx::dirty(&self) -> impl core::iter::traits::iterator::Iterator<Item = sigil::kernel::NodeId> + '_
 pub const fn sigil::kernel::Cx::dirty_all(&self) -> bool
-pub fn sigil::kernel::Cx::first_child(&self, id: sigil::kernel::NodeId) -> core::option::Option<sigil::kernel::NodeId>
 pub fn sigil::kernel::Cx::get(&self, id: sigil::kernel::NodeId) -> core::option::Option<&sigil::kernel::Node>
 pub fn sigil::kernel::Cx::get_mut(&mut self, id: sigil::kernel::NodeId) -> core::option::Option<&mut sigil::kernel::Node>
 pub fn sigil::kernel::Cx::get_mut_untracked(&mut self, id: sigil::kernel::NodeId) -> core::option::Option<&mut sigil::kernel::Node>
@@ -1585,15 +1584,16 @@ pub const fn sigil::kernel::Cx::mark_mutated(&mut self)
 pub const fn sigil::kernel::Cx::mutation_generation(&self) -> u64
 pub fn sigil::kernel::Cx::new_node(&mut self, kind: sigil::kernel::NodeType, a11y: sigil::kernel::A11yProps) -> sigil::kernel::NodeId
 pub fn sigil::kernel::Cx::new_root() -> Self
-pub fn sigil::kernel::Cx::parent(&self, id: sigil::kernel::NodeId) -> core::option::Option<sigil::kernel::NodeId>
 pub fn sigil::kernel::Cx::remove(&mut self, id: sigil::kernel::NodeId) -> bool
 pub const fn sigil::kernel::Cx::root_owner(&self) -> sigil::reactive::OwnerId
 pub fn sigil::kernel::Cx::roots(&self) -> &[sigil::kernel::NodeId]
 pub const fn sigil::kernel::Cx::scale(&self) -> sigil::geometry::Scale
 pub fn sigil::kernel::Cx::set_scale(&mut self, scale: sigil::geometry::Scale)
-pub fn sigil::kernel::Cx::visit_preorder(&self, root: sigil::kernel::NodeId, visit: impl core::ops::function::FnMut(sigil::kernel::NodeId, &sigil::kernel::Node))
 pub fn sigil::kernel::Cx::describe(&self, id: sigil::kernel::NodeId) -> alloc::string::String
 pub fn sigil::kernel::Cx::dump_tree(&self, root: sigil::kernel::NodeId) -> alloc::string::String
+pub fn sigil::kernel::Cx::first_child(&self, id: sigil::kernel::NodeId) -> core::option::Option<sigil::kernel::NodeId>
+pub fn sigil::kernel::Cx::parent(&self, id: sigil::kernel::NodeId) -> core::option::Option<sigil::kernel::NodeId>
+pub fn sigil::kernel::Cx::visit_preorder(&self, root: sigil::kernel::NodeId, visit: impl core::ops::function::FnMut(sigil::kernel::NodeId, &sigil::kernel::Node))
 pub fn sigil::kernel::Cx::flush_announcements(&mut self)
 pub fn sigil::kernel::Cx::flush_reactive_children(&mut self)
 pub fn sigil::kernel::Cx::take_delta(&mut self) -> sigil::kernel::FrameDelta
@@ -3726,6 +3726,7 @@ pub fn sigil::reactive::interval(period: core::time::Duration, callback: impl co
 pub fn sigil::reactive::next_interval_deadline() -> core::option::Option<std::time::Instant>
 pub fn sigil::reactive::on_cleanup(f: impl core::ops::function::FnOnce() + 'static)
 pub fn sigil::reactive::signal<T: 'static>(initial: T) -> sigil::reactive::Signal<T>
+pub fn sigil::reactive::timeout(delay: core::time::Duration, callback: impl core::ops::function::FnOnce() + 'static) -> sigil::reactive::IntervalId
 pub fn sigil::reactive::untrack<R>(f: impl core::ops::function::FnOnce() -> R) -> R
 pub mod sigil::renderer
 pub mod sigil::renderer::capture

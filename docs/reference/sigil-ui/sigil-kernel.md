@@ -152,7 +152,6 @@
 | <code>clear_dirty(&amp;mut self)</code> |  |
 | <code>dirty(&amp;self) -&gt; impl Iterator&lt;Item = <a href="#nodeid">NodeId</a>&gt; + '_</code> |  |
 | <code>const dirty_all(&amp;self) -&gt; bool</code> |  |
-| <code>first_child(&amp;self, id: <a href="#nodeid">NodeId</a>) -&gt; Option&lt;<a href="#nodeid">NodeId</a>&gt;</code> |  |
 | <code>get(&amp;self, id: <a href="#nodeid">NodeId</a>) -&gt; Option&lt;&amp;<a href="#node">Node</a>&gt;</code> |  |
 | <code>get_mut(&amp;mut self, id: <a href="#nodeid">NodeId</a>) -&gt; Option&lt;&amp;mut <a href="#node">Node</a>&gt;</code> |  |
 | <code>get_mut_untracked(&amp;mut self, id: <a href="#nodeid">NodeId</a>) -&gt; Option&lt;&amp;mut <a href="#node">Node</a>&gt;</code> |  |
@@ -165,15 +164,16 @@
 | <code>const mutation_generation(&amp;self) -&gt; u64</code> |  |
 | <code>new_node(&amp;mut self, kind: <a href="#nodetype">NodeType</a>, a11y: <a href="#a11yprops">A11yProps</a>) -&gt; <a href="#nodeid">NodeId</a></code> |  |
 | <code>new_root() -&gt; Self</code> |  |
-| <code>parent(&amp;self, id: <a href="#nodeid">NodeId</a>) -&gt; Option&lt;<a href="#nodeid">NodeId</a>&gt;</code> |  |
 | <code>remove(&amp;mut self, id: <a href="#nodeid">NodeId</a>) -&gt; bool</code> |  |
 | <code>const root_owner(&amp;self) -&gt; <a href="sigil-reactive.html#ownerid">OwnerId</a></code> |  |
 | <code>roots(&amp;self) -&gt; &amp;[<a href="#nodeid">NodeId</a>]</code> |  |
 | <code>const scale(&amp;self) -&gt; <a href="sigil-geometry.html#scale">Scale</a></code> |  |
 | <code>set_scale(&amp;mut self, scale: <a href="sigil-geometry.html#scale">Scale</a>)</code> |  |
-| <code>visit_preorder(&amp;self, root: <a href="#nodeid">NodeId</a>, visit: impl FnMut(<a href="#nodeid">NodeId</a>, &amp;<a href="#node">Node</a>))</code> |  |
 | <code>describe(&amp;self, id: <a href="#nodeid">NodeId</a>) -&gt; String</code> |  |
 | <code>dump_tree(&amp;self, root: <a href="#nodeid">NodeId</a>) -&gt; String</code> |  |
+| <code>first_child(&amp;self, id: <a href="#nodeid">NodeId</a>) -&gt; Option&lt;<a href="#nodeid">NodeId</a>&gt;</code> |  |
+| <code>parent(&amp;self, id: <a href="#nodeid">NodeId</a>) -&gt; Option&lt;<a href="#nodeid">NodeId</a>&gt;</code> |  |
+| <code>visit_preorder(&amp;self, root: <a href="#nodeid">NodeId</a>, visit: impl FnMut(<a href="#nodeid">NodeId</a>, &amp;<a href="#node">Node</a>))</code> |  |
 | <code>flush_announcements(&amp;mut self)</code> |  |
 | <code>flush_reactive_children(&amp;mut self)</code> |  |
 | <code>take_delta(&amp;mut self) -&gt; <a href="#framedelta">FrameDelta</a></code> |  |

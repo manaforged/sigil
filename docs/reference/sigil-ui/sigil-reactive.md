@@ -21,6 +21,7 @@
 | [`next_interval_deadline`](#next_interval_deadline) | fn |  |
 | [`on_cleanup`](#on_cleanup) | fn |  |
 | [`signal`](#signal-1) | fn |  |
+| [`timeout`](#timeout) | fn |  |
 | [`untrack`](#untrack) | fn |  |
 
 ## Structs
@@ -182,6 +183,11 @@
 ### `signal`
 
 <pre>pub fn <a href="#signal-1">signal</a>&lt;T: 'static&gt;(initial: T) -&gt; <a href="#signal">Signal</a>&lt;T&gt;</pre>
+
+
+### `timeout`
+
+<pre>pub fn <a href="#timeout">timeout</a>(delay: Duration, callback: impl FnOnce() + 'static) -&gt; <a href="#intervalid">IntervalId</a></pre>
 
 
 ### `untrack`

@@ -129,9 +129,7 @@ pub mod prelude {
         AlignItems, Display, FlexWrap, IntoPx, JustifyContent, LayoutBuilderExt, LayoutReactiveExt,
         LayoutStyle, cols, column, em, row, rows,
     };
-    pub use crate::reactive::{
-        IntervalId, Reactive, Signal, derived, effect, interval, signal, timeout,
-    };
+    pub use crate::reactive::{IntervalId, Reactive, Signal, derived, effect, interval, signal};
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::run;
     pub use crate::style::{
