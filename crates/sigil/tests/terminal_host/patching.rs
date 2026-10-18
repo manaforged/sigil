@@ -2,7 +2,7 @@ use sigil::Host;
 use sigil::events::EventRouter;
 use sigil::kernel::{NodeBuilder, container, fragment, text};
 use sigil::layout::LayoutStyle;
-use sigil::prelude::LayoutBuilderExt;
+use sigil::prelude::{LayoutBuilderExt, Paint};
 use sigil::profile::{self, BackendStatus, Counter};
 use sigil::reactive::{Runtime, Signal, signal};
 use sigil::terminal::Screen;
@@ -113,6 +113,92 @@ fn a_row_patched_into_a_focusable_one_takes_tab() {
         assert!(
             router.focus().is_some(),
             "Tab found no focusable row after the patch"
+        );
+    });
+}
+
+fn themed(dark: Signal<bool>) -> Host {
+    use sigil::style::{NodeStyleExt, Theme, Token};
+    let mut host = Host::cells();
+    host.mount(move || {
+        container()
+            .layout(LayoutStyle::flex_column().fill_width())
+            .child(text("outside"))
+            .children_reactive(move || {
+                let theme = if dark.get() {
+                    Theme::dark()
+                } else {
+                    Theme::light()
+                };
+                vec![
+                    container()
+                        .theme(theme)
+                        .bg(Token::Surface)
+                        .child(text("inside")),
+                ]
+            })
+    });
+    host
+}
+
+#[test]
+fn a_nested_theme_change_reaches_the_emitted_scene() {
+    use sigil::scene::CommandScene;
+    let view = (320.0, 96.0);
+    Runtime::scope("patching-theme", || {
+        let dark = signal(false);
+        let mut host = themed(dark);
+        host.layout(view).expect("layout");
+        let delta = host.cx().take_delta();
+        let (first, _) = host.emit_since(view, &delta, &CommandScene::default());
+        host.layout(view).expect("layout");
+        let idle = host.cx().take_delta();
+        let (second, _) = host.emit_since(view, &idle, &first);
+        dark.set(true);
+        host.layout(view).expect("layout");
+        let changed = host.cx().take_delta();
+        let (third, diff) = host.emit_since(view, &changed, &second);
+        assert!(!diff.unchanged(), "a theme change emitted no change");
+        assert_eq!(
+            third,
+            host.emit(view),
+            "a nested theme change copied stale paint"
+        );
+    });
+}
+
+#[test]
+fn a_patched_row_drops_children_it_no_longer_has() {
+    Runtime::scope("patching-orphans", || {
+        let wide = signal(true);
+        let mut host = Host::cells();
+        host.mount(move || {
+            container()
+                .layout(LayoutStyle::flex_column().fill_width())
+                .children_reactive(move || {
+                    let row = container().child(text("kept"));
+                    vec![if wide.get() {
+                        row.child(text("dropped"))
+                    } else {
+                        row
+                    }]
+                })
+        });
+        let mut router = EventRouter::new();
+        let mut screen = Screen::new(SIZE.0, SIZE.1);
+        for _ in 0..2 {
+            screen
+                .frame(&mut host, &mut router, [], SIZE)
+                .expect("frame");
+        }
+        wide.set(false);
+        let shown = screen
+            .frame(&mut host, &mut router, [], SIZE)
+            .expect("frame")
+            .text();
+        assert!(
+            shown.contains("kept") && !shown.contains("dropped"),
+            "{shown}"
         );
     });
 }
