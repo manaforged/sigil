@@ -48,6 +48,7 @@ pub(super) fn changed_ink(
                 None => command_ink(command, &state, &layers, scale),
             };
             inks.extend(ink);
+            inks.extend(unmoved(command, &state, &layers, scale));
         }
         match command {
             SceneCommand::PushLayer(scope) => layers.push(*scope),
@@ -89,6 +90,25 @@ fn structural_ink(
         | SceneCommand::RestoreLayer => Bound::Nothing,
         _ => return None,
     })
+}
+
+fn unmoved(
+    command: &SceneCommand,
+    state: &SceneState,
+    layers: &[LayerScope],
+    scale: f32,
+) -> Option<Rect> {
+    let SceneCommand::PushLayer(scope) = command else {
+        return None;
+    };
+    if !matches!(scope.effect, LayerEffect::Transform(_)) {
+        return None;
+    }
+    let still = LayerScope {
+        effect: LayerEffect::Identity,
+        ..*scope
+    };
+    command_ink(&SceneCommand::PushLayer(still), state, layers, scale)
 }
 
 fn within(rect: Rect, state: &SceneState, layers: &[LayerScope]) -> Option<Rect> {

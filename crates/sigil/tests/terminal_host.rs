@@ -93,6 +93,8 @@ mod faults;
 mod frames;
 #[path = "terminal_host/keys.rs"]
 mod keys;
+#[path = "terminal_host/layers.rs"]
+mod layers;
 #[path = "terminal_host/layout.rs"]
 mod layout;
 #[path = "terminal_host/live.rs"]

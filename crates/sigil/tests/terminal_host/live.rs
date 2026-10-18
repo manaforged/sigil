@@ -120,7 +120,7 @@ fn ansi(grid: &Grid) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-struct Side {
+pub(super) struct Side {
     host: Host,
     router: EventRouter,
     screen: Screen,
@@ -131,6 +131,10 @@ impl Side {
     fn new(state: State, size: (u16, u16), status: Duration) -> Self {
         let mut host = Host::cells();
         host.mount(move || tree(state));
+        Self::mounted(host, size, status)
+    }
+
+    pub(super) fn mounted(host: Host, size: (u16, u16), status: Duration) -> Self {
         let mut screen = Screen::new(size.0, size.1);
         screen.set_access(Access {
             status,
@@ -144,7 +148,12 @@ impl Side {
         }
     }
 
-    fn frame(&mut self, events: Vec<ShellEvent>, size: (u16, u16), full: bool) -> String {
+    pub(super) fn frame(
+        &mut self,
+        events: Vec<ShellEvent>,
+        size: (u16, u16),
+        full: bool,
+    ) -> String {
         if full {
             self.host.reset_emit();
             self.screen.invalidate();
