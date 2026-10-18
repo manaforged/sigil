@@ -6848,7 +6848,6 @@ pub fn sigil::Host::apply_focus_requests(&mut self, router: &mut sigil::events::
 pub fn sigil::Host::cells() -> Self
 pub const fn sigil::Host::cx(&mut self) -> &mut sigil::kernel::Cx
 pub fn sigil::Host::emit(&mut self, viewport: (f32, f32)) -> sigil::scene::CommandScene
-pub fn sigil::Host::emit_since(&mut self, viewport: (f32, f32), delta: &sigil::kernel::FrameDelta, prev: &sigil::scene::CommandScene) -> (sigil::scene::CommandScene, sigil::scene::EmitDiff)
 pub fn sigil::Host::focus_intent(&mut self, router: &mut sigil::events::EventRouter, intent: sigil::events::FocusIntent)
 pub fn sigil::Host::hit_path(&mut self, x: f32, y: f32) -> alloc::vec::Vec<sigil::kernel::NodeId>
 pub const fn sigil::Host::host_mode(&self) -> sigil::kernel::HostMode
@@ -6857,7 +6856,6 @@ pub fn sigil::Host::mount(&mut self, app: impl sigil::kernel::IntoNode)
 pub fn sigil::Host::new() -> Self
 pub fn sigil::Host::perform(&mut self, router: &mut sigil::events::EventRouter, target: sigil::kernel::NodeId, request: &accesskit::ActionRequest)
 pub fn sigil::Host::repair_focus(&mut self, router: &mut sigil::events::EventRouter)
-pub fn sigil::Host::reset_emit(&mut self)
 pub const fn sigil::Host::root(&self) -> core::option::Option<sigil::kernel::NodeId>
 pub fn sigil::Host::route(&mut self, router: &mut sigil::events::EventRouter, event: sigil::events::ShellEvent)
 pub fn sigil::Host::scene(&mut self, viewport: (f32, f32)) -> core::result::Result<sigil::scene::CommandScene, sigil::layout::LayoutError>
@@ -6866,6 +6864,8 @@ pub fn sigil::Host::surfaces(&self) -> alloc::vec::Vec<(u64, sigil::geometry::Re
 pub fn sigil::Host::sync_hover(&mut self, router: &mut sigil::events::EventRouter)
 pub fn sigil::Host::take_exit(&self) -> bool
 pub fn sigil::Host::theme(&self) -> &sigil::style::Theme
+pub fn sigil::Host::emit_since(&mut self, viewport: (f32, f32), delta: &sigil::kernel::FrameDelta, prev: &sigil::scene::CommandScene) -> (sigil::scene::CommandScene, sigil::scene::EmitDiff)
+pub fn sigil::Host::reset_emit(&mut self)
 pub fn sigil::Host::frame(&mut self, router: &mut sigil::events::EventRouter, viewport: (f32, f32), dt: f32, hooks: sigil::app::FrameHooks<'_>) -> sigil::app::FrameOutput
 impl core::default::Default for sigil::Host
 pub fn sigil::request_exit()
