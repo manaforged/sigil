@@ -93,6 +93,34 @@ impl Scratch {
     }
 }
 
+impl Grid {
+    pub(crate) fn sync_rows(&mut self, from: &Self, rows: Option<&[usize]>) {
+        let Some(rows) = rows.filter(|_| (self.cols, self.rows) == (from.cols, from.rows)) else {
+            self.clone_from(from);
+            return;
+        };
+        for row in rows {
+            let start = row.saturating_mul(self.cols);
+            let range = start..start.saturating_add(self.cols);
+            if let (Some(cells), Some(next)) = (
+                self.cells.get_mut(range.clone()),
+                from.cells.get(range.clone()),
+            ) {
+                cells.clone_from_slice(next);
+            }
+            if let (Some(edges), Some(next)) =
+                (self.edges.get_mut(range.clone()), from.edges.get(range))
+            {
+                edges.copy_from_slice(next);
+            }
+        }
+        self.images.clone_from(&from.images);
+        self.graphics = from.graphics;
+        self.cursor = from.cursor;
+        self.mask.clone_from(&from.mask);
+    }
+}
+
 fn prepare(fresh: &mut Grid, grid: &Grid, mask: Mask, spans: &mut Vec<Range<usize>>) {
     if (fresh.cols, fresh.rows) != (grid.cols, grid.rows) {
         fresh.reshape(grid.cols, grid.rows, Cell::blank());

@@ -37,7 +37,7 @@ pub(crate) fn scene_damage<R: FromIterator<Rect>>(
     (area, scale): (Rect, f32),
     budget: Budget,
 ) -> Damage<R> {
-    match changed_inks(previous, next, (area, scale)) {
+    match changed_inks((previous, next), None, (area, scale)) {
         Damage::Regions(inks) => budget::regions(&inks, area, scale, budget),
         Damage::Unchanged => Damage::Unchanged,
         Damage::Full(reason) => Damage::Full(reason),
@@ -50,19 +50,50 @@ const TERMINAL_SCALE: f32 = 1.0;
 #[cfg(any(test, feature = "terminal"))]
 pub(crate) fn cell_damage(
     (previous, next): (&CommandScene, &CommandScene),
+    changed: Option<&[Changed]>,
     area: Rect,
     cell: (f32, f32),
 ) -> Damage<Vec<Rect>> {
-    match changed_inks(previous, next, (area, TERMINAL_SCALE)) {
+    match changed_inks((previous, next), changed, (area, TERMINAL_SCALE)) {
         Damage::Regions(inks) => regions::cells(&inks, area, cell, TERMINAL_SCALE.recip()),
         Damage::Unchanged => Damage::Unchanged,
         Damage::Full(reason) => Damage::Full(reason),
     }
 }
 
+pub(crate) type Changed = (Range<usize>, Range<usize>);
+
+#[derive(Default)]
+struct Marks {
+    ranges: Vec<(usize, Vec<bool>)>,
+    count: usize,
+    end: usize,
+}
+
+impl Marks {
+    fn get(&self, index: usize) -> bool {
+        let after = self.ranges.partition_point(|(start, _)| *start <= index);
+        after
+            .checked_sub(1)
+            .and_then(|at| self.ranges.get(at))
+            .and_then(|(start, marks)| marks.get(index - start))
+            .copied()
+            .unwrap_or(false)
+    }
+
+    fn push(&mut self, start: usize, marks: Vec<bool>) {
+        let Some(last) = marks.iter().rposition(|mark| *mark) else {
+            return;
+        };
+        self.count += marks.iter().filter(|mark| **mark).count();
+        self.end = self.end.max(start + last + 1);
+        self.ranges.push((start, marks));
+    }
+}
+
 fn changed_inks(
-    previous: &CommandScene,
-    next: &CommandScene,
+    (previous, next): (&CommandScene, &CommandScene),
+    changed: Option<&[Changed]>,
     (area, scale): (Rect, f32),
 ) -> Damage<Inks> {
     let (before, after) = (&previous.commands, &next.commands);
@@ -71,28 +102,47 @@ fn changed_inks(
     ) {
         return Damage::Full(FullReason::NonLocalLayerEffect);
     }
-    let Some((old, new)) = diff_marks(before, after) else {
+    let whole = [(0..before.len(), 0..after.len())];
+    let Some((old, new)) = diff_marks(before, after, changed.unwrap_or(&whole)) else {
         return Damage::Unchanged;
     };
-    let marked = old.iter().chain(&new).filter(|mark| **mark).count();
+    let marked = old.count + new.count;
     if after.len() >= MIN_SHARE_SCENE && marked * MAX_CHANGED_SHARE > after.len() * 2 {
         return Damage::Full(FullReason::ChangedShare);
     }
     let mut inks = Inks::new();
     for (commands, marks) in [(before, &old), (after, &new)] {
-        let end = marks
-            .iter()
-            .rposition(|mark| *mark)
-            .map_or(0, |last| last + 1);
-        let flagged = |index: usize| marks.get(index).copied().unwrap_or(false);
-        if changed::changed_ink(commands, end, &flagged, (area, scale), &mut inks).is_none() {
+        let flagged = |index: usize| marks.get(index);
+        if changed::changed_ink(commands, marks.end, &flagged, (area, scale), &mut inks).is_none() {
             return Damage::Full(FullReason::UnboundedChange);
         }
     }
     Damage::Regions(inks)
 }
 
-fn diff_marks(before: &[SceneCommand], after: &[SceneCommand]) -> Option<(Vec<bool>, Vec<bool>)> {
+fn diff_marks(
+    before: &[SceneCommand],
+    after: &[SceneCommand],
+    changed: &[Changed],
+) -> Option<(Marks, Marks)> {
+    let (mut old, mut new) = (Marks::default(), Marks::default());
+    let mut differs = false;
+    for (was, now) in changed {
+        let (Some(was_slice), Some(now_slice)) = (before.get(was.clone()), after.get(now.clone()))
+        else {
+            return diff_marks(before, after, &[(0..before.len(), 0..after.len())]);
+        };
+        let Some((old_marks, new_marks)) = range_marks(was_slice, now_slice) else {
+            continue;
+        };
+        differs = true;
+        old.push(was.start, old_marks);
+        new.push(now.start, new_marks);
+    }
+    differs.then_some((old, new))
+}
+
+fn range_marks(before: &[SceneCommand], after: &[SceneCommand]) -> Option<(Vec<bool>, Vec<bool>)> {
     let prefix = before.iter().zip(after).take_while(|(a, b)| a == b).count();
     if prefix == before.len() && prefix == after.len() {
         return None;

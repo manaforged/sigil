@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
 use crate::geometry::{Dim, Rect, Size};
-use crate::kernel::{Cx, NodeId};
+use crate::kernel::{Cx, DeltaKind, NodeId};
 use crate::layout::LayoutError;
 use crate::layout::snap;
 use crate::style::StyleBinding;
@@ -97,9 +97,15 @@ impl LayoutEngine {
                 .copied()
                 .unwrap_or((0.0, 0.0));
             self.popup_offsets.insert(node.key(), (ox + dx, oy + dy));
-            if let Some(target) = cx.get_mut_untracked(node) {
-                target.attach_untracked(result.translated(dx, dy));
+            let placed = result.translated(dx, dy);
+            let Some(target) = cx.get_mut_untracked(node) else {
+                continue;
+            };
+            if target.get_extension::<crate::layout::LayoutResult>() == Some(&placed) {
+                continue;
             }
+            target.attach_untracked(placed);
+            cx.delta.record(node, DeltaKind::Layout);
         }
     }
 }

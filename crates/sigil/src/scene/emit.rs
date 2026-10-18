@@ -39,6 +39,16 @@ pub fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandS
     run(cx, root, clip, &selection, &mut track)
 }
 
+pub(crate) fn emit_unchanged(
+    cx: &Cx,
+    (root, clip): (NodeId, Option<Rect>),
+    (delta, prev): (&FrameDelta, &CommandScene),
+    memo: &EmitMemo,
+) -> bool {
+    let selection = crate::events::selection::ranges(cx);
+    memo.clean(cx, (root, clip), (delta, prev.commands.len()), &selection)
+}
+
 pub(crate) fn emit_scene_since(
     cx: &Cx,
     root: NodeId,
@@ -47,6 +57,9 @@ pub(crate) fn emit_scene_since(
     memo: &mut EmitMemo,
 ) -> (CommandScene, EmitDiff) {
     let selection = crate::events::selection::ranges(cx);
+    if memo.clean(cx, (root, clip), (delta, prev.commands.len()), &selection) {
+        return (prev.clone(), EmitDiff::default());
+    }
     let usable = memo.usable(cx, root, &prev.commands);
     let dirty = memo.dirty(cx, root, delta, &selection);
     let spans = std::mem::take(&mut memo.spans);
@@ -61,7 +74,7 @@ pub(crate) fn emit_scene_since(
     memo.commit(
         cx,
         root,
-        (std::mem::take(&mut track.next), scene.commands.len()),
+        (std::mem::take(&mut track.next), scene.commands.len(), clip),
         &selection,
     );
     (scene, diff)

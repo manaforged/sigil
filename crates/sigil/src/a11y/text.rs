@@ -74,6 +74,14 @@ fn run_node(run: &Run<'_>) -> AkNode {
     node
 }
 
+pub(super) fn has_runs(owner: NodeId, a11y: &A11yProps) -> bool {
+    let (Some(value), Some(cursor)) = (a11y.text_value, a11y.text_cursor) else {
+        return false;
+    };
+    let text = value.peek();
+    position(&runs(owner, &text), cursor.caret.peek()).is_some()
+}
+
 pub(super) fn export(owner: NodeId, a11y: &A11yProps, ak: &mut AkNode) -> Option<RunNodes> {
     let (Some(value), Some(cursor)) = (a11y.text_value, a11y.text_cursor) else {
         return None;

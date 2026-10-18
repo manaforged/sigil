@@ -34,7 +34,7 @@ fn scene(rects: &[(f32, f32, Rgba8)]) -> CommandScene {
 }
 
 fn regions(before: &CommandScene, after: &CommandScene) -> Damage<Vec<Rect>> {
-    cell_damage((before, after), area(), CELL)
+    cell_damage((before, after), None, area(), CELL)
 }
 
 #[test]

@@ -360,6 +360,24 @@ impl Host {
         )
     }
 
+    pub(crate) fn emit_unchanged(
+        &mut self,
+        viewport: (f32, f32),
+        delta: &FrameDelta,
+        prev: &CommandScene,
+    ) -> bool {
+        let _env = self.enter();
+        self.apply_pending_theme();
+        self.root.is_some_and(|root| {
+            crate::scene::emit::emit_unchanged(
+                &self.cx,
+                (root, Some(viewport_rect(viewport))),
+                (delta, prev),
+                &self.emitted,
+            )
+        })
+    }
+
     pub fn reset_emit(&mut self) {
         self.emitted = EmitMemo::default();
     }

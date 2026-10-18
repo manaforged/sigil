@@ -46,3 +46,28 @@ fn the_reading_scope_keeps_a_status_nested_in_plain_containers() {
         assert_eq!(spoken(&reading), spoken(&full));
     });
 }
+
+#[test]
+fn the_reading_scope_names_only_children_it_emits() {
+    crate::reactive::Runtime::scope("a11y::reading-children", || {
+        let mut cx = Cx::new_root();
+        let status = container().role(accesskit::Role::Status).label("saving");
+        let _ = cx.add(
+            container()
+                .child(text("plain"))
+                .child(container().child(text("also plain")).child(status)),
+        );
+        let reading = tree_scoped(&cx, None, &|_| None, TreeScope::Reading);
+        let emitted: std::collections::HashSet<_> =
+            reading.nodes.iter().map(|(id, _)| *id).collect();
+        for (_, node) in &reading.nodes {
+            for child in node.children() {
+                assert!(
+                    emitted.contains(child),
+                    "child {child:?} is not in the tree"
+                );
+            }
+        }
+        assert_eq!(spoken(&reading), vec![Some("saving".to_string())]);
+    });
+}

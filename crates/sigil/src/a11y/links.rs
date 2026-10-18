@@ -5,6 +5,16 @@ use super::text::{RunNodes, child_id};
 use crate::events::links::{link_ranges, link_text, range_rects};
 use crate::kernel::{Cx, NodeId};
 
+pub(super) fn has_links(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> bool {
+    let Some(text) = link_text(cx, id) else {
+        return false;
+    };
+    bounds(id).is_some()
+        && link_ranges(&text)
+            .into_iter()
+            .any(|(start, end, _)| !range_rects(&text, start, end).is_empty())
+}
+
 pub(super) fn export(
     cx: &Cx,
     id: NodeId,

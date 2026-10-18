@@ -59,12 +59,16 @@ fn an_unchanged_subtree_is_copied() {
         assert!(copied > 0, "nothing was copied (walked {walked})");
         host.layout(VIEW).expect("layout");
         let idle = host.cx().take_delta();
-        let (idle_walked, _) = counted(|| {
+        let (idle_walked, idle_copied) = counted(|| {
             let (third, diff) = host.emit_since(VIEW, &idle, &second);
             assert!(diff.unchanged());
             assert_eq!(third, second);
         });
         assert_eq!(idle_walked, 0, "an idle frame walked {idle_walked} nodes");
+        assert_eq!(
+            idle_copied, 0,
+            "an idle frame copied {idle_copied} commands"
+        );
     });
 }
 
