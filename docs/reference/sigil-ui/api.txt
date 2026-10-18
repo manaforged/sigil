@@ -1580,7 +1580,7 @@ pub const fn sigil::kernel::Cx::host_mode(&self) -> sigil::kernel::HostMode
 pub const fn sigil::kernel::Cx::instance_id(&self) -> u64
 pub fn sigil::kernel::Cx::is_empty(&self) -> bool
 pub fn sigil::kernel::Cx::len(&self) -> usize
-pub const fn sigil::kernel::Cx::mark_mutated(&mut self)
+pub fn sigil::kernel::Cx::mark_mutated(&mut self)
 pub const fn sigil::kernel::Cx::mutation_generation(&self) -> u64
 pub fn sigil::kernel::Cx::new_node(&mut self, kind: sigil::kernel::NodeType, a11y: sigil::kernel::A11yProps) -> sigil::kernel::NodeId
 pub fn sigil::kernel::Cx::new_root() -> Self

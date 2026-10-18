@@ -160,7 +160,7 @@
 | <code>const instance_id(&amp;self) -&gt; u64</code> |  |
 | <code>is_empty(&amp;self) -&gt; bool</code> |  |
 | <code>len(&amp;self) -&gt; usize</code> |  |
-| <code>const mark_mutated(&amp;mut self)</code> |  |
+| <code>mark_mutated(&amp;mut self)</code> |  |
 | <code>const mutation_generation(&amp;self) -&gt; u64</code> |  |
 | <code>new_node(&amp;mut self, kind: <a href="#nodetype">NodeType</a>, a11y: <a href="#a11yprops">A11yProps</a>) -&gt; <a href="#nodeid">NodeId</a></code> |  |
 | <code>new_root() -&gt; Self</code> |  |
