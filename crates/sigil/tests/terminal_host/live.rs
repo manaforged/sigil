@@ -254,6 +254,7 @@ fn expiring(full: bool) -> Vec<String> {
             Step::Modal,
             Step::Status(String::from("next")),
             Step::Status(String::from("more")),
+            Step::Modal,
         ];
         steps
             .iter()
@@ -268,7 +269,12 @@ fn expiring(full: bool) -> Vec<String> {
 
 #[test]
 fn an_expired_status_clears_on_a_damaged_frame() {
-    assert_eq!(expiring(false), expiring(true));
+    let quick = expiring(false);
+    assert!(
+        quick.last().is_some_and(|last| !last.contains("Saved")),
+        "the expired status stayed on screen"
+    );
+    assert_eq!(quick, expiring(true));
 }
 
 const SETTLE: usize = 30;
