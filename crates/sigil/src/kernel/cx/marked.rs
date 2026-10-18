@@ -1,4 +1,4 @@
-use ahash::{AHashMap, AHashSet};
+use ahash::AHashSet;
 use smallvec::SmallVec;
 
 use crate::kernel::{Cx, Node, NodeId};
@@ -43,25 +43,16 @@ impl Cx {
             }
         }
         marked.ids.retain(|id| self.get(*id).is_some_and(is_marked));
-        let order: AHashMap<NodeId, usize> = roots
-            .iter()
-            .enumerate()
-            .map(|(index, root)| (*root, index))
-            .collect();
         let mut hits: Vec<(SmallVec<[usize; 16]>, NodeId)> = marked
             .ids
             .iter()
-            .filter_map(|id| self.tree_path(*id, &order).map(|path| (path, *id)))
+            .filter_map(|id| self.tree_path(*id, roots).map(|path| (path, *id)))
             .collect();
         hits.sort_unstable_by(|a, b| a.0.cmp(&b.0));
         hits.into_iter().map(|(_, id)| id).collect()
     }
 
-    fn tree_path(
-        &self,
-        id: NodeId,
-        roots: &AHashMap<NodeId, usize>,
-    ) -> Option<SmallVec<[usize; 16]>> {
+    fn tree_path(&self, id: NodeId, roots: &[NodeId]) -> Option<SmallVec<[usize; 16]>> {
         let mut path = SmallVec::new();
         let mut current = id;
         loop {
@@ -69,8 +60,8 @@ impl Cx {
             if hides(node) {
                 return None;
             }
-            if let Some(index) = roots.get(&current) {
-                path.push(*index);
+            if let Some(index) = root_index(roots, current) {
+                path.push(index);
                 path.reverse();
                 return Some(path);
             }
@@ -87,4 +78,8 @@ impl Cx {
             .iter()
             .position(|kid| *kid == child)
     }
+}
+
+fn root_index(roots: &[NodeId], id: NodeId) -> Option<usize> {
+    roots.iter().position(|root| *root == id)
 }
