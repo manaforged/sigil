@@ -201,3 +201,75 @@ fn only_a_layer_that_moves_cells_off_their_grid_repaints_whole() {
         );
     }
 }
+
+fn clipped(clip: Rect, inside: Rgba8) -> CommandScene {
+    let mut clipped = CommandScene::default();
+    clipped.commands.push(SceneCommand::PushClip(clip));
+    clipped
+        .commands
+        .extend(scene(&[(80.0, 40.0, inside)]).commands);
+    clipped.commands.push(SceneCommand::PopClip);
+    clipped
+        .commands
+        .extend(scene(&[(240.0, 80.0, RED)]).commands);
+    clipped
+}
+
+#[test]
+fn a_clip_that_shrinks_damages_both_clips() {
+    let wide = Rect::new(Point::new(80.0, 40.0), 32.0, 8.0);
+    let narrow = Rect::new(Point::new(80.0, 40.0), 16.0, 8.0);
+    assert_eq!(
+        regions(&clipped(wide, RED), &clipped(narrow, RED)),
+        Damage::Regions(vec![wide])
+    );
+}
+
+#[test]
+fn a_change_inside_an_unchanged_clip_damages_only_itself() {
+    let clip = Rect::new(Point::new(64.0, 32.0), 64.0, 24.0);
+    assert_eq!(
+        regions(&clipped(clip, RED), &clipped(clip, BLUE)),
+        Damage::Regions(vec![cell_of_point(80.0, 40.0)])
+    );
+}
+
+fn cell_of_point(x: f32, y: f32) -> Rect {
+    Rect::new(Point::new(x, y), 16.0, 8.0)
+}
+
+fn group(opacity: f32) -> CommandScene {
+    let mut group = CommandScene::default();
+    group.commands.push(SceneCommand::SaveLayer { opacity });
+    group.commands.extend(scene(&[(80.0, 40.0, RED)]).commands);
+    group.commands.push(SceneCommand::RestoreLayer);
+    group.commands.extend(scene(&[(240.0, 80.0, RED)]).commands);
+    group
+}
+
+#[test]
+fn a_faded_group_damages_only_its_children() {
+    assert_eq!(
+        regions(&group(1.0), &group(0.5)),
+        Damage::Regions(vec![cell_of_point(80.0, 40.0)])
+    );
+}
+
+fn moved(offset: f32) -> CommandScene {
+    let mut moved = CommandScene::default();
+    moved.commands.push(SceneCommand::PushTransform([
+        [1.0, 0.0, offset],
+        [0.0, 1.0, 0.0],
+    ]));
+    moved.commands.extend(scene(&[(80.0, 40.0, RED)]).commands);
+    moved.commands.push(SceneCommand::PopTransform);
+    moved
+}
+
+#[test]
+fn a_changed_transform_repaints_whole() {
+    assert_eq!(
+        regions(&moved(0.0), &moved(8.0)),
+        Damage::Full(super::FullReason::UnboundedChange)
+    );
+}
