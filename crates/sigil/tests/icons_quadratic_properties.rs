@@ -41,24 +41,16 @@ fn eval_quad(quad: &QuadCurve, t: f32) -> (f32, f32) {
     (x, y)
 }
 
-#[inline]
-fn eval_cubic(
-    p0: (f32, f32),
-    p1: (f32, f32),
-    p2: (f32, f32),
-    p3: (f32, f32),
-    t: f32,
-) -> (f32, f32) {
-    let t = t.clamp(0.0, 1.0);
+fn cubic_distance(curve: [(f32, f32); 4], point: (f32, f32), t: f64) -> f64 {
     let mt = 1.0 - t;
-    let mt2 = mt * mt;
-    let mt3 = mt2 * mt;
-    let t2 = t * t;
-    let t3 = t2 * t;
-
-    let x = mt3 * p0.0 + 3.0 * mt2 * t * p1.0 + 3.0 * mt * t2 * p2.0 + t3 * p3.0;
-    let y = mt3 * p0.1 + 3.0 * mt2 * t * p1.1 + 3.0 * mt * t2 * p2.1 + t3 * p3.1;
-    (x, y)
+    let weights = [mt * mt * mt, 3.0 * mt * mt * t, 3.0 * mt * t * t, t * t * t];
+    let (x, y) = curve
+        .iter()
+        .zip(weights)
+        .fold((0.0, 0.0), |(x, y), (p, w)| {
+            (x + w * f64::from(p.0), y + w * f64::from(p.1))
+        });
+    (x - f64::from(point.0)).hypot(y - f64::from(point.1))
 }
 
 fn closest_cubic_distance(
@@ -67,20 +59,34 @@ fn closest_cubic_distance(
     p2: (f32, f32),
     p3: (f32, f32),
     point: (f32, f32),
-) -> f32 {
-    const SAMPLES: usize = 65_536;
-    let mut min_dist = f32::INFINITY;
-
-    for i in 0..=SAMPLES {
-        let t = i as f32 / SAMPLES as f32;
-        let cubic_point = eval_cubic(p0, p1, p2, p3, t);
-        let dist = point_distance(point, cubic_point);
-        if dist < min_dist {
-            min_dist = dist;
+) -> f64 {
+    const SAMPLES: usize = 4096;
+    const STEPS: usize = 80;
+    let curve = [p0, p1, p2, p3];
+    let at = |i: usize| i as f64 / SAMPLES as f64;
+    let dist = |t: f64| cubic_distance(curve, point, t);
+    let samples: Vec<f64> = (0..=SAMPLES).map(|i| dist(at(i))).collect();
+    let golden = (5.0_f64.sqrt() - 1.0) / 2.0;
+    let refine = |i: usize| {
+        let (mut lo, mut hi) = (at(i.saturating_sub(1)), at((i + 1).min(SAMPLES)));
+        for _ in 0..STEPS {
+            let left = hi - golden * (hi - lo);
+            let right = lo + golden * (hi - lo);
+            if dist(left) < dist(right) {
+                hi = right;
+            } else {
+                lo = left;
+            }
         }
-    }
-
-    min_dist
+        dist(f64::midpoint(lo, hi)).min(samples[i])
+    };
+    (0..=SAMPLES)
+        .filter(|&i| {
+            samples[i] <= samples[i.saturating_sub(1)]
+                && samples[i] <= samples[(i + 1).min(SAMPLES)]
+        })
+        .map(refine)
+        .fold(f64::INFINITY, f64::min)
 }
 
 proptest! {
@@ -142,35 +148,40 @@ proptest! {
     }
 }
 
+fn approximation_error(coords: [f32; 4], tolerance: f32) -> Result<(), String> {
+    let p0 = (coords[0], coords[1]);
+    let p1 = (coords[0] + 1.0, coords[1] + 1.0);
+    let p2 = (coords[0] + 2.0, coords[1] + 2.0);
+    let p3 = (coords[2], coords[3]);
+    let quads = cubic_to_quadratics(p0, p1, p2, p3, tolerance);
+    let bound = tolerance * ERROR_BOUND_MULTIPLIER;
+    for (quad_idx, quad) in quads.iter().enumerate() {
+        for t in [0.0, 0.25, 0.5, 0.75, 1.0] {
+            let closest_dist = closest_cubic_distance(p0, p1, p2, p3, eval_quad(quad, t));
+            if closest_dist > f64::from(bound) {
+                return Err(format!(
+                    "Quad[{quad_idx}] at t={t}: distance {closest_dist:.6} > bound {bound:.6}"
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 proptest! {
     #[test]
     fn prop_approximation_error_bounded(
         coords in prop::array::uniform4(COORD_MIN..=COORD_MAX),
         tolerance in TOL_MIN..=TOL_MAX
     ) {
-        let p0 = (coords[0], coords[1]);
-        let p1 = (coords[0] + 1.0, coords[1] + 1.0);
-        let p2 = (coords[0] + 2.0, coords[1] + 2.0);
-        let p3 = (coords[2], coords[3]);
-
-        let quads = cubic_to_quadratics(p0, p1, p2, p3, tolerance);
-
-        let eval_ts = [0.0, 0.25, 0.5, 0.75, 1.0];
-
-        for (quad_idx, quad) in quads.iter().enumerate() {
-            for &t in &eval_ts {
-                let quad_point = eval_quad(quad, t);
-                let closest_dist =
-                    closest_cubic_distance(p0, p1, p2, p3, quad_point);
-
-                let bound = tolerance * ERROR_BOUND_MULTIPLIER;
-                prop_assert!(
-                    closest_dist <= bound || closest_dist.is_nan(),
-                    "Quad[{quad_idx}] at t={t}: distance {closest_dist:.6} > bound {bound:.6}"
-                );
-            }
-        }
+        prop_assert_eq!(approximation_error(coords, tolerance), Ok(()));
     }
+}
+
+#[test]
+fn far_apart_endpoints_stay_within_the_error_bound() {
+    let coords = [767.953_25, 849.137_27, -982.866_7, -549.273_44];
+    assert_eq!(approximation_error(coords, 0.010_693_391), Ok(()));
 }
 
 proptest! {
