@@ -54,6 +54,7 @@ pub(super) fn walk(
         grid,
         paint,
         only,
+        hull: only.and_then(hull),
         cell: if paint.cell <= 0.0 { 1.0 } else { paint.cell },
         clips: Vec::new(),
         alphas: Vec::new(),
@@ -62,6 +63,25 @@ pub(super) fn walk(
     for command in &scene.commands {
         walk.command(command);
     }
+}
+
+fn hull(regions: &[Rect]) -> Option<[f32; 4]> {
+    regions.iter().fold(None, |acc, region| {
+        let edges = [
+            region.origin.x,
+            region.origin.y,
+            region.origin.x + region.width,
+            region.origin.y + region.height,
+        ];
+        Some(acc.map_or(edges, |[left, top, right, bottom]: [f32; 4]| {
+            [
+                left.min(edges[0]),
+                top.min(edges[1]),
+                right.max(edges[2]),
+                bottom.max(edges[3]),
+            ]
+        }))
+    })
 }
 
 fn gradient_flat(gradient: &LinearGradient) -> Rgba8 {
@@ -122,6 +142,7 @@ struct Walk<'a> {
     grid: &'a mut Grid,
     paint: &'a Paint<'a>,
     only: Option<&'a [Rect]>,
+    hull: Option<[f32; 4]>,
     cell: f32,
     clips: Vec<Rect>,
     alphas: Vec<f32>,
@@ -189,9 +210,18 @@ impl Walk<'_> {
     }
 
     fn wanted(&self, rect: Rect) -> bool {
+        let Some(only) = self.only else {
+            return true;
+        };
+        let Some([left, top, right, bottom]) = self.hull else {
+            return false;
+        };
         let rect = self.space.map(rect);
-        self.only
-            .is_none_or(|only| only.iter().any(|region| region.intersects(rect)))
+        rect.origin.x < right
+            && left < rect.origin.x + rect.width
+            && rect.origin.y < bottom
+            && top < rect.origin.y + rect.height
+            && only.iter().any(|region| region.intersects(rect))
     }
 
     fn clip(&self) -> Option<Rect> {
