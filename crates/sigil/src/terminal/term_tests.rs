@@ -32,6 +32,7 @@ fn committing_lines_above_the_live_region_repaints_it() -> io::Result<()> {
 #[test]
 fn reentry_restores_inline_mode() {
     let _serial = SERIAL.lock().unwrap_or_else(PoisonError::into_inner);
+    INLINE.store(false, Ordering::Relaxed);
     let entered = enter_modes(true);
     let inline = INLINE.load(Ordering::Relaxed);
     restore();
