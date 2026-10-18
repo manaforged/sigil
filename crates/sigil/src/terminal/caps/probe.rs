@@ -11,10 +11,12 @@ pub(super) fn ask_on(
     input: &impl AsFd,
     out: impl Write,
     ask: Questions,
-    backdrop: bool,
+    (backdrop, widths): (bool, bool),
 ) -> Option<Answers> {
     let mut query = queries(ask, backdrop);
-    query.push_str(&calibration());
+    if widths {
+        query.push_str(&calibration());
+    }
     let reply = converse(
         input,
         out,

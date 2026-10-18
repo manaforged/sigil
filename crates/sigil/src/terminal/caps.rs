@@ -145,30 +145,37 @@ impl Caps {
 
     #[must_use]
     pub fn probe() -> Self {
-        Self::measure().0
+        Self::measure(false).0
     }
 
-    pub(in crate::terminal) fn measure() -> (Self, Measured) {
-        ask_terminal(draft(&|key: &str| std::env::var(key).ok()))
+    pub(in crate::terminal) fn measure(widths: bool) -> (Self, Measured) {
+        ask_terminal(draft(&|key: &str| std::env::var(key).ok()), widths)
     }
 }
 
 #[cfg(unix)]
-fn ask_terminal(mut draft: Draft) -> (Caps, Measured) {
+fn ask_terminal(mut draft: Draft, widths: bool) -> (Caps, Measured) {
     let backdrop = draft.caps.backdrop.is_none();
     draft.caps.keyboard = Keyboard::Legacy;
     draft.ask = draft.ask.with(Question::Keys, true);
     let Some(input) = probe::quiet_terminal() else {
         return (draft.caps, Measured::Unmeasured);
     };
-    match probe::ask_on(&input, std::io::stdout().lock(), draft.ask, backdrop) {
-        Some(answers) => (draft.settle(&answers), answers.measured),
-        None => (draft.caps, Measured::Silent),
+    match probe::ask_on(
+        &input,
+        std::io::stdout().lock(),
+        draft.ask,
+        (backdrop, widths),
+    ) {
+        Some(answers) if widths => (draft.settle(&answers), answers.measured),
+        Some(answers) => (draft.settle(&answers), Measured::Unmeasured),
+        None if widths => (draft.caps, Measured::Silent),
+        None => (draft.caps, Measured::Unmeasured),
     }
 }
 
 #[cfg(not(unix))]
-const fn ask_terminal(Draft { caps }: Draft) -> (Caps, Measured) {
+const fn ask_terminal(Draft { caps }: Draft, _: bool) -> (Caps, Measured) {
     (caps, Measured::Unmeasured)
 }
 

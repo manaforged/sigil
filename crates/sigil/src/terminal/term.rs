@@ -73,7 +73,7 @@ impl Term {
         RESTORED.store(false, Ordering::Relaxed);
         enable_raw_mode()?;
         enter_screen(inline)?;
-        let (caps, measured) = Caps::measure();
+        let (caps, measured) = Caps::measure(!inline);
         calibrate::keep(measured);
         CAPS.with(|slot| slot.set(Some(caps)));
         BAR_CURSOR.store(caps.cursor == Cursor::Bar, Ordering::Relaxed);

@@ -34,6 +34,21 @@ fn probe_child() {
 }
 
 #[test]
+fn inline_child() {
+    if std::env::var_os(CHILD).is_none() {
+        return;
+    }
+    let mut out = std::io::stdout();
+    out.write_all(b"keep").expect("write");
+    out.flush().expect("flush");
+    sigil::run(
+        AppConfig::new("probe").size(40, 12).terminal().inline(true),
+        || text("inside"),
+    )
+    .expect("run");
+}
+
+#[test]
 fn editor_child() {
     if std::env::var_os(CHILD).is_none() {
         return;
@@ -139,5 +154,20 @@ fn a_reply_split_across_reads_is_not_typed() {
     assert!(
         !shown.contains("390"),
         "a split terminal reply was typed: {shown:?}"
+    );
+}
+
+#[test]
+fn inline_probing_leaves_the_callers_line_alone() {
+    let output = run_child("inline_child", |_| {});
+    let kept = position(&output, b"keep").expect("the caller's text was written");
+    let rest = output.get(kept..).unwrap_or_default();
+    let line = rest
+        .get(..position(rest, b"\n").unwrap_or(rest.len()))
+        .unwrap_or_default();
+    assert!(
+        position(line, ERASE_LINE).is_none() && position(line, b"\r").is_none(),
+        "an inline app wrote over the caller's line: {:?}",
+        String::from_utf8_lossy(line)
     );
 }
