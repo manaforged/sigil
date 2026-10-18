@@ -26,7 +26,7 @@ fn a_late_reply_is_read_to_its_end_before_input_starts() -> std::io::Result<()> 
     let open = late
         .join()
         .map_err(|_| std::io::Error::other("writer panicked"))??;
-    let left = super::ready(&reader, std::time::Duration::ZERO);
+    let left = super::ready(&reader, std::time::Duration::ZERO).ok();
     drop(open);
     assert_eq!(
         reply.map(|reply| parse(&reply).backdrop),
