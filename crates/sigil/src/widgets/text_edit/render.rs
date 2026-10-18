@@ -271,11 +271,17 @@ impl TextEditRuntime {
             let buffer = runtime.value.get();
             let byte = runtime.caret.get().min(buffer.len());
             let pos = runtime.caret_geometry(&buffer, byte).unwrap_or_default();
-            let visible = padding_y.mul_add(-2.0, viewport_size.get().1).max(1.0);
-            let max_scroll = (runtime.content_size.get().1 - visible).max(0.0);
+            let window = viewport_size.get().1;
+            let visible = padding_y.mul_add(-2.0, window);
+            let max_scroll =
+                (padding_y.mul_add(2.0, runtime.content_size.get().1) - window).max(0.0);
             let cur = scroll_y.peek();
-            let next = crate::widgets::scroll::nearest((pos.top, pos.height), cur, visible)
-                .clamp(0.0, max_scroll);
+            let span = if pos.height > visible {
+                ((pos.top + padding_y, pos.height), window)
+            } else {
+                ((pos.top, pos.height), visible)
+            };
+            let next = crate::widgets::scroll::nearest(span.0, cur, span.1).clamp(0.0, max_scroll);
             if (next - cur).abs() > f32::EPSILON {
                 scroll_y.set(next);
             }
