@@ -151,3 +151,24 @@ fn a_reply_split_at_any_byte_reads_the_same() -> std::io::Result<()> {
     }
     Ok(())
 }
+
+#[test]
+fn a_modified_f3_during_the_probe_leaves_the_widths_alone() {
+    let reports = [
+        "\x1b[2;1R",
+        "\x1b[2;3R",
+        "\x1b[2;1R",
+        "\x1b[2;1R",
+        "\x1b[2;3R",
+    ];
+    let clean = parse(&reports.concat()).measured;
+    assert!(
+        matches!(clean, super::super::Measured::Columns(_)),
+        "{clean:?}"
+    );
+    for at in 0..=reports.len() {
+        let mut typed = reports.to_vec();
+        typed.insert(at, "\x1b[1;5R");
+        assert_eq!(parse(&typed.concat()).measured, clean, "key at {at}");
+    }
+}

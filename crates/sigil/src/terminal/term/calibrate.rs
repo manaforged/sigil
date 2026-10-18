@@ -14,6 +14,10 @@ const SAMPLES: [&str; 4] = [MODIFIER, "\u{200d}", "\u{200c}", "1\u{fe0f}\u{20e3}
 const HOME: &str = "\r\x1b[2K";
 #[cfg(unix)]
 const REPORT: &str = "\x1b[6n";
+#[cfg(unix)]
+const PROBE_ROW: &str = "\x1b[2H";
+#[cfg(unix)]
+const KEY_REPORT_ROW: u16 = 1;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) enum Measured {
@@ -37,7 +41,7 @@ pub(crate) fn keep(measured: Measured) {
 
 #[cfg(unix)]
 pub(crate) fn query() -> String {
-    let mut text = format!("{HOME}{REPORT}");
+    let mut text = format!("{PROBE_ROW}{HOME}{REPORT}");
     for sample in SAMPLES {
         text.push_str(HOME);
         text.push_str(sample);
@@ -49,6 +53,11 @@ pub(crate) fn query() -> String {
 
 #[cfg(unix)]
 pub(crate) fn measure(reports: &[(u16, u16)]) -> Measured {
+    let reports: Vec<_> = reports
+        .iter()
+        .copied()
+        .filter(|&(row, _)| row != KEY_REPORT_ROW)
+        .collect();
     let Some((&(row, _), rest)) = reports.split_first() else {
         return Measured::Silent;
     };
