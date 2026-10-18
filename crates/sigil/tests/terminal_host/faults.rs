@@ -86,8 +86,12 @@ fn replayed(cut: Cut) -> (String, usize) {
 }
 
 fn expected() -> String {
+    fresh(&[FIRST, SECOND])
+}
+
+fn fresh(edits: &[(usize, &str)]) -> String {
     Runtime::scope("faults-fresh", || {
-        let state = signal(lines(&[FIRST, SECOND]));
+        let state = signal(lines(edits));
         let mut host = Host::cells();
         let mut router = EventRouter::new();
         host.mount(move || tree(state));
@@ -119,4 +123,37 @@ fn a_write_cut_at_any_byte_recovers_on_the_next_flush() {
 fn one_byte_writes_show_the_same_screen() {
     let (shown, _) = replayed(Cut::after(usize::MAX, 1));
     assert_eq!(shown, expected());
+}
+
+#[test]
+fn a_failed_flush_is_written_by_the_next_flush_alone() {
+    let (shown, written) = Runtime::scope("faults-retry", || {
+        let state = signal(lines(&[]));
+        let mut host = Host::cells();
+        let mut router = EventRouter::new();
+        host.mount(move || tree(state));
+        let mut screen = Screen::new(COLS, ROWS);
+        let mut term = vt100::Parser::new(ROWS, COLS, 0);
+        for _ in 0..2 {
+            screen
+                .frame(&mut host, &mut router, [], (COLS, ROWS))
+                .expect("frame");
+            let mut out = Vec::new();
+            screen.flush(&mut out).expect("flush");
+            term.process(&out);
+        }
+        state.set(lines(&[FIRST]));
+        screen
+            .frame(&mut host, &mut router, [], (COLS, ROWS))
+            .expect("frame");
+        let mut cut = Cut::after(10, usize::MAX);
+        assert!(screen.flush(&mut cut).is_err());
+        term.process(&cut.bytes);
+        let mut out = Vec::new();
+        screen.flush(&mut out).expect("flush");
+        term.process(&out);
+        (seen(term.screen(), (COLS, ROWS)), out.len())
+    });
+    assert!(written > 0, "the retry wrote nothing");
+    assert_eq!(shown, fresh(&[FIRST]));
 }

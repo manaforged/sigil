@@ -190,3 +190,25 @@ fn ending_a_scope_drops_an_interval_whose_callback_cancels_on_drop() {
     });
     assert!(worker.join().is_ok(), "ending the scope panicked");
 }
+
+#[test]
+fn a_timeout_fires_once_and_then_stops_waking_the_loop() {
+    Runtime::scope("interval::timeout_once", || {
+        let start = Instant::now();
+        __test_set_clock(start);
+        let (count, tick) = counter();
+        let _id = timeout(Duration::from_millis(10), tick);
+        assert_eq!(
+            next_interval_deadline(),
+            Some(start + Duration::from_millis(10))
+        );
+        __test_advance_clock(Duration::from_millis(10));
+        assert_eq!(tick_intervals(), 1);
+        assert_eq!(count.get(), 1);
+        assert_eq!(next_interval_deadline(), None);
+        __test_advance_clock(Duration::from_millis(100));
+        assert_eq!(tick_intervals(), 0);
+        assert_eq!(count.get(), 1);
+        __test_clear_clock();
+    });
+}

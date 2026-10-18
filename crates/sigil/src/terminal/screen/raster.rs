@@ -41,6 +41,7 @@ fn paint(
 ) {
     let _phase = profile::span(profile::Phase::TuiPaint);
     if !info.layout_ok {
+        screen.projection.quiet = false;
         host.reset_emit();
         return;
     }
@@ -51,8 +52,10 @@ fn paint(
         && host.emit_unchanged(view(cols, rows), &info.delta, &screen.scene)
     {
         screen.dirty = false;
+        screen.projection.quiet &= !info.dirty;
         return;
     }
+    screen.projection.quiet = false;
     let (next, diff) = host.emit_since(view(cols, rows), &info.delta, &screen.scene);
     screen.dirty = !diff.unchanged() || resized || screen.fresh;
     if !screen.dirty && info.delta.is_empty() {

@@ -34,6 +34,20 @@ pub struct Screen {
     damage: Option<Damage>,
     marks: Marks,
     stale: Option<Vec<usize>>,
+    projection: Projection,
+}
+
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+enum Projected {
+    #[default]
+    Never,
+    Focus(Option<crate::kernel::NodeId>),
+}
+
+#[derive(Default)]
+pub(super) struct Projection {
+    pub(super) quiet: bool,
+    last: Projected,
 }
 
 impl Screen {
@@ -55,6 +69,7 @@ impl Screen {
             damage: None,
             marks: Marks::default(),
             stale: None,
+            projection: Projection::default(),
         }
     }
 
@@ -116,6 +131,7 @@ impl Screen {
         }
         let dt = self.dt;
         self.damage = None;
+        self.projection.quiet = !crate::reactive::Runtime::frame_dirty();
         let hooks = raster::frame_hooks(self, events, (cols, rows));
         let out = host.frame(router, view(cols, rows), dt, hooks);
         self.exited |= out.exit;
@@ -127,13 +143,7 @@ impl Screen {
                 self.dirty = true;
             }
         }
-        let scope = if self.transcript.records() {
-            crate::a11y::mapping::TreeScope::Full
-        } else {
-            crate::a11y::mapping::TreeScope::Reading
-        };
-        let update = host.accessibility_tree_scoped(router, scope);
-        self.listen(&update);
+        let update = self.read_tree(host, router);
         if self.dirty {
             self.stale = self
                 .damage
@@ -144,13 +154,38 @@ impl Screen {
             self.dirty = false;
             core::mem::swap(&mut self.prev, &mut self.grid);
         }
-        if self.dirty {
-            self.transcript.emit(&update, &self.grid);
+        if self.dirty
+            && let Some(update) = &update
+        {
+            self.transcript.emit(update, &self.grid);
         }
         profile::count_add(profile::Counter::TuiDirty, u64::from(self.dirty));
         profile::count_add(profile::Counter::TuiNodes, self.scene.commands.len() as u64);
         out.layout?;
         Ok(if self.dirty { &self.grid } else { &self.prev })
+    }
+
+    fn read_tree(&mut self, host: &Host, router: &EventRouter) -> Option<accesskit::TreeUpdate> {
+        let records = self.transcript.records();
+        let skip = self.projection.quiet
+            && self.projection.last == Projected::Focus(router.focus())
+            && !records
+            && self
+                .announcer
+                .deadline()
+                .is_none_or(|due| due > std::time::Instant::now());
+        if skip {
+            return None;
+        }
+        let scope = if records {
+            crate::a11y::mapping::TreeScope::Full
+        } else {
+            crate::a11y::mapping::TreeScope::Reading
+        };
+        let update = host.accessibility_tree_scoped(router, scope);
+        self.projection.last = Projected::Focus(router.focus());
+        self.listen(&update);
+        Some(update)
     }
 
     fn listen(&mut self, update: &accesskit::TreeUpdate) {
@@ -228,6 +263,7 @@ impl Screen {
         };
         if written.is_err() {
             self.fresh = true;
+            self.dirty = true;
         }
         written
     }

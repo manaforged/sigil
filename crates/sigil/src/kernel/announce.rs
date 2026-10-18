@@ -47,6 +47,7 @@ impl Cx {
             node.a11y.name = AccessibleName::Static(text);
             node.a11y.live = Some(politeness);
         }
+        self.delta.record(id, crate::kernel::DeltaKind::Paint);
     }
 
     fn ensure_live_region(&mut self, politeness: Live) -> NodeId {

@@ -10,7 +10,7 @@ use super::IntervalId;
 
 pub(super) struct IntervalSlot {
     pub(super) owner: OwnerId,
-    pub(super) period: Duration,
+    pub(super) period: Option<Duration>,
     pub(super) next_fire: Instant,
     pub(super) callback: Box<dyn Fn()>,
 }

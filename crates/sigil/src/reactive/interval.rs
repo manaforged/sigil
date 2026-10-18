@@ -1,4 +1,5 @@
 use core::time::Duration;
+use std::cell::RefCell;
 use web_time::Instant;
 
 use crate::reactive::owner::{Owner, OwnerId, on_cleanup};
@@ -11,6 +12,28 @@ pub struct IntervalId(pub(crate) u64);
 #[track_caller]
 pub fn interval(period: Duration, callback: impl Fn() + 'static) -> IntervalId {
     let owner = Owner::current().expect("interval called outside a reactive scope");
+    register(owner, period, Some(period), Box::new(callback))
+}
+
+#[track_caller]
+pub fn timeout(delay: Duration, callback: impl FnOnce() + 'static) -> IntervalId {
+    let owner = Owner::current().expect("timeout called outside a reactive scope");
+    let once = RefCell::new(Some(callback));
+    let fire = move || {
+        let taken = once.borrow_mut().take();
+        if let Some(run) = taken {
+            run();
+        }
+    };
+    register(owner, delay, None, Box::new(fire))
+}
+
+fn register(
+    owner: OwnerId,
+    delay: Duration,
+    period: Option<Duration>,
+    callback: Box<dyn Fn()>,
+) -> IntervalId {
     let id = REGISTRY.with(|r| {
         let mut reg = r.borrow_mut();
         let now = reg.now();
@@ -20,8 +43,8 @@ pub fn interval(period: Duration, callback: impl Fn() + 'static) -> IntervalId {
             IntervalSlot {
                 owner,
                 period,
-                next_fire: now + period,
-                callback: Box::new(callback),
+                next_fire: now + delay,
+                callback,
             },
         ));
         id
@@ -52,8 +75,13 @@ pub(crate) fn tick_intervals() -> usize {
             fired += 1;
         }
         REGISTRY.with(|r| {
-            if let Some(slot) = r.borrow_mut().slot_mut(id) {
-                slot.next_fire = now + slot.period;
+            let mut reg = r.borrow_mut();
+            let Some(slot) = reg.slot_mut(id) else {
+                return;
+            };
+            match slot.period {
+                Some(period) => slot.next_fire = now + period,
+                None => drop(reg.remove(id)),
             }
         });
     }
