@@ -145,7 +145,11 @@ impl Caps {
 
     #[must_use]
     pub fn probe() -> Self {
-        Self::measure(false).0
+        let cooked = !crossterm::terminal::is_raw_mode_enabled().unwrap_or(true);
+        drop(cooked.then(crossterm::terminal::enable_raw_mode));
+        let caps = Self::measure(false).0;
+        drop(cooked.then(crossterm::terminal::disable_raw_mode));
+        caps
     }
 
     pub(in crate::terminal) fn measure(widths: bool) -> (Self, Measured) {

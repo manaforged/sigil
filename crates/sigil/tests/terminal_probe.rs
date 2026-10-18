@@ -62,6 +62,17 @@ fn editor_child() {
 }
 
 #[test]
+fn caps_child() {
+    if std::env::var_os(CHILD).is_none() {
+        return;
+    }
+    let keyboard = sigil::terminal::Caps::probe().keyboard;
+    let mut out = std::io::stdout();
+    write!(out, "keyboard {keyboard:?};").expect("write");
+    out.flush().expect("flush");
+}
+
+#[test]
 fn halted_child() {
     if std::env::var_os(CHILD).is_none() {
         return;
@@ -268,6 +279,19 @@ fn the_keyboard_protocol_follows_the_probe_reply() {
     assert!(
         position(&kitty, b"\x1b[>15u").is_some(),
         "a kitty reply did not push kitty keys: {:?}",
+        String::from_utf8_lossy(&kitty)
+    );
+}
+
+#[test]
+fn a_probe_reports_what_the_terminal_answered() {
+    let plain = run_child("caps_child", DA1, |_| {});
+    let kitty = run_child("caps_child", KITTY, |_| {});
+    assert!(
+        position(&plain, b"keyboard Legacy;").is_some()
+            && position(&kitty, b"keyboard Kitty;").is_some(),
+        "{:?} {:?}",
+        String::from_utf8_lossy(&plain),
         String::from_utf8_lossy(&kitty)
     );
 }
