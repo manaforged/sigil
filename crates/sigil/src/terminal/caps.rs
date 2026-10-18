@@ -114,7 +114,7 @@ impl Default for Caps {
 }
 
 #[cfg(unix)]
-#[derive(Default)]
+#[derive(Debug, Default, PartialEq)]
 struct Answers {
     sync: bool,
     kitty_keys: bool,

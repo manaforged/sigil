@@ -112,3 +112,42 @@ fn every_startup_query_goes_out_in_one_exchange() -> std::io::Result<()> {
     assert!(text.contains("\x1b[6n"), "{text:?}");
     Ok(())
 }
+
+#[test]
+fn a_reply_split_at_any_byte_reads_the_same() -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::net::UnixStream;
+    let whole: &[u8] = b"\x1b[?2026;2$y\x1b[?1u\x1bP1$r38:2:1:2:3m\x1b\\\x1bP>|ghostty 1.2.0\x1b\\\x1b]11;rgb:0a0a/0a0a/0a0a\x1b\\\x1b[3;1R\x1b[3;3R\x1b[3;1R\x1b[3;1R\x1b[3;3R\x1b[?62;22c";
+    let expected = parse(&String::from_utf8_lossy(whole));
+    assert!(
+        expected.sync && expected.kitty_keys && expected.truecolor,
+        "{expected:?}"
+    );
+    assert!(
+        matches!(expected.version, super::Version::Named(_)),
+        "{expected:?}"
+    );
+    assert!(
+        matches!(expected.measured, super::super::Measured::Columns(_)),
+        "{expected:?}"
+    );
+    for split in 1..whole.len() {
+        let (reader, mut writer) = UnixStream::pair()?;
+        let (head, tail) = whole.split_at(split);
+        writer.write_all(head)?;
+        let late = std::thread::spawn({
+            let tail = tail.to_vec();
+            move || {
+                std::thread::park_timeout(std::time::Duration::from_millis(2));
+                writer.write_all(&tail).map(|()| writer)
+            }
+        });
+        let reply = super::read_reply(&reader, |_| false);
+        let _open = late
+            .join()
+            .map_err(|_| std::io::Error::other("writer panicked"))??;
+        let got = reply.map(|reply| parse(&reply));
+        assert_eq!(got.as_ref(), Some(&expected), "split at byte {split}");
+    }
+    Ok(())
+}
