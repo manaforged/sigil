@@ -39,6 +39,7 @@ pub fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandS
     run(cx, root, clip, &selection, &mut track)
 }
 
+#[cfg(feature = "terminal")]
 pub(crate) fn emit_unchanged(
     cx: &Cx,
     (root, clip): (NodeId, Option<Rect>),
