@@ -62,7 +62,10 @@ fn terminal() -> bool {
 }
 
 fn typing(stdin: &impl AsFd) -> Option<bool> {
-    Some(crossterm::event::poll(Duration::ZERO).unwrap_or(true) || ready(stdin, Duration::ZERO)?)
+    Some(
+        crossterm::event::poll(Duration::ZERO).unwrap_or(true)
+            || ready(stdin, Duration::ZERO).ok()?,
+    )
 }
 
 fn queries(ask: Questions, backdrop: bool) -> String {
@@ -97,19 +100,25 @@ fn read_reply(input: &impl AsFd, done: impl Fn(&str) -> bool) -> Option<String> 
             }
         }
         let left = deadline.checked_duration_since(Instant::now())?;
-        if ready(input, left) != Some(true) {
-            return None;
+        match ready(input, left) {
+            Ok(true) => {}
+            Err(rustix::io::Errno::INTR) => continue,
+            Ok(false) | Err(_) => return None,
         }
-        let read = rustix::io::read(input, &mut chunk).ok()?;
+        let read = match rustix::io::read(input, &mut chunk) {
+            Ok(read) => read,
+            Err(rustix::io::Errno::INTR) => continue,
+            Err(_) => return None,
+        };
         reply.extend_from_slice(chunk.get(..read).filter(|bytes| !bytes.is_empty())?);
     }
 }
 
-fn ready(input: &impl AsFd, wait: Duration) -> Option<bool> {
+fn ready(input: &impl AsFd, wait: Duration) -> rustix::io::Result<bool> {
     use rustix::event::{PollFd, PollFlags, Timespec, poll};
-    let wait = Timespec::try_from(wait).ok()?;
+    let wait = Timespec::try_from(wait).map_err(|_| rustix::io::Errno::INVAL)?;
     let mut fds = [PollFd::new(input, PollFlags::IN)];
-    Some(poll(&mut fds, Some(&wait)).ok()? > 0)
+    Ok(poll(&mut fds, Some(&wait))? > 0)
 }
 
 pub(super) fn parse(reply: &str) -> Answers {

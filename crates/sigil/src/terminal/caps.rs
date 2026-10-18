@@ -156,7 +156,6 @@ impl Caps {
 #[cfg(unix)]
 fn ask_terminal(mut draft: Draft, widths: bool) -> (Caps, Measured) {
     let backdrop = draft.caps.backdrop.is_none();
-    draft.caps.keyboard = Keyboard::Legacy;
     draft.ask = draft.ask.with(Question::Keys, true);
     let Some(input) = probe::quiet_terminal() else {
         return (draft.caps, Measured::Unmeasured);
@@ -188,8 +187,12 @@ impl Draft {
         if self.caps.backdrop.is_none() {
             self.caps.backdrop = answers.backdrop;
         }
-        if self.ask.has(Question::Keys) && answers.kitty_keys {
-            self.caps.keyboard = Keyboard::Kitty;
+        if self.ask.has(Question::Keys) {
+            self.caps.keyboard = if answers.kitty_keys {
+                Keyboard::Kitty
+            } else {
+                Keyboard::Legacy
+            };
         }
         if self.ask.has(Question::Color) && (answers.truecolor || answers.kitty_keys) {
             self.caps.color = ColorDepth::Truecolor;
