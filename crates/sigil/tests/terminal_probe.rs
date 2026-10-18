@@ -59,13 +59,32 @@ fn editor_child() {
     .expect("run");
 }
 
+#[test]
+fn halted_child() {
+    if std::env::var_os(CHILD).is_none() {
+        return;
+    }
+    std::thread::spawn(|| {
+        std::thread::sleep(Duration::from_millis(150));
+        signal_hook::low_level::raise(signal_hook::consts::SIGTERM).expect("raise");
+    });
+    drop(sigil::run(
+        AppConfig::new("probe").size(40, 12).terminal(),
+        || text("inside"),
+    ));
+}
+
 fn position(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack
         .windows(needle.len())
         .position(|window| window == needle)
 }
 
-fn run_child(name: &str, script: impl FnOnce(&Mutex<Box<dyn Write + Send>>)) -> Vec<u8> {
+fn run_child(
+    name: &str,
+    answer: bool,
+    script: impl FnOnce(&Mutex<Box<dyn Write + Send>>),
+) -> Vec<u8> {
     let pair = native_pty_system()
         .openpty(PtySize {
             rows: 12,
@@ -97,7 +116,7 @@ fn run_child(name: &str, script: impl FnOnce(&Mutex<Box<dyn Write + Send>>)) -> 
             let Some(bytes) = chunk.get(..read).filter(|bytes| !bytes.is_empty()) else {
                 break;
             };
-            if position(bytes, b"\x1b[c").is_some() {
+            if answer && position(bytes, b"\x1b[c").is_some() {
                 replies.lock().unwrap().write_all(b"\x1b[?62;22c").ok();
             }
             sink.lock().unwrap().extend_from_slice(bytes);
@@ -117,7 +136,7 @@ fn run_child(name: &str, script: impl FnOnce(&Mutex<Box<dyn Write + Send>>)) -> 
 
 #[test]
 fn startup_probing_leaves_the_callers_screen_alone() {
-    let output = run_child("probe_child", |_| {});
+    let output = run_child("probe_child", true, |_| {});
     let entered = position(&output, ALTERNATE).expect("the app entered the alternate screen");
     let erased = position(&output, ERASE_LINE);
     assert!(
@@ -136,7 +155,7 @@ fn startup_probing_leaves_the_callers_screen_alone() {
 
 #[test]
 fn a_reply_split_across_reads_is_not_typed() {
-    let output = run_child("editor_child", |writer| {
+    let output = run_child("editor_child", true, |writer| {
         for part in [&b"\x1bP>|xter"[..], b"m(390)\x1b\\", b"ok"] {
             writer.lock().unwrap().write_all(part).ok();
             std::thread::sleep(Duration::from_millis(200));
@@ -159,7 +178,7 @@ fn a_reply_split_across_reads_is_not_typed() {
 
 #[test]
 fn inline_probing_leaves_the_callers_line_alone() {
-    let output = run_child("inline_child", |_| {});
+    let output = run_child("inline_child", true, |_| {});
     let kept = position(&output, b"keep").expect("the caller's text was written");
     let rest = output.get(kept..).unwrap_or_default();
     let line = rest
@@ -179,7 +198,7 @@ fn a_reply_split_at_any_byte_is_never_typed() {
         b"\x1b]11;rgb:0a0a/0a0a/0a0a\x1b\\",
         b"\x1b_Gi=31;OK\x1b\\",
     ];
-    let output = run_child("editor_child", |writer| {
+    let output = run_child("editor_child", true, |writer| {
         for reply in replies {
             for split in 1..reply.len() {
                 let halves: [&[u8]; 2] = reply.split_at(split).into();
@@ -205,5 +224,18 @@ fn a_reply_split_at_any_byte_is_never_typed() {
             .iter()
             .all(|piece| !shown.contains(piece)),
         "a split reply was typed: {shown:?}"
+    );
+}
+
+#[test]
+fn a_stop_signal_during_the_probe_leaves_the_alternate_screen() {
+    let output = run_child("halted_child", false, |_| {});
+    position(&output, ALTERNATE).expect("the app entered the alternate screen");
+    let mut screen = vt100::Parser::new(12, 40, 0);
+    screen.process(&output);
+    assert!(
+        !screen.screen().alternate_screen(),
+        "the terminal was left on the alternate screen: {:?}",
+        String::from_utf8_lossy(&output)
     );
 }

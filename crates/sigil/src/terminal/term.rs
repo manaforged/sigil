@@ -68,7 +68,6 @@ impl Term {
         );
         TITLE.with(|slot| *slot.borrow_mut() = Some(config.title.clone()));
         set_owner(Some(std::thread::current().id()));
-        signals::resume();
         let guard = EnterGuard;
         RESTORED.store(false, Ordering::Relaxed);
         enable_raw_mode()?;
