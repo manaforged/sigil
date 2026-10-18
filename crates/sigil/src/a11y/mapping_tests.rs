@@ -33,3 +33,16 @@ fn the_reading_scope_keeps_live_text_and_skips_plain_nodes() {
         );
     });
 }
+
+#[test]
+fn the_reading_scope_keeps_a_status_nested_in_plain_containers() {
+    crate::reactive::Runtime::scope("a11y::reading-nested", || {
+        let mut cx = Cx::new_root();
+        let status = container().role(accesskit::Role::Status).label("saving");
+        let _ = cx.add(container().child(container().child(status)));
+        let full = tree(&cx, None, &|_| None);
+        let reading = tree_scoped(&cx, None, &|_| None, TreeScope::Reading);
+        assert_eq!(spoken(&full), vec![Some("saving".to_string())]);
+        assert_eq!(spoken(&reading), spoken(&full));
+    });
+}

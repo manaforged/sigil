@@ -1,12 +1,12 @@
 use sigil::Host;
-use sigil::events::EventRouter;
+use sigil::events::{EventRouter, NodeEventsExt};
 use sigil::kernel::{NodeBuilder, container, fragment, text};
 use sigil::layout::LayoutStyle;
 use sigil::prelude::{LayoutBuilderExt, Paint};
 use sigil::profile::{self, BackendStatus, Counter};
 use sigil::reactive::{Runtime, Signal, signal};
 use sigil::terminal::Screen;
-use sigil_kittest::input::tab;
+use sigil_kittest::input::{click, tab};
 
 const SIZE: (u16, u16) = (40, 12);
 
@@ -200,5 +200,70 @@ fn a_patched_row_drops_children_it_no_longer_has() {
             shown.contains("kept") && !shown.contains("dropped"),
             "{shown}"
         );
+    });
+}
+
+#[test]
+fn tab_reaches_a_row_patched_into_focus_after_the_order_is_known() {
+    Runtime::scope("patching-focus-order", || {
+        let rows = signal(vec![
+            (Row::Focusable, String::from("row 0")),
+            (Row::Boxed, String::from("row 1")),
+            (Row::Boxed, String::from("row 2")),
+        ]);
+        let (mut host, mut router, mut screen) = mounted(rows);
+        screen
+            .frame(&mut host, &mut router, [tab(false)], SIZE)
+            .expect("frame");
+        let first = router.focus();
+        assert!(first.is_some(), "Tab found the focusable row");
+        rows.update(|rows| rows[2].0 = Row::Focusable);
+        screen
+            .frame(&mut host, &mut router, [], SIZE)
+            .expect("frame");
+        screen
+            .frame(&mut host, &mut router, [tab(false)], SIZE)
+            .expect("frame");
+        assert!(
+            router.focus().is_some() && router.focus() != first,
+            "Tab skipped the row patched into focus"
+        );
+    });
+}
+
+#[test]
+fn a_row_patched_to_take_clicks_receives_them() {
+    Runtime::scope("patching-click", || {
+        let (armed, hits) = (signal(false), signal(0_u32));
+        let mut host = Host::cells();
+        host.mount(move || {
+            container()
+                .layout(LayoutStyle::flex_column().fill_width())
+                .children_reactive(move || {
+                    let row = container()
+                        .layout(LayoutStyle::block().fill_width().height(Host::CELL))
+                        .child(text("target"));
+                    vec![if armed.get() {
+                        row.pointer_down(move |_| hits.update(|count| *count += 1))
+                    } else {
+                        row
+                    }]
+                })
+        });
+        let mut router = EventRouter::new();
+        let mut screen = Screen::new(SIZE.0, SIZE.1);
+        let at = Host::CELL / 2.0;
+        for events in [Vec::new(), click(at, at).to_vec()] {
+            screen
+                .frame(&mut host, &mut router, events, SIZE)
+                .expect("frame");
+        }
+        armed.set(true);
+        for events in [Vec::new(), click(at, at).to_vec()] {
+            screen
+                .frame(&mut host, &mut router, events, SIZE)
+                .expect("frame");
+        }
+        assert_eq!(hits.get(), 1, "the click missed the row patched to take it");
     });
 }

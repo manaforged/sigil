@@ -204,3 +204,34 @@ fn a_reactive_atoms_write_reaches_the_next_emit() {
         );
     });
 }
+
+#[test]
+fn a_host_with_nothing_mounted_reports_the_last_scene_gone() {
+    Runtime::scope("emit-rootless", || {
+        let mut shown = Host::cells();
+        shown.mount(|| container().child(text("before")));
+        let before = shown.scene(VIEW).expect("scene");
+        assert!(!before.commands.is_empty());
+        let mut empty = Host::cells();
+        let delta = empty.cx().take_delta();
+        let (scene, diff) = empty.emit_since(VIEW, &delta, &before);
+        assert!(scene.commands.is_empty());
+        assert!(!diff.unchanged(), "an emptied scene reported no change");
+    });
+}
+
+#[test]
+fn a_scale_change_emits_fresh_geometry() {
+    Runtime::scope("emit-scale", || {
+        let mut host = Host::cells();
+        host.mount(|| container().child(text("scaled")));
+        host.layout(VIEW).expect("layout");
+        let delta = host.cx().take_delta();
+        let (first, _) = host.emit_since(VIEW, &delta, &CommandScene::default());
+        host.cx().set_scale(sigil::geometry::Scale::new(2.0));
+        host.layout(VIEW).expect("layout");
+        let rescaled = host.cx().take_delta();
+        let (second, _) = host.emit_since(VIEW, &rescaled, &first);
+        assert_eq!(second, host.emit(VIEW), "a scale change reused old paint");
+    });
+}

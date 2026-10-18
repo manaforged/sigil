@@ -131,3 +131,7 @@ fn probe(out: &mut impl Write, home: (u16, u16), text: &str) -> io::Result<usize
     }
     Ok(usize::from(col))
 }
+
+#[cfg(all(test, unix))]
+#[path = "calibrate_tests.rs"]
+mod tests;

@@ -174,3 +174,31 @@ fn a_changed_link_target_reaches_the_terminal() {
         });
     }
 }
+
+#[test]
+fn a_status_spoken_on_a_quiet_frame_is_written() {
+    Runtime::scope("precise-status", || {
+        let mut host = Host::cells();
+        host.mount(|| container().child(text("steady")));
+        let mut router = EventRouter::new();
+        let mut screen = Screen::new(COLS, ROWS);
+        screen.set_access(sigil::terminal::Access {
+            status: std::time::Duration::from_secs(60),
+            ..sigil::terminal::Access::default()
+        });
+        for _ in 0..3 {
+            screen
+                .frame(&mut host, &mut router, [], (COLS, ROWS))
+                .expect("frame");
+            screen.flush(&mut std::io::sink()).expect("flush");
+        }
+        sigil::kernel::announce("saved");
+        let mut written = Vec::new();
+        screen
+            .frame(&mut host, &mut router, [], (COLS, ROWS))
+            .expect("frame");
+        screen.flush(&mut written).expect("flush");
+        let written = String::from_utf8_lossy(&written);
+        assert!(written.contains("saved"), "{written:?}");
+    });
+}
