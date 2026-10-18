@@ -9,12 +9,6 @@ use crate::reactive::{Owner, is_live};
 
 type Ids = SmallVec<[NodeId; 4]>;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Unpatched {
-    Remount,
-    Keep,
-}
-
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Fate {
     Patched(NodeId),
@@ -88,7 +82,6 @@ impl Cx {
         parent: NodeId,
         existing: Option<NodeId>,
         builder: Option<Box<dyn ErasedComponent>>,
-        unpatched: Unpatched,
     ) -> Option<Fate> {
         let live = existing.filter(|id| self.nodes.contains_key(id.key()));
         let Some(builder) = builder else {
@@ -102,7 +95,6 @@ impl Cx {
                 crate::profile::count_add(Counter::KernelPatched, 1);
                 Some(Fate::Patched(id))
             }
-            Patch::Unsupported(_) if unpatched == Unpatched::Keep => Some(Fate::Kept(id)),
             Patch::Mismatch(builder) | Patch::Unsupported(builder) => {
                 self.remove_counted(id);
                 Some(self.mount_child(parent, builder))
@@ -167,8 +159,7 @@ impl NodeBuilder {
         let mut kept = AHashSet::new();
         let mut order = Ids::new();
         for child in self.children {
-            if let Some(fate) = cx.reconcile_child(id, old.next(), Some(child), Unpatched::Remount)
-            {
+            if let Some(fate) = cx.reconcile_child(id, old.next(), Some(child)) {
                 kept.insert(fate.id());
                 order.push(fate.id());
             }
