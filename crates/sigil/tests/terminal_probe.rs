@@ -171,3 +171,39 @@ fn inline_probing_leaves_the_callers_line_alone() {
         String::from_utf8_lossy(line)
     );
 }
+
+#[test]
+fn a_reply_split_at_any_byte_is_never_typed() {
+    let replies: [&[u8]; 3] = [
+        b"\x1bP>|xterm(390)\x1b\\",
+        b"\x1b]11;rgb:0a0a/0a0a/0a0a\x1b\\",
+        b"\x1b_Gi=31;OK\x1b\\",
+    ];
+    let output = run_child("editor_child", |writer| {
+        for reply in replies {
+            for split in 1..reply.len() {
+                let halves: [&[u8]; 2] = reply.split_at(split).into();
+                for part in halves {
+                    writer.lock().unwrap().write_all(part).ok();
+                    std::thread::park_timeout(Duration::from_millis(60));
+                }
+            }
+        }
+        writer.lock().unwrap().write_all(b"ok").ok();
+        std::thread::park_timeout(Duration::from_millis(300));
+    });
+    let entered = position(&output, ALTERNATE).expect("the app entered the alternate screen");
+    let mut screen = vt100::Parser::new(12, 40, 0);
+    screen.process(output.get(entered..).unwrap_or_default());
+    let shown = screen.screen().contents();
+    assert!(
+        shown.contains("ok"),
+        "the typed text never arrived: {shown:?}"
+    );
+    assert!(
+        ["390", "xterm", "rgb", "0a0a", "i=31", "OK"]
+            .iter()
+            .all(|piece| !shown.contains(piece)),
+        "a split reply was typed: {shown:?}"
+    );
+}
