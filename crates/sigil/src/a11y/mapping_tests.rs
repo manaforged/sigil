@@ -71,3 +71,35 @@ fn the_reading_scope_names_only_children_it_emits() {
         assert_eq!(spoken(&reading), vec![Some("saving".to_string())]);
     });
 }
+
+#[test]
+fn the_reading_scope_emits_only_live_nodes_and_the_ancestors_that_hold_them() {
+    crate::reactive::Runtime::scope("a11y::reading-ancestors", || {
+        let mut cx = Cx::new_root();
+        let status = container().role(accesskit::Role::Status).label("saving");
+        let _ = cx.add(
+            container()
+                .child(text("star one"))
+                .child(text("star two"))
+                .child(container().child(status)),
+        );
+        let reading = tree_scoped(&cx, None, &|_| None, TreeScope::Reading);
+        let root = reading.tree.as_ref().map(|tree| tree.root);
+        let held: std::collections::HashSet<_> = reading
+            .nodes
+            .iter()
+            .flat_map(|(_, node)| node.children().iter().copied())
+            .collect();
+        for (id, node) in &reading.nodes {
+            assert!(
+                !node.label().is_some_and(|label| label.starts_with("star")),
+                "plain text emitted: {node:?}"
+            );
+            assert!(
+                Some(*id) == root || held.contains(id),
+                "{id:?} has no parent in the reading tree"
+            );
+        }
+        assert_eq!(spoken(&reading), vec![Some("saving".to_string())]);
+    });
+}
