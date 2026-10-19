@@ -47,7 +47,7 @@ pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usi
     (graph, ranks)
 }
 
-fn size(node: &Node) -> (usize, usize) {
+pub(super) fn size(node: &Node) -> (usize, usize) {
     if node.dummy {
         return (1, 1);
     }
@@ -218,6 +218,7 @@ impl Graph {
                 cursor = at.saturating_add(extent).saturating_add(SPACING);
             }
         }
+        compact(layers, &mut positions, across);
         positions
     }
 
@@ -240,5 +241,38 @@ impl Graph {
             return None;
         }
         Some(centres.iter().sum::<usize>() / centres.len())
+    }
+}
+
+fn compact(layers: &[Vec<usize>], positions: &mut [usize], across: &dyn Fn(usize) -> usize) {
+    let span = |layer: &Vec<usize>| {
+        layer
+            .iter()
+            .map(|node| across(*node).saturating_add(SPACING))
+            .sum::<usize>()
+            .saturating_sub(SPACING)
+    };
+    let widest = layers.iter().map(span).max().unwrap_or(0);
+    for layer in layers {
+        let left = layer
+            .iter()
+            .filter_map(|node| positions.get(*node).copied())
+            .min()
+            .unwrap_or(0);
+        let right = layer
+            .iter()
+            .filter_map(|node| {
+                positions
+                    .get(*node)
+                    .map(|at| at.saturating_add(across(*node)))
+            })
+            .max()
+            .unwrap_or(0);
+        let shift = left.min(right.saturating_sub(widest));
+        for node in layer {
+            if let Some(at) = positions.get_mut(*node) {
+                *at = at.saturating_sub(shift);
+            }
+        }
     }
 }

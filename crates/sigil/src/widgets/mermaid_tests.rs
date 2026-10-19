@@ -283,3 +283,19 @@ fn a_real_state_diagram_keeps_notes_descriptions_and_labels_readable() {
         ],
     );
 }
+
+#[test]
+fn a_wide_state_diagram_folds_its_ranks_to_fit() {
+    let lines = draw(GOAL);
+    let widest = lines
+        .iter()
+        .map(|line| line.chars().count())
+        .max()
+        .unwrap_or(0);
+    assert!(
+        widest <= 150,
+        "{widest} columns wide:\n{}",
+        lines.join("\n")
+    );
+    assert_has(&lines.join("\n"), &["Failed", "Stopped", "NextPrompt"]);
+}
