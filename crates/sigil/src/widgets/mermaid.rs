@@ -13,6 +13,7 @@ mod label;
 mod pie;
 mod rank;
 mod sequence;
+mod state_parse;
 mod strokes;
 
 #[must_use]

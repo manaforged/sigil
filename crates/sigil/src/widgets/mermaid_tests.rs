@@ -197,3 +197,89 @@ fn a_diagram_wider_than_its_column_keeps_one_row_per_line() {
     let rows = grid.lines().filter(|line| !line.trim().is_empty()).count();
     assert_eq!(rows, drawn, "{grid}");
 }
+
+const GOAL: &str = r"stateDiagram-v2
+    [*] --> Setup: /goal objective
+    Setup: Select or resume durable Goal Work
+    Setup: Resolve checks from configured commands,
+    Setup: .summonr/check.toml, or language detection
+    Setup --> FirstPrompt
+    FirstPrompt: Send objective and gate instructions
+    FirstPrompt --> Running
+
+    state Running {
+        [*] --> Budget
+        Budget: Check session token and wall-clock budgets
+        Budget --> Model: Budget remains
+        Model: Model works on objective
+        Model --> Tools: Tool calls
+        Tools: Execute tools and append results
+        Tools --> Budget
+        Model --> Verify: Final assistant response
+
+        Verify: Capture workspace changes
+        Verify: Run harness completion checks
+        Verify --> Repair: Any check fails
+        Verify --> Review: Checks pass or no checks configured
+
+        Review: Optional reviewer
+        Review --> Repair: Findings or review failure
+        Review --> Judge: Accepted or no reviewer configured
+
+        Judge: Judge objective, latest response, and harness evidence
+        Judge --> Judge: Malformed verdict / retry up to 2 repairs
+        Judge --> Continue: continue, unavailable, or still malformed
+        Judge --> Achieved: done with concrete evidence
+        Judge --> Stopped: stalled or impossible
+
+        Repair: Increment rounds and failed-check attempts
+        Repair --> Failed: Attempt limit reached
+        Repair --> Continue: Attempts remain / enqueue repair evidence
+
+        Continue: Rebase workspace snapshot
+        Continue: Persist Work and enqueue continuation reason
+        Continue --> NextPrompt
+        NextPrompt: Send active-Work continuation prompt
+        NextPrompt --> Budget
+    }
+
+    Budget --> Exhausted: Token or work-time limit reached
+    Exhausted: Abort turn and stop goal
+    Achieved: Persist Completed / goal achieved
+    Failed: Persist Failed / repair attempts exhausted
+    Stopped: Persist Abandoned with reason
+
+    note right of Judge
+        Passing checks alone does not finish a goal.
+        The judge must also return done.
+    end note
+
+    Running --> Paused: User cancels
+    Paused --> Running: Resume active goal
+    Running --> Cleared: /goal clear
+    Cleared: Abandon active Work
+
+    Achieved --> [*]
+    Exhausted --> [*]
+    Failed --> [*]
+    Stopped --> [*]
+    Cleared --> [*]";
+
+#[test]
+fn a_real_state_diagram_keeps_notes_descriptions_and_labels_readable() {
+    let body = joined(GOAL);
+    assert!(
+        !body.contains("│ Passing │"),
+        "note text drawn as states:\n{body}"
+    );
+    assert_has(
+        &body,
+        &[
+            "Select or resume durable Goal",
+            "Malformed verdict",
+            "Final assistant response",
+            "stalled or impossible",
+            "continue, unavailable, or still malformed",
+        ],
+    );
+}

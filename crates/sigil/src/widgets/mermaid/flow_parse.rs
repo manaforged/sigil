@@ -28,11 +28,13 @@ pub(super) fn parse(source: &str) -> Option<Graph> {
         dir,
         state,
     };
+    if state {
+        super::state_parse::fill(&mut graph, lines);
+        return Some(graph);
+    }
     for line in lines {
-        if let Some((id, label)) = alias(line).filter(|_| state) {
-            graph.node(id, Some((vec![label.to_string()], Shape::Box)));
-        } else if !skipped(line) {
-            graph.statement(line);
+        if !skipped(line) {
+            graph.statement(line, None);
         }
     }
     Some(graph)
@@ -54,7 +56,7 @@ fn header(line: &str) -> Option<(bool, Dir)> {
     }
 }
 
-fn skipped(line: &str) -> bool {
+pub(super) fn skipped(line: &str) -> bool {
     let head = line.split_whitespace().next().unwrap_or("");
     line.starts_with('}')
         || matches!(
@@ -74,13 +76,13 @@ fn skipped(line: &str) -> bool {
         )
 }
 
-fn alias(line: &str) -> Option<(&str, &str)> {
+pub(super) fn alias(line: &str) -> Option<(&str, &str)> {
     let (label, id) = line.strip_prefix("state ")?.trim().split_once(" as ")?;
     Some((id.trim(), label.trim().trim_matches('"')))
 }
 
 impl Graph {
-    fn statement(&mut self, line: &str) {
+    pub(super) fn statement(&mut self, line: &str, scope: Option<&str>) {
         let (line, colon) = match (self.state, line.split_once(':')) {
             (true, Some((head, tail))) => (head.trim(), Some(tail.trim().to_string())),
             _ => (line, None),
@@ -94,7 +96,7 @@ impl Graph {
                     let first = previous.is_none();
                     let ids: Vec<usize> = nodes
                         .into_iter()
-                        .map(|(id, detail)| self.node_or_terminal(&id, detail, first))
+                        .map(|(id, detail)| self.node_or_terminal(&id, detail, (first, scope)))
                         .collect();
                     if let (Some(from), Some(found)) = (&previous, pending.take()) {
                         let pairs = from
@@ -104,10 +106,15 @@ impl Graph {
                             .saturating_sub(self.edges.len())
                             .min(MAX_STATEMENT_EDGES);
                         for (source, target) in pairs.take(room) {
+                            let label = colon.clone().unwrap_or_else(|| found.label.clone());
+                            if source == target {
+                                self.looped(*source, &label);
+                                continue;
+                            }
                             self.edges.push(Edge {
                                 from: *source,
                                 to: *target,
-                                label: colon.clone().unwrap_or_else(|| found.label.clone()),
+                                label,
                                 dashed: found.dashed,
                                 arrow: found.arrow,
                             });
@@ -119,8 +126,16 @@ impl Graph {
         }
     }
 
-    fn node_or_terminal(&mut self, id: &str, detail: Detail, first: bool) -> usize {
+    fn node_or_terminal(&mut self, id: &str, detail: Detail, at: (bool, Option<&str>)) -> usize {
+        let (first, scope) = at;
         if id == "[*]" {
+            if let Some(scope) = scope {
+                if first {
+                    return self.node(scope, None);
+                }
+                let key = format!("[*]end:{scope}");
+                return self.node(&key, Some((vec!["◉".to_string()], Shape::Terminal)));
+            }
             let (key, glyph) = if first {
                 ("[*]start", "●")
             } else {
@@ -131,7 +146,7 @@ impl Graph {
         self.node(id, detail)
     }
 
-    fn node(&mut self, id: &str, detail: Detail) -> usize {
+    pub(super) fn node(&mut self, id: &str, detail: Detail) -> usize {
         let index = self
             .nodes
             .iter()
@@ -151,6 +166,24 @@ impl Graph {
             node.shape = shape;
         }
         index
+    }
+
+    fn looped(&mut self, index: usize, label: &str) {
+        if let Some(node) = self.nodes.get_mut(index) {
+            let text = if label.is_empty() {
+                "↻".to_string()
+            } else {
+                format!("↻ {label}")
+            };
+            node.label.extend(super::label::wrapped(&text));
+        }
+    }
+
+    pub(super) fn describe(&mut self, id: &str, text: &str) {
+        let index = self.node(id, None);
+        if let Some(node) = self.nodes.get_mut(index) {
+            node.label.extend(super::label::wrapped(text));
+        }
     }
 }
 

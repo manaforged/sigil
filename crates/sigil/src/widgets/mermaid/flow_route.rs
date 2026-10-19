@@ -174,5 +174,5 @@ fn label(canvas: &mut Canvas, pen: &Pen, edge: &Edge, start: (usize, usize), alo
     } else {
         pen.point(pp.saturating_add(1), ps.saturating_sub(1))
     };
-    canvas.text(x, y, &edge.label);
+    canvas.label(x, y, &edge.label);
 }
