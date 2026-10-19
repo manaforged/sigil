@@ -52,6 +52,10 @@ const SOURCES: &[(&str, &str)] = &[
         include_str!("../chat-both.rs"),
     ),
     (
+        "crates/sigil/examples/hello-counter.rs",
+        include_str!("../hello-counter.rs"),
+    ),
+    (
         "crates/sigil/examples/pomodoro-both.rs",
         include_str!("../pomodoro-both.rs"),
     ),
@@ -78,6 +82,9 @@ const APPS: &[(&str, App)] = &[
     }),
     ("chat-both", || {
         sigil::kernel::node(crate::chat_both::app_tree())
+    }),
+    ("hello-counter", || {
+        sigil::kernel::node(crate::hello_counter::app_tree())
     }),
     ("pomodoro-both", || {
         sigil::kernel::node(crate::pomodoro_both::app_tree())

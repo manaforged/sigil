@@ -342,9 +342,10 @@ fn capture_core(
     settle: &mut dyn FnMut() -> bool,
 ) -> Result<Option<Captured>, Error> {
     sigil::reactive::Runtime::scope("sigil-visual-golden", || {
+        let [viewport_w, viewport_h] = target.logical;
+        sigil::app::viewport_size().set(sigil::geometry::LogicalSize::new(viewport_w, viewport_h));
         let mut cx = Cx::new_root();
         let root = cx.add(build);
-        let [viewport_w, viewport_h] = target.logical;
         let viewport = Size::fixed(viewport_w, viewport_h);
         let mut layout = LayoutEngine::with_text_measure(text_measure);
         let relayout = |tree: &mut Cx, engine: &mut LayoutEngine| {

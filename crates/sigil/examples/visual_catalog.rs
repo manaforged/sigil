@@ -47,6 +47,9 @@ mod tokens;
 #[path = "chat-both.rs"]
 mod chat_both;
 #[allow(dead_code, unused_attributes)]
+#[path = "hello-counter.rs"]
+mod hello_counter;
+#[allow(dead_code, unused_attributes)]
 #[path = "pomodoro-both.rs"]
 mod pomodoro_both;
 #[allow(dead_code, unused_attributes)]

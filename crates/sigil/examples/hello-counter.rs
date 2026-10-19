@@ -7,7 +7,7 @@ fn main() -> sigil::AppResult<()> {
     )
 }
 
-fn app_tree() -> impl IntoNode {
+pub(crate) fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
         .layout(LayoutStyle::default().padding(32.0))
