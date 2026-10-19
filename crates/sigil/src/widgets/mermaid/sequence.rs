@@ -1,5 +1,6 @@
 mod paint;
 
+use super::label::{flat, width, wrapped};
 use paint::render;
 
 const MIN_GAP: usize = 6;
@@ -13,14 +14,14 @@ enum Event {
     Message {
         from: usize,
         to: usize,
-        text: String,
+        text: Vec<String>,
         dashed: bool,
         head: char,
     },
     Note {
         from: usize,
         to: usize,
-        text: String,
+        text: Vec<String>,
     },
     Open {
         kind: String,
@@ -107,12 +108,7 @@ impl Keyword {
 impl Diagram {
     fn line(&mut self, line: &str) {
         let head = line.split_whitespace().next().unwrap_or("");
-        let text = || {
-            line.get(head.len()..)
-                .unwrap_or_default()
-                .trim()
-                .to_string()
-        };
+        let text = || flat(line.get(head.len()..).unwrap_or_default().trim());
         match Keyword::of(head) {
             Some(Keyword::Autonumber) => self.numbered = true,
             Some(Keyword::Declare) => self.declare(line),
@@ -144,13 +140,13 @@ impl Diagram {
     fn participant(&mut self, id: &str, label: Option<&str>) -> usize {
         if let Some(index) = self.participants.iter().position(|p| p.id == id) {
             if let (Some(label), Some(found)) = (label, self.participants.get_mut(index)) {
-                found.label = label.to_string();
+                found.label = flat(label);
             }
             return index;
         }
         self.participants.push(Participant {
             id: id.to_string(),
-            label: label.unwrap_or(id).to_string(),
+            label: flat(label.unwrap_or(id)),
         });
         self.participants.len().saturating_sub(1)
     }
@@ -160,7 +156,7 @@ impl Diagram {
         let Some((place, text)) = rest.split_once(':') else {
             return;
         };
-        let text = text.trim().to_string();
+        let text = wrapped(text.trim());
         let place = place.trim();
         let (from, to) = if let Some(names) = place.strip_prefix("over ") {
             let mut ids = names.split(',').map(str::trim);
@@ -217,7 +213,7 @@ impl Diagram {
         self.events.push(Event::Message {
             from,
             to,
-            text: text.to_string(),
+            text: wrapped(text),
             dashed: arrow.starts_with("--") || arrow.starts_with("<<--"),
             head,
         });
@@ -226,9 +222,9 @@ impl Diagram {
 
 const fn height(event: &Event, from_to_same: bool) -> usize {
     match event {
-        Event::Message { .. } if from_to_same => 3,
-        Event::Message { .. } => 2,
-        Event::Note { .. } => 3,
+        Event::Message { text, .. } if from_to_same => text.len().saturating_add(2),
+        Event::Message { text, .. } => text.len().saturating_add(1),
+        Event::Note { text, .. } => text.len().saturating_add(2),
         Event::Open { .. } | Event::Else { .. } | Event::Close => 1,
     }
 }
@@ -283,15 +279,13 @@ fn centres(diagram: &Diagram, margin: usize) -> (Vec<usize>, usize) {
 fn widen(gaps: &mut [usize], event: &Event, numbered: bool) {
     let extra = if numbered { 4 } else { 0 };
     let (from, to, need) = match event {
-        Event::Message { from, to, text, .. } if from == to => (
-            *from,
-            from.saturating_add(1),
-            text.chars().count().saturating_add(6),
-        ),
-        Event::Message { from, to, text, .. } => {
-            (*from, *to, text.chars().count().saturating_add(4 + extra))
+        Event::Message { from, to, text, .. } if from == to => {
+            (*from, from.saturating_add(1), width(text).saturating_add(6))
         }
-        Event::Note { from, to, text } => (*from, *to, text.chars().count().saturating_add(4)),
+        Event::Message { from, to, text, .. } => {
+            (*from, *to, width(text).saturating_add(4 + extra))
+        }
+        Event::Note { from, to, text } => (*from, *to, width(text).saturating_add(4)),
         _ => return,
     };
     let (low, high) = (from.min(to), from.max(to));

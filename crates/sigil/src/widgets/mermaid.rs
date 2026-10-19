@@ -9,6 +9,7 @@ mod flow_layout;
 mod flow_paint;
 mod flow_parse;
 mod flow_route;
+mod label;
 mod pie;
 mod rank;
 mod sequence;
@@ -34,7 +35,7 @@ pub(crate) fn figure(source: &str) -> NodeBuilder {
 
 fn text_lines(mut col: NodeBuilder, lines: &[String]) -> NodeBuilder {
     for line in lines {
-        col = col.child(text(line.clone()));
+        col = col.child(text(line.clone()).nowrap());
     }
     col
 }

@@ -1,4 +1,5 @@
 use super::draw;
+use crate::layout::LayoutBuilderExt;
 
 fn joined(source: &str) -> String {
     draw(source).join("\n")
@@ -108,4 +109,91 @@ fn pathological_source_stays_bounded() {
     assert!(lines.len() <= 600, "{} rendered lines", lines.len());
     let widest = lines.iter().map(|rendered| rendered.chars().count()).max();
     assert!(widest.is_some_and(|width| width <= 1200), "{widest:?}");
+}
+
+const TURN: &str = r"sequenceDiagram
+    participant S as summonr
+    participant C as Claude Code process
+    participant M as Model
+
+    S->>S: Lock session; take reusable parked run
+    alt No reusable process
+        S->>S: Choose new session or resume known thread
+        S->>C: Spawn with stream-json stdin/stdout,<br/>model, system prompt, effort, SDK MCP server<br/>(built-in tools disabled)
+        S->>C: control_request: initialize
+        opt MCP setup requests
+            C->>S: control_request: mcp_message<br/>(initialize / tools/list)
+            S->>C: control_response: mcp_response<br/>(capabilities / summonr tool definitions)
+        end
+        C-->>S: control_response: initialize success
+        S->>S: Cache available model listing
+        S->>C: user JSON message(s)<br/>(replay earlier history only for new thread)
+    else Reusable process
+        S->>C: Pending tool results and/or new user message(s)
+    end
+
+    C->>M: Request completion with conversation and tools
+    loop Streaming response
+        M-->>C: Text / thinking deltas
+        C-->>S: stream_event: content_block_delta
+        S->>S: Accumulate partials; emit deltas
+    end
+    M-->>C: Assistant response
+    C-->>S: assistant message with usage
+
+    alt Model requests a summonr tool
+        C->>S: control_request: can_use_tool
+        S->>C: control_response: allow summonr tool
+        C->>S: control_request: mcp_message tools/call
+        S->>S: Queue pending call; return Paused<br/>AssistantMessage with tool_calls
+        Note over S,C: Process remains alive, waiting for tool results.<br/>A subsequent completion resumes this run.
+    else Model finishes
+        C-->>S: result with status and usage
+        S->>S: Return Done AssistantMessage
+    end
+
+    S->>S: Remember observed thread; park run; unlock session";
+
+#[test]
+fn a_real_sequence_diagram_fits_a_terminal_column() {
+    let lines = draw(TURN);
+    let widest = lines
+        .iter()
+        .map(|line| line.chars().count())
+        .max()
+        .unwrap_or(0);
+    assert!(
+        widest <= 120,
+        "{widest} columns wide:\n{}",
+        lines.join("\n")
+    );
+    let body = lines.join("\n");
+    assert!(!body.contains("<br"), "{body}");
+    assert_has(
+        &body,
+        &[
+            "Claude Code process",
+            "(built-in tools disabled)",
+            "Return Done",
+        ],
+    );
+}
+
+#[test]
+fn a_diagram_wider_than_its_column_keeps_one_row_per_line() {
+    let source = "graph LR\n    A[first stage of the pipeline] --> B[second stage of the pipeline] --> C[third stage]";
+    let drawn = draw(source).len();
+    let grid = crate::terminal::present(
+        move || {
+            crate::kernel::container()
+                .layout(crate::layout::LayoutStyle::flex_column().fill_width())
+                .child(super::figure(source))
+        },
+        40,
+        30,
+        &[],
+    )
+    .expect("layout");
+    let rows = grid.lines().filter(|line| !line.trim().is_empty()).count();
+    assert_eq!(rows, drawn, "{grid}");
 }

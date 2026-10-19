@@ -335,10 +335,5 @@ fn label_lines(raw: &str) -> Vec<String> {
         .trim_end_matches([']', ')', '}', '/', '\\'])
         .trim()
         .trim_matches('"');
-    inner
-        .replace("<br/>", "\n")
-        .replace("<br>", "\n")
-        .lines()
-        .map(|line| line.trim().to_string())
-        .collect()
+    super::label::breaks(inner)
 }

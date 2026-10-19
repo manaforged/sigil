@@ -1,4 +1,5 @@
 use super::super::canvas::Canvas;
+use super::super::label::width;
 use super::{Diagram, Event, Frame, Participant, centres, depth, height};
 
 pub(super) fn render(diagram: &Diagram) -> Vec<String> {
@@ -46,11 +47,12 @@ fn events(canvas: &mut Canvas, diagram: &Diagram, centres: &[usize]) -> Vec<Fram
                 head,
             } => {
                 number = number.saturating_add(1);
-                let text = if diagram.numbered {
-                    format!("{number}. {text}")
-                } else {
-                    text.clone()
-                };
+                let mut text = text.clone();
+                if diagram.numbered
+                    && let Some(first) = text.first_mut()
+                {
+                    *first = format!("{number}. {first}");
+                }
                 let ends = (
                     centres.get(*from).copied().unwrap_or(0),
                     centres.get(*to).copied().unwrap_or(0),
@@ -96,62 +98,63 @@ fn frame_event(open: &mut Vec<Frame>, done: &mut Vec<Frame>, event: &Event, y: u
 fn message(
     canvas: &mut Canvas,
     ends: (usize, usize),
-    text: &str,
+    text: &[String],
     style: (bool, char),
     y: usize,
 ) -> usize {
     let (a, b) = ends;
     let (dashed, head) = style;
     let line = if dashed { '┄' } else { '─' };
+    let arrow = y.saturating_add(text.len());
     if a == b {
-        canvas.text(a.saturating_add(3), y, text);
+        for (row, part) in text.iter().enumerate() {
+            canvas.text(a.saturating_add(3), y.saturating_add(row), part);
+        }
+        canvas.text(a.saturating_add(1), arrow, &format!("{line}{line}┐"));
         canvas.text(
             a.saturating_add(1),
-            y.saturating_add(1),
-            &format!("{line}{line}┐"),
-        );
-        canvas.text(
-            a.saturating_add(1),
-            y.saturating_add(2),
+            arrow.saturating_add(1),
             &format!("◀{line}┘"),
         );
-        return y.saturating_add(3);
+        return arrow.saturating_add(2);
     }
     let (low, high) = (a.min(b), a.max(b));
-    let width = text.chars().count();
-    let start = low
+    let middle = low
         .saturating_add(high)
         .saturating_add(1)
         .checked_div(2)
-        .unwrap_or(low)
-        .saturating_sub(width / 2)
-        .max(low.saturating_add(1));
-    canvas.text(start, y, text);
+        .unwrap_or(low);
+    for (row, part) in text.iter().enumerate() {
+        let start = middle
+            .saturating_sub(part.chars().count() / 2)
+            .max(low.saturating_add(1));
+        canvas.text(start, y.saturating_add(row), part);
+    }
     for x in low.saturating_add(1)..high {
-        canvas.set(x, y.saturating_add(1), line);
+        canvas.set(x, arrow, line);
     }
     if a < b {
-        canvas.set(high.saturating_sub(1), y.saturating_add(1), head);
+        canvas.set(high.saturating_sub(1), arrow, head);
     } else {
         let mirrored = match head {
             '▶' => '◀',
             '>' => '<',
             other => other,
         };
-        canvas.set(low.saturating_add(1), y.saturating_add(1), mirrored);
+        canvas.set(low.saturating_add(1), arrow, mirrored);
     }
-    y.saturating_add(2)
+    arrow.saturating_add(1)
 }
 
 fn note(
     canvas: &mut Canvas,
     centres: &[usize],
     span: (usize, usize),
-    text: &str,
+    text: &[String],
     y: usize,
 ) -> usize {
     let (from, to) = span;
-    let width = text.chars().count().saturating_add(4);
+    let width = width(text).saturating_add(4);
     let a = centres.get(from.min(to)).copied().unwrap_or(0);
     let b = centres.get(from.max(to)).copied().unwrap_or(a);
     let x = if from == to {
@@ -160,9 +163,16 @@ fn note(
         a.saturating_add(b).saturating_add(1) / 2
     }
     .saturating_sub(if from == to { 0 } else { width / 2 });
-    canvas.frame(x, y, (width, 3), false);
-    canvas.text(x.saturating_add(2), y.saturating_add(1), text);
-    y.saturating_add(3)
+    let rows = text.len().saturating_add(2);
+    canvas.frame(x, y, (width, rows), false);
+    for (row, part) in text.iter().enumerate() {
+        canvas.text(
+            x.saturating_add(2),
+            y.saturating_add(row).saturating_add(1),
+            part,
+        );
+    }
+    y.saturating_add(rows)
 }
 
 fn framed(canvas: &mut Canvas, frame: &Frame, cols: usize) {
