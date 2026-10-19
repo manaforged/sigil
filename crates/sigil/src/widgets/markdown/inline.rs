@@ -208,21 +208,36 @@ fn url_breaks(url: &str) -> String {
     out
 }
 
+const CODE_BREAKS: [char; 8] = ['/', ',', ';', '=', '&', '|', '(', '{'];
+
 fn unbreakable(body: &str) -> String {
-    let mut out = String::with_capacity(body.len());
+    let mut opened = String::with_capacity(body.len() + 8);
+    let mut chars = body.chars().peekable();
+    while let Some(ch) = chars.next() {
+        opened.push(ch);
+        if CODE_BREAKS.contains(&ch) && chars.peek().is_some_and(|next| !next.is_whitespace()) {
+            opened.push(BREAK);
+        }
+    }
+    let mut out = String::with_capacity(opened.len());
     let mut at = 0;
-    for (index, _) in unicode_linebreak::linebreaks(body) {
-        let Some(piece) = body.get(at..index) else {
+    for (index, _) in unicode_linebreak::linebreaks(&opened) {
+        let Some(piece) = opened.get(at..index) else {
             continue;
         };
         out.push_str(piece);
         at = index;
-        if index < body.len() && !piece.ends_with(char::is_whitespace) {
+        if index < opened.len() && !piece.ends_with(char::is_whitespace) && !piece.ends_with(BREAK)
+        {
             out.push(JOINER);
         }
     }
     out
 }
+
+#[cfg(test)]
+#[path = "inline_tests.rs"]
+mod tests;
 
 fn push_run(out: &mut Styled, body: &str, face: &TextFace) {
     let start = out.text.len();

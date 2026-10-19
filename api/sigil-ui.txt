@@ -6254,6 +6254,7 @@ pub fn sigil::widgets::DiffBuilder::path(self, path: impl core::convert::Into<al
 pub const fn sigil::widgets::DiffBuilder::select(self, selection: sigil::reactive::Signal<sigil::widgets::Selection>) -> Self
 pub fn sigil::widgets::DiffBuilder::status(self, status: impl core::convert::Into<alloc::string::String>) -> Self
 pub const fn sigil::widgets::DiffBuilder::view(self, view: sigil::widgets::DiffView) -> Self
+pub const fn sigil::widgets::DiffBuilder::wrap(self, on: bool) -> Self
 pub struct sigil::widgets::DotBuilder
 impl sigil::widgets::DotBuilder
 pub fn sigil::widgets::DotBuilder::new(tone: sigil::style::Tone) -> Self

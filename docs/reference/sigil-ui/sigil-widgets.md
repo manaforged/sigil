@@ -374,6 +374,7 @@
 | <code>const select(self, selection: <a href="sigil-reactive.html#signal">Signal</a>&lt;<a href="#selection">Selection</a>&gt;) -&gt; Self</code> |  |
 | <code>status(self, status: impl Into&lt;String&gt;) -&gt; Self</code> |  |
 | <code>const view(self, view: <a href="#diffview">DiffView</a>) -&gt; Self</code> |  |
+| <code>const wrap(self, on: bool) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 

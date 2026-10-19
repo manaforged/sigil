@@ -71,6 +71,7 @@ struct DiffShape {
     status: Option<String>,
     view: DiffView,
     max_rows: usize,
+    wrap: bool,
     on_change: Option<ViewChange>,
     selection: Option<Signal<Selection>>,
 }
@@ -91,6 +92,7 @@ pub fn diff(patch: impl DiffSource + 'static) -> DiffBuilder {
             status: None,
             view: DiffView::Split,
             max_rows: usize::MAX,
+            wrap: false,
             on_change: None,
             selection: None,
         },
@@ -125,6 +127,12 @@ impl DiffBuilder {
     }
 
     #[must_use]
+    pub const fn wrap(mut self, on: bool) -> Self {
+        self.shape.wrap = on;
+        self
+    }
+
+    #[must_use]
     pub fn change(mut self, on_change: impl Fn(DiffView) + 'static) -> Self {
         self.shape.on_change = Some(Rc::new(on_change));
         self
@@ -147,7 +155,11 @@ impl DiffBuilder {
             built.with(|built| format!("{} added, {} removed", built.added, built.removed))
         });
         let picker = shape.selection.map(|selection| Picker { selection, patch });
-        let list = virtual_list(rows, move |_, row: &DiffRow| rows::render(row, picker))
+        let draw = rows::Draw {
+            picker,
+            wrap: shape.wrap,
+        };
+        let list = virtual_list(rows, move |_, row: &DiffRow| rows::render(row, draw))
             .measured()
             .estimate(18.0)
             .shrink_to_content()

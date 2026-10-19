@@ -4,7 +4,7 @@
 
 ## sigil-ui 0.1.0
 
-- [Every public item, one per line](reference/sigil-ui/api.txt): 6873 lines
+- [Every public item, one per line](reference/sigil-ui/api.txt): 6874 lines
 - [API overview](reference/sigil-ui/index.html): tasks, modules, features, and examples
 - [API changes by release](reference/sigil-ui/changes.html)
 - [sigil](reference/sigil-ui/sigil.html): 66 items
@@ -43,7 +43,7 @@
 - [sigil::tasks](reference/sigil-ui/sigil-tasks.html): 51 items
 - [sigil::terminal](reference/sigil-ui/sigil-terminal.html): 189 items
 - [sigil::text](reference/sigil-ui/sigil-text.html): 49 items
-- [sigil::widgets](reference/sigil-ui/sigil-widgets.html): 769 items
+- [sigil::widgets](reference/sigil-ui/sigil-widgets.html): 770 items
 - [sigil::widgets::interaction](reference/sigil-ui/sigil-widgets-interaction.html): 11 items
 - [sigil::widgets::layout_ext](reference/sigil-ui/sigil-widgets-layout_ext.html): 16 items
 - [Example button_demo](reference/sigil-ui/examples/button_demo.html): `cargo run -p sigil-ui --example button_demo`

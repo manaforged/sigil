@@ -38,3 +38,17 @@ fn a_cut_changed_line_ends_in_one_ellipsis() {
     assert!(grid.contains("return"), "changed line missing:\n{grid}");
     assert!(!grid.contains("……"), "doubled ellipsis:\n{grid}");
 }
+
+#[test]
+fn a_wrapped_diff_keeps_the_end_of_a_long_line() {
+    let patch = "@@ -1,1 +1,1 @@\n-    total = 0\n+    total = sum(row.cents for row in rows if row.category == wanted and row.month == month_tail)\n";
+    let wrapped = crate::terminal::present(
+        move || diff(patch).view(super::DiffView::Unified).wrap(true),
+        48,
+        14,
+        &[],
+    )
+    .expect("layout");
+    assert!(wrapped.contains("month_tail"), "line cut:\n{wrapped}");
+    assert!(!wrapped.contains('…'), "line ellipsized:\n{wrapped}");
+}
