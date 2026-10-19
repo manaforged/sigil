@@ -212,7 +212,7 @@ impl Export<'_> {
             let shot = self
                 .shots
                 .pair(self.out, &stem, self.catalog.crop_pad, |scale| {
-                    capture::paint(move || build(drive), look, view, scale)
+                    capture::paint(move || build(drive), (look, view, scale), None)
                 });
             window.insert(look.tag().to_owned(), logged(&stem, shot));
         }
@@ -277,12 +277,17 @@ impl Export<'_> {
             pad: 0.0,
             hit: (0.0, 0.0),
         };
+        let tasks = std::cell::RefCell::new(&mut *self.tasks);
         for look in Look::ALL {
             let stem = format!("{}-window-{}", example.id, look.tag());
             let shot = self
                 .shots
                 .pair(self.out, &stem, self.catalog.crop_pad, |scale| {
-                    capture::paint(app, look, view, scale)
+                    capture::paint(
+                        app,
+                        (look, view, scale),
+                        Some((example.settle, &mut tasks.borrow_mut())),
+                    )
                 });
             if let Value::Object(mut fields) = logged(&stem, shot) {
                 fields.insert("host".into(), json!(HostKind::Window));
