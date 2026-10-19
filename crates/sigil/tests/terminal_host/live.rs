@@ -3,7 +3,7 @@ use sigil::Host;
 use sigil::events::{EventRouter, ShellEvent};
 use sigil::kernel::{IntoNode, container, text};
 use sigil::layout::LayoutStyle;
-use sigil::prelude::{LayoutBuilderExt, Paint, Signal};
+use sigil::prelude::{LayoutBuilderExt, Paint, Signal, WidgetLayoutExt};
 use sigil::reactive::{Runtime, signal};
 use sigil::style::{StateVariants, Token};
 use std::fmt::Write as _;
@@ -365,4 +365,26 @@ proptest! {
 fn an_editor_squeezed_by_a_resize_matches_one_mounted_at_that_size() {
     let (incremental, fresh) = edited(&[Step::Resize(24, 8)]);
     assert_eq!(incremental, fresh);
+}
+
+#[test]
+fn a_one_row_editor_shows_its_text_inside_its_padding() {
+    let shown = |value: &'static str| {
+        super::present(
+            move || {
+                container()
+                    .layout(LayoutStyle::flex_column().fill_width())
+                    .child(
+                        text_edit(signal(String::from(value)))
+                            .placeholder("type to filter")
+                            .height(CELL),
+                    )
+            },
+            30,
+            4,
+            &[],
+        )
+    };
+    assert!(shown("").contains("type to filter"), "{}", shown(""));
+    assert!(shown("draft").contains("draft"), "{}", shown("draft"));
 }
