@@ -2,7 +2,16 @@ use super::parse::Block;
 
 pub(super) fn fence_block(lang: &str, body: String) -> Block {
     if lang == "mermaid" {
-        Block::Mermaid(body)
+        let xychart = body
+            .lines()
+            .map(str::trim)
+            .find(|line| !line.is_empty() && !line.starts_with("%%"))
+            .is_some_and(|line| line.starts_with("xychart"));
+        if xychart {
+            chart_block(&body, false)
+        } else {
+            Block::Mermaid(body)
+        }
     } else if matches!(lang, "chart" | "xychart" | "xychart-beta") {
         chart_block(&body, lang.starts_with("xychart"))
     } else {

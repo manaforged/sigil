@@ -94,3 +94,20 @@ fn a_star_between_spaces_is_text_not_emphasis() {
         ]
     );
 }
+
+#[test]
+fn a_mermaid_fence_holding_an_xychart_parses_as_a_chart() {
+    let blocks = parse_blocks(
+        "```mermaid\nxychart-beta\n    title \"Rust lines by folder\"\n    x-axis [\"tui\", \"provider\", \"tools\"]\n    y-axis \"Lines\" 0 --> 40000\n    bar [36704, 11307, 8503]\n```\n",
+    );
+    assert!(
+        matches!(
+            blocks.as_slice(),
+            [Block::Chart(data)]
+                if data.labels == ["tui", "provider", "tools"]
+                    && data.values == [36704.0, 11307.0, 8503.0]
+                    && data.title.as_deref() == Some("Rust lines by folder")
+        ),
+        "not the chart: {blocks:?}"
+    );
+}

@@ -39,7 +39,7 @@ fn around(canvas: &mut Canvas, edge: &Edge, ends: (Rect, Rect), dir: Dir, lane: 
     if !edge.label.is_empty() {
         let middle = sp.min(tp).saturating_add(sp.abs_diff(tp) / 2);
         let (x4, y4) = pen.point(middle, lane.saturating_add(1));
-        canvas.text(x4, y4, &edge.label);
+        canvas.label(x4, y4, &edge.label);
     }
 }
 

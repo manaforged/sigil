@@ -1,6 +1,9 @@
 use std::collections::VecDeque;
 
-use super::flow::Graph;
+use super::flow::{Graph, SPACING};
+use super::flow_layout::size;
+
+const FOLD_COLS: usize = 72;
 
 impl Graph {
     pub(super) fn rank(&self) -> Vec<usize> {
@@ -38,6 +41,47 @@ impl Graph {
             }
         }
         rank
+    }
+
+    pub(super) fn fold(&self, mut ranks: Vec<usize>) -> Vec<usize> {
+        if !self.dir.vertical() {
+            return ranks;
+        }
+        let mut rank = 0_usize;
+        while ranks.iter().any(|at| *at >= rank) {
+            let mut used = 0_usize;
+            let mut spill = Vec::new();
+            for (index, (node, at)) in self.nodes.iter().zip(&ranks).enumerate() {
+                if *at != rank {
+                    continue;
+                }
+                let width = size(node).0;
+                let need = if used == 0 {
+                    width
+                } else {
+                    used.saturating_add(SPACING).saturating_add(width)
+                };
+                if !spill.is_empty() || (used > 0 && need > FOLD_COLS) {
+                    spill.push(index);
+                } else {
+                    used = need;
+                }
+            }
+            if !spill.is_empty() {
+                for at in &mut ranks {
+                    if *at > rank {
+                        *at = at.saturating_add(1);
+                    }
+                }
+                for index in spill {
+                    if let Some(at) = ranks.get_mut(index) {
+                        *at = rank.saturating_add(1);
+                    }
+                }
+            }
+            rank = rank.saturating_add(1);
+        }
+        ranks
     }
 
     fn back_edges(&self) -> Vec<bool> {
