@@ -177,3 +177,32 @@ fn a_pixel_snapshot_paints_the_theme_surface_like_a_window() {
         "corner {corner:?} is not the theme surface {want:?}"
     );
 }
+
+fn subagent_rows(titles: [f32; 3]) -> impl IntoNode {
+    titles.into_iter().fold(
+        container().layout(LayoutStyle::flex_column()),
+        |list, title| {
+            list.child(
+                container()
+                    .layout(LayoutStyle::flex_row())
+                    .child(container().layout(LayoutStyle::block().fixed_size(title, 8.0)))
+                    .child(container().layout(LayoutStyle::block().fixed_size(80.0, 8.0))),
+            )
+        },
+    )
+}
+
+#[test]
+#[should_panic(expected = "column 1 of")]
+fn assert_aligned_fails_on_ragged_rows() {
+    Harness::new(|| subagent_rows([352.0, 416.0, 464.0]))
+        .size(80, 6)
+        .assert_aligned();
+}
+
+#[test]
+fn assert_aligned_passes_on_fixed_columns() {
+    Harness::new(|| subagent_rows([464.0; 3]))
+        .size(80, 6)
+        .assert_aligned();
+}

@@ -4,10 +4,10 @@
 
 ## sigil-ui 0.1.0
 
-- [Every public item, one per line](reference/sigil-ui/api.txt): 6874 lines
+- [Every public item, one per line](reference/sigil-ui/api.txt): 6937 lines
 - [API overview](reference/sigil-ui/index.html): tasks, modules, features, and examples
 - [API changes by release](reference/sigil-ui/changes.html)
-- [sigil](reference/sigil-ui/sigil.html): 66 items
+- [sigil](reference/sigil-ui/sigil.html): 67 items
 - [sigil::a11y](reference/sigil-ui/sigil-a11y.html): 13 items
 - [sigil::animation](reference/sigil-ui/sigil-animation.html): 76 items
 - [sigil::animation_runtime](reference/sigil-ui/sigil-animation_runtime.html): 54 items
@@ -27,7 +27,8 @@
 - [sigil::icons](reference/sigil-ui/sigil-icons.html): 121 items
 - [sigil::icons::builtin](reference/sigil-ui/sigil-icons-builtin.html): 10 items
 - [sigil::kernel](reference/sigil-ui/sigil-kernel.html): 228 items
-- [sigil::layout](reference/sigil-ui/sigil-layout.html): 226 items
+- [sigil::layout](reference/sigil-ui/sigil-layout.html): 227 items
+- [sigil::layout::align](reference/sigil-ui/sigil-layout-align.html): 29 items
 - [sigil::prelude](reference/sigil-ui/sigil-prelude.html): 0 items
 - [sigil::profile](reference/sigil-ui/sigil-profile.html): 218 items
 - [sigil::reactive](reference/sigil-ui/sigil-reactive.html): 49 items
@@ -90,10 +91,10 @@
 
 ## sigil-kittest 0.1.0
 
-- [Every public item, one per line](reference/sigil-kittest/api.txt): 250 lines
+- [Every public item, one per line](reference/sigil-kittest/api.txt): 252 lines
 - [API overview](reference/sigil-kittest/index.html): tasks, modules, features, and examples
 - [API changes by release](reference/sigil-kittest/changes.html)
-- [sigil_kittest](reference/sigil-kittest/sigil_kittest.html): 117 items
+- [sigil_kittest](reference/sigil-kittest/sigil_kittest.html): 119 items
 - [sigil_kittest::gpu](reference/sigil-kittest/sigil_kittest-gpu.html): 15 items
 - [sigil_kittest::input](reference/sigil-kittest/sigil_kittest-input.html): 15 items
 - [sigil_kittest::parity](reference/sigil-kittest/sigil_kittest-parity.html): 16 items

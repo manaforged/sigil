@@ -85,8 +85,10 @@
 | <code>accessibility_snapshot(&amp;mut self) -&gt; String</code> |  |
 | <code>accessibility_tree(&amp;mut self) -&gt; AccessibilityTree</code> |  |
 | <code>advance(&amp;mut self, by: Duration) -&gt; &amp;mut Self</code> |  |
+| <code>assert_aligned(&amp;mut self)</code> |  |
 | <code>gpu(self, width: u32, height: u32, scale: f32) -&gt; Self</code> |  |
 | <code>host(&amp;mut self) -&gt; (&amp;mut Host, &amp;mut EventRouter)</code> |  |
+| <code>misalignments(&amp;mut self) -&gt; Vec&lt;Misalignment&gt;</code> |  |
 | <code>new(app: impl IntoNode + 'static) -&gt; Self</code> |  |
 | <code>pixels(self, width: u32, height: u32) -&gt; Self</code> |  |
 | <code>send(&amp;mut self, events: impl IntoIterator&lt;Item = ShellEvent&gt;) -&gt; &amp;mut Self</code> |  |
@@ -273,7 +275,7 @@
 
 ### `capture_widget_scaled_focus_descendant`
 
-<pre>pub fn <a href="#capture_widget_scaled_focus_descendant">capture_widget_scaled_focus_descendant</a>(build: impl IntoNode, mode: <a href="#interactionmode">InteractionMode</a>, logical_size_px: [u32; 2], scale: f32, hit_point: (f32, f32), text_measure: Box&lt;dyn TextMeasure&gt;) -&gt; Result&lt;Option&lt;<a href="#captured">Captured</a>&gt;, <a href="#error">Error</a>&gt;</pre>
+<pre>pub fn <a href="#capture_widget_scaled_focus_descendant">capture_widget_scaled_focus_descendant</a>(build: impl IntoNode, mode: <a href="#interactionmode">InteractionMode</a>, logical_size_px: [u32; 2], scale: f32, hit_point: (f32, f32), text_measure: Box&lt;dyn TextMeasure&gt;, settle: &amp;mut dyn FnMut() -&gt; bool) -&gt; Result&lt;Option&lt;<a href="#captured">Captured</a>&gt;, <a href="#error">Error</a>&gt;</pre>
 
 
 ### `golden_path_in`

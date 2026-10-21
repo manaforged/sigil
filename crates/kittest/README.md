@@ -109,11 +109,11 @@ For renderer tests that inspect pixels, `gpu::render_capture` renders a `Command
 
 <!-- truesight:surface sigil-kittest -->
 
-191 public items (18 types, 53 functions, 62 methods, 30 fields, 18 variants, 8 constants, 2 macros) at 191 paths; 0 are re-export aliases. 46 trait impl lines, 6 inherent impl lines. 6 modules, 0 re-export only.
+193 public items (18 types, 53 functions, 64 methods, 30 fields, 18 variants, 8 constants, 2 macros) at 193 paths; 0 are re-export aliases. 46 trait impl lines, 6 inherent impl lines. 6 modules, 0 re-export only.
 
 | Module | Items | Types | Functions | Methods | Aliases |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `sigil_kittest` | 117 | 12 | 17 | 48 | 0 |
+| `sigil_kittest` | 119 | 12 | 17 | 50 | 0 |
 | `sigil_kittest::gpu` | 15 | 2 | 9 | 0 | 0 |
 | `sigil_kittest::input` | 15 | 0 | 15 | 0 | 0 |
 | `sigil_kittest::parity` | 16 | 2 | 5 | 0 | 0 |

@@ -101,6 +101,7 @@
 | <code>hit_path(&amp;mut self, x: f32, y: f32) -&gt; Vec&lt;<a href="sigil-kernel.html#nodeid">NodeId</a>&gt;</code> |  |
 | <code>const host_mode(&amp;self) -&gt; <a href="sigil-kernel.html#hostmode">HostMode</a></code> |  |
 | <code>layout(&amp;mut self, viewport: (f32, f32)) -&gt; Result&lt;Option&lt;<a href="sigil-kernel.html#nodeid">NodeId</a>&gt;, <a href="sigil-layout.html#layouterror">LayoutError</a>&gt;</code> |  |
+| <code>misalignments(&amp;self, tolerance: <a href="sigil-layout-align.html#tolerance">Tolerance</a>) -&gt; Vec&lt;<a href="sigil-layout-align.html#misalignment">Misalignment</a>&gt;</code> |  |
 | <code>mount(&amp;mut self, app: impl <a href="sigil-kernel.html#intonode">IntoNode</a>)</code> |  |
 | <code>new() -&gt; Self</code> |  |
 | <code>perform(&amp;mut self, router: &amp;mut <a href="sigil-events.html#eventrouter">EventRouter</a>, target: <a href="sigil-kernel.html#nodeid">NodeId</a>, request: &amp;ActionRequest)</code> |  |

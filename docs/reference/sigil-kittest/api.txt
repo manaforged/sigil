@@ -163,8 +163,10 @@ impl sigil_kittest::Harness
 pub fn sigil_kittest::Harness::accessibility_snapshot(&mut self) -> alloc::string::String
 pub fn sigil_kittest::Harness::accessibility_tree(&mut self) -> sigil::app::embed::AccessibilityTree
 pub fn sigil_kittest::Harness::advance(&mut self, by: core::time::Duration) -> &mut Self
+pub fn sigil_kittest::Harness::assert_aligned(&mut self)
 pub fn sigil_kittest::Harness::gpu(self, width: u32, height: u32, scale: f32) -> Self
 pub fn sigil_kittest::Harness::host(&mut self) -> (&mut sigil::app::embed::Host, &mut sigil::events::router::EventRouter)
+pub fn sigil_kittest::Harness::misalignments(&mut self) -> alloc::vec::Vec<sigil::layout::align::Misalignment>
 pub fn sigil_kittest::Harness::new(app: impl sigil::kernel::component::IntoNode + 'static) -> Self
 pub fn sigil_kittest::Harness::pixels(self, width: u32, height: u32) -> Self
 pub fn sigil_kittest::Harness::send(&mut self, events: impl core::iter::traits::collect::IntoIterator<Item = sigil::hal::events::ShellEvent>) -> &mut Self
@@ -235,7 +237,7 @@ pub fn sigil_kittest::assert_png_matches_golden(actual: &image::images::buffer::
 pub fn sigil_kittest::assert_rendered_matches_golden(rendered: sigil_kittest::Rendered, golden: &std::path::Path, max_delta_pct: f32)
 pub fn sigil_kittest::assert_text_matches_golden(actual: &str, golden: &std::path::Path)
 pub fn sigil_kittest::capture_filmstrip<N: sigil::kernel::component::IntoNode>(build: impl core::ops::function::Fn() -> N, size_px: [u32; 2], hit_point: (f32, f32), frame_count: u32, dt: f32, text_measure: impl core::ops::function::Fn() -> alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> sigil_kittest::Rendered
-pub fn sigil_kittest::capture_widget_scaled_focus_descendant(build: impl sigil::kernel::component::IntoNode, mode: sigil_kittest::InteractionMode, logical_size_px: [u32; 2], scale: f32, hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>) -> core::result::Result<core::option::Option<sigil_kittest::Captured>, sigil_kittest::Error>
+pub fn sigil_kittest::capture_widget_scaled_focus_descendant(build: impl sigil::kernel::component::IntoNode, mode: sigil_kittest::InteractionMode, logical_size_px: [u32; 2], scale: f32, hit_point: (f32, f32), text_measure: alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>, settle: &mut dyn core::ops::function::FnMut() -> bool) -> core::result::Result<core::option::Option<sigil_kittest::Captured>, sigil_kittest::Error>
 pub fn sigil_kittest::golden_path_in(manifest_dir: &str, stem: &str) -> std::path::PathBuf
 pub fn sigil_kittest::real_text_measure() -> alloc::boxed::Box<dyn sigil::layout::measure::TextMeasure>
 pub fn sigil_kittest::regen_enabled() -> bool

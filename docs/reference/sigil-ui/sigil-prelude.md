@@ -978,6 +978,7 @@
 
 | Method | Description |
 | --- | --- |
+| <code>asymmetric(self, reason: &amp;'static str) -&gt; Self</code> |  |
 | <code>layout(self, style: <a href="sigil-layout.html#layoutstyle">LayoutStyle</a>) -&gt; Self</code> |  |
 
 

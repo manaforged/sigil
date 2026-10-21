@@ -193,6 +193,7 @@ fn answer(request: &Value, host: &mut Host, router: &EventRouter, view: &mut Vie
         }
         Some("screenshot") => screenshot_json(host, view),
         Some("surfaces") => surfaces_json(host, view.cell),
+        Some("layout::align") => align_json(host),
         Some("settle") => json!({
             "ok": true,
             "settled": !crate::reactive::Runtime::frame_dirty()
@@ -294,6 +295,22 @@ fn screenshot_json(host: &mut Host, view: &mut View<'_>) -> Value {
             Err(error) => json!({"ok": false, "error": error}),
         },
     )
+}
+
+fn align_json(host: &Host) -> Value {
+    use crate::layout::align::{MisalignmentKind, Tolerance};
+    let found: Vec<Value> = host
+        .misalignments(Tolerance::for_mode(host.host_mode()))
+        .iter()
+        .map(|item| {
+            let kind = match item.kind() {
+                MisalignmentKind::Column => "column",
+                MisalignmentKind::Inset => "inset",
+            };
+            json!({"kind": kind, "node": item.node().to_string(), "detail": item.to_string()})
+        })
+        .collect();
+    json!({"ok": true, "misalignments": found})
 }
 
 fn surfaces_json(host: &Host, cell: Option<f32>) -> Value {

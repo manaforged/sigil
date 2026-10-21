@@ -218,6 +218,17 @@ impl Host {
         self.root
     }
 
+    #[must_use]
+    pub fn misalignments(
+        &self,
+        tolerance: crate::layout::align::Tolerance,
+    ) -> Vec<crate::layout::align::Misalignment> {
+        let _env = self.enter();
+        self.root.map_or_else(Vec::new, |root| {
+            crate::layout::align::misalignments(&self.cx, &self.layout, root, tolerance)
+        })
+    }
+
     #[cfg(feature = "desktop")]
     pub(crate) fn tree(&mut self) -> Option<(&mut Cx, &LayoutEngine, NodeId)> {
         let root = self.root?;

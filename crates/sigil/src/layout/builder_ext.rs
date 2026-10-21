@@ -1,6 +1,7 @@
 use crate::kernel::{Node, NodeBuilder, TextBuilder, container};
 
 use crate::layout::LayoutStyle;
+use crate::layout::align::Asymmetric;
 use crate::style::{Metrics, StyleBinding};
 
 #[must_use]
@@ -20,17 +21,32 @@ fn default_gap() -> f32 {
 pub trait LayoutBuilderExt {
     #[must_use]
     fn layout(self, style: LayoutStyle) -> Self;
+
+    #[must_use]
+    fn asymmetric(self, reason: &'static str) -> Self;
 }
 
 impl LayoutBuilderExt for NodeBuilder {
     fn layout(self, style: LayoutStyle) -> Self {
         self.mutate(move |node| install_layout(node, &style))
     }
+
+    fn asymmetric(self, reason: &'static str) -> Self {
+        self.mutate(move |node| {
+            let _previous = node.attach(Asymmetric(reason));
+        })
+    }
 }
 
 impl LayoutBuilderExt for TextBuilder {
     fn layout(self, style: LayoutStyle) -> Self {
         self.mutate(move |node| install_layout(node, &style))
+    }
+
+    fn asymmetric(self, reason: &'static str) -> Self {
+        self.mutate(move |node| {
+            let _previous = node.attach(Asymmetric(reason));
+        })
     }
 }
 

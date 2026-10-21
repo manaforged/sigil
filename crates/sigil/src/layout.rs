@@ -2,6 +2,7 @@
 #[path = "layout/lib_tests.rs"]
 mod tests;
 
+pub mod align;
 mod block;
 mod block_collapse;
 mod block_size;
