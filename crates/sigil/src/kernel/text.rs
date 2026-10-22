@@ -274,8 +274,9 @@ impl IntoNode for TextBuilder {
 fn track_delta(cx: &Cx, id: NodeId, live: Option<Signal<String>>) {
     if let (Some(signal), Some(tag)) = (live, cx.get(id).and_then(Node::tag)) {
         effect_named("sigil-kernel::text_delta", move || {
-            signal.track();
-            tag.record(DeltaKind::Layout);
+            if signal.try_track() {
+                tag.record(DeltaKind::Layout);
+            }
         });
     }
 }
