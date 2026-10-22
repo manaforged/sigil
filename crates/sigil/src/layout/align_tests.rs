@@ -41,6 +41,10 @@ fn stack(rows: Vec<NodeBuilder>) -> NodeBuilder {
 }
 
 fn found(name: &'static str, tree: NodeBuilder) -> Vec<Misalignment> {
+    found_at(name, tree, Tolerance::points())
+}
+
+fn found_at(name: &'static str, tree: NodeBuilder, tolerance: Tolerance) -> Vec<Misalignment> {
     Runtime::scope(name, || {
         let mut cx = Cx::new_root();
         let root: NodeId = cx.add(tree);
@@ -48,7 +52,7 @@ fn found(name: &'static str, tree: NodeBuilder) -> Vec<Misalignment> {
         engine
             .compute(&mut cx, root, Size::fixed(200.0, 100.0))
             .expect("layout");
-        misalignments(&cx, &engine, root, Tolerance::points())
+        misalignments(&cx, &engine, root, tolerance)
     })
 }
 
@@ -182,4 +186,118 @@ fn text_inside_a_wider_box_is_not_an_inset() {
         )
         .child(crate::kernel::text("label").layout(LayoutStyle::block().width(5.0)));
     assert_eq!(found("align-text", tree), Vec::new());
+}
+
+#[test]
+fn centered_columns_are_clean() {
+    let rows = vec![
+        row(vec![cell(8.0), cell(44.0)]),
+        row(vec![cell(20.0), cell(20.0)]),
+    ];
+    assert_eq!(found("align-centered", stack(rows)), Vec::new());
+}
+
+#[test]
+fn a_vertical_near_miss_is_measured_from_a_parent_below_the_top() {
+    let uneven = container()
+        .layout(
+            LayoutStyle::block()
+                .fixed_size(100.0, 10.0)
+                .padding_x(3.0)
+                .padding_top(4.0)
+                .padding_bottom(2.0),
+        )
+        .child(container().layout(LayoutStyle::block().height(4.0)));
+    let tree = container()
+        .layout(
+            LayoutStyle::block()
+                .fixed_size(200.0, 60.0)
+                .padding_top(2.0),
+        )
+        .child(uneven);
+    let near = found("align-inset-vertical", tree);
+    assert!(
+        matches!(
+            near.as_slice(),
+            [Misalignment::Inset { axis: Axis::Y, start, end, .. }]
+                if (*start - 4.0).abs() < f32::EPSILON && (*end - 2.0).abs() < f32::EPSILON
+        ),
+        "{near:?}"
+    );
+}
+
+#[test]
+fn a_cell_host_reports_insets_up_to_three_cells_apart() {
+    let cell = crate::Host::CELL;
+    let near = found_at(
+        "align-cells-near",
+        inset(3.0 * cell, cell),
+        Tolerance::cells(),
+    );
+    assert!(
+        matches!(near.as_slice(), [Misalignment::Inset { axis: Axis::X, .. }]),
+        "{near:?}"
+    );
+    let wide = found_at(
+        "align-cells-wide",
+        inset(5.0 * cell, cell),
+        Tolerance::cells(),
+    );
+    assert_eq!(wide, Vec::new());
+}
+
+fn grid(widths: &[f32], rows: usize, shift: Option<(usize, usize, f32)>) -> NodeBuilder {
+    stack(
+        (0..rows)
+            .map(|at| {
+                row(widths
+                    .iter()
+                    .enumerate()
+                    .map(|(column, width)| {
+                        let extra = shift
+                            .filter(|(row, shifted, _)| *row == at && *shifted == column)
+                            .map_or(0.0, |(_, _, delta)| delta);
+                        cell(width + extra)
+                    })
+                    .collect())
+            })
+            .collect(),
+    )
+}
+
+proptest::proptest! {
+    #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
+
+    #[test]
+    fn one_shifted_cell_in_a_grid_of_shared_widths_is_reported(
+        widths in proptest::collection::vec(4_u8..30, 3..6),
+        rows in 2_usize..6,
+        row_at in proptest::prelude::any::<proptest::sample::Index>(),
+        column_at in proptest::prelude::any::<proptest::sample::Index>(),
+        delta in 1_u8..6,
+    ) {
+        let widths: Vec<f32> = widths.into_iter().map(f32::from).collect();
+        proptest::prop_assert_eq!(found("align-grid", grid(&widths, rows, None)), Vec::new());
+        let column = column_at.index(widths.len() - 1);
+        let shift = (row_at.index(rows), column, f32::from(delta));
+        let caught = found("align-grid", grid(&widths, rows, Some(shift)));
+        proptest::prop_assert!(
+            caught.iter().any(|item| matches!(
+                item,
+                Misalignment::Column { column: next, .. } if *next == column + 1
+            )),
+            "{caught:?}"
+        );
+    }
+
+    #[test]
+    fn an_even_inset_is_clean_and_an_uneven_one_is_reported(pad in 1_u8..20, delta in 1_u8..5) {
+        let pad = f32::from(pad);
+        proptest::prop_assert_eq!(found("align-pad", inset(pad, pad)), Vec::new());
+        let near = found("align-pad", inset(pad + f32::from(delta), pad));
+        proptest::prop_assert!(
+            matches!(near.as_slice(), [Misalignment::Inset { axis: Axis::X, .. }]),
+            "{near:?}"
+        );
+    }
 }

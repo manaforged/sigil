@@ -217,7 +217,7 @@ fn runs<'a>(cx: &'a Cx, node: &Node) -> Vec<Vec<&'a Node>> {
         }
     }
     runs.into_iter()
-        .filter(|(form, run)| form.is_some() && run.len() >= 2)
+        .filter(|(_, run)| run.len() >= 2)
         .map(|(_, run)| run)
         .collect()
 }
