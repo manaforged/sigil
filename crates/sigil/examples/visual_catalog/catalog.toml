@@ -748,10 +748,31 @@ title = "Chat"
 summary = "A chat client with channels, a streamed transcript, and a channel picker that runs in a window or a terminal."
 hosts = ["window", "terminal"]
 build = "chat-both"
-size = [800, 520]
-grid = [96, 26]
+size = [640, 500]
+grid = [80, 30]
 settle = { frames = 12, ms = 100 }
 source = "crates/sigil/examples/chat-both.rs"
+
+[[examples]]
+id = "chat-phone"
+title = "Chat at phone width"
+summary = "The chat client at phone width, in a window or a terminal."
+hosts = ["window", "terminal"]
+build = "chat-both"
+size = [360, 470]
+grid = [46, 30]
+settle = { frames = 12, ms = 100 }
+source = "crates/sigil/examples/chat-both.rs"
+
+[[examples]]
+id = "hello-counter"
+title = "Counter"
+summary = "A count and an Increment button: the smallest app, in a window or a terminal."
+hosts = ["window", "terminal"]
+build = "hello-counter"
+size = [480, 240]
+grid = [40, 10]
+source = "crates/sigil/examples/hello-counter.rs"
 
 [[examples]]
 id = "pomodoro-both"

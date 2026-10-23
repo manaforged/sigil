@@ -57,3 +57,19 @@ fn describe(host: &mut crate::Host) -> Vec<String> {
     }
     out
 }
+
+#[test]
+fn text_bound_to_a_signal_outlives_the_signals_owner() {
+    Runtime::scope("text-owner-gone", || {
+        let owner = crate::reactive::Owner::new("label", crate::reactive::Owner::current());
+        let label = owner.with(|| signal("a".to_string()));
+        let mut host = crate::Host::cells();
+        host.mount(move || text(label));
+        host.layout((320.0, 96.0)).expect("layout");
+        crate::reactive::batch(|| {
+            label.set("b".to_string());
+            owner.dispose();
+        });
+        host.layout((320.0, 96.0)).expect("layout");
+    });
+}

@@ -66,7 +66,11 @@ enum Edit {
 }
 
 fn word() -> impl Strategy<Value = String> {
-    "[a-z]{1,6}"
+    prop_oneof![
+        "[a-z]{1,6}".boxed(),
+        "[\u{4e00}-\u{4e40}]{1,3}".boxed(),
+        "[a-z]{0,2}[\u{1f600}-\u{1f640}][a-z]{0,2}".boxed(),
+    ]
 }
 
 fn spot() -> impl Strategy<Value = Spot> {

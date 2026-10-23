@@ -205,12 +205,19 @@ impl<T: 'static> Signal<T> {
     #[track_caller]
     pub(crate) fn track(self) {
         let caller = Location::caller();
+        if !self.try_track() {
+            disposed_signal("track", caller);
+        }
+    }
+
+    pub(crate) fn try_track(self) -> bool {
         with_rt(|rt| {
             if rt.signals.get(self.key).is_none() {
-                disposed_signal("track", caller);
+                return false;
             }
             track_key(rt, self.key);
-        });
+            true
+        })
     }
 
     #[track_caller]

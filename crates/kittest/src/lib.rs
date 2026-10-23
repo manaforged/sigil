@@ -246,16 +246,11 @@ pub fn capture_widget_scaled_focus_descendant(
     scale: f32,
     hit_point: (f32, f32),
     text_measure: Box<dyn TextMeasure>,
+    settle: &mut dyn FnMut() -> bool,
 ) -> Result<Option<Captured>, Error> {
     let target = RenderTarget::scaled(logical_size_px, scale);
-    capture_core(
-        build,
-        mode,
-        target,
-        hit_point,
-        text_measure,
-        focus_descendant,
-    )
+    let measure = (text_measure, focus_descendant);
+    capture_core(build, mode, target, hit_point, measure, settle)
 }
 
 fn focus_descendant(cx: &Cx, root: NodeId) -> NodeId {
@@ -323,8 +318,15 @@ fn render_core(
     text_measure: Box<dyn TextMeasure>,
     focus_target: impl Fn(&Cx, NodeId) -> NodeId,
 ) -> Rendered {
-    capture_core(build, mode, target, hit_point, text_measure, focus_target)
-        .map(|captured| captured.map(|captured| captured.image))
+    capture_core(
+        build,
+        mode,
+        target,
+        hit_point,
+        (text_measure, focus_target),
+        &mut || false,
+    )
+    .map(|captured| captured.map(|captured| captured.image))
 }
 
 #[allow(
@@ -336,13 +338,14 @@ fn capture_core(
     mode: InteractionMode,
     target: RenderTarget,
     hit_point: (f32, f32),
-    text_measure: Box<dyn TextMeasure>,
-    focus_target: impl Fn(&Cx, NodeId) -> NodeId,
+    (text_measure, focus_target): (Box<dyn TextMeasure>, impl Fn(&Cx, NodeId) -> NodeId),
+    settle: &mut dyn FnMut() -> bool,
 ) -> Result<Option<Captured>, Error> {
     sigil::reactive::Runtime::scope("sigil-visual-golden", || {
+        let [viewport_w, viewport_h] = target.logical;
+        sigil::app::viewport_size().set(sigil::geometry::LogicalSize::new(viewport_w, viewport_h));
         let mut cx = Cx::new_root();
         let root = cx.add(build);
-        let [viewport_w, viewport_h] = target.logical;
         let viewport = Size::fixed(viewport_w, viewport_h);
         let mut layout = LayoutEngine::with_text_measure(text_measure);
         let relayout = |tree: &mut Cx, engine: &mut LayoutEngine| {
@@ -351,6 +354,9 @@ fn capture_core(
                 .map_err(|err| Error::Layout(format!("{err:?}")))
         };
         relayout(&mut cx, &mut layout)?;
+        while settle() {
+            relayout(&mut cx, &mut layout)?;
+        }
         let focus = focus_target(&cx, root);
         drive_state(&mut cx, &layout, focus, mode, hit_point);
         relayout(&mut cx, &mut layout)?;

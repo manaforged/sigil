@@ -69,6 +69,7 @@
     - [sigil::icons::builtin](reference/sigil-ui/sigil-icons-builtin.md)
     - [sigil::kernel](reference/sigil-ui/sigil-kernel.md)
     - [sigil::layout](reference/sigil-ui/sigil-layout.md)
+    - [sigil::layout::align](reference/sigil-ui/sigil-layout-align.md)
     - [sigil::prelude](reference/sigil-ui/sigil-prelude.md)
     - [sigil::profile](reference/sigil-ui/sigil-profile.md)
     - [sigil::reactive](reference/sigil-ui/sigil-reactive.md)

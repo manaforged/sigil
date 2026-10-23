@@ -16,7 +16,11 @@ pub(crate) fn drive_state(
     let mut router = EventRouter::new();
     let (x, y) = hit;
     let events: Vec<ShellEvent> = match mode {
-        InteractionMode::Default | InteractionMode::Disabled => Vec::new(),
+        InteractionMode::Default => {
+            router.flush_focus_requests(cx, layout);
+            Vec::new()
+        }
+        InteractionMode::Disabled => Vec::new(),
         InteractionMode::Hover | InteractionMode::HoverAfterFrames { .. } => {
             vec![pointer_move(x, y)]
         }

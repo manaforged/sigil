@@ -56,10 +56,19 @@ pub(crate) struct View {
 
 pub(crate) fn paint<N: IntoNode + 'static>(
     child: impl FnOnce() -> N,
-    look: Look,
-    view: View,
-    scale: f32,
+    (look, view, scale): (Look, View, f32),
+    mut settle: Option<(Settle, &mut AsyncRuntime)>,
 ) -> super::shots::Capture {
+    let mut left = settle.as_ref().map_or(0, |(settle, _)| settle.frames);
+    let mut wait = || {
+        let Some((settle, tasks)) = settle.as_mut().filter(|_| left > 0) else {
+            return false;
+        };
+        left -= 1;
+        std::thread::sleep(Duration::from_millis(settle.ms));
+        tasks.pump();
+        true
+    };
     let theme = look.theme();
     let pad = view.pad;
     let frame = move || {
@@ -77,6 +86,7 @@ pub(crate) fn paint<N: IntoNode + 'static>(
         scale,
         (view.hit.0 + pad, view.hit.1 + pad),
         real_text_measure(),
+        &mut wait,
     )
 }
 

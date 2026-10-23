@@ -506,6 +506,7 @@
 
 | Method | Description |
 | --- | --- |
+| <code>asymmetric(self, reason: &amp;'static str) -&gt; Self</code> |  |
 | <code>layout(self, style: <a href="#layoutstyle">LayoutStyle</a>) -&gt; Self</code> |  |
 
 

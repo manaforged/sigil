@@ -5,13 +5,18 @@
 
 use sigil::prelude::*;
 use sigil::tasks::sleep;
-use sigil::widgets::{ModalBuilder, ScrollBuilder, TextFieldBuilder};
+use sigil::widgets::{ScrollBuilder, TextFieldBuilder};
 use std::time::Duration;
+
+#[path = "chat-both/switcher.rs"]
+mod switcher;
+use switcher::{Picker, picker_modal};
 use tokio::sync::mpsc::{
     UnboundedReceiver as Receiver, UnboundedSender as Sender, unbounded_channel,
 };
 
 const PANE_PADDING: f32 = sigil::style::space(2);
+const WIDE_MIN_WIDTH: f32 = 480.0;
 const CHANNELS: &str = "general random builds incidents design release";
 
 const LINES: &[&str] = &[
@@ -58,14 +63,6 @@ struct Chat {
     active: Signal<usize>,
     unread: Signal<Vec<usize>>,
     visible: Signal<Vec<usize>>,
-}
-
-#[derive(Clone, Copy)]
-struct Picker {
-    open: Signal<bool>,
-    query: Signal<String>,
-    cursor: Signal<usize>,
-    focus: Signal<u64>,
 }
 
 struct Server {
@@ -213,7 +210,7 @@ pub(crate) fn app_tree() -> impl IntoNode {
         cursor: signal(0),
         focus: signal(0),
     };
-    let open_picker = move |_: &mut KeyEvent| {
+    let show_picker = move || {
         picker.query.set(String::new());
         picker.cursor.set(0);
         picker.open.set(true);
@@ -222,21 +219,40 @@ pub(crate) fn app_tree() -> impl IntoNode {
     let unread = move || format!("{} unread", chat.unread.with(|u| u.iter().sum::<usize>()));
     container()
         .layout(LayoutStyle::flex_column().fill())
-        .key_capture(Shortcut::ctrl(LogicalKey::character("k")), open_picker)
+        .key_capture(
+            Shortcut::ctrl(LogicalKey::character("k")),
+            move |_: &mut KeyEvent| show_picker(),
+        )
         .child(
             container()
                 .layout(LayoutStyle::flex_row().fill_width().padding(PANE_PADDING))
                 .child(text(move || format!("# {}", current_name(chat))).nowrap())
                 .child(spacer())
-                .child(text("sigil-chat").nowrap().font_size(14.0)),
+                .child(show(
+                    wide,
+                    || text("sigil-chat").nowrap().font_size(14.0),
+                    move || button("Channels").activate(show_picker),
+                )),
         )
         .child(work(chat, posts))
         .child(status_bar([
             text(move || link_text(chat)).nowrap(),
             text(unread).nowrap(),
-            text("^K switch channel  Enter send").nowrap(),
+            text(move || {
+                if wide() {
+                    "^K switch channel  Enter send"
+                } else {
+                    "Enter send"
+                }
+                .to_owned()
+            })
+            .nowrap(),
         ]))
         .child(picker_modal(chat, picker))
+}
+
+fn wide() -> bool {
+    sigil::app::viewport_size().with(|size| size.width >= WIDE_MIN_WIDTH)
 }
 
 fn work(chat: Chat, posts: Sender<Post>) -> NodeBuilder {
@@ -247,7 +263,7 @@ fn work(chat: Chat, posts: Sender<Post>) -> NodeBuilder {
                 .grow(1.0)
                 .min_height(rows(0.0)),
         )
-        .child(sidebar(channels(chat)))
+        .child(show(wide, move || sidebar(channels(chat)), container))
         .child(
             container()
                 .layout(
@@ -333,68 +349,4 @@ fn composer(chat: Chat, posts: Sender<Post>) -> TextFieldBuilder {
                 draft.set(String::new());
             }
         })
-}
-
-fn rank(names: &[String], query: &str) -> Vec<usize> {
-    if query.trim().is_empty() {
-        return (0..names.len()).collect();
-    }
-    let mut hits: Vec<(usize, usize)> = names
-        .iter()
-        .enumerate()
-        .filter_map(|(index, name)| fuzzy_score(query, name).map(|hit| (hit.score, index)))
-        .collect();
-    hits.sort_unstable();
-    hits.into_iter().map(|(_, index)| index).collect()
-}
-
-fn pick(chat: Chat, picker: Picker, channel: usize) {
-    chat.active.set(channel);
-    picker.open.set(false);
-}
-
-fn picker_modal(chat: Chat, picker: Picker) -> ModalBuilder {
-    let hits = derived(move || {
-        let query = picker.query.get();
-        chat.names.with(|names| rank(names, &query))
-    });
-    let step = move |forward: bool| {
-        let count = hits.with(Vec::len).max(1);
-        let shift = if forward { 1 } else { count - 1 };
-        picker.cursor.update(|at| *at = (*at + shift) % count);
-    };
-    let search = text_field(picker.query)
-        .placeholder("Jump to channel")
-        .focus_when(picker.focus)
-        .change(move |_| picker.cursor.set(0))
-        .submit(move |_| {
-            if let Some(channel) = hits.with(|h| h.get(picker.cursor.peek()).copied()) {
-                pick(chat, picker, channel);
-            }
-        });
-    let results = container()
-        .layout(LayoutStyle::flex_column().fill_width())
-        .children_reactive(move || {
-            let cursor = picker.cursor.get();
-            let names = chat.names.get();
-            let entries = hits.get().into_iter().enumerate();
-            entries
-                .filter_map(|(row, channel)| {
-                    let name = names.get(channel)?;
-                    let item = list_row(row == cursor, format!("# {name}"), "");
-                    Some(item.pointer_up(move |_| pick(chat, picker, channel)))
-                })
-                .collect::<Vec<_>>()
-        });
-    modal(picker.open)
-        .title("Switch channel")
-        .dismiss_on_backdrop(true)
-        .child(
-            container()
-                .layout(LayoutStyle::flex_column().fill_width().gap(rows(0.5)))
-                .key_capture(Key::ArrowDown, move |_| step(true))
-                .key_capture(Key::ArrowUp, move |_| step(false))
-                .child(search)
-                .child(results),
-        )
 }

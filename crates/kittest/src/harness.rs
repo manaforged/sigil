@@ -260,6 +260,24 @@ impl Harness {
         (&mut self.host, &mut self.router)
     }
 
+    #[must_use]
+    pub fn misalignments(&mut self) -> Vec<sigil::layout::align::Misalignment> {
+        self.live();
+        let tolerance = sigil::layout::align::Tolerance::for_mode(self.host.host_mode());
+        self.host.misalignments(tolerance)
+    }
+
+    #[track_caller]
+    pub fn assert_aligned(&mut self) {
+        let found = self.misalignments();
+        if found.is_empty() {
+            return;
+        }
+        let listed: Vec<String> = found.iter().map(ToString::to_string).collect();
+        let text = self.text();
+        fail(format!("misaligned:\n{}\n{text}", listed.join("\n")));
+    }
+
     fn viewport(&self) -> (f32, f32) {
         self.surface.viewport()
     }

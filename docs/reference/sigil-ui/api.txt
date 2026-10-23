@@ -1873,6 +1873,66 @@ pub fn sigil::kernel::show<A, B>(cond: impl sigil::reactive::Reactive<bool>, the
 pub fn sigil::kernel::switch<K: core::clone::Clone + core::cmp::PartialEq + 'static>(key: impl sigil::reactive::Reactive<K>) -> sigil::kernel::SwitchBuilder<K>
 pub fn sigil::kernel::text(source: impl core::convert::Into<sigil::kernel::TextContent>) -> sigil::kernel::TextBuilder
 pub mod sigil::layout
+pub mod sigil::layout::align
+pub enum sigil::layout::align::Misalignment
+pub sigil::layout::align::Misalignment::Column
+pub sigil::layout::align::Misalignment::Column::column: usize
+pub sigil::layout::align::Misalignment::Column::ends: alloc::vec::Vec<f32>
+pub sigil::layout::align::Misalignment::Column::parent: sigil::layout::align::NodeLabel
+pub sigil::layout::align::Misalignment::Column::starts: alloc::vec::Vec<f32>
+pub sigil::layout::align::Misalignment::Column::tops: alloc::vec::Vec<f32>
+pub sigil::layout::align::Misalignment::Inset
+pub sigil::layout::align::Misalignment::Inset::axis: sigil::widgets::Axis
+pub sigil::layout::align::Misalignment::Inset::end: f32
+pub sigil::layout::align::Misalignment::Inset::node: sigil::layout::align::NodeLabel
+pub sigil::layout::align::Misalignment::Inset::rect: sigil::geometry::Rect
+pub sigil::layout::align::Misalignment::Inset::start: f32
+impl sigil::layout::align::Misalignment
+pub const fn sigil::layout::align::Misalignment::kind(&self) -> sigil::layout::align::MisalignmentKind
+pub const fn sigil::layout::align::Misalignment::node(&self) -> &sigil::layout::align::NodeLabel
+impl core::clone::Clone for sigil::layout::align::Misalignment
+impl core::cmp::PartialEq for sigil::layout::align::Misalignment
+impl core::fmt::Debug for sigil::layout::align::Misalignment
+impl core::fmt::Display for sigil::layout::align::Misalignment
+impl core::marker::StructuralPartialEq for sigil::layout::align::Misalignment
+pub enum sigil::layout::align::MisalignmentKind
+pub sigil::layout::align::MisalignmentKind::Column
+pub sigil::layout::align::MisalignmentKind::Inset
+impl core::clone::Clone for sigil::layout::align::MisalignmentKind
+impl core::cmp::Eq for sigil::layout::align::MisalignmentKind
+impl core::cmp::PartialEq for sigil::layout::align::MisalignmentKind
+impl core::fmt::Debug for sigil::layout::align::MisalignmentKind
+impl core::marker::Copy for sigil::layout::align::MisalignmentKind
+impl core::marker::StructuralPartialEq for sigil::layout::align::MisalignmentKind
+pub struct sigil::layout::align::Asymmetric(pub &'static str)
+impl core::clone::Clone for sigil::layout::align::Asymmetric
+impl core::cmp::Eq for sigil::layout::align::Asymmetric
+impl core::cmp::PartialEq for sigil::layout::align::Asymmetric
+impl core::fmt::Debug for sigil::layout::align::Asymmetric
+impl core::marker::Copy for sigil::layout::align::Asymmetric
+impl core::marker::StructuralPartialEq for sigil::layout::align::Asymmetric
+pub struct sigil::layout::align::NodeLabel
+pub sigil::layout::align::NodeLabel::id: sigil::kernel::NodeId
+pub sigil::layout::align::NodeLabel::label: alloc::string::String
+impl core::clone::Clone for sigil::layout::align::NodeLabel
+impl core::cmp::Eq for sigil::layout::align::NodeLabel
+impl core::cmp::PartialEq for sigil::layout::align::NodeLabel
+impl core::fmt::Debug for sigil::layout::align::NodeLabel
+impl core::fmt::Display for sigil::layout::align::NodeLabel
+impl core::marker::StructuralPartialEq for sigil::layout::align::NodeLabel
+pub struct sigil::layout::align::Tolerance
+pub sigil::layout::align::Tolerance::exact: f32
+pub sigil::layout::align::Tolerance::near_miss: f32
+impl sigil::layout::align::Tolerance
+pub const fn sigil::layout::align::Tolerance::cells() -> Self
+pub const fn sigil::layout::align::Tolerance::for_mode(mode: sigil::kernel::HostMode) -> Self
+pub const fn sigil::layout::align::Tolerance::points() -> Self
+impl core::clone::Clone for sigil::layout::align::Tolerance
+impl core::cmp::PartialEq for sigil::layout::align::Tolerance
+impl core::fmt::Debug for sigil::layout::align::Tolerance
+impl core::marker::Copy for sigil::layout::align::Tolerance
+impl core::marker::StructuralPartialEq for sigil::layout::align::Tolerance
+pub fn sigil::layout::align::misalignments(cx: &sigil::kernel::Cx, layout: &sigil::layout::LayoutEngine, root: sigil::kernel::NodeId, tolerance: sigil::layout::align::Tolerance) -> alloc::vec::Vec<sigil::layout::align::Misalignment>
 pub enum sigil::layout::AlignContent
 pub sigil::layout::AlignContent::Center
 pub sigil::layout::AlignContent::End
@@ -2229,6 +2289,7 @@ pub trait sigil::layout::IntoPx
 pub fn sigil::layout::IntoPx::into_px(self) -> f32
 impl sigil::layout::IntoPx for f32
 pub trait sigil::layout::LayoutBuilderExt
+pub fn sigil::layout::LayoutBuilderExt::asymmetric(self, reason: &'static str) -> Self
 pub fn sigil::layout::LayoutBuilderExt::layout(self, style: sigil::layout::LayoutStyle) -> Self
 pub trait sigil::layout::LayoutReactiveExt
 pub fn sigil::layout::LayoutReactiveExt::bounds_reactive(self, bounds: sigil::reactive::Signal<(f32, f32, f32, f32)>) -> Self
@@ -3123,6 +3184,7 @@ pub fn sigil::prelude::IntoNode::build(self, cx: &mut sigil::kernel::Cx) -> sigi
 pub trait sigil::prelude::IntoPx
 pub fn sigil::prelude::IntoPx::into_px(self) -> f32
 pub trait sigil::prelude::LayoutBuilderExt
+pub fn sigil::prelude::LayoutBuilderExt::asymmetric(self, reason: &'static str) -> Self
 pub fn sigil::prelude::LayoutBuilderExt::layout(self, style: sigil::layout::LayoutStyle) -> Self
 pub trait sigil::prelude::LayoutReactiveExt
 pub fn sigil::prelude::LayoutReactiveExt::bounds_reactive(self, bounds: sigil::reactive::Signal<(f32, f32, f32, f32)>) -> Self
@@ -6853,6 +6915,7 @@ pub fn sigil::Host::focus_intent(&mut self, router: &mut sigil::events::EventRou
 pub fn sigil::Host::hit_path(&mut self, x: f32, y: f32) -> alloc::vec::Vec<sigil::kernel::NodeId>
 pub const fn sigil::Host::host_mode(&self) -> sigil::kernel::HostMode
 pub fn sigil::Host::layout(&mut self, viewport: (f32, f32)) -> core::result::Result<core::option::Option<sigil::kernel::NodeId>, sigil::layout::LayoutError>
+pub fn sigil::Host::misalignments(&self, tolerance: sigil::layout::align::Tolerance) -> alloc::vec::Vec<sigil::layout::align::Misalignment>
 pub fn sigil::Host::mount(&mut self, app: impl sigil::kernel::IntoNode)
 pub fn sigil::Host::new() -> Self
 pub fn sigil::Host::perform(&mut self, router: &mut sigil::events::EventRouter, target: sigil::kernel::NodeId, request: &accesskit::ActionRequest)

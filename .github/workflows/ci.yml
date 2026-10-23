@@ -1,6 +1,10 @@
 name: CI
 
 on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
   workflow_call:
   workflow_dispatch:
 
@@ -8,8 +12,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.run_id }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -82,3 +86,38 @@ jobs:
         env:
           SIGIL_DISPLAY_GATE: "1"
         run: cargo test -p sigil-ui --locked --test shell_display_gate
+
+  msrv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: linux system libs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-3-dev libudev-dev libasound2-dev libxkbcommon-dev libxkbcommon-x11-dev libxdo-dev
+      - name: minimum Rust
+        run: |
+          rust=$(sed -n '/^\[workspace.package\]/,/^\[/s/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          test "$rust" = "1.90"
+          rustup toolchain install 1.90.0 --profile minimal
+          cargo +1.90.0 check -p sigil-ui --all-features --locked
+
+  required:
+    if: always()
+    needs: [workflows, gate, platforms, msrv]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: every gate passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then
+              echo "a gate job ended with $result" >&2
+              exit 1
+            fi
+          done
