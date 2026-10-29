@@ -2,14 +2,14 @@ use crate::reactive::Reactive;
 use std::rc::Rc;
 
 use crate::events::NodeEventsExt;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, Overflow, Position};
 use crate::layout::{LayoutStyle, snap};
 use crate::reactive::{Signal, derived};
 use crate::style::DISABLED_OPACITY;
-use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, space};
+use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, space};
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::menu::MenuItem;
 use super::super::scroll::{WheelAxis, wheel};
 use super::super::virtual_list::virtual_list;
@@ -317,27 +317,8 @@ fn default_empty() -> NodeBuilder {
         )
 }
 
-impl<Row: 'static> IntoNode for TableBuilder<Row> {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
-
-impl<Row: 'static> WidgetLayoutExt for TableBuilder<Row> {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([Row: 'static] TableBuilder<Row>: paint(style_accumulator), layout, node);
 
 #[cfg(test)]
 #[path = "view_tests.rs"]
 mod tests;
-
-impl<Row: 'static> PaintTarget for TableBuilder<Row> {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}

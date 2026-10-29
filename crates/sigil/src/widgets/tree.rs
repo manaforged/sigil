@@ -2,6 +2,7 @@ mod flatten;
 mod keys;
 mod row;
 
+use super::layout_ext::WidgetLayoutExt;
 use std::hash::Hash;
 use std::rc::Rc;
 
@@ -10,7 +11,7 @@ use crate::reactive::{Reactive, Signal, signal};
 use crate::style::{Tone, space};
 
 use super::icon::{IconSource, IntoIconSource};
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use super::patterns::RowTone;
 use super::virtual_list::{SelectionMode, virtual_list};
 
@@ -173,11 +174,7 @@ impl<K: TreeKey> TreeBuilder<K> {
     }
 }
 
-impl<K: TreeKey> WidgetLayoutExt for TreeBuilder<K> {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([K: TreeKey] TreeBuilder<K>: layout);
 
 impl<K: TreeKey> IntoNode for TreeBuilder<K> {
     fn build(self, cx: &mut Cx) -> NodeId {

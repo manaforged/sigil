@@ -1,4 +1,4 @@
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
+use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{theme_label, theme_string};
@@ -163,11 +163,7 @@ impl HintOverlayBuilder {
     }
 }
 
-impl IntoNode for HintOverlayBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] HintOverlayBuilder: plain_node);
 
 #[must_use]
 pub fn hint_overlay(hints: &[HintEntry<'_>]) -> HintOverlayBuilder {

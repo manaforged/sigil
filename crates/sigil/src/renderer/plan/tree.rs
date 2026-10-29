@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
-use crate::renderer::scene_command::state::SceneState;
-use crate::renderer::scene_command::{LayerScope, SceneCommand};
+use crate::scene::command::{LayerScope, SceneCommand};
+use crate::scene::state::SceneState;
 
-pub(super) enum Node<'a> {
+pub(crate) enum Node<'a> {
     Command(&'a SceneCommand),
     State(Cow<'a, SceneCommand>),
     Layer {
@@ -17,7 +17,7 @@ pub(super) enum Node<'a> {
     },
 }
 
-pub(super) fn build_tree(commands: &[SceneCommand]) -> Vec<Node<'_>> {
+pub(crate) fn build_tree(commands: &[SceneCommand]) -> Vec<Node<'_>> {
     let mut nodes = Vec::new();
     let mut index = 0;
     while let Some(command) = commands.get(index) {

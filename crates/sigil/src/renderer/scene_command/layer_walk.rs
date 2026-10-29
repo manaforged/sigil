@@ -3,14 +3,12 @@ use crate::geometry::{Point, Rect};
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_upload::UploadCapacities;
 use crate::renderer::layer_pool::LayerPool;
+use crate::renderer::plan::{Node, build_tree};
+use crate::renderer::quad_paint::AtlasPipeline;
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::{Walk, WalkCtx, pipeline_for, translation};
 use crate::renderer::scene_command::{CommandScene, SceneCommand};
-use crate::renderer::sprite_paint::SpritePipeline;
 
-#[path = "layer_walk/tree.rs"]
-mod tree;
-use tree::{Node, build_tree};
 #[path = "layer_walk/offscreen.rs"]
 mod offscreen;
 use offscreen::{
@@ -121,10 +119,10 @@ fn prepare_sprites(ctx: &mut WalkCtx<'_>, commands: &[SceneCommand]) {
         return;
     }
     pipeline_for(
-        ctx.sprite_pipelines,
+        ctx.quad_pipelines,
         ctx.device,
         ctx.format,
-        (SpritePipeline::format, SpritePipeline::new),
+        (AtlasPipeline::format, AtlasPipeline::new),
     )
     .prepare(ctx.device, ctx.queue, commands, ctx.scale);
 }
@@ -294,8 +292,7 @@ const fn reborrow_ctx<'a>(
         fill_pipelines: &mut *ctx.fill_pipelines,
         shadow_pipelines: &mut *ctx.shadow_pipelines,
         slug_pipelines: &mut *ctx.slug_pipelines,
-        raster_pipelines: &mut *ctx.raster_pipelines,
-        sprite_pipelines: &mut *ctx.sprite_pipelines,
+        quad_pipelines: &mut *ctx.quad_pipelines,
         decoration_pipelines: &mut *ctx.decoration_pipelines,
         layer_pipelines: &mut *ctx.layer_pipelines,
         blur_pipelines: &mut *ctx.blur_pipelines,

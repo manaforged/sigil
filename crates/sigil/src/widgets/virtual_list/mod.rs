@@ -19,7 +19,7 @@ use crate::reactive::{Signal, effect};
 
 use std::ops::Deref;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use super::scroll::ScrollAxis;
 use super::table::Identifiable;
 pub use row::RowRender;
@@ -366,17 +366,7 @@ where
     }
 }
 
-impl<T: 'static, R: RowRender<T>> crate::style::PaintTarget for VirtualListBuilder<T, R> {
-    fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
-        crate::style::StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl<T: 'static, R: RowRender<T>> WidgetLayoutExt for VirtualListBuilder<T, R> {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([T: 'static, R: RowRender<T>] VirtualListBuilder<T, R>: paint(style_accumulator), layout);
 
 #[cfg(test)]
 mod tests;

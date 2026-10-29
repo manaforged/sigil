@@ -1,9 +1,9 @@
 use crate::kernel::NodeBuilder;
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Reactive, Signal};
-use crate::style::{ClassSource, NodeStyleExt, PaintTarget, Style, StyleSlot};
+use crate::style::{ClassSource, NodeStyleExt, Style};
 use crate::widgets::interaction::InteractionState;
-use crate::widgets::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use crate::widgets::layout_ext::LayoutOverrides;
 use crate::widgets::shared::state_surface;
 
 pub struct InteractiveBuilder {
@@ -60,22 +60,4 @@ impl InteractiveBuilder {
     }
 }
 
-impl PaintTarget for InteractiveBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style)
-    }
-}
-
-impl crate::style::StateHost for InteractiveBuilder {}
-
-impl WidgetLayoutExt for InteractiveBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl crate::kernel::IntoNode for InteractiveBuilder {
-    fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] InteractiveBuilder: paint(style), state, layout, plain_node);

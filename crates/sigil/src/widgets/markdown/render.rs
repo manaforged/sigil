@@ -10,7 +10,7 @@ use crate::widgets::{highlight, text_runs};
 use super::super::checkbox::{CheckMark, checkbox_indicator};
 use super::containers::{List, Task};
 use super::inline::styled;
-use super::parse::Block;
+use super::parse::{Block, Inline};
 
 #[derive(Clone, Copy)]
 pub(super) struct Tone(pub(super) Token);
@@ -19,7 +19,7 @@ pub(super) fn tinted(node: TextBuilder, tone: Tone) -> TextBuilder {
     node.class(tone.0.text())
 }
 
-pub(super) fn rich(source: &str, class: &'static str, tone: Tone, role: Role) -> NodeBuilder {
+pub(super) fn rich(source: &[Inline], class: &'static str, tone: Tone, role: Role) -> NodeBuilder {
     let body = styled(source);
     container()
         .role(role)
@@ -27,7 +27,7 @@ pub(super) fn rich(source: &str, class: &'static str, tone: Tone, role: Role) ->
         .child(tinted(text(body.text).runs(body.runs).class(class), tone))
 }
 
-pub(super) fn heading(level: u8, body: &str) -> NodeBuilder {
+pub(super) fn heading(level: u8, body: &[Inline]) -> NodeBuilder {
     let class = match level {
         1 => CellForm::new("text-xl font-bold", "font-bold underline").pick(),
         2 => "text-lg font-bold",

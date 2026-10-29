@@ -1,4 +1,4 @@
-use super::GlyphCache;
+use super::QuadCache;
 use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::raster::RasterKey;
 
@@ -16,7 +16,7 @@ fn key(glyph_id: u32) -> RasterKey {
 #[test]
 fn a_full_cache_drops_only_stale_glyphs() {
     let limits = CacheLimits::DEFAULT;
-    let mut cache = GlyphCache::default();
+    let mut cache = QuadCache::default();
     let stale = u32::try_from(limits.glyph_masks).unwrap_or(u32::MAX);
     for id in 0..stale {
         cache.masks.insert(key(id), (None, 0));

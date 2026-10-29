@@ -10,7 +10,7 @@ macro_rules! string_keys {
         }
 
         impl StringKey {
-            pub const ALL: [Self; 37] = [$(Self::$key,)*];
+            pub const ALL: [Self; 43] = [$(Self::$key,)*];
         }
 
         const NAMES: [(&str, StringKey); StringKey::ALL.len()] = [$(($name, StringKey::$key),)*];
@@ -57,6 +57,12 @@ string_keys! {
     SelectAllRows "select_all_rows" "Select all visible rows",
     SelectRow "select_row" "Select row {0}",
     SavingOnExit "saving_on_exit" "Saving before closing",
+    Toggle "toggle" "Toggle",
+    Checkbox "checkbox" "Checkbox",
+    NoticeError "notice_error" "Error",
+    NoticeWarning "notice_warning" "Warning",
+    NoticeSuccess "notice_success" "Success",
+    Notice "notice" "Notice",
 }
 
 impl StringKey {

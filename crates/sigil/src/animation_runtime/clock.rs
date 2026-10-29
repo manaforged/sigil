@@ -1,19 +1,9 @@
-use core::cell::RefCell;
-use slotmap::{SlotMap, new_key_type};
-
+use crate::reactive::frame::{Source, with_sources};
 use crate::reactive::{Owner, Runtime, Signal, batch, on_cleanup, signal};
 
-new_key_type! {
-    struct ClockId;
-}
-
-struct Clock {
+pub(crate) struct ClockSource {
     seconds: Signal<f64>,
     elapsed: f64,
-}
-
-thread_local! {
-    static CLOCKS: RefCell<SlotMap<ClockId, Clock>> = RefCell::new(SlotMap::with_key());
 }
 
 #[must_use]
@@ -24,14 +14,13 @@ pub fn clock() -> Signal<f64> {
         "clock called outside a reactive scope"
     );
     let seconds = signal(0.0_f64);
-    let id = CLOCKS.with(|cell| {
-        cell.borrow_mut().insert(Clock {
-            seconds,
-            elapsed: 0.0,
-        })
+    let source = Source::Clock(ClockSource {
+        seconds,
+        elapsed: 0.0,
     });
+    let id = with_sources(|sources| sources.map.insert(source));
     on_cleanup(move || {
-        CLOCKS.with(|cell| cell.borrow_mut().remove(id));
+        with_sources(|sources| sources.map.remove(id));
     });
     Runtime::mark_frame_dirty();
     seconds
@@ -39,7 +28,13 @@ pub fn clock() -> Signal<f64> {
 
 #[must_use]
 pub fn running_clocks() -> usize {
-    CLOCKS.with(|cell| cell.borrow().len())
+    with_sources(|sources| {
+        sources
+            .map
+            .values()
+            .filter(|source| matches!(source, Source::Clock(_)))
+            .count()
+    })
 }
 
 pub(crate) fn tick_clocks(dt: f32) {
@@ -47,10 +42,13 @@ pub(crate) fn tick_clocks(dt: f32) {
         return;
     }
     batch(|| {
-        CLOCKS.with(|cell| {
-            cell.borrow_mut().retain(|_, clock| {
-                clock.elapsed += f64::from(dt);
-                clock.seconds.try_set(clock.elapsed)
+        with_sources(|sources| {
+            sources.map.retain(|_, source| match source {
+                Source::Clock(clock) => {
+                    clock.elapsed += f64::from(dt);
+                    clock.seconds.try_set(clock.elapsed)
+                }
+                _ => true,
             });
         });
         Runtime::mark_frame_dirty();

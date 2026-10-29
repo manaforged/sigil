@@ -1,38 +1,37 @@
-use std::cell::Cell;
-use std::rc::Rc;
-
 use crate::events::{Key, KeyEvent, LogicalKey, NodeEventsExt};
 use crate::kernel::NodeBuilder;
-use crate::reactive::{effect, untrack};
 
+use super::super::listbox::{Move, Rows, TREE, follow_cursor};
 use super::super::patterns::Disclosure;
 use super::{TreeKey, TreeRow, TreeState};
 
 pub(super) fn sync_cursor<K: TreeKey>(state: &TreeState<K>) {
-    let (rows, selected, cursor) = (state.rows, state.selected, state.cursor);
-    let seen: Rc<Cell<Option<usize>>> = Rc::new(Cell::new(None));
-    effect(move || {
-        let index = cursor.get();
-        let first = seen.replace(Some(index)).is_none();
-        if first {
-            return;
-        }
-        let id = untrack(|| rows.with(|rows| rows.get(index).map(|row| row.id.clone())));
-        if id.is_some() && selected.peek() != id {
-            selected.set(id);
-        }
-    });
-    effect(move || {
-        let Some(id) = selected.get() else {
-            return;
-        };
-        let found = rows.with(|rows| rows.iter().position(|row| row.id == id));
-        if let Some(index) = found
-            && cursor.peek() != index
-        {
-            cursor.set(index);
-        }
-    });
+    let rows = state.rows;
+    follow_cursor(
+        state.cursor,
+        state.selected,
+        move |index| rows.with(|rows| rows.get(index).map(|row| row.id.clone())),
+        move |id| rows.with(|rows| rows.iter().position(|row| row.id == *id)),
+    );
+}
+
+struct Flat<'a, K: TreeKey>(&'a [TreeRow<K>]);
+
+impl<K: TreeKey> Rows for Flat<'_, K> {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn parent(&self, index: usize) -> Option<usize> {
+        self.0.get(index).and_then(|row| row.parent)
+    }
+
+    fn child(&self, index: usize) -> Option<usize> {
+        self.0
+            .get(index + 1)
+            .is_some_and(|next| next.parent == Some(index))
+            .then_some(index + 1)
+    }
 }
 
 pub(super) fn toggle<K: TreeKey>(state: &TreeState<K>, row: &TreeRow<K>) {
@@ -62,8 +61,7 @@ pub(super) fn select<K: TreeKey>(state: &TreeState<K>, index: usize, row: &TreeR
 
 #[derive(Clone, Copy)]
 enum Command {
-    Collapse,
-    Expand,
+    Level(Move),
     Activate,
     Toggle,
 }
@@ -73,9 +71,13 @@ pub(super) fn attach<K: TreeKey>(node: NodeBuilder, state: &TreeState<K>) -> Nod
         let state = state.clone();
         move |event: &mut KeyEvent| run(&state, command, event)
     };
-    node.key(Key::ArrowLeft, bind(Command::Collapse))
-        .key(Key::ArrowRight, bind(Command::Expand))
-        .key(Key::Enter, bind(Command::Activate))
+    let mut node = node;
+    for (key, step) in TREE.bindings() {
+        if matches!(step, Move::Parent | Move::Child) {
+            node = node.key(key, bind(Command::Level(step)));
+        }
+    }
+    node.key(Key::Enter, bind(Command::Activate))
         .key(LogicalKey::character(" "), bind(Command::Toggle))
 }
 
@@ -86,20 +88,18 @@ fn run<K: TreeKey>(state: &TreeState<K>, command: Command, event: &mut KeyEvent)
     };
     event.stop_propagation();
     match command {
-        Command::Collapse if row.disclosure == Disclosure::Expanded => toggle(state, &row),
-        Command::Collapse => {
-            if let Some(parent) = row.parent {
-                state.cursor.set(parent);
-            }
+        Command::Level(Move::Parent) if row.disclosure == Disclosure::Expanded => {
+            toggle(state, &row);
         }
-        Command::Expand if row.disclosure == Disclosure::Collapsed => toggle(state, &row),
-        Command::Expand => {
-            let child = state.rows.with(|rows| {
-                rows.get(index + 1)
-                    .is_some_and(|next| next.parent == Some(index))
-            });
-            if child {
-                state.cursor.set(index + 1);
+        Command::Level(Move::Child) if row.disclosure == Disclosure::Collapsed => {
+            toggle(state, &row);
+        }
+        Command::Level(step) => {
+            let target = state
+                .rows
+                .with(|rows| TREE.target(&Flat(rows), index, step));
+            if let Some(target) = target {
+                state.cursor.set(target);
             }
         }
         Command::Activate => activate(state, &row),

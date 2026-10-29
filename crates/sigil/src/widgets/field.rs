@@ -11,6 +11,10 @@ use super::color_field::ColorFieldBuilder;
 use super::number_field::{NumberFieldBuilder, NumericKind};
 use super::text_field::TextFieldBuilder;
 
+mod parsed;
+
+pub(crate) use parsed::{FieldParser, ParsedField};
+
 const FIELD_GAP: f32 = space(1);
 fn shown(visible: bool) -> &'static [StyleAtom] {
     static HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];

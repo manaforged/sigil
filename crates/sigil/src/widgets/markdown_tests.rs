@@ -22,8 +22,8 @@ fn oversized_markdown_source_is_rejected() {
     assert!(
         matches!(
             blocks.as_slice(),
-            [crate::widgets::markdown::parse::Block::Paragraph(text)]
-                if text.contains("1 MiB")
+            [crate::widgets::markdown::parse::Block::Paragraph(body)]
+                if crate::widgets::markdown::parse::Inline::plain(body).contains("1 MiB")
         ),
         "oversized input must return the limit message",
     );

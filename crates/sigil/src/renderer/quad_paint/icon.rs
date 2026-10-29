@@ -1,9 +1,9 @@
 use crate::icons::{BakedIcon, IconBaker, builtin};
 
-use super::{AtlasDesc, SpritePipeline};
+use super::{AtlasDesc, AtlasPipeline};
 use crate::renderer::sprite_atlas::builtin_icon_index;
 
-impl SpritePipeline {
+impl AtlasPipeline {
     pub(crate) fn register_icon(
         &mut self,
         device: &wgpu::Device,

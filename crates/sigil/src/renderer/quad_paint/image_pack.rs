@@ -1,7 +1,7 @@
 use crate::renderer::cache_limits::CacheLimits;
 use std::collections::HashMap;
 
-use super::SpritePipeline;
+use super::AtlasPipeline;
 use super::atlas::{AtlasDesc, MAX_ATLASES, build_atlas, valid_atlas_desc};
 
 pub(super) const PAGE: u32 = 1024;
@@ -114,8 +114,9 @@ impl ImagePack {
     }
 }
 
-impl SpritePipeline {
-    pub(crate) fn begin_frame(&mut self) {
+impl AtlasPipeline {
+    pub(crate) fn begin_frame(&mut self, queue: &wgpu::Queue) {
+        self.mask_atlas.begin_frame(queue);
         let pack = &mut self.image_pack;
         pack.frame += 1;
         let reset = core::mem::take(&mut pack.reset_pending);

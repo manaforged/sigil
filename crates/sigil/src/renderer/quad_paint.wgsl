@@ -1,6 +1,7 @@
 const SPRITE_KIND_MONO: u32 = 0u;
 const SPRITE_KIND_SUBPIXEL: u32 = 1u;
 const SPRITE_KIND_POLY: u32 = 2u;
+const QUAD_KIND_MASK: u32 = 3u;
 
 struct Uniforms {
     viewport: vec2<f32>,
@@ -54,6 +55,9 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
     let uv = inst.uv_rect.xy + v.unit * (inst.uv_rect.zw - inst.uv_rect.xy);
     let dx = 1.0 / u.atlas_size.x;
     out.uv = uv;
+    if sprite_kind == QUAD_KIND_MASK {
+        out.uv = mix(inst.uv_rect.xy, inst.uv_rect.zw, v.unit);
+    }
     if sprite_kind == SPRITE_KIND_SUBPIXEL {
         out.uv = vec2<f32>(uv.x + inst.params.z * dx, uv.y);
     }
@@ -70,6 +74,13 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
+    if in.sprite_kind == QUAD_KIND_MASK {
+        let coverage = textureSampleLevel(atlas_tex, atlas_sampler, in.uv, 0.0).r;
+        if coverage < 1e-4 {
+            return vec4<f32>(0.0);
+        }
+        return vec4<f32>(in.color.rgb, in.color.a * coverage);
+    }
     if in.sprite_kind == SPRITE_KIND_MONO {
         let coverage = texel(in.uv_bounds, in.uv).a;
         let a = in.color.a * coverage * in.opacity;

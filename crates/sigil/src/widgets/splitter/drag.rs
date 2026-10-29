@@ -1,12 +1,10 @@
 use std::cell::RefCell;
 
-use crate::events::NodeEventsExt;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 
+use crate::widgets::drag::{Axis, axis_drag};
 use crate::widgets::orientation::Orientation;
-
-type Anchor = (usize, f32, Vec<f32>);
 
 #[derive(Clone, Copy)]
 pub(super) struct SplitterState {
@@ -22,7 +20,6 @@ struct SplitterStateInner {
     snap_points: Vec<Vec<f32>>,
     snap_threshold: f32,
     sizes_bind: Option<Signal<Vec<f32>>>,
-    drag_anchor: RefCell<Option<Anchor>>,
     revision: Signal<u64>,
 }
 
@@ -59,7 +56,6 @@ impl SplitterState {
             snap_points,
             snap_threshold: snap_threshold.max(0.0),
             sizes_bind,
-            drag_anchor: RefCell::new(None),
             revision: signal(0),
         }));
         Self { inner }
@@ -91,14 +87,8 @@ impl SplitterState {
     }
 
     pub(super) fn nudge(self, handle: usize, delta: f32) {
-        self.begin(handle, 0.0);
-        self.apply_delta(handle, delta);
-        self.inner.drag_anchor.borrow_mut().take();
-    }
-
-    fn begin(self, handle: usize, axis_position: f32) {
         let snapshot = self.inner.sizes.borrow().clone();
-        *self.inner.drag_anchor.borrow_mut() = Some((handle, axis_position, snapshot));
+        self.resize(&snapshot, handle, delta);
     }
 
     fn resize(self, snapshot: &[f32], handle: usize, delta: f32) {
@@ -117,18 +107,7 @@ impl SplitterState {
         }
     }
 
-    fn apply_delta(self, handle: usize, delta: f32) {
-        let snapshot = match self.inner.drag_anchor.borrow().as_ref() {
-            Some((anchor, _, snapshot)) if *anchor == handle => snapshot.clone(),
-            _ => return,
-        };
-        self.resize(&snapshot, handle, delta);
-    }
-
-    fn end(self) {
-        let Some((handle, _, _)) = self.inner.drag_anchor.borrow_mut().take() else {
-            return;
-        };
+    fn snap(self, handle: usize) {
         let Some(points) = self.inner.snap_points.get(handle) else {
             return;
         };
@@ -197,36 +176,17 @@ pub(super) fn install_handle_hooks(
     state: SplitterState,
     handle_index: usize,
 ) -> NodeBuilder {
-    node.pointer_down(move |event| {
-        let axis = axis_of(state.orientation(), event.position.x, event.position.y);
-        state.begin(handle_index, axis);
-        event.capture_pointer();
-        event.stop_propagation();
-    })
-    .pointer_move(move |event| {
-        if !event.is_captured() {
-            return;
-        }
-        let anchor_axis = state.inner.drag_anchor.borrow().as_ref().map(|a| a.1);
-        let Some(anchor_axis) = anchor_axis else {
-            return;
-        };
-        let current_axis = axis_of(state.orientation(), event.position.x, event.position.y);
-        let delta = current_axis - anchor_axis;
-        state.apply_delta(handle_index, delta);
-        event.stop_propagation();
-    })
-    .pointer_up(move |event| {
-        state.end();
-        event.stop_propagation();
-    })
-}
-
-const fn axis_of(orientation: Orientation, x: f32, y: f32) -> f32 {
-    match orientation {
-        Orientation::Horizontal => x,
-        Orientation::Vertical => y,
-    }
+    let axis = match state.orientation() {
+        Orientation::Horizontal => Axis::X,
+        Orientation::Vertical => Axis::Y,
+    };
+    axis_drag(
+        node,
+        axis,
+        move || state.inner.sizes.borrow().clone(),
+        move |snapshot, delta| state.resize(&snapshot, handle_index, delta),
+        move || state.snap(handle_index),
+    )
 }
 
 #[cfg(test)]

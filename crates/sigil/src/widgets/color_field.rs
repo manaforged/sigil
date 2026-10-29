@@ -1,15 +1,15 @@
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
+use super::field::{FieldParser, ParsedField};
+use super::layout_ext::WidgetLayoutExt;
+use super::shared::disabled_look;
+use crate::kernel::{NodeBuilder, container};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, cols};
 use crate::reactive::Reactive;
-use crate::reactive::{Signal, derived, effect, signal};
+use crate::reactive::Signal;
+use crate::style::locale::Locale;
 use crate::style::{
     BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Rgba8, StyleAtom, Token, space,
 };
-
-use super::layout_ext::WidgetLayoutExt;
-use super::shared::disabled_look;
-use super::text_field::text_field;
 
 pub struct ColorFieldBuilder {
     value: Signal<Rgba8>,
@@ -34,28 +34,18 @@ impl ColorFieldBuilder {
     }
 
     #[must_use]
-    pub fn invalid_when(mut self, invalid: impl crate::reactive::Reactive<bool>) -> Self {
+    pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
         self.invalid = Some(invalid.into_signal());
         self
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        let value = self.value;
-        let buffer = signal(to_hex(value.peek()));
-        effect(move || {
-            let rendered = to_hex(value.get());
-            buffer.set(rendered);
-        });
-        let (invalid, disabled) = (self.invalid, self.disabled);
-        let field = text_field(buffer)
-            .invalid_when(derived(move || {
-                invalid.is_some_and(|flag| flag.get()) || parse_hex(&buffer.get()).is_none()
-            }))
-            .change(move |raw| {
-                if let Some(parsed) = parse_hex(raw) {
-                    value.set(parsed);
-                }
-            });
+        let (value, disabled) = (self.value, self.disabled);
+        let mut field = ParsedField::new(value, HexParser);
+        if let Some(invalid) = self.invalid {
+            field = field.invalid_when(invalid);
+        }
+        let field = field.text_field();
         let field = match disabled {
             Some(disabled) => field.disabled(disabled),
             None => field,
@@ -78,9 +68,19 @@ impl ColorFieldBuilder {
     }
 }
 
-impl IntoNode for ColorFieldBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
+builder_impls!([] ColorFieldBuilder: plain_node);
+
+struct HexParser;
+
+impl FieldParser for HexParser {
+    type Value = Rgba8;
+
+    fn parse(&self, raw: &str, _locale: &Locale) -> Option<Rgba8> {
+        parse_hex(raw)
+    }
+
+    fn render(&self, value: &Rgba8, _locale: &Locale) -> String {
+        to_hex(*value)
     }
 }
 

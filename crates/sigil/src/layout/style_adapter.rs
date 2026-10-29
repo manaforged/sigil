@@ -28,13 +28,19 @@ pub fn apply_style_atoms(atoms: &[StyleAtom], style: &mut LayoutStyle) {
 fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
     let s = layout.data_mut();
     match atom {
-        StyleAtom::PaddingAll(px) => s.padding = Rect::splat(length(px)),
-        StyleAtom::PaddingX(px) => (s.padding.left, s.padding.right) = (length(px), length(px)),
-        StyleAtom::PaddingY(px) => (s.padding.top, s.padding.bottom) = (length(px), length(px)),
-        StyleAtom::PaddingTop(px) => s.padding.top = length(px),
-        StyleAtom::PaddingRight(px) => s.padding.right = length(px),
-        StyleAtom::PaddingBottom(px) => s.padding.bottom = length(px),
-        StyleAtom::PaddingLeft(px) => s.padding.left = length(px),
+        StyleAtom::PaddingAll(px) => s.padding = Rect::splat(LengthPercentage::from(px)),
+        StyleAtom::PaddingX(px) => {
+            (s.padding.left, s.padding.right) =
+                (LengthPercentage::from(px), LengthPercentage::from(px));
+        }
+        StyleAtom::PaddingY(px) => {
+            (s.padding.top, s.padding.bottom) =
+                (LengthPercentage::from(px), LengthPercentage::from(px));
+        }
+        StyleAtom::PaddingTop(px) => s.padding.top = LengthPercentage::from(px),
+        StyleAtom::PaddingRight(px) => s.padding.right = LengthPercentage::from(px),
+        StyleAtom::PaddingBottom(px) => s.padding.bottom = LengthPercentage::from(px),
+        StyleAtom::PaddingLeft(px) => s.padding.left = LengthPercentage::from(px),
         StyleAtom::MarginAll(px) => s.margin = Rect::splat(length_auto(px)),
         StyleAtom::MarginX(px) => {
             (s.margin.left, s.margin.right) = (length_auto(px), length_auto(px));
@@ -46,9 +52,9 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
         StyleAtom::MarginRight(px) => s.margin.right = length_auto(px),
         StyleAtom::MarginBottom(px) => s.margin.bottom = length_auto(px),
         StyleAtom::MarginLeft(px) => s.margin.left = length_auto(px),
-        StyleAtom::Gap(gap) => s.gap = Size::splat(length(gap)),
-        StyleAtom::GapX(gap) => s.gap.width = length(gap),
-        StyleAtom::GapY(gap) => s.gap.height = length(gap),
+        StyleAtom::Gap(gap) => s.gap = Size::splat(LengthPercentage::from(gap)),
+        StyleAtom::GapX(gap) => s.gap.width = LengthPercentage::from(gap),
+        StyleAtom::GapY(gap) => s.gap.height = LengthPercentage::from(gap),
         StyleAtom::Width(width) => s.size.width = dimension(width),
         StyleAtom::Height(height) => s.size.height = dimension(height),
         StyleAtom::MinWidth(width) => s.min_size.width = dimension(width),
@@ -73,11 +79,11 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
         StyleAtom::FlexShrink(shrink) => s.flex_shrink = f32::from(shrink) / FACTOR_SCALE,
         StyleAtom::OverflowX(kind) => s.overflow.width = overflow(kind),
         StyleAtom::OverflowY(kind) => s.overflow.height = overflow(kind),
-        StyleAtom::BorderWidth(width) => s.border = Rect::splat(length(width)),
-        StyleAtom::BorderTop(width) => s.border.top = length(width),
-        StyleAtom::BorderRight(width) => s.border.right = length(width),
-        StyleAtom::BorderBottom(width) => s.border.bottom = length(width),
-        StyleAtom::BorderLeft(width) => s.border.left = length(width),
+        StyleAtom::BorderWidth(width) => s.border = Rect::splat(LengthPercentage::from(width)),
+        StyleAtom::BorderTop(width) => s.border.top = LengthPercentage::from(width),
+        StyleAtom::BorderRight(width) => s.border.right = LengthPercentage::from(width),
+        StyleAtom::BorderBottom(width) => s.border.bottom = LengthPercentage::from(width),
+        StyleAtom::BorderLeft(width) => s.border.left = LengthPercentage::from(width),
         StyleAtom::BorderColor(_)
         | StyleAtom::BorderThemeRef(_)
         | StyleAtom::BorderToneStep(_)
@@ -114,10 +120,6 @@ const fn overflow(kind: OverflowKind) -> Overflow {
         OverflowKind::Hidden => Overflow::Hidden,
         OverflowKind::Scroll | OverflowKind::Auto => Overflow::Scroll,
     }
-}
-
-fn length(px: Px) -> LengthPercentage {
-    LengthPercentage::Px(f32::from(px.0))
 }
 
 fn length_auto(px: Px) -> LengthPercentageAuto {

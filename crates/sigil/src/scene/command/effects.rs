@@ -25,24 +25,18 @@ impl SpriteSource {
         if region.width <= 0.0 || region.height <= 0.0 {
             return None;
         }
-        let x0 = region.origin.x.max(0.0);
-        let y0 = region.origin.y.max(0.0);
-        let x1 = (region.origin.x + region.width).min(atlas.0);
-        let y1 = (region.origin.y + region.height).min(atlas.1);
-        if x1 <= x0 || y1 <= y0 {
-            return None;
-        }
+        let clipped = region.intersection(Rect::new(Point::new(0.0, 0.0), atlas.0, atlas.1))?;
         let sx = dest.width / region.width;
         let sy = dest.height / region.height;
         let visible = Rect::new(
             Point::new(
-                (x0 - region.origin.x).mul_add(sx, dest.origin.x),
-                (y0 - region.origin.y).mul_add(sy, dest.origin.y),
+                (clipped.origin.x - region.origin.x).mul_add(sx, dest.origin.x),
+                (clipped.origin.y - region.origin.y).mul_add(sy, dest.origin.y),
             ),
-            (x1 - x0) * sx,
-            (y1 - y0) * sy,
+            clipped.width * sx,
+            clipped.height * sy,
         );
-        Some((Rect::new(Point::new(x0, y0), x1 - x0, y1 - y0), visible))
+        Some((clipped, visible))
     }
 }
 

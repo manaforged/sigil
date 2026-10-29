@@ -6,7 +6,6 @@ use accesskit::TreeUpdate;
 use smallvec::SmallVec;
 
 use crate::events::focus::{FocusIntent, FocusManager};
-use crate::events::handlers::dispatch;
 use crate::events::hit_test::{HitTestCache, NodePath, visible};
 use crate::events::pointer_dispatch::{
     PointerTargets, dispatch_pointer_path, dispatch_pointer_target, dispatch_synthetic_target,
@@ -64,7 +63,13 @@ impl EventRouter {
     fn route_scroll(&mut self, cx: &Cx, layout: &LayoutEngine, mut event: ScrollEvent) {
         self.bubble(cx, layout, event.position, |id, local| {
             event.position = local;
-            let _ = dispatch(cx, id, |handlers| handlers.invoke_scroll(&mut event));
+            let _ = crate::events::handlers::fire(
+                cx,
+                id,
+                crate::events::handlers::EventKind::Scroll,
+                crate::events::handlers::Phase::Bubble,
+                crate::events::handlers::EventArg::Scroll(&mut event),
+            );
             event.propagation_stopped()
         });
     }

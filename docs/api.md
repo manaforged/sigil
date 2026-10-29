@@ -990,7 +990,7 @@ Public items outside the prelude. Import them by path.
 | `style::font_family_hint` | `const fn font_family_hint(variant: Variant) -> FontFamilyHint` | The font family a theme variant asks for. |
 | `layout::LayoutStyle` | `grid_columns(Vec<TrackSize>)`, `grid_rows(Vec<TrackSize>)`, `grid_area(col, row)`, `grid_dense()`, `max_height(impl Into<Dimension>)`, `with_layout(f: impl FnOnce(&mut StyleData))` | Grid tracks and placement, and direct access to the layout data. |
 | `style::Metrics::icon_size` | `fn icon_size(self) -> f32` | Icon size in points, or one cell on the terminal host. |
-| `style::LengthPercentage::px_or_zero` | `const fn px_or_zero(self) -> f32` | The pixel value, or 0 for a non-pixel size. `Dimension` has the same method. |
+| `layout::LengthPercentage::px_or_zero` | `const fn px_or_zero(self) -> f32` | The pixel value, or 0 for a non-pixel size. `Dimension` has the same method. |
 | `style::StyleBinding::set_animator_overlay` | `fn set_animator_overlay(&mut self, overlay: Option<Box<dyn AnimatorOverlay>>)` | Replace the animated values that override the resolved style. |
 | `text::add_fallback_font` | `fn add_fallback_font(bytes: Vec<u8>, face_index: u32) -> Result<(), TextError>` | Add a fallback face to every text engine. Shaping uses it for characters the primary faces lack. Layout measures text again on the next frame. |
 | `text::load_font_url` | `fn load_font_url(url: &str, face_index: u32) -> Signal<Status<(), FontLoadError>>` (wasm32 only) | Fetch a font file and add it with `add_fallback_font`. The signal turns `Ok(())` when the face is in use. |
@@ -1383,7 +1383,7 @@ fn main() -> AppResult<()> {
 | `style::TokenLayer` | `color(ColorKey)`, `value(&str)`, `insert(&str, ThemeValue)`, `names()` | One layer: a fixed array per `Token` plus a map for custom names. |
 | `style::ThemeValue` | `enum ThemeValue { Color(Rgba8), Px(f32), Ms(u16) }` | One theme token value. |
 | `style::StyleState` | `struct StyleState { disabled, hovered, pressed, focused: bool }` | Interaction state for a style variant. |
-| `style::StateStyle` | `StateStyle::new(rest, focused, hovered, pressed, disabled)`; `with_rest(atoms)`, `with_focused(atoms)`, `with_hovered(atoms)`, `with_pressed(atoms)`, `with_disabled(atoms)` | Atoms per interaction state. Each `with_*` replaces the atoms of one state. |
+| `style::StateStyle` | `StateStyle::new(rest, focused, hovered, pressed, disabled)`; `with(slot, atoms)`, `get(slot)`, `with_rest(atoms)`, `with_focused(atoms)`, `with_hovered(atoms)`, `with_pressed(atoms)`, `with_disabled(atoms)` | Atoms per interaction state. `with` and each `with_*` replace the atoms of one state; `get` reads them. |
 | `style::StyleVariant` | `StyleVariant::new(base, states)` | Base atoms plus `StateStyle`. |
 | `style::NumericAtomKind` | `enum NumericAtomKind` | A numeric style property that `animate` drives. |
 

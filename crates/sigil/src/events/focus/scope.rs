@@ -3,7 +3,7 @@ use crate::layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use crate::events::focus::targets::is_self_or_ancestor;
-use crate::events::hit_test::visible;
+use crate::events::hit_test::{visible, walk_order};
 
 use super::{Autofocus, FocusManager, FocusScopeEntry};
 
@@ -75,24 +75,17 @@ fn initial_focus(cx: &Cx, scope_root: NodeId) -> Option<NodeId> {
 }
 
 pub(super) fn first_in_document_order(cx: &Cx, accept: impl Fn(NodeId) -> bool) -> Option<NodeId> {
-    cx.roots()
-        .iter()
-        .copied()
-        .find_map(|root| first_in_subtree(cx, root, &accept))
+    first_visible(cx, cx.roots(), &accept)
 }
 
 fn first_in_subtree(cx: &Cx, id: NodeId, accept: &impl Fn(NodeId) -> bool) -> Option<NodeId> {
-    if !visible(cx, id) {
-        return None;
-    }
-    if accept(id) {
-        return Some(id);
-    }
-    cx.get(id)?
-        .children()
-        .iter()
-        .copied()
-        .find_map(|child| first_in_subtree(cx, child, accept))
+    first_visible(cx, &[id], accept)
+}
+
+fn first_visible(cx: &Cx, roots: &[NodeId], accept: &impl Fn(NodeId) -> bool) -> Option<NodeId> {
+    walk_order(cx, roots, |id, _| visible(cx, id))
+        .map(|(id, _)| id)
+        .find(|id| accept(*id))
 }
 
 #[cfg(test)]

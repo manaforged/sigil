@@ -1,8 +1,6 @@
 use std::rc::Rc;
 
-use crate::kernel::{
-    Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, TextContent, container, text,
-};
+use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Reactive;
 use crate::style::{StyleAtom, Token, Tone, space};
@@ -115,8 +113,4 @@ impl From<StatBuilder> for NodeBuilder {
     }
 }
 
-impl IntoNode for StatBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] StatBuilder: plain_node);

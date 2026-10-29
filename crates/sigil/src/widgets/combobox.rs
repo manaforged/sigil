@@ -7,7 +7,7 @@ use crate::reactive::{Signal, derived, signal};
 use crate::style::{ControlSize, Metrics, space};
 
 use super::layout_ext::WidgetLayoutExt;
-use super::listbox::{ListModel, listbox, scrolled};
+use super::listbox::{ListModel, Matcher, listbox, scrolled};
 use super::popup::{self, ItemSlots, POPUP_GAP, item_row};
 use super::text_field::{TextFieldBuilder, text_field};
 
@@ -90,13 +90,12 @@ impl Combobox {
     }
 
     pub fn filtered(self) -> Vec<(usize, String)> {
-        let query = self.query.get().to_lowercase();
-        self.options
-            .get()
-            .iter()
-            .enumerate()
-            .filter(|(_, label)| query.is_empty() || label.to_lowercase().contains(&query))
-            .map(|(index, label)| (index, label.clone()))
+        let query = self.query.get();
+        let options = self.options.get();
+        Matcher::Substring
+            .rank(&query, options.iter().map(String::as_str))
+            .into_iter()
+            .filter_map(|index| options.get(index).map(|label| (index, label.clone())))
             .collect()
     }
 
@@ -260,34 +259,52 @@ fn rows_height(count: usize) -> f32 {
     count as f32 * Metrics::current().control_height(ControlSize::Default)
 }
 
-fn build_popup(state: Combobox, matches: Vec<(usize, String)>) -> NodeBuilder {
-    let count = matches.len();
+pub(super) fn list_popup(
+    (top, width): (f32, Option<f32>),
+    (count, max_visible): (usize, usize),
+    cursor: Signal<usize>,
+    rows: impl Iterator<Item = NodeBuilder>,
+) -> NodeBuilder {
+    let view_h = rows_height(count.min(max_visible));
     let extent = rows_height(count);
-    let view_h = rows_height(count.min(MAX_VISIBLE));
-    let frame = popup::popup(Role::ListBox, PopupSide::Below).layout(
-        LayoutStyle::flex_column()
-            .fill_width()
-            .height(2.0f32.mul_add(popup::inset(), view_h))
-            .padding(Metrics::current().overlay_padding())
-            .position(Position::Absolute)
-            .inset_top(FIELD_HEIGHT + POPUP_GAP)
-            .inset_left(0.0),
-    );
-    let list = matches.into_iter().enumerate().fold(
+    let inner_w = width.map(|width| 2.0f32.mul_add(-popup::inset(), width).max(0.0));
+    let base = LayoutStyle::flex_column()
+        .position(Position::Absolute)
+        .inset_top(top)
+        .inset_left(0.0)
+        .height(2.0f32.mul_add(popup::inset(), view_h))
+        .padding(Metrics::current().overlay_padding());
+    let frame = popup::popup(Role::ListBox, PopupSide::Below).layout(match width {
+        Some(width) => base.width(width),
+        None => base.fill_width(),
+    });
+    let list = rows.fold(
         container().layout(LayoutStyle::flex_column().fill_width().height(extent)),
-        |list, (row, (index, label))| list.child(build_row(state, row, index, label)),
+        NodeBuilder::child,
     );
-    if count > MAX_VISIBLE {
+    if count > max_visible {
         frame.child(scrolled(
             list,
-            state.cursor,
+            cursor,
             rows_height(1),
             extent,
-            (None, view_h),
+            (inner_w, view_h),
         ))
     } else {
         frame.child(list)
     }
+}
+
+fn build_popup(state: Combobox, matches: Vec<(usize, String)>) -> NodeBuilder {
+    list_popup(
+        (FIELD_HEIGHT + POPUP_GAP, None),
+        (matches.len(), MAX_VISIBLE),
+        state.cursor,
+        matches
+            .into_iter()
+            .enumerate()
+            .map(move |(row, (index, label))| build_row(state, row, index, label)),
+    )
 }
 
 fn build_row(state: Combobox, row: usize, index: usize, label: String) -> NodeBuilder {

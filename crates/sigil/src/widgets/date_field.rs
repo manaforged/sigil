@@ -1,11 +1,9 @@
-use crate::reactive::Reactive;
-
 use crate::kernel::{Cx, IntoNode, NodeId};
-use crate::reactive::{Signal, derived, effect, signal};
+use crate::reactive::{Reactive, Signal};
 use crate::style::locale::Locale;
-use crate::style::theme::ambient::ActiveTheme;
 
-use super::text_field::{TextFieldBuilder, text_field};
+use super::field::{FieldParser, ParsedField};
+use super::text_field::TextFieldBuilder;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Date {
@@ -61,32 +59,41 @@ const fn is_leap(year: i32) -> bool {
     y.is_multiple_of(4) && (!y.is_multiple_of(100) || y.is_multiple_of(400))
 }
 
+struct DateParser;
+
+impl FieldParser for DateParser {
+    type Value = Date;
+
+    fn parse(&self, raw: &str, locale: &Locale) -> Option<Date> {
+        Date::parse_in(raw, locale)
+    }
+
+    fn render(&self, value: &Date, locale: &Locale) -> String {
+        value.render_in(locale)
+    }
+}
+
 pub struct DateFieldBuilder {
-    inner: TextFieldBuilder,
-    buffer: Signal<String>,
-    invalid: Option<Signal<bool>>,
-    theme: ActiveTheme,
+    field: ParsedField<DateParser>,
 }
 
 impl DateFieldBuilder {
     #[must_use]
-    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
-        self.inner = self.inner.disabled(disabled);
-        self
+    pub fn disabled(self, disabled: impl Reactive<bool>) -> Self {
+        Self {
+            field: self.field.disabled(disabled),
+        }
     }
 
     #[must_use]
-    pub fn invalid_when(mut self, invalid: impl crate::reactive::Reactive<bool>) -> Self {
-        self.invalid = Some(invalid.into_signal());
-        self
+    pub fn invalid_when(self, invalid: impl Reactive<bool>) -> Self {
+        Self {
+            field: self.field.invalid_when(invalid),
+        }
     }
 
     pub fn text_field(self) -> TextFieldBuilder {
-        let (buffer, invalid, theme) = (self.buffer, self.invalid, self.theme);
-        self.inner.invalid_when(derived(move || {
-            invalid.is_some_and(|flag| flag.get())
-                || Date::parse_in(&buffer.get(), &theme.locale()).is_none()
-        }))
+        self.field.text_field()
     }
 }
 
@@ -98,19 +105,8 @@ impl IntoNode for DateFieldBuilder {
 
 #[must_use]
 pub fn date_field(value: Signal<Date>) -> DateFieldBuilder {
-    let theme = ActiveTheme::capture();
-    let buffer = signal(value.peek().render_in(&theme.locale()));
-    effect(move || buffer.set(value.get().render_in(&theme.locale())));
-    let inner = text_field(buffer).change(move |raw| {
-        if let Some(parsed) = Date::parse_in(raw, &theme.locale()) {
-            value.set(parsed);
-        }
-    });
     DateFieldBuilder {
-        inner,
-        buffer,
-        invalid: None,
-        theme,
+        field: ParsedField::new(value, DateParser),
     }
 }
 

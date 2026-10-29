@@ -6,30 +6,66 @@ use super::containers::{
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Block {
-    Heading { level: u8, text: String },
-    Paragraph(String),
+    Heading { level: u8, body: Vec<Inline> },
+    Paragraph(Vec<Inline>),
     Quote(Vec<Self>),
     List(List),
     Code { lang: String, body: String },
     Mermaid(String),
     Chart(ChartData),
     Image { alt: String, src: String },
-    Table(Vec<Vec<String>>),
+    Table(Vec<Vec<Vec<Inline>>>),
     Rule,
 }
 
 impl Eq for Block {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum Span {
+pub(crate) enum Inline {
     Text(String),
-    Bold(String),
-    Italic(String),
+    Strong(Vec<Self>),
+    Em(Vec<Self>),
     Code(String),
-    Link { text: String, href: String },
+    Link {
+        href: String,
+        body: Vec<Self>,
+        label_is_href: bool,
+    },
 }
 
-#[cfg(test)]
+impl Inline {
+    pub(crate) fn plain(body: &[Self]) -> String {
+        let mut out = String::new();
+        for inline in body {
+            match inline {
+                Self::Text(text) | Self::Code(text) => out.push_str(text),
+                Self::Strong(inner) | Self::Em(inner) | Self::Link { body: inner, .. } => {
+                    out.push_str(&Self::plain(inner));
+                }
+            }
+        }
+        out
+    }
+
+    pub(crate) fn push_text(out: &mut Vec<Self>, text: &str) {
+        if text.is_empty() {
+            return;
+        }
+        if let Some(Self::Text(last)) = out.last_mut() {
+            last.push_str(text);
+        } else {
+            out.push(Self::Text(text.to_string()));
+        }
+    }
+
+    pub(crate) fn finish(mut out: Vec<Self>) -> Vec<Self> {
+        if out.is_empty() {
+            out.push(Self::Text(String::new()));
+        }
+        out
+    }
+}
+
 pub(crate) use super::inline::parse_inlines;
 
 const MAX_NESTING: usize = 16;
@@ -88,7 +124,7 @@ pub(super) fn parse_nested(source: &str, depth: usize) -> Vec<Block> {
         return parse_at_depth(source, depth).0;
     }
     let text = source.split_whitespace().collect::<Vec<_>>().join(" ");
-    vec![Block::Paragraph(text)]
+    vec![Block::Paragraph(parse_inlines(&text))]
 }
 
 fn fence_open(line: &str) -> Option<String> {
@@ -121,7 +157,7 @@ impl Blocks {
             self.flush();
             self.out.push(Block::Heading {
                 level,
-                text: heading.to_string(),
+                body: parse_inlines(heading),
             });
             return 1;
         }
@@ -141,6 +177,10 @@ impl Blocks {
         let (block, eaten) = if let Some((quote, eaten)) = take_quote(lines, i) {
             (Block::Quote(parse_nested(&quote, self.depth + 1)), eaten)
         } else if let Some((rows, eaten)) = take_table(lines, i) {
+            let rows = rows
+                .iter()
+                .map(|row| row.iter().map(|cell| parse_inlines(cell)).collect())
+                .collect();
             (Block::Table(rows), eaten)
         } else if let Some((alt, src)) = image_line(line) {
             let (alt, src) = (alt.to_string(), src.to_string());
@@ -177,7 +217,7 @@ impl Blocks {
     fn flush(&mut self) {
         let trimmed = self.para.trim();
         if !trimmed.is_empty() {
-            self.out.push(Block::Paragraph(trimmed.to_string()));
+            self.out.push(Block::Paragraph(parse_inlines(trimmed)));
         }
         self.para.clear();
     }

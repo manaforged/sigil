@@ -1,9 +1,9 @@
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived};
-use crate::style::{DisplayKind, StyleAtom, Token, space};
+use crate::style::{Token, space};
 
-use super::popup::SURFACE;
+use super::popup::{SURFACE, shown_when};
 
 #[must_use]
 pub fn toast(message: Signal<Option<String>>) -> NodeBuilder {
@@ -21,13 +21,7 @@ pub fn toast(message: Signal<Option<String>>) -> NodeBuilder {
                 .padding(space(3)),
         )
         .class(SURFACE)
-        .style_reactive(move || {
-            if message.get().is_some() {
-                &[]
-            } else {
-                &[StyleAtom::Display(DisplayKind::None)]
-            }
-        })
+        .style_reactive(move || shown_when(message.get().is_some()))
         .child(text(body).class(Token::OnSurface.text()))
 }
 

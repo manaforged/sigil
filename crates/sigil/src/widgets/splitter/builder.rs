@@ -156,11 +156,7 @@ impl SplitterBuilder {
     }
 }
 
-impl IntoNode for SplitterBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] SplitterBuilder: paint(style_accumulator), layout, plain_node);
 
 impl From<SplitterBuilder> for NodeBuilder {
     fn from(builder: SplitterBuilder) -> Self {
@@ -218,21 +214,9 @@ impl From<PaneBuilder> for NodeBuilder {
     }
 }
 
-impl PaintTarget for SplitterBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
 impl PaintTarget for PaneBuilder {
     fn style_slot(&mut self) -> StyleSlot<'_> {
         StyleSlot(&mut self.splitter.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for SplitterBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
     }
 }
 

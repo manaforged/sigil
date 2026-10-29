@@ -3,17 +3,17 @@ use crate::style::theme::ambient::theme_label;
 use std::rc::Rc;
 
 use crate::events::NodeEventsExt;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::PopupSide;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Owner, OwnerId, Signal, signal};
 use crate::style::{
-    BORDER_WIDTH, ControlSize, Metrics, Paint, PaintTarget, Radius, StateVariants, Style,
-    StyleAtom, StyleSlot, Token, space,
+    BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, StateVariants, Style, StyleAtom, Token,
+    space,
 };
 
 use super::super::interactive::interactive;
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{PANEL_WIDTH, POPUP_GAP};
 use super::builder::MenuItem;
 use super::panel::{Row, menu_panel, panel_height, panel_layout};
@@ -99,26 +99,7 @@ impl MenuBarBuilder {
     }
 }
 
-impl WidgetLayoutExt for MenuBarBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl PaintTarget for MenuBarBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl IntoNode for MenuBarBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] MenuBarBuilder: paint(style_accumulator), layout, node);
 
 #[allow(
     clippy::cast_precision_loss,

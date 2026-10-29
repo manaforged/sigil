@@ -1,35 +1,23 @@
-use core::cell::RefCell;
-use slotmap::{SlotMap, new_key_type};
-
+use crate::animation::Motion;
+use crate::reactive::frame::{Source, SourceId, Sources, with_sources};
 use crate::reactive::{Runtime, Signal, batch};
 
-use crate::animation_runtime::animator::{SpringMotion, TweenMotion};
-use crate::animation_runtime::motion_state::Motion;
 use crate::animation_runtime::{AnimationConfig, MotionPrefs};
 
-new_key_type! {
-    pub(crate) struct AnimatorId;
-}
+#[derive(Clone, Copy)]
+pub(crate) struct AnimatorId(SourceId);
 
-struct Entry {
+pub(crate) struct AnimatorSource {
     signal: Signal<f32>,
     motion: Motion,
     paused: bool,
 }
 
-thread_local! {
-    static ENTRIES: RefCell<SlotMap<AnimatorId, Entry>> = RefCell::new(SlotMap::with_key());
-}
-
 pub(crate) fn register_config(signal: Signal<f32>, config: AnimationConfig) -> AnimatorId {
     let initial = signal.try_peek().unwrap_or_default();
     let motion = match config {
-        AnimationConfig::Spring { preset } => {
-            Motion::Spring(SpringMotion::from_preset(initial, preset))
-        }
-        AnimationConfig::Tween { ms, easing } => {
-            Motion::Tween(TweenMotion::new(initial, ms, easing))
-        }
+        AnimationConfig::Spring { preset } => Motion::spring(initial, preset),
+        AnimationConfig::Tween { ms, easing } => Motion::tween(initial, ms, easing),
     };
     register(signal, motion)
 }
@@ -39,13 +27,35 @@ pub(crate) fn register(signal: Signal<f32>, motion: Motion) -> AnimatorId {
         signal.try_peek().is_none_or(f32::is_finite),
         "animation value must be finite"
     );
-    ENTRIES.with(|cell| {
-        cell.borrow_mut().insert(Entry {
-            signal,
-            motion,
-            paused: false,
-        })
+    let source = Source::Animator(AnimatorSource {
+        signal,
+        motion,
+        paused: false,
+    });
+    AnimatorId(with_sources(|sources| sources.map.insert(source)))
+}
+
+fn animator_mut(sources: &mut Sources, id: SourceId) -> Option<&mut AnimatorSource> {
+    match sources.map.get_mut(id) {
+        Some(Source::Animator(entry)) => Some(entry),
+        _ => None,
+    }
+}
+
+fn animators(sources: &Sources) -> impl Iterator<Item = &AnimatorSource> {
+    sources.map.values().filter_map(|source| match source {
+        Source::Animator(entry) => Some(entry),
+        _ => None,
     })
+}
+
+fn retain_animators(mut keep: impl FnMut(&mut AnimatorSource) -> bool) {
+    with_sources(|sources| {
+        sources.map.retain(|_, source| match source {
+            Source::Animator(entry) => keep(entry),
+            _ => true,
+        });
+    });
 }
 
 impl AnimatorId {
@@ -58,26 +68,17 @@ impl AnimatorId {
     }
 
     pub(crate) fn seek(self, seconds: f64) {
-        self.update(|entry| {
-            if let Motion::Keyframes(motion) = &mut entry.motion {
-                motion.seek(seconds);
-            }
-        });
+        self.update(|entry| entry.motion.seek(seconds));
     }
 
     pub(crate) fn cancel(self) {
-        self.update(|entry| {
-            if let Motion::Keyframes(motion) = &mut entry.motion {
-                motion.cancel();
-            }
-        });
+        self.update(|entry| entry.motion.cancel());
     }
 
-    fn update(self, change: impl FnOnce(&mut Entry)) {
+    fn update(self, change: impl FnOnce(&mut AnimatorSource)) {
         batch(|| {
-            ENTRIES.with(|cell| {
-                let mut entries = cell.borrow_mut();
-                let Some(entry) = entries.get_mut(self) else {
+            with_sources(|sources| {
+                let Some(entry) = animator_mut(sources, self.0) else {
                     return;
                 };
                 change(entry);
@@ -85,7 +86,7 @@ impl AnimatorId {
                     entry.motion.finish();
                 }
                 if !entry.signal.try_set(entry.motion.value()) {
-                    entries.remove(self);
+                    sources.map.remove(self.0);
                 }
                 Runtime::mark_frame_dirty();
             });
@@ -93,21 +94,20 @@ impl AnimatorId {
     }
 
     pub(crate) fn deregister(self) {
-        ENTRIES.with(|cell| {
-            cell.borrow_mut().remove(self);
+        with_sources(|sources| {
+            sources.map.remove(self.0);
         });
     }
 
     pub(crate) fn retarget(self, value: f32) {
         batch(|| {
-            ENTRIES.with(|cell| {
-                let mut entries = cell.borrow_mut();
-                if let Some(entry) = entries.get_mut(self) {
+            with_sources(|sources| {
+                if let Some(entry) = animator_mut(sources, self.0) {
                     entry.motion.retarget(value);
                     entry.paused = false;
                     Runtime::mark_frame_dirty();
                     if entry.motion.is_settled() && !entry.signal.try_set(entry.motion.value()) {
-                        entries.remove(self);
+                        sources.map.remove(self.0);
                     }
                 }
             });
@@ -115,28 +115,23 @@ impl AnimatorId {
     }
 
     pub(crate) fn is_settled(self) -> bool {
-        ENTRIES.with(|cell| {
-            let entries = cell.borrow();
-            entries
-                .get(self)
-                .is_none_or(|entry| entry.motion.is_settled())
+        with_sources(|sources| {
+            animator_mut(sources, self.0).is_none_or(|entry| entry.motion.is_settled())
         })
     }
 
     pub(crate) fn peek_value(self) -> Option<f32> {
-        ENTRIES.with(|cell| cell.borrow().get(self).map(|entry| entry.motion.value()))
+        with_sources(|sources| animator_mut(sources, self.0).map(|entry| entry.motion.value()))
     }
 }
 
 pub(crate) fn finish_all() {
     batch(|| {
-        ENTRIES.with(|cell| {
-            cell.borrow_mut().retain(|_, entry| {
-                entry.motion.finish();
-                entry.signal.try_set(entry.motion.value())
-            });
-            Runtime::mark_frame_dirty();
+        retain_animators(|entry| {
+            entry.motion.finish();
+            entry.signal.try_set(entry.motion.value())
         });
+        Runtime::mark_frame_dirty();
     });
 }
 
@@ -145,24 +140,21 @@ pub fn tick(dt: f32) {
         return;
     }
     batch(|| {
-        ENTRIES.with(|cell| {
-            cell.borrow_mut().retain(|_, entry| {
-                if entry.paused || entry.motion.is_settled() {
-                    return true;
-                }
-                let _ = entry.motion.tick(dt);
-                Runtime::mark_frame_dirty();
-                entry.signal.try_set(entry.motion.value())
-            });
+        retain_animators(|entry| {
+            if entry.paused || entry.motion.is_settled() {
+                return true;
+            }
+            entry.motion.tick(dt);
+            Runtime::mark_frame_dirty();
+            entry.signal.try_set(entry.motion.value())
         });
     });
 }
 
 #[must_use]
 pub fn active_count() -> usize {
-    ENTRIES.with(|cell| {
-        cell.borrow()
-            .values()
+    with_sources(|sources| {
+        animators(sources)
             .filter(|entry| !entry.paused && !entry.motion.is_settled())
             .count()
     })

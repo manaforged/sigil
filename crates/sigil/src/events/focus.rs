@@ -7,7 +7,6 @@ use crate::layout::LayoutEngine;
 use accesskit::{NodeId as AccessNodeId, TreeId, TreeUpdate};
 use smallvec::{SmallVec, smallvec};
 
-use crate::events::handlers::{EventHandlers, dispatch};
 use crate::events::hit_test::visible;
 
 mod scope;
@@ -110,10 +109,22 @@ impl FocusManager {
         let previous = self.focused;
         self.focused = target;
         if let Some(previous) = previous {
-            let _ = dispatch(cx, previous, EventHandlers::invoke_focus_out);
+            let _ = crate::events::handlers::fire(
+                cx,
+                previous,
+                crate::events::handlers::EventKind::FocusOut,
+                crate::events::handlers::Phase::Bubble,
+                crate::events::handlers::EventArg::Focus,
+            );
         }
         if let Some(next) = target {
-            let _ = dispatch(cx, next, EventHandlers::invoke_focus_in);
+            let _ = crate::events::handlers::fire(
+                cx,
+                next,
+                crate::events::handlers::EventKind::FocusIn,
+                crate::events::handlers::Phase::Bubble,
+                crate::events::handlers::EventArg::Focus,
+            );
         }
     }
 
@@ -268,21 +279,13 @@ fn collect_focusable(
     explicit: &mut Vec<(i32, NodeId)>,
     implicit: &mut Vec<NodeId>,
 ) {
-    if !visible(cx, id) {
-        return;
-    }
-    let Some(node) = cx.get(id) else {
-        return;
-    };
-    if node.a11y.focusable {
+    let walk = crate::events::hit_test::walk_order(cx, &[id], |id, _| visible(cx, id));
+    for (found, node) in walk.filter(|(_, node)| node.a11y.focusable) {
         match node.a11y.tab_index {
-            Some(index) if index >= 0 => explicit.push((index, id)),
-            None => implicit.push(id),
+            Some(index) if index >= 0 => explicit.push((index, found)),
+            None => implicit.push(found),
             Some(_) => {}
         }
-    }
-    for child in node.children().iter().copied() {
-        collect_focusable(cx, child, explicit, implicit);
     }
 }
 

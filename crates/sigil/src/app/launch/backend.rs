@@ -1,6 +1,8 @@
 use crate::geometry::PhysicalSize;
 use crate::hal::Renderer as _;
 use crate::profile::{BackendKind, BackendStatus, FallbackCause};
+#[cfg(any(feature = "inspect", not(target_arch = "wasm32")))]
+use crate::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::{
     CpuRenderer, CpuSurface, RendererError, WgpuRenderer, WgpuSurface, into_window_handle,
@@ -8,14 +10,6 @@ use crate::renderer::{
 use crate::scene::CommandScene;
 use crate::style::Color;
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
-
-#[cfg(feature = "inspect")]
-mod inspect;
-#[cfg(any(feature = "inspect", not(target_arch = "wasm32")))]
-mod offscreen;
-
-#[cfg(feature = "inspect")]
-pub(super) use inspect::inspect_shot;
 
 const ENV: &str = "SIGIL_BACKEND";
 const SURFACE_CLEAR: Color = Color::rgba(0.03, 0.04, 0.05, 1.0);
@@ -26,7 +20,7 @@ pub(in crate::app) struct Backend {
     fallback: bool,
     status: BackendStatus,
     #[cfg(target_arch = "wasm32")]
-    device: Option<super::web::DeviceRequest>,
+    device: Option<DeviceRequest>,
 }
 
 enum Inner {
@@ -123,7 +117,7 @@ impl Backend {
     #[cfg(target_arch = "wasm32")]
     pub(super) fn request_device(&mut self, wake: impl Fn() + Send + Sync + 'static) {
         if let Inner::Wgpu(renderer) = &self.inner {
-            let mut request = super::web::DeviceRequest::new(wake);
+            let mut request = DeviceRequest::new(wake);
             request.start(renderer);
             self.device = Some(request);
         }
@@ -241,4 +235,118 @@ impl Backend {
 
 fn mismatch() -> RendererError {
     RendererError::Software("surface was created by a different backend".to_owned())
+}
+
+#[cfg(any(feature = "inspect", not(target_arch = "wasm32")))]
+impl Backend {
+    pub(in crate::app) fn render_image(
+        &mut self,
+        scene: &CommandScene,
+        target: ImageTarget,
+    ) -> Result<image::RgbaImage, RendererError> {
+        let (attempt, had_device) = match &mut self.inner {
+            Inner::Cpu(r) => return render_to_image(ImageRenderer::Cpu(r), scene, target),
+            Inner::Wgpu(r) => {
+                let had_device = r.device().is_some();
+                (
+                    render_to_image(ImageRenderer::Gpu(r), scene, target),
+                    had_device,
+                )
+            }
+        };
+        match attempt {
+            Ok(image) => {
+                self.adopt_gpu_status();
+                Ok(image)
+            }
+            Err(err) if self.fallback && !had_device => {
+                let mut cpu = self.fall_back_to_cpu(&err);
+                let image = render_to_image(ImageRenderer::Cpu(&mut cpu), scene, target);
+                self.inner = Inner::Cpu(Box::new(cpu));
+                image
+            }
+            Err(err) => Err(err),
+        }
+    }
+}
+
+#[cfg(feature = "inspect")]
+pub(super) fn inspect_shot(
+    app: &mut crate::app::embed::Host,
+    renderer: &mut Backend,
+    surface: Option<&Surface>,
+    viewport: (f32, f32),
+) -> Result<serde_json::Value, String> {
+    let Some((cx, _, root)) = app.tree() else {
+        return Err("no mounted tree".into());
+    };
+    let scene = super::scene_cache::window_scene(cx, root, viewport, !renderer.is_transparent());
+    let size = match surface {
+        Some(Surface::Wgpu(surface)) => surface.size(),
+        Some(Surface::Cpu(surface)) => surface.size(),
+        None => return Err("window surface is not initialized yet".into()),
+    };
+    let clear = renderer.clear_color();
+    let image = renderer
+        .render_image(
+            &scene,
+            ImageTarget {
+                size,
+                viewport,
+                clear,
+            },
+        )
+        .map_err(|err| err.to_string())?;
+    let mut png = Vec::new();
+    image
+        .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+        .map_err(|err| format!("software renderer failed: {err}"))?;
+    Ok(serde_json::json!({
+        "png": base64::Engine::encode(&base64::engine::general_purpose::STANDARD, png),
+        "width": size.width,
+        "height": size.height,
+    }))
+}
+
+#[cfg(target_arch = "wasm32")]
+type Slot =
+    std::rc::Rc<std::cell::RefCell<Option<Result<crate::renderer::DeviceParts, RendererError>>>>;
+
+#[cfg(target_arch = "wasm32")]
+struct DeviceRequest {
+    slot: Slot,
+    wake: crate::renderer::OnLost,
+    waiting: bool,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl DeviceRequest {
+    fn new(wake: impl Fn() + Send + Sync + 'static) -> Self {
+        Self {
+            slot: Slot::default(),
+            wake: std::sync::Arc::new(wake),
+            waiting: false,
+        }
+    }
+
+    fn start(&mut self, renderer: &WgpuRenderer) {
+        let out = std::rc::Rc::clone(&self.slot);
+        let wake = std::sync::Arc::clone(&self.wake);
+        let request = renderer.request_device(std::sync::Arc::clone(&self.wake));
+        wasm_bindgen_futures::spawn_local(async move {
+            *out.borrow_mut() = Some(request.await);
+            wake();
+        });
+        self.waiting = true;
+    }
+
+    const fn waiting(&self) -> bool {
+        self.waiting
+    }
+
+    fn take(&mut self) -> Option<Result<crate::renderer::DeviceParts, RendererError>> {
+        let result = self.slot.borrow_mut().take()?;
+        self.waiting = false;
+        Some(result)
+    }
 }

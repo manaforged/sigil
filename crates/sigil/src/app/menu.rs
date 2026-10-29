@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 
+use crate::app::platform::{Bridge, Wake};
 use crate::events::{Key, LogicalKey, ModifiersState, Shortcut};
 use crate::reactive::EventChannel;
-use crossbeam_channel::{Receiver, Sender, unbounded};
 use muda::accelerator::{Key as NativeKey, Modifiers as NativeModifiers};
 
 pub use muda::accelerator::KeyAccelerator;
@@ -15,7 +15,7 @@ thread_local! {
     static PENDING: RefCell<Option<Menu>> = const { RefCell::new(None) };
     static INSTALLED: RefCell<Option<Menu>> = const { RefCell::new(None) };
     static EVENTS: EventChannel<MenuId> = EventChannel::new();
-    static BRIDGE: (Sender<MenuId>, Receiver<MenuId>) = unbounded();
+    static BRIDGE: Bridge<MenuId> = Bridge::new();
 }
 
 pub fn set_menu_bar(menu: Menu) {
@@ -36,32 +36,28 @@ pub(crate) fn has_pending() -> bool {
     PENDING.with(|slot| slot.borrow().is_some())
 }
 
-pub(crate) fn install(
-    hwnd: Option<isize>,
-    wake: impl Fn() + Send + Sync + 'static,
-) -> Result<(), String> {
+pub(crate) fn install(hwnd: Option<isize>, wake: Wake) {
+    if has_pending()
+        && let Err(error) = install_menu(hwnd, wake)
+    {
+        tracing::error!("sigil-app: cannot install native menu: {error}");
+    }
+}
+
+pub(crate) fn pump() {
+    BRIDGE.with(|bridge| EVENTS.with(|channel| bridge.forward(channel)));
+}
+
+fn install_menu(hwnd: Option<isize>, wake: Wake) -> Result<(), String> {
     let Some(menu) = PENDING.with(|slot| slot.borrow_mut().take()) else {
         return Ok(());
     };
     install_native(&menu, hwnd)?;
     INSTALLED.with(|slot| *slot.borrow_mut() = Some(menu));
 
-    let tx = BRIDGE.with(|(tx, _)| tx.clone());
-    MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
-        let _ = tx.send(event.id);
-        wake();
-    }));
+    let sink = BRIDGE.with(|bridge| bridge.sink(wake));
+    MenuEvent::set_event_handler(Some(move |event: MenuEvent| sink(event.id)));
     Ok(())
-}
-
-pub(crate) fn pump() {
-    BRIDGE.with(|(_, rx)| {
-        EVENTS.with(|channel| {
-            while let Ok(id) = rx.try_recv() {
-                channel.emit(id);
-            }
-        });
-    });
 }
 
 #[must_use]

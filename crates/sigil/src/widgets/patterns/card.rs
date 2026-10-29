@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Reactive, Signal};
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
@@ -80,8 +80,4 @@ impl From<CardBuilder> for NodeBuilder {
     }
 }
 
-impl IntoNode for CardBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] CardBuilder: plain_node);

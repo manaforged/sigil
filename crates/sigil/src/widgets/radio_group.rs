@@ -1,7 +1,7 @@
 use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::events::{Key, NodeEventsExt};
+use crate::events::NodeEventsExt;
 use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
@@ -10,10 +10,9 @@ use crate::style::{
     ControlSize, Metrics, NodeStyleExt, Style, StyleAtom, StyleOverlay, Token, Tone, space,
 };
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
+use super::listbox::{Move, RADIO_GROUP};
 use super::shared::{control_surface, disabled_a11y, disabled_now};
-use crate::kernel::IntoNode;
-use crate::style::{PaintTarget, StyleSlot};
 use crate::widgets::interaction::InteractionState;
 
 pub struct RadioGroupBuilder {
@@ -108,11 +107,11 @@ impl RadioGroupBuilder {
             group = group.style(self.style_accumulator);
         }
         let mut group = disabled_a11y(group, disabled);
-        for nav in [Key::ArrowDown, Key::ArrowUp, Key::Home, Key::End] {
+        for (key, step) in RADIO_GROUP.bindings() {
             let keys = Rc::clone(&keys);
-            group = group.key(nav, move |event| {
+            group = group.key(key, move |event| {
                 if !disabled_now(disabled) {
-                    select(selected, &keys, nav);
+                    select(selected, &keys, step);
                 }
                 event.stop_propagation();
             });
@@ -121,26 +120,11 @@ impl RadioGroupBuilder {
     }
 }
 
-fn select(selected: Signal<String>, keys: &[String], nav: Key) {
-    let target = match nav {
-        Key::Home => keys.first(),
-        Key::End => keys.last(),
-        _ if keys.is_empty() => None,
-        _ => {
-            let current = selected.get();
-            let index = keys
-                .iter()
-                .position(|key| key == &current)
-                .map_or(0, usize::cast_signed);
-            let delta = if nav == Key::ArrowDown { 1 } else { -1 };
-            keys.get(
-                (index + delta)
-                    .rem_euclid(keys.len().cast_signed())
-                    .cast_unsigned(),
-            )
-        }
-    };
-    if let Some(key) = target {
+fn select(selected: Signal<String>, keys: &[String], step: Move) {
+    let current = selected.get();
+    let from = keys.iter().position(|key| key == &current).unwrap_or(0);
+    let target = RADIO_GROUP.target(&keys.len(), from, step);
+    if let Some(key) = target.and_then(|index| keys.get(index)) {
         selected.set(key.clone());
     }
 }
@@ -239,26 +223,7 @@ static CELL_MARK: &[StyleAtom] = &[StyleAtom::FgToneStep(9)];
 static MARK_SELECTED: &[StyleAtom] = &[StyleAtom::BgToneStep(9)];
 static MARK_EMPTY: &[StyleAtom] = &[];
 
-impl PaintTarget for RadioGroupBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for RadioGroupBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for RadioGroupBuilder {
-    fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] RadioGroupBuilder: paint(style_accumulator), layout, node);
 
 #[cfg(test)]
 #[path = "radio_group_tests.rs"]

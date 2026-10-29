@@ -147,25 +147,20 @@ fn input_phase(
 )]
 fn install_shell_features(shell: &WinitShell, window_handle: WinitWindowHandle, title: &str) {
     #[cfg(feature = "menu")]
-    if crate::app::menu::has_pending()
-        && let Err(error) =
-            crate::app::menu::install(menu_hwnd(shell, window_handle), wake_fn(shell))
-    {
-        tracing::error!("sigil-app: cannot install native menu: {error}");
-    }
+    crate::app::menu::install(
+        menu_hwnd(shell, window_handle),
+        std::sync::Arc::new(wake_fn(shell)),
+    );
     #[cfg(feature = "tray")]
-    if crate::app::tray::has_pending() {
-        crate::app::tray::install(wake_fn(shell));
-    }
-    #[cfg(feature = "hotkey")]
-    crate::app::hotkey::install(wake_fn(shell));
+    crate::app::tray::install(std::sync::Arc::new(wake_fn(shell)));
+    #[cfg(all(feature = "hotkey", not(target_arch = "wasm32")))]
+    crate::app::hotkey::install(std::sync::Arc::new(wake_fn(shell)));
     #[cfg(feature = "media")]
-    if !crate::app::media::is_installed()
-        && let Err(error) =
-            crate::app::media::install(title, menu_hwnd(shell, window_handle), wake_fn(shell))
-    {
-        tracing::warn!("sigil-app: cannot install media controls: {error}");
-    }
+    crate::app::media::install(
+        title,
+        menu_hwnd(shell, window_handle),
+        std::sync::Arc::new(wake_fn(shell)),
+    );
     #[cfg(not(any(
         feature = "menu",
         feature = "tray",
@@ -188,7 +183,7 @@ fn pump_shell_features() {
     crate::app::menu::pump();
     #[cfg(feature = "tray")]
     crate::app::tray::pump();
-    #[cfg(feature = "hotkey")]
+    #[cfg(all(feature = "hotkey", not(target_arch = "wasm32")))]
     crate::app::hotkey::pump();
     #[cfg(feature = "media")]
     crate::app::media::pump();

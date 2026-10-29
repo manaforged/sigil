@@ -23,8 +23,9 @@ mod layer_composite;
 mod layer_pool;
 mod oblique;
 pub(crate) mod offscreen;
+mod plan;
+mod quad_paint;
 mod raster;
-mod raster_paint;
 #[allow(clippy::module_inception)]
 mod renderer;
 mod scene_command;
@@ -37,7 +38,6 @@ mod shadow_paint;
 pub(crate) mod slug;
 mod split_encoder;
 mod sprite_atlas;
-mod sprite_paint;
 mod surface;
 #[cfg(any(test, feature = "kittest"))]
 mod test_state;
@@ -56,12 +56,12 @@ pub use layer_pool::LayerError;
 pub use layer_pool::{LayerHandle, LayerPool};
 pub use offscreen::OffscreenTarget;
 #[cfg(any(test, feature = "kittest"))]
-pub use raster_paint::set_test_atlas_size_override;
+pub use quad_paint::BUILTIN_SPRITE_ATLAS_ID;
+#[cfg(any(test, feature = "kittest"))]
+pub use quad_paint::set_test_atlas_size_override;
 pub use renderer::{ScreenSubmission, WgpuRenderer};
 #[cfg(any(test, feature = "kittest"))]
 pub use slug::{DrawParams, SlugTextPipeline};
-#[cfg(any(test, feature = "kittest"))]
-pub use sprite_paint::BUILTIN_SPRITE_ATLAS_ID;
 pub use surface::WgpuSurface;
 #[cfg(any(test, feature = "kittest"))]
 pub use test_state::{GlobalTextState, lock_global_text_state};

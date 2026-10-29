@@ -2052,10 +2052,12 @@ pub sigil::layout::LengthPercentage::Px(f32)
 pub sigil::layout::LengthPercentage::Text(sigil::layout::TextLength)
 impl sigil::layout::LengthPercentage
 pub const fn sigil::layout::LengthPercentage::length(value: f32) -> Self
+pub const fn sigil::layout::LengthPercentage::px_or_zero(self) -> f32
 impl core::clone::Clone for sigil::layout::LengthPercentage
 impl core::cmp::PartialEq for sigil::layout::LengthPercentage
 impl core::convert::From<f32> for sigil::layout::LengthPercentage
 impl core::convert::From<sigil::layout::TextLength> for sigil::layout::LengthPercentage
+impl core::convert::From<sigil::style::Px> for sigil::layout::LengthPercentage
 impl core::default::Default for sigil::layout::LengthPercentage
 impl core::fmt::Debug for sigil::layout::LengthPercentage
 impl core::marker::Copy for sigil::layout::LengthPercentage
@@ -3146,10 +3148,10 @@ pub fn sigil::style::Theme::console_dark() -> Self
 pub fn sigil::style::Theme::control_height(&self, size: sigil::style::ControlSize) -> sigil::style::Dimension
 pub fn sigil::style::Theme::control_width(&self, size: sigil::style::ControlSize) -> sigil::style::Dimension
 pub fn sigil::style::Theme::from_palette(palette: sigil::style::palette::Palette, variant: sigil::style::variant::Variant) -> Self
-pub fn sigil::style::Theme::gap(&self, size: sigil::style::ControlSize) -> sigil::style::LengthPercentage
+pub fn sigil::style::Theme::gap(&self, size: sigil::style::ControlSize) -> sigil::layout::LengthPercentage
 pub fn sigil::style::Theme::normal() -> Self
-pub fn sigil::style::Theme::padding(&self, size: sigil::style::ControlSize) -> sigil::style::LengthPercentage
-pub const fn sigil::style::Theme::radius(&self, size: sigil::style::ControlSize) -> sigil::style::LengthPercentage
+pub fn sigil::style::Theme::padding(&self, size: sigil::style::ControlSize) -> sigil::layout::LengthPercentage
+pub const fn sigil::style::Theme::radius(&self, size: sigil::style::ControlSize) -> sigil::layout::LengthPercentage
 pub fn sigil::style::Theme::terminal() -> Self
 pub fn sigil::style::Theme::dark() -> Self
 pub fn sigil::style::Theme::light() -> Self
@@ -4673,17 +4675,6 @@ impl core::fmt::Debug for sigil::style::JustifyKind
 impl core::hash::Hash for sigil::style::JustifyKind
 impl core::marker::Copy for sigil::style::JustifyKind
 impl core::marker::StructuralPartialEq for sigil::style::JustifyKind
-pub enum sigil::style::LengthPercentage
-pub sigil::style::LengthPercentage::Percent(f32)
-pub sigil::style::LengthPercentage::Px(sigil::style::Px)
-impl sigil::style::LengthPercentage
-pub const fn sigil::style::LengthPercentage::px_or_zero(self) -> f32
-impl core::clone::Clone for sigil::style::LengthPercentage
-impl core::cmp::PartialEq for sigil::style::LengthPercentage
-impl core::convert::From<sigil::style::Px> for sigil::style::LengthPercentage
-impl core::fmt::Debug for sigil::style::LengthPercentage
-impl core::marker::Copy for sigil::style::LengthPercentage
-impl core::marker::StructuralPartialEq for sigil::style::LengthPercentage
 pub enum sigil::style::NumericAtomKind
 pub sigil::style::NumericAtomKind::BorderRadius
 pub sigil::style::NumericAtomKind::FontSize
@@ -4744,6 +4735,7 @@ pub sigil::style::StringKey::Avatar
 pub sigil::style::StringKey::Cancel
 pub sigil::style::StringKey::Chart
 pub sigil::style::StringKey::ChartSummary
+pub sigil::style::StringKey::Checkbox
 pub sigil::style::StringKey::Close
 pub sigil::style::StringKey::CodeEditor
 pub sigil::style::StringKey::CommandMenu
@@ -4759,6 +4751,10 @@ pub sigil::style::StringKey::MenuBar
 pub sigil::style::StringKey::MoveLeft
 pub sigil::style::StringKey::MoveRight
 pub sigil::style::StringKey::NoData
+pub sigil::style::StringKey::Notice
+pub sigil::style::StringKey::NoticeError
+pub sigil::style::StringKey::NoticeSuccess
+pub sigil::style::StringKey::NoticeWarning
 pub sigil::style::StringKey::Ok
 pub sigil::style::StringKey::RequiredMark
 pub sigil::style::StringKey::ResizePanes
@@ -4776,8 +4772,9 @@ pub sigil::style::StringKey::Sparkline
 pub sigil::style::StringKey::SparklineSummary
 pub sigil::style::StringKey::StatusBar
 pub sigil::style::StringKey::TableMenu
+pub sigil::style::StringKey::Toggle
 impl sigil::style::StringKey
-pub const sigil::style::StringKey::ALL: [Self; 37]
+pub const sigil::style::StringKey::ALL: [Self; 43]
 pub fn sigil::style::StringKey::from_name(name: &str) -> core::option::Option<Self>
 impl core::clone::Clone for sigil::style::StringKey
 impl core::cmp::Eq for sigil::style::StringKey
@@ -5132,11 +5129,13 @@ impl sigil::style::StateStyle
 pub const sigil::style::StateStyle::EMPTY: Self
 pub const fn sigil::style::StateStyle::disabled(self) -> &'static [sigil::style::StyleAtom]
 pub const fn sigil::style::StateStyle::focused(self) -> &'static [sigil::style::StyleAtom]
+pub const fn sigil::style::StateStyle::get(self, slot: sigil::style::StateSlot) -> &'static [sigil::style::StyleAtom]
 pub const fn sigil::style::StateStyle::hovered(self) -> &'static [sigil::style::StyleAtom]
 pub const fn sigil::style::StateStyle::new(rest: &'static [sigil::style::StyleAtom], focused: &'static [sigil::style::StyleAtom], hovered: &'static [sigil::style::StyleAtom], pressed: &'static [sigil::style::StyleAtom], disabled: &'static [sigil::style::StyleAtom]) -> Self
 pub const fn sigil::style::StateStyle::pressed(self) -> &'static [sigil::style::StyleAtom]
 pub const fn sigil::style::StateStyle::resolve(self, state: sigil::style::StyleState) -> &'static [sigil::style::StyleAtom]
 pub const fn sigil::style::StateStyle::rest(self) -> &'static [sigil::style::StyleAtom]
+pub const fn sigil::style::StateStyle::with(self, slot: sigil::style::StateSlot, atoms: &'static [sigil::style::StyleAtom]) -> Self
 pub const fn sigil::style::StateStyle::with_disabled(self, atoms: &'static [sigil::style::StyleAtom]) -> Self
 pub const fn sigil::style::StateStyle::with_focused(self, atoms: &'static [sigil::style::StyleAtom]) -> Self
 pub const fn sigil::style::StateStyle::with_hovered(self, atoms: &'static [sigil::style::StyleAtom]) -> Self
@@ -6221,8 +6220,8 @@ pub const fn sigil::widgets::ButtonBuilder::primary(self) -> Self
 pub fn sigil::widgets::ButtonBuilder::size(self, size: sigil::style::ControlSize) -> Self
 pub const fn sigil::widgets::ButtonBuilder::soft(self) -> Self
 pub const fn sigil::widgets::ButtonBuilder::solid(self) -> Self
-pub fn sigil::widgets::ButtonBuilder::theme(self, theme: sigil::style::Theme) -> Self
 pub const fn sigil::widgets::ButtonBuilder::tone(self, tone: sigil::style::Tone) -> Self
+pub fn sigil::widgets::ButtonBuilder::theme(self, theme: sigil::style::Theme) -> Self
 pub struct sigil::widgets::CanvasBuilder
 impl sigil::widgets::CanvasBuilder
 pub fn sigil::widgets::CanvasBuilder::layout(self, style: sigil::layout::LayoutStyle) -> Self
@@ -6250,8 +6249,8 @@ pub fn sigil::widgets::CheckboxBuilder::disabled(self, disabled: impl sigil::rea
 pub const fn sigil::widgets::CheckboxBuilder::indeterminate(self, partial: sigil::reactive::Signal<bool>) -> Self
 pub fn sigil::widgets::CheckboxBuilder::label(self, label: impl core::convert::Into<sigil::kernel::TextContent>) -> Self
 pub fn sigil::widgets::CheckboxBuilder::new(checked: sigil::reactive::Signal<bool>) -> Self
-pub fn sigil::widgets::CheckboxBuilder::theme(self, theme: sigil::style::Theme) -> Self
 pub const fn sigil::widgets::CheckboxBuilder::tone(self, tone: sigil::style::Tone) -> Self
+pub fn sigil::widgets::CheckboxBuilder::theme(self, theme: sigil::style::Theme) -> Self
 pub struct sigil::widgets::ChipBuilder
 impl sigil::widgets::ChipBuilder
 pub fn sigil::widgets::ChipBuilder::activate(self, activate: impl core::ops::function::Fn() + 'static) -> Self

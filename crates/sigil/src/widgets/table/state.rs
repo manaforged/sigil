@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use crate::reactive::{Signal, effect, signal};
 
+use super::super::listbox::{only, span, toggle};
 use super::columns::{ColWidth, MIN_COL_WIDTH, TableColumn};
 use super::derive::{compute_visible, retain_visible, reuse_identity};
 use super::identity::{self, Identifiable};
@@ -203,15 +204,16 @@ impl<Row: 'static> TableState<Row> {
     }
 
     pub fn select_only(&self, row: u32) {
-        self.selection.set(Rc::new(HashSet::from([row])));
-        self.select_anchor.set(Some(row));
+        let mut set: HashSet<u32> = HashSet::new();
+        let mut anchor = None;
+        only(&mut set, &mut anchor, row);
+        self.selection.set(Rc::new(set));
+        self.select_anchor.set(anchor);
     }
 
     pub fn toggle_selected(&self, row: u32) {
         let mut set = (*self.selection.peek()).clone();
-        if !set.remove(&row) {
-            set.insert(row);
-        }
+        toggle(&mut set, row);
         self.selection.set(Rc::new(set));
         self.select_anchor.set(Some(row));
     }
@@ -228,13 +230,12 @@ impl<Row: 'static> TableState<Row> {
             return;
         };
         let (lo, hi) = if from <= to { (from, to) } else { (to, from) };
-        let span = visible
-            .get(lo..=hi)
-            .unwrap_or_default()
-            .iter()
-            .copied()
-            .collect::<HashSet<u32>>();
-        self.selection.set(Rc::new(span));
+        let mut set: HashSet<u32> = HashSet::new();
+        span(
+            &mut set,
+            visible.get(lo..=hi).unwrap_or_default().iter().copied(),
+        );
+        self.selection.set(Rc::new(set));
     }
 
     pub(super) fn anchor(&self) -> Option<u32> {

@@ -1,3 +1,9 @@
+#[cfg(test)]
+use crate::animation_runtime::tick as tick_animations;
+use crate::animation_runtime::{active_count as active_animation_count, running_clocks};
+
+use web_time::Instant;
+
 use crate::app::config::PanicPolicy;
 use crate::app::error::AppResult;
 use crate::app::window::set_current_window;
@@ -5,7 +11,6 @@ use crate::shell::{WinitShell, WinitWindowHandle};
 use crate::tasks::AsyncRuntime;
 
 use super::backend::Backend;
-use super::clock::AnimationClock;
 use super::lifecycle::{apply_commands, dispatch_events, open_requested};
 use super::record::{SignalWrite, WindowRecord, Windows};
 use super::{request_animation_frame, run_frame};
@@ -119,5 +124,40 @@ impl LoopState {
                 shot: Some(&mut shot),
             },
         );
+    }
+}
+
+const NOMINAL_FRAME_SECS: f32 = 1.0 / 60.0;
+
+#[derive(Default)]
+pub(crate) struct AnimationClock {
+    pub(super) previous: Option<Instant>,
+}
+
+impl AnimationClock {
+    pub(crate) fn elapsed(&mut self, now: Instant) -> f32 {
+        if active_animation_count() == 0 && running_clocks() == 0 {
+            self.previous = None;
+            return NOMINAL_FRAME_SECS;
+        }
+        self.previous
+            .replace(now)
+            .map_or(NOMINAL_FRAME_SECS, |previous| {
+                now.saturating_duration_since(previous).as_secs_f32()
+            })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn tick_active(&mut self, now: Instant) -> bool {
+        if active_animation_count() == 0 {
+            self.previous = None;
+            return false;
+        }
+        let dt = self.elapsed(now);
+        tick_animations(dt);
+        if active_animation_count() == 0 {
+            self.previous = None;
+        }
+        true
     }
 }

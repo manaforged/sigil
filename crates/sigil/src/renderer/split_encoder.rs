@@ -6,14 +6,13 @@ use crate::profile::count;
 use crate::renderer::decoration_paint::DecorationInstance;
 use crate::renderer::frame_upload::{UploadBuffer, UploadBuffers, UploadedRange};
 use crate::renderer::layer_composite::LayerInstance;
-use crate::renderer::raster_paint::RasterInstance;
+use crate::renderer::quad_paint::QuadInstance;
 use crate::renderer::renderer::record_clear;
 use crate::renderer::scene_command::SceneCommand;
 use crate::renderer::scene_instance::{
     FillInstance, GpuStop, MAX_GRADIENT_STOPS, RectInstance, SceneUniforms, ShadowInstance,
 };
 use crate::renderer::slug::SLUG_INSTANCE_BYTES;
-use crate::renderer::sprite_paint::SpriteInstance;
 use crate::style::Color;
 
 pub(crate) use timing::GpuTimer;
@@ -93,12 +92,12 @@ impl SplitEncoder {
                 SceneCommand::DrawShadow { .. } => vertices += size_of::<ShadowInstance>() as u64,
                 SceneCommand::Decoration(_) => vertices += size_of::<DecorationInstance>() as u64,
                 SceneCommand::Sprite(_) | SceneCommand::Image(_) => {
-                    vertices += size_of::<SpriteInstance>() as u64;
+                    vertices += size_of::<QuadInstance>() as u64;
                     uniforms += self.uniform_alignment;
                 }
                 SceneCommand::GlyphRun(draw) => {
                     vertices += (draw.run.positioned_glyphs().len()
-                        * size_of::<RasterInstance>().max(SLUG_INSTANCE_BYTES))
+                        * size_of::<QuadInstance>().max(SLUG_INSTANCE_BYTES))
                         as u64;
                     uniforms += self.uniform_alignment;
                 }

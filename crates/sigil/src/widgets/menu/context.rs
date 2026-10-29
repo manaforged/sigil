@@ -1,13 +1,12 @@
 use crate::events::{MouseButton, NodeEventsExt};
-use crate::kernel::{IntoNode, NodeBuilder, TopLayer, container};
-use crate::layout::ViewportOverlay;
+use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Owner, OwnerId, Signal, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string;
-use crate::style::{ControlSize, Metrics, NodeStyleExt};
+use crate::style::{ControlSize, Metrics};
 
-use super::super::popup::{PANEL_INSET, PANEL_WIDTH};
+use super::super::popup::{Anchor, Layer, PANEL_INSET, PANEL_WIDTH};
 use super::builder::{MenuItem, menu};
 
 #[must_use]
@@ -28,28 +27,27 @@ pub fn context_menu(
         })
         .child(target)
         .child(
-            container()
-                .with(TopLayer)
-                .with(ViewportOverlay)
-                .layout(
-                    LayoutStyle::block()
-                        .position(Position::Absolute)
-                        .inset_left(0.0)
-                        .inset_top(0.0)
-                        .fill_width()
-                        .fill_height(),
-                )
-                .visible_when(open)
-                .children_reactive(move || {
-                    if !open.get() {
-                        return Vec::new();
-                    }
-                    let rows = items();
-                    if rows.is_empty() {
-                        return Vec::new();
-                    }
-                    vec![anchored_menu(rows, open, pos.get(), host)]
-                }),
+            Layer::new(open, Anchor::Top).wrap(
+                container()
+                    .layout(
+                        LayoutStyle::block()
+                            .position(Position::Absolute)
+                            .inset_left(0.0)
+                            .inset_top(0.0)
+                            .fill_width()
+                            .fill_height(),
+                    )
+                    .children_reactive(move || {
+                        if !open.get() {
+                            return Vec::new();
+                        }
+                        let rows = items();
+                        if rows.is_empty() {
+                            return Vec::new();
+                        }
+                        vec![anchored_menu(rows, open, pos.get(), host)]
+                    }),
+            ),
         )
 }
 

@@ -204,13 +204,14 @@ fn toggle_scene_emits_on_and_off_variants() {
 fn toggle_and_checkbox_share_styled_interaction_path() {
     let interaction_src = include_str!("../../src/widgets/interaction.rs");
     let shared_src = include_str!("../../src/widgets/shared.rs");
+    let press_src = include_str!("../../src/widgets/shared/press.rs");
     let checkbox_src = include_str!("../../src/widgets/checkbox.rs");
     let toggle_src = include_str!("../../src/widgets/toggle.rs");
 
     assert!(interaction_src.contains("pub fn style_state"));
     assert!(interaction_src.contains("pub fn release_pointer"));
-    assert!(shared_src.contains("interaction.release_pointer"));
-    assert!(shared_src.contains("interaction.activate_key"));
+    assert!(press_src.contains("interaction.release_pointer"));
+    assert!(press_src.contains("interaction.activate_key"));
     assert!(shared_src.contains("binary_style_state"));
     assert!(checkbox_src.contains("binary_style_state"));
     assert!(toggle_src.contains("binary_style_state"));

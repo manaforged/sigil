@@ -221,8 +221,8 @@
 | <code>size(self, size: <a href="sigil-style.html#controlsize">ControlSize</a>) -&gt; Self</code> |  |
 | <code>const soft(self) -&gt; Self</code> |  |
 | <code>const solid(self) -&gt; Self</code> |  |
-| <code>theme(self, theme: <a href="sigil-style.html#theme">Theme</a>) -&gt; Self</code> |  |
 | <code>const tone(self, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
+| <code>theme(self, theme: <a href="sigil-style.html#theme">Theme</a>) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 
@@ -282,8 +282,8 @@
 | <code>const indeterminate(self, partial: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;) -&gt; Self</code> |  |
 | <code>label(self, label: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;) -&gt; Self</code> |  |
 | <code>new(checked: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;) -&gt; Self</code> |  |
-| <code>theme(self, theme: <a href="sigil-style.html#theme">Theme</a>) -&gt; Self</code> |  |
 | <code>const tone(self, tone: <a href="sigil-style.html#tone">Tone</a>) -&gt; Self</code> |  |
+| <code>theme(self, theme: <a href="sigil-style.html#theme">Theme</a>) -&gt; Self</code> |  |
 
 **Trait implementations:** <code><a href="sigil-kernel.html#intonode">IntoNode</a></code>, <code><a href="sigil-widgets-layout_ext.html#widgetlayoutext">WidgetLayoutExt</a></code>
 

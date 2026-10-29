@@ -137,6 +137,17 @@ impl Spring {
         }
     }
 
+    pub(crate) fn advance(&mut self, dt: f32) {
+        if self.is_settled() {
+            return;
+        }
+        let before = self.value;
+        self.step(dt);
+        if self.value.to_bits() == before.to_bits() {
+            self.reset(self.target);
+        }
+    }
+
     fn snap_if_settled(&mut self) -> bool {
         let settled = self.is_settled();
         if settled {

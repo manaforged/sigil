@@ -14,7 +14,55 @@ pub(crate) fn oversize_message() -> String {
 }
 
 pub(crate) fn oversize_block() -> markdown::parse::Block {
-    markdown::parse::Block::Paragraph(oversize_message())
+    markdown::parse::Block::Paragraph(vec![markdown::parse::Inline::Text(oversize_message())])
+}
+
+macro_rules! builder_impls {
+    ($gen:tt $ty:ty: $($part:ident $(($field:ident))?),+ $(,)?) => {
+        $(builder_impls!(@$part $gen $ty $(, $field)?);)+
+    };
+    (@paint [$($g:tt)*] $ty:ty, $field:ident) => {
+        impl<$($g)*> crate::style::PaintTarget for $ty {
+            fn style_slot(&mut self) -> crate::style::StyleSlot<'_> {
+                crate::style::StyleSlot(&mut self.$field)
+            }
+        }
+    };
+    (@state [$($g:tt)*] $ty:ty) => {
+        impl<$($g)*> crate::style::StateHost for $ty {}
+    };
+    (@layout [$($g:tt)*] $ty:ty) => {
+        impl<$($g)*> crate::widgets::layout_ext::WidgetLayoutExt for $ty {
+            fn layout_overrides_mut(&mut self) -> &mut crate::widgets::layout_ext::LayoutOverrides {
+                &mut self.layout_overrides
+            }
+        }
+    };
+    (@node [$($g:tt)*] $ty:ty) => {
+        impl<$($g)*> crate::kernel::IntoNode for $ty {
+            fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
+                let node = self.layout_overrides.hooks().finish(self.into_node_builder());
+                crate::kernel::IntoNode::build(node, cx)
+            }
+        }
+    };
+    (@plain_node [$($g:tt)*] $ty:ty) => {
+        impl<$($g)*> crate::kernel::IntoNode for $ty {
+            fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
+                crate::kernel::IntoNode::build(self.into_node_builder(), cx)
+            }
+        }
+    };
+    (@theme [$($g:tt)*] $ty:ty) => {
+        impl<$($g)*> $ty {
+            #[must_use]
+            pub fn theme(mut self, theme: crate::style::Theme) -> Self {
+                self.mutators
+                    .push(Box::new(move |node| crate::style::NodeStyleExt::theme(node, theme)));
+                self
+            }
+        }
+    };
 }
 
 #[cfg(test)]

@@ -2,8 +2,8 @@ use crate::hal::RenderedGlyph;
 use crate::style::Color;
 
 use crate::renderer::glyph_place::GlyphMode;
-use crate::renderer::raster_paint::{
-    RasterDrawParams, RasterFrame, RasterGroup, RasterInstance, RasterTextPipeline,
+use crate::renderer::quad_paint::{
+    AtlasPipeline, MaskParams, QuadGroup, QuadInstance, SpritePaint,
 };
 use crate::renderer::scene_command::walk::{QueuedGlyphs, Walk, pipeline_for, transform_rect};
 use crate::renderer::scene_command::{
@@ -12,7 +12,6 @@ use crate::renderer::scene_command::{
 use crate::renderer::scene_instance::BlendSpace;
 use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::slug::{DrawParams, GlyphInstance, QueuedRun, RunFrame, SlugTextPipeline};
-use crate::renderer::sprite_paint::{SpritePaint, SpritePipeline};
 use crate::text::Paragraph;
 
 impl Walk<'_> {
@@ -32,10 +31,10 @@ impl Walk<'_> {
         };
         let clip = self.state.current_clip();
         let pipeline = pipeline_for(
-            self.ctx.sprite_pipelines,
+            self.ctx.quad_pipelines,
             self.ctx.device,
             self.ctx.format,
-            (SpritePipeline::format, SpritePipeline::new),
+            (AtlasPipeline::format, AtlasPipeline::new),
         );
         pipeline.paint_sprite(
             &mut PaintCtx {
@@ -58,7 +57,7 @@ impl Walk<'_> {
         reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
     )]
     pub(super) fn draw_image(&mut self, draw: &DrawImage) {
-        let scale = crate::renderer::sprite_paint::raster_scale(
+        let scale = crate::renderer::quad_paint::raster_scale(
             self.state.current_transform(),
             self.ctx.scale,
             draw.destination,
@@ -68,10 +67,10 @@ impl Walk<'_> {
         };
         let packed = {
             let pipeline = pipeline_for(
-                self.ctx.sprite_pipelines,
+                self.ctx.quad_pipelines,
                 self.ctx.device,
                 self.ctx.format,
-                (SpritePipeline::format, SpritePipeline::new),
+                (AtlasPipeline::format, AtlasPipeline::new),
             );
             pipeline.register_image(self.ctx.device, self.ctx.queue, &source)
         };
@@ -178,15 +177,15 @@ impl Walk<'_> {
         paragraph: &Paragraph,
         origin: (f32, f32),
         color: Color,
-    ) -> (Vec<RasterInstance>, Option<Vec<RenderedGlyph>>) {
+    ) -> (Vec<QuadInstance>, Option<Vec<RenderedGlyph>>) {
         let ctx = &mut self.ctx;
         let pipeline = pipeline_for(
-            ctx.raster_pipelines,
+            ctx.quad_pipelines,
             ctx.device,
             ctx.format,
-            (RasterTextPipeline::format, RasterTextPipeline::new),
+            (AtlasPipeline::format, AtlasPipeline::new),
         );
-        let (raster, leftover) = pipeline.place_paragraph(&RasterDrawParams {
+        let (raster, leftover) = pipeline.place_paragraph(&MaskParams {
             device: ctx.device,
             queue: ctx.queue,
             scale: ctx.scale,
@@ -252,7 +251,7 @@ impl Walk<'_> {
                 Some(group) if group.clip == clip && group.range.end == start => {
                     group.range.end = end;
                 }
-                _ => pending.raster_groups.push(RasterGroup {
+                _ => pending.raster_groups.push(QuadGroup {
                     clip,
                     range: start..end,
                 }),
@@ -263,14 +262,14 @@ impl Walk<'_> {
         }
         ctx.stats.text_draws += pending.raster_groups.len();
         let pipeline = pipeline_for(
-            ctx.raster_pipelines,
+            ctx.quad_pipelines,
             ctx.device,
             ctx.format,
-            (RasterTextPipeline::format, RasterTextPipeline::new),
+            (AtlasPipeline::format, AtlasPipeline::new),
         );
-        pipeline.draw_batch(
+        pipeline.draw_masks(
             &mut *ctx.encoder,
-            &RasterFrame {
+            &RunFrame {
                 device: ctx.device,
                 view: ctx.view,
                 surface_width: ctx.viewport.0,

@@ -2,8 +2,10 @@
 
 use super::*;
 use crate::Host;
+use crate::kernel::Cx;
 use crate::kernel::{IntoNode, container};
 use crate::reactive::Runtime;
+use crate::widgets::layout_ext::WidgetLayoutExt;
 
 #[test]
 fn nice_max_steps_are_1_2_5() {

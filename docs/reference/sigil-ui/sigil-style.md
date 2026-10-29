@@ -51,7 +51,6 @@
 | [`FlexWrapKind`](#flexwrapkind) | enum |  |
 | [`GradientAxis`](#gradientaxis) | enum |  |
 | [`JustifyKind`](#justifykind) | enum |  |
-| [`LengthPercentage`](#lengthpercentage) | enum |  |
 | [`NumericAtomKind`](#numericatomkind) | enum |  |
 | [`OverflowKind`](#overflowkind) | enum |  |
 | [`StateSlot`](#stateslot) | enum |  |
@@ -168,10 +167,10 @@
 | <code>control_height(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="#dimension">Dimension</a></code> |  |
 | <code>control_width(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="#dimension">Dimension</a></code> |  |
 | <code>from_palette(palette: <a href="sigil-style-palette.html#palette">Palette</a>, variant: <a href="sigil-style-variant.html#variant">Variant</a>) -&gt; Self</code> |  |
-| <code>gap(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="#lengthpercentage">LengthPercentage</a></code> |  |
+| <code>gap(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="sigil-layout.html#lengthpercentage">LengthPercentage</a></code> |  |
 | <code>normal() -&gt; Self</code> |  |
-| <code>padding(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="#lengthpercentage">LengthPercentage</a></code> |  |
-| <code>const radius(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="#lengthpercentage">LengthPercentage</a></code> |  |
+| <code>padding(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="sigil-layout.html#lengthpercentage">LengthPercentage</a></code> |  |
+| <code>const radius(&amp;self, size: <a href="#controlsize">ControlSize</a>) -&gt; <a href="sigil-layout.html#lengthpercentage">LengthPercentage</a></code> |  |
 | <code>terminal() -&gt; Self</code> |  |
 | <code>dark() -&gt; Self</code> |  |
 | <code>light() -&gt; Self</code> |  |
@@ -365,11 +364,13 @@
 | <code>const EMPTY: Self</code> |  |
 | <code>const disabled(self) -&gt; &amp;'static [<a href="#styleatom">StyleAtom</a>]</code> |  |
 | <code>const focused(self) -&gt; &amp;'static [<a href="#styleatom">StyleAtom</a>]</code> |  |
+| <code>const get(self, slot: <a href="#stateslot">StateSlot</a>) -&gt; &amp;'static [<a href="#styleatom">StyleAtom</a>]</code> |  |
 | <code>const hovered(self) -&gt; &amp;'static [<a href="#styleatom">StyleAtom</a>]</code> |  |
 | <code>const new(rest: &amp;'static [<a href="#styleatom">StyleAtom</a>], focused: &amp;'static [<a href="#styleatom">StyleAtom</a>], hovered: &amp;'static [<a href="#styleatom">StyleAtom</a>], pressed: &amp;'static [<a href="#styleatom">StyleAtom</a>], disabled: &amp;'static [<a href="#styleatom">StyleAtom</a>]) -&gt; Self</code> |  |
 | <code>const pressed(self) -&gt; &amp;'static [<a href="#styleatom">StyleAtom</a>]</code> |  |
 | <code>const resolve(self, state: <a href="#stylestate">StyleState</a>) -&gt; &amp;'static [<a href="#styleatom">StyleAtom</a>]</code> |  |
 | <code>const rest(self) -&gt; &amp;'static [<a href="#styleatom">StyleAtom</a>]</code> |  |
+| <code>const with(self, slot: <a href="#stateslot">StateSlot</a>, atoms: &amp;'static [<a href="#styleatom">StyleAtom</a>]) -&gt; Self</code> |  |
 | <code>const with_disabled(self, atoms: &amp;'static [<a href="#styleatom">StyleAtom</a>]) -&gt; Self</code> |  |
 | <code>const with_focused(self, atoms: &amp;'static [<a href="#styleatom">StyleAtom</a>]) -&gt; Self</code> |  |
 | <code>const with_hovered(self, atoms: &amp;'static [<a href="#styleatom">StyleAtom</a>]) -&gt; Self</code> |  |
@@ -1044,24 +1045,6 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
-### `LengthPercentage`
-
-**Methods**
-
-| Method | Description |
-| --- | --- |
-| <code>const px_or_zero(self) -&gt; f32</code> |  |
-
-**Variants**
-
-| Variant | Description |
-| --- | --- |
-| <code>Percent(f32)</code> |  |
-| <code>Px(<a href="#px">Px</a>)</code> |  |
-
-**Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>From&lt;<a href="#px">Px</a>&gt;</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
-
-
 ### `NumericAtomKind`
 
 **Variants**
@@ -1121,7 +1104,7 @@
 
 | Method | Description |
 | --- | --- |
-| <code>const ALL: [Self; 37]</code> |  |
+| <code>const ALL: [Self; 43]</code> |  |
 | <code>from_name(name: &amp;str) -&gt; Option&lt;Self&gt;</code> |  |
 
 **Variants**
@@ -1133,6 +1116,7 @@
 | <code>Cancel</code> |  |
 | <code>Chart</code> |  |
 | <code>ChartSummary</code> |  |
+| <code>Checkbox</code> |  |
 | <code>Close</code> |  |
 | <code>CodeEditor</code> |  |
 | <code>CommandMenu</code> |  |
@@ -1148,6 +1132,10 @@
 | <code>MoveLeft</code> |  |
 | <code>MoveRight</code> |  |
 | <code>NoData</code> |  |
+| <code>Notice</code> |  |
+| <code>NoticeError</code> |  |
+| <code>NoticeSuccess</code> |  |
+| <code>NoticeWarning</code> |  |
 | <code>Ok</code> |  |
 | <code>RequiredMark</code> |  |
 | <code>ResizePanes</code> |  |
@@ -1165,6 +1153,7 @@
 | <code>SparklineSummary</code> |  |
 | <code>StatusBar</code> |  |
 | <code>TableMenu</code> |  |
+| <code>Toggle</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Hash</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 

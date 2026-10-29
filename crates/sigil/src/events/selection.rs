@@ -231,9 +231,13 @@ fn deliver(cx: &Cx, region: NodeId, text: &str) {
     let result = crate::clipboard::copy(text);
     let mut at = Some(region);
     while let Some(id) = at {
-        if crate::events::handlers::dispatch(cx, id, |handlers| {
-            handlers.invoke_selection_copy(text, &result)
-        }) == Some(true)
+        if crate::events::handlers::fire(
+            cx,
+            id,
+            crate::events::handlers::EventKind::SelectionCopy,
+            crate::events::handlers::Phase::Bubble,
+            crate::events::handlers::EventArg::SelectionCopy(text, &result),
+        ) == Some(true)
         {
             return;
         }

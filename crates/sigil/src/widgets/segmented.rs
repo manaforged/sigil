@@ -1,11 +1,12 @@
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use super::layout_ext::WidgetLayoutExt;
+use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::snap::{self, CellForm};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot};
+use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom};
 
 use super::button::button;
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 
 static SEGMENTED_FRAME: &[StyleAtom] = &[
     StyleAtom::BorderWidth(BORDER_WIDTH),
@@ -106,23 +107,4 @@ fn segment(
     container().child(choice)
 }
 
-impl PaintTarget for SegmentedBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for SegmentedBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for SegmentedBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] SegmentedBuilder: paint(style_accumulator), layout, node);

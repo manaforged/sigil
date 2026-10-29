@@ -4,11 +4,11 @@ use std::rc::Rc;
 use crate::geometry::Rect;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
 use crate::reactive::{Signal, signal};
-use crate::style::{PaintTarget, StateHost, Style, StyleSlot};
+use crate::style::Style;
 
 use crate::widgets::interaction::InteractionState;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::{BuilderMutator, disabled_now};
 use super::handlers::{TextEditRuntime, TextEditState, attach_key_handlers, noop_change};
 use super::ime::attach_ime_handlers;
@@ -199,19 +199,7 @@ impl TextEditBuilder {
     }
 }
 
-impl PaintTarget for TextEditBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl StateHost for TextEditBuilder {}
-
-impl WidgetLayoutExt for TextEditBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([] TextEditBuilder: paint(style_accumulator), state, layout);
 
 impl IntoNode for TextEditBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {

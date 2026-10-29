@@ -3,18 +3,18 @@ use std::rc::Rc;
 
 use accesskit::Action;
 
-use crate::events::{NodeEventsExt, PointerEvent};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use crate::events::PointerEvent;
+use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::{Reactive, Signal};
-use crate::style::{NodeStyleExt, PaintTarget, StateHost, Style, StyleOverlay, StyleSlot, Theme};
+use crate::style::{Style, StyleOverlay};
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::orientation::Orientation;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::{BuilderMutator, control_surface, disabled_now};
-use super::handlers::{attach_key_handlers, pointer_down, pointer_move, pointer_up};
+use super::handlers::{attach_key_handlers, attach_pointer_drag};
 use super::track::{slider_thumb, track};
 
 pub(super) type ValueChange = Rc<dyn Fn(f32) + 'static>;
@@ -130,25 +130,19 @@ impl SliderBuilder {
         self
     }
 
-    #[must_use]
-    pub fn theme(mut self, theme: Theme) -> Self {
-        self.mutators.push(Box::new(move |node| node.theme(theme)));
-        self
-    }
-
     fn into_node_builder(mut self) -> NodeBuilder {
         let runtime = self.runtime;
         let interaction = InteractionState::new(!runtime.disabled());
         let on_change: ValueChange = self.on_change.take().unwrap_or_else(|| Rc::new(|_| {}));
         let user_overlay = self.style_accumulator.take_state_overlay();
         let root = slider_root(&self, interaction, user_overlay);
-        let change = Rc::clone(&on_change);
-        let mut node = interaction.install(
-            attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change))
-                .pointer_down(move |event| pointer_down(event, interaction, runtime))
-                .pointer_move(move |event| pointer_move(event, interaction, runtime))
-                .pointer_up(move |event| pointer_up(event, interaction, runtime.value, &change)),
-        );
+        let keyed = attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change));
+        let mut node = interaction.install(attach_pointer_drag(
+            keyed,
+            interaction,
+            runtime,
+            Rc::clone(&on_change),
+        ));
         for mutate in self.mutators {
             node = mutate(node);
         }
@@ -166,28 +160,7 @@ impl SliderBuilder {
     }
 }
 
-impl PaintTarget for SliderBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl StateHost for SliderBuilder {}
-
-impl WidgetLayoutExt for SliderBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for SliderBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] SliderBuilder: paint(style_accumulator), state, layout, node, theme);
 
 impl SliderRange {
     pub(super) fn span(self) -> f32 {

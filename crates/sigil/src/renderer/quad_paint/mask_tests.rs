@@ -36,16 +36,18 @@ fn quantized_placement_error_bounded_by_half_bin() {
 #[test]
 fn normalize_uvs_divides_by_final_size() {
     let mut instances = vec![
-        RasterInstance {
-            quad_rect: [0.0; 4],
-            uv_rect: [0.0, 0.0, 512.0, 512.0],
-            color: [0.0; 4],
-        },
-        RasterInstance {
-            quad_rect: [0.0; 4],
-            uv_rect: [1024.0, 0.0, 2048.0, 1024.0],
-            color: [0.0; 4],
-        },
+        QuadInstance::new(
+            ([0.0; 4], [0.0, 0.0, 512.0, 512.0]),
+            [0.0; 4],
+            (QuadKind::Mask, 1.0, 0.0),
+            IDENTITY,
+        ),
+        QuadInstance::new(
+            ([0.0; 4], [1024.0, 0.0, 2048.0, 1024.0]),
+            [0.0; 4],
+            (QuadKind::Mask, 1.0, 0.0),
+            IDENTITY,
+        ),
     ];
     normalize_uvs(&mut instances, 2048);
     assert_eq!(instances[0].uv_rect, [0.0, 0.0, 0.25, 0.25]);
@@ -99,8 +101,8 @@ fn one_placement_caches_every_glyph_including_fallback_faces() {
         .iter()
         .find(|g| g.font_id != fonts_seen[0])
         .expect("expected at least one fallback-face glyph");
-    let mut pipeline = RasterTextPipeline::new(&device, wgpu::TextureFormat::Rgba8UnormSrgb);
-    let (_, leftover) = pipeline.place_paragraph(&RasterDrawParams {
+    let mut pipeline = AtlasPipeline::new(&device, wgpu::TextureFormat::Rgba8UnormSrgb);
+    let (_, leftover) = pipeline.place_paragraph(&MaskParams {
         device: &device,
         queue: &queue,
         scale: 1.0,
@@ -116,14 +118,17 @@ fn one_placement_caches_every_glyph_including_fallback_faces() {
         "a fallback-face glyph must not be routed to leftover when the atlas has room",
     );
     assert!(
-        pipeline.atlas.get(&key_at_unit_scale(fallback)).is_some(),
+        pipeline
+            .mask_atlas
+            .get(&key_at_unit_scale(fallback))
+            .is_some(),
         "the fallback-face glyph must be present in the raster atlas cache",
     );
     let unknown: Vec<u32> = glyphs
         .iter()
         .filter(|glyph| {
             let key = key_at_unit_scale(glyph);
-            pipeline.atlas.get(&key).is_none() && !pipeline.atlas.blank.contains(&key)
+            pipeline.mask_atlas.get(&key).is_none() && !pipeline.mask_atlas.blank.contains(&key)
         })
         .map(|glyph| glyph.glyph_id)
         .collect();

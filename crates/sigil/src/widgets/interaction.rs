@@ -1,7 +1,13 @@
+mod drag;
+mod steps;
+
 use crate::events::{KeyEvent, MouseButton, NodeEventsExt, PointerEvent};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 use crate::style::{FocusRing, NodeStyleExt, StyleState};
+
+pub(crate) use drag::{axis_of, pointer_drag};
+pub(crate) use steps::{Step, step_keys};
 
 #[derive(Clone, Copy)]
 pub struct InteractionState {

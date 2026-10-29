@@ -1,4 +1,5 @@
-pub(super) const RECT_SHADER: &str = "\
+pub(super) const RECT_SHADER: &str = concat!(
+    "\
 struct Uniforms {
     viewport: vec2<f32>,
     _pad: vec2<f32>,
@@ -62,47 +63,9 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
     return out;
 }
 
-fn aa_pad(row_x: vec2<f32>, row_y: vec2<f32>) -> vec2<f32> {
-    let column_x = length(vec2<f32>(row_x.x, row_y.x));
-    let column_y = length(vec2<f32>(row_x.y, row_y.y));
-    return vec2<f32>(1.0 / max(column_x, 1e-6), 1.0 / max(column_y, 1e-6));
-}
-
-fn corner_radius(p: vec2<f32>, radii: vec4<f32>) -> f32 {
-    let bottom = select(radii.w, radii.z, p.x > 0.0);
-    let top = select(radii.x, radii.y, p.x > 0.0);
-    return select(bottom, top, p.y < 0.0);
-}
-
-fn rounded_rect_sdf(p: vec2<f32>, half: vec2<f32>, radii: vec4<f32>) -> f32 {
-    let r = corner_radius(p, radii);
-    let q = abs(p) - half + vec2<f32>(r, r);
-    return length(max(q, vec2<f32>(0.0, 0.0))) + min(max(q.x, q.y), 0.0) - r;
-}
-
-fn edge_coverage(d: f32, aa: f32) -> f32 {
-    return clamp(0.5 - d / (2.0 * aa), 0.0, 1.0);
-}
-
-fn dash_mask(local: vec2<f32>, dash_len: f32, dash_gap: f32) -> f32 {
-    if dash_len <= 0.0 {
-        return 1.0;
-    }
-    let period = dash_len + dash_gap;
-    let arc = abs(local.x) + abs(local.y);
-    return select(0.0, 1.0, arc - floor(arc / period) * period < dash_len);
-}
-
-fn stroke_mask(d: f32, local: vec2<f32>, band: vec4<f32>, aa: f32) -> f32 {
-    if band.x + band.y <= 0.0 {
-        return 0.0;
-    }
-    let stroke_d = max(-band.x - d, d - band.y);
-    let alpha = edge_coverage(stroke_d, aa);
-    return alpha * dash_mask(local, band.z, band.w);
-}
-
-fn overlay_stroke(fill: vec4<f32>, stroke: vec4<f32>, amount: f32) -> vec4<f32> {
+",
+    crate::renderer::fill_paint::sdf_helpers!(),
+    "fn overlay_stroke(fill: vec4<f32>, stroke: vec4<f32>, amount: f32) -> vec4<f32> {
     let stroke_alpha = stroke.a * amount;
     let out_alpha = stroke_alpha + fill.a * (1.0 - stroke_alpha);
     if out_alpha <= 0.0 {
@@ -122,4 +85,5 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let stroke = vec4<f32>(in.stroke_params.rgb, in.stroke_params.a * in.opacity);
     return overlay_stroke(fill, stroke, amount);
 }
-";
+",
+);

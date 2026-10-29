@@ -6,18 +6,15 @@ use crate::animation_runtime::presets;
 use crate::events::focus_from_keyboard;
 use crate::events::mutate_handlers;
 use crate::events::{Key, NodeEventsExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TopLayer, container, text};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use crate::layout::{Popup, PopupSide, ViewportOverlay};
+use crate::layout::{Popup, PopupSide};
 use crate::reactive::{IntervalId, Signal, cancel_interval, interval, signal};
 use crate::style::TransitionId;
-use crate::style::{
-    ControlSize, DisplayKind, Metrics, NodeStyleExt, PaintTarget, Style, StyleAtom, StyleSlot,
-    Theme, Token, space,
-};
+use crate::style::{ControlSize, Metrics, Style, StyleAtom, Token, space};
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::popup::{POPUP_GAP, surface};
+use super::layout_ext::LayoutOverrides;
+use super::popup::{Anchor, Layer, POPUP_GAP, hide, surface};
 use super::shared::BuilderMutator;
 
 const BUBBLE_MAX_WIDTH: f32 = space(60);
@@ -80,12 +77,6 @@ impl TooltipBuilder {
         self
     }
 
-    #[must_use]
-    pub fn theme(mut self, theme: Theme) -> Self {
-        self.mutators.push(Box::new(move |node| node.theme(theme)));
-        self
-    }
-
     fn into_node_builder(self) -> NodeBuilder {
         let visible = signal(false);
         let side = if self.clamp_top {
@@ -126,26 +117,7 @@ impl TooltipBuilder {
     }
 }
 
-impl PaintTarget for TooltipBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for TooltipBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for TooltipBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] TooltipBuilder: paint(style_accumulator), layout, node, theme);
 
 fn hover_reveal(root: NodeBuilder, visible: Signal<bool>, delay_ms: u64) -> NodeBuilder {
     let pending: Rc<Cell<Option<IntervalId>>> = Rc::new(Cell::new(None));
@@ -172,9 +144,7 @@ fn hover_reveal(root: NodeBuilder, visible: Signal<bool>, delay_ms: u64) -> Node
         if let Some(id) = pending.take() {
             cancel_interval(id);
         }
-        if visible.peek() {
-            visible.set(false);
-        }
+        hide(visible);
         event.stop_propagation();
     })
 }
@@ -218,8 +188,7 @@ fn watch_focus(cx: &mut Cx, target: NodeId, visible: Signal<bool>) {
         handlers.add_key(
             Key::Escape.into(),
             Box::new(move |event| {
-                if visible.peek() {
-                    visible.set(false);
+                if hide(visible) {
                     event.stop_propagation();
                 }
             }),
@@ -241,16 +210,14 @@ fn build_bubble(
     (visible, side): (Signal<bool>, PopupSide),
 ) -> NodeBuilder {
     let metrics = Metrics::current();
+    let anchor = Anchor::Popup(Popup {
+        side,
+        center: true,
+        sibling: true,
+        gap: POPUP_GAP,
+    });
     let mut bubble = surface(Role::Tooltip)
         .label(description.to_owned())
-        .with(TopLayer)
-        .with(ViewportOverlay)
-        .with(Popup {
-            side,
-            center: true,
-            sibling: true,
-            gap: POPUP_GAP,
-        })
         .layout(
             LayoutStyle::flex_column()
                 .max_width(BUBBLE_MAX_WIDTH)
@@ -264,7 +231,6 @@ fn build_bubble(
                 .inset_left(0.0),
         )
         .class(BUBBLE_BASE)
-        .style_reactive(move || visibility_atoms(visible.get()))
         .child(
             text(label.to_owned())
                 .class("text-sm")
@@ -277,15 +243,7 @@ fn build_bubble(
                 .class(Token::OnSurfaceMuted.text()),
         );
     }
-    bubble
-}
-
-const fn visibility_atoms(show: bool) -> &'static [StyleAtom] {
-    if show {
-        &[]
-    } else {
-        &[StyleAtom::Display(DisplayKind::None)]
-    }
+    Layer::new(visible, anchor).wrap(bubble)
 }
 
 #[cfg(test)]

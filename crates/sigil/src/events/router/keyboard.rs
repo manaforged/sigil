@@ -91,7 +91,13 @@ fn run_phase(
     capture: bool,
 ) -> bool {
     for id in path {
-        let _ = dispatch(cx, id, |handlers| handlers.invoke_key(event, capture));
+        let _ = crate::events::handlers::fire(
+            cx,
+            id,
+            crate::events::handlers::EventKind::Key,
+            crate::events::handlers::Phase::of(capture),
+            crate::events::handlers::EventArg::Key(event),
+        );
         if event.propagation_stopped() {
             return true;
         }
@@ -128,7 +134,15 @@ impl ShortcutIndex {
             }
             if shortcut.matches(event)
                 && dispatch(cx, *id, |handlers| {
-                    handlers.invoke_shortcut(event) || handlers.invoke_key(event, false)
+                    handlers.dispatch(
+                        crate::events::handlers::EventKind::Shortcut,
+                        crate::events::handlers::Phase::Bubble,
+                        &mut crate::events::handlers::EventArg::Key(event),
+                    ) || handlers.dispatch(
+                        crate::events::handlers::EventKind::Key,
+                        crate::events::handlers::Phase::Bubble,
+                        &mut crate::events::handlers::EventArg::Key(event),
+                    )
                 }) == Some(true)
             {
                 return true;

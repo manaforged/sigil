@@ -10,6 +10,7 @@ use crate::geometry::{Point, Rect};
 use tiny_skia::{Mask, Pixmap, Transform as TsTransform};
 
 use crate::renderer::cache_limits::CacheLimits;
+use crate::renderer::plan::Node;
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::{IDENTITY, transform_rect};
 use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Transform};
@@ -40,17 +41,7 @@ impl Painter<'_> {
         }
     }
 
-    pub(super) fn layer(&mut self, scope: LayerScope, children: &[SceneCommand]) {
-        if let Some(effect) = SceneState::inline_transform(&scope) {
-            self.state.push_transform(effect);
-            self.state.push_clip(scope.clip);
-            if !self.state.clipped_out() {
-                self.walk(children);
-            }
-            self.state.pop_clip();
-            self.state.pop_transform();
-            return;
-        }
+    pub(super) fn layer(&mut self, scope: LayerScope, children: &[Node<'_>]) {
         if let LayerEffect::Transform(transform) = scope.effect {
             self.transformed_layer(scope, transform, children);
             return;
@@ -66,8 +57,8 @@ impl Painter<'_> {
         )
     }
 
-    pub(super) fn group(&mut self, opacity: f32, children: &[SceneCommand]) {
-        let Some(bounds) = self.state.draw_bounds(children, self.area(), self.scale) else {
+    pub(super) fn group(&mut self, opacity: f32, commands: &[SceneCommand], children: &[Node<'_>]) {
+        let Some(bounds) = self.state.draw_bounds(commands, self.area(), self.scale) else {
             return;
         };
         let state = self.state.group_state(bounds);
@@ -78,7 +69,7 @@ impl Painter<'_> {
         self.release_pixmap(layer);
     }
 
-    fn untransformed_layer(&mut self, scope: LayerScope, children: &[SceneCommand]) {
+    fn untransformed_layer(&mut self, scope: LayerScope, children: &[Node<'_>]) {
         let clip_logical = transform_rect(self.state.current_transform(), scope.clip);
         let Some(bounds) = self.state.layer_bounds(&scope, self.area()) else {
             return;
@@ -128,7 +119,7 @@ impl Painter<'_> {
         &mut self,
         bounds: Rect,
         state: SceneState,
-        children: &[SceneCommand],
+        children: &[Node<'_>],
     ) -> Option<(Pixmap, TsTransform)> {
         let x0 = bounds.origin.x.mul_add(self.scale, -self.origin.x).round();
         let y0 = bounds.origin.y.mul_add(self.scale, -self.origin.y).round();
@@ -153,7 +144,7 @@ impl Painter<'_> {
         &mut self,
         scope: LayerScope,
         transform: Transform,
-        children: &[SceneCommand],
+        children: &[Node<'_>],
     ) {
         let Some(frame) = self
             .state

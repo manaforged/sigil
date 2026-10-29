@@ -2,24 +2,23 @@ use crate::reactive::Reactive;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::NodeEventsExt;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
+use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow, rows};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
-    BORDER_WIDTH, PaintTarget, Radius, StateHost, StateStyle, Style, StyleAtom, StyleOverlay,
-    StyleSlot, StyleVariant, Token, TransitionId, space,
+    BORDER_WIDTH, Radius, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant, Token,
+    TransitionId, space,
 };
 
 use crate::widgets::interaction::InteractionState;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 
 use super::super::listbox::listbox;
 use super::super::popup::{ChevronDirection, chevron};
 use super::super::shared::{
-    Activate, DIMMED, activate_pointer_reactive, disabled_now, reactive_style_state,
+    Activate, DIMMED, Press, RELEASE, disabled_now, press, reactive_style_state,
 };
 use super::popup::{DropdownModel, OptionCtx, SURFACE_HOVER, build_popup, trigger_height};
 
@@ -142,28 +141,7 @@ impl DropdownBuilder {
     }
 }
 
-impl PaintTarget for DropdownBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl StateHost for DropdownBuilder {}
-
-impl WidgetLayoutExt for DropdownBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for DropdownBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] DropdownBuilder: paint(style_accumulator), state, layout, node);
 
 fn dropdown_root(
     ctx: OptionCtx,
@@ -200,7 +178,11 @@ fn build_trigger(
     user_overlay: StyleOverlay,
 ) -> NodeBuilder {
     let (selected, open, cursor, disabled) = (ctx.selected, ctx.open, ctx.cursor, ctx.disabled);
-    let mut node = container()
+    let cb: Activate = Rc::new(move || {
+        open.set(!open.peek());
+        cursor.set(selected.peek());
+    });
+    let node = container()
         .layout(
             LayoutStyle::flex_row()
                 .fill()
@@ -215,14 +197,8 @@ fn build_trigger(
         .stateful_style(TRIGGER_VARIANT, user_overlay, move || {
             reactive_style_state(interaction, disabled)
         })
-        .seal_style()
-        .pointer_up(move |ev| {
-            let cb: Activate = Rc::new(move || {
-                open.set(!open.peek());
-                cursor.set(selected.peek());
-            });
-            activate_pointer_reactive(ev, interaction, disabled, &cb);
-        })
+        .seal_style();
+    let mut node = press(node, interaction, disabled, Press::Activate(cb), RELEASE)
         .child(trigger_label(selected, Rc::clone(options)))
         .child(chevron(ChevronDirection::Down, 16.0));
     if !styled.is_empty() {

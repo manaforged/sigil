@@ -184,7 +184,7 @@ const fn ask_terminal(Draft { caps }: Draft, _: Option<ProbeRow>) -> (Caps, Meas
 
 #[cfg(unix)]
 impl Draft {
-    const fn settle(mut self, answers: &Answers) -> Caps {
+    fn settle(mut self, answers: &Answers) -> Caps {
         if self.ask.has(Question::Sync) {
             self.caps.sync = answers.sync;
         }
@@ -218,7 +218,7 @@ impl Draft {
 fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
     let mux = detect_mux(env);
     let known = known::known(env, mux);
-    let sync = known.map(|term| !matches!(term, Known::Vte | Known::Apple));
+    let sync = known.map(Known::sync);
     let keys = known.map(Known::kitty_keys);
     let graphics = detect(env);
     let glyphs = glyphs(env);

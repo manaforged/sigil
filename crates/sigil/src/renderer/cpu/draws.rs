@@ -20,10 +20,9 @@ use crate::scene::corner_radii::CornerRadii;
 
 use super::bound::{Bound, rounded_rect};
 use super::glyph_outline::{fill_glyphs, run_paths};
-use super::glyphs::RunPlacement;
 use super::paint::{Painter, brush, shader_brush};
 use super::pattern::Placement;
-use super::raster::RasterCache;
+use super::quad::{QuadCache, RunPlacement};
 use super::shadow::{ShadowPlacement, shadow};
 use super::shapes::{self, Brush, gradient, opacity_of, rgba_table, solid};
 use super::stroke::stroke;
@@ -44,13 +43,13 @@ impl Painter<'_> {
         bounds: Rect,
         opacity: f32,
         shader: bool,
-        draw: impl FnOnce(&mut Pixmap, &mut RasterCache, &Brush<'_>) -> bool,
+        draw: impl FnOnce(&mut Pixmap, &mut QuadCache, &Brush<'_>) -> bool,
     ) -> bool {
         let ctx = self.ctx();
         let Self {
             target,
             mask,
-            raster,
+            quads,
             ..
         } = self;
         let made = if shader {
@@ -58,7 +57,7 @@ impl Painter<'_> {
         } else {
             brush(mask, &ctx, bounds, opacity)
         };
-        made.is_some_and(|b| draw(target, raster, &b))
+        made.is_some_and(|b| draw(target, quads, &b))
     }
 
     #[expect(
@@ -72,16 +71,16 @@ impl Painter<'_> {
         outline: Option<Stroke>,
         opacity: f32,
         shader: bool,
-        fill: impl FnOnce(&mut Pixmap, &mut RasterCache, &Path, &Brush<'_>, Bound),
+        fill: impl FnOnce(&mut Pixmap, &mut QuadCache, &Path, &Brush<'_>, Bound),
     ) -> bool {
         let bounds = transform_rect(
             self.state.current_transform(),
             StrokeBand::ink(outline, rect),
         );
-        self.with_brush(bounds, opacity, shader, |target, raster, brush| {
+        self.with_brush(bounds, opacity, shader, |target, quads, brush| {
             let bound = Bound::of(target, brush.transform);
             if let Some(path) = rounded_rect(rect, radii, bound) {
-                fill(target, raster, &path, brush, bound);
+                fill(target, quads, &path, brush, bound);
             }
             if let Some(s) = outline {
                 stroke(target, rect, radii, s, brush);
@@ -97,8 +96,8 @@ impl Painter<'_> {
     pub(super) fn sprite(&mut self, draw: &DrawSprite) {
         let opacity = opacity_of(draw.opacity, self.state.current_opacity());
         let bounds = self.placed(draw.destination);
-        if self.with_brush(bounds, opacity, true, |target, raster, brush| {
-            raster.sprite(target, draw, draw.destination, brush);
+        if self.with_brush(bounds, opacity, true, |target, quads, brush| {
+            quads.sprite(target, draw, draw.destination, brush);
             true
         }) {
             self.stats.sprite_draws += 1;
@@ -108,8 +107,8 @@ impl Painter<'_> {
     pub(super) fn image(&mut self, draw: &DrawImage) {
         let opacity = opacity_of(draw.opacity, self.state.current_opacity());
         let (bounds, scale) = (self.placed(draw.destination), self.scale);
-        if self.with_brush(bounds, opacity, true, |target, raster, brush| {
-            raster.image(target, draw, scale, brush);
+        if self.with_brush(bounds, opacity, true, |target, quads, brush| {
+            quads.image(target, draw, scale, brush);
             true
         }) {
             self.stats.sprite_draws += 1;
@@ -169,7 +168,7 @@ impl Painter<'_> {
             draw.stroke,
             opacity,
             true,
-            |target, raster, path, brush, bound| {
+            |target, quads, path, brush, bound| {
                 let place = Placement {
                     kind: draw.pattern,
                     rect: draw.rect,
@@ -178,7 +177,7 @@ impl Painter<'_> {
                     bound,
                     size: [target.width(), target.height()],
                 };
-                if let Some(shader) = raster.pattern(&place) {
+                if let Some(shader) = quads.pattern(&place) {
                     shapes::fill(target, path, &shader_paint(shader), brush);
                 }
             },
@@ -227,7 +226,7 @@ impl Painter<'_> {
                     clip,
                     table: rgba_table(run.color, opacity),
                 };
-                self.glyphs.draw_run(self.target, run, &place);
+                self.quads.draw_run(self.target, run, &place);
             }
             GlyphMode::Outline => {
                 let paths = run_paths(run, self.state.current_transform(), self.scale);

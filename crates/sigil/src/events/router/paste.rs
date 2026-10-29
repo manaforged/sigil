@@ -7,7 +7,7 @@ use crate::layout::LayoutEngine;
 
 use super::EventRouter;
 
-type PasteHandler = crate::events::handlers::Handler<PasteEvent>;
+type PasteHandler = crate::events::handlers::Callback<PasteEvent>;
 
 #[derive(Default)]
 pub(crate) struct PasteHandlers {

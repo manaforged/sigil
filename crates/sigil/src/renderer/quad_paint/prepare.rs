@@ -2,7 +2,7 @@ use crate::geometry::Rect;
 use crate::renderer::scene_command::state::{MAX_LAYER_EXTENT, SceneState};
 use crate::renderer::scene_command::{LayerEffect, SceneCommand, Transform};
 
-use super::SpritePipeline;
+use super::AtlasPipeline;
 
 pub(crate) fn raster_scale(transform: Transform, scale: f32, dest: Rect) -> f32 {
     let [[xx, xy, _], [yx, yy, _]] = transform;
@@ -17,7 +17,7 @@ pub(crate) fn raster_scale(transform: Transform, scale: f32, dest: Rect) -> f32 
     }
 }
 
-impl SpritePipeline {
+impl AtlasPipeline {
     pub(crate) fn prepare(
         &mut self,
         device: &wgpu::Device,

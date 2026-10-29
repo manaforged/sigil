@@ -8,6 +8,7 @@ use tiny_skia::Pixmap;
 
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
+use crate::renderer::plan::build_tree;
 use crate::renderer::scene_command::CommandScene;
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::window_handle::{DisplayAndWindow, WindowHandle};
@@ -15,27 +16,24 @@ use crate::renderer::window_handle::{DisplayAndWindow, WindowHandle};
 mod bound;
 mod draws;
 mod glyph_outline;
-mod glyphs;
 mod layers;
 mod paint;
 mod pattern;
-mod raster;
+mod quad;
 mod shadow;
 mod shadow_field;
 mod shapes;
 mod sprite_tint;
 mod stroke;
 
-use glyphs::GlyphCache;
 use paint::Painter;
-use raster::RasterCache;
+use quad::QuadCache;
 
 type Shared = Arc<Box<dyn DisplayAndWindow>>;
 
 #[derive(Default)]
 pub struct CpuRenderer {
-    glyphs: GlyphCache,
-    raster: RasterCache,
+    quads: QuadCache,
     layers: Vec<Pixmap>,
     covers: Vec<tiny_skia::Mask>,
     transparent: bool,
@@ -88,12 +86,10 @@ impl CpuRenderer {
         target.fill(shapes::color(clear));
         let scale = physical_scale(size, viewport);
         self.stats = FrameStats::default();
-        self.raster.begin_frame();
-        self.glyphs.begin_frame();
+        self.quads.begin_frame();
         self.stats.scene_commands = scene.commands.len();
         let scratch = paint::Scratch {
-            glyphs: &mut self.glyphs,
-            raster: &mut self.raster,
+            quads: &mut self.quads,
             stats: &mut self.stats,
             pool: &mut self.layers,
             covers: &mut self.covers,
@@ -105,7 +101,7 @@ impl CpuRenderer {
             SceneState::default(),
             scratch,
         )
-        .walk(&scene.commands);
+        .walk(&build_tree(&scene.commands));
         Ok(target)
     }
 

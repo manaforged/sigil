@@ -400,6 +400,7 @@
 | Method | Description |
 | --- | --- |
 | <code>const length(value: f32) -&gt; Self</code> |  |
+| <code>const px_or_zero(self) -&gt; f32</code> |  |
 
 **Variants**
 
@@ -409,7 +410,7 @@
 | <code>Px(f32)</code> |  |
 | <code>Text(<a href="#textlength">TextLength</a>)</code> |  |
 
-**Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>From&lt;f32&gt;</code>, <code>From&lt;<a href="#textlength">TextLength</a>&gt;</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+**Trait implementations:** <code>Clone</code>, <code>PartialEq</code>, <code>From&lt;f32&gt;</code>, <code>From&lt;<a href="#textlength">TextLength</a>&gt;</code>, <code>From&lt;<a href="sigil-style.html#px">Px</a>&gt;</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
 ### `LengthPercentageAuto`

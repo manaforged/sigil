@@ -10,14 +10,14 @@ use crate::geometry::{Point, Rect};
 use tiny_skia::{Mask, Pixmap, Transform as TsTransform};
 
 use crate::renderer::frame_stats::FrameStats;
+use crate::renderer::plan::Node;
 use crate::renderer::scene_command::SceneCommand;
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::{IDENTITY, intersect_rect};
 use crate::scene::corner_radii::CornerRadii;
 
 use super::bound::rect_mask;
-use super::glyphs::GlyphCache;
-use super::raster::RasterCache;
+use super::quad::QuadCache;
 use super::shapes::{Brush, cover, ts_transform};
 
 pub(super) struct Masks<'a> {
@@ -32,15 +32,13 @@ pub(super) struct Painter<'a> {
     pub(super) origin: Point,
     pub(super) state: SceneState,
     pub(super) mask: Masks<'a>,
-    pub(super) glyphs: &'a mut GlyphCache,
-    pub(super) raster: &'a mut RasterCache,
+    pub(super) quads: &'a mut QuadCache,
     pub(super) stats: &'a mut FrameStats,
     pub(super) pool: &'a mut Vec<Pixmap>,
 }
 
 pub(super) struct Scratch<'a> {
-    pub(super) glyphs: &'a mut GlyphCache,
-    pub(super) raster: &'a mut RasterCache,
+    pub(super) quads: &'a mut QuadCache,
     pub(super) stats: &'a mut FrameStats,
     pub(super) pool: &'a mut Vec<Pixmap>,
     pub(super) covers: &'a mut Vec<Mask>,
@@ -62,8 +60,7 @@ impl<'a> Painter<'a> {
         origin: Point,
         state: SceneState,
         Scratch {
-            glyphs,
-            raster,
+            quads,
             stats,
             pool,
             covers,
@@ -79,8 +76,7 @@ impl<'a> Painter<'a> {
                 covers,
                 faded: None,
             },
-            glyphs,
-            raster,
+            quads,
             stats,
             pool,
         }
@@ -93,8 +89,7 @@ impl<'a> Painter<'a> {
         state: SceneState,
     ) -> Painter<'b> {
         let scratch = Scratch {
-            glyphs: &mut *self.glyphs,
-            raster: &mut *self.raster,
+            quads: &mut *self.quads,
             stats: &mut *self.stats,
             pool: &mut *self.pool,
             covers: &mut *self.mask.covers,
@@ -102,32 +97,25 @@ impl<'a> Painter<'a> {
         Painter::new(target, self.scale, origin, state, scratch)
     }
 
-    pub(super) fn walk(&mut self, commands: &[SceneCommand]) {
-        let mut index = 0;
-        while let Some(command) = commands.get(index) {
-            index += 1;
-            match command {
-                SceneCommand::PushLayer(scope) => {
-                    let end = SceneState::layer_end(commands, index);
+    pub(super) fn walk(&mut self, nodes: &[Node<'_>]) {
+        for node in nodes {
+            match node {
+                Node::Command(command) => self.handle(command),
+                Node::State(command) => self.handle(command),
+                Node::Layer { scope, children } => {
                     if !self.state.clipped_out() {
-                        self.layer(*scope, commands.get(index..end).unwrap_or_default());
-                    }
-                    index = end + 1;
-                }
-                SceneCommand::SaveLayer { opacity } => {
-                    let end = SceneState::group_end(commands, index);
-                    let children = commands.get(index..end).unwrap_or_default();
-                    if SceneState::composites_group(children) {
-                        if !self.state.clipped_out() {
-                            self.group(*opacity, children);
-                        }
-                        index = end + 1;
-                    } else {
-                        self.handle(command);
+                        self.layer(*scope, children);
                     }
                 }
-                SceneCommand::PopLayer => {}
-                other => self.handle(other),
+                Node::Group {
+                    opacity,
+                    commands,
+                    children,
+                } => {
+                    if !self.state.clipped_out() {
+                        self.group(*opacity, commands, children);
+                    }
+                }
             }
         }
     }

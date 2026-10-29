@@ -77,7 +77,7 @@ fn assert_mono_tint_is_red(pixels: &[u8], phys_w: u32) {
         rgba[0] > 180 && rgba[1] < 100 && rgba[2] < 100,
         "Mono tint: center pixel ({cx},{cy}) should be red-tinted \
          (R > 180, G < 100, B < 100). Got R={} G={} B={}. \
-         Check sprite_paint.wgsl SPRITE_KIND_MONO branch: \
+         Check quad_paint.wgsl SPRITE_KIND_MONO branch: \
          coverage * in.color.rgb should amplify R and suppress G/B.",
         rgba[0],
         rgba[1],
@@ -120,7 +120,7 @@ fn assert_subpixel_rgb_independence(pixels: &[u8], phys_w: u32) {
         found,
         "Subpixel RGB independence: scanned three pixels around ({ex},{ey}). \
          None had any channel differing from another channel by ≥ 16. \
-         Check sprite_paint.wgsl SPRITE_KIND_SUBPIXEL branch: \
+         Check quad_paint.wgsl SPRITE_KIND_SUBPIXEL branch: \
          R/G/B must sample three phase-offset atlas positions independently."
     );
 }
@@ -133,7 +133,7 @@ fn assert_poly_tint_ignored_green_atlas(pixels: &[u8], phys_w: u32) {
         "Poly tint-ignored: center pixel ({cx},{cy}) should be bright green \
          from the atlas (G > 180, R < 120). Got R={} G={} B={}. \
          The Poly atlas region is a horizontal red→green gradient; center is \
-         ~50% across, so G dominates. Check sprite_paint.wgsl SPRITE_KIND_POLY \
+         ~50% across, so G dominates. Check quad_paint.wgsl SPRITE_KIND_POLY \
          branch: tint must be dropped, raw atlas RGBA passed through.",
         rgba[0],
         rgba[1],

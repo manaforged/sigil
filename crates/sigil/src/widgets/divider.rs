@@ -1,4 +1,4 @@
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
+use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::style::{StyleAtom, Token};
 
@@ -45,11 +45,7 @@ impl From<VerticalDivider> for NodeBuilder {
     }
 }
 
-impl IntoNode for VerticalDivider {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] VerticalDivider: plain_node);
 
 #[cfg(test)]
 #[path = "divider_tests.rs"]

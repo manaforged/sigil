@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode};
-use crate::style::{PaintTarget, Style, StyleSlot};
+use crate::style::Style;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::Activate;
 use super::nav::{Entry, SubmitObserver};
 use super::render::into_node_builder;
@@ -123,17 +123,7 @@ impl CommandMenuBuilder {
     }
 }
 
-impl WidgetLayoutExt for CommandMenuBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl PaintTarget for CommandMenuBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
+builder_impls!([] CommandMenuBuilder: paint(style_accumulator), layout);
 
 impl IntoNode for CommandMenuBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {

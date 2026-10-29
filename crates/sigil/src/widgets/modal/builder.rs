@@ -1,26 +1,19 @@
 use crate::style::strings::StringKey;
-use crate::style::theme::ambient::{ActiveTheme, theme_label};
-use std::cell::Cell;
-use std::rc::Rc;
+use crate::style::theme::ambient::ActiveTheme;
 
 use crate::animation_runtime::presets;
-use crate::events::{Key, NodeEventsExt};
-use crate::kernel::{
-    AccessibleName, Cx, FocusScopeKind, IntoNode, Live, NodeBuilder, Role, TextContent, TopLayer,
-    container, queue_announcement,
-};
-use crate::layout::ViewportOverlay;
+use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container};
 use crate::layout::snap;
 use crate::layout::{
     AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow, Position,
 };
-use crate::reactive::{Signal, effect_named, signal};
-use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot, Token, TransitionId, space};
+use crate::reactive::{Signal, signal};
+use crate::style::{Style, StyleAtom, Token, TransitionId, space};
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::popup::{self, footer};
+use super::super::layout_ext::LayoutOverrides;
+use super::super::popup::{self, Anchor, Layer, close_on_escape, footer};
 use super::super::scroll::contain_scroll;
-use super::escape::{close_top_escape_modal, register_escape_modal};
+use super::super::shared::accessible_name_or;
 use super::parts::{BODY_GUTTER, CloseControl, dialog_body, dialog_header};
 
 const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
@@ -152,12 +145,13 @@ impl ModalBuilder {
 
     fn into_node_builder(self) -> NodeBuilder {
         let show = self.show;
-        let root_name = accessible_name(self.title.as_ref());
+        let root_name = accessible_name_or(self.title.as_ref(), StringKey::Dialog);
         let body_scroll = signal(0.0_f32);
+        let layer = Layer::new(show, Anchor::Top);
 
-        install_open_effects(show, self.title.clone(), body_scroll);
+        install_open_effects(layer, self.title.clone(), body_scroll);
         if self.escape_closes {
-            register_escape_modal(show);
+            layer.register_escape();
         }
 
         let side = self.side;
@@ -165,64 +159,35 @@ impl ModalBuilder {
         let backdrop = build_backdrop(show, self.dismiss_on_backdrop);
         let dialog = build_dialog(self, body_scroll);
 
-        let mut root = contain_scroll(
-            container()
-                .role(Role::GenericContainer)
-                .label(root_name)
-                .with(TopLayer)
-                .with(ViewportOverlay)
-                .layout(root_layout(side))
-                .style_reactive(move || popup::shown(show))
+        let root = contain_scroll(
+            layer
+                .wrap(
+                    container()
+                        .role(Role::GenericContainer)
+                        .label(root_name)
+                        .layout(root_layout(side)),
+                )
                 .child(backdrop)
                 .child(dialog),
         );
         if escape_closes {
-            root = root.key(Key::Escape, |ev| {
-                if close_top_escape_modal() {
-                    ev.stop_propagation();
-                }
-            });
+            close_on_escape(root)
+        } else {
+            root
         }
-
-        root
     }
 }
 
-impl WidgetLayoutExt for ModalBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([] ModalBuilder: paint(style_accumulator), layout, node);
 
-fn install_open_effects(show: Signal<bool>, title: Option<TextContent>, body_scroll: Signal<f32>) {
-    let prev = Rc::new(Cell::new(true));
+fn install_open_effects(layer: Layer, title: Option<TextContent>, body_scroll: Signal<f32>) {
     let theme = ActiveTheme::capture();
-    effect_named("sigil::modal::open", move || {
-        let open_now = show.get();
-        let was_open = prev.replace(open_now);
-        if open_now && !was_open {
-            body_scroll.set(0.0);
-            let name = title
-                .as_ref()
-                .map_or_else(|| theme.string(StringKey::Dialog), TextContent::resolve);
-            queue_announcement(name, Live::Polite);
-        }
+    layer.announce_open("sigil::modal::open", move || {
+        body_scroll.set(0.0);
+        title
+            .as_ref()
+            .map_or_else(|| theme.string(StringKey::Dialog), TextContent::resolve)
     });
-}
-
-impl PaintTarget for ModalBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl IntoNode for ModalBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
 }
 
 fn root_layout(side: Option<Side>) -> LayoutStyle {
@@ -249,28 +214,25 @@ fn root_layout(side: Option<Side>) -> LayoutStyle {
 }
 
 fn build_backdrop(show: Signal<bool>, dismiss_on_backdrop: bool) -> NodeBuilder {
-    let mut backdrop = container()
-        .role(Role::GenericContainer)
-        .hittable(true)
-        .with(ViewportOverlay)
-        .layout(
-            LayoutStyle::block()
-                .position(Position::Absolute)
-                .inset_top(0.0)
-                .inset_left(0.0)
-                .fill(),
-        )
-        .class(BACKDROP_BASE)
-        .style_reactive(move || popup::shown(show));
+    let layer = Layer::new(show, Anchor::Viewport);
+    let backdrop = layer.wrap(
+        container()
+            .role(Role::GenericContainer)
+            .hittable(true)
+            .layout(
+                LayoutStyle::block()
+                    .position(Position::Absolute)
+                    .inset_top(0.0)
+                    .inset_left(0.0)
+                    .fill(),
+            )
+            .class(BACKDROP_BASE),
+    );
     if dismiss_on_backdrop {
-        backdrop = backdrop.pointer_down(move |ev| {
-            if show.peek() {
-                show.set(false);
-                ev.stop_propagation();
-            }
-        });
+        layer.dismiss_outside(backdrop)
+    } else {
+        backdrop
     }
-    backdrop
 }
 
 fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
@@ -286,21 +248,17 @@ fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
         layout_overrides,
         ..
     } = spec;
-    let title_label = accessible_name(title.as_ref());
+    let title_label = accessible_name_or(title.as_ref(), StringKey::Dialog);
     let tab_stop = signal(false);
 
-    let mut dialog = popup::surface(Role::Dialog)
-        .label(title_label)
-        .focusable(true)
-        .mutate(move |node| node.a11y.tab_stop = Some(tab_stop))
-        .with(layout_overrides.apply(dialog_layout(side)))
-        .class(DIALOG_BASE)
-        .style_reactive(move || popup::shown(show));
-    if trap {
-        dialog = dialog.mutate(|node| {
-            node.a11y.focus_scope = Some(FocusScopeKind::Modal);
-        });
-    }
+    let mut dialog = Layer::new(show, Anchor::Inline).trap(trap).wrap(
+        popup::surface(Role::Dialog)
+            .label(title_label)
+            .focusable(true)
+            .mutate(move |node| node.a11y.tab_stop = Some(tab_stop))
+            .with(layout_overrides.apply(dialog_layout(side)))
+            .class(DIALOG_BASE),
+    );
 
     if let Some(title_text) = title {
         dialog = dialog.child(dialog_header(
@@ -335,17 +293,6 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
         None => base.min_size(420.0, 0.0),
         Some(Side::Left | Side::Right) => base.fill_height().width(SHEET_WIDTH),
         Some(Side::Bottom) => base.fill_width().height(SHEET_HEIGHT),
-    }
-}
-
-fn accessible_name(title: Option<&TextContent>) -> AccessibleName {
-    let Some(title) = title else {
-        return AccessibleName::Derived(theme_label(StringKey::Dialog));
-    };
-    match title {
-        TextContent::Static(value) => AccessibleName::Static(value.clone()),
-        TextContent::Reactive(value) => AccessibleName::Derived(*value),
-        TextContent::Compute(_) => AccessibleName::Static(title.resolve()),
     }
 }
 

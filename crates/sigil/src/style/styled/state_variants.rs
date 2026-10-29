@@ -1,17 +1,13 @@
-use smallvec::SmallVec;
-
 use super::StateStyleBuilder;
-use crate::style::{PaintTarget, StateHost, Style, StyleAtom};
+use crate::style::{PaintTarget, StateHost, StateSlot};
 
-type Setter = fn(&mut Style, SmallVec<[StyleAtom; 16]>);
-
-fn set_state<T, F>(mut target: T, set: Setter, configure: F) -> T
+fn set_state<T, F>(mut target: T, slot: StateSlot, configure: F) -> T
 where
     T: PaintTarget,
     F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
 {
     let built = configure(StateStyleBuilder::new());
-    set(target.style_slot().0, built.into_atoms());
+    target.style_slot().0.set_state(slot, built.into_atoms());
     target
 }
 
@@ -21,7 +17,7 @@ pub trait StateVariants: PaintTarget + StateHost {
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        set_state(self, Style::set_rest, configure)
+        set_state(self, StateSlot::Rest, configure)
     }
 
     #[must_use]
@@ -29,7 +25,7 @@ pub trait StateVariants: PaintTarget + StateHost {
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        set_state(self, Style::set_hover, configure)
+        set_state(self, StateSlot::Hovered, configure)
     }
 
     #[must_use]
@@ -37,7 +33,7 @@ pub trait StateVariants: PaintTarget + StateHost {
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        set_state(self, Style::set_focus, configure)
+        set_state(self, StateSlot::Focused, configure)
     }
 
     #[must_use]
@@ -45,7 +41,7 @@ pub trait StateVariants: PaintTarget + StateHost {
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        set_state(self, Style::set_pressed, configure)
+        set_state(self, StateSlot::Pressed, configure)
     }
 
     #[must_use]
@@ -53,7 +49,7 @@ pub trait StateVariants: PaintTarget + StateHost {
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
-        set_state(self, Style::set_disabled, configure)
+        set_state(self, StateSlot::Disabled, configure)
     }
 }
 

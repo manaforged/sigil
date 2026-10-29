@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::kernel::Cx;
+use crate::kernel::IntoNode;
 use crate::reactive::{Runtime, signal};
 
 #[test]

@@ -1,5 +1,5 @@
 use crate::animation_runtime::presets;
-use crate::kernel::{AccessibleName, TextBuilder, TextContent, text};
+use crate::kernel::{TextBuilder, TextContent, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{
     BORDER_WIDTH, Elevation, GHOST_VARIANT, NodeStyleExt, SOFT_VARIANT, SOLID_VARIANT, StyleAtom,
@@ -13,14 +13,6 @@ pub(super) enum ButtonWidth {
     Hug,
     Fixed(f32),
     Fill,
-}
-
-pub(super) fn accessible_label(label: &TextContent) -> AccessibleName {
-    match label {
-        TextContent::Static(value) => AccessibleName::Static(value.clone()),
-        TextContent::Reactive(value) => AccessibleName::Derived(*value),
-        TextContent::Compute(_) => AccessibleName::Static(label.resolve()),
-    }
 }
 
 pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> LayoutStyle {

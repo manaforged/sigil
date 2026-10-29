@@ -3,9 +3,9 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{Dimension, LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, effect_named, signal};
-use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot, Token, space};
+use crate::style::{Style, StyleAtom, Token, space};
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 
 mod bar;
 pub(crate) mod geometry;
@@ -206,17 +206,7 @@ fn viewport_signals(
     (viewport, viewport_height)
 }
 
-impl PaintTarget for ScrollBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for ScrollBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([] ScrollBuilder: paint(style_accumulator), layout);
 
 impl IntoNode for ScrollBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {

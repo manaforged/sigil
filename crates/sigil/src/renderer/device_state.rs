@@ -7,13 +7,12 @@ use crate::renderer::fill_paint::FillPipeline;
 use crate::renderer::frame_upload::UploadBuffers;
 use crate::renderer::layer_composite::LayerCompositePipeline;
 use crate::renderer::layer_pool::LayerPool;
-use crate::renderer::raster_paint::RasterTextPipeline;
+use crate::renderer::quad_paint::AtlasPipeline;
 use crate::renderer::scene_command::walk::WalkPending;
 use crate::renderer::scene_paint::ScenePipeline;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::SlugTextPipeline;
 use crate::renderer::split_encoder::GpuTimer;
-use crate::renderer::sprite_paint::SpritePipeline;
 #[cfg(not(target_arch = "wasm32"))]
 use pollster::FutureExt as _;
 use std::sync::Arc;
@@ -29,8 +28,7 @@ pub(crate) struct PipelineCache {
     pub(crate) fill_pipelines: Vec<FillPipeline>,
     pub(crate) shadow_pipelines: Vec<ShadowPipeline>,
     pub(crate) slug_pipelines: Vec<SlugTextPipeline>,
-    pub(crate) raster_pipelines: Vec<RasterTextPipeline>,
-    pub(crate) sprite_pipelines: Vec<SpritePipeline>,
+    pub(crate) quad_pipelines: Vec<AtlasPipeline>,
     pub(crate) decoration_pipelines: Vec<DecorationPipeline>,
     pub(crate) layer_pipelines: Vec<LayerCompositePipeline>,
     pub(crate) blur_pipelines: Vec<BlurPipeline>,
@@ -45,8 +43,7 @@ impl Default for PipelineCache {
             fill_pipelines: Vec::new(),
             shadow_pipelines: Vec::new(),
             slug_pipelines: Vec::new(),
-            raster_pipelines: Vec::new(),
-            sprite_pipelines: Vec::new(),
+            quad_pipelines: Vec::new(),
             decoration_pipelines: Vec::new(),
             layer_pipelines: Vec::new(),
             blur_pipelines: Vec::new(),
@@ -89,11 +86,8 @@ impl ReadyState {
     }
 
     pub(crate) fn begin_frame(&mut self) {
-        for pipeline in &mut self.pipelines.raster_pipelines {
+        for pipeline in &mut self.pipelines.quad_pipelines {
             pipeline.begin_frame(&self.queue);
-        }
-        for pipeline in &mut self.pipelines.sprite_pipelines {
-            pipeline.begin_frame();
         }
     }
 

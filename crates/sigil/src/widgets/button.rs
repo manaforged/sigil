@@ -1,23 +1,18 @@
-use crate::events::LogicalKey;
 use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{AccessibleName, TextContent};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::LayoutBuilderExt;
 use crate::reactive::Signal;
-use crate::style::{
-    ControlSize, Metrics, NodeStyleExt, PaintTarget, Radius, StateHost, Style, StyleSlot, Theme,
-    Tone,
-};
+use crate::style::{ControlSize, Metrics, NodeStyleExt, Radius, Style, Tone};
 
 use crate::widgets::interaction::InteractionState;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use super::shared::{
-    Activate, BuilderMutator, activate_key_reactive, activate_pointer_reactive, noop_activate,
-    or_disabled, reactive_style_state,
+    Activate, BuilderMutator, Press, RELEASE_ENTER_SPACE, accessible_name, noop_activate,
+    or_disabled, press, reactive_style_state,
 };
 
 pub struct ButtonBuilder {
@@ -188,12 +183,6 @@ impl ButtonBuilder {
         self
     }
 
-    #[must_use]
-    pub fn theme(mut self, theme: Theme) -> Self {
-        self.mutators.push(Box::new(move |node| node.theme(theme)));
-        self
-    }
-
     fn into_node_builder(mut self) -> NodeBuilder {
         let look_disabled = self.disabled;
         self.disabled = or_disabled(self.disabled, self.pending);
@@ -224,11 +213,10 @@ impl ButtonBuilder {
     ) -> NodeBuilder {
         let variant = self.resolved_fill().variant();
         let disabled = self.disabled;
-        let (pointer_activate, key_activate) = (Rc::clone(&activate), Rc::clone(&activate));
         let name = self
             .accessible
             .clone()
-            .unwrap_or_else(|| accessible_label(&self.label));
+            .unwrap_or_else(|| accessible_name(&self.label));
         let node = container()
             .role(Role::Button)
             .mutate(move |node| node.a11y.disabled = disabled)
@@ -243,16 +231,14 @@ impl ButtonBuilder {
             .stateful_style(variant, user_overlay, move || {
                 reactive_style_state(interaction, look_disabled)
             })
-            .seal_style()
-            .pointer_up(move |event| {
-                activate_pointer_reactive(event, interaction, disabled, &pointer_activate);
-            })
-            .key(Key::Enter, move |event| {
-                activate_key_reactive(event, interaction, disabled, &key_activate);
-            })
-            .key(LogicalKey::character(" "), move |event| {
-                activate_key_reactive(event, interaction, disabled, &activate);
-            });
+            .seal_style();
+        let node = press(
+            node,
+            interaction,
+            disabled,
+            Press::Activate(activate),
+            RELEASE_ENTER_SPACE,
+        );
         let node = match self.pending {
             Some(pending) => node.child(self.pending_content(pending)),
             None if self.square => node.child(self.square_content()),
@@ -262,28 +248,7 @@ impl ButtonBuilder {
     }
 }
 
-impl PaintTarget for ButtonBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for ButtonBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl StateHost for ButtonBuilder {}
-
-impl IntoNode for ButtonBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] ButtonBuilder: paint(style_accumulator), state, layout, node, theme);
 
 mod content;
 mod glyph;
@@ -291,7 +256,7 @@ mod parts;
 
 pub use glyph::ButtonGlyph;
 
-use parts::{BUTTON_TRANSITION_ATOMS, ButtonFill, ButtonWidth, accessible_label, button_layout};
+use parts::{BUTTON_TRANSITION_ATOMS, ButtonFill, ButtonWidth, button_layout};
 
 #[cfg(test)]
 #[path = "button_tests.rs"]

@@ -3,14 +3,12 @@ use crate::style::theme::ambient::{ActiveTheme, theme_label, theme_text};
 use std::ops::Range;
 use std::rc::Rc;
 
-use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
+use crate::kernel::{AccessibleName, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Reactive, Signal, derived};
-use crate::style::{
-    BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, Tone, space,
-};
+use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, Tone, space};
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use crate::kernel::text;
 mod axis;
 mod decimate;
@@ -313,26 +311,7 @@ fn summary(series: &[ChartSeries], labels: &[String], theme: ActiveTheme) -> Str
     parts.join("; ")
 }
 
-impl IntoNode for ChartBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
-
-impl PaintTarget for ChartBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for ChartBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([] ChartBuilder: paint(style_accumulator), layout, node);
 
 pub(crate) fn nice_max(max: f32) -> f32 {
     if !max.is_finite() || max <= 0.0 {

@@ -1,7 +1,7 @@
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
+use super::layout_ext::LayoutOverrides;
+use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
-use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, space};
+use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, space};
 
 const PANEL_MIN_HEIGHT: f32 = space(12);
 const DEFAULT_PADDING: f32 = space(4);
@@ -99,26 +99,7 @@ impl Default for PanelBuilder {
     }
 }
 
-impl PaintTarget for PanelBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for PanelBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for PanelBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] PanelBuilder: paint(style_accumulator), layout, node);
 
 const fn surface_atoms(elevation: u32) -> &'static [StyleAtom] {
     match elevation {

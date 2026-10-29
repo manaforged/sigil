@@ -1,8 +1,9 @@
-use crate::events::{Key, NodeEventsExt};
+use crate::events::Key;
 use crate::kernel::NodeBuilder;
 use crate::reactive::derived;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
+use crate::widgets::interaction::{Step, step_keys};
 
 use super::drag::SplitterState;
 use crate::widgets::orientation::Orientation;
@@ -38,18 +39,18 @@ pub(in crate::widgets) fn resize_keys(
     (back, forward): (Key, Key),
     step_by: impl Fn(f32) + Clone + 'static,
 ) -> NodeBuilder {
-    [
-        (back, -KEY_STEP),
-        (forward, KEY_STEP),
-        (Key::Home, f32::NEG_INFINITY),
-        (Key::End, f32::INFINITY),
-    ]
-    .into_iter()
-    .fold(node, |node, (key, step)| {
-        let step_by = step_by.clone();
-        node.key(key, move |event| {
-            step_by(step);
-            event.stop_propagation();
-        })
+    let keys = [
+        (back, Step::Unit(-1.0)),
+        (forward, Step::Unit(1.0)),
+        (Key::Home, Step::Start),
+        (Key::End, Step::End),
+    ];
+    step_keys(node, &keys, move |step, event| {
+        step_by(match step {
+            Step::Unit(sign) | Step::Page(sign) => sign * KEY_STEP,
+            Step::Start => f32::NEG_INFINITY,
+            Step::End => f32::INFINITY,
+        });
+        event.stop_propagation();
     })
 }

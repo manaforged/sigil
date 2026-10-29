@@ -6,6 +6,7 @@ mod render;
 mod stream;
 mod table;
 
+use super::layout_ext::WidgetLayoutExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, container, text};
 use crate::layout::cols;
 use crate::layout::snap::CellForm;
@@ -13,8 +14,6 @@ use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived};
 use crate::style::{Radius, Token, Tone as ChartTone, space};
-
-use super::layout_ext::WidgetLayoutExt;
 use std::rc::Rc;
 
 use parse::Block;
@@ -35,7 +34,7 @@ pub fn markdown(source: Signal<String>) -> NodeBuilder {
 
 #[must_use]
 pub fn markdown_inline(source: &str) -> TextBuilder {
-    let body = inline::styled(source);
+    let body = inline::styled(&parse::parse_inlines(source));
     text(body.text).runs(body.runs)
 }
 
@@ -105,11 +104,7 @@ impl MarkdownEditBuilder {
     }
 }
 
-impl IntoNode for MarkdownEditBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] MarkdownEditBuilder: plain_node);
 
 fn block_node(block: Block) -> NodeBuilder {
     styled_block(block, Tone(Token::OnSurface))
@@ -117,7 +112,7 @@ fn block_node(block: Block) -> NodeBuilder {
 
 fn styled_block(block: Block, tone: Tone) -> NodeBuilder {
     match block {
-        Block::Heading { level, text: body } => render::heading(level, &body),
+        Block::Heading { level, body } => render::heading(level, &body),
         Block::Paragraph(body) => render::rich(&body, "", tone, Role::Paragraph),
         Block::Quote(blocks) => render::quote(blocks, styled_block),
         Block::List(list) => render::list(list, tone, styled_block),

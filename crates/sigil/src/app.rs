@@ -27,6 +27,13 @@ pub mod menu;
 pub mod notify;
 #[cfg(feature = "desktop")]
 mod open;
+#[cfg(any(
+    feature = "menu",
+    feature = "tray",
+    all(feature = "hotkey", not(target_arch = "wasm32")),
+    feature = "media"
+))]
+pub(crate) mod platform;
 #[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) mod platform_prefs;
 #[cfg(feature = "pty")]

@@ -1,4 +1,5 @@
 use super::*;
+use crate::layout::LengthPercentage;
 
 #[allow(
     clippy::float_cmp,
@@ -16,6 +17,6 @@ fn fixed_dimension_exposes_logical_pixels() {
 )]
 #[test]
 fn fixed_length_exposes_logical_pixels() {
-    assert_eq!(LengthPercentage::Px(Px(12)).px_or_zero(), 12.0);
+    assert_eq!(LengthPercentage::from(Px(12)).px_or_zero(), 12.0);
     assert_eq!(LengthPercentage::Percent(0.5).px_or_zero(), 0.0);
 }

@@ -1,14 +1,12 @@
 use std::rc::Rc;
 
-use crate::kernel::{
-    AccessibleName, Cx, IntoNode, NodeBuilder, Role, TextBuilder, container, text,
-};
+use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::{LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::{Reactive, Signal, derived, signal};
-use crate::style::{BORDER_WIDTH, Paint, PaintTarget, Style, StyleSlot, Token};
+use crate::style::{BORDER_WIDTH, Paint, Style, Token};
 
 use super::highlight::language_for_path;
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use super::virtual_list::virtual_list;
 
 mod header;
@@ -205,17 +203,7 @@ fn status_row(status: String) -> TextBuilder {
         .class(Token::Gray10.text())
 }
 
-impl PaintTarget for DiffBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for DiffBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([] DiffBuilder: paint(style_accumulator), layout, node);
 
 fn root_layout() -> LayoutStyle {
     LayoutStyle::flex_column()
@@ -223,15 +211,6 @@ fn root_layout() -> LayoutStyle {
         .min_size(0.0, 0.0)
         .overflow_x(Overflow::Hidden)
         .gap(0.0)
-}
-
-impl IntoNode for DiffBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
 }
 
 #[cfg(all(test, feature = "terminal"))]

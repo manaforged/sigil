@@ -3,6 +3,8 @@
 use super::*;
 use crate::kernel::container as kernel_container;
 use crate::reactive::Runtime;
+use crate::style::DisplayKind;
+use crate::widgets::popup::shown_when;
 
 #[test]
 fn tooltip_builds_with_target_child_on_either_side() {
@@ -28,11 +30,8 @@ fn tooltip_shortcut_appears_in_description() {
 }
 
 #[test]
-fn visibility_atoms_gate_display_none() {
-    assert!(visibility_atoms(true).is_empty());
-    assert_eq!(visibility_atoms(false).len(), 1);
-    assert_eq!(
-        visibility_atoms(false)[0],
-        StyleAtom::Display(DisplayKind::None)
-    );
+fn shown_when_gates_display_none() {
+    assert!(shown_when(true).is_empty());
+    assert_eq!(shown_when(false).len(), 1);
+    assert_eq!(shown_when(false)[0], StyleAtom::Display(DisplayKind::None));
 }

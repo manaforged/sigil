@@ -1,5 +1,3 @@
-#![allow(clippy::redundant_pub_crate)]
-
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::bidi::{ParagraphBidi, Step};

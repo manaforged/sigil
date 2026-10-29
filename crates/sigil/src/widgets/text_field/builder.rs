@@ -4,11 +4,11 @@ use std::rc::Rc;
 use crate::events::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
 use crate::reactive::{Signal, derived, signal};
-use crate::style::{PaintTarget, StateHost, Style, StyleSlot};
+use crate::style::Style;
 
 use crate::widgets::interaction::InteractionState;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::{BuilderMutator, disabled_now};
 use super::super::text_edit::{FocusCaret, TextEditRuntime, TextEditState, noop_change};
 use super::adorn::{Adornments, FocusTarget, clear_button};
@@ -237,19 +237,7 @@ impl TextFieldBuilder {
     }
 }
 
-impl PaintTarget for TextFieldBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl StateHost for TextFieldBuilder {}
-
-impl WidgetLayoutExt for TextFieldBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([] TextFieldBuilder: paint(style_accumulator), state, layout);
 
 impl IntoNode for TextFieldBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {

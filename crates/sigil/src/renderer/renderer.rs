@@ -111,7 +111,7 @@ impl WgpuRenderer {
                 ready.pipelines.fill_pipelines.len(),
                 ready.pipelines.shadow_pipelines.len(),
                 ready.pipelines.slug_pipelines.len(),
-                ready.pipelines.sprite_pipelines.len(),
+                ready.pipelines.quad_pipelines.len(),
             )
         })
     }

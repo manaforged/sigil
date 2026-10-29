@@ -76,7 +76,7 @@ pub use reactive::StyleReactiveEffect;
 #[cfg(any(test, feature = "kittest"))]
 pub use resolve::unsupported_style_warning_count_for;
 pub use resolve::{render_style_for, text_style_for};
-pub use size::{ControlSize, LengthPercentage};
+pub use size::ControlSize;
 pub use state::{StateSlot, StateStyle, StyleState, StyleVariant};
 pub use strings::{StringKey, Strings};
 pub(crate) use struct_api::Style;

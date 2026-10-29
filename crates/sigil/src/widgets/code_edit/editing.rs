@@ -12,7 +12,7 @@ use crate::widgets::text_edit::{
 };
 
 use super::SelectionAnchor;
-use super::a11y::{byte_at, point_at};
+use super::a11y::{byte_at, joins_to, point_at};
 
 #[derive(Clone, Copy)]
 pub(super) struct Model {
@@ -63,7 +63,7 @@ fn sync_outward(model: Model, runtime: &TextEditRuntime) {
         let text = value.get();
         let (at, anchor) = (caret.get(), selection.get());
         let current = model.lines.peek();
-        let lines = if current.join("\n") == text {
+        let lines = if joins_to(&current, &text) {
             current
         } else {
             text.split('\n').map(str::to_owned).collect()
@@ -121,7 +121,7 @@ enum LineMove {
 }
 
 fn move_line(edit: &mut TextEdit, line_move: LineMove, extend: bool) {
-    let lines: Vec<String> = edit.as_str().split('\n').map(str::to_owned).collect();
+    let lines: Vec<&str> = edit.as_str().split('\n').collect();
     let (line, col) = point_at(&lines, edit.caret());
     let last = lines.len().saturating_sub(1);
     let target = match line_move {

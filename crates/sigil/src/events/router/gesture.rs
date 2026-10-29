@@ -6,7 +6,7 @@ use crate::reactive::owner_by_id;
 
 use super::EventRouter;
 
-type GestureHandler = crate::events::handlers::Handler<GestureEvent>;
+type GestureHandler = crate::events::handlers::Callback<GestureEvent>;
 
 #[derive(Default)]
 pub(crate) struct GestureHandlers {

@@ -10,16 +10,10 @@ use crate::style::Tone;
 
 use super::super::checkbox::{CheckMark, checkbox_indicator};
 use super::super::interaction::InteractionState;
+use super::super::listbox::{Mark, mark, toggle_all};
 use super::state::TableState;
 
 pub(super) const WIDTH: f32 = 32.0;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Mark {
-    Empty,
-    Partial,
-    Full,
-}
 
 pub(super) fn header_cell<Row: 'static>(state: &TableState<Row>, height: f32) -> NodeBuilder {
     let toggle = state.clone();
@@ -112,15 +106,7 @@ fn header_mark<Row: 'static>(state: TableState<Row>) -> Signal<Mark> {
     derived(move || {
         let visible = state.visible().get();
         let selection = state.selection().get();
-        if selection.is_empty() {
-            return Mark::Empty;
-        }
-        let mut marks = visible.iter().map(|row| selection.contains(row));
-        match marks.next() {
-            Some(first) if marks.any(|selected| selected != first) => Mark::Partial,
-            Some(true) => Mark::Full,
-            None | Some(false) => Mark::Empty,
-        }
+        mark(&*selection, visible.as_slice())
     })
 }
 
@@ -128,13 +114,7 @@ impl<Row: 'static> TableState<Row> {
     fn toggle_all(&self) {
         let visible = self.visible().peek();
         let mut set = (*self.selection().peek()).clone();
-        if !visible.is_empty() && visible.iter().all(|row| set.contains(row)) {
-            for row in visible.iter() {
-                set.remove(row);
-            }
-        } else {
-            set.extend(visible.iter().copied());
-        }
+        toggle_all(&mut set, visible.as_slice());
         self.selection().set(Rc::new(set));
     }
 

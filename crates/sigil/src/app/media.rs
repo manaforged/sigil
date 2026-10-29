@@ -1,9 +1,9 @@
 use std::cell::RefCell;
 
 use crate::app::error::AppResult;
+use crate::app::platform::{Bridge, Wake};
 use crate::reactive::EventChannel;
 use backend::{Controls, apply, create};
-use crossbeam_channel::{Receiver, Sender, unbounded};
 
 #[cfg_attr(
     not(any(
@@ -26,7 +26,7 @@ thread_local! {
     static CONTROLS: RefCell<Option<Controls>> = const { RefCell::new(None) };
     static PENDING: RefCell<Option<Track>> = const { RefCell::new(None) };
     static EVENTS: EventChannel<MediaKey> = EventChannel::new();
-    static BRIDGE: (Sender<MediaKey>, Receiver<MediaKey>) = unbounded();
+    static BRIDGE: Bridge<MediaKey> = Bridge::new();
 }
 
 #[must_use]
@@ -52,36 +52,28 @@ pub fn now_playing(track: Track) -> AppResult<()> {
     })
 }
 
-pub(crate) fn is_installed() -> bool {
+fn is_installed() -> bool {
     CONTROLS.with(|slot| slot.borrow().is_some())
 }
 
-pub(crate) fn install(
-    name: &str,
-    hwnd: Option<isize>,
-    wake: impl Fn() + Send + Sync + 'static,
-) -> AppResult<()> {
-    if is_installed() {
-        return Ok(());
+pub(crate) fn install(title: &str, hwnd: Option<isize>, wake: Wake) {
+    if !is_installed()
+        && let Err(error) = install_controls(title, hwnd, wake)
+    {
+        tracing::warn!("sigil-app: cannot install media controls: {error}");
     }
-    let tx = BRIDGE.with(|(tx, _)| tx.clone());
-    let mut controls = create(name, hwnd, move |key| {
-        let _ = tx.send(key);
-        wake();
-    })?;
+}
+
+pub(crate) fn pump() {
+    BRIDGE.with(|bridge| EVENTS.with(|channel| bridge.forward(channel)));
+}
+
+fn install_controls(name: &str, hwnd: Option<isize>, wake: Wake) -> AppResult<()> {
+    let sink = BRIDGE.with(|bridge| bridge.sink(wake));
+    let mut controls = create(name, hwnd, sink)?;
     if let Some(track) = PENDING.with(|slot| slot.borrow_mut().take()) {
         apply(&mut controls, &track)?;
     }
     CONTROLS.with(|slot| *slot.borrow_mut() = Some(controls));
     Ok(())
-}
-
-pub(crate) fn pump() {
-    BRIDGE.with(|(_, rx)| {
-        EVENTS.with(|channel| {
-            while let Ok(key) = rx.try_recv() {
-                channel.emit(key);
-            }
-        });
-    });
 }

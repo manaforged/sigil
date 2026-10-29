@@ -1,14 +1,11 @@
 use smallvec::SmallVec;
 
+use crate::style::state::PerState;
 use crate::style::{StateSlot, StyleAtom};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct StyleOverlay {
-    rest: SmallVec<[StyleAtom; 4]>,
-    hover: SmallVec<[StyleAtom; 4]>,
-    focus: SmallVec<[StyleAtom; 4]>,
-    pressed: SmallVec<[StyleAtom; 4]>,
-    disabled: SmallVec<[StyleAtom; 4]>,
+    slots: PerState<SmallVec<[StyleAtom; 4]>>,
 }
 
 impl StyleOverlay {
@@ -25,57 +22,46 @@ impl StyleOverlay {
         pressed: SmallVec<[StyleAtom; 4]>,
         disabled: SmallVec<[StyleAtom; 4]>,
     ) -> Self {
-        Self {
-            rest,
-            hover,
-            focus,
-            pressed,
-            disabled,
-        }
+        Self::from_states(PerState::new(rest, focus, hover, pressed, disabled))
+    }
+
+    #[must_use]
+    pub(crate) const fn from_states(slots: PerState<SmallVec<[StyleAtom; 4]>>) -> Self {
+        Self { slots }
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.rest.is_empty()
-            && self.hover.is_empty()
-            && self.focus.is_empty()
-            && self.pressed.is_empty()
-            && self.disabled.is_empty()
+        self.slots.each().iter().all(|atoms| atoms.is_empty())
     }
 
     #[must_use]
     pub fn rest(&self) -> &[StyleAtom] {
-        &self.rest
+        self.atoms_for(StateSlot::Rest)
     }
 
     #[must_use]
     pub fn hover(&self) -> &[StyleAtom] {
-        &self.hover
+        self.atoms_for(StateSlot::Hovered)
     }
 
     #[must_use]
     pub fn focus(&self) -> &[StyleAtom] {
-        &self.focus
+        self.atoms_for(StateSlot::Focused)
     }
 
     #[must_use]
     pub fn pressed(&self) -> &[StyleAtom] {
-        &self.pressed
+        self.atoms_for(StateSlot::Pressed)
     }
 
     #[must_use]
     pub fn disabled(&self) -> &[StyleAtom] {
-        &self.disabled
+        self.atoms_for(StateSlot::Disabled)
     }
 
     pub(crate) fn merge(&mut self, other: &Self) {
-        for (into, from) in [
-            (&mut self.rest, &other.rest),
-            (&mut self.hover, &other.hover),
-            (&mut self.focus, &other.focus),
-            (&mut self.pressed, &other.pressed),
-            (&mut self.disabled, &other.disabled),
-        ] {
+        for (into, from) in self.slots.each_mut().into_iter().zip(other.slots.each()) {
             *into = crate::style::merge_classes(into, from, 0)
                 .into_iter()
                 .collect();
@@ -84,13 +70,7 @@ impl StyleOverlay {
 
     #[must_use]
     pub fn atoms_for(&self, slot: StateSlot) -> &[StyleAtom] {
-        match slot {
-            StateSlot::Rest => &self.rest,
-            StateSlot::Focused => &self.focus,
-            StateSlot::Hovered => &self.hover,
-            StateSlot::Pressed => &self.pressed,
-            StateSlot::Disabled => &self.disabled,
-        }
+        self.slots.get(slot)
     }
 }
 

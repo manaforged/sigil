@@ -1,9 +1,7 @@
 use crate::layout::LayoutError;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::{ComputedBox, NodeRef};
-use crate::layout::resolve::{
-    InsetAxis, NodeEdges, dim_to_border_box, resolve_inset_axis, stretched,
-};
+use crate::layout::resolve::{NodeEdges, dim_to_border_box, resolve_absolute_xy, stretched};
 use crate::layout::style_data::{Display, LengthPercentageAuto, Position, Size, StyleData};
 
 use super::intrinsic::{probed_content_extent, text_intrinsic};
@@ -54,26 +52,14 @@ fn place_absolute(
     let style = child.style();
     let CbSize { w: cb_w, h: cb_h } = CbSize::across(ctx.axes, cb_main, cb_cross);
     let edges = NodeEdges::build(style, cb_w);
-    let margins = edges.margin.or_zero();
     let (w, h) = absolute_size(ctx, child, style, (cb_w, cb_h), padding_box);
-    let x = resolve_inset_axis(InsetAxis {
-        leading: style.inset.left,
-        trailing: style.inset.right,
-        origin: padding_origin.x,
-        cb_dim: padding_box.width,
-        box_dim: w,
-        margin_leading: margins.left,
-        margin_trailing: margins.right,
-    });
-    let y = resolve_inset_axis(InsetAxis {
-        leading: style.inset.top,
-        trailing: style.inset.bottom,
-        origin: padding_origin.y,
-        cb_dim: padding_box.height,
-        box_dim: h,
-        margin_leading: margins.top,
-        margin_trailing: margins.bottom,
-    });
+    let (x, y) = resolve_absolute_xy(
+        style,
+        &edges,
+        (padding_origin.x, padding_origin.y),
+        padding_box,
+        (w, h),
+    );
     ctx.solver.write(child.id(), ComputedBox { x, y, w, h });
     layout_item_subtree(ctx, child.id(), Position2::new(x, y), w, h)?;
     Ok(())

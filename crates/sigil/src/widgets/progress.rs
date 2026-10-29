@@ -1,17 +1,12 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock, PoisonError};
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use crate::kernel::{
-    AccessibleName, Cx, IntoNode, NodeBuilder, Role, TextContent, container, text,
-};
+use super::layout_ext::LayoutOverrides;
+use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived};
-use crate::style::{
-    ControlSize, Metrics, NodeStyleExt, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token,
-    Tone,
-};
+use crate::style::{ControlSize, Metrics, NodeStyleExt, Radius, Style, StyleAtom, Token, Tone};
 
 const TRACK_HEIGHT: f32 = 8.0;
 const INDETERMINATE_RATIO: f32 = 0.30;
@@ -112,26 +107,7 @@ impl ProgressBuilder {
     }
 }
 
-impl PaintTarget for ProgressBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for ProgressBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for ProgressBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] ProgressBuilder: paint(style_accumulator), layout, node);
 
 fn captioned_row(caption: TextContent, bar: NodeBuilder) -> NodeBuilder {
     let metrics = Metrics::current();

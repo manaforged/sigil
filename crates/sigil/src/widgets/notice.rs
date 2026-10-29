@@ -2,6 +2,8 @@ use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, t
 use crate::layout::snap::CellForm;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::derived;
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom, Tone, space};
 
 static NOTICE_BAND: &[StyleAtom] = &[
@@ -16,10 +18,10 @@ static NOTICE_TEXT: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 #[must_use]
 pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
     let (role, name) = match tone {
-        Tone::Error => (Role::Alert, "Error"),
-        Tone::Warn => (Role::Alert, "Warning"),
-        Tone::Success => (Role::Status, "Success"),
-        Tone::Info | Tone::Primary | Tone::Neutral => (Role::Status, "Notice"),
+        Tone::Error => (Role::Alert, StringKey::NoticeError),
+        Tone::Warn => (Role::Alert, StringKey::NoticeWarning),
+        Tone::Success => (Role::Status, StringKey::NoticeSuccess),
+        Tone::Info | Tone::Primary | Tone::Neutral => (Role::Status, StringKey::Notice),
     };
     let body: TextContent = body.into();
     let band = container()
@@ -42,16 +44,20 @@ pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
     band.child(text(body).ellipsize().tone(tone).class(NOTICE_TEXT))
 }
 
-fn announced(name: &'static str, body: &TextContent) -> AccessibleName {
+fn announced(key: StringKey, body: &TextContent) -> AccessibleName {
+    let name = theme_label(key);
     match body {
-        TextContent::Static(text) => format!("{name}: {text}").into(),
+        TextContent::Static(text) => {
+            let text = text.clone();
+            derived(move || format!("{}: {text}", name.get())).into()
+        }
         TextContent::Reactive(text) => {
             let text = *text;
-            derived(move || format!("{name}: {}", text.get())).into()
+            derived(move || format!("{}: {}", name.get(), text.get())).into()
         }
         TextContent::Compute(text) => {
             let text = text.clone();
-            derived(move || format!("{name}: {}", text())).into()
+            derived(move || format!("{}: {}", name.get(), text())).into()
         }
     }
 }

@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{IntoNode, NodeBuilder, Role};
 use crate::layout::snap::line;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
@@ -10,7 +9,7 @@ use crate::style::{Radius, Tone, space};
 use crate::widgets::interaction::InteractionState;
 
 use super::super::dot::dot;
-use super::super::shared::{Activate, activate_key_reactive, activate_pointer_reactive};
+use super::super::shared::{Activate, Press, RELEASE_ENTER, press};
 use super::chip_class;
 
 pub struct ChipBuilder {
@@ -98,14 +97,13 @@ impl ChipBuilder {
         node = node.child(crate::kernel::text(self.label).nowrap());
         if let Some(activate) = activate {
             let interaction = InteractionState::new(true);
-            let pointer_activate = Rc::clone(&activate);
-            node = node
-                .pointer_up(move |event| {
-                    activate_pointer_reactive(event, interaction, None, &pointer_activate);
-                })
-                .key(Key::Enter, move |event| {
-                    activate_key_reactive(event, interaction, None, &activate);
-                });
+            node = press(
+                node,
+                interaction,
+                None,
+                Press::Activate(activate),
+                RELEASE_ENTER,
+            );
             node = interaction.install(node);
         }
         match self.tone_signal {
@@ -115,8 +113,4 @@ impl ChipBuilder {
     }
 }
 
-impl crate::kernel::IntoNode for ChipBuilder {
-    fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] ChipBuilder: plain_node);

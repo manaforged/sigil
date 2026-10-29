@@ -6,6 +6,16 @@ use crate::reactive::{Signal, signal};
 use crate::widgets::layout_ext::WidgetLayoutExt;
 use crate::widgets::scroll::{reveal_row, scroll};
 
+mod filter;
+mod nav;
+mod selection;
+
+pub(crate) use filter::Matcher;
+pub(crate) use nav::{LIST, Move, RADIO_GROUP, Rows, TAB_LIST, TREE};
+pub(crate) use selection::{Mark, follow_cursor, mark, only, span, toggle, toggle_all};
+
+use nav::LISTBOX;
+
 pub(crate) trait ListModel: 'static {
     fn cursor(&self) -> Signal<usize>;
     fn len(&self) -> usize;
@@ -41,7 +51,7 @@ pub(crate) fn listbox(node: NodeBuilder, model: impl ListModel) -> NodeBuilder {
     node.key(Key::ArrowDown, move |event| {
         event.stop_propagation();
         if down.is_open() {
-            step(down.as_ref(), true);
+            apply(down.as_ref(), Move::Next);
         } else {
             down.open();
         }
@@ -49,7 +59,7 @@ pub(crate) fn listbox(node: NodeBuilder, model: impl ListModel) -> NodeBuilder {
     .key(Key::ArrowUp, move |event| {
         event.stop_propagation();
         if up.is_open() {
-            step(up.as_ref(), false);
+            apply(up.as_ref(), Move::Prev);
         }
     })
     .key(Key::Enter, move |event| {
@@ -82,8 +92,9 @@ fn other_key(model: &dyn ListModel, event: &mut KeyEvent) {
         return;
     }
     let moved = match event.key {
-        LogicalKey::Named(Key::Home) => jump(model, false),
-        LogicalKey::Named(Key::End) => jump(model, true),
+        LogicalKey::Named(key @ (Key::Home | Key::End)) => {
+            LISTBOX.step_for(key).is_some_and(|step| apply(model, step))
+        }
         _ => typed_char(event).is_some_and(|ch| type_ahead(model, ch)),
     };
     if moved {
@@ -100,31 +111,21 @@ fn typed_char(event: &KeyEvent) -> Option<char> {
     (chars.next().is_none() && !ch.is_control() && !ch.is_whitespace()).then_some(ch)
 }
 
-pub(crate) fn step(model: &dyn ListModel, forward: bool) {
-    let len = model.len();
-    let from = model.cursor().peek();
-    let next = if forward {
-        let start = if from >= len { 0 } else { from + 1 };
-        (start..len).find(|&i| model.enabled(i))
-    } else {
-        let end = from.min(len);
-        (0..end).rev().find(|&i| model.enabled(i))
-    };
-    let _ = move_to(model, next);
+struct ModelRows<'a>(&'a dyn ListModel);
+
+impl Rows for ModelRows<'_> {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn enabled(&self, index: usize) -> bool {
+        self.0.enabled(index)
+    }
 }
 
-fn move_to(model: &dyn ListModel, found: Option<usize>) -> bool {
+fn apply(model: &dyn ListModel, step: Move) -> bool {
+    let found = LISTBOX.target(&ModelRows(model), model.cursor().peek(), step);
     found.inspect(|&index| model.cursor().set(index)).is_some()
-}
-
-fn jump(model: &dyn ListModel, last: bool) -> bool {
-    let len = model.len();
-    let found = if last {
-        (0..len).rev().find(|&i| model.enabled(i))
-    } else {
-        (0..len).find(|&i| model.enabled(i))
-    };
-    move_to(model, found)
 }
 
 fn type_ahead(model: &dyn ListModel, ch: char) -> bool {
@@ -132,7 +133,7 @@ fn type_ahead(model: &dyn ListModel, ch: char) -> bool {
     if len == 0 {
         return false;
     }
-    let needle = ch.to_lowercase().collect::<String>();
+    let needle = ch.to_string();
     let from = model.cursor().peek();
     let found = (1..=len)
         .map(|offset| (from.min(len - 1) + offset) % len)
@@ -140,9 +141,9 @@ fn type_ahead(model: &dyn ListModel, ch: char) -> bool {
             model.enabled(i)
                 && model
                     .label(i)
-                    .is_some_and(|label| label.to_lowercase().starts_with(&needle))
+                    .is_some_and(|label| Matcher::Prefix.score(&needle, &label).is_some())
         });
-    move_to(model, found)
+    found.inspect(|&index| model.cursor().set(index)).is_some()
 }
 
 #[must_use]

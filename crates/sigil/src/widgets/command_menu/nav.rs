@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::reactive::{Owner, OwnerId, Signal, owner_by_id, signal};
 
-use super::super::fuzzy::fuzzy_score;
+use super::super::listbox::Matcher;
 use super::super::shared::Activate;
 
 pub(super) type SubmitObserver = Rc<dyn Fn(&str)>;
@@ -66,13 +66,7 @@ fn first_enabled(entries: &[Entry], shown: &[usize]) -> usize {
 }
 
 fn ranked(entries: &[Entry], query: &str) -> Vec<usize> {
-    let mut hits: Vec<(usize, usize)> = entries
-        .iter()
-        .enumerate()
-        .filter_map(|(index, entry)| fuzzy_score(query, entry.label()).map(|m| (m.score, index)))
-        .collect();
-    hits.sort_by_key(|(score, _)| *score);
-    hits.into_iter().map(|(_, index)| index).collect()
+    Matcher::Fuzzy.rank(query, entries.iter().map(Entry::label))
 }
 
 #[derive(Clone, Copy)]

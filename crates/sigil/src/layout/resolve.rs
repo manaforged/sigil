@@ -2,7 +2,7 @@
 
 use crate::layout::snap;
 use crate::layout::style_data::{
-    BoxSizing, Dimension, LengthPercentage, LengthPercentageAuto, Rect, StyleData,
+    BoxSizing, Dimension, LengthPercentage, LengthPercentageAuto, Rect, Size, StyleData,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -189,3 +189,31 @@ pub(crate) fn stretched(
 )]
 #[path = "resolve_tests.rs"]
 mod tests;
+
+pub(crate) fn resolve_absolute_xy(
+    style: &StyleData,
+    edges: &NodeEdges,
+    (origin_x, origin_y): (f32, f32),
+    padding_box: Size<f32>,
+    (box_w, box_h): (f32, f32),
+) -> (f32, f32) {
+    let x = resolve_inset_axis(InsetAxis {
+        leading: style.inset.left,
+        trailing: style.inset.right,
+        origin: origin_x,
+        cb_dim: padding_box.width,
+        box_dim: box_w,
+        margin_leading: edges.margin.left.unwrap_or(0.0),
+        margin_trailing: edges.margin.right.unwrap_or(0.0),
+    });
+    let y = resolve_inset_axis(InsetAxis {
+        leading: style.inset.top,
+        trailing: style.inset.bottom,
+        origin: origin_y,
+        cb_dim: padding_box.height,
+        box_dim: box_h,
+        margin_leading: edges.margin_top(),
+        margin_trailing: edges.margin.bottom.unwrap_or(0.0),
+    });
+    (x, y)
+}

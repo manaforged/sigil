@@ -1,14 +1,12 @@
 use std::rc::Rc;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, container};
+use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Reactive, Signal, derived, signal};
-use crate::style::{
-    NodeStyleExt, PaintTarget, Radius, StateHost, Style, StyleSlot, Theme, Token, space,
-};
+use crate::style::{Radius, Style, Token, space};
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::BuilderMutator;
 use super::content::wrap_with_content;
 use super::drag::DragState;
@@ -127,12 +125,6 @@ impl TabsBuilder {
     }
 
     #[must_use]
-    pub fn theme(mut self, theme: Theme) -> Self {
-        self.mutators.push(Box::new(move |node| node.theme(theme)));
-        self
-    }
-
-    #[must_use]
     pub const fn reorderable(mut self, enabled: bool) -> Self {
         self.reorderable = enabled;
         self
@@ -200,28 +192,7 @@ impl TabsBuilder {
     }
 }
 
-impl PaintTarget for TabsBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl StateHost for TabsBuilder {}
-
-impl WidgetLayoutExt for TabsBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for TabsBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] TabsBuilder: paint(style_accumulator), state, layout, node, theme);
 
 fn label_signal(
     fixed: Vec<String>,

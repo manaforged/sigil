@@ -1,0 +1,144 @@
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use crate::events::{Key, NodeEventsExt};
+use crate::kernel::{FocusScopeKind, Live, NodeBuilder, TopLayer, queue_announcement};
+use crate::layout::{Popup, ViewportOverlay};
+use crate::reactive::{Signal, effect_named, on_cleanup};
+use crate::style::{DisplayKind, StyleAtom};
+
+#[derive(Clone, Copy)]
+pub(crate) enum Anchor {
+    Inline,
+    Viewport,
+    Top,
+    Popup(Popup),
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct Layer {
+    pub(crate) show: Signal<bool>,
+    pub(crate) anchor: Anchor,
+    pub(crate) trap: bool,
+}
+
+impl Layer {
+    pub(crate) const fn new(show: Signal<bool>, anchor: Anchor) -> Self {
+        Self {
+            show,
+            anchor,
+            trap: false,
+        }
+    }
+
+    pub(crate) const fn trap(mut self, trap: bool) -> Self {
+        self.trap = trap;
+        self
+    }
+
+    pub(crate) fn wrap(self, node: NodeBuilder) -> NodeBuilder {
+        let show = self.show;
+        let node = match self.anchor {
+            Anchor::Inline => node,
+            Anchor::Viewport => node.with(ViewportOverlay),
+            Anchor::Top => node.with(TopLayer).with(ViewportOverlay),
+            Anchor::Popup(popup) => node.with(TopLayer).with(ViewportOverlay).with(popup),
+        };
+        let node = node.style_reactive(move || shown(show));
+        if self.trap {
+            node.mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Modal))
+        } else {
+            node
+        }
+    }
+
+    pub(crate) fn dismiss_outside(self, node: NodeBuilder) -> NodeBuilder {
+        let show = self.show;
+        node.pointer_down(move |event| {
+            if hide(show) {
+                event.stop_propagation();
+            }
+        })
+    }
+
+    pub(crate) fn register_escape(self) {
+        register_escape(self.show);
+    }
+
+    pub(crate) fn announce_open(self, name: &'static str, open: impl Fn() -> String + 'static) {
+        let show = self.show;
+        let prev = Rc::new(Cell::new(true));
+        effect_named(name, move || {
+            let open_now = show.get();
+            let was_open = prev.replace(open_now);
+            if open_now && !was_open {
+                queue_announcement(open(), Live::Polite);
+            }
+        });
+    }
+}
+
+pub(crate) fn close_on_escape(node: NodeBuilder) -> NodeBuilder {
+    node.key(Key::Escape, |event| {
+        if close_top_escape() {
+            event.stop_propagation();
+        }
+    })
+}
+
+pub(crate) fn hide(show: Signal<bool>) -> bool {
+    let shown = show.peek();
+    if shown {
+        show.set(false);
+    }
+    shown
+}
+
+pub(crate) fn shown(show: Signal<bool>) -> &'static [StyleAtom] {
+    shown_when(show.get())
+}
+
+pub(crate) const fn shown_when(show: bool) -> &'static [StyleAtom] {
+    if show {
+        &[]
+    } else {
+        &[StyleAtom::Display(DisplayKind::None)]
+    }
+}
+
+#[derive(Clone, Copy)]
+struct EscapeLayer {
+    id: u64,
+    show: Signal<bool>,
+}
+
+thread_local! {
+    static ESCAPE_LAYERS: RefCell<Vec<EscapeLayer>> = const {
+        RefCell::new(Vec::new())
+    };
+}
+
+static NEXT_ESCAPE_LAYER_ID: AtomicU64 = AtomicU64::new(1);
+
+fn register_escape(show: Signal<bool>) {
+    let id = NEXT_ESCAPE_LAYER_ID.fetch_add(1, Ordering::Relaxed);
+    ESCAPE_LAYERS.with(|stack| stack.borrow_mut().push(EscapeLayer { id, show }));
+    on_cleanup(move || {
+        ESCAPE_LAYERS.with(|stack| {
+            stack.borrow_mut().retain(|layer| layer.id != id);
+        });
+    });
+}
+
+fn close_top_escape() -> bool {
+    ESCAPE_LAYERS.with(|stack| {
+        let top = stack
+            .borrow()
+            .iter()
+            .rev()
+            .copied()
+            .find(|layer| layer.show.peek());
+        top.is_some_and(|layer| hide(layer.show))
+    })
+}

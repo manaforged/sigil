@@ -1,4 +1,5 @@
 use crate::layout::units::TextLength;
+use crate::style::Px;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LengthPercentage {
@@ -19,10 +20,24 @@ impl From<f32> for LengthPercentage {
     }
 }
 
+impl From<Px> for LengthPercentage {
+    fn from(px: Px) -> Self {
+        Self::Px(f32::from(px.0))
+    }
+}
+
 impl LengthPercentage {
     #[must_use]
     pub const fn length(value: f32) -> Self {
         Self::Px(value)
+    }
+
+    #[must_use]
+    pub const fn px_or_zero(self) -> f32 {
+        match self {
+            Self::Px(px) => px,
+            Self::Percent(_) | Self::Text(_) => 0.0,
+        }
     }
 }
 

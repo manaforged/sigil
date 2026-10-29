@@ -11,8 +11,8 @@ mod derived;
 mod diagnostic;
 mod effect;
 mod effect_run;
+pub(crate) mod frame;
 mod interval;
-mod interval_registry;
 mod owner;
 mod owner_dispose;
 mod phase;
@@ -30,6 +30,8 @@ pub use channel::{EventChannel, Subscription};
 pub use derived::derived;
 pub(crate) use effect::{current_effect_owner, run_dispatch_deferred};
 pub use effect::{defer, effect, effect_named, untrack};
+pub(crate) use frame::tick_frame;
+#[cfg(any(test, feature = "kittest"))]
 pub(crate) use interval::tick_intervals;
 #[cfg(any(test, feature = "test-clock"))]
 pub use interval::{__test_advance_clock, __test_clear_clock, __test_set_clock};

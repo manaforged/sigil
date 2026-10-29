@@ -1,13 +1,13 @@
 #[cfg(feature = "scene")]
 use std::rc::Rc;
 
-use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
+use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 #[cfg(feature = "scene")]
 use crate::style::Token;
-use crate::style::{ControlSize, NodeStyleExt, PaintTarget, Style, StyleAtom, StyleSlot, Tone};
+use crate::style::{ControlSize, NodeStyleExt, Style, StyleAtom, Tone};
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 
 #[cfg(feature = "scene")]
 mod svg;
@@ -190,26 +190,7 @@ fn svg_pixels(extent: f32) -> u32 {
     (extent * 2.0).round() as u32
 }
 
-impl PaintTarget for IconBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for IconBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for IconBuilder {
-    fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] IconBuilder: paint(style_accumulator), layout, node);
 
 #[cfg(test)]
 #[path = "icon_tests.rs"]

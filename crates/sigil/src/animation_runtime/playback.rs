@@ -1,10 +1,8 @@
 use std::time::Duration;
 
-use crate::animation::Keyframes;
+use crate::animation::{Keyframes, Motion};
 use crate::reactive::Signal;
 
-use super::keyframes::KeyframeMotion;
-use super::motion_state::Motion;
 use super::state::{self, AnimatorId};
 
 pub struct Playback {
@@ -14,8 +12,8 @@ pub struct Playback {
 impl Playback {
     #[must_use]
     pub fn new(value: Signal<f32>, frames: Keyframes) -> Self {
-        let motion = KeyframeMotion::new(frames, value.try_peek().unwrap_or_default());
-        let id = state::register(value, Motion::Keyframes(motion));
+        let motion = Motion::keyframes(frames, value.try_peek().unwrap_or_default());
+        let id = state::register(value, motion);
         id.seek(0.0);
         Self { id }
     }

@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::{Key, NodeEventsExt};
+use crate::events::NodeEventsExt;
 use crate::kernel::{AccessibleName, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::prelude::PointerEvent;
@@ -12,7 +12,7 @@ use crate::style::{
     StyleOverlay, StyleVariant, Token, space,
 };
 use crate::widgets::interaction::InteractionState;
-use crate::widgets::shared::{Activate, activate_key, activate_pointer};
+use crate::widgets::shared::{Activate, Press, RELEASE, RELEASE_ENTER, press};
 
 use super::builder::{CloseHandler, STRIP_HEIGHT, StripChrome, TAB_HEIGHT};
 use super::drag::{DragState, install_label_drag_hooks};
@@ -123,7 +123,6 @@ fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
             cb(index);
         }
     });
-    let pointer_activate = Rc::clone(&activate);
     let node = interaction.install(
         container()
             .role(Role::Button)
@@ -136,11 +135,14 @@ fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
                     .class(Token::OnSurface.text()),
             ),
     );
-    node.pointer_down(PointerEvent::stop_propagation)
-        .pointer_up(move |event| {
-            event.stop_propagation();
-            activate_pointer(event, interaction, &pointer_activate);
-        })
+    press(
+        node.pointer_down(PointerEvent::stop_propagation),
+        interaction,
+        None,
+        Press::Activate(activate),
+        RELEASE,
+    )
+    .pointer_up(PointerEvent::stop_propagation)
 }
 
 fn tab_frame(
@@ -209,16 +211,16 @@ pub(super) fn build_tab(
             active.set(index);
         }
     });
-    let pointer_activate = Rc::clone(&activate);
-
-    let mut node = tab_frame(chrome, interaction, selected, user_overlay)
-        .role(Role::Tab)
-        .label(label.clone())
-        .selected(selected)
-        .pointer_up(move |event| activate_pointer(event, interaction, &pointer_activate))
-        .key(Key::Enter, move |event| {
-            activate_key(event, interaction, &activate);
-        });
+    let mut node = press(
+        tab_frame(chrome, interaction, selected, user_overlay)
+            .role(Role::Tab)
+            .label(label.clone())
+            .selected(selected),
+        interaction,
+        None,
+        Press::Activate(activate),
+        RELEASE_ENTER,
+    );
     if let Some(drag_state) = drag {
         node = install_label_drag_hooks(node, drag_state, visual_index);
     }

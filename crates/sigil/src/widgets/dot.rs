@@ -1,10 +1,10 @@
-use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
+use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
-use crate::style::{ControlSize, NodeStyleExt, PaintTarget, StyleSlot};
+use crate::style::{ControlSize, NodeStyleExt};
 use crate::style::{StyleAtom, Tone};
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 
 pub struct DotBuilder {
     tone: Tone,
@@ -89,26 +89,7 @@ static DOT_GLYPH_ATOMS: &[StyleAtom] = &[StyleAtom::FgToneStep(9)];
 static DOT_FILL_ATOMS: &[StyleAtom] = &[StyleAtom::BgToneStep(9)];
 static DOT_RING_ATOMS: &[StyleAtom] = &[StyleAtom::BgToneStep(11)];
 
-impl PaintTarget for DotBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for DotBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for DotBuilder {
-    fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] DotBuilder: paint(style_accumulator), layout, node);
 
 #[cfg(test)]
 #[path = "dot_tests.rs"]

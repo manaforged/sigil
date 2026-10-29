@@ -15,7 +15,6 @@ use crate::app::window::allocate_window_id;
 use crate::kernel::IntoNode;
 
 pub(super) mod backend;
-mod clock;
 mod event_wiring;
 mod frame;
 mod lifecycle;
@@ -23,14 +22,12 @@ mod record;
 #[path = "scene_cache.rs"]
 mod scene_cache;
 mod tick;
-#[cfg(target_arch = "wasm32")]
-mod web;
 
 use backend::{Backend, Surface};
-#[cfg(test)]
-use clock::AnimationClock;
 use frame::frame_once;
 use record::{WindowRecord, Windows};
+#[cfg(test)]
+use tick::AnimationClock;
 use tick::{FrameCtx, LoopState};
 
 pub(crate) fn launch<C, F, N>(config: C, tree: F) -> AppResult<()>
@@ -46,7 +43,7 @@ where
     owner.dispose();
     #[cfg(target_arch = "wasm32")]
     if let Err(error) = &result {
-        web::report(error);
+        report(error);
     }
     result
 }
@@ -119,7 +116,7 @@ fn drive(shell: WinitShell, mut state: LoopState, owner: Owner) -> AppResult<()>
                 if let Err(error) = state.tick(shell) {
                     Runtime::recover_from_panic();
                     #[cfg(target_arch = "wasm32")]
-                    web::report(&error);
+                    report(&error);
                     launch_failure.set(Some(error));
                     shell.request_exit();
                 }
@@ -256,3 +253,9 @@ fn scale_from_f64(scale: f64) -> Scale {
 #[cfg(test)]
 #[path = "launch_tests.rs"]
 mod tests;
+
+#[cfg(target_arch = "wasm32")]
+fn report(error: &crate::app::error::Error) {
+    tracing::error!("sigil-app: {error}");
+    web_sys::console::error_1(&format!("sigil: {error}").into());
+}

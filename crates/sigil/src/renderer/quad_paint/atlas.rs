@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt as _;
 
-use super::SpritePipeline;
+use super::AtlasPipeline;
 use crate::renderer::fill_paint::setup::texture_group;
 
 pub(super) const MAX_ATLASES: usize = 16;
@@ -18,7 +18,7 @@ pub(crate) struct AtlasEntry {
     pub(super) height: u32,
 }
 
-impl SpritePipeline {
+impl AtlasPipeline {
     pub(super) fn push_atlas(
         &mut self,
         device: &wgpu::Device,

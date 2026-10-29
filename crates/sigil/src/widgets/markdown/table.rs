@@ -6,6 +6,7 @@ use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::style::{Px, StyleAtom, TextRun, TextRuns, TextStyle, Token};
 
 use super::inline::{Styled, styled};
+use super::parse::Inline;
 
 const RULE: StyleAtom = StyleAtom::BorderWidth(Px(1));
 
@@ -110,7 +111,7 @@ fn cell(body: Option<Styled>, extent: Extent, last: bool) -> NodeBuilder {
     )
 }
 
-pub(super) fn table(rows: &[Vec<String>]) -> NodeBuilder {
+pub(super) fn table(rows: &[Vec<Vec<Inline>>]) -> NodeBuilder {
     let cells: Vec<Vec<Styled>> = rows
         .iter()
         .map(|row| row.iter().map(|body| styled(body)).collect())

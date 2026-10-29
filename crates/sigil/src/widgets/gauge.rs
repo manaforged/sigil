@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
+use super::layout_ext::LayoutOverrides;
+use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{Dimension, PaintTarget, Px, Radius, Style, StyleAtom, StyleSlot, Token, space};
+use crate::style::{Dimension, Px, Radius, Style, StyleAtom, Token, space};
 
 const TRACK_WIDTH: f32 = 160.0;
 const TRACK_HEIGHT: f32 = 8.0;
@@ -105,26 +105,7 @@ impl GaugeBuilder {
     }
 }
 
-impl PaintTarget for GaugeBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for GaugeBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for GaugeBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] GaugeBuilder: paint(style_accumulator), layout, node);
 
 fn fill_atoms(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> &'static [StyleAtom] {
     static CACHE: LazyLock<Mutex<FillAtomCache>> = LazyLock::new(Mutex::default);

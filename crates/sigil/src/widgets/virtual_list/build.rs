@@ -1,4 +1,4 @@
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
+use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutReactiveExt;
 use crate::layout::{Dimension, LayoutStyle, Overflow};
 use crate::layout::{LayoutBuilderExt, Position};
@@ -267,11 +267,4 @@ fn shrink_bound(root: NodeBuilder, axes: BuildAxes, shrinks: bool) -> NodeBuilde
     root.animate(NumericAtomKind::Height, height)
 }
 
-impl<T: 'static, R: RowRender<T>> IntoNode for VirtualListBuilder<T, R> {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([T: 'static, R: RowRender<T>] VirtualListBuilder<T, R>: node);

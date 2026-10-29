@@ -4,6 +4,8 @@ use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{DisplayKind, Radius, StyleAtom, Token};
 
+use crate::widgets::interaction::pointer_drag;
+
 use super::{SCROLLBAR_WIDTH, THUMB_MIN_HEIGHT, THUMB_REST_WIDTH, geometry, overflows, to_i16};
 
 pub(crate) static THUMB_ATOMS: &[StyleAtom] =
@@ -78,10 +80,10 @@ fn scrollbar_thumb(
             thumb_offset(scroll_y.get(), max_scroll.get(), max_travel).round(),
         )
     });
-    let drag_anchor = signal::<Option<(f32, f32)>>(None);
-    let thick = derived(move || hovered.get() || drag_anchor.get().is_some());
+    let dragging = signal(false);
+    let thick = derived(move || hovered.get() || dragging.get());
 
-    container()
+    let thumb = container()
         .layout(
             LayoutStyle::block()
                 .fixed_size(THUMB_REST_WIDTH, THUMB_MIN_HEIGHT)
@@ -91,21 +93,14 @@ fn scrollbar_thumb(
         )
         .class(THUMB_ATOMS)
         .position_reactive(position)
-        .style_reactive(move || geometry::thumb_atoms(height.get(), thick.get()))
-        .pointer_down(move |ev| {
-            ev.capture_pointer();
-            drag_anchor.set(Some((ev.position.y, scroll_y.peek())));
-        })
-        .pointer_up(move |_| {
-            drag_anchor.set(None);
-        })
-        .pointer_move(move |ev| {
-            if !ev.is_captured() {
-                return;
-            }
-            let Some((anchor_y, anchor_scroll)) = drag_anchor.peek() else {
-                return;
-            };
+        .style_reactive(move || geometry::thumb_atoms(height.get(), thick.get()));
+    pointer_drag(
+        thumb,
+        move |ev| {
+            dragging.set(true);
+            Some((ev.position.y, scroll_y.peek()))
+        },
+        move |&(anchor_y, anchor_scroll), ev| {
             let max = max_scroll.peek();
             let (_, max_travel) = geometry::thumb_metrics(extent.peek(), viewport_height.peek());
             if max_travel <= 0.0 || max <= 0.0 {
@@ -114,5 +109,7 @@ fn scrollbar_thumb(
             let offset_dy = (ev.position.y - anchor_y) * (max / max_travel);
             scroll_y.set((anchor_scroll + offset_dy).clamp(0.0, max));
             ev.stop_propagation();
-        })
+        },
+        move |_, _| dragging.set(false),
+    )
 }

@@ -1,16 +1,14 @@
 use crate::events::Key;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{
-    BORDER_WIDTH, Paint, PaintTarget, StateVariants, Style, StyleAtom, StyleSlot, Token, space,
-};
+use crate::style::{BORDER_WIDTH, Paint, StateVariants, Style, StyleAtom, Token, space};
 
 use super::super::drag::{Axis, axis_drag};
 use super::super::interactive::interactive;
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::splitter::{HANDLE_PX, KEY_STEP, cached_width_atom, resize_keys, to_i16};
 
 const SIDEBAR_DEFAULT: f32 = space(55);
@@ -115,23 +113,4 @@ fn resize_handle(width: Signal<f32>, min: f32, max: f32) -> NodeBuilder {
     })
 }
 
-impl PaintTarget for SidebarBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for SidebarBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for SidebarBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] SidebarBuilder: paint(style_accumulator), layout, node);

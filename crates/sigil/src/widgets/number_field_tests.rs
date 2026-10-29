@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
 
 use super::*;
-use crate::reactive::Runtime;
+use crate::reactive::{Runtime, signal};
 use crate::style::Locale;
 
 #[test]

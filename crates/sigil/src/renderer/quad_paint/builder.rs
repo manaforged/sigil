@@ -1,9 +1,9 @@
 use crate::profile::count;
 
-use super::{SpriteInstance, SpriteUniforms};
+use super::{QuadInstance, QuadUniforms};
 
 pub(super) const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
-    array_stride: core::mem::size_of::<SpriteInstance>() as u64,
+    array_stride: core::mem::size_of::<QuadInstance>() as u64,
     step_mode: wgpu::VertexStepMode::Instance,
     attributes: &wgpu::vertex_attr_array![
         1 => Float32x4,
@@ -24,7 +24,7 @@ pub(super) fn uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
                 has_dynamic_offset: true,
-                min_binding_size: wgpu::BufferSize::new(size_of::<SpriteUniforms>() as u64),
+                min_binding_size: wgpu::BufferSize::new(size_of::<QuadUniforms>() as u64),
             },
             count: None,
         }],
@@ -44,7 +44,7 @@ pub(super) fn uniform_bind_group(
         wgpu::BufferBinding {
             buffer,
             offset: 0,
-            size: wgpu::BufferSize::new(size_of::<SpriteUniforms>() as u64),
+            size: wgpu::BufferSize::new(size_of::<QuadUniforms>() as u64),
         },
     )
 }

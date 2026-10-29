@@ -26,60 +26,191 @@ pub(in crate::terminal) enum Known {
     Apple,
 }
 
-#[cfg(unix)]
-const XTVERSION: [(&str, Known); 6] = [
-    ("kitty", Known::Kitty),
-    ("ghostty", Known::Ghostty),
-    ("wezterm", Known::WezTerm),
-    ("iterm2", Known::Iterm),
-    ("foot", Known::Foot),
-    ("contour", Known::Contour),
+#[derive(Clone, Copy)]
+enum Name {
+    Is(&'static str),
+    Starts(&'static str),
+}
+
+#[derive(Clone, Copy)]
+enum Signal {
+    Set(&'static str),
+    Is(&'static str, &'static str),
+}
+
+struct Terminal {
+    known: Known,
+    term: Option<Name>,
+    env: &'static [Signal],
+    version: Option<&'static str>,
+    kitty_keys: bool,
+    underline_styles: bool,
+    sync: bool,
+    notices: Notices,
+}
+
+const fn notices(notify: Option<Notify>, progress: bool) -> Notices {
+    Notices { notify, progress }
+}
+
+const TERMINALS: [Terminal; 10] = [
+    Terminal {
+        known: Known::Kitty,
+        term: Some(Name::Is("xterm-kitty")),
+        env: &[Signal::Set("KITTY_WINDOW_ID")],
+        version: Some("kitty"),
+        kitty_keys: true,
+        underline_styles: true,
+        sync: true,
+        notices: notices(Some(Notify::Osc9), true),
+    },
+    Terminal {
+        known: Known::Ghostty,
+        term: Some(Name::Is("xterm-ghostty")),
+        env: &[
+            Signal::Set("GHOSTTY_RESOURCES_DIR"),
+            Signal::Is("TERM_PROGRAM", "ghostty"),
+        ],
+        version: Some("ghostty"),
+        kitty_keys: true,
+        underline_styles: true,
+        sync: true,
+        notices: notices(Some(Notify::Osc777), true),
+    },
+    Terminal {
+        known: Known::WezTerm,
+        term: Some(Name::Is("wezterm")),
+        env: &[
+            Signal::Set("WEZTERM_EXECUTABLE"),
+            Signal::Is("TERM_PROGRAM", "WezTerm"),
+        ],
+        version: Some("wezterm"),
+        kitty_keys: true,
+        underline_styles: true,
+        sync: true,
+        notices: notices(Some(Notify::Osc777), true),
+    },
+    Terminal {
+        known: Known::Iterm,
+        term: None,
+        env: &[
+            Signal::Is("TERM_PROGRAM", "iTerm.app"),
+            Signal::Is("LC_TERMINAL", "iTerm2"),
+        ],
+        version: Some("iterm2"),
+        kitty_keys: true,
+        underline_styles: true,
+        sync: true,
+        notices: notices(Some(Notify::Osc9), true),
+    },
+    Terminal {
+        known: Known::Alacritty,
+        term: Some(Name::Is("alacritty")),
+        env: &[Signal::Set("ALACRITTY_WINDOW_ID")],
+        version: None,
+        kitty_keys: true,
+        underline_styles: false,
+        sync: true,
+        notices: notices(None, false),
+    },
+    Terminal {
+        known: Known::WindowsTerminal,
+        term: None,
+        env: &[Signal::Set("WT_SESSION")],
+        version: None,
+        kitty_keys: false,
+        underline_styles: false,
+        sync: true,
+        notices: notices(None, true),
+    },
+    Terminal {
+        known: Known::Vte,
+        term: None,
+        env: &[Signal::Set("VTE_VERSION")],
+        version: None,
+        kitty_keys: false,
+        underline_styles: true,
+        sync: false,
+        notices: notices(Some(Notify::Osc777), false),
+    },
+    Terminal {
+        known: Known::Apple,
+        term: None,
+        env: &[Signal::Is("TERM_PROGRAM", "Apple_Terminal")],
+        version: None,
+        kitty_keys: false,
+        underline_styles: false,
+        sync: false,
+        notices: notices(None, false),
+    },
+    Terminal {
+        known: Known::Foot,
+        term: Some(Name::Starts("foot")),
+        env: &[],
+        version: Some("foot"),
+        kitty_keys: true,
+        underline_styles: true,
+        sync: true,
+        notices: notices(Some(Notify::Osc777), false),
+    },
+    Terminal {
+        known: Known::Contour,
+        term: Some(Name::Starts("contour")),
+        env: &[],
+        version: Some("contour"),
+        kitty_keys: false,
+        underline_styles: true,
+        sync: true,
+        notices: notices(None, true),
+    },
 ];
 
+impl Name {
+    fn matches(self, value: &str) -> bool {
+        match self {
+            Self::Is(name) => value == name,
+            Self::Starts(prefix) => value.starts_with(prefix),
+        }
+    }
+}
+
+impl Signal {
+    fn holds(self, env: &impl Fn(&str) -> Option<String>) -> bool {
+        match self {
+            Self::Set(name) => env(name).is_some(),
+            Self::Is(name, value) => env(name).as_deref() == Some(value),
+        }
+    }
+}
+
 impl Known {
-    pub(super) const fn kitty_keys(self) -> bool {
-        match self {
-            Self::Kitty
-            | Self::Ghostty
-            | Self::WezTerm
-            | Self::Iterm
-            | Self::Foot
-            | Self::Alacritty => true,
-            Self::Contour | Self::WindowsTerminal | Self::Vte | Self::Apple => false,
-        }
+    fn terminal(self) -> Option<&'static Terminal> {
+        TERMINALS.iter().find(|row| row.known == self)
     }
 
-    pub(super) const fn underline_styles(self) -> bool {
-        match self {
-            Self::Apple | Self::Alacritty | Self::WindowsTerminal => false,
-            Self::Kitty
-            | Self::Ghostty
-            | Self::WezTerm
-            | Self::Iterm
-            | Self::Foot
-            | Self::Contour
-            | Self::Vte => true,
-        }
+    pub(super) fn kitty_keys(self) -> bool {
+        self.terminal().is_some_and(|row| row.kitty_keys)
     }
 
-    pub(super) const fn notices(self) -> Notices {
-        let (notify, progress) = match self {
-            Self::Kitty | Self::Iterm => (Some(Notify::Osc9), true),
-            Self::Ghostty | Self::WezTerm => (Some(Notify::Osc777), true),
-            Self::Foot | Self::Vte => (Some(Notify::Osc777), false),
-            Self::WindowsTerminal | Self::Contour => (None, true),
-            Self::Alacritty | Self::Apple => (None, false),
-        };
-        Notices { notify, progress }
+    pub(super) fn underline_styles(self) -> bool {
+        self.terminal().is_some_and(|row| row.underline_styles)
+    }
+
+    pub(super) fn sync(self) -> bool {
+        self.terminal().is_some_and(|row| row.sync)
+    }
+
+    pub(super) fn notices(self) -> Notices {
+        self.terminal().map(|row| row.notices).unwrap_or_default()
     }
 
     #[cfg(unix)]
     pub(super) fn from_version(name: &str) -> Option<Self> {
         let name = name.trim().to_ascii_lowercase();
-        XTVERSION
+        TERMINALS
             .iter()
-            .find(|(prefix, _)| name.starts_with(prefix))
-            .map(|(_, known)| *known)
+            .find(|row| row.version.is_some_and(|prefix| name.starts_with(prefix)))
+            .map(|row| row.known)
     }
 }
 
@@ -89,36 +220,16 @@ pub(super) fn known(env: &impl Fn(&str) -> Option<String>, mux: Option<Mux>) -> 
 }
 
 fn known_term(term: &str) -> Option<Known> {
-    Some(match term {
-        "xterm-kitty" => Known::Kitty,
-        "xterm-ghostty" => Known::Ghostty,
-        "wezterm" => Known::WezTerm,
-        "alacritty" => Known::Alacritty,
-        _ if term.starts_with("foot") => Known::Foot,
-        _ if term.starts_with("contour") => Known::Contour,
-        _ => return None,
-    })
+    TERMINALS
+        .iter()
+        .find(|row| row.term.is_some_and(|name| name.matches(term)))
+        .map(|row| row.known)
 }
 
 pub(in crate::terminal) fn known_env(env: &impl Fn(&str) -> Option<String>) -> Option<Known> {
-    let program = env("TERM_PROGRAM").unwrap_or_default();
-    Some(if env("KITTY_WINDOW_ID").is_some() {
-        Known::Kitty
-    } else if env("GHOSTTY_RESOURCES_DIR").is_some() || program == "ghostty" {
-        Known::Ghostty
-    } else if env("WEZTERM_EXECUTABLE").is_some() || program == "WezTerm" {
-        Known::WezTerm
-    } else if program == "iTerm.app" || env("LC_TERMINAL").as_deref() == Some("iTerm2") {
-        Known::Iterm
-    } else if env("ALACRITTY_WINDOW_ID").is_some() {
-        Known::Alacritty
-    } else if env("WT_SESSION").is_some() {
-        Known::WindowsTerminal
-    } else if env("VTE_VERSION").is_some() {
-        Known::Vte
-    } else if program == "Apple_Terminal" {
-        Known::Apple
-    } else {
-        return None;
-    })
+    TERMINALS
+        .iter()
+        .flat_map(|row| row.env.iter().map(move |signal| (row.known, signal)))
+        .find(|(_, signal)| signal.holds(env))
+        .map(|(known, _)| known)
 }

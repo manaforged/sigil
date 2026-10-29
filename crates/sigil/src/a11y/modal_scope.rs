@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use accesskit::{Node as AkNode, NodeId as AkNodeId};
 
 use super::mapping::flatten;
-use crate::events::hit_test::visible;
+use crate::events::hit_test::{visible, walk_order};
 use crate::kernel::{Cx, FocusScopeKind, NodeId};
 
 pub(super) fn hide_outside(cx: &Cx, nodes: &mut [(AkNodeId, AkNode)]) {
@@ -32,16 +32,10 @@ pub(super) fn hide_outside(cx: &Cx, nodes: &mut [(AkNodeId, AkNode)]) {
 }
 
 fn open_modal(cx: &Cx) -> Option<NodeId> {
-    let mut found = None;
-    let mut stack: Vec<NodeId> = cx.roots().iter().rev().copied().collect();
-    while let Some(id) = stack.pop() {
-        let Some(node) = cx.get(id) else {
-            continue;
-        };
-        if node.a11y.focus_scope == Some(FocusScopeKind::Modal) && visible(cx, id) {
-            found = Some(id);
-        }
-        stack.extend(node.children().iter().rev().copied());
-    }
-    found
+    walk_order(cx, cx.roots(), |_, _| true)
+        .filter(|(id, node)| {
+            node.a11y.focus_scope == Some(FocusScopeKind::Modal) && visible(cx, *id)
+        })
+        .map(|(id, _)| id)
+        .last()
 }

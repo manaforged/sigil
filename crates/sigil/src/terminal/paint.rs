@@ -19,7 +19,6 @@ mod mask;
 mod paint_clip;
 mod region;
 mod scene;
-mod transform;
 
 pub(super) use cell::Face;
 pub use cell::{Cell, Ink, Lines, Underline};

@@ -1,14 +1,14 @@
 use std::rc::Rc;
 
 use crate::events::{NodeEventsExt, PointerEvent};
-use crate::kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, container};
+use crate::kernel::{FocusScopeKind, NodeBuilder, container};
 use crate::layout::PopupSide;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Owner, OwnerId, Signal};
-use crate::style::{PaintTarget, Style, StyleSlot};
+use crate::style::Style;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::popup::{self, PANEL_WIDTH};
+use super::super::layout_ext::LayoutOverrides;
+use super::super::popup::{self, Anchor, Layer, PANEL_WIDTH};
 use super::panel::{Row, menu_panel, panel_height, panel_layout};
 
 #[derive(Clone)]
@@ -161,35 +161,15 @@ impl MenuBuilder {
             panel = panel.style(self.style_accumulator);
         }
 
-        let root = container()
-            .layout(layout)
+        let root = Layer::new(open, Anchor::Inline)
+            .dismiss_outside(container().layout(layout))
             .style_reactive(move || popup::shown(open))
-            .pointer_down(move |event| {
-                open.set(false);
-                event.stop_propagation();
-            })
             .child(panel);
         hooks.finish(root)
     }
 }
 
-impl WidgetLayoutExt for MenuBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl PaintTarget for MenuBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl IntoNode for MenuBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] MenuBuilder: paint(style_accumulator), layout, plain_node);
 
 #[cfg(test)]
 #[path = "builder_tests.rs"]

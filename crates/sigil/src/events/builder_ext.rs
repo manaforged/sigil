@@ -11,7 +11,7 @@ use crate::reactive::Signal;
 use accesskit::Action;
 
 use crate::events::EventHandlers;
-use crate::events::handlers::KeyBinding;
+use crate::events::handlers::{EventKind, Handler, Phase};
 use crate::events::ime_handlers::{CaretAnchorExt, ImeHandlers};
 use crate::events::router::{GestureHandlers, PasteHandlers};
 use crate::events::selection::SelectableText;
@@ -19,54 +19,84 @@ use crate::events::selection::SelectableText;
 macro_rules! handler_methods {
     ($m:ident) => {
         $m! {
-            pointer_down => EventHandlers.pointer_down: [Fn(&mut PointerEvent)],
-            pointer_down_capture => EventHandlers.pointer_down_capture: [Fn(&mut PointerEvent)],
-            pointer_up_capture => EventHandlers.pointer_up_capture: [Fn(&mut PointerEvent)],
-            pointer_move => EventHandlers.pointer_move: [Fn(&mut PointerEvent)],
-            pointer_move_capture => EventHandlers.pointer_move_capture: [Fn(&mut PointerEvent)],
-            pointer_enter => EventHandlers.pointer_enter: [Fn(&mut PointerEvent)],
-            pointer_leave => EventHandlers.pointer_leave: [Fn(&mut PointerEvent)],
-            file_drop => EventHandlers.file_drop: [Fn(&FileDropEvent)],
-            link => EventHandlers.link: [Fn(&str)],
-            on_selection_copy => EventHandlers.selection_copy:
+            @table
+            pointer_down => PointerDown, Bubble, Pointer: [Fn(&mut PointerEvent)],
+            pointer_down_capture => PointerDown, Capture, Pointer: [Fn(&mut PointerEvent)],
+            pointer_up_capture => PointerUp, Capture, Pointer: [Fn(&mut PointerEvent)],
+            pointer_move => PointerMove, Bubble, Pointer: [Fn(&mut PointerEvent)],
+            pointer_move_capture => PointerMove, Capture, Pointer: [Fn(&mut PointerEvent)],
+            pointer_enter => PointerEnter, Bubble, Pointer: [Fn(&mut PointerEvent)],
+            pointer_leave => PointerLeave, Bubble, Pointer: [Fn(&mut PointerEvent)],
+            file_drop => FileDrop, Bubble, FileDrop: [Fn(&FileDropEvent)],
+            link => Link, Bubble, Link: [Fn(&str)],
+            on_selection_copy => SelectionCopy, Bubble, SelectionCopy:
                 [Fn(&str, &crate::AppResult<crate::clipboard::Delivery>)],
-            on_scroll => EventHandlers.scroll: [Fn(&mut ScrollEvent)],
-            key_any => EventHandlers.key_any: [Fn(&mut KeyEvent)],
-            key_capture_any => EventHandlers.key_capture_any: [Fn(&mut KeyEvent)],
-            focus_in => EventHandlers.focus_in: [Fn()],
-            focus_out => EventHandlers.focus_out: [Fn()],
+            on_scroll => Scroll, Bubble, Scroll: [Fn(&mut ScrollEvent)],
+            focus_in => FocusIn, Bubble, Focus: [Fn()],
+            focus_out => FocusOut, Bubble, Focus: [Fn()],
+        }
+        $m! {
+            @ext
             on_ime => ImeHandlers.handlers: [Fn(&ImeEvent)],
             on_paste => PasteHandlers.handlers: [Fn(&mut PasteEvent)],
             on_gesture => GestureHandlers.handlers: [Fn(&mut GestureEvent)],
         }
         $m! {
-            @keyed key => key, shortcut => shortcut, key_capture => key_capture,
+            @keyed
+            key => Key, Bubble,
+            shortcut => Shortcut, Bubble,
+            key_capture => Key, Capture,
+        }
+        $m! {
+            @any
+            key_any => Bubble,
+            key_capture_any => Capture,
         }
     };
 }
 
 macro_rules! declare {
-    ($($name:ident => $ext:ident.$field:ident: [$($bound:tt)*],)*) => {
+    (@table $($name:ident => $kind:ident, $phase:ident, $variant:ident: [$($bound:tt)*],)*) => {
         $(#[must_use] fn $name<H>(self, h: H) -> Self where H: $($bound)* + 'static;)*
     };
-    (@keyed $($name:ident => $field:ident,)*) => {
+    (@ext $($name:ident => $ext:ident.$field:ident: [$($bound:tt)*],)*) => {
+        $(#[must_use] fn $name<H>(self, h: H) -> Self where H: $($bound)* + 'static;)*
+    };
+    (@keyed $($name:ident => $kind:ident, $phase:ident,)*) => {
         $(#[must_use] fn $name<S, H>(self, shortcut: S, h: H) -> Self
         where S: Into<Shortcut>, H: Fn(&mut KeyEvent) + 'static;)*
+    };
+    (@any $($name:ident => $phase:ident,)*) => {
+        $(#[must_use] fn $name<H>(self, h: H) -> Self where H: Fn(&mut KeyEvent) + 'static;)*
     };
 }
 
 macro_rules! implement {
-    ($($name:ident => $ext:ident.$field:ident: [$($bound:tt)*],)*) => {
+    (@table $($name:ident => $kind:ident, $phase:ident, $variant:ident: [$($bound:tt)*],)*) => {
+        $(fn $name<H>(self, h: H) -> Self where H: $($bound)* + 'static {
+            with_handlers(self, move |handlers| {
+                handlers.push(EventKind::$kind, Phase::$phase, Handler::$variant(Box::new(h)));
+            })
+        })*
+    };
+    (@ext $($name:ident => $ext:ident.$field:ident: [$($bound:tt)*],)*) => {
         $(fn $name<H>(self, h: H) -> Self where H: $($bound)* + 'static {
             with_ext(self, move |ext: &mut $ext| ext.$field.push(Box::new(h)))
         })*
     };
-    (@keyed $($name:ident => $field:ident,)*) => {
+    (@keyed $($name:ident => $kind:ident, $phase:ident,)*) => {
         $(fn $name<S, H>(self, shortcut: S, h: H) -> Self
         where S: Into<Shortcut>, H: Fn(&mut KeyEvent) + 'static {
-            let shortcut = shortcut.into();
+            let shortcut = Some(shortcut.into());
             with_handlers(self, move |handlers| {
-                handlers.$field.push(KeyBinding { shortcut, handler: Box::new(h) });
+                handlers.push(EventKind::$kind, Phase::$phase, Handler::Key(shortcut, Box::new(h)));
+            })
+        })*
+    };
+    (@any $($name:ident => $phase:ident,)*) => {
+        $(fn $name<H>(self, h: H) -> Self where H: Fn(&mut KeyEvent) + 'static {
+            with_handlers(self, move |handlers| {
+                handlers.push(EventKind::Key, Phase::$phase, Handler::Key(None, Box::new(h)));
             })
         })*
     };
@@ -106,7 +136,11 @@ impl NodeEventsExt for NodeBuilder {
         H: Fn(&mut PointerEvent) + 'static,
     {
         with_handlers(self.action(Action::Click), move |handlers| {
-            handlers.pointer_up.push(Box::new(h));
+            handlers.push(
+                EventKind::PointerUp,
+                Phase::Bubble,
+                Handler::Pointer(Box::new(h)),
+            );
         })
     }
 

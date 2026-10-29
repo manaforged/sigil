@@ -1,24 +1,25 @@
 use crate::reactive::Reactive;
+use crate::style::strings::StringKey;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::{Key, LogicalKey, NodeEventsExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
+use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived};
 use crate::style::TransitionId;
 use crate::style::{
-    ControlSize, JustifyKind, Metrics, NodeStyleExt, PaintTarget, StateStyle, Style, StyleAtom,
-    StyleOverlay, StyleSlot, StyleVariant, Theme, Token, space,
+    ControlSize, JustifyKind, Metrics, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant,
+    Token, space,
 };
 
 use crate::widgets::interaction::InteractionState;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use super::shared::{
-    BoolChange, BuilderMutator, CONTROL_INSET, activate_binary_key, activate_binary_pointer,
-    binary_style_state, control_row, control_surface, disabled_now, noop_bool_change,
+    BoolChange, BuilderMutator, CONTROL_INSET, Press, RELEASE_ENTER_SPACE, accessible_name_or,
+    binary_style_state, control_row, control_surface, disabled_now, noop_bool_change, press,
+    static_label,
 };
 
 pub struct ToggleBuilder {
@@ -32,11 +33,7 @@ pub struct ToggleBuilder {
     style: Style,
 }
 
-impl WidgetLayoutExt for ToggleBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([] ToggleBuilder: paint(style), layout, node, theme);
 
 static EMPTY_BASE: &[StyleAtom] = &[];
 const TOGGLE_TRANSITION: TransitionId = presets::SMOOTH;
@@ -123,12 +120,6 @@ impl ToggleBuilder {
         self
     }
 
-    #[must_use]
-    pub fn theme(mut self, theme: Theme) -> Self {
-        self.mutators.push(Box::new(move |node| node.theme(theme)));
-        self
-    }
-
     fn into_node_builder(mut self) -> NodeBuilder {
         let enabled = !disabled_now(self.disabled);
         let interaction = InteractionState::new(enabled);
@@ -154,51 +145,34 @@ impl ToggleBuilder {
     ) -> NodeBuilder {
         let on = self.on;
         let disabled = self.disabled;
-        let (pointer_change, enter_change) = (Rc::clone(&on_change), Rc::clone(&on_change));
-        let mut node = container()
+        let node = container()
             .role(Role::Switch)
-            .label(self.accessible.clone().unwrap_or_else(|| {
-                self.label
-                    .as_ref()
-                    .and_then(TextContent::as_static_str)
-                    .unwrap_or("Toggle")
-                    .to_owned()
-            }))
+            .label(accessible_name_or(
+                self.accessible
+                    .clone()
+                    .or_else(|| static_label(self.label.as_ref()))
+                    .map(TextContent::Static)
+                    .as_ref(),
+                StringKey::Toggle,
+            ))
             .checked(on)
-            .layout(toggle_layout(self.label.is_some()))
-            .pointer_up(move |event| {
-                activate_binary_pointer(event, interaction, disabled, on, &pointer_change);
-            })
-            .key(Key::Enter, move |event| {
-                activate_binary_key(event, interaction, disabled, on, &enter_change);
-            })
-            .key(LogicalKey::character(" "), move |event| {
-                activate_binary_key(event, interaction, disabled, on, &on_change);
-            })
-            .child(if CellForm::new(false, true).pick() {
-                cell_track(on)
-            } else {
-                toggle_track(on, disabled, interaction)
-            });
+            .layout(toggle_layout(self.label.is_some()));
+        let mut node = press(
+            node,
+            interaction,
+            disabled,
+            Press::Flip(on, on_change),
+            RELEASE_ENTER_SPACE,
+        )
+        .child(if CellForm::new(false, true).pick() {
+            cell_track(on)
+        } else {
+            toggle_track(on, disabled, interaction)
+        });
         if let Some(label) = self.label.clone() {
             node = node.child(text(label).nowrap());
         }
         interaction.install(control_surface(node, interaction, disabled, user_overlay))
-    }
-}
-
-impl PaintTarget for ToggleBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style)
-    }
-}
-
-impl IntoNode for ToggleBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
     }
 }
 

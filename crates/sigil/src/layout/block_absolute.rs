@@ -3,8 +3,8 @@ use crate::layout::LayoutError;
 use crate::layout::block_size::SizeIntent;
 use crate::layout::flex::{CbSize, FlexSolver, Position2 as FlexPosition};
 use crate::layout::forest::{ComputedBox, MeasureScope, NodeRef};
-use crate::layout::resolve::{InsetAxis, NodeEdges, resolve_inset_axis, stretched};
-use crate::layout::style_data::{Display, Position, Size, StyleData};
+use crate::layout::resolve::{NodeEdges, resolve_absolute_xy, stretched};
+use crate::layout::style_data::{Display, Position, Size};
 
 impl BlockSolver<'_> {
     pub(super) fn place_absolutes(
@@ -56,8 +56,13 @@ impl BlockSolver<'_> {
             padding_origin.y + edges.margin_top(),
         );
         let (box_w, box_h) = self.size_absolute(child, &edges, &intent, inner_cb, provisional)?;
-        let (x, y) =
-            resolve_absolute_xy(style, &edges, padding_origin, padding_box, (box_w, box_h));
+        let (x, y) = resolve_absolute_xy(
+            style,
+            &edges,
+            (padding_origin.x, padding_origin.y),
+            padding_box,
+            (box_w, box_h),
+        );
         let dx = x - provisional.x;
         let dy = y - provisional.y;
         if dx != 0.0 || dy != 0.0 {
@@ -154,32 +159,4 @@ impl BlockSolver<'_> {
                 ))
             })
     }
-}
-
-fn resolve_absolute_xy(
-    style: &StyleData,
-    edges: &NodeEdges,
-    padding_origin: Position2,
-    padding_box: Size<f32>,
-    (box_w, box_h): (f32, f32),
-) -> (f32, f32) {
-    let x = resolve_inset_axis(InsetAxis {
-        leading: style.inset.left,
-        trailing: style.inset.right,
-        origin: padding_origin.x,
-        cb_dim: padding_box.width,
-        box_dim: box_w,
-        margin_leading: edges.margin.left.unwrap_or(0.0),
-        margin_trailing: edges.margin.right.unwrap_or(0.0),
-    });
-    let y = resolve_inset_axis(InsetAxis {
-        leading: style.inset.top,
-        trailing: style.inset.bottom,
-        origin: padding_origin.y,
-        cb_dim: padding_box.height,
-        box_dim: box_h,
-        margin_leading: edges.margin_top(),
-        margin_trailing: edges.margin.bottom.unwrap_or(0.0),
-    });
-    (x, y)
 }

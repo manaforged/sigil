@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use super::*;
+use crate::events::Key;
 use crate::events::{
     EventRouter, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton,
     MouseButtons, PhysicalKey, PointerEvent, PointerEventInit, PointerKind, PointerPhase,

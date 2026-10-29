@@ -1,3 +1,4 @@
+use crate::layout::LengthPercentage;
 use crate::style::locale::{Direction, Locale};
 use crate::style::metrics::{Metrics, Radius};
 use crate::style::palette::{Palette, is_dark, pick_higher_contrast};
@@ -7,7 +8,7 @@ use crate::style::scale::{
 };
 use crate::style::strings::Strings;
 use crate::style::variant::{FontFamilyHint, Variant};
-use crate::style::{ControlSize, Dimension, LengthPercentage, Px, Rgba8};
+use crate::style::{ControlSize, Dimension, Px, Rgba8};
 use mix::{alpha_mix, shift};
 
 pub(crate) mod ambient;
@@ -250,7 +251,7 @@ impl Theme {
     pub fn padding(&self, size: ControlSize) -> LengthPercentage {
         match size {
             ControlSize::Grow => LengthPercentage::Percent(1.0),
-            _ => LengthPercentage::Px(px(self.metrics.padding(size))),
+            _ => LengthPercentage::from(px(self.metrics.padding(size))),
         }
     }
 
@@ -258,18 +259,22 @@ impl Theme {
     pub fn gap(&self, size: ControlSize) -> LengthPercentage {
         match size {
             ControlSize::Grow => LengthPercentage::Percent(1.0),
-            _ => LengthPercentage::Px(px(self.metrics.gap(size))),
+            _ => LengthPercentage::from(px(self.metrics.gap(size))),
         }
     }
 
     #[must_use]
     pub const fn radius(&self, size: ControlSize) -> LengthPercentage {
-        LengthPercentage::Px(self.metrics.radius(match size {
-            ControlSize::Compact => Radius::Sm,
-            ControlSize::Default => Radius::Md,
-            ControlSize::Wide => Radius::Lg,
-            ControlSize::Grow => Radius::Full,
-        }))
+        LengthPercentage::Px(
+            self.metrics
+                .radius(match size {
+                    ControlSize::Compact => Radius::Sm,
+                    ControlSize::Default => Radius::Md,
+                    ControlSize::Wide => Radius::Lg,
+                    ControlSize::Grow => Radius::Full,
+                })
+                .0 as f32,
+        )
     }
 
     #[must_use]
