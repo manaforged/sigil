@@ -5,6 +5,7 @@
 | [`Access`](#access) | struct |  |
 | [`Caps`](#caps) | struct |  |
 | [`Cell`](#cell) | struct |  |
+| [`CellGrid`](#cellgrid) | struct |  |
 | [`Grid`](#grid) | struct |  |
 | [`Hooks`](#hooks) | struct |  |
 | [`Lines`](#lines) | struct |  |
@@ -143,6 +144,28 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
 
 
+### `CellGrid`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>get(&amp;self, at: [u16; 2]) -&gt; Option&lt;&amp;<a href="#cell">Cell</a>&gt;</code> |  |
+| <code>get_mut(&amp;mut self, at: [u16; 2]) -&gt; Option&lt;&amp;mut <a href="#cell">Cell</a>&gt;</code> |  |
+| <code>new(area: [u16; 4], fill: <a href="#cell">Cell</a>) -&gt; Self</code> |  |
+| <code>row(&amp;self, index: u16) -&gt; Option&lt;&amp;[<a href="#cell">Cell</a>]&gt;</code> |  |
+| <code>write_text(&amp;mut self, at: [u16; 2], text: &amp;str, style: &amp;<a href="#cell">Cell</a>) -&gt; u16</code> |  |
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>area: [u16; 4]</code> |  |
+| <code>cells: Vec&lt;<a href="#cell">Cell</a>&gt;</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
+
+
 ### `Grid`
 
 **Methods**
@@ -162,6 +185,7 @@
 | <code>const rows(&amp;self) -&gt; usize</code> |  |
 | <code>const set_graphics(&amp;mut self, graphics: bool)</code> |  |
 | <code>text(&amp;self) -&gt; String</code> |  |
+| <code>image(&amp;self, theme: &amp;<a href="sigil-style.html#theme">Theme</a>, cell: <a href="sigil-geometry.html#physicalsize">PhysicalSize</a>) -&gt; Result&lt;RgbaImage, <a href="sigil-renderer.html#renderererror">RendererError</a>&gt;</code> |  |
 
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>StructuralPartialEq</code>
 

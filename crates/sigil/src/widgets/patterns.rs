@@ -256,10 +256,12 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
 
 mod activatable;
 mod card;
+mod disclosure;
 mod list_row;
 mod sidebar;
 
 pub use card::{CardBuilder, card};
+pub use disclosure::disclosure;
 use list_row::row_height;
 pub use list_row::{Disclosure, ListColumn, ListRowSlots, RowTone, list_row, list_row_with};
 pub(crate) use list_row::{ROW_SELECTED, ROW_SELECTED_HOVER, row_states};

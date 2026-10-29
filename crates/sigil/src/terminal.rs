@@ -1,5 +1,8 @@
 mod access;
 mod caps;
+#[cfg(feature = "scene")]
+mod capture;
+mod cell_grid;
 mod clipboard;
 mod colour;
 mod glyphs;
@@ -26,6 +29,7 @@ pub use access::{Access, FocusCursor};
 pub use caps::{
     Backdrop, Borders, Caps, ClipRoute, ColorDepth, Cursor, Erase, Fills, Keyboard, Notices, Notify,
 };
+pub use cell_grid::CellGrid;
 pub use clipboard::install_clipboard;
 pub use glyphs::{Glyphs, glyphs};
 pub use graphics::{

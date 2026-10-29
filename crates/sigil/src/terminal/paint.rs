@@ -299,7 +299,7 @@ fn map_glyph(cell: &mut Cell, glyphs: Glyphs) {
     }
 }
 
-fn cell_text(grapheme: &str, pad: usize) -> SmolStr {
+pub(crate) fn cell_text(grapheme: &str, pad: usize) -> SmolStr {
     if pad == 0 {
         crate::app::cell_glyph(grapheme).into()
     } else {

@@ -37,11 +37,7 @@ pub(super) fn render(row: &DiffRow, draw: Draw) -> NodeBuilder {
                 None => line,
             }
         }
-        DiffRow::Split {
-            left,
-            right,
-            weights,
-        } => split_row(left.as_ref(), right.as_ref(), *weights, draw),
+        DiffRow::Split { left, right } => split_row(left.as_ref(), right.as_ref(), draw),
         DiffRow::Unified(cell) => source_row(cell, draw),
         DiffRow::Overflow => text_row(
             "… expand tool output to see the remaining changes".to_string(),
@@ -142,10 +138,10 @@ pub(super) fn source_row(cell: &Cell, draw: Draw) -> NodeBuilder {
     }
 }
 
-fn half(cell: Option<&Cell>, draw: Draw, ruled: bool, grow: f32) -> NodeBuilder {
+fn half(cell: Option<&Cell>, draw: Draw, ruled: bool) -> NodeBuilder {
     let column = container().layout(
         LayoutStyle::flex_column()
-            .grow(grow)
+            .grow(1.0)
             .flex_basis(Dimension::Px(0.0))
             .min_size(0.0, 0.0)
             .overflow_x(Overflow::Hidden),
@@ -163,12 +159,7 @@ fn half(cell: Option<&Cell>, draw: Draw, ruled: bool, grow: f32) -> NodeBuilder 
     ))
 }
 
-fn split_row(
-    left: Option<&Cell>,
-    right: Option<&Cell>,
-    (lw, rw): (f32, f32),
-    draw: Draw,
-) -> NodeBuilder {
+fn split_row(left: Option<&Cell>, right: Option<&Cell>, draw: Draw) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
@@ -176,6 +167,6 @@ fn split_row(
                 .min_size(0.0, 0.0)
                 .gap(0.0),
         )
-        .child(half(left, draw, true, lw))
-        .child(half(right, draw, false, rw))
+        .child(half(left, draw, true))
+        .child(half(right, draw, false))
 }

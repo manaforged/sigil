@@ -606,6 +606,9 @@ pub fn sigil::app::cell_text_lines(text: &str, max_cells: usize) -> alloc::vec::
 pub fn sigil::app::cell_width(text: &str) -> usize
 pub fn sigil::app::current_window() -> core::option::Option<sigil::app::WindowId>
 pub fn sigil::app::display_scale() -> sigil::reactive::Signal<f32>
+pub fn sigil::app::ellipsize_cells(text: &str, width: usize) -> alloc::string::String
+pub fn sigil::app::ellipsize_cells_start(text: &str, width: usize) -> alloc::string::String
+pub fn sigil::app::fit_cells(text: &str, width: usize) -> alloc::string::String
 pub fn sigil::app::is_grid() -> bool
 pub fn sigil::app::open(target: impl core::convert::AsRef<std::ffi::os_str::OsStr>) -> sigil::AppResult<()>
 pub fn sigil::app::open_window<C, F, N>(config: C, view: F) -> sigil::app::WindowId where C: core::convert::Into<sigil::AppConfig>, F: core::ops::function::Fn() -> N + 'static, N: sigil::kernel::IntoNode
@@ -2842,6 +2845,7 @@ pub fn sigil::widgets::Combobox::selected_option(self) -> core::option::Option<a
 pub const fn sigil::widgets::Combobox::selected_signal(self) -> sigil::reactive::Signal<core::option::Option<usize>>
 impl core::clone::Clone for sigil::widgets::Combobox
 impl core::marker::Copy for sigil::widgets::Combobox
+impl sigil::widgets::ListModel for sigil::widgets::Combobox
 pub struct sigil::prelude::Date
 pub sigil::prelude::Date::day: u8
 pub sigil::prelude::Date::month: u8
@@ -5752,6 +5756,21 @@ impl core::cmp::PartialEq for sigil::terminal::Cell
 impl core::default::Default for sigil::terminal::Cell
 impl core::fmt::Debug for sigil::terminal::Cell
 impl core::marker::StructuralPartialEq for sigil::terminal::Cell
+pub struct sigil::terminal::CellGrid
+pub sigil::terminal::CellGrid::area: [u16; 4]
+pub sigil::terminal::CellGrid::cells: alloc::vec::Vec<sigil::terminal::Cell>
+impl sigil::terminal::CellGrid
+pub fn sigil::terminal::CellGrid::get(&self, at: [u16; 2]) -> core::option::Option<&sigil::terminal::Cell>
+pub fn sigil::terminal::CellGrid::get_mut(&mut self, at: [u16; 2]) -> core::option::Option<&mut sigil::terminal::Cell>
+pub fn sigil::terminal::CellGrid::new(area: [u16; 4], fill: sigil::terminal::Cell) -> Self
+pub fn sigil::terminal::CellGrid::row(&self, index: u16) -> core::option::Option<&[sigil::terminal::Cell]>
+pub fn sigil::terminal::CellGrid::write_text(&mut self, at: [u16; 2], text: &str, style: &sigil::terminal::Cell) -> u16
+impl core::clone::Clone for sigil::terminal::CellGrid
+impl core::cmp::Eq for sigil::terminal::CellGrid
+impl core::cmp::PartialEq for sigil::terminal::CellGrid
+impl core::default::Default for sigil::terminal::CellGrid
+impl core::fmt::Debug for sigil::terminal::CellGrid
+impl core::marker::StructuralPartialEq for sigil::terminal::CellGrid
 pub struct sigil::terminal::Grid
 impl sigil::terminal::Grid
 pub const fn sigil::terminal::Grid::cols(&self) -> usize
@@ -5767,6 +5786,7 @@ pub fn sigil::terminal::Grid::row(&self, row: usize) -> &[sigil::terminal::Cell]
 pub const fn sigil::terminal::Grid::rows(&self) -> usize
 pub const fn sigil::terminal::Grid::set_graphics(&mut self, graphics: bool)
 pub fn sigil::terminal::Grid::text(&self) -> alloc::string::String
+pub fn sigil::terminal::Grid::image(&self, theme: &sigil::style::Theme, cell: sigil::geometry::PhysicalSize) -> core::result::Result<image::images::buffer::RgbaImage, sigil::renderer::RendererError>
 impl core::clone::Clone for sigil::terminal::Grid
 impl core::cmp::Eq for sigil::terminal::Grid
 impl core::cmp::PartialEq for sigil::terminal::Grid
@@ -6045,6 +6065,15 @@ impl core::marker::StructuralPartialEq for sigil::widgets::ColAlign
 pub enum sigil::widgets::ColWidth
 pub sigil::widgets::ColWidth::Fixed(f32)
 pub sigil::widgets::ColWidth::Fraction(f32)
+pub enum sigil::widgets::CursorEdge
+pub sigil::widgets::CursorEdge::Clamp
+pub sigil::widgets::CursorEdge::Wrap
+impl core::clone::Clone for sigil::widgets::CursorEdge
+impl core::cmp::Eq for sigil::widgets::CursorEdge
+impl core::cmp::PartialEq for sigil::widgets::CursorEdge
+impl core::fmt::Debug for sigil::widgets::CursorEdge
+impl core::marker::Copy for sigil::widgets::CursorEdge
+impl core::marker::StructuralPartialEq for sigil::widgets::CursorEdge
 pub enum sigil::widgets::Density
 pub sigil::widgets::Density::Compact
 pub sigil::widgets::Density::Default
@@ -6441,6 +6470,26 @@ pub sigil::widgets::ListRowSlots::status: core::option::Option<sigil::kernel::Te
 pub sigil::widgets::ListRowSlots::status_tone: core::option::Option<sigil::style::Tone>
 pub sigil::widgets::ListRowSlots::title_width: core::option::Option<f32>
 pub sigil::widgets::ListRowSlots::tone: sigil::widgets::RowTone
+pub struct sigil::widgets::ListState<K: sigil::widgets::TreeKey>
+pub sigil::widgets::ListState::caret: sigil::reactive::Signal<usize>
+pub sigil::widgets::ListState::cursor: sigil::reactive::Signal<usize>
+pub sigil::widgets::ListState::expanded: sigil::reactive::Signal<alloc::vec::Vec<K>>
+pub sigil::widgets::ListState::query: sigil::reactive::Signal<alloc::string::String>
+pub sigil::widgets::ListState::scroll: sigil::reactive::Signal<f32>
+impl<K: sigil::widgets::TreeKey> sigil::widgets::ListState<K>
+pub fn sigil::widgets::ListState<K>::at(self, len: usize) -> usize
+pub fn sigil::widgets::ListState<K>::collapse_all(self)
+pub fn sigil::widgets::ListState<K>::filter<'a>(self, labels: impl core::iter::traits::collect::IntoIterator<Item = &'a str>) -> alloc::vec::Vec<usize>
+pub fn sigil::widgets::ListState<K>::is_expanded(self, key: &K) -> bool
+pub fn sigil::widgets::ListState<K>::new() -> Self
+pub fn sigil::widgets::ListState<K>::select(self, index: usize)
+pub fn sigil::widgets::ListState<K>::shift(self, delta: isize, len: usize, edge: sigil::widgets::CursorEdge)
+pub fn sigil::widgets::ListState<K>::toggle(self, key: &K)
+pub fn sigil::widgets::ListState<K>::toggle_only(self, key: &K)
+pub fn sigil::widgets::ListState<K>::type_query(self, text: alloc::string::String)
+impl<K: sigil::widgets::TreeKey> core::clone::Clone for sigil::widgets::ListState<K>
+impl<K: sigil::widgets::TreeKey> core::default::Default for sigil::widgets::ListState<K>
+impl<K: sigil::widgets::TreeKey> core::marker::Copy for sigil::widgets::ListState<K>
 pub struct sigil::widgets::MarkdownEditBuilder
 impl sigil::widgets::MarkdownEditBuilder
 pub fn sigil::widgets::MarkdownEditBuilder::disabled(self, disabled: impl sigil::reactive::Reactive<bool>) -> Self
@@ -6796,6 +6845,18 @@ impl<T: core::convert::Into<sigil::kernel::TextContent>> sigil::widgets::IntoIco
 pub trait sigil::widgets::IntoList<T, R: sigil::widgets::RowRender<T>>
 pub fn sigil::widgets::IntoList::into_list(self, render: R) -> sigil::widgets::VirtualListBuilder<T, R>
 impl<T: 'static, R: sigil::widgets::RowRender<T>> sigil::widgets::IntoList<T, R> for alloc::vec::Vec<T>
+pub trait sigil::widgets::ListModel: 'static
+pub fn sigil::widgets::ListModel::blur(&self)
+pub fn sigil::widgets::ListModel::close(&self)
+pub fn sigil::widgets::ListModel::commit(&self, index: usize)
+pub fn sigil::widgets::ListModel::cursor(&self) -> sigil::reactive::Signal<usize>
+pub fn sigil::widgets::ListModel::enabled(&self, _index: usize) -> bool
+pub fn sigil::widgets::ListModel::is_empty(&self) -> bool
+pub fn sigil::widgets::ListModel::is_open(&self) -> bool
+pub fn sigil::widgets::ListModel::label(&self, _index: usize) -> core::option::Option<alloc::string::String>
+pub fn sigil::widgets::ListModel::len(&self) -> usize
+pub fn sigil::widgets::ListModel::open(&self)
+pub fn sigil::widgets::ListModel::text_input(&self) -> bool
 pub trait sigil::widgets::NumericKind: core::marker::Copy + core::cmp::PartialOrd + 'static + sigil::widgets::number_field::private::Sealed
 pub fn sigil::widgets::NumericKind::clamp_to(self, range: &core::ops::range::RangeInclusive<Self>) -> Self
 pub fn sigil::widgets::NumericKind::parse(input: &str, locale: &sigil::style::Locale) -> core::option::Option<Self>
@@ -6823,6 +6884,7 @@ pub fn sigil::widgets::command_menu() -> sigil::widgets::CommandMenuBuilder
 pub fn sigil::widgets::context_menu(target: impl sigil::kernel::IntoNode + 'static, items: impl core::ops::function::Fn() -> alloc::vec::Vec<sigil::widgets::MenuItem> + 'static) -> sigil::kernel::NodeBuilder
 pub fn sigil::widgets::date_field(value: sigil::reactive::Signal<sigil::widgets::Date>) -> sigil::widgets::DateFieldBuilder
 pub fn sigil::widgets::diff(patch: impl sigil::widgets::DiffSource + 'static) -> sigil::widgets::DiffBuilder
+pub fn sigil::widgets::disclosure<H, B>(open: sigil::reactive::Signal<bool>, header: impl core::ops::function::Fn(bool) -> H + 'static, body: impl core::ops::function::Fn() -> B + 'static) -> sigil::kernel::NodeBuilder where H: sigil::kernel::IntoNode + 'static, B: sigil::kernel::IntoNode + 'static
 pub fn sigil::widgets::divider_horizontal() -> sigil::kernel::NodeBuilder
 pub const fn sigil::widgets::divider_vertical() -> sigil::widgets::VerticalDivider
 pub fn sigil::widgets::dot(tone: sigil::style::Tone) -> sigil::widgets::DotBuilder
@@ -6849,6 +6911,7 @@ pub fn sigil::widgets::kv_row(label: impl core::convert::Into<sigil::kernel::Tex
 pub fn sigil::widgets::language_for_path(path: &str) -> core::option::Option<&'static str>
 pub fn sigil::widgets::list_row(selected: bool, title: impl core::convert::Into<sigil::kernel::TextContent>, detail: impl core::convert::Into<sigil::kernel::TextContent>) -> sigil::kernel::NodeBuilder
 pub fn sigil::widgets::list_row_with(selected: bool, title: impl core::convert::Into<sigil::kernel::TextContent>, slots: sigil::widgets::ListRowSlots) -> sigil::kernel::NodeBuilder
+pub fn sigil::widgets::listbox(node: sigil::kernel::NodeBuilder, model: impl sigil::widgets::ListModel) -> sigil::kernel::NodeBuilder
 pub fn sigil::widgets::markdown(source: sigil::reactive::Signal<alloc::string::String>) -> sigil::kernel::NodeBuilder
 pub const fn sigil::widgets::markdown_edit(source: sigil::reactive::Signal<alloc::string::String>) -> sigil::widgets::MarkdownEditBuilder
 pub fn sigil::widgets::markdown_inline(source: &str) -> sigil::kernel::TextBuilder

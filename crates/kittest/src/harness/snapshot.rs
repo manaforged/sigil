@@ -6,9 +6,22 @@ pub const SNAPSHOT_MAX_DELTA_PCT: f32 = 0.5;
 
 impl Harness {
     pub fn image(&mut self) -> Rendered {
-        let Surface::Pixels { size, .. } = self.live().surface else {
+        self.live();
+        if let Surface::Cells { screen, size } = &mut self.surface {
+            let grid = screen
+                .frame(&mut self.host, &mut self.router, [], *size)
+                .map_err(|error| Error::Layout(error.to_string()))?;
+            return grid
+                .image(
+                    self.host.theme(),
+                    sigil::geometry::PhysicalSize::new(10, 20),
+                )
+                .map(Some)
+                .map_err(|error| Error::Render(error.to_string()));
+        }
+        let Surface::Pixels { size, .. } = self.surface else {
             return Err(Error::Render(
-                "image needs a pixel harness; call .pixels(width, height)".to_owned(),
+                "image needs a cell or pixel harness".to_owned(),
             ));
         };
         let viewport = self.viewport();

@@ -227,7 +227,7 @@ fn leading_slot(content: Box<dyn IntoNode>) -> NodeBuilder {
         .child(content)
 }
 
-fn disclosure_slot(disclosure: Disclosure) -> NodeBuilder {
+pub(super) fn disclosure_slot(disclosure: Disclosure) -> NodeBuilder {
     let slot = container().layout(
         LayoutStyle::flex_row()
             .width(cols(INDENT_COLS))

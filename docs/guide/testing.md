@@ -118,6 +118,8 @@ assert!(ui.text().contains("ticks 3"));
 - A cell harness writes the grid text to `<name>.txt`.
 - A pixel harness renders offscreen and compares `<name>.png` within `SNAPSHOT_MAX_DELTA_PCT`. `snapshot_with(name, pct)` sets the budget.
 
+`image()` captures either surface as an RGBA image. A cell harness uses the CPU renderer at 10×20 pixels per cell, with no window, GPU, or terminal process. Save it with `image().unwrap().unwrap().save("terminal.png")`. The capture preserves cell positions, colors, text styles, and cursor position; it does not reproduce a particular terminal application's font rendering. Terminal graphics images return an error. Cell `snapshot()` keeps its existing text-golden behavior; use `assert_png_matches_golden` on `image()` when a pixel comparison is needed.
+
 `SIGIL_REGEN_GOLDENS=1` rewrites the goldens. A pixel snapshot without a GPU adapter fails unless `SIGIL_ALLOW_NO_GPU=1` is set, which skips it.
 
 ```rust,no_run

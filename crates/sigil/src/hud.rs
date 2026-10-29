@@ -71,7 +71,7 @@ pub(crate) fn compact(frame: &Frame) -> String {
     line
 }
 
-#[cfg(feature = "scene")]
+#[cfg(feature = "desktop")]
 mod overlay {
     use super::{compact, level};
     use crate::geometry::{Point, Rect};
@@ -169,5 +169,5 @@ mod overlay {
     }
 }
 
-#[cfg(feature = "scene")]
+#[cfg(feature = "desktop")]
 pub(crate) use overlay::overlay;

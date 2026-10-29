@@ -9,6 +9,9 @@ use crate::widgets::scroll::{reveal_row, scroll};
 mod filter;
 mod nav;
 mod selection;
+mod state;
+
+pub use state::{CursorEdge, ListState};
 
 pub(crate) use filter::Matcher;
 pub(crate) use nav::{LIST, Move, RADIO_GROUP, Rows, TAB_LIST, TREE};
@@ -16,9 +19,12 @@ pub(crate) use selection::{Mark, follow_cursor, mark, only, span, toggle, toggle
 
 use nav::LISTBOX;
 
-pub(crate) trait ListModel: 'static {
+pub trait ListModel: 'static {
     fn cursor(&self) -> Signal<usize>;
     fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     fn enabled(&self, _index: usize) -> bool {
         true
     }
@@ -40,7 +46,7 @@ pub(crate) trait ListModel: 'static {
 }
 
 #[must_use]
-pub(crate) fn listbox(node: NodeBuilder, model: impl ListModel) -> NodeBuilder {
+pub fn listbox(node: NodeBuilder, model: impl ListModel) -> NodeBuilder {
     let model: Rc<dyn ListModel> = Rc::new(model);
     let down = Rc::clone(&model);
     let up = Rc::clone(&model);

@@ -66,7 +66,8 @@ pub use audio::Player;
 #[cfg(feature = "terminal")]
 pub(crate) use cell_text::cell_glyph;
 pub use cell_text::{
-    Ambiguous, CellWidth, cell_text_lines, cell_width, set_ambiguous, set_cell_width,
+    Ambiguous, CellWidth, cell_text_lines, cell_width, ellipsize_cells, ellipsize_cells_start,
+    fit_cells, set_ambiguous, set_cell_width,
 };
 #[cfg(feature = "terminal")]
 pub(crate) use config::FRAME_INTERVAL;

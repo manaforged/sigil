@@ -28,6 +28,9 @@
 | [`cell_width`](#cell_width) | fn |  |
 | [`current_window`](#current_window) | fn |  |
 | [`display_scale`](#display_scale) | fn |  |
+| [`ellipsize_cells`](#ellipsize_cells) | fn |  |
+| [`ellipsize_cells_start`](#ellipsize_cells_start) | fn |  |
+| [`fit_cells`](#fit_cells) | fn |  |
 | [`is_grid`](#is_grid) | fn |  |
 | [`open`](#open) | fn |  |
 | [`open_window`](#open_window) | fn |  |
@@ -408,6 +411,21 @@
 ### `display_scale`
 
 <pre>pub fn <a href="#display_scale">display_scale</a>() -&gt; <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;</pre>
+
+
+### `ellipsize_cells`
+
+<pre>pub fn <a href="#ellipsize_cells">ellipsize_cells</a>(text: &amp;str, width: usize) -&gt; String</pre>
+
+
+### `ellipsize_cells_start`
+
+<pre>pub fn <a href="#ellipsize_cells_start">ellipsize_cells_start</a>(text: &amp;str, width: usize) -&gt; String</pre>
+
+
+### `fit_cells`
+
+<pre>pub fn <a href="#fit_cells">fit_cells</a>(text: &amp;str, width: usize) -&gt; String</pre>
 
 
 ### `is_grid`

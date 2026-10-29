@@ -56,6 +56,19 @@ pub(crate) fn paint(ink: Ink, depth: ColorDepth) -> Color {
     }
 }
 
+#[cfg(feature = "scene")]
+pub(super) fn rgba(ink: Ink, fallback: Rgba8) -> Rgba8 {
+    let [r, g, b] = match paint(ink, ColorDepth::Truecolor) {
+        Color::Reset => return fallback,
+        Color::Rgb { r, g, b } => [r, g, b],
+        color => BASIC
+            .iter()
+            .find(|(value, _)| *value == color)
+            .map_or([fallback.r, fallback.g, fallback.b], |(_, rgb)| *rgb),
+    };
+    Rgba8 { r, g, b, a: 255 }
+}
+
 const BASIC: [(Color, [u8; 3]); 16] = [
     (Color::Black, [0, 0, 0]),
     (Color::DarkRed, [205, 0, 0]),

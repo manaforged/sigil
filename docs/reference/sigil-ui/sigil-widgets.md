@@ -65,6 +65,7 @@
 | [`Line`](#line) | struct |  |
 | [`LineId`](#lineid) | struct |  |
 | [`ListColumn`](#listcolumn) | struct |  |
+| [`ListState`](#liststate) | struct |  |
 | [`Patch`](#patch) | struct |  |
 | [`Selection`](#selection) | struct |  |
 | [`SelectionState`](#selectionstate) | struct |  |
@@ -88,6 +89,7 @@
 | [`ChangeKind`](#changekind) | enum |  |
 | [`ChartMark`](#chartmark) | enum |  |
 | [`ColAlign`](#colalign) | enum |  |
+| [`CursorEdge`](#cursoredge) | enum |  |
 | [`DiagSeverity`](#diagseverity) | enum |  |
 | [`FocusCaret`](#focuscaret) | enum |  |
 | [`LineKind`](#linekind) | enum |  |
@@ -104,6 +106,7 @@
 | [`Identifiable`](#identifiable) | trait |  |
 | [`IntoIconSource`](#intoiconsource) | trait |  |
 | [`IntoList`](#intolist) | trait |  |
+| [`ListModel`](#listmodel) | trait |  |
 | [`NumericKind`](#numerickind) | trait |  |
 | [`RowRender`](#rowrender) | trait |  |
 | [`TreeKey`](#treekey) | trait |  |
@@ -123,6 +126,7 @@
 | [`context_menu`](#context_menu) | fn |  |
 | [`date_field`](#date_field) | fn |  |
 | [`diff`](#diff) | fn |  |
+| [`disclosure`](#disclosure-1) | fn |  |
 | [`divider_horizontal`](#divider_horizontal) | fn |  |
 | [`divider_vertical`](#divider_vertical) | fn |  |
 | [`dot`](#dot) | fn |  |
@@ -149,6 +153,7 @@
 | [`language_for_path`](#language_for_path) | fn |  |
 | [`list_row`](#list_row) | fn |  |
 | [`list_row_with`](#list_row_with) | fn |  |
+| [`listbox`](#listbox) | fn |  |
 | [`markdown`](#markdown) | fn |  |
 | [`markdown_edit`](#markdown_edit) | fn |  |
 | [`markdown_inline`](#markdown_inline) | fn |  |
@@ -968,7 +973,7 @@
 | <code>selected_option(self) -&gt; Option&lt;String&gt;</code> |  |
 | <code>const selected_signal(self) -&gt; <a href="sigil-reactive.html#signal">Signal</a>&lt;Option&lt;usize&gt;&gt;</code> |  |
 
-**Trait implementations:** <code>Clone</code>, <code>Copy</code>
+**Trait implementations:** <code>Clone</code>, <code>Copy</code>, <code><a href="#listmodel">ListModel</a></code>
 
 
 ### `Date`
@@ -1281,6 +1286,36 @@
 | <code>width: f32</code> |  |
 
 **Trait implementations:** <code>From&lt;(<a href="sigil-kernel.html#textcontent">TextContent</a>, f32)&gt;</code>
+
+
+### `ListState`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>pub fn <a href="#liststate">ListState</a>&lt;K&gt;::at(self, len: usize) -&gt; usize</code> |  |
+| <code>pub fn <a href="#liststate">ListState</a>&lt;K&gt;::collapse_all(self)</code> |  |
+| <code>pub fn <a href="#liststate">ListState</a>&lt;K&gt;::filter&lt;'a&gt;(self, labels: impl IntoIterator&lt;Item = &amp;'a str&gt;) -&gt; Vec&lt;usize&gt;</code> |  |
+| <code>pub fn <a href="#liststate">ListState</a>&lt;K&gt;::is_expanded(self, key: &amp;K) -&gt; bool</code> |  |
+| <code>pub fn <a href="#liststate">ListState</a>&lt;K&gt;::new() -&gt; Self</code> |  |
+| <code>pub fn <a href="#liststate">ListState</a>&lt;K&gt;::select(self, index: usize)</code> |  |
+| <code>pub fn <a href="#liststate">ListState</a>&lt;K&gt;::shift(self, delta: isize, len: usize, edge: <a href="#cursoredge">CursorEdge</a>)</code> |  |
+| <code>pub fn <a href="#liststate">ListState</a>&lt;K&gt;::toggle(self, key: &amp;K)</code> |  |
+| <code>pub fn <a href="#liststate">ListState</a>&lt;K&gt;::toggle_only(self, key: &amp;K)</code> |  |
+| <code>pub fn <a href="#liststate">ListState</a>&lt;K&gt;::type_query(self, text: String)</code> |  |
+
+**Fields**
+
+| Field | Description |
+| --- | --- |
+| <code>caret: <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;</code> |  |
+| <code>cursor: <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;</code> |  |
+| <code>expanded: <a href="sigil-reactive.html#signal">Signal</a>&lt;Vec&lt;K&gt;&gt;</code> |  |
+| <code>query: <a href="sigil-reactive.html#signal">Signal</a>&lt;String&gt;</code> |  |
+| <code>scroll: <a href="sigil-reactive.html#signal">Signal</a>&lt;f32&gt;</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Default</code>, <code>Copy</code>
 
 
 ### `Patch`
@@ -1627,6 +1662,18 @@
 **Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Default</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
 
 
+### `CursorEdge`
+
+**Variants**
+
+| Variant | Description |
+| --- | --- |
+| <code>Clamp</code> |  |
+| <code>Wrap</code> |  |
+
+**Trait implementations:** <code>Clone</code>, <code>Eq</code>, <code>PartialEq</code>, <code>Debug</code>, <code>Copy</code>, <code>StructuralPartialEq</code>
+
+
 ### `DiagSeverity`
 
 **Variants**
@@ -1842,6 +1889,25 @@
 | <code>into_list(self, render: R) -&gt; <a href="#virtuallistbuilder">VirtualListBuilder</a>&lt;T, R&gt;</code> |  |
 
 
+### `ListModel`
+
+**Methods**
+
+| Method | Description |
+| --- | --- |
+| <code>blur(&amp;self)</code> |  |
+| <code>close(&amp;self)</code> |  |
+| <code>commit(&amp;self, index: usize)</code> |  |
+| <code>cursor(&amp;self) -&gt; <a href="sigil-reactive.html#signal">Signal</a>&lt;usize&gt;</code> |  |
+| <code>enabled(&amp;self, _index: usize) -&gt; bool</code> |  |
+| <code>is_empty(&amp;self) -&gt; bool</code> |  |
+| <code>is_open(&amp;self) -&gt; bool</code> |  |
+| <code>label(&amp;self, _index: usize) -&gt; Option&lt;String&gt;</code> |  |
+| <code>len(&amp;self) -&gt; usize</code> |  |
+| <code>open(&amp;self)</code> |  |
+| <code>text_input(&amp;self) -&gt; bool</code> |  |
+
+
 ### `NumericKind`
 
 **Methods**
@@ -1946,6 +2012,11 @@
 ### `diff`
 
 <pre>pub fn <a href="#diff">diff</a>(patch: impl <a href="#diffsource">DiffSource</a> + 'static) -&gt; <a href="#diffbuilder">DiffBuilder</a></pre>
+
+
+### `disclosure`
+
+<pre>pub fn <a href="#disclosure-1">disclosure</a>&lt;H, B&gt;(open: <a href="sigil-reactive.html#signal">Signal</a>&lt;bool&gt;, header: impl Fn(bool) -&gt; H + 'static, body: impl Fn() -&gt; B + 'static) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a> where H: <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static, B: <a href="sigil-kernel.html#intonode">IntoNode</a> + 'static</pre>
 
 
 ### `divider_horizontal`
@@ -2076,6 +2147,11 @@
 ### `list_row_with`
 
 <pre>pub fn <a href="#list_row_with">list_row_with</a>(selected: bool, title: impl Into&lt;<a href="sigil-kernel.html#textcontent">TextContent</a>&gt;, slots: <a href="#listrowslots">ListRowSlots</a>) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
+
+
+### `listbox`
+
+<pre>pub fn <a href="#listbox">listbox</a>(node: <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a>, model: impl <a href="#listmodel">ListModel</a>) -&gt; <a href="sigil-kernel.html#nodebuilder">NodeBuilder</a></pre>
 
 
 ### `markdown`

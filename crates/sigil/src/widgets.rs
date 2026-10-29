@@ -169,6 +169,7 @@ pub use icon::{IconBuilder, IconSource, IntoIconSource, icon};
 pub use image::image_bytes;
 pub use image::image_rgba;
 pub use interactive::{InteractiveBuilder, interactive};
+pub use listbox::{CursorEdge, ListModel, ListState, listbox};
 pub use markdown::{MarkdownEditBuilder, markdown, markdown_edit, markdown_inline};
 pub use menu::{MenuBarBuilder, MenuBuilder, MenuItem, context_menu, menu, menu_bar};
 #[cfg(fuzzing)]
@@ -181,8 +182,8 @@ pub use overlay::heatmap;
 pub use panel::{PanelBuilder, panel};
 pub use patterns::{
     CardBuilder, Disclosure, HintEntry, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone,
-    SidebarBuilder, app_shell, avatar, card, empty_state, hint_bar, hint_overlay, kv_grid,
-    list_row, list_row_with, notice_band, section_label, sidebar, spacer,
+    SidebarBuilder, app_shell, avatar, card, disclosure, empty_state, hint_bar, hint_overlay,
+    kv_grid, list_row, list_row_with, notice_band, section_label, sidebar, spacer,
 };
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};
