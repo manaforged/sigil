@@ -1,6 +1,7 @@
 use super::*;
 use crate::kernel::{FocusScopeKind, NodeBuilder, container};
 use crate::layout::*;
+use crate::widgets::Widget;
 
 fn sized(side: f32) -> NodeBuilder {
     container().layout(LayoutStyle::block().fixed_size(side, side))

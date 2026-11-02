@@ -7,11 +7,11 @@
 
 use super::*;
 use crate::kernel::{Cx, container as kernel_container};
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 #[test]
 fn status_bar_has_no_children_when_iterator_is_empty() {
-    Runtime::scope("status-bar-empty", || {
+    Owner::scope("status-bar-empty", || {
         let mut cx = Cx::new_root();
         let children: Vec<NodeBuilder> = Vec::new();
         let id = status_bar(children).build(&mut cx);
@@ -34,7 +34,7 @@ fn status_bar_has_no_children_when_iterator_is_empty() {
 
 #[test]
 fn kv_row_holds_label_and_value_children_in_order() {
-    Runtime::scope("kv-row-static-label", || {
+    Owner::scope("kv-row-static-label", || {
         let mut cx = Cx::new_root();
         let id = kv_row("lap 1", text("00:42.183")).build(&mut cx);
         let node = cx.get(id).expect("kv-row root exists");

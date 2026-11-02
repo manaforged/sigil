@@ -55,27 +55,26 @@ fn job_table() -> TableState<(usize, String)> {
 
 #[test]
 fn a_table_updated_while_its_tab_is_hidden_lays_out_when_shown() {
-    sigil::reactive::Runtime::scope("hidden-table", || {
+    sigil::reactive::Owner::scope("hidden-table", || {
         let active = signal(0_usize);
         let state = job_table();
         let screen_state = state.clone();
-        let mut host = sigil::Host::cells();
+        let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
         host.mount(move || jobs_screen(active, &screen_state));
-        let mut router = sigil::events::EventRouter::new();
-        step(&mut host, &mut router, [], 160, 40);
+        step(&mut host, [], 160, 40);
         active.set(1);
-        step(&mut host, &mut router, [], 160, 40);
+        step(&mut host, [], 160, 40);
         state.replace_rows(rows(2000, 1));
-        step(&mut host, &mut router, [], 160, 40);
+        step(&mut host, [], 160, 40);
         active.set(0);
-        let shown = sigil::terminal::step(&mut host, &mut router, [], 160, 40);
+        let shown = host.grid([], 160, 40);
         assert!(shown.is_ok(), "showing the tab failed: {:?}", shown.err());
     });
 }
 
 #[test]
 fn the_tab_strip_keeps_its_row_when_the_content_overflows() {
-    sigil::reactive::Runtime::scope("tab-strip", || {
+    sigil::reactive::Owner::scope("tab-strip", || {
         let state = job_table();
         let grid = present(move || jobs_screen(signal(0), &state), 80, 24, &[]);
         assert!(grid.contains("Jobs") && grid.contains("Other"), "{grid}");
@@ -169,7 +168,7 @@ fn progress_draws_the_unfilled_track() {
     let track: String = grid
         .row(bar)
         .iter()
-        .map(|cell| cell.text.as_str())
+        .map(sigil::terminal::Cell::text)
         .collect();
     assert!(
         track.contains('─'),
@@ -285,29 +284,29 @@ fn a_canvas_half_cell_fill_paints_a_half_block() {
             sigil::widgets::canvas(|scene, area| {
                 let cell = sigil::Host::CELL;
                 let top = sigil::geometry::Rect::new(area.origin, cell * 4.0, cell);
-                scene.draw_rect(
+                scene.draw_rect(sigil::scene::DrawRect::new(
                     top,
-                    sigil::scene::SceneRectStyle::solid(Rgba8 {
+                    Rgba8 {
                         r: 200,
                         g: 40,
                         b: 40,
                         a: 255,
-                    }),
-                );
+                    },
+                ));
                 let lower = sigil::geometry::Rect::new(
                     sigil::geometry::Point::new(area.origin.x, area.origin.y + cell / 2.0),
                     cell * 4.0,
                     cell / 2.0,
                 );
-                scene.draw_rect(
+                scene.draw_rect(sigil::scene::DrawRect::new(
                     lower,
-                    sigil::scene::SceneRectStyle::solid(Rgba8 {
+                    Rgba8 {
                         r: 40,
                         g: 40,
                         b: 200,
                         a: 255,
-                    }),
-                );
+                    },
+                ));
             })
             .layout(
                 LayoutStyle::block()

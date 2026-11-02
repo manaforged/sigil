@@ -5,7 +5,7 @@ use sigil::layout::LayoutEngine;
 
 #[test]
 fn checkbox_click_flips_signal() {
-    sigil::reactive::Runtime::scope("sigil-widget-checkbox-click", || {
+    sigil::reactive::Owner::scope("sigil-widget-checkbox-click", || {
         let checked = signal(false);
         let changes = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
@@ -35,7 +35,7 @@ fn checkbox_click_flips_signal() {
 
 #[test]
 fn checkbox_keyboard_activation() {
-    sigil::reactive::Runtime::scope("sigil-widget-checkbox-keyboard", || {
+    sigil::reactive::Owner::scope("sigil-widget-checkbox-keyboard", || {
         let checked = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(checkbox(checked).label("Monitor"));
@@ -56,7 +56,7 @@ fn checkbox_keyboard_activation() {
 
 #[test]
 fn checkbox_disabled_ignores_click() {
-    sigil::reactive::Runtime::scope("sigil-widget-checkbox-disabled", || {
+    sigil::reactive::Owner::scope("sigil-widget-checkbox-disabled", || {
         let checked = signal(false);
         let disabled = signal(true);
         let changes = Rc::new(Cell::new(0_u32));
@@ -89,7 +89,7 @@ fn checkbox_disabled_ignores_click() {
 
 #[test]
 fn checkbox_scene_emits_checked_and_unchecked_variants() {
-    sigil::reactive::Runtime::scope("sigil-widget-checkbox-scene", || {
+    sigil::reactive::Owner::scope("sigil-widget-checkbox-scene", || {
         let checked = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(checkbox(checked).label("Visual").tone(Tone::Primary));
@@ -106,7 +106,7 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
         let checked_colors = rect_colors(&cx, root);
         assert!(checked_colors.contains(&theme.accent));
         assert!(
-            emit_scene(&cx, root)
+            emit_scene(&cx, root, None)
                 .commands
                 .iter()
                 .any(|command| matches!(
@@ -120,7 +120,7 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
 
 #[test]
 fn toggle_click_flips_signal() {
-    sigil::reactive::Runtime::scope("sigil-widget-toggle-click", || {
+    sigil::reactive::Owner::scope("sigil-widget-toggle-click", || {
         let on = signal(false);
         let changes = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
@@ -150,7 +150,7 @@ fn toggle_click_flips_signal() {
 
 #[test]
 fn toggle_keyboard_activation() {
-    sigil::reactive::Runtime::scope("sigil-widget-toggle-keyboard", || {
+    sigil::reactive::Owner::scope("sigil-widget-toggle-keyboard", || {
         let on = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(toggle(on).label("Monitor"));
@@ -171,7 +171,7 @@ fn toggle_keyboard_activation() {
 
 #[test]
 fn toggle_scene_emits_on_and_off_variants() {
-    sigil::reactive::Runtime::scope("sigil-widget-toggle-scene", || {
+    sigil::reactive::Owner::scope("sigil-widget-toggle-scene", || {
         let on = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(toggle(on).label("Visual"));
@@ -204,13 +204,14 @@ fn toggle_scene_emits_on_and_off_variants() {
 fn toggle_and_checkbox_share_styled_interaction_path() {
     let interaction_src = include_str!("../../src/widgets/interaction.rs");
     let shared_src = include_str!("../../src/widgets/shared.rs");
+    let press_src = include_str!("../../src/widgets/shared/press.rs");
     let checkbox_src = include_str!("../../src/widgets/checkbox.rs");
     let toggle_src = include_str!("../../src/widgets/toggle.rs");
 
     assert!(interaction_src.contains("pub fn style_state"));
     assert!(interaction_src.contains("pub fn release_pointer"));
-    assert!(shared_src.contains("interaction.release_pointer"));
-    assert!(shared_src.contains("interaction.activate_key"));
+    assert!(press_src.contains("interaction.release_pointer"));
+    assert!(press_src.contains("interaction.activate_key"));
     assert!(shared_src.contains("binary_style_state"));
     assert!(checkbox_src.contains("binary_style_state"));
     assert!(toggle_src.contains("binary_style_state"));

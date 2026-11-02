@@ -2,11 +2,11 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, NodeId, container};
-use crate::style::NodeStyleExt;
+use crate::widgets::Widget;
 use crate::widgets::button::icon_button;
 
 use super::handlers::TextFieldRuntime;
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::style::space;
 
 #[derive(Default)]
@@ -16,12 +16,12 @@ pub(super) struct Adornments {
     pub(super) clear: Option<NodeBuilder>,
 }
 
-pub(super) type FocusTarget = Rc<Cell<Option<NodeId>>>;
+pub(super) type FocusSlot = Rc<Cell<Option<NodeId>>>;
 
 const CLEAR_GLYPH: &str = "\u{d7}";
 const CLEAR_LABEL: &str = "Clear";
 
-pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusTarget) -> NodeBuilder {
+pub(super) fn clear_button(runtime: &TextFieldRuntime, target: FocusSlot) -> NodeBuilder {
     let value = runtime.input.value;
     let input = runtime.input.clone();
     let button = icon_button(CLEAR_GLYPH, move || {

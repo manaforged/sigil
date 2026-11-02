@@ -1,9 +1,9 @@
-use crate::style::{Rgba8, StateSlot, StyleAtom};
+use crate::style::{Rgba8, StyleAtom};
 use ahash::AHasher;
 use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum NumericAtomKind {
+pub(crate) enum NumericAtomKind {
     Opacity,
     BorderRadius,
     FontSize,
@@ -21,7 +21,7 @@ pub enum NumericAtomKind {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ColorAtomKind {
+pub(crate) enum ColorAtomKind {
     Background,
     Text,
     Border,
@@ -63,7 +63,7 @@ impl ColorAtomKind {
     pub(crate) const ALL: [Self; 3] = [Self::Background, Self::Text, Self::Border];
 }
 
-pub trait AnimatorOverlay {
+pub(crate) trait AnimatorOverlay {
     fn value_for(&self, kind: NumericAtomKind) -> Option<f32>;
 
     fn value_for_color(&self, kind: ColorAtomKind) -> Option<Rgba8>;
@@ -78,8 +78,6 @@ pub trait AnimatorOverlay {
             }
         }
     }
-
-    fn retarget_to_slot(&mut self, slot: StateSlot, base: &[StyleAtom]);
 
     fn update(
         &self,

@@ -78,12 +78,12 @@ Copy writes through `navigator.clipboard` and returns `Delivery::Requested`. The
 
 The bundled faces cover Latin, Greek, Cyrillic, and emoji. The web host cannot read system fonts. Chinese, Japanese, Korean, and other scripts outside the bundled faces draw as empty boxes until you load a font that covers them.
 
-Load a font file from your server with `sigil::text::load_font_url`. It fetches the file, adds it as a fallback face, and lays the text out again when the face is ready:
+Load a font file from your server with `sigil::app::load_font_url`. It fetches the file, adds it as a fallback face, and lays the text out again when the face is ready:
 
 ```rust,ignore
 use sigil::tasks::Status;
 
-let cjk = sigil::text::load_font_url("fonts/NotoSansJP-Regular.otf", 0);
+let cjk = sigil::app::load_font_url("fonts/NotoSansJP-Regular.otf", 0);
 if let Status::Err(error) = cjk.get() {
     web_sys::console::error_1(&error.to_string().into());
 }
@@ -95,14 +95,14 @@ Text in the loaded script shows empty boxes until the signal turns `Ok(())`. If 
 
 ## Script fallbacks
 
-The first time text uses CJK, Arabic, Hebrew, Devanagari, Khmer, Thai, or Lao, Sigil fetches the faces listed for that script by `sigil::text::web_fallbacks()` through `load_font_url`. Sigil fetches each script once per page, and fetches nothing for scripts the text does not use. The text draws as empty boxes until the fetch completes, and stays that way if the fetch fails.
+The first time text uses CJK, Arabic, Hebrew, Devanagari, Khmer, Thai, or Lao, Sigil fetches the faces listed for that script through `load_font_url`. Sigil fetches each script once per page, and fetches nothing for scripts the text does not use. The text draws as empty boxes until the fetch completes, and stays that way if the fetch fails.
 
 The default list is Noto Sans from jsDelivr. Each URL pins an exact commit of `notofonts/notofonts.github.io` or `notofonts/noto-cjk`, so the files do not change when those repositories change.
 
 Call `set_web_fallbacks` before `sigil::run` to serve faces from your own origin, for example when the page is offline or its content security policy blocks the CDN. Pass an empty list to fetch nothing:
 
 ```rust,ignore
-use sigil::text::{WebFont, WebFontScript, set_web_fallbacks};
+use sigil::app::{WebFont, WebFontScript, set_web_fallbacks};
 
 set_web_fallbacks([WebFont::new(
     WebFontScript::Cjk,

@@ -1,4 +1,4 @@
-use super::flow::{Graph, Shape};
+use super::flow::{Graph, NodeShape};
 use super::flow_parse::{alias, skipped};
 
 pub(super) fn fill<'a>(graph: &mut Graph, lines: impl Iterator<Item = &'a str>) {
@@ -23,7 +23,7 @@ pub(super) fn fill<'a>(graph: &mut Graph, lines: impl Iterator<Item = &'a str>) 
             continue;
         }
         if let Some((id, label)) = alias(line) {
-            graph.node(id, Some((vec![label.to_string()], Shape::Box)));
+            graph.node(id, Some((vec![label.to_string()], NodeShape::Box)));
             continue;
         }
         if skipped(line) {

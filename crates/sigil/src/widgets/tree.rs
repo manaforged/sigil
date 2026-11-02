@@ -2,38 +2,44 @@ mod flatten;
 mod keys;
 mod row;
 
+use crate::widgets::Widget;
 use std::hash::Hash;
 use std::rc::Rc;
 
-use crate::kernel::{Cx, IntoNode, NodeId, Role, TextContent};
+use crate::kernel::{NodeBuilder, Role, TextContent};
 use crate::reactive::{Reactive, Signal, signal};
 use crate::style::{Tone, space};
 
 use super::icon::{IconSource, IntoIconSource};
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use super::patterns::RowTone;
 use super::virtual_list::{SelectionMode, virtual_list};
 
-pub use flatten::TreeRow;
+pub(crate) use flatten::TreeRow;
 
 const ROW_ESTIMATE: f32 = space(6);
 
-pub trait TreeKey: Clone + Eq + Hash + 'static {}
-
-impl<K: Clone + Eq + Hash + 'static> TreeKey for K {}
-
+/// One node of a `tree`.
 #[derive(Clone)]
-pub struct TreeNode<K: TreeKey> {
+pub struct TreeNode<K: Clone + Eq + Hash + 'static> {
+    /// The id.
     pub id: K,
+    /// The label.
     pub label: TextContent,
+    /// The leading, if any.
     pub leading: Option<IconSource>,
+    /// The status, if any.
     pub status: Option<(TextContent, Tone)>,
+    /// The detail, if any.
     pub detail: Option<TextContent>,
+    /// The tone.
     pub tone: RowTone,
+    /// The children.
     pub children: Vec<Self>,
 }
 
-impl<K: TreeKey> TreeNode<K> {
+impl<K: Clone + Eq + Hash + 'static> TreeNode<K> {
+    /// Creates a tree node.
     #[must_use]
     pub fn new(id: K, label: impl Into<TextContent>) -> Self {
         Self {
@@ -47,36 +53,42 @@ impl<K: TreeKey> TreeNode<K> {
         }
     }
 
+    /// Sets the leading.
     #[must_use]
     pub fn leading(mut self, glyph: impl IntoIconSource) -> Self {
         self.leading = Some(glyph.into_icon_source());
         self
     }
 
+    /// Sets the status.
     #[must_use]
     pub fn status(mut self, status: impl Into<TextContent>, tone: Tone) -> Self {
         self.status = Some((status.into(), tone));
         self
     }
 
+    /// Sets the detail.
     #[must_use]
     pub fn detail(mut self, detail: impl Into<TextContent>) -> Self {
         self.detail = Some(detail.into());
         self
     }
 
+    /// Sets the tone.
     #[must_use]
     pub const fn tone(mut self, tone: RowTone) -> Self {
         self.tone = tone;
         self
     }
 
+    /// Sets the children.
     #[must_use]
     pub fn children(mut self, children: impl IntoIterator<Item = Self>) -> Self {
         self.children = children.into_iter().collect();
         self
     }
 
+    /// Adds one child.
     #[must_use]
     pub fn child(mut self, child: Self) -> Self {
         self.children.push(child);
@@ -84,21 +96,25 @@ impl<K: TreeKey> TreeNode<K> {
     }
 }
 
-type Activate<K> = Rc<dyn Fn(&K)>;
+type ActivateKey<K> = Rc<dyn Fn(&K)>;
 type NodesFn<K> = Box<dyn Fn() -> Vec<TreeNode<K>>>;
 
-pub struct TreeBuilder<K: TreeKey> {
+/// Builder of a `tree`.
+pub struct TreeBuilder<K: Clone + Eq + Hash + 'static> {
     nodes: NodesFn<K>,
     expanded: Option<Signal<Vec<K>>>,
     selected: Option<Signal<Option<K>>>,
-    activate: Option<Activate<K>>,
+    activate: Option<ActivateKey<K>>,
     label: Option<TextContent>,
     indent: Option<f32>,
     layout_overrides: LayoutOverrides,
 }
 
+/// A tree view for explorers, outlines, and settings.
 #[must_use]
-pub fn tree<K: TreeKey>(nodes: impl Reactive<Vec<TreeNode<K>>>) -> TreeBuilder<K> {
+pub fn tree<K: Clone + Eq + Hash + 'static>(
+    nodes: impl Reactive<Vec<TreeNode<K>>>,
+) -> TreeBuilder<K> {
     TreeBuilder {
         nodes: Box::new(move || nodes.read()),
         expanded: None,
@@ -110,38 +126,43 @@ pub fn tree<K: TreeKey>(nodes: impl Reactive<Vec<TreeNode<K>>>) -> TreeBuilder<K
     }
 }
 
-impl<K: TreeKey> TreeBuilder<K> {
+impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
+    /// Sets the expanded.
     #[must_use]
     pub const fn expanded(mut self, expanded: Signal<Vec<K>>) -> Self {
         self.expanded = Some(expanded);
         self
     }
 
+    /// Sets the selected.
     #[must_use]
     pub const fn selected(mut self, selected: Signal<Option<K>>) -> Self {
         self.selected = Some(selected);
         self
     }
 
+    /// Sets the activate.
     #[must_use]
     pub fn activate(mut self, activate: impl Fn(&K) + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self
     }
 
+    /// Sets the indent.
     #[must_use]
     pub const fn indent(mut self, cols: f32) -> Self {
         self.indent = Some(cols);
         self
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
-    fn into_list(self) -> impl IntoNode + 'static {
+    fn root(self) -> NodeBuilder {
         let state = TreeState {
             rows: signal(Vec::new()),
             expanded: self.expanded.unwrap_or_else(|| signal(Vec::new())),
@@ -154,10 +175,9 @@ impl<K: TreeKey> TreeBuilder<K> {
         keys::sync_cursor(&state);
         let render_state = state.clone();
         let label = self.label;
-        let mut list = virtual_list(state.rows, move |index, item: &TreeRow<K>| {
+        let list = virtual_list(state.rows, move |index, item: &TreeRow<K>| {
             row::render(&render_state, index, item)
         });
-        *list.layout_overrides_mut() = self.layout_overrides;
         list.selection(SelectionMode::None)
             .cursor(state.cursor)
             .measured()
@@ -170,27 +190,18 @@ impl<K: TreeKey> TreeBuilder<K> {
                     None => node,
                 }
             })
+            .into_node_builder()
     }
 }
 
-impl<K: TreeKey> WidgetLayoutExt for TreeBuilder<K> {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl<K: TreeKey> IntoNode for TreeBuilder<K> {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_list().build(cx)
-    }
-}
+builder_impls!([K: Clone + Eq + Hash + 'static] TreeBuilder<K>: widget, node);
 
 #[derive(Clone)]
-struct TreeState<K: TreeKey> {
+struct TreeState<K: Clone + Eq + Hash + 'static> {
     rows: Signal<Vec<TreeRow<K>>>,
     expanded: Signal<Vec<K>>,
     selected: Signal<Option<K>>,
     cursor: Signal<usize>,
-    activate: Option<Activate<K>>,
+    activate: Option<ActivateKey<K>>,
     indent: Option<f32>,
 }

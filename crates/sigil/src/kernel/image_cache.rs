@@ -7,13 +7,13 @@ const CACHE_CAP: usize = 256;
 const CACHE_BYTES: usize = 64 << 20;
 
 #[derive(Default)]
-struct Cache {
+struct ImageStore {
     entries: HashMap<u64, (ImageSource, u64)>,
     held: usize,
     clock: u64,
 }
 
-impl Cache {
+impl ImageStore {
     fn get(&mut self, key: u64) -> Option<ImageSource> {
         self.clock += 1;
         let clock = self.clock;
@@ -51,7 +51,7 @@ impl Cache {
 }
 
 thread_local! {
-    static CACHE: RefCell<Cache> = RefCell::new(Cache::default());
+    static CACHE: RefCell<ImageStore> = RefCell::new(ImageStore::default());
 }
 
 pub(crate) fn cached_image(

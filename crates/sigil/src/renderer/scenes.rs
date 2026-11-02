@@ -5,7 +5,7 @@
 use std::sync::OnceLock;
 
 use crate::geometry::Rect;
-use crate::icons::{IconBaker, builtin};
+use crate::icons::{bake, builtin};
 use crate::style::Color;
 use crate::style::Rgba8;
 
@@ -27,9 +27,9 @@ use helpers::{
 
 use crate::renderer::BUILTIN_SPRITE_ATLAS_ID;
 use crate::scene::{
-    CommandScene, CornerRadii, DecorationKind, PaintFill, PatternKind, SceneBuilder,
-    SceneDecorationStyle, ScenePatternStyle, SceneRectStyle, Shadow, ShadowKind, SpriteKind,
-    SpriteSource, StrokeAlign, StrokeStyle,
+    CommandScene, CornerRadii, DecorationKind, DrawDecoration, DrawPattern, DrawRect, DrawSprite,
+    PaintFill, PatternKind, SceneBuilder, Shadow, ShadowKind, SpriteKind, SpriteSource,
+    StrokeAlign, StrokeStyle,
 };
 
 pub use crate::renderer::sprite_atlas::BUILTIN_ICON_ATLAS_BASE_ID;
@@ -40,10 +40,10 @@ static BUILTIN_ICONS: OnceLock<Vec<crate::icons::BakedIcon>> = OnceLock::new();
 pub fn gradient() -> (CommandScene, (f32, f32), Color) {
     let viewport = (760.0, 320.0);
     let mut scene = SceneBuilder::new();
-    scene.draw_rect(
+    scene.draw_rect(DrawRect::new(
         rect(0.0, 0.0, 760.0, 320.0),
-        SceneRectStyle::new(rgba(7, 10, 15, 255), CornerRadii::ZERO, 10_000),
-    );
+        rgba(7, 10, 15, 255),
+    ));
     let white = |a: u8| rgba(255, 255, 255, a);
     let fills = [
         linear_gradient(
@@ -112,8 +112,12 @@ pub fn corner_radius() -> (CommandScene, (f32, f32), Color) {
     .enumerate()
     {
         scene.draw_rect(
-            rect(80.0 + index as f32 * 180.0, 130.0, 140.0, 140.0),
-            SceneRectStyle::new(color, radii, 10_000).with_stroke(solid_stroke(4.0)),
+            DrawRect::new(
+                rect(80.0 + index as f32 * 180.0, 130.0, 140.0, 140.0),
+                color,
+            )
+            .border_radius(radii)
+            .stroke(solid_stroke(4.0)),
         );
     }
     let clear = Color::rgba(0.11, 0.16, 0.22, 1.0);
@@ -140,7 +144,7 @@ pub fn shadow() -> (CommandScene, (f32, f32), Color) {
             scene.draw_shadow(card, radii, ambient_shadow(elevation));
             scene.draw_shadow(card, radii, key_shadow(elevation));
         }
-        scene.draw_rect(card, SceneRectStyle::new(color, radii, 10_000));
+        scene.draw_rect(DrawRect::new(card, color).border_radius(radii));
     }
     let clear = Color::rgba(0.90, 0.92, 0.94, 1.0);
     (scene.finish(), (1200.0, 400.0), clear)
@@ -154,10 +158,7 @@ pub fn inner_shadow() -> (CommandScene, (f32, f32), Color) {
         let offset = f32::from(index);
         let field = rect(70.0 + offset * 220.0, 160.0, 200.0, 80.0);
         let press = Shadow::new([0.0, 2.0], 6.0, offset, [0.0, 0.0, 0.0, 0.45]);
-        scene.draw_rect(
-            field,
-            SceneRectStyle::new(rgba(245, 247, 250, 255), radii, 10_000),
-        );
+        scene.draw_rect(DrawRect::new(field, rgba(245, 247, 250, 255)).border_radius(radii));
         scene.draw_shadow(field, radii, press.with_kind(ShadowKind::Inner));
     }
     let clear = Color::rgba(0.88, 0.91, 0.94, 1.0);
@@ -169,8 +170,7 @@ pub fn pattern() -> (CommandScene, (f32, f32), Color) {
     let mut scene = SceneBuilder::new();
     let slash_rect = rect(60.0, 50.0, 540.0, 280.0);
     scene.draw_rect(
-        slash_rect,
-        SceneRectStyle::new(rgba(25, 34, 49, 255), CornerRadii::uniform(16.0), 10_000),
+        DrawRect::new(slash_rect, rgba(25, 34, 49, 255)).border_radius(CornerRadii::uniform(16.0)),
     );
     let slash = slash_kind(rgba(255, 255, 255, 255), 40.0, 16.0);
     draw_fill(&mut scene, slash_rect, PaintFill::Pattern(slash));
@@ -185,13 +185,13 @@ pub fn pattern() -> (CommandScene, (f32, f32), Color) {
         PaintFill::Pattern(checker),
     );
     scene.draw_pattern(
-        rect(420.0, 245.0, 360.0, 90.0),
-        ScenePatternStyle::new(
+        DrawPattern::new(
+            rect(420.0, 245.0, 360.0, 90.0),
             slash_kind(rgba(255, 255, 255, 220), 32.0, 10.0),
-            CornerRadii::top(24.0),
-            8_500,
         )
-        .with_stroke(stroke_with(StrokeStyle::Solid, StrokeAlign::Outside, 4.0)),
+        .border_radius(CornerRadii::top(24.0))
+        .opacity(8_500)
+        .stroke(stroke_with(StrokeStyle::Solid, StrokeAlign::Outside, 4.0)),
     );
     (scene.finish(), (1200.0, 380.0), DARK)
 }
@@ -199,10 +199,10 @@ pub fn pattern() -> (CommandScene, (f32, f32), Color) {
 #[must_use]
 pub fn sprite() -> (CommandScene, (f32, f32), Color) {
     let mut scene = SceneBuilder::new();
-    scene.draw_rect(
+    scene.draw_rect(DrawRect::new(
         rect(0.0, 0.0, 900.0, 360.0),
-        SceneRectStyle::new(rgba(3, 4, 6, 255), CornerRadii::ZERO, 10_000),
-    );
+        rgba(3, 4, 6, 255),
+    ));
     for (source_x, phase, x, kind, tint) in [
         (0.0, 0.0, 80.0, SpriteKind::Mono, rgba(220, 60, 60, 255)),
         (
@@ -214,7 +214,7 @@ pub fn sprite() -> (CommandScene, (f32, f32), Color) {
         ),
         (400.0, 0.0, 640.0, SpriteKind::Poly, rgba(80, 160, 240, 255)),
     ] {
-        scene.draw_sprite(
+        scene.draw_sprite(DrawSprite::new(
             SpriteSource {
                 atlas: BUILTIN_SPRITE_ATLAS_ID,
                 region: rect(source_x, 0.0, 200.0, 200.0),
@@ -223,7 +223,7 @@ pub fn sprite() -> (CommandScene, (f32, f32), Color) {
             rect(x, 80.0, 200.0, 200.0),
             kind,
             tint,
-        );
+        ));
     }
     (scene.finish(), (900.0, 360.0), DARK)
 }
@@ -233,7 +233,12 @@ pub fn icon() -> (CommandScene, (f32, f32), Color) {
     let _ = BUILTIN_ICONS.get_or_init(bake_builtin_icons);
     let mut scene = SceneBuilder::new();
     for (index, (dest, tint)) in ICON_DRAWS.into_iter().enumerate() {
-        scene.draw_sprite(icon_source(index), dest, SpriteKind::Mono, tint);
+        scene.draw_sprite(DrawSprite::new(
+            icon_source(index),
+            dest,
+            SpriteKind::Mono,
+            tint,
+        ));
     }
     (scene.finish(), (1024.0, 320.0), DARK)
 }
@@ -292,7 +297,8 @@ pub fn decoration() -> (CommandScene, (f32, f32), Color) {
             32.0,
         ),
     ] {
-        scene.draw_decoration(SceneDecorationStyle {
+        scene.draw_decoration(DrawDecoration {
+            node: None,
             kind,
             band,
             color,
@@ -305,17 +311,14 @@ pub fn decoration() -> (CommandScene, (f32, f32), Color) {
 }
 
 fn bake_builtin_icons() -> Vec<crate::icons::BakedIcon> {
-    let baker = IconBaker::new();
     builtin::ALL
         .iter()
         .map(|(_, svg)| {
-            baker
-                .bake(svg, 128, 128)
-                .unwrap_or_else(|_| crate::icons::BakedIcon {
-                    width: 128,
-                    height: 128,
-                    alpha: vec![0; 128 * 128],
-                })
+            bake(svg, 128, 128).unwrap_or_else(|_| crate::icons::BakedIcon {
+                width: 128,
+                height: 128,
+                alpha: vec![0; 128 * 128],
+            })
         })
         .collect()
 }

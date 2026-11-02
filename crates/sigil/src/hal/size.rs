@@ -1,11 +1,14 @@
 use crate::geometry::{PhysicalSize, Point};
 
+/// Device scale factor.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Scale(f32);
 
 impl Scale {
+    /// The scale of one physical pixel per logical unit.
     pub const ONE: Self = Self(1.0);
 
+    /// Creates a scale.
     #[must_use]
     pub fn new(scale: f32) -> Self {
         if scale.is_finite() && scale > 0.0 {
@@ -15,11 +18,13 @@ impl Scale {
         }
     }
 
+    /// Returns the factor.
     #[must_use]
     pub const fn factor(self) -> f32 {
         self.0
     }
 
+    /// Converts a logical size to physical pixels.
     #[must_use]
     pub fn to_physical(self, logical: LogicalSize) -> PhysicalSize {
         PhysicalSize::new(
@@ -28,6 +33,7 @@ impl Scale {
         )
     }
 
+    /// Converts a physical size to logical units.
     #[must_use]
     #[allow(
         clippy::cast_precision_loss,
@@ -40,19 +46,24 @@ impl Scale {
         )
     }
 
+    /// Converts a physical point to logical units.
     #[must_use]
     pub fn point_to_logical(self, physical: Point) -> Point {
         Point::new(physical.x / self.0, physical.y / self.0)
     }
 }
 
+/// A size in logical px or cells.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct LogicalSize {
+    /// The width.
     pub width: f32,
+    /// The height.
     pub height: f32,
 }
 
 impl LogicalSize {
+    /// Creates a logical size.
     #[must_use]
     pub const fn new(width: f32, height: f32) -> Self {
         Self { width, height }

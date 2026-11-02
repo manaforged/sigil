@@ -3,6 +3,7 @@ use web_time::Instant;
 use crate::profile::key::Phase;
 use crate::profile::store;
 
+/// Measures one phase from creation until drop.
 pub struct Span {
     phase: Phase,
     start: Option<(u64, Instant)>,

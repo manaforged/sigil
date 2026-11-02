@@ -7,24 +7,19 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{KeyEventInit, PhysicalKey};
+use sigil::events::PhysicalKey;
 use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
 use widget_support::compute;
 
 const VIEWPORT: Size = Size::fixed(320.0, 120.0);
 
-fn key(ch: &str, physical: PhysicalKey, phase: KeyPhase) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(ch),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase,
-        text: (phase == KeyPhase::Down).then(|| ch.into()),
-    }))
+fn key(ch: &str, physical: PhysicalKey, phase: KeyPhase) -> Event {
+    Event::key(LogicalKey::character(ch), phase)
+        .physical(physical)
+        .text((phase == KeyPhase::Down).then(|| ch.into()))
 }
 
 fn field_node(cx: &Cx, root: NodeId) -> NodeId {
@@ -41,7 +36,7 @@ fn field_node(cx: &Cx, root: NodeId) -> NodeId {
 
 #[test]
 fn focus_when_bump_focuses_the_field() {
-    sigil::reactive::Runtime::scope("text-field-focus-when", || {
+    sigil::reactive::Owner::scope("text-field-focus-when", || {
         let value = signal(String::new());
         let trigger = signal(0_u64);
         let mut cx = Cx::new_root();
@@ -60,7 +55,7 @@ fn focus_when_bump_focuses_the_field() {
 
 #[test]
 fn autofocus_field_takes_focus_on_mount() {
-    sigil::reactive::Runtime::scope("text-field-focus-mount", || {
+    sigil::reactive::Owner::scope("text-field-focus-mount", || {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).autofocus());
@@ -78,7 +73,7 @@ fn autofocus_field_takes_focus_on_mount() {
 
 #[test]
 fn autofocus_inside_trapped_modal_takes_typing() {
-    sigil::reactive::Runtime::scope("text-field-focus-modal", || {
+    sigil::reactive::Owner::scope("text-field-focus-modal", || {
         let value = signal(String::new());
         let open = signal(true);
         let mut cx = Cx::new_root();
@@ -113,7 +108,7 @@ fn autofocus_inside_trapped_modal_takes_typing() {
 
 #[test]
 fn slash_shortcut_focuses_field_then_typing_reaches_it() {
-    sigil::reactive::Runtime::scope("text-field-slash-e2e", || {
+    sigil::reactive::Owner::scope("text-field-slash-e2e", || {
         let value = signal(String::new());
         let trigger = signal(0_u64);
         let mut cx = Cx::new_root();

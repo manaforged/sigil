@@ -1,7 +1,7 @@
+use sigil::prelude::Widget;
 use sigil::prelude::{
-    AlignItems, ControlSize, LayoutBuilderExt, LayoutStyle, LogicalKey, NodeBuilder, Paint,
-    Shortcut, Token, Tone, avatar, button, chip, command_menu, container, modal, spacer,
-    status_bar, text, tooltip,
+    AlignItems, ControlSize, LayoutStyle, LogicalKey, NodeBuilder, Paint, Shortcut, Token, Tone,
+    avatar, button, chip, command_menu, container, modal, spacer, status_bar, text, tooltip,
 };
 use sigil::style::space;
 use sigil::widgets::ModalBuilder;
@@ -49,7 +49,7 @@ pub(crate) fn top_bar(console: Console) -> NodeBuilder {
         .child(spacer())
         .child(
             tooltip("Search services, jobs, and commands")
-                .shortcut(Some(menu_shortcut().label()))
+                .hint(Some(menu_shortcut().label()))
                 .child(
                     button("Search or run a command")
                         .ghost()

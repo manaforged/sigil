@@ -1,13 +1,13 @@
 use super::super::canvas::Canvas;
 use super::super::label::width;
-use super::{Diagram, Event, Frame, Participant, centres, depth, height};
+use super::{Diagram, Participant, SequenceEvent, SequenceFrame, centres, depth, height};
 
 pub(super) fn render(diagram: &Diagram) -> Vec<String> {
     let depth = depth(&diagram.events);
     let margin = depth.saturating_mul(2).saturating_add(1);
     let (centres, right) = centres(diagram, margin);
     let rows = diagram.events.iter().fold(7_usize, |rows, event| {
-        let same = matches!(event, Event::Message { from, to, .. } if from == to);
+        let same = matches!(event, SequenceEvent::Message { from, to, .. } if from == to);
         rows.saturating_add(height(event, same))
     });
     let cols = right.saturating_add(margin);
@@ -32,14 +32,14 @@ fn boxed(canvas: &mut Canvas, participant: &Participant, centre: usize, y: usize
     canvas.text(x.saturating_add(2), y.saturating_add(1), &participant.label);
 }
 
-fn events(canvas: &mut Canvas, diagram: &Diagram, centres: &[usize]) -> Vec<Frame> {
+fn events(canvas: &mut Canvas, diagram: &Diagram, centres: &[usize]) -> Vec<SequenceFrame> {
     let mut y = 3_usize;
-    let mut open: Vec<Frame> = Vec::new();
+    let mut open: Vec<SequenceFrame> = Vec::new();
     let mut done = Vec::new();
     let mut number = 0_usize;
     for event in &diagram.events {
         y = match event {
-            Event::Message {
+            SequenceEvent::Message {
                 from,
                 to,
                 text,
@@ -59,7 +59,7 @@ fn events(canvas: &mut Canvas, diagram: &Diagram, centres: &[usize]) -> Vec<Fram
                 );
                 message(canvas, ends, &text, (*dashed, *head), y)
             }
-            Event::Note { from, to, text } => note(canvas, centres, (*from, *to), text, y),
+            SequenceEvent::Note { from, to, text } => note(canvas, centres, (*from, *to), text, y),
             other => frame_event(&mut open, &mut done, other, y),
         };
     }
@@ -70,27 +70,32 @@ fn events(canvas: &mut Canvas, diagram: &Diagram, centres: &[usize]) -> Vec<Fram
     done
 }
 
-fn frame_event(open: &mut Vec<Frame>, done: &mut Vec<Frame>, event: &Event, y: usize) -> usize {
+fn frame_event(
+    open: &mut Vec<SequenceFrame>,
+    done: &mut Vec<SequenceFrame>,
+    event: &SequenceEvent,
+    y: usize,
+) -> usize {
     match event {
-        Event::Open { kind, text } => open.push(Frame {
+        SequenceEvent::Open { kind, text } => open.push(SequenceFrame {
             top: y,
             bottom: y,
             depth: open.len(),
             label: format!("{kind} {text}").trim().to_string(),
             elses: Vec::new(),
         }),
-        Event::Else { text } => {
+        SequenceEvent::Else { text } => {
             if let Some(frame) = open.last_mut() {
                 frame.elses.push((y, text.clone()));
             }
         }
-        Event::Close => {
+        SequenceEvent::Close => {
             if let Some(mut frame) = open.pop() {
                 frame.bottom = y;
                 done.push(frame);
             }
         }
-        Event::Message { .. } | Event::Note { .. } => {}
+        SequenceEvent::Message { .. } | SequenceEvent::Note { .. } => {}
     }
     y.saturating_add(1)
 }
@@ -175,7 +180,7 @@ fn note(
     y.saturating_add(rows)
 }
 
-fn framed(canvas: &mut Canvas, frame: &Frame, cols: usize) {
+fn framed(canvas: &mut Canvas, frame: &SequenceFrame, cols: usize) {
     let left = frame.depth;
     let right = cols.saturating_sub(1).saturating_sub(frame.depth);
     if right <= left.saturating_add(2) {

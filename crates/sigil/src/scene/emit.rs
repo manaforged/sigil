@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::geometry::Rect;
-use crate::kernel::{Cx, FrameDelta, Node, NodeId, Surface, TopLayer};
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+use crate::kernel::FrameDelta;
+use crate::kernel::{Cx, Node, NodeId, Surface, TopLayer};
 use crate::layout::LayoutResult;
 use crate::style::{RenderStyle, Rgba8, StyleBinding, TextStyle, Theme, ToneContext};
 use crate::widgets::CanvasPaint;
@@ -18,24 +20,25 @@ mod runs;
 mod selection;
 use paint::{NodePaint, push_focus_ring, push_node};
 mod effects;
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 mod memo;
 mod subtree;
 mod top_layer;
-pub use memo::EmitDiff;
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 pub(crate) use memo::EmitMemo;
-use subtree::{Prior, Track};
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+pub(crate) use subtree::EmitDiff;
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+use subtree::Prior;
+use subtree::SpanTrack;
 
 const VIEW_OVERSCAN: f32 = 64.0;
 
+/// Emits the draw commands under `root`, skipping nodes outside `clip`.
 #[must_use]
-pub fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene {
-    emit_scene_clipped(cx, root, None)
-}
-
-#[must_use]
-pub fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene {
+pub fn emit_scene(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene {
     let selection = crate::events::selection::ranges(cx);
-    let mut track = Track::off();
+    let mut track = SpanTrack::off();
     run(cx, root, clip, &selection, &mut track)
 }
 
@@ -50,6 +53,7 @@ pub(crate) fn emit_unchanged(
     memo.clean(cx, (root, clip), (delta, prev.commands.len()), &selection)
 }
 
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 pub(crate) fn emit_scene_since(
     cx: &Cx,
     root: NodeId,
@@ -69,7 +73,7 @@ pub(crate) fn emit_scene_since(
         spans: &spans,
         dirty: &dirty,
     });
-    let mut track = Track::recording(prior);
+    let mut track = SpanTrack::recording(prior);
     let scene = run(cx, root, clip, &selection, &mut track);
     let diff = EmitDiff::between(&prev.commands, &scene.commands, &track.copies);
     memo.commit(
@@ -86,7 +90,7 @@ fn run<'t>(
     root: NodeId,
     clip: Option<Rect>,
     selection: &HashMap<NodeId, (usize, usize)>,
-    track: &mut Track<'t>,
+    track: &mut SpanTrack<'t>,
 ) -> CommandScene {
     let clip = clip.map(|rect| rect.expand(VIEW_OVERSCAN));
     let mut scene = SceneBuilder::new();
@@ -119,7 +123,7 @@ struct EmitWalk<'a, 't> {
     cx: &'t Cx,
     deferred: &'a mut Vec<(NodeId, Inherited<'t>, Option<Rect>)>,
     selection: &'a HashMap<NodeId, (usize, usize)>,
-    track: &'a mut Track<'t>,
+    track: &'a mut SpanTrack<'t>,
 }
 
 #[derive(Clone)]

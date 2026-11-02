@@ -87,7 +87,7 @@ pub(crate) fn run(ws: Workspace, command: Command) {
     }
 }
 
-fn menus(ws: Workspace) -> sigil::widgets::MenuBarBuilder {
+fn menus(ws: Workspace) -> impl IntoNode {
     MENUS.iter().fold(menu_bar(), |bar, (title, entries)| {
         bar.menu(
             *title,

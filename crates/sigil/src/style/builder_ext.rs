@@ -6,6 +6,7 @@ use super::presence::install_presence;
 use crate::animation_runtime::AnimationConfig;
 use crate::kernel::{NodeBuilder, TextBuilder};
 use crate::reactive::{Reactive, Signal};
+use crate::widgets::Widget;
 use smallvec::SmallVec;
 
 use std::cell::Cell;
@@ -62,100 +63,90 @@ impl From<Style> for ClassSource {
     }
 }
 
-pub trait NodeStyleExt {
+impl NodeBuilder {
     #[must_use]
-    fn theme(self, theme: Theme) -> Self;
+    pub(crate) fn class(self, source: impl Into<ClassSource>) -> Self {
+        let source = source.into();
+        self.flush_paint()
+            .mutate(move |node| install_class(node, source))
+    }
 
     #[must_use]
-    fn tone(self, tone: Tone) -> Self;
-
-    #[must_use]
-    fn focus_ring(self, ring: FocusRing) -> Self;
-
-    #[must_use]
-    fn presence(self, shown: Signal<bool>, config: AnimationConfig) -> Self;
-
-    #[must_use]
-    fn animate(self, kind: NumericAtomKind, value: Signal<f32>) -> Self;
-
-    #[must_use]
-    fn visible_when(self, shown: impl Reactive<bool>) -> Self;
-
-    #[must_use]
-    fn paint_when<F>(self, active: impl Reactive<bool>, paint: F) -> Self
+    pub(crate) fn style_reactive<F>(self, f: F) -> Self
     where
-        F: FnOnce(StateStyleBuilder) -> StateStyleBuilder;
+        F: Fn() -> &'static [StyleAtom] + 'static,
+    {
+        self.flush_paint()
+            .mutate(move |node| install_reactive(node, f))
+    }
+
+    #[must_use]
+    pub(crate) fn flush_paint(mut self) -> Self {
+        let atoms = self.pending_style().take_atoms();
+        if atoms.is_empty() {
+            return self;
+        }
+        self.mutate(move |node| install_class(node, ClassSource::Owned(Box::new(atoms))))
+    }
 }
 
-macro_rules! style_sinks {
-    ($builder:ty) => {
-        impl $builder {
-            #[must_use]
-            pub(crate) fn class(self, source: impl Into<ClassSource>) -> Self {
-                let source = source.into();
-                self.flush_paint()
-                    .mutate(move |node| install_class(node, source))
-            }
+impl TextBuilder {
+    #[must_use]
+    pub(crate) fn class(self, source: impl Into<ClassSource>) -> Self {
+        let source = source.into();
+        self.map_node(move |node| node.class(source))
+    }
 
-            #[must_use]
-            pub(crate) fn style_reactive<F>(self, f: F) -> Self
-            where
-                F: Fn() -> &'static [StyleAtom] + 'static,
-            {
-                self.flush_paint()
-                    .mutate(move |node| install_reactive(node, f))
-            }
-
-            #[must_use]
-            pub(crate) fn flush_paint(mut self) -> Self {
-                let atoms = self.pending_style().take_atoms();
-                if atoms.is_empty() {
-                    return self;
-                }
-                self.mutate(move |node| install_class(node, ClassSource::Owned(Box::new(atoms))))
-            }
-        }
-
-        impl NodeStyleExt for $builder {
-            fn theme(self, theme: Theme) -> Self {
-                self.mutate(move |node| install_theme(node, theme))
-            }
-
-            fn focus_ring(self, ring: FocusRing) -> Self {
-                self.mutate(move |node| install_focus_ring(node, ring))
-            }
-
-            fn presence(self, shown: Signal<bool>, config: AnimationConfig) -> Self {
-                self.flush_paint()
-                    .mutate(move |node| install_presence(node, shown, config))
-            }
-
-            fn animate(self, kind: NumericAtomKind, value: Signal<f32>) -> Self {
-                self.mutate(move |node| install_animation(node, kind, value))
-            }
-
-            fn tone(self, tone: Tone) -> Self {
-                self.mutate(move |node| install_tone(node, tone))
-            }
-
-            fn paint_when<F>(self, active: impl Reactive<bool>, paint: F) -> Self
-            where
-                F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
-            {
-                let atoms = intern_atoms(paint(StateStyleBuilder::new()).into_atoms());
-                self.style_reactive(move || if active.read() { atoms } else { EMPTY_ATOMS })
-            }
-
-            fn visible_when(self, shown: impl Reactive<bool>) -> Self {
-                let hidden = parse_classes("hidden");
-                self.style_reactive(move || if shown.read() { EMPTY_ATOMS } else { hidden })
-            }
-        }
-    };
+    #[must_use]
+    pub(crate) fn style_reactive<F>(self, f: F) -> Self
+    where
+        F: Fn() -> &'static [StyleAtom] + 'static,
+    {
+        self.map_node(move |node| node.style_reactive(f))
+    }
 }
 
-style_sinks!(NodeBuilder);
-style_sinks!(TextBuilder);
+pub(crate) fn theme(node: NodeBuilder, theme: Theme) -> NodeBuilder {
+    node.mutate(move |node| install_theme(node, theme))
+}
+
+pub(crate) fn tone(node: NodeBuilder, tone: Tone) -> NodeBuilder {
+    node.mutate(move |node| install_tone(node, tone))
+}
+
+pub(crate) fn focus_ring(
+    node: NodeBuilder,
+    change: impl FnOnce(&mut FocusRing) + 'static,
+) -> NodeBuilder {
+    node.mutate(move |node| install_focus_ring(node, change))
+}
+
+pub(crate) fn presence(
+    node: NodeBuilder,
+    shown: Signal<bool>,
+    config: AnimationConfig,
+) -> NodeBuilder {
+    node.flush_paint()
+        .mutate(move |node| install_presence(node, shown, config))
+}
+
+pub(crate) fn animate(node: NodeBuilder, kind: NumericAtomKind, value: Signal<f32>) -> NodeBuilder {
+    node.mutate(move |node| install_animation(node, kind, value))
+}
+
+pub(crate) fn paint_when(
+    node: NodeBuilder,
+    active: impl Reactive<bool> + 'static,
+    paint: StateStyleBuilder,
+) -> NodeBuilder {
+    let atoms = intern_atoms(paint.into_atoms());
+    node.style_reactive(move || if active.read() { atoms } else { EMPTY_ATOMS })
+}
+
+pub(crate) fn visible_when(node: NodeBuilder, shown: impl Reactive<bool> + 'static) -> NodeBuilder {
+    let hidden = parse_classes("hidden");
+    node.style_reactive(move || if shown.read() { EMPTY_ATOMS } else { hidden })
+}
 
 impl NodeBuilder {
     #[must_use]

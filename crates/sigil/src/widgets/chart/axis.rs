@@ -1,11 +1,12 @@
 use crate::kernel::{IntoNode, NodeBuilder, container, text};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{Radius, Token, space};
+use crate::widgets::Widget;
 
 use super::ChartView;
-use super::plot::{AXIS, Span, X_AXIS};
+use super::plot::{AXIS, ValueSpan, X_AXIS};
 
-pub(super) fn y_axis(span: Span, x_axis_on: bool, mid_tick: bool) -> NodeBuilder {
+pub(super) fn y_axis(span: ValueSpan, x_axis_on: bool, mid_tick: bool) -> NodeBuilder {
     let mut ticks = container()
         .layout(
             LayoutStyle::flex_column()

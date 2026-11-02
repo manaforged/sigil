@@ -2,70 +2,92 @@ use crate::geometry::{Point, Rect};
 
 use crate::scene::corner_radii::CornerRadii;
 
+/// A 2D affine transform as two rows of three values.
 pub type Transform = [[f32; 3]; 2];
 
+/// How a renderer colors a sprite.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SpriteKind {
+    /// The mono sprite kind.
     Mono,
+    /// The subpixel sprite kind.
     Subpixel,
+    /// The poly sprite kind.
     Poly,
 }
 
+/// Where a sprite's pixels come from.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SpriteSource {
+    /// The atlas.
     pub atlas: u32,
+    /// The region.
     pub region: Rect,
+    /// The phase.
     pub phase: f32,
 }
 
 impl SpriteSource {
-    #[cfg(feature = "scene")]
+    #[cfg(all(
+        feature = "scene",
+        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+    ))]
     pub(crate) fn fitted(self, atlas: (f32, f32), dest: Rect) -> Option<(Rect, Rect)> {
         let region = self.region;
         if region.width <= 0.0 || region.height <= 0.0 {
             return None;
         }
-        let x0 = region.origin.x.max(0.0);
-        let y0 = region.origin.y.max(0.0);
-        let x1 = (region.origin.x + region.width).min(atlas.0);
-        let y1 = (region.origin.y + region.height).min(atlas.1);
-        if x1 <= x0 || y1 <= y0 {
-            return None;
-        }
+        let clipped = region.intersection(Rect::new(Point::new(0.0, 0.0), atlas.0, atlas.1))?;
         let sx = dest.width / region.width;
         let sy = dest.height / region.height;
         let visible = Rect::new(
             Point::new(
-                (x0 - region.origin.x).mul_add(sx, dest.origin.x),
-                (y0 - region.origin.y).mul_add(sy, dest.origin.y),
+                (clipped.origin.x - region.origin.x).mul_add(sx, dest.origin.x),
+                (clipped.origin.y - region.origin.y).mul_add(sy, dest.origin.y),
             ),
-            (x1 - x0) * sx,
-            (y1 - y0) * sy,
+            clipped.width * sx,
+            clipped.height * sy,
         );
-        Some((Rect::new(Point::new(x0, y0), x1 - x0, y1 - y0), visible))
+        Some((clipped, visible))
     }
 }
 
+/// The line style of a text decoration.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DecorationKind {
+    /// The underline decoration kind.
     Underline,
+    /// The strikethrough decoration kind.
     Strikethrough,
+    /// The wavy underline decoration kind.
     WavyUnderline,
 }
 
+/// The bounds and effects of a composite layer.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LayerScope {
+    /// The clip.
     pub clip: Rect,
+    /// The clip radii.
     pub clip_radii: CornerRadii,
+    /// The effect.
     pub effect: LayerEffect,
+    /// The opacity.
     pub opacity: f32,
 }
 
+/// An effect applied to a composite layer.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LayerEffect {
+    /// The identity layer effect.
     Identity,
+    /// The transform layer effect.
     Transform(Transform),
-    LayerBlur { sigma: f32 },
+    /// The layer blur layer effect.
+    LayerBlur {
+        /// The blur radius.
+        sigma: f32,
+    },
 }
 
 pub(crate) fn transform_rect(transform: Transform, rect: Rect) -> Rect {

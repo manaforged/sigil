@@ -1,23 +1,37 @@
 use crate::geometry::{Point, Rect};
 
+/// Whether a shadow falls outside or inside a shape.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ShadowKind {
+    /// The outer shadow kind.
     #[default]
     Outer,
+    /// The inner shadow kind.
     Inner,
+    /// The glow shadow kind.
     Glow,
 }
 
+/// The offset, blur, spread, and color of a shadow.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Shadow {
+    /// The color.
     pub color: [f32; 4],
+    /// The offset.
     pub offset: [f32; 2],
+    /// The blur.
     pub blur: f32,
+    /// The spread.
     pub spread: f32,
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
     pub kind: ShadowKind,
+    #[cfg(not(feature = "kittest"))]
+    pub(crate) kind: ShadowKind,
 }
 
 impl Shadow {
+    /// Creates a shadow.
     #[must_use]
     pub const fn new(offset: [f32; 2], blur: f32, spread: f32, color: [f32; 4]) -> Self {
         Self {
@@ -29,6 +43,7 @@ impl Shadow {
         }
     }
 
+    /// Creates a shadow with no offset.
     #[must_use]
     pub fn glow(color: crate::style::Rgba8, spread: f32, blur: f32) -> Self {
         let c = [
@@ -40,10 +55,14 @@ impl Shadow {
         Self::new([0.0, 0.0], blur, spread, c).with_kind(ShadowKind::Glow)
     }
 
-    #[must_use]
-    pub const fn with_kind(mut self, kind: ShadowKind) -> Self {
-        self.kind = kind;
-        self
+    kittest_pub! {
+        /// Sets the kind.
+        #[must_use]
+        #[doc(hidden)]
+        pub const fn with_kind(mut self, kind: ShadowKind) -> Self {
+            self.kind = kind;
+            self
+        }
     }
 }
 

@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -7,7 +8,7 @@
 
 use sigil::geometry::{Point, Rect};
 use sigil::renderer::{ScreenSubmission, WgpuRenderer};
-use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneRectStyle};
+use sigil::scene::{CommandScene, DrawRect, SceneBuilder};
 use sigil::style::{Color, Rgba8};
 use sigil_kittest::gpu::read_pixels;
 
@@ -23,19 +24,23 @@ const CLEAR: Color = Color {
 
 fn square(at: (f32, f32), color: (u8, u8, u8)) -> CommandScene {
     let mut b = SceneBuilder::new();
-    b.draw_rect(
+    b.draw_rect(style(
         Rect::new(Point::new(64.0, 0.0), 64.0, H as f32),
-        style(40, 40, 60),
-    );
-    b.draw_rect(
+        40,
+        40,
+        60,
+    ));
+    b.draw_rect(style(
         Rect::new(Point::new(at.0, at.1), 16.0, 16.0),
-        style(color.0, color.1, color.2),
-    );
+        color.0,
+        color.1,
+        color.2,
+    ));
     b.finish()
 }
 
-const fn style(r: u8, g: u8, b: u8) -> SceneRectStyle {
-    SceneRectStyle::new(Rgba8 { r, g, b, a: 255 }, CornerRadii::ZERO, 10_000)
+const fn style(rect: sigil::geometry::Rect, r: u8, g: u8, b: u8) -> DrawRect {
+    DrawRect::new(rect, Rgba8 { r, g, b, a: 255 })
 }
 
 fn render(renderer: &mut WgpuRenderer, texture: &wgpu::Texture, scenes: &[CommandScene]) -> u64 {
@@ -101,13 +106,9 @@ fn a_moved_square_redraws_only_its_region_and_matches_a_full_frame() {
     let after = square((88.0, 40.0), (30, 200, 60));
 
     let partial = texture();
-    let redrawn = render(
-        &mut WgpuRenderer::new().unwrap(),
-        &partial,
-        &[before, after.clone()],
-    );
+    let redrawn = render(&mut WgpuRenderer::new(), &partial, &[before, after.clone()]);
     let full = texture();
-    render(&mut WgpuRenderer::new().unwrap(), &full, &[after]);
+    render(&mut WgpuRenderer::new(), &full, &[after]);
 
     assert!(
         redrawn < u64::from(W * H) / 2,
@@ -125,21 +126,27 @@ fn a_moved_square_redraws_only_its_region_and_matches_a_full_frame() {
 
 fn grouped(clip_width: f32, opacity: f32) -> CommandScene {
     let mut b = SceneBuilder::new();
-    b.draw_rect(
+    b.draw_rect(style(
         Rect::new(Point::new(0.0, 0.0), W as f32, H as f32),
-        style(20, 20, 30),
-    );
+        20,
+        20,
+        30,
+    ));
     b.with_clip(Rect::new(Point::new(8.0, 8.0), clip_width, 32.0), |b| {
-        b.draw_rect(
+        b.draw_rect(style(
             Rect::new(Point::new(8.0, 8.0), 48.0, 32.0),
-            style(200, 200, 40),
-        );
+            200,
+            200,
+            40,
+        ));
     });
     b.with_layer(opacity, |b| {
-        b.draw_rect(
+        b.draw_rect(style(
             Rect::new(Point::new(8.0, 48.0), 32.0, 32.0),
-            style(40, 160, 220),
-        );
+            40,
+            160,
+            220,
+        ));
     });
     b.finish()
 }
@@ -157,13 +164,9 @@ fn a_changed_clip_or_group_opacity_repaints_the_content_it_covers() {
     let after = grouped(20.0, 0.4);
 
     let partial = texture();
-    let redrawn = render(
-        &mut WgpuRenderer::new().unwrap(),
-        &partial,
-        &[before, after.clone()],
-    );
+    let redrawn = render(&mut WgpuRenderer::new(), &partial, &[before, after.clone()]);
     let full = texture();
-    render(&mut WgpuRenderer::new().unwrap(), &full, &[after]);
+    render(&mut WgpuRenderer::new(), &full, &[after]);
 
     assert!(
         redrawn < u64::from(W * H) / 2,
@@ -181,28 +184,36 @@ fn a_changed_clip_or_group_opacity_repaints_the_content_it_covers() {
 
 fn list(highlight: Option<usize>) -> CommandScene {
     let mut b = SceneBuilder::new();
-    b.draw_rect(
+    b.draw_rect(style(
         Rect::new(Point::new(0.0, 0.0), W as f32, H as f32),
-        style(20, 20, 30),
-    );
+        20,
+        20,
+        30,
+    ));
     for row in 0..6_u8 {
         let y = f32::from(row) * 12.0;
         if highlight == Some(usize::from(row)) {
-            b.draw_rect(
+            b.draw_rect(style(
                 Rect::new(Point::new(0.0, y), W as f32, 12.0),
-                style(60, 60, 90),
-            );
+                60,
+                60,
+                90,
+            ));
         }
-        b.draw_rect(
+        b.draw_rect(style(
             Rect::new(Point::new(4.0, y + 3.0), 40.0, 6.0),
-            style(180, 180, 180),
-        );
+            180,
+            180,
+            180,
+        ));
     }
     b.with_clip(Rect::new(Point::new(0.0, 80.0), W as f32, 48.0), |b| {
-        b.draw_rect(
+        b.draw_rect(style(
             Rect::new(Point::new(8.0, 88.0), 64.0, 24.0),
-            style(40, 160, 220),
-        );
+            40,
+            160,
+            220,
+        ));
     });
     b.finish()
 }
@@ -220,13 +231,9 @@ fn an_inserted_highlight_redraws_only_its_row() {
     let after = list(Some(2));
 
     let partial = texture();
-    let redrawn = render(
-        &mut WgpuRenderer::new().unwrap(),
-        &partial,
-        &[before, after.clone()],
-    );
+    let redrawn = render(&mut WgpuRenderer::new(), &partial, &[before, after.clone()]);
     let full = texture();
-    render(&mut WgpuRenderer::new().unwrap(), &full, &[after]);
+    render(&mut WgpuRenderer::new(), &full, &[after]);
 
     assert!(
         redrawn < u64::from(W * H) / 8,

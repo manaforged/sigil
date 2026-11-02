@@ -4,7 +4,11 @@ use std::rc::Rc;
 use crate::kernel::IntoNode;
 use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle, Overflow};
 
-pub const MIN_COL_WIDTH: f32 = 48.0;
+kittest_pub! {
+    /// Smallest width a table column can be resized to.
+    #[doc(hidden)]
+    pub const MIN_COL_WIDTH: f32 = 48.0;
+}
 
 type CompareFn<Row> = Rc<dyn Fn(&Row, &Row) -> Ordering>;
 
@@ -12,19 +16,26 @@ type FilterFn<Row> = Rc<dyn Fn(&Row, &str) -> bool>;
 
 type CellFn<Row> = Rc<dyn Fn(&Row) -> Box<dyn IntoNode>>;
 
+/// Column width.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ColWidth {
+    /// The fixed col width.
     Fixed(f32),
+    /// The fraction col width.
     Fraction(f32),
 }
 
+/// Column alignment.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ColAlign {
+    /// The start col align.
     #[default]
     Start,
+    /// The end col align.
     End,
 }
 
+/// One table column.
 pub struct TableColumn<Row> {
     id: &'static str,
     title: String,
@@ -54,6 +65,7 @@ impl<Row> Clone for TableColumn<Row> {
 }
 
 impl<Row> TableColumn<Row> {
+    /// Creates a table column.
     #[must_use]
     pub fn new(id: &'static str, title: impl Into<String>) -> Self {
         Self {
@@ -69,12 +81,14 @@ impl<Row> TableColumn<Row> {
         }
     }
 
+    /// Sets the text alignment.
     #[must_use]
     pub const fn align(mut self, align: ColAlign) -> Self {
         self.align = align;
         self
     }
 
+    /// Aligns the column for numbers.
     #[must_use]
     pub const fn numeric(mut self) -> Self {
         self.align = ColAlign::End;
@@ -82,12 +96,14 @@ impl<Row> TableColumn<Row> {
         self
     }
 
+    /// Sets whether the column can sort.
     #[must_use]
     pub fn sortable(mut self, compare: impl Fn(&Row, &Row) -> Ordering + 'static) -> Self {
         self.compare = Some(Rc::new(compare));
         self
     }
 
+    /// Sets the sort comparison.
     #[must_use]
     pub fn sort_by<K>(self, key: impl Fn(&Row) -> K + 'static) -> Self
     where
@@ -96,12 +112,14 @@ impl<Row> TableColumn<Row> {
         self.sortable(move |left, right| key(left).cmp(&key(right)))
     }
 
+    /// Sets whether the column can filter.
     #[must_use]
     pub fn filterable(mut self, matches: impl Fn(&Row, &str) -> bool + 'static) -> Self {
         self.filter = Some(Rc::new(matches));
         self
     }
 
+    /// Sets the renderer of each cell.
     #[must_use]
     pub fn cell<N>(mut self, render: impl Fn(&Row) -> N + 'static) -> Self
     where
@@ -111,23 +129,27 @@ impl<Row> TableColumn<Row> {
         self
     }
 
+    /// Sets the width.
     #[must_use]
     pub const fn width(mut self, width: ColWidth) -> Self {
         self.width = width;
         self
     }
 
+    /// Sets the min width.
     #[must_use]
     pub const fn min_width(mut self, px: f32) -> Self {
         self.min_width = if px > 0.0 { px } else { 0.0 };
         self
     }
 
+    /// Returns the id.
     #[must_use]
     pub const fn id(&self) -> &'static str {
         self.id
     }
 
+    /// Returns the title.
     #[must_use]
     pub fn title(&self) -> &str {
         &self.title
@@ -158,16 +180,19 @@ impl<Row> TableColumn<Row> {
         self.min_width
     }
 
+    /// Returns whether this table column is sortable.
     #[must_use]
     pub fn is_sortable(&self) -> bool {
         self.compare.is_some()
     }
 
+    /// Returns the alignment.
     #[must_use]
     pub const fn alignment(&self) -> ColAlign {
         self.align
     }
 
+    /// Returns whether this table column is numeric.
     #[must_use]
     pub const fn is_numeric(&self) -> bool {
         self.numeric

@@ -8,13 +8,13 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil::clipboard::{ClipError, Clipboard, Delivery};
+use sigil::clipboard::{Clipboard, Delivery};
 use sigil::kernel::ImageSource;
 
 struct Recorder(Rc<RefCell<Vec<(u32, u32)>>>);
 
 impl Clipboard for Recorder {
-    fn set(&self, _text: &str) -> Result<Delivery, ClipError> {
+    fn set(&self, _text: &str) -> Result<Delivery, sigil::Error> {
         Ok(Delivery::Confirmed)
     }
 
@@ -22,7 +22,7 @@ impl Clipboard for Recorder {
         None
     }
 
-    fn set_image(&self, image: &ImageSource) -> Result<Delivery, ClipError> {
+    fn set_image(&self, image: &ImageSource) -> Result<Delivery, sigil::Error> {
         self.0.borrow_mut().push((image.width(), image.height()));
         Ok(Delivery::Confirmed)
     }

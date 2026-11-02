@@ -1,20 +1,20 @@
 # Plumbing
 
-The low-level pieces the widgets are built from: interaction state, drag mechanics, clipboard, and terminal wiring. Use them when a stock widget does not fit. Most app code never needs them directly.
+The low-level pieces the widgets are built from: drag mechanics, clipboard, and terminal wiring. Use them when a stock widget does not fit. Most app code never needs them directly.
 
 ## interactive
 
-`interactive(inner: NodeBuilder) -> InteractiveBuilder` turns any node into a state-tracking widget: it installs internal `hovered`, `pressed`, and `focused` signals and resolves the state paint against them, so `.hover()`, `.pressed()`, `.focus()`, and `.disabled_style()` style closures work on a plain container.
+`interactive(inner: NodeBuilder)` turns any node into a state-tracking widget: it installs internal `hovered`, `pressed`, and `focused` signals and resolves the state paint against them, so `.hover()`, `.pressed()`, `.focus()`, and `.disabled_style()` style closures work on a plain container.
 
 - `.focusable(bool)`: participate in keyboard focus.
 - `.disabled(value, signal, or closure)`: drive the disabled slot.
 - `Paint` methods set the base paint; `.into_node_builder()` finishes.
 
-This is the primitive `button`, `icon_button`, and the menu-bar triggers are made of. If you only need event handlers, use `NodeEventsExt` (`pointer_down`, `key`, …) directly. `interactive` is for full state styling.
+This is the primitive `button`, `icon_button`, and the menu-bar triggers are made of. If you only need event handlers, use the `Widget` event methods (`pointer_down`, `key`, …) directly. `interactive` is for full state styling.
 
 ## axis_drag
 
-`axis_drag(node, Axis::X | Axis::Y, snapshot, on_delta, on_end) -> NodeBuilder`. On pointer down it captures the pointer and calls `snapshot()` to grab your baseline value; each captured move calls `on_delta(baseline, delta_px)`; release calls `on_end()`. Splitter handles are built on it. Use it for any drag-to-adjust control.
+`axis_drag(node, Orientation::Horizontal | Orientation::Vertical, snapshot, on_delta, on_end) -> NodeBuilder`. On pointer down it captures the pointer and calls `snapshot()` to grab your baseline value; each captured move calls `on_delta(baseline, delta_px)`; release calls `on_end()`. Splitter handles are built on it. Use it for any drag-to-adjust control.
 
 ## drag and drop
 
@@ -36,14 +36,14 @@ drag_ghost(drag, |item| text(item.clone()).nowrap());
 # };
 ```
 
-- `node.drag_source(state, payload)` (from `DragDropExt`) arms on left-button press and begins the drag after `DRAG_THRESHOLD_PX` (4 px) of travel.
-- `node.drop_target(state, accepts, on_drop)` registers the node's live bounds; while a payload it accepts hovers, the target gets `DROP_TARGET_CLASS` (`bg-accent-4`), and release calls `on_drop`.
+- `node.drag_source(state, payload)` (from `Widget`) arms on left-button press and begins the drag after 4 px of travel.
+- `node.drop_target(state, accepts, on_drop)` registers the node's live bounds; while a payload it accepts hovers, the target gets the class `bg-accent-4`, and release calls `on_drop`.
 - `drag_ghost(state, render)` returns a non-hittable node that follows the pointer while a drag is active.
 - `state.is_active()`, `state.position()`, `state.payload()`, and `state.cancel()` expose the session; `cancel` aborts without dropping.
 
 ## clipboard
 
-`trait Clipboard { fn set(&self, &str) -> Result<(), ClipError>; fn get(&self) -> Option<String>; }` in `sigil::clipboard`. A thread-local handle backs it: `install(clip)` installs, `clipboard()` returns the `Rc<dyn Clipboard>`. The default is `NoopClipboard`: `set` errors and `get` returns `None` until something installs a real handle.
+`trait Clipboard { fn set(&self, &str) -> Result<Delivery, Error>; fn get(&self) -> Option<String>; }` in `sigil::clipboard`. A thread-local handle backs it: `install(clip)` installs, `clipboard()` returns the `Rc<dyn Clipboard>`. By default `set` errors and `get` returns `None` until something installs a real handle.
 
 `sigil::run` calls `install(OsClipboard)` when the `desktop` feature (`clipboard` → arboard) is on, so text widgets paste from the OS automatically. Outside `run` (tests, embed hosts), nothing is installed. `sigil::clipboard::copy(text)` / `paste()` are the `AppResult` convenience wrappers, and the `clipboard-image` feature adds `image()`. `text_field` and `text_edit` accept a per-widget `.clipboard(clip)` override.
 
@@ -51,7 +51,7 @@ drag_ghost(drag, |item| text(item.clone()).nowrap());
 
 `terminal(lines: Signal<Vec<String>>, on_input: Fn(String)) -> NodeBuilder`. A dumb pipe view, not an emulator: it paints `lines` as monospace rows in a `virtual_list` pinned to the bottom, and forwards key-down input as strings: typed text verbatim, Enter as `\n`, Backspace as `DEL`, Tab as `\t`. The node is a focusable `Role::TextInput`.
 
-Pair it with `Session` (`sigil::app::Session` or via the prelude under `pty`): `Session::spawn(program)` opens a PTY, parses output through vt100 into `session.lines` (a `Signal<Vec<String>>`), and `session.write(&bytes)` sends input to the child. Spawn requires a `Runtime::scope` owner. `Session` exists only with the `pty` feature. Dropping the session kills the child. The `terminal` widget itself is not feature-gated. Feed it lines from anywhere.
+Pair it with `Session` (`sigil::app::Session` or via the prelude under `pty`): `Session::spawn(program)` opens a PTY, parses output through vt100 into `session.lines` (a `Signal<Vec<String>>`), and `session.write(&bytes)` sends input to the child. Spawn requires a `Owner::scope` owner. `Session` exists only with the `pty` feature. Dropping the session kills the child. The `terminal` widget itself is not feature-gated. Feed it lines from anywhere.
 
 ## States, keys, and accessibility
 

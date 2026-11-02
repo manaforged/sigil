@@ -1,9 +1,9 @@
 use std::io;
 use std::time::Duration;
 
-use crossterm::event::{self, Event};
+use crossterm::event::{self, Event as TermEvent};
 
-use crate::events::{ShellEvent, WindowEvent};
+use crate::events::{Event, WindowEvent};
 use crate::geometry::{LogicalSize, Scale};
 use crate::terminal::keys::{map_key, push_key_text, strip_replies};
 use crate::terminal::mouse::map_mouse;
@@ -14,18 +14,18 @@ use crate::{AppConfig, AppResult, Error};
 pub(crate) enum Incoming {
     Quit,
     Idle,
-    Events(Vec<ShellEvent>),
-    Resized(u16, u16, Vec<ShellEvent>),
+    Events(Vec<Event>),
+    Resized(u16, u16, Vec<Event>),
 }
 
-pub(crate) struct Wake {
+pub(crate) struct InputWake {
     #[cfg(unix)]
     rx: Option<std::os::unix::net::UnixStream>,
     #[cfg(windows)]
     pasted: std::cell::Cell<Option<std::time::Instant>>,
 }
 
-impl Wake {
+impl InputWake {
     #[cfg(unix)]
     pub(crate) fn install(async_rt: &mut crate::tasks::AsyncRuntime) -> Self {
         use std::io::IsTerminal;
@@ -159,7 +159,7 @@ pub(crate) fn gather_input(
     config: &AppConfig,
     pointer: &mut crate::geometry::Point,
     hooks: &mut Hooks<'_>,
-    (wake, (wait, listen)): (&Wake, (Option<Duration>, bool)),
+    (wake, (wait, listen)): (&InputWake, (Option<Duration>, bool)),
 ) -> AppResult<Incoming> {
     let mut incoming = Vec::new();
     let mut resize = None;
@@ -177,7 +177,7 @@ pub(crate) fn gather_input(
     #[cfg(windows)]
     if let Some(text) = crate::terminal::keys::burst_paste(&burst, wake.follows_paste()) {
         wake.pasted.set(Some(std::time::Instant::now()));
-        incoming.push(crate::terminal::keys::paste(&text));
+        incoming.push(crate::events::Event::paste(text));
         burst.clear();
     }
     for read in burst {
@@ -208,30 +208,30 @@ pub(crate) fn gather_input(
 enum Input {
     Quit,
     Suspend,
-    Event(ShellEvent),
+    Event(Event),
     Resize(u16, u16),
     None,
 }
 
-fn map_input(event: Event, config: &AppConfig, pointer: &mut crate::geometry::Point) -> Input {
+fn map_input(event: TermEvent, config: &AppConfig, pointer: &mut crate::geometry::Point) -> Input {
     match event {
-        Event::Key(key) => {
+        TermEvent::Key(key) => {
             if quit(&key, config) {
                 Input::Quit
             } else {
                 map_key(&key).map_or(Input::None, |mapped| keyed(mapped, config))
             }
         }
-        Event::Resize(cols, rows) => Input::Resize(cols, rows),
-        Event::Mouse(mouse) => map_mouse(&mouse, CELL, pointer).map_or(Input::None, Input::Event),
-        Event::Paste(pasted) => Input::Event(crate::terminal::keys::paste(&pasted)),
-        Event::FocusGained => focus(true),
-        Event::FocusLost => focus(false),
+        TermEvent::Resize(cols, rows) => Input::Resize(cols, rows),
+        TermEvent::Mouse(mouse) => Input::Event(map_mouse(mouse, CELL, pointer)),
+        TermEvent::Paste(pasted) => Input::Event(Event::Paste(pasted)),
+        TermEvent::FocusGained => focus(true),
+        TermEvent::FocusLost => focus(false),
     }
 }
 
-fn keyed(mapped: ShellEvent, config: &AppConfig) -> Input {
-    if let (ShellEvent::Key(key), Some(shortcut)) = (&mapped, &config.suspend)
+fn keyed(mapped: Event, config: &AppConfig) -> Input {
+    if let (Event::Key(key), Some(shortcut)) = (&mapped, &config.suspend)
         && key.phase == crate::events::KeyPhase::Down
         && shortcut.matches(key)
     {
@@ -243,12 +243,12 @@ fn keyed(mapped: ShellEvent, config: &AppConfig) -> Input {
 
 fn focus(yes: bool) -> Input {
     set_focused(yes);
-    Input::Event(ShellEvent::Window(WindowEvent::Focused(yes)))
+    Input::Event(Event::Window(WindowEvent::Focused(yes)))
 }
 
-fn resized(cols: u16, rows: u16) -> ShellEvent {
+fn resized(cols: u16, rows: u16) -> Event {
     let (width, height) = crate::terminal::run::view(cols, rows);
-    ShellEvent::Window(WindowEvent::Resized(
+    Event::Window(WindowEvent::Resized(
         Scale::ONE.to_physical(LogicalSize::new(width, height)),
     ))
 }

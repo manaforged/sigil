@@ -1,9 +1,9 @@
 use sigil::prelude::{
-    AlignItems, ControlSize, Icon, LayoutBuilderExt, LayoutStyle, NodeBuilder, Paint, Token, Tone,
-    button, card, chip, container, dot, dropdown, scroll, spacer, text,
+    AlignItems, ControlSize, Icon, LayoutStyle, NodeBuilder, Paint, Token, Tone, button, card,
+    chip, container, dot, dropdown, scroll, spacer, text,
 };
+use sigil::prelude::{IntoNode, Widget};
 use sigil::style::space;
-use sigil::widgets::ScrollBuilder;
 
 use super::data::{
     Bucket, ENV_FILTER_LABELS, ENV_FILTERS, GROUP_WIDTH, Service, TEXT_SMALL, WEIGHT_STRONG,
@@ -50,7 +50,7 @@ fn header(console: Console) -> NodeBuilder {
         )
 }
 
-fn cards(console: Console) -> ScrollBuilder {
+fn cards(console: Console) -> impl IntoNode {
     scroll(
         container()
             .layout(LayoutStyle::flex_column().fill_width().gap(space(2)))

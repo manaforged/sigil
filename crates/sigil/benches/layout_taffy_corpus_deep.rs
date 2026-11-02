@@ -11,8 +11,9 @@ use std::time::Duration;
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeBuilder, container};
-use sigil::layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{Dimension, LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil_kittest::FakeMeasure;
 use taffy::prelude::*;
 
 const DEPTH: usize = 17;
@@ -20,10 +21,7 @@ const ROOT_WIDTH: f32 = 800.0;
 const ROOT_HEIGHT: f32 = 800.0;
 const AVAILABLE: Size = Size::fixed(ROOT_WIDTH, ROOT_HEIGHT);
 
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 0.0,
-    height: 0.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(0.0, 0.0);
 
 const fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
     taffy::Size {

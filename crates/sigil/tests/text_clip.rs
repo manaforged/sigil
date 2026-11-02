@@ -17,7 +17,7 @@ fn clip_for(cell: TextBuilder) -> (Option<sigil::geometry::Rect>, sigil::geometr
         None,
         sigil::geometry::Rect::new(sigil::geometry::Point::new(0.0, 0.0), 0.0, 0.0),
     );
-    sigil::reactive::Runtime::scope("text-clip", || {
+    sigil::reactive::Owner::scope("text-clip", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
@@ -31,14 +31,14 @@ fn clip_for(cell: TextBuilder) -> (Option<sigil::geometry::Rect>, sigil::geometr
             .expect("layout");
         let text_id = *cx.get(root).unwrap().children().first().unwrap();
         let rect = layout.result(text_id).unwrap().rect();
-        let scene = sigil::scene::emit_scene(&cx, root);
+        let scene = sigil::scene::emit_scene(&cx, root, None);
         let mut clip: Option<sigil::geometry::Rect> = None;
         let mut hit = None;
         for command in &scene.commands {
             match command {
                 SceneCommand::PushClip(push) => clip = Some(*push),
                 SceneCommand::PopClip => clip = None,
-                SceneCommand::GlyphRun(draw) if draw.run.node == Some(text_id) => hit = clip,
+                SceneCommand::GlyphRun(draw) if draw.node == Some(text_id) => hit = clip,
                 _ => {}
             }
         }

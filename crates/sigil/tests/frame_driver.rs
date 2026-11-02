@@ -9,6 +9,7 @@
     clippy::ignored_unit_patterns
 )]
 
+use sigil::reactive::Owner;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -16,7 +17,7 @@ use sigil::reactive::{DrawPhase, Runtime};
 
 #[test]
 fn frame_driver_walks_idle_to_idle_through_all_phases() {
-    Runtime::scope("frame_driver::phase_walk", || {
+    Owner::scope("frame_driver::phase_walk", || {
         let trace: Rc<RefCell<Vec<DrawPhase>>> =
             Rc::new(RefCell::new(vec![Runtime::current_phase()]));
 
@@ -46,7 +47,7 @@ fn frame_driver_walks_idle_to_idle_through_all_phases() {
 
 #[test]
 fn begin_effect_runs_before_layout_pass() {
-    Runtime::scope("frame_driver::effect_before_layout", || {
+    Owner::scope("frame_driver::effect_before_layout", || {
         let observed_phase = Rc::new(Cell::new(DrawPhase::Idle));
         let phase_writer = Rc::clone(&observed_phase);
         let s = sigil::reactive::signal(0_i32);
@@ -79,7 +80,7 @@ fn begin_effect_runs_before_layout_pass() {
 #[test]
 #[should_panic(expected = "Signal::set")]
 fn paint_phase_signal_set_panics_in_debug() {
-    Runtime::scope("frame_driver::paint_signal_set_panics", || {
+    Owner::scope("frame_driver::paint_signal_set_panics", || {
         let s = sigil::reactive::signal(0_i32);
         sigil::app::__drive_test_frame(
             || {},
@@ -92,7 +93,7 @@ fn paint_phase_signal_set_panics_in_debug() {
 
 #[test]
 fn read_paths_in_paint_pass_are_legal() {
-    Runtime::scope("frame_driver::read_in_paint", || {
+    Owner::scope("frame_driver::read_in_paint", || {
         let s = sigil::reactive::signal(42_i32);
         let observed = Rc::new(Cell::new((0_i32, DrawPhase::Idle)));
         let writer = Rc::clone(&observed);

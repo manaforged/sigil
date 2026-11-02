@@ -7,6 +7,7 @@ use crate::reactive::effect::effect;
 use crate::reactive::runtime::with_rt;
 use crate::reactive::signal::{Signal, signal_in};
 
+/// Creates a signal that recomputes from the signals it reads.
 #[must_use]
 #[track_caller]
 pub fn derived<T, F>(mut f: F) -> Signal<T>

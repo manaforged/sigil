@@ -8,10 +8,10 @@ Data moves in this order:
 
 ```text
 OS event (winit)
-    → EventRouter (hit-test on last frame's boxes)
+    → internal EventRouter (hit-test on last frame's boxes)
     → handler writes a signal
     → Effect: derived values and effects run
-    → Layout: LayoutEngine::compute when the frame is dirty
+    → Layout: internal LayoutEngine::compute when the frame is dirty
     → Paint: emit_scene builds a CommandScene
     → wgpu presents
     → Host::surfaces lists holes for native views

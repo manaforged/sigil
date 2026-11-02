@@ -1,24 +1,37 @@
 use std::sync::{PoisonError, RwLock};
 
+/// The script a web fallback font covers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum WebFontScript {
+    /// The cjk web font script.
     Cjk,
+    /// The arabic web font script.
     Arabic,
+    /// The hebrew web font script.
     Hebrew,
+    /// The devanagari web font script.
     Devanagari,
+    /// The khmer web font script.
     Khmer,
+    /// The thai web font script.
     Thai,
+    /// The lao web font script.
     Lao,
 }
 
+/// A fallback font that the web build downloads.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WebFont {
+    /// The script.
     pub script: WebFontScript,
+    /// The url.
     pub url: String,
+    /// The face index.
     pub face_index: u32,
 }
 
 impl WebFont {
+    /// Creates a web font.
     #[must_use]
     pub fn new(script: WebFontScript, url: impl Into<String>, face_index: u32) -> Self {
         Self {
@@ -28,6 +41,7 @@ impl WebFont {
         }
     }
 
+    /// Returns the default Noto fallback fonts.
     #[must_use]
     pub fn noto_defaults() -> Vec<Self> {
         NOTO_DEFAULTS
@@ -70,6 +84,7 @@ const NOTO_DEFAULTS: &[(WebFontScript, &str)] = &[
 
 static WEB_FALLBACKS: RwLock<Option<Vec<WebFont>>> = RwLock::new(None);
 
+/// Replaces the web fallback fonts.
 pub fn set_web_fallbacks(fonts: impl IntoIterator<Item = WebFont>) {
     let fonts = fonts.into_iter().collect();
     *WEB_FALLBACKS
@@ -77,7 +92,9 @@ pub fn set_web_fallbacks(fonts: impl IntoIterator<Item = WebFont>) {
         .unwrap_or_else(PoisonError::into_inner) = Some(fonts);
 }
 
+/// Returns the web fallback fonts.
 #[must_use]
+#[cfg(any(target_arch = "wasm32", feature = "kittest"))]
 pub fn web_fallbacks() -> Vec<WebFont> {
     WEB_FALLBACKS
         .read()

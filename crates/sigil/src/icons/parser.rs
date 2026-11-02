@@ -1,6 +1,6 @@
 use usvg::tiny_skia_path::PathSegment;
 
-use crate::icons::BakeError;
+use crate::{Error, ErrorKind};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ViewBox {
@@ -8,14 +8,18 @@ pub(crate) struct ViewBox {
     pub(crate) height: f32,
 }
 
-pub(crate) fn parse(svg_source: &str) -> Result<(Vec<Vec<PathSegment>>, ViewBox), BakeError> {
+pub(crate) fn parse(svg_source: &str) -> Result<(Vec<Vec<PathSegment>>, ViewBox), Error> {
     if crate::widgets::source_too_large(svg_source) {
-        return Err(BakeError::SvgParseError(crate::widgets::oversize_message()));
+        return Err(Error::message(
+            ErrorKind::Svg,
+            format_args!("SVG parse error: {}", crate::widgets::oversize_message()),
+        ));
     }
     if nesting_depth(svg_source.as_bytes()) > MAX_ELEMENT_DEPTH {
-        return Err(BakeError::SvgParseError(String::from(
-            "SVG element nesting is deeper than the 128 limit",
-        )));
+        return Err(Error::fixed(
+            ErrorKind::Svg,
+            "SVG parse error: SVG element nesting is deeper than the 128 limit",
+        ));
     }
     let opts = usvg::Options {
         image_href_resolver: usvg::ImageHrefResolver {
@@ -25,13 +29,16 @@ pub(crate) fn parse(svg_source: &str) -> Result<(Vec<Vec<PathSegment>>, ViewBox)
         ..usvg::Options::default()
     };
     let tree = usvg::Tree::from_str(svg_source, &opts)
-        .map_err(|e| BakeError::SvgParseError(e.to_string()))?;
+        .map_err(|e| Error::message(ErrorKind::Svg, format_args!("SVG parse error: {e}")))?;
     let view_box = ViewBox {
         width: tree.size().width(),
         height: tree.size().height(),
     };
     if view_box.width <= 0.0 || view_box.height <= 0.0 {
-        return Err(BakeError::ViewBoxMissing);
+        return Err(Error::fixed(
+            ErrorKind::Svg,
+            "SVG viewBox attribute is missing",
+        ));
     }
 
     let mut paths = Vec::new();

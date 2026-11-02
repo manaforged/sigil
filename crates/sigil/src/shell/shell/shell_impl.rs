@@ -1,18 +1,19 @@
 use std::sync::Arc;
 
 use crate::app::WindowCommand;
-use crate::events::ShellEvent;
+use crate::events::Event;
 use crate::geometry::{LogicalSize, PhysicalSize, Rect};
 use crate::hal::Shell;
 use winit::dpi::{LogicalPosition as WinitLogicalPosition, LogicalSize as WinitLogicalSize};
 
 use crate::app::WindowOpts;
-use crate::shell::{ShellError, WinitWindowHandle, app::WinitApp, waker::WinitWaker};
+use crate::shell::{WinitWindowHandle, app::WinitApp, waker::WinitWaker};
+use crate::{Error, ErrorKind};
 
 use super::{PendingWindowSize, WinitShell};
 
 impl Shell for WinitShell {
-    type Error = ShellError;
+    type Error = Error;
     type Waker = WinitWaker;
     type Window = WinitWindowHandle;
 
@@ -61,7 +62,8 @@ impl Shell for WinitShell {
         Ok(self.queue_window(title, PendingWindowSize::Logical(initial), opts))
     }
 
-    fn drain_events(&mut self) -> std::vec::IntoIter<ShellEvent> {
+    #[cfg(any(test, feature = "kittest"))]
+    fn drain_events(&mut self) -> std::vec::IntoIter<Event> {
         self.drain_tagged_events()
             .map(|(_, event)| event)
             .collect::<Vec<_>>()
@@ -112,7 +114,10 @@ impl Shell for WinitShell {
     where
         F: FnMut(&mut Self) + 'static,
     {
-        let event_loop = self.event_loop.take().ok_or(ShellError::AlreadyRun)?;
+        let event_loop = self.event_loop.take().ok_or(Error::fixed(
+            ErrorKind::AlreadyRun,
+            "shell run called twice",
+        ))?;
         let app = WinitApp {
             shell: self,
             frame,
@@ -127,9 +132,12 @@ impl Shell for WinitShell {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let mut app = app;
-            event_loop.run_app(&mut app)?;
+            event_loop.run_app(&mut app).map_err(Error::event_loop)?;
             match app.shell.take_failed_windows().into_iter().next() {
-                Some((_, error)) => Err(ShellError::Window(error)),
+                Some((_, error)) => Err(Error::message(
+                    ErrorKind::Window,
+                    format_args!("window creation failed: {error}"),
+                )),
                 None => Ok(()),
             }
         }

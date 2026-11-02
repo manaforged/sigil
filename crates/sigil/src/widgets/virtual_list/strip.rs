@@ -3,9 +3,9 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container, node, schedule_keyed_rebuild};
-use crate::layout::LayoutReactiveExt;
-use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Signal, derived, effect_named, signal as signal_of};
+use crate::widgets::Widget;
 
 use super::RowRender;
 use super::measure::{Measure, Tops, row_key_of};

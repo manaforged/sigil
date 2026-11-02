@@ -13,7 +13,7 @@ fn laid_out(cx: &mut Cx, root: NodeId) -> LayoutEngine {
 
 #[test]
 fn key_hook_on_a_widget_builder_runs_once_on_the_widget() {
-    sigil::reactive::Runtime::scope("sigil-widget-builder-key-hook", || {
+    sigil::reactive::Owner::scope("sigil-widget-builder-key-hook", || {
         let hits = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
         let root = cx.add(button("Go").key(LogicalKey::character("x"), {
@@ -32,14 +32,14 @@ fn key_hook_on_a_widget_builder_runs_once_on_the_widget() {
 
 #[test]
 fn map_node_reports_the_root_id_of_a_list_and_an_image() {
-    sigil::reactive::Runtime::scope("sigil-widget-builder-map-node", || {
+    sigil::reactive::Owner::scope("sigil-widget-builder-map-node", || {
         let list_id = Rc::new(Cell::new(None));
         let image_id = Rc::new(Cell::new(None));
         let mut cx = Cx::new_root();
         let list = cx.add(
             virtual_list(
                 vec![String::from("a"), String::from("b")],
-                |_, row: &String| list_row(false, row.clone(), ""),
+                |_, row: &String| list_row(false, row.clone(), ListRowSlots::default()),
             )
             .map_node({
                 let list_id = Rc::clone(&list_id);

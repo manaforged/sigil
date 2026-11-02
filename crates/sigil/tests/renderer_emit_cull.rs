@@ -2,15 +2,13 @@
 
 use sigil::geometry::{Point, Rect, Size};
 use sigil::kernel::*;
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, Overflow};
-use sigil::scene::{SceneCommand, emit_scene, emit_scene_clipped};
+use sigil::layout::{LayoutEngine, LayoutStyle, Overflow};
+use sigil::prelude::Widget;
+use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::{Paint, Token};
-use sigil_kittest::CharMeasure;
+use sigil_kittest::FakeMeasure;
 
-const TEXT_MEASURE: CharMeasure = CharMeasure {
-    char_width: 8.0,
-    line_height: 20.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 20.0);
 
 fn layout(cx: &mut Cx, root: NodeId) {
     let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
@@ -49,8 +47,8 @@ fn clipped_emit_skips_rows_below_the_viewport() {
     let root = cx.add(column(None));
     layout(&mut cx, root);
 
-    let full = emit_scene(&cx, root);
-    let clipped = emit_scene_clipped(
+    let full = emit_scene(&cx, root, None);
+    let clipped = emit_scene(
         &cx,
         root,
         Some(Rect::new(Point::new(0.0, 0.0), 200.0, 80.0)),
@@ -73,7 +71,7 @@ fn overflow_clip_culls_without_an_explicit_viewport() {
     let mut cx = Cx::new_root();
     let root = cx.add(column(Some(Overflow::Hidden)));
     layout(&mut cx, root);
-    let n = glyph_runs(&emit_scene(&cx, root));
+    let n = glyph_runs(&emit_scene(&cx, root, None));
     assert!(
         n <= 6,
         "overflow hidden on the 80px column must drop offscreen rows, got {n}"
@@ -86,8 +84,8 @@ fn second_emit_matches_first() {
     let root = cx.add(column(None));
     layout(&mut cx, root);
     let clip = Some(Rect::new(Point::new(0.0, 0.0), 200.0, 80.0));
-    let a = emit_scene_clipped(&cx, root, clip);
-    let b = emit_scene_clipped(&cx, root, clip);
+    let a = emit_scene(&cx, root, clip);
+    let b = emit_scene(&cx, root, clip);
     assert_eq!(
         a.commands.len(),
         b.commands.len(),

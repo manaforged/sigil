@@ -1,9 +1,9 @@
 use std::time::{Duration, Instant};
 
+use accesskit::TreeUpdate;
 use sigil::Host;
-use sigil::app::{AccessibilityTree, FrameHooks, FrameInfo, FramePaintHook};
-use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
+use sigil::app::{FrameHooks, FrameInfo, FramePaintHook};
+use sigil::events::Event;
 use sigil::prelude::*;
 use sigil::profile::{self, BackendKind, BackendStatus, FallbackCause};
 use sigil::reactive::Runtime;
@@ -21,14 +21,13 @@ mod snapshot;
 
 pub use actions::Target;
 pub use query::{Node, Query};
-pub use snapshot::SNAPSHOT_MAX_DELTA_PCT;
 
 const FRAME_DT: f32 = 1.0 / 60.0;
 const POLL: Duration = Duration::from_millis(5);
 
-type Pending = Box<dyn FnOnce(&mut Host)>;
+type PendingMount = Box<dyn FnOnce(&mut Host)>;
 
-enum Surface {
+enum HarnessSurface {
     Cells {
         screen: Box<Screen>,
         size: (u16, u16),
@@ -40,7 +39,7 @@ enum Surface {
     Gpu(Box<GpuSurface>),
 }
 
-impl Surface {
+impl HarnessSurface {
     fn viewport(&self) -> (f32, f32) {
         match self {
             Self::Cells { size, .. } => (
@@ -67,14 +66,29 @@ impl Surface {
 pub struct Harness {
     clock: Instant,
     owner: Owner,
-    pending: Option<Pending>,
+    pending: Option<PendingMount>,
     host: Host,
-    router: EventRouter,
-    surface: Surface,
+    surface: HarnessSurface,
     tasks: AsyncRuntime,
 }
 
 impl Harness {
+    /// Runs one terminal frame of a tree and returns the screen text.
+    pub fn present<N: IntoNode>(
+        tree: impl Fn() -> N + 'static,
+        cols: u16,
+        rows: u16,
+        events: &[Event],
+    ) -> Result<String, sigil::Error> {
+        Owner::scope("sigil-terminal-present", || {
+            let mut host = Host::new(sigil::kernel::HostMode::Cell);
+            host.mount(tree);
+            host.layout((f32::from(cols) * Host::CELL, f32::from(rows) * Host::CELL))?;
+            host.repair_focus();
+            Ok(host.grid(events.iter().cloned(), cols, rows)?.text())
+        })
+    }
+
     #[must_use]
     pub fn new(app: impl IntoNode + 'static) -> Self {
         let clock = Instant::now();
@@ -85,15 +99,14 @@ impl Harness {
             clock,
             owner: Owner::new("sigil-kittest-harness", None),
             pending: Some(Box::new(move |host: &mut Host| host.mount(app))),
-            host: Host::cells(),
-            router: EventRouter::new(),
+            host: Host::new(sigil::kernel::HostMode::Cell),
             surface: Self::cells(80, 24),
             tasks,
         }
     }
 
-    fn cells(cols: u16, rows: u16) -> Surface {
-        Surface::Cells {
+    fn cells(cols: u16, rows: u16) -> HarnessSurface {
+        HarnessSurface::Cells {
             screen: Box::new(Screen::new(cols, rows)),
             size: (cols, rows),
         }
@@ -101,15 +114,15 @@ impl Harness {
 
     #[must_use]
     pub fn size(mut self, cols: u16, rows: u16) -> Self {
-        self.host = Host::cells();
+        self.host = Host::new(sigil::kernel::HostMode::Cell);
         self.surface = Self::cells(cols, rows);
         self
     }
 
     #[must_use]
     pub fn pixels(mut self, width: u32, height: u32) -> Self {
-        self.host = Host::new();
-        self.surface = Surface::Pixels {
+        self.host = Host::new(sigil::kernel::HostMode::Pixel);
+        self.surface = HarnessSurface::Pixels {
             size: (width, height),
             fallback: FallbackCause::None,
         };
@@ -118,12 +131,12 @@ impl Harness {
 
     #[must_use]
     pub fn gpu(mut self, width: u32, height: u32, scale: f32) -> Self {
-        self.host = Host::new();
+        self.host = Host::new(sigil::kernel::HostMode::Pixel);
         if let Some(gpu) = GpuSurface::open(width, height, scale).unwrap_or_else(|err| fail(err)) {
-            self.surface = Surface::Gpu(Box::new(gpu));
+            self.surface = HarnessSurface::Gpu(Box::new(gpu));
         } else {
             eprintln!("sigil-kittest: no GPU adapter; gpu surface falls back to pixels");
-            self.surface = Surface::Pixels {
+            self.surface = HarnessSurface::Pixels {
                 size: (width, height),
                 fallback: FallbackCause::NoAdapter,
             };
@@ -141,7 +154,7 @@ impl Harness {
         self
     }
 
-    fn frame(&mut self, events: Vec<ShellEvent>) -> Result<(), Error> {
+    fn frame(&mut self, events: Vec<Event>) -> Result<(), Error> {
         let _ = self.tasks.pump();
         let owner = self.owner;
         profile::begin_frame(self.surface.backend());
@@ -150,29 +163,24 @@ impl Harness {
         painted
     }
 
-    fn paint(&mut self, events: Vec<ShellEvent>) -> Result<(), Error> {
+    fn paint(&mut self, events: Vec<Event>) -> Result<(), Error> {
         let layout = match &mut self.surface {
-            Surface::Cells { screen, size } => screen
-                .frame(&mut self.host, &mut self.router, events, *size)
-                .map(|_| ()),
-            Surface::Pixels { size, .. } => {
+            HarnessSurface::Cells { screen, size } => {
+                screen.frame(&mut self.host, events, *size).map(|_| ())
+            }
+            HarnessSurface::Pixels { size, .. } => {
                 let viewport = (crate::extent_f32(size.0), crate::extent_f32(size.1));
                 self.host
-                    .frame(&mut self.router, viewport, FRAME_DT, hooks(events, None))
+                    .frame(viewport, FRAME_DT, hooks(events, None))
                     .layout
             }
-            Surface::Gpu(gpu) => {
+            HarnessSurface::Gpu(gpu) => {
                 let viewport = gpu.viewport;
                 let paint: FramePaintHook<'_> =
-                    Box::new(|host: &mut Host, _: &mut EventRouter, _: &FrameInfo| gpu.paint(host));
+                    Box::new(|host: &mut Host, _: &FrameInfo| gpu.paint(host));
                 let layout = self
                     .host
-                    .frame(
-                        &mut self.router,
-                        viewport,
-                        FRAME_DT,
-                        hooks(events, Some(paint)),
-                    )
+                    .frame(viewport, FRAME_DT, hooks(events, Some(paint)))
                     .layout;
                 gpu.take_error()?;
                 layout
@@ -181,13 +189,13 @@ impl Harness {
         layout.map_err(|err| Error::Layout(err.to_string()))
     }
 
-    fn frames(&mut self, events: Vec<ShellEvent>) -> Result<(), Error> {
+    fn frames(&mut self, events: Vec<Event>) -> Result<(), Error> {
         self.frame(events)?;
         crate::settle::settle(busy, || self.frame(Vec::new()))
     }
 
     #[track_caller]
-    pub fn send(&mut self, events: impl IntoIterator<Item = ShellEvent>) -> &mut Self {
+    pub fn send(&mut self, events: impl IntoIterator<Item = Event>) -> &mut Self {
         let events = events.into_iter().collect();
         self.live().frames(events).unwrap_or_else(|err| fail(err));
         self
@@ -238,7 +246,7 @@ impl Harness {
 
     #[must_use]
     pub fn text(&mut self) -> String {
-        if let Surface::Cells { screen, .. } = &self.live().surface {
+        if let HarnessSurface::Cells { screen, .. } = &self.live().surface {
             return screen.text();
         }
         self.accessibility_snapshot()
@@ -250,21 +258,21 @@ impl Harness {
     }
 
     #[must_use]
-    pub fn accessibility_tree(&mut self) -> AccessibilityTree {
+    pub fn accessibility_tree(&mut self) -> TreeUpdate {
         self.live();
-        self.host.accessibility_tree(&self.router)
+        self.host.accessibility_tree()
     }
 
-    pub fn host(&mut self) -> (&mut Host, &mut EventRouter) {
+    pub fn host(&mut self) -> &mut Host {
         self.live();
-        (&mut self.host, &mut self.router)
+        &mut self.host
     }
 
     #[must_use]
     pub fn misalignments(&mut self) -> Vec<sigil::layout::align::Misalignment> {
         self.live();
         let tolerance = sigil::layout::align::Tolerance::for_mode(self.host.host_mode());
-        self.host.misalignments(tolerance)
+        sigil::testing::misalignments(&self.host, tolerance)
     }
 
     #[track_caller]
@@ -289,18 +297,16 @@ pub(crate) fn fail(message: impl std::fmt::Display) -> ! {
     panic!("{message}")
 }
 
-fn hooks(events: Vec<ShellEvent>, paint: Option<FramePaintHook<'_>>) -> FrameHooks<'_> {
+fn hooks(events: Vec<Event>, paint: Option<FramePaintHook<'_>>) -> FrameHooks<'_> {
     FrameHooks {
-        input: Some(Box::new(
-            move |host: &mut Host, router: &mut EventRouter| {
-                let _effect = sigil::profile::span(sigil::profile::Phase::Effect);
-                for event in events {
-                    sigil::profile::note_input(&event);
-                    host.route(router, event);
-                }
-                None
-            },
-        )),
+        input: Some(Box::new(move |host: &mut Host| {
+            let _effect = sigil::profile::span(sigil::profile::Phase::Effect);
+            for event in events {
+                sigil::profile::note_input(&event);
+                host.route(event);
+            }
+            None
+        })),
         paint,
         ..FrameHooks::default()
     }

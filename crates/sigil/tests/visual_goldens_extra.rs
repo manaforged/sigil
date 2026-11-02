@@ -11,10 +11,7 @@ use sigil::app::DefaultTextMeasure;
 
 use sigil::prelude::*;
 
-use sigil_kittest::{
-    InteractionMode, assert_rendered_matches_golden, golden_path, render_widget_to_png_stub,
-    render_widget_to_png_with,
-};
+use sigil_kittest::{Golden, Harness, InteractionMode};
 
 const DELTA_PCT: f32 = 0.5;
 

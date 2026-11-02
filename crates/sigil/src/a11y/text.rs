@@ -5,7 +5,7 @@ use crate::kernel::{A11yProps, NodeId};
 
 pub(super) type RunNodes = Vec<(AkNodeId, AkNode)>;
 
-struct Run<'a> {
+struct AccessRun<'a> {
     id: AkNodeId,
     start: usize,
     text: &'a str,
@@ -17,11 +17,11 @@ pub(super) fn child_id(owner: NodeId, index: usize, kind: u64) -> AkNodeId {
     AkNodeId(owner.to_accesskit().0 ^ tag)
 }
 
-fn runs(owner: NodeId, text: &str) -> Vec<Run<'_>> {
+fn runs(owner: NodeId, text: &str) -> Vec<AccessRun<'_>> {
     let mut out = Vec::new();
     let mut start = 0;
     for (line, piece) in text.split_inclusive('\n').enumerate() {
-        out.push(Run {
+        out.push(AccessRun {
             id: child_id(owner, line, 1),
             start,
             text: piece,
@@ -29,7 +29,7 @@ fn runs(owner: NodeId, text: &str) -> Vec<Run<'_>> {
         start += piece.len();
     }
     if out.is_empty() || text.ends_with('\n') {
-        out.push(Run {
+        out.push(AccessRun {
             id: child_id(owner, out.len(), 1),
             start,
             text: "",
@@ -38,7 +38,7 @@ fn runs(owner: NodeId, text: &str) -> Vec<Run<'_>> {
     out
 }
 
-fn position(runs: &[Run<'_>], byte: usize) -> Option<TextPosition> {
+fn position(runs: &[AccessRun<'_>], byte: usize) -> Option<TextPosition> {
     let run = runs
         .iter()
         .find(|run| byte < run.start + run.text.len())
@@ -51,7 +51,7 @@ fn position(runs: &[Run<'_>], byte: usize) -> Option<TextPosition> {
     })
 }
 
-fn byte_of(runs: &[Run<'_>], position: TextPosition) -> Option<usize> {
+fn byte_of(runs: &[AccessRun<'_>], position: TextPosition) -> Option<usize> {
     let run = runs.iter().find(|run| run.id == position.node)?;
     let offset: usize = run
         .text
@@ -62,7 +62,7 @@ fn byte_of(runs: &[Run<'_>], position: TextPosition) -> Option<usize> {
     Some(run.start + offset)
 }
 
-fn run_node(run: &Run<'_>) -> AkNode {
+fn run_node(run: &AccessRun<'_>) -> AkNode {
     let mut node = AkNode::new(Role::TextRun);
     node.set_value(run.text);
     let lengths: Vec<u8> = run

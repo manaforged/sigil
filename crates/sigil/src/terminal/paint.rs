@@ -19,22 +19,25 @@ mod mask;
 mod paint_clip;
 mod region;
 mod scene;
-mod transform;
 
 pub(super) use cell::Face;
 pub use cell::{Cell, Ink, Lines, Underline};
-pub use marks::Marks;
+pub(crate) use marks::Marks;
 pub(crate) use region::raster_regions;
-pub use scene::{Paint, raster, raster_into, raster_with};
+#[cfg(test)]
+pub(crate) use scene::raster;
+pub(crate) use scene::{CellPaint, raster_into, raster_with};
 
-pub const CONTINUES: &str = "";
+/// The text of a cell that continues a wide character.
+pub(crate) const CONTINUES: &str = "";
 
+/// The cells of one painted frame.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Grid {
     cols: usize,
     rows: usize,
     cells: Vec<Cell>,
-    edges: Vec<Option<Frame>>,
+    edges: Vec<Option<CellEdge>>,
     images: Vec<Placement>,
     graphics: bool,
     cursor: Option<(usize, usize)>,
@@ -42,6 +45,7 @@ pub struct Grid {
 }
 
 impl Grid {
+    /// Creates a grid.
     #[must_use]
     pub fn new(cols: u16, rows: u16) -> Self {
         let cols = cols as usize;
@@ -58,10 +62,12 @@ impl Grid {
         }
     }
 
+    /// Sets the graphics.
     pub const fn set_graphics(&mut self, graphics: bool) {
         self.graphics = graphics;
     }
 
+    /// Returns the cursor.
     #[must_use]
     pub const fn cursor(&self) -> Option<(usize, usize)> {
         self.cursor
@@ -80,21 +86,39 @@ impl Grid {
         }
     }
 
+    /// Returns the images.
     #[must_use]
     pub fn images(&self) -> &[Placement] {
         &self.images
     }
 
+    #[cfg(test)]
+    pub(crate) fn push_image(&mut self, place: Placement) {
+        self.images.push(place);
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn cell(&self, col: usize, row: usize) -> Option<&Cell> {
+        if col >= self.cols || row >= self.rows {
+            return None;
+        }
+        self.cells.get(row * self.cols + col)
+    }
+
+    /// Returns the cols.
     #[must_use]
     pub const fn cols(&self) -> usize {
         self.cols
     }
 
+    /// Returns the rows.
     #[must_use]
     pub const fn rows(&self) -> usize {
         self.rows
     }
 
+    /// Clears every cell.
     pub fn reset(&mut self) {
         self.cells.fill(Cell::blank());
         self.edges.fill(None);
@@ -111,6 +135,7 @@ impl Grid {
         }
     }
 
+    /// Changes the grid size.
     pub fn resize(&mut self, cols: u16, rows: u16) {
         if (self.cols, self.rows) != (cols as usize, rows as usize) {
             self.reshape(cols as usize, rows as usize, Cell::default());
@@ -118,6 +143,7 @@ impl Grid {
         self.cursor = None;
     }
 
+    /// Copies the cells of `other`.
     pub fn mirror(&mut self, other: &Self) {
         self.reshape(other.cols, other.rows, Cell::blank());
     }
@@ -135,6 +161,7 @@ impl Grid {
         self.edges.resize(cols.saturating_mul(rows), None);
     }
 
+    /// Returns the cells of one row.
     #[must_use]
     pub fn row(&self, row: usize) -> &[Cell] {
         let start = row.saturating_mul(self.cols);
@@ -143,6 +170,7 @@ impl Grid {
             .unwrap_or_default()
     }
 
+    /// Returns the width of one row up to its last painted cell.
     #[must_use]
     pub fn painted_width(&self, row: usize) -> usize {
         self.row(row)
@@ -151,12 +179,14 @@ impl Grid {
             .map_or(0, |last| last.saturating_add(1))
     }
 
+    /// Returns a copy of the cell at this position.
     #[must_use]
     pub fn get(&self, col: usize, row: usize) -> Option<Cell> {
         let i = self.index(col, row)?;
         self.cells.get(i).cloned()
     }
 
+    /// Returns the text.
     #[must_use]
     pub fn text(&self) -> String {
         let mut out = String::new();
@@ -206,14 +236,14 @@ impl Grid {
         }
     }
 
-    fn fill(&mut self, area: Area, bg: Ink, theme: &Theme) {
+    fn fill(&mut self, area: CellArea, bg: Ink, theme: &Theme) {
         if !bg.set() {
             return;
         }
         self.each(area, |cell| decoration::background(cell, bg, theme));
     }
 
-    fn rule(&mut self, area: Area, glyph: &str, ink: Ink) {
+    fn rule(&mut self, area: CellArea, glyph: &str, ink: Ink) {
         self.each(area, |cell| {
             cell.text = glyph.into();
             if ink.set() {
@@ -222,7 +252,7 @@ impl Grid {
         });
     }
 
-    fn each(&mut self, area: Area, mut paint: impl FnMut(&mut Cell)) {
+    fn each(&mut self, area: CellArea, mut paint: impl FnMut(&mut Cell)) {
         let ((col, row), (width, height), inside) = area;
         let inner = frame(inside);
         let (xs, ys) = self.bound(
@@ -245,7 +275,7 @@ impl Grid {
         }
     }
 
-    fn fill_cell(&mut self, index: usize, inner: Frame, paint: &mut impl FnMut(&mut Cell)) {
+    fn fill_cell(&mut self, index: usize, inner: CellEdge, paint: &mut impl FnMut(&mut Cell)) {
         let edge = self.edges.get(index).copied().flatten();
         if edge.is_some_and(|edge| encloses(edge, inner)) {
             return;
@@ -300,7 +330,7 @@ fn map_glyph(cell: &mut Cell, glyphs: Glyphs) {
     }
 }
 
-fn cell_text(grapheme: &str, pad: usize) -> SmolStr {
+pub(crate) fn cell_text(grapheme: &str, pad: usize) -> SmolStr {
     if pad == 0 {
         crate::app::cell_glyph(grapheme).into()
     } else {
@@ -308,15 +338,15 @@ fn cell_text(grapheme: &str, pad: usize) -> SmolStr {
     }
 }
 
-type Area = ((usize, usize), (usize, usize), Rect);
+type CellArea = ((usize, usize), (usize, usize), Rect);
 
-type Frame = [i32; 4];
+type CellEdge = [i32; 4];
 
 #[allow(
     clippy::cast_possible_truncation,
     reason = "scene coordinates fit the i32 range after rounding"
 )]
-fn frame(rect: Rect) -> Frame {
+fn frame(rect: Rect) -> CellEdge {
     let px = |value: f32| value.round() as i32;
     [
         px(rect.origin.x),
@@ -326,7 +356,7 @@ fn frame(rect: Rect) -> Frame {
     ]
 }
 
-fn encloses(outer: Frame, inner: Frame) -> bool {
+fn encloses(outer: CellEdge, inner: CellEdge) -> bool {
     let [left, top, right, bottom] = outer;
     let [x0, y0, x1, y1] = inner;
     x0 >= left && y0 >= top && x1 <= right + 1 && y1 <= bottom + 1 && inner != outer

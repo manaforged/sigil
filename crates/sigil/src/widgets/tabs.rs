@@ -4,4 +4,5 @@ mod drag;
 mod list;
 mod tab;
 
-pub use builder::{TabsBuilder, tabs};
+pub(crate) use builder::TabsBuilder;
+pub use builder::tabs;

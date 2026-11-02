@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -6,11 +7,14 @@
 
 #[path = "events_support/input.rs"]
 mod input;
+use input::ctrl_s;
 #[path = "events_support/mock_shell.rs"]
 mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
 mod routing_helpers;
 
+use sigil::events::Event;
+use sigil::widgets::Widget;
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -18,7 +22,6 @@ use sigil::events::{Key, KeyPhase, LogicalKey, PhysicalKey, Shortcut, *};
 use sigil::kernel::*;
 use sigil::layout::*;
 
-use input::{ctrl_s, key_event};
 use routing_helpers::{compute_layout, route_event};
 
 #[test]
@@ -64,13 +67,13 @@ fn focused_key_up_does_not_invoke_action() {
         &mut router,
         &mut cx,
         &layout,
-        key_event(Key::Enter, PhysicalKey::Enter, KeyPhase::Up),
+        Event::key(Key::Enter, KeyPhase::Up).physical(PhysicalKey::Enter),
     );
     route_event(
         &mut router,
         &mut cx,
         &layout,
-        key_event(Key::Enter, PhysicalKey::Enter, KeyPhase::Down),
+        Event::key(Key::Enter, KeyPhase::Down).physical(PhysicalKey::Enter),
     );
 
     assert_eq!(hits.get(), 1);
@@ -107,15 +110,10 @@ fn focused_key_any_receives_unregistered_text_input() {
     assert_eq!(hits.get(), 1);
 }
 
-fn text_key_event(text: &str, physical: PhysicalKey) -> sigil::events::ShellEvent {
-    sigil::events::ShellEvent::Key(sigil::events::KeyEvent::new(sigil::events::KeyEventInit {
-        key: LogicalKey::character(text),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: Some(text.into()),
-    }))
+fn text_key_event(text: &str, physical: PhysicalKey) -> sigil::events::Event {
+    sigil::events::Event::key(LogicalKey::character(text), KeyPhase::Down)
+        .physical(physical)
+        .text(Some(text.into()))
 }
 
 struct SlashFixture {
@@ -252,13 +250,8 @@ fn modifier_chord_still_fires_while_text_input_focused() {
     assert_eq!(typed.get(), 0);
 }
 
-fn ctrl_k() -> sigil::events::ShellEvent {
-    sigil::events::ShellEvent::Key(sigil::events::KeyEvent::new(sigil::events::KeyEventInit {
-        key: LogicalKey::character("k"),
-        physical: PhysicalKey::KeyK,
-        modifiers: ModifiersState::CONTROL,
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn ctrl_k() -> sigil::events::Event {
+    sigil::events::Event::key(LogicalKey::character("k"), KeyPhase::Down)
+        .physical(PhysicalKey::KeyK)
+        .modifiers(ModifiersState::CONTROL)
 }

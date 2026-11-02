@@ -6,11 +6,11 @@
 #![allow(clippy::indexing_slicing)]
 
 use sigil::reactive::debug::{dump_owner_tree, dump_subtree};
-use sigil::reactive::{Owner, Runtime, effect, on_cleanup, signal};
+use sigil::reactive::{Owner, effect, on_cleanup, signal};
 
 #[test]
 fn dump_owner_tree_renders_single_root() {
-    let dump = Runtime::scope("single_root", dump_owner_tree);
+    let dump = Owner::scope("single_root", dump_owner_tree);
 
     let lines: Vec<&str> = dump.lines().collect();
     assert_eq!(
@@ -31,7 +31,7 @@ fn dump_owner_tree_renders_single_root() {
 
 #[test]
 fn dump_owner_tree_renders_nested_owners_with_names_and_locations() {
-    let dump = Runtime::scope("nested_root", || {
+    let dump = Owner::scope("nested_root", || {
         let outer = Owner::new("Window(main)", Owner::current());
         outer.with(|| {
             let _inner_a = Owner::new("Button(a)", Owner::current());
@@ -62,7 +62,7 @@ fn dump_owner_tree_renders_nested_owners_with_names_and_locations() {
 
 #[test]
 fn dump_owner_tree_includes_signal_and_effect_counts() {
-    let dump = Runtime::scope("counts_root", || {
+    let dump = Owner::scope("counts_root", || {
         let leaf = Owner::new("Leaf", Owner::current());
         leaf.with(|| {
             let _a = signal(0_i32);
@@ -93,7 +93,7 @@ fn dump_owner_tree_includes_signal_and_effect_counts() {
 
 #[test]
 fn dump_owner_tree_renders_effect_run_owner_as_child() {
-    let dump = Runtime::scope("with_effect", || {
+    let dump = Owner::scope("with_effect", || {
         let host = Owner::new("Host", Owner::current());
         host.with(|| {
             let s = signal(0_i32);
@@ -121,7 +121,7 @@ fn dump_owner_tree_renders_effect_run_owner_as_child() {
 
 #[test]
 fn dump_subtree_scopes_to_given_owner() {
-    Runtime::scope("subtree_root", || {
+    Owner::scope("subtree_root", || {
         let sibling_a = Owner::new("SiblingA", Owner::current());
         sibling_a.with(|| {
             let _a = signal(1_i32);
@@ -132,7 +132,7 @@ fn dump_subtree_scopes_to_given_owner() {
         });
 
         let full = dump_owner_tree();
-        let sub = dump_subtree(sibling_b.id());
+        let sub = dump_subtree(sibling_b);
 
         assert!(
             full.contains("SiblingA"),

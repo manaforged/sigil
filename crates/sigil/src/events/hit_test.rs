@@ -163,6 +163,28 @@ impl HitTestCache {
     }
 }
 
+pub(crate) fn walk_order<'a, F>(
+    cx: &'a Cx,
+    roots: &[NodeId],
+    enter: F,
+) -> impl Iterator<Item = (NodeId, &'a crate::kernel::Node)> + use<'a, F>
+where
+    F: Fn(NodeId, &crate::kernel::Node) -> bool + 'a,
+{
+    let mut stack: Vec<NodeId> = roots.iter().rev().copied().collect();
+    std::iter::from_fn(move || {
+        while let Some(id) = stack.pop() {
+            let Some(node) = cx.get(id) else { continue };
+            if !enter(id, node) {
+                continue;
+            }
+            stack.extend(node.children().iter().rev().copied());
+            return Some((id, node));
+        }
+        None
+    })
+}
+
 pub(crate) fn visible(cx: &Cx, target: NodeId) -> bool {
     let mut current = Some(target);
     while let Some(id) = current {

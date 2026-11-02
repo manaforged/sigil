@@ -14,19 +14,20 @@ mod scene_support;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::{pointer_down, pointer_move};
 use scene_support::color;
+use sigil::events::Event;
 use sigil::events::EventRouter;
+use sigil::geometry::Point;
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, IntoNode, NodeBuilder, container, text};
 use sigil::layout::{
-    AlignItems, Dimension, Display, FlexDirection, JustifyContent, LayoutBuilderExt, LayoutStyle,
-    LengthPercentage, Overflow,
+    AlignItems, Dimension, Display, FlexDirection, JustifyContent, LayoutStyle, Overflow,
 };
+use sigil::prelude::Widget;
 use sigil::scene::{DrawRect, SceneCommand, emit_scene};
 use sigil::style::{
-    ColorAtom, ColorKey, ColorOrToken, FontFamily, Paint, Radius, Rgba8, StateStyleBuilder,
-    StateVariants, TextLineHeight, Theme, Token,
+    ColorAtom, FontFamily, Paint, Radius, Rgba8, StateStyleBuilder, StateVariants, TextLineHeight,
+    Theme, Token,
 };
 use widget_support::compute;
 
@@ -58,14 +59,14 @@ fn rects(build: impl IntoNode, drive: Drive) -> Vec<DrawRect> {
     let mut router = EventRouter::new();
     match drive {
         Drive::Rest => {}
-        Drive::Hover => router.route(&mut cx, &layout, pointer_move(8.0, 8.0)),
+        Drive::Hover => router.route(&mut cx, &layout, Event::pointer_move(Point::new(8.0, 8.0))),
         Drive::Press => {
-            router.route(&mut cx, &layout, pointer_move(8.0, 8.0));
-            router.route(&mut cx, &layout, pointer_down(8.0, 8.0));
+            router.route(&mut cx, &layout, Event::pointer_move(Point::new(8.0, 8.0)));
+            router.route(&mut cx, &layout, Event::pointer_down(Point::new(8.0, 8.0)));
         }
         Drive::Focus => router.set_focus(&mut cx, Some(root)),
     }
-    emit_scene(&cx, root)
+    emit_scene(&cx, root, None)
         .commands
         .into_iter()
         .filter_map(|command| match command {
@@ -91,7 +92,7 @@ fn painted_opacity(build: impl IntoNode) -> Option<u16> {
     let root = cx.add(build);
     let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
     let mut layers = vec![1.0_f32];
-    for command in emit_scene(&cx, root).commands {
+    for command in emit_scene(&cx, root, None).commands {
         let top = *layers.last().unwrap();
         match command {
             SceneCommand::PushLayer(scope) => layers.push(top * scope.opacity),
@@ -208,11 +209,11 @@ fn padding_methods_sweep_order_preserved() {
         .padding_right(40.0)
         .padding_bottom(48.0)
         .padding_left(56.0);
-    let padding = style.data().padding;
-    assert_eq!(padding.top, LengthPercentage::Px(32.0));
-    assert_eq!(padding.right, LengthPercentage::Px(40.0));
-    assert_eq!(padding.bottom, LengthPercentage::Px(48.0));
-    assert_eq!(padding.left, LengthPercentage::Px(56.0));
+    let padding = sigil::testing::style_data(&style).padding;
+    assert_eq!(padding.top, Dimension::Px(32.0));
+    assert_eq!(padding.right, Dimension::Px(40.0));
+    assert_eq!(padding.bottom, Dimension::Px(48.0));
+    assert_eq!(padding.left, Dimension::Px(56.0));
 }
 
 #[test]
@@ -221,15 +222,27 @@ fn sizing_methods_emit_correct_atoms() {
         .width(100.0)
         .height(50.0)
         .width(Dimension::Percent(1.0));
-    assert_eq!(style.data().size.width, Dimension::Percent(1.0));
-    assert_eq!(style.data().size.height, Dimension::Px(50.0));
+    assert_eq!(
+        sigil::testing::style_data(&style).size.width,
+        Dimension::Percent(1.0)
+    );
+    assert_eq!(
+        sigil::testing::style_data(&style).size.height,
+        Dimension::Px(50.0)
+    );
 }
 
 #[test]
 fn overflow_hidden_emits_both_axes() {
     let style = LayoutStyle::default().overflow(Overflow::Hidden);
-    assert_eq!(style.data().overflow.width, Overflow::Hidden);
-    assert_eq!(style.data().overflow.height, Overflow::Hidden);
+    assert_eq!(
+        sigil::testing::style_data(&style).overflow.width,
+        Overflow::Hidden
+    );
+    assert_eq!(
+        sigil::testing::style_data(&style).overflow.height,
+        Overflow::Hidden
+    );
 }
 
 #[test]
@@ -271,17 +284,12 @@ fn state_builder_implements_styled_within_closure() {
 }
 
 #[test]
-fn color_or_token_from_impls_route_correctly() {
-    let from_rgba: ColorOrToken = color(1, 2, 3, 4).into();
-    let from_token: ColorOrToken = Token::Surface.into();
-    let from_atom: ColorOrToken = ColorAtom::Rgba8(color(9, 9, 9, 9)).into();
+fn color_atom_from_impls_route_correctly() {
+    let from_rgba: ColorAtom = color(1, 2, 3, 4).into();
+    let from_token: ColorAtom = Token::Surface.into();
 
-    assert!(matches!(from_rgba, ColorOrToken::Rgba(_)));
-    assert!(matches!(
-        from_token,
-        ColorOrToken::Token(ColorKey::Token(Token::Surface))
-    ));
-    assert!(matches!(from_atom, ColorOrToken::Atom(_)));
+    assert!(matches!(from_rgba, ColorAtom::Rgba8(_)));
+    assert!(matches!(from_token, ColorAtom::Token(Token::Surface)));
 }
 
 #[test]
@@ -301,8 +309,8 @@ fn font_methods_emit_typography_atoms() {
             .line_height_px(20.0),
     );
     let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
-    let scene = emit_scene(&cx, root);
-    let style = &scene.find_text("Aa").expect("glyph run").run.style;
+    let scene = emit_scene(&cx, root, None);
+    let style = &scene.find_text("Aa").expect("glyph run").style;
     assert_eq!(style.font_size, 14.0);
     assert_eq!(style.font_weight, 600);
     assert_eq!(style.font_family, "mono");
@@ -319,13 +327,13 @@ fn flex_layout_methods_emit_correct_atoms() {
         .gap(8.0)
         .grow(1.0)
         .shrink(0.5);
-    let data = style.data();
+    let data = sigil::testing::style_data(&style);
     assert_eq!(data.display, Display::Flex);
     assert_eq!(data.flex_direction, FlexDirection::Row);
     assert_eq!(data.align_items, Some(AlignItems::Center));
     assert_eq!(data.justify_content, Some(JustifyContent::SpaceBetween));
-    assert_eq!(data.gap.width, LengthPercentage::Px(8.0));
-    assert_eq!(data.gap.height, LengthPercentage::Px(8.0));
+    assert_eq!(data.gap.width, Dimension::Px(8.0));
+    assert_eq!(data.gap.height, Dimension::Px(8.0));
     assert_eq!(data.flex_grow, 1.0);
     assert_eq!(data.flex_shrink, 0.5);
 }
@@ -338,8 +346,14 @@ fn empty_builder_has_empty_style() {
 
 #[test]
 fn flex_grow_takes_a_factor_like_every_other_grow() {
-    assert_eq!(LayoutStyle::default().grow(2.0).data().flex_grow, 2.0);
-    assert_eq!(LayoutStyle::default().grow(1.0).data().flex_grow, 1.0);
+    assert_eq!(
+        sigil::testing::style_data(&LayoutStyle::default().grow(2.0)).flex_grow,
+        2.0
+    );
+    assert_eq!(
+        sigil::testing::style_data(&LayoutStyle::default().grow(1.0)).flex_grow,
+        1.0
+    );
 }
 
 #[test]

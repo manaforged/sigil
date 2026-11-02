@@ -1,11 +1,15 @@
 use super::*;
 use crate::hal::ParagraphMetrics;
+use crate::style::StyledTextEngine as _;
 use crate::style::TextLineHeight;
+use crate::style::TextStyle;
 use crate::text::OwnedTextEngine;
-use crate::text::config::TextConfig;
 
 fn make_paragraph(text: &str, style: &TextStyle) -> Paragraph {
-    let e = OwnedTextEngine::new(TextConfig::default());
+    let e = OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    });
     e.layout_paragraph_styled(text, None, style).unwrap()
 }
 

@@ -4,7 +4,7 @@ use std::path::Path;
 
 use serde_json::{Value, json, to_writer};
 
-use crate::profile::event::Event;
+use crate::profile::event::TraceEvent;
 use crate::profile::key::{Counter, Phase};
 use crate::profile::store::{self, Frame};
 
@@ -76,9 +76,9 @@ fn value(out: &mut BufWriter<File>, value: &Value) -> io::Result<()> {
     to_writer(out, value).map_err(io::Error::other)
 }
 
-fn event_value(event: Event) -> Value {
+fn event_value(event: TraceEvent) -> Value {
     match event {
-        Event::Complete {
+        TraceEvent::Complete {
             phase,
             tid,
             start_us,
@@ -87,11 +87,11 @@ fn event_value(event: Event) -> Value {
             "name": phase.name(), "cat": phase.category().name(), "ph": "X", "ts": start_us,
             "dur": dur_us, "pid": 1, "tid": tid
         }),
-        Event::Instant { name, cat, ts_us } => json!({
+        TraceEvent::Instant { name, cat, ts_us } => json!({
             "name": name, "cat": cat, "ph": "i", "s": "t",
             "ts": ts_us, "pid": 1, "tid": 1
         }),
-        Event::Counter {
+        TraceEvent::Counter {
             counter,
             ts_us,
             value,
@@ -99,11 +99,11 @@ fn event_value(event: Event) -> Value {
             "name": counter.name(), "ph": "C", "ts": ts_us,
             "pid": 1, "tid": 1, "args": {"value": value}
         }),
-        Event::FlowStart { name, id, ts_us } => json!({
+        TraceEvent::FlowStart { name, id, ts_us } => json!({
             "name": name, "cat": "input", "ph": "s", "id": id,
             "ts": ts_us, "pid": 1, "tid": 1
         }),
-        Event::FlowFinish { name, id, ts_us } => json!({
+        TraceEvent::FlowFinish { name, id, ts_us } => json!({
             "name": name, "cat": "input", "ph": "f", "bp": "e",
             "id": id, "ts": ts_us, "pid": 1, "tid": 1
         }),

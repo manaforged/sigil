@@ -18,7 +18,7 @@ pub(crate) fn compute(
 }
 
 pub(crate) fn rect_colors(cx: &Cx, root: NodeId) -> Vec<Rgba8> {
-    emit_scene(cx, root)
+    emit_scene(cx, root, None)
         .commands
         .iter()
         .filter_map(|c| match c {

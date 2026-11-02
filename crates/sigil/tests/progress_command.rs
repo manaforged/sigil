@@ -15,7 +15,7 @@ use widget_support::{assert_approx, rect_colors};
 
 #[test]
 fn progress_has_progress_indicator_role() {
-    sigil::reactive::Runtime::scope("sigil-progress-role", || {
+    sigil::reactive::Owner::scope("sigil-progress-role", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(progress(value, 100.0));
@@ -26,7 +26,7 @@ fn progress_has_progress_indicator_role() {
 
 #[test]
 fn progress_aria_value_reflects_signal() {
-    sigil::reactive::Runtime::scope("sigil-progress-aria-value", || {
+    sigil::reactive::Owner::scope("sigil-progress-aria-value", || {
         let value = signal(50.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(progress(value, 100.0));
@@ -40,7 +40,7 @@ fn progress_aria_value_reflects_signal() {
 
 #[test]
 fn progress_aria_value_updates_reactively() {
-    sigil::reactive::Runtime::scope("sigil-progress-aria-reactive", || {
+    sigil::reactive::Owner::scope("sigil-progress-aria-reactive", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(progress(value, 100.0));
@@ -54,7 +54,7 @@ fn progress_aria_value_updates_reactively() {
 
 #[test]
 fn progress_track_emits_border_strong_color() {
-    sigil::reactive::Runtime::scope("sigil-progress-track-color", || {
+    sigil::reactive::Owner::scope("sigil-progress-track-color", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(progress(value, 100.0));
@@ -74,7 +74,7 @@ fn progress_track_emits_border_strong_color() {
 
 #[test]
 fn progress_fill_emits_accent_color() {
-    sigil::reactive::Runtime::scope("sigil-progress-fill-color", || {
+    sigil::reactive::Owner::scope("sigil-progress-fill-color", || {
         let value = signal(60.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(progress(value, 100.0));
@@ -94,7 +94,7 @@ fn progress_fill_emits_accent_color() {
 
 #[test]
 fn progress_indeterminate_emits_accent_fill() {
-    sigil::reactive::Runtime::scope("sigil-progress-indeterminate-color", || {
+    sigil::reactive::Owner::scope("sigil-progress-indeterminate-color", || {
         let phase = signal(0.5_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(progress(phase, 1.0).indeterminate());

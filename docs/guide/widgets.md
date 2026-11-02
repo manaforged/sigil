@@ -1,6 +1,6 @@
 # Widgets
 
-The catalog ships in `sigil`. Every widget constructs from a lowercase function and chains a builder. Widgets take typed styling: the `Paint` methods for color, border, radius, shadow, and font, and `StateVariants` for hover, focus, press, and disabled paint. `WidgetLayoutExt` sizing applies where the builder implements it (containers and most controls); `virtual_list`, `table`, `slider`, and `code_edit` size via `.viewport_height()`/`.row_height()` or `.layout()` instead. Focusable widgets publish accessibility roles and accept IME input. The rustdoc lists every builder method.
+The catalog ships in `sigil`. Every widget constructs from a lowercase function and chains a builder. Widgets take typed styling: the `Paint` methods for color, border, radius, shadow, and font, and the `Widget` state methods for hover, focus, press, and disabled paint. Every builder takes the `Widget` sizing methods; `virtual_list`, `table`, `slider`, and `code_edit` size via `.viewport_height()`/`.row_height()` or `.layout()` instead. Focusable widgets publish accessibility roles and accept IME input. The rustdoc lists every builder method.
 
 The family pages carry signatures, options, and behavior notes:
 
@@ -69,9 +69,9 @@ The family pages carry signatures, options, and behavior notes:
 - **toast(message)**: a `Signal<Option<String>>`. `Some` shows a status line; `None` hides it.
 - **tabs()**: chain `.tab(label, component)` per tab, and `.close(Fn(usize))`.
 - **scroll(inner)**: measures its content; `.extent(px)` sets a known height. Chain `.width()` and `.height()`.
-- **menu_bar()**: a GPU app bar. `Paint` methods such as `.bg(Token::SurfaceHover)` style the strip. `.menu("File", [MenuItem::new("Open").activate(|| {})])` builds a dropdown. This is the bar you design. The native OS bar is opt-in: `sigil::app::menu::set_menu_bar` (feature `menu`, next frame).
+- **menu_bar()**: a GPU app bar. `Paint` methods such as `.bg(Token::SurfaceHover)` style the strip. `.menu("File", [MenuItem::new("Open").activate(|| {})])` builds a dropdown. This is the bar you design. The native OS bar is opt-in: `sigil::app::menu::Menu::install` (feature `menu`, next frame).
 - **menu(Signal\<bool\>)**: a GPU popup panel (`.item`, `.separator()`). Use it for context menus, not the app bar.
-- **tooltip(label)**: chain `.shortcut()`; it wraps a target child.
+- **tooltip(label)**: chain `.hint()`; it wraps a target child.
 
 `field(label, control)` lives with the widgets. `patterns::` still has `app_shell`, `kv_grid`, and `hint_overlay`.
 
@@ -96,7 +96,7 @@ let hits = derived(move || {
 modal(open).title("Command").child(
     container()
         .child(text_field(query).placeholder("Filter…"))
-        .child(virtual_list(hits, |_i, row| list_row(false, *row, ""))),
+        .child(virtual_list(hits, |_i, row| list_row(false, *row, ListRowSlots::default()))),
 );
 # };
 ```

@@ -6,6 +6,7 @@ use crate::reactive::{Signal, batch, signal};
 
 use super::super::TextEdit;
 
+/// Caret and undo state of a text editor.
 #[derive(Clone)]
 pub struct TextEditState {
     pub(in crate::widgets::text_edit) value: Signal<String>,
@@ -15,6 +16,7 @@ pub struct TextEditState {
 }
 
 impl TextEditState {
+    /// Creates a text edit state.
     #[must_use]
     pub fn new(value: Signal<String>, caret: Signal<usize>) -> Self {
         let edit = TextEdit::new_at(value.peek(), caret.peek());
@@ -27,6 +29,7 @@ impl TextEditState {
         }
     }
 
+    /// Moves the caret to `byte` and extends the selection when `extend` is true.
     pub fn select(&self, byte: usize, extend: bool) {
         let mut edit = synced(&self.edit, self.value, self.caret);
         if extend {
@@ -37,12 +40,14 @@ impl TextEditState {
         self.publish(&edit, false);
     }
 
+    /// Inserts `text` at the caret.
     pub fn insert(&self, text: &str) {
         let mut edit = synced(&self.edit, self.value, self.caret);
         edit.insert_str(text);
         self.publish(&edit, true);
     }
 
+    /// Replaces all the text.
     pub fn replace(&self, text: &str) {
         let mut edit = synced(&self.edit, self.value, self.caret);
         edit.replace(text);
@@ -59,6 +64,7 @@ impl TextEditState {
         });
     }
 
+    /// Returns the selection.
     #[must_use]
     pub fn selection(&self) -> Option<Range<usize>> {
         let anchor = self.selection.get()?;

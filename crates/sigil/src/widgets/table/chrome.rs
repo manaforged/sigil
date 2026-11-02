@@ -3,14 +3,15 @@ use crate::style::theme::ambient::theme_string;
 use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
-use crate::reactive::{Owner, OwnerId, Signal, signal};
-use crate::style::{ControlSize, Metrics, NodeStyleExt};
+use crate::layout::{LayoutStyle, Position};
+use crate::reactive::{Owner, Signal, signal};
+use crate::style::{ControlSize, Metrics};
+use crate::widgets::Widget;
 
-use super::super::layout_ext::WidgetLayoutExt;
 use super::super::menu::PANEL_INSET;
 use super::super::menu::{MenuItem, menu};
-use super::state::{SortDir, TableState};
+use super::state::TableState;
+use crate::kernel::SortDirection;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum ContextKind {
@@ -28,7 +29,7 @@ pub(super) struct TableChrome<Row: 'static> {
     pub kind: Signal<Option<ContextKind>>,
     pub row_menu: Option<RowMenu<Row>>,
     pub row_activate: Option<RowActivate<Row>>,
-    pub host: Option<OwnerId>,
+    pub host: Option<Owner>,
 }
 
 impl<Row: 'static> Clone for TableChrome<Row> {
@@ -137,10 +138,10 @@ fn header_menu<Row: 'static>(state: &TableState<Row>, id: &'static str) -> Vec<M
     let mut items = Vec::new();
     if state.is_sortable(id) {
         items.push(item(StringKey::SortAscending, |table, column| {
-            table.sort(column, SortDir::Ascending);
+            table.sort(column, SortDirection::Ascending);
         }));
         items.push(item(StringKey::SortDescending, |table, column| {
-            table.sort(column, SortDir::Descending);
+            table.sort(column, SortDirection::Descending);
         }));
     }
     items.push(item(StringKey::HideColumn, TableState::hide_column));

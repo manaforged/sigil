@@ -9,7 +9,9 @@ use crate::tasks::current::scope_parts;
 use crate::tasks::dispatch::dispatch_to_owner;
 use crate::tasks::runtime::attach_task;
 
+/// A channel receiver that `tasks::on_message` reads.
 pub trait MessageReceiver<T>: Send + 'static {
+    /// Waits for the next message; returns `None` when the channel closes.
     fn recv(&mut self) -> impl Future<Output = Option<T>> + Send + '_;
 }
 
@@ -32,17 +34,9 @@ struct Handlers<T> {
     close: Cell<Option<Close>>,
 }
 
+/// Runs `f` on the UI thread per message, then `on_close` when all senders drop.
 #[track_caller]
-pub fn on_message<T, F>(rx: impl MessageReceiver<T>, f: F)
-where
-    T: Send + 'static,
-    F: Fn(T) + 'static,
-{
-    on_message_or_close(rx, f, || {});
-}
-
-#[track_caller]
-pub fn on_message_or_close<T, F, C>(mut rx: impl MessageReceiver<T>, f: F, on_close: C)
+pub fn on_message<T, F, C>(mut rx: impl MessageReceiver<T>, f: F, on_close: C)
 where
     T: Send + 'static,
     F: Fn(T) + 'static,
@@ -71,6 +65,6 @@ where
             }
         });
     };
-    let task = parts.backend.spawn(owner.id(), work, drop);
+    let task = parts.backend.spawn(owner, work, drop);
     attach_task(&parts, owner, task);
 }

@@ -71,12 +71,12 @@ pub(crate) fn compact(frame: &Frame) -> String {
     line
 }
 
-#[cfg(feature = "scene")]
+#[cfg(feature = "desktop")]
 mod overlay {
     use super::{compact, level};
     use crate::geometry::{Point, Rect};
     use crate::profile::{self, FRAME_BUDGET_NS, Frame};
-    use crate::scene::command::{DrawGlyphRun, DrawRect, SceneRectStyle, shape_glyph_run};
+    use crate::scene::command::{DrawRect, shape_glyph_run};
     use crate::scene::corner_radii::CornerRadii;
     use crate::scene::{CommandScene, SceneCommand};
     use crate::style::{Rgba8, TextStyle};
@@ -96,8 +96,8 @@ mod overlay {
     const BAR_MAX_H: f32 = 26.0;
     const PAD: f32 = 8.0;
 
-    const fn rect(x: f32, y: f32, w: f32, h: f32, style: SceneRectStyle) -> SceneCommand {
-        SceneCommand::Rect(DrawRect::new(Rect::new(Point::new(x, y), w, h), style))
+    const fn at(x: f32, y: f32, w: f32, h: f32) -> Rect {
+        Rect::new(Point::new(x, y), w, h)
     }
 
     fn bars(scene: &mut CommandScene, shown: &[&Frame], x0: f32, y0: f32) {
@@ -113,13 +113,10 @@ mod overlay {
                 1 => WARN,
                 _ => OK,
             };
-            scene.commands.push(rect(
-                x,
-                y0 + PAD + (BAR_MAX_H - h),
-                BAR_W,
-                h,
-                SceneRectStyle::solid(color),
-            ));
+            scene.commands.push(SceneCommand::Rect(DrawRect::new(
+                at(x, y0 + PAD + (BAR_MAX_H - h), BAR_W, h),
+                color,
+            )));
             x += BAR_W + BAR_GAP;
         }
     }
@@ -138,12 +135,9 @@ mod overlay {
         let x0 = (viewport.0 - width - 10.0).max(4.0);
         let y0 = 10.0;
         let height = PAD.mul_add(2.0, BAR_MAX_H) + 14.0;
-        scene.commands.push(rect(
-            x0,
-            y0,
-            width,
-            height,
-            SceneRectStyle::new(BACKDROP, CornerRadii::uniform(6.0), 10_000),
+        scene.commands.push(SceneCommand::Rect(
+            DrawRect::new(at(x0, y0, width, height), BACKDROP)
+                .border_radius(CornerRadii::uniform(6.0)),
         ));
         bars(scene, &shown, x0, y0);
         if let Some(last) = frames.last() {
@@ -162,12 +156,10 @@ mod overlay {
                 style,
                 10_000,
             );
-            scene
-                .commands
-                .push(SceneCommand::GlyphRun(DrawGlyphRun::new(run)));
+            scene.commands.push(SceneCommand::GlyphRun(run));
         }
     }
 }
 
-#[cfg(feature = "scene")]
+#[cfg(feature = "desktop")]
 pub(crate) use overlay::overlay;

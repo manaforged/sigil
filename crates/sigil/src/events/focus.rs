@@ -4,10 +4,10 @@ use std::rc::Rc;
 use crate::geometry::Point;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
+#[cfg(any(test, feature = "kittest"))]
 use accesskit::{NodeId as AccessNodeId, TreeId, TreeUpdate};
 use smallvec::{SmallVec, smallvec};
 
-use crate::events::handlers::{EventHandlers, dispatch};
 use crate::events::hit_test::visible;
 
 mod scope;
@@ -16,16 +16,21 @@ mod targets;
 mod request;
 mod reveal;
 
-pub(crate) use request::{Autofocus, focus_on_trigger, take_focus_requests, take_reveal_requests};
-pub use request::{request_focus, request_reveal};
+pub use request::request_focus;
+pub(crate) use request::{Autofocus, focus_on_trigger, take_focus_requests};
 pub(crate) use reveal::{ScrollReveal, reveal_focus};
 
+/// Directional focus move.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum FocusIntent {
+    /// The up focus intent.
     Up,
+    /// The down focus intent.
     Down,
+    /// The left focus intent.
     Left,
+    /// The right focus intent.
     Right,
 }
 
@@ -44,7 +49,7 @@ pub(crate) fn note_focus_source(keyboard: bool) {
 }
 
 #[must_use]
-pub fn focus_from_keyboard() -> bool {
+pub(crate) fn focus_from_keyboard() -> bool {
     FOCUS_FROM_KEYBOARD
         .with(|slot| slot.borrow().clone())
         .map_or_else(|| FALLBACK_FOCUS_SOURCE.get(), |cell| cell.get())
@@ -110,10 +115,22 @@ impl FocusManager {
         let previous = self.focused;
         self.focused = target;
         if let Some(previous) = previous {
-            let _ = dispatch(cx, previous, EventHandlers::invoke_focus_out);
+            let _ = crate::events::handlers::fire(
+                cx,
+                previous,
+                crate::events::handlers::EventKind::FocusOut,
+                crate::events::handlers::Phase::Bubble,
+                crate::events::handlers::EventArg::Focus,
+            );
         }
         if let Some(next) = target {
-            let _ = dispatch(cx, next, EventHandlers::invoke_focus_in);
+            let _ = crate::events::handlers::fire(
+                cx,
+                next,
+                crate::events::handlers::EventKind::FocusIn,
+                crate::events::handlers::Phase::Bubble,
+                crate::events::handlers::EventArg::Focus,
+            );
         }
     }
 
@@ -169,6 +186,7 @@ impl FocusManager {
             .map(|(_, id)| id)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn a11y_focus_update(&self) -> TreeUpdate {
         TreeUpdate {
             nodes: Vec::new(),
@@ -268,21 +286,13 @@ fn collect_focusable(
     explicit: &mut Vec<(i32, NodeId)>,
     implicit: &mut Vec<NodeId>,
 ) {
-    if !visible(cx, id) {
-        return;
-    }
-    let Some(node) = cx.get(id) else {
-        return;
-    };
-    if node.a11y.focusable {
+    let walk = crate::events::hit_test::walk_order(cx, &[id], |id, _| visible(cx, id));
+    for (found, node) in walk.filter(|(_, node)| node.a11y.focusable) {
         match node.a11y.tab_index {
-            Some(index) if index >= 0 => explicit.push((index, id)),
-            None => implicit.push(id),
+            Some(index) if index >= 0 => explicit.push((index, found)),
+            None => implicit.push(found),
             Some(_) => {}
         }
-    }
-    for child in node.children().iter().copied() {
-        collect_focusable(cx, child, explicit, implicit);
     }
 }
 

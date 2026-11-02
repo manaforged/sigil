@@ -1,29 +1,31 @@
 use crate::reactive::Reactive;
+use crate::style::strings::StringKey;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::{Key, LogicalKey, NodeEventsExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
+use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
-    BORDER_WIDTH, ControlSize, Metrics, NodeStyleExt, PaintTarget, Px, StateHost, StateStyle,
-    Style, StyleAtom, StyleOverlay, StyleSlot, StyleVariant, Theme, Token, Tone, TransitionId,
+    BORDER_WIDTH, ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant,
+    Token, Tone, TransitionId,
 };
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use super::shared::{
-    BoolChange, BuilderMutator, activate_binary_key, activate_binary_pointer, binary_style_state,
-    control_row, control_surface, disabled_now, noop_bool_change,
+    BoolChange, Press, RELEASE_ENTER_SPACE, accessible_name_or, binary_style_state, control_row,
+    control_surface, disabled_now, noop_bool_change, press, static_label,
 };
 
 const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
 const CHECKBOX_BOX_SIZE: f32 = 16.0;
 const CHECKBOX_MARK_SIZE: f32 = 12.0;
 
+/// Builder of a checkbox.
 pub struct CheckboxBuilder {
     checked: Signal<bool>,
     partial: Option<Signal<bool>>,
@@ -31,7 +33,6 @@ pub struct CheckboxBuilder {
     disabled: Option<Signal<bool>>,
     tone: Tone,
     on_change: Option<BoolChange>,
-    mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
@@ -47,7 +48,7 @@ static UNCHECKED_HOVER: &[StyleAtom] = &[Token::SurfacePressed.bg()];
 static UNCHECKED_DOWN: &[StyleAtom] = &[Token::SurfacePressedStrong.bg()];
 static CHECKBOX_DISABLED: &[StyleAtom] = &[Token::SurfaceHover.bg()];
 static BOX_BASE: &[StyleAtom] = &[
-    StyleAtom::BorderRadius(Px(4)),
+    StyleAtom::BorderRadius(4),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::Border.border(),
     StyleAtom::Transition(CHECKBOX_TRANSITION),
@@ -67,12 +68,14 @@ static CELL_VARIANT: StyleVariant = StyleVariant::new(
 static MARK_VISIBLE: &[StyleAtom] = &[StyleAtom::Opacity(10_000)];
 static MARK_HIDDEN: &[StyleAtom] = &[StyleAtom::Opacity(0)];
 
+/// A checkbox.
 #[must_use]
 pub fn checkbox(checked: Signal<bool>) -> CheckboxBuilder {
     CheckboxBuilder::new(checked)
 }
 
 impl CheckboxBuilder {
+    /// Creates a checkbox builder.
     #[must_use]
     pub fn new(checked: Signal<bool>) -> Self {
         Self {
@@ -82,66 +85,60 @@ impl CheckboxBuilder {
             disabled: None,
             tone: Tone::Primary,
             on_change: None,
-            mutators: Vec::new(),
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
+    /// Sets the indeterminate.
     #[must_use]
     pub const fn indeterminate(mut self, partial: Signal<bool>) -> Self {
         self.partial = Some(partial);
         self
     }
 
+    /// Sets the tone.
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
+    /// Sets the change.
     #[must_use]
     pub fn change(mut self, change: impl Fn(bool) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self
     }
 
-    #[must_use]
-    pub fn theme(mut self, theme: Theme) -> Self {
-        self.mutators.push(Box::new(move |node| node.theme(theme)));
-        self
-    }
-
-    fn into_node_builder(mut self) -> NodeBuilder {
+    fn root(mut self) -> NodeBuilder {
         let enabled = !disabled_now(self.disabled);
         let interaction = InteractionState::new(enabled);
         let on_change = self
             .on_change
             .as_ref()
             .map_or_else(noop_bool_change, Rc::clone);
-        let layout_overrides = self.layout_overrides.clone();
         let has_label = self.label.is_some();
         let user_overlay = self.style_accumulator.take_state_overlay();
         let mut node = self.base_node(interaction, Rc::clone(&on_change), user_overlay);
-        for mutate in self.mutators {
-            node = mutate(node);
-        }
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
-        node.with(layout_overrides.apply(checkbox_layout(has_label)))
+        node.with(checkbox_layout(has_label))
     }
 
     fn base_node(
@@ -154,33 +151,29 @@ impl CheckboxBuilder {
         let partial = self.partial.unwrap_or_else(|| signal(false));
         let disabled = self.disabled;
         let tone = self.tone;
-        let (pointer_change, enter_change) = (Rc::clone(&on_change), Rc::clone(&on_change));
         let root = container()
             .role(Role::CheckBox)
-            .label(
-                self.label
-                    .as_ref()
-                    .and_then(TextContent::as_static_str)
-                    .map_or_else(|| String::from("Checkbox"), ToOwned::to_owned),
-            )
+            .label(accessible_name_or(
+                static_label(self.label.as_ref())
+                    .map(TextContent::Static)
+                    .as_ref(),
+                StringKey::Checkbox,
+            ))
             .checked(checked)
             .layout(checkbox_layout(self.label.is_some()));
-        let mut node = control_surface(root, interaction, disabled, user_overlay)
-            .pointer_up(move |event| {
-                activate_binary_pointer(event, interaction, disabled, checked, &pointer_change);
-            })
-            .key(Key::Enter, move |event| {
-                activate_binary_key(event, interaction, disabled, checked, &enter_change);
-            })
-            .key(LogicalKey::character(" "), move |event| {
-                activate_binary_key(event, interaction, disabled, checked, &on_change);
-            })
-            .child(checkbox_indicator(
-                CheckMark { checked, partial },
-                disabled,
-                tone,
-                interaction,
-            ));
+        let mut node = press(
+            control_surface(root, interaction, disabled, user_overlay),
+            interaction,
+            disabled,
+            Press::Flip(checked, on_change),
+            RELEASE_ENTER_SPACE,
+        )
+        .child(checkbox_indicator(
+            CheckMark { checked, partial },
+            disabled,
+            tone,
+            interaction,
+        ));
         if let Some(label) = self.label.clone() {
             node = node.child(
                 text(label)
@@ -192,28 +185,7 @@ impl CheckboxBuilder {
     }
 }
 
-impl PaintTarget for CheckboxBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl StateHost for CheckboxBuilder {}
-
-impl WidgetLayoutExt for CheckboxBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for CheckboxBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] CheckboxBuilder: paint(style_accumulator), widget, states(style_accumulator), node);
 
 fn checkbox_layout(has_label: bool) -> LayoutStyle {
     let metrics = Metrics::current();

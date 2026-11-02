@@ -1,10 +1,11 @@
 use crate::kernel::{IntoNode, NodeBuilder, TextContent, container, text};
 use crate::layout::snap;
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{ControlSize, Paint, Token, space};
+use crate::widgets::Widget;
 
 use super::super::button::icon_button;
 use super::super::scroll::{SCROLLBAR_WIDTH, scroll};

@@ -10,7 +10,7 @@ use std::rc::Rc;
 use sigil::geometry::{LogicalSize, Size};
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, TextMeasure};
-use sigil::style::{Paint, Px, StyleAtom, StyleBinding, TextStyle};
+use sigil::style::{Paint, StyleAtom, StyleBinding, TextStyle};
 
 #[derive(Default)]
 struct RecordingMeasure {
@@ -125,7 +125,7 @@ fn ancestor_typography_change_remeasures_descendant_text() {
     cx.get_mut(styled_id)
         .unwrap()
         .attach(StyleBinding::owned_atoms(
-            std::iter::once(StyleAtom::FontSize(Px(20))).collect(),
+            std::iter::once(StyleAtom::FontSize(20)).collect(),
         ));
     engine
         .compute(&mut cx, root, Size::fixed(600.0, 400.0))

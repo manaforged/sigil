@@ -1,8 +1,9 @@
 #![allow(unused_crate_dependencies, clippy::unwrap_used)]
 
 use sigil::geometry::Size;
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil_kittest::FakeMeasure;
 
 fn column_height(parent_h: f32) -> f32 {
     use sigil::kernel::{Cx, container};
@@ -17,7 +18,7 @@ fn column_height(parent_h: f32) -> f32 {
         .layout(LayoutStyle::block().height(parent_h).width(300.0))
         .child(col);
     let root = cx.add(parent);
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(300.0, 800.0))
         .unwrap();

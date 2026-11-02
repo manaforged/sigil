@@ -1,22 +1,21 @@
 use crate::geometry::Rect;
 
+use crate::Error;
 use crate::renderer::blur_paint::{BlurPipeline, PassCtx, PassSrc};
-use crate::renderer::error::RendererError;
 use crate::renderer::layer_composite::{CompositeRequest, LayerCompositePipeline};
 use crate::renderer::layer_pool::LayerHandle;
 use crate::renderer::scene_command::state::SceneState;
-use crate::renderer::scene_command::walk::{
-    IDENTITY, WalkCtx, compose, pipeline_for, transform_rect, translation,
-};
+use crate::renderer::scene_command::walk::{IDENTITY, compose, transform_rect};
+use crate::renderer::scene_command::walk::{WalkCtx, pipeline_for, translation};
 use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Transform};
 use crate::renderer::scene_instance::LAYER_FORMAT;
 use crate::renderer::scene_paint::PaintCtx;
 use crate::scene::corner_radii::CornerRadii;
 use crate::style::Color;
 
-use super::{Target, local_rect, physical_extent};
+use super::{LayerTarget, local_rect, physical_extent};
 
-pub(super) struct Layer {
+pub(super) struct OffscreenLayer {
     handle: LayerHandle,
     view: wgpu::TextureView,
     extent: (u32, u32),
@@ -73,11 +72,11 @@ pub(super) struct LayerPlan {
 }
 
 pub(super) struct OpenLayer {
-    layer: Layer,
+    layer: OffscreenLayer,
     parent_format: wgpu::TextureFormat,
 }
 
-pub(super) fn layer_plan(scope: LayerScope, target: &Target, scale: f32) -> Option<LayerPlan> {
+pub(super) fn layer_plan(scope: LayerScope, target: &LayerTarget, scale: f32) -> Option<LayerPlan> {
     if let LayerEffect::Transform(effect) = scope.effect {
         let frame = target
             .state
@@ -113,7 +112,7 @@ pub(super) fn layer_plan(scope: LayerScope, target: &Target, scale: f32) -> Opti
 pub(super) fn group_plan(
     opacity: f32,
     commands: &[SceneCommand],
-    target: &Target,
+    target: &LayerTarget,
     scale: f32,
 ) -> Option<LayerPlan> {
     let bounds = target.state.draw_bounds(commands, target.bounds, scale)?;
@@ -132,23 +131,22 @@ pub(super) fn group_plan(
 pub(super) fn open_layer(
     ctx: &mut WalkCtx<'_>,
     mut plan: LayerPlan,
-) -> Result<(OpenLayer, Target), RendererError> {
+) -> Result<(OpenLayer, LayerTarget), Error> {
     let extent = physical_extent(plan.dest, ctx.scale);
     let handle = ctx
         .layer_pool
         .get_or_insert_with(Default::default)
-        .acquire(ctx.device, extent.0, extent.1, LAYER_FORMAT)
-        .map_err(RendererError::Layer)?;
+        .acquire(ctx.device, extent.0, extent.1, LAYER_FORMAT)?;
     ctx.stats.record_offscreen(extent.0, extent.1);
     plan.reason.note(extent);
     ctx.encoder.clear(&handle.view, Color::TRANSPARENT);
     let parent_format = std::mem::replace(&mut ctx.format, LAYER_FORMAT);
-    let target = Target {
+    let target = LayerTarget {
         view: handle.view.clone(),
         bounds: plan.dest,
         state: std::mem::take(&mut plan.state),
     };
-    let layer = Layer {
+    let layer = OffscreenLayer {
         view: handle.view.clone(),
         handle,
         extent,
@@ -163,7 +161,7 @@ pub(super) fn open_layer(
     ))
 }
 
-pub(super) fn close_layer(ctx: &mut WalkCtx<'_>, open: OpenLayer) -> Result<Layer, RendererError> {
+pub(super) fn close_layer(ctx: &mut WalkCtx<'_>, open: OpenLayer) -> Result<OffscreenLayer, Error> {
     ctx.format = open.parent_format;
     let mut layer = open.layer;
     let Some(sigma) = layer.plan.blur_sigma else {
@@ -179,7 +177,7 @@ fn blurred_view(
     ctx: &mut WalkCtx<'_>,
     handle: &LayerHandle,
     sigma: f32,
-) -> Result<Option<wgpu::TextureView>, RendererError> {
+) -> Result<Option<wgpu::TextureView>, Error> {
     let mut pass = PassCtx {
         device: ctx.device,
         encoder: ctx.encoder,
@@ -200,7 +198,7 @@ fn blurred_view(
     blur.apply(&mut pass, pool, src, sigma)
 }
 
-pub(super) fn composite_layer(ctx: &mut WalkCtx<'_>, target: &Target, layer: Layer) {
+pub(super) fn composite_layer(ctx: &mut WalkCtx<'_>, target: &LayerTarget, layer: OffscreenLayer) {
     let origin = target.bounds.origin;
     let pipeline = LayerCompositePipeline::for_format(ctx.layer_pipelines, ctx.device, ctx.format);
     pipeline.composite(

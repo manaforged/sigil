@@ -9,7 +9,7 @@ fn static_family_selects_the_css_weight_match() {
     let bold = Font::from_bytes(BOLD.to_vec(), 0).expect("bold fixture");
     let regular_id = regular.id();
     let bold_id = bold.id();
-    let mut family = FontFamily::new(regular);
+    let mut family = FontFaces::new(regular);
     family.insert(700, bold);
 
     assert_eq!(family.select(400).id(), regular_id);

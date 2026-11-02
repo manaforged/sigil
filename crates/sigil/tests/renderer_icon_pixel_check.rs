@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -65,7 +66,6 @@ fn render_icon_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
     WgpuRenderer::new()
-        .expect("WgpuRenderer::new")
         .render_command_scene_offscreen(
             OffscreenTarget {
                 device,
@@ -136,7 +136,7 @@ fn assert_icon_corners_are_clear_colour(pixels: &[u8], phys_w: u32) {
              sRGB≈({CLEAR_R_SRGB},{CLEAR_G_SRGB},{CLEAR_B_SRGB}) ±{CLEAR_TOL}. \
              Got RGB=({},{},{}). dR={dr} dG={dg} dB={db}. \
              The alpha mask must be ~0 at the top-left corner for all icons. \
-             Check IconBaker::bake viewBox normalisation and raster.rs boundary.",
+             Check icons::bake viewBox normalisation and raster.rs boundary.",
             rgba[0],
             rgba[1],
             rgba[2],

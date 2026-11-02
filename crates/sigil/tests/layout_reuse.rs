@@ -8,8 +8,8 @@ use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::profile::{Counter, Frame, disable, enable, frames, reset, tick_frame};
-use sigil::reactive::Runtime;
-use sigil_kittest::FixedMeasure;
+use sigil::reactive::Owner;
+use sigil_kittest::FakeMeasure;
 
 const VIEW: (f32, f32) = (400.0, 300.0);
 const ROWS: usize = 60;
@@ -23,10 +23,7 @@ fn alone() -> std::sync::MutexGuard<'static, ()> {
 }
 
 fn engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(FixedMeasure {
-        width: 8.0,
-        height: 16.0,
-    }))
+    LayoutEngine::with_text_measure(Box::new(FakeMeasure::fixed(8.0, 16.0)))
 }
 
 fn compute(cx: &mut Cx, layout: &mut LayoutEngine, root: NodeId) {
@@ -48,7 +45,7 @@ fn measured(run: impl FnOnce()) -> Frame {
 #[test]
 fn a_wheel_step_moves_scroll_content_without_a_layout_solve() {
     let _recorder = alone();
-    Runtime::scope("sigil-scroll-translate", || {
+    Owner::scope("sigil-scroll-translate", || {
         let offset = signal(0.0_f32);
         let mut rows = container().layout(LayoutStyle::flex_column().gap(4.0));
         for index in 0..ROWS {
@@ -83,7 +80,7 @@ fn a_wheel_step_moves_scroll_content_without_a_layout_solve() {
 #[test]
 fn changing_one_label_reuses_the_measurements_of_its_siblings() {
     let _recorder = alone();
-    Runtime::scope("sigil-intrinsic-reuse", || {
+    Owner::scope("sigil-intrinsic-reuse", || {
         let label = signal(String::from("short"));
         let mut list = container().layout(LayoutStyle::flex_column().gap(2.0));
         for index in 0..ROWS {

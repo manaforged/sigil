@@ -1,19 +1,93 @@
 use std::path::{Path, PathBuf};
 
+use crate::Rendered;
 use crate::gpu::adapter_key;
 use crate::harness::fail;
-use crate::{Regen, Rendered, regen_mode};
 
-#[must_use]
-pub fn golden_path_in(manifest_dir: &str, stem: &str) -> PathBuf {
-    [
-        manifest_dir,
-        "tests",
-        "goldens",
-        format!("{stem}.png").as_str(),
-    ]
-    .iter()
-    .collect()
+const DEFAULT_MAX_DELTA_PCT: f32 = 0.5;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Regen {
+    All,
+    Adapter,
+}
+
+fn regen_mode() -> Option<Regen> {
+    match std::env::var("SIGIL_REGEN_GOLDENS").ok().as_deref() {
+        Some("1" | "true" | "yes" | "on") => Some(Regen::All),
+        Some("adapter") => Some(Regen::Adapter),
+        _ => None,
+    }
+}
+
+/// A reference image under `tests/goldens` of the crate under test.
+#[derive(Clone, Debug)]
+pub struct Golden {
+    path: PathBuf,
+    max_delta_pct: f32,
+}
+
+impl Golden {
+    /// Names the golden `tests/goldens/<stem>.png`.
+    #[must_use]
+    pub fn new(stem: &str) -> Self {
+        let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_owned());
+        let path = [dir.as_str(), "tests", "goldens", &format!("{stem}.png")]
+            .iter()
+            .collect();
+        Self {
+            path,
+            max_delta_pct: DEFAULT_MAX_DELTA_PCT,
+        }
+    }
+
+    /// Sets the percent of pixels allowed to differ.
+    #[must_use]
+    pub const fn delta(mut self, max_delta_pct: f32) -> Self {
+        self.max_delta_pct = max_delta_pct;
+        self
+    }
+
+    /// The golden file.
+    #[must_use]
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// Compares a render, and skips the compare when no adapter exists.
+    #[track_caller]
+    #[allow(clippy::print_stdout)]
+    pub fn assert(&self, rendered: Rendered) {
+        let Some(image) = rendered.expect("sigil-kittest") else {
+            println!("no GPU adapter — skipping {}", self.path.display());
+            return;
+        };
+        self.assert_image(&image);
+    }
+
+    /// Compares an image.
+    #[track_caller]
+    pub fn assert_image(&self, image: &image::RgbaImage) {
+        assert_png_matches_golden(image, &self.path, self.max_delta_pct);
+    }
+
+    /// Fails when this golden and another are byte-identical.
+    #[track_caller]
+    pub fn assert_differs(&self, other: &Self) {
+        let [bytes_a, bytes_b] = [&self.path, &other.path].map(|path| {
+            std::fs::read(path)
+                .unwrap_or_else(|err| fail(format!("read golden {}: {err}", path.display())))
+        });
+        assert_ne!(
+            bytes_a,
+            bytes_b,
+            "goldens '{}' and '{}' are byte-identical — the state \
+             change they exist to capture renders no visible difference. Fix the \
+             widget, then re-bake with SIGIL_REGEN_GOLDENS=1.",
+            self.path.display(),
+            other.path.display(),
+        );
+    }
 }
 
 fn adapter_golden(golden: &Path) -> Option<PathBuf> {
@@ -68,17 +142,7 @@ fn differing_pct(actual: &image::RgbaImage, golden: &Path) -> f64 {
 const CHANNEL_TOLERANCE: u8 = 2;
 
 #[track_caller]
-#[allow(clippy::print_stdout)]
-pub fn assert_rendered_matches_golden(rendered: Rendered, golden: &Path, max_delta_pct: f32) {
-    let Some(img) = rendered.expect("sigil-kittest") else {
-        println!("no GPU adapter — skipping {}", golden.display());
-        return;
-    };
-    assert_png_matches_golden(&img, golden, max_delta_pct);
-}
-
-#[track_caller]
-pub fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_delta_pct: f32) {
+fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_delta_pct: f32) {
     let keyed = adapter_golden(golden);
     let existing_keyed = keyed.clone().filter(|path| path.exists());
     match regen_mode() {
@@ -126,7 +190,7 @@ pub fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_d
 
 #[track_caller]
 #[allow(clippy::print_stdout)]
-pub fn assert_text_matches_golden(actual: &str, golden: &Path) {
+pub(crate) fn assert_text_matches_golden(actual: &str, golden: &Path) {
     if regen_mode().is_some() {
         create_parent(golden);
         std::fs::write(golden, actual)
@@ -193,20 +257,5 @@ fn guard_regen_does_not_erase_content(actual: &image::RgbaImage, golden: &Path) 
          SIGIL_REGEN_ALLOW_CONTENT_LOSS=1.",
         golden.display(),
         (1.0 - retained) * 100.0,
-    );
-}
-
-#[track_caller]
-pub fn assert_goldens_differ_in(manifest_dir: &str, name_a: &str, name_b: &str) {
-    let [bytes_a, bytes_b] = [name_a, name_b].map(|name| {
-        let path = golden_path_in(manifest_dir, name);
-        std::fs::read(&path)
-            .unwrap_or_else(|err| fail(format!("read golden {}: {err}", path.display())))
-    });
-    assert_ne!(
-        bytes_a, bytes_b,
-        "goldens '{name_a}' and '{name_b}' are byte-identical — the state \
-         change they exist to capture renders no visible difference. Fix the \
-         widget, then re-bake with SIGIL_REGEN_GOLDENS=1.",
     );
 }

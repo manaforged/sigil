@@ -3,9 +3,9 @@ use sigil::kernel::{ImageCrop, ImageSource, ObjectFit};
 use sigil::renderer::BUILTIN_SPRITE_ATLAS_ID;
 use sigil::renderer::scenes::BUILTIN_ICON_ATLAS_BASE_ID;
 use sigil::scene::{
-    DecorationKind, DrawDecoration, DrawGlyphRun, DrawGradient, DrawImage, DrawPattern, DrawRect,
-    DrawSprite, GradientStop, LinearGradient, PatternKind, SceneCommand, SceneGradientStyle,
-    ScenePatternStyle, SceneRectStyle, SceneSpriteStyle, SpriteKind, SpriteSource, shape_glyph_run,
+    DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite,
+    GradientStop, LinearGradient, PatternKind, SceneCommand, SpriteKind, SpriteSource,
+    shape_glyph_run,
 };
 use sigil::style::{TextLineHeight, TextStyle};
 
@@ -40,9 +40,11 @@ impl Gen<'_, '_, '_> {
     fn solid(&mut self) -> SceneCommand {
         let rect = self.rect();
         let color = self.color();
-        let mut style = SceneRectStyle::new(color, self.radii(), self.opacity_u16());
-        style.stroke = self.stroke();
-        SceneCommand::Rect(DrawRect::new(rect, style))
+        let mut draw = DrawRect::new(rect, color)
+            .border_radius(self.radii())
+            .opacity(self.opacity_u16());
+        draw.stroke = self.stroke();
+        SceneCommand::Rect(draw)
     }
 
     fn gradient(&mut self) -> SceneCommand {
@@ -61,9 +63,11 @@ impl Gen<'_, '_, '_> {
             stops.push(GradientStop::new(offset, self.color()));
         }
         let gradient = LinearGradient::new(start, end, stops);
-        let mut style = SceneGradientStyle::new(gradient, self.radii(), self.opacity_u16());
-        style.stroke = self.stroke();
-        SceneCommand::Gradient(DrawGradient::new(rect, style))
+        let mut draw = DrawGradient::new(rect, gradient)
+            .border_radius(self.radii())
+            .opacity(self.opacity_u16());
+        draw.stroke = self.stroke();
+        SceneCommand::Gradient(draw)
     }
 
     fn pattern(&mut self) -> SceneCommand {
@@ -81,9 +85,11 @@ impl Gen<'_, '_, '_> {
                 cell: self.entropy.pick(&PERIODS),
             }
         };
-        let mut style = ScenePatternStyle::new(pattern, self.radii(), self.opacity_u16());
-        style.stroke = self.stroke();
-        SceneCommand::Pattern(DrawPattern::new(rect, style))
+        let mut draw = DrawPattern::new(rect, pattern)
+            .border_radius(self.radii())
+            .opacity(self.opacity_u16());
+        draw.stroke = self.stroke();
+        SceneCommand::Pattern(draw)
     }
 
     fn shadow_command(&mut self) -> SceneCommand {
@@ -110,9 +116,7 @@ impl Gen<'_, '_, '_> {
             letter_spacing_em: e.pick(&[0.0, -0.5, 0.1, 2.0]),
             ..TextStyle::default()
         };
-        SceneCommand::GlyphRun(DrawGlyphRun::new(shape_glyph_run(
-            rect, text, color, style, opacity,
-        )))
+        SceneCommand::GlyphRun(shape_glyph_run(rect, text, color, style, opacity))
     }
 
     fn sprite(&mut self) -> SceneCommand {
@@ -134,18 +138,13 @@ impl Gen<'_, '_, '_> {
             e.pick(&[0.0, 1.0, 50.0, 128.0, 200.0, 5000.0]),
             e.pick(&[0.0, 1.0, 50.0, 128.0, 200.0, 5000.0]),
         );
-        let style = SceneSpriteStyle {
-            source: SpriteSource {
-                atlas,
-                region,
-                phase: e.pick(&[0.0, 0.35, 1.0, -2.0]),
-            },
-            kind: e.pick(&[SpriteKind::Mono, SpriteKind::Subpixel, SpriteKind::Poly]),
-            destination,
-            color,
-            opacity,
+        let source = SpriteSource {
+            atlas,
+            region,
+            phase: e.pick(&[0.0, 0.35, 1.0, -2.0]),
         };
-        SceneCommand::Sprite(DrawSprite::new(&style))
+        let kind = e.pick(&[SpriteKind::Mono, SpriteKind::Subpixel, SpriteKind::Poly]);
+        SceneCommand::Sprite(DrawSprite::new(source, destination, kind, color).opacity(opacity))
     }
 
     fn image(&mut self) -> SceneCommand {

@@ -5,12 +5,12 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil_kittest::Harness;
 
 #[test]
 fn nowrap_text_shrunk_by_flex_paints_on_one_line() {
-    Runtime::scope("text-nowrap-shrunk", || {
+    Owner::scope("text-nowrap-shrunk", || {
         let mut ui = Harness::new(|| {
             column().child(
                 container()

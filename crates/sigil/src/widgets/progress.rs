@@ -1,17 +1,13 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock, PoisonError};
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use crate::kernel::{
-    AccessibleName, Cx, IntoNode, NodeBuilder, Role, TextContent, container, text,
-};
+use super::layout_ext::LayoutOverrides;
+use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, derived};
-use crate::style::{
-    ControlSize, Metrics, NodeStyleExt, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token,
-    Tone,
-};
+use crate::style::{ControlSize, Metrics, Radius, Style, StyleAtom, Token, Tone};
+use crate::widgets::Widget;
 
 const TRACK_HEIGHT: f32 = 8.0;
 const INDETERMINATE_RATIO: f32 = 0.30;
@@ -21,9 +17,11 @@ static TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
 static FILL: &[StyleAtom] = &[Radius::Md.atom(), Token::Accent.bg()];
 static EMPTY: &[StyleAtom] = &[];
 
+/// Builder of a progress bar.
 pub struct ProgressBuilder {
     value: Signal<f32>,
     max: f32,
+    /// Whether indeterminate.
     pub indeterminate: bool,
     tone: Tone,
     name: AccessibleName,
@@ -32,12 +30,14 @@ pub struct ProgressBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+/// A progress bar.
 #[must_use]
 pub fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder {
     ProgressBuilder::new(value, max)
 }
 
 impl ProgressBuilder {
+    /// Creates a progress builder.
     #[must_use]
     pub fn new(value: Signal<f32>, max: f32) -> Self {
         Self {
@@ -52,18 +52,21 @@ impl ProgressBuilder {
         }
     }
 
+    /// Applies the indeterminate option.
     #[must_use]
     pub const fn indeterminate(mut self) -> Self {
         self.indeterminate = true;
         self
     }
 
+    /// Sets the tone.
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         self.name = name.into();
@@ -75,7 +78,7 @@ impl ProgressBuilder {
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let (value, max) = (self.value, self.max);
         let track_h = self.layout_overrides.height_hint().unwrap_or(TRACK_HEIGHT);
         let fill = if self.indeterminate {
@@ -88,7 +91,7 @@ impl ProgressBuilder {
             .role(Role::ProgressIndicator)
             .label(self.name)
             .value(value, 0.0, max)
-            .layout(self.layout_overrides.apply(if self.caption.is_some() {
+            .layout(if self.caption.is_some() {
                 LayoutStyle::flex_row()
                     .height(track_h)
                     .grow(1.0)
@@ -99,7 +102,7 @@ impl ProgressBuilder {
                     .height(track_h)
                     .fill_width()
                     .align_items(AlignItems::Center)
-            }))
+            })
             .class(TRACK)
             .child(fill);
         if !self.style_accumulator.is_empty() {
@@ -112,26 +115,7 @@ impl ProgressBuilder {
     }
 }
 
-impl PaintTarget for ProgressBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for ProgressBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for ProgressBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] ProgressBuilder: paint(style_accumulator), widget, node);
 
 fn captioned_row(caption: TextContent, bar: NodeBuilder) -> NodeBuilder {
     let metrics = Metrics::current();
@@ -156,7 +140,7 @@ fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> N
                 .layout(LayoutStyle::block().height(track_h).width(0.0))
                 .style_reactive(move || grow_atoms(filled.get()))
                 .class(fill_atoms(tone))
-                .tone(tone),
+                .tone_scope(tone),
         )
         .child(empty_segment(empty, track_h))
 }

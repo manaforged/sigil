@@ -1,18 +1,13 @@
-pub(super) const SHADOW_SHADER: &str = r"
+pub(super) const SHADOW_SHADER: &str = concat!(
+    viewport_uniforms!(),
+    vertex_in!(),
+    crate::renderer::fill_paint::sdf_helpers!(),
+    r"
 const TAU: f32 = 6.283185307179586;
 
-struct Uniforms {
-    viewport: vec2<f32>,
-    _pad: vec2<f32>,
-};
 
-@group(0) @binding(0) var<uniform> u: Uniforms;
 
-struct VertexIn {
-    @location(0) unit: vec2<f32>,
-};
-
-struct InstanceIn {
+struct ShadowInstance {
     @location(1) rect: vec4<f32>,
     @location(2) surface_rect: vec4<f32>,
     @location(3) corner_radii: vec4<f32>,
@@ -21,7 +16,7 @@ struct InstanceIn {
     @location(6) shadow_meta: vec4<f32>,
 };
 
-struct VertexOut {
+struct ShadowVertexOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) pos_px: vec2<f32>,
     @location(1) surface_rect: vec4<f32>,
@@ -32,8 +27,8 @@ struct VertexOut {
 };
 
 @vertex
-fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
-    var out: VertexOut;
+fn vs_main(v: VertexIn, inst: ShadowInstance) -> ShadowVertexOut {
+    var out: ShadowVertexOut;
     let pos_px = inst.rect.xy + v.unit * inst.rect.zw;
     let ndc = vec2<f32>(
         (pos_px.x / u.viewport.x) * 2.0 - 1.0,
@@ -55,18 +50,6 @@ fn erf2(x: vec2<f32>) -> vec2<f32> {
     var v = 1.0 + (0.278393 + (0.230389 + 0.078108 * (a * a)) * a) * a;
     v = v * v;
     return s - s / (v * v);
-}
-
-fn corner_radius(p: vec2<f32>, radii: vec4<f32>) -> f32 {
-    let bottom = select(radii.w, radii.z, p.x > 0.0);
-    let top = select(radii.x, radii.y, p.x > 0.0);
-    return select(bottom, top, p.y < 0.0);
-}
-
-fn rounded_rect_sdf(p: vec2<f32>, half_size: vec2<f32>, radii: vec4<f32>, spread: f32) -> f32 {
-    let radius = max(0.0, corner_radius(p, radii) + spread);
-    let q = abs(p) - max(vec2<f32>(0.0), half_size) + vec2<f32>(radius);
-    return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - radius;
 }
 
 fn gaussian_weight(x: f32, sigma: f32) -> f32 {
@@ -99,14 +82,14 @@ fn blurred_coverage(p: vec2<f32>, sigma: f32, radii: vec4<f32>, half_size: vec2<
 
 fn shadow_coverage(p: vec2<f32>, sigma: f32, radii: vec4<f32>, half_size: vec2<f32>, spread: f32) -> f32 {
     if sigma <= 0.01 {
-        let d = rounded_rect_sdf(p, half_size, radii, spread);
+        let d = rounded_rect_sdf(p, half_size, max(radii + vec4<f32>(spread), vec4<f32>(0.0)));
         return 1.0 - smoothstep(-0.5, 0.5, d);
     }
     return blurred_coverage(p, sigma, radii, half_size, spread);
 }
 
 @fragment
-fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
+fn fs_main(in: ShadowVertexOut) -> @location(0) vec4<f32> {
     let center = in.surface_rect.xy + in.surface_rect.zw * 0.5;
     let offset = in.shadow_params.xy;
     let sigma = in.shadow_params.z;
@@ -114,7 +97,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let surface_half_size = max(vec2<f32>(0.0), in.surface_rect.zw * 0.5);
     let shadow_kind = in.shadow_meta.x;
     let p_surface = in.pos_px - center;
-    let d_surface = rounded_rect_sdf(p_surface, surface_half_size, in.corner_radii, 0.0);
+    let d_surface = rounded_rect_sdf(p_surface, surface_half_size, max(in.corner_radii, vec4<f32>(0.0)));
     let edge_aa = max(fwidth(d_surface) * 0.5, 0.0001);
     var coverage = 0.0;
 
@@ -137,4 +120,5 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let alpha = in.color.a * coverage;
     return vec4<f32>(in.color.rgb, alpha);
 }
-";
+",
+);

@@ -13,9 +13,8 @@ use sigil::layout::LayoutEngine;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::PointerEventInit;
-use sigil::events::ShellEvent;
 use sigil::geometry::Point;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
@@ -26,46 +25,34 @@ const HEIGHT: f32 = 480.0;
 const VIEWPORT: Size = Size::fixed(WIDTH, HEIGHT);
 
 fn glyph_texts(cx: &Cx, root: NodeId) -> Vec<String> {
-    emit_scene(cx, root)
+    emit_scene(cx, root, None)
         .commands
         .iter()
         .filter_map(|c| match c {
-            SceneCommand::GlyphRun(d) => Some(d.run.text.clone()),
+            SceneCommand::GlyphRun(d) => Some(d.text.clone()),
             _ => None,
         })
         .collect()
 }
 
-const fn pointer(phase: PointerPhase, x: f32, y: f32) -> ShellEvent {
+const fn pointer(phase: PointerPhase, x: f32, y: f32) -> Event {
     let (button, buttons) = match phase {
         PointerPhase::Down => (Some(MouseButton::Left), MouseButtons::LEFT),
         PointerPhase::Move => (None, MouseButtons::LEFT),
         _ => (None, MouseButtons::empty()),
     };
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button,
-        buttons,
-        modifiers: ModifiersState::empty(),
-        phase,
-    }))
+    Event::pointer(phase, Point::new(x, y))
+        .button(button)
+        .buttons(buttons)
 }
 
-const fn right_down(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Right),
-        buttons: MouseButtons::RIGHT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Down,
-    }))
+const fn right_down(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Down, Point::new(x, y))
+        .button(Some(MouseButton::Right))
+        .buttons(MouseButtons::RIGHT)
 }
 
-fn route(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, event: ShellEvent) {
+fn route(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, event: Event) {
     router.route(cx, layout, event);
 }
 

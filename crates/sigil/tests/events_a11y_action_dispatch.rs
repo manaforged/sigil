@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -19,10 +20,9 @@ use sigil::events::*;
 use sigil::geometry::Size;
 use sigil::kernel::{FocusScopeKind, *};
 use sigil::layout::*;
-use sigil::reactive::{Runtime, signal};
-use sigil::style::NodeStyleExt;
+use sigil::prelude::Widget;
+use sigil::reactive::{Owner, signal};
 
-use input::pointer_drag;
 use routing_helpers::{compute_layout, route_event};
 
 fn dispatch(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, request: &ActionRequest) {

@@ -1,12 +1,16 @@
 use crate::style::Color;
 
+use crate::Error;
 use crate::renderer::device_state::PipelineCache;
-use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::layer_pool::LayerHandle;
-use crate::renderer::renderer::{ScreenSubmission, WgpuRenderer, record_clear};
+#[cfg(any(test, feature = "kittest"))]
+use crate::renderer::renderer::ScreenSubmission;
+use crate::renderer::renderer::WgpuRenderer;
+use crate::renderer::renderer::record_clear;
 use crate::renderer::scene_command::CommandScene;
-use crate::renderer::scene_command::walk::{WalkCtx, walk_command_scene};
+use crate::renderer::scene_command::walk::WalkCtx;
+use crate::renderer::scene_command::walk::walk_command_scene;
 use crate::renderer::split_encoder::SplitEncoder;
 
 #[derive(Clone, Copy)]
@@ -19,6 +23,7 @@ pub struct OffscreenTarget<'a> {
     pub scale: f32,
 }
 
+#[cfg(any(test, feature = "kittest"))]
 impl<'a> From<&ScreenSubmission<'a>> for OffscreenTarget<'a> {
     fn from(target: &ScreenSubmission<'a>) -> Self {
         Self {
@@ -33,12 +38,13 @@ impl<'a> From<&ScreenSubmission<'a>> for OffscreenTarget<'a> {
 }
 
 impl WgpuRenderer {
+    #[cfg(any(test, feature = "inspect", feature = "kittest"))]
     pub fn render_command_scene_offscreen(
         &mut self,
         target: OffscreenTarget<'_>,
         scene: &CommandScene,
         clear_color: Color,
-    ) -> Result<(), RendererError> {
+    ) -> Result<(), Error> {
         self.last_frame_stats = FrameStats::default();
         let mut encoder = target
             .device
@@ -76,14 +82,13 @@ impl PipelineCache {
         target: OffscreenTarget<'_>,
         scene: &CommandScene,
         stats: &mut FrameStats,
-    ) -> Result<(), RendererError> {
+    ) -> Result<(), Error> {
         let Self {
             scene_pipelines,
             fill_pipelines,
             shadow_pipelines,
             slug_pipelines,
-            raster_pipelines,
-            sprite_pipelines,
+            quad_pipelines,
             decoration_pipelines,
             layer_pipelines,
             blur_pipelines,
@@ -104,8 +109,7 @@ impl PipelineCache {
                 fill_pipelines,
                 shadow_pipelines,
                 slug_pipelines,
-                raster_pipelines,
-                sprite_pipelines,
+                quad_pipelines,
                 decoration_pipelines,
                 layer_pipelines,
                 blur_pipelines,

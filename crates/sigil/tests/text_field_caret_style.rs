@@ -10,33 +10,33 @@ use std::rc::Rc;
 
 use sigil::events::EventRouter;
 use sigil::geometry::Rect;
-use sigil::hal::{HitPosition, TextAffinity};
-use sigil::layout::{TextGeometry, set_text_geometry};
+use sigil::layout::{TextMeasure, set_text_geometry};
 use sigil::prelude::*;
 use sigil::scene::{CommandScene, SceneCommand, emit_scene};
+use sigil::text::{HitPosition, TextAffinity};
 
 const VALUE: &str = "Testing this is a complet";
 
 #[test]
 fn caret_uses_the_fields_resolved_typography() {
-    sigil::reactive::Runtime::scope("text-field-caret-style", || {
+    sigil::reactive::Owner::scope("text-field-caret-style", || {
         let scene = focused_field_scene();
         let text = scene.find_text(VALUE).expect("field text is painted");
         assert!(
-            (text.run.style.font_size - 14.0).abs() <= f32::EPSILON,
+            (text.style.font_size - 14.0).abs() <= f32::EPSILON,
             "text-sm must paint at 14px (Tailwind scale)",
         );
 
-        let expected = sigil::app::EngineGeometry::new().caret(
+        let expected = sigil::app::DefaultTextMeasure::new().caret(
             VALUE,
-            &text.run.style,
+            &text.style,
             None,
             HitPosition {
                 byte_index: VALUE.len(),
                 affinity: TextAffinity::Downstream,
             },
         );
-        let expected_x = text.run.rect.origin.x + expected.x;
+        let expected_x = text.rect.origin.x + expected.x;
         let caret = nearest_caret(&scene, expected_x);
 
         assert!(
@@ -54,7 +54,7 @@ fn caret_uses_the_fields_resolved_typography() {
 }
 
 fn focused_field_scene() -> CommandScene {
-    set_text_geometry(Rc::new(sigil::app::EngineGeometry::new()));
+    set_text_geometry(Rc::new(sigil::app::DefaultTextMeasure::new()));
     let mut cx = Cx::new_root();
     let root = cx.add(
         text_field(signal(VALUE.to_owned()))
@@ -71,7 +71,7 @@ fn focused_field_scene() -> CommandScene {
     layout
         .compute(&mut cx, root, Size::fixed(500.0, 100.0))
         .expect("focused layout");
-    emit_scene(&cx, root)
+    emit_scene(&cx, root, None)
 }
 
 fn nearest_caret(scene: &CommandScene, expected_x: f32) -> Rect {

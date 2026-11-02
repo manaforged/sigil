@@ -16,10 +16,11 @@ use std::time::Duration;
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
 use sigil::reactive::signal;
 use sigil::widgets::virtual_list;
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 
 const TOTAL_ROWS: usize = 100_000;
 const ROW_HEIGHT: f32 = 32.0;
@@ -33,10 +34,7 @@ const ROW_WIDTH: f32 = ID_CELL_W + LABEL_CELL_W + ACTION_CELL_W + SPACER_CELL_W;
 
 const AVAILABLE: Size = Size::fixed(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 0.0,
-    height: 0.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(0.0, 0.0);
 
 #[derive(Clone, Copy)]
 struct RowData {
@@ -68,7 +66,7 @@ fn build_widget(cx: &mut Cx, data: Vec<RowData>, scroll_y: sigil::reactive::Sign
 }
 
 fn bench_first_render(c: &mut Criterion) {
-    sigil::reactive::Runtime::scope("sigil-virtual-list-bench-first-render", || {
+    sigil::reactive::Owner::scope("sigil-virtual-list-bench-first-render", || {
         c.bench_function("virtual_list/first_render", |b| {
             b.iter_batched(
                 || {
@@ -92,7 +90,7 @@ fn bench_first_render(c: &mut Criterion) {
 }
 
 fn bench_scroll_step(c: &mut Criterion) {
-    sigil::reactive::Runtime::scope("sigil-virtual-list-bench-scroll-step", || {
+    sigil::reactive::Owner::scope("sigil-virtual-list-bench-scroll-step", || {
         c.bench_function("virtual_list/scroll_step", |b| {
             let data = make_data_source();
             let scroll_y = signal(0.0_f32);

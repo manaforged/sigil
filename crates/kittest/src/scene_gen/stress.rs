@@ -1,8 +1,7 @@
 use sigil::geometry::{Point, Rect};
 use sigil::kernel::{ImageSource, ObjectFit};
 use sigil::scene::{
-    CornerRadii, DrawGlyphRun, DrawImage, DrawRect, LayerEffect, LayerScope, SceneCommand,
-    SceneRectStyle, shape_glyph_run,
+    CornerRadii, DrawImage, DrawRect, LayerEffect, LayerScope, SceneCommand, shape_glyph_run,
 };
 use sigil::style::{Color, Rgba8, TextStyle};
 
@@ -29,7 +28,7 @@ const fn rect(x: f32, y: f32, w: f32, h: f32) -> Rect {
 }
 
 const fn fill(area: Rect) -> SceneCommand {
-    SceneCommand::Rect(DrawRect::new(area, SceneRectStyle::solid(INK)))
+    SceneCommand::Rect(DrawRect::new(area, INK))
 }
 
 #[must_use]
@@ -98,9 +97,9 @@ pub fn unique_glyphs(count: u32) -> GeneratedScene {
             ..TextStyle::default()
         };
         let area = rect(0.0, (row % 64) as f32 * 8.0, 1024.0, size * 1.5);
-        commands.push(SceneCommand::GlyphRun(DrawGlyphRun::new(shape_glyph_run(
+        commands.push(SceneCommand::GlyphRun(shape_glyph_run(
             area, text, INK, style, 10_000,
-        ))));
+        )));
     }
     scene(commands, (1024.0, 512.0), 1.0)
 }

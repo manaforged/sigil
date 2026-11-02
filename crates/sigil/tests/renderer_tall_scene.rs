@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -13,8 +14,7 @@ use scene_support::{color, rect};
 use sigil::geometry::Point;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{
-    CommandScene, CornerRadii, GradientStop, LinearGradient, SceneBuilder, SceneGradientStyle,
-    SceneRectStyle,
+    CommandScene, DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder,
 };
 use sigil::style::Color;
 use sigil_kittest::gpu::read_pixels;
@@ -53,14 +53,11 @@ fn pass_heavy_scene() -> CommandScene {
     for row in 0..DRAWS {
         let rect = rect(0.0, row as f32, VIEWPORT.0, 1.0);
         if row % 2 == 0 {
-            builder.draw_rect(
-                rect,
-                SceneRectStyle::new(color(240, 30, 30, 255), CornerRadii::ZERO, u16::MAX),
-            );
+            builder.draw_rect(DrawRect::new(rect, color(240, 30, 30, 255)).opacity(u16::MAX));
         } else {
             builder.draw_gradient(
-                rect,
-                SceneGradientStyle::new(
+                DrawGradient::new(
+                    rect,
                     LinearGradient::new(
                         Point::new(0.0, 0.0),
                         Point::new(VIEWPORT.0, 0.0),
@@ -69,9 +66,8 @@ fn pass_heavy_scene() -> CommandScene {
                             GradientStop::new(1.0, color(30, 30, 240, 255)),
                         ],
                     ),
-                    CornerRadii::ZERO,
-                    u16::MAX,
-                ),
+                )
+                .opacity(u16::MAX),
             );
         }
     }

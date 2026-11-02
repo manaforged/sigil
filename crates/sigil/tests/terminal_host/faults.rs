@@ -1,8 +1,8 @@
+use sigil::kernel::HostMode;
 use std::io::Write;
 
 use sigil::Host;
-use sigil::events::EventRouter;
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
 use sigil::terminal::Screen;
 
 use super::live::seen;
@@ -60,27 +60,25 @@ const FIRST: (usize, &str) = (1, "first change");
 const SECOND: (usize, &str) = (9, "second change");
 
 fn replayed(cut: Cut) -> (String, usize) {
-    Runtime::scope("faults-replayed", || {
+    Owner::scope("faults-replayed", || {
         let state = signal(lines(&[]));
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(state));
         let mut screen = Screen::new(COLS, ROWS);
         let mut term = vt100::Parser::new(ROWS, COLS, 0);
-        let mut flush =
-            |view: &mut Screen, embed: &mut Host, route: &mut EventRouter, mut out: Cut| {
-                view.frame(embed, route, [], (COLS, ROWS)).expect("frame");
-                let failed = view.flush(&mut out).is_err();
-                term.process(&out.bytes);
-                (out.bytes.len(), failed)
-            };
+        let mut flush = |view: &mut Screen, embed: &mut Host, mut out: Cut| {
+            view.frame(embed, [], (COLS, ROWS)).expect("frame");
+            let failed = view.flush(&mut out).is_err();
+            term.process(&out.bytes);
+            (out.bytes.len(), failed)
+        };
         for _ in 0..2 {
-            flush(&mut screen, &mut host, &mut router, Cut::open());
+            flush(&mut screen, &mut host, Cut::open());
         }
         state.set(lines(&[FIRST]));
-        let (written, _) = flush(&mut screen, &mut host, &mut router, cut);
+        let (written, _) = flush(&mut screen, &mut host, cut);
         state.set(lines(&[FIRST, SECOND]));
-        flush(&mut screen, &mut host, &mut router, Cut::open());
+        flush(&mut screen, &mut host, Cut::open());
         (seen(term.screen(), (COLS, ROWS)), written)
     })
 }
@@ -90,15 +88,12 @@ fn expected() -> String {
 }
 
 fn fresh(edits: &[(usize, &str)]) -> String {
-    Runtime::scope("faults-fresh", || {
+    Owner::scope("faults-fresh", || {
         let state = signal(lines(edits));
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(state));
         let mut screen = Screen::new(COLS, ROWS);
-        screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
+        screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         let mut out = Vec::new();
         screen.flush(&mut out).expect("flush");
         let mut term = vt100::Parser::new(ROWS, COLS, 0);
@@ -127,25 +122,20 @@ fn one_byte_writes_show_the_same_screen() {
 
 #[test]
 fn a_failed_flush_is_written_by_the_next_flush_alone() {
-    let (shown, written) = Runtime::scope("faults-retry", || {
+    let (shown, written) = Owner::scope("faults-retry", || {
         let state = signal(lines(&[]));
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(state));
         let mut screen = Screen::new(COLS, ROWS);
         let mut term = vt100::Parser::new(ROWS, COLS, 0);
         for _ in 0..2 {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
             let mut out = Vec::new();
             screen.flush(&mut out).expect("flush");
             term.process(&out);
         }
         state.set(lines(&[FIRST]));
-        screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
+        screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         let mut cut = Cut::after(10, usize::MAX);
         assert!(screen.flush(&mut cut).is_err());
         term.process(&cut.bytes);

@@ -20,7 +20,7 @@ const PROBE_ROW: &str = "\x1b[2H";
 const KEY_REPORT_ROW: u16 = 1;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) enum Measured {
+pub(crate) enum Calibration {
     #[default]
     Unmeasured,
     #[cfg(unix)]
@@ -37,10 +37,10 @@ pub(crate) enum ProbeRow {
 }
 
 thread_local! {
-    static MEASURED: Cell<Measured> = const { Cell::new(Measured::Unmeasured) };
+    static MEASURED: Cell<Calibration> = const { Cell::new(Calibration::Unmeasured) };
 }
 
-pub(crate) fn keep(measured: Measured) {
+pub(crate) fn keep(measured: Calibration) {
     MEASURED.set(measured);
 }
 
@@ -59,12 +59,12 @@ pub(crate) fn query(ProbeRow::Fixed: ProbeRow) -> String {
 }
 
 #[cfg(unix)]
-pub(crate) fn measure(reports: &[(u16, u16)]) -> Measured {
+pub(crate) fn measure(reports: &[(u16, u16)]) -> Calibration {
     let Some(start) = reports
         .iter()
         .position(|&(row, col)| row != KEY_REPORT_ROW || col == 0)
     else {
-        return Measured::Silent;
+        return Calibration::Silent;
     };
     let keys = reports
         .get(start)
@@ -76,36 +76,38 @@ pub(crate) fn measure(reports: &[(u16, u16)]) -> Measured {
         .filter(|&(row, _)| !keys || row != KEY_REPORT_ROW)
         .collect();
     let Some((&(row, _), rest)) = reports.split_first() else {
-        return Measured::Silent;
+        return Calibration::Silent;
     };
     if rest.len() < SAMPLES.len() {
-        return Measured::Silent;
+        return Calibration::Silent;
     }
     let mut columns = [0; 4];
     for (slot, &(at, col)) in columns.iter_mut().zip(rest) {
         if at != row {
-            return Measured::Wrapped;
+            return Calibration::Wrapped;
         }
         *slot = usize::from(col);
     }
-    Measured::Columns(columns)
+    Calibration::Columns(columns)
 }
 
-pub fn calibrate(out: &mut impl Write) -> io::Result<()> {
+/// Measures the width of ambiguous characters in this terminal.
+pub fn calibrate(out: &mut impl Write) -> Result<(), crate::Error> {
     set_cell_width(CellWidth::Unicode);
     let [modifier, joiner, nonjoiner, keycap] = match MEASURED.get() {
         #[cfg(unix)]
-        Measured::Columns(columns) => columns,
+        Calibration::Columns(columns) => columns,
         #[cfg(unix)]
-        Measured::Silent => {
+        Calibration::Silent => {
             return Err(io::Error::new(
                 io::ErrorKind::TimedOut,
                 "terminal did not report the cursor position",
-            ));
+            )
+            .into());
         }
         #[cfg(unix)]
-        Measured::Wrapped => return Err(wrapped()),
-        Measured::Unmeasured => live(out)?,
+        Calibration::Wrapped => return Err(wrapped()),
+        Calibration::Unmeasured => live(out)?,
     };
     if modifier > UnicodeWidthStr::width(MODIFIER) {
         set_cell_width(CellWidth::Scalar {
@@ -117,11 +119,11 @@ pub fn calibrate(out: &mut impl Write) -> io::Result<()> {
     Ok(())
 }
 
-fn wrapped() -> io::Error {
-    io::Error::new(io::ErrorKind::InvalidData, "terminal width probe wrapped")
+fn wrapped() -> crate::Error {
+    io::Error::new(io::ErrorKind::InvalidData, "terminal width probe wrapped").into()
 }
 
-fn live(out: &mut impl Write) -> io::Result<[usize; 4]> {
+fn live(out: &mut impl Write) -> Result<[usize; 4], crate::Error> {
     let home = cursor::position()?;
     let mut columns = [0; 4];
     for (slot, sample) in columns.iter_mut().zip(SAMPLES) {
@@ -135,7 +137,7 @@ fn live(out: &mut impl Write) -> io::Result<[usize; 4]> {
     Ok(columns)
 }
 
-fn probe(out: &mut impl Write, home: (u16, u16), text: &str) -> io::Result<usize> {
+fn probe(out: &mut impl Write, home: (u16, u16), text: &str) -> Result<usize, crate::Error> {
     execute!(
         out,
         cursor::MoveTo(0, home.1),

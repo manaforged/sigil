@@ -1,66 +1,56 @@
+use super::field::{FieldParser, ParsedField};
+use super::shared::disabled_look;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, cols};
+use crate::layout::{AlignItems, Dimension, LayoutStyle, cols};
 use crate::reactive::Reactive;
-use crate::reactive::{Signal, derived, effect, signal};
+use crate::reactive::Signal;
+use crate::style::locale::Locale;
 use crate::style::{
-    BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Rgba8, StyleAtom, Token, space,
+    BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Rgba8, StateSlot, StyleAtom, Token, space,
 };
+use crate::widgets::layout_ext::LayoutOverrides;
+use crate::widgets::{Edit, Sealed, StateTarget, Widget};
+use smallvec::SmallVec;
 
-use super::layout_ext::WidgetLayoutExt;
-use super::shared::disabled_look;
-use super::text_field::text_field;
-
+/// A hex color input with a swatch; layout and `map_node` change the row, and style, state, and focus setters change the text field.
 pub struct ColorFieldBuilder {
     value: Signal<Rgba8>,
+    field: ParsedField<HexParser>,
     disabled: Option<Signal<bool>>,
-    invalid: Option<Signal<bool>>,
+    layout_overrides: LayoutOverrides,
 }
 
+/// A color input.
 #[must_use]
-pub const fn color_field(value: Signal<Rgba8>) -> ColorFieldBuilder {
+pub fn color_field(value: Signal<Rgba8>) -> ColorFieldBuilder {
     ColorFieldBuilder {
         value,
+        field: ParsedField::new(value, HexParser),
         disabled: None,
-        invalid: None,
+        layout_overrides: LayoutOverrides::new(),
     }
 }
 
 impl ColorFieldBuilder {
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
-        self.disabled = Some(disabled.into_signal());
+        let disabled = disabled.into_signal();
+        self.field = self.field.disabled(disabled);
+        self.disabled = Some(disabled);
         self
     }
 
+    /// Sets the invalid when.
     #[must_use]
-    pub fn invalid_when(mut self, invalid: impl crate::reactive::Reactive<bool>) -> Self {
-        self.invalid = Some(invalid.into_signal());
+    pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
+        self.field = self.field.invalid_when(invalid);
         self
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        let value = self.value;
-        let buffer = signal(to_hex(value.peek()));
-        effect(move || {
-            let rendered = to_hex(value.get());
-            buffer.set(rendered);
-        });
-        let (invalid, disabled) = (self.invalid, self.disabled);
-        let field = text_field(buffer)
-            .invalid_when(derived(move || {
-                invalid.is_some_and(|flag| flag.get()) || parse_hex(&buffer.get()).is_none()
-            }))
-            .change(move |raw| {
-                if let Some(parsed) = parse_hex(raw) {
-                    value.set(parsed);
-                }
-            });
-        let field = match disabled {
-            Some(disabled) => field.disabled(disabled),
-            None => field,
-        }
-        .layout(
+        let field = self.field.text_field().layout(
             LayoutStyle::flex_row()
                 .grow(1.0)
                 .min_size(0.0, Dimension::Auto)
@@ -73,14 +63,61 @@ impl ColorFieldBuilder {
                     .align_items(AlignItems::Center)
                     .gap(space(2)),
             )
-            .child(disabled_look(swatch(value), disabled))
+            .child(disabled_look(swatch(self.value), self.disabled))
             .child(field)
     }
 }
 
+impl Sealed for ColorFieldBuilder {
+    fn edit(mut self, edit: Edit) -> Self {
+        match edit {
+            Edit::Layout(edit) => self.layout_overrides.edit(edit),
+            focus => self.field = self.field.map(move |field| field.edit(focus)),
+        }
+        self
+    }
+
+    fn map_target(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.field = self.field.map(move |field| field.map_target(f));
+        self
+    }
+}
+
+impl StateTarget for ColorFieldBuilder {
+    fn set_state(mut self, slot: StateSlot, atoms: SmallVec<[StyleAtom; 16]>) -> Self {
+        self.field = self.field.map(move |field| field.set_state(slot, atoms));
+        self
+    }
+}
+
+impl Widget for ColorFieldBuilder {
+    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.layout_overrides.node_hook(f);
+        self
+    }
+}
+
 impl IntoNode for ColorFieldBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
+    fn build(mut self, cx: &mut Cx) -> NodeId {
+        let overrides = std::mem::take(&mut self.layout_overrides);
+        overrides.finish(self.into_node_builder()).build(cx)
+    }
+}
+
+struct HexParser;
+
+impl FieldParser for HexParser {
+    type Value = Rgba8;
+
+    fn parse(&self, raw: &str, _locale: &Locale) -> Option<Rgba8> {
+        let raw = raw.trim();
+        (raw.starts_with('#') && raw.len() <= 7)
+            .then(|| raw.parse().ok())
+            .flatten()
+    }
+
+    fn render(&self, value: &Rgba8, _locale: &Locale) -> String {
+        value.to_hex()
     }
 }
 
@@ -88,7 +125,7 @@ fn swatch(value: Signal<Rgba8>) -> NodeBuilder {
     let extent = Metrics::current().control_height(ControlSize::Default);
     let (width, chrome) = CellForm::new(
         (Dimension::Px(extent), SWATCH_CHROME),
-        (cols(2.0).into(), NO_CHROME),
+        (cols(2.0), NO_CHROME),
     )
     .pick();
     container().children_reactive(move || {
@@ -108,21 +145,31 @@ static SWATCH_CHROME: &[StyleAtom] = &[
 ];
 static NO_CHROME: &[StyleAtom] = &[];
 
-#[must_use]
-pub fn parse_hex(input: &str) -> Option<Rgba8> {
-    let hex = input.trim().strip_prefix('#')?;
-    let digits = hex.bytes().map(nibble).collect::<Option<Vec<u8>>>()?;
-    let (r, g, b) = match *digits.as_slice() {
-        [r, g, b] => (r * 17, g * 17, b * 17),
-        [r1, r0, g1, g0, b1, b0] => (r1 * 16 + r0, g1 * 16 + g0, b1 * 16 + b0),
-        _ => return None,
-    };
-    Some(Rgba8 { r, g, b, a: 255 })
+impl Rgba8 {
+    /// Formats the color as `#rrggbb` hex text.
+    #[must_use]
+    pub fn to_hex(self) -> String {
+        format!("#{:02x}{:02x}{:02x}", self.r, self.g, self.b)
+    }
 }
 
-#[must_use]
-pub fn to_hex(color: Rgba8) -> String {
-    format!("#{:02x}{:02x}{:02x}", color.r, color.g, color.b)
+pub(crate) fn parse_hex(input: &str) -> Option<Rgba8> {
+    let trimmed = input.trim();
+    let hex = trimmed
+        .strip_prefix('#')
+        .or_else(|| trimmed.strip_prefix("0x"))
+        .unwrap_or(trimmed);
+    let digits = hex.bytes().map(nibble).collect::<Option<Vec<u8>>>()?;
+    let pair = |high: u8, low: u8| high * 16 + low;
+    let (r, g, b, a) = match *digits.as_slice() {
+        [r, g, b] => (r * 17, g * 17, b * 17, 255),
+        [r1, r0, g1, g0, b1, b0] => (pair(r1, r0), pair(g1, g0), pair(b1, b0), 255),
+        [r1, r0, g1, g0, b1, b0, a1, a0] => {
+            (pair(r1, r0), pair(g1, g0), pair(b1, b0), pair(a1, a0))
+        }
+        _ => return None,
+    };
+    Some(Rgba8 { r, g, b, a })
 }
 
 const fn nibble(b: u8) -> Option<u8> {

@@ -1,10 +1,9 @@
+use sigil::prelude::Widget;
 use sigil::prelude::{
-    AlignItems, Icon, LayoutBuilderExt, LayoutStyle, NodeBuilder, NodeStyleExt, Paint, TableState,
-    Token, Tone, WidgetLayoutExt, button, chip, container, derived, icon, spacer, stat, text,
-    text_field,
+    AlignItems, Icon, LayoutStyle, NodeBuilder, Paint, TableState, Token, Tone, button, chip,
+    container, derived, icon, spacer, stat, text, text_field,
 };
 use sigil::style::space;
-use sigil::widgets::StatBuilder;
 
 use super::data::{
     Bucket, DEPLOYS_BEFORE_OPEN, TEXT_SMALL, TEXT_TITLE, WEIGHT_STRONG, duration_label,
@@ -112,7 +111,7 @@ fn pause_controls(console: Console) -> NodeBuilder {
         )
 }
 
-fn tile(stat: StatBuilder) -> NodeBuilder {
+fn tile(stat: impl sigil::prelude::IntoNode + 'static) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_column()

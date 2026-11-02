@@ -4,8 +4,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
-use sigil::reactive::{Owner, Runtime};
-use sigil::tasks::{AsyncRuntime, Status, task, task_with};
+use sigil::reactive::Owner;
+use sigil::tasks::{AsyncRuntime, Status, task};
 use tokio::sync::Notify;
 
 fn spin_until(mut cond: impl FnMut() -> bool) -> bool {
@@ -37,7 +37,7 @@ fn wait_for_result(woke: &AtomicBool) {
 
 #[test]
 fn a_task_is_idle_until_run_and_then_reports_its_error() {
-    Runtime::scope("task-error", || {
+    Owner::scope("task-error", || {
         let (mut runtime, woke) = runtime();
         let load = task(|| async { Err::<u32, String>("offline".into()) });
         assert!(matches!(load.status(), Status::Idle));
@@ -51,7 +51,7 @@ fn a_task_is_idle_until_run_and_then_reports_its_error() {
 
 #[test]
 fn a_rerun_drops_the_result_of_the_run_it_replaced() {
-    Runtime::scope("task-rerun", || {
+    Owner::scope("task-rerun", || {
         let (mut runtime, woke) = runtime();
         let calls = Arc::new(AtomicUsize::new(0));
         let gate = Arc::new(Notify::new());
@@ -93,7 +93,7 @@ impl Drop for Dropped {
 
 #[test]
 fn disposing_the_owner_aborts_a_pending_run() {
-    Runtime::scope("task-owner", || {
+    Owner::scope("task-owner", || {
         let (_runtime, _woke) = runtime();
         let dropped = Arc::new(AtomicBool::new(false));
         let owner = Owner::new("component", None);
@@ -118,7 +118,7 @@ fn disposing_the_owner_aborts_a_pending_run() {
 
 #[test]
 fn cancel_returns_a_pending_task_to_idle_and_drops_the_late_result() {
-    Runtime::scope("task-cancel", || {
+    Owner::scope("task-cancel", || {
         let (mut runtime, _woke) = runtime();
         let gate = Arc::new(Notify::new());
         let load = task({
@@ -145,7 +145,7 @@ fn cancel_returns_a_pending_task_to_idle_and_drops_the_late_result() {
 
 #[test]
 fn blocking_work_returns_its_value_through_a_task() {
-    Runtime::scope("task-blocking", || {
+    Owner::scope("task-blocking", || {
         let (mut runtime, woke) = runtime();
         let load = task(|| async {
             let total = sigil::tasks::blocking(|| (1..=10).sum::<u32>()).await;
@@ -155,17 +155,5 @@ fn blocking_work_returns_its_value_through_a_task() {
         wait_for_result(&woke);
         runtime.pump();
         assert!(matches!(load.status(), Status::Ok(55)));
-    });
-}
-
-#[test]
-fn run_with_passes_its_argument_to_the_run() {
-    Runtime::scope("task-with", || {
-        let (mut runtime, woke) = runtime();
-        let double = task_with(|n: u32| async move { Ok::<u32, String>(n * 2) });
-        double.run_with(21);
-        wait_for_result(&woke);
-        runtime.pump();
-        assert!(matches!(double.status(), Status::Ok(42)));
     });
 }

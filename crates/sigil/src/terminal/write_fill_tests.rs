@@ -25,11 +25,7 @@ fn a_half_cell_bar_is_solid_and_a_one_pixel_rule_stays_thin() {
     let ink = rgba(148, 156, 176, 255);
     let paint = |width: f32| {
         let command = SceneCommand::Rect(
-            DrawRect::new(
-                Rect::new(Point::new(0.0, 0.0), width, 48.0),
-                SceneRectStyle::solid(ink),
-            )
-            .with_cell(CellRect {
+            DrawRect::new(Rect::new(Point::new(0.0, 0.0), width, 48.0), ink).with_cell(CellRect {
                 leaf: true,
                 ..CellRect::default()
             }),
@@ -75,14 +71,12 @@ fn control_characters_in_text_never_reach_the_terminal() {
 
 fn band(top: f32, bottom: f32, ink: Rgba8) -> SceneCommand {
     SceneCommand::Rect(
-        DrawRect::new(
-            Rect::new(Point::new(0.0, top), 16.0, bottom - top),
-            SceneRectStyle::solid(ink),
-        )
-        .with_cell(CellRect {
-            leaf: true,
-            ..CellRect::default()
-        }),
+        DrawRect::new(Rect::new(Point::new(0.0, top), 16.0, bottom - top), ink).with_cell(
+            CellRect {
+                leaf: true,
+                ..CellRect::default()
+            },
+        ),
     )
 }
 
@@ -93,7 +87,7 @@ fn a_sliver_stacked_on_a_bar_keeps_its_colour_in_partial_blocks() {
     let blue = rgba(105, 140, 210, 255);
     let backdrop = SceneCommand::Rect(DrawRect::new(
         Rect::new(Point::new(0.0, 0.0), 16.0, 48.0),
-        SceneRectStyle::solid(dark),
+        dark,
     ));
     let grid = draw(
         vec![

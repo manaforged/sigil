@@ -3,12 +3,10 @@ use std::rc::Rc;
 
 use super::DiffView;
 use super::patch::{Hunk, Line, LineId, LineKind, Patch, changed, group_name};
-use super::rows::GUTTER_W;
-use crate::app::cell_width;
 use crate::widgets::highlight::language_for_path;
 
 #[derive(Clone, Debug, PartialEq)]
-pub(super) struct Cell {
+pub(super) struct DiffCell {
     pub(super) id: LineId,
     pub(super) number: usize,
     pub(super) kind: LineKind,
@@ -25,20 +23,18 @@ pub(super) enum DiffRow {
         header: String,
     },
     Split {
-        left: Option<Cell>,
-        right: Option<Cell>,
-        weights: (f32, f32),
+        left: Option<DiffCell>,
+        right: Option<DiffCell>,
     },
-    Unified(Cell),
+    Unified(DiffCell),
     Overflow,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(super) struct Model {
+pub(super) struct DiffModel {
     pub(super) rows: Rc<[DiffRow]>,
     pub(super) added: usize,
     pub(super) removed: usize,
-    pub(super) weights: (f32, f32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,8 +55,7 @@ pub(super) fn model(
     view: DiffView,
     fallback: Option<&'static str>,
     max_rows: usize,
-) -> Model {
-    let weights = weights(patch);
+) -> DiffModel {
     let mut rows = Vec::new();
     let (mut added, mut removed) = (0, 0);
     for (index, hunk) in patch.hunks.iter().enumerate() {
@@ -75,7 +70,7 @@ pub(super) fn model(
         let changes = pairs.iter().filter(|pair| pair.kind == PairKind::Change);
         added += changes.clone().filter(|pair| pair.right.is_some()).count();
         removed += changes.filter(|pair| pair.left.is_some()).count();
-        let side = Side {
+        let side = DiffSide {
             hunk: index,
             lines: &hunk.lines,
             language: hunk
@@ -85,7 +80,7 @@ pub(super) fn model(
                 .or(fallback),
         };
         match view {
-            DiffView::Split => rows.extend(pairs.iter().map(|pair| side.split(pair, weights))),
+            DiffView::Split => rows.extend(pairs.iter().map(|pair| side.split(pair))),
             DiffView::Unified => side.unified(&pairs, &mut rows),
         }
     }
@@ -94,11 +89,10 @@ pub(super) fn model(
         rows.truncate(max_rows);
         rows.push(DiffRow::Overflow);
     }
-    Model {
+    DiffModel {
         rows: rows.into(),
         added,
         removed,
-        weights,
     }
 }
 
@@ -112,23 +106,6 @@ fn meta_rows(rows: &mut Vec<DiffRow>, meta: &[String]) {
 
 fn expand(text: &str) -> String {
     text.replace('\t', "    ")
-}
-
-fn weights(patch: &Patch) -> (f32, f32) {
-    let lines = || patch.hunks.iter().flat_map(|hunk| hunk.lines.iter());
-    let widest = |side: fn(&Line) -> bool| {
-        lines()
-            .filter(|line| line.kind != LineKind::Note && side(line))
-            .map(|line| cell_width(&expand(&line.text)))
-            .max()
-            .unwrap_or(0)
-    };
-    let weight =
-        |cells: usize| f32::from(u16::try_from(cells).unwrap_or(u16::MAX)) + GUTTER_W / 8.0;
-    (
-        weight(widest(|line| line.old.is_some())),
-        weight(widest(|line| line.new.is_some())),
-    )
 }
 
 fn pairs(hunk: &Hunk) -> Vec<Pair> {
@@ -200,13 +177,13 @@ fn flush(lines: &[Line], out: &mut Vec<Pair>, dropped: &mut Vec<usize>, kept: &m
     kept.clear();
 }
 
-struct Side<'a> {
+struct DiffSide<'a> {
     hunk: usize,
     lines: &'a [Line],
     language: Option<&'static str>,
 }
 
-impl Side<'_> {
+impl DiffSide<'_> {
     fn text(&self, index: Option<usize>) -> String {
         index
             .and_then(|index| self.lines.get(index))
@@ -219,9 +196,9 @@ impl Side<'_> {
         kind: LineKind,
         old: bool,
         range: Option<Range<usize>>,
-    ) -> Option<Cell> {
+    ) -> Option<DiffCell> {
         let line = self.lines.get(index)?;
-        Some(Cell {
+        Some(DiffCell {
             id: LineId {
                 hunk: self.hunk,
                 line: index,
@@ -238,7 +215,7 @@ impl Side<'_> {
         changed(&self.text(pair.left), &self.text(pair.right))
     }
 
-    fn split(&self, pair: &Pair, weights: (f32, f32)) -> DiffRow {
+    fn split(&self, pair: &Pair) -> DiffRow {
         let (left_kind, right_kind, ranges) = match pair.kind {
             PairKind::Note => return DiffRow::Meta(self.text(pair.left)),
             PairKind::Context => (LineKind::Context, LineKind::Context, (None, None)),
@@ -254,7 +231,6 @@ impl Side<'_> {
             right: pair
                 .right
                 .and_then(|index| self.cell(index, right_kind, false, ranges.1)),
-            weights,
         }
     }
 

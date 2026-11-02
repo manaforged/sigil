@@ -1,66 +1,292 @@
 use std::cell::RefCell;
 
+use crate::app::menu::Menu;
+use crate::app::platform::{Bridge, Wake};
+use crate::error::{AppResult, Error, ErrorKind};
+use crate::events::MouseButton;
+use crate::geometry::Point;
 use crate::reactive::EventChannel;
-use crossbeam_channel::{Receiver, Sender, unbounded};
-
-pub use tray_icon::{Icon, TrayIcon, TrayIconBuilder, TrayIconEvent};
+use tray_icon::{Icon, MouseButton as NativeButton, TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 thread_local! {
-    static PENDING: RefCell<Option<TrayIconBuilder>> = const { RefCell::new(None) };
+    static PENDING: RefCell<Option<Tray>> = const { RefCell::new(None) };
     static INSTALLED: RefCell<Option<TrayIcon>> = const { RefCell::new(None) };
-    static EVENTS: EventChannel<TrayIconEvent> = EventChannel::new();
-    static BRIDGE: (Sender<TrayIconEvent>, Receiver<TrayIconEvent>) = unbounded();
+    static EVENTS: EventChannel<TrayEvent> = EventChannel::new();
+    static BRIDGE: Bridge<TrayEvent> = Bridge::new();
 }
 
-pub fn set_tray(builder: TrayIconBuilder) {
-    PENDING.with(|slot| *slot.borrow_mut() = Some(builder));
+#[derive(Clone, Debug, Default)]
+enum Change<T> {
+    #[default]
+    Keep,
+    Set(T),
+    Clear,
 }
 
-pub fn update<R>(edit: impl FnOnce(&TrayIcon) -> R) -> Option<R> {
-    INSTALLED.with(|slot| slot.borrow().as_ref().map(edit))
+/// A system tray icon.
+#[derive(Clone, Debug, Default)]
+pub struct Tray {
+    icon: Change<(Vec<u8>, u32, u32)>,
+    tooltip: Change<String>,
+    title: Change<String>,
+    menu: Change<Menu>,
 }
 
-#[must_use]
-pub fn events() -> EventChannel<TrayIconEvent> {
-    EVENTS.with(Clone::clone)
+impl Tray {
+    /// A tray icon with nothing set.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            icon: Change::Keep,
+            tooltip: Change::Keep,
+            title: Change::Keep,
+            menu: Change::Keep,
+        }
+    }
+
+    /// Sets the image from RGBA bytes.
+    #[must_use]
+    pub fn icon(mut self, rgba: Vec<u8>, width: u32, height: u32) -> Self {
+        self.icon = Change::Set((rgba, width, height));
+        self
+    }
+
+    /// Makes `update` remove the installed image.
+    #[must_use]
+    pub fn clear_icon(mut self) -> Self {
+        self.icon = Change::Clear;
+        self
+    }
+
+    /// Sets the text shown on hover.
+    #[must_use]
+    pub fn tooltip(mut self, tooltip: impl Into<String>) -> Self {
+        self.tooltip = Change::Set(tooltip.into());
+        self
+    }
+
+    /// Makes `update` remove the installed tooltip.
+    #[must_use]
+    pub fn clear_tooltip(mut self) -> Self {
+        self.tooltip = Change::Clear;
+        self
+    }
+
+    /// Sets the text shown beside the icon.
+    #[must_use]
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = Change::Set(title.into());
+        self
+    }
+
+    /// Makes `update` remove the installed title.
+    #[must_use]
+    pub fn clear_title(mut self) -> Self {
+        self.title = Change::Clear;
+        self
+    }
+
+    /// Sets the menu the icon opens.
+    #[must_use]
+    pub fn menu(mut self, menu: Menu) -> Self {
+        self.menu = Change::Set(menu);
+        self
+    }
+
+    /// Makes `update` remove the installed menu.
+    #[must_use]
+    pub fn clear_menu(mut self) -> Self {
+        self.menu = Change::Clear;
+        self
+    }
+
+    /// Queues the tray icon for the next frame; an error means the icon image is invalid.
+    pub fn install(self) -> AppResult<()> {
+        self.native_icon()
+            .map_err(|error| Error::message(ErrorKind::Other, error))?;
+        PENDING.with(|slot| *slot.borrow_mut() = Some(self));
+        Ok(())
+    }
+
+    /// Applies the set and cleared fields to the installed icon; `Ok(false)` before it is installed.
+    pub fn update(&self) -> AppResult<bool> {
+        INSTALLED.with(|slot| {
+            let installed = slot.borrow();
+            let Some(native) = installed.as_ref() else {
+                return Ok(false);
+            };
+            self.apply(native)
+                .map_err(|error| Error::message(ErrorKind::Other, error))?;
+            Ok(true)
+        })
+    }
+
+    /// The pointer events on the tray icon.
+    #[must_use]
+    pub fn events() -> EventChannel<TrayEvent> {
+        EVENTS.with(Clone::clone)
+    }
+
+    fn apply(&self, native: &TrayIcon) -> Result<(), String> {
+        let icon = self.native_icon()?;
+        let menu = self.native_menu()?;
+        if icon.is_some() || matches!(self.icon, Change::Clear) {
+            native.set_icon(icon).map_err(|error| error.to_string())?;
+        }
+        match &self.tooltip {
+            Change::Keep => {}
+            Change::Set(tooltip) => native
+                .set_tooltip(Some(tooltip))
+                .map_err(|error| error.to_string())?,
+            Change::Clear => native
+                .set_tooltip(None::<&str>)
+                .map_err(|error| error.to_string())?,
+        }
+        match &self.title {
+            Change::Keep => {}
+            Change::Set(title) => native.set_title(Some(title)),
+            Change::Clear => native.set_title(None::<&str>),
+        }
+        if let Some(menu) = menu {
+            native.set_menu(Some(Box::new(menu)));
+        } else if matches!(self.menu, Change::Clear) {
+            native.set_menu(None);
+        }
+        Ok(())
+    }
+
+    fn native(self) -> Result<TrayIcon, String> {
+        let mut builder = TrayIconBuilder::new();
+        if let Some(menu) = self.native_menu()? {
+            builder = builder.with_menu(Box::new(menu));
+        }
+        if let Some(icon) = self.native_icon()? {
+            builder = builder.with_icon(icon);
+        }
+        if let Change::Set(tooltip) = self.tooltip {
+            builder = builder.with_tooltip(tooltip);
+        }
+        if let Change::Set(title) = self.title {
+            builder = builder.with_title(title);
+        }
+        builder.build().map_err(|error| error.to_string())
+    }
+
+    fn native_icon(&self) -> Result<Option<Icon>, String> {
+        match &self.icon {
+            Change::Set((rgba, width, height)) => Icon::from_rgba(rgba.clone(), *width, *height)
+                .map(Some)
+                .map_err(|error| error.to_string()),
+            Change::Keep | Change::Clear => Ok(None),
+        }
+    }
+
+    fn native_menu(&self) -> Result<Option<muda::Menu>, String> {
+        match &self.menu {
+            Change::Set(menu) => menu.native().map(Some),
+            Change::Keep | Change::Clear => Ok(None),
+        }
+    }
 }
 
+/// A pointer event on the tray icon.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum TrayEvent {
+    /// The click tray event.
+    Click {
+        /// The button.
+        button: MouseButton,
+        /// The position.
+        position: Point,
+    },
+    /// The double click tray event.
+    DoubleClick {
+        /// The button.
+        button: MouseButton,
+        /// The position.
+        position: Point,
+    },
+    /// The enter tray event.
+    Enter,
+    /// The leave tray event.
+    Leave,
+}
+
+/// Delivers `event` as if the pointer caused it.
 #[cfg(any(test, feature = "kittest"))]
-pub fn simulate(event: TrayIconEvent) {
-    events().emit(event);
+pub fn simulate(event: TrayEvent) {
+    Tray::events().emit(event);
 }
 
 pub(crate) fn has_pending() -> bool {
     PENDING.with(|slot| slot.borrow().is_some())
 }
 
-pub(crate) fn install(wake: impl Fn() + Send + Sync + 'static) {
-    let Some(builder) = PENDING.with(|slot| slot.borrow_mut().take()) else {
+pub(crate) fn install(wake: Wake) {
+    if has_pending() {
+        install_tray(wake);
+    }
+}
+
+pub(crate) fn pump() {
+    BRIDGE.with(|bridge| EVENTS.with(|channel| bridge.forward(channel)));
+}
+
+fn install_tray(wake: Wake) {
+    let Some(tray) = PENDING.with(|slot| slot.borrow_mut().take()) else {
         return;
     };
-    match builder.build() {
+    crate::app::menu::connect(std::sync::Arc::clone(&wake));
+    match tray.native() {
         Ok(tray) => INSTALLED.with(|slot| *slot.borrow_mut() = Some(tray)),
-        Err(err) => {
-            tracing::warn!(target: "sigil::tray", error = %err, "tray icon build failed");
+        Err(error) => {
+            tracing::warn!(target: "sigil::tray", %error, "tray icon build failed");
             return;
         }
     }
 
-    let tx = BRIDGE.with(|(tx, _)| tx.clone());
+    let sink = BRIDGE.with(|bridge| bridge.sink(wake));
     TrayIconEvent::set_event_handler(Some(move |event: TrayIconEvent| {
-        let _ = tx.send(event);
-        wake();
+        if let Some(event) = map_event(&event) {
+            sink(event);
+        }
     }));
 }
 
-pub(crate) fn pump() {
-    BRIDGE.with(|(_, rx)| {
-        EVENTS.with(|channel| {
-            while let Ok(event) = rx.try_recv() {
-                channel.emit(event);
-            }
-        });
-    });
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "screen coordinates fit an f32"
+)]
+const fn map_event(event: &TrayIconEvent) -> Option<TrayEvent> {
+    match event {
+        TrayIconEvent::Click {
+            button,
+            button_state: tray_icon::MouseButtonState::Up,
+            position,
+            ..
+        } => Some(TrayEvent::Click {
+            button: map_button(*button),
+            position: Point::new(position.x as f32, position.y as f32),
+        }),
+        TrayIconEvent::DoubleClick {
+            button, position, ..
+        } => Some(TrayEvent::DoubleClick {
+            button: map_button(*button),
+            position: Point::new(position.x as f32, position.y as f32),
+        }),
+        TrayIconEvent::Enter { .. } => Some(TrayEvent::Enter),
+        TrayIconEvent::Leave { .. } => Some(TrayEvent::Leave),
+        _ => None,
+    }
+}
+
+const fn map_button(button: NativeButton) -> MouseButton {
+    match button {
+        NativeButton::Left => MouseButton::Left,
+        NativeButton::Right => MouseButton::Right,
+        NativeButton::Middle => MouseButton::Middle,
+    }
 }
 
 #[cfg(test)]

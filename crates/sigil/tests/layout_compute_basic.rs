@@ -25,7 +25,7 @@ fn flex_row_text_children_use_placeholder_intrinsic_widths() {
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_row()
             .fixed_size(300.0, 40.0)
-            .align_items(AlignItems::FlexStart),
+            .align_items(AlignItems::Start),
     );
 
     let children = cx.get(root).expect("root exists").children().to_vec();

@@ -1,10 +1,10 @@
 use super::canvas::{Canvas, LEFT, UP};
-use super::flow::{Dir, Edge, Graph, Node, Rect, Shape};
-use super::flow_route::{Pen, between, entry, exit, route, span};
+use super::flow::{Dir, FlowEdge, FlowNode, Graph, GridRect, NodeShape};
+use super::flow_route::{RoutePen, between, entry, exit, route, span};
 
-fn around(canvas: &mut Canvas, edge: &Edge, ends: (Rect, Rect), dir: Dir, lane: usize) {
+fn around(canvas: &mut Canvas, edge: &FlowEdge, ends: (GridRect, GridRect), dir: Dir, lane: usize) {
     let (from, to) = ends;
-    let pen = Pen {
+    let pen = RoutePen {
         dir,
         dashed: edge.dashed,
     };
@@ -43,7 +43,7 @@ fn around(canvas: &mut Canvas, edge: &Edge, ends: (Rect, Rect), dir: Dir, lane: 
     }
 }
 
-pub(super) const fn side(rect: Rect, dir: Dir) -> (usize, usize) {
+pub(super) const fn side(rect: GridRect, dir: Dir) -> (usize, usize) {
     if dir.vertical() {
         (rect.x + rect.w, rect.y + rect.h / 2)
     } else {
@@ -51,8 +51,8 @@ pub(super) const fn side(rect: Rect, dir: Dir) -> (usize, usize) {
     }
 }
 
-fn through(canvas: &mut Canvas, rect: Rect, dir: Dir, dashed: bool) {
-    let pen = Pen { dir, dashed };
+fn through(canvas: &mut Canvas, rect: GridRect, dir: Dir, dashed: bool) {
+    let pen = RoutePen { dir, dashed };
     let (glyph, _) = pen.glyphs();
     if dir.vertical() {
         canvas.vline(
@@ -71,13 +71,17 @@ fn through(canvas: &mut Canvas, rect: Rect, dir: Dir, dashed: bool) {
     }
 }
 
-fn shape(canvas: &mut Canvas, node: &Node, rect: Rect) {
+fn shape(canvas: &mut Canvas, node: &FlowNode, rect: GridRect) {
     let round = matches!(
         node.shape,
-        Shape::Round | Shape::Stadium | Shape::Cylinder | Shape::Circle | Shape::Terminal
+        NodeShape::Round
+            | NodeShape::Stadium
+            | NodeShape::Cylinder
+            | NodeShape::Circle
+            | NodeShape::Terminal
     );
     canvas.frame(rect.x, rect.y, (rect.w, rect.h), round);
-    if matches!(node.shape, Shape::Diamond | Shape::Hexagon) {
+    if matches!(node.shape, NodeShape::Diamond | NodeShape::Hexagon) {
         let right = rect.x.saturating_add(rect.w).saturating_sub(1);
         let bottom = rect.y.saturating_add(rect.h).saturating_sub(1);
         canvas.set(rect.x, rect.y, '╱');
@@ -88,9 +92,9 @@ fn shape(canvas: &mut Canvas, node: &Node, rect: Rect) {
     let inner = rect.w.saturating_sub(2);
     for (index, line) in node.label.iter().enumerate() {
         let text = match node.shape {
-            Shape::Circle | Shape::Stadium => format!("({line})"),
-            Shape::Subroutine => format!("[{line}]"),
-            Shape::Flag => format!("{line} ▷"),
+            NodeShape::Circle | NodeShape::Stadium => format!("({line})"),
+            NodeShape::Subroutine => format!("[{line}]"),
+            NodeShape::Flag => format!("{line} ▷"),
             _ => line.clone(),
         };
         let width = text.chars().count();
@@ -103,7 +107,7 @@ fn shape(canvas: &mut Canvas, node: &Node, rect: Rect) {
 }
 
 impl Graph {
-    pub(super) fn paint(&self, rects: &[Rect]) -> Vec<String> {
+    pub(super) fn paint(&self, rects: &[GridRect]) -> Vec<String> {
         let (cols, rows, extent, lanes) = self.sizes(rects);
         let mut canvas = Canvas::new(cols, rows);
         for (node, rect) in self.nodes.iter().zip(rects) {
@@ -130,7 +134,7 @@ impl Graph {
         canvas.lines()
     }
 
-    fn sizes(&self, rects: &[Rect]) -> (usize, usize, usize, Vec<Option<usize>>) {
+    fn sizes(&self, rects: &[GridRect]) -> (usize, usize, usize, Vec<Option<usize>>) {
         let margin = self
             .edges
             .iter()
@@ -138,7 +142,7 @@ impl Graph {
             .max()
             .unwrap_or(0)
             .saturating_add(2);
-        let far = |end: fn(&Rect) -> usize| rects.iter().map(end).max().unwrap_or(0);
+        let far = |end: fn(&GridRect) -> usize| rects.iter().map(end).max().unwrap_or(0);
         let right = far(|rect| rect.x.saturating_add(rect.w));
         let bottom = far(|rect| rect.y.saturating_add(rect.h));
         let (cols, rows) = (right.saturating_add(margin), bottom.saturating_add(1));
@@ -156,9 +160,9 @@ impl Graph {
         (cols, rows, extent, lanes)
     }
 
-    fn lanes(&self, rects: &[Rect]) -> Vec<Option<usize>> {
+    fn lanes(&self, rects: &[GridRect]) -> Vec<Option<usize>> {
         let mut next = 0_usize;
-        let pen = Pen {
+        let pen = RoutePen {
             dir: self.dir,
             dashed: false,
         };

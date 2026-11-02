@@ -3,15 +3,15 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::events::{FileDropEvent, FileDropPhase, ShellEvent};
+use sigil::events::{Event, FileDropEvent, FileDropPhase};
+use sigil::geometry::Point;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil_kittest::Harness;
-use sigil_kittest::input::pointer_move;
 
 #[test]
 fn a_drop_reaches_only_the_pane_under_the_pointer() {
-    Runtime::scope("file-drop-route", || {
+    Owner::scope("file-drop-route", || {
         let got = signal(Vec::<&'static str>::new());
         let pane = move |name: &'static str| {
             container()
@@ -25,8 +25,8 @@ fn a_drop_reaches_only_the_pane_under_the_pointer() {
         let mut ui =
             Harness::new(move || row().child(pane("left")).child(pane("right"))).pixels(500, 220);
         ui.settle();
-        ui.send([pointer_move(300.0, 100.0)]);
-        ui.send([ShellEvent::FileDrop(FileDropEvent {
+        ui.send([Event::pointer_move(Point::new(300.0, 100.0))]);
+        ui.send([Event::FileDrop(FileDropEvent {
             path: Some("/tmp/notes.txt".to_owned()),
             phase: FileDropPhase::Dropped,
         })]);

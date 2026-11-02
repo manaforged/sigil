@@ -1,15 +1,15 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::events::{MouseButton, MouseButtons, NodeEventsExt, PointerEvent};
+use crate::events::{MouseButton, MouseButtons, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::LayoutReactiveExt;
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token};
+use crate::widgets::Widget;
 
-pub const DRAG_THRESHOLD_PX: f32 = 4.0;
+const DRAG_THRESHOLD_PX: f32 = 4.0;
 
-pub const DROP_TARGET_CLASS: &str = "bg-accent-4";
+const DROP_TARGET_CLASS: &str = "bg-accent-4";
 
 const GHOST_OFFSET: (f32, f32) = (12.0, 10.0);
 
@@ -17,15 +17,16 @@ type Armed<T> = Rc<RefCell<Option<((f32, f32), T)>>>;
 type Accepts<T> = Rc<dyn Fn(&T) -> bool>;
 type OnDrop<T> = Rc<dyn Fn(T)>;
 
+/// Shared state of one drag interaction.
 pub struct DragState<T: 'static> {
     active: Signal<bool>,
     position: Signal<(f32, f32)>,
     payload: Signal<Option<T>>,
-    targets: Rc<RefCell<Registry<T>>>,
+    targets: Rc<RefCell<DropRegistry<T>>>,
     armed: Armed<T>,
 }
 
-struct Registry<T: 'static> {
+struct DropRegistry<T: 'static> {
     targets: Vec<DropTarget<T>>,
     next_id: usize,
 }
@@ -39,7 +40,7 @@ struct DropTarget<T: 'static> {
 }
 
 struct TargetGuard<T: 'static> {
-    registry: Rc<RefCell<Registry<T>>>,
+    registry: Rc<RefCell<DropRegistry<T>>>,
     id: usize,
 }
 
@@ -64,13 +65,14 @@ impl<T: 'static> Clone for DragState<T> {
 }
 
 impl<T: Clone + 'static> DragState<T> {
+    /// Creates a drag state.
     #[must_use]
     pub fn new() -> Self {
         Self {
             active: signal(false),
             position: signal((0.0, 0.0)),
             payload: signal(None),
-            targets: Rc::new(RefCell::new(Registry {
+            targets: Rc::new(RefCell::new(DropRegistry {
                 targets: Vec::new(),
                 next_id: 0,
             })),
@@ -78,21 +80,25 @@ impl<T: Clone + 'static> DragState<T> {
         }
     }
 
+    /// Returns whether this drag state is active.
     #[must_use]
     pub fn is_active(&self) -> bool {
         self.active.try_peek().unwrap_or(false)
     }
 
+    /// Returns the position.
     #[must_use]
     pub fn position(&self) -> (f32, f32) {
         self.position.try_peek().unwrap_or_default()
     }
 
+    /// Returns the payload.
     #[must_use]
     pub fn payload(&self) -> Option<T> {
         self.payload.try_peek().flatten()
     }
 
+    /// Cancels the current drag.
     pub fn cancel(&self) {
         self.end();
     }
@@ -170,46 +176,36 @@ impl<T: Clone + 'static> Default for DragState<T> {
     }
 }
 
-pub trait DragDropExt<T: Clone + 'static> {
-    #[must_use]
-    fn drag_source(self, state: DragState<T>, payload: T) -> Self;
-
-    #[must_use]
-    fn drop_target(
-        self,
-        state: DragState<T>,
-        accepts: impl Fn(&T) -> bool + 'static,
-        on_drop: impl Fn(T) + 'static,
-    ) -> Self;
+pub(crate) fn source<T: Clone + 'static>(
+    node: NodeBuilder,
+    state: DragState<T>,
+    payload: T,
+) -> NodeBuilder {
+    node.pointer_down(arm(state.clone(), payload))
+        .pointer_move(drive(state.clone()))
+        .pointer_up(release(state.clone()))
+        .pointer_leave(leave(state))
 }
 
-impl<T: Clone + 'static> DragDropExt<T> for NodeBuilder {
-    fn drag_source(self, state: DragState<T>, payload: T) -> Self {
-        self.pointer_down(arm(state.clone(), payload))
-            .pointer_move(drive(state.clone()))
-            .pointer_up(release(state.clone()))
-            .pointer_leave(leave(state))
-    }
-
-    fn drop_target(
-        self,
-        state: DragState<T>,
-        accepts: impl Fn(&T) -> bool + 'static,
-        on_drop: impl Fn(T) + 'static,
-    ) -> Self {
-        let bounds = signal((0.0, 0.0, 0.0, 0.0));
-        let highlight = signal(false);
-        let guard = state.register(bounds, highlight, Rc::new(accepts), Rc::new(on_drop));
-        self.pointer_move(drive(state.clone()))
-            .pointer_up(release(state))
-            .bounds_reactive(bounds)
-            .class_when(highlight, DROP_TARGET_CLASS)
-            .mutate(move |node| {
-                let _ = node.attach(guard);
-            })
-    }
+pub(crate) fn target<T: Clone + 'static>(
+    node: NodeBuilder,
+    state: DragState<T>,
+    accepts: impl Fn(&T) -> bool + 'static,
+    on_drop: impl Fn(T) + 'static,
+) -> NodeBuilder {
+    let bounds = signal((0.0, 0.0, 0.0, 0.0));
+    let highlight = signal(false);
+    let guard = state.register(bounds, highlight, Rc::new(accepts), Rc::new(on_drop));
+    node.pointer_move(drive(state.clone()))
+        .pointer_up(release(state))
+        .bounds_reactive(bounds)
+        .class_when(highlight, DROP_TARGET_CLASS)
+        .mutate(move |node| {
+            let _ = node.attach(guard);
+        })
 }
 
+/// The node that follows the pointer.
 #[must_use]
 pub fn drag_ghost<T, N>(state: DragState<T>, render: impl Fn(&T) -> N + 'static) -> NodeBuilder
 where

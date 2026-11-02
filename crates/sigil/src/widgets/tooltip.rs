@@ -3,45 +3,44 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::animation_runtime::presets;
+use crate::events::Key;
 use crate::events::focus_from_keyboard;
 use crate::events::mutate_handlers;
-use crate::events::{Key, NodeEventsExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TopLayer, container, text};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use crate::layout::{Popup, PopupSide, ViewportOverlay};
-use crate::reactive::{IntervalId, Signal, cancel_interval, interval, signal};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container, text};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
+use crate::layout::{Popup, PopupSide};
+use crate::reactive::{IntervalId, Signal, interval, signal};
 use crate::style::TransitionId;
-use crate::style::{
-    ControlSize, DisplayKind, Metrics, NodeStyleExt, PaintTarget, Style, StyleAtom, StyleSlot,
-    Theme, Token, space,
-};
+use crate::style::{ControlSize, Metrics, Style, StyleAtom, Token, space};
+use crate::widgets::Widget;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::popup::{POPUP_GAP, surface};
-use super::shared::BuilderMutator;
+use super::layout_ext::LayoutOverrides;
+use super::popup::{POPUP_GAP, PopupAnchor, PopupLayer, hide, surface};
 
 const BUBBLE_MAX_WIDTH: f32 = space(60);
 
 const TOOLTIP_TRANSITION: TransitionId = presets::SMOOTH;
 static BUBBLE_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOOLTIP_TRANSITION)];
 
+/// Builder of a tooltip.
 pub struct TooltipBuilder {
     label: String,
     shortcut: Option<String>,
     child: Option<Box<dyn IntoNode>>,
     clamp_top: bool,
     delay_ms: u64,
-    mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
+/// A hover tooltip.
 #[must_use]
 pub fn tooltip(label: impl Into<String>) -> TooltipBuilder {
     TooltipBuilder::new(label)
 }
 
 impl TooltipBuilder {
+    /// Creates a tooltip builder.
     #[must_use]
     pub fn new(label: impl Into<String>) -> Self {
         Self {
@@ -50,43 +49,40 @@ impl TooltipBuilder {
             child: None,
             clamp_top: false,
             delay_ms: 0,
-            mutators: Vec::new(),
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
     }
 
+    /// Sets the delay.
     #[must_use]
     pub const fn delay(mut self, ms: u64) -> Self {
         self.delay_ms = ms;
         self
     }
 
+    /// Sets the hint.
     #[must_use]
-    pub fn shortcut(mut self, shortcut: Option<impl Into<String>>) -> Self {
-        self.shortcut = shortcut.map(Into::into);
+    pub fn hint(mut self, hint: Option<impl Into<String>>) -> Self {
+        self.shortcut = hint.map(Into::into);
         self
     }
 
+    /// Adds a child.
     #[must_use]
     pub fn child(mut self, target: impl IntoNode + 'static) -> Self {
         self.child = Some(Box::new(target));
         self
     }
 
+    /// Applies the clamp top option.
     #[must_use]
     pub const fn clamp_top(mut self) -> Self {
         self.clamp_top = true;
         self
     }
 
-    #[must_use]
-    pub fn theme(mut self, theme: Theme) -> Self {
-        self.mutators.push(Box::new(move |node| node.theme(theme)));
-        self
-    }
-
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let visible = signal(false);
         let side = if self.clamp_top {
             PopupSide::Below
@@ -104,21 +100,16 @@ impl TooltipBuilder {
             .role(Role::GenericContainer)
             .description(description)
             .layout(
-                self.layout_overrides.apply(
-                    LayoutStyle::flex_column()
-                        .position(Position::Relative)
-                        .align_items(AlignItems::Center)
-                        .justify_content(JustifyContent::Center),
-                ),
+                LayoutStyle::flex_column()
+                    .position(Position::Relative)
+                    .align_items(AlignItems::Center)
+                    .justify_content(JustifyContent::Center),
             );
         let mut root = hover_reveal(root, visible, self.delay_ms);
         if let Some(inner) = self.child {
-            root = root.child(FocusTarget { inner, visible });
+            root = root.child(TooltipTarget { inner, visible });
         }
         root = root.child(bubble);
-        for mutate in self.mutators {
-            root = mutate(root);
-        }
         if !self.style_accumulator.is_empty() {
             root = root.style(self.style_accumulator);
         }
@@ -126,26 +117,7 @@ impl TooltipBuilder {
     }
 }
 
-impl PaintTarget for TooltipBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for TooltipBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for TooltipBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] TooltipBuilder: paint(style_accumulator), widget, node);
 
 fn hover_reveal(root: NodeBuilder, visible: Signal<bool>, delay_ms: u64) -> NodeBuilder {
     let pending: Rc<Cell<Option<IntervalId>>> = Rc::new(Cell::new(None));
@@ -163,28 +135,26 @@ fn hover_reveal(root: NodeBuilder, visible: Signal<bool>, delay_ms: u64) -> Node
         let id = interval(Duration::from_millis(delay_ms), move || {
             visible.set(true);
             if let Some(id) = pending_for_cb.take() {
-                cancel_interval(id);
+                id.cancel();
             }
         });
         pending_for_enter.set(Some(id));
     })
     .pointer_leave(move |event| {
         if let Some(id) = pending.take() {
-            cancel_interval(id);
+            id.cancel();
         }
-        if visible.peek() {
-            visible.set(false);
-        }
+        hide(visible);
         event.stop_propagation();
     })
 }
 
-struct FocusTarget {
+struct TooltipTarget {
     inner: Box<dyn IntoNode>,
     visible: Signal<bool>,
 }
 
-impl IntoNode for FocusTarget {
+impl IntoNode for TooltipTarget {
     fn build(self, cx: &mut Cx) -> NodeId {
         let id = self.inner.build(cx);
         if let Some(target) = first_focusable(cx, id) {
@@ -218,8 +188,7 @@ fn watch_focus(cx: &mut Cx, target: NodeId, visible: Signal<bool>) {
         handlers.add_key(
             Key::Escape.into(),
             Box::new(move |event| {
-                if visible.peek() {
-                    visible.set(false);
+                if hide(visible) {
                     event.stop_propagation();
                 }
             }),
@@ -241,16 +210,14 @@ fn build_bubble(
     (visible, side): (Signal<bool>, PopupSide),
 ) -> NodeBuilder {
     let metrics = Metrics::current();
+    let anchor = PopupAnchor::Popup(Popup {
+        side,
+        center: true,
+        sibling: true,
+        gap: POPUP_GAP,
+    });
     let mut bubble = surface(Role::Tooltip)
         .label(description.to_owned())
-        .with(TopLayer)
-        .with(ViewportOverlay)
-        .with(Popup {
-            side,
-            center: true,
-            sibling: true,
-            gap: POPUP_GAP,
-        })
         .layout(
             LayoutStyle::flex_column()
                 .max_width(BUBBLE_MAX_WIDTH)
@@ -264,7 +231,6 @@ fn build_bubble(
                 .inset_left(0.0),
         )
         .class(BUBBLE_BASE)
-        .style_reactive(move || visibility_atoms(visible.get()))
         .child(
             text(label.to_owned())
                 .class("text-sm")
@@ -277,15 +243,7 @@ fn build_bubble(
                 .class(Token::OnSurfaceMuted.text()),
         );
     }
-    bubble
-}
-
-const fn visibility_atoms(show: bool) -> &'static [StyleAtom] {
-    if show {
-        &[]
-    } else {
-        &[StyleAtom::Display(DisplayKind::None)]
-    }
+    PopupLayer::new(visible, anchor).wrap(bubble)
 }
 
 #[cfg(test)]

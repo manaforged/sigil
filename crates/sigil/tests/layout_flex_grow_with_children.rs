@@ -6,8 +6,9 @@
 
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeId, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil_kittest::FakeMeasure;
 
 fn two_cells(with_child: bool) -> Vec<f32> {
     let mut cx = Cx::new_root();
@@ -25,7 +26,7 @@ fn two_cells(with_child: bool) -> Vec<f32> {
             .child(cell())
             .child(cell()),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(400.0, 300.0))
         .unwrap();

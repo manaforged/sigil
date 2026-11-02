@@ -3,10 +3,11 @@ use sigil::events::EventRouter;
 use sigil::kernel::Cx;
 use sigil::kernel::NodeType;
 use sigil::layout::LayoutEngine;
+use sigil::style::FocusRing;
 
 #[test]
 fn button_label_accepts_a_signal() {
-    sigil::reactive::Runtime::scope("sigil-widget-button-signal-label", || {
+    sigil::reactive::Owner::scope("sigil-widget-button-signal-label", || {
         let caption = signal(String::from("Save"));
         let mut cx = Cx::new_root();
         let root = cx.add(button(caption));
@@ -35,7 +36,7 @@ fn button_label_accepts_a_signal() {
 
 #[test]
 fn button_is_focusable_and_activates_on_enter() {
-    sigil::reactive::Runtime::scope("sigil-widget-button-enter", || {
+    sigil::reactive::Owner::scope("sigil-widget-button-enter", || {
         let hits = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
         let root = cx.add(button("Queue run").primary().activate({
@@ -61,7 +62,7 @@ fn button_is_focusable_and_activates_on_enter() {
 
 #[test]
 fn disabled_button_does_not_focus_or_activate() {
-    sigil::reactive::Runtime::scope("sigil-widget-button-disabled", || {
+    sigil::reactive::Owner::scope("sigil-widget-button-disabled", || {
         let hits = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
         let root = cx.add(button("Disabled").disabled(true).activate({
@@ -85,7 +86,7 @@ fn disabled_button_does_not_focus_or_activate() {
 
 #[test]
 fn button_pointer_activation_requires_press_inside() {
-    sigil::reactive::Runtime::scope("sigil-widget-button-pointer", || {
+    sigil::reactive::Owner::scope("sigil-widget-button-pointer", || {
         let hits = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
         let root = cx.add(button("Queue run").activate({
@@ -110,7 +111,7 @@ fn button_pointer_activation_requires_press_inside() {
 
 #[test]
 fn label_accepts_reactive_text() {
-    sigil::reactive::Runtime::scope("sigil-widget-label-reactive", || {
+    sigil::reactive::Owner::scope("sigil-widget-label-reactive", || {
         let value = signal(String::from("Ready"));
         let mut cx = Cx::new_root();
         let root = cx.add(text(value).nowrap());

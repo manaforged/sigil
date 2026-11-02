@@ -55,19 +55,17 @@ fn menu_bar_row(_state: State) -> NodeBuilder {
 }
 
 fn tabs_row(state: State) -> NodeBuilder {
-    node(
-        crate::widget_chrome::tabs_demo()
-            .active(active(state))
-            .disabled(disabled_tabs(state)),
-    )
+    node(crate::widget_chrome::tabs_demo(
+        active(state),
+        disabled_tabs(state),
+    ))
 }
 
 fn tabs_line_row(state: State) -> NodeBuilder {
-    node(
-        crate::widget_chrome::tabs_line_demo()
-            .active(active(state))
-            .disabled(disabled_tabs(state)),
-    )
+    node(crate::widget_chrome::tabs_line_demo(
+        active(state),
+        disabled_tabs(state),
+    ))
 }
 
 fn splitter_row(_state: State) -> NodeBuilder {

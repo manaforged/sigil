@@ -1,10 +1,14 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
-use sigil::hal::{HitPosition, ParagraphMetrics, TextAffinity, TextEngine};
-use sigil::text::{OwnedTextEngine, TextConfig};
+use sigil::style::TextStyle;
+use sigil::text::OwnedTextEngine;
+use sigil::text::{HitPosition, ParagraphMetrics, TextAffinity, TextEngine};
 
 fn engine() -> OwnedTextEngine {
-    OwnedTextEngine::new(TextConfig::default())
+    OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    })
 }
 
 #[test]

@@ -9,10 +9,11 @@
 mod support;
 
 use sigil::kernel::{ImageSource, ObjectFit, container, image};
-use sigil::layout::{LayoutBuilderExt, LayoutStyle, Overflow};
+use sigil::layout::{LayoutStyle, Overflow};
+use sigil::prelude::Widget;
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::Paint;
-use sigil::widgets::layout_ext::WidgetLayoutExt;
+
 use support::{capture, close};
 
 const SIZE: u32 = 32;
@@ -63,7 +64,7 @@ fn image_node_emits_an_image_command_carrying_its_pixels() {
         sigil::layout::LayoutEngine::with_text_measure(Box::new(support::TEXT_MEASURE));
     engine.compute(&mut cx, root, engine_size).expect("layout");
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let carried = scene
         .commands
         .iter()

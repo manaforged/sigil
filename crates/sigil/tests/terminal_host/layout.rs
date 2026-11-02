@@ -1,14 +1,15 @@
 use sigil::Host;
+use sigil::kernel::HostMode;
 use sigil::kernel::{container, text};
 use sigil::layout::LayoutStyle;
-use sigil::prelude::LayoutBuilderExt;
-use sigil::reactive::{Runtime, signal};
+use sigil::prelude::Widget;
+use sigil::reactive::{Owner, signal};
 
 #[test]
 fn a_frame_records_the_siblings_its_layout_moved() {
-    Runtime::scope("layout-delta", || {
+    Owner::scope("layout-delta", || {
         let lines = signal(vec![String::from("one")]);
-        let mut host = Host::cells();
+        let mut host = Host::new(HostMode::Cell);
         let below = std::rc::Rc::new(std::cell::Cell::new(None));
         let seen = std::rc::Rc::clone(&below);
         host.mount(move || {
@@ -32,10 +33,10 @@ fn a_frame_records_the_siblings_its_layout_moved() {
                 }))
         });
         host.layout((320.0, 160.0)).expect("layout");
-        drop(host.cx().take_delta());
+        drop(sigil::testing::take_delta(host.cx()));
         lines.set(vec![String::from("one"), String::from("two")]);
         host.layout((320.0, 160.0)).expect("layout");
-        let delta = host.cx().take_delta();
+        let delta = sigil::testing::take_delta(host.cx());
         let moved = below.get().expect("the sibling mounted");
         assert!(delta.layout.contains(&moved), "{delta:?}");
     });

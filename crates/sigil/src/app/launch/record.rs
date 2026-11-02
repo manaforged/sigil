@@ -1,25 +1,25 @@
 use crate::app::config::AppConfig;
 use crate::app::embed::Host;
-use crate::app::error::{AppResult, Error};
 use crate::app::window::{
     CloseAction, Mount, WindowId, WindowSignals, register_window, set_current_window,
     unregister_window,
 };
-use crate::events::{EventRouter, ShellEvent, WindowEvent};
+use crate::error::{AppResult, Error};
+use crate::events::{Event, WindowEvent};
 use crate::reactive::Signal;
 use crate::shell::WinitWindowHandle;
 
-use super::backend::Surface;
+use super::backend::RenderSurface;
 use super::scene_cache::SceneCache;
 
 pub(crate) struct WindowView {
     pub(crate) id: WindowId,
     pub(crate) handle: WinitWindowHandle,
     pub(crate) config: AppConfig,
-    pub(crate) surface: Option<Surface>,
+    pub(crate) surface: Option<RenderSurface>,
     pub(crate) viewport: (f32, f32),
     pub(crate) scene_cache: SceneCache,
-    pub(crate) inbox: Vec<ShellEvent>,
+    pub(crate) inbox: Vec<Event>,
     pub(crate) signals: WindowSignals,
     pub(crate) hidden: bool,
     pub(crate) repaint: bool,
@@ -28,7 +28,6 @@ pub(crate) struct WindowView {
 
 pub(crate) struct WindowRecord {
     pub(crate) host: Host,
-    pub(crate) router: EventRouter,
     pub(crate) view: WindowView,
 }
 
@@ -58,7 +57,7 @@ impl WindowRecord {
             config.user_zoom = 1.0;
         }
         let signals = register_window(id);
-        let mut host = Host::new();
+        let mut host = Host::new(crate::kernel::HostMode::Pixel);
         let previous = set_current_window(Some(id));
         mount(&mut host);
         set_current_window(previous);
@@ -72,7 +71,7 @@ impl WindowRecord {
             logical.width / config.user_zoom,
             logical.height / config.user_zoom,
         );
-        host.layout(viewport).map_err(Error::from)?;
+        host.layout(viewport)?;
         let view = WindowView {
             id,
             handle,
@@ -86,11 +85,7 @@ impl WindowRecord {
             repaint: false,
             painted: false,
         };
-        Ok(Self {
-            host,
-            router: EventRouter::new(),
-            view,
-        })
+        Ok(Self { host, view })
     }
 }
 
@@ -139,17 +134,17 @@ impl Windows {
             .find_map(|r| (r.view.id == id).then_some(r.view.handle))
     }
 
-    pub(crate) fn route(&mut self, handle: WinitWindowHandle, event: ShellEvent) -> Routed {
+    pub(crate) fn route(&mut self, handle: WinitWindowHandle, event: Event) -> Routed {
         let Some(record) = self.get_mut(handle) else {
             return Routed::Dropped;
         };
         let write = match &event {
-            ShellEvent::Window(WindowEvent::CloseRequested) => return Routed::Close,
-            ShellEvent::Window(WindowEvent::Destroyed) => return Routed::Destroyed,
-            ShellEvent::Window(WindowEvent::Focused(focused)) => {
+            Event::Window(WindowEvent::CloseRequested) => return Routed::Close,
+            Event::Window(WindowEvent::Destroyed) => return Routed::Destroyed,
+            Event::Window(WindowEvent::Focused(focused)) => {
                 Some((record.view.signals.focused, *focused))
             }
-            ShellEvent::Window(WindowEvent::Occluded(occluded)) => {
+            Event::Window(WindowEvent::Occluded(occluded)) => {
                 Some((record.view.signals.occluded, *occluded))
             }
             _ => None,

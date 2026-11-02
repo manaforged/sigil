@@ -3,7 +3,9 @@ use core::fmt;
 use crate::geometry::Rect;
 use crate::kernel::{Cx, HostMode, Node, NodeId, NodeType};
 use crate::layout::{Display, FlexDirection, FlexWrap, LayoutEngine, LayoutStyle, StyleData};
-use crate::widgets::Axis;
+use crate::widgets::Orientation;
+
+pub use crate::layout::builder_ext::Asymmetric;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Tolerance {
@@ -38,9 +40,6 @@ impl Tolerance {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Asymmetric(pub &'static str);
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MisalignmentKind {
     Column,
     Inset,
@@ -58,7 +57,7 @@ pub enum Misalignment {
     Inset {
         node: NodeLabel,
         rect: Rect,
-        axis: Axis,
+        axis: Orientation,
         start: f32,
         end: f32,
     },
@@ -187,13 +186,13 @@ fn is_row(node: &Node) -> bool {
 }
 
 #[derive(PartialEq)]
-struct Shape {
+struct RowShape {
     style: Option<StyleData>,
     cells: Vec<core::mem::Discriminant<NodeType>>,
 }
 
-fn shape(cx: &Cx, row: &Node) -> Shape {
-    Shape {
+fn shape(cx: &Cx, row: &Node) -> RowShape {
+    RowShape {
         style: row
             .get_extension::<LayoutStyle>()
             .map(|style| style.data().clone()),
@@ -207,7 +206,7 @@ fn shape(cx: &Cx, row: &Node) -> Shape {
 }
 
 fn runs<'a>(cx: &'a Cx, node: &Node) -> Vec<Vec<&'a Node>> {
-    let mut runs: Vec<(Option<Shape>, Vec<&Node>)> = Vec::new();
+    let mut runs: Vec<(Option<RowShape>, Vec<&Node>)> = Vec::new();
     for child in node.children().iter().filter_map(|child| cx.get(*child)) {
         let fits = is_row(child) && !child.children().is_empty();
         let form = fits.then(|| shape(cx, child));
@@ -310,12 +309,12 @@ fn insets(
     let (outer, inner) = (outer.rect(), inner.rect());
     let spans = [
         (
-            Axis::X,
+            Orientation::Horizontal,
             inner.origin.x - outer.origin.x,
             (outer.origin.x + outer.width) - (inner.origin.x + inner.width),
         ),
         (
-            Axis::Y,
+            Orientation::Vertical,
             inner.origin.y - outer.origin.y,
             (outer.origin.y + outer.height) - (inner.origin.y + inner.height),
         ),

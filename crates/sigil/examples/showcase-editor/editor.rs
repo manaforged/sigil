@@ -19,7 +19,7 @@ fn tab_label(ws: Workspace, file: FileId) -> String {
     }
 }
 
-fn tab_strip(ws: Workspace) -> sigil::widgets::TabsBuilder {
+fn tab_strip(ws: Workspace) -> impl IntoNode {
     let labels = derived(move || {
         ws.open
             .get()

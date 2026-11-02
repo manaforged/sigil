@@ -1,14 +1,13 @@
 use std::rc::Rc;
 
-use crate::kernel::{
-    AccessibleName, Cx, IntoNode, NodeBuilder, Role, TextBuilder, container, text,
-};
-use crate::layout::{LayoutBuilderExt, LayoutStyle, Overflow};
+use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, text};
+use crate::layout::{LayoutStyle, Overflow};
 use crate::reactive::{Reactive, Signal, derived, signal};
-use crate::style::{BORDER_WIDTH, Paint, PaintTarget, Style, StyleSlot, Token};
+use crate::style::{BORDER_WIDTH, Paint, Style, Token};
+use crate::widgets::Widget;
 
 use super::highlight::language_for_path;
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use super::virtual_list::virtual_list;
 
 mod header;
@@ -17,20 +16,24 @@ mod patch;
 mod rows;
 mod selection;
 
-pub use patch::{Hunk, Line, LineId, LineKind, Patch};
+pub use patch::{Hunk, Line, Patch};
 pub use selection::Selection;
 
 use model::{DiffRow, model};
 use rows::ROW_INSET;
-use selection::Picker;
+use selection::HunkPicker;
 
+/// Diff view: side-by-side or unified rows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiffView {
+    /// The split diff view.
     Split,
+    /// The unified diff view.
     Unified,
 }
 
 impl DiffView {
+    /// Returns the name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
@@ -40,7 +43,9 @@ impl DiffView {
     }
 }
 
+/// Input that a diff view can parse into a patch.
 pub trait DiffSource {
+    /// Converts this diff source to patch.
     fn into_patch(self) -> Signal<Rc<Patch>>;
 }
 
@@ -76,6 +81,7 @@ struct DiffShape {
     selection: Option<Signal<Selection>>,
 }
 
+/// Builder of a diff view.
 pub struct DiffBuilder {
     patch: PatchThunk,
     shape: DiffShape,
@@ -83,6 +89,7 @@ pub struct DiffBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+/// A rendered unified diff of text or a parsed `Patch`.
 #[must_use]
 pub fn diff(patch: impl DiffSource + 'static) -> DiffBuilder {
     DiffBuilder {
@@ -102,49 +109,56 @@ pub fn diff(patch: impl DiffSource + 'static) -> DiffBuilder {
 }
 
 impl DiffBuilder {
+    /// Sets the path.
     #[must_use]
     pub fn path(mut self, path: impl Into<String>) -> Self {
         self.shape.path = Some(path.into());
         self
     }
 
+    /// Sets the status.
     #[must_use]
     pub fn status(mut self, status: impl Into<String>) -> Self {
         self.shape.status = Some(status.into());
         self
     }
 
+    /// Sets the view.
     #[must_use]
     pub const fn view(mut self, view: DiffView) -> Self {
         self.shape.view = view;
         self
     }
 
+    /// Sets the max rows.
     #[must_use]
     pub const fn max_rows(mut self, rows: usize) -> Self {
         self.shape.max_rows = rows;
         self
     }
 
+    /// Sets the wrap.
     #[must_use]
     pub const fn wrap(mut self, on: bool) -> Self {
         self.shape.wrap = on;
         self
     }
 
+    /// Sets the change.
     #[must_use]
     pub fn change(mut self, on_change: impl Fn(DiffView) + 'static) -> Self {
         self.shape.on_change = Some(Rc::new(on_change));
         self
     }
 
+    /// Sets the line selection.
     #[must_use]
     pub const fn select(mut self, selection: Signal<Selection>) -> Self {
         self.shape.selection = Some(selection);
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let patch = (self.patch)();
         let shape = self.shape;
         let (view, max_rows) = (shape.view, shape.max_rows);
@@ -154,7 +168,9 @@ impl DiffBuilder {
         let summary = derived(move || {
             built.with(|built| format!("{} added, {} removed", built.added, built.removed))
         });
-        let picker = shape.selection.map(|selection| Picker { selection, patch });
+        let picker = shape
+            .selection
+            .map(|selection| HunkPicker { selection, patch });
         let draw = rows::Draw {
             picker,
             wrap: shape.wrap,
@@ -169,10 +185,10 @@ impl DiffBuilder {
             .role(Role::List)
             .label(shape.path.clone().unwrap_or_else(|| String::from("Diff")))
             .mutate(move |target| target.a11y.description = Some(AccessibleName::Derived(summary)))
-            .layout(self.layout_overrides.clone().apply(root_layout()))
+            .layout(root_layout())
             .class("rounded")
             .class(Token::Field.bg())
-            .border_w(BORDER_WIDTH.0)
+            .border_w(BORDER_WIDTH)
             .border_color(Token::Border)
             .child(
                 container()
@@ -205,17 +221,7 @@ fn status_row(status: String) -> TextBuilder {
         .class(Token::Gray10.text())
 }
 
-impl PaintTarget for DiffBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for DiffBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([] DiffBuilder: paint(style_accumulator), widget, node);
 
 fn root_layout() -> LayoutStyle {
     LayoutStyle::flex_column()
@@ -223,15 +229,6 @@ fn root_layout() -> LayoutStyle {
         .min_size(0.0, 0.0)
         .overflow_x(Overflow::Hidden)
         .gap(0.0)
-}
-
-impl IntoNode for DiffBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
 }
 
 #[cfg(all(test, feature = "terminal"))]

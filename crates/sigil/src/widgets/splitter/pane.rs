@@ -1,8 +1,9 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
-use crate::style::{Dimension, Px, StyleAtom};
+use crate::layout::LayoutStyle;
+use crate::style::StyleAtom;
+use crate::widgets::Widget;
 use crate::widgets::orientation::Orientation;
-use crate::widgets::scroll::geometry::{Cache, atoms};
+use crate::widgets::scroll::geometry::{ThumbCache, atoms};
 use crate::widgets::scroll::to_i16;
 
 use super::drag::SplitterState;
@@ -52,19 +53,19 @@ fn pane_layout(orientation: Orientation, size_px: f32, grow: f32) -> LayoutStyle
 }
 
 pub(in crate::widgets) fn cached_width_atom(px: i16) -> &'static [StyleAtom] {
-    static CACHE: Cache = Cache::new();
+    static CACHE: ThumbCache = ThumbCache::new();
     atoms(&CACHE, ATOM_CACHE_CAP, (px, 0), || {
-        vec![StyleAtom::Width(Dimension::Px(Px(px)))]
+        vec![StyleAtom::Width(crate::style::atom::ATOM_PX, px)]
     })
 }
 
 fn pane_size_atom(orientation: Orientation, size_px: f32) -> &'static [StyleAtom] {
-    static HEIGHTS: Cache = Cache::new();
+    static HEIGHTS: ThumbCache = ThumbCache::new();
     let px = to_i16(size_px);
     match orientation {
         Orientation::Horizontal => cached_width_atom(px),
         Orientation::Vertical => atoms(&HEIGHTS, ATOM_CACHE_CAP, (px, 0), || {
-            vec![StyleAtom::Height(Dimension::Px(Px(px)))]
+            vec![StyleAtom::Height(crate::style::atom::ATOM_PX, px)]
         }),
     }
 }

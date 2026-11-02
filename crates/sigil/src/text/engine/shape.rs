@@ -1,22 +1,19 @@
 use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::text::glyph::GlyphRun;
-use crate::text::shaper::{Font, Script, Shaper, Style, TextSegment};
+use crate::text::glyph::ShapedRun;
+use crate::text::shaper::{FaceStyle, Font, Script, Shaper, TextSegment};
 
 pub(super) struct ShapedSegment {
     pub(super) start: u32,
     pub(super) end: u32,
-    pub(super) run: GlyphRun,
+    pub(super) run: ShapedRun,
     pub(super) advance: f32,
     pub(super) is_break_opportunity: bool,
     pub(super) breakable_before: bool,
     pub(super) is_hard_break: bool,
     pub(super) level: u8,
-    #[cfg_attr(
-        not(any(test, debug_assertions)),
-        expect(dead_code, reason = "read only by debug_segments_for_tests")
-    )]
+    #[cfg(any(test, feature = "kittest"))]
     pub(super) script: Script,
     pub(super) face_slot: u16,
 }
@@ -44,7 +41,7 @@ pub(super) struct WordCtx<'a> {
     pub(super) word_start: usize,
     pub(super) is_ws: bool,
     pub(super) chain: &'a [Font],
-    pub(super) style: &'a Style,
+    pub(super) style: &'a FaceStyle,
 }
 
 pub(super) fn split_word_into_uniform_runs(
@@ -119,6 +116,7 @@ impl RunAccumulator {
             fragment: &ctx.word[self.start..end_offset],
             start_byte: ctx.word_start + self.start,
             level: self.level.unwrap_or(0),
+            #[cfg(any(test, feature = "kittest"))]
             script: self.script.unwrap_or(Script::Common),
             is_break_opportunity: ctx.is_ws,
         };
@@ -140,6 +138,7 @@ pub(super) struct PushRunArgs<'a> {
     pub(super) fragment: &'a str,
     pub(super) start_byte: usize,
     pub(super) level: u8,
+    #[cfg(any(test, feature = "kittest"))]
     pub(super) script: Script,
     pub(super) is_break_opportunity: bool,
 }
@@ -147,7 +146,7 @@ pub(super) struct PushRunArgs<'a> {
 pub(super) fn push_run(
     args: &PushRunArgs<'_>,
     chain: &[Font],
-    style: &Style,
+    style: &FaceStyle,
     out: &mut Vec<ShapedSegment>,
 ) {
     if args.fragment.is_empty() {
@@ -188,7 +187,7 @@ fn coalesce_face_spans(chain: &[Font], fragment: &str) -> SmallVec<[FaceSpan; 4]
 fn push_face_span(
     args: &PushRunArgs<'_>,
     chain: &[Font],
-    style: &Style,
+    style: &FaceStyle,
     span: &FaceSpan,
     out: &mut Vec<ShapedSegment>,
 ) {
@@ -213,6 +212,7 @@ fn push_face_span(
         breakable_before: false,
         is_hard_break: false,
         level: args.level,
+        #[cfg(any(test, feature = "kittest"))]
         script: args.script,
         face_slot,
     });
@@ -235,8 +235,8 @@ pub(super) fn shape_validated(
     initial_slot: u16,
     fragment: &str,
     level: u8,
-    style: &Style,
-) -> (u16, GlyphRun) {
+    style: &FaceStyle,
+) -> (u16, ShapedRun) {
     let seg = TextSegment::at_level(fragment, level);
     if let Some(font) = chain.get(initial_slot as usize) {
         let run = Shaper::new(font).shape(&seg, style);
@@ -261,7 +261,7 @@ pub(super) fn shape_validated(
     (0, Shaper::new(primary).shape(&seg, style))
 }
 
-pub(super) fn run_has_disallowed_notdef(run: &GlyphRun, fragment: &str) -> bool {
+pub(super) fn run_has_disallowed_notdef(run: &ShapedRun, fragment: &str) -> bool {
     run.glyphs.iter().any(|g| {
         if g.id.0 != 0 {
             return false;
@@ -304,7 +304,7 @@ pub(super) fn char_script(ch: char) -> Script {
     }
 }
 
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, feature = "kittest"))]
 pub(super) const fn script_name(script: Script) -> &'static str {
     match script {
         Script::Latin => "Latin",
@@ -320,7 +320,7 @@ pub(super) const fn script_name(script: Script) -> &'static str {
     }
 }
 
-fn apply_letter_spacing(run: &mut GlyphRun, style: &Style) {
+fn apply_letter_spacing(run: &mut ShapedRun, style: &FaceStyle) {
     let extra = style.letter_spacing_em * style.size_px;
     if extra.abs() < f32::EPSILON {
         return;
@@ -330,7 +330,7 @@ fn apply_letter_spacing(run: &mut GlyphRun, style: &Style) {
     }
 }
 
-fn run_total_advance(run: &GlyphRun) -> f32 {
+fn run_total_advance(run: &ShapedRun) -> f32 {
     run.glyphs.iter().map(|g| g.advance).sum()
 }
 

@@ -46,7 +46,7 @@ pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
         SceneCommand::DrawShadow { rect, shadow, .. } => {
             Rect::new(Point::new(rect[0], rect[1]), rect[2], rect[3]).expand(shadow_reach(shadow))
         }
-        SceneCommand::GlyphRun(draw) => draw.run.ink_rect()?.expand(1.0 / scale),
+        SceneCommand::GlyphRun(draw) => draw.ink_rect()?.expand(1.0 / scale),
         SceneCommand::Sprite(draw) => draw.destination,
         SceneCommand::Image(draw) => draw.destination,
         SceneCommand::Decoration(draw) => draw.band.expand(draw.line_width * 2.0),

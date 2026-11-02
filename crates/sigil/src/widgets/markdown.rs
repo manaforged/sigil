@@ -7,19 +7,19 @@ mod stream;
 mod table;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, container, text};
+use crate::layout::LayoutStyle;
 use crate::layout::cols;
 use crate::layout::snap::CellForm;
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived};
 use crate::style::{Radius, Token, Tone as ChartTone, space};
-
-use super::layout_ext::WidgetLayoutExt;
+use crate::widgets::Widget;
 use std::rc::Rc;
 
 use parse::Block;
-use render::Tone;
+use render::TokenTone;
 
+/// Rendered markdown.
 #[must_use]
 pub fn markdown(source: Signal<String>) -> NodeBuilder {
     let mut stream = stream::Stream::default();
@@ -33,9 +33,10 @@ pub fn markdown(source: Signal<String>) -> NodeBuilder {
     })
 }
 
+/// One wrapped paragraph with inline markdown spans.
 #[must_use]
 pub fn markdown_inline(source: &str) -> TextBuilder {
-    let body = inline::styled(source);
+    let body = inline::styled(&parse::parse_inlines(source));
     text(body.text).runs(body.runs)
 }
 
@@ -60,27 +61,32 @@ fn frame() -> NodeBuilder {
     )
 }
 
+/// Builder of a markdown editor.
 pub struct MarkdownEditBuilder {
     source: Signal<String>,
     disabled: Option<Signal<bool>>,
+    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
+/// A markdown editor with preview.
 #[must_use]
 pub const fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder {
     MarkdownEditBuilder {
         source,
         disabled: None,
+        layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
 
 impl MarkdownEditBuilder {
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         use super::orientation::Orientation;
         use super::splitter::splitter;
         use super::text_edit::text_edit;
@@ -105,19 +111,15 @@ impl MarkdownEditBuilder {
     }
 }
 
-impl IntoNode for MarkdownEditBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] MarkdownEditBuilder: widget, node);
 
 fn block_node(block: Block) -> NodeBuilder {
-    styled_block(block, Tone(Token::OnSurface))
+    styled_block(block, TokenTone(Token::OnSurface))
 }
 
-fn styled_block(block: Block, tone: Tone) -> NodeBuilder {
+fn styled_block(block: Block, tone: TokenTone) -> NodeBuilder {
     match block {
-        Block::Heading { level, text: body } => render::heading(level, &body),
+        Block::Heading { level, body } => render::heading(level, &body),
         Block::Paragraph(body) => render::rich(&body, "", tone, Role::Paragraph),
         Block::Quote(blocks) => render::quote(blocks, styled_block),
         Block::List(list) => render::list(list, tone, styled_block),
@@ -156,11 +158,14 @@ fn image_node(alt: &str, src: &str) -> NodeBuilder {
     #[cfg(feature = "image-decode")]
     if let Some(decoded) = decode_src(src)
         && let Some((width, height)) = display_size(decoded.width(), decoded.height())
-        && let Some(image) =
-            super::image::image_rgba(decoded.width(), decoded.height(), decoded.into_raw())
+        && let Some(source) = crate::kernel::ImageSource::from_rgba8(
+            decoded.width(),
+            decoded.height(),
+            decoded.into_raw(),
+        )
     {
         return container().child(
-            image
+            crate::kernel::image(source)
                 .alt(alt.to_string())
                 .fit(crate::kernel::ObjectFit::Contain)
                 .layout(LayoutStyle::block().width(width).height(height)),

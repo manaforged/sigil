@@ -1,11 +1,12 @@
-use crate::events::{NodeEventsExt, PointerEvent};
+use crate::events::PointerEvent;
 use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::with_text_geometry;
-use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position};
+use crate::layout::{LayoutStyle, Overflow, Position};
 use crate::reactive::{Signal, derived};
 use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom, TextStyle, Token};
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 

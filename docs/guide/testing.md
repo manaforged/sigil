@@ -6,7 +6,7 @@ Add the harness as a dev-dependency:
 
 ```toml
 [dev-dependencies]
-sigil-kittest = { git = "https://github.com/manaforged/sigil" }
+sigil-kittest = "0.2"
 ```
 
 ## A first test
@@ -76,7 +76,7 @@ assert_eq!(ui.get_by_role(Role::CheckBox, "Agree").is_checked(), Some(true));
 | `type_text("abc")` | one key per character |
 | `type_into("Name", "Ada")` | a click on the control labelled Name, then the text |
 | `focus_next()`, `focus_previous()` | Tab, Shift+Tab |
-| `send(events)` | any `ShellEvent`s, built with `sigil_kittest::input` |
+| `send(events)` | any `Event`s, built with the `Event` constructors |
 
 A target is a label, a `Node`, or a `Point` in layout points. A label waits up to `EXPECT_TIMEOUT` for its control to appear. Every action runs frames until no signal write and no animation is pending. A tree that never settles fails the test after `SETTLE_SAFETY_CAP` frames.
 
@@ -116,7 +116,9 @@ assert!(ui.text().contains("ticks 3"));
 `snapshot("name")` compares the harness output with a committed golden under `tests/goldens/` of the crate that runs the test:
 
 - A cell harness writes the grid text to `<name>.txt`.
-- A pixel harness renders offscreen and compares `<name>.png` within `SNAPSHOT_MAX_DELTA_PCT`. `snapshot_with(name, pct)` sets the budget.
+- A pixel harness renders offscreen and compares `<name>.png` within 0.5% of its pixels. `snapshot_with(name, pct)` sets the budget.
+
+`image()` captures either surface as an RGBA image. A cell harness uses the CPU renderer at 10×20 pixels per cell, with no window, GPU, or terminal process. Save it with `image().unwrap().unwrap().save("terminal.png")`. The capture preserves cell positions, colors, text styles, and cursor position; it does not reproduce a particular terminal application's font rendering. Terminal graphics images return an error. Cell `snapshot()` keeps its existing text-golden behavior; use `Golden::assert_image` on `image()` when a pixel comparison is needed.
 
 `SIGIL_REGEN_GOLDENS=1` rewrites the goldens. A pixel snapshot without a GPU adapter fails unless `SIGIL_ALLOW_NO_GPU=1` is set, which skips it.
 
@@ -129,7 +131,7 @@ ui.snapshot("save_button");
 
 ## Lower level
 
-`ui.host()` returns the `Host` and `EventRouter` for anything the harness does not cover. `ui.accessibility_snapshot()` returns the text dump that a failed `get` prints. [Headless driving](automation.md) describes the host calls the harness is built on.
+`ui.host()` returns the `Host` for anything the harness does not cover. `ui.accessibility_snapshot()` returns the text dump that a failed `get` prints. [Headless driving](automation.md) describes the host calls the harness is built on.
 
 ## Real terminals
 

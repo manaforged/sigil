@@ -13,8 +13,8 @@ use crate::animation_runtime::{AnimationConfig, Animator, config};
 use crate::kernel::{Cx, DeltaKind, NodeId, NodeTag};
 use crate::reactive::{Signal, effect_named, owner_by_id, signal};
 use crate::style::{
-    AnimatorOverlay, ColorAtomKind, NumericAtomKind, RenderStyle, Rgba8, StateSlot, StyleAtom,
-    StyleBinding, StyleEngine, Theme, Tone, ToneContext,
+    AnimatorOverlay, ColorAtomKind, NumericAtomKind, RenderStyle, Rgba8, StyleAtom, StyleBinding,
+    StyleEngine, Theme, Tone, ToneContext,
 };
 
 #[derive(Clone, Copy, Default)]
@@ -151,8 +151,6 @@ impl AnimatorOverlay for StyleAnimator {
             .map(read_color)
     }
 
-    fn retarget_to_slot(&mut self, _slot: StateSlot, _base: &[StyleAtom]) {}
-
     fn update(&self, atoms: &[StyleAtom], theme: &Theme, tone: Tone, inherited_text: Rgba8) {
         let target = targets(atoms, theme, tone);
         let mut state = self.state.borrow_mut();
@@ -212,7 +210,6 @@ fn update_numeric(
                 kind,
                 signal: value,
                 animator,
-                last_target: to,
             });
         }
     }
@@ -264,9 +261,7 @@ fn targets(atoms: &[StyleAtom], theme: &Theme, tone: Tone) -> Targets {
     Targets {
         numeric: NumericAtomKind::ALL.map(|kind| match kind {
             NumericAtomKind::Opacity => Some(f32::from(render.opacity)),
-            NumericAtomKind::BorderRadius => {
-                Some(f32::from(render.border_radius.map_or(0, |px| px.0)))
-            }
+            NumericAtomKind::BorderRadius => Some(f32::from(render.border_radius.unwrap_or(0))),
             _ => render
                 .transform
                 .value(kind)

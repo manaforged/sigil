@@ -6,14 +6,12 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 use stub::stub_engine;
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
-use sigil::layout::{
-    Dimension as StyleDimension, Display, LayoutDrive, LengthPercentageAuto, Position, StyleData, *,
-};
+use sigil::layout::{Dimension as StyleDimension, Display, LayoutDrive, Position, StyleData, *};
 
 const EPSILON: f32 = 0.5;
 
@@ -26,7 +24,7 @@ fn flex_row_grow_child_fills_remaining_space() {
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_row()
             .fixed_size(100.0, 20.0)
-            .align_items(AlignItems::FlexStart),
+            .align_items(AlignItems::Start),
     );
     let second = children.get(1).copied().expect("second child id exists");
     cx.get_mut(second)
@@ -54,7 +52,7 @@ fn flex_column_gap_offsets_children() {
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_column()
             .gap(4.0)
-            .align_items(AlignItems::FlexStart),
+            .align_items(AlignItems::Start),
     );
 
     let mut engine = stub_engine();
@@ -81,7 +79,7 @@ fn padding_moves_content_origin() {
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_row()
             .padding(6.0)
-            .align_items(AlignItems::FlexStart),
+            .align_items(AlignItems::Start),
     );
 
     let mut engine = stub_engine();
@@ -149,8 +147,8 @@ fn nested_absolute_uses_positioned_parent_origin() {
             .fixed_size(30.0, 20.0)
             .with_layout(|style| {
                 style.position = Position::Absolute;
-                style.inset.left = LengthPercentageAuto::Px(10.0);
-                style.inset.top = LengthPercentageAuto::Px(12.0);
+                style.inset.left = StyleDimension::Px(10.0);
+                style.inset.top = StyleDimension::Px(12.0);
             }),
     );
 
@@ -168,7 +166,7 @@ fn nested_absolute_uses_positioned_parent_origin() {
 
 #[test]
 fn absolute_child_uses_inset_offset() {
-    let mut drive = LayoutDrive::new(Box::new(FixedMeasure::default()));
+    let mut drive = LayoutDrive::new(Box::new(FakeMeasure::default()));
     let mut parent_style = StyleData {
         display: Display::Flex,
         ..StyleData::default()
@@ -182,14 +180,14 @@ fn absolute_child_uses_inset_offset() {
     };
     child_style.size.width = StyleDimension::Px(30.0);
     child_style.size.height = StyleDimension::Px(20.0);
-    child_style.inset.left = LengthPercentageAuto::Px(20.0);
-    child_style.inset.top = LengthPercentageAuto::Px(50.0);
+    child_style.inset.left = StyleDimension::Px(20.0);
+    child_style.inset.top = StyleDimension::Px(50.0);
 
     let root = drive.insert(parent_style);
     let child = drive.insert(child_style);
     drive.attach(root, child).expect("attach succeeds");
     drive
-        .measure(root, sigil::layout::Size::new(200.0, 100.0))
+        .measure(root, sigil::layout::Axes::new(200.0, 100.0))
         .expect("measure succeeds");
 
     let result = drive.computed_box(child).expect("child result");
@@ -209,7 +207,7 @@ fn fragment_children_treated_as_siblings_of_parent() {
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_column()
             .gap(4.0)
-            .align_items(AlignItems::FlexStart),
+            .align_items(AlignItems::Start),
     );
 
     let mut engine = stub_engine();

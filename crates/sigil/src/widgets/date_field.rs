@@ -1,31 +1,39 @@
-use crate::reactive::Reactive;
-
 use crate::kernel::{Cx, IntoNode, NodeId};
-use crate::reactive::{Signal, derived, effect, signal};
+use crate::reactive::{Reactive, Signal};
 use crate::style::locale::Locale;
-use crate::style::theme::ambient::ActiveTheme;
 
-use super::text_field::{TextFieldBuilder, text_field};
+use super::field::{FieldParser, ParsedField};
+use super::text_field::TextFieldBuilder;
 
+/// A calendar date.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Date {
+    /// The year.
     pub year: i32,
+    /// The month.
     pub month: u8,
+    /// The day.
     pub day: u8,
 }
 
 impl Date {
+    /// Parses a date in ISO format.
     #[must_use]
     pub fn parse(input: &str) -> Option<Self> {
         Self::parse_in(input, &Locale::default())
     }
 
+    kittest_pub! {
+    /// Parses a date in the order of `locale`.
     #[must_use]
+    #[doc(hidden)]
     pub fn parse_in(input: &str, locale: &Locale) -> Option<Self> {
         let (year, month, day) = locale.parse_date(input)?;
         Self::new(year, month, day)
     }
+    }
 
+    /// Creates a date.
     #[must_use]
     pub fn new(year: i32, month: u8, day: u8) -> Option<Self> {
         if !(1..=12).contains(&month) {
@@ -36,14 +44,19 @@ impl Date {
             .then_some(Self { year, month, day })
     }
 
+    /// Returns the render.
     #[must_use]
     pub fn render(self) -> String {
         self.render_in(&Locale::default())
     }
 
+    kittest_pub! {
+    /// Formats this date in the order of `locale`.
     #[must_use]
+    #[doc(hidden)]
     pub fn render_in(self, locale: &Locale) -> String {
         locale.format_date(self.year, self.month, self.day)
+    }
     }
 }
 
@@ -61,32 +74,43 @@ const fn is_leap(year: i32) -> bool {
     y.is_multiple_of(4) && (!y.is_multiple_of(100) || y.is_multiple_of(400))
 }
 
+struct DateParser;
+
+impl FieldParser for DateParser {
+    type Value = Date;
+
+    fn parse(&self, raw: &str, locale: &Locale) -> Option<Date> {
+        Date::parse_in(raw, locale)
+    }
+
+    fn render(&self, value: &Date, locale: &Locale) -> String {
+        value.render_in(locale)
+    }
+}
+
+/// Builder of a date input.
 pub struct DateFieldBuilder {
-    inner: TextFieldBuilder,
-    buffer: Signal<String>,
-    invalid: Option<Signal<bool>>,
-    theme: ActiveTheme,
+    field: ParsedField<DateParser>,
 }
 
 impl DateFieldBuilder {
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
-        self.inner = self.inner.disabled(disabled);
+        self.field = self.field.disabled(disabled);
         self
     }
 
+    /// Sets the invalid when.
     #[must_use]
-    pub fn invalid_when(mut self, invalid: impl crate::reactive::Reactive<bool>) -> Self {
-        self.invalid = Some(invalid.into_signal());
+    pub fn invalid_when(mut self, invalid: impl Reactive<bool>) -> Self {
+        self.field = self.field.invalid_when(invalid);
         self
     }
 
+    /// Returns the text field.
     pub fn text_field(self) -> TextFieldBuilder {
-        let (buffer, invalid, theme) = (self.buffer, self.invalid, self.theme);
-        self.inner.invalid_when(derived(move || {
-            invalid.is_some_and(|flag| flag.get())
-                || Date::parse_in(&buffer.get(), &theme.locale()).is_none()
-        }))
+        self.field.text_field()
     }
 }
 
@@ -96,23 +120,15 @@ impl IntoNode for DateFieldBuilder {
     }
 }
 
+/// A date input.
 #[must_use]
 pub fn date_field(value: Signal<Date>) -> DateFieldBuilder {
-    let theme = ActiveTheme::capture();
-    let buffer = signal(value.peek().render_in(&theme.locale()));
-    effect(move || buffer.set(value.get().render_in(&theme.locale())));
-    let inner = text_field(buffer).change(move |raw| {
-        if let Some(parsed) = Date::parse_in(raw, &theme.locale()) {
-            value.set(parsed);
-        }
-    });
     DateFieldBuilder {
-        inner,
-        buffer,
-        invalid: None,
-        theme,
+        field: ParsedField::new(value, DateParser),
     }
 }
+
+builder_impls!([] DateFieldBuilder: forward(field));
 
 #[cfg(test)]
 #[path = "date_field_tests.rs"]

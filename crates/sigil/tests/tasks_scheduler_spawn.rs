@@ -1,10 +1,11 @@
+#![cfg(feature = "kittest")]
 #![allow(clippy::panic, unused_crate_dependencies)]
 
 use std::time::Duration;
 
 use sigil::hal::Scheduler;
-use sigil::reactive::{Runtime, signal};
-use sigil::tasks::{AsyncRuntime, OwnerHandle, Status, signal_writer, spawn};
+use sigil::reactive::{Owner, signal};
+use sigil::tasks::{AsyncRuntime, Status, signal_writer, spawn};
 
 fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
     let start = std::time::Instant::now();
@@ -19,7 +20,7 @@ fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
 
 #[test]
 fn spawn_writes_ok_on_drain() {
-    Runtime::scope("spawn_writes_ok_on_drain", || {
+    Owner::scope("spawn_writes_ok_on_drain", || {
         let mut runtime = AsyncRuntime::new().expect("build tokio runtime");
         runtime.install_current();
         let sig = spawn::<u32, &'static str, _>(async { Ok(7_u32) });
@@ -37,7 +38,7 @@ fn spawn_writes_ok_on_drain() {
 
 #[test]
 fn a_panicked_task_reports_panicked_instead_of_pending_forever() {
-    Runtime::scope("panicked task resolves", || {
+    Owner::scope("panicked task resolves", || {
         let mut runtime = AsyncRuntime::new().expect("build tokio runtime");
         runtime.install_current();
         let sig = spawn::<u32, &'static str, _>(async { panic!("dispatch boom") });
@@ -58,7 +59,7 @@ fn a_panicked_task_reports_panicked_instead_of_pending_forever() {
 
 #[test]
 fn signal_writer_streams_updates_through_drain() {
-    Runtime::scope("signal_writer_streams_updates_through_drain", || {
+    Owner::scope("signal_writer_streams_updates_through_drain", || {
         let mut runtime = AsyncRuntime::new().expect("build tokio runtime");
         runtime.install_current();
         let values = signal(Vec::<u32>::new());
@@ -90,7 +91,7 @@ fn ui_tasks_share_the_host_runtime_and_leave_it_running() {
         .build()
         .expect("host runtime");
     let _entered = host.enter();
-    Runtime::scope("host runtime", || {
+    Owner::scope("host runtime", || {
         let mut runtime = AsyncRuntime::new().expect("UI runtime");
         runtime.install_current();
         drop(AsyncRuntime::new().expect("uninstalled UI runtime"));
@@ -103,10 +104,7 @@ fn ui_tasks_share_the_host_runtime_and_leave_it_running() {
 
         let (finish, waiting) = tokio::sync::oneshot::channel();
         let backend = host.spawn(async move { waiting.await.expect("backend shutdown signal") });
-        let ui_task = runtime.spawn(
-            OwnerHandle::current().expect("UI owner"),
-            std::future::pending(),
-        );
+        let ui_task = runtime.spawn(Owner::current().expect("UI owner"), std::future::pending());
         drop(runtime);
         assert!(!sigil::tasks::installed());
         assert!(
@@ -130,7 +128,7 @@ fn a_current_thread_host_does_not_stall_ui_tasks() {
         .build()
         .expect("current-thread host");
     let _entered = host.enter();
-    Runtime::scope("current-thread host", || {
+    Owner::scope("current-thread host", || {
         let mut runtime = AsyncRuntime::new().expect("UI runtime");
         runtime.install_current();
         let result = spawn::<_, String, _>(async { Ok(tokio::runtime::Handle::current().id()) });

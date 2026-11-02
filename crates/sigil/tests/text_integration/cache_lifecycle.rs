@@ -1,10 +1,14 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::hal::{ParagraphMetrics, TextEngine};
-use sigil::text::{OwnedTextEngine, TextConfig};
+use sigil::style::TextStyle;
+use sigil::text::OwnedTextEngine;
 
 fn engine() -> OwnedTextEngine {
-    OwnedTextEngine::new(TextConfig::default())
+    OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    })
 }
 
 #[test]
@@ -37,13 +41,13 @@ fn different_width_is_cache_miss() {
 
 #[test]
 fn clear_cache_forces_rebuild_with_new_config() {
-    let config_a = TextConfig {
+    let config_a = TextStyle {
         font_size: 16.0,
-        ..TextConfig::default()
+        ..TextStyle::default()
     };
-    let config_b = TextConfig {
+    let config_b = TextStyle {
         font_size: 32.0,
-        ..TextConfig::default()
+        ..TextStyle::default()
     };
 
     let ea = OwnedTextEngine::new(config_a);

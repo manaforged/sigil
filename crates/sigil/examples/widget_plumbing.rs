@@ -4,13 +4,13 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{Axis, InteractiveBuilder};
+use sigil::widgets::Orientation;
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - plumbing").size(560, 480), build)
 }
 
-pub(crate) fn interactive_demo() -> InteractiveBuilder {
+pub(crate) fn interactive_demo(disabled: Signal<bool>) -> NodeBuilder {
     interactive(
         container()
             .layout(LayoutStyle::flex_column().fill_width())
@@ -18,6 +18,8 @@ pub(crate) fn interactive_demo() -> InteractiveBuilder {
     )
     .focusable(true)
     .rounded(Radius::Md)
+    .disabled(disabled)
+    .into_node_builder()
 }
 
 pub(crate) fn axis_drag_demo() -> NodeBuilder {
@@ -29,7 +31,7 @@ pub(crate) fn axis_drag_demo() -> NodeBuilder {
         ));
     axis_drag(
         handle,
-        Axis::X,
+        Orientation::Horizontal,
         move || width.peek(),
         move |start, delta| width.set((start + delta).max(80.0)),
         || {},
@@ -70,7 +72,7 @@ fn build() -> impl IntoNode {
     container()
         .role(Role::Main)
         .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
-        .child(interactive_demo())
+        .child(interactive_demo(signal(false)))
         .child(axis_drag_demo())
         .child(drag_ghost_demo())
         .child(terminal_demo())

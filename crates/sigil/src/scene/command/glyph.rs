@@ -9,11 +9,15 @@ use crate::style::{Rgba8, TextStyle, Tone};
 #[cfg(feature = "scene")]
 use crate::text::Paragraph;
 
+/// The direction of a run of text.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum TextFlow {
+    /// The line text flow.
     #[default]
     Line,
+    /// The wrap text flow.
     Wrap,
+    /// The ellipsis text flow.
     Ellipsis,
 }
 
@@ -37,14 +41,18 @@ pub struct SharedGlyph {
     paragraph: Option<Paragraph>,
 }
 
+/// Shaped glyphs with one style and origin.
 #[derive(Clone)]
 pub struct GlyphRun {
+    /// The node, if any.
     pub node: Option<NodeId>,
+    /// The rect.
     pub rect: Rect,
     shared: Rc<SharedGlyph>,
 }
 
 impl GlyphRun {
+    /// Creates a glyph run.
     #[must_use]
     pub fn new(
         rect: Rect,
@@ -71,12 +79,25 @@ impl GlyphRun {
         }
     }
 
+    /// Returns the number of positioned glyphs in this run.
     #[must_use]
-    pub fn positioned_glyphs(&self) -> &[RenderedGlyph] {
+    pub fn glyph_count(&self) -> usize {
+        self.shared.positioned_glyphs.len()
+    }
+
+    #[cfg(all(
+        feature = "scene",
+        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+    ))]
+    #[must_use]
+    pub(crate) fn positioned_glyphs(&self) -> &[RenderedGlyph] {
         &self.shared.positioned_glyphs
     }
 
-    #[cfg(feature = "scene")]
+    #[cfg(all(
+        feature = "scene",
+        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+    ))]
     pub(crate) fn ink_rect(&self) -> Option<Rect> {
         let Some(paragraph) = self.paragraph() else {
             return Some(self.rect);
@@ -200,19 +221,11 @@ fn same_shared(this: &SharedGlyph, other: &SharedGlyph) -> bool {
         && same_paragraph(this, other)
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct DrawGlyphRun {
-    pub run: GlyphRun,
-}
-
-impl DrawGlyphRun {
-    #[must_use]
-    pub const fn new(run: GlyphRun) -> Self {
-        Self { run }
-    }
-}
-
-#[cfg(feature = "scene")]
+/// A shaped `GlyphRun`, which `SceneCommand::GlyphRun` holds.
+#[cfg(all(
+    feature = "scene",
+    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+))]
 #[must_use]
 pub fn shape_glyph_run(
     rect: Rect,
@@ -239,6 +252,7 @@ const fn shape_paragraph(run: GlyphRun) -> GlyphRun {
 
 #[cfg(feature = "scene")]
 fn shape_paragraph(run: GlyphRun) -> GlyphRun {
+    use crate::style::StyledTextEngine as _;
     let max_width = run.rect.width.max(1.0);
     let engine = crate::text::OwnedTextEngine::thread();
     let paragraph = match run.flow {

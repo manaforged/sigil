@@ -1,8 +1,9 @@
 use std::rc::Rc;
 
-use crate::events::{Key, NodeEventsExt};
+use crate::events::Key;
 use crate::kernel::NodeBuilder;
 use crate::reactive::Signal;
+use crate::widgets::Widget;
 
 use super::super::text_edit::{
     KeyProfile, TextEditRuntime, attach_a11y_edit, attach_ime_handlers, clipboard_keys, edit_keys,

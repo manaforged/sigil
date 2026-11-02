@@ -168,12 +168,12 @@ pub(super) fn text_intrinsic(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
     style: &StyleData,
-) -> Option<crate::layout::style_data::Size<f32>> {
+) -> Option<crate::layout::style_data::Axes<f32>> {
     if !node.children().is_empty() {
         return None;
     }
     let edges = NodeEdges::build(style, ctx.cb.w);
-    let known = crate::layout::style_data::Size {
+    let known = crate::layout::style_data::Axes {
         width: dim_to_border_box(
             style.size.width,
             ctx.cb.w,

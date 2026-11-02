@@ -6,16 +6,15 @@
 
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
+use sigil::events::Event;
+use sigil::geometry::Point;
 use sigil::geometry::Rect;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::profile::{Counter, disable, enable, frames, reset, tick_frame};
-use sigil::reactive::Runtime;
-use sigil_kittest::FixedMeasure;
-use sigil_kittest::input::scroll_lines;
+use sigil::reactive::Owner;
+use sigil_kittest::FakeMeasure;
 
 const VIEW: (f32, f32) = (800.0, 600.0);
 
@@ -28,10 +27,7 @@ fn alone() -> std::sync::MutexGuard<'static, ()> {
 }
 
 fn engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(FixedMeasure {
-        width: 60.0,
-        height: 16.0,
-    }))
+    LayoutEngine::with_text_measure(Box::new(FakeMeasure::fixed(60.0, 16.0)))
 }
 
 fn lines(count: Signal<usize>) -> NodeBuilder {
@@ -109,27 +105,27 @@ fn overlay_passes(above: usize, inside: usize) -> (u64, Rect) {
     (passes, dialog(&cx, &layout, root))
 }
 
-fn frame(host: &mut Host, router: &mut EventRouter, event: Option<ShellEvent>) {
+fn frame(host: &mut Host, event: Option<Event>) {
     let hooks = FrameHooks {
         input: event.map(|event| -> sigil::app::FrameInputHook<'_> {
-            Box::new(move |target: &mut Host, events: &mut EventRouter| {
-                target.route(events, event);
+            Box::new(move |target: &mut Host| {
+                target.route(event);
                 None
             })
         }),
         ..FrameHooks::default()
     };
-    host.frame(router, VIEW, 1.0 / 60.0, hooks);
+    host.frame(VIEW, 1.0 / 60.0, hooks);
     tick_frame();
 }
 
 #[test]
 fn scrolling_a_list_in_an_open_modal_does_not_lay_the_modal_out_again() {
     let _recorder = alone();
-    Runtime::scope("sigil-modal-layout-scroll", || {
+    Owner::scope("sigil-modal-layout-scroll", || {
         let offset = signal(0.0_f32);
         let rows: Vec<String> = (0..200).map(|index| format!("row {index}")).collect();
-        let mut host = Host::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(
             container()
                 .layout(LayoutStyle::flex_column().fixed_size(VIEW.0, VIEW.1))
@@ -143,15 +139,14 @@ fn scrolling_a_list_in_an_open_modal_does_not_lay_the_modal_out_again() {
                     ),
                 ),
         );
-        let mut router = EventRouter::new();
         for _ in 0..4 {
-            frame(&mut host, &mut router, None);
+            frame(&mut host, None);
         }
         enable();
         reset();
         for _ in 0..10 {
-            let wheel = scroll_lines(VIEW.0 / 2.0, VIEW.1 / 2.0, -1.0);
-            frame(&mut host, &mut router, Some(wheel));
+            let wheel = Event::wheel(Point::new(VIEW.0 / 2.0, VIEW.1 / 2.0), -1.0);
+            frame(&mut host, Some(wheel));
         }
         let passes: u64 = frames()
             .iter()
@@ -166,7 +161,7 @@ fn scrolling_a_list_in_an_open_modal_does_not_lay_the_modal_out_again() {
 #[test]
 fn a_change_above_a_modal_keeps_it_pinned_to_the_viewport() {
     let _recorder = alone();
-    Runtime::scope("sigil-modal-layout-above", || {
+    Owner::scope("sigil-modal-layout-above", || {
         let (passes, rect) = overlay_passes(12, 2);
         assert!(
             passes >= 1,
@@ -192,7 +187,7 @@ fn bubble_version(cx: &Cx, root: NodeId) -> u32 {
 
 #[test]
 fn a_hidden_tooltip_stays_untouched_while_other_content_changes() {
-    Runtime::scope("sigil-hidden-tooltip-steady", || {
+    Owner::scope("sigil-hidden-tooltip-steady", || {
         let count = signal(1);
         let mut cx = Cx::new_root();
         let root = cx.add(

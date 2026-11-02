@@ -23,7 +23,10 @@ pub fn unsupported_style_warning_count_for(token: &'static str, id: NodeId) -> u
     usize::from(warned.contains(&(UnsupportedSlot::UnknownThemeRef(token), id)))
 }
 
+kittest_pub! {
+/// Resolves the paint style of a node from its style binding and theme.
 #[must_use]
+#[doc(hidden)]
 pub fn render_style_for(
     id: NodeId,
     node: &Node,
@@ -54,8 +57,12 @@ pub fn render_style_for(
     }
     render
 }
+}
 
+kittest_pub! {
+/// Resolves the text style of a node on top of a base text style.
 #[must_use]
+#[doc(hidden)]
 pub fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextStyle {
     let mut style = base.clone();
     let Some(binding) = node.get_extension::<StyleBinding>() else {
@@ -77,6 +84,7 @@ pub fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextS
         StyleEngine::overlay_text(overlay, &mut style);
     }
     style
+}
 }
 
 fn apply_atoms(

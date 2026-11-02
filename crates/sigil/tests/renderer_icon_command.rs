@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -11,7 +12,9 @@ mod scene_support;
 use scene_support::color;
 use sigil::geometry::{Point, Rect};
 use sigil::renderer::scenes::BUILTIN_ICON_ATLAS_BASE_ID;
-use sigil::scene::{CommandScene, SceneBuilder, SceneCommand, SpriteKind, SpriteSource};
+use sigil::scene::{
+    CommandScene, DrawSprite, SceneBuilder, SceneCommand, SpriteKind, SpriteSource,
+};
 use sigil::style::Color;
 use sigil_kittest::gpu::{Capture, render_capture};
 
@@ -72,12 +75,12 @@ fn assert_icon_command_shape(scene: &CommandScene) {
 fn icon_scene() -> CommandScene {
     let mut builder = SceneBuilder::new();
     for index in 0..5 {
-        builder.draw_sprite(
+        builder.draw_sprite(DrawSprite::new(
             source(BUILTIN_ICON_ATLAS_BASE_ID + index, 0.0, 0.0),
             rect(index as f32 * 64.0),
             SpriteKind::Mono,
             color(220, 220, 240, 255),
-        );
+        ));
     }
     builder.finish()
 }

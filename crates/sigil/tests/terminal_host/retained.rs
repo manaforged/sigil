@@ -1,9 +1,9 @@
 use sigil::Host;
-use sigil::events::EventRouter;
+use sigil::kernel::HostMode;
 use sigil::kernel::{container, text};
 use sigil::layout::{LayoutStyle, Position};
-use sigil::prelude::LayoutBuilderExt;
-use sigil::reactive::{Runtime, signal};
+use sigil::prelude::Widget;
+use sigil::reactive::{Owner, signal};
 use sigil::terminal::Screen;
 
 use super::oracle::{COLS, Model, ROWS, Spot, ansi, tree, truth};
@@ -11,7 +11,7 @@ use super::oracle::{COLS, Model, ROWS, Spot, ansi, tree, truth};
 #[test]
 fn a_moved_spot_rasters_only_its_window() {
     use sigil::profile::{self, BackendStatus, Counter};
-    let rastered = Runtime::scope("oracle-counters", || {
+    let rastered = Owner::scope("oracle-counters", || {
         let mut model = Model {
             lines: (0..ROWS)
                 .map(|row| format!("row {row} steady text"))
@@ -25,15 +25,12 @@ fn a_moved_spot_rasters_only_its_window() {
             accent: false,
         };
         let state = signal(model.clone());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(state));
         let mut screen = Screen::new(COLS, ROWS);
         let mut sink = std::io::sink();
         for _ in 0..2 {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
             screen.flush(&mut sink).expect("flush");
         }
         let _profiled = crate::profiled();
@@ -42,9 +39,7 @@ fn a_moved_spot_rasters_only_its_window() {
         profile::begin_frame(BackendStatus::TERMINAL);
         model.spots[0].x = 20;
         state.set(model.clone());
-        screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
+        screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         screen.flush(&mut sink).expect("flush");
         profile::tick_frame();
         let counted = profile::frames()
@@ -63,32 +58,25 @@ fn a_moved_spot_rasters_only_its_window() {
 
 #[test]
 fn two_frames_before_one_flush_keep_both_changes() {
-    let shown = Runtime::scope("oracle-unflushed", || {
+    let shown = Owner::scope("oracle-unflushed", || {
         let mut model = Model {
             lines: (0..ROWS).map(|row| format!("row {row}")).collect(),
             ..Model::default()
         };
         let state = signal(model.clone());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(state));
         let mut screen = Screen::new(COLS, ROWS);
         for _ in 0..2 {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
             screen.flush(&mut std::io::sink()).expect("flush");
         }
         model.lines[1] = String::from("first");
         state.set(model.clone());
-        screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
+        screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         model.lines[9] = String::from("second");
         state.set(model.clone());
-        let grid = screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
+        let grid = screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         (String::from_utf8_lossy(&ansi(grid)).into_owned(), model)
     });
     let (incremental, model) = shown;
@@ -99,7 +87,7 @@ fn two_frames_before_one_flush_keep_both_changes() {
 #[test]
 fn an_overflowing_word_clears_when_it_changes() {
     let cell = Host::CELL;
-    let (incremental, fresh) = Runtime::scope("oracle-overflow", || {
+    let (incremental, fresh) = Owner::scope("oracle-overflow", || {
         let word = signal(String::from("abcdefghij"));
         let tree = move || {
             container()
@@ -117,14 +105,11 @@ fn an_overflowing_word_clears_when_it_changes() {
                         .child(text(word).nowrap()),
                 )
         };
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(tree);
         let mut screen = Screen::new(COLS, ROWS);
         for _ in 0..2 {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
             screen.flush(&mut std::io::sink()).expect("flush");
         }
         assert!(
@@ -134,13 +119,13 @@ fn an_overflowing_word_clears_when_it_changes() {
         );
         word.set(String::from("z"));
         let incremental = screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
+            .frame(&mut host, [], (COLS, ROWS))
             .expect("frame")
             .text();
-        let mut fresh_host = Host::cells();
+        let mut fresh_host = Host::new(HostMode::Cell);
         fresh_host.mount(tree);
         let fresh = Screen::new(COLS, ROWS)
-            .frame(&mut fresh_host, &mut router, [], (COLS, ROWS))
+            .frame(&mut fresh_host, [], (COLS, ROWS))
             .expect("frame")
             .text();
         (incremental, fresh)
@@ -165,33 +150,26 @@ impl std::io::Write for Broken {
 
 #[test]
 fn a_failed_flush_does_not_leave_stale_rows() {
-    let shown = Runtime::scope("retained-broken-flush", || {
+    let shown = Owner::scope("retained-broken-flush", || {
         let mut model = Model {
             lines: (0..ROWS).map(|row| format!("row {row}")).collect(),
             ..Model::default()
         };
         let state = signal(model.clone());
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || tree(state));
         let mut screen = Screen::new(COLS, ROWS);
         for _ in 0..2 {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("frame");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
             screen.flush(&mut std::io::sink()).expect("flush");
         }
         model.lines[1] = String::from("first");
         state.set(model.clone());
-        screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
+        screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         assert!(screen.flush(&mut Broken).is_err());
         model.lines[9] = String::from("second");
         state.set(model.clone());
-        let grid = screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("frame");
+        let grid = screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
         (String::from_utf8_lossy(&ansi(grid)).into_owned(), model)
     });
     let (incremental, model) = shown;
@@ -211,7 +189,7 @@ fn an_overflowing_label_survives_a_change_beside_it() {
             .height(cell)
     };
     let shown = |word: &'static str, warm: bool| {
-        Runtime::scope("retained-overflow-sibling", || {
+        Owner::scope("retained-overflow-sibling", || {
             let label = signal(String::from("abc"));
             let tree = move || {
                 container()
@@ -223,21 +201,18 @@ fn an_overflowing_label_survives_a_change_beside_it() {
                     )
                     .child(container().layout(place(30.0, 3.0)).child(text(label)))
             };
-            let mut host = Host::cells();
-            let mut router = EventRouter::new();
+            let mut host = Host::new(HostMode::Cell);
             host.mount(tree);
             let mut screen = Screen::new(COLS, ROWS);
             if warm {
                 for _ in 0..2 {
-                    screen
-                        .frame(&mut host, &mut router, [], (COLS, ROWS))
-                        .expect("frame");
+                    screen.frame(&mut host, [], (COLS, ROWS)).expect("frame");
                     screen.flush(&mut std::io::sink()).expect("flush");
                 }
             }
             label.set(String::from(word));
             screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
+                .frame(&mut host, [], (COLS, ROWS))
                 .expect("frame")
                 .text()
         })

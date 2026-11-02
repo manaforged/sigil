@@ -4,13 +4,14 @@ use std::sync::{Mutex, OnceLock};
 use crate::animation_runtime::presets;
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::snap::{self, CellForm};
-use crate::layout::{LayoutBuilderExt, LayoutStyle, cols, rows};
+use crate::layout::{LayoutStyle, cols, rows};
 use crate::reactive::Signal;
 use crate::style::TransitionId;
 use crate::style::{
     BORDER_WIDTH, BgGradient, ColorAtom, Elevation, GradientAxis, GradientStopKey, Rgba8,
     StateStyle, Style, StyleAtom, StyleVariant, Token,
 };
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 
@@ -125,22 +126,21 @@ pub(super) fn track(runtime: SliderRuntime, filled: bool) -> NodeBuilder {
     }
 }
 
-type FillAtomCache = Mutex<HashMap<(bool, u16), &'static [StyleAtom]>>;
+type SliderAtoms = Mutex<HashMap<(bool, i16), &'static [StyleAtom]>>;
 
 fn cached_fill_atoms(orientation: Orientation, ratio: f32) -> &'static [StyleAtom] {
-    static CACHE: OnceLock<FillAtomCache> = OnceLock::new();
+    static CACHE: OnceLock<SliderAtoms> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
     #[allow(
         clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
         reason = "values are bounded to the target range before the cast"
     )]
-    let scaled = (ratio.clamp(0.0, 1.0) * 10_000.0).round() as u16;
+    let scaled = (ratio.clamp(0.0, 1.0) * 10_000.0).round() as i16;
     let build = || {
-        let extent = crate::style::Dimension::Fraction(scaled);
+        let extent = (crate::style::atom::ATOM_FRACTION, scaled);
         let atom = match orientation {
-            Orientation::Horizontal => StyleAtom::Width(extent),
-            Orientation::Vertical => StyleAtom::Height(extent),
+            Orientation::Horizontal => StyleAtom::Width(extent.0, extent.1),
+            Orientation::Vertical => StyleAtom::Height(extent.0, extent.1),
         };
         Box::leak(Box::new([atom])) as &'static [StyleAtom]
     };

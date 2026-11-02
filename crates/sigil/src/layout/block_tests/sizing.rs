@@ -14,7 +14,7 @@ fn box_sizing_decides_whether_padding_adds() {
         (BoxSizing::ContentBox, 120.0, 70.0),
     ] {
         let style = StyleData {
-            padding: Rect::splat(LengthPercentage::Px(10.0)),
+            padding: Edges::splat(Dimension::Px(10.0)),
             box_sizing: sizing,
             ..px(100.0, 50.0)
         };

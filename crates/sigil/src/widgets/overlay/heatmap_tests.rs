@@ -1,6 +1,6 @@
 use super::*;
 use crate::kernel::Cx;
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 fn rgba(r: u8, g: u8, b: u8) -> Rgba8 {
     Rgba8 { r, g, b, a: 255 }
@@ -8,7 +8,7 @@ fn rgba(r: u8, g: u8, b: u8) -> Rgba8 {
 
 #[test]
 fn empty_grid_has_no_rows() {
-    Runtime::scope("heatmap-empty", || {
+    Owner::scope("heatmap-empty", || {
         let mut cx = Cx::new_root();
         let root = cx.add(heatmap(0, 0, |_, _| rgba(0, 0, 0)));
         assert_eq!(cx.child_count(root), 0);
@@ -17,7 +17,7 @@ fn empty_grid_has_no_rows() {
 
 #[test]
 fn a_grid_is_one_image_node() {
-    Runtime::scope("heatmap-shape", || {
+    Owner::scope("heatmap-shape", || {
         let mut cx = Cx::new_root();
         let root = cx.add(heatmap(100, 100, |_, _| rgba(0, 0, 0)));
         assert_eq!(cx.child_count(root), 1, "one image for the whole grid");
@@ -31,7 +31,7 @@ fn a_grid_is_one_image_node() {
 
 #[test]
 fn color_runs_once_per_cell_at_build() {
-    Runtime::scope("heatmap-coords", || {
+    Owner::scope("heatmap-coords", || {
         let seen = std::cell::RefCell::new(Vec::new());
         let mut cx = Cx::new_root();
         let _ = cx.add(heatmap(5, 6, |x, y| {

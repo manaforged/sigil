@@ -8,28 +8,19 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::PointerEventInit;
-use sigil::events::ShellEvent;
 use sigil::geometry::Point;
 use sigil::kernel::Cx;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use widget_support::compute;
 
 const ROW_H: f32 = 20.0;
 const VIEWPORT: Size = Size::fixed(200.0, 100.0);
 
-const fn pointer(x: f32, y: f32, phase: PointerPhase, button: Option<MouseButton>) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button,
-        phase,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-    }))
+const fn pointer(x: f32, y: f32, phase: PointerPhase, button: Option<MouseButton>) -> Event {
+    Event::pointer(phase, Point::new(x, y)).button(button)
 }
 
 fn build_handle(width_signal: Signal<f32>) -> NodeBuilder {
@@ -37,7 +28,7 @@ fn build_handle(width_signal: Signal<f32>) -> NodeBuilder {
         .layout(LayoutStyle::block().fixed_size(100.0, ROW_H))
         .child(sigil::widgets::axis_drag(
             container().layout(LayoutStyle::block().fixed_size(100.0, ROW_H)),
-            sigil::widgets::Axis::X,
+            sigil::widgets::Orientation::Horizontal,
             move || width_signal.peek(),
             move |base, delta| width_signal.set((base + delta).max(10.0)),
             || {},
@@ -46,7 +37,7 @@ fn build_handle(width_signal: Signal<f32>) -> NodeBuilder {
 
 #[test]
 fn axis_drag_applies_delta_against_down_snapshot_and_resettles() {
-    Runtime::scope("axis-drag-snapshot", || {
+    Owner::scope("axis-drag-snapshot", || {
         let width = signal(100.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(build_handle(width));

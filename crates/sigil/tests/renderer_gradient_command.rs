@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -9,10 +10,10 @@ mod scene_support;
 
 use scene_support::{color, rect};
 use sigil::geometry::Point;
-use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
+use sigil::renderer::{WgpuRenderer, WgpuSurface};
 use sigil::scene::{
-    CommandScene, CornerRadii, GradientStop, LinearGradient, PaintFill, SceneBuilder, SceneCommand,
-    SceneGradientStyle, SceneRectStyle,
+    CommandScene, CornerRadii, DrawGradient, DrawRect, GradientStop, LinearGradient, PaintFill,
+    SceneBuilder, SceneCommand,
 };
 use sigil::style::Color;
 use smallvec::smallvec;
@@ -21,10 +22,11 @@ use smallvec::smallvec;
 fn command_scene_accepts_rect_and_gradient_draws() {
     let gradient = gradient();
     let mut builder = SceneBuilder::new();
-    builder.draw_rect(rect(0.0, 0.0, 48.0, 48.0), rect_style());
+    builder.draw_rect(rect_style(rect(0.0, 0.0, 48.0, 48.0)));
     builder.draw_gradient(
-        rect(56.0, 0.0, 96.0, 48.0),
-        SceneGradientStyle::new(gradient.clone(), CornerRadii::uniform(8.0), 8_500),
+        DrawGradient::new(rect(56.0, 0.0, 96.0, 48.0), gradient.clone())
+            .border_radius(CornerRadii::uniform(8.0))
+            .opacity(8_500),
     );
     let scene = builder.finish();
 
@@ -56,7 +58,7 @@ type RenderCommandScene = fn(
     &CommandScene,
     Color,
     (f32, f32),
-) -> Result<(), RendererError>;
+) -> Result<(), sigil::Error>;
 
 fn gradient() -> LinearGradient {
     LinearGradient::new(
@@ -69,6 +71,6 @@ fn gradient() -> LinearGradient {
     )
 }
 
-const fn rect_style() -> SceneRectStyle {
-    SceneRectStyle::new(color(8, 12, 20, 255), CornerRadii::uniform(8.0), 10_000)
+const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
+    DrawRect::new(rect, color(8, 12, 20, 255)).border_radius(CornerRadii::uniform(8.0))
 }

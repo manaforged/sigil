@@ -17,6 +17,7 @@ use crossterm::{cursor, execute, queue};
 
 use crate::terminal::caps::{Caps, Cursor, Keyboard};
 use crate::terminal::mouse::{MOUSE_OFF, MouseTracking};
+use crate::terminal::notify;
 use crate::terminal::screen::Screen;
 use crate::terminal::signals;
 
@@ -25,9 +26,9 @@ mod calibrate;
 mod frame;
 pub(crate) use frame::paint_frame;
 
-pub use above::{PrintAboveError, print_above};
+pub use above::print_above;
 pub use calibrate::calibrate;
-pub(crate) use calibrate::{Measured, ProbeRow};
+pub(crate) use calibrate::{Calibration, ProbeRow};
 #[cfg(unix)]
 pub(crate) use calibrate::{measure, query as calibration};
 
@@ -58,6 +59,7 @@ pub(crate) struct Term {
     pub(crate) redraw: bool,
     inline: bool,
     caps: Caps,
+    cell_stale: bool,
     out: BufWriter<io::Stdout>,
 }
 
@@ -86,6 +88,7 @@ impl Term {
             redraw: true,
             inline,
             caps,
+            cell_stale: false,
             out: BufWriter::with_capacity(BUFFER, io::stdout()),
         };
         if inline {
@@ -94,7 +97,7 @@ impl Term {
         Ok(term)
     }
 
-    pub(crate) fn paint(&mut self, screen: &mut Screen) -> io::Result<()> {
+    pub(crate) fn paint(&mut self, screen: &mut Screen) -> Result<(), crate::Error> {
         let _painting = signals::painting();
         if signals::halted() {
             return Ok(());
@@ -115,6 +118,24 @@ impl Term {
 
     pub(crate) const fn caps(&self) -> Caps {
         self.caps
+    }
+
+    pub(crate) const fn mark_cell_stale(&mut self) {
+        self.cell_stale = self.caps.cell.is_some();
+    }
+
+    pub(crate) fn remeasure(&mut self) -> Option<Caps> {
+        if !self.cell_stale {
+            return None;
+        }
+        let cell = crate::terminal::caps::ask_cell()?;
+        self.cell_stale = false;
+        if Some(cell) == self.caps.cell {
+            return None;
+        }
+        self.caps.cell = Some(cell);
+        CAPS.with(|slot| slot.set(Some(self.caps)));
+        Some(self.caps)
     }
 
     pub(crate) fn reenter(&mut self) -> io::Result<()> {
@@ -188,6 +209,9 @@ fn enter_modes(inline: bool) -> io::Result<()> {
         MODIFY_KEYS_SET.store(true, Ordering::Relaxed);
         drop(execute!(out, Print(modify)));
     }
+    if let Some(seq) = notify::held_activity(true) {
+        drop(execute!(out, Print(seq)));
+    }
     TITLE.with(|slot| {
         slot.borrow()
             .as_deref()
@@ -204,6 +228,7 @@ fn modify_keys_sequence(keyboard: Keyboard, wanted: bool) -> &'static str {
     }
 }
 
+/// The capabilities the terminal host probed when it entered raw mode, for the current thread.
 #[must_use]
 pub fn caps() -> Option<Caps> {
     CAPS.with(Cell::get)
@@ -244,6 +269,9 @@ pub(crate) fn restore() {
     if TITLED.swap(false, Ordering::Relaxed) {
         drop(execute!(out, SetTitle("")));
     }
+    if let Some(seq) = notify::held_activity(false) {
+        drop(execute!(out, Print(seq)));
+    }
     if BAR_CURSOR.load(Ordering::Relaxed) {
         drop(execute!(out, cursor::SetCursorStyle::DefaultUserShape));
     }
@@ -265,7 +293,8 @@ pub(crate) fn set_focused(yes: bool) {
     FOCUSED.with(|focused| focused.set(yes));
 }
 
-pub fn suspend<R>(run: impl FnOnce() -> R) -> io::Result<R> {
+/// Leaves terminal mode, runs `run`, and returns to terminal mode.
+pub fn suspend<R>(run: impl FnOnce() -> R) -> Result<R, crate::Error> {
     if !live() {
         return Ok(run());
     }
@@ -281,7 +310,8 @@ pub fn suspend<R>(run: impl FnOnce() -> R) -> io::Result<R> {
     Ok(result)
 }
 
-pub fn set_title(title: &str) -> io::Result<()> {
+/// Sets the terminal title.
+pub fn set_title(title: &str) -> Result<(), crate::Error> {
     TITLE.with(|slot| *slot.borrow_mut() = Some(title.to_owned()));
     if live() {
         write_title(title)?;
@@ -293,15 +323,8 @@ pub(crate) fn live() -> bool {
     LIVE.with(Cell::get)
 }
 
-pub fn set_mouse_capture(yes: bool) -> io::Result<()> {
-    set_mouse_tracking(if yes {
-        MouseTracking::Drags
-    } else {
-        MouseTracking::Off
-    })
-}
-
-pub fn set_mouse_tracking(tracking: MouseTracking) -> io::Result<()> {
+/// Sets how much mouse movement the terminal reports.
+pub fn set_mouse_tracking(tracking: MouseTracking) -> Result<(), crate::Error> {
     MOUSE.with(|mouse| mouse.set(tracking));
     if live() {
         write_mouse(&mut io::stdout(), tracking)?;
@@ -315,6 +338,7 @@ fn write_mouse(out: &mut impl Write, tracking: MouseTracking) -> io::Result<()> 
     out.flush()
 }
 
+/// Returns whether the terminal has focus.
 #[must_use]
 pub fn focused() -> bool {
     FOCUSED.with(Cell::get)

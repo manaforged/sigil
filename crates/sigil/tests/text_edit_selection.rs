@@ -4,9 +4,9 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{KeyEventInit, PhysicalKey};
+use sigil::events::PhysicalKey;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
@@ -20,7 +20,7 @@ const SEL: sigil::style::Rgba8 = sigil::style::Rgba8 {
 };
 
 fn selection_ys(cx: &Cx, root: NodeId) -> Vec<f32> {
-    let mut ys: Vec<f32> = emit_scene(cx, root)
+    let mut ys: Vec<f32> = emit_scene(cx, root, None)
         .commands
         .iter()
         .filter_map(|c| match c {
@@ -32,21 +32,16 @@ fn selection_ys(cx: &Cx, root: NodeId) -> Vec<f32> {
     ys
 }
 
-fn shift_up() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: Key::ArrowUp.into(),
-        physical: PhysicalKey::ArrowUp,
-        modifiers: ModifiersState::SHIFT,
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn shift_up() -> Event {
+    Event::key(Key::ArrowUp, KeyPhase::Down)
+        .physical(PhysicalKey::ArrowUp)
+        .modifiers(ModifiersState::SHIFT)
 }
 
 #[test]
 fn shift_select_across_lines_highlights_each_covered_line() {
-    sigil::reactive::Runtime::scope("sel-kbd", || {
-        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::EngineGeometry::new()));
+    sigil::reactive::Owner::scope("sel-kbd", || {
+        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::DefaultTextMeasure::new()));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(signal(String::from("aaaa\nbbbb\ncccc"))));
         let mut layout =
@@ -81,25 +76,19 @@ fn shift_select_across_lines_highlights_each_covered_line() {
     });
 }
 
-use sigil::events::{MouseButton, MouseButtons, PointerEventInit};
+use sigil::events::{MouseButton, MouseButtons};
 use sigil::geometry::Point;
 
-fn pt(x: f32, y: f32, phase: PointerPhase, buttons: MouseButtons) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: matches!(phase, PointerPhase::Down).then_some(MouseButton::Left),
-        buttons,
-        modifiers: ModifiersState::empty(),
-        phase,
-    }))
+fn pt(x: f32, y: f32, phase: PointerPhase, buttons: MouseButtons) -> Event {
+    Event::pointer(phase, Point::new(x, y))
+        .button(matches!(phase, PointerPhase::Down).then_some(MouseButton::Left))
+        .buttons(buttons)
 }
 
 #[test]
 fn dragging_across_lines_highlights_each_covered_line() {
-    sigil::reactive::Runtime::scope("sel-drag", || {
-        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::EngineGeometry::new()));
+    sigil::reactive::Owner::scope("sel-drag", || {
+        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::DefaultTextMeasure::new()));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(signal(String::from("aaaa\nbbbb\ncccc"))));
         let mut layout =

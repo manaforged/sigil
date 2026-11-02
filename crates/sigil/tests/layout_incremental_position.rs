@@ -10,7 +10,8 @@ mod stub;
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
+use sigil::widgets::Widget;
 use stub::stub_engine;
 
 const AVAILABLE: Size = Size::fixed(200.0, 1000.0);
@@ -19,7 +20,7 @@ const SPACER_H: f32 = 120.0;
 #[test]
 #[allow(clippy::too_many_lines)]
 fn incremental_structural_remeasure_keeps_fixed_region_at_its_position() {
-    Runtime::scope("incremental_remeasure_position", || {
+    Owner::scope("incremental_remeasure_position", || {
         let toggle = signal(false);
         let mut cx = Cx::new_root();
         let region_body = container()

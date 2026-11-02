@@ -21,7 +21,7 @@ fn counter() -> (Rc<Cell<u32>>, impl Fn() + 'static) {
 
 #[test]
 fn interval_fires_after_period_elapses() {
-    Runtime::scope("interval::fires_after_period", || {
+    Owner::scope("interval::fires_after_period", || {
         __test_set_clock(Instant::now());
         let (count, tick) = counter();
         let _id = interval(Duration::from_millis(100), tick);
@@ -45,7 +45,7 @@ fn interval_fires_after_period_elapses() {
 fn interval_is_cancelled_when_owner_disposed() {
     __test_set_clock(Instant::now());
     let (count, tick) = counter();
-    Runtime::scope("interval::cancel_on_dispose", || {
+    Owner::scope("interval::cancel_on_dispose", || {
         interval(Duration::from_millis(50), tick);
     });
     __test_advance_clock(Duration::from_millis(500));
@@ -57,7 +57,7 @@ fn interval_is_cancelled_when_owner_disposed() {
 
 #[test]
 fn next_interval_deadline_reports_soonest_slot() {
-    Runtime::scope("interval::soonest", || {
+    Owner::scope("interval::soonest", || {
         __test_set_clock(Instant::now());
         let _a = interval(Duration::from_millis(200), || {});
         let _b = interval(Duration::from_millis(50), || {});
@@ -71,7 +71,7 @@ fn next_interval_deadline_reports_soonest_slot() {
 
 #[test]
 fn panic_in_callback_does_not_zombify_slot() {
-    Runtime::scope("interval::panic_recovery", || {
+    Owner::scope("interval::panic_recovery", || {
         __test_set_clock(Instant::now());
         let hits = Rc::new(Cell::new(0_u32));
         let writer = Rc::clone(&hits);
@@ -106,11 +106,11 @@ fn panic_in_callback_does_not_zombify_slot() {
 
 #[test]
 fn cancel_interval_removes_slot_immediately() {
-    Runtime::scope("interval::cancel_explicit", || {
+    Owner::scope("interval::cancel_explicit", || {
         __test_set_clock(Instant::now());
         let (count, tick) = counter();
         let id = interval(Duration::from_millis(10), tick);
-        cancel_interval(id);
+        id.cancel();
         __test_advance_clock(Duration::from_millis(100));
         assert_eq!(tick_intervals(), 0);
         assert_eq!(count.get(), 0);
@@ -120,7 +120,7 @@ fn cancel_interval_removes_slot_immediately() {
 
 #[test]
 fn interval_panic_drains_deferred_cleanups_and_clears_origin() {
-    Runtime::scope("interval::panic_drain", || {
+    Owner::scope("interval::panic_drain", || {
         __test_set_clock(Instant::now());
         let ran = Rc::new(Cell::new(false));
         let flag = Rc::clone(&ran);
@@ -171,7 +171,7 @@ struct CancelOnDrop(Rc<Cell<Option<IntervalId>>>);
 impl Drop for CancelOnDrop {
     fn drop(&mut self) {
         if let Some(id) = self.0.get() {
-            cancel_interval(id);
+            id.cancel();
         }
     }
 }
@@ -179,7 +179,7 @@ impl Drop for CancelOnDrop {
 #[test]
 fn ending_a_scope_drops_an_interval_whose_callback_cancels_on_drop() {
     let worker = std::thread::spawn(|| {
-        Runtime::scope("interval::cancel_on_drop", || {
+        Owner::scope("interval::cancel_on_drop", || {
             let slot = Rc::new(Cell::new(None));
             let guard = CancelOnDrop(Rc::clone(&slot));
             let id = interval(Duration::from_millis(50), move || {
@@ -193,7 +193,7 @@ fn ending_a_scope_drops_an_interval_whose_callback_cancels_on_drop() {
 
 #[test]
 fn a_timeout_fires_once_and_then_stops_waking_the_loop() {
-    Runtime::scope("interval::timeout_once", || {
+    Owner::scope("interval::timeout_once", || {
         let start = Instant::now();
         __test_set_clock(start);
         let (count, tick) = counter();

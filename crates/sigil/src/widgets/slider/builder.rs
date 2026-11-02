@@ -1,20 +1,21 @@
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
-use accesskit::Action;
+use crate::kernel::Action;
 
-use crate::events::{NodeEventsExt, PointerEvent};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use crate::events::PointerEvent;
+use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, cols, rows};
+use crate::layout::{AlignItems, Dimension, LayoutStyle, cols, rows};
 use crate::reactive::{Reactive, Signal};
-use crate::style::{NodeStyleExt, PaintTarget, StateHost, Style, StyleOverlay, StyleSlot, Theme};
+use crate::style::{Style, StyleOverlay};
+use crate::widgets::Widget;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::orientation::Orientation;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::shared::{BuilderMutator, control_surface, disabled_now};
-use super::handlers::{attach_key_handlers, pointer_down, pointer_move, pointer_up};
+use super::super::layout_ext::LayoutOverrides;
+use super::super::shared::{control_surface, disabled_now};
+use super::handlers::{attach_key_handlers, attach_pointer_drag};
 use super::track::{slider_thumb, track};
 
 pub(super) type ValueChange = Rc<dyn Fn(f32) + 'static>;
@@ -41,22 +42,24 @@ pub(super) struct SliderRuntime {
     pub(super) glass: bool,
 }
 
+/// Builder of a slider.
 pub struct SliderBuilder {
     runtime: SliderRuntime,
     on_change: Option<ValueChange>,
     label: Option<String>,
     marks: Vec<String>,
-    mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
+/// A value slider.
 #[must_use]
 pub fn slider(value: Signal<f32>, range: RangeInclusive<f32>) -> SliderBuilder {
     SliderBuilder::new(value, range)
 }
 
 impl SliderBuilder {
+    /// Creates a slider builder.
     #[must_use]
     pub fn new(value: Signal<f32>, range: RangeInclusive<f32>) -> Self {
         let (start, end) = range.into_inner();
@@ -76,82 +79,80 @@ impl SliderBuilder {
             on_change: None,
             label: None,
             marks: Vec::new(),
-            mutators: Vec::new(),
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
     }
 
+    /// Sets the length.
     #[must_use]
     pub const fn length(mut self, length: f32) -> Self {
         self.runtime.length = Some(length);
         self
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
 
+    /// Sets the marks.
     #[must_use]
     pub fn marks(mut self, marks: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.marks = marks.into_iter().map(Into::into).collect();
         self
     }
 
+    /// Sets the step.
     #[must_use]
     pub const fn step(mut self, step: f32) -> Self {
         self.runtime.step = step;
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.runtime.disabled = Some(disabled.into_signal());
         self
     }
 
+    /// Sets the change.
     #[must_use]
     pub fn change(mut self, change: impl Fn(f32) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self
     }
 
+    /// Applies the glass option.
     #[must_use]
     pub const fn glass(mut self) -> Self {
         self.runtime.glass = true;
         self
     }
 
+    /// Sets the orientation.
     #[must_use]
     pub const fn orientation(mut self, orientation: Orientation) -> Self {
         self.runtime.orientation = orientation;
         self
     }
 
-    #[must_use]
-    pub fn theme(mut self, theme: Theme) -> Self {
-        self.mutators.push(Box::new(move |node| node.theme(theme)));
-        self
-    }
-
-    fn into_node_builder(mut self) -> NodeBuilder {
+    fn root(mut self) -> NodeBuilder {
         let runtime = self.runtime;
         let interaction = InteractionState::new(!runtime.disabled());
         let on_change: ValueChange = self.on_change.take().unwrap_or_else(|| Rc::new(|_| {}));
         let user_overlay = self.style_accumulator.take_state_overlay();
         let root = slider_root(&self, interaction, user_overlay);
-        let change = Rc::clone(&on_change);
-        let mut node = interaction.install(
-            attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change))
-                .pointer_down(move |event| pointer_down(event, interaction, runtime))
-                .pointer_move(move |event| pointer_move(event, interaction, runtime))
-                .pointer_up(move |event| pointer_up(event, interaction, runtime.value, &change)),
-        );
-        for mutate in self.mutators {
-            node = mutate(node);
-        }
+        let keyed = attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change));
+        let mut node = interaction.install(attach_pointer_drag(
+            keyed,
+            interaction,
+            runtime,
+            Rc::clone(&on_change),
+        ));
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
@@ -166,28 +167,7 @@ impl SliderBuilder {
     }
 }
 
-impl PaintTarget for SliderBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl StateHost for SliderBuilder {}
-
-impl WidgetLayoutExt for SliderBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for SliderBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] SliderBuilder: paint(style_accumulator), widget, states(style_accumulator), node);
 
 impl SliderRange {
     pub(super) fn span(self) -> f32 {
@@ -252,7 +232,7 @@ fn slider_root(
         .action(Action::Decrement)
         .value(runtime.value, runtime.range.min, runtime.range.max)
         .value_step(runtime.step)
-        .layout(builder.layout_overrides.clone().apply(layout));
+        .layout(layout);
     let root = control_surface(root, interaction, runtime.disabled, overlay);
     let thumb = slider_thumb(interaction, runtime.disabled, runtime.glass);
     match runtime.orientation {
@@ -270,13 +250,8 @@ fn slider_root(
 fn slider_layout(orientation: Orientation, length: Option<f32>, captioned: bool) -> LayoutStyle {
     match orientation {
         Orientation::Horizontal => {
-            let base = LayoutStyle::flex_row().height(
-                CellForm::new(
-                    Dimension::from(HORIZONTAL_HEIGHT),
-                    Dimension::from(rows(1.0)),
-                )
-                .pick(),
-            );
+            let base = LayoutStyle::flex_row()
+                .height(CellForm::new(Dimension::from(HORIZONTAL_HEIGHT), rows(1.0)).pick());
             let base = match length {
                 Some(px) => base.width(px),
                 None if captioned => base.grow(1.0).width(0.0),
@@ -285,9 +260,8 @@ fn slider_layout(orientation: Orientation, length: Option<f32>, captioned: bool)
             base.align_items(AlignItems::Center)
         }
         Orientation::Vertical => {
-            let base = LayoutStyle::flex_column().width(
-                CellForm::new(Dimension::from(VERTICAL_WIDTH), Dimension::from(cols(1.0))).pick(),
-            );
+            let base = LayoutStyle::flex_column()
+                .width(CellForm::new(Dimension::from(VERTICAL_WIDTH), cols(1.0)).pick());
             let base = match length {
                 Some(px) => base.height(px),
                 None => base.fill_height(),

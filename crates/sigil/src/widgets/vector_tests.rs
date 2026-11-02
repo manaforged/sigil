@@ -74,7 +74,7 @@ fn fit_rasters_two_x_and_pins_logical_box() {
     let source = node.rasterize(&Theme::light()).expect("stroke rasterizes");
     assert_eq!(source.width(), 32, "2x pixmap");
     assert_eq!(source.height(), 32);
-    assert!(node.layout.is_some(), "fit pins a logical box");
+    assert!(node.fit.is_some(), "fit pins a logical box");
 }
 
 #[test]

@@ -4,16 +4,16 @@
 )]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
 
-use sigil::layout::{Dimension, Display, LayoutDrive, NodeHandle, ResolvedBox, Size, StyleData};
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{Axes, Dimension, Display, LayoutDrive, NodeHandle, ResolvedBox, StyleData};
+use sigil_kittest::FakeMeasure;
 
 fn drive() -> LayoutDrive {
-    LayoutDrive::new(Box::new(FixedMeasure::default()))
+    LayoutDrive::new(Box::new(FakeMeasure::default()))
 }
 
 fn fixed(w: f32, h: f32) -> StyleData {
     StyleData {
-        size: Size::new(Dimension::Px(w), Dimension::Px(h)),
+        size: Axes::new(Dimension::Px(w), Dimension::Px(h)),
         ..StyleData::default()
     }
 }
@@ -58,7 +58,7 @@ fn three_level_block_tree_resolves_every_node() {
     d.attach(middle, leaf_a).unwrap();
     d.attach(middle, leaf_b).unwrap();
 
-    d.measure(root, Size::new(640.0, 480.0)).unwrap();
+    d.measure(root, Axes::new(640.0, 480.0)).unwrap();
 
     assert_box(box_of(&d, root), boxed(0.0, 0.0, 300.0, 200.0), "root");
     assert_box(box_of(&d, middle), boxed(0.0, 0.0, 200.0, 120.0), "middle");
@@ -77,7 +77,7 @@ fn three_level_mixed_display_tree_writes_every_box() {
     d.attach(middle, leaf_a).unwrap();
     d.attach(middle, leaf_b).unwrap();
 
-    d.measure(root, Size::new(400.0, 300.0)).unwrap();
+    d.measure(root, Axes::new(400.0, 300.0)).unwrap();
 
     assert!(d.computed_box(root).is_some());
     assert!(d.computed_box(middle).is_some());
@@ -98,7 +98,7 @@ fn flex_root_dispatch_routes_through_flex_solver() {
     d.attach(root, leaf_a).unwrap();
     d.attach(root, leaf_b).unwrap();
 
-    d.measure(root, Size::new(640.0, 480.0)).unwrap();
+    d.measure(root, Axes::new(640.0, 480.0)).unwrap();
 
     let rb = box_of(&d, root);
     let ab = box_of(&d, leaf_a);
@@ -118,7 +118,7 @@ fn measure_is_idempotent_under_same_inputs() {
     let root = d.insert(fixed(160.0, 80.0));
     let child = d.insert(fixed(40.0, 20.0));
     d.attach(root, child).unwrap();
-    let viewport = Size::new(640.0, 480.0);
+    let viewport = Axes::new(640.0, 480.0);
 
     d.measure(root, viewport).unwrap();
     let first_root = box_of(&d, root);
@@ -134,7 +134,7 @@ fn unreached_node_returns_none() {
     let mut d = drive();
     let root = d.insert(fixed(50.0, 50.0));
     let orphan = d.insert(fixed(10.0, 10.0));
-    d.measure(root, Size::new(100.0, 100.0)).unwrap();
+    d.measure(root, Axes::new(100.0, 100.0)).unwrap();
     assert!(d.computed_box(root).is_some());
     assert!(d.computed_box(orphan).is_none());
 }

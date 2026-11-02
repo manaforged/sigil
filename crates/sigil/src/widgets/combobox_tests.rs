@@ -2,10 +2,10 @@
 
 use super::*;
 use crate::kernel::Cx;
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 fn with_state(name: &'static str, test: impl FnOnce(Combobox)) {
-    Runtime::scope(name, || {
+    Owner::scope(name, || {
         let options = [
             "Accounts",
             "Account History",

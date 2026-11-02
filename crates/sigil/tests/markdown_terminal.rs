@@ -5,11 +5,11 @@
 #![allow(clippy::expect_used, clippy::panic)]
 
 use sigil::Host;
-use sigil::app::HostCaps;
-use sigil::events::{EventRouter, ShellEvent};
+use sigil::events::Event;
+use sigil::kernel::HostMode;
 use sigil::prelude::Paint;
-use sigil::reactive::{Runtime, signal};
-use sigil::terminal::{Cell, Grid, Underline, step};
+use sigil::reactive::{Owner, signal};
+use sigil::terminal::{Cell, Grid, Underline};
 use sigil::widgets::markdown;
 
 const TABLE: &str = "\
@@ -20,7 +20,8 @@ const TABLE: &str = "\
 ";
 
 fn render(cols: u16) -> String {
-    sigil::terminal::present(|| markdown(signal(TABLE.to_string())), cols, 80, &[]).expect("layout")
+    sigil_kittest::Harness::present(|| markdown(signal(TABLE.to_string())), cols, 80, &[])
+        .expect("layout")
 }
 
 fn widths(grid: &str) -> Vec<usize> {
@@ -90,7 +91,7 @@ fn a_wide_table_keeps_words_whole_and_shares_width() {
 const REASONING: &str = "The events are emitted to callback, but `Turn.events` doesn't include Unreported ones. For `turn_with`, `sync_usage` is called and Event type reused.";
 
 fn paragraph(cols: u16, inline: bool) -> Vec<String> {
-    let grid = sigil::terminal::present(
+    let grid = sigil_kittest::Harness::present(
         move || {
             if inline {
                 sigil::kernel::node(sigil::widgets::markdown_inline(REASONING).font_italic(true))
@@ -146,13 +147,12 @@ fn code_spans_flow_inside_one_paragraph() {
 
 fn grid(source: &str, cols: u16, hyperlinks: bool) -> Grid {
     let source = source.to_string();
-    Runtime::scope("markdown-grid", move || {
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
-        host.set_caps(HostCaps { hyperlinks });
+    Owner::scope("markdown-grid", move || {
+        let mut host = Host::new(HostMode::Cell);
+        host.set_hyperlinks(hyperlinks);
         host.mount(move || markdown(signal(source.clone())));
-        step(&mut host, &mut router, Vec::<ShellEvent>::new(), cols, 24).expect("layout");
-        step(&mut host, &mut router, Vec::<ShellEvent>::new(), cols, 24).expect("layout")
+        host.grid(Vec::<Event>::new(), cols, 24).expect("layout");
+        host.grid(Vec::<Event>::new(), cols, 24).expect("layout")
     })
 }
 
@@ -237,10 +237,7 @@ fn a_long_url_wraps_after_a_separator() {
 fn links_use_osc_8_or_fall_back_to_a_muted_url() {
     let source = "Read [the docs](https://example.com/a) first.";
     let linked = grid(source, 80, true);
-    assert_eq!(
-        first(&linked, "the").link.as_deref(),
-        Some("https://example.com/a")
-    );
+    assert_eq!(first(&linked, "the").link(), Some("https://example.com/a"));
     assert!(!rows(&linked).join("\n").contains("(https"));
     let plain = grid(source, 80, false);
     let shown = rows(&plain).join("\n");
@@ -254,8 +251,9 @@ fn links_use_osc_8_or_fall_back_to_a_muted_url() {
 #[test]
 fn a_wrapped_cell_keeps_every_column_border_full_height() {
     let source = "| Seat | Key env |\n| --- | --- |\n| nvidia | NVIDIA_API_KEY |\n";
-    let grid = sigil::terminal::present(move || markdown(signal(source.to_string())), 22, 14, &[])
-        .expect("layout");
+    let grid =
+        sigil_kittest::Harness::present(move || markdown(signal(source.to_string())), 22, 14, &[])
+            .expect("layout");
     let body: Vec<&str> = grid
         .lines()
         .skip_while(|line| !line.contains('┌'))

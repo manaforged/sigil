@@ -1,15 +1,16 @@
 mod item;
+mod layer;
 
 use crate::kernel::{NodeBuilder, Role, TopLayer, container};
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::layout::LayoutStyle;
 use crate::layout::{Popup, PopupSide};
-use crate::reactive::Signal;
 use crate::style::{
-    BORDER_WIDTH, ControlSize, DisplayKind, Metrics, OVERLAY_SHADOW, Radius, StyleAtom, Token,
-    space,
+    BORDER_WIDTH, ControlSize, Metrics, OVERLAY_SHADOW, Radius, StyleAtom, Token, space,
 };
+use crate::widgets::Widget;
 
 pub(crate) use item::{ChevronDirection, ItemSlots, chevron, footer, item_row};
+pub(crate) use layer::{PopupAnchor, PopupLayer, close_on_escape, hide, shown, shown_when};
 
 pub(crate) const PANEL_INSET: f32 = space(1) + 1.0;
 pub(crate) const PANEL_WIDTH: f32 = space(48);
@@ -42,7 +43,7 @@ pub(crate) fn popup(role: Role, side: PopupSide) -> NodeBuilder {
 
 #[must_use]
 pub(crate) fn inset() -> f32 {
-    Metrics::current().overlay_padding() + crate::layout::snap::rule(f32::from(BORDER_WIDTH.0))
+    Metrics::current().overlay_padding() + crate::layout::snap::rule(f32::from(BORDER_WIDTH))
 }
 
 #[must_use]
@@ -75,12 +76,4 @@ pub(crate) fn panel_height(rows: impl IntoIterator<Item = f32>) -> f32 {
     let item = Metrics::current().control_height(ControlSize::Default);
     let body = rows.into_iter().sum::<f32>().max(item);
     inset().mul_add(2.0, body)
-}
-
-pub(crate) fn shown(show: Signal<bool>) -> &'static [StyleAtom] {
-    if show.get() {
-        &[]
-    } else {
-        &[StyleAtom::Display(DisplayKind::None)]
-    }
 }

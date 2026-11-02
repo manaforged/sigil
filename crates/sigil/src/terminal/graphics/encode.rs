@@ -3,13 +3,17 @@ use crate::style::Rgba8;
 
 const STORED: usize = 65_535;
 
+/// Converts an image to half-block rows.
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn blocks(source: &ImageSource, cols: usize, rows: usize) -> Vec<Vec<(Rgba8, Rgba8)>> {
     blocks_window(source, (0, source.height()), cols, rows)
 }
 
+/// Converts one vertical window of an image to half-block rows.
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
-pub fn blocks_window(
+pub(crate) fn blocks_window(
     source: &ImageSource,
     window: (u32, u32),
     cols: usize,
@@ -22,13 +26,16 @@ pub fn blocks_window(
     })
 }
 
+/// Converts an image to sextant rows.
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn sextants(source: &ImageSource, cols: usize, rows: usize) -> Vec<Vec<(char, Rgba8, Rgba8)>> {
     sextants_window(source, (0, source.height()), cols, rows)
 }
 
+/// Converts one vertical window of an image to sextant rows.
 #[must_use]
-pub fn sextants_window(
+pub(crate) fn sextants_window(
     source: &ImageSource,
     window: (u32, u32),
     cols: usize,
@@ -140,6 +147,7 @@ pub(crate) fn sextant(mask: u32) -> char {
     char::from_u32(code).unwrap_or(' ')
 }
 
+/// Encodes bytes as base64.
 #[must_use]
 pub fn base64(bytes: &[u8]) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -160,13 +168,16 @@ pub fn base64(bytes: &[u8]) -> String {
     out
 }
 
+/// Encodes an image as PNG.
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn png(source: &ImageSource) -> Vec<u8> {
     png_window(source, 0, source.height())
 }
 
+/// Encodes one vertical window of an image as PNG.
 #[must_use]
-pub fn png_window(source: &ImageSource, top: u32, height: u32) -> Vec<u8> {
+pub(crate) fn png_window(source: &ImageSource, top: u32, height: u32) -> Vec<u8> {
     let width = source.width();
     let top = top.min(source.height());
     let height = height.clamp(1, source.height().saturating_sub(top).max(1));

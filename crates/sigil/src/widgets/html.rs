@@ -6,6 +6,7 @@ use crate::reactive::{Signal, derived};
 use super::markdown::document;
 use parse::parse_html;
 
+/// Rendered HTML subset.
 #[must_use]
 pub fn html(source: Signal<String>) -> NodeBuilder {
     let blocks = derived(move || parse_html(&source.get()));

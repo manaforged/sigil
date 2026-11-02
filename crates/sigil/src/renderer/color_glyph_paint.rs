@@ -8,8 +8,8 @@ use crate::kernel::{ImageSource, NodeId, ObjectFit};
 use crate::text::{Paragraph, color_glyph};
 use skrifa::{FontRef, GlyphId};
 
-use crate::renderer::scene_command::DrawImage;
 use crate::scene::builder::SceneBuilder;
+use crate::scene::command::DrawImage;
 
 const EMOJI_ASCENT_FRAC: f32 = 0.85;
 

@@ -1,12 +1,13 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
 
 use sigil::geometry::{Point, Rect};
-use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
+use sigil::renderer::{WgpuRenderer, WgpuSurface};
 use sigil::scene::{
-    CommandScene, CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Shadow, ShadowKind,
+    CommandScene, CornerRadii, DrawRect, SceneBuilder, SceneCommand, Shadow, ShadowKind,
 };
 use sigil::style::{Color, Rgba8};
 
@@ -27,8 +28,7 @@ fn outer_inner_glow_emit_as_independent_commands() {
     let mut builder = SceneBuilder::new();
     builder.draw_shadow(surface_rect(), CornerRadii::uniform(24.0), outer_shadow());
     builder.draw_rect(
-        surface_rect(),
-        SceneRectStyle::new(fill_color(), CornerRadii::uniform(24.0), 10_000),
+        DrawRect::new(surface_rect(), fill_color()).border_radius(CornerRadii::uniform(24.0)),
     );
     builder.draw_shadow(surface_rect(), CornerRadii::uniform(24.0), inner_shadow());
     builder.draw_shadow(surface_rect(), CornerRadii::uniform(24.0), glow_shadow());
@@ -70,7 +70,7 @@ type RenderCommandScene = fn(
     &CommandScene,
     Color,
     (f32, f32),
-) -> Result<(), RendererError>;
+) -> Result<(), sigil::Error>;
 
 fn glow_shadow() -> Shadow {
     Shadow::glow(

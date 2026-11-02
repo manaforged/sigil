@@ -1,8 +1,12 @@
+#[cfg(any(test, feature = "kittest", feature = "scene"))]
 use crate::hal::TextEngine;
 
+/// Gives line height as a multiple of font size or in pixels.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TextLineHeight {
+    /// The font size relative text line height.
     FontSizeRelative(f32),
+    /// The absolute text line height.
     Absolute(f32),
 }
 
@@ -12,40 +16,66 @@ impl Default for TextLineHeight {
     }
 }
 
+/// Holds the resolved typography of a text node.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextStyle {
+    /// The font family.
     pub font_family: String,
+    /// The font size.
     pub font_size: f32,
+    /// The font weight.
     pub font_weight: u16,
+    /// Whether italic.
     pub italic: bool,
+    /// The line height.
     pub line_height: TextLineHeight,
+    /// The letter spacing em.
     pub letter_spacing_em: f32,
+    /// Whether tabular nums.
     pub tabular_nums: bool,
+    /// The decoration.
     pub decoration: crate::style::TextDecoration,
+    /// The runs, if any.
     pub runs: Option<TextRuns>,
 }
 
+/// The overrides of one styled run of text.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct TextFace {
+    /// Whether bold.
     pub bold: bool,
+    /// Whether italic.
     pub italic: bool,
+    /// Whether mono.
     pub mono: bool,
+    /// The color, if any.
     pub color: Option<crate::style::Token>,
+    /// The background, if any.
     pub background: Option<crate::style::Token>,
+    /// The link, if any.
     pub link: Option<std::sync::Arc<str>>,
 }
 
+/// A byte range of text with a face.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TextRun {
+    /// The start.
     pub start: usize,
+    /// The end.
     pub end: usize,
+    /// The face.
     pub face: TextFace,
 }
 
+/// The styled runs of a text, sorted by byte offset.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct TextRuns(pub std::sync::Arc<[TextRun]>);
+pub struct TextRuns(
+    /// The runs.
+    pub std::sync::Arc<[TextRun]>,
+);
 
 impl TextRuns {
+    /// Returns the run that holds `byte`.
     #[must_use]
     pub fn at(&self, byte: usize) -> Option<&TextRun> {
         self.0
@@ -53,11 +83,13 @@ impl TextRuns {
             .find(|run| run.start <= byte && byte < run.end)
     }
 
+    /// Returns the family of `face`, or `base` when it sets none.
     #[must_use]
     pub const fn family<'a>(face: &TextFace, base: &'a str) -> &'a str {
         if face.mono { "mono" } else { base }
     }
 
+    /// Returns the weight of `face`, or `base` when it sets none.
     #[must_use]
     pub const fn weight(face: &TextFace, base: u16) -> u16 {
         if face.bold && base < 700 { 700 } else { base }
@@ -80,8 +112,9 @@ impl Default for TextStyle {
     }
 }
 
+/// Returns true when a style atom changes text layout.
 #[must_use]
-pub const fn is_typography_atom(atom: crate::style::StyleAtom) -> bool {
+pub(crate) const fn is_typography_atom(atom: crate::style::StyleAtom) -> bool {
     matches!(
         atom,
         crate::style::StyleAtom::FontSize(_)
@@ -109,7 +142,10 @@ impl TextStyle {
             })
     }
 
-    pub fn layered_over_binding(base: &Self, binding: &crate::style::StyleBinding) -> Option<Self> {
+    pub(crate) fn layered_over_binding(
+        base: &Self,
+        binding: &crate::style::StyleBinding,
+    ) -> Option<Self> {
         if !Self::binding_layers_text(binding) {
             return None;
         }
@@ -124,15 +160,18 @@ impl TextStyle {
     }
 }
 
-pub trait StyledTextEngine: TextEngine {
-    fn layout_paragraph_styled(
-        &self,
-        text: &str,
-        max_width: Option<f32>,
-        style: &TextStyle,
-    ) -> Result<Self::Paragraph, Self::Error>;
+kittest_pub! {
+    #[cfg(any(test, feature = "kittest", feature = "scene"))]
+    pub trait StyledTextEngine: TextEngine {
+        fn layout_paragraph_styled(
+            &self,
+            text: &str,
+            max_width: Option<f32>,
+            style: &TextStyle,
+        ) -> Result<Self::Paragraph, Self::Error>;
 
-    fn font_generation(&self) -> u64 {
-        0
+        fn font_generation(&self) -> u64 {
+            0
+        }
     }
 }

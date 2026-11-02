@@ -4,7 +4,6 @@ use std::time::Duration;
 use web_time::Instant;
 
 use crate::reactive::Owner;
-use crate::tasks::OwnerHandle;
 use crate::tasks::dispatch::dispatch_to_owner;
 use crate::tasks::runtime::Dispatcher;
 use crate::{AppResult, Error};
@@ -12,6 +11,7 @@ use crate::{AppResult, Error};
 const DEBOUNCE: Duration = Duration::from_millis(75);
 const MAX_DEBOUNCE: Duration = Duration::from_secs(1);
 
+/// Reload a theme file when it changes.
 pub fn watch_theme(path: impl Into<PathBuf>) -> AppResult<ThemeWatcher> {
     let Some(dispatcher) = crate::tasks::current::dispatcher() else {
         return Err(Error::task(std::io::Error::other(
@@ -19,7 +19,7 @@ pub fn watch_theme(path: impl Into<PathBuf>) -> AppResult<ThemeWatcher> {
         )));
     };
     let owner = Owner::new("sigil::watch_theme", None);
-    let target = OwnerHandle::from_id(owner.id());
+    let target = owner;
     let path = path.into();
     let (watcher, rx) = crate::app::theme_file::watcher(&path).map_err(Error::io)?;
     let reloader = std::thread::spawn(move || reload(path, rx, dispatcher, target));
@@ -30,6 +30,7 @@ pub fn watch_theme(path: impl Into<PathBuf>) -> AppResult<ThemeWatcher> {
     })
 }
 
+/// Guard of `watch_theme`.
 #[must_use = "dropping a ThemeWatcher stops the theme reload watch"]
 pub struct ThemeWatcher {
     watcher: Option<notify::RecommendedWatcher>,
@@ -57,7 +58,7 @@ fn reload(
     path: PathBuf,
     rx: crossbeam_channel::Receiver<()>,
     dispatcher: Dispatcher,
-    owner: OwnerHandle,
+    owner: Owner,
 ) {
     while rx.recv().is_ok() {
         let window = Instant::now();

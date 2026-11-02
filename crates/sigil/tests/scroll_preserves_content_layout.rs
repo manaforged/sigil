@@ -9,7 +9,7 @@ use sigil::prelude::*;
 
 #[test]
 fn scroll_preserves_content_layout_style() {
-    sigil::reactive::Runtime::scope("scroll-preserves-content-layout", || {
+    sigil::reactive::Owner::scope("scroll-preserves-content-layout", || {
         let mut cx = Cx::new_root();
 
         let content =
@@ -58,7 +58,7 @@ fn scroll_preserves_content_layout_style() {
 
 #[test]
 fn scroll_sizing_container_has_fixed_size_layout() {
-    sigil::reactive::Runtime::scope("scroll-sizing-container-layout", || {
+    sigil::reactive::Owner::scope("scroll-sizing-container-layout", || {
         let mut cx = Cx::new_root();
 
         let content =

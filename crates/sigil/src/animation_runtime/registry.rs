@@ -17,16 +17,16 @@ pub mod presets {
 }
 
 #[must_use]
-pub const fn config(id: TransitionId) -> Option<AnimationConfig> {
-    let preset = match id.0 {
-        0 => SpringPreset::Smooth,
-        1 => SpringPreset::Gentle,
-        2 => SpringPreset::Snappy,
-        3 => SpringPreset::Bouncy,
-        4 => SpringPreset::Stiff,
-        16 => return Some(cubic_in_out(120)),
-        17 => return Some(cubic_in_out(200)),
-        18 => return Some(cubic_in_out(320)),
+pub(crate) const fn config(id: TransitionId) -> Option<AnimationConfig> {
+    let preset = match id {
+        presets::SMOOTH => SpringPreset::Smooth,
+        presets::GENTLE => SpringPreset::Gentle,
+        presets::SNAPPY => SpringPreset::Snappy,
+        presets::BOUNCY => SpringPreset::Bouncy,
+        presets::STIFF => SpringPreset::Stiff,
+        presets::FAST => return Some(cubic_in_out(120)),
+        presets::DEFAULT => return Some(cubic_in_out(200)),
+        presets::SLOW => return Some(cubic_in_out(320)),
         _ => return None,
     };
     Some(AnimationConfig::Spring { preset })

@@ -4,9 +4,9 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, container};
-use crate::layout::LayoutReactiveExt;
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::layout::LayoutStyle;
 use crate::reactive::{Signal, derived, effect, signal};
+use crate::widgets::Widget;
 
 use super::render::WidthSpec;
 use super::{RowKey, bound_slice};
@@ -14,11 +14,11 @@ use super::{RowKey, bound_slice};
 pub(super) type Tops = Signal<Rc<Vec<f32>>>;
 pub(super) type Keys = Signal<Rc<Vec<u64>>>;
 
-type Cache = Rc<RefCell<HashMap<u64, f32>>>;
+type HeightCache = Rc<RefCell<HashMap<u64, f32>>>;
 
 #[derive(Clone)]
 pub(super) struct Measure {
-    cache: Cache,
+    cache: HeightCache,
     width: Rc<Cell<f32>>,
     version: Signal<u64>,
     pub(super) tops: Tops,
@@ -29,7 +29,7 @@ pub(super) fn row_key_of<T>(row_key: Option<&RowKey<T>>, index: usize, item: &T)
     row_key.map_or(index as u64, |key_of| key_of(index, item))
 }
 
-fn prune<S, T>(items: Signal<S>, row_key: Option<RowKey<T>>, cache: Cache)
+fn prune<S, T>(items: Signal<S>, row_key: Option<RowKey<T>>, cache: HeightCache)
 where
     S: Deref + Clone + 'static,
     S::Target: AsRef<[T]>,
@@ -53,7 +53,7 @@ impl Measure {
         S::Target: AsRef<[T]>,
         T: 'static,
     {
-        let cache: Cache = Rc::default();
+        let cache: HeightCache = Rc::default();
         let version = signal(0_u64);
         prune(items, row_key.clone(), Rc::clone(&cache));
         let keys = row_key.clone().map(|key_of| {

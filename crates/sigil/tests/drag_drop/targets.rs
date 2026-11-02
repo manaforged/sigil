@@ -4,7 +4,7 @@ use sigil::kernel::Cx;
 
 #[test]
 fn target_highlight_is_reactive_and_clears_on_move_away() {
-    sigil::reactive::Runtime::scope("drag-drop-highlight", || {
+    sigil::reactive::Owner::scope("drag-drop-highlight", || {
         let (_state, drops, _downs, mut cx, root) = demo();
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let highlight = Theme::default().accent_scale.step(4);
@@ -62,7 +62,7 @@ fn target_highlight_is_reactive_and_clears_on_move_away() {
 
 #[test]
 fn rejecting_target_neither_highlights_nor_accepts() {
-    sigil::reactive::Runtime::scope("drag-drop-reject", || {
+    sigil::reactive::Owner::scope("drag-drop-reject", || {
         let state = DragState::<String>::new();
         let drops = Rc::new(RefCell::new(Vec::new()));
         let downs = Rc::new(RefCell::new(0_u32));
@@ -110,7 +110,7 @@ fn rejecting_target_neither_highlights_nor_accepts() {
 
 #[test]
 fn ghost_chip_lives_only_during_the_session() {
-    sigil::reactive::Runtime::scope("drag-drop-ghost", || {
+    sigil::reactive::Owner::scope("drag-drop-ghost", || {
         let (_state, _drops, _downs, mut cx, root) = demo();
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert!(

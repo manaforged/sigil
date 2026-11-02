@@ -16,12 +16,12 @@ use std::rc::Rc;
 
 use sigil::kernel::{Cx, Role};
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::widgets::{ChartBuilder, chart};
 use sigil_kittest::{Harness, Query};
 
 fn line_build_time(points: usize) -> std::time::Duration {
-    Runtime::scope("chart-build", || {
+    Owner::scope("chart-build", || {
         let mut cx = Cx::new_root();
         let values: Vec<f32> = (0..points).map(|at| (at as f32 * 0.01).sin()).collect();
         let started = std::time::Instant::now();

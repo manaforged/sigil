@@ -9,11 +9,12 @@
     clippy::ignored_unit_patterns
 )]
 
+use sigil::reactive::Owner;
 use sigil::reactive::{DrawPhase, Runtime, effect, signal};
 
 #[test]
 fn frame_dirty_tracks_visual_mutations() {
-    Runtime::scope("frame_dirty_tracks_visual_mutations", || {
+    Owner::scope("frame_dirty_tracks_visual_mutations", || {
         let tracked = signal(0_i32);
         effect(move || {
             let _ = tracked.get();
@@ -51,7 +52,7 @@ fn frame_dirty_tracks_visual_mutations() {
 
 #[test]
 fn idle_phase_is_default() {
-    Runtime::scope("idle_default", || {
+    Owner::scope("idle_default", || {
         assert_eq!(
             Runtime::current_phase(),
             DrawPhase::Idle,
@@ -62,7 +63,7 @@ fn idle_phase_is_default() {
 
 #[test]
 fn phase_round_trips_through_idle() {
-    Runtime::scope("round_trip", || {
+    Owner::scope("round_trip", || {
         let trace: std::rc::Rc<std::cell::RefCell<Vec<DrawPhase>>> =
             std::rc::Rc::new(std::cell::RefCell::new(vec![Runtime::current_phase()]));
         Runtime::begin_effect();
@@ -91,7 +92,7 @@ fn phase_round_trips_through_idle() {
 #[test]
 #[should_panic(expected = "Signal::set")]
 fn signal_set_during_paint_panics_in_debug() {
-    Runtime::scope("signal_set_paint", || {
+    Owner::scope("signal_set_paint", || {
         let s = signal(0_i32);
         Runtime::begin_effect();
         Runtime::begin_layout();
@@ -104,7 +105,7 @@ fn signal_set_during_paint_panics_in_debug() {
 #[test]
 #[should_panic(expected = "Signal::update")]
 fn signal_update_during_paint_panics_in_debug() {
-    Runtime::scope("signal_update_paint", || {
+    Owner::scope("signal_update_paint", || {
         let s = signal(0_i32);
         Runtime::begin_effect();
         Runtime::begin_layout();
@@ -117,7 +118,7 @@ fn signal_update_during_paint_panics_in_debug() {
 #[test]
 #[should_panic(expected = "expected Layout")]
 fn phase_transition_out_of_order_panics_in_debug() {
-    Runtime::scope("ooo_transition", || {
+    Owner::scope("ooo_transition", || {
         Runtime::begin_effect();
         Runtime::begin_paint();
     });
@@ -125,7 +126,7 @@ fn phase_transition_out_of_order_panics_in_debug() {
 
 #[test]
 fn read_paths_in_paint_are_legal() {
-    Runtime::scope("read_paint_legal", || {
+    Owner::scope("read_paint_legal", || {
         let s = signal(42_i32);
         Runtime::begin_effect();
         Runtime::begin_layout();
@@ -138,7 +139,7 @@ fn read_paths_in_paint_are_legal() {
 
 #[test]
 fn end_frame_drains_to_idle_with_empty_queue() {
-    Runtime::scope("end_frame_drain", || {
+    Owner::scope("end_frame_drain", || {
         Runtime::begin_effect();
         Runtime::begin_layout();
         Runtime::begin_paint();
@@ -149,7 +150,7 @@ fn end_frame_drains_to_idle_with_empty_queue() {
 
 #[test]
 fn current_phase_observable_throughout_frame() {
-    Runtime::scope("observable", || {
+    Owner::scope("observable", || {
         assert_eq!(Runtime::current_phase(), DrawPhase::Idle);
         Runtime::begin_effect();
         assert_eq!(Runtime::current_phase(), DrawPhase::Effect);

@@ -1,9 +1,12 @@
 use crate::reactive::derived;
 use crate::reactive::signal::{Signal, signal};
 
+/// A value or a closure that a widget reads inside an effect.
 pub trait Reactive<T>: 'static {
+    /// Returns the read.
     fn read(&self) -> T;
 
+    /// Converts this reactive to signal.
     #[must_use]
     fn into_signal(self) -> Signal<T>
     where

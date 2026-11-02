@@ -10,7 +10,7 @@ exclude = ["fuzz"]
 default-members = ["crates/sigil", "crates/sigil-fonts", "crates/sign"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.90"
 license = "MIT"
@@ -97,7 +97,6 @@ accesskit_winit = { version = "0.34", default-features = false, features = [
     "tokio",
     "rwh_06",
 ] }
-keyboard-types = { version = "0.8.3", default-features = false }
 smol_str = { version = "0.3.6", default-features = false }
 tokio = { version = "1", default-features = false, features = ["sync", "macros", "time"] }
 proptest = { version = "1", default-features = false, features = ["std"] }
@@ -113,9 +112,9 @@ toml = { version = "1", default-features = false, features = ["parse", "serde"] 
 # image-encoding path we do not need, so depend with `default-features = false`
 # to keep the transitive surface narrow.
 arboard = { version = "3", default-features = false }
-sigil-ui = { path = "crates/sigil", version = "0.1.0" }
-sigil-fonts = { path = "crates/sigil-fonts", version = "0.1.0" }
-sigil-sign = { path = "crates/sign", version = "0.1.0" }
+sigil-ui = { path = "crates/sigil", version = "0.2.0" }
+sigil-fonts = { path = "crates/sigil-fonts", version = "0.2.0" }
+sigil-sign = { path = "crates/sign", version = "0.2.0" }
 minisign = "0.7"
 base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }

@@ -1,7 +1,9 @@
 use crate::events::ImeEvent;
+#[cfg(any(test, feature = "kittest", feature = "desktop"))]
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Cx, NodeId};
-use crate::layout::{CaretGeometry, LayoutEngine};
+use crate::layout::CaretGeometry;
+use crate::layout::LayoutEngine;
 
 use crate::events::EventRouter;
 
@@ -31,8 +33,13 @@ impl core::fmt::Debug for ImeHandlers {
 }
 
 #[derive(Clone, Debug)]
+#[cfg_attr(
+    not(any(test, feature = "kittest", feature = "desktop")),
+    allow(dead_code, reason = "only the window host reads the caret anchor")
+)]
 pub(crate) struct CaretAnchorExt(pub(crate) std::rc::Rc<std::cell::Cell<Option<CaretGeometry>>>);
 
+#[cfg(any(test, feature = "kittest", feature = "desktop"))]
 const CARET_ANCHOR_W: f32 = 2.0;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -76,25 +83,31 @@ impl EventRouter {
         }
     }
 
-    #[must_use]
-    pub fn focus_wants_ime(&self, cx: &Cx) -> bool {
-        self.focus()
-            .and_then(|id| cx.get(id))
-            .and_then(|node| node.get_extension::<ImeHandlers>())
-            .is_some_and(ImeHandlers::is_eligible)
+    kittest_pub! {
+        #[cfg(any(test, feature = "kittest", feature = "desktop"))]
+        #[must_use]
+        pub fn focus_wants_ime(&self, cx: &Cx) -> bool {
+            self.focus()
+                .and_then(|id| cx.get(id))
+                .and_then(|node| node.get_extension::<ImeHandlers>())
+                .is_some_and(ImeHandlers::is_eligible)
+        }
     }
 
-    #[must_use]
-    pub fn ime_caret_rect(&self, cx: &Cx, layout: &LayoutEngine) -> Option<Rect> {
-        let focused = self.focus()?;
-        let node = cx.get(focused)?;
-        let local = node.get_extension::<CaretAnchorExt>()?.0.get()?;
-        let origin = layout.result(focused)?.rect().origin;
-        Some(Rect::new(
-            Point::new(origin.x + local.x, origin.y + local.top),
-            CARET_ANCHOR_W,
-            local.height,
-        ))
+    kittest_pub! {
+        #[cfg(any(test, feature = "kittest", feature = "desktop"))]
+        #[must_use]
+        pub fn ime_caret_rect(&self, cx: &Cx, layout: &LayoutEngine) -> Option<Rect> {
+            let focused = self.focus()?;
+            let node = cx.get(focused)?;
+            let local = node.get_extension::<CaretAnchorExt>()?.0.get()?;
+            let origin = layout.result(focused)?.rect().origin;
+            Some(Rect::new(
+                Point::new(origin.x + local.x, origin.y + local.top),
+                CARET_ANCHOR_W,
+                local.height,
+            ))
+        }
     }
 }
 

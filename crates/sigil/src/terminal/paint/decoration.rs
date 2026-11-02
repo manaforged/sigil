@@ -52,15 +52,15 @@ fn blend(ink: Ink, over: Rgba8, foreground: bool, theme: &Theme) -> Ink {
     })
 }
 
-pub(super) struct Edge<'a> {
+pub(super) struct BorderEdge<'a> {
     pub(super) clip: Option<Rect>,
     pub(super) theme: &'a Theme,
     pub(super) borders: Borders,
     pub(super) cell: f32,
 }
 
-pub(super) fn border(grid: &mut Grid, border: &CellBorder, edge: &Edge<'_>) {
-    let Edge {
+pub(super) fn border(grid: &mut Grid, border: &CellBorder, edge: &BorderEdge<'_>) {
+    let BorderEdge {
         clip, theme, cell, ..
     } = *edge;
     let color = border.color;
@@ -87,7 +87,7 @@ pub(super) fn border(grid: &mut Grid, border: &CellBorder, edge: &Edge<'_>) {
                 west && x == left && rect.origin.x >= 0.0,
             ];
             if let Some(glyph) = glyph(edges, set) {
-                let stroke = Stroke {
+                let stroke = BorderStroke {
                     at: (x, y),
                     glyph,
                     set,
@@ -134,15 +134,15 @@ fn sides(border: &CellBorder, top: usize, bottom: usize) -> ([bool; 4], bool) {
     )
 }
 
-struct Stroke {
+struct BorderStroke {
     at: (usize, usize),
     glyph: &'static str,
-    set: Glyphs,
+    set: BorderGlyphs,
     side: (bool, bool),
     full: bool,
 }
 
-fn join(grid: &mut Grid, stroke: &Stroke, (color, theme): (Rgba8, &Theme), rect: Rect) {
+fn join(grid: &mut Grid, stroke: &BorderStroke, (color, theme): (Rgba8, &Theme), rect: Rect) {
     let (x, y) = stroke.at;
     let [.., across, down] = stroke.set;
     let under = grid.get(x, y);
@@ -187,7 +187,7 @@ fn meet(grid: &mut Grid, (x, y): (usize, usize), down: &str, glyph: &str) {
     }
 }
 
-fn tee(set: Glyphs) -> (&'static str, &'static str) {
+fn tee(set: BorderGlyphs) -> (&'static str, &'static str) {
     if set == HEAVY {
         ("┣", "┫")
     } else if set == ASCII {
@@ -205,14 +205,14 @@ impl Grid {
     }
 }
 
-type Glyphs = [&'static str; 6];
+type BorderGlyphs = [&'static str; 6];
 
-const ROUNDED: Glyphs = ["╭", "╮", "╯", "╰", "─", "│"];
-const HEAVY: Glyphs = ["┏", "┓", "┛", "┗", "━", "┃"];
-const LIGHT: Glyphs = ["┌", "┐", "┘", "└", "─", "│"];
-const ASCII: Glyphs = ["+", "+", "+", "+", "-", "|"];
+const ROUNDED: BorderGlyphs = ["╭", "╮", "╯", "╰", "─", "│"];
+const HEAVY: BorderGlyphs = ["┏", "┓", "┛", "┗", "━", "┃"];
+const LIGHT: BorderGlyphs = ["┌", "┐", "┘", "└", "─", "│"];
+const ASCII: BorderGlyphs = ["+", "+", "+", "+", "-", "|"];
 
-fn line(border: &CellBorder, borders: Borders) -> Glyphs {
+fn line(border: &CellBorder, borders: Borders) -> BorderGlyphs {
     match borders {
         Borders::Ascii => ASCII,
         Borders::Rounded if border.widths.iter().any(|width| *width >= 2.0) => HEAVY,
@@ -221,7 +221,7 @@ fn line(border: &CellBorder, borders: Borders) -> Glyphs {
     }
 }
 
-const fn glyph(edges: [bool; 4], set: Glyphs) -> Option<&'static str> {
+const fn glyph(edges: [bool; 4], set: BorderGlyphs) -> Option<&'static str> {
     let [north_west, north_east, south_east, south_west, across, down] = set;
     match edges {
         [true, _, _, true] => Some(north_west),

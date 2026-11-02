@@ -1,20 +1,21 @@
-use crate::events::{MouseButton, NodeEventsExt};
+use crate::events::MouseButton;
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
+use crate::widgets::Widget;
 use std::rc::Rc;
 
 use crate::style::{ControlSize, Metrics, space};
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::listbox::{ListModel, listbox};
 use super::super::popup::{self, ItemSlots, item_row};
 use super::super::shared::Activate;
 use super::super::text_field::{TextFieldBuilder, text_field};
 use super::builder::CommandMenuBuilder;
-use super::nav::{Entry, MenuLevel, Palette, SubmitObserver};
+use super::nav::{CommandPalette, MenuLevel, PaletteEntry, SubmitObserver};
 
 const LEVEL_GAP: f32 = space(2);
 const FIELD_GAP: f32 = space(1);
@@ -26,7 +27,7 @@ struct Active {
 }
 
 struct CommandModel {
-    palette: Palette,
+    palette: CommandPalette,
     on_submit: Option<SubmitObserver>,
     on_cancel: Option<Activate>,
 }
@@ -73,53 +74,56 @@ impl ListModel for CommandModel {
     }
 }
 
-pub(super) fn into_node_builder(parts: CommandMenuBuilder) -> NodeBuilder {
-    let palette = Palette::new(Rc::new(parts.level.entries));
-    let chrome = PanelChrome {
-        active: Active {
-            focused: signal(false),
-            pointed: signal(false),
-        },
-        palette,
-        layout_overrides: parts.layout_overrides,
-        on_submit: parts.on_submit.clone(),
-        placeholder: parts.placeholder,
-    };
-    let root = container()
-        .role(Role::Menu)
-        .label(theme_label(StringKey::CommandMenu))
-        .layout(
-            LayoutStyle::flex_row()
-                .gap(LEVEL_GAP)
-                .align_items(AlignItems::Start),
-        )
-        .children_reactive(move || {
-            let levels = palette.stack.get();
-            let top = levels.len().saturating_sub(1);
-            levels
-                .iter()
-                .enumerate()
-                .map(|(depth, level)| build_level_panel(level, depth, depth == top, &chrome))
-                .collect::<Vec<_>>()
-        });
-    let mut root = listbox(
-        root,
-        CommandModel {
+impl CommandMenuBuilder {
+    pub(super) fn root(self) -> NodeBuilder {
+        let parts = self;
+        let palette = CommandPalette::new(Rc::new(parts.level.entries));
+        let chrome = PanelChrome {
+            active: Active {
+                focused: signal(false),
+                pointed: signal(false),
+            },
             palette,
-            on_submit: parts.on_submit,
-            on_cancel: parts.on_cancel,
-        },
-    );
-    if !parts.style_accumulator.is_empty() {
-        root = root.style(parts.style_accumulator);
+            panel_layout: parts.panel_layout,
+            on_submit: parts.on_submit.clone(),
+            placeholder: parts.placeholder,
+        };
+        let root = container()
+            .role(Role::Menu)
+            .label(theme_label(StringKey::CommandMenu))
+            .layout(
+                LayoutStyle::flex_row()
+                    .gap(LEVEL_GAP)
+                    .align_items(AlignItems::Start),
+            )
+            .children_reactive(move || {
+                let levels = palette.stack.get();
+                let top = levels.len().saturating_sub(1);
+                levels
+                    .iter()
+                    .enumerate()
+                    .map(|(depth, level)| build_level_panel(level, depth, depth == top, &chrome))
+                    .collect::<Vec<_>>()
+            });
+        let mut root = listbox(
+            root,
+            CommandModel {
+                palette,
+                on_submit: parts.on_submit,
+                on_cancel: parts.on_cancel,
+            },
+        );
+        if !parts.style_accumulator.is_empty() {
+            root = root.style(parts.style_accumulator);
+        }
+        root
     }
-    root
 }
 
 struct PanelChrome {
     active: Active,
-    palette: Palette,
-    layout_overrides: LayoutOverrides,
+    palette: CommandPalette,
+    panel_layout: LayoutOverrides,
     on_submit: Option<SubmitObserver>,
     placeholder: String,
 }
@@ -160,10 +164,8 @@ fn build_level_panel(
     is_top: bool,
     chrome: &PanelChrome,
 ) -> NodeBuilder {
-    let overrides = &chrome.layout_overrides;
-    let layout = overrides
-        .clone()
-        .apply(panel_layout(level.entries.len(), is_top));
+    let overrides = &chrome.panel_layout;
+    let layout = overrides.apply(panel_layout(level.entries.len(), is_top));
     let layout = if overrides.width_hint().is_some() {
         layout
     } else {
@@ -178,7 +180,7 @@ fn build_level_panel(
 
 fn level_rows(level: &MenuLevel, chrome: &PanelChrome) -> NodeBuilder {
     let level = level.clone();
-    let row = RowCtx {
+    let row = MenuRowCtx {
         cursor: level.cursor,
         active: chrome.active,
         palette: chrome.palette,
@@ -199,17 +201,17 @@ fn level_rows(level: &MenuLevel, chrome: &PanelChrome) -> NodeBuilder {
 }
 
 #[derive(Clone)]
-struct RowCtx {
+struct MenuRowCtx {
     cursor: Signal<usize>,
     active: Active,
-    palette: Palette,
+    palette: CommandPalette,
     on_submit: Option<SubmitObserver>,
 }
 
-fn build_row(entry: &Entry, idx: usize, row: &RowCtx) -> NodeBuilder {
+fn build_row(entry: &PaletteEntry, idx: usize, row: &MenuRowCtx) -> NodeBuilder {
     let disabled = entry.disabled();
     let slots = ItemSlots {
-        chevron: matches!(entry, Entry::Submenu { .. }),
+        chevron: matches!(entry, PaletteEntry::Submenu { .. }),
         disabled,
         ..ItemSlots::new(entry.label().to_owned())
     };

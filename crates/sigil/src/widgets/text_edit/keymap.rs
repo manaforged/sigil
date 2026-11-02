@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
-use crate::events::{Key, KeyEvent, ModifiersState, NodeEventsExt, Shortcut};
+use crate::events::{Key, KeyEvent, ModifiersState, Shortcut};
 use crate::kernel::NodeBuilder;
+use crate::widgets::Widget;
 
 use super::super::TextEdit;
 use super::navigation::move_horizontal;

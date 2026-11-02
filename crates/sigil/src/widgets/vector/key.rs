@@ -1,12 +1,8 @@
 use super::{PathCmd, PathFill};
 use crate::style::Rgba8;
 
-pub(super) const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-
 pub(super) fn mix(hash: &mut u64, byte: u8) {
-    const PRIME: u64 = 0x0000_0100_0000_01b3;
-    *hash ^= u64::from(byte);
-    *hash = hash.wrapping_mul(PRIME);
+    *hash = crate::fnv::mix(*hash, u64::from(byte));
 }
 
 pub(super) fn mix_f32(hash: &mut u64, value: f32) {

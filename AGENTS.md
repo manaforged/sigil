@@ -6,25 +6,23 @@ Sigil is a Rust UI library. One widget tree runs in a window, in a terminal, or 
 
 ## Add the dependency
 
-Sigil is not on crates.io yet.
-
 ```toml
 [dependencies]
-sigil-ui = { git = "https://github.com/manaforged/sigil" }
+sigil-ui = "0.2"
 ```
 
 For a terminal-only program:
 
 ```toml
 [dependencies]
-sigil-ui = { git = "https://github.com/manaforged/sigil", default-features = false, features = ["terminal"] }
+sigil-ui = { version = "0.2", default-features = false, features = ["terminal"] }
 ```
 
 For tests:
 
 ```toml
 [dev-dependencies]
-sigil-kittest = { git = "https://github.com/manaforged/sigil" }
+sigil-kittest = "0.2"
 ```
 
 Rust 1.90 or newer. The window host on Linux needs the GTK3, udev, ALSA, xkbcommon, and xdo development packages.
@@ -36,8 +34,7 @@ Read these before you write a helper. Most jobs already have a function.
 | File | Use it to |
 | --- | --- |
 | [docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md) | Look up every item at the crate root and in the prelude, with its signature, purpose, and an example that compiles. The "Jobs to symbols" section maps a job to the call. |
-| [api.txt](https://raw.githubusercontent.com/manaforged/sigil/main/docs/reference/sigil-ui/api.txt) | Search every public item by path, one per line. |
-| [API reference index](https://raw.githubusercontent.com/manaforged/sigil/main/docs/reference/sigil-ui/index.md) | Index of the per-module reference pages and the examples. |
+| `cargo doc -p sigil-ui --open` | Browse every public item, generated from the source. |
 | [Recipes](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, host hooks, and screen readers. |
 | [GUI and TUI](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/hosts.md) | Build for the window, the terminal, or both. |
 | [Testing](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/testing.md) | Drive the UI from a test with `sigil_kittest::Harness`. |

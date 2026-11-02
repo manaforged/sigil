@@ -1,7 +1,7 @@
 use super::*;
 use crate::layout::style_data::{BoxSizing, Dimension};
 
-impl Edges {
+impl ResolvedEdges {
     pub(crate) const fn inline(self) -> f32 {
         self.left + self.right
     }

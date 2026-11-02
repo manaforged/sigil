@@ -11,7 +11,7 @@ use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 
 fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil::geometry::Rect> {
-    emit_scene(cx, root)
+    emit_scene(cx, root, None)
         .commands
         .iter()
         .filter_map(|c| match c {
@@ -32,8 +32,8 @@ const OUTER_HEIGHT: f32 = 160.0;
 
 #[test]
 fn scrolling_keeps_the_end_of_buffer_caret_in_view() {
-    sigil::reactive::Runtime::scope("scroll-into-view", || {
-        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::EngineGeometry::new()));
+    sigil::reactive::Owner::scope("scroll-into-view", || {
+        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::DefaultTextMeasure::new()));
         let buffer: String = (0..40)
             .map(|i| format!("line{i}"))
             .collect::<Vec<_>>()

@@ -237,7 +237,7 @@ impl ColorPainter for ColrPainter<'_> {
     }
 
     fn push_clip_glyph(&mut self, glyph_id: GlyphId) {
-        let mut pen = PathPen(PathBuilder::new());
+        let mut pen = ColrPen(PathBuilder::new());
         let drawn = self.outlines.get(glyph_id).and_then(|outline| {
             let settings = DrawSettings::unhinted(Size::unscaled(), LocationRef::default());
             outline.draw(settings, &mut pen).ok()
@@ -305,9 +305,9 @@ impl ColorPainter for ColrPainter<'_> {
     }
 }
 
-struct PathPen(PathBuilder);
+struct ColrPen(PathBuilder);
 
-impl OutlinePen for PathPen {
+impl OutlinePen for ColrPen {
     fn move_to(&mut self, x: f32, y: f32) {
         self.0.move_to(x, y);
     }

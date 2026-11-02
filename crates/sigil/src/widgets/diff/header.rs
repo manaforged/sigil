@@ -1,6 +1,7 @@
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::style::{Token, space};
+use crate::widgets::Widget;
 
 use super::DiffShape;
 use super::rows::ROW_INSET;

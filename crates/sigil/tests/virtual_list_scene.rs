@@ -7,18 +7,18 @@
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, container, text};
 use sigil::layout::LayoutEngine;
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
 use sigil::scene::emit_scene;
-use sigil::widgets::virtual_list_bind;
+use sigil::widgets::virtual_list;
 use sigil_kittest::stub_text_measure;
 
 #[test]
 fn items_bind_tick_updates_reactive_text() {
-    Runtime::scope("sigil-vlist-tick-text", || {
+    Owner::scope("sigil-vlist-tick-text", || {
         let items = signal(vec!["alpha".to_string(), "beta".to_string()]);
         let mut cx = Cx::new_root();
         let root = cx.add(
-            virtual_list_bind(items, move |index, _| {
+            virtual_list(items, move |index, _| {
                 container().child(text(move || {
                     items.get().get(index).cloned().unwrap_or_default()
                 }))
@@ -30,11 +30,11 @@ fn items_bind_tick_updates_reactive_text() {
         let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         let avail = Size::fixed(200.0, 80.0);
         layout.compute(&mut cx, root, avail).expect("layout");
-        assert!(emit_scene(&cx, root).find_text("alpha").is_some());
+        assert!(emit_scene(&cx, root, None).find_text("alpha").is_some());
         items.update(|rows| *rows.first_mut().expect("one row") = "omega".to_string());
         layout.compute(&mut cx, root, avail).expect("tick");
         assert!(
-            emit_scene(&cx, root).find_text("omega").is_some(),
+            emit_scene(&cx, root, None).find_text("omega").is_some(),
             "reactive cell must paint the new value"
         );
     });

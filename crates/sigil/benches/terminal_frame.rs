@@ -7,17 +7,17 @@
     reason = "the benchmark reports measurements and uses a subset of package dependencies"
 )]
 
+use sigil::kernel::HostMode;
 use std::hint::black_box;
 use std::io;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::Host;
-use sigil::events::EventRouter;
 use sigil::kernel::{container, text};
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::style::{Tone, grid};
-use sigil::terminal::{ColorDepth, Grid, step as try_step};
+use sigil::terminal::{ColorDepth, Grid};
 use sigil::widgets::{ColWidth, TableColumn, TableState, chip, table};
 
 const COLS: u16 = 120;
@@ -28,12 +28,11 @@ const VIEW: (f32, f32) = (960.0, 320.0);
 
 fn step(
     host: &mut Host,
-    router: &mut EventRouter,
-    events: impl IntoIterator<Item = sigil::events::ShellEvent>,
+    events: impl IntoIterator<Item = sigil::events::Event>,
     cols: u16,
     rows: u16,
 ) -> Grid {
-    try_step(host, router, events, cols, rows).expect("layout")
+    host.grid(events, cols, rows).expect("layout")
 }
 
 #[derive(Clone)]
@@ -105,20 +104,15 @@ fn frame(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(5));
 
     group.bench_function("idle/200-rows", |b| {
-        Runtime::scope("bench-idle", || {
-            let mut host = Host::cells();
-            let mut router = EventRouter::new();
+        Owner::scope("bench-idle", || {
+            let mut host = Host::new(HostMode::Cell);
             let mut screen = sigil::terminal::Screen::new(COLS, ROWS);
             mount(&mut host, 200);
             let mut sink = io::sink();
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("layout");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("layout");
             screen.flush(&mut sink).expect("flush");
             b.iter(|| {
-                screen
-                    .frame(&mut host, &mut router, [], (COLS, ROWS))
-                    .expect("layout");
+                screen.frame(&mut host, [], (COLS, ROWS)).expect("layout");
                 screen.flush(&mut sink).expect("flush");
                 black_box(());
             });
@@ -126,9 +120,8 @@ fn frame(c: &mut Criterion) {
     });
 
     group.bench_function("churn/200-rows", |b| {
-        Runtime::scope("bench-churn", || {
-            let mut host = Host::cells();
-            let mut router = EventRouter::new();
+        Owner::scope("bench-churn", || {
+            let mut host = Host::new(HostMode::Cell);
             let mut screen = sigil::terminal::Screen::new(COLS, ROWS);
             let state = TableState::new(rows(200), columns());
             let mounted = state.clone();
@@ -141,17 +134,13 @@ fn frame(c: &mut Criterion) {
                 )
             });
             let mut sink = io::sink();
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("layout");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("layout");
             screen.flush(&mut sink).expect("flush");
             let mut turn = 0_u32;
             b.iter(|| {
                 turn = turn.wrapping_add(1);
                 state.replace_rows(churned(200, turn));
-                screen
-                    .frame(&mut host, &mut router, [], (COLS, ROWS))
-                    .expect("layout");
+                screen.frame(&mut host, [], (COLS, ROWS)).expect("layout");
                 screen.flush(&mut sink).expect("flush");
                 black_box(());
             });
@@ -159,12 +148,11 @@ fn frame(c: &mut Criterion) {
     });
 
     group.bench_function("phase/layout", |b| {
-        Runtime::scope("bench-layout", || {
+        Owner::scope("bench-layout", || {
             grid(CELL);
-            let mut host = Host::cells();
-            let mut router = EventRouter::new();
+            let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
-            drop(step(&mut host, &mut router, [], COLS, ROWS));
+            drop(step(&mut host, [], COLS, ROWS));
             b.iter(|| {
                 black_box(host.layout((f32::from(COLS) * CELL, f32::from(ROWS) * CELL)))
                     .expect("layout");
@@ -173,38 +161,36 @@ fn frame(c: &mut Criterion) {
     });
 
     group.bench_function("phase/focus", |b| {
-        Runtime::scope("bench-focus", || {
+        Owner::scope("bench-focus", || {
             grid(CELL);
-            let mut host = Host::cells();
-            let mut router = EventRouter::new();
+            let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
-            drop(step(&mut host, &mut router, [], COLS, ROWS));
-            b.iter(|| host.repair_focus(black_box(&mut router)));
+            drop(step(&mut host, [], COLS, ROWS));
+            b.iter(|| host.repair_focus());
         });
     });
 
     group.bench_function("phase/scene", |b| {
-        Runtime::scope("bench-scene", || {
+        Owner::scope("bench-scene", || {
             grid(CELL);
-            let mut host = Host::cells();
-            let mut router = EventRouter::new();
+            let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
-            drop(step(&mut host, &mut router, [], COLS, ROWS));
+            drop(step(&mut host, [], COLS, ROWS));
             b.iter(|| black_box(host.emit(VIEW).commands.len()));
         });
     });
 
     group.bench_function("phase/raster", |b| {
-        Runtime::scope("bench-raster", || {
+        Owner::scope("bench-raster", || {
             grid(CELL);
-            let mut host = Host::cells();
-            let mut router = EventRouter::new();
+            let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
-            drop(step(&mut host, &mut router, [], COLS, ROWS));
+            drop(step(&mut host, [], COLS, ROWS));
             let scene = host.emit(VIEW);
-            let theme = host.theme();
             b.iter(|| {
-                black_box(sigil::terminal::raster(&scene, theme, COLS, ROWS, CELL));
+                let mut cells = Grid::new(COLS, ROWS);
+                host.paint_cells(&mut cells, &scene);
+                black_box(cells);
             });
         });
     });
@@ -213,16 +199,13 @@ fn frame(c: &mut Criterion) {
 }
 
 fn allocations(_c: &mut Criterion) {
-    Runtime::scope("bench-allocs", || {
+    Owner::scope("bench-allocs", || {
         grid(CELL);
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Cell);
         let mut screen = sigil::terminal::Screen::new(COLS, ROWS);
         mount(&mut host, 200);
         for _ in 0..10 {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("layout");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("layout");
             screen.flush(&mut io::sink()).expect("flush");
         }
 
@@ -238,17 +221,15 @@ fn allocations(_c: &mut Criterion) {
         });
         let mut cells = Grid::new(COLS, ROWS);
         let raster = allocation_counter::measure(|| {
-            sigil::terminal::raster_into(&mut cells, &scene, host.theme(), CELL);
+            host.paint_cells(&mut cells, &scene);
         });
         let layout = allocation_counter::measure(|| {
             host.layout((f32::from(COLS) * CELL, f32::from(ROWS) * CELL))
                 .expect("layout");
         });
-        let focus = allocation_counter::measure(|| host.repair_focus(&mut router));
+        let focus = allocation_counter::measure(|| host.repair_focus());
         let frame = allocation_counter::measure(|| {
-            screen
-                .frame(&mut host, &mut router, [], (COLS, ROWS))
-                .expect("layout");
+            screen.frame(&mut host, [], (COLS, ROWS)).expect("layout");
         });
         println!(
             "\ncommands={node_count} text={text_count}\n  emit        allocs={} bytes={}\n  raster_into allocs={} bytes={}\n  layout allocs={} bytes={}\n  focus allocs={} bytes={}\n  screen.frame allocs={} bytes={}\n",
@@ -269,33 +250,29 @@ fn allocations(_c: &mut Criterion) {
 fn write(c: &mut Criterion) {
     let mut group = c.benchmark_group("tui-write");
     group.bench_function("diff-unchanged", |b| {
-        Runtime::scope("bench-write", || {
+        Owner::scope("bench-write", || {
             grid(CELL);
-            let mut host = Host::cells();
-            let mut router = EventRouter::new();
+            let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
-            let frame = step(&mut host, &mut router, [], COLS, ROWS);
+            let frame = step(&mut host, [], COLS, ROWS);
             let same = frame.clone();
             b.iter(|| {
                 let mut sink = io::sink();
-                let _: () =
-                    sigil::terminal::render(&mut sink, &same, &frame, TRUECOLOR).expect("write");
+                let _: () = sigil::Host::ansi(&mut sink, &same, &frame, TRUECOLOR).expect("write");
                 black_box(());
             });
         });
     });
     group.bench_function("full-redraw", |b| {
-        Runtime::scope("bench-write-full", || {
+        Owner::scope("bench-write-full", || {
             grid(CELL);
-            let mut host = Host::cells();
-            let mut router = EventRouter::new();
+            let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
-            let frame = step(&mut host, &mut router, [], COLS, ROWS);
+            let frame = step(&mut host, [], COLS, ROWS);
             let blank = Grid::new(COLS, ROWS);
             b.iter(|| {
                 let mut sink = io::sink();
-                let _: () =
-                    sigil::terminal::render(&mut sink, &blank, &frame, TRUECOLOR).expect("write");
+                let _: () = sigil::Host::ansi(&mut sink, &blank, &frame, TRUECOLOR).expect("write");
                 black_box(());
             });
         });

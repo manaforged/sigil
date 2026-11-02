@@ -10,7 +10,7 @@ struct Participant {
     label: String,
 }
 
-enum Event {
+enum SequenceEvent {
     Message {
         from: usize,
         to: usize,
@@ -36,12 +36,12 @@ enum Event {
 #[derive(Default)]
 struct Diagram {
     participants: Vec<Participant>,
-    events: Vec<Event>,
+    events: Vec<SequenceEvent>,
     numbered: bool,
     boxes: usize,
 }
 
-struct Frame {
+struct SequenceFrame {
     top: usize,
     bottom: usize,
     depth: usize,
@@ -113,14 +113,14 @@ impl Diagram {
             Some(Keyword::Autonumber) => self.numbered = true,
             Some(Keyword::Declare) => self.declare(line),
             Some(Keyword::Note) => self.note(line),
-            Some(Keyword::Open) => self.events.push(Event::Open {
+            Some(Keyword::Open) => self.events.push(SequenceEvent::Open {
                 kind: head.to_string(),
                 text: text(),
             }),
-            Some(Keyword::Else) => self.events.push(Event::Else { text: text() }),
+            Some(Keyword::Else) => self.events.push(SequenceEvent::Else { text: text() }),
             Some(Keyword::Box) => self.boxes = self.boxes.saturating_add(1),
             Some(Keyword::End) if self.boxes > 0 => self.boxes = self.boxes.saturating_sub(1),
-            Some(Keyword::End) => self.events.push(Event::Close),
+            Some(Keyword::End) => self.events.push(SequenceEvent::Close),
             Some(Keyword::Ignored) => {}
             None => self.message(line),
         }
@@ -175,7 +175,7 @@ impl Diagram {
         } else {
             return;
         };
-        self.events.push(Event::Note { from, to, text });
+        self.events.push(SequenceEvent::Note { from, to, text });
     }
 
     fn message(&mut self, line: &str) {
@@ -210,7 +210,7 @@ impl Diagram {
         } else {
             '>'
         };
-        self.events.push(Event::Message {
+        self.events.push(SequenceEvent::Message {
             from,
             to,
             text: wrapped(text),
@@ -220,25 +220,25 @@ impl Diagram {
     }
 }
 
-const fn height(event: &Event, from_to_same: bool) -> usize {
+const fn height(event: &SequenceEvent, from_to_same: bool) -> usize {
     match event {
-        Event::Message { text, .. } if from_to_same => text.len().saturating_add(2),
-        Event::Message { text, .. } => text.len().saturating_add(1),
-        Event::Note { text, .. } => text.len().saturating_add(2),
-        Event::Open { .. } | Event::Else { .. } | Event::Close => 1,
+        SequenceEvent::Message { text, .. } if from_to_same => text.len().saturating_add(2),
+        SequenceEvent::Message { text, .. } => text.len().saturating_add(1),
+        SequenceEvent::Note { text, .. } => text.len().saturating_add(2),
+        SequenceEvent::Open { .. } | SequenceEvent::Else { .. } | SequenceEvent::Close => 1,
     }
 }
 
-fn depth(events: &[Event]) -> usize {
+fn depth(events: &[SequenceEvent]) -> usize {
     let mut current = 0_usize;
     let mut deepest = 0_usize;
     for event in events {
         match event {
-            Event::Open { .. } => {
+            SequenceEvent::Open { .. } => {
                 current = current.saturating_add(1);
                 deepest = deepest.max(current);
             }
-            Event::Close => current = current.saturating_sub(1),
+            SequenceEvent::Close => current = current.saturating_sub(1),
             _ => {}
         }
     }
@@ -276,16 +276,16 @@ fn centres(diagram: &Diagram, margin: usize) -> (Vec<usize>, usize) {
     (centres, right)
 }
 
-fn widen(gaps: &mut [usize], event: &Event, numbered: bool) {
+fn widen(gaps: &mut [usize], event: &SequenceEvent, numbered: bool) {
     let extra = if numbered { 4 } else { 0 };
     let (from, to, need) = match event {
-        Event::Message { from, to, text, .. } if from == to => {
+        SequenceEvent::Message { from, to, text, .. } if from == to => {
             (*from, from.saturating_add(1), width(text).saturating_add(6))
         }
-        Event::Message { from, to, text, .. } => {
+        SequenceEvent::Message { from, to, text, .. } => {
             (*from, *to, width(text).saturating_add(4 + extra))
         }
-        Event::Note { from, to, text } => (*from, *to, width(text).saturating_add(4)),
+        SequenceEvent::Note { from, to, text } => (*from, *to, width(text).saturating_add(4)),
         _ => return,
     };
     let (low, high) = (from.min(to), from.max(to));

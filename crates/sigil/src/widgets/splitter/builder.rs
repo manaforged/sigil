@@ -1,16 +1,15 @@
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::style::{
-    BORDER_WIDTH, Paint, PaintTarget, StateVariants, Style, StyleAtom, StyleSlot, Token,
-};
-
 use super::super::interactive::interactive;
+use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
+use crate::style::{BORDER_WIDTH, Paint, PaintTarget, Style, StyleAtom, StyleSlot, Token};
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::drag::{PaneLimits, SplitterState, install_handle_hooks};
 use super::keys::install_handle_keys;
 use super::pane::{build_pane, shares_free_space};
+use crate::style::StateVariants;
 use crate::widgets::orientation::Orientation;
+use crate::widgets::{Edit, Sealed, Widget};
 
 pub(in crate::widgets) const HANDLE_PX: f32 = 6.0;
 
@@ -24,6 +23,7 @@ struct PaneEntry {
     grow: f32,
 }
 
+/// Builder of a splitter.
 pub struct SplitterBuilder {
     orientation: Orientation,
     panes: Vec<PaneEntry>,
@@ -34,6 +34,7 @@ pub struct SplitterBuilder {
     style_accumulator: Style,
 }
 
+/// Resizable panes.
 #[must_use]
 pub fn splitter(orientation: Orientation) -> SplitterBuilder {
     SplitterBuilder {
@@ -48,6 +49,7 @@ pub fn splitter(orientation: Orientation) -> SplitterBuilder {
 }
 
 impl SplitterBuilder {
+    /// Sets the child constrained.
     #[must_use]
     pub fn child_constrained(
         self,
@@ -59,11 +61,13 @@ impl SplitterBuilder {
         self.pane(node).initial(initial).min(min).max(max).commit()
     }
 
+    /// Adds a child.
     #[must_use]
     pub fn child(self, node: impl IntoNode + 'static, initial_size: f32) -> Self {
         self.pane(node).initial(initial_size).commit()
     }
 
+    /// Adds a pane and returns its builder.
     pub fn pane(self, node: impl IntoNode + 'static) -> PaneBuilder {
         PaneBuilder {
             splitter: self,
@@ -77,6 +81,7 @@ impl SplitterBuilder {
         }
     }
 
+    /// Sets the min size.
     #[must_use]
     pub fn min_size(mut self, idx: usize, px: f32) -> Self {
         if let Some(pane) = self.panes.get_mut(idx) {
@@ -85,6 +90,7 @@ impl SplitterBuilder {
         self
     }
 
+    /// Sets the max size.
     #[must_use]
     pub fn max_size(mut self, idx: usize, px: f32) -> Self {
         if let Some(pane) = self.panes.get_mut(idx) {
@@ -93,25 +99,28 @@ impl SplitterBuilder {
         self
     }
 
+    /// Sets the sizes bind.
     #[must_use]
     pub const fn sizes_bind(mut self, signal: crate::reactive::Signal<Vec<f32>>) -> Self {
         self.sizes_bind = Some(signal);
         self
     }
 
+    /// Sets the snap points.
     #[must_use]
     pub fn snap_points(mut self, handle_idx: usize, points: &[f32]) -> Self {
         self.snap_points.push((handle_idx, points.to_vec()));
         self
     }
 
+    /// Sets the snap threshold.
     #[must_use]
     pub const fn snap_threshold(mut self, threshold: f32) -> Self {
         self.snap_threshold = threshold.max(0.0);
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let orientation = self.orientation;
         let count = self.panes.len();
         let grows: Vec<f32> = self
@@ -137,9 +146,7 @@ impl SplitterBuilder {
             Orientation::Vertical => LayoutStyle::flex_column().align_items(AlignItems::Stretch),
         };
 
-        let mut root = container()
-            .role(Role::GenericContainer)
-            .layout(root_layout.clone());
+        let mut root = container().role(Role::GenericContainer).layout(root_layout);
 
         for (pane_idx, (entry, grow)) in self.panes.into_iter().zip(grows).enumerate() {
             root = root.child(build_pane(entry.content, pane_idx, state, grow));
@@ -151,16 +158,11 @@ impl SplitterBuilder {
         if !self.style_accumulator.is_empty() {
             root = root.style(self.style_accumulator);
         }
-        let root = self.layout_overrides.finish(root);
-        root.with(self.layout_overrides.apply(root_layout))
+        root
     }
 }
 
-impl IntoNode for SplitterBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] SplitterBuilder: paint(style_accumulator), widget, node);
 
 impl From<SplitterBuilder> for NodeBuilder {
     fn from(builder: SplitterBuilder) -> Self {
@@ -168,6 +170,7 @@ impl From<SplitterBuilder> for NodeBuilder {
     }
 }
 
+/// Configures one pane of a `splitter` before it is committed.
 #[must_use = "PaneBuilder must be committed by calling .commit(), .pane(...), or by passing it to cx.add()"]
 pub struct PaneBuilder {
     splitter: SplitterBuilder,
@@ -175,34 +178,65 @@ pub struct PaneBuilder {
 }
 
 impl PaneBuilder {
+    /// Sets the initial.
     pub const fn initial(mut self, px: f32) -> Self {
         self.entry.initial_size = px.max(0.0);
         self
     }
 
+    /// Sets the min.
     pub const fn min(mut self, px: f32) -> Self {
         self.entry.min = px.max(0.0);
         self
     }
 
+    /// Sets the max.
     pub const fn max(mut self, px: f32) -> Self {
         self.entry.max = px.max(0.0);
         self
     }
 
+    /// Sets the grow.
     pub const fn grow(mut self, factor: f32) -> Self {
         self.entry.grow = factor.max(0.0);
         self
     }
 
+    /// Adds a pane.
     pub fn pane(self, node: impl IntoNode + 'static) -> Self {
         self.commit().pane(node)
     }
 
+    /// Returns the commit.
     #[must_use]
     pub fn commit(mut self) -> SplitterBuilder {
         self.splitter.panes.push(self.entry);
         self.splitter
+    }
+}
+
+impl Sealed for PaneBuilder {
+    fn edit(mut self, edit: Edit) -> Self {
+        match edit {
+            Edit::Layout(edit) => self.splitter.layout_overrides.edit(edit),
+            other => self
+                .splitter
+                .layout_overrides
+                .node_hook(move |node| other.apply(node)),
+        }
+        self
+    }
+
+    fn map_target(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.splitter.layout_overrides.node_hook(f);
+        self
+    }
+}
+
+impl Widget for PaneBuilder {
+    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.splitter.layout_overrides.node_hook(f);
+        self
     }
 }
 
@@ -218,27 +252,9 @@ impl From<PaneBuilder> for NodeBuilder {
     }
 }
 
-impl PaintTarget for SplitterBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
 impl PaintTarget for PaneBuilder {
     fn style_slot(&mut self) -> StyleSlot<'_> {
         StyleSlot(&mut self.splitter.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for SplitterBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl WidgetLayoutExt for PaneBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.splitter.layout_overrides
     }
 }
 
@@ -271,7 +287,7 @@ fn handle_layout(orientation: Orientation) -> LayoutStyle {
 }
 
 fn rule(orientation: Orientation) -> NodeBuilder {
-    let thickness = f32::from(BORDER_WIDTH.0);
+    let thickness = f32::from(BORDER_WIDTH);
     let layout = match orientation {
         Orientation::Horizontal => LayoutStyle::block().width(thickness).fill_height(),
         Orientation::Vertical => LayoutStyle::block().height(thickness).fill_width(),

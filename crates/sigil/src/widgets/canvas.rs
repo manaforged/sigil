@@ -1,8 +1,7 @@
 use std::rc::Rc;
 
 use crate::geometry::Rect;
-use crate::kernel::{Cx, IntoNode, NodeId, container};
-use crate::layout::LayoutStyle;
+use crate::kernel::{NodeBuilder, container};
 use crate::reactive::Signal;
 use crate::scene::SceneBuilder;
 
@@ -28,47 +27,37 @@ impl CanvasPaint {
     }
 }
 
+/// Builds a canvas that paints with a closure.
 pub struct CanvasBuilder {
     record: Recorder,
     version: Option<Signal<u64>>,
-    layout: Option<LayoutStyle>,
+    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
+/// Creates a canvas widget.
 #[must_use]
 pub fn canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static) -> CanvasBuilder {
     CanvasBuilder {
         record: Rc::new(record),
         version: None,
-        layout: None,
+        layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
 
 impl CanvasBuilder {
+    /// Sets the redraw on.
     #[must_use]
     pub const fn redraw_on(mut self, version: Signal<u64>) -> Self {
         self.version = Some(version);
         self
     }
 
-    #[must_use]
-    pub fn layout(mut self, style: LayoutStyle) -> Self {
-        self.layout = Some(style);
-        self
+    fn root(self) -> NodeBuilder {
+        let (record, version) = (self.record, self.version);
+        container().mutate(move |node| {
+            let _ = node.attach(CanvasPaint { record, version });
+        })
     }
 }
 
-impl IntoNode for CanvasBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        let id = container().build(cx);
-        if let Some(node) = cx.get_mut(id) {
-            if let Some(style) = self.layout {
-                let _ = node.attach(style);
-            }
-            let _ = node.attach(CanvasPaint {
-                record: self.record,
-                version: self.version,
-            });
-        }
-        id
-    }
-}
+builder_impls!([] CanvasBuilder: widget, node);

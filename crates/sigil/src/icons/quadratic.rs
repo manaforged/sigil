@@ -4,7 +4,8 @@
 use lyon_geom::{CubicBezierSegment, Point, QuadraticBezierSegment};
 use usvg::tiny_skia_path::PathSegment;
 
-use crate::icons::{BakeError, MAX_PATH_SEGMENTS};
+use crate::icons::MAX_PATH_SEGMENTS;
+use crate::{Error, ErrorKind};
 
 #[derive(Clone, Copy, Debug)]
 pub struct QuadCurve {
@@ -23,7 +24,7 @@ impl QuadCurve {
     }
 }
 
-pub(crate) fn to_quads(paths: &[Vec<PathSegment>]) -> Result<Vec<QuadCurve>, BakeError> {
+pub(crate) fn to_quads(paths: &[Vec<PathSegment>]) -> Result<Vec<QuadCurve>, Error> {
     const TOLERANCE: f32 = 0.5;
     let mut quads: Vec<QuadCurve> = Vec::new();
     let mut cursor = (0.0_f32, 0.0_f32);
@@ -69,7 +70,10 @@ pub(crate) fn to_quads(paths: &[Vec<PathSegment>]) -> Result<Vec<QuadCurve>, Bak
 
     let count = u32::try_from(quads.len()).unwrap_or(u32::MAX);
     if count > MAX_PATH_SEGMENTS {
-        return Err(BakeError::TooManySegments(count));
+        return Err(Error::message(
+            ErrorKind::Svg,
+            format_args!("too many path segments after conversion ({count})"),
+        ));
     }
     Ok(quads)
 }

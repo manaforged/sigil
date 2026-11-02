@@ -40,10 +40,10 @@ Keep state that must survive a patch outside the root closure:
 
 ```rust,no_run
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 
 fn main() -> sigil::AppResult<()> {
-    Runtime::scope("app", || {
+    Owner::scope("app", || {
         let count = signal(0_i32);
         sigil::run(AppConfig::new("Counter"), move || counter(count))
     })

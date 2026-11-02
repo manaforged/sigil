@@ -1,17 +1,20 @@
 use crate::app::cell_width;
 use crate::kernel::{NodeBuilder, Role, container, text};
+use crate::layout::LayoutStyle;
 use crate::layout::snap::CellForm;
-use crate::layout::{Dimension, cols};
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
-use crate::style::{Px, StyleAtom, TextRun, TextRuns, TextStyle, Token};
+use crate::layout::{Dimension, IntoPx, cols};
+use crate::style::{StyleAtom, TextRun, TextRuns, TextStyle, Token};
+use crate::widgets::Widget;
 
-use super::inline::{Styled, styled};
+use super::inline::{StyledText, styled};
+use super::parse::Inline;
 
-const RULE: StyleAtom = StyleAtom::BorderWidth(Px(1));
+const RULE: StyleAtom = StyleAtom::BorderWidth(1);
 
 #[cfg(feature = "scene")]
 fn shaped(text: &str, style: &TextStyle) -> Option<f32> {
     use crate::hal::ParagraphMetrics as _;
+    use crate::style::StyledTextEngine as _;
     let engine = crate::text::OwnedTextEngine::thread();
     let paragraph = engine.layout_paragraph_styled(text, None, style).ok()?;
     Some(paragraph.width())
@@ -38,12 +41,12 @@ fn measure(body: &str, runs: &[TextRun], bold: bool) -> f32 {
         runs: (!runs.is_empty()).then(|| TextRuns(runs.to_vec().into())),
         ..TextStyle::default()
     };
-    let cells = cols(cell_width(body) as f32).px();
+    let cells = cols(cell_width(body) as f32).into_px();
     let window = shaped(body, &style).unwrap_or(cells);
     CellForm::new(window.ceil(), cells).pick()
 }
 
-fn extent(body: &Styled, bold: bool) -> Extent {
+fn extent(body: &StyledText, bold: bool) -> Extent {
     let lines = body.text.lines().map(|line| {
         if line.len() == body.text.len() {
             measure(line, &body.runs, bold)
@@ -62,14 +65,14 @@ fn extent(body: &Styled, bold: bool) -> Extent {
         }
     }
     Extent {
-        min: min.min(cols(TOKEN_CAP).px()).min(max),
+        min: min.min(cols(TOKEN_CAP).into_px()).min(max),
         max,
     }
 }
 
-fn extents(cells: &[Vec<Styled>]) -> Vec<Extent> {
+fn extents(cells: &[Vec<StyledText>]) -> Vec<Extent> {
     let columns = cells.iter().map(Vec::len).max().unwrap_or(0);
-    let floor = cols(1.0).px();
+    let floor = cols(1.0).into_px();
     let mut out = vec![
         Extent {
             min: floor,
@@ -87,20 +90,20 @@ fn extents(cells: &[Vec<Styled>]) -> Vec<Extent> {
     out
 }
 
-fn cell(body: Option<Styled>, extent: Extent, last: bool) -> NodeBuilder {
-    let edge = cols(3.0).px();
+fn cell(body: Option<StyledText>, extent: Extent, last: bool) -> NodeBuilder {
+    let edge = cols(3.0).into_px();
     let basis = extent.min + edge;
     let mut node = container().role(Role::Cell).layout(
         LayoutStyle::block()
             .flex_basis(basis)
             .grow(extent.max - extent.min)
-            .shrink((extent.min - cols(TOKEN_FLOOR).px()).max(0.0) / basis)
+            .shrink((extent.min - cols(TOKEN_FLOOR).into_px()).max(0.0) / basis)
             .min_width(0.0)
             .max_width(extent.max + edge)
             .padding_x(cols(1.0)),
     );
     if !last {
-        node = node.class([StyleAtom::BorderRight(Px(1)), Token::Border.border()]);
+        node = node.class([StyleAtom::BorderRight(1), Token::Border.border()]);
     }
     let body = body.unwrap_or_default();
     node.child(
@@ -110,17 +113,17 @@ fn cell(body: Option<Styled>, extent: Extent, last: bool) -> NodeBuilder {
     )
 }
 
-pub(super) fn table(rows: &[Vec<String>]) -> NodeBuilder {
-    let cells: Vec<Vec<Styled>> = rows
+pub(super) fn table(rows: &[Vec<Vec<Inline>>]) -> NodeBuilder {
+    let cells: Vec<Vec<StyledText>> = rows
         .iter()
         .map(|row| row.iter().map(|body| styled(body)).collect())
         .collect();
     let widths = extents(&cells);
     let total = widths
         .iter()
-        .map(|width| width.max + cols(3.0).px())
+        .map(|width| width.max + cols(3.0).into_px())
         .sum::<f32>()
-        + cols(2.0).px();
+        + cols(2.0).into_px();
     let mut table = container()
         .role(Role::Table)
         .layout(
@@ -135,7 +138,7 @@ pub(super) fn table(rows: &[Vec<String>]) -> NodeBuilder {
             .role(Role::Row)
             .layout(LayoutStyle::flex_row().fill_width());
         if index == 0 && count > 1 {
-            line = line.class([StyleAtom::BorderBottom(Px(1)), Token::Border.border()]);
+            line = line.class([StyleAtom::BorderBottom(1), Token::Border.border()]);
         }
         if index == 0 {
             line = line.class("font-bold");

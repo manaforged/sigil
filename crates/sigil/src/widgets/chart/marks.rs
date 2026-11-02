@@ -1,9 +1,10 @@
 use crate::layout::{LayoutStyle, Position};
 use crate::style::Tone;
+use crate::widgets::Widget;
 
 use super::super::vector::{PathNode, path};
 use super::decimate::{self, Candle};
-use super::plot::Span;
+use super::plot::ValueSpan;
 
 const VIEW_W: u32 = 400;
 const VIEW_H: u32 = 200;
@@ -25,7 +26,7 @@ pub(super) fn layer_layout() -> LayoutStyle {
         .fill()
 }
 
-fn y_of(span: Span, value: f32) -> f32 {
+fn y_of(span: ValueSpan, value: f32) -> f32 {
     let t = ((value - span.lo) / span.width()).clamp(0.0, 1.0);
     (1.0 - t).mul_add(2.0f32.mul_add(-INSET, VIEW_H_F), INSET)
 }
@@ -42,7 +43,7 @@ pub(super) fn line(
     values: &[f32],
     tone: Tone,
     count: usize,
-    span: Span,
+    span: ValueSpan,
     columns: usize,
 ) -> PathNode {
     let shown = values.get(..count.min(values.len())).unwrap_or(&[]);
@@ -65,7 +66,7 @@ pub(super) fn line(
     clippy::cast_precision_loss,
     reason = "candle counts stay far below f32 precision limits at render scale"
 )]
-pub(super) fn candles(rows: &[Candle], span: Span, columns: usize) -> [PathNode; 2] {
+pub(super) fn candles(rows: &[Candle], span: ValueSpan, columns: usize) -> [PathNode; 2] {
     let rows = decimate::candles(rows, columns);
     let count = rows.len();
     let half = VIEW_W_F / count.max(1) as f32 * BODY_SHARE / 2.0;
@@ -84,7 +85,7 @@ pub(super) fn candles(rows: &[Candle], span: Span, columns: usize) -> [PathNode;
     [finish(up, RISING), finish(down, FALLING)]
 }
 
-fn candle(shape: PathNode, x: f32, half: f32, row: Candle, span: Span) -> PathNode {
+fn candle(shape: PathNode, x: f32, half: f32, row: Candle, span: ValueSpan) -> PathNode {
     let top = y_of(span, row.open.max(row.close));
     let bottom = y_of(span, row.open.min(row.close)).max(top + MIN_BODY);
     shape

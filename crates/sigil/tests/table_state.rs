@@ -4,8 +4,10 @@
 )]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
-use sigil::reactive::Runtime;
-use sigil::widgets::{Identifiable, MIN_COL_WIDTH, SortDir, SortKey, TableColumn, TableState};
+use sigil::reactive::Owner;
+use sigil::widgets::{
+    Identifiable, MIN_COL_WIDTH, SortDirection, SortKey, TableColumn, TableState,
+};
 
 #[derive(Clone)]
 struct Item {
@@ -64,7 +66,7 @@ fn visible_names(state: &TableState<Item>) -> Vec<&'static str> {
 
 #[test]
 fn unsorted_unfiltered_shows_source_order() {
-    Runtime::scope("table-source-order", || {
+    Owner::scope("table-source-order", || {
         let state = TableState::new(items(), columns());
         assert_eq!(visible_names(&state), ["gamma", "alpha", "delta", "beta"]);
     });
@@ -72,14 +74,14 @@ fn unsorted_unfiltered_shows_source_order() {
 
 #[test]
 fn toggle_sort_cycles_asc_desc_none() {
-    Runtime::scope("table-sort-cycle", || {
+    Owner::scope("table-sort-cycle", || {
         let state = TableState::new(items(), columns());
         state.toggle_sort("name");
         assert_eq!(
             state.sort_key().get(),
             Some(SortKey {
                 column: "name",
-                dir: SortDir::Ascending,
+                dir: SortDirection::Ascending,
             })
         );
         assert_eq!(visible_names(&state), ["alpha", "beta", "delta", "gamma"]);
@@ -93,7 +95,7 @@ fn toggle_sort_cycles_asc_desc_none() {
 
 #[test]
 fn sort_is_stable_on_ties() {
-    Runtime::scope("table-sort-stable", || {
+    Owner::scope("table-sort-stable", || {
         let state = TableState::new(items(), columns());
         state.toggle_sort("count");
         assert_eq!(visible_names(&state), ["alpha", "beta", "gamma", "delta"]);
@@ -102,7 +104,7 @@ fn sort_is_stable_on_ties() {
 
 #[test]
 fn toggle_sort_on_unsortable_column_is_ignored() {
-    Runtime::scope("table-sort-unsortable", || {
+    Owner::scope("table-sort-unsortable", || {
         let state = TableState::new(items(), columns());
         state.toggle_sort("notes");
         assert_eq!(state.sort_key().get(), None);
@@ -111,7 +113,7 @@ fn toggle_sort_on_unsortable_column_is_ignored() {
 
 #[test]
 fn quick_filter_matches_any_filterable_column_and_composes_with_sort() {
-    Runtime::scope("table-filter", || {
+    Owner::scope("table-filter", || {
         let state = TableState::new(items(), columns());
         state.quick_filter().set("a".into());
         state.toggle_sort("name");
@@ -125,7 +127,7 @@ fn quick_filter_matches_any_filterable_column_and_composes_with_sort() {
 
 #[test]
 fn selection_ops_follow_click_shapes() {
-    Runtime::scope("table-selection", || {
+    Owner::scope("table-selection", || {
         let state = TableState::new(items(), columns());
         state.toggle_sort("name");
         state.select_only(1);
@@ -143,7 +145,7 @@ fn selection_ops_follow_click_shapes() {
 
 #[test]
 fn set_rows_keeps_in_range_selection_and_recomputes_visible() {
-    Runtime::scope("table-set-rows", || {
+    Owner::scope("table-set-rows", || {
         let state = TableState::new(items(), columns());
         state.select_only(0);
         state.toggle_sort("name");
@@ -165,7 +167,7 @@ fn set_rows_keeps_in_range_selection_and_recomputes_visible() {
 
 #[test]
 fn replace_rows_with_key_keeps_the_named_row() {
-    Runtime::scope("table-replace-key", || {
+    Owner::scope("table-replace-key", || {
         let state = TableState::identified(items(), columns());
         state.select_only(0);
         assert_eq!(state.selected_row().map(|row| row.name), Some("gamma"));
@@ -186,7 +188,7 @@ fn replace_rows_with_key_keeps_the_named_row() {
 
 #[test]
 fn set_rows_drops_indices_past_the_new_len() {
-    Runtime::scope("table-set-rows-prune", || {
+    Owner::scope("table-set-rows-prune", || {
         let state = TableState::new(items(), columns());
         state.select_only(3);
         state.replace_rows(vec![Item {
@@ -202,7 +204,7 @@ fn set_rows_drops_indices_past_the_new_len() {
 fn source_order_reuses_identity_list_when_len_holds() {
     use std::rc::Rc;
 
-    Runtime::scope("table-identity-reuse", || {
+    Owner::scope("table-identity-reuse", || {
         let state = TableState::new(items(), columns());
         let first = state.visible().peek();
         state.replace_rows(vec![
@@ -257,7 +259,7 @@ fn source_order_reuses_identity_list_when_len_holds() {
 
 #[test]
 fn hundred_thousand_rows_sort_and_filter_correctly() {
-    Runtime::scope("table-100k", || {
+    Owner::scope("table-100k", || {
         let rows = (0..100_000_u32)
             .map(|i| Item {
                 name: if i % 977 == 0 { "needle" } else { "hay" },
@@ -286,7 +288,7 @@ fn hundred_thousand_rows_sort_and_filter_correctly() {
 
 #[test]
 fn move_column_permutes_visual_order() {
-    Runtime::scope("table-move-column", || {
+    Owner::scope("table-move-column", || {
         let state = TableState::new(items(), columns());
         let ids = |s: &TableState<Item>| {
             s.visible_columns()
@@ -306,7 +308,7 @@ fn move_column_permutes_visual_order() {
 
 #[test]
 fn hide_column_keeps_last_visible() {
-    Runtime::scope("table-hide-column", || {
+    Owner::scope("table-hide-column", || {
         let state = TableState::new(items(), columns());
         state.hide_column("notes");
         let ids = state
@@ -325,7 +327,7 @@ fn hide_column_keeps_last_visible() {
 
 #[test]
 fn set_column_width_clamps_and_clears() {
-    Runtime::scope("table-col-width", || {
+    Owner::scope("table-col-width", || {
         let state = TableState::new(items(), columns());
         state.pin_column_width("name", 12.0);
         assert_eq!(state.column_width("name"), Some(MIN_COL_WIDTH));

@@ -2,6 +2,7 @@ use smallvec::SmallVec;
 
 use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot};
 
+/// Builds the paint for one interaction state.
 pub struct StateStyleBuilder {
     style: Style,
 }

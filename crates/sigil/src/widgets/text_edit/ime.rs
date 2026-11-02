@@ -1,12 +1,13 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::events::{ImeEvent, NodeEventsExt};
+use crate::events::ImeEvent;
 use crate::geometry::{Point, Rect};
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::NodeBuilder;
 use crate::layout::{CaretGeometry, with_text_geometry};
 use crate::reactive::{Signal, batch, effect, signal};
+use crate::widgets::Widget;
 
 use super::handlers::TextEditRuntime;
 use super::render::{floor_char_boundary, splice_preedit};
@@ -59,10 +60,11 @@ pub(in crate::widgets) fn attach_ime_handlers(
     let eligible_rt = runtime.clone();
     runtime.install_disable_clears_preedit();
     runtime.install_caret_anchor_sync();
-    node.on_ime(move |event| on_ime_event(event, &event_rt))
+    let node = node
+        .on_ime(move |event| on_ime_event(event, &event_rt))
         .focus_out(move || blur_rt.clear_preedit())
-        .ime_eligible(move || !eligible_rt.disabled())
-        .ime_caret(anchor)
+        .ime_eligible(move || !eligible_rt.disabled());
+    crate::events::builder_ext::ime_caret(node, anchor)
 }
 
 fn on_ime_event(event: &ImeEvent, runtime: &TextEditRuntime) {
@@ -76,7 +78,7 @@ fn on_ime_event(event: &ImeEvent, runtime: &TextEditRuntime) {
     match event {
         ImeEvent::Preedit(text, range) => {
             batch(|| {
-                runtime.ime.preedit.set(text.to_string());
+                runtime.ime.preedit.set(text.clone());
                 runtime.ime.preedit_cursor.set(*range);
             });
         }

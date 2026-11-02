@@ -8,9 +8,9 @@ Cargo features decide which hosts are in your binary.
 
 | Your app | Dependency | What builds |
 | --- | --- | --- |
-| GUI only | `sigil-ui = { git = "https://github.com/manaforged/sigil" }` | The window host: wgpu, winit, and AccessKit. No crossterm. |
-| TUI only | `sigil-ui = { git = "https://github.com/manaforged/sigil", default-features = false, features = ["terminal"] }` | The terminal host: crossterm. No wgpu and no winit. |
-| Both | `sigil-ui = { git = "https://github.com/manaforged/sigil", features = ["terminal"] }` | Both hosts. You pick one each run. |
+| GUI only | `sigil-ui = "0.2"` | The window host: wgpu, winit, and AccessKit. No crossterm. |
+| TUI only | `sigil-ui = { version = "0.2", default-features = false, features = ["terminal"] }` | The terminal host: crossterm. No wgpu and no winit. |
+| Both | `sigil-ui = { version = "0.2", features = ["terminal"] }` | Both hosts. You pick one each run. |
 
 `sigil::run` opens a window by default. `AppConfig::terminal()` opens the terminal host instead. An app with both hosts picks one at start:
 
@@ -99,8 +99,8 @@ tui = ["sigil-ui/terminal"]
 
 ```rust,ignore
 #[cfg(feature = "gui")]
-fn install_menu() {
-    sigil::app::menu::set_menu_bar(app_menu());
+fn install_menu() -> sigil::AppResult {
+    app_menu().install()
 }
 ```
 
@@ -108,7 +108,7 @@ A TUI-only build then has no menu code and no GPU stack, and a GUI-only build ha
 
 ## Test both hosts
 
-`sigil-kittest` drives the window host and compares PNG goldens; see [Testing](testing.md). The terminal host runs headless through `Host::cells` and `sigil::terminal::step`; see the [API map](../api.md). To check that a TUI-only build has no GPU stack:
+`sigil-kittest` drives the window host and compares PNG goldens; see [Testing](testing.md). The terminal host runs headless through `Host::new(HostMode::Cell)` and `Host::grid`; see the [API map](../api.md). To check that a TUI-only build has no GPU stack:
 
 ```bash
 cargo tree -p your-app --no-default-features --features tui | grep -E 'wgpu|winit'

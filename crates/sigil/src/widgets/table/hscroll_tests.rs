@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
 
 use super::*;
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 use crate::widgets::table::columns::TableColumn;
 
 fn fixed(ids: &[&'static str], px: f32) -> TableState<u32> {
@@ -14,7 +14,7 @@ fn fixed(ids: &[&'static str], px: f32) -> TableState<u32> {
 
 #[test]
 fn fixed_columns_sum_to_extent_and_hiding_shrinks_it() {
-    Runtime::scope("hscroll-fixed-extent", || {
+    Owner::scope("hscroll-fixed-extent", || {
         let state = fixed(&["a", "b", "c"], 150.0);
         let hs = bind(&state, Some(200.0), 0.0);
         assert!(hs.probe.is_none());
@@ -29,7 +29,7 @@ fn fixed_columns_sum_to_extent_and_hiding_shrinks_it() {
 
 #[test]
 fn fraction_columns_count_their_floor() {
-    Runtime::scope("hscroll-fraction-floor", || {
+    Owner::scope("hscroll-fraction-floor", || {
         let state = TableState::new(
             vec![1_u32, 2, 3],
             vec![
@@ -47,7 +47,7 @@ fn fraction_columns_count_their_floor() {
 
 #[test]
 fn fitting_content_scrolls_only_after_a_resize_or_select_prefix() {
-    Runtime::scope("hscroll-fits", || {
+    Owner::scope("hscroll-fits", || {
         let state = fixed(&["a", "b"], 100.0);
         let hs = bind(&state, Some(200.0), 0.0);
         assert_eq!(hs.extent.get(), 200.0);
@@ -63,7 +63,7 @@ fn fitting_content_scrolls_only_after_a_resize_or_select_prefix() {
 
 #[test]
 fn measured_viewport_follows_the_probe() {
-    Runtime::scope("hscroll-probe", || {
+    Owner::scope("hscroll-probe", || {
         let hs = bind(&fixed(&["a", "b", "c"], 150.0), None, 0.0);
         let probe = hs.probe.expect("no explicit width installs a probe");
         assert_eq!(hs.viewport.get(), 0.0, "unmeasured until layout publishes");

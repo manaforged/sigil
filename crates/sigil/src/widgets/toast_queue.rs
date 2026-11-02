@@ -2,45 +2,27 @@ use std::time::Duration;
 use web_time::Instant;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::{AlignItems, LayoutStyle, Position};
 use crate::reactive::{Signal, interval, signal};
 use crate::style::{Token, Tone, space};
+use crate::widgets::Widget;
 
 use super::dot::dot;
 use super::popup::SURFACE;
 
 const SWEEP_PERIOD: Duration = Duration::from_millis(250);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ToastLevel {
-    Info,
-    Success,
-    Warning,
-    Error,
-}
-
-impl ToastLevel {
-    #[must_use]
-    pub const fn tone(self) -> Tone {
-        match self {
-            Self::Info => Tone::Info,
-            Self::Success => Tone::Success,
-            Self::Warning => Tone::Warn,
-            Self::Error => Tone::Error,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ToastEntry {
-    pub level: ToastLevel,
-    pub message: String,
+pub(crate) struct ToastEntry {
+    pub(crate) tone: Tone,
+    pub(crate) message: String,
     pushed_at: Instant,
 }
 
-pub const TOAST_TTL: Duration = Duration::from_secs(4);
-pub const MAX_VISIBLE: usize = 4;
+const TOAST_TTL: Duration = Duration::from_secs(4);
+const MAX_VISIBLE: usize = 4;
 
+/// Queue of toast messages.
 #[derive(Debug, Clone, Copy)]
 pub struct ToastQueue {
     entries: Signal<Vec<ToastEntry>>,
@@ -53,6 +35,7 @@ impl Default for ToastQueue {
 }
 
 impl ToastQueue {
+    /// Creates a toast queue.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -60,29 +43,34 @@ impl ToastQueue {
         }
     }
 
-    pub fn push(self, level: ToastLevel, message: impl Into<String>) {
+    /// Shows a toast in `tone`.
+    pub fn push(self, tone: Tone, message: impl Into<String>) {
         let entry = ToastEntry {
-            level,
+            tone,
             message: message.into(),
             pushed_at: Instant::now(),
         };
         self.entries.update(|entries| entries.push(entry));
     }
 
+    /// Shows an information toast.
     pub fn info(self, message: impl Into<String>) {
-        self.push(ToastLevel::Info, message);
+        self.push(Tone::Info, message);
     }
 
+    /// Shows a success toast.
     pub fn success(self, message: impl Into<String>) {
-        self.push(ToastLevel::Success, message);
+        self.push(Tone::Success, message);
     }
 
+    /// Shows a warning toast.
     pub fn warning(self, message: impl Into<String>) {
-        self.push(ToastLevel::Warning, message);
+        self.push(Tone::Warn, message);
     }
 
+    /// Shows an error toast.
     pub fn error(self, message: impl Into<String>) {
-        self.push(ToastLevel::Error, message);
+        self.push(Tone::Error, message);
     }
 
     fn dismiss_expired(self, now: Instant) {
@@ -98,6 +86,7 @@ impl ToastQueue {
     }
 }
 
+/// A stack of transient messages.
 #[must_use]
 pub fn toast_queue(queue: ToastQueue) -> NodeBuilder {
     interval(SWEEP_PERIOD, move || {
@@ -126,7 +115,7 @@ pub fn toast_queue(queue: ToastQueue) -> NodeBuilder {
                                 .padding(space(3)),
                         )
                         .class(SURFACE)
-                        .child(dot(entry.level.tone()))
+                        .child(dot(entry.tone))
                         .child(text(entry.message).class(Token::OnSurface.text()))
                 })
                 .collect::<Vec<_>>()

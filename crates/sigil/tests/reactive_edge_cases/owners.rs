@@ -2,9 +2,9 @@ use super::*;
 
 #[test]
 fn nested_owner_re_entry_restores_outer_owner() {
-    Runtime::scope("outer", || {
+    Owner::scope("outer", || {
         let outer = Owner::current();
-        Runtime::scope("inner", || {
+        Owner::scope("inner", || {
             let inner = Owner::current();
             assert_ne!(outer, inner);
         });
@@ -14,7 +14,7 @@ fn nested_owner_re_entry_restores_outer_owner() {
 
 #[test]
 fn three_level_owner_disposal_runs_grandchildren_first() {
-    Runtime::scope("three_levels", || {
+    Owner::scope("three_levels", || {
         let log: Rc<std::cell::RefCell<Vec<&'static str>>> = Rc::default();
 
         let parent = Owner::new("parent", Owner::current());
@@ -40,7 +40,7 @@ fn three_level_owner_disposal_runs_grandchildren_first() {
 
 #[test]
 fn double_dispose_is_noop() {
-    Runtime::scope("double_dispose", || {
+    Owner::scope("double_dispose", || {
         let owner = Owner::new("doomed", Owner::current());
         owner.dispose();
         owner.dispose();
@@ -49,7 +49,7 @@ fn double_dispose_is_noop() {
 
 #[test]
 fn cleanup_can_read_signals_in_outer_scope() {
-    Runtime::scope("cleanup_reads_sibling", || {
+    Owner::scope("cleanup_reads_sibling", || {
         let counter = signal(0_i32);
         let cleanup_saw = Rc::new(Cell::new(-1));
         let cleanup_for = Rc::clone(&cleanup_saw);
@@ -67,7 +67,7 @@ fn cleanup_can_read_signals_in_outer_scope() {
 
 #[test]
 fn multiple_cleanups_in_one_owner_run_lifo() {
-    Runtime::scope("multi_cleanup_lifo", || {
+    Owner::scope("multi_cleanup_lifo", || {
         let log: Rc<std::cell::RefCell<Vec<u32>>> = Rc::default();
         let owner = Owner::new("owner", Owner::current());
         owner.with(|| {
@@ -83,7 +83,7 @@ fn multiple_cleanups_in_one_owner_run_lifo() {
 
 #[test]
 fn effect_writing_to_unrelated_signal_chains_to_other_effects() {
-    Runtime::scope("indirect_chain", || {
+    Owner::scope("indirect_chain", || {
         let trigger = signal(0_i32);
         let target = signal(0_i32);
         let saw = Rc::new(Cell::new(-1));
@@ -105,7 +105,7 @@ fn effect_writing_to_unrelated_signal_chains_to_other_effects() {
 #[test]
 fn mutual_recursion_through_separate_effects_panics() {
     let result = std::panic::catch_unwind(|| {
-        Runtime::scope("mutual_recursion", || {
+        Owner::scope("mutual_recursion", || {
             let a = signal(0_i32);
             let b = signal(0_i32);
 
@@ -119,7 +119,7 @@ fn mutual_recursion_through_separate_effects_panics() {
 #[cfg(not(debug_assertions))]
 #[test]
 fn mutual_recursion_through_separate_effects_warns_and_skips_in_release() {
-    Runtime::scope("mutual_recursion", || {
+    Owner::scope("mutual_recursion", || {
         let a = signal(0_i32);
         let b = signal(0_i32);
 
@@ -133,7 +133,7 @@ fn mutual_recursion_through_separate_effects_warns_and_skips_in_release() {
 
 #[test]
 fn signal_handles_are_distinct_per_construction() {
-    Runtime::scope("distinct_signals", || {
+    Owner::scope("distinct_signals", || {
         let a = signal(1_i32);
         let b = signal(1_i32);
         a.set(99);
@@ -144,7 +144,7 @@ fn signal_handles_are_distinct_per_construction() {
 
 #[test]
 fn owner_handles_with_same_id_compare_equal() {
-    Runtime::scope("owner_id_eq", || {
+    Owner::scope("owner_id_eq", || {
         let id_a = Owner::current().expect("scope establishes current owner");
         let id_b = Owner::current().expect("still in scope");
         assert_eq!(id_a, id_b);

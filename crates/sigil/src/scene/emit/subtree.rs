@@ -1,3 +1,5 @@
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+use core::ops::Range;
 use std::rc::Rc;
 
 use ahash::{AHashMap, AHashSet};
@@ -12,7 +14,7 @@ use crate::style::{Rgba8, TextStyle};
 use super::{EmitWalk, Inherited};
 
 #[derive(Clone)]
-pub(crate) struct Span {
+pub(crate) struct SubtreeSpan {
     start: usize,
     len: usize,
     nodes: u64,
@@ -55,6 +57,24 @@ pub(super) const fn rect_bits(rect: Rect) -> [u32; 4] {
     ]
 }
 
+/// What `Host::emit_since` changed: pairs of old and new command ranges that differ.
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct EmitDiff {
+    /// The changed.
+    pub changed: Vec<(Range<usize>, Range<usize>)>,
+}
+
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+impl EmitDiff {
+    /// Returns whether unchanged is set.
+    #[must_use]
+    pub const fn unchanged(&self) -> bool {
+        self.changed.is_empty()
+    }
+}
+
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
 #[derive(Clone, Copy)]
 pub(super) struct Copied {
     pub(super) old: usize,
@@ -65,16 +85,17 @@ pub(super) struct Copied {
 #[derive(Clone, Copy)]
 pub(super) struct Prior<'t> {
     pub(super) commands: &'t [SceneCommand],
-    pub(super) spans: &'t AHashMap<NodeId, Span>,
+    pub(super) spans: &'t AHashMap<NodeId, SubtreeSpan>,
     pub(super) dirty: &'t AHashSet<NodeId>,
 }
 
 #[derive(Default)]
-pub(super) struct Track<'t> {
+pub(super) struct SpanTrack<'t> {
     prior: Option<Prior<'t>>,
     record: bool,
     nodes: u64,
-    pub(super) next: AHashMap<NodeId, Span>,
+    pub(super) next: AHashMap<NodeId, SubtreeSpan>,
+    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
     pub(super) copies: Vec<Copied>,
 }
 
@@ -84,17 +105,20 @@ pub(super) struct Open {
     nodes: u64,
 }
 
-impl<'t> Track<'t> {
-    pub(super) fn off() -> Self {
-        Self::default()
-    }
-
+#[cfg(any(test, feature = "kittest", feature = "terminal"))]
+impl<'t> SpanTrack<'t> {
     pub(super) fn recording(prior: Option<Prior<'t>>) -> Self {
         Self {
             prior,
             record: true,
             ..Self::default()
         }
+    }
+}
+
+impl SpanTrack<'_> {
+    pub(super) fn off() -> Self {
+        Self::default()
     }
 
     pub(super) const fn walked(&mut self) {
@@ -129,6 +153,7 @@ impl<'t> EmitWalk<'_, 't> {
         self.scene.extend_commands(commands.iter().cloned());
         count_add(Counter::EmitCopied, span.nodes);
         self.track.nodes += span.nodes;
+        #[cfg(any(test, feature = "kittest", feature = "terminal"))]
         self.track.copies.push(Copied {
             old: span.start,
             new: start,
@@ -144,7 +169,7 @@ impl<'t> EmitWalk<'_, 't> {
             {
                 next.insert(
                     inner,
-                    Span {
+                    SubtreeSpan {
                         start: kept.start - old + start,
                         ..kept.clone()
                     },
@@ -172,7 +197,7 @@ impl<'t> EmitWalk<'_, 't> {
         if !self.track.record || self.deferred.len() != open.deferred {
             return;
         }
-        let span = Span {
+        let span = SubtreeSpan {
             start: open.start,
             len: self.scene.command_len() - open.start,
             nodes: self.track.nodes - open.nodes,

@@ -1,5 +1,4 @@
 use sigil::prelude::*;
-use sigil::widgets::CommandMenuBuilder;
 
 use super::chrome::{Command, run};
 use super::project::FileId;
@@ -16,15 +15,6 @@ const COMMANDS: &[(&str, Command)] = &[
     ("View: Show Terminal", Command::Terminal),
     ("Go to File...", Command::OpenFile),
 ];
-
-fn file_items(ws: Workspace, open: Signal<bool>, menu: CommandMenuBuilder) -> CommandMenuBuilder {
-    FileId::ALL.into_iter().fold(menu, |menu, file| {
-        menu.item(file.path(), move || {
-            open.set(false);
-            ws.open_file(file);
-        })
-    })
-}
 
 pub(crate) fn commands(ws: Workspace) -> NodeBuilder {
     let open = ws.palette_open;
@@ -48,7 +38,14 @@ pub(crate) fn commands(ws: Workspace) -> NodeBuilder {
 
 pub(crate) fn quick_open(ws: Workspace) -> NodeBuilder {
     let open = ws.quick_open;
-    let menu = file_items(ws, open, command_menu())
+    let menu = FileId::ALL
+        .into_iter()
+        .fold(command_menu(), |menu, file| {
+            menu.item(file.path(), move || {
+                open.set(false);
+                ws.open_file(file);
+            })
+        })
         .placeholder("Search files by name")
         .cancel(move || open.set(false))
         .width(PALETTE_W);

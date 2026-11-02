@@ -7,7 +7,7 @@
     clippy::cast_lossless
 )]
 
-use super::{Font, Script, Shaper, Style, TextSegment, classify_segment_script};
+use super::{FaceStyle, Font, Script, Shaper, TextSegment, classify_segment_script};
 use crate::text::glyph::GlyphId;
 
 impl<'a> TextSegment<'a> {
@@ -67,12 +67,12 @@ fn font(bytes: &[u8]) -> Font {
     Font::from_bytes(bytes.to_vec(), 0).expect("font fixture must parse")
 }
 
-fn shape(bytes: &[u8], text: &str, style: &Style) -> super::GlyphRun {
+fn shape(bytes: &[u8], text: &str, style: &FaceStyle) -> super::ShapedRun {
     Shaper::new(&font(bytes)).shape(&TextSegment::ltr(text), style)
 }
 
-fn shape16(bytes: &[u8], text: &str) -> super::GlyphRun {
-    shape(bytes, text, &Style::regular(16.0))
+fn shape16(bytes: &[u8], text: &str) -> super::ShapedRun {
+    shape(bytes, text, &FaceStyle::regular(16.0))
 }
 
 #[test]
@@ -117,7 +117,7 @@ fn hello_word_is_five_glyphs_monotonic() {
 #[test]
 fn size_doubles_advances_scale_proportional() {
     let run_16 = shape16(FIRA_REGULAR, "hello");
-    let run_32 = shape(FIRA_REGULAR, "hello", &Style::regular(32.0));
+    let run_32 = shape(FIRA_REGULAR, "hello", &FaceStyle::regular(32.0));
     for (g16, g32) in run_16.glyphs.iter().zip(run_32.glyphs.iter()) {
         let ratio = g32.advance / g16.advance;
         assert!(
@@ -133,9 +133,9 @@ fn bold_glyph_metrics_differ_from_regular() {
     let bold = shape(
         FIRA_BOLD,
         "Hello",
-        &Style {
+        &FaceStyle {
             weight: 700,
-            ..Style::regular(16.0)
+            ..FaceStyle::regular(16.0)
         },
     );
     assert_eq!(reg.glyphs.len(), bold.glyphs.len());
@@ -269,7 +269,7 @@ fn shaper_is_send_sync() {
 fn invalid_font_data_is_rejected() {
     let bogus = vec![0u8; 64];
     let err = Font::from_bytes(bogus, 0).expect_err("bogus bytes must fail");
-    assert_eq!(err, super::ShaperError::InvalidFont);
+    assert_eq!(err.kind(), crate::ErrorKind::Font);
 }
 
 #[test]

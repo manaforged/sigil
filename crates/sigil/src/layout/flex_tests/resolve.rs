@@ -8,10 +8,7 @@ fn clamp_lets_min_win_and_passes_through_unbounded() {
 
 #[test]
 fn resolve_lp_percent_resolves_against_basis() {
-    assert!(near(
-        resolve_lp(LengthPercentage::Percent(0.25), 200.0),
-        50.0
-    ));
+    assert!(near(resolve_lp(Dimension::Percent(0.25), 200.0), 50.0));
 }
 
 #[test]

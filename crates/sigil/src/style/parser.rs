@@ -2,18 +2,16 @@ use core::fmt;
 
 use smallvec::SmallVec;
 
+use crate::layout::Overflow;
 #[cfg(any(test, fuzzing))]
 use crate::style::StateSlot;
-use crate::style::{OverflowKind, Px, StyleAtom};
+use crate::style::{Px, StyleAtom};
 
 mod atoms;
-mod keywords;
+mod table;
 
-use atoms::{parse_prefixed_token, push_border_side_atoms, shadow_atom};
-use keywords::{
-    parse_display_token, parse_font_token, parse_shape_token, parse_size_token, parse_text_token,
-    parse_tracking_token,
-};
+use atoms::push_border_side_atoms;
+use table::parse_table_token;
 
 const STRUCTURAL_TOKENS: [&str; 81] = [
     "p-16",
@@ -179,15 +177,7 @@ fn parse_token(token: &str) -> Result<StyleAtom, ParseError> {
     if malformed_theme_token(token) {
         return Err(unknown(token));
     }
-    parse_display_token(token)
-        .or_else(|| parse_size_token(token))
-        .or_else(|| parse_shape_token(token))
-        .or_else(|| parse_text_token(token))
-        .or_else(|| parse_font_token(token))
-        .or_else(|| parse_tracking_token(token))
-        .or_else(|| shadow_atom(token))
-        .or_else(|| parse_prefixed_token(token))
-        .ok_or_else(|| unknown(token))
+    parse_table_token(token).ok_or_else(|| unknown(token))
 }
 
 fn push_overflow_atoms(
@@ -213,12 +203,12 @@ fn push_overflow_atoms(
     Ok(true)
 }
 
-const fn overflow_kind(value: &str) -> Option<OverflowKind> {
+const fn overflow_kind(value: &str) -> Option<Overflow> {
     match value.as_bytes() {
-        b"visible" => Some(OverflowKind::Visible),
-        b"hidden" => Some(OverflowKind::Hidden),
-        b"scroll" => Some(OverflowKind::Scroll),
-        b"auto" => Some(OverflowKind::Auto),
+        b"visible" => Some(Overflow::Visible),
+        b"hidden" => Some(Overflow::Hidden),
+        b"scroll" => Some(Overflow::Scroll),
+        b"auto" => Some(Overflow::Auto),
         _ => None,
     }
 }
@@ -282,11 +272,11 @@ static INTERNED_TOKENS: std::sync::LazyLock<
     std::sync::Mutex<std::collections::HashSet<&'static str>>,
 > = std::sync::LazyLock::new(std::sync::Mutex::default);
 
-fn color_key(name: &str) -> Option<crate::style::ColorKey> {
+fn color_key(name: &str) -> Option<crate::style::ColorAtom> {
     if let Some(token) = crate::style::Token::from_name(name) {
-        return Some(crate::style::ColorKey::Token(token));
+        return Some(crate::style::ColorAtom::Token(token));
     }
-    intern_token(name).map(crate::style::ColorKey::Custom)
+    intern_token(name).map(crate::style::ColorAtom::Custom)
 }
 
 fn intern_token(token: &str) -> Option<&'static str> {

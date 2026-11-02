@@ -4,36 +4,32 @@
 )]
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase};
+use sigil::events::{ScrollDelta, ScrollPhase};
 use sigil::geometry::Point;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 60.0,
-    height: 16.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(60.0, 16.0);
 
 fn wheel(cx: &mut Cx, layout: &LayoutEngine, at: Point) {
     EventRouter::new().route(
         cx,
         layout,
-        ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
-            position: at,
-            delta: ScrollDelta::Pixels(Point::new(0.0, -400.0)),
-            modifiers: ModifiersState::empty(),
-            phase: ScrollPhase::Moved,
-        })),
+        Event::scroll(
+            at,
+            ScrollDelta::Pixels(Point::new(0.0, -400.0)),
+            ScrollPhase::Moved,
+        ),
     );
 }
 
 #[test]
 fn a_wheel_over_an_open_modal_never_scrolls_the_page_behind_it() {
-    sigil::reactive::Runtime::scope("sigil-modal-scroll-contained", || {
+    sigil::reactive::Owner::scope("sigil-modal-scroll-contained", || {
         let page = signal(0.0_f32);
         let open = signal(true);
         let mut cx = Cx::new_root();

@@ -8,11 +8,11 @@ A GUI and TUI framework written in Rust. One widget tree runs in a window, in a 
 - **Widgets**: markdown, tables, trees, charts, mermaid diagrams, a code editor, and the usual controls and fields.
 - **Accessible**: the window host exposes the widget tree to screen readers through AccessKit.
 
-[Book](docs/guide/README.md) | [API map](docs/api.md) | [Examples](docs/reference/sigil-ui/examples/index.md)
+[Book](docs/guide/README.md) | [API map](docs/api.md) | [Examples](crates/sigil/examples)
 
 ![The workbench example application](docs/workbench.png)
 
-Status: 0.1 is the first release. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input; fuzz targets cover them, but the runs so far are short. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
+Status: 0.2 is the first release. The API will break between minor versions until 1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for untrusted input; fuzz targets cover them, but the runs so far are short. Report bugs on [GitHub issues](https://github.com/manaforged/sigil/issues).
 
 ## Requirements
 
@@ -32,11 +32,11 @@ No mobile host.
 
 ## Install
 
-Sigil is not on crates.io yet. Add the Git dependency:
+Add the dependency:
 
 ```toml
 [dependencies]
-sigil-ui = { git = "https://github.com/manaforged/sigil" }
+sigil-ui = "0.2"
 ```
 
 The package is `sigil-ui` because the `sigil` name is taken on crates.io. The library is `sigil`, so imports read `sigil::`. The first build compiles the wgpu stack and can take a few minutes.
@@ -45,7 +45,7 @@ For a terminal-only program:
 
 ```toml
 [dependencies]
-sigil-ui = { git = "https://github.com/manaforged/sigil", default-features = false, features = ["terminal"] }
+sigil-ui = { version = "0.2", default-features = false, features = ["terminal"] }
 ```
 
 To pack release builds, install the `sigil-sign` package. It provides the `sigil-pack` command.
@@ -54,7 +54,7 @@ To pack release builds, install the `sigil-sign` package. It provides the `sigil
 cargo install --git https://github.com/manaforged/sigil sigil-sign
 ```
 
-To sign packages from your own code, add `sigil-sign = { git = "https://github.com/manaforged/sigil" }`; see [Signing](docs/guide/signing.md).
+To sign packages from your own code, add `sigil-sign = "0.2"`; see [Signing](docs/guide/signing.md).
 
 ## Usage
 
@@ -75,7 +75,7 @@ fn app_tree() -> impl IntoNode {
 }
 ```
 
-`sigil::run` opens the window and drives the frame loop. Pass `AppConfig::new(title).terminal()` to run the same tree in the terminal. The embed host pumps `Host` inside `Runtime::scope`. To run the examples, clone this repository and run:
+`sigil::run` opens the window and drives the frame loop. Pass `AppConfig::new(title).terminal()` to run the same tree in the terminal. The embed host pumps `Host` inside `Owner::scope`. To run the examples, clone this repository and run:
 
 ```bash
 cargo run -p sigil-ui --example hello-counter                        # the app above

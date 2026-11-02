@@ -3,21 +3,30 @@ use std::rc::Rc;
 use crate::reactive::effect;
 
 use super::super::patterns::Disclosure;
-use super::{NodesFn, TreeKey, TreeNode, TreeState};
+use core::hash::Hash;
 
+use super::{NodesFn, TreeNode, TreeState};
+
+/// One visible row of a flattened tree.
 #[derive(Clone)]
-pub struct TreeRow<K: TreeKey> {
+pub(crate) struct TreeRow<K: Clone + Eq + Hash + 'static> {
+    /// The id.
     pub id: K,
+    /// The depth.
     pub depth: u16,
+    /// The disclosure.
     pub disclosure: Disclosure,
+    /// Whether selected.
     pub selected: bool,
+    /// The parent, if any.
     pub parent: Option<usize>,
     pub(super) node: Rc<TreeNode<K>>,
 }
 
-impl<K: TreeKey> TreeRow<K> {
+impl<K: Clone + Eq + Hash + 'static> TreeRow<K> {
+    /// Returns whether this tree row has children.
     #[must_use]
-    pub const fn has_children(&self) -> bool {
+    pub(crate) const fn has_children(&self) -> bool {
         matches!(
             self.disclosure,
             Disclosure::Collapsed | Disclosure::Expanded
@@ -25,7 +34,7 @@ impl<K: TreeKey> TreeRow<K> {
     }
 }
 
-impl<K: TreeKey> PartialEq for TreeRow<K> {
+impl<K: Clone + Eq + Hash + 'static> PartialEq for TreeRow<K> {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
             && self.depth == other.depth
@@ -36,12 +45,12 @@ impl<K: TreeKey> PartialEq for TreeRow<K> {
     }
 }
 
-pub(super) fn bind<K: TreeKey>(nodes: NodesFn<K>, state: &TreeState<K>) {
+pub(super) fn bind<K: Clone + Eq + Hash + 'static>(nodes: NodesFn<K>, state: &TreeState<K>) {
     let (rows, expanded, selected) = (state.rows, state.expanded, state.selected);
     effect(move || {
         let (roots, open, current) = (nodes(), expanded.get(), selected.get());
         let mut out = Vec::new();
-        Walk {
+        TreeWalk {
             open: &open,
             selected: current.as_ref(),
         }
@@ -50,12 +59,12 @@ pub(super) fn bind<K: TreeKey>(nodes: NodesFn<K>, state: &TreeState<K>) {
     });
 }
 
-struct Walk<'a, K: TreeKey> {
+struct TreeWalk<'a, K: Clone + Eq + Hash + 'static> {
     open: &'a [K],
     selected: Option<&'a K>,
 }
 
-impl<K: TreeKey> Walk<'_, K> {
+impl<K: Clone + Eq + Hash + 'static> TreeWalk<'_, K> {
     fn visit(
         &self,
         nodes: &[TreeNode<K>],

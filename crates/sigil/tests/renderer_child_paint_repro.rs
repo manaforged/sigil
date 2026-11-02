@@ -6,7 +6,8 @@
 #![allow(clippy::cast_precision_loss)]
 
 use sigil::kernel::*;
-use sigil::layout::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use sigil::layout::{LayoutStyle, Overflow, Position};
+use sigil::prelude::Widget;
 use sigil::style::{Paint, Radius, Theme, Token};
 
 #[path = "renderer_child_paint_repro/support.rs"]

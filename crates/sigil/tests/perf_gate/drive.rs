@@ -1,11 +1,12 @@
+use sigil::kernel::HostMode;
 use std::hint::black_box;
 use std::io;
 use std::time::Instant;
 
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::events::{EventRouter, ShellEvent};
-use sigil::reactive::Runtime;
+use sigil::events::Event;
+use sigil::reactive::Owner;
 use sigil::terminal::Screen;
 
 use crate::budgets::Scenario;
@@ -22,27 +23,22 @@ pub(crate) struct Sample {
     pub nanos: Vec<u64>,
 }
 
-pub(crate) fn window_frame(
-    host: &mut Host,
-    router: &mut EventRouter,
-    event: Option<ShellEvent>,
-    force_emit: bool,
-) {
+pub(crate) fn window_frame(host: &mut Host, event: Option<Event>, force_emit: bool) {
     let hooks = FrameHooks {
         input: event.map(|event| -> sigil::app::FrameInputHook<'_> {
-            Box::new(move |target: &mut Host, events: &mut EventRouter| {
-                target.route(events, event);
+            Box::new(move |target: &mut Host| {
+                target.route(event);
                 None
             })
         }),
         after_layout: None,
-        paint: Some(Box::new(move |target, _, info| {
+        paint: Some(Box::new(move |target, info| {
             if info.dirty || force_emit {
                 black_box(target.emit(VIEW).commands.len());
             }
         })),
     };
-    black_box(host.frame(router, VIEW, 1.0 / 60.0, hooks).intervals);
+    black_box(host.frame(VIEW, 1.0 / 60.0, hooks).intervals);
 }
 
 fn sample(mut step: impl FnMut(u32)) -> Sample {
@@ -67,35 +63,28 @@ fn sample(mut step: impl FnMut(u32)) -> Sample {
 }
 
 fn terminal() -> Sample {
-    let mut host = Host::cells();
-    let mut router = EventRouter::new();
+    let mut host = Host::new(HostMode::Cell);
     let mut screen = Screen::new(COLS, ROWS);
-    mount(&mut host, &mut router, &rig(Scenario::Terminal));
+    mount(&mut host, &rig(Scenario::Terminal));
     let mut sink = io::sink();
     sample(|_| {
-        let _ = black_box(screen.frame(&mut host, &mut router, [], (COLS, ROWS)));
+        let _ = black_box(screen.frame(&mut host, [], (COLS, ROWS)));
         let _ = screen.flush(&mut sink);
     })
 }
 
 fn window(scenario: Scenario) -> Sample {
     let rig = rig(scenario);
-    let mut host = Host::new();
-    let mut router = EventRouter::new();
-    mount(&mut host, &mut router, &rig);
+    let mut host = Host::new(HostMode::Pixel);
+    mount(&mut host, &rig);
     let force = scenario == Scenario::Chart;
     sample(|frame| {
-        window_frame(
-            &mut host,
-            &mut router,
-            rig.events.map(|at| at(frame)),
-            force,
-        );
+        window_frame(&mut host, rig.events.map(|at| at(frame)), force);
     })
 }
 
 pub(crate) fn run(scenario: Scenario) -> Sample {
-    Runtime::scope("perf-gate", || {
+    Owner::scope("perf-gate", || {
         if scenario == Scenario::Terminal {
             terminal()
         } else {

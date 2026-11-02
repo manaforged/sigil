@@ -10,7 +10,7 @@ use smol_str::SmolStr;
 
 use super::{Cell, Face, Grid, Ink, Underline, cell_text, decoration, floor_cell};
 
-struct Run<'a> {
+struct ClipRun<'a> {
     node: &'a Text<'a>,
     col: usize,
     row: usize,
@@ -173,7 +173,7 @@ pub(super) fn paint_text(grid: &mut Grid, node: &Text<'_>, rect: Rect, cell: f32
         let Ok(row) = usize::try_from(row) else {
             continue;
         };
-        grid.run(&Run {
+        grid.run(&ClipRun {
             node,
             col: col.saturating_add(consumed.saturating_sub(skipped)),
             row,
@@ -185,7 +185,7 @@ pub(super) fn paint_text(grid: &mut Grid, node: &Text<'_>, rect: Rect, cell: f32
 }
 
 impl Grid {
-    fn run(&mut self, run: &Run<'_>) {
+    fn run(&mut self, run: &ClipRun<'_>) {
         let last = run.last.min(self.cols);
         let (open, rows) = self.bound(0..last, run.row..run.row.saturating_add(1));
         if open.is_empty() || rows.is_empty() {
@@ -221,16 +221,16 @@ impl Grid {
     }
 }
 
-struct Styled {
+struct StyledCell {
     face: Face,
     fg: Ink,
     bg: Option<Ink>,
     link: Option<SmolStr>,
 }
 
-fn styled(run: &Run<'_>, offset: usize) -> Styled {
+fn styled(run: &ClipRun<'_>, offset: usize) -> StyledCell {
     let node = run.node;
-    let mut out = Styled {
+    let mut out = StyledCell {
         face: node.face,
         fg: node.ink,
         bg: None,
@@ -263,7 +263,7 @@ fn styled(run: &Run<'_>, offset: usize) -> Styled {
     out
 }
 
-fn paint_cell(cell: &mut Cell, theme: &Theme, styled: &Styled) {
+fn paint_cell(cell: &mut Cell, theme: &Theme, styled: &StyledCell) {
     cell.bold = styled.face.bold;
     cell.italic = styled.face.italic;
     cell.dim = styled.face.dim;

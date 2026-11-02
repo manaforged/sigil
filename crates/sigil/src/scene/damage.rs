@@ -64,13 +64,13 @@ pub(crate) fn cell_damage(
 pub(crate) type Changed = (Range<usize>, Range<usize>);
 
 #[derive(Default)]
-struct Marks {
+struct DamageMarks {
     ranges: Vec<(usize, Vec<bool>)>,
     count: usize,
     end: usize,
 }
 
-impl Marks {
+impl DamageMarks {
     fn get(&self, index: usize) -> bool {
         let after = self.ranges.partition_point(|(start, _)| *start <= index);
         after
@@ -124,8 +124,8 @@ fn diff_marks(
     before: &[SceneCommand],
     after: &[SceneCommand],
     changed: &[Changed],
-) -> Option<(Marks, Marks)> {
-    let (mut old, mut new) = (Marks::default(), Marks::default());
+) -> Option<(DamageMarks, DamageMarks)> {
+    let (mut old, mut new) = (DamageMarks::default(), DamageMarks::default());
     let mut differs = false;
     for (was, now) in changed {
         let (Some(was_slice), Some(now_slice)) = (before.get(was.clone()), after.get(now.clone()))

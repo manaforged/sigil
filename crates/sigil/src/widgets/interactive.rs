@@ -1,11 +1,12 @@
 use crate::kernel::NodeBuilder;
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Reactive, Signal};
-use crate::style::{ClassSource, NodeStyleExt, PaintTarget, Style, StyleSlot};
+use crate::style::{ClassSource, Style};
+use crate::widgets::Widget;
 use crate::widgets::interaction::InteractionState;
-use crate::widgets::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use crate::widgets::layout_ext::LayoutOverrides;
 use crate::widgets::shared::state_surface;
 
+/// Builder of an interactive node.
 pub struct InteractiveBuilder {
     inner: NodeBuilder,
     style: Style,
@@ -14,6 +15,7 @@ pub struct InteractiveBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+/// Make any node hoverable, pressable, and focusable.
 #[must_use]
 pub fn interactive(inner: NodeBuilder) -> InteractiveBuilder {
     InteractiveBuilder {
@@ -26,29 +28,26 @@ pub fn interactive(inner: NodeBuilder) -> InteractiveBuilder {
 }
 
 impl InteractiveBuilder {
+    /// Sets the focusable.
     #[must_use]
     pub const fn focusable(mut self, yes: bool) -> Self {
         self.focusable = yes;
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
-    #[must_use]
-    pub fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let mut style = self.style;
         let overlay = style.take_state_overlay();
         let base_atoms = style.into_atoms();
         let interaction = InteractionState::new(true);
-        let hooks = self.layout_overrides.hooks();
         let mut node = self.inner.focusable(self.focusable);
-        if self.layout_overrides != LayoutOverrides::new() {
-            node = node.layout(self.layout_overrides.apply(LayoutStyle::default()));
-        }
         if !base_atoms.is_empty() {
             node = node.class(ClassSource::Owned(Box::new(base_atoms)));
         }
@@ -56,26 +55,8 @@ impl InteractiveBuilder {
         if self.focusable {
             node = node.focus_ring(interaction.focus_ring());
         }
-        hooks.finish(interaction.observe_style(node))
+        interaction.observe_style(node)
     }
 }
 
-impl PaintTarget for InteractiveBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style)
-    }
-}
-
-impl crate::style::StateHost for InteractiveBuilder {}
-
-impl WidgetLayoutExt for InteractiveBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl crate::kernel::IntoNode for InteractiveBuilder {
-    fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] InteractiveBuilder: paint(style), widget, states(style), node(pub));

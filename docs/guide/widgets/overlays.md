@@ -4,7 +4,7 @@ Nodes that float above the tree: dialogs, menus, tooltips, and toasts. They moun
 
 ## Shared surface and placement
 
-Every overlay uses one surface: the `overlay` fill, a 1 px `overlay-border` border, the `OVERLAY_SHADOW` elevation, and the `md` radius. Panels pad their rows by `Metrics::overlay_padding`.
+Every overlay uses one surface: the `overlay` fill, a 1 px `overlay-border` border, the `Elevation::Md` shadow, and the `md` radius. Panels pad their rows by `Metrics::overlay_padding`.
 
 Menu, dropdown, combobox, and command menu rows share one row layout: the label, an optional shortcut hint, an optional chevron for a submenu, and a check mark on the selected option. A disabled row uses muted text and is never highlighted. A separator is inset to the row padding.
 
@@ -54,7 +54,7 @@ modal(open)
 
 ## menu and menu_bar
 
-`menu(open: Signal<bool>) -> MenuBuilder`: a floating `Role::Menu` panel. `.item(MenuItem)`, `.separator()`, `.label(name)` for accessibility, `.anchor(x, y)` to pin a position (otherwise it follows its layout slot). The panel is 192 px wide unless you set a width. It closes on Escape and on a pointer-down outside the panel.
+`menu(open: Signal<bool>)`: a floating `Role::Menu` panel. `.item(MenuItem)`, `.separator()`, `.label(name)` for accessibility, `.anchor(x, y)` to pin a position (otherwise it follows its layout slot). The panel is 192 px wide unless you set a width. It closes on Escape and on a pointer-down outside the panel.
 
 `MenuItem::new(label)` carries `.shortcut(hint)` (a displayed hint, not a binding), `.disabled(bool)`, `.submenu(bool)` (shows the indicator; you render the submenu yourself), and `.activate(Fn())` which fires and closes the menu.
 
@@ -62,7 +62,7 @@ modal(open)
 
 ## command_menu
 
-`command_menu() -> CommandMenuBuilder`: a nested, keyboard-driven menu (`Role::Menu`, "Command Menu"), not a search palette. Build a tree of entries:
+`command_menu()`: a nested, keyboard-driven menu (`Role::Menu`, "Command Menu"), not a search palette. Build a tree of entries:
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -83,9 +83,9 @@ Arrow Up/Down move the cursor, Enter or Arrow Right activates the item or descen
 
 ## tooltip
 
-`tooltip(label) -> TooltipBuilder` then `.child(target)` wraps the hovered node. The bubble uses the overlay surface and appears above the target on hover. It sizes to its text up to 240 px wide, and longer text wraps inside it.
+`tooltip(label)` then `.child(target)` wraps the hovered node. The bubble uses the overlay surface and appears above the target on hover. It sizes to its text up to 240 px wide, and longer text wraps inside it.
 
-- `.shortcut(Some("⌘K"))`: secondary hint text in the bubble.
+- `.hint(Some("⌘K"))`: secondary hint text in the bubble.
 - `.delay(ms)`: hover time before showing.
 - `.clamp_top()`: open the bubble below the target instead of above it.
 
@@ -93,11 +93,11 @@ Arrow Up/Down move the cursor, Enter or Arrow Right activates the item or descen
 
 `toast(message: Signal<Option<String>>) -> NodeBuilder`: a single bottom-edge status band, hidden while the signal is `None`. You own the timeout.
 
-`toast_queue(queue: ToastQueue) -> NodeBuilder`: a self-managing stack. `ToastQueue::new()` is a `Copy` handle; `queue.info(msg)`, `.success(msg)`, `.warning(msg)`, `.error(msg)` (or `.push(ToastLevel, msg)`) append a `ToastEntry`. Entries expire after `TOAST_TTL` (4 s) on a 250 ms sweep and at most `MAX_VISIBLE` (4) show at once, newest at the bottom. The container is `Role::Status`, so screen readers hear pushes.
+`toast_queue(queue: ToastQueue) -> NodeBuilder`: a self-managing stack. `ToastQueue::new()` is a `Copy` handle; `queue.info(msg)`, `.success(msg)`, `.warning(msg)`, `.error(msg)` (or `.push(Tone, msg)`) append a `ToastEntry`. Entries expire after 4 s on a 250 ms sweep and at most 4 show at once, newest at the bottom. The container is `Role::Status`, so screen readers hear pushes.
 
 ## hint_overlay
 
-`hint_overlay(&[HintEntry]) -> HintOverlayBuilder` where `HintEntry` is `(chord, description)`. Renders a "Keyboard shortcuts" card of `key — description` rows; `.entry(chord, desc)` appends more. It is a styled container. Mount it inside `modal`/`sheet` or your own top-layer node to make it a real overlay.
+`hint_overlay(&[(chord, description)])`. Renders a "Keyboard shortcuts" card of `key — description` rows; `.entry(chord, desc)` appends more. It is a styled container. Mount it inside `modal`/`sheet` or your own top-layer node to make it a real overlay.
 
 ## States, keys, and accessibility
 

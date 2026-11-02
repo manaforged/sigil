@@ -2,23 +2,30 @@ use std::fmt;
 use std::rc::Rc;
 
 use crate::events::Shortcut;
+use crate::kernel::Role;
 use crate::reactive::{Signal, derived, effect_named};
-use accesskit::Role;
 
+use crate::kernel::NodeBuilder;
 use crate::kernel::component::Patch;
-use crate::kernel::{A11yProps, AccessibleName, Cx, DeltaKind, IntoNode, Node, NodeId, NodeType};
-use crate::style::{PaintTarget, Style, StyleSlot};
+use crate::kernel::{A11yProps, AccessibleName, Cx, DeltaKind, IntoNode, NodeId, NodeType};
+use crate::style::{PaintTarget, StateSlot, StyleAtom, StyleSlot};
+use crate::widgets::layout_ext::NodeHooks;
+use crate::widgets::{Edit, Sealed, StateTarget, Widget};
+use smallvec::SmallVec;
 
-type TextMutator = Box<dyn FnOnce(&mut crate::kernel::Node)>;
-
+/// Static, signal, or computed text.
 #[derive(Clone)]
 pub enum TextContent {
+    /// The static text content.
     Static(String),
+    /// The reactive text content.
     Reactive(Signal<String>),
+    /// The compute text content.
     Compute(Rc<dyn Fn() -> String>),
 }
 
 impl TextContent {
+    /// Returns the as static str.
     #[must_use]
     pub fn as_static_str(&self) -> Option<&str> {
         match self {
@@ -27,6 +34,7 @@ impl TextContent {
         }
     }
 
+    /// Returns the resolve.
     #[must_use]
     pub fn resolve(&self) -> String {
         match self {
@@ -36,6 +44,7 @@ impl TextContent {
         }
     }
 
+    /// Writes the current text to `out` and returns whether it changed.
     pub fn refresh(&self, out: &mut String) -> bool {
         match self {
             Self::Static(value) => replace(out, value),
@@ -89,93 +98,110 @@ impl<F: Fn() -> String + 'static> From<F> for TextContent {
     }
 }
 
+/// Builder of a text node.
 pub struct TextBuilder {
-    source: TextContent,
-    a11y: A11yProps,
-    wrap: bool,
-    ellipsis: bool,
-    pre_extensions: Vec<TextMutator>,
-    style: Style,
+    node: NodeBuilder,
+    hooks: NodeHooks,
 }
 
+/// The one text node.
 #[must_use]
 pub fn text(source: impl Into<TextContent>) -> TextBuilder {
-    TextBuilder {
-        source: source.into(),
-        a11y: A11yProps {
-            role: Role::Label,
-            ..A11yProps::default()
-        },
+    let kind = NodeType::Text {
+        content: source.into(),
         wrap: true,
         ellipsis: false,
-        pre_extensions: Vec::new(),
-        style: Style::new(),
+    };
+    let a11y = A11yProps {
+        role: Role::Label,
+        ..A11yProps::default()
+    };
+    TextBuilder {
+        node: NodeBuilder::from_parts(kind, a11y, Vec::new()),
+        hooks: NodeHooks::default(),
     }
 }
 
 impl TextBuilder {
+    /// Applies the wrap option.
     #[must_use]
     pub const fn wrap(mut self) -> Self {
-        self.wrap = true;
-        self.ellipsis = false;
+        if let NodeType::Text { wrap, ellipsis, .. } = &mut self.node.kind {
+            *wrap = true;
+            *ellipsis = false;
+        }
         self
     }
 
+    /// Applies the nowrap option.
     #[must_use]
     pub const fn nowrap(mut self) -> Self {
-        self.wrap = false;
+        if let NodeType::Text { wrap, .. } = &mut self.node.kind {
+            *wrap = false;
+        }
         self
     }
 
+    /// Applies the ellipsize option.
     #[must_use]
     pub const fn ellipsize(mut self) -> Self {
-        self.ellipsis = true;
-        self.wrap = false;
+        if let NodeType::Text { wrap, ellipsis, .. } = &mut self.node.kind {
+            *ellipsis = true;
+            *wrap = false;
+        }
         self
     }
 
+    /// Sets the role.
     #[must_use]
     pub const fn role(mut self, role: Role) -> Self {
-        self.a11y.role = role;
+        self.node.a11y.role = role;
         self
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
-        self.a11y.name = name.into();
+        self.node = self.node.label(name);
         self
     }
 
+    /// Sets the description.
     #[must_use]
     pub fn description(mut self, description: impl Into<String>) -> Self {
-        self.a11y.description = Some(AccessibleName::Static(description.into()));
+        self.node = self.node.description(description);
         self
     }
 
+    /// Sets the focusable.
     #[must_use]
     pub const fn focusable(mut self, yes: bool) -> Self {
-        self.a11y.focusable = yes;
+        self.node.a11y.focusable = yes;
         self
     }
 
+    /// Sets the tab index.
     #[must_use]
     pub const fn tab_index(mut self, index: i32) -> Self {
-        self.a11y.tab_index = Some(index);
+        self.node.a11y.tab_index = Some(index);
         self
     }
 
+    /// Sets the keyboard shortcut.
     #[must_use]
     pub fn keyboard_shortcut(mut self, shortcut: impl Into<Shortcut>) -> Self {
-        self.a11y.keyboard_shortcut = Some(shortcut.into());
+        self.node = self.node.keyboard_shortcut(shortcut);
         self
     }
 
+    /// Sets the hittable.
     #[must_use]
     pub const fn hittable(mut self, yes: bool) -> Self {
-        self.a11y.hittable = yes;
+        self.node.a11y.hittable = yes;
         self
     }
 
+    /// Adds this text node to the tree and returns its id.
     #[allow(
         clippy::should_implement_trait,
         reason = "intentional, reviewed trade-off"
@@ -184,95 +210,105 @@ impl TextBuilder {
         cx.add(self)
     }
 
-    #[must_use]
-    pub fn runs(self, runs: Vec<crate::style::TextRun>) -> Self {
-        if runs.is_empty() {
-            return self;
+    kittest_pub! {
+        /// Sets the runs.
+        #[must_use]
+        #[doc(hidden)]
+        pub fn runs(self, runs: Vec<crate::style::TextRun>) -> Self {
+            if runs.is_empty() {
+                return self;
+            }
+            let runs = crate::style::TextRuns(runs.into());
+            self.mutate(move |node| {
+                node.attach(runs);
+            })
         }
-        let runs = crate::style::TextRuns(runs.into());
-        self.mutate(move |node| {
-            node.attach(runs);
-        })
     }
 
+    /// Sets the mutate.
     #[must_use]
     pub fn mutate(mut self, apply: impl FnOnce(&mut crate::kernel::Node) + 'static) -> Self {
-        self.pre_extensions.push(Box::new(apply));
+        self.node = self.node.mutate(apply);
         self
-    }
-
-    pub(crate) const fn pending_style(&mut self) -> &mut Style {
-        &mut self.style
     }
 }
 
 impl PaintTarget for TextBuilder {
     fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style)
+        self.node.style_slot()
+    }
+}
+
+impl Sealed for TextBuilder {
+    fn edit(mut self, edit: Edit) -> Self {
+        self.node = edit.apply(self.node);
+        self
+    }
+
+    fn map_target(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.map_node(f)
+    }
+}
+
+impl StateTarget for TextBuilder {
+    fn set_state(mut self, slot: StateSlot, atoms: SmallVec<[StyleAtom; 16]>) -> Self {
+        self.node = self.node.set_state(slot, atoms);
+        self
+    }
+}
+
+impl Widget for TextBuilder {
+    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.hooks
+            .push(Box::new(move |node| node.map_keeping_kind(f)));
+        self
     }
 }
 
 impl IntoNode for TextBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
-        let this = self.flush_paint();
-        let content = this.source.into_live();
-        let live = match &content {
-            TextContent::Reactive(signal) => Some(*signal),
-            TextContent::Static(_) | TextContent::Compute(_) => None,
-        };
-        let id = cx.new_node(
-            NodeType::Text {
-                content,
-                wrap: this.wrap,
-                ellipsis: this.ellipsis,
-            },
-            this.a11y,
-        );
-        if let Some(node) = cx.get_mut(id) {
-            for apply in this.pre_extensions {
-                apply(node);
-            }
-        }
-        track_delta(cx, id, live);
-        id
+        self.hooks.finish(self.node).build(cx)
     }
 
     fn patch(self, cx: &mut Cx, existing: NodeId) -> Patch<Self> {
-        if !matches!(
-            cx.get(existing).map(|node| &node.kind),
-            Some(NodeType::Text { .. })
-        ) {
-            return Patch::Mismatch(self);
-        }
-        cx.refill(existing, |cx| {
-            let this = self.flush_paint();
-            let content = this.source.into_live();
-            let live = match &content {
-                TextContent::Reactive(signal) => Some(*signal),
-                TextContent::Static(_) | TextContent::Compute(_) => None,
-            };
-            cx.reset_node(
-                existing,
-                NodeType::Text {
-                    content,
-                    wrap: this.wrap,
-                    ellipsis: this.ellipsis,
-                },
-                this.a11y,
-            );
-            if let Some(node) = cx.get_mut(existing) {
-                for apply in this.pre_extensions {
-                    apply(node);
-                }
-            }
-            track_delta(cx, existing, live);
-        });
-        Patch::Patched
+        self.hooks
+            .finish(self.node)
+            .patch(cx, existing)
+            .map(|node| Self {
+                node,
+                hooks: NodeHooks::default(),
+            })
     }
 }
 
-fn track_delta(cx: &Cx, id: NodeId, live: Option<Signal<String>>) {
-    if let (Some(signal), Some(tag)) = (live, cx.get(id).and_then(Node::tag)) {
+impl NodeType {
+    pub(crate) fn into_live(self) -> Self {
+        match self {
+            Self::Text {
+                content,
+                wrap,
+                ellipsis,
+            } => Self::Text {
+                content: content.into_live(),
+                wrap,
+                ellipsis,
+            },
+            other => other,
+        }
+    }
+}
+
+pub(crate) fn track_delta(cx: &Cx, id: NodeId) {
+    let Some(node) = cx.get(id) else { return };
+    let NodeType::Text {
+        content: TextContent::Reactive(signal),
+        ..
+    } = &node.kind
+    else {
+        return;
+    };
+    if let Some(tag) = node.tag() {
+        let signal = *signal;
         effect_named("sigil-kernel::text_delta", move || {
             if signal.try_track() {
                 tag.record(DeltaKind::Layout);

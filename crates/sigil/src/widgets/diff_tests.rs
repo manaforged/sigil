@@ -8,16 +8,38 @@ const PATCH: &str = "\
 ";
 
 #[test]
-fn a_split_diff_gives_the_longer_side_the_width() {
-    let grid = crate::terminal::present(|| diff(PATCH), 110, 12, &[]).expect("layout");
-    assert!(
-        grid.contains("raise ValueError(\"amount must be positive\") from None"),
-        "right column cut:\n{grid}"
-    );
-    assert!(
-        grid.contains("self.qty += amount"),
-        "left column cut:\n{grid}"
-    );
+fn split_diffs_keep_equal_columns_across_content_and_widths() {
+    for cols in [80_u16, 110, 160] {
+        for patch in [
+            PATCH.to_string(),
+            format!("@@ -1,1 +1,1 @@\n-old_{}\n+new_value\n", "x".repeat(120)),
+            format!("@@ -1,1 +1,1 @@\n-old_value\n+new_{}\n", "x".repeat(120)),
+            String::from("@@ -1,0 +1,1 @@\n+new_value\n"),
+            String::from("@@ -1,1 +1,0 @@\n-old_value\n"),
+        ] {
+            let grid = crate::terminal::present(move || diff(patch.clone()), cols, 12, &[])
+                .expect("layout");
+            let mut checked = 0;
+            for row in grid
+                .lines()
+                .filter(|row| row.contains(" - ") || row.contains(" + "))
+            {
+                let dividers: Vec<_> = row
+                    .chars()
+                    .enumerate()
+                    .filter_map(|(at, ch)| (ch == '│').then_some(at))
+                    .collect();
+                assert_eq!(dividers.len(), 3, "missing divider:\n{grid}");
+                let divider = dividers.get(1).expect("middle divider");
+                assert!(
+                    divider.abs_diff(usize::from(cols / 2)) <= 1,
+                    "divider moved to {divider} at width {cols}:\n{grid}"
+                );
+                checked += 1;
+            }
+            assert!(checked > 0, "no changed row rendered:\n{grid}");
+        }
+    }
 }
 
 #[test]

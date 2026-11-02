@@ -6,8 +6,9 @@
 
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeId, container};
-use sigil::layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{Dimension, LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil_kittest::FakeMeasure;
 
 fn widths(root_w: f32, a: LayoutStyle, b: LayoutStyle) -> Vec<f32> {
     let mut cx = Cx::new_root();
@@ -17,7 +18,7 @@ fn widths(root_w: f32, a: LayoutStyle, b: LayoutStyle) -> Vec<f32> {
             .child(container().layout(a))
             .child(container().layout(b)),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(root_w, 100.0))
         .unwrap();

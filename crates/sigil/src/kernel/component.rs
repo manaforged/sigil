@@ -17,9 +17,12 @@ impl<T> Patch<T> {
     }
 }
 
+/// A value that builds into a node.
 pub trait IntoNode: IntoNodeBox {
+    /// Adds this value to the tree and returns its node id.
     fn build(self, cx: &mut Cx) -> NodeId;
 
+    /// Updates the existing node in place when this value allows it.
     #[doc(hidden)]
     fn patch(self, _cx: &mut Cx, _existing: NodeId) -> Patch<Self>
     where
@@ -58,7 +61,8 @@ where
     }
 }
 
-pub(crate) struct WithCx<F>(pub(crate) F);
+#[doc(hidden)]
+pub struct WithCx<F>(pub F);
 
 impl<F> IntoNode for WithCx<F>
 where
@@ -69,6 +73,7 @@ where
     }
 }
 
+/// Box a child of any builder type.
 #[must_use]
 pub fn node(child: impl IntoNode + 'static) -> Box<dyn IntoNode> {
     Box::new(child)

@@ -1,11 +1,13 @@
-use crate::events::{Key, KeyEvent, KeyPhase, LogicalKey, NodeEventsExt};
+use crate::events::{Key, KeyEvent, KeyPhase, LogicalKey};
 use crate::kernel::{NodeBuilder, Role, container, text};
-use crate::layout::{LayoutBuilderExt, LayoutStyle, rows};
+use crate::layout::{LayoutStyle, rows};
 use crate::reactive::{Signal, signal};
-use crate::style::{FocusRing, NodeStyleExt, Token};
+use crate::style::Token;
+use crate::widgets::Widget;
 
 use super::virtual_list::virtual_list;
 
+/// An embedded terminal emulator view.
 #[must_use]
 pub fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static) -> NodeBuilder {
     let list = virtual_list(lines, |_i, line| {
@@ -17,7 +19,7 @@ pub fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static)
     container()
         .role(Role::TextInput)
         .focusable(true)
-        .focus_ring(FocusRing::new(focused))
+        .focus_ring(focused)
         .focus_in(move || focused.set(true))
         .focus_out(move || focused.set(false))
         .layout(LayoutStyle::flex_column().fill())
@@ -39,7 +41,7 @@ fn key_payload(event: &KeyEvent) -> Option<String> {
     if let Some(text) = &event.text
         && !text.is_empty()
     {
-        return Some(text.to_string());
+        return Some(text.clone());
     }
     match &event.key {
         LogicalKey::Named(Key::Enter) => Some("\n"),

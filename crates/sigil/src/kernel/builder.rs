@@ -1,13 +1,13 @@
 use crate::events::Shortcut;
+use crate::kernel::{Action, Role, SortDirection};
 use crate::reactive::Signal;
-use accesskit::{Action, Role, SortDirection};
 use smallvec::SmallVec;
 
 use crate::kernel::component::{ErasedComponent, IntoNode, Patch};
 use crate::kernel::{
     A11yProps, AccessibleName, Cx, Node, NodeId, NodeType, TextCursor, reactive_children,
 };
-use crate::style::{PaintTarget, StateHost, Style, StyleSlot};
+use crate::style::{PaintTarget, Style, StyleSlot};
 
 mod patch;
 
@@ -18,10 +18,11 @@ type ReactiveChildrenInstall = Box<dyn FnOnce(NodeId)>;
 
 type AddedHook = Box<dyn FnOnce(&mut Cx, NodeId)>;
 
+/// Builder that `container` and most widgets return.
 pub struct NodeBuilder {
     pub(super) a11y: A11yProps,
     pub(super) children: SmallVec<[Box<dyn ErasedComponent>; 4]>,
-    kind: NodeType,
+    pub(super) kind: NodeType,
     pub(super) pre_extensions: Vec<NodeMutator>,
     pub(super) reactive_children: Option<ReactiveChildrenInstall>,
     pub(super) on_added: Vec<AddedHook>,
@@ -29,11 +30,13 @@ pub struct NodeBuilder {
     pub(super) wraps: Option<Box<dyn ErasedComponent>>,
 }
 
+/// A box that holds children.
 #[must_use]
 pub fn container() -> NodeBuilder {
     NodeBuilder::new(NodeType::Container)
 }
 
+/// Children without a box of their own.
 #[must_use]
 pub fn fragment() -> NodeBuilder {
     NodeBuilder::new(NodeType::Fragment)
@@ -72,42 +75,49 @@ impl NodeBuilder {
         }
     }
 
+    /// Sets the role.
     #[must_use]
     pub const fn role(mut self, role: Role) -> Self {
         self.a11y.role = role;
         self
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         self.a11y.name = name.into();
         self
     }
 
+    /// Sets the description.
     #[must_use]
     pub fn description(mut self, description: impl Into<String>) -> Self {
         self.a11y.description = Some(AccessibleName::Static(description.into()));
         self
     }
 
+    /// Sets the labelled by.
     #[must_use]
     pub const fn labelled_by(mut self, node: NodeId) -> Self {
         self.a11y.labelled_by = Some(node);
         self
     }
 
+    /// Sets the owns.
     #[must_use]
     pub fn owns(mut self, node: NodeId) -> Self {
         self.a11y.owns.push(node);
         self
     }
 
+    /// Sets the action.
     #[must_use]
     pub fn action(mut self, action: Action) -> Self {
         self.a11y.actions.push(action);
         self
     }
 
+    /// Sets the focusable.
     #[must_use]
     pub fn focusable(mut self, yes: bool) -> Self {
         debug_assert!(
@@ -118,78 +128,91 @@ impl NodeBuilder {
         self
     }
 
+    /// Sets the traps tab.
     #[must_use]
     pub const fn traps_tab(mut self, yes: bool) -> Self {
         self.a11y.traps_tab = yes;
         self
     }
 
+    /// Sets the tab index.
     #[must_use]
     pub const fn tab_index(mut self, index: i32) -> Self {
         self.a11y.tab_index = Some(index);
         self
     }
 
+    /// Sets the keyboard shortcut.
     #[must_use]
     pub fn keyboard_shortcut(mut self, shortcut: impl Into<Shortcut>) -> Self {
         self.a11y.keyboard_shortcut = Some(shortcut.into());
         self
     }
 
+    /// Sets the hittable.
     #[must_use]
     pub const fn hittable(mut self, yes: bool) -> Self {
         self.a11y.hittable = yes;
         self
     }
 
+    /// Sets the checked.
     #[must_use]
     pub const fn checked(mut self, signal: Signal<bool>) -> Self {
         self.a11y.checked = Some(signal);
         self
     }
 
+    /// Sets the selected.
     #[must_use]
     pub const fn selected(mut self, signal: Signal<bool>) -> Self {
         self.a11y.selected = Some(signal);
         self
     }
 
+    /// Sets the expanded.
     #[must_use]
     pub const fn expanded(mut self, signal: Signal<bool>) -> Self {
         self.a11y.expanded = Some(signal);
         self
     }
 
+    /// Sets the sort direction.
     #[must_use]
     pub const fn sort_direction(mut self, signal: Signal<Option<SortDirection>>) -> Self {
         self.a11y.sort_direction = Some(signal);
         self
     }
 
+    /// Sets the row count.
     #[must_use]
     pub const fn row_count(mut self, signal: Signal<usize>) -> Self {
         self.a11y.row_count = Some(signal);
         self
     }
 
+    /// Sets the column count.
     #[must_use]
     pub const fn column_count(mut self, count: usize) -> Self {
         self.a11y.column_count = Some(count);
         self
     }
 
+    /// Sets the row index.
     #[must_use]
     pub const fn row_index(mut self, index: usize) -> Self {
         self.a11y.row_index = Some(index);
         self
     }
 
+    /// Sets the column index.
     #[must_use]
     pub const fn column_index(mut self, index: usize) -> Self {
         self.a11y.column_index = Some(index);
         self
     }
 
+    /// Sets the value.
     #[must_use]
     pub fn value(mut self, signal: Signal<f32>, min: f32, max: f32) -> Self {
         let (low, high) = (min.min(max), min.max(max));
@@ -200,18 +223,21 @@ impl NodeBuilder {
         self
     }
 
+    /// Sets the value step.
     #[must_use]
     pub const fn value_step(mut self, step: f32) -> Self {
         self.a11y.step = Some(step);
         self
     }
 
+    /// Sets the text value.
     #[must_use]
     pub const fn text_value(mut self, signal: Signal<String>) -> Self {
         self.a11y.text_value = Some(signal);
         self
     }
 
+    /// Sets the text cursor.
     #[must_use]
     pub const fn text_cursor(
         mut self,
@@ -222,24 +248,28 @@ impl NodeBuilder {
         self
     }
 
+    /// Sets the placeholder.
     #[must_use]
     pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.a11y.placeholder = Some(placeholder.into());
         self
     }
 
+    /// Adds a child.
     #[must_use]
     pub fn child(mut self, child: impl IntoNode + 'static) -> Self {
         self.children.push(Box::new(child));
         self
     }
 
+    /// Sets the callback that runs on added.
     #[must_use]
     pub fn on_added(mut self, hook: impl FnOnce(&mut Cx, NodeId) + 'static) -> Self {
         self.on_added.push(Box::new(hook));
         self
     }
 
+    /// Sets the children reactive.
     #[must_use]
     pub fn children_reactive<F, I, N>(mut self, f: F) -> Self
     where
@@ -253,6 +283,7 @@ impl NodeBuilder {
         self
     }
 
+    /// Sets the children keyed.
     #[must_use]
     pub fn children_keyed<F, I, K, N>(self, f: F) -> Self
     where
@@ -278,6 +309,7 @@ impl NodeBuilder {
         self
     }
 
+    /// Sets the with.
     #[must_use]
     pub fn with<T: 'static>(mut self, value: T) -> Self {
         self.pre_extensions.push(Box::new(move |node: &mut Node| {
@@ -286,12 +318,14 @@ impl NodeBuilder {
         self
     }
 
+    /// Sets the mutate.
     #[must_use]
     pub fn mutate(mut self, apply: impl FnOnce(&mut Node) + 'static) -> Self {
         self.pre_extensions.push(Box::new(apply));
         self
     }
 
+    /// Adds this node to the tree and returns its id.
     #[allow(
         clippy::should_implement_trait,
         reason = "intentional, reviewed trade-off"
@@ -303,6 +337,13 @@ impl NodeBuilder {
     pub(crate) const fn pending_style(&mut self) -> &mut Style {
         &mut self.style
     }
+
+    pub(crate) fn map_keeping_kind(mut self, f: impl FnOnce(Self) -> Self) -> Self {
+        let kind = std::mem::replace(&mut self.kind, NodeType::Container);
+        let mut node = f(self);
+        node.kind = kind;
+        node
+    }
 }
 
 impl PaintTarget for NodeBuilder {
@@ -311,8 +352,6 @@ impl PaintTarget for NodeBuilder {
     }
 }
 
-impl StateHost for NodeBuilder {}
-
 impl IntoNode for NodeBuilder {
     fn build(mut self, cx: &mut Cx) -> NodeId {
         let style = std::mem::take(&mut self.style);
@@ -320,8 +359,9 @@ impl IntoNode for NodeBuilder {
         if let Some(widget) = this.wraps.take() {
             return this.build_onto(widget, cx);
         }
-        let kind = std::mem::replace(&mut this.kind, NodeType::Container);
+        let kind = std::mem::replace(&mut this.kind, NodeType::Container).into_live();
         let id = cx.new_node(kind, std::mem::take(&mut this.a11y));
+        crate::kernel::text::track_delta(cx, id);
         this.finish(cx, id)
     }
 

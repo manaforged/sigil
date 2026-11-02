@@ -6,11 +6,11 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::reactive::{Owner, Runtime, derived, effect, signal};
+use sigil::reactive::{Owner, derived, effect, signal};
 
 #[test]
 fn derived_computes_initial_value_on_registration() {
-    Runtime::scope("derived_initial", || {
+    Owner::scope("derived_initial", || {
         let n = signal(3_i32);
         let doubled = derived(move || n.get() * 2);
         assert_eq!(
@@ -23,7 +23,7 @@ fn derived_computes_initial_value_on_registration() {
 
 #[test]
 fn derived_re_runs_on_subscribed_signal_change() {
-    Runtime::scope("derived_re_runs", || {
+    Owner::scope("derived_re_runs", || {
         let n = signal(5_i32);
         let squared = derived(move || n.get() * n.get());
         assert_eq!(squared.get(), 25);
@@ -36,7 +36,7 @@ fn derived_re_runs_on_subscribed_signal_change() {
 
 #[test]
 fn derived_reads_are_tracked_by_outer_effects() {
-    Runtime::scope("derived_tracks_outer", || {
+    Owner::scope("derived_tracks_outer", || {
         let n = signal(1_i32);
         let doubled = derived(move || n.get() * 2);
 
@@ -56,7 +56,7 @@ fn derived_reads_are_tracked_by_outer_effects() {
 
 #[test]
 fn derived_eq_memoizes_equal_values() {
-    Runtime::scope("derived_eq_memoizes", || {
+    Owner::scope("derived_eq_memoizes", || {
         let n = signal(3_i32);
         let is_pos = derived(move || n.get() > 0);
 
@@ -89,7 +89,7 @@ fn derived_eq_memoizes_equal_values() {
 
 #[test]
 fn derived_of_derived_propagates_correctly() {
-    Runtime::scope("derived_chain", || {
+    Owner::scope("derived_chain", || {
         let n = signal(2_i32);
         let plus_one = derived(move || n.get() + 1);
         let plus_ten = derived(move || plus_one.get() + 10);
@@ -111,7 +111,7 @@ fn derived_of_derived_propagates_correctly() {
 
 #[test]
 fn derived_eq_does_not_fire_outer_effects_when_value_unchanged() {
-    Runtime::scope("derived_eq_silent_on_unchanged", || {
+    Owner::scope("derived_eq_silent_on_unchanged", || {
         let n = signal(10_i32);
         let bucket = derived(move || n.get() / 51);
 
@@ -144,7 +144,7 @@ fn derived_eq_does_not_fire_outer_effects_when_value_unchanged() {
 
 #[test]
 fn derived_calls_f_exactly_once_per_update() {
-    Runtime::scope("derived_f_once_per_update", || {
+    Owner::scope("derived_f_once_per_update", || {
         let n = signal(0_i32);
         let calls = Rc::new(Cell::new(0_u32));
 
@@ -170,7 +170,7 @@ fn derived_calls_f_exactly_once_per_update() {
 
 #[test]
 fn derived_eq_calls_f_exactly_once_per_update_even_on_equal_values() {
-    Runtime::scope("derived_eq_f_once_per_update", || {
+    Owner::scope("derived_eq_f_once_per_update", || {
         let n = signal(1_i32);
         let calls = Rc::new(Cell::new(0_u32));
 
@@ -191,7 +191,7 @@ fn derived_eq_calls_f_exactly_once_per_update_even_on_equal_values() {
 
 #[test]
 fn derived_is_disposed_with_owner() {
-    let captured = Runtime::scope("derived_dispose_outer", || {
+    let captured = Owner::scope("derived_dispose_outer", || {
         let child = Owner::new("derived_child", Owner::current());
         let d = child.with(|| {
             let n = signal(0_i32);
@@ -211,7 +211,7 @@ fn derived_is_disposed_with_owner() {
 
 #[test]
 fn derived_survives_across_multiple_effect_runs() {
-    Runtime::scope("derived_survives_reruns", || {
+    Owner::scope("derived_survives_reruns", || {
         let n = signal(0_i32);
         let d = derived(move || n.get() + 100);
 

@@ -1,32 +1,20 @@
-use crate::events::{
-    Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, PhysicalKey, ShellEvent,
+use crate::events::{Event, Key, KeyPhase, LogicalKey, ModifiersState};
+use crossterm::event::{
+    Event as TermEvent, KeyCode, KeyEventKind, KeyModifiers, MediaKeyCode, ModifierKeyCode,
 };
-use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers, MediaKeyCode, ModifierKeyCode};
-use smol_str::SmolStr;
 
 #[cfg(any(windows, test))]
 const PASTE_BURST: usize = 8;
 #[cfg(windows)]
 pub(crate) const PASTE_GAP: std::time::Duration = std::time::Duration::from_millis(25);
 
-#[must_use]
-pub fn key_down(key: impl Into<LogicalKey>) -> ShellEvent {
-    pressed_key(key.into(), None)
+fn pressed_key(key: LogicalKey, text: Option<String>) -> Event {
+    Event::key(key, KeyPhase::Down).text(text)
 }
 
-fn pressed_key(key: LogicalKey, text: Option<SmolStr>) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key,
-        physical: PhysicalKey::Unidentified,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text,
-    }))
-}
-
+/// Translate a crossterm key event to an `Event`.
 #[must_use]
-pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
+pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<Event> {
     let (phase, repeat) = match event.kind {
         KeyEventKind::Press => (KeyPhase::Down, false),
         KeyEventKind::Repeat => (KeyPhase::Down, true),
@@ -46,7 +34,7 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
                         .modifiers
                         .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)) =>
         {
-            Some(SmolStr::from(ch.to_string()))
+            Some(ch.to_string())
         }
         _ => None,
     };
@@ -54,22 +42,20 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
     if altgr {
         held -= ModifiersState::CONTROL | ModifiersState::ALT;
     }
-    Some(ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key,
-        physical: PhysicalKey::Unidentified,
-        modifiers: held,
-        repeat,
-        phase,
-        text,
-    })))
+    Some(
+        Event::key(key, phase)
+            .modifiers(held)
+            .repeat(repeat)
+            .text(text),
+    )
 }
 
-pub(crate) fn push_key_text(events: &mut Vec<ShellEvent>, event: ShellEvent) {
+pub(crate) fn push_key_text(events: &mut Vec<Event>, event: Event) {
     let merged = events
         .last()
         .and_then(composed_text)
         .zip(composed_text(&event))
-        .map(|(head, tail)| SmolStr::from(format!("{head}{tail}")));
+        .map(|(head, tail)| format!("{head}{tail}"));
     match merged {
         Some(text) => {
             events.pop();
@@ -79,8 +65,8 @@ pub(crate) fn push_key_text(events: &mut Vec<ShellEvent>, event: ShellEvent) {
     }
 }
 
-fn composed_text(event: &ShellEvent) -> Option<&str> {
-    let ShellEvent::Key(key) = event else {
+fn composed_text(event: &Event) -> Option<&str> {
+    let Event::Key(key) = event else {
         return None;
     };
     let text = key.text.as_deref()?;
@@ -98,7 +84,7 @@ enum Reply {
     Dcs,
 }
 
-pub(crate) fn strip_replies(events: &mut Vec<Event>) {
+pub(crate) fn strip_replies(events: &mut Vec<TermEvent>) {
     let mut kept = Vec::with_capacity(events.len());
     let mut open = Vec::new();
     let mut reply = None;
@@ -123,7 +109,7 @@ pub(crate) fn strip_replies(events: &mut Vec<Event>) {
     *events = kept;
 }
 
-fn opener(event: &Event) -> Option<Reply> {
+fn opener(event: &TermEvent) -> Option<Reply> {
     let (code, modifiers) = pressed(event)?;
     match code {
         KeyCode::Char(']') if modifiers == KeyModifiers::ALT => Some(Reply::Osc),
@@ -135,7 +121,7 @@ fn opener(event: &Event) -> Option<Reply> {
     }
 }
 
-fn closes(kind: Reply, event: &Event) -> bool {
+fn closes(kind: Reply, event: &TermEvent) -> bool {
     match pressed(event) {
         Some((KeyCode::Char('\\'), modifiers)) => modifiers == KeyModifiers::ALT,
         Some((KeyCode::Char('g'), modifiers)) => {
@@ -145,21 +131,21 @@ fn closes(kind: Reply, event: &Event) -> bool {
     }
 }
 
-fn pressed(event: &Event) -> Option<(KeyCode, KeyModifiers)> {
+fn pressed(event: &TermEvent) -> Option<(KeyCode, KeyModifiers)> {
     match event {
-        Event::Key(key) if key.kind != KeyEventKind::Release => Some((key.code, key.modifiers)),
+        TermEvent::Key(key) if key.kind != KeyEventKind::Release => Some((key.code, key.modifiers)),
         _ => None,
     }
 }
 
 #[must_use]
 #[cfg(any(windows, test))]
-pub(crate) fn burst_paste(burst: &[Event], follows_paste: bool) -> Option<String> {
+pub(crate) fn burst_paste(burst: &[TermEvent], follows_paste: bool) -> Option<String> {
     let mut text = String::new();
     let mut lines = 0_usize;
     let mut inner = false;
     for event in burst {
-        let Event::Key(key) = event else {
+        let TermEvent::Key(key) = event else {
             return None;
         };
         if key.kind == KeyEventKind::Release {
@@ -181,10 +167,6 @@ pub(crate) fn burst_paste(burst: &[Event], follows_paste: bool) -> Option<String
     }
     let long = lines > 0 && text.chars().count() >= PASTE_BURST;
     (!text.is_empty() && (follows_paste || inner || long)).then_some(text)
-}
-
-pub fn paste(text: &str) -> ShellEvent {
-    ShellEvent::Paste(text.to_string())
 }
 
 const fn shifted(event: &crossterm::event::KeyEvent) -> KeyCode {
@@ -292,7 +274,7 @@ mod tests;
 
 #[cfg(fuzzing)]
 pub(crate) fn fuzz_strip(input: &[u8]) {
-    let events: Vec<Event> = input.iter().map(|byte| fuzz_event(*byte)).collect();
+    let events: Vec<TermEvent> = input.iter().map(|byte| fuzz_event(*byte)).collect();
     let mut once = events.clone();
     strip_replies(&mut once);
     let mut rest = events.iter();
@@ -309,7 +291,7 @@ pub(crate) fn fuzz_strip(input: &[u8]) {
 }
 
 #[cfg(fuzzing)]
-fn fuzz_event(byte: u8) -> Event {
+fn fuzz_event(byte: u8) -> TermEvent {
     let (code, modifiers) = match byte % 8 {
         0 => (KeyCode::Char(']'), KeyModifiers::ALT),
         1 => (KeyCode::Char('_'), KeyModifiers::ALT),
@@ -321,5 +303,5 @@ fn fuzz_event(byte: u8) -> Event {
             KeyModifiers::NONE,
         ),
     };
-    Event::Key(crossterm::event::KeyEvent::new(code, modifiers))
+    TermEvent::Key(crossterm::event::KeyEvent::new(code, modifiers))
 }

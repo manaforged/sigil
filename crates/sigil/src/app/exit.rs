@@ -8,6 +8,7 @@ thread_local! {
     static TARGET: RefCell<Option<Rc<Cell<bool>>>> = const { RefCell::new(None) };
 }
 
+/// Ask the running host to exit after this frame.
 pub fn request_exit() {
     let hosted = TARGET.with(|slot| {
         slot.borrow().as_ref().is_some_and(|cell| {

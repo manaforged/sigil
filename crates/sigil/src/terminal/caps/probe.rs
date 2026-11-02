@@ -85,6 +85,7 @@ fn queries(ask: Questions, backdrop: bool) -> String {
     if backdrop {
         text.push_str("\x1b]11;?\x1b\\");
     }
+    text.push_str("\x1b]7501;?\x1b\\\x1b[16t");
     text
 }
 
@@ -134,7 +135,17 @@ pub(super) fn parse(reply: &str) -> Answers {
             Known::from_version(name).map_or(Version::Unnamed, Version::Named)
         }),
         measured: measure(&cursor_reports(reply)),
+        activity: reply.contains("\x1b]7501;?"),
+        cell: cell(reply),
     }
+}
+
+pub(super) fn cell(reply: &str) -> Option<[u16; 2]> {
+    let (_, rest) = reply.split_once("\x1b[6;")?;
+    let (height, rest) = rest.split_once(';')?;
+    let (width, _) = rest.split_once('t')?;
+    let size = [width.parse().ok()?, height.parse().ok()?];
+    size.iter().all(|side| *side > 0).then_some(size)
 }
 
 fn cursor_reports(reply: &str) -> Vec<(u16, u16)> {

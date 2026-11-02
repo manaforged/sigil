@@ -3,9 +3,8 @@ use crate::kernel::{ImageCrop, Node, NodeId, NodeType, ThemedImage};
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::fills::TRANSPARENT;
 use crate::scene::command::{
-    CellBorder, CellRect, DecorationKind, DrawImage, GlyphRun, GradientStop, LinearGradient,
-    SceneDecorationStyle, SceneGradientStyle, SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
-    TextFlow, shape_run,
+    CellBorder, CellRect, DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawRect,
+    GlyphRun, GradientStop, LinearGradient, Stroke, StrokeAlign, StrokeStyle, TextFlow, shape_run,
 };
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
@@ -38,13 +37,15 @@ pub(super) fn push_focus_ring(
     );
     scene.draw_rect_for_node(
         id,
-        ring_rect,
-        SceneRectStyle::new(TRANSPARENT, radii, ring.opacity).with_stroke(Stroke {
-            color: ring.color,
-            width: ring.width,
-            style: StrokeStyle::Solid,
-            align: StrokeAlign::Outside,
-        }),
+        DrawRect::new(ring_rect, TRANSPARENT)
+            .border_radius(radii)
+            .opacity(ring.opacity)
+            .stroke(Stroke {
+                color: ring.color,
+                width: ring.width,
+                style: StrokeStyle::Solid,
+                align: StrokeAlign::Outside,
+            }),
         CellRect {
             outline: true,
             ..CellRect::default()
@@ -80,7 +81,7 @@ impl NodePaint<'_> {
             rect,
             widths,
             color: super::borders::border_color(self.style, self.theme),
-            rounded: self.style.border_radius.is_some_and(|radius| radius.0 > 0),
+            rounded: self.style.border_radius.is_some_and(|radius| radius > 0),
         })
     }
 }
@@ -104,14 +105,12 @@ fn push_text_decoration(
             rect.origin.y + rect.height - thickness
         }
     };
-    scene.draw_decoration(SceneDecorationStyle {
-        kind,
-        band: Rect::new(Point::new(rect.origin.x, y), rect.width, thickness),
-        color,
-        opacity,
-        period: 0.0,
-        line_width: thickness,
-    });
+    let band = Rect::new(Point::new(rect.origin.x, y), rect.width, thickness);
+    scene.draw_decoration(
+        DrawDecoration::new(kind, band, color)
+            .opacity(opacity)
+            .line_width(thickness),
+    );
 }
 
 fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &NodePaint<'_>) {
@@ -123,22 +122,26 @@ fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &Node
     let stroke = super::borders::border_stroke(style, paint.theme);
     if let Some(spec) = style.background_gradient {
         let fill = gradient_fill(rect, spec, paint.theme);
-        let mut gradient_style = SceneGradientStyle::new(fill, radii, style.opacity);
+        let mut draw = DrawGradient::new(rect, fill)
+            .border_radius(radii)
+            .opacity(style.opacity);
         let mut cell = paint.cell();
         if let Some(stroke) = stroke {
-            gradient_style = gradient_style.with_stroke(stroke);
+            draw = draw.stroke(stroke);
             cell.border = paint.border(rect);
         }
-        scene.draw_gradient_for_node(id, rect, gradient_style, cell);
+        scene.draw_gradient_for_node(id, draw, cell);
     } else if style.background_color.is_some() || stroke.is_some() || paint.tone.is_some() {
         let fill = style.background_color.unwrap_or(TRANSPARENT);
-        let mut rect_style = SceneRectStyle::new(fill, radii, style.opacity);
+        let mut draw = DrawRect::new(rect, fill)
+            .border_radius(radii)
+            .opacity(style.opacity);
         let mut cell = paint.cell();
         if let Some(stroke) = stroke {
-            rect_style = rect_style.with_stroke(stroke);
+            draw = draw.stroke(stroke);
             cell.border = paint.border(rect);
         }
-        scene.draw_rect_for_node(id, rect, rect_style, cell);
+        scene.draw_rect_for_node(id, draw, cell);
     }
     super::borders::push_side_borders(scene, id, rect, paint);
 }

@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil::kernel::{Cx, NodeId, NodeType, TextContent, container, node, text};
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
 
 fn text_value(cx: &Cx, id: NodeId) -> String {
     match &cx.get(id).expect("node").kind {
@@ -23,7 +23,7 @@ fn child_ids(cx: &Cx, parent: NodeId) -> Vec<NodeId> {
 
 #[test]
 fn children_reactive_initial_build_adds_children() {
-    Runtime::scope("sigil_kernel_children_reactive_initial", || {
+    Owner::scope("sigil_kernel_children_reactive_initial", || {
         let items = signal(vec!["a", "b", "c"]);
         let mut cx = Cx::new_root();
         let parent =
@@ -37,7 +37,7 @@ fn children_reactive_initial_build_adds_children() {
 
 #[test]
 fn children_reactive_signal_mutation_patches_and_extends() {
-    Runtime::scope("sigil_kernel_children_reactive_mutate", || {
+    Owner::scope("sigil_kernel_children_reactive_mutate", || {
         let items = signal(vec!["a", "b", "c"]);
         let mut cx = Cx::new_root();
         let parent =
@@ -63,7 +63,7 @@ fn children_reactive_signal_mutation_patches_and_extends() {
 
 #[test]
 fn children_reactive_equal_builders_keep_ids() {
-    Runtime::scope("sigil_kernel_children_reactive_equal", || {
+    Owner::scope("sigil_kernel_children_reactive_equal", || {
         let items = signal(vec![1_u8, 2, 3]);
         let mut cx = Cx::new_root();
         let parent = cx.add(
@@ -87,7 +87,7 @@ fn children_reactive_equal_builders_keep_ids() {
 
 #[test]
 fn children_reactive_kind_change_remounts() {
-    Runtime::scope("sigil_kernel_children_reactive_kind", || {
+    Owner::scope("sigil_kernel_children_reactive_kind", || {
         let as_text = signal(true);
         let mut cx = Cx::new_root();
         let parent = cx.add(container().children_reactive(move || {
@@ -114,7 +114,7 @@ fn children_reactive_kind_change_remounts() {
 fn children_reactive_dispose_on_parent_removal() {
     let runs = Rc::new(Cell::new(0_u32));
 
-    Runtime::scope("sigil_kernel_children_reactive_dispose", || {
+    Owner::scope("sigil_kernel_children_reactive_dispose", || {
         let items = signal(vec!["a", "b"]);
         let runs_for_effect = Rc::clone(&runs);
         let mut cx = Cx::new_root();
@@ -144,7 +144,7 @@ fn children_reactive_dispose_on_parent_removal() {
 
 #[test]
 fn children_reactive_empty_vec_removes_all() {
-    Runtime::scope("sigil_kernel_children_reactive_empty", || {
+    Owner::scope("sigil_kernel_children_reactive_empty", || {
         let items = signal(vec!["a", "b", "c"]);
         let mut cx = Cx::new_root();
         let parent =
@@ -165,7 +165,7 @@ fn children_reactive_empty_vec_removes_all() {
 
 #[test]
 fn node_erases_mixed_children() {
-    Runtime::scope("sigil_kernel_node_mixed", || {
+    Owner::scope("sigil_kernel_node_mixed", || {
         let items = signal(0_u32);
         let mut cx = Cx::new_root();
         let parent = cx.add(container().children_reactive(move || {
@@ -179,7 +179,7 @@ fn node_erases_mixed_children() {
 
 #[test]
 fn children_keyed_reorder_keeps_ids() {
-    Runtime::scope("sigil_kernel_children_keyed_reorder", || {
+    Owner::scope("sigil_kernel_children_keyed_reorder", || {
         let items = signal(vec!["a", "b", "c"]);
         let mut cx = Cx::new_root();
         let parent = cx.add(
@@ -203,7 +203,7 @@ fn children_keyed_reorder_keeps_ids() {
 
 #[test]
 fn children_keyed_drops_missing_and_mounts_new() {
-    Runtime::scope("sigil_kernel_children_keyed_diff", || {
+    Owner::scope("sigil_kernel_children_keyed_diff", || {
         let items = signal(vec!["a", "b"]);
         let mut cx = Cx::new_root();
         let parent = cx.add(
@@ -227,7 +227,7 @@ fn children_keyed_drops_missing_and_mounts_new() {
 
 #[test]
 fn children_reactive_reorder_patches_in_place() {
-    Runtime::scope("sigil_kernel_children_reactive_reorder", || {
+    Owner::scope("sigil_kernel_children_reactive_reorder", || {
         let items = signal(vec!["a", "b", "c"]);
         let mut cx = Cx::new_root();
         let parent =
@@ -247,7 +247,7 @@ fn children_reactive_reorder_patches_in_place() {
 
 #[test]
 fn children_reactive_coalesces_rebuilds_before_mounting_captured_state() {
-    Runtime::scope("sigil_kernel_children_reactive_coalesce", || {
+    Owner::scope("sigil_kernel_children_reactive_coalesce", || {
         let value = signal(0_u32);
         let mut cx = Cx::new_root();
         let parent = cx.add(container().children_reactive(move || {
@@ -275,7 +275,7 @@ fn children_reactive_coalesces_rebuilds_before_mounting_captured_state() {
 
 #[test]
 fn children_keyed_live_text_is_node_owned() {
-    Runtime::scope("sigil_kernel_children_keyed_live_text", || {
+    Owner::scope("sigil_kernel_children_keyed_live_text", || {
         let label = signal("alpha".to_string());
         let keys = signal(vec![0_u32]);
         let mut cx = Cx::new_root();
@@ -314,7 +314,7 @@ fn children_keyed_live_text_is_node_owned() {
 
 #[test]
 fn keyed_rebuild_keeps_mounted_rows_passed_without_a_node() {
-    Runtime::scope("sigil_kernel_keyed_rebuild_keep", || {
+    Owner::scope("sigil_kernel_keyed_rebuild_keep", || {
         let mut cx = Cx::new_root();
         let parent = cx.add(container());
         let prior = Rc::new(std::cell::RefCell::new(Vec::<(u32, NodeId)>::new()));
@@ -342,7 +342,7 @@ fn keyed_rebuild_keeps_mounted_rows_passed_without_a_node() {
 #[test]
 fn a_keyed_survivor_keeps_its_node_untouched() {
     use sigil::profile::{self, BackendStatus, Counter};
-    Runtime::scope("sigil_kernel_children_keyed_keep", || {
+    Owner::scope("sigil_kernel_children_keyed_keep", || {
         let items = signal(vec![1_u8, 2, 3]);
         let mut cx = Cx::new_root();
         let parent = cx.add(container().children_keyed(move || {

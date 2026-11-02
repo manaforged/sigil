@@ -1,15 +1,11 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use crate::events::{
-    ModifiersState, MouseButton, MouseButtons, PointerEvent, PointerEventInit, PointerKind,
-    PointerPhase,
-};
+use crate::events::{MouseButton, PointerEvent, PointerPhase};
 use crate::geometry::{LogicalSize, Point};
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
 use smallvec::SmallVec;
 
-use crate::events::handlers::dispatch;
 use crate::events::hit_test::{NodePath, local_position};
 use crate::style::StyleBinding;
 
@@ -74,15 +70,9 @@ const fn mouse_event(
     button: Option<MouseButton>,
     phase: PointerPhase,
 ) -> PointerEvent {
-    PointerEvent::new(PointerEventInit {
-        position,
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-        phase,
-    })
+    let mut event = PointerEvent::new(phase, position);
+    event.button = button;
+    event
 }
 
 pub(crate) fn pointer_targets(
@@ -173,9 +163,14 @@ fn invoke_pointer(
     event.position = local_point(cx, target, global_position);
     event.target_size = target.size;
     let already_requested = event.capture_requested();
-    let _ = dispatch(cx, target.id, |handlers| {
-        handlers.invoke_pointer(event.phase, capture, event);
-    });
+    let kind = crate::events::handlers::EventKind::pointer(event.phase);
+    let _ = crate::events::handlers::fire(
+        cx,
+        target.id,
+        kind,
+        crate::events::handlers::Phase::of(capture),
+        crate::events::handlers::EventArg::Pointer(event),
+    );
     let newly_requested = !already_requested && event.capture_requested();
     event.position = previous_position;
     event.target_size = previous_size;

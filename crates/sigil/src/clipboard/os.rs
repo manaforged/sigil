@@ -1,4 +1,5 @@
-use crate::clipboard::{ClipError, Clipboard, Delivery};
+use crate::Error;
+use crate::clipboard::{Clipboard, Delivery};
 #[cfg(feature = "clipboard-image")]
 use crate::kernel::ImageSource;
 
@@ -9,11 +10,12 @@ mod platform;
 #[path = "os/web.rs"]
 mod platform;
 
+/// The OS clipboard (feature `clipboard`).
 pub struct OsClipboard;
 
 impl Clipboard for OsClipboard {
-    fn set(&self, text: &str) -> Result<Delivery, ClipError> {
-        platform::copy(text).map_err(ClipError::new)
+    fn set(&self, text: &str) -> Result<Delivery, Error> {
+        platform::copy(text)
     }
 
     fn get(&self) -> Option<String> {
@@ -25,13 +27,13 @@ impl Clipboard for OsClipboard {
     }
 
     #[cfg(feature = "clipboard-image")]
-    fn image(&self) -> Result<Option<ImageSource>, ClipError> {
-        platform::image().map_err(ClipError::new)
+    fn image(&self) -> Result<Option<ImageSource>, Error> {
+        platform::image()
     }
 
     #[cfg(feature = "clipboard-image")]
-    fn set_image(&self, image: &ImageSource) -> Result<Delivery, ClipError> {
-        platform::copy_image(image).map_err(ClipError::new)
+    fn set_image(&self, image: &ImageSource) -> Result<Delivery, Error> {
+        platform::copy_image(image)
     }
 }
 

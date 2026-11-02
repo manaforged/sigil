@@ -9,10 +9,7 @@
 
 use sigil::prelude::*;
 
-use sigil_kittest::{
-    InteractionMode, assert_goldens_differ, assert_rendered_matches_golden, golden_path,
-    render_widget_to_png_focus_descendant, render_widget_to_png_stub,
-};
+use sigil_kittest::{Golden, Harness, InteractionMode};
 
 const DELTA_PCT: f32 = 0.5;
 

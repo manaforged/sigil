@@ -28,7 +28,7 @@ button("Increment").activate(move || count.set(count.peek() + 1));
 
 Every signal, effect, derived, interval, and subscription belongs to a reactive owner. When an owner is disposed, its children dispose first. Then the `on_cleanup` hooks run in last-in-first-out order. Then the owner's slots go away.
 
-- `Runtime::scope("name", || { ... })` creates a root. `run` wraps the app in one. Tests use it.
+- `Owner::scope("name", || { ... })` creates a root. `run` wraps the app in one. Tests use it.
 - `Cx::add` creates one owner per node. Removing the node disposes the owner and its subtree.
 - Each effect run creates an owner for that run. The next run disposes the previous one, so subscriptions taken inside the closure stop first.
 
@@ -42,6 +42,6 @@ A `Signal` is a `Copy` arena key. After dispose, `get` and `set` panic with a st
 
 `task(make)` returns a `Copy` `Task` whose status starts `Status::Idle`. Each `run()` writes `Pending`, aborts the previous run, and spawns `make()`. A result writes only if no later run has started, so a replaced run's result drops even when it was already queued.
 
-Background work must not touch the arena. It holds an `OwnerHandle`, which carries identity only and is `Send + Sync`. Completions post a closure through the dispatcher. The closure runs on the main thread with that owner current, or it is dropped if the owner is gone.
+Background work must not touch the arena. It holds an `Owner`, which carries identity only and is `Send + Sync`. Completions post a closure through the dispatcher. The closure runs on the main thread with that owner current, or it is dropped if the owner is gone.
 
 Use `task` for work that runs on demand and may run again, and `spawn` for a future that starts now and owns state it cannot rebuild. A worker that already exists writes through `signal_writer(signal)`, which keeps the current owner and lets the worker write repeatedly, or sends on a channel that `on_message` drains on the main thread.

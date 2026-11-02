@@ -1,25 +1,54 @@
 #![allow(clippy::float_cmp)]
 
 use crate::kernel::{Cx, NodeBuilder, container};
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 use super::{Orientation, splitter};
-use crate::geometry::{LogicalSize, Size};
-use crate::kernel::TextContent;
-use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use crate::widgets::layout_ext::WidgetLayoutExt;
+use crate::geometry::Size;
+use crate::layout::{Dimension, FlexDirection, LayoutEngine, LayoutStyle};
+use crate::widgets::Widget;
 
-struct Measure;
+#[test]
+fn pane_width_reaches_the_splitter_root() {
+    Owner::scope("pane-width", || {
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            splitter(Orientation::Horizontal)
+                .pane(container())
+                .width(180.0)
+                .commit(),
+        );
+        let style = cx
+            .get(root)
+            .expect("root")
+            .get_extension::<LayoutStyle>()
+            .expect("layout");
+        assert_eq!(style.data().size.width, Dimension::Px(180.0));
+    });
+}
 
-impl TextMeasure for Measure {
-    fn measure(&self, _source: &TextContent, _space: Size) -> LogicalSize {
-        LogicalSize::default()
-    }
+#[test]
+fn map_node_keeps_the_splitter_row() {
+    Owner::scope("splitter-map-node", || {
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            splitter(Orientation::Horizontal)
+                .child(container(), 100.0)
+                .child(container(), 100.0)
+                .map_node(|node| node),
+        );
+        let style = cx
+            .get(root)
+            .expect("root")
+            .get_extension::<LayoutStyle>()
+            .expect("layout");
+        assert_eq!(style.data().flex_direction, FlexDirection::Row);
+    });
 }
 
 #[test]
 fn fixed_pane_and_handle_keep_their_width_with_filling_content() {
-    Runtime::scope("splitter-fixed-pane", || {
+    Owner::scope("splitter-fixed-pane", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             splitter(Orientation::Horizontal)
@@ -30,9 +59,11 @@ fn fixed_pane_and_handle_keep_their_width_with_filling_content() {
                 .pane(container().layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0)))
                 .grow(1.0)
                 .min(320.0)
+                .commit()
                 .layout(LayoutStyle::flex_row().fill()),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(Measure));
+        let mut layout =
+            LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
         layout
             .compute(&mut cx, root, Size::fixed(1280.0, 900.0))
             .expect("layout");
@@ -52,7 +83,7 @@ fn fixed_pane_and_handle_keep_their_width_with_filling_content() {
 
 #[test]
 fn splitter_and_pane_builders_convert_to_nodes() {
-    Runtime::scope("splitter-into", || {
+    Owner::scope("splitter-into", || {
         let two = || {
             splitter(Orientation::Horizontal)
                 .child(container(), 120.0)

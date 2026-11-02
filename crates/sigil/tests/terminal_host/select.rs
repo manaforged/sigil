@@ -1,17 +1,26 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil::clipboard::{ClipError, Clipboard, Delivery};
-use sigil::events::{EventRouter, PointerPhase};
-use sigil::prelude::NodeEventsExt;
-use sigil::terminal::pointer;
+use sigil::clipboard::{Clipboard, Delivery};
+use sigil::events::{Event, PointerPhase};
+use sigil::prelude::Widget;
+use sigil::terminal::cell_point;
 
 use super::*;
+
+fn pointer(phase: PointerPhase, col: u16, row: u16) -> Event {
+    let at = cell_point(col, row);
+    match phase {
+        PointerPhase::Down => Event::pointer_down(at),
+        PointerPhase::Up => Event::pointer_up(at),
+        _ => Event::pointer_drag(at),
+    }
+}
 
 struct Recorder(Rc<RefCell<Vec<String>>>);
 
 impl Clipboard for Recorder {
-    fn set(&self, text: &str) -> Result<Delivery, ClipError> {
+    fn set(&self, text: &str) -> Result<Delivery, sigil::Error> {
         self.0.borrow_mut().push(text.to_owned());
         Ok(Delivery::Confirmed)
     }
@@ -24,34 +33,21 @@ impl Clipboard for Recorder {
 fn drag_copies(from: u16, to: u16) -> Option<String> {
     let copied = Rc::new(RefCell::new(Vec::new()));
     sigil::clipboard::install(Recorder(Rc::clone(&copied)));
-    let mut host = sigil::Host::cells();
+    let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
     host.mount(|| {
         container()
             .selectable_text(true)
             .child(text("The quick brown fox"))
     });
-    let mut router = EventRouter::new();
-    step(&mut host, &mut router, [], 40, 4);
+    step(&mut host, [], 40, 4);
     for phase in [PointerPhase::Move, PointerPhase::Down] {
-        step(&mut host, &mut router, [pointer(phase, from, 0)], 40, 4);
+        step(&mut host, [pointer(phase, from, 0)], 40, 4);
     }
     let middle = u16::midpoint(from, to);
     for col in [middle, to] {
-        step(
-            &mut host,
-            &mut router,
-            [pointer(PointerPhase::Move, col, 0)],
-            40,
-            4,
-        );
+        step(&mut host, [pointer(PointerPhase::Move, col, 0)], 40, 4);
     }
-    step(
-        &mut host,
-        &mut router,
-        [pointer(PointerPhase::Up, to, 0)],
-        40,
-        4,
-    );
+    step(&mut host, [pointer(PointerPhase::Up, to, 0)], 40, 4);
     copied.borrow().last().cloned()
 }
 
@@ -75,7 +71,7 @@ fn a_drag_copy_reports_what_it_copied() {
     let copied = Rc::new(RefCell::new(Vec::new()));
     sigil::clipboard::install(Recorder(Rc::new(RefCell::new(Vec::new()))));
     let seen = Rc::clone(&copied);
-    let mut host = sigil::Host::cells();
+    let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
     host.mount(move || {
         let seen = Rc::clone(&seen);
         container()
@@ -85,8 +81,7 @@ fn a_drag_copy_reports_what_it_copied() {
             })
             .child(text("The quick brown fox"))
     });
-    let mut router = EventRouter::new();
-    step(&mut host, &mut router, [], 40, 4);
+    step(&mut host, [], 40, 4);
     for (phase, col) in [
         (PointerPhase::Move, 4),
         (PointerPhase::Down, 4),
@@ -94,62 +89,43 @@ fn a_drag_copy_reports_what_it_copied() {
         (PointerPhase::Move, 8),
         (PointerPhase::Up, 8),
     ] {
-        step(&mut host, &mut router, [pointer(phase, col, 0)], 40, 4);
+        step(&mut host, [pointer(phase, col, 0)], 40, 4);
     }
     assert_eq!(copied.borrow().as_slice(), &[("quick".to_owned(), true)]);
 }
 
 #[test]
 fn a_drag_in_a_following_list_copies_the_row_it_started_on() {
-    sigil::reactive::Runtime::scope(
+    sigil::reactive::Owner::scope(
         "a_drag_in_a_following_list_copies_the_row_it_started_on",
         || {
             use sigil::prelude::*;
-            use sigil::widgets::virtual_list_bind;
+            use sigil::widgets::virtual_list;
             let copied = Rc::new(RefCell::new(Vec::new()));
             sigil::clipboard::install(Recorder(Rc::clone(&copied)));
             let lines = signal((0..30).map(|at| format!("line {at}")).collect::<Vec<_>>());
-            let mut host = sigil::Host::cells();
+            let mut host = sigil::Host::new(sigil::kernel::HostMode::Cell);
             host.mount(move || {
                 container()
                     .selectable_text(true)
                     .layout(LayoutStyle::flex_column().fill())
                     .child(
-                        virtual_list_bind(lines, |_, line: &String| text(line.clone()).nowrap())
+                        virtual_list(lines, |_, line: &String| text(line.clone()).nowrap())
                             .row_height(8.0)
                             .follow_end(true)
                             .viewport_fill(),
                     )
             });
-            let mut router = EventRouter::new();
-            step(&mut host, &mut router, [], 40, 6);
-            let before = step(&mut host, &mut router, [], 40, 6).text();
+            step(&mut host, [], 40, 6);
+            let before = step(&mut host, [], 40, 6).text();
             let start = before.lines().nth(1).unwrap_or_default().trim().to_owned();
             for phase in [PointerPhase::Move, PointerPhase::Down] {
-                step(&mut host, &mut router, [pointer(phase, 0, 1)], 40, 6);
+                step(&mut host, [pointer(phase, 0, 1)], 40, 6);
             }
-            step(
-                &mut host,
-                &mut router,
-                [pointer(PointerPhase::Move, 5, 1)],
-                40,
-                6,
-            );
+            step(&mut host, [pointer(PointerPhase::Move, 5, 1)], 40, 6);
             lines.update(|lines| lines.extend((30..35).map(|at| format!("line {at}"))));
-            step(
-                &mut host,
-                &mut router,
-                [pointer(PointerPhase::Move, 7, 1)],
-                40,
-                6,
-            );
-            step(
-                &mut host,
-                &mut router,
-                [pointer(PointerPhase::Up, 7, 1)],
-                40,
-                6,
-            );
+            step(&mut host, [pointer(PointerPhase::Move, 7, 1)], 40, 6);
+            step(&mut host, [pointer(PointerPhase::Up, 7, 1)], 40, 6);
             assert!(start.starts_with("line "), "{before}");
             assert_eq!(
                 copied.borrow().last().map(|text| text.trim().to_owned()),

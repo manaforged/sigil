@@ -10,13 +10,13 @@ pub(super) enum EntryKind {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(super) struct Entry {
+pub(super) struct FileEntry {
     pub(super) kind: EntryKind,
     pub(super) name: String,
     pub(super) path: PathBuf,
 }
 
-impl Entry {
+impl FileEntry {
     pub(super) fn title(&self) -> String {
         match self.kind {
             EntryKind::Parent => String::from(".."),
@@ -33,8 +33,8 @@ pub(super) fn start_dir(directory: Option<&Path>) -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("/"))
 }
 
-pub(super) fn list(dir: &Path, kind: PickKind, filters: &[FileFilter]) -> Vec<Entry> {
-    let mut entries: Vec<Entry> = std::fs::read_dir(dir)
+pub(super) fn list(dir: &Path, kind: PickKind, filters: &[FileFilter]) -> Vec<FileEntry> {
+    let mut entries: Vec<FileEntry> = std::fs::read_dir(dir)
         .into_iter()
         .flatten()
         .flatten()
@@ -46,7 +46,7 @@ pub(super) fn list(dir: &Path, kind: PickKind, filters: &[FileFilter]) -> Vec<En
                 EntryKind::File
             };
             let name = item.file_name().to_string_lossy().into_owned();
-            Entry {
+            FileEntry {
                 kind: entry_kind,
                 name,
                 path,
@@ -58,7 +58,7 @@ pub(super) fn list(dir: &Path, kind: PickKind, filters: &[FileFilter]) -> Vec<En
     if let Some(parent) = dir.parent() {
         entries.insert(
             0,
-            Entry {
+            FileEntry {
                 kind: EntryKind::Parent,
                 name: String::from(".."),
                 path: parent.to_path_buf(),
@@ -68,7 +68,7 @@ pub(super) fn list(dir: &Path, kind: PickKind, filters: &[FileFilter]) -> Vec<En
     entries
 }
 
-fn shown(entry: &Entry, kind: PickKind, filters: &[FileFilter]) -> bool {
+fn shown(entry: &FileEntry, kind: PickKind, filters: &[FileFilter]) -> bool {
     match entry.kind {
         EntryKind::Parent | EntryKind::Dir => true,
         EntryKind::File => kind != PickKind::Folder && matches_filters(&entry.path, filters),

@@ -8,26 +8,23 @@ pub(crate) mod binding_animate;
 pub(crate) mod binding_animate_color;
 pub(crate) mod clock;
 pub(crate) mod config;
-pub(crate) mod keyframes;
 pub(crate) mod motion;
-pub(crate) mod motion_state;
-pub(crate) mod playback;
 pub(crate) mod registry;
 pub(crate) mod state;
 pub(crate) mod style;
 
-pub use animator::{Animator, AnimatorStatus};
-#[cfg(any(test, feature = "kittest"))]
-pub use binding_animate::ANIMATION_REGISTRY_MISS;
-pub use binding_animate::{
-    AttachedAnimator, AttachedAnimators, AttachedColorAnimator, install_animators,
-    install_animators_themed,
-};
-pub use binding_animate_color::{lerp_rgba8, linear_channel_to_srgb, srgb_channel_to_linear};
+pub use animator::Animator;
+pub use binding_animate_color::{linear_channel_to_srgb, srgb_channel_to_linear};
+#[cfg(test)]
 pub(crate) use clock::tick_clocks;
 pub use clock::{clock, running_clocks};
-pub use config::AnimationConfig;
+pub(crate) use config::AnimationConfig;
+#[cfg(feature = "kittest")]
+#[doc(hidden)]
 pub use motion::MotionPrefs;
-pub use playback::Playback;
-pub use registry::{config, presets};
+#[cfg(not(feature = "kittest"))]
+pub(crate) use motion::MotionPrefs;
+pub use motion::reduced_motion;
+pub(crate) use registry::config;
+pub use registry::presets;
 pub use state::{active_count, tick};

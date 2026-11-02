@@ -1,7 +1,7 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use crate::layout::resolve::{NodeEdges, clamp, dim_to_border_box};
-use crate::layout::style_data::{Dimension, Size, StyleData};
+use crate::layout::style_data::{Axes, Dimension, StyleData};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct AxisIntent {
@@ -13,7 +13,7 @@ pub(crate) struct AxisIntent {
 impl AxisIntent {
     fn new(
         style: &StyleData,
-        axis: fn(Size<Dimension>) -> Dimension,
+        axis: fn(Axes<Dimension>) -> Dimension,
         cb: f32,
         chrome: f32,
     ) -> Self {
@@ -37,7 +37,7 @@ pub(crate) struct SizeIntent {
 }
 
 impl SizeIntent {
-    pub(crate) fn build(style: &StyleData, cb: Size<f32>, edges: &NodeEdges) -> Self {
+    pub(crate) fn build(style: &StyleData, cb: Axes<f32>, edges: &NodeEdges) -> Self {
         Self {
             w: AxisIntent::new(style, |s| s.width, cb.width, edges.inline_chrome()),
             h: AxisIntent::new(style, |s| s.height, cb.height, edges.block_chrome()),

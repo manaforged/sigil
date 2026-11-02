@@ -30,9 +30,9 @@ text(move || format!("Count: {}", count.get())).nowrap();
 
 ## image
 
-`image(source: ImageSource) -> ImageBuilder` builds an image node. `image_rgba` and `image_bytes` return the same `ImageBuilder`.
+`image(source: ImageSource) -> ImageBuilder` builds an image node.
 
-`image_rgba(width, height, rgba: Vec<u8>) -> Option<ImageBuilder>`: decodes raw RGBA8 into an `ImageSource`; returns `None` on bad input. `image_bytes(encoded: &[u8]) -> Option<ImageBuilder>` decodes PNG/JPEG/ etc. through the `image` crate and requires the `image-decode` feature.
+`ImageSource::from_rgba8(width, height, rgba: Vec<u8>) -> Option<ImageSource>` takes raw RGBA8 and returns `None` on bad input. `ImageSource::decode(encoded: &[u8]) -> Option<ImageSource>` decodes PNG, JPEG, and other formats through the `image` crate and requires the `image-decode` feature.
 
 Builder options: `.alt(text)` (accessibility name), `.fit(ObjectFit::Fill|Contain|Cover)`, `.crop(top, height)` to slice a vertical band, plus the usual `.width()`/`.height()` layout overrides.
 
@@ -77,7 +77,7 @@ Content nodes have one visual state: the visual catalog captures only the defaul
 | --- | --- | --- |
 | `text` | `Label` (change it with `.role()`) | The text, or `.label(name)` |
 | `icon` | `Image` with `.label()`, else `GenericContainer` | `.label(name)` |
-| `image_rgba`, `image_bytes` | Image node | `.alt(text)` |
+| `image` | Image node | `.alt(text)` |
 | `path` | Image node | None |
 | `chart` | `Figure` | "Chart" |
 | `avatar` | `Image` | The initials |

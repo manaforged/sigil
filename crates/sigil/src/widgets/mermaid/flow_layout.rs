@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::flow::{Edge, GAP_COLS, GAP_ROWS, Graph, Node, Rect, SPACING, Shape};
+use super::flow::{FlowEdge, FlowNode, GAP_COLS, GAP_ROWS, Graph, GridRect, NodeShape, SPACING};
 
 pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usize>) {
     let mut edges = Vec::new();
@@ -13,16 +13,16 @@ pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usi
         }
         let mut previous = edge.from;
         for rank in from_rank.saturating_add(1)..to_rank {
-            graph.nodes.push(Node {
+            graph.nodes.push(FlowNode {
                 id: String::new(),
                 label: Vec::new(),
-                shape: Shape::Box,
+                shape: NodeShape::Box,
                 dummy: true,
                 dashed: edge.dashed,
             });
             ranks.push(rank);
             let dummy = graph.nodes.len().saturating_sub(1);
-            edges.push(Edge {
+            edges.push(FlowEdge {
                 from: previous,
                 to: dummy,
                 label: if previous == edge.from {
@@ -35,7 +35,7 @@ pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usi
             });
             previous = dummy;
         }
-        edges.push(Edge {
+        edges.push(FlowEdge {
             from: previous,
             to: edge.to,
             label: String::new(),
@@ -47,7 +47,7 @@ pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usi
     (graph, ranks)
 }
 
-pub(super) fn size(node: &Node) -> (usize, usize) {
+pub(super) fn size(node: &FlowNode) -> (usize, usize) {
     if node.dummy {
         return (1, 1);
     }
@@ -58,7 +58,7 @@ pub(super) fn size(node: &Node) -> (usize, usize) {
         .max()
         .unwrap_or(0);
     let extra = match node.shape {
-        Shape::Circle | Shape::Stadium | Shape::Subroutine | Shape::Flag => 2,
+        NodeShape::Circle | NodeShape::Stadium | NodeShape::Subroutine | NodeShape::Flag => 2,
         _ => 0,
     };
     (
@@ -161,7 +161,7 @@ impl Graph {
             .unwrap_or_else(|| index.saturating_mul(1000))
     }
 
-    pub(super) fn place(&self, ranks: &[usize], layers: &[Vec<usize>]) -> Vec<Rect> {
+    pub(super) fn place(&self, ranks: &[usize], layers: &[Vec<usize>]) -> Vec<GridRect> {
         let sizes: Vec<(usize, usize)> = self.nodes.iter().map(size).collect();
         let vertical = self.dir.vertical();
         let oriented = |node: usize| {
@@ -197,7 +197,7 @@ impl Graph {
                 } else {
                     ((offset, long), (at, wide))
                 };
-                Rect { x, y, w, h }
+                GridRect { x, y, w, h }
             })
             .collect()
     }

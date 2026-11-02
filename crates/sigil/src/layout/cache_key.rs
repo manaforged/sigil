@@ -195,7 +195,12 @@ impl Node {
         self.get_extension::<LayoutStyle>().is_some_and(|style| {
             matches!(
                 style.data().size.width,
-                Dimension::Px(_) | Dimension::Percent(_) | Dimension::Fill | Dimension::Text(_)
+                Dimension::Px(_)
+                    | Dimension::Percent(_)
+                    | Dimension::Fill
+                    | Dimension::Rows(_)
+                    | Dimension::Cols(_)
+                    | Dimension::Em(_)
             )
         })
     }

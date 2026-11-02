@@ -1,8 +1,9 @@
 use super::{LayoutForest, LocalId};
-use crate::layout::{LayoutError, StyleData};
+use crate::Error;
+use crate::layout::StyleData;
 
 impl LayoutForest {
-    pub(crate) fn free(&mut self, id: LocalId) -> Result<(), LayoutError> {
+    pub(crate) fn free(&mut self, id: LocalId) -> Result<(), Error> {
         self.live_mut(id)?;
         self.detach(id);
         let entry = self.live_mut(id)?;
@@ -24,7 +25,7 @@ impl LayoutForest {
     }
 
     #[cfg(any(test, feature = "kittest"))]
-    pub(crate) fn attach(&mut self, parent: LocalId, child: LocalId) -> Result<(), LayoutError> {
+    pub(crate) fn attach(&mut self, parent: LocalId, child: LocalId) -> Result<(), Error> {
         self.live_mut(child)?;
         self.live_mut(parent)?.children.push(child);
         self.adopt(parent, &[child]);
@@ -36,7 +37,7 @@ impl LayoutForest {
         &mut self,
         parent: LocalId,
         children: &[LocalId],
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         for child in children {
             self.live_mut(*child)?;
         }

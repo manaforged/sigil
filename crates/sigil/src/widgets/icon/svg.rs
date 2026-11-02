@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
-use crate::icons::{BakedIcon, IconBaker};
+use crate::icons::{BakedIcon, bake};
 use crate::kernel::{
     Cx, ImageRaster, ImageSource, IntoNode, NodeId, ThemedImage, container, image,
 };
@@ -41,7 +41,7 @@ fn baked(svg: &str, pixels: u32) -> Option<(u64, Rc<BakedIcon>)> {
             map.clear();
         }
         map.entry(key)
-            .or_insert_with(|| IconBaker::new().bake(svg, pixels, pixels).ok().map(Rc::new))
+            .or_insert_with(|| bake(svg, pixels, pixels).ok().map(Rc::new))
             .clone()
             .map(|icon| (key, icon))
     })

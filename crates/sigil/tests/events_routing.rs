@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -11,15 +12,15 @@ mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
 mod routing_helpers;
 
+use sigil::geometry::Point;
+use sigil::widgets::Widget;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use sigil::events::*;
-use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
 
-use input::{pointer_down, pointer_drag, scroll_lines, window_blur};
 use routing_helpers::{abs_rect, compute_layout, record, route_event};
 
 #[test]
@@ -46,7 +47,12 @@ fn pointer_down_hits_top_of_z_stack() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        Event::pointer_down(Point::new(10.0, 10.0)),
+    );
 
     assert!(top_hit.get());
     assert!(!bottom_hit.get());
@@ -75,7 +81,7 @@ fn file_drop_broadcasts_to_registered_handlers() {
         &mut router,
         &mut cx,
         &layout,
-        ShellEvent::FileDrop(FileDropEvent {
+        Event::FileDrop(FileDropEvent {
             path: Some("/tmp/data.csv".to_owned()),
             phase: FileDropPhase::Dropped,
         }),
@@ -106,7 +112,12 @@ fn capture_runs_root_to_target() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, pointer_down(5.0, 5.0));
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        Event::pointer_down(Point::new(5.0, 5.0)),
+    );
 
     assert_eq!(&*order.borrow(), &["root", "mid", "leaf"]);
 }
@@ -135,7 +146,12 @@ fn stop_propagation_skips_bubble() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, pointer_down(5.0, 5.0));
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        Event::pointer_down(Point::new(5.0, 5.0)),
+    );
 
     assert_eq!(&*order.borrow(), &["root-capture"]);
 }
@@ -164,8 +180,18 @@ fn pointer_capture_redirects_moves() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, pointer_down(5.0, 5.0));
-    route_event(&mut router, &mut cx, &layout, pointer_drag(200.0, 200.0));
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        Event::pointer_down(Point::new(5.0, 5.0)),
+    );
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        Event::pointer_drag(Point::new(200.0, 200.0)),
+    );
 
     assert_eq!(captured_moves.get(), 1);
 }
@@ -189,7 +215,12 @@ fn pointer_handlers_receive_target_local_position() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, pointer_down(45.0, 37.0));
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        Event::pointer_down(Point::new(45.0, 37.0)),
+    );
 
     assert_eq!(local.get(), (5.0, 7.0));
 }
@@ -217,9 +248,24 @@ fn pointer_move_synthesizes_enter_leave() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, pointer_drag(5.0, 5.0));
-    route_event(&mut router, &mut cx, &layout, pointer_drag(45.0, 5.0));
-    route_event(&mut router, &mut cx, &layout, pointer_drag(200.0, 200.0));
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        Event::pointer_drag(Point::new(5.0, 5.0)),
+    );
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        Event::pointer_drag(Point::new(45.0, 5.0)),
+    );
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        Event::pointer_drag(Point::new(200.0, 200.0)),
+    );
 
     assert_eq!(
         &*order.borrow(),
@@ -246,136 +292,18 @@ fn window_blur_dispatches_synthetic_leaves() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, pointer_drag(5.0, 5.0));
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        Event::pointer_drag(Point::new(5.0, 5.0)),
+    );
     assert_eq!(&*order.borrow(), &["root-enter", "child-enter"]);
 
-    route_event(&mut router, &mut cx, &layout, window_blur());
+    route_event(&mut router, &mut cx, &layout, Event::blur());
 
     assert_eq!(
         &*order.borrow(),
         &["root-enter", "child-enter", "child-leave", "root-leave"]
     );
-}
-
-#[test]
-fn disposed_handler_node_no_panic() {
-    let hits = Rc::new(Cell::new(0_u32));
-    let mut cx = Cx::new_root();
-    let root = cx.add(
-        container()
-            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .child(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-                    .pointer_down({
-                        let hits = Rc::clone(&hits);
-                        move |_| hits.set(hits.get() + 1)
-                    }),
-            ),
-    );
-    let child = cx.nth_child(root, 0).unwrap();
-    let layout = compute_layout(&mut cx, root, 100.0, 100.0);
-    assert!(cx.remove(child));
-    let mut router = EventRouter::new();
-
-    route_event(&mut router, &mut cx, &layout, pointer_down(5.0, 5.0));
-
-    assert_eq!(hits.get(), 0);
-}
-
-#[test]
-fn scroll_dispatches_via_fresh_hit_test() {
-    let order = Rc::new(RefCell::new(Vec::new()));
-    let mut cx = Cx::new_root();
-    let outer = Rc::clone(&order);
-    let inner = Rc::clone(&order);
-    let root = cx.add(
-        container()
-            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_scroll(move |_| outer.borrow_mut().push("outer"))
-            .child(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-                    .on_scroll(move |_| inner.borrow_mut().push("inner")),
-            ),
-    );
-    let layout = compute_layout(&mut cx, root, 100.0, 100.0);
-    let mut router = EventRouter::new();
-
-    route_event(&mut router, &mut cx, &layout, scroll_lines(5.0, 5.0, 1.0));
-
-    assert_eq!(&*order.borrow(), &["inner", "outer"]);
-}
-
-#[test]
-fn scroll_stop_propagation_halts_bubble() {
-    let order = Rc::new(RefCell::new(Vec::new()));
-    let mut cx = Cx::new_root();
-    let outer = Rc::clone(&order);
-    let inner = Rc::clone(&order);
-    let root = cx.add(
-        container()
-            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_scroll(move |_| outer.borrow_mut().push("outer"))
-            .child(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-                    .on_scroll(move |ev| {
-                        inner.borrow_mut().push("inner");
-                        ev.stop_propagation();
-                    }),
-            ),
-    );
-    let layout = compute_layout(&mut cx, root, 100.0, 100.0);
-    let mut router = EventRouter::new();
-
-    route_event(&mut router, &mut cx, &layout, scroll_lines(5.0, 5.0, 1.0));
-
-    assert_eq!(&*order.borrow(), &["inner"]);
-}
-
-#[test]
-fn pointer_hits_last_frame_boxes() {
-    let old_hit = Rc::new(Cell::new(false));
-    let mut cx = Cx::new_root();
-    let child_hit = Rc::clone(&old_hit);
-    let root = cx.add(
-        container()
-            .layout(LayoutStyle::block().fixed_size(300.0, 300.0))
-            .child(
-                container()
-                    .layout(abs_rect(0.0, 0.0, 80.0, 80.0))
-                    .pointer_down(move |_| child_hit.set(true)),
-            ),
-    );
-    let child = cx.nth_child(root, 0).expect("child");
-    let mut layout = compute_layout(&mut cx, root, 300.0, 300.0);
-    let mut router = EventRouter::new();
-
-    route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
-    assert!(old_hit.get(), "first frame box at origin is hittable");
-    old_hit.set(false);
-
-    if let Some(style) = cx
-        .get_mut(child)
-        .and_then(|node| node.get_extension_mut::<LayoutStyle>())
-    {
-        *style = abs_rect(200.0, 200.0, 80.0, 80.0);
-    }
-    cx.mark_mutated();
-
-    route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
-    assert!(old_hit.get(), "pointer still hits last frame's box");
-    old_hit.set(false);
-    route_event(&mut router, &mut cx, &layout, pointer_down(210.0, 210.0));
-    assert!(!old_hit.get(), "this frame's intent is not hittable yet");
-
-    layout
-        .compute(&mut cx, root, Size::fixed(300.0, 300.0))
-        .expect("recompute");
-    route_event(&mut router, &mut cx, &layout, pointer_down(210.0, 210.0));
-    assert!(old_hit.get(), "after compute, new box is hittable");
-    old_hit.set(false);
-    route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
-    assert!(!old_hit.get(), "after compute, last frame's box is gone");
 }

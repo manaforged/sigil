@@ -1,12 +1,13 @@
 use crate::events::ScrollEvent;
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
+use crate::widgets::Widget;
 
-use super::render::{GutterCtx, RowCtx, gutter_width, order, rows};
-use super::{ROW_BUFFER, Surface, Window};
+use super::render::{EditRowCtx, GutterCtx, gutter_width, order, rows};
+use super::{EditSurface, LineWindow, ROW_BUFFER};
 
-pub(super) fn scroll_body(s: Surface, row_h: f32) -> NodeBuilder {
+pub(super) fn scroll_body(s: EditSurface, row_h: f32) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_column()
@@ -28,7 +29,7 @@ pub(super) fn scroll_body(s: Surface, row_h: f32) -> NodeBuilder {
                 width: gutter_width(lines.len()),
             });
             let diagnostics = s.diagnostics.map(|d| d.get()).unwrap_or_default();
-            let win = Window {
+            let win = LineWindow {
                 start: s.start.get(),
                 budget: visible_rows(s.viewport.get().1, row_h) + ROW_BUFFER,
                 row_h,
@@ -37,7 +38,7 @@ pub(super) fn scroll_body(s: Surface, row_h: f32) -> NodeBuilder {
                 &lines,
                 &hl,
                 win,
-                RowCtx {
+                EditRowCtx {
                     caret,
                     caret_shown: s.caret_shown.get(),
                     selection: sel,

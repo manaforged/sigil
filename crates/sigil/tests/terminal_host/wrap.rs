@@ -28,7 +28,7 @@ fn wrapped_label_inside_modal_band_wraps() {
     use sigil::layout::LayoutStyle;
     use sigil::reactive::signal;
     use sigil::widgets::modal;
-    sigil::reactive::Runtime::scope("tui-modal-wrap", || {
+    sigil::reactive::Owner::scope("tui-modal-wrap", || {
         let body = "x".repeat(80);
         let open = signal(true);
         let out = present(

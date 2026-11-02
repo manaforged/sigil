@@ -29,7 +29,7 @@ pub(super) const fn split(_: &mut SceneBuilder, _: NodeId, run: GlyphRun) -> Gly
 
 #[cfg(feature = "scene")]
 pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> GlyphRun {
-    use crate::scene::command::{CellRect, SceneRectStyle};
+    use crate::scene::command::{CellRect, DrawRect};
     use crate::scene::corner_radii::CornerRadii;
     let Some(runs) = run.style.runs.clone() else {
         return run;
@@ -44,9 +44,13 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
         let face = &text_run.face;
         let rects = run_rects(&paragraph, &run, text_run.start, text_run.end);
         if let Some(background) = ink.background {
-            let style = SceneRectStyle::new(background, CornerRadii::uniform(3.0), run.opacity);
+            let style = |rect: crate::geometry::Rect| {
+                DrawRect::new(rect, background)
+                    .border_radius(CornerRadii::uniform(3.0))
+                    .opacity(run.opacity)
+            };
             for rect in &rects {
-                scene.draw_rect_for_node(id, *rect, style, CellRect::default());
+                scene.draw_rect_for_node(id, style(*rect), CellRect::default());
             }
         }
         if face.link.is_some() {
@@ -102,17 +106,15 @@ fn underline(
     run: &GlyphRun,
 ) {
     use crate::geometry::{Point, Rect};
-    use crate::scene::command::{DecorationKind, SceneDecorationStyle};
+    use crate::scene::command::{DecorationKind, DrawDecoration};
     let thickness = (run.style.font_size * 0.06).max(1.0);
     for rect in rects {
         let y = rect.origin.y + rect.height - thickness * 2.0;
-        scene.draw_decoration(SceneDecorationStyle {
-            kind: DecorationKind::Underline,
-            band: Rect::new(Point::new(rect.origin.x, y), rect.width, thickness),
-            color,
-            opacity: run.opacity,
-            period: 0.0,
-            line_width: thickness,
-        });
+        let band = Rect::new(Point::new(rect.origin.x, y), rect.width, thickness);
+        scene.draw_decoration(
+            DrawDecoration::new(DecorationKind::Underline, band, color)
+                .opacity(run.opacity)
+                .line_width(thickness),
+        );
     }
 }

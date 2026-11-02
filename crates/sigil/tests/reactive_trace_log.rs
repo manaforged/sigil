@@ -6,7 +6,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::reactive::{__trace_test_hook, Runtime, effect, effect_named, signal};
+use sigil::reactive::{__trace_test_hook, Owner, effect, effect_named, signal};
 
 struct CaptureGuard;
 
@@ -26,7 +26,7 @@ fn with_capture<R>(f: impl FnOnce() -> R) -> R {
 #[test]
 fn capture_disabled_records_nothing() {
     __trace_test_hook::reset_last_line();
-    Runtime::scope("trace::off", || {
+    Owner::scope("trace::off", || {
         let n = signal(0_i32);
         effect(move || {
             let _ = n.get();
@@ -42,7 +42,7 @@ fn capture_disabled_records_nothing() {
 #[test]
 fn effect_fire_records_expected_line_shape() {
     with_capture(|| {
-        Runtime::scope("trace::shape", || {
+        Owner::scope("trace::shape", || {
             let a = signal(1_i32);
             let b = signal(2_i32);
             let seen = Rc::new(Cell::new(0));
@@ -88,7 +88,7 @@ fn effect_fire_records_expected_line_shape() {
 #[test]
 fn unnamed_effect_records_default_name() {
     with_capture(|| {
-        Runtime::scope("trace::unnamed", || {
+        Owner::scope("trace::unnamed", || {
             let n = signal(0_i32);
             __trace_test_hook::reset_last_line();
             effect(move || {
@@ -110,7 +110,7 @@ fn batched_writes_report_pending_queue_depth() {
     use sigil::reactive::batch;
 
     with_capture(|| {
-        Runtime::scope("trace::batched", || {
+        Owner::scope("trace::batched", || {
             let a = signal(0_i32);
             let b = signal(0_i32);
             effect_named("reader.a", move || {

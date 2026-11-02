@@ -5,7 +5,7 @@ pub use sigil::renderer::capture::FORMAT;
 use sigil::renderer::capture::{
     CaptureExtent, ImageRenderer, ImageTarget, capture_texture, read_texture, render_to_image,
 };
-use sigil::renderer::{OffscreenTarget, RendererError, WgpuRenderer};
+use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::CommandScene;
 use sigil::style::Color;
 
@@ -75,7 +75,7 @@ pub fn headless_renderer() -> Result<Option<WgpuRenderer>, Error> {
     let Some((adapter, (device, queue))) = shared()? else {
         return Ok(None);
     };
-    let mut renderer = WgpuRenderer::new().map_err(|err| Error::Render(err.to_string()))?;
+    let mut renderer = WgpuRenderer::new();
     renderer.attach_headless_for_tests(adapter, device, queue);
     Ok(Some(renderer))
 }
@@ -83,8 +83,8 @@ pub fn headless_renderer() -> Result<Option<WgpuRenderer>, Error> {
 fn open_device() -> Result<(wgpu::Adapter, Gpu), Error> {
     match WgpuRenderer::headless_device_for_tests() {
         Ok((adapter, device, queue)) => Ok((adapter, (device, queue))),
-        Err(RendererError::NoAdapter) => {
-            Err(Error::NoAdapter(RendererError::NoAdapter.to_string()))
+        Err(err) if err.kind() == sigil::ErrorKind::NoAdapter => {
+            Err(Error::NoAdapter(err.to_string()))
         }
         Err(err) => Err(Error::Device(err.to_string())),
     }

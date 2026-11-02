@@ -1,14 +1,17 @@
 macro_rules! lucide_icons {
     ($($variant:ident => $name:literal,)*) => {
+        /// A bundled Lucide icon.
         #[non_exhaustive]
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
         pub enum Icon {
-            $($variant,)*
+            $(#[doc = concat!("The `", $name, "` icon.")] $variant,)*
         }
 
         impl Icon {
+            /// Every bundled icon.
             pub const ALL: &'static [Self] = &[$(Self::$variant,)*];
 
+            /// Returns the Lucide name of this icon.
             #[must_use]
             pub const fn name(self) -> &'static str {
                 match self {
@@ -16,6 +19,7 @@ macro_rules! lucide_icons {
                 }
             }
 
+            /// Returns the SVG source of this icon.
             #[must_use]
             pub const fn svg(self) -> &'static str {
                 match self {

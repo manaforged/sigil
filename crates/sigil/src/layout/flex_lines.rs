@@ -6,7 +6,7 @@ use crate::layout::flex_algorithm::{
 };
 use crate::layout::forest::{LocalId, NodeRef};
 use crate::layout::resolve::{NodeEdges, clamp};
-use crate::layout::style_data::{AlignSelf, FlexWrap, StyleData};
+use crate::layout::style_data::{AlignItems, FlexWrap, StyleData};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct FlexItem {
@@ -26,7 +26,7 @@ pub(crate) struct FlexItem {
     pub(crate) margin_main_end: f32,
     pub(crate) margin_cross_start: f32,
     pub(crate) margin_cross_end: f32,
-    pub(crate) align_self: Option<AlignSelf>,
+    pub(crate) align_self: Option<AlignItems>,
 }
 
 impl FlexItem {

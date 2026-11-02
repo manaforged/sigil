@@ -1,10 +1,11 @@
 use crate::animation_runtime::presets;
-use crate::kernel::{AccessibleName, TextBuilder, TextContent, text};
+use crate::kernel::{TextBuilder, TextContent, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{
-    BORDER_WIDTH, Elevation, GHOST_VARIANT, NodeStyleExt, SOFT_VARIANT, SOLID_VARIANT, StyleAtom,
-    StyleVariant, Tone, TransitionId,
+    BORDER_WIDTH, Elevation, GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, StyleAtom, StyleVariant,
+    Tone, TransitionId,
 };
+use crate::widgets::Widget;
 
 const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
 
@@ -13,14 +14,6 @@ pub(super) enum ButtonWidth {
     Hug,
     Fixed(f32),
     Fill,
-}
-
-pub(super) fn accessible_label(label: &TextContent) -> AccessibleName {
-    match label {
-        TextContent::Static(value) => AccessibleName::Static(value.clone()),
-        TextContent::Reactive(value) => AccessibleName::Derived(*value),
-        TextContent::Compute(_) => AccessibleName::Static(label.resolve()),
-    }
 }
 
 pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> LayoutStyle {
@@ -63,7 +56,7 @@ pub(super) fn label_node(
     atoms: &'static [StyleAtom],
     compact: bool,
 ) -> TextBuilder {
-    let node = text(label).nowrap().tone(tone).class(atoms);
+    let node = text(label).nowrap().tone_scope(tone).class(atoms);
     if compact { node.class("text-xs") } else { node }
 }
 

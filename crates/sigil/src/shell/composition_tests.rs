@@ -26,7 +26,7 @@ fn a_full_japanese_composition_maps_to_the_desktop_event_sequence() {
             ImeEvent::Enabled,
             ImeEvent::Preedit("にほん".into(), Some((9, 9))),
             ImeEvent::Preedit("日本".into(), Some((6, 6))),
-            ImeEvent::Preedit("".into(), None),
+            ImeEvent::Preedit(String::new(), None),
             ImeEvent::Commit("日本".into()),
         ]
     );

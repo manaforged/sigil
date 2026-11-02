@@ -2,7 +2,7 @@ use super::*;
 
 fn width(atoms: &[StyleAtom]) -> Option<i16> {
     atoms.iter().find_map(|atom| match atom {
-        StyleAtom::Width(Dimension::Px(Px(width))) => Some(*width),
+        StyleAtom::Width(kind, width) if *kind == crate::style::atom::ATOM_PX => Some(*width),
         _ => None,
     })
 }

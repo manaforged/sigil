@@ -1,12 +1,12 @@
 use super::canvas::{Canvas, DOWN, LEFT, RIGHT, UP};
-use super::flow::{Dir, Edge, Rect};
+use super::flow::{Dir, FlowEdge, GridRect};
 
-pub(super) struct Pen {
+pub(super) struct RoutePen {
     pub(super) dir: Dir,
     pub(super) dashed: bool,
 }
 
-impl Pen {
+impl RoutePen {
     pub(super) const fn split(&self, point: (usize, usize)) -> (usize, usize) {
         if self.dir.vertical() {
             (point.1, point.0)
@@ -87,7 +87,7 @@ impl Pen {
     }
 }
 
-pub(super) const fn exit(rect: Rect, dir: Dir) -> (usize, usize) {
+pub(super) const fn exit(rect: GridRect, dir: Dir) -> (usize, usize) {
     match dir {
         Dir::Down => (rect.x + rect.w / 2, rect.y + rect.h),
         Dir::Up => (rect.x + rect.w / 2, rect.y.saturating_sub(1)),
@@ -96,7 +96,7 @@ pub(super) const fn exit(rect: Rect, dir: Dir) -> (usize, usize) {
     }
 }
 
-pub(super) const fn entry(rect: Rect, dir: Dir) -> (usize, usize) {
+pub(super) const fn entry(rect: GridRect, dir: Dir) -> (usize, usize) {
     match dir {
         Dir::Down => (rect.x + rect.w / 2, rect.y.saturating_sub(1)),
         Dir::Up => (rect.x + rect.w / 2, rect.y + rect.h),
@@ -118,8 +118,8 @@ pub(super) fn between(from: usize, to: usize) -> Option<(usize, usize)> {
     (high.saturating_sub(low) > 1).then(|| (low.saturating_add(1), high.saturating_sub(1)))
 }
 
-pub(super) fn route(canvas: &mut Canvas, edge: &Edge, from: Rect, to: Rect, dir: Dir) {
-    let pen = Pen {
+pub(super) fn route(canvas: &mut Canvas, edge: &FlowEdge, from: GridRect, to: GridRect, dir: Dir) {
+    let pen = RoutePen {
         dir,
         dashed: edge.dashed,
     };
@@ -142,7 +142,13 @@ pub(super) fn route(canvas: &mut Canvas, edge: &Edge, from: Rect, to: Rect, dir:
     jog(canvas, &pen, edge, [(pp, ps), (qp, qs)], head);
 }
 
-fn jog(canvas: &mut Canvas, pen: &Pen, edge: &Edge, ends: [(usize, usize); 2], head: char) {
+fn jog(
+    canvas: &mut Canvas,
+    pen: &RoutePen,
+    edge: &FlowEdge,
+    ends: [(usize, usize); 2],
+    head: char,
+) {
     let [(pp, ps), (qp, qs)] = ends;
     let mid = pp.saturating_add(qp) / 2;
     if let Some((low, high)) = span(pp, mid) {
@@ -164,7 +170,13 @@ fn jog(canvas: &mut Canvas, pen: &Pen, edge: &Edge, ends: [(usize, usize); 2], h
     label(canvas, pen, edge, (pp, ps), pp);
 }
 
-fn label(canvas: &mut Canvas, pen: &Pen, edge: &Edge, start: (usize, usize), along: usize) {
+fn label(
+    canvas: &mut Canvas,
+    pen: &RoutePen,
+    edge: &FlowEdge,
+    start: (usize, usize),
+    along: usize,
+) {
     if edge.label.is_empty() {
         return;
     }

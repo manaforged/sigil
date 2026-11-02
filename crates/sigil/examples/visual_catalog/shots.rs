@@ -6,8 +6,9 @@ use std::path::Path;
 use image::codecs::webp::WebPEncoder;
 use image::{ExtendedColorType, RgbaImage, imageops};
 use serde_json::{Value, json};
-use sigil_kittest::{Captured, Error};
+use sigil_kittest::Error;
 
+type Captured = (RgbaImage, Option<sigil::geometry::Rect>);
 pub(crate) type Capture = Result<Option<Captured>, Error>;
 
 #[derive(Clone, Copy)]
@@ -39,23 +40,15 @@ impl Shots {
         render: impl Fn(f32) -> Capture,
     ) -> Result<Value, String> {
         let base = rendered(&render, 1.0)?;
-        let (rect, content) = content_rect(&base.image, crop_pad);
-        let src = self.write(
-            out,
-            &format!("img/{stem}.webp"),
-            &crop(&base.image, rect, 1),
-        )?;
+        let (rect, content) = content_rect(&base.0, crop_pad);
+        let src = self.write(out, &format!("img/{stem}.webp"), &crop(&base.0, rect, 1))?;
         let wide = rendered(&render, 2.0)?;
-        let src2x = self.write(
-            out,
-            &format!("img/{stem}@2x.webp"),
-            &crop(&wide.image, rect, 2),
-        )?;
+        let src2x = self.write(out, &format!("img/{stem}@2x.webp"), &crop(&wide.0, rect, 2))?;
         let crop = json!({
             "x": rect.x,
             "y": rect.y,
-            "canvas_width": base.image.width(),
-            "canvas_height": base.image.height(),
+            "canvas_width": base.0.width(),
+            "canvas_height": base.0.height(),
             "pad": crop_pad,
         });
         Ok(json!({
@@ -83,7 +76,7 @@ impl Shots {
 }
 
 fn focus(base: &Captured, rect: Rect, content: Rect) -> Value {
-    let [left, top, right, bottom] = base.top_layer.map_or_else(
+    let [left, top, right, bottom] = base.1.map_or_else(
         || {
             [
                 content.x,

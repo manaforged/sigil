@@ -1,8 +1,9 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{BORDER_WIDTH, ControlSize, Metrics, StyleAtom, Token, space};
+use crate::widgets::Widget;
 
 pub(crate) const STATUS_BAR_HEIGHT: f32 = space(7);
 const STATUS_BAR_GAP: f32 = space(3);
@@ -15,6 +16,7 @@ pub(crate) static STATUS_CHROME: &[StyleAtom] = &[
     Token::Border.border(),
 ];
 
+/// A status line.
 #[must_use]
 pub fn status_bar<I>(children: I) -> NodeBuilder
 where
@@ -50,6 +52,7 @@ where
     root
 }
 
+/// One key/value row.
 #[must_use]
 pub fn kv_row(label: impl Into<TextContent>, value: impl IntoNode + 'static) -> NodeBuilder {
     container()

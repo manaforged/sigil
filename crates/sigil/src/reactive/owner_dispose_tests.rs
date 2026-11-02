@@ -18,7 +18,7 @@ use crate::reactive::signal::signal;
 
 #[test]
 fn queued_effect_on_disposed_signal_panics_contained() {
-    Runtime::scope("owner_dispose::queued_dead_dep", || {
+    Owner::scope("owner_dispose::queued_dead_dep", || {
         let sig_owner = Owner::new("sig", Owner::current());
         let fx_owner = Owner::new("fx", Owner::current());
         let mark = sig_owner.with(|| signal(0_u32));
@@ -51,7 +51,7 @@ fn queued_effect_on_disposed_signal_panics_contained() {
 
 #[test]
 fn conditional_dep_effect_survives_an_unread_disposal() {
-    Runtime::scope("owner_dispose::conditional_dep", || {
+    Owner::scope("owner_dispose::conditional_dep", || {
         let sig_owner = Owner::new("sig", Owner::current());
         let fx_owner = Owner::new("fx", Owner::current());
         let mark = sig_owner.with(|| signal(0_u32));
@@ -87,7 +87,7 @@ fn conditional_dep_effect_survives_an_unread_disposal() {
 
 #[test]
 fn effect_disposing_its_ancestor_is_reaped_after_the_run() {
-    Runtime::scope("owner_dispose::ancestor", || {
+    Owner::scope("owner_dispose::ancestor", || {
         let host = Owner::new("host", Owner::current());
         let tick = host.with(|| signal(0_u32));
         let outer = Owner::new("outer", Owner::current());
@@ -104,7 +104,7 @@ fn effect_disposing_its_ancestor_is_reaped_after_the_run() {
         });
         tick.set(1);
         assert_eq!(fired.get(), 2, "the disposing run completes");
-        assert!(!is_live(outer.id()), "ancestor owner is gone after the run");
+        assert!(!is_live(outer), "ancestor owner is gone after the run");
         tick.set(2);
         assert_eq!(fired.get(), 2, "the reaped effect never runs again");
         host.dispose();
@@ -113,7 +113,7 @@ fn effect_disposing_its_ancestor_is_reaped_after_the_run() {
 
 #[test]
 fn cleanups_skipped_during_unwind_run_at_recovery() {
-    Runtime::scope("owner_dispose::deferred_cleanup", || {
+    Owner::scope("owner_dispose::deferred_cleanup", || {
         let owner = Owner::new("victim", Owner::current());
         let ran = Rc::new(Cell::new(false));
         let flag = Rc::clone(&ran);
@@ -141,7 +141,7 @@ fn cleanups_skipped_during_unwind_run_at_recovery() {
 
 #[test]
 fn recover_from_panic_during_a_run_keeps_the_running_effect() {
-    Runtime::scope("owner_dispose::recover_in_run", || {
+    Owner::scope("owner_dispose::recover_in_run", || {
         let owner = Owner::new("o", Owner::current());
         let probe = Rc::new(Cell::new(0_u32));
         let p = Rc::clone(&probe);

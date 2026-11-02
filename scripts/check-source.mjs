@@ -103,6 +103,24 @@ for (const file of files) {
   }
 }
 
+function commentAllowed(body) {
+  return policy.allowedComments.some((prefix) => body.startsWith(prefix));
+}
+
+if (process.argv.includes("--self-test")) {
+  const failures = [];
+  if (!commentAllowed("/// doc")) failures.push("/// doc rejected");
+  if (!commentAllowed("//! crate")) failures.push("//! crate rejected");
+  if (commentAllowed("// note")) failures.push("// note accepted");
+  if (!commentAllowed("// SAFETY: x")) failures.push("SAFETY rejected");
+  if (failures.length) {
+    for (const failure of failures) console.log(failure);
+    process.exit(1);
+  }
+  console.log("check-source: rustdoc allowed, // note rejected");
+  process.exit(0);
+}
+
 if (process.argv.includes("--manual-tests")) {
   process.stdout.write(manual.sort().join("\n") + (manual.length ? "\n" : ""));
   process.exit(0);

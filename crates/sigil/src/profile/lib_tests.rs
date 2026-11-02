@@ -1,5 +1,7 @@
 use std::sync::MutexGuard;
 
+use super::attr::Attribution;
+use super::key::Category;
 use super::*;
 
 fn recording(backend: Option<BackendKind>) -> MutexGuard<'static, ()> {

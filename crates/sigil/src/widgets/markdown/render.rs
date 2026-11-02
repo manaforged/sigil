@@ -1,25 +1,31 @@
 use crate::kernel::{NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::cols;
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::signal;
-use crate::style::{Px, Radius, StyleAtom, Token, space};
+use crate::style::{Radius, StyleAtom, Token, space};
+use crate::widgets::Widget;
+use crate::widgets::highlight::{byte_marks, text_runs};
 use crate::widgets::interaction::InteractionState;
-use crate::widgets::{highlight, text_runs};
 
 use super::super::checkbox::{CheckMark, checkbox_indicator};
-use super::containers::{List, Task};
+use super::containers::{List, TaskMark};
 use super::inline::styled;
-use super::parse::Block;
+use super::parse::{Block, Inline};
 
 #[derive(Clone, Copy)]
-pub(super) struct Tone(pub(super) Token);
+pub(super) struct TokenTone(pub(super) Token);
 
-pub(super) fn tinted(node: TextBuilder, tone: Tone) -> TextBuilder {
+pub(super) fn tinted(node: TextBuilder, tone: TokenTone) -> TextBuilder {
     node.class(tone.0.text())
 }
 
-pub(super) fn rich(source: &str, class: &'static str, tone: Tone, role: Role) -> NodeBuilder {
+pub(super) fn rich(
+    source: &[Inline],
+    class: &'static str,
+    tone: TokenTone,
+    role: Role,
+) -> NodeBuilder {
     let body = styled(source);
     container()
         .role(role)
@@ -27,7 +33,7 @@ pub(super) fn rich(source: &str, class: &'static str, tone: Tone, role: Role) ->
         .child(tinted(text(body.text).runs(body.runs).class(class), tone))
 }
 
-pub(super) fn heading(level: u8, body: &str) -> NodeBuilder {
+pub(super) fn heading(level: u8, body: &[Inline]) -> NodeBuilder {
     let class = match level {
         1 => CellForm::new("text-xl font-bold", "font-bold underline").pick(),
         2 => "text-lg font-bold",
@@ -38,7 +44,7 @@ pub(super) fn heading(level: u8, body: &str) -> NodeBuilder {
         3 => Token::OnSurface,
         _ => Token::OnSurfaceMuted,
     };
-    let tone = Tone(CellForm::new(Token::OnSurface, grid).pick());
+    let tone = TokenTone(CellForm::new(Token::OnSurface, grid).pick());
     let level = usize::from(level);
     rich(body, class, tone, Role::Heading).mutate(move |node| node.a11y.level = Some(level))
 }
@@ -51,8 +57,8 @@ pub(super) fn rule() -> NodeBuilder {
 
 pub(super) fn stack(
     blocks: Vec<Block>,
-    (tone, gap): (Tone, f32),
-    node: impl Fn(Block, Tone) -> NodeBuilder,
+    (tone, gap): (TokenTone, f32),
+    node: impl Fn(Block, TokenTone) -> NodeBuilder,
 ) -> NodeBuilder {
     let mut column = container().layout(
         LayoutStyle::flex_column()
@@ -67,12 +73,19 @@ pub(super) fn stack(
     column
 }
 
-pub(super) fn quote(blocks: Vec<Block>, node: impl Fn(Block, Tone) -> NodeBuilder) -> NodeBuilder {
+pub(super) fn quote(
+    blocks: Vec<Block>,
+    node: impl Fn(Block, TokenTone) -> NodeBuilder,
+) -> NodeBuilder {
     container()
         .role(Role::Blockquote)
         .layout(LayoutStyle::flex_row().fill_width().padding_left(cols(1.0)))
-        .class([StyleAtom::BorderLeft(Px(2)), Token::BorderStrong.border()])
-        .child(stack(blocks, (Tone(Token::OnSurfaceMuted), space(2)), node))
+        .class([StyleAtom::BorderLeft(2), Token::BorderStrong.border()])
+        .child(stack(
+            blocks,
+            (TokenTone(Token::OnSurfaceMuted), space(2)),
+            node,
+        ))
 }
 
 fn marker(start: Option<u64>, index: usize) -> String {
@@ -88,8 +101,8 @@ fn marker(start: Option<u64>, index: usize) -> String {
 )]
 pub(super) fn list(
     list: List,
-    tone: Tone,
-    node: impl Fn(Block, Tone) -> NodeBuilder + Copy,
+    tone: TokenTone,
+    node: impl Fn(Block, TokenTone) -> NodeBuilder + Copy,
 ) -> NodeBuilder {
     let start = list.start;
     let width = (0..list.items.len())
@@ -118,8 +131,8 @@ pub(super) fn list(
     column
 }
 
-fn task_mark(task: Task) -> NodeBuilder {
-    let checked = signal(task == Task::Done);
+fn task_mark(task: TaskMark) -> NodeBuilder {
+    let checked = signal(task == TaskMark::Done);
     container()
         .role(Role::CheckBox)
         .checked(checked)
@@ -147,7 +160,7 @@ pub(super) fn code(lang: &str, body: &str) -> NodeBuilder {
                 .padding_x(space(2))
                 .padding_y(pad),
         );
-    for (line, marks) in body.split('\n').zip(highlight(lang, body)) {
+    for (line, marks) in body.split('\n').zip(byte_marks(lang, body)) {
         let rest = line.trim_start();
         let lead = &line[..line.len() - rest.len()];
         let mut row = container().layout(LayoutStyle::flex_row().fill_width());

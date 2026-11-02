@@ -1,8 +1,8 @@
-use crate::layout::LayoutError;
+use crate::Error;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::{ComputedBox, NodeRef};
 use crate::layout::resolve::{NodeEdges, clamp, dim_to_border_box};
-use crate::layout::style_data::{Dimension, Display, Position, Size};
+use crate::layout::style_data::{Axes, Dimension, Display, Position};
 
 use super::placement::PlacedItem;
 use super::sizing::item_min_max_main;
@@ -12,7 +12,7 @@ pub(super) fn write_items(
     ctx: &FlexCtx<'_, '_>,
     placed: &[PlacedItem],
     content_origin: Position2,
-) -> Result<(), LayoutError> {
+) -> Result<(), Error> {
     for p in placed {
         let pos = CbSize::across(ctx.axes, p.main_pos, p.cross_pos);
         let CbSize { w, h } = CbSize::across(ctx.axes, p.main_size, p.cross_size);
@@ -29,11 +29,11 @@ pub(crate) fn layout_item_subtree(
     origin: Position2,
     w: f32,
     h: f32,
-) -> Result<(), LayoutError> {
+) -> Result<(), Error> {
     let forest = ctx.solver.scope().forest();
     let node = forest
         .refer(id)
-        .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale flex item id {id:?}")))?;
+        .ok_or_else(|| Error::layout(format!("stale flex item id {id:?}")))?;
     if node.children().is_empty() {
         return Ok(());
     }
@@ -77,13 +77,13 @@ fn dispatch_block_subtree(
     origin: Position2,
     (w, h): (f32, f32),
     (assigned_w, assigned_h): (Option<f32>, Option<f32>),
-) -> Result<(), LayoutError> {
+) -> Result<(), Error> {
     let style = node.style();
     let scope = ctx.solver.scope();
     let nested =
         crate::layout::forest::MeasureScope::new(scope.forest(), scope.text(), scope.available());
     let solver = crate::layout::block::BlockSolver::new(nested);
-    let cb = Size {
+    let cb = Axes {
         width: w,
         height: h,
     };
@@ -91,7 +91,7 @@ fn dispatch_block_subtree(
         node,
         cb,
         block_origin(style, origin, w),
-        Size {
+        Axes {
             width: assigned_w,
             height: assigned_h,
         },

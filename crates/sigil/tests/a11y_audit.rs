@@ -6,7 +6,7 @@
 
 use accesskit::{Invalid, Node as AkNode, NodeId as AkId, Role as AkRole};
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil_kittest::Harness;
 
 fn find(all: &[(AkId, AkNode)], test: impl Fn(&AkNode) -> bool) -> (AkId, &AkNode) {
@@ -36,7 +36,7 @@ fn hidden_by_self_or_ancestor(all: &[(AkId, AkNode)], mut id: AkId) -> bool {
 
 #[test]
 fn a_field_error_marks_its_input_invalid_and_describes_it() {
-    Runtime::scope("a11y-field", || {
+    Owner::scope("a11y-field", || {
         let name = signal(String::new());
         let error = signal(Some("Enter a name".to_owned()));
         let mut ui =
@@ -78,7 +78,7 @@ fn a_field_error_marks_its_input_invalid_and_describes_it() {
 
 #[test]
 fn an_open_modal_is_modal_and_hides_the_page_behind_it() {
-    Runtime::scope("a11y-modal", || {
+    Owner::scope("a11y-modal", || {
         let show = signal(true);
         let mut ui = Harness::new(move || {
             column()

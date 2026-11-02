@@ -2,7 +2,7 @@ use std::panic::AssertUnwindSafe;
 use std::path::Path;
 
 use serde_json::{Map, Value, json};
-use sigil::layout::LayoutError;
+use sigil::Error;
 use sigil::tasks::AsyncRuntime;
 use sigil_kittest::InteractionMode;
 
@@ -343,7 +343,7 @@ fn logged(stem: &str, shot: Result<Value, String>) -> Value {
 }
 
 fn terminal_grid(
-    run: impl FnOnce() -> Result<capture::Cells, LayoutError>,
+    run: impl FnOnce() -> Result<capture::Cells, Error>,
     look: Look,
 ) -> Option<capture::Term> {
     match std::panic::catch_unwind(AssertUnwindSafe(run)) {

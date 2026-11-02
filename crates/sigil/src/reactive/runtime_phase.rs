@@ -1,10 +1,14 @@
+#[cfg(any(test, feature = "kittest", feature = "desktop"))]
 use core::panic::Location;
 
+#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 use crate::reactive::owner_dispose::dispose_owner;
 use crate::reactive::phase::DrawPhase;
 use crate::reactive::runtime::{Runtime, RuntimeState, with_rt};
 
 impl Runtime {
+    /// Resets the runtime after a caught panic.
+    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
     pub fn recover_from_panic() {
         let run_owners = with_rt(|rt| {
             let deferred = core::mem::take(&mut rt.dispose_after_run);
@@ -43,33 +47,41 @@ impl Runtime {
         run_deferred_cleanups(deferred_cleanups);
     }
 
+    /// Returns the name and location of the effect that panicked.
+    #[cfg(any(test, feature = "kittest", feature = "desktop"))]
     #[must_use]
     pub fn panic_origin_info() -> Option<(&'static str, &'static Location<'static>)> {
         with_rt(|rt| rt.panic_origin.map(|(_, name, location)| (name, location)))
     }
 
+    /// Enters the effect phase.
     pub fn begin_effect() {
         advance("begin_effect", DrawPhase::Idle, DrawPhase::Effect);
         with_rt(|rt| rt.frame_dirty = false);
     }
 
+    /// Enters the layout phase.
     pub fn begin_layout() {
         advance("begin_layout", DrawPhase::Effect, DrawPhase::Layout);
     }
 
+    /// Enters the paint phase.
     pub fn begin_paint() {
         advance("begin_paint", DrawPhase::Layout, DrawPhase::Paint);
     }
 
+    /// Ends the current frame.
     pub fn end_frame() {
         advance("end_frame", DrawPhase::Paint, DrawPhase::Idle);
     }
 
+    /// Returns whether something asked for another frame.
     #[must_use]
     pub fn frame_dirty() -> bool {
         with_rt(|rt| rt.frame_dirty)
     }
 
+    /// Asks for another frame.
     pub fn mark_frame_dirty() {
         with_rt(|rt| rt.frame_dirty = true);
     }

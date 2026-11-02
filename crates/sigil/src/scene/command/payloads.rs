@@ -1,165 +1,119 @@
 #![allow(clippy::redundant_pub_crate)]
 
+mod marks;
+
+pub use marks::{DrawDecoration, DrawSprite};
+
 use crate::geometry::Rect;
 use crate::kernel::NodeId;
 use crate::style::{Rgba8, Tone};
 
 use crate::scene::corner_radii::CornerRadii;
 
-use super::effects::{DecorationKind, SpriteKind, SpriteSource};
 use super::fills::{LinearGradient, PatternKind, Stroke};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct SceneRectStyle {
-    pub color: Rgba8,
-    pub border_radius: CornerRadii,
-    pub opacity: u16,
-    pub stroke: Option<Stroke>,
-}
-
-impl SceneRectStyle {
-    #[must_use]
-    pub const fn new(color: Rgba8, border_radius: CornerRadii, opacity: u16) -> Self {
-        Self {
-            color,
-            border_radius,
-            opacity,
-            stroke: None,
-        }
-    }
-
-    #[must_use]
-    pub const fn solid(color: Rgba8) -> Self {
-        Self::new(color, CornerRadii::ZERO, 10_000)
-    }
-
-    #[must_use]
-    pub const fn rounded(color: Rgba8, radius: f32) -> Self {
-        Self::new(color, CornerRadii::uniform(radius), 10_000)
-    }
-
-    #[must_use]
-    pub const fn with_stroke(mut self, stroke: Stroke) -> Self {
-        self.stroke = Some(stroke);
-        self
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct SceneGradientStyle {
-    pub gradient: LinearGradient,
-    pub border_radius: CornerRadii,
-    pub opacity: u16,
-    pub stroke: Option<Stroke>,
-}
-
-impl SceneGradientStyle {
-    #[must_use]
-    pub const fn new(gradient: LinearGradient, border_radius: CornerRadii, opacity: u16) -> Self {
-        Self {
-            gradient,
-            border_radius,
-            opacity,
-            stroke: None,
-        }
-    }
-
-    #[must_use]
-    pub const fn with_stroke(mut self, stroke: Stroke) -> Self {
-        self.stroke = Some(stroke);
-        self
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ScenePatternStyle {
-    pub pattern: PatternKind,
-    pub border_radius: CornerRadii,
-    pub opacity: u16,
-    pub stroke: Option<Stroke>,
-}
-
-impl ScenePatternStyle {
-    #[must_use]
-    pub const fn new(pattern: PatternKind, border_radius: CornerRadii, opacity: u16) -> Self {
-        Self {
-            pattern,
-            border_radius,
-            opacity,
-            stroke: None,
-        }
-    }
-
-    #[must_use]
-    pub const fn with_stroke(mut self, stroke: Stroke) -> Self {
-        self.stroke = Some(stroke);
-        self
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct SceneSpriteStyle {
-    pub source: SpriteSource,
-    pub kind: SpriteKind,
-    pub destination: Rect,
-    pub color: Rgba8,
-    pub opacity: u16,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct SceneDecorationStyle {
-    pub kind: DecorationKind,
-    pub band: Rect,
-    pub color: Rgba8,
-    pub opacity: u16,
-    pub period: f32,
-    pub line_width: f32,
-}
-
+/// A command that fills or strokes a rounded rectangle.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DrawRect {
+    /// The node, if any.
     pub node: Option<NodeId>,
+    /// The rect.
     pub rect: Rect,
+    /// The color.
     pub color: Rgba8,
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
     pub border_radius: CornerRadii,
+    #[cfg(not(feature = "kittest"))]
+    pub(crate) border_radius: CornerRadii,
+    /// The opacity.
     pub opacity: u16,
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
     pub stroke: Option<Stroke>,
+    #[cfg(not(feature = "kittest"))]
+    pub(crate) stroke: Option<Stroke>,
+    /// The tone, if any.
     pub tone: Option<Tone>,
+    /// Whether leaf.
     pub leaf: bool,
+    #[cfg(feature = "kittest")]
+    #[doc(hidden)]
     pub border: Option<CellBorder>,
+    #[cfg(not(feature = "kittest"))]
+    pub(crate) border: Option<CellBorder>,
+    /// Whether outline.
     pub outline: bool,
 }
 
+/// A box-drawing border on terminal cells.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CellBorder {
+    /// The rect.
     pub rect: Rect,
+    /// The widths.
     pub widths: [f32; 4],
+    /// The color.
     pub color: Rgba8,
+    /// Whether rounded.
     pub rounded: bool,
 }
 
+/// A rectangle aligned to terminal cells.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct CellRect {
+pub(crate) struct CellRect {
+    /// The tone, if any.
     pub tone: Option<Tone>,
+    /// Whether leaf.
     pub leaf: bool,
+    /// The border, if any.
     pub border: Option<CellBorder>,
+    /// Whether outline.
     pub outline: bool,
 }
 
 impl DrawRect {
+    /// A solid rectangle with square corners at full opacity.
     #[must_use]
-    pub const fn new(rect: Rect, style: SceneRectStyle) -> Self {
+    pub const fn new(rect: Rect, color: Rgba8) -> Self {
         Self {
             node: None,
             rect,
-            color: style.color,
-            border_radius: style.border_radius,
-            opacity: style.opacity,
-            stroke: style.stroke,
+            color,
+            border_radius: CornerRadii::ZERO,
+            opacity: 10_000,
+            stroke: None,
             tone: None,
             leaf: false,
             border: None,
             outline: false,
+        }
+    }
+
+    kittest_pub! {
+    /// Sets the corner radii.
+    #[must_use]
+    #[doc(hidden)]
+    pub const fn border_radius(mut self, border_radius: CornerRadii) -> Self {
+        self.border_radius = border_radius;
+        self
+    }
+    }
+
+    /// Sets the opacity in basis points; 10000 is opaque.
+    #[must_use]
+    pub const fn opacity(mut self, opacity: u16) -> Self {
+        self.opacity = opacity;
+        self
+    }
+
+    kittest_pub! {
+        /// Sets the stroke.
+        #[must_use]
+        #[doc(hidden)]
+        pub const fn stroke(mut self, stroke: Stroke) -> Self {
+            self.stroke = Some(stroke);
+            self
         }
     }
 
@@ -177,35 +131,68 @@ impl DrawRect {
     }
 }
 
+/// A command that fills a shape with a gradient.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DrawGradient {
+    /// The node, if any.
     pub node: Option<NodeId>,
+    /// The rect.
     pub rect: Rect,
+    /// The gradient.
     pub gradient: LinearGradient,
+    /// The border radius.
     pub border_radius: CornerRadii,
+    /// The opacity.
     pub opacity: u16,
+    /// The stroke, if any.
     pub stroke: Option<Stroke>,
+    /// The tone, if any.
     pub tone: Option<Tone>,
+    /// Whether leaf.
     pub leaf: bool,
+    /// The border, if any.
     pub border: Option<CellBorder>,
+    /// Whether outline.
     pub outline: bool,
 }
 
 impl DrawGradient {
+    /// A gradient rectangle with square corners at full opacity.
     #[must_use]
-    pub fn new(rect: Rect, style: SceneGradientStyle) -> Self {
+    pub const fn new(rect: Rect, gradient: LinearGradient) -> Self {
         Self {
             node: None,
             rect,
-            gradient: style.gradient,
-            border_radius: style.border_radius,
-            opacity: style.opacity,
-            stroke: style.stroke,
+            gradient,
+            border_radius: CornerRadii::ZERO,
+            opacity: 10_000,
+            stroke: None,
             tone: None,
             leaf: false,
             border: None,
             outline: false,
         }
+    }
+
+    /// Sets the corner radii.
+    #[must_use]
+    pub const fn border_radius(mut self, border_radius: CornerRadii) -> Self {
+        self.border_radius = border_radius;
+        self
+    }
+
+    /// Sets the opacity in basis points; 10000 is opaque.
+    #[must_use]
+    pub const fn opacity(mut self, opacity: u16) -> Self {
+        self.opacity = opacity;
+        self
+    }
+
+    /// Sets the stroke.
+    #[must_use]
+    pub const fn stroke(mut self, stroke: Stroke) -> Self {
+        self.stroke = Some(stroke);
+        self
     }
 
     pub(crate) const fn with_node(mut self, node: NodeId) -> Self {
@@ -222,44 +209,82 @@ impl DrawGradient {
     }
 }
 
+/// A command that fills a shape with a pattern.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DrawPattern {
+    /// The node, if any.
     pub node: Option<NodeId>,
+    /// The rect.
     pub rect: Rect,
+    /// The pattern.
     pub pattern: PatternKind,
+    /// The border radius.
     pub border_radius: CornerRadii,
+    /// The opacity.
     pub opacity: u16,
+    /// The stroke, if any.
     pub stroke: Option<Stroke>,
 }
 
 impl DrawPattern {
+    /// A pattern rectangle with square corners at full opacity.
     #[must_use]
-    pub const fn new(rect: Rect, style: ScenePatternStyle) -> Self {
+    pub const fn new(rect: Rect, pattern: PatternKind) -> Self {
         Self {
             node: None,
             rect,
-            pattern: style.pattern,
-            border_radius: style.border_radius,
-            opacity: style.opacity,
-            stroke: style.stroke,
+            pattern,
+            border_radius: CornerRadii::ZERO,
+            opacity: 10_000,
+            stroke: None,
         }
+    }
+
+    /// Sets the corner radii.
+    #[must_use]
+    pub const fn border_radius(mut self, border_radius: CornerRadii) -> Self {
+        self.border_radius = border_radius;
+        self
+    }
+
+    /// Sets the opacity in basis points; 10000 is opaque.
+    #[must_use]
+    pub const fn opacity(mut self, opacity: u16) -> Self {
+        self.opacity = opacity;
+        self
+    }
+
+    /// Sets the stroke.
+    #[must_use]
+    pub const fn stroke(mut self, stroke: Stroke) -> Self {
+        self.stroke = Some(stroke);
+        self
     }
 }
 
+/// An image command fitted into a destination rectangle, with optional crop.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DrawImage {
+    /// The node, if any.
     pub node: Option<NodeId>,
+    /// The source.
     pub source: crate::kernel::ImageSource,
+    /// The fit.
     pub fit: crate::kernel::ObjectFit,
+    /// The destination.
     pub destination: Rect,
+    /// The opacity.
     pub opacity: u16,
+    /// The crop, if any.
     pub crop: Option<crate::kernel::ImageCrop>,
+    /// The raster, if any.
     pub raster: Option<crate::kernel::ImageRaster>,
 }
 
 const RASTER_MAX_SIDE: f32 = 4096.0;
 
 impl DrawImage {
+    /// The image and destination to paint at `scale`.
     #[allow(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -291,39 +316,4 @@ impl DrawImage {
         );
         (source, snapped)
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct DrawSprite {
-    pub node: Option<NodeId>,
-    pub source: SpriteSource,
-    pub kind: SpriteKind,
-    pub destination: Rect,
-    pub color: Rgba8,
-    pub opacity: u16,
-}
-
-impl DrawSprite {
-    #[must_use]
-    pub const fn new(style: &SceneSpriteStyle) -> Self {
-        Self {
-            node: None,
-            source: style.source,
-            kind: style.kind,
-            destination: style.destination,
-            color: style.color,
-            opacity: style.opacity,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct DrawDecoration {
-    pub node: Option<NodeId>,
-    pub kind: DecorationKind,
-    pub band: Rect,
-    pub color: Rgba8,
-    pub opacity: u16,
-    pub period: f32,
-    pub line_width: f32,
 }

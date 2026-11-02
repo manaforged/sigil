@@ -7,7 +7,7 @@ use super::{Cell, Grid, Ink, cell_edge, floor_cell};
 
 const EIGHTHS: usize = 8;
 
-pub(super) struct Surface<'a> {
+pub(super) struct FillSurface<'a> {
     pub(super) rect: Rect,
     pub(super) visible: Rect,
     pub(super) origin: (usize, usize),
@@ -17,7 +17,7 @@ pub(super) struct Surface<'a> {
     pub(super) theme: &'a Theme,
 }
 
-pub(super) fn surface(grid: &mut Grid, surface: &Surface<'_>, cell: f32) {
+pub(super) fn surface(grid: &mut Grid, surface: &FillSurface<'_>, cell: f32) {
     let area = (surface.origin, surface.size, surface.rect);
     if let Some(glyph) = hairline(surface.rect, cell) {
         grid.rule(area, glyph, surface.ink);
@@ -54,7 +54,7 @@ pub(super) fn surface(grid: &mut Grid, surface: &Surface<'_>, cell: f32) {
     eighths(grid, surface, &rows, &cols);
 }
 
-fn halves(grid: &mut Grid, surface: &Surface<'_>, rows: &Rows, cols: &Split) {
+fn halves(grid: &mut Grid, surface: &FillSurface<'_>, rows: &FillRows, cols: &Split) {
     let down = (rows.full.0, rows.span());
     let halves = [
         (cols.start.map(|col| ((col, 1), down)), "▐"),
@@ -71,7 +71,7 @@ fn halves(grid: &mut Grid, surface: &Surface<'_>, rows: &Rows, cols: &Split) {
     }
 }
 
-fn eighths(grid: &mut Grid, surface: &Surface<'_>, rows: &Rows, cols: &Split) {
+fn eighths(grid: &mut Grid, surface: &FillSurface<'_>, rows: &FillRows, cols: &Split) {
     let ink = surface.ink;
     let mut band = |row: usize, paint: &dyn Fn(&mut Cell)| {
         grid.each(
@@ -128,32 +128,32 @@ fn block(level: usize) -> SmolStr {
     SmolStr::new(spark_glyph(fraction).encode_utf8(&mut [0; 4]))
 }
 
-struct Rows {
+struct FillRows {
     full: (usize, usize),
     lower: Option<(usize, usize)>,
     upper: Option<(usize, usize)>,
 }
 
-impl Rows {
+impl FillRows {
     const fn span(&self) -> usize {
         self.full.1.saturating_sub(self.full.0)
     }
 }
 
-fn rows(start: f32, end: f32) -> Rows {
+fn rows(start: f32, end: f32) -> FillRows {
     let first = eighth(start);
     let last = eighth(end).max(first + 1);
     let row = first / EIGHTHS;
     if row == (last - 1) / EIGHTHS && last - first < EIGHTHS {
         let band = Some((row, last - first));
         let floor = (row + 1) * EIGHTHS - last <= first - row * EIGHTHS;
-        return Rows {
+        return FillRows {
             full: (row, row),
             lower: band.filter(|_| floor),
             upper: band.filter(|_| !floor),
         };
     }
-    Rows {
+    FillRows {
         full: (first.div_ceil(EIGHTHS), last / EIGHTHS),
         lower: (!first.is_multiple_of(EIGHTHS)).then_some((row, EIGHTHS - first % EIGHTHS)),
         upper: (!last.is_multiple_of(EIGHTHS)).then_some((last / EIGHTHS, last % EIGHTHS)),

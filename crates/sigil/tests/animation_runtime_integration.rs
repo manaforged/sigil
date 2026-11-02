@@ -4,8 +4,8 @@
 )]
 
 use sigil::animation::{Easing, SpringPreset};
-use sigil::animation_runtime::{AnimationConfig, Animator, MotionPrefs, tick};
-use sigil::reactive::{Runtime, signal};
+use sigil::animation_runtime::{Animator, MotionPrefs, tick};
+use sigil::reactive::{Owner, signal};
 
 const DT_60HZ: f32 = 1.0 / 60.0;
 
@@ -20,15 +20,10 @@ fn tick_until_settled(animator: &Animator, max_frames: u32) -> u32 {
 
 #[test]
 fn spring_animator_settles_within_known_frame_budget() {
-    Runtime::scope("spring_animator_settles_within_known_frame_budget", || {
+    Owner::scope("spring_animator_settles_within_known_frame_budget", || {
         MotionPrefs::set(false);
         let value = signal(0.0_f32);
-        let mut animator = Animator::new(
-            value,
-            AnimationConfig::Spring {
-                preset: SpringPreset::Smooth,
-            },
-        );
+        let mut animator = Animator::spring(value, SpringPreset::Smooth);
         animator.target(1.0);
 
         let frames = tick_until_settled(&animator, 240);
@@ -50,18 +45,12 @@ fn spring_animator_settles_within_known_frame_budget() {
 
 #[test]
 fn tween_animator_lands_at_target_when_duration_elapses() {
-    Runtime::scope(
+    Owner::scope(
         "tween_animator_lands_at_target_when_duration_elapses",
         || {
             MotionPrefs::set(false);
             let value = signal(0.0_f32);
-            let mut animator = Animator::new(
-                value,
-                AnimationConfig::Tween {
-                    ms: 200,
-                    easing: Easing::CubicInOut,
-                },
-            );
+            let mut animator = Animator::tween(value, 200, Easing::CubicInOut);
             animator.target(10.0);
 
             for _ in 0..15 {
@@ -80,17 +69,12 @@ fn tween_animator_lands_at_target_when_duration_elapses() {
 
 #[test]
 fn retarget_during_animation_continues_from_current_value() {
-    Runtime::scope(
+    Owner::scope(
         "retarget_during_animation_continues_from_current_value",
         || {
             MotionPrefs::set(false);
             let value = signal(0.0_f32);
-            let mut animator = Animator::new(
-                value,
-                AnimationConfig::Spring {
-                    preset: SpringPreset::Smooth,
-                },
-            );
+            let mut animator = Animator::spring(value, SpringPreset::Smooth);
             animator.target(1.0);
 
             for _ in 0..5 {
@@ -118,15 +102,10 @@ fn retarget_during_animation_continues_from_current_value() {
 
 #[test]
 fn tick_with_invalid_dt_is_a_no_op() {
-    Runtime::scope("tick_with_invalid_dt_is_a_no_op", || {
+    Owner::scope("tick_with_invalid_dt_is_a_no_op", || {
         MotionPrefs::set(false);
         let value = signal(0.0_f32);
-        let mut animator = Animator::new(
-            value,
-            AnimationConfig::Spring {
-                preset: SpringPreset::Smooth,
-            },
-        );
+        let mut animator = Animator::spring(value, SpringPreset::Smooth);
         animator.target(1.0);
 
         let before = value.peek();

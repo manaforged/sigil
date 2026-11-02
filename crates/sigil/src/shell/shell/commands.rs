@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::app::{ResizeDirection, WindowCommand, WindowLevel};
-use crate::events::{ShellEvent, WindowEvent as SigilWindowEvent};
+use crate::events::{Event, WindowEvent as SigilWindowEvent};
 use winit::{dpi::LogicalPosition as WinitLogicalPosition, window::Window};
 
 use crate::shell::WinitWindowHandle;
@@ -11,7 +11,7 @@ use super::WinitShell;
 impl WinitShell {
     pub(crate) fn run_window_command(&mut self, handle: WinitWindowHandle, command: WindowCommand) {
         if command == WindowCommand::Close {
-            self.push_event(handle, ShellEvent::Window(SigilWindowEvent::CloseRequested));
+            self.push_event(handle, Event::Window(SigilWindowEvent::CloseRequested));
             self.request_redraws();
             return;
         }

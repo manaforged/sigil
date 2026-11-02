@@ -1,14 +1,18 @@
+#[cfg(any(test, feature = "scene"))]
 use smallvec::SmallVec;
+#[cfg(test)]
 use unicode_bidi::BidiInfo;
 
+#[cfg(test)]
 #[must_use]
-pub fn paragraph_levels(input: &str) -> SmallVec<[u8; 64]> {
+pub(crate) fn paragraph_levels(input: &str) -> SmallVec<[u8; 64]> {
     if is_latin_only(input) {
         return SmallVec::from_elem(0, input.len());
     }
     level_numbers(&BidiInfo::new(input, None).levels)
 }
 
+#[cfg(any(test, feature = "scene"))]
 fn level_numbers(levels: &[unicode_bidi::Level]) -> SmallVec<[u8; 64]> {
     levels.iter().map(unicode_bidi::Level::number).collect()
 }
@@ -17,8 +21,9 @@ fn is_latin_only(input: &str) -> bool {
     input.chars().all(|c| c <= '\u{024F}')
 }
 
+#[cfg(any(test, feature = "scene"))]
 #[must_use]
-pub fn visual_order(levels: &[u8]) -> Vec<usize> {
+pub(crate) fn visual_order(levels: &[u8]) -> Vec<usize> {
     if levels.len() <= 1 {
         return (0..levels.len()).collect();
     }
@@ -30,20 +35,20 @@ pub fn visual_order(levels: &[u8]) -> Vec<usize> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Step {
+pub(crate) enum CaretStep {
     To(usize),
     Edge,
     Logical,
 }
 
-pub struct ParagraphBidi<'a> {
+pub(crate) struct ParagraphBidi<'a> {
     text: &'a str,
     info: Option<unicode_bidi::ParagraphBidiInfo<'a>>,
 }
 
 impl<'a> ParagraphBidi<'a> {
     #[must_use]
-    pub fn new(text: &'a str) -> Self {
+    pub(crate) fn new(text: &'a str) -> Self {
         if is_latin_only(text) {
             return Self { text, info: None };
         }
@@ -54,16 +59,16 @@ impl<'a> ParagraphBidi<'a> {
     }
 
     #[must_use]
-    pub fn visual_step(&self, caret: usize, right: bool) -> Step {
+    pub(crate) fn visual_step(&self, caret: usize, right: bool) -> CaretStep {
         let Some(ltr) = self.uniform_ltr() else {
-            return Step::Logical;
+            return CaretStep::Logical;
         };
         let target = if ltr == right {
             next_char(self.text, caret)
         } else {
             prev_char(self.text, caret)
         };
-        target.map_or(Step::Edge, Step::To)
+        target.map_or(CaretStep::Edge, CaretStep::To)
     }
 
     fn uniform_ltr(&self) -> Option<bool> {
@@ -78,16 +83,18 @@ impl<'a> ParagraphBidi<'a> {
             .then(|| first.is_ltr())
     }
 
+    #[cfg(any(test, feature = "scene"))]
     #[must_use]
-    pub fn levels(&self) -> SmallVec<[u8; 64]> {
+    pub(crate) fn levels(&self) -> SmallVec<[u8; 64]> {
         self.info.as_ref().map_or_else(
             || SmallVec::from_elem(0, self.text.len()),
             |info| level_numbers(&info.levels),
         )
     }
 
+    #[cfg(any(test, feature = "scene"))]
     #[must_use]
-    pub fn visual_order_for_line(
+    pub(crate) fn visual_order_for_line(
         &self,
         line_start: usize,
         line_end: usize,

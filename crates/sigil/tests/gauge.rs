@@ -8,12 +8,10 @@
 
 use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
-use sigil::reactive::{Runtime, signal};
-use sigil::style::{ColorKey, Dimension, Px, StyleAtom, StyleBinding, Token};
+use sigil::reactive::{Owner, signal};
+use sigil::style::{ColorAtom, StyleAtom, StyleBinding, Token};
 
-use sigil_kittest::{
-    InteractionMode, assert_rendered_matches_golden, golden_path, render_widget_to_png_stub,
-};
+use sigil_kittest::{Golden, Harness, InteractionMode};
 
 fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
     let Some(binding) = cx
@@ -37,11 +35,11 @@ fn only_child(cx: &Cx, id: NodeId) -> NodeId {
     children[0]
 }
 
-fn fill_width_px(atoms: &[StyleAtom]) -> i16 {
+fn fill_width_px(atoms: &[StyleAtom]) -> f32 {
     atoms
         .iter()
         .find_map(|atom| match atom {
-            StyleAtom::Width(Dimension::Px(Px(px))) => Some(*px),
+            StyleAtom::Width(_, px) => Some(f32::from(*px)),
             _ => None,
         })
         .expect("fill atoms must include a Width(Px(_)) atom")
@@ -51,7 +49,7 @@ fn has_warn_tone(atoms: &[StyleAtom]) -> bool {
     atoms.iter().any(|atom| {
         matches!(
             atom,
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Warn9))
+            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Warn9))
         )
     })
 }
@@ -60,14 +58,14 @@ fn has_muted_accent_tone(atoms: &[StyleAtom]) -> bool {
     atoms.iter().any(|atom| {
         matches!(
             atom,
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent8))
+            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent8))
         )
     })
 }
 
 #[test]
 fn gauge_warn_tone_below_threshold() {
-    Runtime::scope("gauge-warn-threshold", || {
+    Owner::scope("gauge-warn-threshold", || {
         let value = signal(0.5_f32);
         let mut cx = Cx::new_root();
         let id = cx.add(gauge(value).max(1.0).warn(0.3));
@@ -93,7 +91,7 @@ fn gauge_warn_tone_below_threshold() {
 
 #[test]
 fn gauge_fill_tracks_signal() {
-    Runtime::scope("gauge-fill-tracks", || {
+    Owner::scope("gauge-fill-tracks", || {
         let value = signal(0.25_f32);
         let mut cx = Cx::new_root();
         let id = cx.add(gauge(value).max(1.0));
@@ -115,28 +113,28 @@ const DELTA_PCT: f32 = 0.5;
 
 #[test]
 fn gauge_full() {
-    let img = render_widget_to_png_stub(
-        || {
-            let value = signal(0.9_f32);
-            gauge(value).max(1.0).label("HP").warn(0.3)
-        },
-        InteractionMode::Default,
-        [220, 40],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("gauge_full"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let value = signal(0.9_f32);
+        gauge(value).max(1.0).label("HP").warn(0.3)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([220, 40])
+    .hit((1.0, 1.0))
+    .image();
+    Golden::new("gauge_full").delta(DELTA_PCT).assert(img);
 }
 
 #[test]
 fn gauge_low_warn() {
-    let img = render_widget_to_png_stub(
-        || {
-            let value = signal(0.15_f32);
-            gauge(value).max(1.0).label("HP").warn(0.3)
-        },
-        InteractionMode::Default,
-        [220, 40],
-        (1.0, 1.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("gauge_low_warn"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let value = signal(0.15_f32);
+        gauge(value).max(1.0).label("HP").warn(0.3)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([220, 40])
+    .hit((1.0, 1.0))
+    .image();
+    Golden::new("gauge_low_warn").delta(DELTA_PCT).assert(img);
 }

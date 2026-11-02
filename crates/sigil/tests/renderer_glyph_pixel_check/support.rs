@@ -1,4 +1,5 @@
 use super::*;
+use sigil::style::StyledTextEngine as _;
 
 pub(super) fn assert_sharp(label: &str, pixels: &[u8], w: u32, h: u32) {
     let measurement = measure(pixels, w, h);
@@ -124,7 +125,10 @@ pub(super) fn render_text_inner(
     let texture = create_capture_texture(device, phys_w, phys_h);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-    let engine = OwnedTextEngine::new(TextConfig::default());
+    let engine = OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    });
     let style = TextStyle {
         font_family: String::from("system-ui"),
         font_size: FONT_SIZE,

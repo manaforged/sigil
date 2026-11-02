@@ -1,9 +1,9 @@
 use crate::kernel::{Cx, container};
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 #[test]
 fn describe_names_a_node_by_role_and_label() {
-    Runtime::scope("describe", || {
+    Owner::scope("describe", || {
         let mut cx = Cx::new_root();
         let root = cx.add(container().child(crate::widgets::button("Start")));
         let mut names = Vec::new();

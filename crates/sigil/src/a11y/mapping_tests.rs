@@ -11,14 +11,32 @@ fn spoken(update: &accesskit::TreeUpdate) -> Vec<Option<String>> {
 }
 
 #[test]
+fn a_keyboard_shortcut_is_exposed_as_its_display_text() {
+    crate::reactive::Owner::scope("a11y::keyboard-shortcut", || {
+        let mut cx = Cx::new_root();
+        let save = crate::events::Shortcut::primary(crate::events::LogicalKey::character("s"));
+        let label = save.label();
+        let _ = cx.add(container().keyboard_shortcut(save));
+        let update = tree(&cx, None, &|_| None);
+        assert!(
+            update
+                .nodes
+                .iter()
+                .any(|(_, node)| node.keyboard_shortcut() == Some(label.as_str())),
+            "no node exposes {label}"
+        );
+    });
+}
+
+#[test]
 fn the_reading_scope_keeps_live_text_and_skips_plain_nodes() {
-    crate::reactive::Runtime::scope("a11y::reading-scope", || {
+    crate::reactive::Owner::scope("a11y::reading-scope", || {
         let mut cx = Cx::new_root();
         let stars = (0..40).fold(container(), |sky, star| {
             sky.child(text(format!("star {star}")))
         });
         let _ = cx.add(stars);
-        announce("saved");
+        announce("saved", crate::kernel::Live::Polite);
         cx.flush_announcements();
         let full = tree(&cx, None, &|_| None);
         let reading = tree_scoped(&cx, None, &|_| None, TreeScope::Reading);
@@ -36,9 +54,11 @@ fn the_reading_scope_keeps_live_text_and_skips_plain_nodes() {
 
 #[test]
 fn the_reading_scope_keeps_a_status_nested_in_plain_containers() {
-    crate::reactive::Runtime::scope("a11y::reading-nested", || {
+    crate::reactive::Owner::scope("a11y::reading-nested", || {
         let mut cx = Cx::new_root();
-        let status = container().role(accesskit::Role::Status).label("saving");
+        let status = container()
+            .role(crate::kernel::Role::Status)
+            .label("saving");
         let _ = cx.add(container().child(container().child(status)));
         let full = tree(&cx, None, &|_| None);
         let reading = tree_scoped(&cx, None, &|_| None, TreeScope::Reading);
@@ -49,9 +69,11 @@ fn the_reading_scope_keeps_a_status_nested_in_plain_containers() {
 
 #[test]
 fn the_reading_scope_names_only_children_it_emits() {
-    crate::reactive::Runtime::scope("a11y::reading-children", || {
+    crate::reactive::Owner::scope("a11y::reading-children", || {
         let mut cx = Cx::new_root();
-        let status = container().role(accesskit::Role::Status).label("saving");
+        let status = container()
+            .role(crate::kernel::Role::Status)
+            .label("saving");
         let _ = cx.add(
             container()
                 .child(text("plain"))
@@ -74,9 +96,11 @@ fn the_reading_scope_names_only_children_it_emits() {
 
 #[test]
 fn the_reading_scope_emits_only_live_nodes_and_the_ancestors_that_hold_them() {
-    crate::reactive::Runtime::scope("a11y::reading-ancestors", || {
+    crate::reactive::Owner::scope("a11y::reading-ancestors", || {
         let mut cx = Cx::new_root();
-        let status = container().role(accesskit::Role::Status).label("saving");
+        let status = container()
+            .role(crate::kernel::Role::Status)
+            .label("saving");
         let _ = cx.add(
             container()
                 .child(text("star one"))

@@ -4,7 +4,7 @@ use std::mem;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use sigil::reactive::{Owner, Runtime, effect, signal};
+use sigil::reactive::{Owner, effect, signal};
 
 use super::{bytes_allocated, fmt_delta, lcg_next, slot_shadow, with_alloc_delta};
 
@@ -31,7 +31,7 @@ pub fn bench_signal_creation_bytes() -> i64 {
     const N: usize = 10_000;
     let mut bytes_per_signal = 0_i64;
     let mut total_delta = 0_i64;
-    Runtime::scope("bench_mem_signal_create", || {
+    Owner::scope("bench_mem_signal_create", || {
         let (_, delta) = with_alloc_delta(|| {
             let mut sigs = Vec::with_capacity(N);
             for _ in 0..N {
@@ -67,7 +67,7 @@ pub fn bench_effect_creation_bytes() {
     const N: usize = 10_000;
     let mut bytes_per_effect = 0_i64;
     let mut total_delta = 0_i64;
-    Runtime::scope("bench_mem_effect_create", || {
+    Owner::scope("bench_mem_effect_create", || {
         let n = signal(0_i32);
         let (_, delta) = with_alloc_delta(|| {
             let sinks: Vec<Rc<Cell<i32>>> = (0..N)
@@ -108,7 +108,7 @@ pub fn bench_create_dispose_cycles_no_growth(steady_bytes_per_signal: i64) {
     let mut deltas: Vec<i64> = Vec::with_capacity(CYCLES);
     for _ in 0..CYCLES {
         let cycle_start = bytes_allocated() as i64;
-        Runtime::scope("bench_mem_dispose_cycle", || {
+        Owner::scope("bench_mem_dispose_cycle", || {
             let mut sigs = Vec::with_capacity(PER_CYCLE);
             for _ in 0..PER_CYCLE {
                 sigs.push(signal(0_i32));
@@ -143,7 +143,7 @@ pub fn bench_streaming_session_10_seconds() {
     const SECONDS: u64 = 10;
     let mut writes_done = 0_u64;
     let mut peak_delta = 0_i64;
-    Runtime::scope("bench_mem_streaming", || {
+    Owner::scope("bench_mem_streaming", || {
         let signals: Vec<_> = (0..NUM_SIGNALS).map(|_| signal(0_i32)).collect();
         let sinks: Vec<Rc<Cell<i32>>> = signals
             .iter()
@@ -194,15 +194,15 @@ pub fn bench_deep_tree_disposal_1000_nodes() {
     const DEPTH: usize = 1000;
     let mut elapsed = Duration::ZERO;
     let mut residual_after_dispose = 0_i64;
-    Runtime::scope("bench_mem_deep_tree", || {
+    Owner::scope("bench_mem_deep_tree", || {
         let baseline = bytes_allocated() as i64;
         let root = Owner::new("root", Owner::current());
-        let mut current_id = root.id();
+        let mut current_id = root;
         let mut leaves: Vec<Owner> = Vec::with_capacity(DEPTH);
         leaves.push(root);
         for _ in 0..DEPTH - 1 {
             let child = Owner::new("node", Some(current_id));
-            current_id = child.id();
+            current_id = child;
             leaves.push(child);
         }
         let root_owner = *leaves.first().expect("root present");

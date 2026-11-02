@@ -1,10 +1,11 @@
 use crate::kernel::{Cx, container, text};
-use crate::reactive::{Runtime, signal};
-use crate::style::{NodeStyleExt, Paint, Token};
+use crate::reactive::{Owner, signal};
+use crate::style::{Paint, Token};
+use crate::widgets::Widget;
 
 #[test]
 fn a_colour_write_records_only_its_node_as_paint() {
-    Runtime::scope("delta-colour", || {
+    Owner::scope("delta-colour", || {
         let lit = signal(false);
         let mut cx = Cx::new_root();
         let id = cx.add(container().paint_when(lit, |style| style.bg(Token::Accent)));
@@ -20,7 +21,7 @@ fn a_colour_write_records_only_its_node_as_paint() {
 
 #[test]
 fn a_reactive_text_write_records_its_node_as_layout() {
-    Runtime::scope("delta-text", || {
+    Owner::scope("delta-text", || {
         let words = signal(String::from("one"));
         let mut cx = Cx::new_root();
         let id = cx.add(text(words));
@@ -35,7 +36,7 @@ fn a_reactive_text_write_records_its_node_as_layout() {
 
 #[test]
 fn adding_a_child_records_structure() {
-    Runtime::scope("delta-structure", || {
+    Owner::scope("delta-structure", || {
         let mut cx = Cx::new_root();
         let parent = cx.add(container());
         drop(cx.take_delta());
@@ -48,7 +49,7 @@ fn adding_a_child_records_structure() {
 
 #[test]
 fn a_frame_with_no_change_has_an_empty_delta() {
-    Runtime::scope("delta-empty", || {
+    Owner::scope("delta-empty", || {
         let lit = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -66,7 +67,7 @@ fn a_frame_with_no_change_has_an_empty_delta() {
 
 #[test]
 fn dropping_a_tree_forgets_its_pending_changes() {
-    Runtime::scope("delta-drop", || {
+    Owner::scope("delta-drop", || {
         let lit = signal(false);
         let mut cx = Cx::new_root();
         let _id = cx.add(container().paint_when(lit, |style| style.bg(Token::Accent)));

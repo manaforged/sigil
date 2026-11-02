@@ -1,11 +1,12 @@
 #![allow(clippy::missing_const_for_fn)]
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::{Dimension, LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow};
+use crate::kernel::{NodeBuilder, Role, container};
+use crate::layout::{Dimension, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, effect_named, signal};
-use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot, Token, space};
+use crate::style::{Style, StyleAtom, Token, space};
+use crate::widgets::Widget;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 
 mod bar;
 pub(crate) mod geometry;
@@ -17,7 +18,7 @@ pub(crate) use input::{ScrollAxis, WheelAxis, contain_scroll, pin_to_bottom, whe
 const VIEWPORT_HEIGHT: f32 = space(60);
 pub(crate) const SCROLLBAR_WIDTH: f32 = space(2);
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Sizing {
+enum ScrollSizing {
     Fixed,
     Fill,
     Fit,
@@ -29,17 +30,20 @@ const SCROLL_LINE: f32 = space(10);
 const MIN_SCROLL_RANGE: f32 = 1.0;
 static VIEWPORT_ATOMS: &[StyleAtom] = &[Token::Surface.bg()];
 
+/// Builder of a scroll area.
 pub struct ScrollBuilder {
     content: NodeBuilder,
     extent: Option<Signal<f32>>,
-    sizing: Sizing,
+    sizing: ScrollSizing,
     scroll_y: Option<Signal<f32>>,
     follow_end: bool,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
+/// A fixed or reactive extent for a scroll view.
 pub trait IntoScrollExtent {
+    /// Returns the extent as a signal.
     fn into_extent(self) -> Signal<f32>;
 }
 
@@ -55,12 +59,13 @@ impl IntoScrollExtent for Signal<f32> {
     }
 }
 
+/// A scroll event.
 #[must_use]
 pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
     ScrollBuilder {
         content,
         extent: None,
-        sizing: Sizing::Fixed,
+        sizing: ScrollSizing::Fixed,
         scroll_y: None,
         follow_end: false,
         style_accumulator: Style::new(),
@@ -69,53 +74,59 @@ pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
 }
 
 impl ScrollBuilder {
+    /// Sets the extent.
     #[must_use]
     pub fn extent(mut self, extent: impl IntoScrollExtent) -> Self {
         self.extent = Some(extent.into_extent());
         self
     }
 
+    /// Applies the fill option.
     #[must_use]
     pub const fn fill(mut self) -> Self {
-        self.sizing = Sizing::Fill;
+        self.sizing = ScrollSizing::Fill;
         self
     }
 
+    /// Applies the fit option.
     #[must_use]
     pub const fn fit(mut self) -> Self {
-        self.sizing = Sizing::Fit;
+        self.sizing = ScrollSizing::Fit;
         self
     }
 
+    /// Sets the scroll bind.
     #[must_use]
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
 
+    /// Sets the follow end.
     #[must_use]
     pub const fn follow_end(mut self, on: bool) -> Self {
         self.follow_end = on;
         self
     }
 
-    pub(crate) fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let scroll_y = self.scroll_y.unwrap_or_else(|| signal(0.0_f32));
         let (content, extent) = resolve_extent(self.content, self.extent);
         let sizing = self.sizing;
         let width = self.layout_overrides.width_hint();
         let height = self.layout_overrides.height_hint().unwrap_or(match sizing {
-            Sizing::Fit => 0.0,
-            Sizing::Fill | Sizing::Fixed => VIEWPORT_HEIGHT,
+            ScrollSizing::Fit => 0.0,
+            ScrollSizing::Fill | ScrollSizing::Fixed => VIEWPORT_HEIGHT,
         });
-        let (viewport, viewport_height) = viewport_signals(width, height, sizing != Sizing::Fixed);
+        let (viewport, viewport_height) =
+            viewport_signals(width, height, sizing != ScrollSizing::Fixed);
 
         let max_scroll = derived(move || (extent.get() - viewport_height.get()).max(0.0));
         if self.follow_end {
             scroll_y.set(max_scroll.peek());
             pin_to_bottom(scroll_y, max_scroll, || true);
         }
-        let floor = if sizing == Sizing::Fit {
+        let floor = if sizing == ScrollSizing::Fit {
             extent
         } else {
             viewport_height
@@ -126,12 +137,10 @@ impl ScrollBuilder {
             max_scroll,
             extent,
             viewport_height,
-            sizing != Sizing::Fit,
+            sizing != ScrollSizing::Fit,
         );
 
-        let root = viewport_container(self.layout_overrides, height, sizing)
-            .child(body)
-            .child(track);
+        let root = viewport_container(height, sizing).child(body).child(track);
         let scrollable = overflows(max_scroll);
         let root = root
             .focusable(true)
@@ -142,7 +151,7 @@ impl ScrollBuilder {
                 max: max_scroll,
             },
         );
-        if sizing != Sizing::Fixed {
+        if sizing != ScrollSizing::Fixed {
             root = root.size_reactive(viewport);
         }
         if !self.style_accumulator.is_empty() {
@@ -206,40 +215,25 @@ fn viewport_signals(
     (viewport, viewport_height)
 }
 
-impl PaintTarget for ScrollBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for ScrollBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for ScrollBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        NodeBuilder::from(self).build(cx)
-    }
-}
+builder_impls!([] ScrollBuilder: paint(style_accumulator), widget, node(pub(crate)));
 
 impl From<ScrollBuilder> for NodeBuilder {
     fn from(builder: ScrollBuilder) -> Self {
-        let hooks = builder.layout_overrides.hooks();
-        hooks.finish(builder.into_node_builder())
+        builder.into_node_builder()
     }
 }
 
-fn viewport_container(overrides: LayoutOverrides, height: f32, sizing: Sizing) -> NodeBuilder {
+fn viewport_container(height: f32, sizing: ScrollSizing) -> NodeBuilder {
     let base = match sizing {
-        Sizing::Fill => LayoutStyle::flex_row().fill_height(),
-        Sizing::Fit => LayoutStyle::flex_row().max_size(Dimension::Auto, Dimension::Percent(1.0)),
-        Sizing::Fixed => LayoutStyle::flex_row().height(height),
+        ScrollSizing::Fill => LayoutStyle::flex_row().fill_height(),
+        ScrollSizing::Fit => {
+            LayoutStyle::flex_row().max_size(Dimension::Auto, Dimension::Percent(1.0))
+        }
+        ScrollSizing::Fixed => LayoutStyle::flex_row().height(height),
     };
     container()
         .role(Role::ScrollView)
-        .layout(overrides.apply(base.fill_width().overflow_y(Overflow::Hidden)))
+        .layout(base.fill_width().overflow_y(Overflow::Hidden))
         .class(VIEWPORT_ATOMS)
 }
 

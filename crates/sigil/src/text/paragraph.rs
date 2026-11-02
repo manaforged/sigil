@@ -13,10 +13,11 @@ use crate::hal::{HitPosition, ParagraphMetrics, TextAffinity};
 use smallvec::SmallVec;
 
 use crate::text::Font;
-use crate::text::glyph::GlyphRun;
+use crate::text::glyph::ShapedRun;
 
 #[path = "paragraph_geometry.rs"]
 mod geometry;
+#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 #[path = "paragraph_ink.rs"]
 mod ink;
 
@@ -155,7 +156,7 @@ impl LineGlyph {
 }
 
 pub(crate) struct SegmentAppend<'a> {
-    pub(crate) run: &'a GlyphRun,
+    pub(crate) run: &'a ShapedRun,
     pub(crate) advance: f32,
     pub(crate) byte_start: u32,
     pub(crate) byte_end: u32,
@@ -166,6 +167,7 @@ pub(crate) struct SegmentAppend<'a> {
 #[derive(Clone, Copy, Default)]
 struct ContentWidths {
     min: f32,
+    #[cfg(any(test, feature = "kittest"))]
     max: f32,
 }
 
@@ -221,6 +223,7 @@ struct ParagraphInner {
     fonts: FaceTable,
     min_content_hint: f32,
     content_widths: Cell<Option<ContentWidths>>,
+    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
     ink: OnceCell<Option<Rect>>,
 }
 
@@ -244,6 +247,7 @@ impl Paragraph {
                 fonts,
                 min_content_hint,
                 content_widths: Cell::new(None),
+                #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
                 ink: OnceCell::new(),
             }),
         }
@@ -266,6 +270,7 @@ impl Paragraph {
         };
         let result = ContentWidths {
             min: min.min(max),
+            #[cfg(any(test, feature = "kittest"))]
             max,
         };
         self.inner.content_widths.set(Some(result));
@@ -330,6 +335,7 @@ impl Paragraph {
         rects
     }
 
+    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
     pub fn for_each_font<F>(&self, mut f: F)
     where
         F: FnMut(u64, &[u8], u32),
@@ -372,6 +378,7 @@ impl ParagraphMetrics for Paragraph {
         self.inner.lines.iter().map(|l| l.height).sum()
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     fn line_count(&self) -> usize {
         self.inner.lines.len()
     }
@@ -380,6 +387,7 @@ impl ParagraphMetrics for Paragraph {
         self.content_widths().min
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     fn max_content_width(&self) -> f32 {
         self.content_widths().max
     }

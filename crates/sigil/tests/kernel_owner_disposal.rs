@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil::kernel::{A11yProps, Cx, IntoNode, NodeId, NodeType, container};
-use sigil::reactive::{Runtime, debug, effect, on_cleanup, signal};
+use sigil::reactive::{Owner, debug, effect, on_cleanup, signal};
 
 struct DisposableComponent {
     cleanup_count: Rc<Cell<u32>>,
@@ -39,7 +39,7 @@ fn remove_subtree_disposes_reactive_owner_resources() {
     let cleanup_count = Rc::new(Cell::new(0_u32));
     let effect_runs = Rc::new(Cell::new(0_u32));
 
-    Runtime::scope("sigil_kernel_owner_disposal", || {
+    Owner::scope("sigil_kernel_owner_disposal", || {
         let mut cx = Cx::new_root();
         let root = cx.add(container().child(DisposableComponent {
             cleanup_count: Rc::clone(&cleanup_count),

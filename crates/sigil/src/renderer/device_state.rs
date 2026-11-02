@@ -2,18 +2,17 @@
 use crate::profile::{BackendKind, BackendStatus, FallbackCause};
 use crate::renderer::blur_paint::BlurPipeline;
 use crate::renderer::decoration_paint::DecorationPipeline;
-use crate::renderer::error::RendererError;
 use crate::renderer::fill_paint::FillPipeline;
 use crate::renderer::frame_upload::UploadBuffers;
 use crate::renderer::layer_composite::LayerCompositePipeline;
 use crate::renderer::layer_pool::LayerPool;
-use crate::renderer::raster_paint::RasterTextPipeline;
+use crate::renderer::quad_paint::AtlasPipeline;
 use crate::renderer::scene_command::walk::WalkPending;
 use crate::renderer::scene_paint::ScenePipeline;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::SlugTextPipeline;
 use crate::renderer::split_encoder::GpuTimer;
-use crate::renderer::sprite_paint::SpritePipeline;
+use crate::{Error, ErrorKind};
 #[cfg(not(target_arch = "wasm32"))]
 use pollster::FutureExt as _;
 use std::sync::Arc;
@@ -29,8 +28,7 @@ pub(crate) struct PipelineCache {
     pub(crate) fill_pipelines: Vec<FillPipeline>,
     pub(crate) shadow_pipelines: Vec<ShadowPipeline>,
     pub(crate) slug_pipelines: Vec<SlugTextPipeline>,
-    pub(crate) raster_pipelines: Vec<RasterTextPipeline>,
-    pub(crate) sprite_pipelines: Vec<SpritePipeline>,
+    pub(crate) quad_pipelines: Vec<AtlasPipeline>,
     pub(crate) decoration_pipelines: Vec<DecorationPipeline>,
     pub(crate) layer_pipelines: Vec<LayerCompositePipeline>,
     pub(crate) blur_pipelines: Vec<BlurPipeline>,
@@ -45,8 +43,7 @@ impl Default for PipelineCache {
             fill_pipelines: Vec::new(),
             shadow_pipelines: Vec::new(),
             slug_pipelines: Vec::new(),
-            raster_pipelines: Vec::new(),
-            sprite_pipelines: Vec::new(),
+            quad_pipelines: Vec::new(),
             decoration_pipelines: Vec::new(),
             layer_pipelines: Vec::new(),
             blur_pipelines: Vec::new(),
@@ -89,11 +86,8 @@ impl ReadyState {
     }
 
     pub(crate) fn begin_frame(&mut self) {
-        for pipeline in &mut self.pipelines.raster_pipelines {
+        for pipeline in &mut self.pipelines.quad_pipelines {
             pipeline.begin_frame(&self.queue);
-        }
-        for pipeline in &mut self.pipelines.sprite_pipelines {
-            pipeline.begin_frame();
         }
     }
 
@@ -124,6 +118,13 @@ impl DeviceState {
         Self::Uninitialized(new_instance())
     }
 
+    #[cfg(test)]
+    pub(crate) fn without_backends() -> Self {
+        let mut descriptor = wgpu::InstanceDescriptor::new_without_display_handle_from_env();
+        descriptor.backends = wgpu::Backends::empty();
+        Self::Uninitialized(wgpu::Instance::new(descriptor))
+    }
+
     pub(crate) fn instance(&self) -> &wgpu::Instance {
         match self {
             Self::Uninitialized(instance) => instance,
@@ -145,30 +146,35 @@ impl DeviceState {
         }
     }
 
-    pub(crate) fn ready(&self) -> Result<&ReadyState, RendererError> {
+    pub(crate) fn ready(&self) -> Result<&ReadyState, Error> {
         match self {
             Self::Ready(ready) => Ok(&**ready),
-            Self::Uninitialized(_) => Err(RendererError::NotInitialized),
+            Self::Uninitialized(_) => Err(Error::fixed(
+                ErrorKind::NotInitialized,
+                "renderer has not yet picked a GPU device; call create_surface first",
+            )),
         }
     }
 
-    pub(crate) fn ready_mut(&mut self) -> Result<&mut ReadyState, RendererError> {
+    pub(crate) fn ready_mut(&mut self) -> Result<&mut ReadyState, Error> {
         match self {
             Self::Ready(ready) => Ok(&mut **ready),
-            Self::Uninitialized(_) => Err(RendererError::NotInitialized),
+            Self::Uninitialized(_) => Err(Error::fixed(
+                ErrorKind::NotInitialized,
+                "renderer has not yet picked a GPU device; call create_surface first",
+            )),
         }
     }
 
     pub(crate) fn ensure_ready(
         &mut self,
         surface: &wgpu::Surface<'_>,
-    ) -> Result<&ReadyState, RendererError> {
+    ) -> Result<&ReadyState, Error> {
         self.ensure_ready_for(Some(surface)).map(|ready| &*ready)
     }
 
     #[cfg(any(test, feature = "kittest"))]
-    pub(crate) fn request_headless()
-    -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), RendererError> {
+    pub(crate) fn request_headless() -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), Error> {
         let (adapter, device, queue, _lost, _forced) = request_blocking(&new_instance(), None)?;
         Ok((adapter, device, queue))
     }
@@ -188,7 +194,8 @@ impl DeviceState {
         ));
     }
 
-    pub(crate) fn ensure_ready_headless(&mut self) -> Result<&mut ReadyState, RendererError> {
+    #[cfg(any(test, feature = "inspect", feature = "kittest"))]
+    pub(crate) fn ensure_ready_headless(&mut self) -> Result<&mut ReadyState, Error> {
         self.ensure_ready_for(None)
     }
 
@@ -200,7 +207,7 @@ impl DeviceState {
     pub(crate) fn request(
         &self,
         on_lost: OnLost,
-    ) -> impl core::future::Future<Output = Result<DeviceParts, RendererError>> + 'static {
+    ) -> impl core::future::Future<Output = Result<DeviceParts, Error>> + 'static {
         let instance = self.instance().clone();
         async move { request_adapter_and_device(&instance, None, Some(on_lost)).await }
     }
@@ -214,7 +221,7 @@ impl DeviceState {
     fn ensure_ready_for(
         &mut self,
         surface: Option<&wgpu::Surface<'_>>,
-    ) -> Result<&mut ReadyState, RendererError> {
+    ) -> Result<&mut ReadyState, Error> {
         if let Self::Uninitialized(instance) = self {
             let parts = request_blocking(instance, surface)?;
             *self = Self::Ready(ReadyState::boxed(instance.clone(), parts));
@@ -241,7 +248,7 @@ fn new_instance() -> wgpu::Instance {
 fn request_blocking(
     instance: &wgpu::Instance,
     surface: Option<&wgpu::Surface<'_>>,
-) -> Result<DeviceParts, RendererError> {
+) -> Result<DeviceParts, Error> {
     request_adapter_and_device(instance, surface, None).block_on()
 }
 
@@ -249,8 +256,11 @@ fn request_blocking(
 const fn request_blocking(
     _instance: &wgpu::Instance,
     _surface: Option<&wgpu::Surface<'_>>,
-) -> Result<DeviceParts, RendererError> {
-    Err(RendererError::NotInitialized)
+) -> Result<DeviceParts, Error> {
+    Err(Error::fixed(
+        ErrorKind::NotInitialized,
+        "renderer has not yet picked a GPU device; call create_surface first",
+    ))
 }
 
 #[cfg_attr(
@@ -264,14 +274,16 @@ async fn request_adapter_and_device(
     instance: &wgpu::Instance,
     surface: Option<&wgpu::Surface<'_>>,
     on_lost: Option<OnLost>,
-) -> Result<DeviceParts, RendererError> {
+) -> Result<DeviceParts, Error> {
     let (adapter, forced_fallback) = match request_adapter(instance, surface, false).await {
         Ok(adapter) => (adapter, false),
         Err(err) => {
             tracing::warn!("sigil-renderer: {err}; retrying with the software fallback adapter");
             let adapter = request_adapter(instance, surface, true)
                 .await
-                .map_err(|_| RendererError::NoAdapter)?;
+                .map_err(|_| {
+                    Error::fixed(ErrorKind::NoAdapter, "no compatible GPU adapter found")
+                })?;
             (adapter, true)
         }
     };
@@ -285,7 +297,8 @@ async fn request_adapter_and_device(
             memory_hints: wgpu::MemoryHints::Performance,
             trace: wgpu::Trace::Off,
         })
-        .await?;
+        .await
+        .map_err(crate::Error::gpu_device)?;
     let lost = watch_device(&device, on_lost);
     Ok((adapter, device, queue, lost, forced_fallback))
 }

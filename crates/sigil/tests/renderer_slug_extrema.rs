@@ -143,7 +143,7 @@ fn outline_glyph_counters_stay_open_at_curve_joins() {
     let mut checked = 0;
     let mut barred = Vec::new();
     for tenths in SCALES {
-        let scene = ui.host().0.emit(viewport);
+        let scene = ui.host().emit(viewport);
         let size = [VIEWPORT.0 * tenths / 10, VIEWPORT.1 * tenths / 10];
         let ink = Ink::new(&render_scene_to_image(&mut renderer, &scene, viewport, size).unwrap());
         for bounds in ink.glyph_boxes() {

@@ -8,42 +8,46 @@ use crate::reactive::runtime::{EffectKey, EffectSlot, OwnerKey, with_rt};
 
 const DRAIN_BUDGET: usize = 10_000;
 
+/// Runs a closure now and again when the signals it reads change.
 #[track_caller]
 pub fn effect<F: FnMut() + 'static>(f: F) {
     effect_named("<unnamed>", f);
 }
 
-#[track_caller]
-pub fn effect_named<F: FnMut() + 'static>(name: &'static str, f: F) {
-    let location = Location::caller();
-    let key = with_rt(|rt| {
-        let owner = rt
-            .current_owner
-            .unwrap_or_else(|| no_scope("effect()", location));
-        assert!(
-            rt.owners.contains(owner),
-            "effect() with a disposed current owner (at {location})"
-        );
-        let key = rt.effects.insert(EffectSlot {
-            owner,
-            run_owner: None,
-            f: Some(Box::new(f)),
-            deps: SmallVec::new(),
-            prev_deps: SmallVec::new(),
-            prev_dep_cursor: 0,
-            location,
-            name,
+kittest_pub! {
+    #[track_caller]
+    pub fn effect_named<F: FnMut() + 'static>(name: &'static str, f: F) {
+        let location = Location::caller();
+        let key = with_rt(|rt| {
+            let owner = rt
+                .current_owner
+                .unwrap_or_else(|| no_scope("effect()", location));
+            assert!(
+                rt.owners.contains(owner),
+                "effect() with a disposed current owner (at {location})"
+            );
+            let key = rt.effects.insert(EffectSlot {
+                owner,
+                run_owner: None,
+                f: Some(Box::new(f)),
+                deps: SmallVec::new(),
+                prev_deps: SmallVec::new(),
+                prev_dep_cursor: 0,
+                location,
+                name,
+            });
+            rt.owners
+                .get_mut(owner)
+                .expect("current owner slot missing")
+                .effects
+                .push(key);
+            key
         });
-        rt.owners
-            .get_mut(owner)
-            .expect("current owner slot missing")
-            .effects
-            .push(key);
-        key
-    });
-    run_effect(key);
+        run_effect(key);
+    }
 }
 
+/// Run `f` without subscribing the current effect to its reads.
 pub fn untrack<R>(f: impl FnOnce() -> R) -> R {
     struct Restore(Option<EffectKey>);
     impl Drop for Restore {
@@ -56,6 +60,7 @@ pub fn untrack<R>(f: impl FnOnce() -> R) -> R {
     f()
 }
 
+/// Run `f` after the current effect returns, or now outside an effect.
 pub fn defer(f: impl FnOnce() + 'static) {
     let f: Box<dyn FnOnce()> = Box::new(f);
     with_rt(|rt| {

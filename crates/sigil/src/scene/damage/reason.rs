@@ -2,7 +2,7 @@
 pub(crate) enum FullReason {
     #[cfg(feature = "scene")]
     FirstFrame,
-    #[cfg(feature = "scene")]
+    #[cfg(all(feature = "scene", any(test, feature = "kittest")))]
     Untracked,
     NoBackbuffer,
     #[cfg(feature = "scene")]
@@ -22,6 +22,7 @@ impl FullReason {
     pub(crate) const fn name(self) -> &'static str {
         match self {
             Self::FirstFrame => "first frame",
+            #[cfg(any(test, feature = "kittest"))]
             Self::Untracked => "untracked target",
             Self::NoBackbuffer => "no back buffer",
             Self::TranslucentClear => "translucent clear",

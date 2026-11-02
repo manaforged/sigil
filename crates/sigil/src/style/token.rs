@@ -3,15 +3,18 @@ use crate::style::{ColorAtom, StyleAtom};
 
 macro_rules! tokens {
     ($($variant:ident => $name:literal,)*) => {
+        /// A named color in the theme.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         #[non_exhaustive]
         pub enum Token {
-            $($variant,)*
+            $(#[doc = concat!("The `", $name, "` color.")] $variant,)*
         }
 
         impl Token {
+            /// Every token.
             pub const ALL: &'static [Self] = &[$(Self::$variant,)*];
 
+            /// Returns the theme file name of this token.
             #[must_use]
             pub const fn name(self) -> &'static str {
                 match self {
@@ -138,8 +141,10 @@ const ROLES: [ScaleRole; 6] = [
 ];
 
 impl Token {
+    /// The number of tokens.
     pub const COUNT: usize = Self::ALL.len();
 
+    /// Returns the color scale of this token.
     #[must_use]
     pub fn scale(role: ScaleRole, step: u8) -> Option<Self> {
         let offset = usize::from(step.checked_sub(1)?);
@@ -150,11 +155,13 @@ impl Token {
         Self::ALL.get(SEMANTIC + row * STEPS + offset).copied()
     }
 
+    /// Returns the position of this token in `Token::ALL`.
     #[must_use]
     pub const fn index(self) -> usize {
         self as usize
     }
 
+    /// Returns the scale step of this token.
     #[must_use]
     pub fn scale_step(self) -> Option<(ScaleRole, u8)> {
         let offset = self.index().checked_sub(SEMANTIC)?;
@@ -163,50 +170,24 @@ impl Token {
         Some((role, step))
     }
 
+    /// Returns this token as a color atom.
     #[must_use]
     pub const fn color(self) -> ColorAtom {
-        ColorAtom::ThemeRef(ColorKey::Token(self))
+        ColorAtom::Token(self)
     }
 
     #[must_use]
     pub(crate) const fn bg(self) -> StyleAtom {
-        StyleAtom::BackgroundThemeRef(ColorKey::Token(self))
+        StyleAtom::BackgroundColor(ColorAtom::Token(self))
     }
 
     #[must_use]
     pub(crate) const fn text(self) -> StyleAtom {
-        StyleAtom::TextThemeRef(ColorKey::Token(self))
+        StyleAtom::TextColor(ColorAtom::Token(self))
     }
 
     #[must_use]
     pub(crate) const fn border(self) -> StyleAtom {
-        StyleAtom::BorderThemeRef(ColorKey::Token(self))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ColorKey {
-    Token(Token),
-    Custom(&'static str),
-}
-
-impl ColorKey {
-    #[must_use]
-    pub(crate) fn parse(name: &'static str) -> Self {
-        Token::from_name(name).map_or(Self::Custom(name), Self::Token)
-    }
-
-    #[must_use]
-    pub const fn name(self) -> &'static str {
-        match self {
-            Self::Token(token) => token.name(),
-            Self::Custom(name) => name,
-        }
-    }
-}
-
-impl From<Token> for ColorKey {
-    fn from(token: Token) -> Self {
-        Self::Token(token)
+        StyleAtom::BorderColor(ColorAtom::Token(self))
     }
 }

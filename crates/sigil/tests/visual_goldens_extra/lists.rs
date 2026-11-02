@@ -14,54 +14,60 @@ fn row_label(label: &str) -> NodeBuilder {
 
 #[test]
 fn virtual_list_default() {
-    let img = render_widget_to_png_stub(
-        || {
-            let w = virtual_list(ten_row_list(), |_, s: &String| row_label(s))
-                .row_height(20.0)
-                .viewport_height(200.0)
-                .viewport_width(220.0);
-            on_black(w, 232.0, 212.0)
-        },
-        InteractionMode::Default,
-        [232, 212],
-        (120.0, 106.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("virtual_list_default"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let w = virtual_list(ten_row_list(), |_, s: &String| row_label(s))
+            .row_height(20.0)
+            .viewport_height(200.0)
+            .viewport_width(220.0);
+        on_black(w, 232.0, 212.0)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([232, 212])
+    .hit((120.0, 106.0))
+    .image();
+    Golden::new("virtual_list_default")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn virtual_list_focused() {
-    let img = render_widget_to_png_stub(
-        || {
-            let w = virtual_list(ten_row_list(), |_, s: &String| row_label(s))
-                .row_height(20.0)
-                .viewport_height(200.0)
-                .viewport_width(220.0);
-            on_black(w, 232.0, 212.0)
-        },
-        InteractionMode::Focused,
-        [232, 212],
-        (120.0, 106.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("virtual_list_focused"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let w = virtual_list(ten_row_list(), |_, s: &String| row_label(s))
+            .row_height(20.0)
+            .viewport_height(200.0)
+            .viewport_width(220.0);
+        on_black(w, 232.0, 212.0)
+    })
+    .stub()
+    .mode(InteractionMode::Focused)
+    .size([232, 212])
+    .hit((120.0, 106.0))
+    .image();
+    Golden::new("virtual_list_focused")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn virtual_list_items_bind() {
-    let img = render_widget_to_png_stub(
-        || {
-            let items: Signal<Vec<String>> = signal(ten_row_list());
-            let w = virtual_list(items, |_, s: &String| row_label(s))
-                .row_height(20.0)
-                .viewport_height(200.0)
-                .viewport_width(220.0);
-            on_black(w, 232.0, 212.0)
-        },
-        InteractionMode::Default,
-        [232, 212],
-        (120.0, 106.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("virtual_list_items_bind"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let items: Signal<Vec<String>> = signal(ten_row_list());
+        let w = virtual_list(items, |_, s: &String| row_label(s))
+            .row_height(20.0)
+            .viewport_height(200.0)
+            .viewport_width(220.0);
+        on_black(w, 232.0, 212.0)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([232, 212])
+    .hit((120.0, 106.0))
+    .image();
+    Golden::new("virtual_list_items_bind")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 fn splitter_pane(bg: Token) -> NodeBuilder {
@@ -70,59 +76,61 @@ fn splitter_pane(bg: Token) -> NodeBuilder {
 
 #[test]
 fn splitter_horizontal_default() {
-    let img = render_widget_to_png_stub(
-        || {
-            let w = splitter(Orientation::Horizontal)
-                .child(splitter_pane(Token::Accent), 120.0)
-                .child(splitter_pane(Token::SurfaceHover), 120.0)
-                .layout(LayoutStyle::flex_row().fixed_size(246.0, 80.0));
-            on_black(w, 258.0, 92.0)
-        },
-        InteractionMode::Default,
-        [258, 92],
-        (168.0, 46.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("splitter_horizontal_default"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let w = splitter(Orientation::Horizontal)
+            .child(splitter_pane(Token::Accent), 120.0)
+            .child(splitter_pane(Token::SurfaceHover), 120.0)
+            .layout(LayoutStyle::flex_row().fixed_size(246.0, 80.0));
+        on_black(w, 258.0, 92.0)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([258, 92])
+    .hit((168.0, 46.0))
+    .image();
+    Golden::new("splitter_horizontal_default")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn splitter_vertical_default() {
-    let img = render_widget_to_png_stub(
-        || {
-            let w = splitter(Orientation::Vertical)
-                .child(splitter_pane(Token::Accent), 60.0)
-                .child(splitter_pane(Token::SurfaceHover), 60.0)
-                .layout(LayoutStyle::flex_column().fixed_size(160.0, 126.0));
-            on_black(w, 172.0, 138.0)
-        },
-        InteractionMode::Default,
-        [172, 138],
-        (86.0, 70.0),
-    );
-    assert_rendered_matches_golden(img, &golden_path!("splitter_vertical_default"), DELTA_PCT);
+    let img = Harness::render(|| {
+        let w = splitter(Orientation::Vertical)
+            .child(splitter_pane(Token::Accent), 60.0)
+            .child(splitter_pane(Token::SurfaceHover), 60.0)
+            .layout(LayoutStyle::flex_column().fixed_size(160.0, 126.0));
+        on_black(w, 172.0, 138.0)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([172, 138])
+    .hit((86.0, 70.0))
+    .image();
+    Golden::new("splitter_vertical_default")
+        .delta(DELTA_PCT)
+        .assert(img);
 }
 
 #[test]
 fn splitter_horizontal_with_min_max() {
-    let img = render_widget_to_png_stub(
-        || {
-            let w = splitter(Orientation::Horizontal)
-                .child(splitter_pane(Token::Accent), 120.0)
-                .child(splitter_pane(Token::SurfaceHover), 120.0)
-                .min_size(0, 60.0)
-                .max_size(0, 200.0)
-                .min_size(1, 60.0)
-                .max_size(1, 200.0)
-                .layout(LayoutStyle::flex_row().fixed_size(246.0, 80.0));
-            on_black(w, 258.0, 92.0)
-        },
-        InteractionMode::Default,
-        [258, 92],
-        (168.0, 46.0),
-    );
-    assert_rendered_matches_golden(
-        img,
-        &golden_path!("splitter_horizontal_with_min_max"),
-        DELTA_PCT,
-    );
+    let img = Harness::render(|| {
+        let w = splitter(Orientation::Horizontal)
+            .child(splitter_pane(Token::Accent), 120.0)
+            .child(splitter_pane(Token::SurfaceHover), 120.0)
+            .min_size(0, 60.0)
+            .max_size(0, 200.0)
+            .min_size(1, 60.0)
+            .max_size(1, 200.0)
+            .layout(LayoutStyle::flex_row().fixed_size(246.0, 80.0));
+        on_black(w, 258.0, 92.0)
+    })
+    .stub()
+    .mode(InteractionMode::Default)
+    .size([258, 92])
+    .hit((168.0, 46.0))
+    .image();
+    Golden::new("splitter_horizontal_with_min_max")
+        .delta(DELTA_PCT)
+        .assert(img);
 }

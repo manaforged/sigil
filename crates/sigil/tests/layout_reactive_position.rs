@@ -8,16 +8,17 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
+use sigil::widgets::Widget;
 use stub::{layout_rect, stub_engine};
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
 
 #[test]
 fn position_reactive_tracks_signal_with_stable_identity() {
-    Runtime::scope("layout_reactive_position", || {
+    Owner::scope("layout_reactive_position", || {
         let pos = signal((50.0_f32, 30.0_f32));
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -65,7 +66,7 @@ fn position_reactive_tracks_signal_with_stable_identity() {
 
 #[test]
 fn bounds_reactive_publishes_the_absolute_rect() {
-    Runtime::scope("layout_bounds_reactive", || {
+    Owner::scope("layout_bounds_reactive", || {
         let bounds = signal((0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32));
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -96,7 +97,7 @@ fn bounds_reactive_publishes_the_absolute_rect() {
 
 #[test]
 fn reposition_translates_the_subtree_without_a_resolve() {
-    Runtime::scope("layout_reactive_translate", || {
+    Owner::scope("layout_reactive_translate", || {
         let pos = signal((0.0_f32, 0.0_f32));
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -143,7 +144,7 @@ fn reposition_translates_the_subtree_without_a_resolve() {
 
 #[test]
 fn reposition_with_a_dirty_descendant_still_translates() {
-    Runtime::scope("layout_reactive_translate_dirty_child", || {
+    Owner::scope("layout_reactive_translate_dirty_child", || {
         let pos = signal((0.0_f32, 0.0_f32));
         let label = signal(String::from("a"));
         let mut cx = Cx::new_root();
@@ -194,7 +195,7 @@ fn reposition_with_a_dirty_descendant_still_translates() {
 
 #[test]
 fn incremental_root_with_margin_keeps_its_place() {
-    Runtime::scope("layout_margin_root", || {
+    Owner::scope("layout_margin_root", || {
         let label = signal(String::from("a"));
         let mut cx = Cx::new_root();
         let root = cx.add(

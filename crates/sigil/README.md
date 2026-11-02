@@ -62,10 +62,10 @@ An embed host. You own the window and the GPU:
 ```rust
 use sigil::Host;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 
-Runtime::scope("embed", || {
-    let mut host = Host::new();
+Owner::scope("embed", || {
+    let mut host = Host::new(HostMode::Pixel);
     host.mount(text("hello"));
     let scene = host.scene((80.0, 24.0)).expect("layout");
     assert!(scene.find_text("hello").is_some());
@@ -84,15 +84,14 @@ With the `desktop` feature, `open(url)` passes an `http`, `https`, or `mailto` U
 | Feature | Default | Enables |
 | --- | --- | --- |
 | `desktop` | yes | The window host for `run`, `open`, and the OS clipboard. Turns on `scene`, `clipboard`, and winit with AccessKit. |
-| `terminal` | no | The terminal host: `run` with `.terminal()`, and `sigil::terminal`, including `sigil::terminal::render`. Uses crossterm and enables `image-decode`. |
-| `scene` | via `desktop` | The wgpu renderer, the CPU renderer, offscreen capture through `sigil::renderer::capture`, text shaping, SVG icons, and `sigil::text`. No window. |
+| `terminal` | no | The terminal host: `run` with `.terminal()`, and `sigil::terminal`. Uses crossterm and enables `image-decode`. |
+| `scene` | via `desktop` | The wgpu renderer, the CPU renderer, offscreen capture with the `kittest` feature, text shaping, SVG icons, and `sigil::text`. No window. |
 | `shell` | via `desktop` | The winit window shell with AccessKit. |
 | `cpu` | via `scene` | The CPU renderer that `SIGIL_BACKEND=cpu` selects. |
 | `shaping-complex` | via `scene` | Complex-script text shaping through `HarfRust`. |
-| `render` | no | Scene rendering without a window. Turns on `scene`. |
 | `clipboard` | via `desktop` | `OsClipboard`, the system clipboard. |
 | `clipboard-image` | no | `sigil::clipboard::image()`, images from the system clipboard. |
-| `image-decode` | no | `image_bytes`, and `data:` images in `markdown`. |
+| `image-decode` | no | `ImageSource::decode`, and `data:` images in `markdown`. |
 | `dialog` | no | `sigil::app::dialog`: in-app open, save, folder, message, and confirm dialogs on either host. |
 | `native-dialog` | no | Native dialogs on the window host; the terminal host keeps the in-app dialogs. Turns on `dialog` and `desktop`. |
 | `menu` | no | `sigil::app::menu`: native application menus. Turns on `desktop`. |
@@ -109,7 +108,7 @@ With the `desktop` feature, `open(url)` passes an `http`, `https`, or `mailto` U
 
 ## Limits
 
-- `signal`, `derived`, and `effect` panic outside `Runtime::scope`. `run` opens that scope. An embed host that uses signals must call `Runtime::scope`.
+- `signal`, `derived`, and `effect` panic outside `Owner::scope`. `run` opens that scope. An embed host that uses signals must call `Owner::scope`.
 - `run` does not place a native view in a `surface(key)` hole.
 - `html()` parses a document subset. No CSS, no JavaScript, no browser.
 - `markdown`, `html`, `mermaid`, and the SVG parser reject sources larger than 1 MiB.

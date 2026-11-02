@@ -1,5 +1,5 @@
 use super::*;
-use crate::style::ColorKey;
+use crate::style::ColorAtom;
 use crate::style::palette::Palette;
 use crate::style::palette::perceived_brightness_u32;
 use crate::style::variant::{FontFamilyHint, Variant};
@@ -102,15 +102,15 @@ fn console_dark_resolves_shadcn_tokens_to_captured_srgb() {
             },
         ),
     ] {
-        assert_eq!(t.resolve_color(ColorKey::parse(name)), expected, "{name}");
+        assert_eq!(t.resolve_color(ColorAtom::parse(name)), expected, "{name}");
     }
 }
 
 #[test]
 fn dark_built_in_accent_unaffected_by_token_first_resolution() {
     let t = Theme::dark();
-    assert_eq!(t.resolve_color(ColorKey::parse("accent")), t.accent);
-    assert_ne!(t.resolve_color(ColorKey::parse("accent")), rgb(38, 38, 38));
+    assert_eq!(t.resolve_color(ColorAtom::parse("accent")), t.accent);
+    assert_ne!(t.resolve_color(ColorAtom::parse("accent")), rgb(38, 38, 38));
 }
 
 #[test]
@@ -120,12 +120,12 @@ fn runtime_token_rebinding_accent_wins_over_builtin() {
     let t = Theme::dark()
         .with_token("accent", ThemeValue::Color(gold))
         .with_token("on-accent", ThemeValue::Color(navy));
-    assert_eq!(t.resolve_color(ColorKey::parse("accent")), gold);
+    assert_eq!(t.resolve_color(ColorAtom::parse("accent")), gold);
     assert_eq!(t.accent, gold);
     assert_eq!(t.accent_scale.step(9), gold);
     assert_eq!(t.accent_scale.on_solid, navy);
     assert_ne!(
-        t.resolve_color(ColorKey::parse("accent")),
+        t.resolve_color(ColorAtom::parse("accent")),
         Theme::dark().accent
     );
 }

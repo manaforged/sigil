@@ -8,7 +8,7 @@ pub const BUILTIN_ICON_ATLAS_COUNT: usize = crate::icons::builtin::ALL.len();
     reason = "the built-in icon list has a handful of entries"
 )]
 pub const BUILTIN_ICON_ATLAS_BASE_ID: u32 =
-    crate::renderer::sprite_paint::BUILTIN_SPRITE_ATLAS_ID - BUILTIN_ICON_ATLAS_COUNT as u32;
+    crate::renderer::quad_paint::BUILTIN_SPRITE_ATLAS_ID - BUILTIN_ICON_ATLAS_COUNT as u32;
 
 pub(crate) fn builtin_icon_index(raw_id: u32) -> Option<usize> {
     let offset = raw_id.checked_sub(BUILTIN_ICON_ATLAS_BASE_ID)?;

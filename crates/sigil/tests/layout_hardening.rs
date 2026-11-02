@@ -4,22 +4,20 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::widgets::Widget;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::geometry::{Dim, LogicalSize, Size};
+use sigil::geometry::{LogicalSize, Size};
 use sigil::kernel::*;
 use sigil::layout::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 
 struct Wrapping;
 
 impl TextMeasure for Wrapping {
     fn measure(&self, _: &TextContent, space: sigil::geometry::Size) -> LogicalSize {
-        let w = match space.width {
-            Dim::Fixed(w) => w.min(300.0),
-            Dim::MinContent | Dim::MaxContent => 300.0,
-        };
+        let w = space.fixed_width().unwrap_or(300.0).min(300.0);
         LogicalSize::new(w, (300.0 / w).ceil() * 10.0)
     }
 }
@@ -44,7 +42,7 @@ fn leaf_rect(
     leaf: LayoutStyle,
     measure: Box<dyn TextMeasure>,
 ) -> sigil::geometry::Rect {
-    Runtime::scope("layout-hardening", || {
+    Owner::scope("layout-hardening", || {
         let mut cx = Cx::new_root();
         let root = cx.add(container().layout(parent));
         let label = cx.add_child(root, text("some words to wrap").layout(leaf));
@@ -100,7 +98,7 @@ fn a_fixed_width_wraps_text_at_its_content_box() {
 
 #[test]
 fn a_font_change_remeasures_text() {
-    Runtime::scope("layout-fonts", || {
+    Owner::scope("layout-fonts", || {
         let width = Rc::new(Cell::new(40.0));
         let fonts = Rc::new(Cell::new(0));
         let mut cx = Cx::new_root();

@@ -2,7 +2,8 @@ use crate::geometry::{Point, Rect};
 use crate::renderer::decoration_paint::{DecorationPipeline, decoration_instance};
 use crate::renderer::fill_paint::FillPipeline;
 use crate::renderer::frame_upload::FrameUploads;
-use crate::renderer::scene_command::walk::{Walk, pipeline_for, rect_from_fields, transform_rect};
+use crate::renderer::scene_command::walk::transform_rect;
+use crate::renderer::scene_command::walk::{SceneWalk, pipeline_for, rect_from_fields};
 use crate::renderer::scene_command::{
     DrawDecoration, DrawGradient, DrawPattern, DrawRect, Stroke, StrokeBand, Transform,
 };
@@ -11,13 +12,14 @@ use crate::renderer::scene_instance::{
     draw_shadow_instance, gradient_stop_records,
 };
 use crate::renderer::scene_paint::{PaintCtx, ScenePipeline};
-use crate::renderer::shadow_paint::{Shadow, ShadowPipeline};
+use crate::renderer::shadow_paint::Shadow;
+use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::scene::CornerRadii;
 use crate::scene::command::trim::{Trimmed, tile_phase, trim_to_view};
 
 const TRIM_PAD: f32 = 2.0;
 
-impl Walk<'_> {
+impl SceneWalk<'_> {
     pub(super) fn queue_rect(&mut self, draw: &DrawRect) {
         let Some((transform, trimmed, dash)) =
             self.trimmed(draw.rect, draw.border_radius, draw.stroke)

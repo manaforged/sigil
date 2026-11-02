@@ -4,7 +4,7 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
 
 use sigil::kernel::{Cx, Role, container, fragment, text};
 
@@ -35,7 +35,7 @@ fn every_core_node_kind_has_accessible_defaults() {
 
 #[test]
 fn text_input_semantics_carry_reactive_value_and_placeholder() {
-    Runtime::scope("sigil-kernel-text-input-semantics", || {
+    Owner::scope("sigil-kernel-text-input-semantics", || {
         let value = signal(String::from("draft"));
         let mut cx = Cx::new_root();
         let root = cx.add(

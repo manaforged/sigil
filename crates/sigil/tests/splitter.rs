@@ -10,7 +10,7 @@ mod widget_support;
 use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::widgets::{Orientation, splitter};
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 use widget_support::compute;
 
 #[test]
@@ -27,7 +27,7 @@ fn horizontal_splitter_lays_out_panes_with_initial_sizes() {
         &mut cx,
         root,
         Size::fixed(612.0, 200.0),
-        Box::new(FixedMeasure::default()),
+        Box::new(FakeMeasure::default()),
     );
 
     let pane_0 = cx.nth_child(root, 0).expect("pane 0");
@@ -65,7 +65,7 @@ fn vertical_splitter_lays_out_panes_with_initial_sizes() {
         &mut cx,
         root,
         Size::fixed(300.0, 206.0),
-        Box::new(FixedMeasure::default()),
+        Box::new(FakeMeasure::default()),
     );
 
     let pane_top = cx.nth_child(root, 0).expect("top pane");
@@ -105,7 +105,7 @@ fn nested_splitter_renders_all_leaves() {
         &mut cx,
         root,
         Size::fixed(306.0, 206.0),
-        Box::new(FixedMeasure::default()),
+        Box::new(FakeMeasure::default()),
     );
 
     let bottom_pane = cx.nth_child(root, 2).expect("bottom pane");
@@ -137,7 +137,7 @@ fn pane_builder_carries_initial_min_max_into_layout() {
         &mut cx,
         root,
         Size::fixed(406.0, 200.0),
-        Box::new(FixedMeasure::default()),
+        Box::new(FakeMeasure::default()),
     );
 
     let pane_a = cx.nth_child(root, 0).expect("pane a");
@@ -158,7 +158,7 @@ fn pane_builder_carries_initial_min_max_into_layout() {
 
 #[test]
 fn grow_pane_takes_leftover_width() {
-    sigil::reactive::Runtime::scope("phase-2-4::splitter-grow", || {
+    sigil::reactive::Owner::scope("phase-2-4::splitter-grow", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             splitter(Orientation::Horizontal)
@@ -174,7 +174,7 @@ fn grow_pane_takes_leftover_width() {
             &mut cx,
             root,
             Size::fixed(406.0, 200.0),
-            Box::new(FixedMeasure::default()),
+            Box::new(FakeMeasure::default()),
         );
         let side = cx.nth_child(root, 0).expect("side pane");
         let main = cx.nth_child(root, 2).expect("main pane");
@@ -193,7 +193,7 @@ fn grow_pane_takes_leftover_width() {
 
 #[test]
 fn sizes_bind_carries_initial_sizes() {
-    sigil::reactive::Runtime::scope("phase-2-4::splitter-sizes-bind", || {
+    sigil::reactive::Owner::scope("phase-2-4::splitter-sizes-bind", || {
         let bound = signal(Vec::<f32>::new());
         let mut cx = Cx::new_root();
         let _root = cx.add(

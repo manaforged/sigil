@@ -3,11 +3,7 @@ use super::*;
 #[test]
 fn off_thread_print_reports_not_live() {
     let err = print_above("line").expect_err("no live terminal on this thread");
-    assert_eq!(
-        err.get_ref()
-            .and_then(|inner| inner.downcast_ref::<PrintAboveError>()),
-        Some(&PrintAboveError::NotLive)
-    );
+    assert_eq!(err.kind(), ErrorKind::NotLive);
 }
 
 #[test]

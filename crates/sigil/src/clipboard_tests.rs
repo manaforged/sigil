@@ -5,7 +5,7 @@ use super::{Clipboard, NoopClipboard, clipboard, copy, install, paste};
 struct Memory(std::cell::RefCell<Option<String>>);
 
 impl Clipboard for Memory {
-    fn set(&self, text: &str) -> Result<super::Delivery, super::ClipError> {
+    fn set(&self, text: &str) -> Result<super::Delivery, crate::Error> {
         *self.0.borrow_mut() = Some(text.to_owned());
         Ok(super::Delivery::Confirmed)
     }

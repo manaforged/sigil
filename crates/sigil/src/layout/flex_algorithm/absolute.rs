@@ -1,10 +1,8 @@
-use crate::layout::LayoutError;
+use crate::Error;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::{ComputedBox, NodeRef};
-use crate::layout::resolve::{
-    InsetAxis, NodeEdges, dim_to_border_box, resolve_inset_axis, stretched,
-};
-use crate::layout::style_data::{Display, LengthPercentageAuto, Position, Size, StyleData};
+use crate::layout::resolve::{NodeEdges, dim_to_border_box, resolve_absolute_xy, stretched};
+use crate::layout::style_data::{Axes, Dimension, Display, Position, StyleData};
 
 use super::intrinsic::{probed_content_extent, text_intrinsic};
 use super::{FlexCtx, layout_item_subtree};
@@ -14,12 +12,12 @@ pub(super) fn place_absolutes(
     node: NodeRef<'_>,
     edges: &NodeEdges,
     border_origin: Position2,
-) -> Result<(), LayoutError> {
+) -> Result<(), Error> {
     let forest = ctx.solver.scope().forest();
     let Some(frame) = forest.boxed(node.id()) else {
         return Ok(());
     };
-    let padding_box = Size {
+    let padding_box = Axes {
         width: (frame.w - edges.border.left - edges.border.right).max(0.0),
         height: (frame.h - edges.border.top - edges.border.bottom).max(0.0),
     };
@@ -48,32 +46,20 @@ fn place_absolute(
     ctx: &FlexCtx<'_, '_>,
     child: NodeRef<'_>,
     (cb_main, cb_cross): (f32, f32),
-    padding_box: Size<f32>,
+    padding_box: Axes<f32>,
     padding_origin: Position2,
-) -> Result<(), LayoutError> {
+) -> Result<(), Error> {
     let style = child.style();
     let CbSize { w: cb_w, h: cb_h } = CbSize::across(ctx.axes, cb_main, cb_cross);
     let edges = NodeEdges::build(style, cb_w);
-    let margins = edges.margin.or_zero();
     let (w, h) = absolute_size(ctx, child, style, (cb_w, cb_h), padding_box);
-    let x = resolve_inset_axis(InsetAxis {
-        leading: style.inset.left,
-        trailing: style.inset.right,
-        origin: padding_origin.x,
-        cb_dim: padding_box.width,
-        box_dim: w,
-        margin_leading: margins.left,
-        margin_trailing: margins.right,
-    });
-    let y = resolve_inset_axis(InsetAxis {
-        leading: style.inset.top,
-        trailing: style.inset.bottom,
-        origin: padding_origin.y,
-        cb_dim: padding_box.height,
-        box_dim: h,
-        margin_leading: margins.top,
-        margin_trailing: margins.bottom,
-    });
+    let (x, y) = resolve_absolute_xy(
+        style,
+        &edges,
+        (padding_origin.x, padding_origin.y),
+        padding_box,
+        (w, h),
+    );
     ctx.solver.write(child.id(), ComputedBox { x, y, w, h });
     layout_item_subtree(ctx, child.id(), Position2::new(x, y), w, h)?;
     Ok(())
@@ -84,7 +70,7 @@ fn absolute_size(
     child: NodeRef<'_>,
     style: &StyleData,
     (cb_w, cb_h): (f32, f32),
-    padding_box: Size<f32>,
+    padding_box: Axes<f32>,
 ) -> (f32, f32) {
     let edges = NodeEdges::build(style, cb_w);
     let margins = edges.margin.or_zero();
@@ -138,14 +124,15 @@ fn absolute_size(
     (w, h)
 }
 
-fn trailing_anchored(leading: LengthPercentageAuto, trailing: LengthPercentageAuto) -> bool {
-    matches!(leading, LengthPercentageAuto::Auto) && !matches!(trailing, LengthPercentageAuto::Auto)
+fn trailing_anchored(leading: Dimension, trailing: Dimension) -> bool {
+    matches!(leading, Dimension::Auto | Dimension::Fill)
+        && !matches!(trailing, Dimension::Auto | Dimension::Fill)
 }
 
 fn axis_size(
     explicit: Option<f32>,
-    leading: LengthPercentageAuto,
-    trailing: LengthPercentageAuto,
+    leading: Dimension,
+    trailing: Dimension,
     fill: f32,
     fit: Option<f32>,
 ) -> f32 {

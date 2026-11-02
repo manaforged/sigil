@@ -1,8 +1,8 @@
+use sigil::events::Event;
 use sigil::events::{LogicalKey, ModifiersState};
 use sigil::geometry::Point;
 
 use super::{Harness, Node};
-use crate::input;
 
 const DRAG_STEPS: u16 = 4;
 
@@ -42,21 +42,21 @@ impl Harness {
     #[track_caller]
     pub fn click(&mut self, target: &(impl Target + ?Sized)) -> &mut Self {
         let at = target.point(self);
-        self.send(input::click(at.x, at.y))
+        self.send(Event::click(Point::new(at.x, at.y)))
     }
 
     #[track_caller]
     pub fn hover(&mut self, target: &(impl Target + ?Sized)) -> &mut Self {
         let at = target.point(self);
-        self.send([input::pointer_move(at.x, at.y)])
+        self.send([Event::pointer_move(Point::new(at.x, at.y))])
     }
 
     #[track_caller]
     pub fn scroll(&mut self, target: &(impl Target + ?Sized), lines: f32) -> &mut Self {
         let at = target.point(self);
         self.send([
-            input::pointer_move(at.x, at.y),
-            input::scroll_lines(at.x, at.y, lines),
+            Event::pointer_move(Point::new(at.x, at.y)),
+            Event::wheel(Point::new(at.x, at.y), lines),
         ])
     }
 
@@ -68,18 +68,18 @@ impl Harness {
     ) -> &mut Self {
         let (from, to) = (from.point(self), to.point(self));
         let mut events = vec![
-            input::pointer_move(from.x, from.y),
-            input::pointer_down(from.x, from.y),
+            Event::pointer_move(Point::new(from.x, from.y)),
+            Event::pointer_down(Point::new(from.x, from.y)),
         ];
         let steps = f32::from(DRAG_STEPS);
         events.extend((1..=DRAG_STEPS).map(|step| {
             let t = f32::from(step) / steps;
-            input::pointer_drag(
+            Event::pointer_drag(Point::new(
                 (to.x - from.x).mul_add(t, from.x),
                 (to.y - from.y).mul_add(t, from.y),
-            )
+            ))
         }));
-        events.push(input::pointer_up(to.x, to.y));
+        events.push(Event::pointer_up(Point::new(to.x, to.y)));
         self.send(events)
     }
 
@@ -94,12 +94,12 @@ impl Harness {
         key: impl Into<LogicalKey>,
         modifiers: ModifiersState,
     ) -> &mut Self {
-        self.send(input::press(key, modifiers))
+        self.send(Event::press(key, modifiers))
     }
 
     #[track_caller]
     pub fn type_text(&mut self, text: &str) -> &mut Self {
-        self.send(input::type_text(text))
+        self.send(Event::type_text(text))
     }
 
     #[track_caller]
@@ -109,11 +109,11 @@ impl Harness {
 
     #[track_caller]
     pub fn focus_next(&mut self) -> &mut Self {
-        self.send([input::tab(false)])
+        self.send([Event::tab(false)])
     }
 
     #[track_caller]
     pub fn focus_previous(&mut self) -> &mut Self {
-        self.send([input::tab(true)])
+        self.send([Event::tab(true)])
     }
 }

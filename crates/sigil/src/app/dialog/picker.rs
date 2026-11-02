@@ -3,32 +3,33 @@ use crate::style::theme::ambient::theme_text;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use crate::events::Key;
 use crate::events::request_focus;
-use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{Cx, IntoNode, NodeId, container, text};
+use crate::layout::LayoutStyle;
 use crate::layout::rows;
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, effect_named, signal};
-use crate::widgets::{button, list_row, modal, text_field, virtual_list};
+use crate::widgets::Widget;
+use crate::widgets::{ListRowSlots, button, list_row, modal, text_field, virtual_list};
 
-use super::entries::{Entry, EntryKind, list, start_dir};
+use super::entries::{EntryKind, FileEntry, list, start_dir};
 use super::layer::{Answer, Finish};
 use super::{AlertKind, FileDialog, FileFilter, PickKind};
 
 const LIST_ROWS: f32 = 12.0;
 
 #[derive(Clone)]
-struct Picker {
+struct FilePicker {
     kind: PickKind,
     filters: Rc<[FileFilter]>,
     dir: Signal<PathBuf>,
-    entries: Signal<Vec<Entry>>,
+    entries: Signal<Vec<FileEntry>>,
     cursor: Signal<usize>,
     name: Signal<String>,
     finish: Finish,
 }
 
-impl Picker {
+impl FilePicker {
     fn enter(&self, dir: PathBuf) {
         self.entries.set(list(&dir, self.kind, &self.filters));
         self.dir.set(dir);
@@ -42,7 +43,7 @@ impl Picker {
         }
     }
 
-    fn current(&self) -> Option<Entry> {
+    fn current(&self) -> Option<FileEntry> {
         self.entries.peek().get(self.cursor.peek()).cloned()
     }
 
@@ -105,7 +106,7 @@ pub(super) fn picker_view(
     cancel_on_close(show, finish.clone());
     let start = start_dir(dialog.directory.as_deref());
     let filters: Rc<[FileFilter]> = dialog.filters.into();
-    let picker = Picker {
+    let picker = FilePicker {
         kind,
         entries: signal(list(&start, kind, &filters)),
         filters,
@@ -132,10 +133,10 @@ pub(super) fn picker_view(
     .build(cx)
 }
 
-fn entry_list(picker: Picker) -> impl IntoNode {
+fn entry_list(picker: FilePicker) -> impl IntoNode {
     crate::kernel::WithCx(move |cx: &mut Cx| {
         let cursor = picker.cursor;
-        let rows_view = virtual_list(picker.entries, move |index, entry: &Entry| {
+        let rows_view = virtual_list(picker.entries, move |index, entry: &FileEntry| {
             entry_row(cursor, index, entry)
         })
         .row_height(rows(1.0))
@@ -167,12 +168,18 @@ fn focus_first_child(cx: &Cx, id: NodeId) {
     }
 }
 
-fn entry_row(cursor: Signal<usize>, index: usize, entry: &Entry) -> crate::kernel::NodeBuilder {
+fn entry_row(cursor: Signal<usize>, index: usize, entry: &FileEntry) -> crate::kernel::NodeBuilder {
     let title = entry.title();
     container()
         .layout(LayoutStyle::flex_column().fill_width())
         .pointer_down(move |_| cursor.set(index))
-        .children_reactive(move || [list_row(cursor.get() == index, title.clone(), "")])
+        .children_reactive(move || {
+            [list_row(
+                cursor.get() == index,
+                title.clone(),
+                ListRowSlots::default(),
+            )]
+        })
 }
 
 pub(super) fn alert_view(

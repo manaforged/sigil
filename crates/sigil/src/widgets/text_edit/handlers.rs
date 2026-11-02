@@ -1,11 +1,12 @@
 use std::cell::{Cell, RefCell, RefMut};
 use std::rc::Rc;
 
-use crate::events::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
+use crate::events::{Key, KeyEvent, LogicalKey, ModifiersState, Shortcut};
 use crate::hal::TextAffinity;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, signal};
 use crate::style::TextStyle;
+use crate::widgets::Widget;
 
 use super::super::shared::disabled_now;
 use super::TextEdit;
@@ -110,19 +111,6 @@ impl TextEditRuntime {
         state::synced(&self.edit, self.value, self.caret)
     }
 
-    pub(in crate::widgets) fn place_on_focus(&self, at: FocusCaret) {
-        let mut edit = self.edit_mut();
-        match at {
-            FocusCaret::Keep => return,
-            FocusCaret::End => {
-                let end = edit.len();
-                edit.place_caret(end);
-            }
-            FocusCaret::SelectAll => edit.select_all(),
-        }
-        self.commit(&edit);
-    }
-
     pub(in crate::widgets) fn commit(&self, state: &TextEdit) {
         if let Some(column) = self.column {
             self.update_scroll(state, column);
@@ -157,14 +145,6 @@ impl TextEditRuntime {
             .all(|ch| !ch.is_control() || matches!(ch, '\t' | '\n'));
         (printable && !text.is_empty() && text != "\n").then_some(text)
     }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum FocusCaret {
-    #[default]
-    Keep,
-    End,
-    SelectAll,
 }
 
 #[cfg(test)]

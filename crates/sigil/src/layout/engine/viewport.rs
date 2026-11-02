@@ -1,8 +1,8 @@
 use smallvec::SmallVec;
 
+use crate::Error;
 use crate::geometry::{Dim, Rect, Size};
 use crate::kernel::{Cx, DeltaKind, NodeId};
-use crate::layout::LayoutError;
 use crate::layout::snap;
 
 use super::LayoutEngine;
@@ -40,7 +40,7 @@ impl LayoutEngine {
         root: NodeId,
         available: Size,
         solved: &[NodeId],
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let mut found = Found::default();
         collect(cx, root, &mut found);
         for id in found.overlays {

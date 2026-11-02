@@ -12,16 +12,13 @@ use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::profile;
-use sigil::reactive::Runtime;
-use sigil::scene::emit_scene_clipped;
-use sigil_kittest::FixedMeasure;
+use sigil::reactive::Owner;
+use sigil::scene::emit_scene;
+use sigil_kittest::FakeMeasure;
 
 const ROWS: u32 = 500;
 
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 80.0,
-    height: 16.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(80.0, 16.0);
 
 fn build() -> impl IntoNode {
     let mut col = container().layout(LayoutStyle::flex_column().fixed_size(1280.0, 800.0));
@@ -39,7 +36,7 @@ fn layout_then_emit(c: &mut Criterion) {
     profile::enable();
     c.bench_function("frame_phases/layout_emit_500", |b| {
         b.iter(|| {
-            Runtime::scope("frame_phases", || {
+            Owner::scope("frame_phases", || {
                 let mut cx = Cx::new_root();
                 let root = cx.add(build);
                 let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
@@ -51,7 +48,7 @@ fn layout_then_emit(c: &mut Criterion) {
                 }
                 {
                     let _emit = profile::span(sigil::profile::Phase::Emit);
-                    black_box(emit_scene_clipped(
+                    black_box(emit_scene(
                         &cx,
                         root,
                         Some(Rect::new(Point::new(0.0, 0.0), 1280.0, 800.0)),

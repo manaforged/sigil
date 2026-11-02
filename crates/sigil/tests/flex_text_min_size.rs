@@ -10,8 +10,8 @@ use sigil::prelude::*;
 
 #[test]
 fn stacked_text_in_a_short_column_does_not_crush() {
-    sigil::reactive::Runtime::scope("flex-min", || {
-        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::EngineGeometry::new()));
+    sigil::reactive::Owner::scope("flex-min", || {
+        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::DefaultTextMeasure::new()));
         let mut cx = Cx::new_root();
         let title = text("Large title here").font_size(20.0).font_weight(700);
         let sub = text("A smaller subtitle line").font_size(14.0);

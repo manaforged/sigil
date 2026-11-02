@@ -15,7 +15,7 @@ use crate::scene::command::SceneCommand;
 
 const CAP: usize = 4_096;
 
-struct Entry {
+struct EmitEntry {
     version: u32,
     slot: u8,
     rect: [u32; 4],
@@ -30,7 +30,7 @@ struct Layered {
 }
 
 thread_local! {
-    static CACHE: RefCell<HashMap<(u64, NodeId), Entry>> = RefCell::new(HashMap::new());
+    static CACHE: RefCell<HashMap<(u64, NodeId), EmitEntry>> = RefCell::new(HashMap::new());
     static LAYERED: RefCell<HashMap<u64, Layered>> = RefCell::new(HashMap::new());
     static THEME_EPOCH: Cell<u64> = const { Cell::new(0) };
 }
@@ -133,7 +133,7 @@ pub(crate) fn store(
         }
         cache.insert(
             key,
-            Entry {
+            EmitEntry {
                 version: node.version(),
                 slot: slot_tag(node),
                 rect: rect_key(rect),
@@ -225,7 +225,7 @@ fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
         }
         SceneCommand::Gradient(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
         SceneCommand::Pattern(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
-        SceneCommand::GlyphRun(draw) => draw.run.rect = shift_rect(draw.run.rect, dx, dy),
+        SceneCommand::GlyphRun(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
         SceneCommand::Image(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
         SceneCommand::Sprite(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
         SceneCommand::Decoration(draw) => draw.band = shift_rect(draw.band, dx, dy),

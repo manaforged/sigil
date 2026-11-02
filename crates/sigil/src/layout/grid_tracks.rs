@@ -2,12 +2,14 @@
 
 use crate::layout::forest::SpaceConstraint;
 use crate::layout::resolve::resolve_lp;
-use crate::layout::style_data::{Dimension, LengthPercentage, StyleData, TrackSize};
+use crate::layout::style_data::{Dimension, StyleData, TrackSize};
 
 pub(super) fn grid_box_h(style: &StyleData, avail_h: f32, content_h: f32, chrome: f32) -> f32 {
     match style.size.height {
         Dimension::Px(px) => px,
-        Dimension::Text(length) => length.px(),
+        Dimension::Rows(_) | Dimension::Cols(_) | Dimension::Em(_) => {
+            style.size.height.text_px().unwrap_or(0.0)
+        }
         Dimension::Fill => avail_h,
         Dimension::Percent(pct) => avail_h * pct,
         Dimension::Auto if avail_h > 0.0 => avail_h,
@@ -127,7 +129,7 @@ pub(super) fn apply_row_template(row_h: &mut [f32], tracks: &[TrackSize]) {
     }
 }
 
-pub(super) fn resolve_gap(gap: LengthPercentage, inner_w: f32, snap: fn(f32) -> f32) -> f32 {
+pub(super) fn resolve_gap(gap: Dimension, inner_w: f32, snap: fn(f32) -> f32) -> f32 {
     snap(resolve_lp(gap, inner_w).max(0.0))
 }
 

@@ -7,14 +7,14 @@ pub(crate) struct List {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum Task {
+pub(crate) enum TaskMark {
     Open,
     Done,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct ListItem {
-    pub(crate) task: Option<Task>,
+    pub(crate) task: Option<TaskMark>,
     pub(crate) blocks: Vec<Block>,
 }
 
@@ -24,10 +24,10 @@ impl ListItem {
     }
 }
 
-fn task_marker(line: &str) -> Option<(Task, &str)> {
+fn task_marker(line: &str) -> Option<(TaskMark, &str)> {
     let task = match line.get(..4)? {
-        "[ ] " => Task::Open,
-        "[x] " | "[X] " => Task::Done,
+        "[ ] " => TaskMark::Open,
+        "[x] " | "[X] " => TaskMark::Done,
         _ => return None,
     };
     Some((task, &line[4..]))

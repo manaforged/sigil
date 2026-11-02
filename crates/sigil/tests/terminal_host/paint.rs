@@ -1,4 +1,5 @@
 use super::*;
+use sigil::kernel::HostMode;
 use sigil_kittest::Harness;
 
 #[test]
@@ -259,13 +260,11 @@ fn a_timer_comes_due_on_the_frame_clock() {
     use std::time::{Duration, Instant};
 
     use sigil::Host;
-    use sigil::events::EventRouter;
 
     let ticks = Rc::new(StdCell::new(0_u32));
     let counter = Rc::clone(&ticks);
-    sigil::reactive::Runtime::scope("timer", || {
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
+    sigil::reactive::Owner::scope("timer", || {
+        let mut host = Host::new(HostMode::Cell);
         host.mount(move || text("tick"));
         sigil::reactive::__test_set_clock(Instant::now());
         sigil::reactive::interval(Duration::from_millis(99), move || {
@@ -273,7 +272,7 @@ fn a_timer_comes_due_on_the_frame_clock() {
         });
         for _ in 0..9 {
             sigil::reactive::__test_advance_clock(Duration::from_millis(33));
-            drop(step(&mut host, &mut router, [], 20, 4));
+            drop(step(&mut host, [], 20, 4));
         }
     });
     sigil::reactive::__test_clear_clock();

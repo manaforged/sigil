@@ -71,7 +71,7 @@ fn explorer(ws: Workspace) -> NodeBuilder {
                 .padding_y(space(1)),
         )
         .child(header("EXPLORER"))
-        .child(list_row_with(
+        .child(list_row(
             false,
             PROJECT_NAME.to_uppercase(),
             ListRowSlots {

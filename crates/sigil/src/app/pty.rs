@@ -6,7 +6,9 @@ use std::sync::mpsc;
 
 use crate::{AppResult, Error};
 
+/// Child process in a pseudo-terminal (feature `pty`).
 pub struct Session {
+    /// The lines.
     pub lines: Signal<Vec<String>>,
     tx: Sender<Vec<u8>>,
     killer: Option<Box<dyn portable_pty::ChildKiller + Send + Sync>>,
@@ -23,24 +25,29 @@ impl Drop for Session {
 }
 
 impl Session {
+    /// Writes bytes to the terminal session's input.
     pub fn write(&self, bytes: &[u8]) -> AppResult<()> {
         self.tx
             .send(bytes.to_vec())
             .map_err(|_| pty_err("Session::write needs Session::spawn"))
     }
 
+    /// Starts `program` in a new pseudo-terminal.
     pub fn spawn(program: &str) -> AppResult<Self> {
         use std::io::Write;
         use std::thread;
 
-        use crate::tasks::OwnerHandle;
+        use crate::reactive::Owner;
         use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 
-        let owner = OwnerHandle::current().ok_or_else(|| {
-            Error::task(std::io::Error::other("Session::spawn needs Runtime::scope"))
+        let owner = Owner::current().ok_or_else(|| {
+            Error::task(std::io::Error::other("Session::spawn needs Owner::scope"))
         })?;
-        let dispatcher = crate::tasks::current::dispatcher()
-            .expect("Session::spawn requires AsyncRuntime::install_current");
+        let dispatcher = crate::tasks::current::dispatcher().ok_or_else(|| {
+            Error::task(std::io::Error::other(
+                "Session::spawn requires AsyncRuntime::install_current",
+            ))
+        })?;
         let pty = native_pty_system();
         let pair = pty
             .openpty(PtySize {
@@ -99,7 +106,7 @@ fn pty_err(err: impl std::fmt::Display) -> Error {
 fn read_rows(
     mut reader: Box<dyn std::io::Read + Send>,
     dispatcher: crate::tasks::runtime::Dispatcher,
-    owner: crate::tasks::OwnerHandle,
+    owner: crate::reactive::Owner,
     painted: crate::reactive::SendableSignal<Vec<String>>,
 ) {
     use std::io::Read;

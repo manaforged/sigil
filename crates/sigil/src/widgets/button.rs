@@ -1,25 +1,21 @@
-use crate::events::LogicalKey;
 use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{AccessibleName, TextContent};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::LayoutBuilderExt;
+use crate::kernel::{NodeBuilder, Role, container};
 use crate::reactive::Signal;
-use crate::style::{
-    ControlSize, Metrics, NodeStyleExt, PaintTarget, Radius, StateHost, Style, StyleSlot, Theme,
-    Tone,
-};
+use crate::style::{ControlSize, Metrics, Radius, Style, Tone};
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use super::shared::{
-    Activate, BuilderMutator, activate_key_reactive, activate_pointer_reactive, noop_activate,
-    or_disabled, reactive_style_state,
+    Activate, Press, RELEASE_ENTER_SPACE, accessible_name, noop_activate, or_disabled, press,
+    reactive_style_state,
 };
 
+/// Builder of a button.
 pub struct ButtonBuilder {
     label: TextContent,
     tone: Option<Tone>,
@@ -29,7 +25,6 @@ pub struct ButtonBuilder {
     padding_x: f32,
     disabled: Option<Signal<bool>>,
     activate: Option<Activate>,
-    mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
     accessible: Option<AccessibleName>,
@@ -39,11 +34,13 @@ pub struct ButtonBuilder {
     leading: Option<Rc<str>>,
 }
 
+/// A push button.
 #[must_use]
 pub fn button(label: impl Into<TextContent>) -> ButtonBuilder {
     ButtonBuilder::new(label)
 }
 
+/// A button that shows one glyph: text or an `Icon`.
 #[must_use]
 pub fn icon_button(glyph: impl Into<ButtonGlyph>, activate: impl Fn() + 'static) -> ButtonBuilder {
     let mut builder = glyph.into().into_button().ghost().activate(activate);
@@ -52,6 +49,7 @@ pub fn icon_button(glyph: impl Into<ButtonGlyph>, activate: impl Fn() + 'static)
 }
 
 impl ButtonBuilder {
+    /// Creates a button builder.
     #[must_use]
     pub fn new(label: impl Into<TextContent>) -> Self {
         let metrics = Metrics::current();
@@ -64,7 +62,6 @@ impl ButtonBuilder {
             padding_x: metrics.padding(ControlSize::Default),
             disabled: None,
             activate: None,
-            mutators: Vec::new(),
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
             accessible: None,
@@ -75,38 +72,45 @@ impl ButtonBuilder {
         }
     }
 
+    /// Sets the accessible.
     #[must_use]
     pub fn accessible(mut self, name: impl Into<AccessibleName>) -> Self {
         self.accessible = Some(name.into());
         self
     }
 
+    /// Sets the pending.
     #[must_use]
     pub const fn pending(mut self, pending: Signal<bool>) -> Self {
         self.pending = Some(pending);
         self
     }
 
+    /// Applies the primary option.
     #[must_use]
     pub const fn primary(self) -> Self {
         self.tone(Tone::Primary)
     }
 
+    /// Applies the neutral option.
     #[must_use]
     pub const fn neutral(self) -> Self {
         self.tone(Tone::Neutral)
     }
 
+    /// Applies the destructive option.
     #[must_use]
     pub const fn destructive(self) -> Self {
         self.tone(Tone::Error)
     }
 
+    /// Applies the outline option.
     #[must_use]
     pub const fn outline(self) -> Self {
         self.fill(ButtonFill::Outline)
     }
 
+    /// Sets the icon svg.
     #[cfg(feature = "scene")]
     #[must_use]
     pub fn icon_svg(mut self, svg: impl Into<Rc<str>>) -> Self {
@@ -114,28 +118,33 @@ impl ButtonBuilder {
         self
     }
 
+    /// Sets the icon.
     #[cfg(feature = "scene")]
     #[must_use]
     pub fn icon(self, icon: crate::icons::Icon) -> Self {
         self.icon_svg(icon.svg())
     }
 
+    /// Applies the ghost option.
     #[must_use]
     pub const fn ghost(self) -> Self {
         self.fill(ButtonFill::Ghost)
     }
 
+    /// Sets the tone.
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = Some(tone);
         self
     }
 
+    /// Applies the solid option.
     #[must_use]
     pub const fn solid(self) -> Self {
         self.fill(ButtonFill::Solid)
     }
 
+    /// Applies the soft option.
     #[must_use]
     pub const fn soft(self) -> Self {
         self.fill(ButtonFill::Soft)
@@ -161,12 +170,14 @@ impl ButtonBuilder {
         }
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
+    /// Sets the size.
     #[must_use]
     pub fn size(mut self, size: ControlSize) -> Self {
         let metrics = Metrics::current();
@@ -182,19 +193,14 @@ impl ButtonBuilder {
         self
     }
 
+    /// Sets the activate.
     #[must_use]
     pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self
     }
 
-    #[must_use]
-    pub fn theme(mut self, theme: Theme) -> Self {
-        self.mutators.push(Box::new(move |node| node.theme(theme)));
-        self
-    }
-
-    fn into_node_builder(mut self) -> NodeBuilder {
+    fn root(mut self) -> NodeBuilder {
         let look_disabled = self.disabled;
         self.disabled = or_disabled(self.disabled, self.pending);
         if self.square {
@@ -203,16 +209,12 @@ impl ButtonBuilder {
         }
         let interaction = InteractionState::new(true);
         let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
-        let layout_overrides = self.layout_overrides.clone();
         let user_overlay = self.style_accumulator.take_state_overlay();
         let mut node = self.base_node(interaction, activate, user_overlay, look_disabled);
-        for mutate in self.mutators {
-            node = mutate(node);
-        }
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
-        node.with(layout_overrides.apply(button_layout(self.width, self.height, self.padding_x)))
+        node.with(button_layout(self.width, self.height, self.padding_x))
     }
 
     fn base_node(
@@ -224,11 +226,10 @@ impl ButtonBuilder {
     ) -> NodeBuilder {
         let variant = self.resolved_fill().variant();
         let disabled = self.disabled;
-        let (pointer_activate, key_activate) = (Rc::clone(&activate), Rc::clone(&activate));
         let name = self
             .accessible
             .clone()
-            .unwrap_or_else(|| accessible_label(&self.label));
+            .unwrap_or_else(|| accessible_name(&self.label));
         let node = container()
             .role(Role::Button)
             .mutate(move |node| node.a11y.disabled = disabled)
@@ -239,20 +240,18 @@ impl ButtonBuilder {
             .framed(node)
             .class(variant.base())
             .class(BUTTON_TRANSITION_ATOMS)
-            .tone(self.resolved_tone())
+            .tone_scope(self.resolved_tone())
             .stateful_style(variant, user_overlay, move || {
                 reactive_style_state(interaction, look_disabled)
             })
-            .seal_style()
-            .pointer_up(move |event| {
-                activate_pointer_reactive(event, interaction, disabled, &pointer_activate);
-            })
-            .key(Key::Enter, move |event| {
-                activate_key_reactive(event, interaction, disabled, &key_activate);
-            })
-            .key(LogicalKey::character(" "), move |event| {
-                activate_key_reactive(event, interaction, disabled, &activate);
-            });
+            .seal_style();
+        let node = press(
+            node,
+            interaction,
+            disabled,
+            Press::Activate(activate),
+            RELEASE_ENTER_SPACE,
+        );
         let node = match self.pending {
             Some(pending) => node.child(self.pending_content(pending)),
             None if self.square => node.child(self.square_content()),
@@ -262,36 +261,15 @@ impl ButtonBuilder {
     }
 }
 
-impl PaintTarget for ButtonBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for ButtonBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl StateHost for ButtonBuilder {}
-
-impl IntoNode for ButtonBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] ButtonBuilder: paint(style_accumulator), widget, states(style_accumulator), node);
 
 mod content;
 mod glyph;
 mod parts;
 
-pub use glyph::ButtonGlyph;
+pub(crate) use glyph::ButtonGlyph;
 
-use parts::{BUTTON_TRANSITION_ATOMS, ButtonFill, ButtonWidth, accessible_label, button_layout};
+use parts::{BUTTON_TRANSITION_ATOMS, ButtonFill, ButtonWidth, button_layout};
 
 #[cfg(test)]
 #[path = "button_tests.rs"]

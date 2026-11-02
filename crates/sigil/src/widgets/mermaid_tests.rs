@@ -1,5 +1,5 @@
 use super::draw;
-use crate::layout::LayoutBuilderExt;
+use crate::widgets::Widget;
 
 fn joined(source: &str) -> String {
     draw(source).join("\n")

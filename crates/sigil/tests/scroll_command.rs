@@ -7,27 +7,24 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase};
+use sigil::events::{ScrollDelta, ScrollPhase};
 use sigil::geometry::Point;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 use widget_support::compute;
 
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 60.0,
-    height: 16.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(60.0, 16.0);
 
 const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
 #[test]
 fn scroll_viewport_has_scroll_view_role() {
-    sigil::reactive::Runtime::scope("sigil-scroll-role", || {
+    sigil::reactive::Owner::scope("sigil-scroll-role", || {
         let mut cx = Cx::new_root();
         let content = container();
         let root = cx.add(scroll(content).extent(800.0));
@@ -38,13 +35,13 @@ fn scroll_viewport_has_scroll_view_role() {
 
 #[test]
 fn scroll_emits_viewport_and_scrollbar_rects() {
-    sigil::reactive::Runtime::scope("sigil-scroll-rects", || {
+    sigil::reactive::Owner::scope("sigil-scroll-rects", || {
         let mut cx = Cx::new_root();
         let content = container();
         let root = cx.add(scroll(content).extent(800.0));
         compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
 
-        let scene = emit_scene(&cx, root);
+        let scene = emit_scene(&cx, root, None);
         let rect_count = scene
             .commands
             .iter()
@@ -59,13 +56,13 @@ fn scroll_emits_viewport_and_scrollbar_rects() {
 
 #[test]
 fn scroll_at_zero_has_no_thumb_offset() {
-    sigil::reactive::Runtime::scope("sigil-scroll-zero-offset", || {
+    sigil::reactive::Owner::scope("sigil-scroll-zero-offset", || {
         let mut cx = Cx::new_root();
         let content = container();
         let root = cx.add(scroll(content).extent(800.0));
         compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
 
-        let scene = emit_scene(&cx, root);
+        let scene = emit_scene(&cx, root, None);
         let rects: Vec<_> = scene
             .commands
             .iter()
@@ -86,13 +83,13 @@ fn scroll_at_zero_has_no_thumb_offset() {
 
 #[test]
 fn scroll_thumb_proportional_to_content() {
-    sigil::reactive::Runtime::scope("sigil-scroll-thumb-size", || {
+    sigil::reactive::Owner::scope("sigil-scroll-thumb-size", || {
         let mut cx = Cx::new_root();
         let content = container();
         let root = cx.add(scroll(content).extent(480.0).height(240.0));
         compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
 
-        let scene = emit_scene(&cx, root);
+        let scene = emit_scene(&cx, root, None);
         let rect_heights: Vec<f32> = scene
             .commands
             .iter()
@@ -110,12 +107,12 @@ fn scroll_thumb_proportional_to_content() {
 
 #[test]
 fn scroll_thumb_no_offset_at_zero_with_overflow() {
-    sigil::reactive::Runtime::scope("sigil-scroll-thumb-zero", || {
+    sigil::reactive::Owner::scope("sigil-scroll-thumb-zero", || {
         let mut cx = Cx::new_root();
         let content = container();
         let root = cx.add(scroll(content).extent(800.0).height(240.0));
         compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
-        let scene = emit_scene(&cx, root);
+        let scene = emit_scene(&cx, root, None);
         let rect_count = scene
             .commands
             .iter()
@@ -127,7 +124,7 @@ fn scroll_thumb_no_offset_at_zero_with_overflow() {
 
 #[test]
 fn scroll_fill_uses_measured_parent_height_for_bounds() {
-    sigil::reactive::Runtime::scope("sigil-scroll-fill-height", || {
+    sigil::reactive::Owner::scope("sigil-scroll-fill-height", || {
         let mut cx = Cx::new_root();
         let viewport = scroll(container()).extent(800.0).fill();
         let root = cx.add(
@@ -155,12 +152,11 @@ fn scroll_fill_uses_measured_parent_height_for_bounds() {
         EventRouter::new().route(
             &mut cx,
             &layout,
-            ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
-                position: Point::new(250.0, 180.0),
-                delta: ScrollDelta::Pixels(Point::new(0.0, -1_000.0)),
-                modifiers: ModifiersState::empty(),
-                phase: ScrollPhase::Moved,
-            })),
+            Event::scroll(
+                Point::new(250.0, 180.0),
+                ScrollDelta::Pixels(Point::new(0.0, -1_000.0)),
+                ScrollPhase::Moved,
+            ),
         );
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
@@ -182,7 +178,7 @@ fn scroll_fill_uses_measured_parent_height_for_bounds() {
 
 #[test]
 fn scroll_can_follow_growth_without_overriding_manual_position() {
-    sigil::reactive::Runtime::scope("sigil-scroll-follow-bottom", || {
+    sigil::reactive::Owner::scope("sigil-scroll-follow-bottom", || {
         let extent = signal(800.0_f32);
         let offset = signal(0.0_f32);
         let mut cx = Cx::new_root();

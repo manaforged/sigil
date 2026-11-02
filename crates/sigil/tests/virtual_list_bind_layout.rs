@@ -9,15 +9,12 @@ use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::reactive::Runtime;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 60.0,
-    height: 16.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(60.0, 16.0);
 
 fn glyph_runs(cx: &Cx, root: NodeId) -> usize {
-    emit_scene(cx, root)
+    emit_scene(cx, root, None)
         .commands
         .iter()
         .filter(|c| matches!(c, SceneCommand::GlyphRun(_)))
@@ -26,7 +23,7 @@ fn glyph_runs(cx: &Cx, root: NodeId) -> usize {
 
 #[test]
 fn items_bind_shrink_still_paints_rows() {
-    sigil::reactive::Runtime::scope("vl-bind-shrink", || {
+    sigil::reactive::Owner::scope("vl-bind-shrink", || {
         let mut cx = Cx::new_root();
         let items = signal(vec![
             "alpha".to_string(),
@@ -54,7 +51,7 @@ fn items_bind_shrink_still_paints_rows() {
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .unwrap();
         assert_eq!(glyph_runs(&cx, root), 2, "shrunk bind still paints rows");
-        let scene = emit_scene(&cx, root);
+        let scene = emit_scene(&cx, root, None);
         assert!(
             scene.find_text("match-1").is_some(),
             "count change remounts index-keyed rows with new content"
@@ -79,7 +76,7 @@ fn items_bind_shrink_still_paints_rows() {
 
 #[test]
 fn items_bind_via_effect_chain_still_paints_rows() {
-    sigil::reactive::Runtime::scope("vl-bind-effect-chain", || {
+    sigil::reactive::Owner::scope("vl-bind-effect-chain", || {
         let mut cx = Cx::new_root();
         let all: Vec<String> = (0..40).map(|i| format!("https://x/{i}/token{i}")).collect();
         let search = signal(String::new());
@@ -129,7 +126,7 @@ fn items_bind_via_effect_chain_still_paints_rows() {
 
 #[test]
 fn items_bind_shrink_paints_under_frame_phases() {
-    sigil::reactive::Runtime::scope("vl-bind-phases", || {
+    sigil::reactive::Owner::scope("vl-bind-phases", || {
         let mut cx = Cx::new_root();
         let all: Vec<String> = (0..40).map(|i| format!("https://x/{i}/token{i}")).collect();
         let search = signal(String::new());
@@ -179,7 +176,7 @@ fn items_bind_shrink_paints_under_frame_phases() {
 #[test]
 #[allow(clippy::too_many_lines)]
 fn items_bind_app_shape_batched_keystrokes() {
-    sigil::reactive::Runtime::scope("vl-bind-app-shape", || {
+    sigil::reactive::Owner::scope("vl-bind-app-shape", || {
         let mut cx = Cx::new_root();
         let all: Vec<String> = (0..676)
             .map(|i| {
@@ -254,7 +251,7 @@ fn items_bind_app_shape_batched_keystrokes() {
 #[test]
 #[allow(clippy::too_many_lines)]
 fn items_bind_shrink_paints_via_incremental_layout() {
-    sigil::reactive::Runtime::scope("vl-bind-incremental", || {
+    sigil::reactive::Owner::scope("vl-bind-incremental", || {
         let mut cx = Cx::new_root();
         let all: Vec<String> = (0..30)
             .map(|i| {
@@ -323,11 +320,11 @@ fn items_bind_shrink_paints_via_incremental_layout() {
             "window of all rows paints next to ballast"
         );
         let after = frame(&mut cx, Some("token"));
-        for c in emit_scene(&cx, root).commands {
+        for c in emit_scene(&cx, root, None).commands {
             if let SceneCommand::GlyphRun(d) = c
-                && d.run.text.contains("token")
+                && d.text.contains("token")
             {
-                eprintln!("PAINTED {:?} @ y={}", d.run.text, d.run.rect.origin.y);
+                eprintln!("PAINTED {:?} @ y={}", d.text, d.rect.origin.y);
             }
         }
         assert_eq!(

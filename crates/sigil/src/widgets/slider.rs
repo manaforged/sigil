@@ -4,4 +4,5 @@ mod handlers;
 mod marks;
 mod track;
 
-pub use builder::{SliderBuilder, slider};
+pub(crate) use builder::SliderBuilder;
+pub use builder::slider;

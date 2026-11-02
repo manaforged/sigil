@@ -15,7 +15,8 @@ const SOLID_STATES: StateStyle = StateStyle::new(
     SOLID_DISABLED,
 );
 
-pub const SOLID_VARIANT: StyleVariant = StyleVariant::new(SOLID_BASE, SOLID_STATES);
+/// The solid control look.
+pub(crate) const SOLID_VARIANT: StyleVariant = StyleVariant::new(SOLID_BASE, SOLID_STATES);
 
 static SOFT_BASE: &[StyleAtom] = &[StyleAtom::BgToneStep(4), StyleAtom::FgToneStep(11)];
 static SOFT_REST: &[StyleAtom] = &[];
@@ -32,7 +33,8 @@ const SOFT_STATES: StateStyle = StateStyle::new(
     SOFT_DISABLED,
 );
 
-pub const SOFT_VARIANT: StyleVariant = StyleVariant::new(SOFT_BASE, SOFT_STATES);
+/// The soft control look.
+pub(crate) const SOFT_VARIANT: StyleVariant = StyleVariant::new(SOFT_BASE, SOFT_STATES);
 
 static GHOST_BASE: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 static GHOST_REST: &[StyleAtom] = &[];
@@ -49,4 +51,5 @@ const GHOST_STATES: StateStyle = StateStyle::new(
     GHOST_DISABLED,
 );
 
-pub const GHOST_VARIANT: StyleVariant = StyleVariant::new(GHOST_BASE, GHOST_STATES);
+/// The ghost control look.
+pub(crate) const GHOST_VARIANT: StyleVariant = StyleVariant::new(GHOST_BASE, GHOST_STATES);

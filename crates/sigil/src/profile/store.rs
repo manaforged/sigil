@@ -9,7 +9,7 @@ use web_time::Instant;
 use serde_json::{Value, json};
 
 use crate::profile::attr::Attribution;
-use crate::profile::event::Event;
+use crate::profile::event::TraceEvent;
 use crate::profile::key::{
     BackendStatus, Cause, Counter, CounterValue, Phase, PhaseTime, accumulate,
 };
@@ -21,8 +21,13 @@ const ENV_OFF: u8 = 1;
 const ENV_ON: u8 = 2;
 const WARN_CAP: u8 = 8;
 
-pub const FRAME_BUDGET_NS: u64 = 16_670_000;
-pub const INTERACT_BUDGET_NS: u64 = 200_000_000;
+kittest_pub! {
+    /// The budget of one 60 Hz frame in nanoseconds.
+    #[doc(hidden)]
+    pub const FRAME_BUDGET_NS: u64 = 16_670_000;
+}
+/// The budget of one interaction in nanoseconds.
+pub(crate) const INTERACT_BUDGET_NS: u64 = 200_000_000;
 
 static FORCED: AtomicBool = AtomicBool::new(false);
 static TEST_OFF: AtomicBool = AtomicBool::new(false);
@@ -33,20 +38,31 @@ thread_local! {
     static STORE: RefCell<Store> = RefCell::new(Store::new());
 }
 
+/// Holds the recorded timings, counters, attributions, and GPU pass times of one frame.
 #[derive(Clone, Debug, Default)]
 pub struct Frame {
+    /// The index.
     pub index: u32,
+    /// The cause.
     pub cause: Cause,
+    /// The wall ns.
     pub wall_ns: u64,
+    /// The phases.
     pub phases: Vec<PhaseTime>,
+    /// The counts.
     pub counts: Vec<CounterValue>,
+    /// The backend, if any.
     pub backend: Option<BackendStatus>,
+    /// The hot.
     pub hot: Vec<Attribution>,
+    /// The gpu passes.
     pub gpu_passes: Vec<(&'static str, u64)>,
+    /// The end us.
     pub end_us: u64,
 }
 
 impl Frame {
+    /// Returns the value of `counter` in this frame.
     #[must_use]
     pub fn counter(&self, counter: Counter) -> u64 {
         self.counts
@@ -55,6 +71,7 @@ impl Frame {
             .map_or(0, |(_, v)| *v)
     }
 
+    /// Returns the total ns.
     #[must_use]
     pub fn total_ns(&self) -> u64 {
         if self.wall_ns > 0 {
@@ -67,6 +84,7 @@ impl Frame {
             .sum()
     }
 
+    /// Returns the hottest.
     #[must_use]
     pub fn hottest(&self) -> Option<PhaseTime> {
         self.phases.iter().copied().max_by_key(|(_, ns)| *ns)
@@ -75,7 +93,7 @@ impl Frame {
 
 struct Store {
     origin: Instant,
-    events: VecDeque<Event>,
+    events: VecDeque<TraceEvent>,
     frames: VecDeque<Frame>,
     dropped_events: u64,
     open: Frame,
@@ -104,7 +122,7 @@ impl Store {
         u64::try_from(self.origin.elapsed().as_micros()).unwrap_or(u64::MAX)
     }
 
-    fn push(&mut self, event: Event) {
+    fn push(&mut self, event: TraceEvent) {
         if self.events.len() >= MAX_EVENTS {
             self.events.pop_front();
             self.dropped_events += 1;
@@ -177,7 +195,7 @@ pub(crate) fn begin_frame(backend: BackendStatus) {
 
 pub(crate) fn complete(phase: Phase, start_us: u64, dur_ns: u64) {
     with_store(|store| {
-        store.push(Event::Complete {
+        store.push(TraceEvent::Complete {
             phase,
             tid: 1,
             start_us,
@@ -191,6 +209,7 @@ pub(crate) fn count_add(counter: Counter, n: u64) {
     with_store(|store| accumulate(&mut store.open.counts, counter, n));
 }
 
+#[cfg(feature = "scene")]
 pub(crate) fn gauge(counter: Counter, value: u64) {
     with_store(|store| {
         let counts = &mut store.open.counts;
@@ -212,7 +231,7 @@ pub(crate) fn interact(cause: Cause) {
             store.open.cause = cause;
         }
         let name = cause.name();
-        store.push(Event::Instant {
+        store.push(TraceEvent::Instant {
             name,
             cat: "input",
             ts_us,
@@ -221,7 +240,7 @@ pub(crate) fn interact(cause: Cause) {
             let id = store.next_flow;
             store.next_flow = store.next_flow.saturating_add(1);
             store.open_flow = Some((name, id, ts_us));
-            store.push(Event::FlowStart { name, id, ts_us });
+            store.push(TraceEvent::FlowStart { name, id, ts_us });
         }
     });
 }
@@ -241,7 +260,7 @@ pub(crate) fn close_open() {
 fn close_frame(store: &mut Store) {
     let end_us = store.now_us();
     if let Some((name, id, _)) = store.open_flow.take() {
-        store.push(Event::FlowFinish {
+        store.push(TraceEvent::FlowFinish {
             name,
             id,
             ts_us: end_us,
@@ -249,7 +268,7 @@ fn close_frame(store: &mut Store) {
     }
     let mut frame = std::mem::take(&mut store.open);
     for &(counter, value) in &frame.counts {
-        store.push(Event::Counter {
+        store.push(TraceEvent::Counter {
             counter,
             ts_us: end_us,
             value,
@@ -294,7 +313,7 @@ pub(crate) fn frames() -> Vec<Frame> {
     STORE.with(|cell| cell.borrow().frames.iter().cloned().collect())
 }
 
-pub(crate) fn events() -> Vec<Event> {
+pub(crate) fn events() -> Vec<TraceEvent> {
     STORE.with(|cell| cell.borrow().events.iter().copied().collect())
 }
 

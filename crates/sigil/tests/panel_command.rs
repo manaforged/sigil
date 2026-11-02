@@ -16,7 +16,7 @@ use widget_support::rect_colors;
 
 #[test]
 fn panel_has_generic_container_role() {
-    sigil::reactive::Runtime::scope("sigil-panel-role", || {
+    sigil::reactive::Owner::scope("sigil-panel-role", || {
         let mut cx = Cx::new_root();
         let root = cx.add(panel());
         let node = cx.get(root).unwrap();
@@ -26,7 +26,7 @@ fn panel_has_generic_container_role() {
 
 #[test]
 fn panel_elevation_zero_emits_surface_color() {
-    sigil::reactive::Runtime::scope("sigil-panel-elevation-0", || {
+    sigil::reactive::Owner::scope("sigil-panel-elevation-0", || {
         let mut cx = Cx::new_root();
         let root = cx.add(panel().elevation(0));
         let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
@@ -45,7 +45,7 @@ fn panel_elevation_zero_emits_surface_color() {
 
 #[test]
 fn panel_elevation_one_emits_surface_hover_color() {
-    sigil::reactive::Runtime::scope("sigil-panel-elevation-1", || {
+    sigil::reactive::Owner::scope("sigil-panel-elevation-1", || {
         let mut cx = Cx::new_root();
         let root = cx.add(panel().elevation(1));
         let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
@@ -64,7 +64,7 @@ fn panel_elevation_one_emits_surface_hover_color() {
 
 #[test]
 fn panel_with_title_renders_text() {
-    sigil::reactive::Runtime::scope("sigil-panel-title", || {
+    sigil::reactive::Owner::scope("sigil-panel-title", || {
         let mut cx = Cx::new_root();
         let root = cx.add(panel().title("Inventory"));
         let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
@@ -81,7 +81,7 @@ fn panel_with_title_renders_text() {
 
 #[test]
 fn panel_without_title_emits_no_title_text() {
-    sigil::reactive::Runtime::scope("sigil-panel-no-title", || {
+    sigil::reactive::Owner::scope("sigil-panel-no-title", || {
         let mut cx = Cx::new_root();
         let root = cx.add(panel());
         let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
@@ -98,7 +98,7 @@ fn panel_without_title_emits_no_title_text() {
 
 #[test]
 fn panel_with_child_label_renders_child_text() {
-    sigil::reactive::Runtime::scope("sigil-panel-child", || {
+    sigil::reactive::Owner::scope("sigil-panel-child", || {
         let mut cx = Cx::new_root();
         let root = cx.add(panel().title("Stats").child(text("Gold: 42").nowrap()));
         let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
@@ -112,5 +112,5 @@ fn panel_with_child_label_renders_child_text() {
 }
 
 fn scene_has_text(cx: &Cx, root: NodeId, expected: &str) -> bool {
-    emit_scene(cx, root).find_text(expected).is_some()
+    emit_scene(cx, root, None).find_text(expected).is_some()
 }

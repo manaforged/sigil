@@ -2,12 +2,10 @@
 
 use crate::geometry::{Point, Rect};
 
-use super::{Cell, Grid, Ink, Pen, paint, row_bytes, terminal_inks};
+use super::{AnsiPen, Cell, Grid, Ink, paint, row_bytes, terminal_inks};
 use crate::app::{CellWidth, set_cell_width};
-use crate::scene::{
-    CellRect, CommandScene, DrawGlyphRun, DrawRect, GlyphRun, SceneCommand, SceneRectStyle,
-    TextFlow,
-};
+use crate::scene::command::CellRect;
+use crate::scene::{CommandScene, DrawRect, GlyphRun, SceneCommand, TextFlow};
 use crate::style::{Rgba8, TextStyle, Theme, Tone};
 use crate::terminal::caps::{Caps, ColorDepth};
 use crate::terminal::paint::raster;
@@ -24,7 +22,7 @@ fn area() -> Rect {
 
 fn label(text: &str, ink: Rgba8, style: TextStyle, tone: Option<Tone>) -> SceneCommand {
     let run = GlyphRun::new(area(), text, ink, style, 10_000).with_cell(TextFlow::Wrap, tone);
-    SceneCommand::GlyphRun(DrawGlyphRun::new(run))
+    SceneCommand::GlyphRun(run)
 }
 
 fn plain(text: &str, tone: Option<Tone>) -> SceneCommand {
@@ -32,12 +30,10 @@ fn plain(text: &str, tone: Option<Tone>) -> SceneCommand {
 }
 
 fn fill(color: Rgba8, leaf: bool) -> SceneCommand {
-    SceneCommand::Rect(
-        DrawRect::new(area(), SceneRectStyle::solid(color)).with_cell(CellRect {
-            leaf,
-            ..CellRect::default()
-        }),
-    )
+    SceneCommand::Rect(DrawRect::new(area(), color).with_cell(CellRect {
+        leaf,
+        ..CellRect::default()
+    }))
 }
 
 fn draw(commands: Vec<SceneCommand>, cols: u16, rows: u16) -> Grid {
@@ -160,7 +156,14 @@ fn bold_and_italic_text_set_their_attributes() {
 
 fn bytes(grid: &Grid, row: usize) -> String {
     let mut out: Vec<u8> = Vec::new();
-    row_bytes(&mut out, grid, row, &mut Pen::default(), &Caps::default()).expect("write");
+    row_bytes(
+        &mut out,
+        grid,
+        row,
+        &mut AnsiPen::default(),
+        &Caps::default(),
+    )
+    .expect("write");
     String::from_utf8(out).expect("utf8")
 }
 
@@ -372,7 +375,7 @@ fn a_row_limited_write_matches_the_full_write() {
     let mut full = Vec::new();
     super::dirty(&mut full, &prev, &next, &caps, None).expect("write");
     let mut limited = Vec::new();
-    let damage = super::diff::Damage::new(vec![41], false);
+    let damage = super::diff::RowDamage::new(vec![41], false);
     super::dirty(&mut limited, &prev, &next, &caps, Some(&damage)).expect("write");
     assert_eq!(
         String::from_utf8_lossy(&limited),

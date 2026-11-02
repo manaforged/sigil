@@ -10,16 +10,15 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::key_down;
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{PhysicalKey, PointerEventInit, ScrollEventInit};
+use sigil::events::PhysicalKey;
 use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil::widgets::{SortDir, SortKey, TableState};
+use sigil::widgets::{SortDirection, SortKey, TableState};
 use widget_support::{compute, rect_colors};
 
 const ROW_H: f32 = 20.0;
@@ -68,30 +67,25 @@ fn demo_state() -> TableState<Item> {
 }
 
 fn glyph_texts(cx: &Cx, root: NodeId) -> Vec<String> {
-    emit_scene(cx, root)
+    emit_scene(cx, root, None)
         .commands
         .iter()
         .filter_map(|c| match c {
-            SceneCommand::GlyphRun(d) => Some(d.run.text.clone()),
+            SceneCommand::GlyphRun(d) => Some(d.text.clone()),
             _ => None,
         })
         .collect()
 }
 
-const fn pointer(phase: PointerPhase, x: f32, y: f32, modifiers: ModifiersState) -> ShellEvent {
+const fn pointer(phase: PointerPhase, x: f32, y: f32, modifiers: ModifiersState) -> Event {
     let (button, buttons) = match phase {
         PointerPhase::Down => (Some(MouseButton::Left), MouseButtons::LEFT),
         _ => (None, MouseButtons::empty()),
     };
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button,
-        buttons,
-        modifiers,
-        phase,
-    }))
+    Event::pointer(phase, Point::new(x, y))
+        .button(button)
+        .buttons(buttons)
+        .modifiers(modifiers)
 }
 
 fn click(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, x: f32, y: f32) {

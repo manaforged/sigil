@@ -5,13 +5,14 @@
 
 use sigil::geometry::{Point, Rect, Size};
 use sigil::kernel::*;
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil::reactive::{Runtime, signal};
-use sigil::scene::emit_scene_clipped;
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil::reactive::{Owner, signal};
+use sigil::scene::emit_scene;
+use sigil_kittest::FakeMeasure;
 
 fn layout(cx: &mut Cx, root: NodeId) {
-    let mut engine = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut engine = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     engine
         .compute(cx, root, Size::fixed(320.0, 240.0))
         .expect("layout compute succeeds");
@@ -19,7 +20,7 @@ fn layout(cx: &mut Cx, root: NodeId) {
 
 #[test]
 fn culled_parents_still_paint_their_top_layer_children_after_one_is_added() {
-    Runtime::scope("culled-top-layer", || {
+    Owner::scope("culled-top-layer", || {
         let late = signal(false);
         let popup = |label: &'static str| {
             container()
@@ -47,14 +48,14 @@ fn culled_parents_still_paint_their_top_layer_children_after_one_is_added() {
         );
         let viewport = Some(Rect::new(Point::new(0.0, 0.0), 320.0, 240.0));
         layout(&mut cx, root);
-        let scene = emit_scene_clipped(&cx, root, viewport);
+        let scene = emit_scene(&cx, root, viewport);
         assert!(
             scene.find_text("Early").is_some(),
             "a culled parent keeps its popup"
         );
         late.set(true);
         layout(&mut cx, root);
-        let added = emit_scene_clipped(&cx, root, viewport);
+        let added = emit_scene(&cx, root, viewport);
         assert!(added.find_text("Early").is_some());
         assert!(
             added.find_text("Late").is_some(),

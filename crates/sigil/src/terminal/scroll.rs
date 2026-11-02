@@ -100,9 +100,8 @@ impl Shift {
 }
 
 fn sign(cells: &[Cell]) -> u64 {
-    const PRIME: u64 = 0x0100_0000_01b3;
-    let mix = |hash: u64, value: u64| (hash ^ value).wrapping_mul(PRIME);
-    cells.iter().fold(0xcbf2_9ce4_8422_2325, |hash, cell| {
+    use crate::fnv::{OFFSET, mix};
+    cells.iter().fold(OFFSET, |hash, cell| {
         let hash = cell
             .text
             .bytes()

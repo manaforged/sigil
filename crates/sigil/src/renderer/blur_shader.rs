@@ -1,34 +1,33 @@
 #![allow(unreachable_pub, clippy::redundant_pub_crate)]
 
 #[allow(unreachable_pub, reason = "intentional, reviewed trade-off")]
-pub(crate) const BLUR_SHADER: &str = r"
-struct Uniforms {
+pub(crate) const BLUR_SHADER: &str = concat!(
+    vertex_in!(),
+    r"
+struct BlurUniforms {
     viewport: vec2<f32>,
     params: vec2<f32>,
 };
 
-@group(0) @binding(0) var<uniform> u: Uniforms;
+@group(0) @binding(0) var<uniform> u: BlurUniforms;
 @group(1) @binding(0) var src: texture_2d<f32>;
 @group(1) @binding(1) var samp: sampler;
 
-struct InstanceIn {
+struct BlurInstance {
     @location(1) dest: vec4<f32>,
     @location(2) uv_max: vec2<f32>,
     @location(3) opacity: f32,
 };
 
-struct VertexIn {
-    @location(0) unit: vec2<f32>,
-};
 
-struct VertexOut {
+struct BlurVertexOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) uv: vec2<f32>,
 };
 
 @vertex
-fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
-    var out: VertexOut;
+fn vs_main(v: VertexIn, inst: BlurInstance) -> BlurVertexOut {
+    var out: BlurVertexOut;
     let pos_px = inst.dest.xy + v.unit * inst.dest.zw;
     let ndc = vec2<f32>(
         (pos_px.x / u.viewport.x) * 2.0 - 1.0,
@@ -40,7 +39,7 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
 }
 
 @fragment
-fn fs_box(in: VertexOut) -> @location(0) vec4<f32> {
+fn fs_box(in: BlurVertexOut) -> @location(0) vec4<f32> {
     let size = vec2<i32>(textureDimensions(src, 0));
     let center = vec2<i32>(floor(in.clip.xy));
     let radius = i32(u.params.x);
@@ -54,4 +53,5 @@ fn fs_box(in: VertexOut) -> @location(0) vec4<f32> {
     }
     return sum / f32(2 * radius + 1);
 }
-";
+",
+);

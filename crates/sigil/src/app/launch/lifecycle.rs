@@ -1,6 +1,6 @@
 use crate::app::WindowCommand;
-use crate::app::error::AppResult;
 use crate::app::window::{WindowId, take_open_requests};
+use crate::error::AppResult;
 use crate::hal::Shell as _;
 use crate::shell::{WinitShell, WinitWindowHandle};
 

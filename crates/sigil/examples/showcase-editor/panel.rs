@@ -6,7 +6,7 @@ use super::state::{BottomTab, Workspace};
 
 fn problem_row(ws: Workspace, diag: Diagnostic) -> NodeBuilder {
     let location = format!("{}:{}:{}", diag.file.path(), diag.line + 1, diag.start + 1);
-    list_row_with(
+    list_row(
         false,
         diag.message,
         ListRowSlots {

@@ -8,13 +8,13 @@ use std::cell::Cell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 
-use sigil::reactive::{Owner, Runtime, Signal, batch, effect, signal};
+use sigil::reactive::{Owner, Signal, batch, effect, signal};
 
 #[test]
 fn owner_new_with_disposed_parent_panics() {
-    Runtime::scope("owner_new_disposed_parent", || {
+    Owner::scope("owner_new_disposed_parent", || {
         let parent = Owner::new("doomed", Owner::current());
-        let stale_id = parent.id();
+        let stale_id = parent;
         parent.dispose();
         let result = catch_unwind(AssertUnwindSafe(|| {
             let _ = Owner::new("orphan", Some(stale_id));
@@ -28,7 +28,7 @@ fn owner_new_with_disposed_parent_panics() {
 
 #[test]
 fn owner_with_on_disposed_owner_panics() {
-    Runtime::scope("owner_with_disposed", || {
+    Owner::scope("owner_with_disposed", || {
         let owner = Owner::new("temp", Owner::current());
         let alias = owner;
         owner.dispose();
@@ -44,9 +44,9 @@ fn owner_with_on_disposed_owner_panics() {
 
 #[test]
 fn signal_after_active_owner_disposed_mid_flight_panics() {
-    Runtime::scope("signal_disposed_active_owner", || {
+    Owner::scope("signal_disposed_active_owner", || {
         let result = catch_unwind(AssertUnwindSafe(|| {
-            Runtime::scope("inner_root", || {
+            Owner::scope("inner_root", || {
                 let parent = Owner::new("parent", Owner::current());
                 parent.with(|| {
                     parent.dispose();
@@ -63,7 +63,7 @@ fn signal_after_active_owner_disposed_mid_flight_panics() {
 
 #[test]
 fn signal_set_with_dropping_t_does_not_deadlock_runtime() {
-    Runtime::scope("set_drop_touches_runtime", || {
+    Owner::scope("set_drop_touches_runtime", || {
         struct Dropper {
             witness: Rc<Cell<bool>>,
             touch: Signal<i32>,
@@ -96,7 +96,7 @@ fn signal_set_with_dropping_t_does_not_deadlock_runtime() {
 
 #[test]
 fn effect_writing_during_drain_does_not_run_twice() {
-    Runtime::scope("drain_ordering", || {
+    Owner::scope("drain_ordering", || {
         let trigger = signal(0_i32);
         let bridge = signal(0_i32);
 

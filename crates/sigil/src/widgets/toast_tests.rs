@@ -1,10 +1,10 @@
 use super::*;
 use crate::kernel::Cx;
-use crate::reactive::{Runtime, signal};
+use crate::reactive::{Owner, signal};
 
 #[test]
 fn toast_builds_from_a_message_signal() {
-    Runtime::scope("toast-builds", || {
+    Owner::scope("toast-builds", || {
         let message = signal(Some(String::from("Saved")));
         let mut cx = Cx::new_root();
         let id = cx.add(toast(message));

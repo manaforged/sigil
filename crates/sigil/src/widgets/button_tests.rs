@@ -1,27 +1,18 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use super::*;
+use crate::events::Key;
 use crate::events::{
-    EventRouter, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton,
-    MouseButtons, PhysicalKey, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
-    ShellEvent,
+    Event, EventRouter, KeyPhase, LogicalKey, MouseButton, MouseButtons, PointerPhase,
 };
-use crate::geometry::{LogicalSize, Point, Size};
+use crate::geometry::{Point, Size};
 use crate::kernel::{AccessibleName, Cx, IntoNode, Role};
-use crate::layout::{LayoutEngine, TextMeasure};
-use crate::reactive::{Runtime, signal};
-
-struct Measure;
-
-impl TextMeasure for Measure {
-    fn measure(&self, _source: &TextContent, _space: Size) -> LogicalSize {
-        LogicalSize::new(80.0, 20.0)
-    }
-}
+use crate::layout::LayoutEngine;
+use crate::reactive::{Owner, signal};
 
 #[test]
 fn disabled_button_recovers_and_blocks_repeat_activation() {
-    Runtime::scope("button-disabled-transition", || {
+    Owner::scope("button-disabled-transition", || {
         let disabled = signal(true);
         let pending = signal(false);
         let clicks = signal(0);
@@ -32,7 +23,9 @@ fn disabled_button_recovers_and_blocks_repeat_activation() {
                 .pending(pending)
                 .activate(move || clicks.set(clicks.peek() + 1)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(Measure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(
+            crate::layout::FakeMeasure::fixed(80.0, 20.0),
+        ));
         layout
             .compute(&mut cx, id, Size::fixed(160.0, 40.0))
             .expect("layout");
@@ -47,7 +40,7 @@ fn disabled_button_recovers_and_blocks_repeat_activation() {
             disabled.set(invalid);
             pending.set(busy);
             router.set_focus(&mut cx, None);
-            router.focus_next(&mut cx);
+            router.focus_next(&mut cx, &layout);
             assert_eq!(router.focus(), enabled.then_some(id));
             assert_eq!(router.is_focus_target(&cx, &layout, id), enabled);
             assert_eq!(router.is_click_target(&cx, &layout, id), enabled);
@@ -56,7 +49,7 @@ fn disabled_button_recovers_and_blocks_repeat_activation() {
             press(&mut router, &mut cx, &layout, Key::Enter);
             assert_eq!(clicks.peek(), expected);
             router.set_focus(&mut cx, None);
-            router.focus_prev(&mut cx);
+            router.focus_prev(&mut cx, &layout);
             assert_eq!(router.focus(), enabled.then_some(id));
         }
     });
@@ -67,15 +60,9 @@ fn click(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine) {
         router.route(
             cx,
             layout,
-            ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-                position: Point::new(10.0, 10.0),
-                delta: Point::new(0.0, 0.0),
-                kind: PointerKind::Mouse,
-                button: Some(MouseButton::Left),
-                buttons: MouseButtons::LEFT,
-                modifiers: ModifiersState::empty(),
-                phase,
-            })),
+            Event::pointer(phase, Point::new(10.0, 10.0))
+                .button(Some(MouseButton::Left))
+                .buttons(MouseButtons::LEFT),
         );
     }
 }
@@ -84,20 +71,13 @@ fn press(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, key: Key)
     router.route(
         cx,
         layout,
-        ShellEvent::Key(KeyEvent::new(KeyEventInit {
-            key: LogicalKey::Named(key),
-            physical: PhysicalKey::Unidentified,
-            modifiers: ModifiersState::empty(),
-            repeat: false,
-            phase: KeyPhase::Down,
-            text: None,
-        })),
+        Event::key(LogicalKey::Named(key), KeyPhase::Down),
     );
 }
 
 #[test]
 fn icon_button_names_itself_after_the_glyph_unless_told() {
-    Runtime::scope("icon-button-role", || {
+    Owner::scope("icon-button-role", || {
         let mut cx = Cx::new_root();
         let named = icon_button("\u{25B6}", || {}).accessible("Play");
         for (button, expected) in [
@@ -117,7 +97,7 @@ fn icon_button_names_itself_after_the_glyph_unless_told() {
 
 #[test]
 fn pending_button_starts_disabled() {
-    Runtime::scope("button-pending", || {
+    Owner::scope("button-pending", || {
         let busy = signal(true);
         let mut cx = Cx::new_root();
         let id = button("Save").pending(busy).build(&mut cx);

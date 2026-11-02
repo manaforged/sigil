@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -8,9 +9,9 @@ mod scene_support;
 
 use scene_support::color;
 use sigil::geometry::{Point, Rect};
-use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
+use sigil::renderer::{WgpuRenderer, WgpuSurface};
 use sigil::scene::{
-    CommandScene, CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Shadow, ShadowKind,
+    CommandScene, CornerRadii, DrawRect, SceneBuilder, SceneCommand, Shadow, ShadowKind,
 };
 use sigil::style::Color;
 
@@ -31,12 +32,7 @@ fn outer_and_inner_shadows_emit_as_independent_commands() {
     let mut builder = SceneBuilder::new();
     builder.draw_shadow(rect(), CornerRadii::uniform(10.0), outer_shadow());
     builder.draw_rect(
-        rect(),
-        SceneRectStyle::new(
-            color(240, 245, 250, 255),
-            CornerRadii::uniform(10.0),
-            10_000,
-        ),
+        DrawRect::new(rect(), color(240, 245, 250, 255)).border_radius(CornerRadii::uniform(10.0)),
     );
     builder.draw_shadow(rect(), CornerRadii::uniform(10.0), inner_shadow());
     let scene = builder.finish();
@@ -60,7 +56,7 @@ type RenderCommandScene = fn(
     &CommandScene,
     Color,
     (f32, f32),
-) -> Result<(), RendererError>;
+) -> Result<(), sigil::Error>;
 
 const fn outer_shadow() -> Shadow {
     Shadow::new([0.0, 3.0], 8.0, 0.0, [0.0, 0.0, 0.0, 0.18])

@@ -1,17 +1,17 @@
 use std::ops::Range;
 
-pub(super) type Window = ((usize, usize), (usize, usize));
+pub(super) type MaskWindow = ((usize, usize), (usize, usize));
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct Mask {
-    windows: Vec<Window>,
-    bounds: Window,
+    windows: Vec<MaskWindow>,
+    bounds: MaskWindow,
     starts: Vec<usize>,
     lines: Vec<Range<usize>>,
 }
 
 impl Mask {
-    pub(super) fn set(&mut self, windows: impl IntoIterator<Item = Window>) {
+    pub(super) fn set(&mut self, windows: impl IntoIterator<Item = MaskWindow>) {
         self.windows.clear();
         self.windows.extend(
             windows

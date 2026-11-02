@@ -21,7 +21,6 @@ serde_json = { workspace = true }
 accesskit = { workspace = true }
 ahash = { workspace = true }
 crossbeam-channel = { workspace = true }
-keyboard-types = { workspace = true }
 notify = { workspace = true }
 phf = { workspace = true }
 slotmap = { workspace = true }
@@ -114,7 +113,6 @@ scene = [
 shell = ["dep:winit", "dep:accesskit_winit", "dep:windows-sys"]
 cpu = ["dep:softbuffer"]
 shaping-complex = ["dep:harfrust"]
-render = ["scene"]
 clipboard = ["dep:arboard"]
 clipboard-image = ["clipboard", "arboard/image-data"]
 dialog = []
@@ -317,7 +315,7 @@ harness = false
 workspace = true
 
 [package.metadata.docs.rs]
-features = ["desktop", "terminal", "render", "clipboard", "clipboard-image", "image-decode"]
+features = ["desktop", "terminal", "clipboard", "clipboard-image", "image-decode"]
 
 [[example]]
 name = "todo-terminal"

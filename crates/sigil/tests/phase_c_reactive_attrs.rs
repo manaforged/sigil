@@ -6,7 +6,7 @@
 
 use sigil::kernel::Cx;
 use sigil::prelude::*;
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
 use sigil::style::{ColorAtom, Rgba8, StyleAtom, StyleBinding};
 
 fn reactive_slice(cx: &Cx, id: sigil::kernel::NodeId) -> &'static [StyleAtom] {
@@ -20,7 +20,7 @@ fn reactive_slice(cx: &Cx, id: sigil::kernel::NodeId) -> &'static [StyleAtom] {
 
 #[test]
 fn button_disabled_initial_true_blocks_focus() {
-    Runtime::scope("button-disabled-initial", || {
+    Owner::scope("button-disabled-initial", || {
         let disabled = signal(true);
         let mut cx = Cx::new_root();
         let id = cx.add(button("Save").disabled(disabled));
@@ -41,7 +41,7 @@ const FIELD_INVALID_RED: Rgba8 = Rgba8 {
 
 #[test]
 fn text_field_invalid_when_paints_red_border_on_flip() {
-    Runtime::scope("text-field-invalid-flip", || {
+    Owner::scope("text-field-invalid-flip", || {
         let value = signal(String::new());
         let invalid = signal(false);
         let mut cx = Cx::new_root();
@@ -72,7 +72,7 @@ fn text_field_invalid_when_paints_red_border_on_flip() {
 
 #[test]
 fn button_disabled_signal_flips_reactive_state_slice() {
-    Runtime::scope("button-disabled-reactive-flip", || {
+    Owner::scope("button-disabled-reactive-flip", || {
         let disabled = signal(false);
         let mut cx = Cx::new_root();
         let id = cx.add(button("Save").disabled(disabled));

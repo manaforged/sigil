@@ -9,15 +9,13 @@ use std::rc::Rc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::events::{
-    EventRouter, Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton,
-    MouseButtons, NodeEventsExt, PhysicalKey, PointerEvent, PointerEventInit, PointerKind,
-    PointerPhase, ShellEvent, Shortcut,
+    Event, EventRouter, Key, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
+    PhysicalKey, PointerEvent, PointerPhase, Shortcut,
 };
 use sigil::geometry::{Point, Size};
 use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil::layout::{
-    LayoutBuilderExt, LayoutEngine, LayoutStyle, LengthPercentageAuto, Position, TextMeasure,
-};
+use sigil::layout::{Dimension, LayoutEngine, LayoutStyle, Position, TextMeasure};
+use sigil::prelude::Widget;
 use sigil::style::TextStyle;
 
 fn hit_test_1000_nodes(c: &mut Criterion) {
@@ -233,67 +231,33 @@ fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
         .fixed_size(width, height)
         .position(Position::Absolute)
         .with_layout(move |style| {
-            style.inset.left = LengthPercentageAuto::Px(x);
-            style.inset.top = LengthPercentageAuto::Px(y);
+            style.inset.left = Dimension::Px(x);
+            style.inset.top = Dimension::Px(y);
         })
 }
 
-const fn pointer_down(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Down,
-    }))
+const fn pointer_down(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Down, Point::new(x, y))
+        .button(Some(MouseButton::Left))
+        .buttons(MouseButtons::LEFT)
 }
 
-const fn pointer_move(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Move,
-    }))
+const fn pointer_move(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Move, Point::new(x, y)).buttons(MouseButtons::LEFT)
 }
 
-const fn pointer_up(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Up,
-    }))
+const fn pointer_up(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Up, Point::new(x, y)).button(Some(MouseButton::Left))
 }
 
-fn tab() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: Key::Tab.into(),
-        physical: PhysicalKey::Tab,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn tab() -> Event {
+    Event::key(Key::Tab, KeyPhase::Down).physical(PhysicalKey::Tab)
 }
 
-fn ctrl_s() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character("s"),
-        physical: PhysicalKey::KeyS,
-        modifiers: ModifiersState::CONTROL,
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn ctrl_s() -> Event {
+    Event::key(LogicalKey::character("s"), KeyPhase::Down)
+        .physical(PhysicalKey::KeyS)
+        .modifiers(ModifiersState::CONTROL)
 }
 
 struct ZeroTextMeasure;

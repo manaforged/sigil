@@ -4,13 +4,12 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::{ChipBuilder, GaugeBuilder, ProgressBuilder};
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - indicators").size(480, 360), build)
 }
 
-pub(crate) fn chip_demo() -> ChipBuilder {
+pub(crate) fn chip_demo() -> impl IntoNode {
     chip("Stable", Tone::Success)
 }
 
@@ -22,11 +21,11 @@ pub(crate) fn dot_demo() -> NodeBuilder {
         .child(dot(Tone::Error))
 }
 
-pub(crate) fn gauge_demo() -> GaugeBuilder {
+pub(crate) fn gauge_demo() -> impl IntoNode {
     gauge(signal(40.0)).max(100.0).label("Battery").warn(0.25)
 }
 
-pub(crate) fn progress_demo() -> ProgressBuilder {
+pub(crate) fn progress_demo() -> impl IntoNode {
     progress(signal(60.0), 100.0)
 }
 

@@ -40,6 +40,7 @@ thread_local! {
 }
 
 impl FrameDelta {
+    #[cfg(any(test, feature = "kittest", feature = "terminal"))]
     #[must_use]
     pub fn is_empty(&self) -> bool {
         !self.structure && self.paint.is_empty() && self.layout.is_empty()
@@ -63,6 +64,7 @@ impl NodeTag {
         Self { cx, id }
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub const fn id(self) -> NodeId {
         self.id
@@ -83,7 +85,7 @@ pub(crate) fn discard_pending(cx: u64) {
 }
 
 impl Cx {
-    pub fn take_delta(&mut self) -> FrameDelta {
+    pub(crate) fn take_delta(&mut self) -> FrameDelta {
         let mut delta = std::mem::take(&mut self.delta);
         if let Some(pending) = PENDING.with(|cell| cell.borrow_mut().remove(&self.instance_id())) {
             delta.absorb(pending);

@@ -9,14 +9,14 @@
     clippy::ignored_unit_patterns
 )]
 
-use accesskit::Role;
 use sigil::a11y::{snapshot, tree};
+use sigil::kernel::Role;
 use sigil::kernel::{Cx, container};
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
 
 #[test]
 fn disabled_control_stays_visible_and_updates_accessibility() {
-    Runtime::scope("disabled-control", || {
+    Owner::scope("disabled-control", || {
         let disabled = signal(true);
         let mut cx = Cx::new_root();
         let id = cx.add(
@@ -43,7 +43,7 @@ fn disabled_control_stays_visible_and_updates_accessibility() {
 
 #[test]
 fn checkbox_signal_change_shows_in_tree() {
-    Runtime::scope("checkbox_signal_change_shows_in_tree", || {
+    Owner::scope("checkbox_signal_change_shows_in_tree", || {
         let checked = signal(false);
         let mut cx = Cx::new_root();
         let _ = cx.add(

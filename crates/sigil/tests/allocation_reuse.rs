@@ -4,10 +4,10 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::hal::ParagraphMetrics as _;
 use sigil::kernel::NodeExtensions;
+use sigil::style::StyledTextEngine as _;
 use sigil::style::TextStyle;
-use sigil::text::{OwnedTextEngine, TextConfig};
+use sigil::text::{OwnedTextEngine, ParagraphMetrics as _};
 
 const LABEL: &str = "row 4821";
 
@@ -23,7 +23,10 @@ fn reattaching_an_extension_of_the_same_type_does_not_allocate() {
 
 #[test]
 fn a_fitting_width_reuses_the_unbounded_paragraph() {
-    let engine = OwnedTextEngine::new(TextConfig::default());
+    let engine = OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    });
     let style = TextStyle::default();
     let unbounded = engine.layout_paragraph_styled(LABEL, None, &style).unwrap();
     let limit = unbounded.width() + 40.0;
@@ -39,7 +42,10 @@ fn a_fitting_width_reuses_the_unbounded_paragraph() {
 
 #[test]
 fn an_unwrapped_fixed_width_paragraph_serves_the_unbounded_lookup() {
-    let engine = OwnedTextEngine::new(TextConfig::default());
+    let engine = OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    });
     let style = TextStyle::default();
     drop(
         engine
@@ -54,7 +60,10 @@ fn an_unwrapped_fixed_width_paragraph_serves_the_unbounded_lookup() {
 
 #[test]
 fn laying_out_a_new_label_in_a_known_style_allocates_little() {
-    let engine = OwnedTextEngine::new(TextConfig::default());
+    let engine = OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    });
     let style = TextStyle::default();
     drop(
         engine

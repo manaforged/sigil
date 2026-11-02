@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 
 use crate::bidi;
 use crate::text::paragraph::{LayoutLine, SegmentAppend};
-use crate::text::shaper::{Shaper, Style};
+use crate::text::shaper::{FaceStyle, Shaper};
 
 use super::shape::ShapedSegment;
 
@@ -14,7 +14,7 @@ pub(super) struct LineStrut {
 }
 
 impl LineStrut {
-    pub(super) fn from_shaper(shaper: &Shaper<'_>, style: &Style, line_height: f32) -> Self {
+    pub(super) fn from_shaper(shaper: &Shaper<'_>, style: &FaceStyle, line_height: f32) -> Self {
         let (ascent, descent) = shaper.strut(style);
         Self {
             line_height,

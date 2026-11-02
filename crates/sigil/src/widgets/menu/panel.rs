@@ -1,11 +1,12 @@
 use std::rc::Rc;
 
-use crate::events::{MouseButton, NodeEventsExt};
+use crate::events::MouseButton;
 use crate::kernel::{NodeBuilder, Role};
 use crate::layout::PopupSide;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
-use crate::reactive::{OwnerId, Signal, derived, is_live, owner_by_id, signal};
+use crate::reactive::{Owner, Signal, derived, is_live, owner_by_id, signal};
 use crate::style::{ControlSize, Metrics};
+use crate::widgets::Widget;
 
 use super::super::listbox::{ListModel, listbox};
 use super::super::popup::{self, ItemSlots, item_row};
@@ -80,7 +81,7 @@ pub(super) fn menu_panel(
     rows: Vec<Row>,
     close: Rc<dyn Fn()>,
     side: PopupSide,
-    host: Option<OwnerId>,
+    host: Option<Owner>,
 ) -> NodeBuilder {
     let rows = Rc::new(rows);
     let cursor = signal(usize::MAX);
@@ -103,7 +104,7 @@ pub(super) fn menu_panel(
     )
 }
 
-fn commit_fn(rows: Rc<Vec<Row>>, close: Rc<dyn Fn()>, host: Option<OwnerId>) -> Commit {
+fn commit_fn(rows: Rc<Vec<Row>>, close: Rc<dyn Fn()>, host: Option<Owner>) -> Commit {
     Rc::new(move |index| {
         let Some(Row::Item(item)) = rows.get(index) else {
             return;

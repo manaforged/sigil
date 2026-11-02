@@ -1,19 +1,20 @@
 use crate::animation_runtime::presets;
-use crate::events::{ModifiersState, NodeEventsExt, PointerEvent};
+use crate::events::{ModifiersState, PointerEvent};
 use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, fragment, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{
-    CaretGeometry, LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
-    TextStyleCapture, rows, with_text_geometry,
+    CaretGeometry, IntoPx, LayoutStyle, Overflow, Position, TextStyleCapture, rows,
+    with_text_geometry,
 };
 use crate::reactive::{Signal, derived, effect};
 use crate::style::TransitionId;
 use crate::style::{
-    BORDER_WIDTH, DISABLED_OPACITY, NodeStyleExt, NumericAtomKind, Px, Radius, StateStyle,
-    StyleAtom, StyleOverlay, StyleVariant, Token, space,
+    BORDER_WIDTH, DISABLED_OPACITY, Radius, StateStyle, StyleAtom, StyleOverlay, StyleVariant,
+    Token, space,
 };
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 
@@ -81,7 +82,7 @@ pub(super) fn build_base_node(
 pub(super) fn edit_layout() -> LayoutStyle {
     LayoutStyle::flex_column()
         .fill_width()
-        .height(CellForm::new(160.0, rows(DEFAULT_ROWS).px()).pick())
+        .height(CellForm::new(160.0, rows(DEFAULT_ROWS).into_px()).pick())
         .min_size(0.0, 0.0)
         .padding(1.0)
 }
@@ -113,7 +114,7 @@ fn edit_inner(
                 .min_size(0.0, 0.0)
                 .padding_x(padding_x),
         )
-        .animate(NumericAtomKind::Height, extent)
+        .animate_height(extent)
         .child(text_box);
     container()
         .layout(
@@ -241,7 +242,7 @@ fn accessible_label(placeholder: &str) -> String {
 }
 
 fn edit_variant(chrome: bool) -> StyleVariant {
-    const CELL_BASE: &[StyleAtom] = &[Token::SurfaceInset.bg(), StyleAtom::BorderWidth(Px(0))];
+    const CELL_BASE: &[StyleAtom] = &[Token::SurfaceInset.bg(), StyleAtom::BorderWidth(0)];
     if !chrome {
         return StyleVariant::new(&[], StateStyle::EMPTY);
     }

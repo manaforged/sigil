@@ -1,34 +1,45 @@
+/// Per-corner radii in the order top-left, top-right, bottom-right, bottom-left.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct CornerRadii(pub [f32; 4]);
+pub struct CornerRadii(
+    /// The four radii, clockwise from the top left corner.
+    pub [f32; 4],
+);
 
 impl CornerRadii {
+    /// Square corners.
     pub const ZERO: Self = Self([0.0, 0.0, 0.0, 0.0]);
 
+    /// Creates a corner radii.
     #[must_use]
     pub const fn new(top_left: f32, top_right: f32, bottom_right: f32, bottom_left: f32) -> Self {
         Self([top_left, top_right, bottom_right, bottom_left])
     }
 
+    /// Uses `radius` on all four corners.
     #[must_use]
     pub const fn uniform(radius: f32) -> Self {
         Self([radius, radius, radius, radius])
     }
 
+    /// Rounds the two top corners.
     #[must_use]
     pub const fn top(radius: f32) -> Self {
         Self([radius, radius, 0.0, 0.0])
     }
 
+    /// Rounds the two bottom corners.
     #[must_use]
     pub const fn bottom(radius: f32) -> Self {
         Self([0.0, 0.0, radius, radius])
     }
 
+    /// Rounds the two left corners.
     #[must_use]
     pub const fn left(radius: f32) -> Self {
         Self([radius, 0.0, 0.0, radius])
     }
 
+    /// Rounds the two right corners.
     #[must_use]
     pub const fn right(radius: f32) -> Self {
         Self([0.0, radius, radius, 0.0])
@@ -45,6 +56,7 @@ impl CornerRadii {
         })
     }
 
+    /// Scales the radii to fit a box of this size.
     #[must_use]
     pub fn normalized_for(self, width: f32, height: f32) -> [f32; 4] {
         let longest = width.max(height).max(0.0);

@@ -6,18 +6,19 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
+use sigil::widgets::Widget;
 use stub::{layout_rect, stub_engine};
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
 
 const AVAILABLE: Size = Size::fixed(800.0, 1000.0);
 
 #[test]
 fn reactive_children_in_sized_container_only_relayouts_subtree() {
-    Runtime::scope("layout_reactive_children_sized_container_subtree", || {
+    Owner::scope("layout_reactive_children_sized_container_subtree", || {
         let items = signal(vec!["a", "b"]);
         let mut cx = Cx::new_root();
 
@@ -74,7 +75,7 @@ fn reactive_children_in_sized_container_only_relayouts_subtree() {
 
 #[test]
 fn reactive_children_identical_set_is_a_cache_hit() {
-    Runtime::scope("layout_reactive_children_identical_rebuild_cache", || {
+    Owner::scope("layout_reactive_children_identical_rebuild_cache", || {
         let items = signal(vec!["a", "b", "c"]);
         let mut cx = Cx::new_root();
 
@@ -112,7 +113,7 @@ fn reactive_children_identical_set_is_a_cache_hit() {
 
 #[test]
 fn reactive_children_dispatched_through_compute() {
-    Runtime::scope("layout_reactive_children_via_compute", || {
+    Owner::scope("layout_reactive_children_via_compute", || {
         let items = signal(Vec::<&str>::new());
         let mut cx = Cx::new_root();
 

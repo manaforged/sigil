@@ -1,7 +1,7 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::geometry::Scale;
-use crate::reactive::{Owner, OwnerId};
+use crate::reactive::Owner;
 use ahash::{AHashMap, AHashSet};
 use slotmap::{DefaultKey, SlotMap};
 use smallvec::SmallVec;
@@ -10,13 +10,17 @@ use crate::kernel::component::{ErasedComponent, IntoNode};
 use crate::kernel::delta::{DeltaKind, FrameDelta, NodeTag};
 use crate::kernel::{A11yProps, Node, NodeId, NodeType};
 
+/// Tells widgets whether the host lays out in pixels (window) or in terminal cells.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum HostMode {
+    /// The pixel host mode.
     #[default]
     Pixel,
+    /// The cell host mode.
     Cell,
 }
 
+/// The node tree.
 pub struct Cx {
     instance_id: u64,
     pub(crate) nodes: SlotMap<DefaultKey, Node>,
@@ -28,7 +32,7 @@ pub struct Cx {
     root_owner: Owner,
     pub(crate) roots: SmallVec<[NodeId; 4]>,
     pub(crate) mutation_generation: u64,
-    scale: Scale,
+    scale: f32,
     host_mode: HostMode,
     pub(crate) live_region: Option<NodeId>,
     pub(crate) top_layer_memo: super::top_layer::TopLayerMemo,
@@ -36,6 +40,7 @@ pub struct Cx {
 }
 
 impl Cx {
+    /// Returns the new root cx.
     #[must_use]
     pub fn new_root() -> Self {
         let root_owner = Owner::new("sigil-kernel::root", Owner::current());
@@ -50,7 +55,7 @@ impl Cx {
             root_owner,
             roots: SmallVec::new(),
             mutation_generation: 0,
-            scale: Scale::ONE,
+            scale: 1.0,
             host_mode: HostMode::default(),
             top_layer_memo: std::cell::RefCell::new(None),
             live_region: None,
@@ -58,6 +63,7 @@ impl Cx {
         }
     }
 
+    /// Returns the host mode.
     #[must_use]
     pub const fn host_mode(&self) -> HostMode {
         self.host_mode
@@ -67,41 +73,49 @@ impl Cx {
         self.host_mode = mode;
     }
 
+    /// Returns the root owner.
     #[must_use]
-    pub const fn root_owner(&self) -> OwnerId {
-        self.root_owner.id()
+    pub const fn root_owner(&self) -> Owner {
+        self.root_owner
     }
 
+    /// Returns the instance id.
     #[must_use]
     pub const fn instance_id(&self) -> u64 {
         self.instance_id
     }
 
+    /// Builds `child` with no parent and returns its id.
     #[must_use]
     pub fn add<C: IntoNode>(&mut self, child: C) -> NodeId {
         self.add_with_parent(None, |cx| child.build(cx))
     }
 
+    /// Builds `child` under `parent` and returns its id.
     #[must_use]
     pub fn add_child<C: IntoNode>(&mut self, parent: NodeId, child: C) -> NodeId {
         self.add_with_parent(Some(parent), |cx| child.build(cx))
     }
 
-    pub fn new_node(&mut self, kind: NodeType, a11y: A11yProps) -> NodeId {
-        let owner = Owner::current().unwrap_or_else(|| {
-            tracing::warn!(
-                target: "sigil::kernel",
-                "Cx::new_node called outside an IntoNode::build scope; using the root owner"
-            );
-            self.root_owner()
-        });
-        let cx = self.instance_id;
-        let id = NodeId(self.nodes.insert_with_key(|key| {
-            Node::new(kind, a11y, owner).tagged(NodeTag::new(cx, NodeId(key)))
-        }));
-        self.mark_dirty(id);
-        self.bump_generation();
-        id
+    kittest_pub! {
+        /// Creates an empty node and returns its id.
+        #[doc(hidden)]
+        pub fn new_node(&mut self, kind: NodeType, a11y: A11yProps) -> NodeId {
+            let owner = Owner::current().unwrap_or_else(|| {
+                tracing::warn!(
+                    target: "sigil::kernel",
+                    "Cx::new_node called outside an IntoNode::build scope; using the root owner"
+                );
+                self.root_owner()
+            });
+            let cx = self.instance_id;
+            let id = NodeId(self.nodes.insert_with_key(|key| {
+                Node::new(kind, a11y, owner).tagged(NodeTag::new(cx, NodeId(key)))
+            }));
+            self.mark_dirty(id);
+            self.bump_generation();
+            id
+        }
     }
 
     pub(crate) fn add_boxed_child(
@@ -117,7 +131,7 @@ impl Cx {
         parent_node: Option<NodeId>,
         build: impl FnOnce(&mut Self) -> NodeId,
     ) -> NodeId {
-        let parent_owner = Owner::current().unwrap_or_else(|| self.root_owner.id());
+        let parent_owner = Owner::current().unwrap_or(self.root_owner);
         let owner = Owner::new("sigil-kernel::component", Some(parent_owner));
         let node_id = owner.with(|| build(self));
         self.owner_for_node.insert(node_id, owner);
@@ -154,6 +168,7 @@ impl Cx {
         self.bump_generation();
     }
 
+    /// Removes a node and its subtree; returns whether it existed.
     pub fn remove(&mut self, id: NodeId) -> bool {
         if self.nodes.get(id.key()).is_none() {
             return false;
@@ -245,11 +260,13 @@ impl Cx {
         }
     }
 
+    /// Returns the node with this id.
     #[must_use]
     pub fn get(&self, id: NodeId) -> Option<&Node> {
         self.nodes.get(id.key())
     }
 
+    /// Returns the node with this id for writing and marks it changed.
     pub fn get_mut(&mut self, id: NodeId) -> Option<&mut Node> {
         if self.nodes.contains_key(id.key()) {
             self.mark_dirty(id);
@@ -257,10 +274,12 @@ impl Cx {
         self.nodes.get_mut(id.key())
     }
 
+    /// Returns the node with this id for writing without marking it changed.
     pub fn get_mut_untracked(&mut self, id: NodeId) -> Option<&mut Node> {
         self.nodes.get_mut(id.key())
     }
 
+    /// Returns the dirty.
     pub fn dirty(&self) -> impl Iterator<Item = NodeId> + '_ {
         self.dirty_all
             .then(|| self.nodes.keys().map(NodeId))
@@ -269,34 +288,41 @@ impl Cx {
             .chain(self.dirty.iter().copied())
     }
 
+    /// Returns whether dirty all is set.
     #[must_use]
     pub const fn dirty_all(&self) -> bool {
         self.dirty_all
     }
 
+    /// Returns whether this cx has specific dirty.
     #[must_use]
     pub fn has_specific_dirty(&self) -> bool {
         !self.dirty_all && !self.dirty.is_empty()
     }
 
+    /// Clears the set of changed nodes.
     pub fn clear_dirty(&mut self) {
         self.dirty.clear();
         self.dirty_all = false;
     }
 
+    /// Marks the tree as changed.
     pub fn mark_mutated(&mut self) {
         self.bump_generation();
         self.dirty_all = true;
         self.marked.get_mut().rescan();
     }
 
+    /// Returns the scale.
     #[must_use]
-    pub const fn scale(&self) -> Scale {
+    pub const fn scale(&self) -> f32 {
         self.scale
     }
 
-    pub fn set_scale(&mut self, scale: Scale) {
-        if self.scale.factor().to_bits() == scale.factor().to_bits() {
+    /// Sets the scale; a non-finite or non-positive value becomes 1.0.
+    pub fn set_scale(&mut self, scale: f32) {
+        let scale = Scale::new(scale).factor();
+        if self.scale.to_bits() == scale.to_bits() {
             return;
         }
         self.scale = scale;
@@ -309,25 +335,29 @@ impl Cx {
 
     #[cfg(any(test, feature = "kittest"))]
     #[must_use]
-    pub fn component_owner(&self, id: NodeId) -> Option<OwnerId> {
-        self.owner_for_node.get(&id).map(|owner| owner.id())
+    pub fn component_owner(&self, id: NodeId) -> Option<Owner> {
+        self.owner_for_node.get(&id).copied()
     }
 
+    /// Returns the roots.
     #[must_use]
     pub fn roots(&self) -> &[NodeId] {
         &self.roots
     }
 
+    /// Returns the mutation generation.
     #[must_use]
     pub const fn mutation_generation(&self) -> u64 {
         self.mutation_generation
     }
 
+    /// Returns the len.
     #[must_use]
     pub fn len(&self) -> usize {
         self.nodes.len()
     }
 
+    /// Returns whether this cx is empty.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.nodes.is_empty()

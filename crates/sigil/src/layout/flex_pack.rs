@@ -1,14 +1,14 @@
-use crate::layout::LayoutError;
+use crate::Error;
+use crate::layout::IntoPx;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::flex_algorithm::{FlexCtx, layout_item_subtree};
 use crate::layout::forest::{ComputedBox, NodeRef};
 use crate::layout::resolve::NodeEdges;
 use crate::layout::style_data::{
-    AlignItems, AlignSelf, Dimension, Display, FlexDirection, FlexWrap, JustifyContent,
-    LengthPercentage, LengthPercentageAuto, Position, StyleData,
+    AlignItems, Dimension, Display, FlexDirection, FlexWrap, JustifyContent, Position, StyleData,
 };
 
-pub(crate) struct Area {
+pub(crate) struct FlexArea {
     pub(crate) border_origin: Position2,
     pub(crate) content_origin: Position2,
     pub(crate) main: f32,
@@ -19,8 +19,8 @@ pub(crate) fn pack_definite(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
     edges: &NodeEdges,
-    area: &Area,
-) -> Result<bool, LayoutError> {
+    area: &FlexArea,
+) -> Result<bool, Error> {
     let style = node.style();
     if !container_ok(ctx, style) {
         return Ok(false);
@@ -29,9 +29,9 @@ pub(crate) fn pack_definite(
     let mut cursor = 0.0_f32;
     let mut packed = Vec::with_capacity(node.children().len());
     for child_id in node.children() {
-        let child = forest.refer(*child_id).ok_or_else(|| {
-            LayoutError::LayoutInvalid(format!("stale flex child id {child_id:?}"))
-        })?;
+        let child = forest
+            .refer(*child_id)
+            .ok_or_else(|| Error::layout(format!("stale flex child id {child_id:?}")))?;
         let child_style = child.style();
         if matches!(child_style.display, Display::None) {
             continue;
@@ -81,20 +81,16 @@ fn container_ok(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
         && ctx.definite_along(style, ctx.axes.row)
 }
 
-fn zero_lp(value: LengthPercentage) -> bool {
+fn zero_lp(value: Dimension) -> bool {
     match value {
-        LengthPercentage::Px(px) => px == 0.0,
-        LengthPercentage::Percent(percent) => percent == 0.0,
-        LengthPercentage::Text(length) => length.px() == 0.0,
+        Dimension::Px(px) | Dimension::Percent(px) => px == 0.0,
+        Dimension::Rows(_) | Dimension::Cols(_) | Dimension::Em(_) => value.into_px() == 0.0,
+        Dimension::Auto | Dimension::Fill => false,
     }
 }
 
-fn zero_lp_auto(value: LengthPercentageAuto) -> bool {
-    match value {
-        LengthPercentageAuto::Px(px) => px == 0.0,
-        LengthPercentageAuto::Percent(percent) => percent == 0.0,
-        LengthPercentageAuto::Auto => false,
-    }
+fn zero_lp_auto(value: Dimension) -> bool {
+    zero_lp(value)
 }
 
 const fn clamped(value: f32, min: Dimension, max: Dimension) -> f32 {
@@ -108,7 +104,7 @@ const fn clamped(value: f32, min: Dimension, max: Dimension) -> f32 {
     }
 }
 
-fn write_container(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>, edges: &NodeEdges, area: &Area) {
+fn write_container(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>, edges: &NodeEdges, area: &FlexArea) {
     let (chrome_main, chrome_cross) = ctx.axes.chrome(edges);
     let size = CbSize::across(ctx.axes, area.main + chrome_main, area.cross + chrome_cross);
     ctx.solver.write(
@@ -134,7 +130,7 @@ impl StyleData {
             && !matches!(self.position, Position::Absolute)
             && matches!(
                 self.align_self,
-                None | Some(AlignSelf::Start | AlignSelf::Stretch)
+                None | Some(AlignItems::Start | AlignItems::Stretch)
             )
             && self.margins_zero();
         let (Dimension::Px(width), Dimension::Px(height)) = (self.size.width, self.size.height)

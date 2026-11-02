@@ -3,9 +3,10 @@
     reason = "target does not use every package dependency"
 )]
 
+use sigil::ErrorKind;
 use sigil::prelude::*;
 use sigil::tasks::sleep;
-use sigil::widgets::{ScrollBuilder, TextFieldBuilder};
+use sigil::widgets::TextFieldBuilder;
 use std::time::Duration;
 
 #[path = "chat-both/switcher.rs"]
@@ -72,7 +73,7 @@ struct Server {
 }
 
 impl Server {
-    async fn run(mut self) -> Result<(), ScheduleError> {
+    async fn run(mut self) -> Result<(), Error> {
         sleep(Duration::from_millis(800)).await;
         self.online.set("● online")?;
         while let Some(post) = self.posts.recv().await {
@@ -81,7 +82,7 @@ impl Server {
         Ok(())
     }
 
-    async fn echo(&self, post: &Post) -> Result<(), ScheduleError> {
+    async fn echo(&self, post: &Post) -> Result<(), Error> {
         self.stream(post.channel, "you", &post.body).await?;
         let words = post.body.split_whitespace().count();
         let reply = format!(
@@ -90,7 +91,7 @@ impl Server {
         self.stream(post.channel, "bot", &reply).await
     }
 
-    async fn stream(&self, channel: usize, author: &str, body: &str) -> Result<(), ScheduleError> {
+    async fn stream(&self, channel: usize, author: &str, body: &str) -> Result<(), Error> {
         let author = author.to_owned();
         self.messages.update(move |all| {
             all.push(Msg {
@@ -135,7 +136,8 @@ fn start() -> (Chat, Sender<Post>) {
     };
     let server = spawn(async move {
         match backend.run().await {
-            Ok(()) | Err(ScheduleError::Closed) => Ok(()),
+            Ok(()) => Ok(()),
+            Err(err) if err.kind() == ErrorKind::Closed => Ok(()),
             Err(err) => Err(err.to_string()),
         }
     });
@@ -295,14 +297,14 @@ fn channels(chat: Chat) -> NodeBuilder {
                         status: (unread > 0).then(|| TextContent::from(unread.to_string())),
                         ..ListRowSlots::default()
                     };
-                    list_row_with(index == current, format!("# {name}"), slots)
+                    list_row(index == current, format!("# {name}"), slots)
                         .pointer_up(move |_| chat.active.set(index))
                 })
                 .collect::<Vec<_>>()
         })
 }
 
-fn transcript(chat: Chat) -> ScrollBuilder {
+fn transcript(chat: Chat) -> impl IntoNode {
     scroll(
         container()
             .layout(LayoutStyle::flex_column().fill_width().gap(rows(1.0)))

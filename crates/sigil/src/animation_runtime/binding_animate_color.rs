@@ -1,24 +1,9 @@
-use std::sync::Arc;
-
 use crate::reactive::signal;
-use crate::style::{ColorAtom, ColorAtomKind, ColorKey, Rgba8, StyleAtom, Theme};
+use crate::style::{ColorAtomKind, Rgba8};
 
 use crate::animation_runtime::{AnimationConfig, Animator};
 
 use super::binding_animate::AttachedColorAnimator;
-
-#[derive(Clone, Debug)]
-pub(crate) struct ThemeSnapshot(Arc<Theme>);
-
-impl ThemeSnapshot {
-    pub(crate) fn from_theme(theme: &Theme) -> Self {
-        Self(Arc::new(theme.clone()))
-    }
-
-    pub(crate) fn resolve(&self, key: ColorKey) -> Rgba8 {
-        self.0.resolve_color(key)
-    }
-}
 
 #[must_use]
 pub fn srgb_channel_to_linear(c: u8) -> f32 {
@@ -35,21 +20,6 @@ pub fn linear_channel_to_srgb(v: f32) -> u8 {
     (crate::style::srgb::encode(v) * 255.0)
         .round()
         .clamp(0.0, 255.0) as u8
-}
-
-#[must_use]
-pub fn lerp_rgba8(a: Rgba8, b: Rgba8, t: f32) -> Rgba8 {
-    let t = t.clamp(0.0, 1.0);
-    let lerp_ch = |from: u8, to: u8| {
-        let from = srgb_channel_to_linear(from);
-        linear_channel_to_srgb((srgb_channel_to_linear(to) - from).mul_add(t, from))
-    };
-    Rgba8 {
-        r: lerp_ch(a.r, b.r),
-        g: lerp_ch(a.g, b.g),
-        b: lerp_ch(a.b, b.b),
-        a: alpha_byte((f32::from(b.a) - f32::from(a.a)).mul_add(t, f32::from(a.a))),
-    }
 }
 
 #[allow(
@@ -69,30 +39,6 @@ pub(crate) fn read_color(entry: &AttachedColorAnimator) -> Rgba8 {
         g: linear_channel_to_srgb(g),
         b: linear_channel_to_srgb(b),
         a: alpha_byte(a),
-    }
-}
-
-#[must_use]
-pub(crate) fn find_color(
-    kind: ColorAtomKind,
-    atoms: &[StyleAtom],
-    theme: &ThemeSnapshot,
-) -> Option<Rgba8> {
-    atoms.iter().rev().find_map(|atom| match (*atom, kind) {
-        (StyleAtom::BackgroundColor(color), ColorAtomKind::Background)
-        | (StyleAtom::TextColor(color), ColorAtomKind::Text) => {
-            Some(resolve_color_atom(color, theme))
-        }
-        (StyleAtom::BackgroundThemeRef(token), ColorAtomKind::Background)
-        | (StyleAtom::TextThemeRef(token), ColorAtomKind::Text) => Some(theme.resolve(token)),
-        _ => None,
-    })
-}
-
-fn resolve_color_atom(color: ColorAtom, theme: &ThemeSnapshot) -> Rgba8 {
-    match color {
-        ColorAtom::Rgba8(rgba) => rgba,
-        ColorAtom::ThemeRef(token) => theme.resolve(token),
     }
 }
 

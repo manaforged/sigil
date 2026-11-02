@@ -9,8 +9,9 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::pointer_move;
+use sigil::events::Event;
 use sigil::events::EventRouter;
+use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
@@ -34,14 +35,22 @@ fn assert_hover_overlay_paints(
         "rest scene must not contain the user hover colour {overlay:?}",
     );
     let mut router = EventRouter::new();
-    router.route(cx, layout, pointer_move(hover_xy.0, hover_xy.1));
+    router.route(
+        cx,
+        layout,
+        Event::pointer_move(Point::new(hover_xy.0, hover_xy.1)),
+    );
     assert!(
         rect_colors(cx, root).contains(&overlay),
         "pointer enter must paint the user .hover() overlay {overlay:?}; \
          scene colours: {:?}",
         rect_colors(cx, root),
     );
-    router.route(cx, layout, pointer_move(LEAVE_XY.0, LEAVE_XY.1));
+    router.route(
+        cx,
+        layout,
+        Event::pointer_move(Point::new(LEAVE_XY.0, LEAVE_XY.1)),
+    );
     assert!(
         !rect_colors(cx, root).contains(&overlay),
         "pointer leave must restore the base paint (drop {overlay:?})",
@@ -50,7 +59,7 @@ fn assert_hover_overlay_paints(
 
 #[test]
 fn checkbox_user_hover_overlay_paints_row_root() {
-    sigil::reactive::Runtime::scope("t1-checkbox-hover-overlay", || {
+    sigil::reactive::Owner::scope("t1-checkbox-hover-overlay", || {
         let checked = signal(false);
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
@@ -62,7 +71,7 @@ fn checkbox_user_hover_overlay_paints_row_root() {
 
 #[test]
 fn dropdown_user_hover_overlay_paints_trigger() {
-    sigil::reactive::Runtime::scope("t1-dropdown-hover-overlay", || {
+    sigil::reactive::Owner::scope("t1-dropdown-hover-overlay", || {
         let selected = signal(0_usize);
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
@@ -74,7 +83,7 @@ fn dropdown_user_hover_overlay_paints_trigger() {
 
 #[test]
 fn slider_user_hover_overlay_paints_track_root() {
-    sigil::reactive::Runtime::scope("t1-slider-hover-overlay", || {
+    sigil::reactive::Owner::scope("t1-slider-hover-overlay", || {
         let value = signal(50.0_f32);
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
@@ -86,7 +95,7 @@ fn slider_user_hover_overlay_paints_track_root() {
 
 #[test]
 fn tabs_user_hover_overlay_paints_hovered_tab() {
-    sigil::reactive::Runtime::scope("t1-tabs-hover-overlay", || {
+    sigil::reactive::Owner::scope("t1-tabs-hover-overlay", || {
         let active = signal(0_usize);
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
@@ -103,7 +112,7 @@ fn tabs_user_hover_overlay_paints_hovered_tab() {
 
 #[test]
 fn text_field_user_hover_overlay_paints_frame() {
-    sigil::reactive::Runtime::scope("t1-text-field-hover-overlay", || {
+    sigil::reactive::Owner::scope("t1-text-field-hover-overlay", || {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
@@ -115,7 +124,7 @@ fn text_field_user_hover_overlay_paints_frame() {
 
 #[test]
 fn text_edit_user_hover_overlay_paints_frame() {
-    sigil::reactive::Runtime::scope("t1-text-edit-hover-overlay", || {
+    sigil::reactive::Owner::scope("t1-text-edit-hover-overlay", || {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
@@ -127,14 +136,14 @@ fn text_edit_user_hover_overlay_paints_frame() {
 
 #[test]
 fn slider_thumb_hover_variant_intact_without_overlay() {
-    sigil::reactive::Runtime::scope("t1-slider-thumb-variant-intact", || {
+    sigil::reactive::Owner::scope("t1-slider-thumb-variant-intact", || {
         let value = signal(50.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
         let thumb_rim = |scene_cx: &Cx, scene_root: NodeId| {
-            emit_scene(scene_cx, scene_root)
+            emit_scene(scene_cx, scene_root, None)
                 .commands
                 .iter()
                 .find_map(|command| match command {
@@ -148,7 +157,11 @@ fn slider_thumb_hover_variant_intact_without_overlay() {
             "thumb rim must rest at accent"
         );
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, pointer_move(320.0, 12.0));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::pointer_move(Point::new(320.0, 12.0)),
+        );
         assert_eq!(
             thumb_rim(&cx, root),
             Some(theme.accent_hover),

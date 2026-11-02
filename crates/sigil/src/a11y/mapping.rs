@@ -16,13 +16,13 @@ pub(crate) enum TreeScope {
     Reading,
 }
 
-struct Walk<'a> {
+struct AccessWalk<'a> {
     bounds: BoundsLookup<'a>,
     scope: TreeScope,
     focus: Option<NodeId>,
 }
 
-impl Walk<'_> {
+impl AccessWalk<'_> {
     fn keeps(&self, id: NodeId, node: &Node) -> bool {
         self.scope == TreeScope::Full
             || self.focus == Some(id)
@@ -34,6 +34,7 @@ impl Walk<'_> {
     }
 }
 
+#[cfg(any(test, feature = "kittest", feature = "desktop"))]
 #[must_use]
 pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpdate {
     tree_scoped(cx, focus, bounds, TreeScope::Full)
@@ -46,7 +47,7 @@ pub(crate) fn tree_scoped(
     bounds: BoundsLookup<'_>,
     scope: TreeScope,
 ) -> TreeUpdate {
-    let walk = Walk {
+    let walk = AccessWalk {
         bounds,
         scope,
         focus,
@@ -81,7 +82,7 @@ pub(crate) fn tree_scoped(
     }
 }
 
-fn walk_subtree(cx: &Cx, id: NodeId, walk: &Walk<'_>, out: &mut Vec<(AkNodeId, AkNode)>) {
+fn walk_subtree(cx: &Cx, id: NodeId, walk: &AccessWalk<'_>, out: &mut Vec<(AkNodeId, AkNode)>) {
     let Some(kernel_node) = cx.get(id) else {
         return;
     };
@@ -138,6 +139,7 @@ fn retain_emitted(top: &mut Vec<NodeId>, nodes: &mut [(AkNodeId, AkNode)]) {
     }
 }
 
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
     project(cx, id, bounds).0
@@ -148,7 +150,7 @@ fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<Run
         return (AkNode::new(accesskit::Role::Unknown), None);
     };
     let a11y = &kernel_node.a11y;
-    let mut ak = AkNode::new(a11y.role);
+    let mut ak = AkNode::new(a11y.role.native());
 
     if a11y.labelled_by.is_none()
         && let Some(label) = name_text(&a11y.name)
@@ -166,7 +168,7 @@ fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<Run
         ak.set_hidden();
     }
     apply_grid(&mut ak, a11y);
-    let factor = f64::from(cx.scale().factor());
+    let factor = f64::from(cx.scale());
     apply_bounds(&mut ak, id, bounds, factor);
     let runs = super::text::export(id, a11y, &mut ak);
     if runs.is_none() {
@@ -221,10 +223,10 @@ fn apply_labelled_by(ak: &mut AkNode, a11y: &A11yProps) {
 
 fn apply_actions(ak: &mut AkNode, a11y: &A11yProps) {
     for action in &a11y.actions {
-        ak.add_action(*action);
+        ak.add_action(action.native());
     }
     if let Some(shortcut) = &a11y.keyboard_shortcut {
-        ak.set_keyboard_shortcut(format!("{shortcut:?}"));
+        ak.set_keyboard_shortcut(shortcut.label());
     }
     ak.add_action(Action::ScrollIntoView);
     if a11y.is_disabled() {
@@ -284,17 +286,17 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
         ak.set_modal();
     }
     if let Some(live) = a11y.live.or_else(|| default_live(a11y.role)) {
-        ak.set_live(live);
+        ak.set_live(live.native());
     }
     if let Some(level) = a11y.level {
         ak.set_level(level);
     }
 }
 
-const fn default_live(role: accesskit::Role) -> Option<accesskit::Live> {
+const fn default_live(role: crate::kernel::Role) -> Option<crate::kernel::Live> {
     match role {
-        accesskit::Role::Alert => Some(accesskit::Live::Assertive),
-        accesskit::Role::Status => Some(accesskit::Live::Polite),
+        crate::kernel::Role::Alert => Some(crate::kernel::Live::Assertive),
+        crate::kernel::Role::Status => Some(crate::kernel::Live::Polite),
         _ => None,
     }
 }
@@ -321,7 +323,7 @@ fn apply_grid(ak: &mut AkNode, a11y: &A11yProps) {
     if let Some(sig) = a11y.sort_direction
         && let Some(direction) = sig.peek()
     {
-        ak.set_sort_direction(direction);
+        ak.set_sort_direction(direction.native());
     }
 }
 

@@ -2,12 +2,13 @@
 
 use super::*;
 use crate::kernel::AccessibleName;
+use crate::kernel::Cx;
 use crate::kernel::container as kernel_container;
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 use crate::widgets::field;
 
 fn shape<N: IntoNode>(name: &'static str, make: impl FnOnce() -> N) -> (Role, usize) {
-    Runtime::scope(name, || {
+    Owner::scope(name, || {
         let mut cx = Cx::new_root();
         let id = make().build(&mut cx);
         let node = cx.get(id).expect(name);
@@ -61,7 +62,7 @@ fn field_holds_label_control_and_error_slot() {
 #[test]
 fn a_field_control_is_named_by_its_visible_label() {
     use crate::widgets::text_field::text_field;
-    Runtime::scope("field-label-wins", || {
+    Owner::scope("field-label-wins", || {
         let mut cx = Cx::new_root();
         let id = field(
             "Full name",

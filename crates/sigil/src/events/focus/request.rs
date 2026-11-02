@@ -8,15 +8,11 @@ pub(crate) struct Autofocus;
 
 thread_local! {
     static PENDING: RefCell<Vec<NodeId>> = const { RefCell::new(Vec::new()) };
-    static REVEAL: RefCell<Vec<NodeId>> = const { RefCell::new(Vec::new()) };
 }
 
+/// Asks the host to focus a node on the next frame.
 pub fn request_focus(id: NodeId) {
     PENDING.with(|cell| cell.borrow_mut().push(id));
-}
-
-pub fn request_reveal(id: NodeId) {
-    REVEAL.with(|cell| cell.borrow_mut().push(id));
 }
 
 pub(crate) fn take_focus_requests() -> Vec<NodeId> {
@@ -31,8 +27,4 @@ pub(crate) fn focus_on_trigger(trigger: Signal<u64>, focus: impl Fn() + 'static)
             focus();
         }
     });
-}
-
-pub(crate) fn take_reveal_requests() -> Vec<NodeId> {
-    REVEAL.with(|cell| core::mem::take(&mut *cell.borrow_mut()))
 }

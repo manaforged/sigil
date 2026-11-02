@@ -1,11 +1,11 @@
 use crate::kernel::Cx;
-use crate::reactive::{Runtime, signal};
+use crate::reactive::{Owner, signal};
 
 use super::terminal;
 
 #[test]
 fn terminal_builds() {
-    Runtime::scope("terminal-builds", || {
+    Owner::scope("terminal-builds", || {
         let lines = signal(vec![String::from("$ ")]);
         let mut cx = Cx::new_root();
         let id = cx.add(terminal(lines, |_| {}));

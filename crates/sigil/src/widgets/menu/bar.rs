@@ -2,18 +2,18 @@ use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use std::rc::Rc;
 
-use crate::events::NodeEventsExt;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::PopupSide;
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Owner, OwnerId, Signal, signal};
+use crate::layout::{AlignItems, LayoutStyle};
+use crate::reactive::{Owner, Signal, signal};
+use crate::style::StateVariants;
 use crate::style::{
-    BORDER_WIDTH, ControlSize, Metrics, Paint, PaintTarget, Radius, StateVariants, Style,
-    StyleAtom, StyleSlot, Token, space,
+    BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Style, StyleAtom, Token, space,
 };
+use crate::widgets::Widget;
 
 use super::super::interactive::interactive;
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{PANEL_WIDTH, POPUP_GAP};
 use super::builder::MenuItem;
 use super::panel::{Row, menu_panel, panel_height, panel_layout};
@@ -28,18 +28,20 @@ static BAR_SURFACE: &[StyleAtom] = &[
 static TRIGGER_REST: &[StyleAtom] = &[Radius::Md.atom()];
 static TRIGGER_OPEN: &[StyleAtom] = &[Radius::Md.atom(), Token::SurfacePressed.bg()];
 
-struct Slot {
+struct MenuSlot {
     label: String,
     rows: Vec<Row>,
 }
 
+/// Builder of a menu bar.
 pub struct MenuBarBuilder {
-    slots: Vec<Slot>,
+    slots: Vec<MenuSlot>,
     fill: bool,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
+/// An in-window menu bar, as wide as its menus.
 #[must_use]
 pub fn menu_bar() -> MenuBarBuilder {
     MenuBarBuilder {
@@ -51,32 +53,34 @@ pub fn menu_bar() -> MenuBarBuilder {
 }
 
 impl MenuBarBuilder {
+    /// Sets the menu.
     #[must_use]
     pub fn menu(
         mut self,
         label: impl Into<String>,
         items: impl IntoIterator<Item = MenuItem>,
     ) -> Self {
-        self.slots.push(Slot {
+        self.slots.push(MenuSlot {
             label: label.into(),
             rows: items.into_iter().map(Row::Item).collect(),
         });
         self
     }
 
+    /// Applies the fill option.
     #[must_use]
     pub const fn fill(mut self) -> Self {
         self.fill = true;
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let open_idx: Signal<Option<usize>> = signal(None);
         let host = Owner::current();
         let mut bar = container()
             .role(Role::GenericContainer)
             .label(theme_label(StringKey::MenuBar))
-            .with(self.layout_overrides.apply({
+            .with({
                 let row = LayoutStyle::flex_row();
                 let row = if self.fill { row.fill_width() } else { row };
                 row.height(TRIGGER_H)
@@ -84,7 +88,7 @@ impl MenuBarBuilder {
                     .padding_x(space(1))
                     .gap(space(1))
                     .align_items(AlignItems::Center)
-            }))
+            })
             .class(BAR_SURFACE);
 
         if !self.style_accumulator.is_empty() {
@@ -99,26 +103,7 @@ impl MenuBarBuilder {
     }
 }
 
-impl WidgetLayoutExt for MenuBarBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl PaintTarget for MenuBarBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl IntoNode for MenuBarBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] MenuBarBuilder: paint(style_accumulator), widget, node);
 
 #[allow(
     clippy::cast_precision_loss,
@@ -132,9 +117,9 @@ fn trigger_width(label: &str) -> f32 {
 
 fn slot_node(
     index: usize,
-    slot: Slot,
+    slot: MenuSlot,
     open_idx: Signal<Option<usize>>,
-    host: Option<OwnerId>,
+    host: Option<Owner>,
 ) -> NodeBuilder {
     let width = trigger_width(&slot.label);
     let trigger = interactive_trigger(slot.label, index, open_idx);

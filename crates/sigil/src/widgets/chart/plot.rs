@@ -1,8 +1,9 @@
 use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, Radius, Token, space};
+use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle};
+use crate::style::{Radius, Token, space};
+use crate::widgets::Widget;
 
 use super::axis::{legend, y_axis};
 use super::decimate::Candle;
@@ -24,13 +25,13 @@ const FLUID_MAX_LABELS: usize = 12;
 const FLUID_COLUMNS: usize = 1024;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(super) struct Frame {
+pub(super) struct PlotFrame {
     pub(super) width: Option<f32>,
     pub(super) height: f32,
     pub(super) whole: bool,
 }
 
-impl Frame {
+impl PlotFrame {
     pub(super) fn padding(self) -> f32 {
         if self.height < COMPACT_HEIGHT {
             COMPACT_PAD
@@ -87,12 +88,12 @@ pub(super) struct Plot<'a> {
     pub(super) mark: ChartMark,
     pub(super) count: usize,
     pub(super) total: usize,
-    pub(super) frame: Frame,
+    pub(super) frame: PlotFrame,
 }
 
 pub(super) fn draw(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
     let (series, frame, count) = (plot.series, plot.frame, plot.count);
-    let span = Span::of(series, plot.mark);
+    let span = ValueSpan::of(series, plot.mark);
     let (area, gap) = match plot.mark {
         ChartMark::Bar => (bars(series, count, span), GROUP_GAP),
         ChartMark::Line => (lines(series, count, span, frame.columns()), 0.0),
@@ -149,12 +150,12 @@ fn probe_values(series: &[ChartView<'_>], mark: ChartMark) -> Rc<[f32]> {
 }
 
 #[derive(Clone, Copy)]
-pub(super) struct Span {
+pub(super) struct ValueSpan {
     pub(super) lo: f32,
     pub(super) hi: f32,
 }
 
-impl Span {
+impl ValueSpan {
     fn of(series: &[ChartView<'_>], mark: ChartMark) -> Self {
         if mark == ChartMark::Candle {
             return Self::tight(series);
@@ -250,7 +251,7 @@ fn axis_slot(text: String, width: usize) -> NodeBuilder {
         )
 }
 
-fn bars(series: &[ChartView<'_>], count: usize, span: Span) -> NodeBuilder {
+fn bars(series: &[ChartView<'_>], count: usize, span: ValueSpan) -> NodeBuilder {
     let mut row = container()
         .layout(
             LayoutStyle::flex_row()
@@ -282,7 +283,7 @@ fn bars(series: &[ChartView<'_>], count: usize, span: Span) -> NodeBuilder {
     row
 }
 
-fn bar_col(span: Span, tone: super::Tone, name: &str, value: f32) -> NodeBuilder {
+fn bar_col(span: ValueSpan, tone: super::Tone, name: &str, value: f32) -> NodeBuilder {
     let column = container().layout(
         LayoutStyle::flex_column()
             .grow(1.0)
@@ -315,12 +316,12 @@ fn bar_col(span: Span, tone: super::Tone, name: &str, value: f32) -> NodeBuilder
                         .min_size(0.0, 2.0),
                 )
                 .class([Radius::Sm.atom(), tone.fill().bg()])
-                .tone(tone),
+                .tone_scope(tone),
         )
         .child(container().layout(LayoutStyle::block().fill_width().grow(below.max(0.01))))
 }
 
-fn lines(series: &[ChartView<'_>], count: usize, span: Span, columns: usize) -> NodeBuilder {
+fn lines(series: &[ChartView<'_>], count: usize, span: ValueSpan, columns: usize) -> NodeBuilder {
     let mut layer = container().layout(LayoutStyle::block().fill());
     for item in series {
         if !item.values.is_empty() {
@@ -330,7 +331,7 @@ fn lines(series: &[ChartView<'_>], count: usize, span: Span, columns: usize) -> 
     plot_area(layer)
 }
 
-fn candles(series: &[ChartView<'_>], span: Span, columns: usize) -> NodeBuilder {
+fn candles(series: &[ChartView<'_>], span: ValueSpan, columns: usize) -> NodeBuilder {
     let rows = series
         .first()
         .map(|item| Candle::rows(item.values))

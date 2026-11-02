@@ -6,14 +6,14 @@ use crate::style::Rgba8;
 
 const MAX_SIDE: usize = 4096;
 
-pub(super) struct Grid {
+pub(super) struct HeatGrid {
     width: u32,
     height: u32,
     rgba: Rc<[u8]>,
     key: u64,
 }
 
-impl Grid {
+impl HeatGrid {
     pub(super) fn new<F: Fn(usize, usize) -> Rgba8>(
         grid_w: usize,
         grid_h: usize,

@@ -7,8 +7,8 @@
 use std::rc::Rc;
 
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
-use sigil::widgets::virtual_list_bind;
+use sigil::reactive::Owner;
+use sigil::widgets::virtual_list;
 use sigil_kittest::{Harness, Query};
 
 fn rows(from: u64, to: u64) -> Vec<u64> {
@@ -32,12 +32,12 @@ fn top_visible(ui: &mut Harness) -> Option<u64> {
 
 #[test]
 fn prepending_items_keeps_the_top_visible_item_in_place() {
-    Runtime::scope("virtual-list-prepend", || {
+    Owner::scope("virtual-list-prepend", || {
         let items = signal(Rc::new(rows(1_000, 1_400)));
         let scroll = signal(0.0_f32);
         let mut ui = Harness::new(move || {
             column().child(
-                virtual_list_bind(items, |_, id: &u64| {
+                virtual_list(items, |_, id: &u64| {
                     container()
                         .role(Role::ListItem)
                         .label(format!("item {id}"))

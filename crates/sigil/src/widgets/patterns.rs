@@ -1,8 +1,9 @@
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{theme_label, theme_string};
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
+use crate::widgets::Widget;
 
 use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
 pub use super::notice::notice_band;
@@ -16,6 +17,7 @@ static TOP_CHROME: &[StyleAtom] = &[
     Token::Border.border(),
 ];
 
+/// Top bar, work area, status bar, and modal slot.
 #[must_use]
 pub fn app_shell(
     top: impl IntoNode + 'static,
@@ -80,6 +82,7 @@ fn chrome_section(
         .child(child)
 }
 
+/// A two-column key/value grid.
 #[must_use]
 pub fn kv_grid<K, V>(rows: impl IntoIterator<Item = (K, V)>) -> NodeBuilder
 where
@@ -109,29 +112,34 @@ static ROW_RULE: &[StyleAtom] = &[
 
 static OVERLAY_TEXT: &[StyleAtom] = &[Token::OnSurface.text()];
 
-pub type HintEntry<'a> = (&'a str, &'a str);
-
+/// Builder of a key hint overlay.
 pub struct HintOverlayBuilder {
     entries: Vec<(String, String)>,
+    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
 impl HintOverlayBuilder {
+    /// Creates a hint overlay builder.
     #[must_use]
-    pub fn new(hints: &[HintEntry<'_>]) -> Self {
+    pub fn new(hints: &[(&str, &str)]) -> Self {
         let entries = hints
             .iter()
             .map(|(chord, desc)| ((*chord).to_owned(), (*desc).to_owned()))
             .collect();
-        Self { entries }
+        Self {
+            entries,
+            layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
+        }
     }
 
+    /// Sets the entry.
     #[must_use]
     pub fn entry(mut self, chord: impl Into<String>, description: impl Into<String>) -> Self {
         self.entries.push((chord.into(), description.into()));
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let mut root = container()
             .role(Role::GenericContainer)
             .label(theme_label(StringKey::KeyboardShortcuts))
@@ -163,17 +171,15 @@ impl HintOverlayBuilder {
     }
 }
 
-impl IntoNode for HintOverlayBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] HintOverlayBuilder: widget, node);
 
+/// An overlay that lists key bindings.
 #[must_use]
-pub fn hint_overlay(hints: &[HintEntry<'_>]) -> HintOverlayBuilder {
+pub fn hint_overlay(hints: &[(&str, &str)]) -> HintOverlayBuilder {
     HintOverlayBuilder::new(hints)
 }
 
+/// Flexible empty space.
 #[must_use]
 pub fn spacer() -> NodeBuilder {
     container()
@@ -181,6 +187,7 @@ pub fn spacer() -> NodeBuilder {
         .layout(LayoutStyle::block().grow(1.0).min_size(0.0, 0.0))
 }
 
+/// A placeholder for empty content.
 #[must_use]
 pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) -> NodeBuilder {
     let title: TextContent = title.into();
@@ -205,6 +212,7 @@ pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) 
         .child(text(body).class("text-sm").class(Token::Gray11.text()))
 }
 
+/// A section heading row.
 #[must_use]
 pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
     container()
@@ -217,6 +225,7 @@ pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
         .child(text(title).class("text-xs").class(Token::Gray11.text()))
 }
 
+/// A key hint row.
 #[must_use]
 pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> NodeBuilder {
     container()
@@ -232,6 +241,7 @@ pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> 
         .child(text(right).class("text-xs").class(Token::Accent11.text()))
 }
 
+/// Initials in a circle.
 #[must_use]
 pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
     let content: TextContent = initials.into();
@@ -260,14 +270,16 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
 
 mod activatable;
 mod card;
+mod disclosure;
 mod list_row;
 mod sidebar;
 
-pub use card::{CardBuilder, card};
+pub use card::card;
+pub use disclosure::disclosure;
 use list_row::row_height;
-pub use list_row::{Disclosure, ListColumn, ListRowSlots, RowTone, list_row, list_row_with};
+pub use list_row::{Disclosure, ListColumn, ListRowSlots, RowTone, list_row};
 pub(crate) use list_row::{ROW_SELECTED, ROW_SELECTED_HOVER, row_states};
-pub use sidebar::{SidebarBuilder, sidebar};
+pub use sidebar::sidebar;
 
 #[cfg(test)]
 #[path = "patterns_tests.rs"]

@@ -12,7 +12,7 @@ use crate::scene::emit_cache;
 use crate::style::{FocusRing, StyleBinding};
 use crate::widgets::CanvasPaint;
 
-use super::subtree::{Copied, Span, rect_bits};
+use super::subtree::{Copied, EmitDiff, SubtreeSpan, rect_bits};
 
 #[derive(Clone, Copy, PartialEq)]
 struct Seen {
@@ -24,7 +24,7 @@ struct Seen {
 #[derive(Default)]
 pub(crate) struct EmitMemo {
     seen: SecondaryMap<DefaultKey, Seen>,
-    pub(super) spans: AHashMap<NodeId, Span>,
+    pub(super) spans: AHashMap<NodeId, SubtreeSpan>,
     selected: HashMap<NodeId, (usize, usize)>,
     watched: Vec<NodeId>,
     prev_len: Option<usize>,
@@ -34,17 +34,7 @@ pub(crate) struct EmitMemo {
     theme_epoch: u64,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct EmitDiff {
-    pub changed: Vec<(Range<usize>, Range<usize>)>,
-}
-
 impl EmitDiff {
-    #[must_use]
-    pub const fn unchanged(&self) -> bool {
-        self.changed.is_empty()
-    }
-
     pub(crate) fn between_scenes(old: &[SceneCommand], new: &[SceneCommand]) -> Self {
         Self::between(old, new, &[])
     }
@@ -81,7 +71,7 @@ impl EmitMemo {
     pub(super) fn usable(&self, cx: &Cx, root: NodeId, prev: &[SceneCommand]) -> bool {
         self.prev_len == Some(prev.len())
             && self.root == Some(root)
-            && self.scale == cx.scale().factor().to_bits()
+            && self.scale == cx.scale().to_bits()
     }
 
     pub(crate) fn clean(
@@ -94,7 +84,7 @@ impl EmitMemo {
         delta.is_empty()
             && self.prev_len == Some(prev_len)
             && self.root == Some(root)
-            && self.scale == cx.scale().factor().to_bits()
+            && self.scale == cx.scale().to_bits()
             && self.clip == clip.map(rect_bits)
             && self.theme_epoch == emit_cache::theme_epoch()
             && self.selected == *selection
@@ -142,14 +132,14 @@ impl EmitMemo {
         &mut self,
         cx: &Cx,
         root: NodeId,
-        (spans, len, clip): (AHashMap<NodeId, Span>, usize, Option<Rect>),
+        (spans, len, clip): (AHashMap<NodeId, SubtreeSpan>, usize, Option<Rect>),
         selection: &HashMap<NodeId, (usize, usize)>,
     ) {
         self.spans = spans;
         self.selected.clone_from(selection);
         self.prev_len = Some(len);
         self.root = Some(root);
-        self.scale = cx.scale().factor().to_bits();
+        self.scale = cx.scale().to_bits();
         self.clip = clip.map(rect_bits);
         self.theme_epoch = emit_cache::theme_epoch();
     }

@@ -1,18 +1,11 @@
-use crate::geometry::{LogicalSize, Size};
-use crate::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use crate::reactive::Runtime;
-use crate::widgets::Axis;
+use crate::geometry::Size;
+use crate::kernel::{Cx, NodeBuilder, NodeId, container};
+use crate::layout::{LayoutEngine, LayoutStyle};
+use crate::reactive::Owner;
+use crate::widgets::Orientation;
+use crate::widgets::Widget;
 
 use super::{Misalignment, Tolerance, misalignments};
-
-struct NoText;
-
-impl TextMeasure for NoText {
-    fn measure(&self, _content: &TextContent, _space: Size) -> LogicalSize {
-        LogicalSize::new(0.0, 0.0)
-    }
-}
 
 fn cell(width: f32) -> NodeBuilder {
     container().layout(LayoutStyle::block().fixed_size(width, 2.0))
@@ -45,10 +38,11 @@ fn found(name: &'static str, tree: NodeBuilder) -> Vec<Misalignment> {
 }
 
 fn found_at(name: &'static str, tree: NodeBuilder, tolerance: Tolerance) -> Vec<Misalignment> {
-    Runtime::scope(name, || {
+    Owner::scope(name, || {
         let mut cx = Cx::new_root();
         let root: NodeId = cx.add(tree);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(NoText));
+        let mut engine =
+            LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
         engine
             .compute(&mut cx, root, Size::fixed(200.0, 100.0))
             .expect("layout");
@@ -120,7 +114,7 @@ fn near_miss_inset_is_reported_and_wide_one_is_not() {
     assert!(
         matches!(
             near.as_slice(),
-            [Misalignment::Inset { axis: Axis::X, start, end, .. }]
+            [Misalignment::Inset { axis: Orientation::Horizontal, start, end, .. }]
                 if (*start - 4.0).abs() < f32::EPSILON && (*end - 2.0).abs() < f32::EPSILON
         ),
         "{near:?}"
@@ -142,7 +136,7 @@ fn a_nested_near_miss_inset_is_measured_from_its_own_parent() {
     assert!(
         near.iter().any(|item| matches!(
             item,
-            Misalignment::Inset { axis: Axis::X, start, end, .. }
+            Misalignment::Inset { axis: Orientation::Horizontal, start, end, .. }
                 if (*start - 4.0).abs() < f32::EPSILON && (*end - 2.0).abs() < f32::EPSILON
         )),
         "{near:?}"
@@ -219,7 +213,7 @@ fn a_vertical_near_miss_is_measured_from_a_parent_below_the_top() {
     assert!(
         matches!(
             near.as_slice(),
-            [Misalignment::Inset { axis: Axis::Y, start, end, .. }]
+            [Misalignment::Inset { axis: Orientation::Vertical, start, end, .. }]
                 if (*start - 4.0).abs() < f32::EPSILON && (*end - 2.0).abs() < f32::EPSILON
         ),
         "{near:?}"
@@ -235,7 +229,13 @@ fn a_cell_host_reports_insets_up_to_three_cells_apart() {
         Tolerance::cells(),
     );
     assert!(
-        matches!(near.as_slice(), [Misalignment::Inset { axis: Axis::X, .. }]),
+        matches!(
+            near.as_slice(),
+            [Misalignment::Inset {
+                axis: Orientation::Horizontal,
+                ..
+            }]
+        ),
         "{near:?}"
     );
     let wide = found_at(
@@ -296,7 +296,7 @@ proptest::proptest! {
         proptest::prop_assert_eq!(found("align-pad", inset(pad, pad)), Vec::new());
         let near = found("align-pad", inset(pad + f32::from(delta), pad));
         proptest::prop_assert!(
-            matches!(near.as_slice(), [Misalignment::Inset { axis: Axis::X, .. }]),
+            matches!(near.as_slice(), [Misalignment::Inset { axis: Orientation::Horizontal, .. }]),
             "{near:?}"
         );
     }

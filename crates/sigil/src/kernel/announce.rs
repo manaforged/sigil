@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
 
+use crate::kernel::Live;
 use crate::reactive::Owner;
-use accesskit::Live;
 
 use crate::kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
 
@@ -12,19 +12,13 @@ thread_local! {
     };
 }
 
-pub(crate) fn queue_announcement(text: impl Into<String>, live: Live) {
-    PENDING.with(|cell| cell.borrow_mut().push_back((text.into(), live)));
-}
-
-pub fn announce(text: impl Into<String>) {
-    queue_announcement(text, Live::Polite);
-}
-
-pub fn announce_assertive(text: impl Into<String>) {
-    queue_announcement(text, Live::Assertive);
+/// Queues a screen-reader announcement with this politeness.
+pub fn announce(text: impl Into<String>, politeness: Live) {
+    PENDING.with(|cell| cell.borrow_mut().push_back((text.into(), politeness)));
 }
 
 impl Cx {
+    /// Move the text that `announce` queued into the live region.
     pub fn flush_announcements(&mut self) {
         loop {
             let next = PENDING.with(|cell| cell.borrow_mut().pop_front());
@@ -63,7 +57,7 @@ impl Cx {
         let id = owner.with(|| {
             NodeId(
                 self.nodes
-                    .insert(Node::new(NodeType::Container, a11y, owner.id())),
+                    .insert(Node::new(NodeType::Container, a11y, owner)),
             )
         });
         self.owner_for_node.insert(id, owner);

@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use crate::app::ErrorKind;
-use crate::app::error::{AppResult, Error};
+use crate::ErrorKind;
+use crate::app::platform::{Bridge, Wake};
+use crate::error::{AppResult, Error};
 use crate::hal::events::{KeyPhase, LogicalKey, ModifiersState, Shortcut};
 use crate::reactive::EventChannel;
-use crossbeam_channel::{Receiver, Sender, unbounded};
 use global_hotkey::hotkey::HotKey;
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
 
@@ -17,7 +17,7 @@ struct Registered {
 thread_local! {
     static MANAGER: RefCell<Option<GlobalHotKeyManager>> = const { RefCell::new(None) };
     static REGISTERED: RefCell<HashMap<u32, Registered>> = RefCell::new(HashMap::new());
-    static BRIDGE: (Sender<GlobalHotKeyEvent>, Receiver<GlobalHotKeyEvent>) = unbounded();
+    static BRIDGE: Bridge<GlobalHotKeyEvent> = Bridge::new();
 }
 
 const MODIFIER_TOKENS: [(ModifiersState, &str); 4] = [
@@ -27,6 +27,7 @@ const MODIFIER_TOKENS: [(ModifiersState, &str); 4] = [
     (ModifiersState::META, "super"),
 ];
 
+/// Registers a global shortcut and returns the channel of its key phases.
 pub fn register(shortcut: &Shortcut) -> AppResult<EventChannel<KeyPhase>> {
     let hotkey = to_hotkey(shortcut)?;
     if let Some(channel) = channel_of(hotkey.id()) {
@@ -46,6 +47,7 @@ pub fn register(shortcut: &Shortcut) -> AppResult<EventChannel<KeyPhase>> {
     Ok(channel)
 }
 
+/// Removes a global shortcut and returns whether it was registered.
 pub fn unregister(shortcut: &Shortcut) -> AppResult<bool> {
     let id = to_hotkey(shortcut)?.id();
     let Some(entry) = REGISTERED.with(|map| map.borrow_mut().remove(&id)) else {
@@ -55,17 +57,15 @@ pub fn unregister(shortcut: &Shortcut) -> AppResult<bool> {
     Ok(true)
 }
 
-pub(crate) fn install(wake: impl Fn() + Send + Sync + 'static) {
-    let tx = BRIDGE.with(|(tx, _)| tx.clone());
-    GlobalHotKeyEvent::set_event_handler(Some(move |event: GlobalHotKeyEvent| {
-        let _ = tx.send(event);
-        wake();
-    }));
+pub(crate) fn install(wake: Wake) {
+    let sink = BRIDGE.with(|bridge| bridge.sink(wake));
+    GlobalHotKeyEvent::set_event_handler(Some(sink));
 }
 
 pub(crate) fn pump() {
-    let pending: Vec<GlobalHotKeyEvent> = BRIDGE.with(|(_, rx)| {
-        rx.try_iter()
+    let pending: Vec<GlobalHotKeyEvent> = BRIDGE.with(|bridge| {
+        bridge
+            .drain()
             .chain(GlobalHotKeyEvent::receiver().try_iter())
             .collect()
     });

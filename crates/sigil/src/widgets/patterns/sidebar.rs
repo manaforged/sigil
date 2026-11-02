@@ -1,16 +1,17 @@
 use crate::events::Key;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, signal};
+use crate::style::StateVariants;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{
-    BORDER_WIDTH, Paint, PaintTarget, StateVariants, Style, StyleAtom, StyleSlot, Token, space,
-};
+use crate::style::{BORDER_WIDTH, Paint, Style, StyleAtom, Token, space};
+use crate::widgets::Widget;
 
-use super::super::drag::{Axis, axis_drag};
+use super::super::drag::axis_drag;
 use super::super::interactive::interactive;
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
+use super::super::orientation::Orientation;
 use super::super::splitter::{HANDLE_PX, KEY_STEP, cached_width_atom, resize_keys, to_i16};
 
 const SIDEBAR_DEFAULT: f32 = space(55);
@@ -21,6 +22,7 @@ static SIDEBAR_CHROME: &[StyleAtom] = &[
     Token::Border.border(),
 ];
 
+/// Builder of a sidebar.
 pub struct SidebarBuilder {
     child: Box<dyn IntoNode>,
     resizable: Option<(f32, f32)>,
@@ -28,6 +30,7 @@ pub struct SidebarBuilder {
     style_accumulator: Style,
 }
 
+/// A side column.
 #[must_use]
 pub fn sidebar(child: impl IntoNode + 'static) -> SidebarBuilder {
     SidebarBuilder {
@@ -39,13 +42,14 @@ pub fn sidebar(child: impl IntoNode + 'static) -> SidebarBuilder {
 }
 
 impl SidebarBuilder {
+    /// Sets the resizable.
     #[must_use]
     pub const fn resizable(mut self, min: f32, max: f32) -> Self {
         self.resizable = Some((min, max));
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let start = self
             .layout_overrides
             .width_hint()
@@ -67,10 +71,10 @@ impl SidebarBuilder {
             root = root.style(self.style_accumulator);
         }
         match self.resizable {
-            None => root.layout(self.layout_overrides.apply(root_layout()).width(start)),
+            None => root.layout(root_layout().width(start)),
             Some((min, max)) => {
                 let width = signal(start.clamp(min, max.max(min)));
-                root.layout(self.layout_overrides.apply(root_layout()))
+                root.layout(root_layout())
                     .style_reactive(move || cached_width_atom(to_i16(width.get())))
                     .child(resize_handle(width, min, max.max(min)))
             }
@@ -105,7 +109,7 @@ fn resize_handle(width: Signal<f32>, min: f32, max: f32) -> NodeBuilder {
         .into_node_builder();
     let node = axis_drag(
         node,
-        Axis::X,
+        Orientation::Horizontal,
         move || width.peek(),
         move |base, delta| width.set((base + delta).clamp(min, max)),
         || {},
@@ -115,23 +119,4 @@ fn resize_handle(width: Signal<f32>, min: f32, max: f32) -> NodeBuilder {
     })
 }
 
-impl PaintTarget for SidebarBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for SidebarBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for SidebarBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] SidebarBuilder: paint(style_accumulator), widget, node);

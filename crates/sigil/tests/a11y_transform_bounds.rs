@@ -5,13 +5,13 @@
 
 use sigil::layout::Position;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::style::Transform2D;
 use sigil_kittest::Harness;
 
 #[test]
 fn accessibility_bounds_follow_a_scaled_and_moved_parent() {
-    Runtime::scope("a11y-transform", || {
+    Owner::scope("a11y-transform", || {
         let mut ui = Harness::new(|| {
             container()
                 .layout(LayoutStyle::block().width(400.0).height(300.0))

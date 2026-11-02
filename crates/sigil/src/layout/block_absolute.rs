@@ -1,10 +1,10 @@
 use super::{BlockSolver, Position2};
-use crate::layout::LayoutError;
+use crate::Error;
 use crate::layout::block_size::SizeIntent;
-use crate::layout::flex::{CbSize, FlexSolver, Position2 as FlexPosition};
+use crate::layout::flex::{CbSize, FlexSolver};
 use crate::layout::forest::{ComputedBox, MeasureScope, NodeRef};
-use crate::layout::resolve::{InsetAxis, NodeEdges, resolve_inset_axis, stretched};
-use crate::layout::style_data::{Display, Position, Size, StyleData};
+use crate::layout::resolve::{NodeEdges, resolve_absolute_xy, stretched};
+use crate::layout::style_data::{Axes, Display, Position};
 
 impl BlockSolver<'_> {
     pub(super) fn place_absolutes(
@@ -13,12 +13,12 @@ impl BlockSolver<'_> {
         (w, h): (f32, f32),
         border_origin: Position2,
         edges: &NodeEdges,
-    ) -> Result<(), LayoutError> {
-        let padding_box = Size {
+    ) -> Result<(), Error> {
+        let padding_box = Axes {
             width: (w - edges.border.left - edges.border.right).max(0.0),
             height: (h - edges.border.top - edges.border.bottom).max(0.0),
         };
-        let inner_cb = Size {
+        let inner_cb = Axes {
             width: (w - edges.inline_chrome()).max(0.0),
             height: (h - edges.block_chrome()).max(0.0),
         };
@@ -44,10 +44,10 @@ impl BlockSolver<'_> {
     fn place_absolute(
         &self,
         child: NodeRef<'_>,
-        inner_cb: Size<f32>,
-        padding_box: Size<f32>,
+        inner_cb: Axes<f32>,
+        padding_box: Axes<f32>,
         padding_origin: Position2,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let style = child.style();
         let edges = NodeEdges::build(style, inner_cb.width);
         let intent = SizeIntent::build(style, inner_cb, &edges);
@@ -56,8 +56,13 @@ impl BlockSolver<'_> {
             padding_origin.y + edges.margin_top(),
         );
         let (box_w, box_h) = self.size_absolute(child, &edges, &intent, inner_cb, provisional)?;
-        let (x, y) =
-            resolve_absolute_xy(style, &edges, padding_origin, padding_box, (box_w, box_h));
+        let (x, y) = resolve_absolute_xy(
+            style,
+            &edges,
+            (padding_origin.x, padding_origin.y),
+            padding_box,
+            (box_w, box_h),
+        );
         let dx = x - provisional.x;
         let dy = y - provisional.y;
         if dx != 0.0 || dy != 0.0 {
@@ -77,9 +82,9 @@ impl BlockSolver<'_> {
         child: NodeRef<'_>,
         edges: &NodeEdges,
         intent: &SizeIntent,
-        inner_cb: Size<f32>,
+        inner_cb: Axes<f32>,
         provisional: Position2,
-    ) -> Result<(f32, f32), LayoutError> {
+    ) -> Result<(f32, f32), Error> {
         let style = child.style();
         let margins = edges.margin.left.unwrap_or(0.0) + edges.margin.right.unwrap_or(0.0);
         let stretch_w = stretched(
@@ -98,7 +103,7 @@ impl BlockSolver<'_> {
                 w: stretch_w.unwrap_or(inner_cb.width),
                 h: stretch_h.unwrap_or(inner_cb.height),
             };
-            let origin = FlexPosition::new(
+            let origin = Position2::new(
                 provisional.x - edges.margin.left.unwrap_or(0.0),
                 provisional.y - edges.margin_top(),
             );
@@ -118,7 +123,7 @@ impl BlockSolver<'_> {
             .w
             .clamp(intent.w.preferred.or(stretch_w).unwrap_or(auto_w));
         let inner_w = (box_w - edges.inline_chrome()).max(0.0);
-        let inner_cb_child = Size {
+        let inner_cb_child = Axes {
             width: inner_w,
             height: intent.h.preferred.or(stretch_h).unwrap_or(inner_cb.height),
         };
@@ -144,42 +149,14 @@ impl BlockSolver<'_> {
         }
     }
 
-    fn computed_size(&self, child: NodeRef<'_>) -> Result<(f32, f32), LayoutError> {
+    fn computed_size(&self, child: NodeRef<'_>) -> Result<(f32, f32), Error> {
         self.boxed(child.id())
             .map(|bounds| (bounds.w, bounds.h))
             .ok_or_else(|| {
-                LayoutError::LayoutInvalid(format!(
+                Error::layout(format!(
                     "absolute subtree did not write a box for {:?}",
                     child.id()
                 ))
             })
     }
-}
-
-fn resolve_absolute_xy(
-    style: &StyleData,
-    edges: &NodeEdges,
-    padding_origin: Position2,
-    padding_box: Size<f32>,
-    (box_w, box_h): (f32, f32),
-) -> (f32, f32) {
-    let x = resolve_inset_axis(InsetAxis {
-        leading: style.inset.left,
-        trailing: style.inset.right,
-        origin: padding_origin.x,
-        cb_dim: padding_box.width,
-        box_dim: box_w,
-        margin_leading: edges.margin.left.unwrap_or(0.0),
-        margin_trailing: edges.margin.right.unwrap_or(0.0),
-    });
-    let y = resolve_inset_axis(InsetAxis {
-        leading: style.inset.top,
-        trailing: style.inset.bottom,
-        origin: padding_origin.y,
-        cb_dim: padding_box.height,
-        box_dim: box_h,
-        margin_leading: edges.margin_top(),
-        margin_trailing: edges.margin.bottom.unwrap_or(0.0),
-    });
-    (x, y)
 }

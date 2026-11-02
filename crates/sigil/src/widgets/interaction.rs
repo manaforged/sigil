@@ -1,8 +1,16 @@
-use crate::events::{KeyEvent, MouseButton, NodeEventsExt, PointerEvent};
+mod drag;
+mod steps;
+
+use crate::events::{KeyEvent, MouseButton, PointerEvent};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
-use crate::style::{FocusRing, NodeStyleExt, StyleState};
+use crate::style::StyleState;
+use crate::widgets::Widget;
 
+pub(crate) use drag::{axis_of, pointer_drag};
+pub(crate) use steps::{ValueStep, step_keys};
+
+/// Hover, press, and focus signals.
 #[derive(Clone, Copy)]
 pub struct InteractionState {
     enabled: bool,
@@ -14,6 +22,7 @@ pub struct InteractionState {
 }
 
 impl InteractionState {
+    /// Creates an interaction state.
     #[must_use]
     pub fn new(enabled: bool) -> Self {
         Self {
@@ -26,11 +35,14 @@ impl InteractionState {
         }
     }
 
+    /// Returns the enabled.
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub const fn enabled(self) -> bool {
         self.enabled
     }
 
+    /// Returns the style state.
     #[must_use]
     pub fn style_state(self) -> StyleState {
         StyleState {
@@ -41,20 +53,25 @@ impl InteractionState {
         }
     }
 
+    /// Returns the dragging.
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn dragging(self) -> bool {
         self.dragging.get()
     }
 
+    /// Sets whether a drag is active.
     pub fn drag(self, next: bool) {
         set_if_changed(self.dragging, next);
     }
 
+    /// Returns the focus visible.
     #[must_use]
     pub const fn focus_visible(self) -> Signal<bool> {
         self.focused
     }
 
+    /// Attaches the state's handlers to `node`.
     #[must_use]
     pub fn install(self, node: NodeBuilder) -> NodeBuilder {
         node.focusable(self.enabled)
@@ -67,9 +84,10 @@ impl InteractionState {
             .pointer_down(move |event| self.pointer_down(event))
     }
 
+    /// Returns the signal that shows the focus ring.
     #[must_use]
-    pub const fn focus_ring(self) -> FocusRing {
-        FocusRing::new(self.ring_visible)
+    pub const fn focus_ring(self) -> Signal<bool> {
+        self.ring_visible
     }
 
     pub(crate) fn observe_style(self, node: NodeBuilder) -> NodeBuilder {
@@ -89,6 +107,7 @@ impl InteractionState {
             })
     }
 
+    /// Handles a pointer release and returns whether it activates.
     pub fn release_pointer(self, event: &mut PointerEvent) -> bool {
         if event.button != Some(MouseButton::Left) {
             return false;
@@ -101,6 +120,7 @@ impl InteractionState {
         self.enabled && was_pressed && self.hovered.peek()
     }
 
+    /// Handles a key and returns whether it activates.
     #[allow(
         clippy::missing_const_for_fn,
         reason = "const-eligible only under one cfg configuration"

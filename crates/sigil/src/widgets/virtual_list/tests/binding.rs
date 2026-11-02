@@ -2,10 +2,10 @@ use super::*;
 
 #[test]
 fn items_bind_rows_follow_the_signal() {
-    Runtime::scope("sigil-vlist-items-bind", || {
+    Owner::scope("sigil-vlist-items-bind", || {
         let items = signal(vec!["a", "b", "c"]);
         let mut cx = Cx::new_root();
-        let root = cx.add(virtual_list_bind(items, |_, _| container()));
+        let root = cx.add(virtual_list(items, |_, _| container()));
         for (next, expected) in [
             (None, 3),
             (Some(vec!["x", "y"]), 2),
@@ -24,7 +24,7 @@ fn items_bind_rows_follow_the_signal() {
 
 #[test]
 fn items_bind_static_path_still_works() {
-    let empty = mounted(|| virtual_list_bind(signal(Vec::<&str>::new()), |_, _| container()));
+    let empty = mounted(|| virtual_list(signal(Vec::<&str>::new()), |_, _| container()));
     assert_eq!(empty, 0);
     assert_eq!(
         mounted(|| virtual_list((0..5).collect::<Vec<usize>>(), |_, _| container())),
@@ -34,12 +34,12 @@ fn items_bind_static_path_still_works() {
 
 #[test]
 fn items_bind_window_advances_in_place_on_scroll() {
-    Runtime::scope("sigil-vlist-bind-scroll-advance", || {
+    Owner::scope("sigil-vlist-bind-scroll-advance", || {
         let items = signal((0..10_000).collect::<Vec<usize>>());
         let scroll_y = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(
-            virtual_list_bind(items, |index, _| container().label(format!("row {index}")))
+            virtual_list(items, |index, _| container().label(format!("row {index}")))
                 .scroll_bind(scroll_y)
                 .row_height(20.0)
                 .viewport_height(100.0),
@@ -61,12 +61,12 @@ fn items_bind_window_advances_in_place_on_scroll() {
 
 #[test]
 fn scroll_one_row_keeps_overlapping_node() {
-    Runtime::scope("sigil-vlist-keyed-reuse", || {
+    Owner::scope("sigil-vlist-keyed-reuse", || {
         let items = signal((0..1_000u32).collect::<Vec<_>>());
         let scroll_y = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(
-            virtual_list_bind(items, |index, _| container().label(format!("row {index}")))
+            virtual_list(items, |index, _| container().label(format!("row {index}")))
                 .scroll_bind(scroll_y)
                 .row_height(20.0)
                 .viewport_height(100.0),
@@ -97,7 +97,7 @@ fn identified_reorder_keeps_row_nodes() {
         }
     }
 
-    Runtime::scope("sigil-vlist-identified-reorder", || {
+    Owner::scope("sigil-vlist-identified-reorder", || {
         let items = signal(vec![Row { id: 1, name: "a" }, Row { id: 2, name: "b" }]);
         let mut cx = Cx::new_root();
         let root = cx.add(virtual_list(items, |_, row| container().label(row.name)).identified());

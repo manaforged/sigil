@@ -1,14 +1,14 @@
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::OnceLock;
 
-use crate::text::font_family::FontFamily;
+use crate::text::font_family::FontFaces;
 use crate::text::shaper::{Font, Script};
 
 #[derive(Clone)]
 pub(crate) struct SystemFonts {
-    pub(crate) sans: Option<FontFamily>,
-    pub(crate) mono: Option<FontFamily>,
-    pub(crate) serif: Option<FontFamily>,
+    pub(crate) sans: Option<FontFaces>,
+    pub(crate) mono: Option<FontFaces>,
+    pub(crate) serif: Option<FontFaces>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]

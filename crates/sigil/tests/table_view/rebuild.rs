@@ -22,7 +22,7 @@ fn counted_state(rows: Vec<Arc<Item>>, builds: &Rc<Cell<u32>>) -> TableState<Arc
 
 #[test]
 fn replacing_one_row_rebuilds_only_that_row() {
-    sigil::reactive::Runtime::scope("table-view-row-rebuild", || {
+    sigil::reactive::Owner::scope("table-view-row-rebuild", || {
         let builds = Rc::new(Cell::new(0));
         let rows: Vec<Arc<Item>> = demo_rows().into_iter().map(Arc::new).collect();
         let state = counted_state(rows.clone(), &builds);

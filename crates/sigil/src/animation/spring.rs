@@ -1,13 +1,20 @@
+/// Spring constants.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SpringPreset {
+    /// The gentle spring preset.
     Gentle,
+    /// The smooth spring preset.
     Smooth,
+    /// The snappy spring preset.
     Snappy,
+    /// The bouncy spring preset.
     Bouncy,
+    /// The stiff spring preset.
     Stiff,
 }
 
 impl SpringPreset {
+    /// Returns the parameters.
     #[must_use]
     pub const fn parameters(self) -> (f32, f32, f32) {
         match self {
@@ -20,8 +27,9 @@ impl SpringPreset {
     }
 }
 
+/// A damped spring that steps a value toward its target.
 #[derive(Clone, Copy, Debug)]
-pub struct Spring {
+pub(crate) struct Spring {
     stiffness: f32,
     damping: f32,
     mass: f32,
@@ -33,13 +41,16 @@ pub struct Spring {
 }
 
 impl Spring {
-    pub const DEFAULT_VALUE_EPSILON: f32 = 0.001;
+    /// The default distance from the target at which the spring settles.
+    pub(crate) const DEFAULT_VALUE_EPSILON: f32 = 0.001;
 
-    pub const DEFAULT_VELOCITY_EPSILON: f32 = 0.001;
+    /// The default speed below which the spring settles.
+    pub(crate) const DEFAULT_VELOCITY_EPSILON: f32 = 0.001;
 
+    /// Creates a spring.
     #[must_use]
     #[track_caller]
-    pub fn new(initial: f32, stiffness: f32, damping: f32, mass: f32) -> Self {
+    pub(crate) fn new(initial: f32, stiffness: f32, damping: f32, mass: f32) -> Self {
         assert!(
             mass > 0.0,
             "Spring mass must be positive (got {mass}). Use 1.0 for the default."
@@ -56,9 +67,11 @@ impl Spring {
         }
     }
 
+    #[cfg(test)]
+    /// Rest thresholds of a spring.
     #[must_use]
     #[track_caller]
-    pub fn with_epsilons(mut self, value: f32, velocity: f32) -> Self {
+    pub(crate) fn with_epsilons(mut self, value: f32, velocity: f32) -> Self {
         assert!(
             value > 0.0 && velocity > 0.0,
             "Spring epsilons must be positive (got value={value}, velocity={velocity})."
@@ -68,39 +81,47 @@ impl Spring {
         self
     }
 
+    /// Creates a spring from preset.
     #[must_use]
-    pub fn from_preset(initial: f32, preset: SpringPreset) -> Self {
+    pub(crate) fn from_preset(initial: f32, preset: SpringPreset) -> Self {
         let (stiffness, damping, mass) = preset.parameters();
         Self::new(initial, stiffness, damping, mass)
     }
 
-    pub const fn set_target(&mut self, target: f32) {
+    /// Sets the target.
+    pub(crate) const fn set_target(&mut self, target: f32) {
         self.target = target;
     }
 
-    pub const fn reset(&mut self, value: f32) {
+    /// Moves the spring to `value` and clears its velocity.
+    pub(crate) const fn reset(&mut self, value: f32) {
         self.value = value;
         self.velocity = 0.0;
         self.target = value;
     }
 
+    /// Returns the value.
     #[must_use]
-    pub const fn value(&self) -> f32 {
+    pub(crate) const fn value(&self) -> f32 {
         self.value
     }
 
+    #[cfg(test)]
+    /// Returns the velocity.
     #[must_use]
-    pub const fn velocity(&self) -> f32 {
+    pub(crate) const fn velocity(&self) -> f32 {
         self.velocity
     }
 
+    /// Returns the target.
     #[must_use]
-    pub const fn target(&self) -> f32 {
+    pub(crate) const fn target(&self) -> f32 {
         self.target
     }
 
+    /// Returns whether this spring is settled.
     #[must_use]
-    pub fn is_settled(&self) -> bool {
+    pub(crate) fn is_settled(&self) -> bool {
         let precision = f32::EPSILON * self.value.abs().max(self.target.abs());
         (self.value - self.target).abs() < self.value_epsilon.max(precision)
             && self.velocity.abs() < self.velocity_epsilon.max(precision / Self::MAX_SUBSTEP_DT)
@@ -110,7 +131,8 @@ impl Spring {
 
     const MAX_SUBSTEPS: u16 = 256;
 
-    pub fn step(&mut self, dt: f32) {
+    /// Advances the spring by `dt` seconds.
+    pub(crate) fn step(&mut self, dt: f32) {
         if self.snap_if_settled() || !dt.is_finite() || dt <= 0.0 {
             return;
         }
@@ -134,6 +156,17 @@ impl Spring {
         if tail.is_sign_positive() && tail > f32::EPSILON {
             self.integrate(tail);
             self.snap_if_settled();
+        }
+    }
+
+    pub(crate) fn advance(&mut self, dt: f32) {
+        if self.is_settled() {
+            return;
+        }
+        let before = self.value;
+        self.step(dt);
+        if self.value.to_bits() == before.to_bits() {
+            self.reset(self.target);
         }
     }
 

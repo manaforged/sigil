@@ -15,7 +15,7 @@ use zed_font_kit::properties::{Properties, Stretch, Style};
 use zed_font_kit::source::SystemSource;
 
 use super::SystemFonts;
-use crate::text::font_family::FontFamily;
+use crate::text::font_family::FontFaces;
 use crate::text::shaper::{Font, Script};
 
 pub(super) fn load() -> SystemFonts {
@@ -54,7 +54,7 @@ fn load_family(
     source: &SystemSource,
     candidates: &[FamilyName],
     cache: &mut FontCache,
-) -> Option<FontFamily> {
+) -> Option<FontFaces> {
     for candidate in candidates {
         if let FamilyName::Title(name) = candidate {
             let Ok(family) = source.select_family_by_name(name) else {
@@ -64,16 +64,16 @@ fn load_family(
             for handle in family.fonts() {
                 if let Some(face) = load_family_face(source, handle.clone(), cache) {
                     if face.1.has_weight_axis() {
-                        return Some(FontFamily::new(face.1));
+                        return Some(FontFaces::new(face.1));
                     }
                     faces.push(face);
                 }
             }
-            if let Some(resolved) = FontFamily::from_weighted(faces) {
+            if let Some(resolved) = FontFaces::from_weighted(faces) {
                 return Some(resolved);
             }
         } else if let Some(face) = select_generic_face(source, candidate, cache) {
-            return Some(FontFamily::new(face));
+            return Some(FontFaces::new(face));
         }
     }
     None
@@ -221,18 +221,18 @@ impl FontCache {
 mod macos {
     use core_text::font::{CTFontUIFontType, new_ui_font_for_language};
 
-    use super::{FontCache, FontFamily};
+    use super::{FontCache, FontFaces};
 
     pub(super) fn ui_family(
         font_type: CTFontUIFontType,
         cache: &mut FontCache,
-    ) -> Option<FontFamily> {
+    ) -> Option<FontFaces> {
         let font = new_ui_font_for_language(font_type, 0.0, None);
         let path = font.copy_descriptor().font_path()?;
         let postscript = font.postscript_name();
         cache
             .font_from_path_name(path, &postscript)
-            .map(FontFamily::new)
+            .map(FontFaces::new)
     }
 }
 

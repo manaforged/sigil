@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player as RodioPlayer, Source};
 
-use crate::reactive::{IntervalId, cancel_interval, interval};
+use crate::reactive::{IntervalId, interval};
 
 use super::Player;
 
@@ -18,7 +18,7 @@ pub(super) struct Device {
 impl Device {
     fn stop_ticking(&mut self) {
         if let Some(id) = self.interval.take() {
-            cancel_interval(id);
+            id.cancel();
         }
     }
 }
@@ -47,6 +47,7 @@ impl Player {
         }
     }
 
+    /// Switches between playing and paused.
     pub fn toggle(&self) {
         let resumed = self.device.borrow().as_ref().map(|device| {
             let resume = device.sink.is_paused();
@@ -93,6 +94,7 @@ impl Player {
         Ok(())
     }
 
+    /// Stops playback.
     pub fn stop(&self) {
         if let Some(device) = self.device.borrow_mut().as_mut() {
             device.sink.stop();
@@ -139,6 +141,7 @@ impl Player {
         Ok(())
     }
 
+    /// Updates the player state; call it once per frame.
     pub fn tick(&self) {
         let mut slot = self.device.borrow_mut();
         let Some(device) = slot.as_mut() else {
@@ -175,6 +178,7 @@ impl Player {
         }
     }
 
+    /// Moves playback to `ratio` of the track length.
     pub fn seek(&self, ratio: f32) -> crate::AppResult<()> {
         let ratio = ratio.clamp(0.0, 1.0);
         {

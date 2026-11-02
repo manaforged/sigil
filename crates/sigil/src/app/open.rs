@@ -3,6 +3,7 @@ use std::process::Command;
 
 use crate::{AppResult, Error};
 
+/// Open a file or URL with the OS handler (feature `desktop`).
 pub fn open(target: impl AsRef<OsStr>) -> AppResult<()> {
     if !allowed(target.as_ref()) {
         return Err(Error::io(std::io::Error::new(

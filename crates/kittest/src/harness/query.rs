@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use accesskit::{Action, NodeId as AkNodeId, Role, Toggled};
+use accesskit::{Action, NodeId as AkNodeId, Toggled};
 use sigil::geometry::{Point, Rect};
+use sigil::kernel::Role;
 
 use super::Harness;
 
@@ -143,14 +144,14 @@ impl std::fmt::Display for Query {
 impl Harness {
     #[must_use]
     pub fn find_all(&mut self, query: &Query) -> Vec<Node> {
-        let scale = f64::from(self.host().0.cx().scale().factor());
+        let scale = f64::from(self.host().cx().scale());
         let update = self.accessibility_tree();
         let lookup: HashMap<AkNodeId, &accesskit::Node> =
             update.nodes.iter().map(|(id, node)| (*id, node)).collect();
         update
             .nodes
             .iter()
-            .filter(|(_, node)| node.role() != Role::TextRun && !node.is_hidden())
+            .filter(|(_, node)| node.role() != accesskit::Role::TextRun && !node.is_hidden())
             .map(|(id, node)| project(*id, node, &lookup, update.focus, scale))
             .filter(|node| query.matches(node))
             .collect()
@@ -237,7 +238,7 @@ fn project(
 ) -> Node {
     Node {
         id,
-        role: node.role(),
+        role: Role::from_accesskit(node.role()),
         name: accessible_name(node, lookup),
         value: node.value().map(str::to_owned),
         numeric: node.numeric_value(),

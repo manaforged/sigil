@@ -1,14 +1,17 @@
 use slotmap::{DefaultKey, Key, KeyData};
 
+/// Handle of a node in the tree.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct NodeId(pub(crate) DefaultKey);
 
 impl NodeId {
+    /// Converts this node id to accesskit.
     #[must_use]
     pub fn to_accesskit(self) -> accesskit::NodeId {
         accesskit::NodeId(self.0.data().as_ffi())
     }
 
+    /// Creates a node id from accesskit.
     #[must_use]
     pub fn from_accesskit(id: accesskit::NodeId) -> Self {
         Self(DefaultKey::from(KeyData::from_ffi(id.0)))

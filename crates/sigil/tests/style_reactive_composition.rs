@@ -5,16 +5,17 @@
 #![allow(clippy::panic, clippy::unwrap_used)]
 
 use sigil::kernel::*;
-use sigil::reactive::Runtime;
+use sigil::prelude::Widget;
+use sigil::reactive::Owner;
 use sigil::reactive::signal;
-use sigil::style::{NodeStyleExt, Paint, Radius, StyleAtom, StyleBinding};
+use sigil::style::{Paint, Radius, StyleAtom, StyleBinding};
 
 static FIRST: &[StyleAtom] = &[StyleAtom::Opacity(5_000)];
 static SECOND: &[StyleAtom] = &[StyleAtom::Opacity(9_000), StyleAtom::Radius(Radius::Base)];
 
 #[test]
 fn multiple_reactive_sources_compose_in_install_order() {
-    Runtime::scope("style_reactive_composition", || {
+    Owner::scope("style_reactive_composition", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
@@ -35,7 +36,7 @@ fn multiple_reactive_sources_compose_in_install_order() {
 
 #[test]
 fn composition_is_append_only_across_many_installs() {
-    Runtime::scope("style_reactive_composition_many", || {
+    Owner::scope("style_reactive_composition_many", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()

@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -15,8 +16,8 @@ use sigil::events::*;
 use sigil::geometry::Size;
 use sigil::kernel::{FocusScopeKind, *};
 use sigil::layout::*;
+use sigil::widgets::Widget;
 
-use input::tab;
 use routing_helpers::{compute_layout, route_event};
 
 fn scope_marker(kind: FocusScopeKind) -> impl FnOnce(&mut sigil::kernel::Node) {
@@ -74,22 +75,22 @@ fn three_modal_stack_traps_then_restores_on_pop() {
     let layout = compute_layout(&mut cx, root, 200.0, 200.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
     assert_eq!(router.focus(), Some(inside_c));
 
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
     assert_eq!(router.focus(), Some(inside_c));
 
     assert!(cx.remove(modal_c));
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
     assert_eq!(assert_live_focus(&cx, &router), inside_b);
 
     assert!(cx.remove(modal_b));
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
     assert_eq!(assert_live_focus(&cx, &router), inside_a);
 
     assert!(cx.remove(modal_a));
-    route_event(&mut router, &mut cx, &layout, tab(false));
+    route_event(&mut router, &mut cx, &layout, Event::tab(false));
     assert_eq!(assert_live_focus(&cx, &router), background);
 }
 

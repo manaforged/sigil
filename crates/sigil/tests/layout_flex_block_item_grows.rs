@@ -6,8 +6,9 @@
 
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeId, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil_kittest::FakeMeasure;
 
 fn grower_width(block: bool) -> f32 {
     let mut cx = Cx::new_root();
@@ -26,7 +27,7 @@ fn grower_width(block: bool) -> f32 {
             )
             .child(container().layout(LayoutStyle::block().width(8.0).height(50.0))),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(400.0, 50.0))
         .unwrap();

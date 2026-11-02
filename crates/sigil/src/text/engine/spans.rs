@@ -7,8 +7,8 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::bidi;
 use crate::style::{TextRuns, TextStyle};
 use crate::text::FaceSpec;
-use crate::text::glyph::GlyphRun;
-use crate::text::shaper::{Font, Script, Style};
+use crate::text::glyph::ShapedRun;
+use crate::text::shaper::{FaceStyle, Font, Script};
 
 use super::FontCollection;
 use super::shape::{
@@ -20,15 +20,15 @@ pub(super) struct ShapeSpan {
     pub(super) start: usize,
     pub(super) end: usize,
     pub(super) chain: Arc<[Font]>,
-    pub(super) style: Style,
+    pub(super) style: FaceStyle,
     pub(super) slot: u16,
 }
 
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, feature = "kittest"))]
 pub(super) fn shape_segments(
     chain: &[Font],
     text: &str,
-    style: &Style,
+    style: &FaceStyle,
     paragraph_bidi: &bidi::ParagraphBidi<'_>,
 ) -> Vec<ShapedSegment> {
     let span = ShapeSpan {
@@ -91,12 +91,13 @@ fn hard_break(start: usize, len: usize) -> ShapedSegment {
     ShapedSegment {
         start: u32_clamp(start),
         end: u32_clamp(start + len),
-        run: GlyphRun::empty(),
+        run: ShapedRun::empty(),
         advance: 0.0,
         is_break_opportunity: true,
         breakable_before: false,
         is_hard_break: true,
         level: 0,
+        #[cfg(any(test, feature = "kittest"))]
         script: Script::Common,
         face_slot: 0,
     }
@@ -138,7 +139,7 @@ pub(super) fn style_spans(
     fonts: &FontCollection,
     text: &str,
     style: &TextStyle,
-    shaper: &Style,
+    shaper: &FaceStyle,
     chain_of: &mut impl FnMut(&Font, u16) -> Arc<[Font]>,
 ) -> (SmallVec<[ShapeSpan; 2]>, SmallVec<[FaceSpec; 8]>) {
     let mut chains = SmallVec::<[Chain<'_>; 2]>::new();
@@ -165,7 +166,7 @@ pub(super) fn style_spans(
             start,
             end,
             chain,
-            style: Style {
+            style: FaceStyle {
                 weight,
                 ..shaper.clone()
             },

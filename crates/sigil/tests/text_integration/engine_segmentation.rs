@@ -1,14 +1,18 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
 use sigil::hal::{ParagraphMetrics, TextEngine};
+use sigil::style::StyledTextEngine as _;
 use sigil::style::{TextLineHeight, TextStyle};
-use sigil::text::{OwnedTextEngine, TextConfig, TextError};
+use sigil::text::OwnedTextEngine;
 
 mod engine_segmentation {
     use super::*;
 
     fn engine() -> OwnedTextEngine {
-        OwnedTextEngine::new(TextConfig::default())
+        OwnedTextEngine::new(TextStyle {
+            font_size: 16.0,
+            ..TextStyle::default()
+        })
     }
 
     fn style_at(size: f32) -> TextStyle {
@@ -309,9 +313,9 @@ mod engine_segmentation {
         let result = e.register_font(garbage, 0);
         assert!(
             result.is_err(),
-            "register_font with non-font bytes must return TextError::InvalidFont, got {result:?}",
+            "register_font with non-font bytes must return a font error, got {result:?}",
         );
-        assert_eq!(result.unwrap_err(), TextError::InvalidFont);
+        assert_eq!(result.unwrap_err().kind(), sigil::ErrorKind::Font);
     }
 
     #[test]

@@ -1,11 +1,15 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::hal::ParagraphMetrics;
+use sigil::style::StyledTextEngine as _;
 use sigil::style::TextStyle;
-use sigil::text::{OwnedTextEngine, TextConfig};
+use sigil::text::OwnedTextEngine;
+use sigil::text::ParagraphMetrics;
 
 fn engine() -> OwnedTextEngine {
-    OwnedTextEngine::new(TextConfig::default())
+    OwnedTextEngine::new(TextStyle {
+        font_size: 16.0,
+        ..TextStyle::default()
+    })
 }
 
 #[test]

@@ -3,14 +3,13 @@ use crate::style::theme::ambient::{ActiveTheme, theme_label, theme_text};
 use std::ops::Range;
 use std::rc::Rc;
 
-use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::kernel::{AccessibleName, NodeBuilder, Role, container};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::reactive::{Reactive, Signal, derived};
-use crate::style::{
-    BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, Tone, space,
-};
+use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, Tone, space};
+use crate::widgets::{LayoutEdit, Widget};
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use crate::kernel::text;
 mod axis;
 mod decimate;
@@ -24,7 +23,7 @@ const MIN_WIDTH: f32 = 80.0;
 const SUMMARY_VALUES: usize = 64;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum ChartMark {
+enum ChartMark {
     #[default]
     Bar,
     Line,
@@ -50,6 +49,7 @@ struct SeriesSource {
     tone: Tone,
 }
 
+/// Builder of a chart.
 pub struct ChartBuilder {
     series: Vec<SeriesSource>,
     labels: Vec<String>,
@@ -61,6 +61,7 @@ pub struct ChartBuilder {
     style_accumulator: Style,
 }
 
+/// A bar, line, or candle chart.
 #[must_use]
 pub fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder {
     ChartBuilder {
@@ -80,6 +81,7 @@ pub fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder {
 }
 
 impl ChartBuilder {
+    /// Creates a candlestick chart from open, high, low, and close rows.
     #[must_use]
     pub fn candles(rows: impl Reactive<Vec<(f32, f32, f32, f32)>>) -> Self {
         let flat = move || {
@@ -93,36 +95,42 @@ impl ChartBuilder {
         builder
     }
 
+    /// Sets the x range.
     #[must_use]
     pub const fn x_range(mut self, range: Signal<Range<f32>>) -> Self {
         self.x_range = Some(range);
         self
     }
 
+    /// Applies the crosshair option.
     #[must_use]
     pub const fn crosshair(mut self) -> Self {
         self.crosshair = true;
         self
     }
 
+    /// Applies the whole numbers option.
     #[must_use]
     pub const fn whole_numbers(mut self) -> Self {
         self.whole = true;
         self
     }
 
+    /// Applies the bar option.
     #[must_use]
     pub const fn bar(mut self) -> Self {
         self.mark = ChartMark::Bar;
         self
     }
 
+    /// Applies the line option.
     #[must_use]
     pub const fn line(mut self) -> Self {
         self.mark = ChartMark::Line;
         self
     }
 
+    /// Sets the tone.
     #[must_use]
     pub fn tone(mut self, tone: Tone) -> Self {
         if let Some(series) = self.series.first_mut() {
@@ -131,12 +139,14 @@ impl ChartBuilder {
         self
     }
 
+    /// Sets the labels.
     #[must_use]
     pub fn labels(mut self, labels: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.labels = labels.into_iter().map(Into::into).collect();
         self
     }
 
+    /// Sets the series.
     #[must_use]
     pub fn series(
         mut self,
@@ -152,7 +162,7 @@ impl ChartBuilder {
         self
     }
 
-    fn frame(&mut self) -> plot::Frame {
+    fn frame(&mut self) -> plot::PlotFrame {
         let width = self
             .layout_overrides
             .width_hint()
@@ -162,17 +172,17 @@ impl ChartBuilder {
             .height_hint()
             .map_or(DEFAULT_HEIGHT, |px| px.max(MIN_HEIGHT));
         if let Some(px) = width {
-            self.layout_overrides.width(px);
+            self.layout_overrides.edit(LayoutEdit::Width(px));
         }
-        self.layout_overrides.height(height);
-        plot::Frame {
+        self.layout_overrides.edit(LayoutEdit::Height(height));
+        plot::PlotFrame {
             width,
             height,
             whole: self.whole,
         }
     }
 
-    fn into_node_builder(mut self) -> NodeBuilder {
+    fn root(mut self) -> NodeBuilder {
         let frame = self.frame();
         let sources = std::mem::take(&mut self.series);
         let series = derived(move || {
@@ -206,14 +216,12 @@ impl ChartBuilder {
                 Token::Surface.bg(),
             ])
             .with(
-                self.layout_overrides.apply(
-                    LayoutStyle::flex_column()
-                        .fill_width()
-                        .min_width(0.0)
-                        .height(frame.height)
-                        .padding(frame.padding())
-                        .gap(space(2)),
-                ),
+                LayoutStyle::flex_column()
+                    .fill_width()
+                    .min_width(0.0)
+                    .height(frame.height)
+                    .padding(frame.padding())
+                    .gap(space(2)),
             );
         if !paint.is_empty() {
             root = root.style(paint);
@@ -228,7 +236,7 @@ fn content(
     series: &[ChartSeries],
     labels: &[String],
     mark: ChartMark,
-    frame: plot::Frame,
+    frame: plot::PlotFrame,
     interact: &interact::Interact,
 ) -> Vec<NodeBuilder> {
     let stride = if mark == ChartMark::Candle { 4 } else { 1 };
@@ -313,26 +321,7 @@ fn summary(series: &[ChartSeries], labels: &[String], theme: ActiveTheme) -> Str
     parts.join("; ")
 }
 
-impl IntoNode for ChartBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
-
-impl PaintTarget for ChartBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for ChartBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
+builder_impls!([] ChartBuilder: paint(style_accumulator), widget, node);
 
 pub(crate) fn nice_max(max: f32) -> f32 {
     if !max.is_finite() || max <= 0.0 {

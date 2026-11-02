@@ -1,17 +1,8 @@
 use super::*;
-use crate::geometry::{LogicalSize, Size as HalSize};
-use crate::kernel::TextContent;
-use crate::layout::style_data::{Dimension, Size as StyleSize, StyleData};
-
-struct NullText;
-impl TextMeasure for NullText {
-    fn measure(&self, _: &TextContent, _: HalSize) -> LogicalSize {
-        LogicalSize::default()
-    }
-}
+use crate::layout::style_data::{Axes as StyleSize, Dimension, StyleData};
 
 fn drive() -> LayoutDrive {
-    LayoutDrive::new(Box::new(NullText))
+    LayoutDrive::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)))
 }
 
 fn fixed(w: f32, h: f32) -> StyleData {

@@ -8,82 +8,38 @@ use crate::kernel::{
 use crate::layout::LayoutStyle;
 use crate::scene::SceneBuilder;
 use crate::scene::command::DrawImage;
-use crate::style::{Rgba8, Theme, Token};
+use crate::style::{Rgba8, Theme};
+use crate::widgets::Widget;
+use crate::widgets::layout_ext::LayoutOverrides;
 use tiny_skia::{FillRule, Paint, Pixmap, Transform};
 
 mod key;
 mod raster;
+mod values;
 
-use key::{OFFSET, hash_cmd, mix, mix_fill, mix_stroke};
+use crate::fnv::OFFSET;
+use key::{hash_cmd, mix, mix_fill, mix_stroke};
 use raster::{build_ts_path, fill_shader, straight_rgba, stroke_path};
+pub(crate) use values::{PathCmd, PathColor, PathFill};
 
-type Resolved = (Option<PathFill>, Option<(Rgba8, f32)>, u64);
+type ResolvedPaint = (Option<PathFill>, Option<(Rgba8, f32)>, u64);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PathColor {
-    Rgba(Rgba8),
-    Token(Token),
-}
-
-impl PathColor {
-    fn resolve(self, theme: &Theme) -> Rgba8 {
-        match self {
-            Self::Rgba(color) => color,
-            Self::Token(token) => theme.color(token),
-        }
-    }
-}
-
-impl From<Rgba8> for PathColor {
-    fn from(color: Rgba8) -> Self {
-        Self::Rgba(color)
-    }
-}
-
-impl From<Token> for PathColor {
-    fn from(token: Token) -> Self {
-        Self::Token(token)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum PathFill {
-    Solid(Rgba8),
-    Theme(Token),
-    Linear {
-        start: (f32, f32),
-        end: (f32, f32),
-        stops: Vec<(f32, Rgba8)>,
-    },
-    Radial {
-        center: (f32, f32),
-        radius: f32,
-        stops: Vec<(f32, Rgba8)>,
-    },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum PathCmd {
-    MoveTo(f32, f32),
-    LineTo(f32, f32),
-    QuadTo(f32, f32, f32, f32),
-    CubicTo(f32, f32, f32, f32, f32, f32),
-    Close,
-}
-
+/// Builder of a vector path.
 pub struct PathNode {
     width: u32,
     height: u32,
     cmds: Vec<PathCmd>,
     fill: Option<PathFill>,
     stroke: Option<(PathColor, f32)>,
-    layout: Option<crate::layout::LayoutStyle>,
+    fit: Option<LayoutStyle>,
+    layout_overrides: LayoutOverrides,
     scale: u8,
     non_scaling: bool,
 }
 
 type RasterSize = (u32, u32, f32);
 
+/// A vector path.
 #[must_use]
 pub const fn path(width: u32, height: u32) -> PathNode {
     PathNode {
@@ -92,31 +48,36 @@ pub const fn path(width: u32, height: u32) -> PathNode {
         cmds: Vec::new(),
         fill: None,
         stroke: None,
-        layout: None,
+        fit: None,
+        layout_overrides: LayoutOverrides::new(),
         scale: 1,
         non_scaling: false,
     }
 }
 
 impl PathNode {
+    /// Starts a new subpath at this point.
     #[must_use]
     pub fn move_to(mut self, x: f32, y: f32) -> Self {
         self.cmds.push(PathCmd::MoveTo(x, y));
         self
     }
 
+    /// Adds a straight line to this point.
     #[must_use]
     pub fn line_to(mut self, x: f32, y: f32) -> Self {
         self.cmds.push(PathCmd::LineTo(x, y));
         self
     }
 
+    /// Adds a quadratic curve to this point.
     #[must_use]
     pub fn quad_to(mut self, cx: f32, cy: f32, x: f32, y: f32) -> Self {
         self.cmds.push(PathCmd::QuadTo(cx, cy, x, y));
         self
     }
 
+    /// Adds a cubic curve to this point.
     #[allow(
         clippy::too_many_arguments,
         reason = "the argument list mirrors the upstream API contract"
@@ -127,12 +88,14 @@ impl PathNode {
         self
     }
 
+    /// Closes the current subpath.
     #[must_use]
     pub fn close(mut self) -> Self {
         self.cmds.push(PathCmd::Close);
         self
     }
 
+    /// Sets a solid fill.
     #[must_use]
     pub fn fill(mut self, color: impl Into<PathColor>) -> Self {
         self.fill = Some(match color.into() {
@@ -142,6 +105,7 @@ impl PathNode {
         self
     }
 
+    /// Sets a linear gradient fill.
     #[must_use]
     pub fn fill_linear(
         mut self,
@@ -153,6 +117,7 @@ impl PathNode {
         self
     }
 
+    /// Sets a radial gradient fill.
     #[must_use]
     pub fn fill_radial(
         mut self,
@@ -168,24 +133,21 @@ impl PathNode {
         self
     }
 
+    /// Sets the stroke.
     #[must_use]
     pub fn stroke(mut self, color: impl Into<PathColor>, width: f32) -> Self {
         self.stroke = Some((color.into(), width));
         self
     }
 
+    /// Keeps the stroke width when the path scales.
     #[must_use]
     pub const fn non_scaling_stroke(mut self) -> Self {
         self.non_scaling = true;
         self
     }
 
-    #[must_use]
-    pub fn layout(mut self, style: LayoutStyle) -> Self {
-        self.layout = Some(style);
-        self
-    }
-
+    /// Scales the path to fill its box.
     #[must_use]
     pub fn fit(self) -> Self {
         #[allow(
@@ -196,6 +158,7 @@ impl PathNode {
         self.fit_box(width, height)
     }
 
+    /// Scales the path from this view size to its box.
     #[must_use]
     pub fn fit_size(self, logical: f32) -> Self {
         self.fit_box(logical, logical)
@@ -203,7 +166,7 @@ impl PathNode {
 
     fn fit_box(mut self, width: f32, height: f32) -> Self {
         self.scale = 2;
-        self.layout = Some(
+        self.fit = Some(
             LayoutStyle::block()
                 .fixed_size(width, height)
                 .shrink(0.0)
@@ -218,6 +181,7 @@ impl PathNode {
         self
     }
 
+    /// Record a vector path into a `canvas` scene.
     pub fn draw(self, scene: &mut SceneBuilder, destination: Rect, theme: &Theme) {
         let Some(source) = self.rasterize(theme) else {
             return;
@@ -234,7 +198,7 @@ impl PathNode {
         });
     }
 
-    fn resolved(&self, theme: &Theme) -> Resolved {
+    fn resolved(&self, theme: &Theme) -> ResolvedPaint {
         let fill = self.fill.as_ref().map(|fill| match fill {
             PathFill::Theme(token) => PathFill::Solid(theme.color(*token)),
             other => other.clone(),
@@ -338,11 +302,15 @@ impl PathNode {
 
 impl IntoNode for PathNode {
     fn build(mut self, cx: &mut Cx) -> NodeId {
+        let overrides = std::mem::take(&mut self.layout_overrides);
         let Some(source) = self.rasterize(&Theme::light()) else {
-            return container().build(cx);
+            return overrides.finish(container()).build(cx);
         };
-        let id = image(source).build(cx);
-        let layout = self.layout.take();
+        let picture = match self.fit.take() {
+            Some(fit) => image(source).layout(fit),
+            None => image(source),
+        };
+        let id = overrides.finish(picture.into_node_builder()).build(cx);
         let path = Rc::new(self);
         let fallback = Rc::clone(&path);
         let themed = ThemedImage::new(
@@ -350,14 +318,13 @@ impl IntoNode for PathNode {
             move |theme| path.bind(theme),
         );
         if let Some(node) = cx.get_mut(id) {
-            if let Some(style) = layout {
-                let _ = node.attach(style);
-            }
             let _ = node.attach(themed);
         }
         id
     }
 }
+
+builder_impls!([] PathNode: widget);
 
 #[cfg(test)]
 #[path = "vector_tests.rs"]

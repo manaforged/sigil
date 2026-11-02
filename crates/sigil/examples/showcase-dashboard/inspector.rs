@@ -1,11 +1,11 @@
 use sigil::prelude::{
-    AlignItems, ControlSize, FontFamily, Icon, LayoutBuilderExt, LayoutStyle, NodeBuilder, Paint,
-    Radius, TextContent, Token, Tone, WidgetLayoutExt, button, container, derived,
-    divider_horizontal, dropdown, field, kv_grid, number_field, progress, scroll, section_label,
-    slider, spacer, text, text_field, toggle,
+    AlignItems, ControlSize, FontFamily, Icon, LayoutStyle, NodeBuilder, Paint, Radius,
+    TextContent, Token, Tone, button, container, derived, divider_horizontal, dropdown, field,
+    kv_grid, number_field, progress, scroll, section_label, slider, spacer, text, text_field,
+    toggle,
 };
+use sigil::prelude::{IntoNode, Widget};
 use sigil::style::space;
-use sigil::widgets::ScrollBuilder;
 
 use super::data::{
     CANARY_STEP, HEALTH_PATH, INSPECTOR_WIDTH, Job, LOG_HEIGHT, LogLine, Region, SURGE_MAX,
@@ -113,7 +113,7 @@ fn actions(console: Console) -> NodeBuilder {
         )
 }
 
-fn log_view(console: Console) -> ScrollBuilder {
+fn log_view(console: Console) -> impl IntoNode {
     scroll(
         container()
             .layout(

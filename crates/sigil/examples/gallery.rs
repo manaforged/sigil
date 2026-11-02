@@ -4,7 +4,6 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::ScrollBuilder;
 
 const PAGES: &[&str] = &[
     "Controls",
@@ -91,7 +90,7 @@ fn content(
     dialog: Signal<bool>,
     drawer: Signal<bool>,
     queue: ToastQueue,
-) -> ScrollBuilder {
+) -> impl IntoNode {
     scroll(
         container()
             .layout(
@@ -251,7 +250,14 @@ fn data_page() -> NodeBuilder {
         .child(section_label("Virtual list"))
         .child(
             virtual_list(items, |index, item| {
-                list_row(false, item.clone(), format!("{index}"))
+                list_row(
+                    false,
+                    item.clone(),
+                    ListRowSlots {
+                        status: Some(format!("{index}").into()),
+                        ..ListRowSlots::default()
+                    },
+                )
             })
             .selection(SelectionMode::Single)
             .viewport_height(140.0),
@@ -349,7 +355,17 @@ fn chrome_page() -> NodeBuilder {
         )
         .child(section_label("Patterns"))
         .child(notice_band("Deployment finished", Tone::Success))
-        .child(row2(avatar("TG"), list_row(true, "Selected row", "now")))
+        .child(row2(
+            avatar("TG"),
+            list_row(
+                true,
+                "Selected row",
+                ListRowSlots {
+                    status: Some("now".into()),
+                    ..ListRowSlots::default()
+                },
+            ),
+        ))
         .child(hint_bar("↑↓ navigate", "Enter select"))
 }
 

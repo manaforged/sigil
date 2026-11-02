@@ -5,13 +5,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use crate::hal::Scheduler;
-use crate::reactive::{Owner, Runtime};
+use crate::reactive::Owner;
+use crate::tasks::AsyncRuntime;
 use crate::tasks::dispatch::dispatch_to_owner;
-use crate::tasks::{AsyncRuntime, OwnerHandle};
 
-fn setup() -> (AsyncRuntime, OwnerHandle) {
+fn setup() -> (AsyncRuntime, Owner) {
     let rt = AsyncRuntime::new().expect("build tokio runtime");
-    let handle = OwnerHandle::current().expect("inside a reactive scope");
+    let handle = Owner::current().expect("inside a reactive scope");
     (rt, handle)
 }
 
@@ -28,7 +28,7 @@ fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
 
 #[test]
 fn drain_preserves_enqueue_order() {
-    Runtime::scope("drain_preserves_enqueue_order", || {
+    Owner::scope("drain_preserves_enqueue_order", || {
         let (mut scheduler, handle) = setup();
         let order = Arc::new(std::sync::Mutex::new(Vec::new()));
         let done = Arc::new(AtomicBool::new(false));
@@ -61,12 +61,12 @@ fn drain_preserves_enqueue_order() {
 
 #[test]
 fn dispatch_to_owner_sets_current_owner_during_callback() {
-    Runtime::scope(
+    Owner::scope(
         "dispatch_to_owner_sets_current_owner_during_callback",
         || {
             let (mut scheduler, handle) = setup();
-            let expected = handle.id();
-            let observed: Arc<std::sync::Mutex<Option<crate::reactive::OwnerId>>> =
+            let expected = handle;
+            let observed: Arc<std::sync::Mutex<Option<crate::reactive::Owner>>> =
                 Arc::new(std::sync::Mutex::new(None));
             let observed_cb = Arc::clone(&observed);
 
@@ -89,7 +89,7 @@ fn dispatch_to_owner_sets_current_owner_during_callback() {
 
 #[test]
 fn drain_does_not_process_callbacks_enqueued_during_drain() {
-    Runtime::scope(
+    Owner::scope(
         "drain_does_not_process_callbacks_enqueued_during_drain",
         || {
             let (mut scheduler, handle) = setup();

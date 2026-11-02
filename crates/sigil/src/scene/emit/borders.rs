@@ -1,21 +1,20 @@
 use crate::geometry::{Point, Rect};
 use crate::kernel::NodeId;
 use crate::scene::builder::SceneBuilder;
-use crate::scene::command::{CellRect, SceneRectStyle, Stroke, StrokeAlign, StrokeStyle};
-use crate::scene::corner_radii::CornerRadii;
+use crate::scene::command::{CellRect, DrawRect, Stroke, StrokeAlign, StrokeStyle};
 use crate::style::{RenderStyle, Rgba8, Theme};
 
 use super::paint::NodePaint;
 
 pub(super) fn border_edges(style: &RenderStyle) -> [f32; 4] {
-    let uniform = style.border_width.map_or(0.0, |px| f32::from(px.0));
+    let uniform = style.border_width.map_or(0.0, f32::from);
     [
         style.border_top,
         style.border_right,
         style.border_bottom,
         style.border_left,
     ]
-    .map(|side| side.map_or(uniform, |px| f32::from(px.0)))
+    .map(|side| side.map_or(uniform, f32::from))
 }
 
 pub(super) fn border_color(style: &RenderStyle, theme: &Theme) -> Rgba8 {
@@ -57,7 +56,7 @@ pub(super) fn push_side_borders(
         return;
     }
     let color = border_color(style, paint.theme);
-    let fill = SceneRectStyle::new(color, CornerRadii::ZERO, style.opacity);
+    let fill = |side: crate::geometry::Rect| DrawRect::new(side, color).opacity(style.opacity);
     let Rect {
         origin,
         width,
@@ -91,7 +90,7 @@ pub(super) fn push_side_borders(
     };
     for (edge, side) in sides {
         if edge > 0.0 {
-            scene.draw_rect_for_node(id, side, fill, cell);
+            scene.draw_rect_for_node(id, fill(side), cell);
             cell.border = None;
         }
     }

@@ -4,9 +4,10 @@ use std::sync::{Mutex, OnceLock};
 
 use smallvec::SmallVec;
 
-use crate::style::{Px, StyleAtom};
+use crate::style::StyleAtom;
 
-pub type ComponentId = u64;
+/// Identifies a component's style.
+pub(crate) type ComponentId = u64;
 
 mod slots;
 pub(crate) use slots::SlotSet;
@@ -30,6 +31,7 @@ pub(crate) fn merge_classes(
 static WARNED: OnceLock<Mutex<HashSet<(ResolvedSlot, ComponentId)>>> = OnceLock::new();
 static UNKNOWN_CLASS: AtomicUsize = AtomicUsize::new(0);
 
+#[cfg(test)]
 #[must_use]
 pub(crate) fn merge_warning_count_for_component(component_id: ComponentId) -> usize {
     WARNED
@@ -43,6 +45,8 @@ pub(crate) fn merge_warning_count_for_component(component_id: ComponentId) -> us
         })
 }
 
+/// Number of unknown class names seen.
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn unknown_class_warning_count() -> usize {
     UNKNOWN_CLASS.load(Ordering::Relaxed)
@@ -89,7 +93,7 @@ fn insert_atom(
 fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
     use ResolvedSlot as S;
     use StyleAtom as A;
-    let (px, sides): (Px, &[S]) = match atom {
+    let (px, sides): (i16, &[S]) = match atom {
         A::PaddingAll(px) => (
             px,
             &[
@@ -145,12 +149,12 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::Gap(_) => ResolvedSlot::Gap,
         StyleAtom::GapX(_) => ResolvedSlot::GapX,
         StyleAtom::GapY(_) => ResolvedSlot::GapY,
-        StyleAtom::Width(_) => ResolvedSlot::Width,
-        StyleAtom::Height(_) => ResolvedSlot::Height,
-        StyleAtom::MinWidth(_) => ResolvedSlot::MinWidth,
-        StyleAtom::MaxWidth(_) => ResolvedSlot::MaxWidth,
-        StyleAtom::MinHeight(_) => ResolvedSlot::MinHeight,
-        StyleAtom::MaxHeight(_) => ResolvedSlot::MaxHeight,
+        StyleAtom::Width(_, _) => ResolvedSlot::Width,
+        StyleAtom::Height(_, _) => ResolvedSlot::Height,
+        StyleAtom::MinWidth(_, _) => ResolvedSlot::MinWidth,
+        StyleAtom::MaxWidth(_, _) => ResolvedSlot::MaxWidth,
+        StyleAtom::MinHeight(_, _) => ResolvedSlot::MinHeight,
+        StyleAtom::MaxHeight(_, _) => ResolvedSlot::MaxHeight,
         StyleAtom::Display(_) => ResolvedSlot::Display,
         StyleAtom::FlexDirection(_) => ResolvedSlot::FlexDirection,
         StyleAtom::FlexWrap(_) => ResolvedSlot::FlexWrap,
@@ -161,22 +165,18 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::GridColumns(_) => ResolvedSlot::GridColumns,
         StyleAtom::GridRows(_) => ResolvedSlot::GridRows,
         StyleAtom::BackgroundColor(_)
-        | StyleAtom::BackgroundThemeRef(_)
         | StyleAtom::BgToneStep(_)
         | StyleAtom::BackgroundGradient(_) => ResolvedSlot::BackgroundColor,
-        StyleAtom::TextColor(_)
-        | StyleAtom::TextThemeRef(_)
-        | StyleAtom::FgToneStep(_)
-        | StyleAtom::FgOnSolid => ResolvedSlot::TextColor,
+        StyleAtom::TextColor(_) | StyleAtom::FgToneStep(_) | StyleAtom::FgOnSolid => {
+            ResolvedSlot::TextColor
+        }
         StyleAtom::BorderRadius(_) | StyleAtom::Radius(_) => ResolvedSlot::BorderRadius,
         StyleAtom::BorderWidth(_) => ResolvedSlot::BorderWidth,
         StyleAtom::BorderTop(_) => ResolvedSlot::BorderTop,
         StyleAtom::BorderRight(_) => ResolvedSlot::BorderRight,
         StyleAtom::BorderBottom(_) => ResolvedSlot::BorderBottom,
         StyleAtom::BorderLeft(_) => ResolvedSlot::BorderLeft,
-        StyleAtom::BorderColor(_) | StyleAtom::BorderThemeRef(_) | StyleAtom::BorderToneStep(_) => {
-            ResolvedSlot::BorderColor
-        }
+        StyleAtom::BorderColor(_) | StyleAtom::BorderToneStep(_) => ResolvedSlot::BorderColor,
         StyleAtom::Shadow(_) => ResolvedSlot::Shadow,
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
         StyleAtom::Transform(_) => ResolvedSlot::Transform,

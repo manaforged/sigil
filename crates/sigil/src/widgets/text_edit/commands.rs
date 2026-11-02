@@ -1,15 +1,14 @@
 use std::iter::once;
 
 use crate::events::{A11yEdit, with_handlers};
-use crate::events::{
-    Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, PasteEvent, Shortcut,
-};
+use crate::events::{Key, KeyEvent, LogicalKey, ModifiersState, Shortcut};
 use crate::kernel::NodeBuilder;
+use crate::widgets::Widget;
 
 use super::super::TextEdit;
 use super::{TextEditRuntime, edit_value, move_caret};
 
-type Command = fn(&mut KeyEvent, &TextEditRuntime);
+type KeyCommand = fn(&mut KeyEvent, &TextEditRuntime);
 type Edit = fn(&mut TextEdit);
 
 pub(in crate::widgets) fn clipboard_keys(
@@ -17,8 +16,8 @@ pub(in crate::widgets) fn clipboard_keys(
     runtime: &TextEditRuntime,
 ) -> NodeBuilder {
     let pasted = runtime.clone();
-    let node = node.on_paste(move |event| shell_paste(event, &pasted));
-    let commands: [(&str, ModifiersState, Command); 4] = [
+    let node = node.on_paste(move |text| shell_paste(text, &pasted));
+    let commands: [(&str, ModifiersState, KeyCommand); 4] = [
         ("c", ModifiersState::empty(), clipboard_copy),
         ("x", ModifiersState::empty(), clipboard_cut),
         ("v", ModifiersState::empty(), clipboard_paste),
@@ -30,7 +29,7 @@ pub(in crate::widgets) fn clipboard_keys(
 }
 
 pub(in crate::widgets) fn history_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
-    let commands: [(&str, ModifiersState, Command); 2] = [
+    let commands: [(&str, ModifiersState, KeyCommand); 2] = [
         ("Z", ModifiersState::SHIFT, |event, edit| {
             history(event, edit, TextEdit::redo);
         }),
@@ -49,7 +48,7 @@ pub(in crate::widgets) fn history_keys(node: NodeBuilder, runtime: TextEditRunti
 fn command_keys(
     mut node: NodeBuilder,
     runtime: &TextEditRuntime,
-    commands: &[(&str, ModifiersState, Command)],
+    commands: &[(&str, ModifiersState, KeyCommand)],
 ) -> NodeBuilder {
     for modifiers in command_modifiers() {
         for &(key, extra, command) in commands {
@@ -147,11 +146,11 @@ fn clipboard_paste(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     runtime.insert_pasted(&text);
 }
 
-fn shell_paste(event: &mut PasteEvent, runtime: &TextEditRuntime) {
-    event.stop_propagation();
+fn shell_paste(text: &str, runtime: &TextEditRuntime) -> bool {
     if !runtime.disabled() {
-        runtime.insert_pasted(&event.text);
+        runtime.insert_pasted(text);
     }
+    true
 }
 
 fn history(event: &mut KeyEvent, runtime: &TextEditRuntime, step: fn(&mut TextEdit) -> bool) {

@@ -37,7 +37,7 @@ impl Cx {
 
     pub(crate) fn refill(&mut self, id: NodeId, fill: impl FnOnce(&mut Self)) {
         if let Some(old) = self.owner_for_node.remove(&id)
-            && is_live(old.id())
+            && is_live(old)
         {
             old.dispose();
         }
@@ -138,18 +138,27 @@ impl NodeBuilder {
         cx.refill(id, |cx| {
             let style = std::mem::take(&mut self.style);
             let mut this = crate::style::attach_style(self, style);
-            let kind = std::mem::replace(&mut this.kind, NodeType::Container);
+            let kind = std::mem::replace(&mut this.kind, NodeType::Container).into_live();
             cx.reset_node(id, kind, std::mem::take(&mut this.a11y));
+            crate::kernel::text::track_delta(cx, id);
             this.refill_onto(cx, id);
         });
         Patch::Patched
     }
 
     fn refill_onto(self, cx: &mut Cx, id: NodeId) {
+        let leaf = self.children.is_empty() && self.reactive_children.is_none();
+        let existing_leaf = cx.get(id).is_some_and(|node| node.children.is_empty());
         if let Some(node) = cx.get_mut(id) {
             for apply in self.pre_extensions {
                 apply(node);
             }
+        }
+        if leaf && existing_leaf {
+            for hook in self.on_added {
+                hook(cx, id);
+            }
+            return;
         }
         let old: Ids = cx
             .get(id)

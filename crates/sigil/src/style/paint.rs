@@ -1,9 +1,13 @@
+#[cfg(any(test, feature = "kittest"))]
+use crate::style::BgGradient;
+#[cfg(any(test, feature = "kittest"))]
+use crate::style::MillisU16;
+#[cfg(any(test, feature = "kittest"))]
+use crate::style::Transform2D;
+#[cfg(any(test, feature = "kittest"))]
+use crate::style::TransitionId;
 use crate::style::engine::encode_px;
-use crate::style::styled::color::{background_atom, border_color_atom, text_atom};
-use crate::style::{
-    BgGradient, ColorOrToken, Elevation, FontFamily, MillisU16, Px, Radius, Style, StyleAtom,
-    TextDecoration, Transform2D, TransitionId,
-};
+use crate::style::{ColorAtom, Elevation, FontFamily, Radius, Style, StyleAtom, TextDecoration};
 
 mod sealed {
     use crate::style::Style;
@@ -13,11 +17,9 @@ mod sealed {
     pub trait PaintTarget: Sized {
         fn style_slot(&mut self) -> StyleSlot<'_>;
     }
-
-    pub trait StateHost {}
 }
 
-pub(crate) use sealed::{PaintTarget, StateHost, StyleSlot};
+pub(crate) use sealed::{PaintTarget, StyleSlot};
 
 const OPACITY_SCALE: f32 = 10_000.0;
 const LETTER_SPACING_SCALE: f32 = 1_000.0;
@@ -54,123 +56,156 @@ fn letter_spacing_units(em: f32) -> i16 {
     thousandths
 }
 
+/// Typed paint on nodes, text, widget builders, and state closures.
 pub trait Paint: PaintTarget {
+    /// Sets the bg.
     #[must_use]
-    fn bg(self, color: impl Into<ColorOrToken>) -> Self {
-        push(self, background_atom(color.into()))
+    fn bg(self, color: impl Into<ColorAtom>) -> Self {
+        push(self, StyleAtom::BackgroundColor(color.into()))
     }
 
+    #[cfg(any(test, feature = "kittest"))]
+    #[doc(hidden)]
+    /// Sets the background gradient.
     #[must_use]
     fn background_gradient(self, gradient: BgGradient) -> Self {
         push(self, StyleAtom::BackgroundGradient(gradient))
     }
 
+    /// Sets the text color.
     #[must_use]
-    fn text_color(self, color: impl Into<ColorOrToken>) -> Self {
-        push(self, text_atom(color.into()))
+    fn text_color(self, color: impl Into<ColorAtom>) -> Self {
+        push(self, StyleAtom::TextColor(color.into()))
     }
 
+    /// Sets the border color.
     #[must_use]
-    fn border_color(self, color: impl Into<ColorOrToken>) -> Self {
-        push(self, border_color_atom(color.into()))
+    fn border_color(self, color: impl Into<ColorAtom>) -> Self {
+        push(self, StyleAtom::BorderColor(color.into()))
     }
 
+    /// Sets the border w.
     #[must_use]
     fn border_w(self, px: i16) -> Self {
-        push(self, StyleAtom::BorderWidth(Px(px)))
+        push(self, StyleAtom::BorderWidth(px))
     }
 
+    /// Sets the border top.
     #[must_use]
     fn border_top(self, px: i16) -> Self {
-        push(self, StyleAtom::BorderTop(Px(px)))
+        push(self, StyleAtom::BorderTop(px))
     }
 
+    /// Sets the border right.
     #[must_use]
     fn border_right(self, px: i16) -> Self {
-        push(self, StyleAtom::BorderRight(Px(px)))
+        push(self, StyleAtom::BorderRight(px))
     }
 
+    /// Sets the border bottom.
     #[must_use]
     fn border_bottom(self, px: i16) -> Self {
-        push(self, StyleAtom::BorderBottom(Px(px)))
+        push(self, StyleAtom::BorderBottom(px))
     }
 
+    /// Sets the border left.
     #[must_use]
     fn border_left(self, px: i16) -> Self {
-        push(self, StyleAtom::BorderLeft(Px(px)))
+        push(self, StyleAtom::BorderLeft(px))
     }
 
+    /// Sets the rounded.
     #[must_use]
     fn rounded(self, radius: Radius) -> Self {
         push(self, StyleAtom::Radius(radius))
     }
 
+    /// Sets the shadow.
     #[must_use]
     fn shadow(self, elevation: Elevation) -> Self {
         push(self, StyleAtom::Shadow(elevation))
     }
 
+    /// Sets the opacity.
     #[must_use]
     #[track_caller]
     fn opacity(self, value: f32) -> Self {
         push(self, StyleAtom::Opacity(opacity_units(value)))
     }
 
+    #[cfg(any(test, feature = "kittest"))]
+    #[doc(hidden)]
+    /// Sets the transform.
     #[must_use]
     fn transform(self, transform: Transform2D) -> Self {
         push(self, StyleAtom::Transform(transform))
     }
 
+    /// Sets the font size.
     #[must_use]
     fn font_size(self, px: f32) -> Self {
-        push(self, StyleAtom::FontSize(encode_px(px)))
+        push(self, StyleAtom::FontSize(encode_px(px).0))
     }
 
+    /// Sets the font weight.
     #[must_use]
     fn font_weight(self, weight: u16) -> Self {
         push(self, StyleAtom::FontWeight(weight))
     }
 
+    /// Sets the font italic.
     #[must_use]
     fn font_italic(self, italic: bool) -> Self {
         push(self, StyleAtom::FontItalic(italic))
     }
 
+    /// Sets the font family.
     #[must_use]
     fn font_family(self, family: FontFamily) -> Self {
         push(self, StyleAtom::FontFamily(family.name()))
     }
 
+    /// Sets the line height px.
     #[must_use]
     fn line_height_px(self, px: f32) -> Self {
-        push(self, StyleAtom::LineHeight(encode_px(px)))
+        push(self, StyleAtom::LineHeight(encode_px(px).0))
     }
 
+    /// Sets the letter spacing em.
     #[must_use]
     fn letter_spacing_em(self, em: f32) -> Self {
         push(self, StyleAtom::LetterSpacing(letter_spacing_units(em)))
     }
 
+    /// Sets the tabular nums.
     #[must_use]
     fn tabular_nums(self, on: bool) -> Self {
         push(self, StyleAtom::TabularNums(on))
     }
 
+    /// Applies the underline option.
     #[must_use]
     fn underline(self) -> Self {
         push(self, StyleAtom::TextDecoration(TextDecoration::Underline))
     }
 
+    /// Applies the line through option.
     #[must_use]
     fn line_through(self) -> Self {
         push(self, StyleAtom::TextDecoration(TextDecoration::LineThrough))
     }
 
+    #[cfg(any(test, feature = "kittest"))]
+    #[doc(hidden)]
+    /// Sets the transition.
     #[must_use]
     fn transition(self, id: TransitionId) -> Self {
         push(self, StyleAtom::Transition(id))
     }
 
+    #[cfg(any(test, feature = "kittest"))]
+    #[doc(hidden)]
+    /// Sets the duration.
     #[must_use]
     fn duration(self, duration: MillisU16) -> Self {
         push(self, StyleAtom::TransitionDuration(duration))

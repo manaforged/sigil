@@ -4,6 +4,12 @@ thread_local! {
     static REDUCED_MOTION: Cell<bool> = const { Cell::new(false) };
 }
 
+/// Returns true when the app or the OS asks for reduced motion.
+#[must_use]
+pub fn reduced_motion() -> bool {
+    MotionPrefs::reduced()
+}
+
 pub struct MotionPrefs;
 
 impl MotionPrefs {
@@ -12,6 +18,7 @@ impl MotionPrefs {
         REDUCED_MOTION.with(Cell::get)
     }
 
+    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
     pub fn set(preferred: bool) {
         REDUCED_MOTION.with(|cell| cell.set(preferred));
         if preferred {

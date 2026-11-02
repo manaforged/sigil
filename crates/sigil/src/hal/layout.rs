@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Dim {
+pub(crate) enum Dim {
     Fixed(f32),
     MinContent,
     MaxContent,
@@ -7,26 +7,29 @@ pub enum Dim {
 
 impl Dim {
     #[must_use]
-    pub const fn fixed(value: f32) -> Self {
+    pub(crate) const fn fixed(value: f32) -> Self {
         Self::Fixed(value)
     }
 }
 
+/// A size constraint.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Size {
-    pub width: Dim,
-    pub height: Dim,
+    pub(crate) width: Dim,
+    pub(crate) height: Dim,
 }
 
 impl Size {
+    /// Creates a size with both dimensions definite.
     #[must_use]
     pub const fn fixed(width: f32, height: f32) -> Self {
         Self {
-            width: Dim::Fixed(width),
-            height: Dim::Fixed(height),
+            width: Dim::fixed(width),
+            height: Dim::fixed(height),
         }
     }
 
+    /// Returns the max content size.
     #[must_use]
     pub const fn max_content() -> Self {
         Self {
@@ -35,11 +38,51 @@ impl Size {
         }
     }
 
+    /// Returns the min content size.
     #[must_use]
     pub const fn min_content() -> Self {
         Self {
             width: Dim::MinContent,
             height: Dim::MinContent,
+        }
+    }
+
+    /// Sets the fixed width.
+    #[must_use]
+    pub const fn with_fixed_width(mut self, width: f32) -> Self {
+        self.width = Dim::Fixed(width);
+        self
+    }
+
+    /// Sets the min content width.
+    #[must_use]
+    pub const fn with_min_content_width(mut self) -> Self {
+        self.width = Dim::MinContent;
+        self
+    }
+
+    /// Sets the max content width.
+    #[must_use]
+    pub const fn with_max_content_width(mut self) -> Self {
+        self.width = Dim::MaxContent;
+        self
+    }
+
+    /// Returns the fixed width.
+    #[must_use]
+    pub const fn fixed_width(self) -> Option<f32> {
+        match self.width {
+            Dim::Fixed(value) => Some(value),
+            Dim::MinContent | Dim::MaxContent => None,
+        }
+    }
+
+    /// Returns the fixed height.
+    #[must_use]
+    pub const fn fixed_height(self) -> Option<f32> {
+        match self.height {
+            Dim::Fixed(value) => Some(value),
+            Dim::MinContent | Dim::MaxContent => None,
         }
     }
 }

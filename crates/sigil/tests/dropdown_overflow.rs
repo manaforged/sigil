@@ -4,9 +4,9 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{KeyEvent, KeyEventInit, KeyPhase, PhysicalKey};
+use sigil::events::{KeyPhase, PhysicalKey};
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
@@ -39,14 +39,7 @@ fn open_popup(cx: &mut Cx, root: NodeId, layout: &mut LayoutEngine) {
     router.route(
         cx,
         layout,
-        ShellEvent::Key(KeyEvent::new(KeyEventInit {
-            key: Key::ArrowDown.into(),
-            physical: PhysicalKey::ArrowDown,
-            modifiers: ModifiersState::empty(),
-            repeat: false,
-            phase: KeyPhase::Down,
-            text: None,
-        })),
+        Event::key(Key::ArrowDown, KeyPhase::Down).physical(PhysicalKey::ArrowDown),
     );
     layout
         .compute(cx, root, Size::fixed(640.0, 640.0))
@@ -55,7 +48,7 @@ fn open_popup(cx: &mut Cx, root: NodeId, layout: &mut LayoutEngine) {
 
 #[test]
 fn few_options_use_a_plain_popup() {
-    sigil::reactive::Runtime::scope("dd-few", || {
+    sigil::reactive::Owner::scope("dd-few", || {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(signal(0_usize), labels(3)).width(200.0));
         let mut layout =
@@ -73,7 +66,7 @@ fn few_options_use_a_plain_popup() {
 
 #[test]
 fn many_options_scroll_within_the_popup() {
-    sigil::reactive::Runtime::scope("dd-many", || {
+    sigil::reactive::Owner::scope("dd-many", || {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(signal(0_usize), labels(20)).width(200.0));
         let mut layout =

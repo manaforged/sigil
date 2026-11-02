@@ -5,21 +5,19 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::events::EventRouter;
-use crate::events::{
-    ModifiersState, MouseButton, MouseButtons, PointerEvent, PointerEventInit, PointerKind,
-    PointerPhase, ShellEvent,
-};
-use crate::geometry::{LogicalSize, Point, Rect, Size};
-use crate::kernel::{AccessibleName, Cx, NodeId, TextContent, container};
-use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use crate::reactive::Runtime;
+use crate::events::{Event, MouseButton, MouseButtons, PointerPhase};
+use crate::geometry::{Point, Rect, Size};
+use crate::kernel::{AccessibleName, Cx, NodeId, container};
+use crate::layout::{LayoutEngine, LayoutStyle};
+use crate::reactive::Owner;
+use crate::widgets::Widget;
 
 use super::table;
 use crate::widgets::table::{TableColumn, TableState};
 
 #[test]
 fn fractional_columns_align_across_headers_rows_and_content_changes() {
-    Runtime::scope("table-column-alignment", || {
+    Owner::scope("table-column-alignment", || {
         let state = TableState::new(
             vec![[10.0, 300.0], [250.0, 25.0]],
             vec![
@@ -36,7 +34,9 @@ fn fractional_columns_align_across_headers_rows_and_content_changes() {
                 .viewport_height(180.0)
                 .selectable_checkboxes(),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(Measure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(
+            crate::layout::FakeMeasure::fixed(60.0, 20.0),
+        ));
         for rows in [
             vec![[10.0, 300.0], [250.0, 25.0]],
             vec![[350.0, 10.0], [10.0, 350.0]],
@@ -78,17 +78,9 @@ fn column_rects(cx: &Cx, layout: &LayoutEngine, root: NodeId) -> BTreeMap<usize,
     columns
 }
 
-struct Measure;
-
-impl TextMeasure for Measure {
-    fn measure(&self, _source: &TextContent, _space: Size) -> LogicalSize {
-        LogicalSize::new(60.0, 20.0)
-    }
-}
-
 #[test]
 fn empty_message_stays_below_header_and_disappears_when_rows_return() {
-    Runtime::scope("table-empty-message", || {
+    Owner::scope("table-empty-message", || {
         let state = TableState::new(vec![], vec![TableColumn::<u32>::new("value", "Value")]);
         let empty = Rc::new(Cell::new(None));
         let capture = empty.clone();
@@ -104,7 +96,9 @@ fn empty_message_stays_below_header_and_disappears_when_rows_return() {
                         .on_added(move |_, id| capture.set(Some(id)))
                 }),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(Measure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(
+            crate::layout::FakeMeasure::fixed(60.0, 20.0),
+        ));
         relayout(&mut cx, &mut layout, root);
         let id = empty.get().expect("empty content");
         let bounds = layout.result(id).expect("empty bounds").rect();
@@ -153,19 +147,13 @@ fn click(cx: &mut Cx, router: &mut EventRouter, layout: &LayoutEngine, position:
         router.route(
             cx,
             layout,
-            ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-                position,
-                delta: Point::new(0.0, 0.0),
-                kind: PointerKind::Mouse,
-                button: Some(MouseButton::Left),
-                buttons: if phase == PointerPhase::Down {
+            Event::pointer(phase, position)
+                .button(Some(MouseButton::Left))
+                .buttons(if phase == PointerPhase::Down {
                     MouseButtons::LEFT
                 } else {
                     MouseButtons::empty()
-                },
-                modifiers: ModifiersState::empty(),
-                phase,
-            })),
+                }),
         );
     }
 }

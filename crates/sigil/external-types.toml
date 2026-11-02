@@ -1,0 +1,7 @@
+allowed_external_types = [
+    "accesskit::ActionRequest",
+    "accesskit::NodeId",
+    "accesskit::Role",
+    "accesskit::TreeUpdate",
+    "image::RgbaImage",
+]

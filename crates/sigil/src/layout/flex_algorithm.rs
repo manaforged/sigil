@@ -1,5 +1,4 @@
 #![allow(
-    dead_code,
     clippy::redundant_pub_crate,
     clippy::cast_precision_loss,
     clippy::suboptimal_flops,
@@ -10,7 +9,7 @@
     clippy::unnecessary_wraps
 )]
 
-use crate::layout::LayoutError;
+use crate::Error;
 use crate::layout::flex::{CbSize, FlexSolver, Position2};
 use crate::layout::flex_lines::{FlexItem, collect_lines};
 use crate::layout::forest::NodeRef;
@@ -101,7 +100,7 @@ pub(crate) fn layout_root(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
     origin: Position2,
-) -> Result<(), LayoutError> {
+) -> Result<(), Error> {
     let ctx = &FlexCtx {
         assigned_w: ctx.assigned_w.or_else(|| filled_width(ctx, node)),
         ..*ctx
@@ -115,7 +114,7 @@ pub(crate) fn layout_root(
         border_origin.x + edges.border.left + edges.padding.left,
         border_origin.y + edges.border.top + edges.padding.top,
     );
-    let area = crate::layout::flex_pack::Area {
+    let area = crate::layout::flex_pack::FlexArea {
         border_origin,
         content_origin,
         main: container_main,
@@ -177,14 +176,14 @@ fn build_items(
     parent: NodeRef<'_>,
     container_main: f32,
     container_cross: f32,
-) -> Result<Vec<FlexItem>, LayoutError> {
+) -> Result<Vec<FlexItem>, Error> {
     let forest = ctx.solver.scope().forest();
     let children = parent.children();
     let mut items = Vec::with_capacity(children.len());
     for child_id in children {
-        let child = forest.refer(*child_id).ok_or_else(|| {
-            LayoutError::LayoutInvalid(format!("stale flex child id {child_id:?}"))
-        })?;
+        let child = forest
+            .refer(*child_id)
+            .ok_or_else(|| Error::layout(format!("stale flex child id {child_id:?}")))?;
         let style = child.style();
         if matches!(style.display, Display::None) {
             continue;

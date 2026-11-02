@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(clippy::unwrap_used, clippy::panic)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 #![allow(
@@ -5,7 +6,7 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::renderer::{LayerError, LayerPool};
+use sigil::renderer::LayerPool;
 use sigil_kittest::gpu::shared_device;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -77,11 +78,11 @@ fn oversized_returns_err() {
 
     assert!(matches!(
         pool.acquire(&device, max.saturating_add(1), 16, FORMAT),
-        Err(LayerError::TooLarge { .. })
+        Err(err) if err.kind() == sigil::ErrorKind::LayerTooLarge
     ));
     assert!(matches!(
         pool.acquire(&device, 16, max.saturating_add(1), FORMAT),
-        Err(LayerError::TooLarge { .. })
+        Err(err) if err.kind() == sigil::ErrorKind::LayerTooLarge
     ));
     assert_eq!(pool.len(), 0);
 }
@@ -96,7 +97,7 @@ fn zero_extent_returns_empty() {
     };
     assert!(matches!(
         pool.acquire(&device, 0, 16, FORMAT),
-        Err(LayerError::Empty)
+        Err(err) if err.kind() == sigil::ErrorKind::EmptyLayer
     ));
 }
 

@@ -2,7 +2,7 @@ use super::mix::{alpha_mix, ramp_accent};
 use super::{Theme, ThemeValue};
 use crate::style::palette::is_dark;
 use crate::style::scale::rgb;
-use crate::style::{ColorKey, Rgba8, Token};
+use crate::style::{ColorAtom, Rgba8, Token};
 
 const SCRIM: Rgba8 = Rgba8 {
     r: 0,
@@ -12,21 +12,29 @@ const SCRIM: Rgba8 = Rgba8 {
 };
 
 impl Theme {
+    /// `resolve_color` for a built-in token.
     #[must_use]
     pub fn color(&self, token: Token) -> Rgba8 {
-        self.resolve_color(ColorKey::Token(token))
+        self.resolve_color(ColorAtom::Token(token))
     }
 
+    /// Resolve a color.
     #[must_use]
-    pub fn resolve_color(&self, key: ColorKey) -> Rgba8 {
+    pub fn resolve_color(&self, color: ColorAtom) -> Rgba8 {
+        let name = match color {
+            ColorAtom::Rgba8(rgba) => return rgba,
+            ColorAtom::Token(token) => token.name(),
+            ColorAtom::Custom(name) => name,
+        };
         self.tokens
             .overrides
-            .color(key)
-            .or_else(|| self.tokens.theme.color(key))
-            .or_else(|| self.built_in_color(key))
-            .unwrap_or_else(|| self.missing_color(key.name()))
+            .color(color)
+            .or_else(|| self.tokens.theme.color(color))
+            .or_else(|| self.built_in_color(color))
+            .unwrap_or_else(|| self.missing_color(name))
     }
 
+    /// Stores a custom token and returns its old value.
     pub fn register_token(&mut self, name: &str, value: ThemeValue) -> Option<ThemeValue> {
         if let (Some(token), ThemeValue::Color(color)) = (Token::from_name(name), value) {
             self.sync_runtime_color(token, color);
@@ -34,14 +42,16 @@ impl Theme {
         self.tokens.overrides.insert(name, value)
     }
 
+    /// Fill the theme table layer from static data.
     #[must_use]
-    pub fn with_theme_tokens(mut self, tokens: &phf::Map<&'static str, ThemeValue>) -> Self {
+    pub(crate) fn with_theme_tokens(mut self, tokens: &phf::Map<&'static str, ThemeValue>) -> Self {
         for (name, value) in tokens {
             self.tokens.theme.insert(name, *value);
         }
         self
     }
 
+    /// Sets one custom token.
     #[must_use]
     pub fn with_token(mut self, name: &str, value: ThemeValue) -> Self {
         self.register_token(name, value);
@@ -80,8 +90,8 @@ impl Theme {
         }
     }
 
-    fn built_in_color(&self, key: ColorKey) -> Option<Rgba8> {
-        let ColorKey::Token(token) = key else {
+    fn built_in_color(&self, key: ColorAtom) -> Option<Rgba8> {
+        let ColorAtom::Token(token) = key else {
             return None;
         };
         Some(match token {

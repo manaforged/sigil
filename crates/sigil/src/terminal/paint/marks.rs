@@ -6,7 +6,7 @@ use smol_str::SmolStr;
 use super::{Grid, Ink, Underline, cell_edge, floor_cell};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Marks {
+pub(crate) struct Marks {
     links: Vec<(NodeId, SmolStr)>,
     caret: Option<NodeId>,
     focus: Option<NodeId>,
@@ -27,7 +27,7 @@ impl Marks {
     }
 
     #[must_use]
-    pub fn collect(cx: &Cx, focus: Option<NodeId>, scene: &CommandScene, cell: f32) -> Self {
+    pub(crate) fn collect(cx: &Cx, focus: Option<NodeId>, scene: &CommandScene, cell: f32) -> Self {
         let mut marks = Self {
             focus,
             ..Self::default()
@@ -35,7 +35,7 @@ impl Marks {
         for command in &scene.commands {
             match command {
                 SceneCommand::GlyphRun(draw) => {
-                    if let Some(id) = draw.run.node
+                    if let Some(id) = draw.node
                         && let Some(url) = link(cx, id)
                     {
                         marks.links.push((id, url));

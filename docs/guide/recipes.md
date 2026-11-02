@@ -101,7 +101,7 @@ fn main() -> AppResult<()> {
 
 ### Keys on a widget builder
 
-Every widget builder that implements `WidgetLayoutExt` also takes the `NodeEventsExt` methods. The handler goes on the root node of the widget and runs after the handlers of the widget. If the widget stops a key that you need, use `key_capture` instead. To use a `NodeBuilder` method that is not in `NodeEventsExt`, such as `on_added`, call `.map_node(|node| node.on_added(f))`.
+Every widget builder implements `Widget`, so it takes the event methods. The handler goes on the root node of the widget and runs after the handlers of the widget. If the widget stops a key that you need, use `key_capture` instead. To use a `NodeBuilder` method that is not on `Widget`, such as `on_added`, call `.map_node(|node| node.on_added(f))`.
 
 ### Helper return types
 
@@ -126,9 +126,9 @@ fn main() -> AppResult<()> {
 }
 ```
 
-A theme file is TOML. `base` selects `light`, `dark`, or `console_dark`. The `[tokens]` table sets token colors as `#rrggbb` or `#rrggbbaa`. `parse_theme` returns `None` if the document is not valid.
+A theme file is TOML. `base` selects `light`, `dark`, or `console_dark`. The `[tokens]` table sets token colors as `#rrggbb` or `#rrggbbaa`. `Theme: FromStr` returns `Err` if the document is not valid.
 
-A theme file also carries the language settings. `direction` is `"ltr"` or `"rtl"`. `locale = "en"`, `"de"`, or `"ar"` selects a built-in locale; a `[locale]` table sets fields one by one: `preset` (the built-in locale to start from), `decimal`, `group` (`""` for no grouping), `zero` and `date_separator` as single characters, `group_size` from 1 to 255, and `date_order` as `"ymd"`, `"dmy"`, or `"mdy"`. The `[strings]` table replaces built-in labels by their snake_case name, for example `close = "Schließen"`. An unknown name or value makes `parse_theme` return `None`.
+A theme file also carries the language settings. `direction` is `"ltr"` or `"rtl"`. `locale = "en"`, `"de"`, or `"ar"` selects a built-in locale; a `[locale]` table sets fields one by one: `preset` (the built-in locale to start from), `decimal`, `group` (`""` for no grouping), `zero` and `date_separator` as single characters, `group_size` from 1 to 255, and `date_order` as `"ymd"`, `"dmy"`, or `"mdy"`. The `[strings]` table replaces built-in labels by their snake_case name, for example `close = "Schließen"`. An unknown name or value makes `Theme: FromStr` return `Err`.
 
 ```toml
 base = "light"
@@ -145,7 +145,6 @@ close = "إغلاق"
 ```
 
 ```rust,no_run
-use sigil::app::parse_theme;
 use sigil::prelude::*;
 
 const SOURCE: &str = r##"
@@ -157,7 +156,7 @@ surface = "#101014"
 "##;
 
 fn tree() -> impl IntoNode {
-    if let Some(theme) = parse_theme(SOURCE) {
+    if let Ok(theme) = SOURCE.parse::<Theme>() {
         set_theme(theme);
     }
     text("Custom theme")
@@ -233,7 +232,7 @@ A plain number is logical pixels. `rows(n)`, `cols(n)`, and `em(n)` are text-rel
 ```rust,no_run
 # #[cfg(feature = "terminal")]
 # mod terminal_only {
-use sigil::layout::TrackSize;
+use sigil::prelude::TrackSize;
 use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
@@ -295,7 +294,7 @@ fn tree() -> impl IntoNode {
             sigil::tasks::sleep(Duration::from_millis(200)).await;
             writer.update(|text| text.push_str(word))?;
         }
-        Ok::<(), ScheduleError>(())
+        Ok::<(), Error>(())
     });
     text(move || transcript.with(|text| format!("{} bytes: {text}", text.len())))
 }
@@ -307,7 +306,7 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-The future runs on the app's tokio runtime. Wait inside it with `sigil::tasks::sleep`, not `std::thread::sleep`, so a worker thread stays free. `update` returns `Err(ScheduleError::Closed)` after the app exits. The `?` ends the task on that error.
+The future runs on the app's tokio runtime. Wait inside it with `sigil::tasks::sleep`, not `std::thread::sleep`, so a worker thread stays free. `update` returns an `Error` with kind `ErrorKind::Closed` after the app exits. The `?` ends the task on that error.
 
 For one result, `spawn` runs a future and returns a `Signal<Status<T, E>>` that starts as `Status::Pending`:
 
@@ -365,7 +364,7 @@ fn tree() -> impl IntoNode {
                 }
             }
         });
-    });
+    }, || {});
     std::thread::spawn(move || {
         drop(tx.send(Event::Start));
         for word in ["streamed ", "reply ", "text"] {
@@ -409,7 +408,7 @@ fn tree() -> impl IntoNode {
 }
 ```
 
-`on_message_or_close(rx, f, on_close)` also runs `on_close` after the last message, when the worker drops its sender. `rx` may be a bounded `tokio::sync::mpsc::Receiver`.
+`on_message(rx, f, on_close)` runs `on_close` after the last message, when the worker drops its sender. `rx` may be a bounded `tokio::sync::mpsc::Receiver`.
 
 ### Consume a trigger inside an effect
 
@@ -435,7 +434,7 @@ fn tree() -> impl IntoNode {
 
 ## Timers
 
-`interval(period, f)` runs `f` on the UI thread once per period. The interval stops when its owner is disposed, or when you call `sigil::reactive::cancel_interval(id)`. It needs no thread.
+`interval(period, f)` runs `f` on the UI thread once per period. The interval stops when its owner is disposed, or when you call `id.cancel()`. It needs no thread.
 
 ```rust,no_run
 # #[cfg(feature = "terminal")]
@@ -511,28 +510,26 @@ With `quit_on_ctrl_c(false)`, Ctrl+C reaches the tree as a key event, and the ap
 
 `sigil::run` connects the window host to the platform screen reader. An embed host does this itself:
 
-1. Call `Host::accessibility_tree(&router)` after each layout. Send the `TreeUpdate` to your `accesskit` adapter.
+1. Call `Host::accessibility_tree()` after each layout. Send the `TreeUpdate` to your `accesskit` adapter.
 2. When the adapter reports an `accesskit::ActionRequest`, convert its `target_node` with `NodeId::from_accesskit`.
-3. Call `Host::perform(&mut router, target, &request)`.
+3. Call `Host::perform(target, &request)`.
 
 `Host::perform` handles `Focus`, `Click`, `Increment`, `Decrement`, `SetValue`, `SetTextSelection`, `Expand`, `Collapse`, and `ScrollIntoView`. Add `accesskit` 0.25 to your own dependencies to name its types.
 
 ```rust,no_run
-use sigil::kernel::NodeId;
+use sigil::NodeId;
 use sigil::prelude::*;
-use sigil::events::EventRouter;
 use sigil::Host;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 
 fn main() {
-    Runtime::scope("a11y", || {
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+    Owner::scope("a11y", || {
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(|| button("Save").activate(|| println!("saved")));
         if host.layout((320.0, 200.0)).is_err() {
             return;
         }
-        let update: sigil::app::AccessibilityTree = host.accessibility_tree(&router);
+        let update: accesskit::TreeUpdate = host.accessibility_tree();
         let Some(target) = update.nodes.first().map(|(id, _)| *id) else { return };
         let request = accesskit::ActionRequest {
             action: accesskit::Action::Click,
@@ -540,7 +537,7 @@ fn main() {
             target_node: target,
             data: None,
         };
-        host.perform(&mut router, NodeId::from_accesskit(request.target_node), &request);
+        host.perform(NodeId::from_accesskit(request.target_node), &request);
     });
 }
 ```
@@ -554,17 +551,15 @@ Give each control a name that a screen reader can say. Widgets take the name fro
 ```rust,no_run
 use sigil::app::FrameHooks;
 use sigil::prelude::*;
-use sigil::events::EventRouter;
 use sigil::Host;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::tasks::AsyncRuntime;
 
-fn main() -> std::io::Result<()> {
-    Runtime::scope("embed", || {
+fn main() -> sigil::AppResult<()> {
+    Owner::scope("embed", || {
         let mut tasks = AsyncRuntime::new()?;
         tasks.install_current();
-        let mut host = Host::new();
-        let mut router = EventRouter::new();
+        let mut host = Host::new(HostMode::Pixel);
         host.mount(|| {
             let load = task(|| async { Ok::<_, String>("ready".to_owned()) });
             load.run();
@@ -574,7 +569,7 @@ fn main() -> std::io::Result<()> {
             })
         });
         tasks.pump();
-        drop(host.frame(&mut router, (320.0, 200.0), 1.0 / 60.0, FrameHooks::default()));
+        drop(host.frame((320.0, 200.0), 1.0 / 60.0, FrameHooks::default()));
         Ok(())
     })
 }

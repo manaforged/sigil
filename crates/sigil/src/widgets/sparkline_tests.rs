@@ -1,4 +1,4 @@
-use super::{Layer, SparkFill, SparkMark, spark_glyph, sparkline};
+use super::{SparkFill, SparkLayer, SparkMark, spark_glyph, sparkline};
 use crate::style::Tone;
 
 #[test]
@@ -37,8 +37,8 @@ fn adjacent_cells_of_one_tone_share_a_run() {
     assert_eq!(
         line.runs(),
         vec![vec![
-            (Tone::Warn, Layer::Edge, "██".to_owned()),
-            (Tone::Primary, Layer::Edge, "█".to_owned()),
+            (Tone::Warn, SparkLayer::Edge, "██".to_owned()),
+            (Tone::Primary, SparkLayer::Edge, "█".to_owned()),
         ]]
     );
 }
@@ -52,11 +52,11 @@ fn a_shaded_graph_inks_only_the_top_cell_of_each_column_solid() {
     assert_eq!(
         line.runs(),
         vec![
-            vec![(Tone::Primary, Layer::Edge, " █ ".to_owned())],
+            vec![(Tone::Primary, SparkLayer::Edge, " █ ".to_owned())],
             vec![
-                (Tone::Primary, Layer::Edge, " ".to_owned()),
-                (Tone::Primary, Layer::Body, "█".to_owned()),
-                (Tone::Primary, Layer::Edge, "█".to_owned()),
+                (Tone::Primary, SparkLayer::Edge, " ".to_owned()),
+                (Tone::Primary, SparkLayer::Body, "█".to_owned()),
+                (Tone::Primary, SparkLayer::Edge, "█".to_owned()),
             ],
         ]
     );

@@ -4,18 +4,16 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::AppConfig;
 use sigil::app::DefaultTextMeasure;
 use sigil::geometry::{LogicalSize, PhysicalSize, Scale, Size};
 use sigil::kernel::{Cx, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil::reactive::Runtime;
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil::reactive::Owner;
 
 #[test]
 fn scale_change_keeps_launch_viewport_logical() {
-    Runtime::scope("test", || {
-        let config = AppConfig::new("test").size(720, 480);
-        assert_eq!(config.window_size(), (720, 480));
+    Owner::scope("test", || {
         let logical = LogicalSize::new(720.0, 480.0);
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -26,8 +24,8 @@ fn scale_change_keeps_launch_viewport_logical() {
         layout
             .compute(&mut cx, root, Size::fixed(logical.width, logical.height))
             .unwrap();
-        cx.set_scale(Scale::new(2.0));
-        let resized_logical = cx.scale().to_logical(PhysicalSize::new(1440, 960));
+        cx.set_scale(2.0);
+        let resized_logical = Scale::new(cx.scale()).to_logical(PhysicalSize::new(1440, 960));
         layout
             .compute(
                 &mut cx,
@@ -37,7 +35,7 @@ fn scale_change_keeps_launch_viewport_logical() {
             .unwrap();
 
         let rect = layout.result(root).unwrap().rect();
-        assert_eq!(cx.scale(), Scale::new(2.0));
+        assert!((cx.scale() - 2.0).abs() < f32::EPSILON);
         assert_eq!(resized_logical, logical);
         assert_eq!(rect.width.to_bits(), 720.0_f32.to_bits());
         assert_eq!(rect.height.to_bits(), 480.0_f32.to_bits());

@@ -1,11 +1,11 @@
 use crate::style::merge::bump_unknown_class_count;
 use crate::style::{
-    ColorKey, Dimension, Px, StyleAtom, Token, merge_classes, merge_warning_count_for_component,
+    ColorAtom, StyleAtom, Token, merge_classes, merge_warning_count_for_component,
     unknown_class_warning_count,
 };
 
-const SURFACE: StyleAtom = StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Surface));
-const ACCENT: StyleAtom = StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent));
+const SURFACE: StyleAtom = StyleAtom::BackgroundColor(ColorAtom::Token(Token::Surface));
+const ACCENT: StyleAtom = StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent));
 
 #[test]
 fn merge_last_wins() {
@@ -16,19 +16,15 @@ fn merge_last_wins() {
 
 #[test]
 fn merge_padding_axis_override_keeps_other_sides() {
-    let merged = merge_classes(
-        &[StyleAtom::PaddingAll(Px(16))],
-        &[StyleAtom::PaddingX(Px(24))],
-        2,
-    );
+    let merged = merge_classes(&[StyleAtom::PaddingAll(16)], &[StyleAtom::PaddingX(24)], 2);
 
     assert_eq!(
         merged.as_slice(),
         &[
-            StyleAtom::PaddingTop(Px(16)),
-            StyleAtom::PaddingRight(Px(24)),
-            StyleAtom::PaddingBottom(Px(16)),
-            StyleAtom::PaddingLeft(Px(24)),
+            StyleAtom::PaddingTop(16),
+            StyleAtom::PaddingRight(24),
+            StyleAtom::PaddingBottom(16),
+            StyleAtom::PaddingLeft(24),
         ],
     );
 }
@@ -46,20 +42,20 @@ fn merge_warns_once() {
 #[test]
 fn merge_is_alloc_free_below_32() {
     let defaults = [
-        StyleAtom::PaddingTop(Px(1)),
-        StyleAtom::PaddingRight(Px(1)),
-        StyleAtom::PaddingBottom(Px(1)),
-        StyleAtom::PaddingLeft(Px(1)),
-        StyleAtom::MarginTop(Px(1)),
-        StyleAtom::MarginRight(Px(1)),
-        StyleAtom::MarginBottom(Px(1)),
-        StyleAtom::MarginLeft(Px(1)),
+        StyleAtom::PaddingTop(1),
+        StyleAtom::PaddingRight(1),
+        StyleAtom::PaddingBottom(1),
+        StyleAtom::PaddingLeft(1),
+        StyleAtom::MarginTop(1),
+        StyleAtom::MarginRight(1),
+        StyleAtom::MarginBottom(1),
+        StyleAtom::MarginLeft(1),
     ];
     let overrides = [
-        StyleAtom::Width(Dimension::Full),
-        StyleAtom::Height(Dimension::Auto),
+        StyleAtom::Width(crate::style::atom::ATOM_FULL, 0),
+        StyleAtom::Height(crate::style::atom::ATOM_AUTO, 0),
         ACCENT,
-        StyleAtom::TextThemeRef(ColorKey::Token(Token::OnAccent)),
+        StyleAtom::TextColor(ColorAtom::Token(Token::OnAccent)),
     ];
 
     let info = allocation_counter::measure(|| {

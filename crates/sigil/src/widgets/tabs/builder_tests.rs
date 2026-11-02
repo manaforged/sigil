@@ -1,19 +1,13 @@
 #![allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
 
 use super::*;
-use crate::geometry::{LogicalSize, Size};
-use crate::kernel::{AccessibleName, NodeId, Role, TextContent};
-use crate::layout::{LayoutEngine, TextMeasure};
-use crate::reactive::{Runtime, signal};
+use crate::geometry::Size;
+use crate::kernel::Cx;
+use crate::kernel::{AccessibleName, NodeId, Role};
+use crate::layout::LayoutEngine;
+use crate::reactive::{Owner, signal};
+use crate::style::Theme;
 use crate::style::render_style_for;
-
-struct Measure;
-
-impl TextMeasure for Measure {
-    fn measure(&self, _content: &TextContent, _space: Size) -> LogicalSize {
-        LogicalSize::new(40.0, 16.0)
-    }
-}
 
 fn find(cx: &Cx, root: NodeId, role: Role, label: &str) -> NodeId {
     let mut found = None;
@@ -33,7 +27,7 @@ fn chrome_keeps_tabs_centered_and_reserves_its_height() {
         (TabsBuilder::line as fn(_) -> _, 36.0),
         (TabsBuilder::pill, 84.0),
     ] {
-        Runtime::scope("tabs-chrome", || {
+        Owner::scope("tabs-chrome", || {
             let mut cx = Cx::new_root();
             let strip = chrome(tabs().labels(["A", "B"])).label("test");
             let root = cx.add(
@@ -46,7 +40,9 @@ fn chrome_keeps_tabs_centered_and_reserves_its_height() {
                             .layout(LayoutStyle::block().height(100.0)),
                     ),
             );
-            let mut layout = LayoutEngine::with_text_measure(Box::new(Measure));
+            let mut layout = LayoutEngine::with_text_measure(Box::new(
+                crate::layout::FakeMeasure::fixed(40.0, 16.0),
+            ));
             layout
                 .compute(&mut cx, root, Size::fixed(800.0, 600.0))
                 .unwrap();
@@ -67,7 +63,7 @@ fn chrome_keeps_tabs_centered_and_reserves_its_height() {
 
 #[test]
 fn selection_moves_the_painted_highlight_between_existing_tabs() {
-    Runtime::scope("tabs-selection", || {
+    Owner::scope("tabs-selection", || {
         let active = signal(0);
         let theme = Theme::light();
         let mut cx = Cx::new_root();

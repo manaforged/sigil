@@ -1,22 +1,14 @@
 use crate::geometry::Size;
-use crate::kernel::{Cx, NodeId, TextContent, container};
-use crate::layout::{LayoutEngine, TextMeasure};
-use crate::reactive::Runtime;
+use crate::kernel::{Cx, NodeId, container};
+use crate::layout::LayoutEngine;
+use crate::reactive::Owner;
 
 use super::SceneCache;
-
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _: &TextContent, _: Size) -> crate::geometry::LogicalSize {
-        crate::geometry::LogicalSize::new(0.0, 0.0)
-    }
-}
 
 fn laid_out() -> (Cx, NodeId) {
     let mut cx = Cx::new_root();
     let root = cx.add(container());
-    LayoutEngine::with_text_measure(Box::new(StubMeasure))
+    LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)))
         .compute(&mut cx, root, Size::fixed(100.0, 80.0))
         .expect("layout");
     (cx, root)
@@ -24,7 +16,7 @@ fn laid_out() -> (Cx, NodeId) {
 
 #[test]
 fn replays_only_when_context_root_viewport_and_scale_match() {
-    Runtime::scope("scene-cache-replay", || {
+    Owner::scope("scene-cache-replay", || {
         let (cx, root) = laid_out();
         let mut cache = SceneCache::default();
 
@@ -39,7 +31,7 @@ fn replays_only_when_context_root_viewport_and_scale_match() {
 
 #[test]
 fn an_opaque_window_paints_the_theme_surface_behind_the_tree() {
-    Runtime::scope("scene-cache-backdrop", || {
+    Owner::scope("scene-cache-backdrop", || {
         let (cx, root) = laid_out();
         let surface = crate::style::Theme::default().color(crate::style::Token::Surface);
 

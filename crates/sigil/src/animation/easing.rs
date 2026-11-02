@@ -3,39 +3,57 @@
 use core::f32::consts::{FRAC_PI_2, PI};
 use std::num::NonZeroU16;
 
-use super::bezier::CubicBezier;
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+/// Tween easing curve.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Easing {
+    /// The linear easing.
     #[default]
     Linear,
+    /// The quad in easing.
     QuadIn,
+    /// The quad out easing.
     QuadOut,
+    /// The quad in out easing.
     QuadInOut,
+    /// The cubic in easing.
     CubicIn,
+    /// The cubic out easing.
     CubicOut,
+    /// The cubic in out easing.
     CubicInOut,
+    /// The sine in easing.
     SineIn,
+    /// The sine out easing.
     SineOut,
+    /// The sine in out easing.
     SineInOut,
+    /// The expo in easing.
     ExpoIn,
+    /// The expo out easing.
     ExpoOut,
+    /// The back out easing.
     BackOut,
+    /// The back in out easing.
     BackInOut,
+    /// The bounce out easing.
     BounceOut,
-    Bezier(CubicBezier),
+    /// The steps easing.
     Steps {
+        /// The count.
         count: NonZeroU16,
+        /// Whether start.
         start: bool,
     },
 }
 
 impl Easing {
+    /// Creates a step easing with `count` steps, jumping at the start of each step when `start` is true.
     #[must_use]
     pub const fn steps(count: NonZeroU16, start: bool) -> Self {
         Self::Steps { count, start }
     }
 
+    /// Maps progress `t` through this easing curve.
     #[must_use]
     pub fn apply(self, t: f32) -> f32 {
         let t = t.clamp(0.0, 1.0);
@@ -79,7 +97,6 @@ impl Easing {
             Self::BackOut => back_out(t),
             Self::BackInOut => back_in_out(t),
             Self::BounceOut => bounce_out(t),
-            Self::Bezier(curve) => curve.apply(t),
             Self::Steps { count, start } => {
                 let count = f32::from(count.get());
                 ((t * count).floor() + f32::from(u8::from(start))).min(count) / count

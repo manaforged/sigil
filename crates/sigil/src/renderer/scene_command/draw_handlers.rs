@@ -2,20 +2,19 @@ use crate::hal::RenderedGlyph;
 use crate::style::Color;
 
 use crate::renderer::glyph_place::GlyphMode;
-use crate::renderer::raster_paint::{
-    RasterDrawParams, RasterFrame, RasterGroup, RasterInstance, RasterTextPipeline,
-};
-use crate::renderer::scene_command::walk::{QueuedGlyphs, Walk, pipeline_for, transform_rect};
-use crate::renderer::scene_command::{
-    DrawGlyphRun, DrawImage, DrawSprite, GlyphRun, SpriteKind, SpriteSource,
-};
+use crate::renderer::quad_paint::MaskParams;
+use crate::renderer::quad_paint::QuadInstance;
+use crate::renderer::quad_paint::{AtlasPipeline, QuadGroup, SpritePaint};
+use crate::renderer::scene_command::walk::transform_rect;
+use crate::renderer::scene_command::walk::{QueuedGlyphs, SceneWalk, pipeline_for};
+use crate::renderer::scene_command::{DrawImage, DrawSprite, GlyphRun, SpriteKind, SpriteSource};
 use crate::renderer::scene_instance::BlendSpace;
 use crate::renderer::scene_paint::PaintCtx;
-use crate::renderer::slug::{DrawParams, GlyphInstance, QueuedRun, RunFrame, SlugTextPipeline};
-use crate::renderer::sprite_paint::{SpritePaint, SpritePipeline};
+use crate::renderer::slug::GlyphInstance;
+use crate::renderer::slug::{DrawParams, QueuedRun, RunFrame, SlugTextPipeline};
 use crate::text::Paragraph;
 
-impl Walk<'_> {
+impl SceneWalk<'_> {
     pub(super) fn draw_sprite(&mut self, draw: &DrawSprite) {
         let transform = self.state.current_transform();
         if self
@@ -32,10 +31,10 @@ impl Walk<'_> {
         };
         let clip = self.state.current_clip();
         let pipeline = pipeline_for(
-            self.ctx.sprite_pipelines,
+            self.ctx.quad_pipelines,
             self.ctx.device,
             self.ctx.format,
-            (SpritePipeline::format, SpritePipeline::new),
+            (AtlasPipeline::format, AtlasPipeline::new),
         );
         pipeline.paint_sprite(
             &mut PaintCtx {
@@ -58,7 +57,7 @@ impl Walk<'_> {
         reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
     )]
     pub(super) fn draw_image(&mut self, draw: &DrawImage) {
-        let scale = crate::renderer::sprite_paint::raster_scale(
+        let scale = crate::renderer::quad_paint::raster_scale(
             self.state.current_transform(),
             self.ctx.scale,
             draw.destination,
@@ -68,10 +67,10 @@ impl Walk<'_> {
         };
         let packed = {
             let pipeline = pipeline_for(
-                self.ctx.sprite_pipelines,
+                self.ctx.quad_pipelines,
                 self.ctx.device,
                 self.ctx.format,
-                (SpritePipeline::format, SpritePipeline::new),
+                (AtlasPipeline::format, AtlasPipeline::new),
             );
             pipeline.register_image(self.ctx.device, self.ctx.queue, &source)
         };
@@ -100,8 +99,8 @@ impl Walk<'_> {
         self.draw_sprite(&sprite);
     }
 
-    pub(super) fn queue_glyph_run(&mut self, draw: &DrawGlyphRun) {
-        let run = &draw.run;
+    pub(super) fn queue_glyph_run(&mut self, draw: &GlyphRun) {
+        let run = draw;
         let transform = self.state.current_transform();
         let Some(plan) = run.plan(transform, self.ctx.scale) else {
             return;
@@ -127,7 +126,7 @@ impl Walk<'_> {
         let instances = if glyphs.is_empty() {
             Vec::new()
         } else {
-            self.outline_instances(glyphs, paragraph, (origin, transform), (color, clip))
+            self.outline_instances(glyphs, paragraph, (origin, transform), color)
         };
         if raster.is_empty() && instances.is_empty() {
             return;
@@ -144,7 +143,7 @@ impl Walk<'_> {
         glyphs: &[RenderedGlyph],
         paragraph: &Paragraph,
         (origin, transform): ((f32, f32), crate::renderer::scene_command::Transform),
-        (color, clip): (Color, Option<crate::geometry::Rect>),
+        color: Color,
     ) -> Vec<GlyphInstance> {
         let ctx = &mut self.ctx;
         let pipeline = pipeline_for(
@@ -158,16 +157,21 @@ impl Walk<'_> {
             &DrawParams {
                 device: ctx.device,
                 queue: ctx.queue,
+                #[cfg(any(test, feature = "kittest"))]
                 view: ctx.view,
+                #[cfg(any(test, feature = "kittest"))]
                 surface_width: ctx.viewport.0,
+                #[cfg(any(test, feature = "kittest"))]
                 surface_height: ctx.viewport.1,
                 scale: ctx.scale,
                 paragraph,
+                #[cfg(any(test, feature = "kittest"))]
                 glyphs: Some(glyphs),
                 origin,
                 transform,
                 color: Some(color),
-                clip,
+                #[cfg(any(test, feature = "kittest"))]
+                clip: None,
             },
         )
     }
@@ -178,15 +182,15 @@ impl Walk<'_> {
         paragraph: &Paragraph,
         origin: (f32, f32),
         color: Color,
-    ) -> (Vec<RasterInstance>, Option<Vec<RenderedGlyph>>) {
+    ) -> (Vec<QuadInstance>, Option<Vec<RenderedGlyph>>) {
         let ctx = &mut self.ctx;
         let pipeline = pipeline_for(
-            ctx.raster_pipelines,
+            ctx.quad_pipelines,
             ctx.device,
             ctx.format,
-            (RasterTextPipeline::format, RasterTextPipeline::new),
+            (AtlasPipeline::format, AtlasPipeline::new),
         );
-        let (raster, leftover) = pipeline.place_paragraph(&RasterDrawParams {
+        let (raster, leftover) = pipeline.place_paragraph(&MaskParams {
             device: ctx.device,
             queue: ctx.queue,
             scale: ctx.scale,
@@ -252,7 +256,7 @@ impl Walk<'_> {
                 Some(group) if group.clip == clip && group.range.end == start => {
                     group.range.end = end;
                 }
-                _ => pending.raster_groups.push(RasterGroup {
+                _ => pending.raster_groups.push(QuadGroup {
                     clip,
                     range: start..end,
                 }),
@@ -263,14 +267,14 @@ impl Walk<'_> {
         }
         ctx.stats.text_draws += pending.raster_groups.len();
         let pipeline = pipeline_for(
-            ctx.raster_pipelines,
+            ctx.quad_pipelines,
             ctx.device,
             ctx.format,
-            (RasterTextPipeline::format, RasterTextPipeline::new),
+            (AtlasPipeline::format, AtlasPipeline::new),
         );
-        pipeline.draw_batch(
+        pipeline.draw_masks(
             &mut *ctx.encoder,
-            &RasterFrame {
+            &RunFrame {
                 device: ctx.device,
                 view: ctx.view,
                 surface_width: ctx.viewport.0,

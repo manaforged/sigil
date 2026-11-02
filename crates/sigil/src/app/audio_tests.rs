@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 use super::{Player, progress_ratio};
 
@@ -16,7 +16,7 @@ fn progress_ratio_is_zero_on_empty_total_and_clamps_at_one() {
 
 #[test]
 fn tick_and_toggle_without_a_sink_leave_the_player_idle() {
-    Runtime::scope("audio-idle", || {
+    Owner::scope("audio-idle", || {
         let player = Player::new();
         player.tick();
         player.toggle();
@@ -27,7 +27,7 @@ fn tick_and_toggle_without_a_sink_leave_the_player_idle() {
 
 #[test]
 fn seek_without_sink_errors() {
-    Runtime::scope("audio-seek-idle", || {
+    Owner::scope("audio-seek-idle", || {
         let player = Player::new();
         let err = player.seek(0.5).unwrap_err();
         assert!(
@@ -61,7 +61,7 @@ fn silent_wav(millis: u32) -> Vec<u8> {
 #[test]
 #[ignore = "manual: needs an audio output device"]
 fn tracks_play_back_to_back_on_one_device() {
-    Runtime::scope("audio-queue", || {
+    Owner::scope("audio-queue", || {
         let player = Player::new();
         player.play_bytes(silent_wav(300)).unwrap();
         assert!(player.playing.peek());

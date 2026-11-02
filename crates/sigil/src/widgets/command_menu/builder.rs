@@ -1,21 +1,21 @@
 use std::rc::Rc;
 
-use crate::kernel::{Cx, IntoNode};
-use crate::style::{PaintTarget, Style, StyleSlot};
+use crate::kernel::NodeBuilder;
+use crate::style::Style;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::Activate;
-use super::nav::{Entry, SubmitObserver};
-use super::render::into_node_builder;
+use super::nav::{PaletteEntry, SubmitObserver};
+use crate::widgets::{Edit, Sealed, Widget};
 
 #[derive(Default)]
 pub(super) struct LevelDef {
-    pub(super) entries: Vec<Entry>,
+    pub(super) entries: Vec<PaletteEntry>,
 }
 
 impl LevelDef {
     fn item(&mut self, label: impl Into<String>, action: impl Fn() + 'static) {
-        self.entries.push(Entry::Leaf {
+        self.entries.push(PaletteEntry::Leaf {
             label: label.into(),
             action: Some(Rc::new(action)),
             disabled: false,
@@ -23,7 +23,7 @@ impl LevelDef {
     }
 
     fn submenu(&mut self, label: impl Into<String>, def: Self) {
-        self.entries.push(Entry::Submenu {
+        self.entries.push(PaletteEntry::Submenu {
             label: label.into(),
             disabled: false,
             entries: Rc::new(def.entries),
@@ -31,7 +31,7 @@ impl LevelDef {
     }
 
     fn disabled(&mut self, label: impl Into<String>) {
-        self.entries.push(Entry::Leaf {
+        self.entries.push(PaletteEntry::Leaf {
             label: label.into(),
             action: None,
             disabled: true,
@@ -39,18 +39,21 @@ impl LevelDef {
     }
 }
 
+/// Builder of a command palette submenu.
 #[derive(Default)]
 pub struct SubmenuBuilder {
     level: LevelDef,
 }
 
 impl SubmenuBuilder {
+    /// Adds an item.
     #[must_use]
     pub fn item(mut self, label: impl Into<String>, action: impl Fn() + 'static) -> Self {
         self.level.item(label, action);
         self
     }
 
+    /// Sets the submenu.
     #[must_use]
     pub fn submenu(mut self, label: impl Into<String>, build: impl FnOnce(Self) -> Self) -> Self {
         let nested = build(Self::default()).level;
@@ -58,6 +61,7 @@ impl SubmenuBuilder {
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, label: impl Into<String>) -> Self {
         self.level.disabled(label);
@@ -65,6 +69,7 @@ impl SubmenuBuilder {
     }
 }
 
+/// A command palette; `layout`, `width`, and `height` size each level panel, and `map_node` changes the root.
 #[derive(Default)]
 pub struct CommandMenuBuilder {
     pub(super) level: LevelDef,
@@ -72,21 +77,25 @@ pub struct CommandMenuBuilder {
     pub(super) on_cancel: Option<Activate>,
     pub(super) placeholder: String,
     pub(super) style_accumulator: Style,
-    pub(super) layout_overrides: LayoutOverrides,
+    pub(super) panel_layout: LayoutOverrides,
+    layout_overrides: LayoutOverrides,
 }
 
+/// A command palette.
 #[must_use]
 pub fn command_menu() -> CommandMenuBuilder {
     CommandMenuBuilder::default()
 }
 
 impl CommandMenuBuilder {
+    /// Adds an item.
     #[must_use]
     pub fn item(mut self, label: impl Into<String>, action: impl Fn() + 'static) -> Self {
         self.level.item(label, action);
         self
     }
 
+    /// Sets the submenu.
     #[must_use]
     pub fn submenu(
         mut self,
@@ -98,24 +107,28 @@ impl CommandMenuBuilder {
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, label: impl Into<String>) -> Self {
         self.level.disabled(label);
         self
     }
 
+    /// Sets the submit.
     #[must_use]
     pub fn submit(mut self, cb: impl Fn(&str) + 'static) -> Self {
         self.on_submit = Some(Rc::new(cb));
         self
     }
 
+    /// Sets the placeholder.
     #[must_use]
     pub fn placeholder(mut self, text: impl Into<String>) -> Self {
         self.placeholder = text.into();
         self
     }
 
+    /// Sets the cancel.
     #[must_use]
     pub fn cancel(mut self, cb: impl Fn() + 'static) -> Self {
         self.on_cancel = Some(Rc::new(cb));
@@ -123,21 +136,27 @@ impl CommandMenuBuilder {
     }
 }
 
-impl WidgetLayoutExt for CommandMenuBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
+builder_impls!([] CommandMenuBuilder: paint(style_accumulator), node);
+
+impl Sealed for CommandMenuBuilder {
+    fn edit(mut self, edit: Edit) -> Self {
+        match edit {
+            Edit::Layout(edit) => self.panel_layout.edit(edit),
+            other => self
+                .layout_overrides
+                .node_hook(move |node| other.apply(node)),
+        }
+        self
+    }
+
+    fn map_target(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.map_node(f)
     }
 }
 
-impl PaintTarget for CommandMenuBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl IntoNode for CommandMenuBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        let hooks = self.layout_overrides.hooks();
-        hooks.finish(into_node_builder(self)).build(cx)
+impl Widget for CommandMenuBuilder {
+    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.layout_overrides.node_hook(f);
+        self
     }
 }

@@ -1,4 +1,4 @@
-use super::flow::{Dir, Edge, Graph, Node, Shape};
+use super::flow::{Dir, FlowEdge, FlowNode, Graph, NodeShape};
 
 const MAX_EDGES: usize = 1024;
 const MAX_STATEMENT_EDGES: usize = 256;
@@ -9,10 +9,10 @@ struct Link {
     arrow: bool,
 }
 
-type Detail = Option<(Vec<String>, Shape)>;
+type NodeDetail = Option<(Vec<String>, NodeShape)>;
 
 enum Part {
-    Nodes(Vec<(String, Detail)>),
+    Nodes(Vec<(String, NodeDetail)>),
     Link(Link),
 }
 
@@ -111,7 +111,7 @@ impl Graph {
                                 self.looped(*source, &label);
                                 continue;
                             }
-                            self.edges.push(Edge {
+                            self.edges.push(FlowEdge {
                                 from: *source,
                                 to: *target,
                                 label,
@@ -126,7 +126,12 @@ impl Graph {
         }
     }
 
-    fn node_or_terminal(&mut self, id: &str, detail: Detail, at: (bool, Option<&str>)) -> usize {
+    fn node_or_terminal(
+        &mut self,
+        id: &str,
+        detail: NodeDetail,
+        at: (bool, Option<&str>),
+    ) -> usize {
         let (first, scope) = at;
         if id == "[*]" {
             if let Some(scope) = scope {
@@ -134,28 +139,28 @@ impl Graph {
                     return self.node(scope, None);
                 }
                 let key = format!("[*]end:{scope}");
-                return self.node(&key, Some((vec!["◉".to_string()], Shape::Terminal)));
+                return self.node(&key, Some((vec!["◉".to_string()], NodeShape::Terminal)));
             }
             let (key, glyph) = if first {
                 ("[*]start", "●")
             } else {
                 ("[*]end", "◉")
             };
-            return self.node(key, Some((vec![glyph.to_string()], Shape::Terminal)));
+            return self.node(key, Some((vec![glyph.to_string()], NodeShape::Terminal)));
         }
         self.node(id, detail)
     }
 
-    pub(super) fn node(&mut self, id: &str, detail: Detail) -> usize {
+    pub(super) fn node(&mut self, id: &str, detail: NodeDetail) -> usize {
         let index = self
             .nodes
             .iter()
             .position(|node| node.id == id)
             .unwrap_or_else(|| {
-                self.nodes.push(Node {
+                self.nodes.push(FlowNode {
                     id: id.to_string(),
                     label: vec![id.to_string()],
-                    shape: Shape::Box,
+                    shape: NodeShape::Box,
                     dummy: false,
                     dashed: false,
                 });
@@ -191,7 +196,7 @@ fn tokens(line: &str) -> Vec<Part> {
     let chars: Vec<char> = line.chars().collect();
     let mut at = 0;
     let mut parts = Vec::new();
-    let mut nodes: Vec<(String, Detail)> = Vec::new();
+    let mut nodes: Vec<(String, NodeDetail)> = Vec::new();
     while at < chars.len() {
         let ch = chars.get(at).copied().unwrap_or(' ');
         if ch.is_whitespace() || ch == ';' || ch == '&' {
@@ -293,7 +298,7 @@ fn inline_label(chars: &[char], at: usize) -> Option<(String, usize)> {
     None
 }
 
-fn node_token(chars: &[char], at: usize) -> ((String, Detail), usize) {
+fn node_token(chars: &[char], at: usize) -> ((String, NodeDetail), usize) {
     if chars.get(at..at.saturating_add(3)) == Some(&['[', '*', ']']) {
         return (("[*]".to_string(), None), at.saturating_add(3));
     }
@@ -342,19 +347,19 @@ fn group_end(chars: &[char], start: usize) -> usize {
     end
 }
 
-fn shape_of(raw: &str, open: char) -> Shape {
+fn shape_of(raw: &str, open: char) -> NodeShape {
     let paired = [
-        ("((", Shape::Circle),
-        ("([", Shape::Stadium),
-        ("[[", Shape::Subroutine),
-        ("[(", Shape::Cylinder),
-        ("{{", Shape::Hexagon),
+        ("((", NodeShape::Circle),
+        ("([", NodeShape::Stadium),
+        ("[[", NodeShape::Subroutine),
+        ("[(", NodeShape::Cylinder),
+        ("{{", NodeShape::Hexagon),
     ];
     let single = match open {
-        '{' => Shape::Diamond,
-        '(' => Shape::Round,
-        '>' => Shape::Flag,
-        _ => Shape::Box,
+        '{' => NodeShape::Diamond,
+        '(' => NodeShape::Round,
+        '>' => NodeShape::Flag,
+        _ => NodeShape::Box,
     };
     paired
         .into_iter()

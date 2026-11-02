@@ -173,24 +173,14 @@ fn selected_range(
 
 type TextNodes = (HashMap<NodeId, usize>, Vec<(NodeId, String)>);
 
-fn collect_text(cx: &Cx, id: NodeId, texts: &mut Vec<(NodeId, String)>) {
-    let Some(node) = cx.get(id) else {
-        return;
-    };
-    if hidden(node) {
-        return;
-    }
-    if let NodeType::Text { content, .. } = &node.kind {
-        texts.push((id, content.resolve()));
-    }
-    for child in node.children().iter().copied() {
-        collect_text(cx, child, texts);
-    }
-}
-
 fn text_nodes(cx: &Cx, region: NodeId) -> TextNodes {
-    let mut texts = Vec::new();
-    collect_text(cx, region, &mut texts);
+    let texts: Vec<(NodeId, String)> =
+        crate::events::hit_test::walk_order(cx, &[region], |_, node| !hidden(node))
+            .filter_map(|(id, node)| match &node.kind {
+                NodeType::Text { content, .. } => Some((id, content.resolve())),
+                _ => None,
+            })
+            .collect();
     let order = texts
         .iter()
         .enumerate()

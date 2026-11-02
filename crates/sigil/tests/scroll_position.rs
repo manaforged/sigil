@@ -4,16 +4,16 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::events::Event;
 use sigil::events::ScrollEvent;
 use sigil::geometry::Point;
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil_kittest::Harness;
-use sigil_kittest::input::{pointer_down, pointer_move, scroll_lines};
 
 #[test]
 fn scroll_and_pointer_handlers_see_the_same_local_position() {
-    Runtime::scope("scroll-local", || {
+    Owner::scope("scroll-local", || {
         let seen = signal((Point::new(0.0, 0.0), Point::new(0.0, 0.0)));
         let mut ui = Harness::new(move || {
             container()
@@ -31,8 +31,11 @@ fn scroll_and_pointer_handlers_see_the_same_local_position() {
         })
         .pixels(600, 400);
         ui.settle();
-        ui.send([pointer_move(150.0, 150.0), pointer_down(150.0, 150.0)]);
-        ui.send([scroll_lines(150.0, 150.0, 1.0)]);
+        ui.send([
+            Event::pointer_move(Point::new(150.0, 150.0)),
+            Event::pointer_down(Point::new(150.0, 150.0)),
+        ]);
+        ui.send([Event::wheel(Point::new(150.0, 150.0), 1.0)]);
         ui.settle();
         let (pointer, wheel) = seen.peek();
         assert_eq!(pointer, Point::new(50.0, 50.0));

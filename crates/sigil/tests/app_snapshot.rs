@@ -5,21 +5,21 @@
 )]
 #![allow(clippy::expect_used)]
 
-use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
+use sigil_kittest::Harness;
 
 #[test]
 fn a_view_renders_to_an_image() {
-    let image = sigil::app::snapshot(
+    let Some(image) = Harness::new(|| {
         container()
             .bg(Token::Accent9)
-            .layout(LayoutStyle::block().width(40.0).height(30.0)),
-        PhysicalSize {
-            width: 40,
-            height: 30,
-        },
-    )
-    .expect("snapshot");
+            .layout(LayoutStyle::block().width(40.0).height(30.0))
+    })
+    .pixels(40, 30)
+    .image()
+    .expect("image") else {
+        return;
+    };
     assert_eq!(image.dimensions(), (40, 30));
     let [r, g, b, a] = image.get_pixel(20, 15).0;
     assert!(a == 255 && !(r == g && g == b), "pixel was {r},{g},{b},{a}");

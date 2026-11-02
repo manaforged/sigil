@@ -1,9 +1,8 @@
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
-use crate::layout::LayoutReactiveExt;
+use crate::kernel::{NodeBuilder, container};
+use crate::layout::Position;
 use crate::layout::{Dimension, LayoutStyle, Overflow};
-use crate::layout::{LayoutBuilderExt, Position};
 use crate::reactive::{Signal, derived, signal};
-use crate::style::{NodeStyleExt, NumericAtomKind};
+use crate::widgets::Widget;
 
 use std::ops::Deref;
 
@@ -16,7 +15,7 @@ use super::strip::{BoundStrip, bound_strip};
 use super::window::{self, strip_height};
 use super::{
     BoundItems, BoundVisibleThunk, BuildAxes, DEFAULT_ROW_HEIGHT, DEFAULT_VIEWPORT_HEIGHT,
-    RowRender, Sizing, VirtualListBuilder, bound_slice,
+    ListSizing, RowRender, VirtualListBuilder, bound_slice,
 };
 
 impl<T, R> VirtualListBuilder<T, R>
@@ -24,6 +23,7 @@ where
     T: 'static,
     R: RowRender<T>,
 {
+    /// Sets the scrollbar.
     #[must_use]
     pub const fn scrollbar(mut self, on: bool) -> Self {
         self.scrollbar = on;
@@ -62,13 +62,13 @@ where
         self.measured.then(|| make(self.row_key.clone(), estimate))
     }
 
-    pub(super) fn into_node_builder(mut self) -> NodeBuilder {
+    fn root(mut self) -> NodeBuilder {
         if self.bound.is_none() {
             if self.item_height.is_some() && !self.measured {
                 self.ensure_row_tops();
             }
             let items = signal(std::rc::Rc::new(std::mem::take(&mut self.items)));
-            return self.bind_items(items).into_node_builder();
+            return self.bind_items(items).root();
         }
         let (axes, measure) = self.axes();
         let count = self
@@ -132,7 +132,7 @@ where
         let bound = self
             .bound
             .take()
-            .expect("build_bound called without virtual_list_bind");
+            .expect("build_bound called without a bound list");
         let content = (bound.thunk)(
             BoundStrip {
                 render: std::rc::Rc::new(self.render),
@@ -153,14 +153,13 @@ where
             viewport_container(axes.viewport_height, axes.width).child(content),
             axes,
         );
-        let root = apply_viewport_overrides(
+        let root = viewport_layout(
             root,
-            &self.layout_overrides,
             axes.viewport_height,
             self.viewport_width,
-            self.sizing == Sizing::Fill,
+            self.sizing == ListSizing::Fill,
         );
-        let root = shrink_bound(root, axes, self.sizing == Sizing::ShrinkToContent);
+        let root = shrink_bound(root, axes, self.sizing == ListSizing::ShrinkToContent);
         let root = attach_wheel(root, axes);
         if self.keyboard_enabled {
             attach_key_handlers(root, KeyboardRuntime::new(axes, bound.live_rows))
@@ -228,13 +227,7 @@ fn with_scrollbar(show: bool, root: NodeBuilder, axes: BuildAxes) -> NodeBuilder
     )
 }
 
-fn apply_viewport_overrides(
-    root: NodeBuilder,
-    overrides: &super::LayoutOverrides,
-    height: f32,
-    width: Option<f32>,
-    fill: bool,
-) -> NodeBuilder {
+fn viewport_layout(root: NodeBuilder, height: f32, width: Option<f32>, fill: bool) -> NodeBuilder {
     let base = LayoutStyle::block().overflow_y(Overflow::Hidden);
     let base = if fill {
         base.width(Dimension::Fill)
@@ -249,7 +242,7 @@ fn apply_viewport_overrides(
             None => base,
         }
     };
-    root.with(overrides.clone().apply(base))
+    root.with(base)
 }
 
 fn shrink_bound(root: NodeBuilder, axes: BuildAxes, shrinks: bool) -> NodeBuilder {
@@ -264,14 +257,7 @@ fn shrink_bound(root: NodeBuilder, axes: BuildAxes, shrinks: bool) -> NodeBuilde
             axes.viewport_height
         }
     });
-    root.animate(NumericAtomKind::Height, height)
+    root.animate_height(height)
 }
 
-impl<T: 'static, R: RowRender<T>> IntoNode for VirtualListBuilder<T, R> {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([T: 'static, R: RowRender<T>] VirtualListBuilder<T, R>: node(pub(crate)));

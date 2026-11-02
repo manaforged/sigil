@@ -19,7 +19,7 @@ use crate::renderer::scene_command::{
     DecorationGeometry, DecorationKind, DrawDecoration, LinearGradient, Transform,
 };
 
-use super::bound::Bound;
+use super::bound::CpuBound;
 
 const WAVE_STEP: f32 = 1.0;
 const WAVE_STEPS_PER_PERIOD: f32 = 16.0;
@@ -126,7 +126,7 @@ pub(super) fn blit(target: &mut Pixmap, source: &Pixmap, transform: TsTransform,
         source.width() as f32,
         source.height() as f32,
     );
-    let Some(rect) = Bound::of(target, transform).clip_rect(whole) else {
+    let Some(rect) = CpuBound::of(target, transform).clip_rect(whole) else {
         return;
     };
     let paint = Paint {
@@ -182,7 +182,7 @@ pub(super) fn decoration(target: &mut Pixmap, draw: &DrawDecoration, brush: &Bru
         return;
     };
     let paint = solid(draw.color, opacity_of(draw.opacity, brush.opacity));
-    let bound = Bound::of(target, brush.transform);
+    let bound = CpuBound::of(target, brush.transform);
     match draw.kind {
         DecorationKind::Underline | DecorationKind::Strikethrough => {
             let Some(rect) = bound.clip_rect(geometry.line()) else {
@@ -213,7 +213,7 @@ fn band_mask(
     brush: &Brush<'_>,
     paint: &Paint<'_>,
 ) -> Option<Mask> {
-    let bound = Bound::of(target, brush.transform).padded(geometry.reach());
+    let bound = CpuBound::of(target, brush.transform).padded(geometry.reach());
     let band = geometry.band;
     let columns = Rect::new(
         Point::new(band.origin.x, band.origin.y - geometry.reach()),
@@ -232,7 +232,7 @@ fn band_mask(
     Some(mask)
 }
 
-fn wave(geometry: &DecorationGeometry, bound: Bound) -> Option<Path> {
+fn wave(geometry: &DecorationGeometry, bound: CpuBound) -> Option<Path> {
     let band = geometry.band;
     let reach = geometry.reach();
     let span = Rect::new(

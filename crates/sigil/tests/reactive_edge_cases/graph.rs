@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn multiple_subscribers_to_same_signal_all_fire() {
-    Runtime::scope("multi_sub", || {
+    Owner::scope("multi_sub", || {
         let n = signal(0_i32);
         let a = Rc::new(Cell::new(-1));
         let b = Rc::new(Cell::new(-1));
@@ -22,7 +22,7 @@ fn multiple_subscribers_to_same_signal_all_fire() {
 
 #[test]
 fn diamond_dependency_propagates_through_intermediate_signal() {
-    Runtime::scope("diamond", || {
+    Owner::scope("diamond", || {
         let src = signal(1_i32);
         let mid = signal(0_i32);
         let out = Rc::new(Cell::new(-1));
@@ -41,7 +41,7 @@ fn diamond_dependency_propagates_through_intermediate_signal() {
 
 #[test]
 fn conditional_dependencies_are_cleared_between_runs() {
-    Runtime::scope("conditional_deps", || {
+    Owner::scope("conditional_deps", || {
         let cond = signal(true);
         let a = signal(1_i32);
         let b = signal(100_i32);
@@ -74,7 +74,7 @@ fn conditional_dependencies_are_cleared_between_runs() {
 
 #[test]
 fn effect_with_zero_deps_runs_once_and_never_again() {
-    Runtime::scope("zero_dep", || {
+    Owner::scope("zero_dep", || {
         let runs = Rc::new(Cell::new(0_u32));
         {
             let runs = Rc::clone(&runs);
@@ -91,7 +91,7 @@ fn effect_with_zero_deps_runs_once_and_never_again() {
 
 #[test]
 fn write_to_signal_with_no_subscribers_is_safe() {
-    Runtime::scope("orphan_write", || {
+    Owner::scope("orphan_write", || {
         let n = signal(0_i32);
         n.set(1);
         n.set(2);
@@ -102,7 +102,7 @@ fn write_to_signal_with_no_subscribers_is_safe() {
 
 #[test]
 fn signals_of_different_types_dont_conflate() {
-    Runtime::scope("type_disjoint", || {
+    Owner::scope("type_disjoint", || {
         let i = signal(1_i32);
         let s = signal(String::from("hi"));
         let f = signal(1.5_f64);
@@ -123,7 +123,7 @@ fn signals_of_different_types_dont_conflate() {
 
 #[test]
 fn set_with_same_value_does_not_fire_effects() {
-    Runtime::scope("set_same_value", || {
+    Owner::scope("set_same_value", || {
         let n = signal(7_i32);
         let runs = Rc::new(Cell::new(0_u32));
         {

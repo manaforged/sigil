@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -6,7 +7,7 @@
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::renderer::CpuRenderer;
-use sigil::scene::{CommandScene, SceneBuilder, SceneRectStyle};
+use sigil::scene::{CommandScene, DrawRect, SceneBuilder};
 use sigil::style::{Color, Rgba8};
 
 const RED: Rgba8 = Rgba8 {
@@ -19,14 +20,14 @@ const RED: Rgba8 = Rgba8 {
 fn overlapping_group() -> CommandScene {
     let mut scene = SceneBuilder::new();
     scene.with_layer(0.5, |group| {
-        group.draw_rect(
+        group.draw_rect(DrawRect::new(
             Rect::new(Point::new(0.0, 0.0), 60.0, 40.0),
-            SceneRectStyle::solid(RED),
-        );
-        group.draw_rect(
+            RED,
+        ));
+        group.draw_rect(DrawRect::new(
             Rect::new(Point::new(40.0, 0.0), 60.0, 40.0),
-            SceneRectStyle::solid(RED),
-        );
+            RED,
+        ));
     });
     scene.finish()
 }
@@ -72,14 +73,14 @@ fn gpu_group_opacity_blends_overlap_once() {
 fn small_group() -> CommandScene {
     let mut scene = SceneBuilder::new();
     scene.with_layer(0.5, |group| {
-        group.draw_rect(
+        group.draw_rect(DrawRect::new(
             Rect::new(Point::new(10.0, 10.0), 20.0, 20.0),
-            SceneRectStyle::solid(RED),
-        );
-        group.draw_rect(
+            RED,
+        ));
+        group.draw_rect(DrawRect::new(
             Rect::new(Point::new(20.0, 10.0), 20.0, 20.0),
-            SceneRectStyle::solid(RED),
-        );
+            RED,
+        ));
     });
     scene.finish()
 }

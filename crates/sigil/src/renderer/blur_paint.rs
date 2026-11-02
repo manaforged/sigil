@@ -8,8 +8,8 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt as _;
 
+use crate::Error;
 use crate::renderer::blur_shader::BLUR_SHADER;
-use crate::renderer::error::RendererError;
 use crate::renderer::fill_paint::setup::{
     QuadDesc, QuadPipeline, begin_pass, buffer_group, buffer_layout, linear_sampler, texture_group,
     texture_layout,
@@ -105,16 +105,14 @@ impl BlurPipeline {
         pool: &mut LayerPool,
         src: PassSrc<'_>,
         sigma: f32,
-    ) -> Result<Option<wgpu::TextureView>, RendererError> {
+    ) -> Result<Option<wgpu::TextureView>, Error> {
         let radius = box_radius(sigma);
         if radius == 0 {
             return Ok(None);
         }
         let pair = [
-            pool.acquire(ctx.device, src.w, src.h, self.quad.format)
-                .map_err(RendererError::Layer)?,
-            pool.acquire(ctx.device, src.w, src.h, self.quad.format)
-                .map_err(RendererError::Layer)?,
+            pool.acquire(ctx.device, src.w, src.h, self.quad.format)?,
+            pool.acquire(ctx.device, src.w, src.h, self.quad.format)?,
         ];
         let viewport = (src.w as f32, src.h as f32);
         for pass in 0..BLUR_PASSES * 2 {

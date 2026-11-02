@@ -1,7 +1,8 @@
-use crate::geometry::{LogicalSize, Point, Rect, Size};
+use crate::geometry::{Point, Rect, Size};
 use crate::kernel::*;
-use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use crate::layout::{LayoutEngine, LayoutStyle};
 use crate::style::Rgba8;
+use crate::widgets::Widget;
 
 use super::{
     BlendSpace, RectInstance, draw_gradient_instance, draw_rect_instance, draw_shadow_instance,
@@ -11,17 +12,9 @@ use crate::renderer::shadow_paint::{Shadow, ShadowKind};
 use crate::scene::CornerRadii;
 use crate::scene::emit_scene;
 use crate::scene::{
-    DrawGradient, DrawRect, GradientStop, LinearGradient, SceneCommand, SceneGradientStyle,
-    SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
+    DrawGradient, DrawRect, GradientStop, LinearGradient, SceneCommand, Stroke, StrokeAlign,
+    StrokeStyle,
 };
-
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _: &TextContent, _: Size) -> LogicalSize {
-        LogicalSize::default()
-    }
-}
 
 fn accent(width: f32, height: f32) -> NodeBuilder {
     container()
@@ -30,7 +23,7 @@ fn accent(width: f32, height: f32) -> NodeBuilder {
 }
 
 fn lay_out(cx: &mut Cx, root: NodeId) {
-    LayoutEngine::with_text_measure(Box::new(StubMeasure))
+    LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)))
         .compute(cx, root, Size::fixed(320.0, 240.0))
         .expect("compute succeeds");
 }
@@ -46,7 +39,7 @@ fn collect_instances_drops_text_items() {
             .child(accent(60.0, 48.0)),
     );
     lay_out(&mut cx, root);
-    let instances = collect_rect_instances(&emit_scene(&cx, root));
+    let instances = collect_rect_instances(&emit_scene(&cx, root, None));
     assert_eq!(instances.len(), 2);
 }
 
@@ -66,7 +59,7 @@ fn emit_scene_skips_surface_hole_and_its_children() {
             ),
     );
     lay_out(&mut cx, root);
-    let instances = collect_rect_instances(&emit_scene(&cx, root));
+    let instances = collect_rect_instances(&emit_scene(&cx, root, None));
     assert_eq!(instances.len(), 1, "hole and its children must not paint");
 }
 
@@ -75,7 +68,7 @@ fn rect_instance_carries_position_and_color() {
     let mut cx = Cx::new_root();
     let root = cx.add(accent(120.0, 48.0));
     lay_out(&mut cx, root);
-    let instances = collect_rect_instances(&emit_scene(&cx, root));
+    let instances = collect_rect_instances(&emit_scene(&cx, root, None));
     assert_eq!(instances.len(), 1);
     let inst: &RectInstance = instances.first().expect("one instance");
     assert!((inst.rect[2] - 120.0).abs() < 1e-6);
@@ -102,7 +95,7 @@ fn draw_rect_instance_packs_solid_and_dashed_strokes() {
             [3.0, 0.0, 9.0, 6.0],
         ),
     ] {
-        let draw = DrawRect::new(rect(), rect_style(stroke(style, align, width)));
+        let draw = rect_style(rect(), stroke(style, align, width));
         let inst = draw_rect_instance(&draw, 1.0, BlendSpace::Gamma);
         assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
         assert_array_close(inst.stroke_meta, meta);
@@ -112,7 +105,7 @@ fn draw_rect_instance_packs_solid_and_dashed_strokes() {
 #[test]
 fn draw_gradient_instance_packs_outside_stroke() {
     let stroke = stroke(StrokeStyle::Solid, StrokeAlign::Outside, 4.0);
-    let draw = DrawGradient::new(rect(), gradient_style(stroke));
+    let draw = gradient_style(rect(), stroke);
     let inst = draw_gradient_instance(&draw, 1.0, 0, 2, BlendSpace::Gamma);
 
     assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
@@ -122,11 +115,7 @@ fn draw_gradient_instance_packs_outside_stroke() {
 #[test]
 fn stroke_color_uses_fill_blend_space_conversion() {
     let stroke = stroke(StrokeStyle::Solid, StrokeAlign::Centered, 2.0);
-    let inst = draw_rect_instance(
-        &DrawRect::new(rect(), rect_style(stroke)),
-        1.0,
-        BlendSpace::Linear,
-    );
+    let inst = draw_rect_instance(&rect_style(rect(), stroke), 1.0, BlendSpace::Linear);
 
     let expected = BlendSpace::Linear.rgba(stroke.color);
     assert_array_close(inst.stroke_params, expected);
@@ -142,30 +131,24 @@ fn draw_rect_instance_packs_corner_radii() {
         (CornerRadii::top(8.0), [8.0, 8.0, 0.0, 0.0]),
         (CornerRadii::uniform(6.0), [6.0; 4]),
     ] {
-        let style = SceneRectStyle::new(color(), radii, 10_000);
-        let inst = draw_rect_instance(&DrawRect::new(rect(), style), 1.0, BlendSpace::Linear);
+        let style = |rect: crate::geometry::Rect| DrawRect::new(rect, color()).border_radius(radii);
+        let inst = draw_rect_instance(&style(rect()), 1.0, BlendSpace::Linear);
         assert_array_close(inst.corner_radii, expected);
     }
 }
 
 #[test]
 fn draw_gradient_instance_packs_corner_radii() {
-    let style = SceneGradientStyle::new(gradient(), CornerRadii::ZERO, 10_000);
-    let inst = draw_gradient_instance(
-        &DrawGradient::new(rect(), style),
-        1.0,
-        0,
-        2,
-        BlendSpace::Linear,
-    );
+    let style = |rect: crate::geometry::Rect| DrawGradient::new(rect, gradient());
+    let inst = draw_gradient_instance(&style(rect()), 1.0, 0, 2, BlendSpace::Linear);
 
     assert_array_close(inst.corner_radii, [0.0, 0.0, 0.0, 0.0]);
 }
 
 #[test]
 fn draw_rect_instance_packs_zero_stroke_when_none() {
-    let style = SceneRectStyle::new(color(), CornerRadii::ZERO, 10_000);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), style), 1.0, BlendSpace::Linear);
+    let style = |rect: crate::geometry::Rect| DrawRect::new(rect, color());
+    let inst = draw_rect_instance(&style(rect()), 1.0, BlendSpace::Linear);
 
     assert_array_close(inst.stroke_params, [0.0; 4]);
     assert_array_close(inst.stroke_meta, [0.0; 4]);
@@ -218,12 +201,12 @@ fn assert_array_close(actual_values: [f32; 4], expected_values: [f32; 4]) {
     }
 }
 
-fn rect_style(stroke: Stroke) -> SceneRectStyle {
-    SceneRectStyle::new(color(), CornerRadii::ZERO, 10_000).with_stroke(stroke)
+fn rect_style(rect: crate::geometry::Rect, stroke: Stroke) -> DrawRect {
+    DrawRect::new(rect, color()).stroke(stroke)
 }
 
-fn gradient_style(stroke: Stroke) -> SceneGradientStyle {
-    SceneGradientStyle::new(gradient(), CornerRadii::ZERO, 10_000).with_stroke(stroke)
+fn gradient_style(rect: crate::geometry::Rect, stroke: Stroke) -> DrawGradient {
+    DrawGradient::new(rect, gradient()).stroke(stroke)
 }
 
 const fn stroke(style: StrokeStyle, align: StrokeAlign, width: f32) -> Stroke {

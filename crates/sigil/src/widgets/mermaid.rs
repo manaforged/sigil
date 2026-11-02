@@ -1,7 +1,8 @@
 use crate::kernel::{NodeBuilder, Role, container, fragment, text};
+use crate::layout::LayoutStyle;
 use crate::layout::snap::CellForm;
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Reactive;
+use crate::widgets::Widget;
 
 mod canvas;
 mod flow;
@@ -16,6 +17,7 @@ mod sequence;
 mod state_parse;
 mod strokes;
 
+/// A rendered mermaid diagram.
 #[must_use]
 pub fn mermaid(source: impl Reactive<String>) -> NodeBuilder {
     fragment().children_reactive(move || [figure(&source.read())])

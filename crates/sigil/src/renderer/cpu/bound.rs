@@ -26,14 +26,14 @@ const ARC_DIRS: [[(f32, f32); 2]; 4] = [
 ];
 
 #[derive(Clone, Copy)]
-pub(super) struct Bound {
+pub(super) struct CpuBound {
     transform: TsTransform,
     width: u32,
     height: u32,
     pad: f32,
 }
 
-impl Bound {
+impl CpuBound {
     pub(super) const fn new(transform: TsTransform, width: u32, height: u32) -> Self {
         Self {
             transform,
@@ -117,7 +117,7 @@ pub(super) fn expand(rect: Rect, by: f32) -> Rect {
     )
 }
 
-pub(super) fn rounded_rect(rect: Rect, radii: CornerRadii, bound: Bound) -> Option<Path> {
+pub(super) fn rounded_rect(rect: Rect, radii: CornerRadii, bound: CpuBound) -> Option<Path> {
     if rect.width <= 0.0 || rect.height <= 0.0 {
         return None;
     }
@@ -138,7 +138,7 @@ pub(super) fn rect_mask(
     transform: TsTransform,
     (width, height): (u32, u32),
 ) -> Option<Mask> {
-    let path = rounded_rect(rect, radii, Bound::new(transform, width, height))?;
+    let path = rounded_rect(rect, radii, CpuBound::new(transform, width, height))?;
     let mut mask = Mask::new(width, height)?;
     mask.fill_path(&path, FillRule::Winding, true, transform);
     Some(mask)

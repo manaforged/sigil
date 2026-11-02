@@ -1,9 +1,8 @@
 use serde_json::{Value, json};
 
 use crate::events::{
-    KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
-    PointerEvent, PointerEventInit, PointerKind, PointerPhase, ScrollDelta, ScrollEvent,
-    ScrollEventInit, ScrollPhase, ShellEvent,
+    Event, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons, PointerPhase,
+    ScrollDelta, ScrollPhase,
 };
 use crate::geometry::Point;
 
@@ -14,6 +13,14 @@ enum Op {
     Scroll,
     Key,
     Type,
+}
+
+pub(super) fn is_input(request: &Value) -> bool {
+    request
+        .get("op")
+        .and_then(Value::as_str)
+        .and_then(parse_op)
+        .is_some()
 }
 
 fn parse_op(name: &str) -> Option<Op> {
@@ -29,7 +36,7 @@ fn parse_op(name: &str) -> Option<Op> {
     })
 }
 
-pub(super) fn events_of(request: &Value, unit: f32) -> Result<Vec<ShellEvent>, String> {
+pub(super) fn events_of(request: &Value, unit: f32) -> Result<Vec<Event>, String> {
     let name = request
         .get("op")
         .and_then(Value::as_str)
@@ -114,41 +121,32 @@ fn pointer(
     phase: PointerPhase,
     unit: f32,
     button: Option<MouseButton>,
-) -> Option<ShellEvent> {
+) -> Option<Event> {
     let at = pos(request, unit)?;
-    Some(ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: at,
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button,
-        buttons: held(button, phase),
-        modifiers: modifiers(request),
-        phase,
-    })))
+    Some(
+        Event::pointer(phase, at)
+            .button(button)
+            .buttons(held(button, phase))
+            .modifiers(modifiers(request)),
+    )
 }
 
-fn key_event(request: &Value, phase: KeyPhase) -> Option<ShellEvent> {
+fn key_event(request: &Value, phase: KeyPhase) -> Option<Event> {
     let name = request.get("key").and_then(Value::as_str)?;
     let (key, text) = if name.chars().count() == 1 {
-        (
-            LogicalKey::character(name),
-            Some(smol_str::SmolStr::from(name)),
-        )
+        (LogicalKey::character(name), Some(String::from(name)))
     } else {
-        let named: keyboard_types::NamedKey = name.parse().ok()?;
+        let named: crate::events::Key = name.parse().ok()?;
         (LogicalKey::named(named), None)
     };
-    Some(ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key,
-        physical: keyboard_types::Code::Unidentified,
-        modifiers: modifiers(request),
-        repeat: false,
-        phase,
-        text,
-    })))
+    Some(
+        Event::key(key, phase)
+            .modifiers(modifiers(request))
+            .text(text),
+    )
 }
 
-fn click(request: &Value, unit: f32) -> Vec<ShellEvent> {
+fn click(request: &Value, unit: f32) -> Vec<Event> {
     let press = button(request, PointerPhase::Down);
     [
         pointer(request, PointerPhase::Move, unit, None),
@@ -160,24 +158,19 @@ fn click(request: &Value, unit: f32) -> Vec<ShellEvent> {
     .collect()
 }
 
-fn scroll_op(request: &Value, unit: f32) -> Result<Vec<ShellEvent>, String> {
+fn scroll_op(request: &Value, unit: f32) -> Result<Vec<Event>, String> {
     let at = pos(request, unit).ok_or("scroll needs col/row or x/y")?;
     #[expect(clippy::cast_possible_truncation, reason = "scroll deltas are small")]
     let delta = ScrollDelta::Lines(Point::new(
         num(request, "dx").unwrap_or(0.0) as f32,
         num(request, "dy").unwrap_or(0.0) as f32,
     ));
-    Ok(vec![ShellEvent::Scroll(ScrollEvent::new(
-        ScrollEventInit {
-            position: at,
-            delta,
-            modifiers: modifiers(request),
-            phase: ScrollPhase::Moved,
-        },
-    ))])
+    Ok(vec![
+        Event::scroll(at, delta, ScrollPhase::Moved).modifiers(modifiers(request)),
+    ])
 }
 
-fn type_ops(request: &Value) -> Result<Vec<ShellEvent>, String> {
+fn type_ops(request: &Value) -> Result<Vec<Event>, String> {
     let text = request
         .get("text")
         .and_then(Value::as_str)
@@ -188,7 +181,7 @@ fn type_ops(request: &Value) -> Result<Vec<ShellEvent>, String> {
         .collect())
 }
 
-fn key_press(request: &Value) -> Vec<ShellEvent> {
+fn key_press(request: &Value) -> Vec<Event> {
     [KeyPhase::Down, KeyPhase::Up]
         .into_iter()
         .filter_map(|phase| key_event(request, phase))

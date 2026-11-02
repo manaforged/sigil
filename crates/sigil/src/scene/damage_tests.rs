@@ -1,6 +1,6 @@
 use super::{Damage, cell_damage};
 use crate::geometry::{Point, Rect};
-use crate::scene::command::{CommandScene, DrawRect, SceneCommand, SceneRectStyle};
+use crate::scene::command::{CommandScene, DrawRect, SceneCommand};
 use crate::style::Rgba8;
 
 const CELL: (f32, f32) = (8.0, 8.0);
@@ -25,10 +25,9 @@ fn scene(rects: &[(f32, f32, Rgba8)]) -> CommandScene {
     let mut scene = CommandScene::default();
     for (x, y, color) in rects {
         let rect = Rect::new(Point::new(*x, *y), 16.0, 8.0);
-        scene.commands.push(SceneCommand::Rect(DrawRect::new(
-            rect,
-            SceneRectStyle::solid(*color),
-        )));
+        scene
+            .commands
+            .push(SceneCommand::Rect(DrawRect::new(rect, *color)));
     }
     scene
 }

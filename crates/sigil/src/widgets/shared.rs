@@ -1,9 +1,12 @@
 use std::rc::Rc;
 
-use crate::events::{KeyEvent, PointerEvent};
-use crate::kernel::NodeBuilder;
+mod press;
+
+use crate::kernel::{AccessibleName, NodeBuilder, TextContent};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Signal, derived};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 use crate::style::{
     BORDER_WIDTH, DISABLED_OPACITY, ICON_SIZE, Radius, StateStyle, StyleAtom, StyleOverlay,
     StyleState, StyleVariant, Token, space,
@@ -11,79 +14,14 @@ use crate::style::{
 
 use crate::widgets::interaction::InteractionState;
 
+pub(crate) use press::{Press, RELEASE, RELEASE_ENTER, RELEASE_ENTER_SPACE, press};
+
 pub(super) type Activate = Rc<dyn Fn() + 'static>;
 pub(super) type BoolChange = Rc<dyn Fn(bool) + 'static>;
-pub(super) type BuilderMutator = Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>;
-
-pub(super) fn activate_pointer(
-    event: &mut PointerEvent,
-    interaction: InteractionState,
-    activate: &Activate,
-) {
-    if interaction.release_pointer(event) {
-        activate();
-    }
-}
-
-pub(super) fn activate_key(
-    event: &mut KeyEvent,
-    interaction: InteractionState,
-    activate: &Activate,
-) {
-    if interaction.activate_key(event) {
-        activate();
-    }
-}
-
-pub(super) fn activate_pointer_reactive(
-    event: &mut PointerEvent,
-    interaction: InteractionState,
-    disabled: Option<Signal<bool>>,
-    activate: &Activate,
-) {
-    if interaction.release_pointer(event) && !disabled_now(disabled) {
-        activate();
-    }
-}
-
-pub(super) fn activate_key_reactive(
-    event: &mut KeyEvent,
-    interaction: InteractionState,
-    disabled: Option<Signal<bool>>,
-    activate: &Activate,
-) {
-    if interaction.activate_key(event) && !disabled_now(disabled) {
-        activate();
-    }
-}
+pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
 
 pub(crate) fn noop_activate() -> Activate {
     Rc::new(|| {})
-}
-
-pub(super) fn activate_binary_pointer(
-    event: &mut PointerEvent,
-    interaction: InteractionState,
-    disabled: Option<Signal<bool>>,
-    value: Signal<bool>,
-    on_change: &BoolChange,
-) {
-    let valid_release = interaction.release_pointer(event);
-    if valid_release && !disabled_now(disabled) {
-        toggle_bool(value, on_change);
-    }
-}
-
-pub(super) fn activate_binary_key(
-    event: &mut KeyEvent,
-    interaction: InteractionState,
-    disabled: Option<Signal<bool>>,
-    value: Signal<bool>,
-    on_change: &BoolChange,
-) {
-    if interaction.activate_key(event) && !disabled_now(disabled) {
-        toggle_bool(value, on_change);
-    }
 }
 
 pub(crate) fn binary_style_state(
@@ -199,8 +137,26 @@ pub(super) fn noop_bool_change() -> BoolChange {
     Rc::new(|_| {})
 }
 
-fn toggle_bool(value: Signal<bool>, on_change: &BoolChange) {
-    let next = !value.peek();
-    value.set(next);
-    on_change(next);
+pub(crate) fn accessible_name_or(
+    label: Option<&TextContent>,
+    fallback: StringKey,
+) -> AccessibleName {
+    label.map_or_else(
+        || AccessibleName::Derived(theme_label(fallback)),
+        accessible_name,
+    )
+}
+
+pub(crate) fn accessible_name(label: &TextContent) -> AccessibleName {
+    match label {
+        TextContent::Static(value) => AccessibleName::Static(value.clone()),
+        TextContent::Reactive(value) => AccessibleName::Derived(*value),
+        TextContent::Compute(_) => AccessibleName::Static(label.resolve()),
+    }
+}
+
+pub(crate) fn static_label(label: Option<&TextContent>) -> Option<String> {
+    label
+        .and_then(TextContent::as_static_str)
+        .map(ToOwned::to_owned)
 }

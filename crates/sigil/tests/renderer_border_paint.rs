@@ -10,7 +10,8 @@ mod support;
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle};
+use sigil::layout::{LayoutEngine, LayoutResult, LayoutStyle};
+use sigil::prelude::Widget;
 use sigil::scene::{SceneCommand, StrokeAlign, StrokeStyle, emit_scene};
 use sigil::style::{Paint, Theme, Token};
 use support::{TEXT_MEASURE, capture, close};
@@ -36,7 +37,7 @@ fn border_class_emits_inside_stroke_command() {
     );
     layout(&mut cx, root);
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let stroke = scene
         .commands
         .iter()

@@ -2,17 +2,10 @@ use crate::geometry::Point;
 use crate::geometry::{Rect, Size};
 use crate::kernel::container;
 use crate::layout::*;
+use crate::widgets::Widget;
 
 use super::*;
 use crate::events::EventRouter;
-
-struct ZeroTextMeasure;
-
-impl TextMeasure for ZeroTextMeasure {
-    fn measure(&self, _: &crate::kernel::TextContent, _: Size) -> crate::geometry::LogicalSize {
-        crate::geometry::LogicalSize::default()
-    }
-}
 
 #[test]
 fn rects_intersect_detects_overlap_and_disjoint_rects() {
@@ -51,7 +44,8 @@ fn laid_out(child: crate::kernel::NodeBuilder) -> (Cx, NodeId, LayoutEngine) {
             .child(child),
     );
     let target = cx.nth_child(root, 0).expect("child must exist");
-    let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroTextMeasure));
+    let mut layout =
+        LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
     layout
         .compute(&mut cx, root, Size::fixed(100.0, 100.0))
         .expect("layout must succeed");
@@ -79,8 +73,8 @@ fn is_hittable_target_rejects_a_node_outside_the_viewport() {
                 .fixed_size(10.0, 10.0)
                 .position(Position::Absolute)
                 .with_layout(|style| {
-                    style.inset.left = LengthPercentageAuto::Px(500.0);
-                    style.inset.top = LengthPercentageAuto::Px(500.0);
+                    style.inset.left = Dimension::Px(500.0);
+                    style.inset.top = Dimension::Px(500.0);
                 }),
         ),
     );

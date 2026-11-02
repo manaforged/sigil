@@ -10,6 +10,7 @@ mod stub;
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::{LayoutResult, TrackSize, *};
+use sigil::widgets::Widget;
 
 use stub::stub_engine;
 

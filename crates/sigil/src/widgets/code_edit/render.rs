@@ -1,17 +1,19 @@
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::style::{ColorKey, ColorOrToken, Paint, Token};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
+use crate::style::{ColorAtom, Paint, Token};
+use crate::widgets::Widget;
 use crate::widgets::grapheme::{col_bytes, col_count};
 
+use super::super::highlight::Highlight;
 use super::{
-    CHANGE_BAR_W, ChangeKind, DIGIT_W, DiagSeverity, DiagSpan, GUTTER_PAD, HlSpan, RUN_CLASS,
-    SELECTION, SelRange, Window,
+    CHANGE_BAR_W, ChangeKind, DIGIT_W, DiagSeverity, DiagSpan, GUTTER_PAD, LineWindow, RUN_CLASS,
+    SELECTION, SelRange,
 };
 
 type DiagRange = (usize, usize, DiagSeverity);
 
 #[derive(Clone, Copy)]
-pub(super) struct RowCtx<'a> {
+pub(super) struct EditRowCtx<'a> {
     pub(super) caret: (usize, usize),
     pub(super) caret_shown: bool,
     pub(super) selection: Option<SelRange>,
@@ -75,7 +77,7 @@ fn selected_cols(
     (lo < hi).then_some((lo, hi))
 }
 
-fn row_gutter(ctx: &RowCtx<'_>, line: usize) -> Option<RowGutter> {
+fn row_gutter(ctx: &EditRowCtx<'_>, line: usize) -> Option<RowGutter> {
     let g = ctx.gutter.as_ref()?;
     Some(RowGutter {
         number: line + 1,
@@ -86,11 +88,11 @@ fn row_gutter(ctx: &RowCtx<'_>, line: usize) -> Option<RowGutter> {
 
 pub(super) fn rows(
     lines: &[String],
-    highlights: &[Vec<HlSpan>],
-    win: Window,
-    ctx: RowCtx<'_>,
+    highlights: &[Vec<Highlight>],
+    win: LineWindow,
+    ctx: EditRowCtx<'_>,
 ) -> Vec<NodeBuilder> {
-    let Window {
+    let LineWindow {
         start,
         budget,
         row_h,
@@ -130,7 +132,7 @@ pub(super) fn rows(
     out
 }
 
-fn row_bounds(n: usize, spans: &[HlSpan], decor: RowDecor, diags: &[DiagRange]) -> Vec<usize> {
+fn row_bounds(n: usize, spans: &[Highlight], decor: RowDecor, diags: &[DiagRange]) -> Vec<usize> {
     let mut bounds: Vec<usize> = [0, n]
         .into_iter()
         .chain(spans.iter().flat_map(|s| [s.start, s.end]))
@@ -146,7 +148,7 @@ fn row_bounds(n: usize, spans: &[HlSpan], decor: RowDecor, diags: &[DiagRange]) 
 
 fn styled_row(
     line: &str,
-    spans: &[HlSpan],
+    spans: &[Highlight],
     decor: RowDecor,
     diags: &[DiagRange],
     row_h: f32,
@@ -170,7 +172,7 @@ fn styled_row(
         let token = spans
             .iter()
             .find(|s| s.start <= a && a < s.end)
-            .map(|s| s.token);
+            .map(|s| s.token.name());
         let seg = line[lo_byte..hi_byte].to_owned();
         let tint = if sel_cols.is_some_and(|(lo, hi)| lo <= a && a < hi) {
             Some(SELECTION)
@@ -240,9 +242,7 @@ fn run_text(seg: String, token: Option<&'static str>) -> TextBuilder {
     text(seg)
         .nowrap()
         .class(RUN_CLASS)
-        .text_color(ColorOrToken::Token(
-            token.map_or(ColorKey::Token(Token::OnSurface), ColorKey::parse),
-        ))
+        .text_color(token.map_or(ColorAtom::Token(Token::OnSurface), ColorAtom::parse))
         .layout(LayoutStyle::block().shrink(0.0))
 }
 

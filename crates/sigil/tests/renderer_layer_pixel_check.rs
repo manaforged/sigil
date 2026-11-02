@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -51,7 +52,6 @@ fn render_layer_pool_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
     WgpuRenderer::new()
-        .expect("WgpuRenderer::new")
         .render_command_scene_offscreen(
             OffscreenTarget {
                 device,

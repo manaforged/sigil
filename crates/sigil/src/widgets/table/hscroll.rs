@@ -1,7 +1,8 @@
-use crate::events::{NodeEventsExt, PointerEvent};
+use crate::events::PointerEvent;
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle};
+use crate::layout::LayoutStyle;
 use crate::reactive::{Signal, derived, signal};
+use crate::widgets::Widget;
 
 use super::super::scroll::{
     SCROLLBAR_WIDTH, THUMB_ATOMS, THUMB_MIN_HEIGHT, TRACK_ATOMS, geometry, to_i16,

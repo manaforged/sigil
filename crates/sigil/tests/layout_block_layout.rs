@@ -4,8 +4,8 @@
 )]
 
 use sigil::layout::{
-    AlignItems, BoxSizing, Dimension, Display, FlexDirection, JustifyContent, LengthPercentage,
-    LengthPercentageAuto, Position, Rect, Size, StyleData,
+    AlignItems, Axes, BoxSizing, Dimension, Display, Edges, FlexDirection, JustifyContent,
+    Position, StyleData,
 };
 
 #[test]
@@ -22,9 +22,9 @@ fn public_style_data_is_constructible_with_block_subset() {
         display: Display::Block,
         position: Position::Relative,
         flex_direction: FlexDirection::Row,
-        size: Size::new(Dimension::Px(100.0), Dimension::Px(50.0)),
-        padding: Rect::splat(LengthPercentage::Px(4.0)),
-        margin: Rect::splat(LengthPercentageAuto::Px(2.0)),
+        size: Axes::new(Dimension::Px(100.0), Dimension::Px(50.0)),
+        padding: Edges::splat(Dimension::Px(4.0)),
+        margin: Edges::splat(Dimension::Px(2.0)),
         box_sizing: BoxSizing::BorderBox,
         ..StyleData::default()
     };
@@ -35,8 +35,8 @@ fn public_style_data_is_constructible_with_block_subset() {
 #[test]
 fn public_style_data_carries_min_max_clamps() {
     let style = StyleData {
-        min_size: Size::new(Dimension::Px(20.0), Dimension::Auto),
-        max_size: Size::new(Dimension::Px(200.0), Dimension::Px(400.0)),
+        min_size: Axes::new(Dimension::Px(20.0), Dimension::Auto),
+        max_size: Axes::new(Dimension::Px(200.0), Dimension::Px(400.0)),
         ..StyleData::default()
     };
     assert_eq!(style.min_size.width, Dimension::Px(20.0));

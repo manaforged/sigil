@@ -1,15 +1,16 @@
 use super::*;
+use crate::widgets::Widget;
 
 #[test]
 fn rows_built_by_a_strip_rerun_keep_their_signals() {
-    Runtime::scope("sigil-vlist-rerun-signals", || {
+    Owner::scope("sigil-vlist-rerun-signals", || {
         let items = signal((0..1_000u32).collect::<Vec<_>>());
         let scroll_y = signal(0.0_f32);
         let made: Rc<Made> = Rc::new(RefCell::new(Vec::new()));
         let sink = Rc::clone(&made);
         let mut cx = Cx::new_root();
         let _root = cx.add(
-            virtual_list_bind(items, move |index, _| {
+            virtual_list(items, move |index, _| {
                 sink.borrow_mut().push((index, signal(index)));
                 container().label(format!("row {index}"))
             })
@@ -42,14 +43,14 @@ fn rows_built_by_a_strip_rerun_keep_their_signals() {
 
 #[test]
 fn scrolling_rebuilds_rows_at_most_once_per_block() {
-    Runtime::scope("sigil-vlist-band", || {
+    Owner::scope("sigil-vlist-band", || {
         let items = signal((0..1_000u32).collect::<Vec<_>>());
         let scroll_y = signal(0.0_f32);
         let built = Rc::new(std::cell::Cell::new(0_usize));
         let sink = Rc::clone(&built);
         let mut cx = Cx::new_root();
         let _root = cx.add(
-            virtual_list_bind(items, move |index, _| {
+            virtual_list(items, move |index, _| {
                 sink.set(sink.get() + 1);
                 container().label(format!("row {index}"))
             })
@@ -84,15 +85,14 @@ fn scrolling_rebuilds_rows_at_most_once_per_block() {
 #[test]
 fn scrolled_rows_land_at_their_document_position() {
     use crate::geometry::Size;
-    use crate::layout::LayoutBuilderExt;
 
-    Runtime::scope("sigil-virtual-list-scrolled-position", || {
+    Owner::scope("sigil-virtual-list-scrolled-position", || {
         let items = signal((0..1_000u32).collect::<Vec<_>>());
         let scroll_y = signal(0.0_f32);
         let tick = signal(0_u32);
         let mut cx = Cx::new_root();
         let root = cx.add(
-            virtual_list_bind(items, move |index, _| {
+            virtual_list(items, move |index, _| {
                 container()
                     .layout(crate::layout::LayoutStyle::block().fixed_size(800.0, 24.0))
                     .label(format!("row {index}"))
@@ -130,14 +130,14 @@ fn scrolled_rows_land_at_their_document_position() {
 #[test]
 fn measured_rows_release_collapsed_height_and_reexpand() {
     use crate::geometry::Size;
-    use crate::layout::{LayoutBuilderExt, LayoutStyle};
+    use crate::layout::LayoutStyle;
 
-    Runtime::scope("measured-collapse", || {
+    Owner::scope("measured-collapse", || {
         let items = signal(vec![24_u32, 24, 24]);
         let extent = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(
-            virtual_list_bind(items, move |index, _| {
+            virtual_list(items, move |index, _| {
                 container().children_reactive(move || {
                     vec![container().layout(LayoutStyle::block().height(items.get()[index] as f32))]
                 })
@@ -174,17 +174,17 @@ fn measured_rows_release_collapsed_height_and_reexpand() {
 #[test]
 fn small_scroll_steps_rebuild_the_window_rarely_and_keep_rows_mounted() {
     use crate::geometry::Size;
-    use crate::layout::LayoutBuilderExt;
+
     use std::cell::Cell;
 
-    Runtime::scope("sigil-virtual-list-hysteresis", || {
+    Owner::scope("sigil-virtual-list-hysteresis", || {
         let items = signal((0..200u32).collect::<Vec<_>>());
         let scroll_y = signal(0.0_f32);
         let built = Rc::new(Cell::new(0_u32));
         let count = Rc::clone(&built);
         let mut cx = Cx::new_root();
         let root = cx.add(
-            virtual_list_bind(items, move |index, _| {
+            virtual_list(items, move |index, _| {
                 count.set(count.get() + 1);
                 container()
                     .layout(crate::layout::LayoutStyle::block().fixed_size(800.0, 64.0))

@@ -1,10 +1,12 @@
 use crate::app::Ambiguous;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
-use crate::terminal::term::{Measured, ProbeRow};
+use crate::terminal::term::{Calibration, ProbeRow};
 
 #[cfg(unix)]
 mod ask;
+mod env;
+use env::draft;
 mod known;
 #[cfg(unix)]
 mod probe;
@@ -12,80 +14,144 @@ mod raw;
 
 #[cfg(unix)]
 use ask::{Question, Questions, Version};
+pub(crate) use known::Notices;
+pub use known::Notify;
 pub(in crate::terminal) use known::{Known, known_env};
-pub use known::{Notices, Notify};
 #[cfg(unix)]
 pub(crate) use probe::exchange;
 
+#[cfg(unix)]
+pub(crate) fn ask_cell() -> Option<[u16; 2]> {
+    use std::io::Write;
+    let reply = probe::exchange(
+        |out| out.write_all(b"\x1b[16t"),
+        |text| probe::cell(text).is_some(),
+    )?;
+    probe::cell(&reply)
+}
+
+#[cfg(not(unix))]
+pub(crate) const fn ask_cell() -> Option<[u16; 2]> {
+    None
+}
+
+/// How many colors a terminal shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColorDepth {
+    /// The truecolor color depth.
     Truecolor,
+    /// The ansi256 color depth.
     Ansi256,
+    /// The ansi16 color depth.
     Ansi16,
+    /// The monochrome color depth.
     Monochrome,
 }
 
+/// Terminal background brightness.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Backdrop {
+    /// The dark backdrop.
     Dark,
+    /// The light backdrop.
     Light,
 }
 
+/// The keyboard protocol a terminal speaks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Keyboard {
+    /// The legacy keyboard.
     Legacy,
+    /// The kitty keyboard.
     Kitty,
 }
 
+/// How the terminal host reaches the clipboard.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClipRoute {
+    /// The pbcopy clip route.
     Pbcopy,
+    /// The osc52 clip route.
     Osc52,
 }
 
+/// The characters the terminal host draws borders with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Borders {
+    /// The rounded borders.
     Rounded,
+    /// The light borders.
     Light,
+    /// The ascii borders.
     Ascii,
 }
 
+/// How the terminal host fills a rectangle that covers part of a cell.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Fills {
+    /// The partial fills.
     Partial,
+    /// The whole fills.
     Whole,
 }
 
+/// How the terminal host shows the text cursor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cursor {
+    /// The bar cursor.
     Bar,
+    /// The block cursor.
     Block,
 }
 
+/// How clearing to the end of a line fills the cleared cells.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Erase {
+    /// The background erase.
     Background,
+    /// The default erase.
     Default,
 }
 
+const DEFAULT_CELL_ASPECT: f32 = 0.5;
+
+/// Terminal capabilities.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Caps {
+    /// The color.
     pub color: ColorDepth,
+    /// The graphics, if any.
     pub graphics: Option<Protocol>,
+    /// The mux, if any.
     pub mux: Option<Mux>,
+    /// The keyboard.
     pub keyboard: Keyboard,
+    /// Whether hyperlinks.
     pub hyperlinks: bool,
+    /// Whether underline styles.
     pub underline_styles: bool,
+    /// The borders.
     pub borders: Borders,
+    /// The glyphs.
     pub glyphs: Glyphs,
+    /// The ambiguous.
     pub ambiguous: Ambiguous,
+    /// The erase.
     pub erase: Erase,
+    /// The cursor.
     pub cursor: Cursor,
+    /// Whether sync.
     pub sync: bool,
+    /// The clipboard.
     pub clipboard: ClipRoute,
+    /// The backdrop, if any.
     pub backdrop: Option<Backdrop>,
+    /// The notices.
     pub notices: Notices,
+    /// The fills.
     pub fills: Fills,
+    /// One cell's size in pixels as `[width, height]`, when the terminal reports it.
+    pub cell: Option<[u16; 2]>,
 }
 
 impl Default for Caps {
@@ -108,21 +174,29 @@ impl Default for Caps {
             notices: Notices {
                 notify: None,
                 progress: false,
+                activity: false,
             },
             fills: Fills::Partial,
+            cell: None,
         }
     }
 }
 
 #[cfg(unix)]
 #[derive(Debug, Default, PartialEq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one independent yes or no per probe reply"
+)]
 struct Answers {
     sync: bool,
     kitty_keys: bool,
     backdrop: Option<Backdrop>,
     truecolor: bool,
     version: Version,
-    measured: Measured,
+    measured: Calibration,
+    activity: bool,
+    cell: Option<[u16; 2]>,
 }
 
 struct Draft {
@@ -132,18 +206,21 @@ struct Draft {
 }
 
 impl Caps {
+    /// One cell's width over its height, or 0.5 when the terminal did not report its cell size.
     #[must_use]
-    pub const fn host(&self) -> crate::app::HostCaps {
-        crate::app::HostCaps {
-            hyperlinks: self.hyperlinks,
-        }
+    pub fn cell_aspect(&self) -> f32 {
+        self.cell.map_or(DEFAULT_CELL_ASPECT, |[width, height]| {
+            f32::from(width) / f32::from(height)
+        })
     }
 
+    /// Detects capabilities from environment variables that `env` reads.
     #[must_use]
     pub fn detect(env: impl Fn(&str) -> Option<String>) -> Self {
         draft(&env).caps
     }
 
+    /// Returns the probe caps.
     #[must_use]
     pub fn probe() -> Self {
         let env = |key: &str| std::env::var(key).ok();
@@ -153,17 +230,17 @@ impl Caps {
         Self::measure(None).0
     }
 
-    pub(in crate::terminal) fn measure(widths: Option<ProbeRow>) -> (Self, Measured) {
+    pub(in crate::terminal) fn measure(widths: Option<ProbeRow>) -> (Self, Calibration) {
         ask_terminal(draft(&|key: &str| std::env::var(key).ok()), widths)
     }
 }
 
 #[cfg(unix)]
-fn ask_terminal(mut draft: Draft, widths: Option<ProbeRow>) -> (Caps, Measured) {
+fn ask_terminal(mut draft: Draft, widths: Option<ProbeRow>) -> (Caps, Calibration) {
     let backdrop = draft.caps.backdrop.is_none();
     draft.ask = draft.ask.with(Question::Keys, true);
     let Some(input) = probe::quiet_terminal() else {
-        return (draft.caps, Measured::Unmeasured);
+        return (draft.caps, Calibration::Unmeasured);
     };
     match probe::ask_on(
         &input,
@@ -172,19 +249,21 @@ fn ask_terminal(mut draft: Draft, widths: Option<ProbeRow>) -> (Caps, Measured) 
         (backdrop, widths),
     ) {
         Some(answers) if widths.is_some() => (draft.settle(&answers), answers.measured),
-        Some(answers) => (draft.settle(&answers), Measured::Unmeasured),
-        None => (draft.caps, Measured::Silent),
+        Some(answers) => (draft.settle(&answers), Calibration::Unmeasured),
+        None => (draft.caps, Calibration::Silent),
     }
 }
 
 #[cfg(not(unix))]
-const fn ask_terminal(Draft { caps }: Draft, _: Option<ProbeRow>) -> (Caps, Measured) {
-    (caps, Measured::Unmeasured)
+const fn ask_terminal(Draft { caps }: Draft, _: Option<ProbeRow>) -> (Caps, Calibration) {
+    (caps, Calibration::Unmeasured)
 }
 
 #[cfg(unix)]
 impl Draft {
-    const fn settle(mut self, answers: &Answers) -> Caps {
+    fn settle(mut self, answers: &Answers) -> Caps {
+        self.caps.notices.activity = answers.activity;
+        self.caps.cell = answers.cell;
         if self.ask.has(Question::Sync) {
             self.caps.sync = answers.sync;
         }
@@ -209,183 +288,13 @@ impl Draft {
         }
         #[cfg(unix)]
         if let Version::Named(named) = answers.version {
-            self.caps.notices = named.notices();
+            self.caps.notices = Notices {
+                activity: answers.activity,
+                ..named.notices()
+            };
         }
         self.caps
     }
-}
-
-fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
-    let mux = detect_mux(env);
-    let known = known::known(env, mux);
-    let sync = known.map(|term| !matches!(term, Known::Vte | Known::Apple));
-    let keys = known.map(Known::kitty_keys);
-    let graphics = detect(env);
-    let glyphs = glyphs(env);
-    let color = color_depth(env, known);
-    let modern = known.is_some_and(|term| term != Known::Apple);
-    Draft {
-        caps: Caps {
-            color,
-            graphics,
-            mux,
-            keyboard: keyboard(keys),
-            hyperlinks: modern,
-            underline_styles: known.is_some_and(Known::underline_styles),
-            borders: match glyphs {
-                Glyphs::Ascii => Borders::Ascii,
-                Glyphs::Console => Borders::Light,
-                Glyphs::Unicode => Borders::Rounded,
-            },
-            glyphs,
-            ambiguous: if flag(env, "SIGIL_AMBIGUOUS_WIDE") {
-                Ambiguous::Wide
-            } else {
-                Ambiguous::Narrow
-            },
-            erase: if env("TERM").is_some_and(|term| term.starts_with("screen")) {
-                Erase::Default
-            } else {
-                Erase::Background
-            },
-            cursor: if modern { Cursor::Bar } else { Cursor::Block },
-            sync: sync.unwrap_or(true),
-            clipboard: if cfg!(target_os = "macos") && env("SSH_TTY").is_none() {
-                ClipRoute::Pbcopy
-            } else {
-                ClipRoute::Osc52
-            },
-            backdrop: backdrop(env),
-            notices: known.map(Known::notices).unwrap_or_default(),
-            fills: fills(env, known),
-        },
-        #[cfg(unix)]
-        ask: questions(env, (sync, keys), color, known),
-    }
-}
-
-const APPLE_TERMINAL: &str = "com.apple.Terminal";
-
-const FILL_NAMES: [(&str, Fills); 2] = [("whole", Fills::Whole), ("partial", Fills::Partial)];
-
-fn fills(env: &impl Fn(&str) -> Option<String>, known: Option<Known>) -> Fills {
-    let forced = env("SIGIL_FILLS").and_then(|value| {
-        FILL_NAMES
-            .iter()
-            .find(|(name, _)| value.trim().eq_ignore_ascii_case(name))
-            .map(|(_, fills)| *fills)
-    });
-    if let Some(fills) = forced {
-        return fills;
-    }
-    if known == Some(Known::Apple) || env("__CFBundleIdentifier").as_deref() == Some(APPLE_TERMINAL)
-    {
-        Fills::Whole
-    } else {
-        Fills::Partial
-    }
-}
-
-#[cfg(unix)]
-fn questions(
-    env: &impl Fn(&str) -> Option<String>,
-    (sync, keys): (Option<bool>, Option<bool>),
-    color: ColorDepth,
-    known: Option<Known>,
-) -> Questions {
-    Questions::default()
-        .with(Question::Sync, sync.is_none())
-        .with(Question::Keys, keys.is_none())
-        .with(
-            Question::Color,
-            matches!(color, ColorDepth::Ansi256 | ColorDepth::Ansi16)
-                && forced_color(env).is_none(),
-        )
-        .with(Question::Version, known.is_none())
-}
-
-fn forced_color(env: &impl Fn(&str) -> Option<String>) -> Option<ColorDepth> {
-    match env("SIGIL_COLOR")?.trim().to_ascii_lowercase().as_str() {
-        "truecolor" | "24bit" => Some(ColorDepth::Truecolor),
-        "256" => Some(ColorDepth::Ansi256),
-        "16" => Some(ColorDepth::Ansi16),
-        "none" => Some(ColorDepth::Monochrome),
-        _ => None,
-    }
-}
-
-fn flag(env: &impl Fn(&str) -> Option<String>, key: &str) -> bool {
-    env(key).is_some_and(|value| {
-        matches!(
-            value.trim().to_ascii_lowercase().as_str(),
-            "1" | "true" | "yes" | "on"
-        )
-    })
-}
-
-fn color_depth(env: &impl Fn(&str) -> Option<String>, known: Option<Known>) -> ColorDepth {
-    if let Some(forced) = forced_color(env) {
-        return forced;
-    }
-    if env("NO_COLOR").is_some_and(|value| !value.is_empty()) {
-        return ColorDepth::Monochrome;
-    }
-    let term = env("TERM").unwrap_or_default();
-    let colorterm = env("COLORTERM").unwrap_or_default().to_ascii_lowercase();
-    if term == "dumb" {
-        ColorDepth::Monochrome
-    } else if colorterm.contains("truecolor")
-        || colorterm.contains("24bit")
-        || term.ends_with("-direct")
-        || known.is_some_and(|found| found != Known::Apple)
-    {
-        ColorDepth::Truecolor
-    } else if term.contains("256") || known == Some(Known::Apple) {
-        ColorDepth::Ansi256
-    } else if !term.is_empty() {
-        ColorDepth::Ansi16
-    } else if cfg!(windows) {
-        ColorDepth::Truecolor
-    } else {
-        ColorDepth::Monochrome
-    }
-}
-
-fn glyphs(env: &impl Fn(&str) -> Option<String>) -> Glyphs {
-    if flag(env, "SIGIL_ASCII") {
-        return Glyphs::Ascii;
-    }
-    let term = env("TERM").unwrap_or_default();
-    let locale = ["LC_ALL", "LC_CTYPE", "LANG"]
-        .into_iter()
-        .find_map(|key| env(key).filter(|value| !value.is_empty()))
-        .map(|value| value.to_ascii_lowercase());
-    let utf8 = locale.is_none_or(|value| value.contains("utf-8") || value.contains("utf8"));
-    if !utf8 || matches!(term.as_str(), "dumb" | "vt100" | "vt102" | "vt220") {
-        Glyphs::Ascii
-    } else if term == "linux" {
-        Glyphs::Console
-    } else {
-        Glyphs::Unicode
-    }
-}
-
-const fn keyboard(known: Option<bool>) -> Keyboard {
-    if matches!(known, Some(true)) {
-        Keyboard::Kitty
-    } else {
-        Keyboard::Legacy
-    }
-}
-
-fn backdrop(env: &impl Fn(&str) -> Option<String>) -> Option<Backdrop> {
-    let pair = env("COLORFGBG")?;
-    let index: u8 = pair.rsplit(';').next()?.parse().ok()?;
-    Some(if matches!(index, 7 | 15) {
-        Backdrop::Light
-    } else {
-        Backdrop::Dark
-    })
 }
 
 #[cfg(test)]

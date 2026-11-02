@@ -9,8 +9,8 @@ mod scene_support;
 use scene_support::color;
 use sigil::geometry::{Point, Rect};
 use sigil::scene::{
-    CornerRadii, GradientStop, LinearGradient, SceneBuilder, SceneCommand, SceneGradientStyle,
-    SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
+    CornerRadii, DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder, SceneCommand,
+    Stroke, StrokeAlign, StrokeStyle,
 };
 use sigil::style::Rgba8;
 use smallvec::smallvec;
@@ -38,11 +38,12 @@ fn with_stroke_builder_round_trips_rect_and_gradient_styles() {
     let rect_stroke = solid_stroke(StrokeAlign::Centered, 2.0);
     let gradient_stroke = dashed_stroke(StrokeAlign::Inside, 4.0, 6.0);
     let mut builder = SceneBuilder::new();
-    builder.draw_rect(rect(0.0, 0.0), rect_style().with_stroke(rect_stroke));
+    builder.draw_rect(rect_style(rect(0.0, 0.0)).stroke(rect_stroke));
     builder.draw_gradient(
-        rect(56.0, 0.0),
-        SceneGradientStyle::new(gradient(), CornerRadii::uniform(8.0), 9_000)
-            .with_stroke(gradient_stroke),
+        DrawGradient::new(rect(56.0, 0.0), gradient())
+            .border_radius(CornerRadii::uniform(8.0))
+            .opacity(9_000)
+            .stroke(gradient_stroke),
     );
     let scene = builder.finish();
 
@@ -58,15 +59,16 @@ fn with_stroke_builder_round_trips_rect_and_gradient_styles() {
 fn stroke_commands_cover_solid_dashed_outside_and_none() {
     let outside = solid_stroke(StrokeAlign::Outside, 5.0);
     let mut builder = SceneBuilder::new();
-    builder.draw_rect(rect(0.0, 0.0), rect_style());
-    builder.draw_rect(
-        rect(56.0, 0.0),
-        rect_style().with_stroke(dashed_stroke(StrokeAlign::Inside, 3.0, 7.0)),
-    );
+    builder.draw_rect(rect_style(rect(0.0, 0.0)));
+    builder.draw_rect(rect_style(rect(56.0, 0.0)).stroke(dashed_stroke(
+        StrokeAlign::Inside,
+        3.0,
+        7.0,
+    )));
     builder.draw_gradient(
-        rect(112.0, 0.0),
-        SceneGradientStyle::new(gradient(), CornerRadii::uniform(10.0), 10_000)
-            .with_stroke(outside),
+        DrawGradient::new(rect(112.0, 0.0), gradient())
+            .border_radius(CornerRadii::uniform(10.0))
+            .stroke(outside),
     );
     let scene = builder.finish();
 
@@ -86,8 +88,8 @@ fn stroke_commands_cover_solid_dashed_outside_and_none() {
     assert_eq!(grad.stroke, Some(outside));
 }
 
-const fn rect_style() -> SceneRectStyle {
-    SceneRectStyle::new(color(8, 12, 20, 255), CornerRadii::uniform(8.0), 10_000)
+const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
+    DrawRect::new(rect, color(8, 12, 20, 255)).border_radius(CornerRadii::uniform(8.0))
 }
 
 const fn solid_stroke(align: StrokeAlign, width: f32) -> Stroke {

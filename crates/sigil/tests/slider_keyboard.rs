@@ -10,7 +10,7 @@ mod widget_support;
 #[path = "events_support/input.rs"]
 mod input;
 
-use input::key_down;
+use sigil::events::Event;
 use sigil::events::EventRouter;
 use sigil::events::PhysicalKey;
 use sigil::kernel::{Cx, NodeId};
@@ -36,25 +36,29 @@ fn setup(
 
 #[test]
 fn slider_page_up_moves_by_ten_steps() {
-    sigil::reactive::Runtime::scope("sigil-slider-page-up", || {
-        let value = signal(50.0_f32);
-        let (mut cx, layout, mut router, root) = setup(value, 0.0..=100.0, 1.0);
-        router.set_focus(&mut cx, Some(root));
-        router.route(&mut cx, &layout, key_down(Key::PageUp, PhysicalKey::PageUp));
-        assert_approx(value.get(), 60.0);
-    });
-}
-
-#[test]
-fn slider_page_down_moves_by_ten_steps() {
-    sigil::reactive::Runtime::scope("sigil-slider-page-down", || {
+    sigil::reactive::Owner::scope("sigil-slider-page-up", || {
         let value = signal(50.0_f32);
         let (mut cx, layout, mut router, root) = setup(value, 0.0..=100.0, 1.0);
         router.set_focus(&mut cx, Some(root));
         router.route(
             &mut cx,
             &layout,
-            key_down(Key::PageDown, PhysicalKey::PageDown),
+            Event::key_down(Key::PageUp).physical(PhysicalKey::PageUp),
+        );
+        assert_approx(value.get(), 60.0);
+    });
+}
+
+#[test]
+fn slider_page_down_moves_by_ten_steps() {
+    sigil::reactive::Owner::scope("sigil-slider-page-down", || {
+        let value = signal(50.0_f32);
+        let (mut cx, layout, mut router, root) = setup(value, 0.0..=100.0, 1.0);
+        router.set_focus(&mut cx, Some(root));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::PageDown).physical(PhysicalKey::PageDown),
         );
         assert_approx(value.get(), 40.0);
     });
@@ -62,58 +66,74 @@ fn slider_page_down_moves_by_ten_steps() {
 
 #[test]
 fn slider_page_step_respects_custom_step() {
-    sigil::reactive::Runtime::scope("sigil-slider-page-step", || {
+    sigil::reactive::Owner::scope("sigil-slider-page-step", || {
         let value = signal(50.0_f32);
         let (mut cx, layout, mut router, root) = setup(value, 0.0..=100.0, 2.0);
         router.set_focus(&mut cx, Some(root));
-        router.route(&mut cx, &layout, key_down(Key::PageUp, PhysicalKey::PageUp));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::PageUp).physical(PhysicalKey::PageUp),
+        );
         assert_approx(value.get(), 70.0);
     });
 }
 
 #[test]
 fn slider_home_jumps_to_min() {
-    sigil::reactive::Runtime::scope("sigil-slider-home", || {
+    sigil::reactive::Owner::scope("sigil-slider-home", || {
         let value = signal(75.0_f32);
         let (mut cx, layout, mut router, root) = setup(value, 0.0..=100.0, 5.0);
         router.set_focus(&mut cx, Some(root));
-        router.route(&mut cx, &layout, key_down(Key::Home, PhysicalKey::Home));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::Home).physical(PhysicalKey::Home),
+        );
         assert_approx(value.get(), 0.0);
     });
 }
 
 #[test]
 fn slider_end_jumps_to_max() {
-    sigil::reactive::Runtime::scope("sigil-slider-end", || {
+    sigil::reactive::Owner::scope("sigil-slider-end", || {
         let value = signal(25.0_f32);
         let (mut cx, layout, mut router, root) = setup(value, 0.0..=100.0, 5.0);
         router.set_focus(&mut cx, Some(root));
-        router.route(&mut cx, &layout, key_down(Key::End, PhysicalKey::End));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::End).physical(PhysicalKey::End),
+        );
         assert_approx(value.get(), 100.0);
     });
 }
 
 #[test]
 fn slider_page_up_clamps_at_max() {
-    sigil::reactive::Runtime::scope("sigil-slider-page-clamp-max", || {
+    sigil::reactive::Owner::scope("sigil-slider-page-clamp-max", || {
         let value = signal(95.0_f32);
         let (mut cx, layout, mut router, root) = setup(value, 0.0..=100.0, 1.0);
         router.set_focus(&mut cx, Some(root));
-        router.route(&mut cx, &layout, key_down(Key::PageUp, PhysicalKey::PageUp));
+        router.route(
+            &mut cx,
+            &layout,
+            Event::key_down(Key::PageUp).physical(PhysicalKey::PageUp),
+        );
         assert_approx(value.get(), 100.0);
     });
 }
 
 #[test]
 fn slider_page_down_clamps_at_min() {
-    sigil::reactive::Runtime::scope("sigil-slider-page-clamp-min", || {
+    sigil::reactive::Owner::scope("sigil-slider-page-clamp-min", || {
         let value = signal(5.0_f32);
         let (mut cx, layout, mut router, root) = setup(value, 0.0..=100.0, 1.0);
         router.set_focus(&mut cx, Some(root));
         router.route(
             &mut cx,
             &layout,
-            key_down(Key::PageDown, PhysicalKey::PageDown),
+            Event::key_down(Key::PageDown).physical(PhysicalKey::PageDown),
         );
         assert_approx(value.get(), 0.0);
     });
@@ -121,7 +141,7 @@ fn slider_page_down_clamps_at_min() {
 
 #[test]
 fn slider_focus_ring_visible_when_focused() {
-    sigil::reactive::Runtime::scope("sigil-slider-focus-ring", || {
+    sigil::reactive::Owner::scope("sigil-slider-focus-ring", || {
         let value = signal(50.0_f32);
         let (mut cx, layout, mut router, root) = setup(value, 0.0..=100.0, 1.0);
         let node_before = cx.get(root).unwrap();

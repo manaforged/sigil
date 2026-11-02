@@ -6,9 +6,9 @@ use std::rc::Rc;
 use crate::app::config::AppConfig;
 use crate::app::embed::Host;
 use crate::app::window::{CloseAction, allocate_window_id};
-use crate::events::{Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState};
-use crate::events::{PhysicalKey, ShellEvent};
-use crate::reactive::Runtime;
+use crate::events::Event;
+use crate::events::{Key, KeyPhase, LogicalKey};
+use crate::reactive::Owner;
 use crate::shell::WinitWindowHandle;
 use crate::widgets::button;
 
@@ -29,28 +29,23 @@ fn counting_window(n: u64, count: Rc<Cell<u32>>, config: AppConfig) -> WindowRec
     .expect("window record")
 }
 
-fn enter() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::Named(Key::Enter),
-        physical: PhysicalKey::Unidentified,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
+fn enter() -> Event {
+    Event::key(LogicalKey::Named(Key::Enter), KeyPhase::Down)
 }
 
 fn deliver(windows: &mut Windows, handle: WinitWindowHandle) {
     let record = windows.get_mut(handle).expect("record");
-    record.router.focus_next(record.host.cx());
+    record.host.layout((200.0, 100.0)).expect("layout");
+    let (cx, layout, router) = record.host.parts();
+    router.focus_next(cx, layout);
     for event in std::mem::take(&mut record.view.inbox) {
-        record.host.route(&mut record.router, event);
+        record.host.route(event);
     }
 }
 
 #[test]
 fn an_event_reaches_only_its_window_and_closing_one_keeps_the_other() {
-    Runtime::scope("two-windows", || {
+    Owner::scope("two-windows", || {
         let (first, second) = (Rc::new(Cell::new(0)), Rc::new(Cell::new(0)));
         let mut windows = Windows::default();
         windows.insert(counting_window(0, Rc::clone(&first), AppConfig::new("a")));
@@ -70,7 +65,7 @@ fn an_event_reaches_only_its_window_and_closing_one_keeps_the_other() {
 
 #[test]
 fn close_to_tray_hides_the_window_and_keeps_it() {
-    Runtime::scope("close-to-tray", || {
+    Owner::scope("close-to-tray", || {
         let mut windows = Windows::default();
         let config = AppConfig::new("tray").on_close(|| CloseAction::Hide);
         windows.insert(counting_window(7, Rc::new(Cell::new(0)), config));

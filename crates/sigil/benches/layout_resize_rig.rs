@@ -3,13 +3,11 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::geometry::Size;
 use sigil::kernel::IntoNode;
 use sigil::kernel::{Cx, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil_kittest::FakeMeasure;
 use std::hint::black_box;
-const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 0.0,
-    height: 0.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(0.0, 0.0);
 const CHILDREN: usize = 1_000;
 const LEAVES: usize = 100;
 fn build() -> impl IntoNode {

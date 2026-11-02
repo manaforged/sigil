@@ -2,11 +2,12 @@
 
 use super::*;
 use crate::kernel::Cx;
-use crate::reactive::{Runtime, signal};
+use crate::kernel::IntoNode;
+use crate::reactive::{Owner, signal};
 
 #[test]
 fn group_and_option_rows_carry_radio_roles() {
-    Runtime::scope("radio-group-role", || {
+    Owner::scope("radio-group-role", || {
         let mut cx = Cx::new_root();
         let selected = signal(String::from("a"));
         let id = radio_group(selected)
@@ -23,7 +24,7 @@ fn group_and_option_rows_carry_radio_roles() {
 
 #[test]
 fn defaults_to_primary_tone() {
-    Runtime::scope("radio-group-default-tone", || {
+    Owner::scope("radio-group-default-tone", || {
         let group = radio_group(signal(String::from("a"))).option("a", "A");
         assert!(matches!(group.tone, Tone::Primary));
     });

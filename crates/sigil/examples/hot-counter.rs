@@ -1,11 +1,11 @@
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 
 fn main() -> sigil::AppResult<()> {
     let terminal = std::env::args().any(|arg| arg == "--terminal");
     let config = AppConfig::new("Sigil - hot-counter").size(480, 240);
     let config = if terminal { config.terminal() } else { config };
-    Runtime::scope("hot-counter", || {
+    Owner::scope("hot-counter", || {
         let count = signal(0_i32);
         sigil::run(config, move || counter(count))
     })

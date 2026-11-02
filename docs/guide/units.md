@@ -15,7 +15,7 @@ A layout length in Sigil is one of two kinds:
 
 A terminal cell is 1 row by 1 col. The layout pass resolves each unit when the node enters the layout tree, so the same code gives a one-row control in a terminal and a text-height control on a window.
 
-The functions return a `TextLength`. Every `LayoutStyle` builder that takes a `Dimension` or a `LengthPercentage` accepts it:
+The functions return a `Dimension`. Every `LayoutStyle` builder that takes a `Dimension` accepts it:
 
 ```rust
 use sigil::prelude::*;

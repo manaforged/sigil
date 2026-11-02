@@ -2,24 +2,24 @@ use crate::reactive::Reactive;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::NodeEventsExt;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
+use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow, rows};
+use crate::layout::{AlignItems, IntoPx, JustifyContent, LayoutStyle, Overflow, rows};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
-    BORDER_WIDTH, PaintTarget, Radius, StateHost, StateStyle, Style, StyleAtom, StyleOverlay,
-    StyleSlot, StyleVariant, Token, TransitionId, space,
+    BORDER_WIDTH, Radius, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant, Token,
+    TransitionId, space,
 };
+use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 
-use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::layout_ext::LayoutOverrides;
 
 use super::super::listbox::listbox;
 use super::super::popup::{ChevronDirection, chevron};
 use super::super::shared::{
-    Activate, DIMMED, activate_pointer_reactive, disabled_now, reactive_style_state,
+    Activate, DIMMED, Press, RELEASE, disabled_now, press, reactive_style_state,
 };
 use super::popup::{DropdownModel, OptionCtx, SURFACE_HOVER, build_popup, trigger_height};
 
@@ -46,6 +46,7 @@ static TRIGGER_VARIANT: StyleVariant = StyleVariant::new(
     StateStyle::new(&[], SURFACE_HOVER, SURFACE_HOVER, TRIGGER_DOWN, DIMMED),
 );
 
+/// Builder of a select box.
 pub struct DropdownBuilder {
     selected: Signal<usize>,
     options: Vec<String>,
@@ -56,12 +57,14 @@ pub struct DropdownBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+/// A select box.
 #[must_use]
 pub fn dropdown(selected: Signal<usize>, options: Vec<String>) -> DropdownBuilder {
     DropdownBuilder::new(selected, options)
 }
 
 impl DropdownBuilder {
+    /// Creates a dropdown builder.
     #[must_use]
     pub fn new(selected: Signal<usize>, options: Vec<String>) -> Self {
         Self {
@@ -75,25 +78,28 @@ impl DropdownBuilder {
         }
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = label.into();
         self
     }
 
+    /// Sets the disabled.
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
         self
     }
 
+    /// Sets the change.
     #[must_use]
     pub fn change(mut self, cb: impl Fn(usize) + 'static) -> Self {
         self.on_change = Some(Rc::new(cb));
         self
     }
 
-    fn into_node_builder(mut self) -> NodeBuilder {
+    fn root(mut self) -> NodeBuilder {
         let enabled = !disabled_now(self.disabled);
         let interaction = InteractionState::new(enabled);
         let open = signal(false);
@@ -123,61 +129,31 @@ impl DropdownBuilder {
             user_overlay,
         );
         let (popup_options, popup_on_change) = (Rc::clone(&options), Rc::clone(&on_change));
-        let root = dropdown_root(
-            ctx,
-            self.layout_overrides,
-            Rc::clone(&options),
-            self.label,
-            on_change,
-        )
-        .child(trigger)
-        .children_reactive(move || {
-            if ctx.open.get() {
-                vec![build_popup(ctx, &popup_options, &popup_on_change)]
-            } else {
-                Vec::new()
-            }
-        });
+        let root = dropdown_root(ctx, Rc::clone(&options), self.label, on_change)
+            .child(trigger)
+            .children_reactive(move || {
+                if ctx.open.get() {
+                    vec![build_popup(ctx, &popup_options, &popup_on_change)]
+                } else {
+                    Vec::new()
+                }
+            });
         interaction.install(root)
     }
 }
 
-impl PaintTarget for DropdownBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl StateHost for DropdownBuilder {}
-
-impl WidgetLayoutExt for DropdownBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for DropdownBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] DropdownBuilder: paint(style_accumulator), widget, states(style_accumulator), node);
 
 fn dropdown_root(
     ctx: OptionCtx,
-    overrides: LayoutOverrides,
     options: Rc<Vec<String>>,
     label: String,
     on_change: IndexChange,
 ) -> NodeBuilder {
-    let root_layout = overrides.apply(
-        LayoutStyle::block()
-            .fill_width()
-            .height(ctx.trigger_height)
-            .min_size(MIN_TRIGGER_WIDTH, 0.0),
-    );
+    let root_layout = LayoutStyle::block()
+        .fill_width()
+        .height(ctx.trigger_height)
+        .min_size(MIN_TRIGGER_WIDTH, 0.0);
     listbox(
         container()
             .role(Role::ComboBox)
@@ -200,7 +176,11 @@ fn build_trigger(
     user_overlay: StyleOverlay,
 ) -> NodeBuilder {
     let (selected, open, cursor, disabled) = (ctx.selected, ctx.open, ctx.cursor, ctx.disabled);
-    let mut node = container()
+    let cb: Activate = Rc::new(move || {
+        open.set(!open.peek());
+        cursor.set(selected.peek());
+    });
+    let node = container()
         .layout(
             LayoutStyle::flex_row()
                 .fill()
@@ -215,14 +195,8 @@ fn build_trigger(
         .stateful_style(TRIGGER_VARIANT, user_overlay, move || {
             reactive_style_state(interaction, disabled)
         })
-        .seal_style()
-        .pointer_up(move |ev| {
-            let cb: Activate = Rc::new(move || {
-                open.set(!open.peek());
-                cursor.set(selected.peek());
-            });
-            activate_pointer_reactive(ev, interaction, disabled, &cb);
-        })
+        .seal_style();
+    let mut node = press(node, interaction, disabled, Press::Activate(cb), RELEASE)
         .child(trigger_label(selected, Rc::clone(options)))
         .child(chevron(ChevronDirection::Down, 16.0));
     if !styled.is_empty() {
@@ -238,7 +212,7 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
             LayoutStyle::flex_row()
                 .grow(1.0)
                 .width(0.0)
-                .height(CellForm::new(LABEL_HEIGHT, rows(1.0).px()).pick())
+                .height(CellForm::new(LABEL_HEIGHT, rows(1.0).into_px()).pick())
                 .align_items(AlignItems::Center)
                 .overflow_x(Overflow::Hidden),
         )

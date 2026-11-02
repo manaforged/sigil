@@ -1,18 +1,18 @@
 use super::*;
 
-fn margin(left: f32, top: f32) -> Rect<LengthPercentageAuto> {
-    Rect {
-        left: LengthPercentageAuto::Px(left),
-        right: LengthPercentageAuto::Px(0.0),
-        top: LengthPercentageAuto::Px(top),
-        bottom: LengthPercentageAuto::Px(0.0),
+fn margin(left: f32, top: f32) -> Edges<Dimension> {
+    Edges {
+        left: Dimension::Px(left),
+        right: Dimension::Px(0.0),
+        top: Dimension::Px(top),
+        bottom: Dimension::Px(0.0),
     }
 }
 
 #[test]
 fn padding_offsets_child_origin() {
     let parent = StyleData {
-        padding: Rect::splat(LengthPercentage::Px(10.0)),
+        padding: Edges::splat(Dimension::Px(10.0)),
         ..flex_box(200.0, 100.0)
     };
     let b = kids(parent, &[fixed(40.0, 20.0)])[0];

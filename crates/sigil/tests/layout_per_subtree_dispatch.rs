@@ -9,13 +9,10 @@
     clippy::similar_names
 )]
 
-use sigil::layout::{Dimension, Display, FlexDirection, LayoutDrive, Size as StyleSize, StyleData};
-use sigil_kittest::CharMeasure;
+use sigil::layout::{Axes as StyleSize, Dimension, Display, FlexDirection, LayoutDrive, StyleData};
+use sigil_kittest::FakeMeasure;
 
-const TEXT_MEASURE: CharMeasure = CharMeasure {
-    char_width: 8.0,
-    line_height: 16.0,
-};
+const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 16.0);
 
 fn drive() -> LayoutDrive {
     LayoutDrive::new(Box::new(TEXT_MEASURE))

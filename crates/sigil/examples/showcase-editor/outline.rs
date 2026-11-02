@@ -5,7 +5,7 @@ use super::facts::{SYMBOLS, Symbol};
 use super::state::Workspace;
 
 fn symbol_row(ws: Workspace, symbol: Symbol, selected: bool) -> NodeBuilder {
-    list_row_with(
+    list_row(
         selected,
         symbol.name,
         ListRowSlots {

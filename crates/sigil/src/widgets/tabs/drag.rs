@@ -1,15 +1,15 @@
 use std::cell::Cell;
 
-use crate::events::NodeEventsExt;
 use crate::kernel::NodeBuilder;
 use crate::reactive::Signal;
+use crate::widgets::Widget;
 
 #[derive(Clone, Copy)]
-pub(super) struct DragState {
-    inner: &'static DragStateInner,
+pub(super) struct TabDrag {
+    inner: &'static TabDragInner,
 }
 
-struct DragStateInner {
+struct TabDragInner {
     source: Cell<Option<u16>>,
     current: Cell<Option<u16>>,
     just_dragged: Cell<bool>,
@@ -18,9 +18,9 @@ struct DragStateInner {
     tab_width: Cell<f32>,
 }
 
-impl DragState {
+impl TabDrag {
     pub(super) fn new() -> Self {
-        let inner = Box::leak(Box::new(DragStateInner {
+        let inner = Box::leak(Box::new(TabDragInner {
             source: Cell::new(None),
             current: Cell::new(None),
             just_dragged: Cell::new(false),
@@ -67,7 +67,7 @@ impl DragState {
 
 pub(super) fn install_label_drag_hooks(
     node: NodeBuilder,
-    drag: DragState,
+    drag: TabDrag,
     visual_index: usize,
 ) -> NodeBuilder {
     let slot = u16::try_from(visual_index).unwrap_or(u16::MAX);

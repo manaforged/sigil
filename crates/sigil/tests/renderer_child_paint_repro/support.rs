@@ -6,12 +6,9 @@ use sigil::geometry::Size;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::scene::emit_scene;
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 
-pub(super) const TEXT_MEASURE: FixedMeasure = FixedMeasure {
-    width: 40.0,
-    height: 16.0,
-};
+pub(super) const TEXT_MEASURE: FakeMeasure = FakeMeasure::fixed(40.0, 16.0);
 
 pub(super) fn close(r: u8, g: u8, b: u8, expected: sigil::style::Rgba8, tolerance: i32) -> bool {
     (i32::from(r) - i32::from(expected.r)).abs() <= tolerance
@@ -58,7 +55,7 @@ pub(super) fn capture(build: impl sigil::kernel::IntoNode, size_px: [u32; 2]) ->
         .compute(&mut cx, root, Size::fixed(w as f32, h as f32))
         .expect("layout compute");
 
-    let scene = emit_scene(&cx, root);
+    let scene = emit_scene(&cx, root, None);
     let mut renderer = sigil_kittest::gpu::headless_renderer()
         .expect("sigil-kittest")
         .expect("the child paint repro needs a GPU");

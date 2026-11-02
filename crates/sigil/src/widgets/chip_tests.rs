@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::kernel::{Cx, IntoNode, NodeType};
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 const TONES: [Tone; 6] = [
     Tone::Neutral,
@@ -15,7 +15,7 @@ const TONES: [Tone; 6] = [
 
 #[test]
 fn chip_is_a_label_holding_its_text() {
-    Runtime::scope("chip-build", || {
+    Owner::scope("chip-build", || {
         let mut cx = Cx::new_root();
         for tone in TONES {
             let id = chip(String::from("ERROR"), tone).build(&mut cx);
@@ -94,7 +94,7 @@ fn every_tone_clears_wcag_aa_contrast() {
 
 #[test]
 fn activate_promotes_the_chip_to_a_button() {
-    Runtime::scope("chip-activate-role", || {
+    Owner::scope("chip-activate-role", || {
         let mut cx = Cx::new_root();
         let id = chip("Done", Tone::Success).activate(|| {}).build(&mut cx);
         let node = cx.get(id).expect("chip node exists");

@@ -5,12 +5,12 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::prelude::*;
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil_kittest::{Harness, Query};
 
 #[test]
 fn a_negative_bar_hangs_below_the_zero_line() {
-    Runtime::scope("chart-negative", || {
+    Owner::scope("chart-negative", || {
         let mut ui = Harness::new(|| column().child(chart(vec![-40.0, 60.0]).height(240.0)))
             .pixels(400, 300);
         ui.settle();

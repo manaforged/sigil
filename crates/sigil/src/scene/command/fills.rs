@@ -2,28 +2,43 @@ use crate::geometry::Point;
 use crate::style::Rgba8;
 use smallvec::SmallVec;
 
+#[cfg(any(test, feature = "kittest"))]
+/// The fill of a painted area: solid color, gradient, or pattern.
 #[derive(Clone, Debug, PartialEq)]
 pub enum PaintFill {
+    /// The solid paint fill.
     Solid(Rgba8),
+    /// The linear gradient paint fill.
     LinearGradient(LinearGradient),
+    /// The pattern paint fill.
     Pattern(PatternKind),
 }
 
+/// The shape of a pattern fill.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PatternKind {
+    /// The slash pattern kind.
     Slash {
+        /// The color.
         color: Rgba8,
+        /// The period.
         period: f32,
+        /// The line width.
         line_width: f32,
     },
+    /// The checker pattern kind.
     Checker {
+        /// The color a.
         color_a: Rgba8,
+        /// The color b.
         color_b: Rgba8,
+        /// The cell.
         cell: f32,
     },
 }
 
 impl PatternKind {
+    /// Returns this pattern with its values in range.
     #[must_use]
     pub const fn normalized(self) -> Self {
         match self {
@@ -56,6 +71,7 @@ impl PatternKind {
         }
     }
 
+    /// Returns the tile extent.
     #[must_use]
     pub const fn tile_extent(self) -> f32 {
         match self.normalized() {
@@ -83,14 +99,19 @@ const fn pattern_length(length: f32) -> f32 {
     }
 }
 
+/// A gradient along a straight axis.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LinearGradient {
+    /// The start.
     pub start: Point,
+    /// The end.
     pub end: Point,
+    /// The stops.
     pub stops: SmallVec<[GradientStop; 4]>,
 }
 
 impl LinearGradient {
+    /// Creates a linear gradient.
     #[must_use]
     pub fn new(start: Point, end: Point, stops: impl Into<SmallVec<[GradientStop; 4]>>) -> Self {
         Self {
@@ -100,6 +121,7 @@ impl LinearGradient {
         }
     }
 
+    /// Returns the normalized.
     #[must_use]
     pub fn normalized(&self) -> Self {
         let mut sorted: SmallVec<[GradientStop; 4]> = self
@@ -177,36 +199,52 @@ fn lerp_color(a: Rgba8, b: Rgba8, amount: f32) -> Rgba8 {
     }
 }
 
+/// A color at one offset of a gradient.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GradientStop {
+    /// The offset.
     pub offset: f32,
+    /// The color.
     pub color: Rgba8,
 }
 
 impl GradientStop {
+    /// Creates a gradient stop.
     #[must_use]
     pub const fn new(offset: f32, color: Rgba8) -> Self {
         Self { offset, color }
     }
 }
 
+/// The dash style of a stroke.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum StrokeStyle {
+    /// The solid stroke style.
     Solid,
+    /// The dashed stroke style.
     Dashed(f32),
 }
 
+/// Where a stroke sits relative to a shape's edge.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StrokeAlign {
+    /// The centered stroke align.
     Centered,
+    /// The inside stroke align.
     Inside,
+    /// The outside stroke align.
     Outside,
 }
 
+/// The width, color, and style of an outline.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Stroke {
+    /// The color.
     pub color: Rgba8,
+    /// The width.
     pub width: f32,
+    /// The style.
     pub style: StrokeStyle,
+    /// The align.
     pub align: StrokeAlign,
 }

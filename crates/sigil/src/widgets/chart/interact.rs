@@ -2,13 +2,12 @@ use std::cell::Cell;
 use std::ops::Range;
 use std::rc::Rc;
 
-use crate::events::{
-    MouseButton, MouseButtons, NodeEventsExt, PointerEvent, ScrollDelta, ScrollEvent,
-};
+use crate::events::{MouseButton, MouseButtons, PointerEvent, ScrollDelta, ScrollEvent};
 use crate::kernel::{NodeBuilder, container, text};
-use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Signal, signal};
 use crate::style::{Token, space};
+use crate::widgets::Widget;
 
 use super::axis::format_tick;
 

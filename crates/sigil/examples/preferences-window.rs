@@ -4,7 +4,6 @@
 )]
 
 use sigil::prelude::*;
-use sigil::widgets::ScrollBuilder;
 
 const SECTIONS: &[&str] = &["Account", "Appearance", "Notifications"];
 const LANGUAGES: &[&str] = &["English", "Deutsch", "Français", "日本語"];
@@ -88,7 +87,7 @@ fn nav(page: Signal<usize>) -> NodeBuilder {
                 .iter()
                 .enumerate()
                 .map(|(index, name)| {
-                    list_row(index == current, *name, "")
+                    list_row(index == current, *name, ListRowSlots::default())
                         .focusable(true)
                         .pointer_up(move |_| page.set(index))
                         .key(Key::Enter, move |_| page.set(index))
@@ -98,7 +97,7 @@ fn nav(page: Signal<usize>) -> NodeBuilder {
         })
 }
 
-fn content(page: Signal<usize>, prefs: Prefs) -> ScrollBuilder {
+fn content(page: Signal<usize>, prefs: Prefs) -> impl IntoNode {
     scroll(
         container()
             .layout(

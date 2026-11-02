@@ -6,15 +6,20 @@ use crate::app::embed::Host;
 use crate::kernel::IntoNode;
 use crate::reactive::{Signal, signal};
 
+/// Open another window with its own tree on the same event loop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct WindowId(u64);
 
+/// What happens when the user closes a window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
 pub enum CloseAction {
+    /// The close close action.
     #[default]
     Close,
+    /// The hide close action.
     Hide,
+    /// The keep close action.
     Keep,
 }
 
@@ -41,61 +46,49 @@ thread_local! {
 }
 
 impl WindowId {
+    /// Opens another window with its own tree.
+    pub fn open<C, F, N>(config: C, view: F) -> Self
+    where
+        C: Into<AppConfig>,
+        F: Fn() -> N + 'static,
+        N: IntoNode,
+    {
+        let id = allocate_window_id();
+        let request = OpenRequest {
+            id,
+            config: config.into(),
+            mount: Box::new(move |host: &mut Host| host.mount_app(view)),
+        };
+        OPENS.with(|cell| cell.borrow_mut().push(request));
+        id
+    }
+
+    /// Closes this window.
     pub fn close(self) {
         self.command(WindowCommand::Close);
     }
 
+    /// Sends a command to this window.
     pub fn command(self, command: WindowCommand) {
         queue_command(Some(self), command);
     }
 
+    /// Returns the focused.
     #[must_use]
     pub fn focused(self) -> Option<Signal<bool>> {
         signals_for(self).map(|s| s.focused)
     }
 
+    /// Returns the occluded.
     #[must_use]
     pub fn occluded(self) -> Option<Signal<bool>> {
         signals_for(self).map(|s| s.occluded)
     }
 }
 
-pub fn open_window<C, F, N>(config: C, view: F) -> WindowId
-where
-    C: Into<AppConfig>,
-    F: Fn() -> N + 'static,
-    N: IntoNode,
-{
-    let id = allocate_window_id();
-    let request = OpenRequest {
-        id,
-        config: config.into(),
-        mount: Box::new(move |host: &mut Host| host.mount_app(view)),
-    };
-    OPENS.with(|cell| cell.borrow_mut().push(request));
-    id
-}
-
 #[must_use]
-pub fn current_window() -> Option<WindowId> {
+pub(crate) fn current_window() -> Option<WindowId> {
     CURRENT.with(Cell::get)
-}
-
-#[must_use]
-pub fn window_focused() -> Signal<bool> {
-    current_signals().focused
-}
-
-#[must_use]
-pub fn window_occluded() -> Signal<bool> {
-    current_signals().occluded
-}
-
-fn current_signals() -> WindowSignals {
-    let current = current_window().and_then(signals_for);
-    current
-        .or_else(|| SIGNALS.with(|cell| cell.borrow().first().map(|(_, s)| *s)))
-        .unwrap_or_else(fresh_signals)
 }
 
 fn fresh_signals() -> WindowSignals {

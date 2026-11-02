@@ -1,11 +1,12 @@
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::snap::{self, CellForm};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot};
+use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom};
+use crate::widgets::Widget;
 
 use super::button::button;
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 
 static SEGMENTED_FRAME: &[StyleAtom] = &[
     StyleAtom::BorderWidth(BORDER_WIDTH),
@@ -16,6 +17,7 @@ const SEGMENTED_HEIGHT: f32 = 32.0;
 const CELL_ACTIVE_OPEN: &str = "[";
 const CELL_ACTIVE_CLOSE: &str = "]";
 
+/// Builder of a segmented control.
 pub struct SegmentedBuilder {
     active: Signal<usize>,
     labels: Vec<String>,
@@ -24,6 +26,7 @@ pub struct SegmentedBuilder {
     style_accumulator: Style,
 }
 
+/// A framed row of options where one is active; `.label()` names the group and `.height()` (`Widget`) sets its height.
 #[must_use]
 pub fn segmented(active: Signal<usize>, labels: Vec<String>) -> SegmentedBuilder {
     SegmentedBuilder {
@@ -36,13 +39,14 @@ pub fn segmented(active: Signal<usize>, labels: Vec<String>) -> SegmentedBuilder
 }
 
 impl SegmentedBuilder {
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let active = self.active;
         let labels = self.labels;
         let height = self
@@ -53,14 +57,12 @@ impl SegmentedBuilder {
         let mut node = container()
             .role(Role::RadioGroup)
             .with(
-                self.layout_overrides.apply(
-                    LayoutStyle::flex_row()
-                        .height(height)
-                        .shrink(0.0)
-                        .gap(2.0)
-                        .padding(snap::detail(2.0))
-                        .align_items(AlignItems::Center),
-                ),
+                LayoutStyle::flex_row()
+                    .height(height)
+                    .shrink(0.0)
+                    .gap(2.0)
+                    .padding(snap::detail(2.0))
+                    .align_items(AlignItems::Center),
             )
             .class(Radius::Lg.atom())
             .class(SEGMENTED_FRAME)
@@ -106,23 +108,4 @@ fn segment(
     container().child(choice)
 }
 
-impl PaintTarget for SegmentedBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for SegmentedBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for SegmentedBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] SegmentedBuilder: paint(style_accumulator), widget, node);

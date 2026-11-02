@@ -9,7 +9,9 @@ use crate::renderer::scene_command::walk::intersect_rect;
 use crate::renderer::scene_command::{CommandScene, LayerScope, SceneCommand};
 use crate::scene::command::payloads::DrawRect;
 use crate::scene::corner_radii::CornerRadii;
-use crate::scene::damage::{Budget, Damage, command_ink, scene_damage};
+use crate::scene::damage::Budget;
+use crate::scene::damage::scene_damage;
+use crate::scene::damage::{Damage, command_ink};
 use crate::style::{Color, Rgba8};
 
 const FULL_OPACITY: u16 = 10_000;

@@ -6,12 +6,14 @@ pub struct WgpuSurface {
 }
 
 impl WgpuSurface {
+    #[cfg(feature = "inspect")]
     #[must_use]
-    pub const fn size(&self) -> crate::geometry::PhysicalSize {
+    pub(crate) const fn size(&self) -> crate::geometry::PhysicalSize {
         crate::geometry::PhysicalSize::new(self.config.width, self.config.height)
     }
 
     #[must_use]
+    #[cfg(any(test, feature = "kittest"))]
     pub const fn format(&self) -> wgpu::TextureFormat {
         self.config.format
     }

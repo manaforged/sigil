@@ -111,7 +111,7 @@ pub(crate) fn hex(color: Rgba8) -> String {
 fn metrics(out: &mut String, faces: &[Face]) -> fmt::Result {
     let window = Metrics::window();
     for (name, radius) in RADII {
-        writeln!(out, "  --sg-radius-{name}: {}px;", window.radius(radius).0)?;
+        writeln!(out, "  --sg-radius-{name}: {}px;", window.radius(radius))?;
     }
     for step in 0..=SPACE_STEPS {
         writeln!(out, "  --sg-space-{step}: {}px;", space(step))?;

@@ -11,6 +11,7 @@ use sigil::geometry::{LogicalSize, Size};
 use sigil::kernel::{TextContent, *};
 use sigil::layout::*;
 use sigil::style::{Paint, TextLineHeight, TextStyle};
+use sigil::widgets::Widget;
 
 use stub::{first_child, layout_rect, stub_engine};
 

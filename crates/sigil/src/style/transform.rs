@@ -4,6 +4,7 @@ use crate::geometry::{Point, Rect};
 
 use super::{AnimatorOverlay, NumericAtomKind, StyleAtom, StyleBinding};
 
+/// Holds a 2D translation, scale, and rotation for a node.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform2D {
     translation: [f32; 2],
@@ -35,6 +36,7 @@ impl Default for Transform2D {
 }
 
 impl Transform2D {
+    /// The transform that changes nothing.
     pub const IDENTITY: Self = Self {
         translation: [0.0, 0.0],
         scale: [1.0, 1.0],
@@ -42,6 +44,7 @@ impl Transform2D {
         origin: [5_000, 5_000],
     };
 
+    /// Adds a translation.
     #[must_use]
     pub fn translate(mut self, x: f32, y: f32) -> Self {
         assert!(x.is_finite() && y.is_finite());
@@ -49,6 +52,7 @@ impl Transform2D {
         self
     }
 
+    /// Adds a scale.
     #[must_use]
     pub fn scale(mut self, x: f32, y: f32) -> Self {
         assert!(x.is_finite() && y.is_finite());
@@ -56,6 +60,7 @@ impl Transform2D {
         self
     }
 
+    /// Adds a rotation.
     #[must_use]
     pub fn rotate(mut self, radians: f32) -> Self {
         assert!(radians.is_finite());
@@ -63,6 +68,7 @@ impl Transform2D {
         self
     }
 
+    /// Sets the point the transform turns around.
     #[must_use]
     #[expect(
         clippy::cast_possible_truncation,

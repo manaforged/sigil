@@ -1,15 +1,15 @@
 use std::rc::Rc;
 
-use crate::kernel::{
-    Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, TextContent, container, text,
-};
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
+use crate::layout::LayoutStyle;
 use crate::reactive::Reactive;
 use crate::style::{StyleAtom, Token, Tone, space};
+use crate::widgets::Widget;
 
 use super::patterns::card;
 use super::sparkline::sparkline;
 
+/// Builds a stat.
 #[must_use]
 pub struct StatBuilder {
     label: TextContent,
@@ -19,8 +19,10 @@ pub struct StatBuilder {
     trend: Option<Rc<dyn Reactive<Vec<f32>>>>,
     range: Option<(f32, f32)>,
     tone: Option<Tone>,
+    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
+/// A KPI tile in card chrome: a label, a large value, and an optional toned change line, caption, and sparkline trend.
 pub fn stat(label: impl Into<TextContent>, value: impl Into<TextContent>) -> StatBuilder {
     StatBuilder {
         label: label.into(),
@@ -30,37 +32,43 @@ pub fn stat(label: impl Into<TextContent>, value: impl Into<TextContent>) -> Sta
         trend: None,
         range: None,
         tone: None,
+        layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
 
 impl StatBuilder {
+    /// Sets the delta.
     pub fn delta(mut self, change: impl Into<TextContent>, tone: Tone) -> Self {
         self.delta = Some((change.into(), tone));
         self
     }
 
+    /// Sets the caption.
     pub fn caption(mut self, caption: impl Into<TextContent>) -> Self {
         self.caption = Some(caption.into());
         self
     }
 
+    /// Sets the trend.
     pub fn trend(mut self, values: impl Reactive<Vec<f32>>) -> Self {
         self.trend = Some(Rc::new(values));
         self
     }
 
+    /// Sets the range.
     pub const fn range(mut self, low: f32, high: f32) -> Self {
         self.range = Some((low, high));
         self
     }
 
+    /// Sets the tone.
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = Some(tone);
         self
     }
 
     #[must_use]
-    pub fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let name = self.label.as_static_str().unwrap_or("Statistic").to_owned();
         let value = text(self.value)
             .nowrap()
@@ -115,8 +123,4 @@ impl From<StatBuilder> for NodeBuilder {
     }
 }
 
-impl IntoNode for StatBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] StatBuilder: widget, node(pub));

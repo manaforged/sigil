@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use super::layout_ext::LayoutOverrides;
+use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{Dimension, PaintTarget, Px, Radius, Style, StyleAtom, StyleSlot, Token, space};
+use crate::style::{Radius, Style, StyleAtom, Token, space};
+use crate::widgets::Widget;
 
 const TRACK_WIDTH: f32 = 160.0;
 const TRACK_HEIGHT: f32 = 8.0;
@@ -13,8 +14,9 @@ const GAUGE_GAP: f32 = space(2);
 
 static TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
 
-type FillAtomCache = HashMap<(i16, bool), &'static [StyleAtom]>;
+type GaugeAtoms = HashMap<(i16, bool), &'static [StyleAtom]>;
 
+/// Builder of a gauge.
 pub struct GaugeBuilder {
     value: Signal<f32>,
     max: f32,
@@ -24,12 +26,14 @@ pub struct GaugeBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+/// A labelled meter bar that shows a value against a maximum.
 #[must_use]
 pub fn gauge(value: Signal<f32>) -> GaugeBuilder {
     GaugeBuilder::new(value)
 }
 
 impl GaugeBuilder {
+    /// Creates a gauge builder.
     #[must_use]
     pub fn new(value: Signal<f32>) -> Self {
         Self {
@@ -42,6 +46,7 @@ impl GaugeBuilder {
         }
     }
 
+    /// Sets the max.
     #[must_use]
     pub const fn max(mut self, max: f32) -> Self {
         self.max = if max > f32::EPSILON {
@@ -52,19 +57,21 @@ impl GaugeBuilder {
         self
     }
 
+    /// Sets the label.
     #[must_use]
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
+    /// Sets the warn.
     #[must_use]
     pub const fn warn(mut self, threshold: f32) -> Self {
         self.warn_threshold = Some(threshold);
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let (value, max, warn) = (self.value, self.max, self.warn_threshold);
         let name = self.label.as_ref().and_then(TextContent::as_static_str);
         let mut node = container()
@@ -72,11 +79,9 @@ impl GaugeBuilder {
             .label(name.map_or_else(|| String::from("Gauge"), ToOwned::to_owned))
             .value(value, 0.0, max)
             .layout(
-                self.layout_overrides.apply(
-                    LayoutStyle::flex_row()
-                        .gap(GAUGE_GAP)
-                        .align_items(AlignItems::Center),
-                ),
+                LayoutStyle::flex_row()
+                    .gap(GAUGE_GAP)
+                    .align_items(AlignItems::Center),
             );
         if let Some(label) = self.label {
             node = node.child(text(label).class(Token::OnSurface.text()));
@@ -105,29 +110,10 @@ impl GaugeBuilder {
     }
 }
 
-impl PaintTarget for GaugeBuilder {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(&mut self.style_accumulator)
-    }
-}
-
-impl WidgetLayoutExt for GaugeBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl IntoNode for GaugeBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.layout_overrides
-            .hooks()
-            .finish(self.into_node_builder())
-            .build(cx)
-    }
-}
+builder_impls!([] GaugeBuilder: paint(style_accumulator), widget, node);
 
 fn fill_atoms(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> &'static [StyleAtom] {
-    static CACHE: LazyLock<Mutex<FillAtomCache>> = LazyLock::new(Mutex::default);
+    static CACHE: LazyLock<Mutex<GaugeAtoms>> = LazyLock::new(Mutex::default);
     let ratio = (value.get() / max).clamp(0.0, 1.0);
     #[allow(
         clippy::cast_possible_truncation,
@@ -143,7 +129,7 @@ fn fill_atoms(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> &'st
     };
     let build = || -> &'static [StyleAtom] {
         Box::leak(Box::new([
-            StyleAtom::Width(Dimension::Px(Px(px))),
+            StyleAtom::Width(crate::style::atom::ATOM_PX, px),
             tone.bg(),
         ]))
     };

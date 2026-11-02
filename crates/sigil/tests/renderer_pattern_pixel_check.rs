@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -10,7 +11,7 @@
 
 use sigil::geometry::{Point, Rect};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
-use sigil::scene::{CornerRadii, PatternKind, SceneBuilder, ScenePatternStyle};
+use sigil::scene::{DrawPattern, PatternKind, SceneBuilder};
 use sigil::style::{Color, Rgba8};
 use sigil_kittest::gpu::{FORMAT, create_capture_texture, pixel_rgba, read_pixels, shared_device};
 
@@ -69,14 +70,14 @@ fn build_pattern_scene() -> sigil::scene::CommandScene {
         cell: 32.0,
     };
     let mut scene = SceneBuilder::new();
-    scene.draw_pattern(
+    scene.draw_pattern(DrawPattern::new(
         Rect::new(Point::new(SX, SY), SW, SH),
-        ScenePatternStyle::new(slash, CornerRadii::ZERO, 10_000),
-    );
-    scene.draw_pattern(
+        slash,
+    ));
+    scene.draw_pattern(DrawPattern::new(
         Rect::new(Point::new(CX, CY), 480.0, 240.0),
-        ScenePatternStyle::new(checker, CornerRadii::ZERO, 10_000),
-    );
+        checker,
+    ));
     scene.finish()
 }
 
@@ -87,7 +88,6 @@ fn render_pattern_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let scene = build_pattern_scene();
     WgpuRenderer::new()
-        .expect("WgpuRenderer::new")
         .render_command_scene_offscreen(
             OffscreenTarget {
                 device,

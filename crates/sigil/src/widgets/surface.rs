@@ -1,6 +1,8 @@
 use crate::kernel::{NodeBuilder, Role, Surface, container};
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::layout::LayoutStyle;
+use crate::widgets::Widget;
 
+/// A rectangle that the embed host draws.
 #[must_use]
 pub fn surface(key: u64) -> NodeBuilder {
     container()

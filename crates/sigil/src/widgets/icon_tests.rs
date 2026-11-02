@@ -2,11 +2,12 @@
 
 use super::*;
 use crate::kernel::Cx;
-use crate::reactive::Runtime;
+use crate::kernel::IntoNode;
+use crate::reactive::Owner;
 
 #[test]
 fn decorative_icon_is_one_generic_container() {
-    Runtime::scope("icon-decorative-role", || {
+    Owner::scope("icon-decorative-role", || {
         let mut cx = Cx::new_root();
         let id = icon("\u{2699}").build(&mut cx);
         let node = cx.get(id).expect("icon node exists");
@@ -17,7 +18,7 @@ fn decorative_icon_is_one_generic_container() {
 
 #[test]
 fn labeled_icon_promotes_to_image_role() {
-    Runtime::scope("icon-labeled-role", || {
+    Owner::scope("icon-labeled-role", || {
         let mut cx = Cx::new_root();
         let id = icon("\u{2699}").label("Settings").build(&mut cx);
         let node = cx.get(id).expect("icon node exists");

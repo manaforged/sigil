@@ -1,7 +1,9 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::Display;
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{DisplayKind, StyleAtom, space};
+use crate::style::{StyleAtom, space};
+use crate::widgets::Widget;
 
 pub(super) fn wrap_with_content(
     tab_list: NodeBuilder,
@@ -29,7 +31,7 @@ pub(super) fn wrap_with_content(
                         if active.get() == index {
                             &[]
                         } else {
-                            &[StyleAtom::Display(DisplayKind::None)]
+                            &[StyleAtom::Display(Display::None)]
                         }
                     })
                     .child(content),

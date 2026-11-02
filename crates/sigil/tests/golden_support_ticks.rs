@@ -5,17 +5,21 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::animation::SpringPreset;
-use sigil::animation_runtime::{AnimationConfig, Animator, MotionPrefs, active_count, tick};
+use sigil::animation_runtime::{Animator, MotionPrefs, active_count, tick};
 use sigil::prelude::*;
-use sigil::reactive::{Runtime, signal};
+use sigil::reactive::{Owner, signal};
 
 use sigil_kittest::{InteractionMode, SETTLE_SAFETY_CAP};
 
 const DT_60HZ: f32 = 1.0 / 60.0;
 
 fn drive_in_harness(mode: InteractionMode) {
-    if let Err(err) =
-        sigil_kittest::render_widget_to_png_stub(|| button("tick"), mode, [64, 64], (10.0, 10.0))
+    if let Err(err) = sigil_kittest::Harness::render(|| button("tick"))
+        .stub()
+        .mode(mode)
+        .size([64, 64])
+        .hit((10.0, 10.0))
+        .image()
     {
         panic!("{err}");
     }
@@ -23,16 +27,10 @@ fn drive_in_harness(mode: InteractionMode) {
 
 #[test]
 fn after_frames_calls_tick_exactly_n_times() {
-    Runtime::scope("after_frames_calls_tick_exactly_n_times", || {
+    Owner::scope("after_frames_calls_tick_exactly_n_times", || {
         MotionPrefs::set(false);
         let value = signal(0.0_f32);
-        let mut anim = Animator::new(
-            value,
-            AnimationConfig::Tween {
-                ms: 10_000,
-                easing: sigil::animation::Easing::Linear,
-            },
-        );
+        let mut anim = Animator::tween(value, 10_000, sigil::animation::Easing::Linear);
         anim.target(1.0);
         let before = value.peek();
         assert!(
@@ -59,15 +57,10 @@ fn after_frames_calls_tick_exactly_n_times() {
 
 #[test]
 fn after_frames_with_u32_max_stops_when_settled() {
-    Runtime::scope("after_frames_with_u32_max_stops_when_settled", || {
+    Owner::scope("after_frames_with_u32_max_stops_when_settled", || {
         MotionPrefs::set(false);
         let value = signal(0.0_f32);
-        let mut anim = Animator::new(
-            value,
-            AnimationConfig::Spring {
-                preset: SpringPreset::Stiff,
-            },
-        );
+        let mut anim = Animator::spring(value, SpringPreset::Stiff);
         anim.target(1.0);
         assert_eq!(active_count(), 1);
 
@@ -94,16 +87,10 @@ fn after_frames_with_u32_max_stops_when_settled() {
 #[test]
 fn after_frames_safety_cap_panics_on_runaway() {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        Runtime::scope("after_frames_safety_cap_panics_on_runaway", || {
+        Owner::scope("after_frames_safety_cap_panics_on_runaway", || {
             MotionPrefs::set(false);
             let value = signal(0.0_f32);
-            let mut anim = Animator::new(
-                value,
-                AnimationConfig::Tween {
-                    ms: 60_000,
-                    easing: sigil::animation::Easing::Linear,
-                },
-            );
+            let mut anim = Animator::tween(value, 60_000, sigil::animation::Easing::Linear);
             anim.target(1.0);
             assert_eq!(active_count(), 1);
 

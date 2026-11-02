@@ -1,10 +1,10 @@
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
+use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 
 use super::{Error, InteractionMode};
-use crate::input::{click, pointer_down, pointer_drag, pointer_move};
 
 pub(crate) fn drive_state(
     cx: &mut Cx,
@@ -15,27 +15,30 @@ pub(crate) fn drive_state(
 ) {
     let mut router = EventRouter::new();
     let (x, y) = hit;
-    let events: Vec<ShellEvent> = match mode {
+    let events: Vec<Event> = match mode {
         InteractionMode::Default => {
             router.flush_focus_requests(cx, layout);
             Vec::new()
         }
         InteractionMode::Disabled => Vec::new(),
         InteractionMode::Hover | InteractionMode::HoverAfterFrames { .. } => {
-            vec![pointer_move(x, y)]
+            vec![Event::pointer_move(Point::new(x, y))]
         }
         InteractionMode::Pressed | InteractionMode::PressedAfterFrames { .. } => {
-            vec![pointer_move(x, y), pointer_down(x, y)]
+            vec![
+                Event::pointer_move(Point::new(x, y)),
+                Event::pointer_down(Point::new(x, y)),
+            ]
         }
-        InteractionMode::Clicked => click(x, y).to_vec(),
+        InteractionMode::Clicked => Event::click(Point::new(x, y)).to_vec(),
         InteractionMode::Focused | InteractionMode::FocusedAfterFrames { .. } => {
             router.set_focus(cx, Some(focus_target));
             Vec::new()
         }
         InteractionMode::Dragged { dx, dy } => vec![
-            pointer_move(x, y),
-            pointer_down(x, y),
-            pointer_drag(x + dx, y + dy),
+            Event::pointer_move(Point::new(x, y)),
+            Event::pointer_down(Point::new(x, y)),
+            Event::pointer_drag(Point::new(x + dx, y + dy)),
         ],
     };
     for event in events {

@@ -5,7 +5,8 @@ use std::rc::Rc;
 use crate::reactive::Signal;
 
 use super::columns::TableColumn;
-use super::state::{SortDir, SortKey};
+use super::state::SortKey;
+use crate::kernel::SortDirection;
 
 pub(super) fn reuse_identity(len: usize, cache: &mut Option<Rc<Vec<u32>>>) -> Rc<Vec<u32>> {
     if let Some(existing) = cache.as_ref()
@@ -44,8 +45,8 @@ pub(super) fn compute_visible<Row>(
         };
         let ordering = compare(row_a, row_b);
         match key.dir {
-            SortDir::Ascending => ordering,
-            SortDir::Descending => ordering.reverse(),
+            SortDirection::Ascending => ordering,
+            SortDirection::Descending => ordering.reverse(),
         }
     };
     if quick_filter.is_empty()

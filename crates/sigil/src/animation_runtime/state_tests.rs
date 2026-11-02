@@ -1,5 +1,5 @@
 use crate::animation::SpringPreset;
-use crate::reactive::{Runtime, signal};
+use crate::reactive::{Owner, signal};
 
 use super::{active_count, tick};
 use crate::animation_runtime::animator::Animator;
@@ -13,7 +13,7 @@ fn spring(preset: SpringPreset) -> AnimationConfig {
 
 #[test]
 fn dropping_animator_deregisters_from_runtime() {
-    Runtime::scope("dropping_animator_deregisters_from_runtime", || {
+    Owner::scope("dropping_animator_deregisters_from_runtime", || {
         MotionPrefs::set(false);
         let baseline = active_count();
         let mut animator = Animator::new(signal(0.0_f32), spring(SpringPreset::Smooth));
@@ -26,7 +26,7 @@ fn dropping_animator_deregisters_from_runtime() {
 
 #[test]
 fn reduced_motion_skips_animator_registration() {
-    Runtime::scope("reduced_motion_skips_animator_registration", || {
+    Owner::scope("reduced_motion_skips_animator_registration", || {
         MotionPrefs::set(true);
         assert!(MotionPrefs::reduced());
         let value = signal(0.0_f32);
@@ -43,7 +43,7 @@ fn reduced_motion_skips_animator_registration() {
 
 #[test]
 fn settled_animator_becomes_idle_and_can_retarget() {
-    Runtime::scope("settled_animator_becomes_idle_and_can_retarget", || {
+    Owner::scope("settled_animator_becomes_idle_and_can_retarget", || {
         MotionPrefs::set(false);
         let baseline = active_count();
         let mut animator = Animator::new(signal(0.0_f32), spring(SpringPreset::Stiff));
@@ -72,7 +72,7 @@ fn settled_animator_becomes_idle_and_can_retarget() {
 
 #[test]
 fn a_clock_advances_by_each_frame_and_stops_with_its_owner() {
-    Runtime::scope(
+    Owner::scope(
         "a_clock_advances_by_each_frame_and_stops_with_its_owner",
         || {
             let owner = crate::reactive::Owner::new("clock", None);
@@ -89,7 +89,7 @@ fn a_clock_advances_by_each_frame_and_stops_with_its_owner() {
 
 #[test]
 fn a_clock_keeps_frame_time_after_long_uptime() {
-    Runtime::scope("a_clock_keeps_frame_time_after_long_uptime", || {
+    Owner::scope("a_clock_keeps_frame_time_after_long_uptime", || {
         let owner = crate::reactive::Owner::new("clock", None);
         let seconds = owner.with(clock);
         tick_clocks(600_000.0);
@@ -106,7 +106,7 @@ fn a_clock_keeps_frame_time_after_long_uptime() {
 
 #[test]
 fn a_running_clock_lets_animations_settle() {
-    Runtime::scope("a_running_clock_lets_animations_settle", || {
+    Owner::scope("a_running_clock_lets_animations_settle", || {
         MotionPrefs::set(false);
         let baseline = active_count();
         let owner = crate::reactive::Owner::new("clock", None);

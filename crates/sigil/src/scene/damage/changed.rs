@@ -6,7 +6,7 @@ use crate::scene::geometry::intersect_rect;
 use crate::scene::state::{SceneState, ink_rect};
 use crate::scene::{LayerEffect, LayerScope, SceneCommand};
 
-enum Bound {
+enum ChangeBound {
     Nothing,
     Rect(Option<Rect>),
     Full,
@@ -42,9 +42,9 @@ pub(super) fn changed_ink(
         }
         if marked {
             let ink = match structural_ink(commands, index, &state, &layers, (area, scale)) {
-                Some(Bound::Full) => return None,
-                Some(Bound::Rect(rect)) => rect,
-                Some(Bound::Nothing) => None,
+                Some(ChangeBound::Full) => return None,
+                Some(ChangeBound::Rect(rect)) => rect,
+                Some(ChangeBound::Nothing) => None,
                 None => command_ink(command, &state, &layers, scale),
             };
             inks.extend(ink);
@@ -69,25 +69,25 @@ fn structural_ink(
     state: &SceneState,
     layers: &[LayerScope],
     (area, scale): (Rect, f32),
-) -> Option<Bound> {
+) -> Option<ChangeBound> {
     let command = commands.get(index)?;
     Some(match command {
-        SceneCommand::PushClip(rect) => Bound::Rect(within(
+        SceneCommand::PushClip(rect) => ChangeBound::Rect(within(
             transform_rect(state.current_transform(), *rect),
             state,
             layers,
         )),
-        SceneCommand::PushLayer(_) => Bound::Rect(command_ink(command, state, layers, scale)),
+        SceneCommand::PushLayer(_) => ChangeBound::Rect(command_ink(command, state, layers, scale)),
         SceneCommand::SaveLayer { .. } => {
             let end = SceneState::group_end(commands, index + 1);
             let children = commands.get(index + 1..end).unwrap_or_default();
-            Bound::Rect(state.draw_bounds(children, area, scale))
+            ChangeBound::Rect(state.draw_bounds(children, area, scale))
         }
-        SceneCommand::PushTransform(_) => Bound::Full,
+        SceneCommand::PushTransform(_) => ChangeBound::Full,
         SceneCommand::PopClip
         | SceneCommand::PopTransform
         | SceneCommand::PopLayer
-        | SceneCommand::RestoreLayer => Bound::Nothing,
+        | SceneCommand::RestoreLayer => ChangeBound::Nothing,
         _ => return None,
     })
 }

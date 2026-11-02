@@ -6,7 +6,7 @@ use sigil::layout::LayoutEngine;
 
 #[test]
 fn slider_click_jumps_to_position() {
-    sigil::reactive::Runtime::scope("sigil-widget-slider-click", || {
+    sigil::reactive::Owner::scope("sigil-widget-slider-click", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0).length(SLIDER_TRACK));
@@ -29,7 +29,7 @@ fn slider_click_jumps_to_position() {
 
 #[test]
 fn slider_drag_updates_value_continuously() {
-    sigil::reactive::Runtime::scope("sigil-widget-slider-drag", || {
+    sigil::reactive::Owner::scope("sigil-widget-slider-drag", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0).length(SLIDER_TRACK));
@@ -48,7 +48,7 @@ fn slider_drag_updates_value_continuously() {
 
 #[test]
 fn slider_drag_with_step_quantizes_value() {
-    sigil::reactive::Runtime::scope("sigil-widget-slider-step", || {
+    sigil::reactive::Owner::scope("sigil-widget-slider-step", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0).step(10.0).length(SLIDER_TRACK));
@@ -67,7 +67,7 @@ fn slider_drag_with_step_quantizes_value() {
 
 #[test]
 fn slider_keyboard_stepping() {
-    sigil::reactive::Runtime::scope("sigil-widget-slider-keyboard", || {
+    sigil::reactive::Owner::scope("sigil-widget-slider-keyboard", || {
         let value = signal(50.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0).step(5.0).length(SLIDER_TRACK));
@@ -96,7 +96,7 @@ fn slider_keyboard_stepping() {
 
 #[test]
 fn slider_disabled_ignores_input() {
-    sigil::reactive::Runtime::scope("sigil-widget-slider-disabled", || {
+    sigil::reactive::Owner::scope("sigil-widget-slider-disabled", || {
         let value = signal(25.0_f32);
         let disabled = signal(true);
         let mut cx = Cx::new_root();
@@ -129,7 +129,7 @@ fn slider_disabled_ignores_input() {
 
 #[test]
 fn slider_capture_releases_on_pointer_up() {
-    sigil::reactive::Runtime::scope("sigil-widget-slider-capture-release", || {
+    sigil::reactive::Owner::scope("sigil-widget-slider-capture-release", || {
         let value = signal(0.0_f32);
         let changes = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();

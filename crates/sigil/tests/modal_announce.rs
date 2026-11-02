@@ -10,7 +10,7 @@ use sigil::prelude::*;
 
 #[test]
 fn modal_announces_title_on_open_rising_edge() {
-    sigil::reactive::Runtime::scope("sigil-widget-modal-open-announce", || {
+    sigil::reactive::Owner::scope("sigil-widget-modal-open-announce", || {
         let mut cx = Cx::new_root();
         let visible = signal(false);
         let _ = cx.add(modal(visible).title("File saved"));
@@ -37,7 +37,7 @@ fn modal_announces_title_on_open_rising_edge() {
 
 #[test]
 fn modal_does_not_announce_on_steady_open_writes() {
-    sigil::reactive::Runtime::scope("sigil-widget-modal-steady-open", || {
+    sigil::reactive::Owner::scope("sigil-widget-modal-steady-open", || {
         let mut cx = Cx::new_root();
         let visible = signal(false);
         let _ = cx.add(modal(visible).title("First open"));
@@ -63,7 +63,7 @@ fn modal_does_not_announce_on_steady_open_writes() {
 
 #[test]
 fn modal_reopens_re_announce() {
-    sigil::reactive::Runtime::scope("sigil-widget-modal-reopen", || {
+    sigil::reactive::Owner::scope("sigil-widget-modal-reopen", || {
         let mut cx = Cx::new_root();
         let visible = signal(false);
         let _ = cx.add(modal(visible).title("Reopen me"));
@@ -90,7 +90,7 @@ fn modal_reopens_re_announce() {
 
 #[test]
 fn modal_without_title_announces_default_dialog_label() {
-    sigil::reactive::Runtime::scope("sigil-widget-modal-default-label", || {
+    sigil::reactive::Owner::scope("sigil-widget-modal-default-label", || {
         let mut cx = Cx::new_root();
         let visible = signal(false);
         let _ = cx.add(modal(visible));
@@ -110,7 +110,7 @@ fn modal_without_title_announces_default_dialog_label() {
 
 #[test]
 fn modal_open_at_mount_does_not_announce() {
-    sigil::reactive::Runtime::scope("sigil-widget-modal-mount-open", || {
+    sigil::reactive::Owner::scope("sigil-widget-modal-mount-open", || {
         let mut cx = Cx::new_root();
         let visible = signal(true);
         let _ = cx.add(modal(visible).title("Mounted open"));

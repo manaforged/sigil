@@ -1,9 +1,10 @@
 use crate::geometry::{Point, Rect};
-use crate::scene::command::{CommandScene, DrawRect, SceneCommand, SceneRectStyle};
+use crate::scene::command::{CommandScene, DrawRect, SceneCommand};
 use crate::style::{Rgba8, Theme};
+use crate::terminal::ColorDepth;
 use crate::terminal::caps::Caps;
-use crate::terminal::paint::{Grid, Marks, Paint, raster_regions, raster_with};
-use crate::terminal::{ColorDepth, render};
+use crate::terminal::paint::{CellPaint, Grid, Marks, raster_regions, raster_with};
+use crate::terminal::write::render;
 
 const CELL: f32 = 8.0;
 
@@ -11,10 +12,9 @@ fn scene(rects: &[(f32, f32, f32, f32, Rgba8)]) -> CommandScene {
     let mut scene = CommandScene::default();
     for (x, y, w, h, color) in rects {
         let rect = Rect::new(Point::new(*x, *y), *w, *h);
-        scene.commands.push(SceneCommand::Rect(DrawRect::new(
-            rect,
-            SceneRectStyle::solid(*color),
-        )));
+        scene
+            .commands
+            .push(SceneCommand::Rect(DrawRect::new(rect, *color)));
     }
     scene
 }
@@ -29,7 +29,7 @@ fn bytes(grid: &Grid) -> Vec<u8> {
 fn region_raster_matches_a_full_raster() {
     let theme = Theme::default();
     let marks = Marks::default();
-    let paint = Paint {
+    let paint = CellPaint {
         theme: &theme,
         cell: CELL,
         caps: Caps::default(),

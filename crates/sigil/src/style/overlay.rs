@@ -1,96 +1,58 @@
 use smallvec::SmallVec;
 
+use crate::style::state::PerState;
 use crate::style::{StateSlot, StyleAtom};
 
+/// Holds extra style atoms for each interaction state.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct StyleOverlay {
-    rest: SmallVec<[StyleAtom; 4]>,
-    hover: SmallVec<[StyleAtom; 4]>,
-    focus: SmallVec<[StyleAtom; 4]>,
-    pressed: SmallVec<[StyleAtom; 4]>,
-    disabled: SmallVec<[StyleAtom; 4]>,
+pub(crate) struct StyleOverlay {
+    slots: PerState<SmallVec<[StyleAtom; 4]>>,
 }
 
 impl StyleOverlay {
+    #[cfg(test)]
+    /// Creates a style overlay.
     #[must_use]
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
+    #[cfg(test)]
+    /// Creates a style overlay from slots.
     #[must_use]
-    pub const fn from_slots(
+    pub(crate) const fn from_slots(
         rest: SmallVec<[StyleAtom; 4]>,
         hover: SmallVec<[StyleAtom; 4]>,
         focus: SmallVec<[StyleAtom; 4]>,
         pressed: SmallVec<[StyleAtom; 4]>,
         disabled: SmallVec<[StyleAtom; 4]>,
     ) -> Self {
-        Self {
-            rest,
-            hover,
-            focus,
-            pressed,
-            disabled,
-        }
+        Self::from_states(PerState::new(rest, focus, hover, pressed, disabled))
     }
 
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.rest.is_empty()
-            && self.hover.is_empty()
-            && self.focus.is_empty()
-            && self.pressed.is_empty()
-            && self.disabled.is_empty()
+    pub(crate) const fn from_states(slots: PerState<SmallVec<[StyleAtom; 4]>>) -> Self {
+        Self { slots }
     }
 
+    /// Returns whether this style overlay is empty.
     #[must_use]
-    pub fn rest(&self) -> &[StyleAtom] {
-        &self.rest
-    }
-
-    #[must_use]
-    pub fn hover(&self) -> &[StyleAtom] {
-        &self.hover
-    }
-
-    #[must_use]
-    pub fn focus(&self) -> &[StyleAtom] {
-        &self.focus
-    }
-
-    #[must_use]
-    pub fn pressed(&self) -> &[StyleAtom] {
-        &self.pressed
-    }
-
-    #[must_use]
-    pub fn disabled(&self) -> &[StyleAtom] {
-        &self.disabled
+    pub(crate) fn is_empty(&self) -> bool {
+        self.slots.each().iter().all(|atoms| atoms.is_empty())
     }
 
     pub(crate) fn merge(&mut self, other: &Self) {
-        for (into, from) in [
-            (&mut self.rest, &other.rest),
-            (&mut self.hover, &other.hover),
-            (&mut self.focus, &other.focus),
-            (&mut self.pressed, &other.pressed),
-            (&mut self.disabled, &other.disabled),
-        ] {
+        for (into, from) in self.slots.each_mut().into_iter().zip(other.slots.each()) {
             *into = crate::style::merge_classes(into, from, 0)
                 .into_iter()
                 .collect();
         }
     }
 
+    /// Returns the atoms of one state slot.
     #[must_use]
-    pub fn atoms_for(&self, slot: StateSlot) -> &[StyleAtom] {
-        match slot {
-            StateSlot::Rest => &self.rest,
-            StateSlot::Focused => &self.focus,
-            StateSlot::Hovered => &self.hover,
-            StateSlot::Pressed => &self.pressed,
-            StateSlot::Disabled => &self.disabled,
-        }
+    pub(crate) fn atoms_for(&self, slot: StateSlot) -> &[StyleAtom] {
+        self.slots.get(slot)
     }
 }
 

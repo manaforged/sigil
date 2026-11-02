@@ -1,231 +1,18 @@
-use crate::reactive::{Signal, signal};
-use crate::style::{
-    AnimatorOverlay, ColorAtomKind, ComponentId, Dimension, NumericAtomKind, Rgba8, StateSlot,
-    StateStyle, StyleAtom, Theme, merge_warning_count_for_component,
-};
+use crate::animation_runtime::Animator;
+use crate::reactive::Signal;
+use crate::style::{ColorAtomKind, NumericAtomKind, Rgba8, StyleAtom};
 
-use crate::animation_runtime::binding_animate_color::{
-    ThemeSnapshot, build_color_entry, find_color, read_color, retarget_color_entry,
-};
-use crate::animation_runtime::{AnimationConfig, Animator};
-
-#[cfg(any(test, feature = "kittest"))]
-pub const ANIMATION_REGISTRY_MISS: ComponentId = 0xA111_0000_0000_0001;
-
-pub struct AttachedAnimator {
-    pub kind: NumericAtomKind,
-    pub signal: Signal<f32>,
-    pub animator: Animator,
-    pub(crate) last_target: f32,
+pub(crate) struct AttachedAnimator {
+    pub(crate) kind: NumericAtomKind,
+    pub(crate) signal: Signal<f32>,
+    pub(crate) animator: Animator,
 }
 
-pub struct AttachedColorAnimator {
-    pub kind: ColorAtomKind,
-    pub channels: [Signal<f32>; 4],
-    pub animators: [Animator; 4],
+pub(crate) struct AttachedColorAnimator {
+    pub(crate) kind: ColorAtomKind,
+    pub(crate) channels: [Signal<f32>; 4],
+    pub(crate) animators: [Animator; 4],
     pub(crate) last_target: Rgba8,
-}
-
-pub struct AttachedAnimators {
-    entries: Vec<AttachedAnimator>,
-    color_entries: Vec<AttachedColorAnimator>,
-    state_style: StateStyle,
-    theme_snapshot: Option<ThemeSnapshot>,
-}
-
-impl core::fmt::Debug for AttachedAnimators {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("AttachedAnimators")
-            .field("entries", &self.entries.len())
-            .field("color_entries", &self.color_entries.len())
-            .field("has_theme_snapshot", &self.theme_snapshot.is_some())
-            .finish_non_exhaustive()
-    }
-}
-
-impl Default for AttachedAnimators {
-    fn default() -> Self {
-        Self {
-            entries: Vec::new(),
-            color_entries: Vec::new(),
-            state_style: StateStyle::EMPTY,
-            theme_snapshot: None,
-        }
-    }
-}
-
-impl AttachedAnimators {
-    #[must_use]
-    pub fn empty() -> Self {
-        Self::default()
-    }
-
-    #[must_use]
-    pub const fn is_empty(&self) -> bool {
-        self.entries.is_empty() && self.color_entries.is_empty()
-    }
-
-    #[must_use]
-    pub const fn len(&self) -> usize {
-        self.entries.len()
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &AttachedAnimator> {
-        self.entries.iter()
-    }
-
-    pub fn retarget_for_state(&mut self, slot: StateSlot, base: &[StyleAtom]) {
-        let slot_atoms = slot_atoms(self.state_style, slot);
-        for entry in &mut self.entries {
-            let target = resolve_numeric(entry.kind, base, slot_atoms);
-            if (target - entry.last_target).abs() < f32::EPSILON {
-                continue;
-            }
-            entry.last_target = target;
-            entry.animator.target(target);
-        }
-        if let Some(theme) = self.theme_snapshot.as_ref() {
-            for entry in &mut self.color_entries {
-                let target = find_color(entry.kind, slot_atoms, theme)
-                    .or_else(|| find_color(entry.kind, base, theme));
-                if let Some(target) = target {
-                    retarget_color_entry(entry, target);
-                }
-            }
-        }
-    }
-}
-
-impl AnimatorOverlay for AttachedAnimators {
-    fn value_for(&self, kind: NumericAtomKind) -> Option<f32> {
-        self.entries
-            .iter()
-            .find(|entry| entry.kind == kind)
-            .and_then(|entry| entry.signal.try_peek())
-    }
-
-    fn value_for_color(&self, kind: ColorAtomKind) -> Option<Rgba8> {
-        self.color_entries
-            .iter()
-            .find(|entry| entry.kind == kind)
-            .map(read_color)
-    }
-
-    fn retarget_to_slot(&mut self, slot: StateSlot, base: &[StyleAtom]) {
-        self.retarget_for_state(slot, base);
-    }
-}
-
-#[must_use]
-pub fn install_animators(
-    atoms: &[StyleAtom],
-    state_style: StateStyle,
-    component_id: ComponentId,
-) -> AttachedAnimators {
-    install_impl(atoms, state_style, component_id, None)
-}
-
-#[must_use]
-pub fn install_animators_themed(
-    atoms: &[StyleAtom],
-    state_style: StateStyle,
-    component_id: ComponentId,
-    theme: &Theme,
-) -> AttachedAnimators {
-    install_impl(atoms, state_style, component_id, Some(theme))
-}
-
-fn install_impl(
-    atoms: &[StyleAtom],
-    state_style: StateStyle,
-    component_id: ComponentId,
-    theme: Option<&Theme>,
-) -> AttachedAnimators {
-    let Some(id) = atoms.iter().find_map(|atom| match *atom {
-        StyleAtom::Transition(id) => Some(id),
-        _ => None,
-    }) else {
-        return AttachedAnimators::empty();
-    };
-    let Some(config) = crate::animation_runtime::registry::config(id) else {
-        emit_registry_miss(component_id);
-        return AttachedAnimators::empty();
-    };
-    let config = apply_duration_override(config, atoms);
-
-    let hover_atoms = state_style.hovered();
-    let entries = ANIMATABLE_KINDS
-        .iter()
-        .filter_map(|&kind| {
-            let base = find_numeric(kind, atoms)?;
-            let hover = find_numeric(kind, hover_atoms)?;
-            ((base - hover).abs() >= f32::EPSILON).then(|| build_entry(kind, base, config))
-        })
-        .collect();
-    let theme_snapshot = theme.map(ThemeSnapshot::from_theme);
-    let color_entries = theme_snapshot.as_ref().map_or_else(Vec::new, |snapshot| {
-        [ColorAtomKind::Background, ColorAtomKind::Text]
-            .into_iter()
-            .filter_map(|kind| {
-                let base = find_color(kind, atoms, snapshot)?;
-                let hover = find_color(kind, hover_atoms, snapshot)?;
-                (base != hover).then(|| build_color_entry(kind, base, config))
-            })
-            .collect()
-    });
-    AttachedAnimators {
-        entries,
-        color_entries,
-        state_style,
-        theme_snapshot,
-    }
-}
-
-const ANIMATABLE_KINDS: &[NumericAtomKind] = &[
-    NumericAtomKind::Opacity,
-    NumericAtomKind::BorderRadius,
-    NumericAtomKind::FontSize,
-    NumericAtomKind::LineHeight,
-    NumericAtomKind::Gap,
-    NumericAtomKind::PaddingX,
-    NumericAtomKind::PaddingY,
-];
-
-fn build_entry(kind: NumericAtomKind, initial: f32, config: AnimationConfig) -> AttachedAnimator {
-    let signal = signal(initial);
-    AttachedAnimator {
-        kind,
-        signal,
-        animator: Animator::new(signal, config),
-        last_target: initial,
-    }
-}
-
-fn apply_duration_override(config: AnimationConfig, atoms: &[StyleAtom]) -> AnimationConfig {
-    let duration = atoms.iter().find_map(|atom| match *atom {
-        StyleAtom::TransitionDuration(ms) => Some(ms.0),
-        _ => None,
-    });
-    match (config, duration) {
-        (AnimationConfig::Tween { easing, .. }, Some(ms)) => AnimationConfig::Tween { ms, easing },
-        _ => config,
-    }
-}
-
-const fn slot_atoms(state_style: StateStyle, slot: StateSlot) -> &'static [StyleAtom] {
-    match slot {
-        StateSlot::Rest => state_style.rest(),
-        StateSlot::Focused => state_style.focused(),
-        StateSlot::Hovered => state_style.hovered(),
-        StateSlot::Pressed => state_style.pressed(),
-        StateSlot::Disabled => state_style.disabled(),
-    }
-}
-
-fn resolve_numeric(kind: NumericAtomKind, base: &[StyleAtom], overlay: &[StyleAtom]) -> f32 {
-    find_numeric(kind, overlay)
-        .or_else(|| find_numeric(kind, base))
-        .unwrap_or(0.0)
 }
 
 pub(crate) fn find_numeric(kind: NumericAtomKind, atoms: &[StyleAtom]) -> Option<f32> {
@@ -236,48 +23,13 @@ pub(crate) fn find_numeric(kind: NumericAtomKind, atoms: &[StyleAtom]) -> Option
         | (StyleAtom::LineHeight(px), NumericAtomKind::LineHeight)
         | (StyleAtom::Gap(px), NumericAtomKind::Gap)
         | (StyleAtom::PaddingX(px), NumericAtomKind::PaddingX)
-        | (StyleAtom::PaddingY(px), NumericAtomKind::PaddingY)
-        | (StyleAtom::Width(Dimension::Px(px)), NumericAtomKind::Width)
-        | (StyleAtom::Height(Dimension::Px(px)), NumericAtomKind::Height) => Some(f32::from(px.0)),
+        | (StyleAtom::PaddingY(px), NumericAtomKind::PaddingY) => Some(f32::from(px)),
+        (StyleAtom::Width(kind, px), NumericAtomKind::Width)
+        | (StyleAtom::Height(kind, px), NumericAtomKind::Height)
+            if kind == crate::style::atom::ATOM_PX =>
+        {
+            Some(f32::from(px))
+        }
         _ => None,
     })
 }
-
-fn emit_registry_miss(component_id: ComponentId) {
-    miss_counter::bump(component_id);
-    eprintln!(
-        "sigil-animation-runtime: unknown TransitionId at binding install \
-         for component {component_id:#x}; falling back to instant application",
-    );
-    let _ = merge_warning_count_for_component(component_id);
-}
-
-pub(super) mod miss_counter {
-    use std::collections::HashMap;
-    use std::sync::{Mutex, MutexGuard, OnceLock};
-
-    use crate::style::ComponentId;
-
-    fn counts() -> Option<MutexGuard<'static, HashMap<ComponentId, usize>>> {
-        static PER_COMPONENT: OnceLock<Mutex<HashMap<ComponentId, usize>>> = OnceLock::new();
-        PER_COMPONENT.get_or_init(Mutex::default).lock().ok()
-    }
-
-    #[cfg(test)]
-    #[must_use]
-    pub(crate) fn for_component(component_id: ComponentId) -> usize {
-        counts()
-            .and_then(|map| map.get(&component_id).copied())
-            .unwrap_or(0)
-    }
-
-    pub(super) fn bump(component_id: ComponentId) {
-        if let Some(mut map) = counts() {
-            *map.entry(component_id).or_insert(0) += 1;
-        }
-    }
-}
-
-#[cfg(test)]
-#[path = "binding_animate_tests.rs"]
-mod tests;

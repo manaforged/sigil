@@ -6,27 +6,26 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
-use sigil_kittest::FixedMeasure;
+use sigil_kittest::FakeMeasure;
 use stub::first_child;
 
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::events::{ModifiersState, MouseButtons, PointerEvent, PointerEventInit, PointerKind, *};
+use sigil::events::*;
 use sigil::geometry::{Point, Size};
 use sigil::kernel::*;
 use sigil::layout::*;
-use sigil::reactive::{Runtime, signal};
-use sigil::style::{ColorKey, NodeStyleExt, Paint, StyleAtom, StyleBinding, Token};
+use sigil::prelude::Widget;
+use sigil::reactive::{Owner, signal};
+use sigil::style::{ColorAtom, Paint, StyleAtom, StyleBinding, Token};
 
 static HOVER_OFF: &[StyleAtom] = &[];
-static HOVER_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-    Token::Accent,
-))];
+static HOVER_ON: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent))];
 
 #[test]
 fn pointer_move_drives_style_reactive_without_allocating() {
-    Runtime::scope("sigil_events_style_reactive", || {
+    Owner::scope("sigil_events_style_reactive", || {
         let hover = signal(false);
         let flips = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
@@ -77,7 +76,7 @@ fn pointer_move_drives_style_reactive_without_allocating() {
 }
 
 fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     layout
         .compute(cx, root, Size::fixed(100.0, 100.0))
         .expect("layout computes");
@@ -93,14 +92,6 @@ fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
     Box::leak(atoms.into_boxed_slice())
 }
 
-const fn pointer_move(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Move,
-    }))
+const fn pointer_move(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Move, Point::new(x, y))
 }

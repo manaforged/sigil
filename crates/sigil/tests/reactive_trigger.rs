@@ -6,11 +6,11 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::reactive::{EventChannel, Runtime};
+use sigil::reactive::{EventChannel, Owner};
 
 #[test]
 fn event_channel_multiple_subscribers_all_fire() {
-    Runtime::scope("event_channel_multiple_subscribers_all_fire", || {
+    Owner::scope("event_channel_multiple_subscribers_all_fire", || {
         let channel = EventChannel::new();
         let first = Rc::new(Cell::new(0_i32));
         let second = Rc::new(Cell::new(0_i32));
@@ -33,7 +33,7 @@ fn event_channel_multiple_subscribers_all_fire() {
 
 #[test]
 fn event_channel_drop_removes_subscriber() {
-    Runtime::scope("event_channel_drop_removes_subscriber", || {
+    Owner::scope("event_channel_drop_removes_subscriber", || {
         let channel = EventChannel::new();
         let count = Rc::new(Cell::new(0_i32));
 

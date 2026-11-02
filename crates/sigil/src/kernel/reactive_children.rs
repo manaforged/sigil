@@ -8,7 +8,7 @@ use smallvec::SmallVec;
 use crate::kernel::builder::Fate;
 use crate::kernel::component::{ErasedComponent, IntoNode};
 use crate::kernel::{Cx, NodeId};
-use crate::reactive::{Owner, OwnerId, is_live, on_cleanup};
+use crate::reactive::{Owner, is_live, on_cleanup};
 
 type RebuildFn = Box<dyn FnMut(&mut Cx)>;
 pub(crate) type PriorNodes = SmallVec<[NodeId; 4]>;
@@ -67,7 +67,7 @@ pub(crate) fn take_seed(parent: NodeId) -> PriorNodes {
 fn generation_owner() -> Owner {
     Owner::new(
         "sigil-kernel::children-generation",
-        crate::reactive::current_effect_owner().map(OwnerId),
+        crate::reactive::current_effect_owner().map(Owner),
     )
 }
 
@@ -75,7 +75,7 @@ struct GenerationGuard(Option<Owner>);
 
 impl GenerationGuard {
     fn superseded(&self) -> bool {
-        self.0.is_some_and(|owner| !is_live(owner.id()))
+        self.0.is_some_and(|owner| !is_live(owner))
     }
 }
 
@@ -88,7 +88,7 @@ impl Drop for GenerationGuard {
 }
 
 fn dispose_if_live(owner: Owner) {
-    if is_live(owner.id()) {
+    if is_live(owner) {
         owner.dispose();
     }
 }
@@ -264,16 +264,12 @@ fn pin_generation(cx: &Cx, generation: Option<Owner>, fresh: &[NodeId]) {
         dispose_if_live(generation);
         return;
     }
-    let mut owners = SmallVec::<[Owner; 4]>::new();
-    for id in fresh {
-        let Some(owner) = cx.owner_for_node.get(id).copied() else {
-            continue;
-        };
-        if owners.iter().any(|seen: &Owner| seen.id() == owner.id()) {
-            continue;
-        }
-        owners.push(owner);
-    }
+    let mut owners: SmallVec<[Owner; 4]> = fresh
+        .iter()
+        .filter_map(|id| cx.owner_for_node.get(id).copied())
+        .collect();
+    owners.sort_unstable();
+    owners.dedup();
     if owners.is_empty() {
         return;
     }
@@ -318,6 +314,7 @@ fn mount_keyed<K: Clone + Eq + Hash>(
 }
 
 impl Cx {
+    /// Rebuilds the reactive children that changed.
     pub fn flush_reactive_children(&mut self) {
         loop {
             let pending = drain_pending();

@@ -1,50 +1,30 @@
 use crate::animation::Easing;
-use crate::animation_runtime::AnimationConfig;
-use crate::geometry::LogicalSize;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
-use crate::layout::TextMeasure;
-use crate::reactive::Runtime;
-use crate::style::NumericAtomKind;
+use crate::reactive::Owner;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::animation_runtime::tick;
 use crate::events::EventRouter;
-use crate::events::{
-    ModifiersState, MouseButton, MouseButtons, PointerEvent, PointerEventInit, PointerKind,
-    PointerPhase, ShellEvent,
-};
+use crate::events::{Event, MouseButton, MouseButtons, PointerEvent, PointerPhase};
 use crate::geometry::Point;
 use crate::prelude::*;
 use crate::style::Transform2D;
 
-struct Measure;
-
-impl TextMeasure for Measure {
-    fn measure(&self, _content: &TextContent, _space: Size) -> LogicalSize {
-        LogicalSize::default()
-    }
-}
-
 fn layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(Measure));
+    let mut layout =
+        LayoutEngine::with_text_measure(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)));
     layout
         .compute(cx, root, Size::fixed(400.0, 300.0))
         .expect("layout computes");
     layout
 }
 
-fn pointer(phase: PointerPhase, x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase,
-    }))
+fn pointer(phase: PointerPhase, x: f32, y: f32) -> Event {
+    Event::pointer(phase, Point::new(x, y))
+        .button(Some(MouseButton::Left))
+        .buttons(MouseButtons::LEFT)
 }
 
 fn transformed(child: NodeBuilder) -> NodeBuilder {
@@ -65,13 +45,13 @@ fn transformed(child: NodeBuilder) -> NodeBuilder {
 
 #[test]
 fn transformed_input_tracks_motion_without_rebuilding_the_layout_cache() {
-    Runtime::scope("transformed-input-cache", || {
+    Owner::scope("transformed-input-cache", || {
         let shift = signal(0.0);
         let positions = Rc::new(RefCell::new(Vec::new()));
         let sink = Rc::clone(&positions);
         let child = container()
             .layout(LayoutStyle::block().fixed_size(50.0, 20.0))
-            .animate(NumericAtomKind::TranslateX, shift)
+            .animate_translate_x(shift)
             .pointer_down(move |event| sink.borrow_mut().push(event.position));
         let mut cx = Cx::new_root();
         let root = cx.add(transformed(child));
@@ -92,7 +72,7 @@ fn transformed_input_tracks_motion_without_rebuilding_the_layout_cache() {
 
 #[test]
 fn captured_pointer_moves_keep_local_coordinates_outside_a_transformed_control() {
-    Runtime::scope("transformed-pointer-capture", || {
+    Owner::scope("transformed-pointer-capture", || {
         let positions = Rc::new(RefCell::new(Vec::new()));
         let sink = Rc::clone(&positions);
         let child = container()
@@ -120,13 +100,7 @@ fn present_row(shown: Signal<bool>, clicks: Signal<i32>) -> NodeBuilder {
             container()
                 .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
                 .focusable(true)
-                .presence(
-                    shown,
-                    AnimationConfig::Tween {
-                        ms: 200,
-                        easing: Easing::Linear,
-                    },
-                )
+                .presence_tween(shown, 200, Easing::Linear)
                 .pointer_down(move |_| clicks.set(clicks.peek() + 1)),
         )
         .child(container().layout(LayoutStyle::block().fixed_size(100.0, 10.0)))
@@ -134,7 +108,7 @@ fn present_row(shown: Signal<bool>, clicks: Signal<i32>) -> NodeBuilder {
 
 #[test]
 fn exiting_presence_blocks_input_and_accessibility_before_releasing_layout_space() {
-    let observed = Runtime::scope("presence-exit", || {
+    let observed = Owner::scope("presence-exit", || {
         let shown = signal(true);
         let clicks = signal(0);
         let mut cx = Cx::new_root();

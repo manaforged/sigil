@@ -6,40 +6,48 @@ use crate::reactive::runtime::with_rt;
 
 type SubEntry<T> = (u64, Rc<dyn Fn(T)>);
 
-struct Inner<T> {
+struct ChannelInner<T> {
     next: u64,
     subs: Vec<SubEntry<T>>,
 }
 
+/// Send events between parts of the app.
 #[derive(Clone)]
 pub struct EventChannel<T: 'static> {
-    inner: Rc<RefCell<Inner<T>>>,
+    inner: Rc<RefCell<ChannelInner<T>>>,
 }
 
 impl<T: Clone + 'static> EventChannel<T> {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            inner: Rc::new(RefCell::new(Inner {
-                next: 0,
-                subs: Vec::new(),
-            })),
+    kittest_pub! {
+        /// Creates an event channel.
+        #[must_use]
+        pub fn new() -> Self {
+            Self {
+                inner: Rc::new(RefCell::new(ChannelInner {
+                    next: 0,
+                    subs: Vec::new(),
+                })),
+            }
         }
     }
 
-    pub fn emit(&self, value: T) {
-        let subs: Vec<Rc<dyn Fn(T)>> = self
-            .inner
-            .borrow()
-            .subs
-            .iter()
-            .map(|(_, f)| Rc::clone(f))
-            .collect();
-        for f in subs {
-            f(value.clone());
+    kittest_pub! {
+        /// Sends `value` to each subscriber.
+        pub fn emit(&self, value: T) {
+            let subs: Vec<Rc<dyn Fn(T)>> = self
+                .inner
+                .borrow()
+                .subs
+                .iter()
+                .map(|(_, f)| Rc::clone(f))
+                .collect();
+            for f in subs {
+                f(value.clone());
+            }
         }
     }
 
+    /// Calls `f` for each value until the subscription drops.
     #[must_use = "dropping the subscription immediately unregisters the callback"]
     pub fn subscribe(&self, f: impl Fn(T) + 'static) -> Subscription {
         let id = {
@@ -61,6 +69,7 @@ impl<T: Clone + 'static> EventChannel<T> {
     }
 }
 
+/// Handle returned by `EventChannel::subscribe`.
 #[must_use = "subscriptions unsubscribe on drop; bind the handle to keep it alive"]
 pub struct Subscription {
     cleanup: Option<Box<dyn FnOnce()>>,
@@ -81,7 +90,7 @@ impl Drop for Subscription {
     }
 }
 
-fn remove_sub<T: 'static>(inner: &RefCell<Inner<T>>, id: u64) {
+fn remove_sub<T: 'static>(inner: &RefCell<ChannelInner<T>>, id: u64) {
     inner.borrow_mut().subs.retain(|(sid, _)| *sid != id);
 }
 

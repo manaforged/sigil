@@ -1,7 +1,8 @@
 use super::*;
+use sigil::events::Event;
 use sigil::events::EventRouter;
-use sigil::events::ShellEvent;
-use sigil::events::{ScrollDelta, ScrollEvent, ScrollPhase};
+use sigil::events::{ScrollDelta, ScrollPhase};
+use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 
@@ -30,19 +31,18 @@ fn wide_table(state: TableState<Item>) -> impl IntoNode {
         .viewport_height(VIEW_H)
 }
 
-const fn wheel_x_at(x: f32, y: f32, dx: f32) -> ShellEvent {
-    ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
-        position: Point::new(x, y),
-        delta: ScrollDelta::Pixels(Point::new(dx, 0.0)),
-        modifiers: ModifiersState::empty(),
-        phase: ScrollPhase::Moved,
-    }))
+const fn wheel_x_at(x: f32, y: f32, dx: f32) -> Event {
+    Event::scroll(
+        Point::new(x, y),
+        ScrollDelta::Pixels(Point::new(dx, 0.0)),
+        ScrollPhase::Moved,
+    )
 }
 
 fn text_x(cx: &Cx, root: NodeId, expected: &str) -> Option<f32> {
-    emit_scene(cx, root)
+    emit_scene(cx, root, None)
         .find_text(expected)
-        .map(|draw| draw.run.rect.origin.x)
+        .map(|draw| draw.rect.origin.x)
 }
 
 fn scrollbar_track_count(cx: &Cx, root: NodeId) -> usize {
@@ -76,19 +76,24 @@ fn header_cell_x(cx: &Cx, layout: &LayoutEngine, grid: NodeId, index: usize) -> 
 
 fn thumb_x(cx: &Cx, root: NodeId) -> Option<f32> {
     let thumb = Theme::default().surface_pressed_strong;
-    emit_scene(cx, root).commands.iter().find_map(|c| match c {
-        SceneCommand::Rect(r)
-            if r.color == thumb && (r.rect.height - 8.0).abs() < 0.01 && r.rect.width >= 24.0 =>
-        {
-            Some(r.rect.origin.x)
-        }
-        _ => None,
-    })
+    emit_scene(cx, root, None)
+        .commands
+        .iter()
+        .find_map(|c| match c {
+            SceneCommand::Rect(r)
+                if r.color == thumb
+                    && (r.rect.height - 8.0).abs() < 0.01
+                    && r.rect.width >= 24.0 =>
+            {
+                Some(r.rect.origin.x)
+            }
+            _ => None,
+        })
 }
 
 #[test]
 fn horizontal_wheel_shifts_header_and_body_in_lockstep() {
-    sigil::reactive::Runtime::scope("table-view-hscroll", || {
+    sigil::reactive::Owner::scope("table-view-hscroll", || {
         let state = wide_state();
         let mut cx = Cx::new_root();
         let root = cx.add(wide_table(state));
@@ -137,7 +142,7 @@ fn horizontal_wheel_shifts_header_and_body_in_lockstep() {
 
 #[test]
 fn fitting_table_has_no_scrollbar_and_no_offset() {
-    sigil::reactive::Runtime::scope("table-view-hscroll-fits", || {
+    sigil::reactive::Owner::scope("table-view-hscroll-fits", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(wide_table(state));
@@ -153,7 +158,7 @@ fn fitting_table_has_no_scrollbar_and_no_offset() {
 
 #[test]
 fn over_wide_columns_reveal_a_sliding_thumb() {
-    sigil::reactive::Runtime::scope("table-view-hscroll-thumb", || {
+    sigil::reactive::Owner::scope("table-view-hscroll-thumb", || {
         let state = wide_state();
         let mut cx = Cx::new_root();
         let root = cx.add(wide_table(state));
@@ -198,7 +203,7 @@ fn body_cell_x(cx: &Cx, layout: &LayoutEngine, grid: NodeId, index: usize) -> f3
 
 #[test]
 fn fraction_columns_stretch_in_a_measured_viewport() {
-    sigil::reactive::Runtime::scope("table-view-fraction-stretch", || {
+    sigil::reactive::Owner::scope("table-view-fraction-stretch", || {
         let state = TableState::new(
             demo_rows(),
             vec![
@@ -258,7 +263,7 @@ fn fraction_columns_stretch_in_a_measured_viewport() {
 
 #[test]
 fn unset_viewport_width_measures_the_table() {
-    sigil::reactive::Runtime::scope("table-view-hscroll-measured", || {
+    sigil::reactive::Owner::scope("table-view-hscroll-measured", || {
         let state = wide_state();
         let mut cx = Cx::new_root();
         let root = cx.add(

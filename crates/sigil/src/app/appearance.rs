@@ -7,6 +7,7 @@ thread_local! {
     static PENDING: RefCell<Option<Theme>> = const { RefCell::new(None) };
 }
 
+/// Replace the active theme at the next frame.
 pub fn set_theme(theme: Theme) {
     PENDING.with(|pending| *pending.borrow_mut() = Some(theme));
     Runtime::mark_frame_dirty();

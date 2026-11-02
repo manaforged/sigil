@@ -42,7 +42,7 @@ const CHECK_X: f32 = 28.0;
 
 #[test]
 fn checkbox_column_absent_by_default() {
-    sigil::reactive::Runtime::scope("table-view-checks-default-off", || {
+    sigil::reactive::Owner::scope("table-view-checks-default-off", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -67,7 +67,7 @@ fn checkbox_column_absent_by_default() {
 
 #[test]
 fn row_checkbox_toggles_exactly_once() {
-    sigil::reactive::Runtime::scope("table-view-checks-toggle", || {
+    sigil::reactive::Owner::scope("table-view-checks-toggle", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(check_table(state.clone()));
@@ -112,7 +112,7 @@ fn row_checkbox_toggles_exactly_once() {
 
 #[test]
 fn header_checkbox_selects_all_visible_then_clears() {
-    sigil::reactive::Runtime::scope("table-view-checks-all", || {
+    sigil::reactive::Owner::scope("table-view-checks-all", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(check_table(state.clone()));
@@ -135,7 +135,7 @@ fn header_checkbox_selects_all_visible_then_clears() {
 
 #[test]
 fn header_checkbox_indeterminate_when_partial() {
-    sigil::reactive::Runtime::scope("table-view-checks-partial", || {
+    sigil::reactive::Owner::scope("table-view-checks-partial", || {
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(check_table(state.clone()));
@@ -161,7 +161,7 @@ fn header_checkbox_indeterminate_when_partial() {
 
 #[test]
 fn header_checkbox_selects_only_visible_rows() {
-    sigil::reactive::Runtime::scope("table-view-checks-visible", || {
+    sigil::reactive::Owner::scope("table-view-checks-visible", || {
         let state = demo_state();
         state.quick_filter().set("ta".to_owned());
         let mut cx = Cx::new_root();

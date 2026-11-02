@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
 
 use super::*;
-use crate::reactive::Runtime;
+use crate::reactive::{Owner, signal};
 use crate::style::Locale;
 
 #[test]
@@ -22,7 +22,7 @@ fn parse_and_clamp_float() {
 
 #[test]
 fn building_leaves_the_value_signal_alone() {
-    Runtime::scope("number-field-resync", || {
+    Owner::scope("number-field-resync", || {
         let inside = signal(50i32);
         let _inside = number_field(inside, 0..=100);
         assert_eq!(inside.peek(), 50);

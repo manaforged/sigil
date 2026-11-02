@@ -13,12 +13,16 @@ use skrifa::MetadataProvider;
 use skrifa::instance::{LocationRef, Size};
 use smallvec::SmallVec;
 
-use crate::text::glyph::{GlyphId, GlyphPos, GlyphRun};
-use crate::text::shaper::{Font, Script, Style, TextSegment, classify_segment_script};
+use crate::text::glyph::{GlyphId, GlyphPos, ShapedRun};
+use crate::text::shaper::{FaceStyle, Font, Script, TextSegment, classify_segment_script};
 
-pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Option<GlyphRun> {
+pub(crate) fn shape(
+    segment: &TextSegment<'_>,
+    style: &FaceStyle,
+    font: &Font,
+) -> Option<ShapedRun> {
     if segment.text.is_empty() {
-        return Some(GlyphRun::empty());
+        return Some(ShapedRun::empty());
     }
     if let Some(run) = crate::text::numeric_run::shape(segment, style, font, shape_full) {
         return Some(run);
@@ -28,11 +32,11 @@ pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Op
 
 pub(crate) fn shape_full(
     segment: &TextSegment<'_>,
-    style: &Style,
+    style: &FaceStyle,
     font: &Font,
-) -> Option<GlyphRun> {
+) -> Option<ShapedRun> {
     if segment.text.is_empty() {
-        return Some(GlyphRun::empty());
+        return Some(ShapedRun::empty());
     }
     let bytes = font.bytes_arc();
     let hr_font = HrFontRef::from_index(bytes.as_slice(), font.face_index()).ok()?;
@@ -57,7 +61,7 @@ pub(crate) fn shape_full(
     buffer.set_script(hr_script);
 
     let features = build_features(style);
-    let key = Key {
+    let key = ShapeKey {
         id: font.id(),
         index: font.face_index(),
         script: hr_script,
@@ -80,7 +84,12 @@ pub(crate) fn shape_full(
     run
 }
 
-fn scaled_run(glyphs: &GlyphBuffer, bytes: &[u8], style: &Style, font: &Font) -> Option<GlyphRun> {
+fn scaled_run(
+    glyphs: &GlyphBuffer,
+    bytes: &[u8],
+    style: &FaceStyle,
+    font: &Font,
+) -> Option<ShapedRun> {
     let skrifa_font = FontRef::from_index(bytes, font.face_index()).ok()?;
     let size = Size::new(style.size_px.max(1.0));
     let location = font.location(style.weight, style.size_px);
@@ -98,7 +107,7 @@ fn recycle(glyphs: GlyphBuffer) {
     SCRATCH.with_borrow_mut(|slot| *slot = Some(glyphs.clear()));
 }
 
-fn shaper_instance(font_ref: &HrFontRef<'_>, style: &Style, font: &Font) -> ShaperInstance {
+fn shaper_instance(font_ref: &HrFontRef<'_>, style: &FaceStyle, font: &Font) -> ShaperInstance {
     let settings = font.variation_settings(style.weight, style.size_px);
     ShaperInstance::from_variations(
         font_ref,
@@ -110,7 +119,7 @@ fn shaper_instance(font_ref: &HrFontRef<'_>, style: &Style, font: &Font) -> Shap
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-struct Key {
+struct ShapeKey {
     id: u64,
     index: u32,
     script: HrScript,
@@ -120,10 +129,10 @@ struct Key {
 
 thread_local! {
     static SCRATCH: RefCell<Option<UnicodeBuffer>> = const { RefCell::new(None) };
-    static PLANS: RefCell<HashMap<Key, Rc<ShapePlan>>> = RefCell::new(HashMap::new());
+    static PLANS: RefCell<HashMap<ShapeKey, Rc<ShapePlan>>> = RefCell::new(HashMap::new());
 }
 
-fn plan(shaper: &harfrust::Shaper<'_>, key: &Key, features: &[Feature]) -> Rc<ShapePlan> {
+fn plan(shaper: &harfrust::Shaper<'_>, key: &ShapeKey, features: &[Feature]) -> Rc<ShapePlan> {
     PLANS.with_borrow_mut(|plans| {
         if let Some(plan) = plans.get(key) {
             return Rc::clone(plan);
@@ -154,7 +163,7 @@ const fn map_script(script: Script) -> HrScript {
     }
 }
 
-fn build_features(style: &Style) -> SmallVec<[harfrust::Feature; 4]> {
+fn build_features(style: &FaceStyle) -> SmallVec<[harfrust::Feature; 4]> {
     style
         .features
         .iter()
@@ -170,7 +179,7 @@ fn build_glyph_run(
     glyphs: &GlyphBuffer,
     scale: f32,
     face_metrics: &skrifa::metrics::Metrics,
-) -> GlyphRun {
+) -> ShapedRun {
     let infos = glyphs.glyph_infos();
     let positions = glyphs.glyph_positions();
     let mut out: SmallVec<[GlyphPos; 16]> = SmallVec::with_capacity(infos.len());
@@ -199,7 +208,7 @@ fn build_glyph_run(
     }
     let baseline = face_metrics.ascent;
     let width = max_x - min_x;
-    GlyphRun {
+    ShapedRun {
         glyphs: out,
         baseline,
         width,

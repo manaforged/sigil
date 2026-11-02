@@ -9,41 +9,39 @@ use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
-use sigil::layout::{LayoutBuilderExt, LayoutStyle};
-use sigil::reactive::{Runtime, signal};
+use sigil::layout::LayoutStyle;
+use sigil::prelude::Widget;
+use sigil::reactive::{Owner, signal};
 use sigil::style::{
-    ColorKey, Elevation, FontFamily, MillisU16, NodeStyleExt, Paint, Px, Radius, RenderStyle,
-    Rgba8, StateStyle, StyleAtom, StyleBinding, StyleEngine, StyleState, Theme, Token,
-    TransitionId,
+    ColorAtom, Elevation, FontFamily, MillisU16, Paint, Radius, RenderStyle, Rgba8, StateStyle,
+    StyleAtom, StyleBinding, StyleEngine, StyleState, Theme, Token, TransitionId,
 };
 
 static APPLY_ATOMS: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
-    StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface)),
-    StyleAtom::BorderRadius(Px(6)),
+    StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
+    StyleAtom::TextColor(ColorAtom::Token(Token::OnSurface)),
+    StyleAtom::BorderRadius(6),
     StyleAtom::Opacity(10_000),
 ];
 static THEME_SWAP_ATOMS: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
-    StyleAtom::TextThemeRef(ColorKey::Token(Token::OnAccent)),
-    StyleAtom::BorderRadius(Px(6)),
+    StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
+    StyleAtom::TextColor(ColorAtom::Token(Token::OnAccent)),
+    StyleAtom::BorderRadius(6),
     StyleAtom::Opacity(10_000),
 ];
-static STATE_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-    Token::Surface,
-))];
-static STATE_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+static STATE_REST: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Surface))];
+static STATE_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(
     Token::SurfaceHover,
 ))];
-static STATE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+static STATE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(
     Token::SurfaceHover,
 ))];
 static STATE_PRESS: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover)),
+    StyleAtom::BackgroundColor(ColorAtom::Token(Token::SurfaceHover)),
     StyleAtom::Opacity(8_800),
 ];
 static STATE_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover)),
+    StyleAtom::BackgroundColor(ColorAtom::Token(Token::SurfaceHover)),
     StyleAtom::Opacity(5_000),
 ];
 
@@ -113,7 +111,7 @@ fn paint_override_last_wins(c: &mut Criterion) {
 }
 
 fn visible_when_toggle(c: &mut Criterion) {
-    Runtime::scope("sigil_style_bench_visible_toggle", || {
+    Owner::scope("sigil_style_bench_visible_toggle", || {
         let active = signal(false);
         let mut cx = Cx::new_root();
         let id = cx.add(container().visible_when(active));

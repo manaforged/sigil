@@ -9,15 +9,15 @@ fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - settings").size(880, 600), app)
 }
 
-fn navigation() -> sigil::widgets::SidebarBuilder {
+fn navigation() -> impl IntoNode {
     sidebar(
         container()
             .layout(LayoutStyle::flex_column())
             .child(section_label("Settings"))
-            .child(list_row(true, "General", ""))
-            .child(list_row(false, "Appearance", ""))
-            .child(list_row(false, "Notifications", ""))
-            .child(list_row(false, "Privacy", "")),
+            .child(list_row(true, "General", ListRowSlots::default()))
+            .child(list_row(false, "Appearance", ListRowSlots::default()))
+            .child(list_row(false, "Notifications", ListRowSlots::default()))
+            .child(list_row(false, "Privacy", ListRowSlots::default())),
     )
 }
 

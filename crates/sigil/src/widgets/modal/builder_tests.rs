@@ -1,7 +1,9 @@
 use super::*;
+use crate::kernel::AccessibleName;
+use crate::kernel::Cx;
 
 use crate::kernel::NodeType;
-use crate::reactive::Runtime;
+use crate::reactive::Owner;
 
 fn dialog_of(cx: &Cx, root: crate::kernel::NodeId) -> crate::kernel::NodeId {
     cx.get(root)
@@ -15,7 +17,7 @@ fn dialog_of(cx: &Cx, root: crate::kernel::NodeId) -> crate::kernel::NodeId {
 
 #[test]
 fn sheet_docks_a_dialog_on_the_right() {
-    Runtime::scope("sheet-right", || {
+    Owner::scope("sheet-right", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let root = cx.add(sheet(show).title("Filters"));
@@ -33,7 +35,7 @@ fn sheet_docks_a_dialog_on_the_right() {
 
 #[test]
 fn signal_title_drives_dialog_text_and_accessible_name() {
-    Runtime::scope("modal-signal-title", || {
+    Owner::scope("modal-signal-title", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let title = signal(String::from("Create entry"));

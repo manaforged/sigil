@@ -9,7 +9,8 @@ mod stub;
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
-use sigil::layout::{LengthPercentageAuto, Rect as StyleRect, *};
+use sigil::layout::*;
+use sigil::widgets::Widget;
 
 use stub::{first_child, layout_rect, stub_engine};
 
@@ -29,14 +30,8 @@ fn block_absolute_top_left_px_inset_offsets_from_padding_origin() {
                     LayoutStyle::default()
                         .fixed_size(CHILD_W, CHILD_H)
                         .position(Position::Absolute)
-                        .with_layout(|s| {
-                            s.inset = StyleRect {
-                                left: LengthPercentageAuto::Px(30.0),
-                                right: LengthPercentageAuto::Auto,
-                                top: LengthPercentageAuto::Px(20.0),
-                                bottom: LengthPercentageAuto::Auto,
-                            };
-                        }),
+                        .inset_left(30.0)
+                        .inset_top(20.0),
                 ),
             ),
     );
@@ -91,14 +86,8 @@ fn block_absolute_right_inset_with_auto_left_anchors_against_right_edge() {
                     LayoutStyle::default()
                         .fixed_size(CHILD_W, CHILD_H)
                         .position(Position::Absolute)
-                        .with_layout(|s| {
-                            s.inset = StyleRect {
-                                left: LengthPercentageAuto::Auto,
-                                right: LengthPercentageAuto::Px(25.0),
-                                top: LengthPercentageAuto::Px(5.0),
-                                bottom: LengthPercentageAuto::Auto,
-                            };
-                        }),
+                        .inset_right(25.0)
+                        .inset_top(5.0),
                 ),
             ),
     );
@@ -124,14 +113,8 @@ fn flex_absolute_inset_top_left_offsets_from_padding_origin() {
                     LayoutStyle::default()
                         .fixed_size(CHILD_W, CHILD_H)
                         .position(Position::Absolute)
-                        .with_layout(|s| {
-                            s.inset = StyleRect {
-                                left: LengthPercentageAuto::Px(40.0),
-                                right: LengthPercentageAuto::Auto,
-                                top: LengthPercentageAuto::Px(12.0),
-                                bottom: LengthPercentageAuto::Auto,
-                            };
-                        }),
+                        .inset_left(40.0)
+                        .inset_top(12.0),
                 ),
             ),
     );
@@ -157,14 +140,8 @@ fn flex_absolute_bottom_right_inset_anchors_against_trailing_edges() {
                     LayoutStyle::default()
                         .fixed_size(CHILD_W, CHILD_H)
                         .position(Position::Absolute)
-                        .with_layout(|s| {
-                            s.inset = StyleRect {
-                                left: LengthPercentageAuto::Auto,
-                                right: LengthPercentageAuto::Px(8.0),
-                                top: LengthPercentageAuto::Auto,
-                                bottom: LengthPercentageAuto::Px(6.0),
-                            };
-                        }),
+                        .inset_right(8.0)
+                        .inset_bottom(6.0),
                 ),
             ),
     );

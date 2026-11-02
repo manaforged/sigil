@@ -10,10 +10,10 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-use sigil::kernel::{ImageSource, image};
+use sigil::kernel::{ImageSource, ObjectFit, image};
 use sigil::layout::LayoutStyle;
 use sigil::prelude::AppConfig;
-use sigil::widgets::layout_ext::WidgetLayoutExt;
+use sigil::prelude::Widget;
 
 const CHILD: &str = "SIGIL_TERMINAL_IMAGES_CHILD";
 
@@ -29,7 +29,9 @@ fn image_child() {
     sigil::run(
         AppConfig::new("images").size(40, 12).terminal(),
         move || {
-            image(source.clone()).layout(LayoutStyle::block().fixed_size(16.0, 8.0).shrink(0.0))
+            image(source.clone())
+                .fit(ObjectFit::Contain)
+                .layout(LayoutStyle::block().fixed_size(16.0, 16.0).shrink(0.0))
         },
     )
     .expect("run");
@@ -63,9 +65,15 @@ fn block_glyphs(output: &[u8]) -> bool {
 }
 
 type Writer = Arc<Mutex<Box<dyn Write + Send>>>;
+type Cell = Arc<Mutex<Option<[u16; 2]>>>;
 
-fn answer(writer: &Writer, bytes: &[u8]) {
+fn answer(writer: &Writer, bytes: &[u8], cell: &Cell) {
+    let size = *cell.lock().unwrap();
     let mut out = writer.lock().unwrap();
+    if let (true, Some([width, height])) = (find(bytes, b"\x1b[16t"), size) {
+        out.write_all(format!("\x1b[6;{height};{width}t").as_bytes())
+            .ok();
+    }
     if find(bytes, b"a=q") {
         out.write_all(b"\x1b_Gi=31;OK\x1b\\").ok();
     }
@@ -74,13 +82,14 @@ fn answer(writer: &Writer, bytes: &[u8]) {
     }
 }
 
-fn spawn_child(
-    env: &[(&str, &str)],
-) -> (
+type Spawned = (
     Box<dyn portable_pty::Child + Send + Sync>,
+    Box<dyn portable_pty::MasterPty + Send>,
     Box<dyn Read + Send>,
     Writer,
-) {
+);
+
+fn spawn_child(env: &[(&str, &str)]) -> Spawned {
     let pair = native_pty_system()
         .openpty(PtySize {
             rows: 12,
@@ -106,24 +115,33 @@ fn spawn_child(
     drop(pair.slave);
     let reader = pair.master.try_clone_reader().expect("reader");
     let writer = Arc::new(Mutex::new(pair.master.take_writer().expect("writer")));
-    (child, reader, writer)
+    (child, pair.master, reader, writer)
 }
 
 fn run_child(env: &[(&str, &str)]) -> Vec<u8> {
-    let (mut child, mut reader, writer) = spawn_child(env);
+    run_child_with(env, &Arc::new(Mutex::new(None)), |_, _| {})
+}
+
+fn run_child_with(
+    env: &[(&str, &str)],
+    cell: &Cell,
+    during: impl FnOnce(&dyn portable_pty::MasterPty, &Writer),
+) -> Vec<u8> {
+    let (mut child, master, mut reader, writer) = spawn_child(env);
     let seen = Arc::new(Mutex::new(Vec::new()));
-    let (sink, replies) = (Arc::clone(&seen), Arc::clone(&writer));
+    let (sink, replies, cells) = (Arc::clone(&seen), Arc::clone(&writer), Arc::clone(cell));
     std::thread::spawn(move || {
         let mut chunk = [0_u8; 4096];
         while let Ok(read) = reader.read(&mut chunk) {
             let Some(bytes) = chunk.get(..read).filter(|bytes| !bytes.is_empty()) else {
                 break;
             };
-            answer(&replies, bytes);
+            answer(&replies, bytes, &cells);
             sink.lock().unwrap().extend_from_slice(bytes);
         }
     });
     std::thread::sleep(Duration::from_secs(3));
+    during(&*master, &writer);
     writer.lock().unwrap().write_all(b"\x03").ok();
     let deadline = Instant::now() + Duration::from_secs(5);
     while child.try_wait().ok().flatten().is_none() && Instant::now() < deadline {
@@ -157,4 +175,44 @@ fn a_kitty_term_gets_kitty_images() {
         "no Kitty image for TERM=xterm-kitty: {:?}",
         String::from_utf8_lossy(&output)
     );
+}
+
+fn kitty_boxes(output: &[u8]) -> Vec<(u16, u16)> {
+    String::from_utf8_lossy(output)
+        .split("\x1b_Ga=p,")
+        .skip(1)
+        .filter_map(|rest| {
+            let field = |key: &str| {
+                rest.split([',', '\x1b'])
+                    .find_map(|part| part.strip_prefix(key)?.parse().ok())
+            };
+            Some((field("c=")?, field("r=")?))
+        })
+        .collect()
+}
+
+#[test]
+fn a_kitty_image_keeps_its_aspect_and_follows_a_new_cell_size() {
+    let cell: Cell = Arc::new(Mutex::new(Some([10, 20])));
+    let output = run_child_with(&[("TERM", "xterm-kitty")], &cell, |master, writer| {
+        *cell.lock().unwrap() = Some([20, 20]);
+        master
+            .resize(PtySize {
+                rows: 12,
+                cols: 41,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .expect("resize");
+        for _ in 0..2 {
+            std::thread::sleep(Duration::from_millis(300));
+            writer.lock().unwrap().write_all(b"\x1b[I").ok();
+        }
+        std::thread::sleep(Duration::from_secs(2));
+    });
+    let boxes = kitty_boxes(&output);
+    let asks = String::from_utf8_lossy(&output).matches("\x1b[16t").count();
+    assert_eq!(boxes.first(), Some(&(2, 1)), "{boxes:?}");
+    assert_eq!(boxes.last(), Some(&(2, 2)), "{boxes:?}");
+    assert_eq!(asks, 2, "one question at start and one after the resize");
 }

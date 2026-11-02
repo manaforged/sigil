@@ -1,3 +1,4 @@
+#![cfg(feature = "kittest")]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -11,7 +12,7 @@ mod scene_support;
 use scene_support::{color, rect};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{
-    CommandScene, CornerRadii, LayerEffect, LayerScope, SceneBuilder, SceneCommand, SceneRectStyle,
+    CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder, SceneCommand,
 };
 use sigil::style::Color;
 use sigil_kittest::gpu::{Capture, read_pixels, render_capture};
@@ -130,12 +131,8 @@ fn layer_scene() -> CommandScene {
         opacity: 0.5,
     });
     builder.draw_rect(
-        rect(40.0, 24.0, 96.0, 64.0),
-        SceneRectStyle::new(
-            color(240, 240, 250, 255),
-            CornerRadii::uniform(12.0),
-            10_000,
-        ),
+        DrawRect::new(rect(40.0, 24.0, 96.0, 64.0), color(240, 240, 250, 255))
+            .border_radius(CornerRadii::uniform(12.0)),
     );
     builder.pop_layer();
     builder.finish()
@@ -151,10 +148,10 @@ fn rounded_clip_scene() -> CommandScene {
             opacity: 1.0,
         },
         |scene| {
-            scene.draw_rect(
+            scene.draw_rect(DrawRect::new(
                 rect(20.0, 4.0, 136.0, 104.0),
-                SceneRectStyle::solid(color(240, 30, 30, 255)),
-            );
+                color(240, 30, 30, 255),
+            ));
         },
     );
     builder.finish()
@@ -170,10 +167,10 @@ fn nested_layer_scene() -> CommandScene {
     };
     builder.with_composite_layer(plain(rect(30.0, 10.0, 160.0, 100.0)), |scene| {
         scene.with_composite_layer(plain(rect(80.0, 35.0, 60.0, 50.0)), |scene| {
-            scene.draw_rect(
+            scene.draw_rect(DrawRect::new(
                 rect(80.0, 35.0, 60.0, 50.0),
-                SceneRectStyle::solid(color(30, 240, 30, 255)),
-            );
+                color(30, 240, 30, 255),
+            ));
         });
     });
     builder.finish()

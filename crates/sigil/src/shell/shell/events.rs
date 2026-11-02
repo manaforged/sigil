@@ -1,13 +1,10 @@
 use std::path::PathBuf;
 
 use crate::events::{
-    FileDropEvent, FileDropPhase, GestureEvent, GestureEventInit, GestureKind, ImeEvent,
-    KeyEvent as SigilKeyEvent, KeyEventInit, KeyPhase, MouseButton, PointerEvent, PointerEventInit,
-    PointerKind, PointerPhase, ScrollEvent, ScrollEventInit, ShellEvent,
-    WindowEvent as SigilWindowEvent,
+    Event, FileDropEvent, FileDropPhase, GestureKind, ImeEvent, KeyPhase, MouseButton,
+    PointerEvent, PointerKind, PointerPhase, WindowEvent as SigilWindowEvent,
 };
 use crate::geometry::{PhysicalSize, Point, Scale};
-use smol_str::SmolStr;
 use winit::{
     event::{
         ElementState, Ime as WinitIme, KeyEvent as WinitKeyEvent, MouseButton as WinitMouseButton,
@@ -117,8 +114,7 @@ impl WinitShell {
     }
 
     pub(super) fn push_window(&mut self, event: SigilWindowEvent) -> bool {
-        self.events
-            .push((self.event_window, ShellEvent::Window(event)));
+        self.events.push((self.event_window, Event::Window(event)));
         self.set_force_paint();
         true
     }
@@ -167,30 +163,29 @@ impl WinitShell {
             ElementState::Pressed => KeyPhase::Down,
             ElementState::Released => KeyPhase::Up,
         };
-        let text = event.text.as_ref().map(|text| SmolStr::new(text.as_str()));
-        self.push(ShellEvent::Key(SigilKeyEvent::new(KeyEventInit {
-            key: map_logical_key(event.logical_key),
-            physical: map_physical_key(event.physical_key),
-            modifiers: self.modifiers,
-            repeat: event.repeat,
-            phase,
-            text,
-        })))
+        let text = event.text.as_ref().map(|text| String::from(text.as_str()));
+        self.push(
+            Event::key(map_logical_key(event.logical_key), phase)
+                .physical(map_physical_key(event.physical_key))
+                .modifiers(self.modifiers)
+                .repeat(event.repeat)
+                .text(text),
+        )
     }
 
     pub(super) fn push_ime(&mut self, event: WinitIme) -> bool {
         let event = match event {
             WinitIme::Enabled => ImeEvent::Enabled,
-            WinitIme::Preedit(text, range) => ImeEvent::Preedit(SmolStr::new(&text), range),
-            WinitIme::Commit(text) => ImeEvent::Commit(SmolStr::new(&text)),
+            WinitIme::Preedit(text, range) => ImeEvent::Preedit(String::from(&text), range),
+            WinitIme::Commit(text) => ImeEvent::Commit(String::from(&text)),
             WinitIme::Disabled => ImeEvent::Disabled,
         };
-        self.push(ShellEvent::Ime(event))
+        self.push(Event::Ime(event))
     }
 
     pub(super) fn push_file_drop(&mut self, path: Option<PathBuf>, phase: FileDropPhase) -> bool {
         let path = path.map(|p| p.to_string_lossy().into_owned());
-        self.push(ShellEvent::FileDrop(FileDropEvent { path, phase }))
+        self.push(Event::FileDrop(FileDropEvent { path, phase }))
     }
 
     pub(super) fn push_cursor_move(
@@ -249,7 +244,7 @@ impl WinitShell {
                 PointerKind::Touch,
             )
             .with_contact(touch.id, pressure, None);
-        self.push(ShellEvent::Pointer(event));
+        self.push(Event::Pointer(event));
     }
 
     fn move_pointer(&mut self, next: Point) -> Point {
@@ -261,7 +256,7 @@ impl WinitShell {
         delta
     }
 
-    fn push(&mut self, event: ShellEvent) -> bool {
+    fn push(&mut self, event: Event) -> bool {
         self.events.push((self.event_window, event));
         true
     }
@@ -274,7 +269,7 @@ impl WinitShell {
         kind: PointerKind,
     ) -> bool {
         let event = self.pointer_event(phase, delta, button, kind);
-        self.push(ShellEvent::Pointer(event))
+        self.push(Event::Pointer(event))
     }
 
     const fn pointer_event(
@@ -284,24 +279,20 @@ impl WinitShell {
         button: Option<MouseButton>,
         kind: PointerKind,
     ) -> PointerEvent {
-        PointerEvent::new(PointerEventInit {
-            position: self.pointer_position,
-            delta,
-            kind,
-            button,
-            buttons: self.pointer_buttons,
-            modifiers: self.modifiers,
-            phase,
-        })
+        let mut event = PointerEvent::new(phase, self.pointer_position);
+        event.delta = delta;
+        event.kind = kind;
+        event.button = button;
+        event.buttons = self.pointer_buttons;
+        event.modifiers = self.modifiers;
+        event
     }
 
     pub(super) fn push_gesture(&mut self, kind: GestureKind, phase: TouchPhase) -> bool {
-        self.push(ShellEvent::Gesture(GestureEvent::new(GestureEventInit {
-            kind,
-            phase: map_scroll_phase(phase),
-            position: self.pointer_position,
-            modifiers: self.modifiers,
-        })))
+        self.push(
+            Event::gesture(kind, map_scroll_phase(phase), self.pointer_position)
+                .modifiers(self.modifiers),
+        )
     }
 
     pub(super) fn push_scroll(
@@ -310,11 +301,13 @@ impl WinitShell {
         phase: TouchPhase,
         scale: Scale,
     ) -> bool {
-        self.push(ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
-            position: self.pointer_position,
-            delta: map_scroll_delta(delta, scale),
-            modifiers: self.modifiers,
-            phase: map_scroll_phase(phase),
-        })))
+        self.push(
+            Event::scroll(
+                self.pointer_position,
+                map_scroll_delta(delta, scale),
+                map_scroll_phase(phase),
+            )
+            .modifiers(self.modifiers),
+        )
     }
 }

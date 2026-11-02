@@ -1,28 +1,28 @@
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub enum Variant {
+pub(crate) enum Variant {
     #[default]
     Normal,
     Terminal,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub enum FontFamilyHint {
+pub(crate) enum FontFamilyHint {
     #[default]
     Proportional,
     Monospace,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct VariantTokens {
-    pub radius: u16,
-    pub shadows: bool,
-    pub hover_lift: bool,
-    pub font: FontFamilyHint,
+pub(crate) struct VariantTokens {
+    pub(crate) radius: u16,
+    pub(crate) shadows: bool,
+    pub(crate) hover_lift: bool,
+    pub(crate) font: FontFamilyHint,
 }
 
 impl Variant {
     #[must_use]
-    pub const fn tokens(self) -> VariantTokens {
+    pub(crate) const fn tokens(self) -> VariantTokens {
         match self {
             Self::Normal => VariantTokens {
                 radius: 8,

@@ -1,4 +1,4 @@
-use crate::layout::LayoutError;
+use crate::Error;
 use crate::layout::flex::CbSize;
 use crate::layout::flex_lines::{FlexItem, FlexLine};
 use crate::layout::resolve::{NodeEdges, clamp, resolve_lp};
@@ -16,7 +16,7 @@ pub(super) fn place_lines(
     style: &StyleData,
     container_main: f32,
     container_cross: f32,
-) -> Result<Vec<PlacedItem>, LayoutError> {
+) -> Result<Vec<PlacedItem>, Error> {
     let line_count = lines.len();
     let cross_definite = ctx.definite_along(style, !ctx.axes.row);
     for line in &mut lines {
@@ -81,7 +81,7 @@ fn resolve_cross_sizes(
     ctx: &FlexCtx<'_, '_>,
     line: &mut FlexLine,
     container_cross: f32,
-) -> Result<(), LayoutError> {
+) -> Result<(), Error> {
     if !ctx.axes.row {
         return Ok(());
     }
@@ -90,9 +90,9 @@ fn resolve_cross_sizes(
         if !item.cross_size_was_auto {
             continue;
         }
-        let node = forest.refer(item.id).ok_or_else(|| {
-            LayoutError::LayoutInvalid(format!("stale flex item id {:?}", item.id))
-        })?;
+        let node = forest
+            .refer(item.id)
+            .ok_or_else(|| Error::layout(format!("stale flex item id {:?}", item.id)))?;
         if node.style().size.width != Dimension::Auto {
             continue;
         }
@@ -193,9 +193,14 @@ fn distribute_cross(align: Option<AlignContent>, free: f32, line_count: usize) -
         return (0.0, 0.0);
     }
     match align.unwrap_or(AlignContent::Stretch) {
-        AlignContent::Start | AlignContent::Stretch => (0.0, 0.0),
+        AlignContent::Stretch => (0.0, 0.0),
+        #[cfg(any(test, feature = "kittest"))]
+        AlignContent::Start => (0.0, 0.0),
+        #[cfg(any(test, feature = "kittest"))]
         AlignContent::End => (free, 0.0),
+        #[cfg(any(test, feature = "kittest"))]
         AlignContent::Center => (free / 2.0, 0.0),
+        #[cfg(any(test, feature = "kittest"))]
         AlignContent::SpaceBetween => {
             if line_count <= 1 {
                 (0.0, 0.0)
@@ -203,10 +208,12 @@ fn distribute_cross(align: Option<AlignContent>, free: f32, line_count: usize) -
                 (0.0, free / (line_count - 1) as f32)
             }
         }
+        #[cfg(any(test, feature = "kittest"))]
         AlignContent::SpaceAround => {
             let g = free / line_count as f32;
             (g / 2.0, g)
         }
+        #[cfg(any(test, feature = "kittest"))]
         AlignContent::SpaceEvenly => {
             let g = free / (line_count + 1) as f32;
             (g, g)

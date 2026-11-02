@@ -7,7 +7,7 @@ use std::sync::{
 use web_time::Instant;
 
 use crate::app::WindowOpts;
-use crate::events::{ModifiersState, MouseButtons, ShellEvent};
+use crate::events::{Event, ModifiersState, MouseButtons};
 use crate::geometry::{LogicalSize, PhysicalSize, Point, Scale};
 use winit::{
     event_loop::{EventLoop, EventLoopProxy},
@@ -40,7 +40,7 @@ pub(crate) enum PendingWindowSize {
 
 pub(crate) type DeadlineHook = Arc<dyn Fn() -> Option<Instant> + Send + Sync + 'static>;
 
-pub(crate) type TaggedEvent = (WinitWindowHandle, ShellEvent);
+pub(crate) type TaggedEvent = (WinitWindowHandle, Event);
 
 pub struct WinitShell {
     event_loop: Option<EventLoop<WakeEvent>>,
@@ -76,19 +76,21 @@ impl Drop for WinitShell {
 }
 
 impl WinitShell {
-    pub fn new() -> Result<Self, crate::shell::ShellError> {
-        let event_loop = EventLoop::<WakeEvent>::with_user_event().build()?;
+    pub fn new() -> Result<Self, crate::Error> {
+        let event_loop = EventLoop::<WakeEvent>::with_user_event()
+            .build()
+            .map_err(crate::Error::event_loop)?;
         Ok(Self::from_event_loop(event_loop))
     }
 
-    pub fn new_accessory() -> Result<Self, crate::shell::ShellError> {
+    pub fn new_accessory() -> Result<Self, crate::Error> {
         let mut builder = EventLoop::<WakeEvent>::with_user_event();
         #[cfg(target_os = "macos")]
         {
             use winit::platform::macos::{ActivationPolicy, EventLoopBuilderExtMacOS};
             builder.with_activation_policy(ActivationPolicy::Accessory);
         }
-        let event_loop = builder.build()?;
+        let event_loop = builder.build().map_err(crate::Error::event_loop)?;
         Ok(Self::from_event_loop(event_loop))
     }
 
@@ -129,7 +131,7 @@ impl WinitShell {
         self.deadline_hook = Some(Arc::new(hook));
     }
 
-    pub fn on_exit<F: FnOnce() + 'static>(&mut self, hook: F) {
+    pub fn on_exit<F: FnOnce() + 'static>(hook: F) {
         super::exit_hook::set(Box::new(hook));
     }
 
@@ -156,11 +158,13 @@ impl WinitShell {
             .unwrap_or(1.0)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn windows(&self) -> &[(WinitWindowHandle, Arc<Window>)] {
         &self.windows
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[must_use]
     pub fn take_failed_windows(&mut self) -> Vec<(WinitWindowHandle, String)> {
         std::mem::take(&mut self.failed)
@@ -178,7 +182,7 @@ impl WinitShell {
         &self.pending_wake
     }
 
-    pub(crate) fn push_event(&mut self, handle: WinitWindowHandle, event: ShellEvent) {
+    pub(crate) fn push_event(&mut self, handle: WinitWindowHandle, event: Event) {
         self.events.push((handle, event));
     }
 

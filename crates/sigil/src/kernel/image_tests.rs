@@ -22,6 +22,28 @@ fn content_id_is_stable_and_distinguishes_pixels() {
 }
 
 #[test]
+fn map_node_sees_a_width_set_after_the_call() {
+    use crate::kernel::Cx;
+    use crate::reactive::Owner;
+    use crate::widgets::Widget;
+    Owner::scope("image-map-node-order", || {
+        let source = ImageSource::from_rgba8(1, 1, vec![1, 2, 3, 255]).unwrap();
+        let seen = std::rc::Rc::new(std::cell::Cell::new(0));
+        let flag = seen.clone();
+        let mut cx = Cx::new_root();
+        let _ = cx.add(
+            image(source)
+                .map_node(move |node| {
+                    flag.set(node.pre_extensions.len());
+                    node
+                })
+                .width(40.0),
+        );
+        assert_eq!(seen.get(), 1);
+    });
+}
+
+#[test]
 fn cached_image_builds_each_key_once() {
     use std::cell::Cell;
     let builds = Cell::new(0);

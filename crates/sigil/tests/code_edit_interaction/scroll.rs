@@ -4,7 +4,7 @@ use sigil::kernel::Cx;
 
 #[test]
 fn long_line_does_not_grow_the_box_past_its_pane() {
-    sigil::reactive::Runtime::scope("code-edit-overflow", || {
+    sigil::reactive::Owner::scope("code-edit-overflow", || {
         let pane_w = 580.0;
         let lines = signal(vec!["x".repeat(200)]);
         let caret = signal((0_usize, 0_usize));
@@ -33,7 +33,7 @@ fn long_line_does_not_grow_the_box_past_its_pane() {
 
 #[test]
 fn long_line_run_keeps_intrinsic_width_so_paint_does_not_wrap() {
-    sigil::reactive::Runtime::scope("code-edit-nowrap-run", || {
+    sigil::reactive::Owner::scope("code-edit-nowrap-run", || {
         let pane_w = 580.0;
         let lines = signal(vec!["x".repeat(200)]);
         let caret = signal((0_usize, 0_usize));
@@ -61,7 +61,7 @@ fn long_line_run_keeps_intrinsic_width_so_paint_does_not_wrap() {
 
 #[test]
 fn caret_visible_when_doc_exceeds_max_rows() {
-    sigil::reactive::Runtime::scope("code-edit-max-rows", || {
+    sigil::reactive::Owner::scope("code-edit-max-rows", || {
         let lines = signal((0..2_500).map(|i| format!("line {i}")).collect::<Vec<_>>());
         let caret = signal((2_400_usize, 0_usize));
         let mut cx = Cx::new_root();
@@ -80,7 +80,7 @@ fn caret_visible_when_doc_exceeds_max_rows() {
 
 #[test]
 fn overflowing_rows_keep_full_height_and_do_not_compress() {
-    sigil::reactive::Runtime::scope("code-edit-overflow-compress", || {
+    sigil::reactive::Owner::scope("code-edit-overflow-compress", || {
         const ROW_H: f32 = 18.0;
         let pane_h = 200.0;
         let lines = signal((0..60).map(|i| format!("line {i}")).collect::<Vec<_>>());
@@ -117,7 +117,7 @@ fn overflowing_rows_keep_full_height_and_do_not_compress() {
 
 #[test]
 fn wheel_virtualizes_and_scrolls_the_window_past_the_caret() {
-    sigil::reactive::Runtime::scope("code-edit-virtualize", || {
+    sigil::reactive::Owner::scope("code-edit-virtualize", || {
         const ROW_H: f32 = 18.0;
         let pane_h = 200.0;
         let lines = signal((0..400).map(|i| format!("line {i}")).collect::<Vec<_>>());
@@ -153,7 +153,7 @@ fn wheel_virtualizes_and_scrolls_the_window_past_the_caret() {
 
 #[test]
 fn render_budget_tracks_the_published_viewport_height() {
-    sigil::reactive::Runtime::scope("code-edit-size-reactive", || {
+    sigil::reactive::Owner::scope("code-edit-size-reactive", || {
         const ROW_H: f32 = 18.0;
         let pane_h = 200.0;
         let lines = signal((0..400).map(|i| format!("line {i}")).collect::<Vec<_>>());
@@ -187,7 +187,7 @@ fn render_budget_tracks_the_published_viewport_height() {
 
 #[test]
 fn short_doc_does_not_scroll_into_blank_space() {
-    sigil::reactive::Runtime::scope("code-edit-shortdoc", || {
+    sigil::reactive::Owner::scope("code-edit-shortdoc", || {
         const ROW_H: f32 = 18.0;
         let pane_h = 200.0;
         let lines = signal((0..5).map(|i| format!("line {i}")).collect::<Vec<_>>());
@@ -239,18 +239,19 @@ impl sigil::layout::TextMeasure for WrapToWidth {
         space: sigil::geometry::Size,
     ) -> sigil::geometry::LogicalSize {
         let width = content.resolve().chars().count() as f32 * 8.0;
-        match space.width {
-            sigil::geometry::Dim::Fixed(limit) if limit > 0.0 && width > limit => {
-                sigil::geometry::LogicalSize::new(limit, (width / limit).ceil() * 16.0)
-            }
-            _ => sigil::geometry::LogicalSize::new(width, 16.0),
+        if let Some(limit) = space.fixed_width()
+            && limit > 0.0
+            && width > limit
+        {
+            return sigil::geometry::LogicalSize::new(limit, (width / limit).ceil() * 16.0);
         }
+        sigil::geometry::LogicalSize::new(width, 16.0)
     }
 }
 
 #[test]
 fn long_line_stays_one_row_under_a_wrapping_measure() {
-    sigil::reactive::Runtime::scope("code-edit-one-row", || {
+    sigil::reactive::Owner::scope("code-edit-one-row", || {
         let pane_w = 580.0;
         let lines = signal(vec!["x".repeat(200), "next".to_owned()]);
         let caret = signal((0_usize, 0_usize));

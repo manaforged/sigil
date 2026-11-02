@@ -1,4 +1,3 @@
-#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -12,12 +11,10 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::bidi;
 use crate::text::FaceSpec;
 use crate::text::cache::ParagraphCache;
-use crate::text::config::TextConfig;
-use crate::text::error::TextError;
 use crate::text::paragraph::{FaceTable, Paragraph, TextMetrics, face_table};
 #[cfg(test)]
 use crate::text::shaper::Script;
-use crate::text::shaper::{FeatureTag, Font, Shaper, Style};
+use crate::text::shaper::{FaceStyle, FeatureTag, Font, Shaper};
 use smallvec::SmallVec;
 
 mod lines;
@@ -26,11 +23,11 @@ mod spans;
 
 use lines::{LineFit, LineStrut, break_lines};
 use shape::char_script;
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, feature = "kittest"))]
 use shape::script_name;
 #[cfg(test)]
 use shape::{PushRunArgs, push_run, run_has_disallowed_notdef, shape_validated};
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, feature = "kittest"))]
 use spans::shape_segments;
 use spans::{shape_spans, style_spans};
 
@@ -38,7 +35,8 @@ pub struct OwnedTextEngine {
     fonts: RefCell<FontCollection>,
     font_gen: Cell<u64>,
     font_epoch: Cell<u64>,
-    config: TextConfig,
+    #[cfg(any(test, feature = "kittest"))]
+    style: TextStyle,
     cache: RefCell<ParagraphCache>,
     chains: RefCell<AHashMap<ChainKey, Arc<[Font]>>>,
     face_tables: RefCell<AHashMap<FaceKey, FaceTable>>,
@@ -52,12 +50,15 @@ type ChainKey = (u64, u16, ChainScripts);
 
 impl OwnedTextEngine {
     #[must_use]
-    pub fn new(config: TextConfig) -> Self {
+    pub fn new(style: TextStyle) -> Self {
+        #[cfg(not(any(test, feature = "kittest")))]
+        drop(style);
         Self {
             fonts: RefCell::new(FontCollection::with_default()),
             font_gen: Cell::new(crate::text::fonts::default_fonts_generation()),
             font_epoch: Cell::new(0),
-            config,
+            #[cfg(any(test, feature = "kittest"))]
+            style,
             cache: RefCell::new(ParagraphCache::new()),
             chains: RefCell::new(AHashMap::new()),
             face_tables: RefCell::new(AHashMap::new()),
@@ -68,7 +69,10 @@ impl OwnedTextEngine {
     pub fn thread() -> Rc<Self> {
         thread_local! {
             static ENGINE: Rc<OwnedTextEngine> =
-                Rc::new(OwnedTextEngine::new(TextConfig::default()));
+                Rc::new(OwnedTextEngine::new(TextStyle {
+                    font_size: 16.0,
+                    ..TextStyle::default()
+                }));
         }
         ENGINE.with(Rc::clone)
     }
@@ -95,26 +99,9 @@ impl OwnedTextEngine {
         self.font_epoch.get()
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn clear_cache(&self) {
         self.cache.borrow_mut().clear();
-    }
-
-    pub fn layout_paragraph_styled(
-        &self,
-        text: &str,
-        max_width: Option<f32>,
-        style: &TextStyle,
-    ) -> Result<Paragraph, TextError> {
-        self.refresh_fonts();
-        if let Some(cached) = self.cached_paragraph(text, max_width, style) {
-            return Ok(cached);
-        }
-        let (para, fit) = self.build_paragraph(text, max_width, style);
-        let key = if fit.wrapped { max_width } else { None };
-        self.cache
-            .borrow_mut()
-            .insert(text, key, style, (para.clone(), fit.width));
-        Ok(para)
     }
 
     pub fn layout_paragraph_ellipsized(
@@ -122,7 +109,7 @@ impl OwnedTextEngine {
         text: &str,
         max_width: f32,
         style: &TextStyle,
-    ) -> Result<Paragraph, TextError> {
+    ) -> Result<Paragraph, crate::Error> {
         const ELLIPSIS: &str = "\u{2026}";
         let full = self.layout_paragraph_styled(text, None, style)?;
         if full.width() <= max_width {
@@ -166,13 +153,13 @@ impl OwnedTextEngine {
         self.fonts.borrow()
     }
 
-    #[cfg(any(test, debug_assertions))]
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn debug_segments_for_tests(&self, text: &str) -> Vec<(u32, u32, u8, &'static str)> {
         let fonts = self.fonts.borrow();
-        let primary = fonts.select_weight("sans", self.config.font_weight);
-        let chain = fonts.fallback_chain(primary, self.config.font_weight, text);
-        let style = to_shaper_style(&self.config.text_style());
+        let primary = fonts.select_weight("sans", self.style.font_weight);
+        let chain = fonts.fallback_chain(primary, self.style.font_weight, text);
+        let style = to_shaper_style(&self.style);
         let paragraph_bidi = bidi::ParagraphBidi::new(text);
         shape_segments(&chain, text, &style, &paragraph_bidi)
             .into_iter()
@@ -180,19 +167,21 @@ impl OwnedTextEngine {
             .collect()
     }
 
-    pub fn register_font(&mut self, bytes: Vec<u8>, face_index: u32) -> Result<(), TextError> {
+    #[cfg(any(test, feature = "kittest"))]
+    pub fn register_font(&mut self, bytes: Vec<u8>, face_index: u32) -> Result<(), crate::Error> {
         self.fonts.borrow_mut().register(bytes, face_index)?;
         self.fonts_changed();
         crate::text::fonts::wake_font_listeners();
         Ok(())
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn register_font_family(
         &mut self,
         family: &str,
         bytes: Vec<u8>,
         face_index: u32,
-    ) -> Result<(), TextError> {
+    ) -> Result<(), crate::Error> {
         self.fonts
             .borrow_mut()
             .register_family(family, bytes, face_index)?;
@@ -296,14 +285,20 @@ impl OwnedTextEngine {
 }
 
 impl TextEngine for OwnedTextEngine {
-    type Error = TextError;
+    type Error = crate::Error;
     type Paragraph = Paragraph;
 
-    fn layout_paragraph(&self, text: &str, max_width: Option<f32>) -> Result<Paragraph, TextError> {
-        let style = self.config.text_style();
+    #[cfg(any(test, feature = "kittest"))]
+    fn layout_paragraph(
+        &self,
+        text: &str,
+        max_width: Option<f32>,
+    ) -> Result<Paragraph, crate::Error> {
+        let style = self.style.clone();
         self.layout_paragraph_styled(text, max_width, &style)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     fn clear_cache(&self) {
         self.cache.borrow_mut().clear();
     }
@@ -315,8 +310,17 @@ impl StyledTextEngine for OwnedTextEngine {
         text: &str,
         max_width: Option<f32>,
         style: &TextStyle,
-    ) -> Result<Paragraph, TextError> {
-        Self::layout_paragraph_styled(self, text, max_width, style)
+    ) -> Result<Paragraph, crate::Error> {
+        self.refresh_fonts();
+        if let Some(cached) = self.cached_paragraph(text, max_width, style) {
+            return Ok(cached);
+        }
+        let (para, fit) = self.build_paragraph(text, max_width, style);
+        let key = if fit.wrapped { max_width } else { None };
+        self.cache
+            .borrow_mut()
+            .insert(text, key, style, (para.clone(), fit.width));
+        Ok(para)
     }
 
     fn font_generation(&self) -> u64 {
@@ -324,8 +328,8 @@ impl StyledTextEngine for OwnedTextEngine {
     }
 }
 
-fn to_shaper_style(style: &TextStyle) -> Style {
-    Style {
+fn to_shaper_style(style: &TextStyle) -> FaceStyle {
+    FaceStyle {
         size_px: font_size_px(style),
         weight: style.font_weight,
         features: if style.tabular_nums {

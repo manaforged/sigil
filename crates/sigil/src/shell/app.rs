@@ -9,7 +9,7 @@ use winit::{
     window::WindowId,
 };
 
-use crate::events::{ShellEvent, WindowEvent as SigilWindowEvent};
+use crate::events::{Event, WindowEvent as SigilWindowEvent};
 
 use crate::shell::{WinitWindowHandle, shell::WinitShell, waker::WakeEvent};
 
@@ -103,7 +103,7 @@ where
             WinitWindowEvent::CloseRequested => {
                 if let Some(handle) = self.shell.handle_for(window_id) {
                     self.shell
-                        .push_event(handle, ShellEvent::Window(SigilWindowEvent::CloseRequested));
+                        .push_event(handle, Event::Window(SigilWindowEvent::CloseRequested));
                 }
                 self.app_redraw_pending = true;
                 self.shell.request_redraws();

@@ -4,14 +4,14 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::icons::{BakedIcon, IconBaker};
+use sigil::icons::BakedIcon;
 
 const SIDE: u32 = 32;
 
 fn bake(body: &str) -> BakedIcon {
     let svg =
         format!(r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">{body}</svg>"#);
-    IconBaker::new().bake(&svg, SIDE, SIDE).unwrap()
+    sigil::icons::bake(&svg, SIDE, SIDE).unwrap()
 }
 
 fn alpha(icon: &BakedIcon, x: u32, y: u32) -> u8 {

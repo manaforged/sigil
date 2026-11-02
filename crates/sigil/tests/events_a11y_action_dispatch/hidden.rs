@@ -17,7 +17,7 @@ fn hideable_child_tree(cx: &mut Cx, show: sigil::reactive::Signal<bool>) -> (Nod
 
 #[test]
 fn action_rejected_when_target_hidden_via_signal_before_the_validating_recompute() {
-    Runtime::scope("sigil_a11y::hide_then_validate", || {
+    Owner::scope("sigil_a11y::hide_then_validate", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let (root, child) = hideable_child_tree(&mut cx, show);
@@ -51,7 +51,7 @@ fn action_rejected_when_target_hidden_via_signal_before_the_validating_recompute
 
 #[test]
 fn hidden_target_is_rejected_before_layout_recomputes() {
-    Runtime::scope("sigil_a11y::hidden_before_recompute", || {
+    Owner::scope("sigil_a11y::hidden_before_recompute", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let (root, child) = hideable_child_tree(&mut cx, show);
@@ -63,7 +63,7 @@ fn hidden_target_is_rejected_before_layout_recomputes() {
 
 #[test]
 fn click_on_a_node_scrolled_outside_the_viewport_is_a_no_op() {
-    Runtime::scope("sigil_a11y::scrolled_out_of_view", || {
+    Owner::scope("sigil_a11y::scrolled_out_of_view", || {
         let mut cx = Cx::new_root();
         let pos = signal((10.0_f32, 10.0_f32));
         let activated = Rc::new(Cell::new(false));

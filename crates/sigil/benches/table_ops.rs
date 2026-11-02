@@ -5,7 +5,7 @@
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use sigil::kernel::{Cx, text};
-use sigil::reactive::Runtime;
+use sigil::reactive::Owner;
 use sigil::widgets::{Identifiable, TableColumn, TableState, table};
 use std::collections::HashSet;
 use std::hint::black_box;
@@ -49,7 +49,7 @@ fn columns() -> Vec<TableColumn<Row>> {
 
 fn bench_table_ops(c: &mut Criterion) {
     c.bench_function("table_sort_toggle_100k", |b| {
-        Runtime::scope("bench-table-sort", || {
+        Owner::scope("bench-table-sort", || {
             let state = TableState::new(rows(100_000), columns());
             b.iter(|| {
                 state.toggle_sort("value");
@@ -58,7 +58,7 @@ fn bench_table_ops(c: &mut Criterion) {
         });
     });
     c.bench_function("table_quick_filter_100k", |b| {
-        Runtime::scope("bench-table-filter", || {
+        Owner::scope("bench-table-filter", || {
             let state = TableState::new(rows(100_000), columns());
             let mut flip = false;
             b.iter(|| {
@@ -80,7 +80,7 @@ fn bench_replace(c: &mut Criterion) {
             "table_replace_unselected_10k"
         };
         c.bench_function(name, |b| {
-            Runtime::scope("bench-table-replace", || {
+            Owner::scope("bench-table-replace", || {
                 let rows = rows(10_000);
                 let state = TableState::identified(rows.clone(), columns());
                 if selected {
@@ -104,7 +104,7 @@ fn bench_shared_replace(c: &mut Criterion) {
             _ => format!("table_replace_shared_selected_{selected}_of_10k"),
         };
         c.bench_function(&name, |b| {
-            Runtime::scope("bench-table-shared", || {
+            Owner::scope("bench-table-shared", || {
                 let first = Arc::new(rows(10_000));
                 let mut second = (*first).clone();
                 if let Some(row) = second.first_mut() {
@@ -165,7 +165,7 @@ fn bench_sorted_replace(c: &mut Criterion) {
             "shuffled",
         ] {
             c.bench_function(&format!("table_sorted_replace/{case}/{count}"), |b| {
-                Runtime::scope("bench-table-sorted", || {
+                Owner::scope("bench-table-sorted", || {
                     let (first, second) = replacement_rows(count, case);
                     let state = TableState::new((*first).clone(), columns());
                     state.toggle_sort("label");
@@ -189,7 +189,7 @@ fn bench_selection(c: &mut Criterion) {
     for count in [100, 10_000, 100_000] {
         for case in ["none", "first", "last", "half", "full", "hidden", "no-rows"] {
             c.bench_function(&format!("table_selection/{case}/{count}"), |b| {
-                Runtime::scope("bench-table-selection", || {
+                Owner::scope("bench-table-selection", || {
                     let state = TableState::new(rows(count), columns());
                     let selected = Rc::new(match case {
                         "none" => HashSet::new(),
@@ -229,7 +229,7 @@ fn bench_mounted_replace(c: &mut Criterion) {
             let name = format!("table_mounted_replace/checkboxes-{checkboxes}/selected-{selected}");
             let mut reported = false;
             c.bench_function(&name, |b| {
-                Runtime::scope("bench-table-mounted", || {
+                Owner::scope("bench-table-mounted", || {
                     let first = Arc::new(rows(100));
                     let mut second = (*first).clone();
                     if let Some(row) = second.first_mut() {

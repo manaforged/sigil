@@ -1,35 +1,36 @@
 use std::rc::Rc;
 
 use crate::events::{A11yEdit, with_handlers};
-use crate::events::{Key, KeyEvent, LogicalKey, NodeEventsExt, PointerEvent};
+use crate::events::{Key, KeyEvent};
 use crate::kernel::NodeBuilder;
-use crate::reactive::Signal;
 
-use crate::widgets::interaction::InteractionState;
+use crate::widgets::interaction::{InteractionState, ValueStep, pointer_drag, step_keys};
 
 use super::builder::{SliderRuntime, ValueChange};
 
+const SLIDER_KEYS: [(Key, ValueStep); 8] = [
+    (Key::ArrowRight, ValueStep::Unit(1.0)),
+    (Key::ArrowUp, ValueStep::Unit(1.0)),
+    (Key::ArrowLeft, ValueStep::Unit(-1.0)),
+    (Key::ArrowDown, ValueStep::Unit(-1.0)),
+    (Key::PageUp, ValueStep::Page(1.0)),
+    (Key::PageDown, ValueStep::Page(-1.0)),
+    (Key::Home, ValueStep::Start),
+    (Key::End, ValueStep::End),
+];
+
+const PAGE_STEPS: f32 = 10.0;
+
 pub(super) fn attach_key_handlers(
-    mut node: NodeBuilder,
+    node: NodeBuilder,
     interaction: InteractionState,
     runtime: SliderRuntime,
     on_change: ValueChange,
 ) -> NodeBuilder {
-    for key in [
-        Key::ArrowRight,
-        Key::ArrowUp,
-        Key::ArrowLeft,
-        Key::ArrowDown,
-        Key::PageUp,
-        Key::PageDown,
-        Key::Home,
-        Key::End,
-    ] {
-        let change = Rc::clone(&on_change);
-        node = node.key(key, move |event| {
-            change_key(event, interaction, runtime, &change);
-        });
-    }
+    let change = Rc::clone(&on_change);
+    let node = step_keys(node, &SLIDER_KEYS, move |step, event| {
+        change_key(step, event, interaction, runtime, &change);
+    });
     with_handlers(node, move |handlers| {
         let edited = Rc::clone(&on_change);
         handlers.set_value_adjustment(Box::new(move |increase| {
@@ -51,46 +52,40 @@ pub(super) fn attach_key_handlers(
     })
 }
 
-pub(super) fn pointer_down(
-    event: &mut PointerEvent,
+pub(super) fn attach_pointer_drag(
+    node: NodeBuilder,
     interaction: InteractionState,
     runtime: SliderRuntime,
-) {
-    if runtime.disabled() {
-        return;
-    }
-    interaction.drag(true);
-    event.capture_pointer();
-    runtime.set_from_position(event);
-}
-
-pub(super) fn pointer_move(
-    event: &mut PointerEvent,
-    interaction: InteractionState,
-    runtime: SliderRuntime,
-) {
-    if runtime.disabled() || !event.is_captured() || !interaction.dragging() {
-        return;
-    }
-    runtime.set_from_position(event);
-    event.stop_propagation();
-}
-
-pub(super) fn pointer_up(
-    event: &mut PointerEvent,
-    interaction: InteractionState,
-    value: Signal<f32>,
-    on_change: &ValueChange,
-) {
-    let was_dragging = interaction.dragging();
-    interaction.drag(false);
-    let _released = interaction.release_pointer(event);
-    if was_dragging {
-        on_change(value.peek());
-    }
+    on_change: ValueChange,
+) -> NodeBuilder {
+    pointer_drag(
+        node,
+        move |event| {
+            if runtime.disabled() {
+                return None;
+            }
+            interaction.drag(true);
+            runtime.set_from_position(event);
+            Some(())
+        },
+        move |(), event| {
+            if !runtime.disabled() {
+                runtime.set_from_position(event);
+                event.stop_propagation();
+            }
+        },
+        move |ended, event| {
+            interaction.drag(false);
+            let _released = interaction.release_pointer(event);
+            if ended.is_some() {
+                on_change(runtime.value.peek());
+            }
+        },
+    )
 }
 
 fn change_key(
+    step: ValueStep,
     event: &mut KeyEvent,
     interaction: InteractionState,
     runtime: SliderRuntime,
@@ -99,17 +94,11 @@ fn change_key(
     if !interaction.activate_key(event) || runtime.disabled() {
         return;
     }
-    let LogicalKey::Named(key) = &event.key else {
-        return;
-    };
-    match key {
-        Key::ArrowRight | Key::ArrowUp => runtime.nudge(1.0),
-        Key::ArrowLeft | Key::ArrowDown => runtime.nudge(-1.0),
-        Key::PageUp => runtime.nudge(10.0),
-        Key::PageDown => runtime.nudge(-10.0),
-        Key::Home => runtime.value.set(runtime.range.min),
-        Key::End => runtime.value.set(runtime.range.max),
-        _ => return,
+    match step {
+        ValueStep::Unit(sign) => runtime.nudge(sign),
+        ValueStep::Page(sign) => runtime.nudge(sign * PAGE_STEPS),
+        ValueStep::Start => runtime.value.set(runtime.range.min),
+        ValueStep::End => runtime.value.set(runtime.range.max),
     }
     on_change(runtime.value.peek());
 }

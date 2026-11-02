@@ -2,8 +2,9 @@ use crate::geometry::{Dim, Size};
 use crate::kernel::{Cx, DeltaKind, NodeId};
 use smallvec::SmallVec;
 
+use crate::Error;
+use crate::layout::LayoutResult;
 use crate::layout::forest::{AvailableSpace, SpaceConstraint};
-use crate::layout::{LayoutError, LayoutResult};
 
 use super::{LayoutEngine, note_full};
 
@@ -42,7 +43,7 @@ impl LayoutEngine {
         root: NodeId,
         available: Size,
         pass: Pass<'_>,
-    ) -> Result<SmallVec<[NodeId; 8]>, LayoutError> {
+    ) -> Result<SmallVec<[NodeId; 8]>, Error> {
         match pass {
             Pass::Remeasure => {
                 crate::profile::count(crate::profile::Counter::LayoutResize);
@@ -62,7 +63,7 @@ impl LayoutEngine {
         Ok(smallvec::smallvec![root])
     }
 
-    fn compute_mirror(&mut self, root: NodeId, available: Size) -> Result<(), LayoutError> {
+    fn compute_mirror(&mut self, root: NodeId, available: Size) -> Result<(), Error> {
         let _solve = crate::profile::span(crate::profile::Phase::LayoutSolve);
         self.drive.clear_intrinsic();
         self.drive
@@ -74,7 +75,7 @@ impl LayoutEngine {
         cx: &mut Cx,
         root: NodeId,
         available: Size,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         self.compute_mirror(root, available)?;
         let _attach = crate::profile::span(crate::profile::Phase::LayoutAttach);
         self.attach_subtree_results(cx, root)
@@ -85,7 +86,7 @@ impl LayoutEngine {
         cx: &mut Cx,
         root: NodeId,
         available: Size,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let previous_ids: SmallVec<[NodeId; 32]> =
             self.core_to_handle.keys().map(NodeId::from_key).collect();
         {
@@ -103,7 +104,7 @@ impl LayoutEngine {
         roots: &[NodeId],
         tree_root: NodeId,
         available: Size,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         self.drive.begin_measure_frame();
         let space = to_available_space(available);
         for root in roots {
@@ -127,17 +128,13 @@ impl LayoutEngine {
         &mut self,
         cx: &mut Cx,
         root: NodeId,
-    ) -> Result<(), LayoutError> {
+    ) -> Result<(), Error> {
         let mut ids = SmallVec::<[_; 32]>::new();
         cx.visit_preorder(root, |id, _node| ids.push(id));
         self.attach_results(cx, ids)
     }
 
-    fn attach_results(
-        &mut self,
-        cx: &mut Cx,
-        ids: SmallVec<[NodeId; 32]>,
-    ) -> Result<(), LayoutError> {
+    fn attach_results(&mut self, cx: &mut Cx, ids: SmallVec<[NodeId; 32]>) -> Result<(), Error> {
         for id in ids {
             let Some(result) = self.fresh(id) else {
                 continue;
@@ -148,7 +145,7 @@ impl LayoutEngine {
             cx.delta.record(id, DeltaKind::Layout);
             let node = cx
                 .get_mut_untracked(id)
-                .ok_or(LayoutError::NodeMissing(id))?;
+                .ok_or_else(|| Error::node_missing(id))?;
             let _ = node.attach_untracked(result);
             let rect = result.rect();
             if let Some(size) = node.get_extension::<crate::layout::SizeReactive>() {

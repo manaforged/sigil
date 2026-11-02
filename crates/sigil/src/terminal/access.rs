@@ -4,16 +4,22 @@ use crate::style::Tone;
 use crate::terminal::paint::{Cell, Grid, Ink};
 use crate::terminal::transcript::{Reading, Spot};
 
+/// `Follow` moves the hidden terminal cursor to the focused node's label when no text caret is visible, so screen readers read it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum FocusCursor {
+    /// The follow focus cursor.
     #[default]
     Follow,
+    /// The off focus cursor.
     Off,
 }
 
+/// Where the terminal cursor goes when no caret shows, and how long an announcement stays on the full-screen status row.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Access {
+    /// The focus cursor.
     pub focus_cursor: FocusCursor,
+    /// The status.
     pub status: Duration,
 }
 

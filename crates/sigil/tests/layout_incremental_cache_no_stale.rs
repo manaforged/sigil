@@ -2,8 +2,9 @@
 
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil_kittest::FixedMeasure;
+use sigil::layout::{LayoutEngine, LayoutStyle};
+use sigil::prelude::Widget;
+use sigil_kittest::FakeMeasure;
 
 #[test]
 fn dirty_frame_reflects_mutation_then_clean_frame_hits() {
@@ -16,7 +17,7 @@ fn dirty_frame_reflects_mutation_then_clean_frame_hits() {
     );
     let leaf_id = *cx.get(root).unwrap().children().first().unwrap();
 
-    let mut engine = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
+    let mut engine = LayoutEngine::with_text_measure(Box::new(FakeMeasure::default()));
     let avail = Size::fixed(200.0, 200.0);
     engine.compute(&mut cx, root, avail).unwrap();
     cx.clear_dirty();

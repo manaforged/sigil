@@ -1,7 +1,7 @@
 use crate::profile::key::{Counter, Phase};
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum Event {
+pub(crate) enum TraceEvent {
     Complete {
         phase: Phase,
         tid: u32,

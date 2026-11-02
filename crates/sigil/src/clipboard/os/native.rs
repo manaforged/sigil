@@ -1,5 +1,5 @@
 #[cfg(feature = "clipboard-image")]
-use crate::clipboard::ClipError;
+use crate::ErrorKind;
 use crate::clipboard::Delivery;
 #[cfg(feature = "clipboard-image")]
 use crate::kernel::ImageSource;
@@ -17,7 +17,7 @@ pub(super) fn image() -> AppResult<Option<ImageSource>> {
         let height = u32::try_from(pixels.height).map_err(Error::io)?;
         ImageSource::from_rgba8(width, height, pixels.bytes.into_owned())
             .map(Some)
-            .ok_or_else(|| Error::io(ClipError::new("clipboard image has invalid dimensions")))
+            .ok_or_else(|| Error::fixed(ErrorKind::Io, "clipboard image has invalid dimensions"))
     })
 }
 

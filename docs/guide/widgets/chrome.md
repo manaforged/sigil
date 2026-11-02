@@ -20,13 +20,13 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 
 ## panel and card
 
-`panel() -> PanelBuilder`: a titled surface: `.title(str)` adds a medium-weight title 8 px above the body, `.padding(px)` (default 16), `.elevation(tier)` picks the surface tier, `.child(node)`, `.width(px)`. Tier 0 is a flat `surface` fill. Tier 1 and above add a 1 px `border`.
+`panel()`: a titled surface: `.title(str)` adds a medium-weight title 8 px above the body, `.padding(px)` (default 16), `.elevation(tier)` picks the surface tier, `.child(node)`, `.width(px)`. Tier 0 is a flat `surface` fill. Tier 1 and above add a 1 px `border`.
 
 `card(child) -> NodeBuilder`: the lighter variant: a `rounded-md` `surface` column with the same 1 px `border`, 12 px padding, and 8 px gaps. A panel at tier 1 and a card share one fill and one border.
 
 ## sidebar
 
-`sidebar(child) -> SidebarBuilder`: a fixed `Role::Navigation` column in the `surface-subtle` chrome fill with a 1 px right border, 220 px wide, full height, no shrink. Content sits inside an 8 px inset with 4 px gaps. `.width(len)` sets the width and `.resizable(min, max)` adds a drag and keyboard resize handle. `Paint` methods such as `.bg(..)` paint the whole column. Put navigation content inside; it does not scroll or collapse on its own.
+`sidebar(child)`: a fixed `Role::Navigation` column in the `surface-subtle` chrome fill with a 1 px right border, 220 px wide, full height, no shrink. Content sits inside an 8 px inset with 4 px gaps. `.width(len)` sets the width and `.resizable(min, max)` adds a drag and keyboard resize handle. `Paint` methods such as `.bg(..)` paint the whole column. Put navigation content inside; it does not scroll or collapse on its own.
 
 ## tabs
 
@@ -42,7 +42,7 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 
 ## splitter
 
-`splitter(Orientation::Horizontal | Vertical) -> SplitterBuilder`. Horizontal splits left/right (draggable vertical handles), Vertical splits top/bottom. Each handle is a 6 px hit area that draws a 1 px `border` rule in its center. The area fills with `surface-hover` on hover and `surface-pressed` while dragged.
+`splitter(Orientation::Horizontal | Vertical)`. Horizontal splits left/right (draggable vertical handles), Vertical splits top/bottom. Each handle is a 6 px hit area that draws a 1 px `border` rule in its center. The area fills with `surface-hover` on hover and `surface-pressed` while dragged.
 
 ```rust,no_run
 # use sigil::prelude::*;
@@ -57,14 +57,14 @@ splitter(Orientation::Horizontal)
 ```
 
 - `.child(node, initial_px)`: simple pane.
-- `.pane(node)`: returns a `PaneBuilder` with `.initial(px)`, `.min(px)`, `.max(px)`, `.grow(factor)`; finish with `.commit()`, another `.pane(...)`, or return it from a component.
+- `.pane(node)`: returns a pane builder with `.initial(px)`, `.min(px)`, `.max(px)`, `.grow(factor)`; finish with `.commit()`, another `.pane(...)`, or return it from a component.
 - `.min_size(index, px)` / `.max_size(index, px)`: clamp by index.
 - `.sizes_bind(Signal<Vec<f32>>)`: observe or persist pane sizes.
 - `.snap_points(handle_index, &[px])`: snap a handle to offsets within an 8 px threshold.
 
 ## scroll
 
-`scroll(content: NodeBuilder) -> ScrollBuilder` measures the content itself (`size_reactive`). `.extent(f32 or Signal<f32>)` sets the total content height instead, for content whose height you already know.
+`scroll(content: NodeBuilder)` measures the content itself (`size_reactive`). `.extent(f32 or Signal<f32>)` sets the total content height instead, for content whose height you already know.
 
 - `.height(px)` (default 240) / `.width(px)` / `.fill()`: size the viewport.
 - `.scroll_bind(Signal<f32>)`: expose the scroll offset.
@@ -87,8 +87,8 @@ Small composites in `sigil::widgets`:
 - `field(label, control)`: label stacked over a control with a 4 px gap. `.error(reactive)` shows the error text under a text, number, or color field and paints it invalid while the value is `Some`.
 - `kv_row(label, value)`: a row at least 28 px tall. The key is a muted 16-column cell that ellipsizes. The value starts 12 px after it and fills the rest, so values in a stack align.
 - `kv_grid([(key, value)])`: a stack of `kv_row`s with a 1 px divider between rows; values render monospace.
-- `list_row(selected, title, detail)`: a 24 px row with an ellipsized title and optional right-aligned detail. A selected row has the `accent-5` wash. Other rows show `surface-hover` on hover and `surface-pressed` while pressed.
-- `list_row_with(selected, title, ListRowSlots { depth, disclosure, marker, status, columns })`: `list_row` with tree slots, an optional leading marker glyph, and fixed-width, right-aligned `(text, width_px)` columns. `depth` indents the row by two columns per level. `disclosure` is a two-column chevron slot: `Disclosure::Collapsed` draws a right chevron, `Disclosure::Expanded` a down chevron, `Disclosure::Leaf` an empty slot so leaves align with their siblings, and `Disclosure::None` omits the slot. Collapsed and expanded rows report their state to accessibility. Build a tree by emitting one `list_row_with` per visible node.
+- `list_row(selected, title, ListRowSlots { .. })`: a 24 px row with an ellipsized title and an optional right-aligned `status`. A selected row has the `accent-5` wash. Other rows show `surface-hover` on hover and `surface-pressed` while pressed.
+- Other `ListRowSlots` fields (`depth`, `disclosure`, `marker`, `columns`) add tree slots, an optional leading marker glyph, and fixed-width, right-aligned `(text, width_px)` columns. `depth` indents the row by two columns per level. `disclosure` is a two-column chevron slot: `Disclosure::Collapsed` draws a right chevron, `Disclosure::Expanded` a down chevron, `Disclosure::Leaf` an empty slot so leaves align with their siblings, and `Disclosure::None` omits the slot. Collapsed and expanded rows report their state to accessibility. Build a tree by emitting one `list_row` per visible node.
 - `section_label(title)`: a small muted heading for groups.
 - `empty_state(title, body)`: centered `Role::Status` placeholder.
 - `notice_band(body, tone)`: a full-width tinted status strip.

@@ -1,29 +1,69 @@
+#[cfg(any(test, feature = "kittest", feature = "desktop"))]
 pub(crate) mod backdrop;
 pub(crate) mod builder;
 pub(crate) mod command;
 pub(crate) mod corner_radii;
-#[cfg(any(test, feature = "scene", feature = "terminal"))]
+#[cfg(any(
+    test,
+    feature = "terminal",
+    feature = "desktop",
+    all(feature = "scene", feature = "kittest")
+))]
 pub(crate) mod damage;
 pub(crate) mod emit;
 pub(crate) mod emit_cache;
-#[cfg(any(test, feature = "scene", feature = "terminal"))]
+#[cfg(any(
+    test,
+    feature = "terminal",
+    feature = "desktop",
+    all(feature = "scene", feature = "kittest")
+))]
 pub(crate) mod geometry;
 pub(crate) mod shadow;
-#[cfg(any(test, feature = "scene", feature = "terminal"))]
+#[cfg(any(
+    test,
+    feature = "terminal",
+    feature = "desktop",
+    all(feature = "scene", feature = "kittest")
+))]
 pub(crate) mod state;
 pub(crate) mod style_adapter;
 
-pub use backdrop::paint_backdrop;
+#[cfg(any(test, feature = "kittest", feature = "desktop"))]
+kittest_pub! {
+    #[doc(hidden)]
+    pub use backdrop::paint_backdrop;
+}
 pub use builder::SceneBuilder;
-#[cfg(feature = "scene")]
-pub use command::shape_glyph_run;
-pub use command::{
-    CellBorder, CellRect, CommandScene, DecorationGeometry, DecorationKind, DrawDecoration,
-    DrawGlyphRun, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite, GlyphRun,
-    GradientStop, LayerEffect, LayerScope, LinearGradient, PaintFill, PatternKind, SceneCommand,
-    SceneDecorationStyle, SceneGradientStyle, ScenePatternStyle, SceneRectStyle, SceneSpriteStyle,
-    SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle, TextFlow, Transform,
-};
-pub use corner_radii::CornerRadii;
-pub use emit::{EmitDiff, emit_scene, emit_scene_clipped};
-pub use shadow::{Shadow, ShadowKind};
+#[cfg(any(test, feature = "kittest"))]
+#[doc(hidden)]
+pub use command::PaintFill;
+#[cfg(all(
+    feature = "scene",
+    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+))]
+kittest_pub! {
+    #[doc(hidden)]
+    pub use command::shape_glyph_run;
+}
+#[cfg(any(test, feature = "terminal"))]
+pub(crate) use command::{CellBorder, TextFlow};
+pub use command::{CommandScene, DrawRect, GlyphRun, SceneCommand};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use command::Transform;
+}
+kittest_pub! {
+    #[doc(hidden)]
+    pub use command::{DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawSprite, GradientStop, LayerEffect, LayerScope, LinearGradient, PatternKind, SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle};
+}
+kittest_pub! {
+    #[doc(hidden)]
+    pub use corner_radii::CornerRadii;
+}
+pub use emit::emit_scene;
+pub use shadow::Shadow;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use shadow::ShadowKind;
+}

@@ -5,8 +5,8 @@
 #![allow(clippy::doc_markdown)]
 
 use sigil::layout::{
-    AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection, JustifyContent,
-    LengthPercentage, LengthPercentageAuto, Position, Rect, Size, StyleData,
+    AlignItems, Axes, BoxSizing, Dimension, Display, Edges, FlexDirection, JustifyContent,
+    Position, StyleData,
 };
 
 #[test]
@@ -43,10 +43,10 @@ fn public_style_data_constructs_with_flex_subset() {
         flex_basis: Dimension::Px(80.0),
         justify_content: Some(JustifyContent::SpaceBetween),
         align_items: Some(AlignItems::Center),
-        align_self: Some(AlignSelf::End),
-        size: Size::new(Dimension::Px(200.0), Dimension::Px(100.0)),
-        padding: Rect::splat(LengthPercentage::Px(4.0)),
-        margin: Rect::splat(LengthPercentageAuto::Px(2.0)),
+        align_self: Some(AlignItems::End),
+        size: Axes::new(Dimension::Px(200.0), Dimension::Px(100.0)),
+        padding: Edges::splat(Dimension::Px(4.0)),
+        margin: Edges::splat(Dimension::Px(2.0)),
         box_sizing: BoxSizing::BorderBox,
         ..StyleData::default()
     };

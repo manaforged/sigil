@@ -1,7 +1,8 @@
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics};
+use crate::widgets::Widget;
 #[cfg(feature = "scene")]
 use crate::widgets::icon::icon_svg;
 use crate::widgets::spinner::spinner;

@@ -2,10 +2,10 @@
 
 use crate::kernel::{Cx, container, text};
 use crate::style::{
-    ColorAtom, ColorKey, Dimension, Elevation, FontFamily, MillisU16, NodeStyleExt, Paint, Px,
-    Radius, RenderStyle, Rgba8, Style, StyleAtom, StyleBinding, StyleEngine, TextDecoration, Theme,
-    Token, Transform2D, TransitionId,
+    ColorAtom, Elevation, FontFamily, MillisU16, Paint, Radius, RenderStyle, Rgba8, Style,
+    StyleAtom, StyleBinding, StyleEngine, TextDecoration, Theme, Token, Transform2D, TransitionId,
 };
+use crate::widgets::Widget;
 
 fn applied(theme: &Theme, atoms: &[StyleAtom]) -> RenderStyle {
     let mut render = RenderStyle::default();
@@ -34,8 +34,8 @@ fn theme_ref_resolves() {
     let render = applied(
         &theme,
         &[
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
-            StyleAtom::TextColor(ColorAtom::ThemeRef(ColorKey::Token(Token::OnAccent))),
+            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
+            StyleAtom::TextColor(ColorAtom::Token(Token::OnAccent)),
         ],
     );
 
@@ -49,7 +49,7 @@ fn unknown_token_panics_dev() {
     let err = std::panic::catch_unwind(|| {
         applied(
             &Theme::default(),
-            &[StyleAtom::BackgroundThemeRef(ColorKey::Custom("accnet"))],
+            &[StyleAtom::BackgroundColor(ColorAtom::Custom("accnet"))],
         )
     })
     .unwrap_err();
@@ -66,7 +66,7 @@ fn unknown_token_falls_back_release() {
     let theme = Theme::default();
     let render = applied(
         &theme,
-        &[StyleAtom::BackgroundThemeRef(ColorKey::Custom("accnet"))],
+        &[StyleAtom::BackgroundColor(ColorAtom::Custom("accnet"))],
     );
 
     assert_eq!(render.background_color, Some(theme.missing_token_fallback));
@@ -76,7 +76,7 @@ fn unknown_token_falls_back_release() {
 fn apply_is_alloc_free() {
     let theme = Theme::default();
     let engine = StyleEngine::new(&theme);
-    let atoms = [StyleAtom::Width(Dimension::Px(Px(24))); 64];
+    let atoms = [StyleAtom::Width(crate::style::atom::ATOM_PX, 24); 64];
     let mut render = RenderStyle::default();
 
     let info = allocation_counter::measure(|| {
@@ -106,26 +106,23 @@ fn paint_for_atom(atom: StyleAtom) -> Style {
     let style = Style::new();
     match atom {
         StyleAtom::BackgroundColor(color) => style.bg(color),
-        StyleAtom::BackgroundThemeRef(ColorKey::Token(token)) => style.bg(token),
         StyleAtom::BackgroundGradient(gradient) => style.background_gradient(gradient),
         StyleAtom::TextColor(color) => style.text_color(color),
-        StyleAtom::TextThemeRef(ColorKey::Token(token)) => style.text_color(token),
-        StyleAtom::BorderThemeRef(ColorKey::Token(token)) => style.border_color(token),
         StyleAtom::BorderColor(color) => style.border_color(color),
-        StyleAtom::BorderWidth(px) => style.border_w(px.0),
-        StyleAtom::BorderTop(px) => style.border_top(px.0),
-        StyleAtom::BorderRight(px) => style.border_right(px.0),
-        StyleAtom::BorderBottom(px) => style.border_bottom(px.0),
-        StyleAtom::BorderLeft(px) => style.border_left(px.0),
-        StyleAtom::BorderRadius(px) => style.radius(px.0),
+        StyleAtom::BorderWidth(px) => style.border_w(px),
+        StyleAtom::BorderTop(px) => style.border_top(px),
+        StyleAtom::BorderRight(px) => style.border_right(px),
+        StyleAtom::BorderBottom(px) => style.border_bottom(px),
+        StyleAtom::BorderLeft(px) => style.border_left(px),
+        StyleAtom::BorderRadius(px) => style.radius(px),
         StyleAtom::Radius(radius) => style.rounded(radius),
         StyleAtom::Shadow(elevation) => style.shadow(elevation),
         StyleAtom::Opacity(units) => style.opacity(f32::from(units) / 10_000.0),
         StyleAtom::Transform(transform) => style.transform(transform),
-        StyleAtom::FontSize(px) => style.font_size(f32::from(px.0)),
+        StyleAtom::FontSize(px) => style.font_size(f32::from(px)),
         StyleAtom::FontWeight(weight) => style.font_weight(weight),
         StyleAtom::FontItalic(italic) => style.font_italic(italic),
-        StyleAtom::LineHeight(px) => style.line_height_px(f32::from(px.0)),
+        StyleAtom::LineHeight(px) => style.line_height_px(f32::from(px)),
         StyleAtom::LetterSpacing(em) => style.letter_spacing_em(f32::from(em) / 1000.0),
         StyleAtom::TabularNums(on) => style.tabular_nums(on),
         StyleAtom::TextDecoration(TextDecoration::Underline) => style.underline(),
@@ -146,24 +143,24 @@ fn struct_api_covers_every_atom() {
     };
     let atoms = [
         StyleAtom::BackgroundColor(ColorAtom::Rgba8(color)),
-        StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
-        StyleAtom::TextColor(ColorAtom::ThemeRef(ColorKey::Token(Token::OnAccent))),
-        StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface)),
-        StyleAtom::BorderThemeRef(ColorKey::Token(Token::Border)),
-        StyleAtom::BorderWidth(Px(1)),
-        StyleAtom::BorderTop(Px(1)),
-        StyleAtom::BorderRight(Px(1)),
-        StyleAtom::BorderBottom(Px(1)),
-        StyleAtom::BorderLeft(Px(1)),
-        StyleAtom::BorderRadius(Px(1)),
+        StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
+        StyleAtom::TextColor(ColorAtom::Token(Token::OnAccent)),
+        StyleAtom::TextColor(ColorAtom::Token(Token::OnSurface)),
+        StyleAtom::BorderColor(ColorAtom::Token(Token::Border)),
+        StyleAtom::BorderWidth(1),
+        StyleAtom::BorderTop(1),
+        StyleAtom::BorderRight(1),
+        StyleAtom::BorderBottom(1),
+        StyleAtom::BorderLeft(1),
+        StyleAtom::BorderRadius(1),
         StyleAtom::Radius(Radius::Base),
         StyleAtom::Shadow(Elevation::Lg),
         StyleAtom::Opacity(10_000),
         StyleAtom::Transform(Transform2D::IDENTITY),
-        StyleAtom::FontSize(Px(12)),
+        StyleAtom::FontSize(12),
         StyleAtom::FontWeight(700),
         StyleAtom::FontItalic(true),
-        StyleAtom::LineHeight(Px(16)),
+        StyleAtom::LineHeight(16),
         StyleAtom::LetterSpacing(25),
         StyleAtom::TabularNums(true),
         StyleAtom::TextDecoration(TextDecoration::Underline),
@@ -221,7 +218,7 @@ fn class_string_attaches_to_text_binding() {
 
     assert_eq!(
         binding.static_slice(),
-        &[StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface))]
+        &[StyleAtom::TextColor(ColorAtom::Token(Token::OnSurface))]
     );
     assert_eq!(binding.dynamic_slice(), &[]);
 }
@@ -233,7 +230,7 @@ fn style_struct_attaches_binding() {
     let binding = binding(&cx, id);
 
     assert_eq!(binding.static_slice(), &[]);
-    assert_eq!(binding.dynamic_slice(), &[StyleAtom::BorderRadius(Px(8))]);
+    assert_eq!(binding.dynamic_slice(), &[StyleAtom::BorderRadius(8)]);
 }
 
 #[test]

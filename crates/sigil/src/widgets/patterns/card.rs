@@ -1,9 +1,10 @@
 use std::rc::Rc;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
-use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::kernel::{IntoNode, NodeBuilder, Role, container};
+use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal};
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
+use crate::widgets::Widget;
 
 use super::super::shared::Activate;
 use super::ROW_SELECTED;
@@ -23,13 +24,16 @@ static CARD_SELECTED: &[StyleAtom] = &[
     Token::Accent8.border(),
 ];
 
+/// Builds a card.
 #[must_use]
 pub struct CardBuilder {
     node: NodeBuilder,
     selected: Option<Signal<bool>>,
     activate: Option<Activate>,
+    layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
+/// A bordered card.
 pub fn card(child: impl IntoNode + 'static) -> CardBuilder {
     CardBuilder {
         node: container()
@@ -44,22 +48,25 @@ pub fn card(child: impl IntoNode + 'static) -> CardBuilder {
             .child(child),
         selected: None,
         activate: None,
+        layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }
 }
 
 impl CardBuilder {
+    /// Sets the selected.
     pub fn selected(mut self, selected: impl Reactive<bool>) -> Self {
         self.selected = Some(selected.into_signal());
         self
     }
 
+    /// Sets the activate.
     pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self
     }
 
     #[must_use]
-    pub fn into_node_builder(self) -> NodeBuilder {
+    fn root(self) -> NodeBuilder {
         let node = match self.selected {
             Some(selected) => self
                 .node
@@ -80,8 +87,4 @@ impl From<CardBuilder> for NodeBuilder {
     }
 }
 
-impl IntoNode for CardBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
+builder_impls!([] CardBuilder: widget, node(pub));
