@@ -1,24 +1,24 @@
 use std::io::{self, Write as _};
 use std::rc::Rc;
 
-use image::ImageEncoder as _;
-use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+use tiny_skia::Pixmap;
 
 use crate::app::{FrameHooks, FrameInfo};
 use crate::events::{Event, WindowEvent};
-use crate::geometry::{LogicalSize, PhysicalSize, Point, Scale};
+use crate::geometry::{LogicalSize, PhysicalSize, Point, Rect, Scale};
 use crate::kernel::{HostMode, IntoNode};
-use crate::renderer::CpuRenderer;
+use crate::profile::{self, Phase};
+use crate::renderer::damage::{GPU_BUDGET, culled};
+use crate::renderer::{CpuRenderer, SURFACE_CLEAR};
 use crate::scene::CommandScene;
-use crate::style::Color;
-use crate::terminal::graphics::{CHUNK, Mux, base64, write_mux};
+use crate::scene::damage::{Damage, scene_damage};
+use crate::terminal::graphics::Mux;
+use crate::terminal::pixels::tiles::{Grid, Tiles};
 use crate::terminal::run::CELL;
 use crate::terminal::term::Term;
 use crate::{AppResult, Error, ErrorKind, Host};
 
-const IMAGE: u32 = 0x5167_0001;
 const ROW: f32 = 18.0;
-const CLEAR: Color = Color::rgba(0.0, 0.0, 0.0, 0.0);
 
 /// The pixel host and the renderer that turns its frames into Kitty images.
 pub(super) struct Draw {
@@ -26,6 +26,9 @@ pub(super) struct Draw {
     renderer: CpuRenderer,
     fresh: bool,
     last: Option<Frame>,
+    canvas: Option<Pixmap>,
+    scene: Option<CommandScene>,
+    tiles: Tiles,
 }
 
 impl Draw {
@@ -38,6 +41,9 @@ impl Draw {
             renderer: CpuRenderer::new(),
             fresh: true,
             last: None,
+            canvas: None,
+            scene: None,
+            tiles: Tiles::default(),
         }
     }
 
@@ -57,15 +63,9 @@ impl Draw {
         stdout.flush()
     }
 
-    /// Deletes the image so the cell host can draw again.
+    /// Deletes the images so the cell host can draw again.
     pub(super) fn leave(&mut self, mux: Option<Mux>) -> io::Result<()> {
-        let mut stdout = io::stdout().lock();
-        write_mux(
-            &mut stdout,
-            &format!("\x1b_Ga=d,d=I,i={IMAGE},q=2\x1b\\"),
-            mux,
-        )?;
-        stdout.flush()
+        self.tiles.clear(mux)
     }
 
     /// Runs one frame and draws it when it changed; returns whether the app asked to exit.
@@ -88,6 +88,7 @@ impl Draw {
         let force = core::mem::take(&mut self.fresh) || self.last != Some(frame);
         self.last = Some(frame);
         let mut scene = None;
+        profile::begin_frame(profile::BackendStatus::TERMINAL);
         let out = self.host.frame(
             frame.viewport,
             dt,
@@ -100,6 +101,7 @@ impl Draw {
                 })),
                 paint: Some(Box::new(|host: &mut Host, info: &FrameInfo| {
                     if force || info.dirty || info.animating {
+                        let _emit = profile::span(Phase::Emit);
                         scene = Some(host.emit(frame.viewport));
                     }
                 })),
@@ -108,16 +110,76 @@ impl Draw {
         );
         out.layout?;
         if let Some(scene) = scene {
-            frame.draw(&mut self.renderer, &scene, caps.mux)?;
+            self.paint(frame, scene, force, caps.mux)?;
         }
+        profile::tick_frame();
         Ok(out.exit)
+    }
+
+    /// Repaints the damaged part of the canvas and sends the tiles it touched.
+    fn paint(
+        &mut self,
+        frame: Frame,
+        scene: CommandScene,
+        force: bool,
+        mux: Option<Mux>,
+    ) -> AppResult {
+        let render = profile::span(Phase::RenderCpu);
+        let scale = frame.scale();
+        let area = Rect::new(Point::new(0.0, 0.0), frame.viewport.0, frame.viewport.1);
+        let damage = match (&self.scene, &self.canvas) {
+            (Some(prev), Some(_)) if !force => {
+                scene_damage::<Vec<Rect>>((prev, &scene), (area, scale), GPU_BUDGET)
+            }
+            _ => Damage::Full(crate::scene::damage::FullReason::ViewportResized),
+        };
+        let size = frame.size;
+        let fits = self
+            .canvas
+            .as_ref()
+            .is_some_and(|c| c.width() == size.width && c.height() == size.height);
+        if !fits {
+            self.canvas = Pixmap::new(size.width, size.height);
+        }
+        let Some(canvas) = self.canvas.as_mut() else {
+            return Ok(());
+        };
+        let rects = match damage {
+            Damage::Unchanged if fits => {
+                self.scene = Some(scene);
+                return Ok(());
+            }
+            Damage::Regions(rects) if fits => Some(rects),
+            _ => None,
+        };
+        let regions: Vec<[usize; 4]> = match &rects {
+            Some(rects) => rects.iter().map(|rect| frame.pixels(*rect)).collect(),
+            None => frame.bands(),
+        };
+        for region in &regions {
+            let culled = culled(&scene, frame.logical(*region));
+            self.renderer.paint_region(
+                canvas,
+                &culled,
+                (frame.viewport, SURFACE_CLEAR),
+                region.map(|n| u32::try_from(n).unwrap_or(u32::MAX)),
+            );
+        }
+        let dirty = rects.is_some().then_some(regions);
+        drop(render);
+        self.scene = Some(scene);
+        let Some(canvas) = &self.canvas else {
+            return Ok(());
+        };
+        self.tiles
+            .send(frame.grid, canvas, dirty.as_deref(), mux)
+            .map_err(Error::io)
     }
 }
 
 #[derive(Clone, Copy, PartialEq)]
 struct Frame {
-    cols: u16,
-    rows: u16,
+    grid: Grid,
     cell: [f32; 2],
     viewport: (f32, f32),
     size: PhysicalSize,
@@ -132,12 +194,63 @@ impl Frame {
         );
         let cell = [f32::from(width) / scale, f32::from(height) / scale];
         Self {
-            cols,
-            rows,
+            grid: Grid {
+                cols,
+                rows,
+                cell: [width, height],
+            },
             cell,
             viewport: (f32::from(cols) * cell[0], f32::from(rows) * cell[1]),
             size,
         }
+    }
+
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "a frame width in pixels fits the f32 mantissa"
+    )]
+    fn scale(&self) -> f32 {
+        self.size.width as f32 / self.viewport.0.max(1.0)
+    }
+
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "damage rects are clamped to the non-negative frame"
+    )]
+    fn pixels(&self, rect: Rect) -> [usize; 4] {
+        let scale = self.scale();
+        let x = (rect.origin.x * scale).floor().max(0.0) as usize;
+        let y = (rect.origin.y * scale).floor().max(0.0) as usize;
+        let right = ((rect.origin.x + rect.width) * scale).ceil().max(0.0) as usize;
+        let bottom = ((rect.origin.y + rect.height) * scale).ceil().max(0.0) as usize;
+        let right = right.min(self.size.width as usize);
+        let bottom = bottom.min(self.size.height as usize);
+        let (x, y) = (x.min(right), y.min(bottom));
+        [x, y, right - x, bottom - y]
+    }
+
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel coordinates of a frame fit the f32 mantissa"
+    )]
+    fn logical(&self, [x, y, w, h]: [usize; 4]) -> Rect {
+        let scale = self.scale();
+        Rect::new(
+            Point::new(x as f32 / scale, y as f32 / scale),
+            w as f32 / scale,
+            h as f32 / scale,
+        )
+    }
+
+    fn bands(&self) -> Vec<[usize; 4]> {
+        let width = self.size.width as usize;
+        let height = self.size.height as usize;
+        let band = usize::from(self.grid.cell[1]) * usize::from(self.grid.tile()[1]);
+        (0..height)
+            .step_by(band.max(1))
+            .map(|y| [0, y, width, band.min(height - y)])
+            .collect()
     }
 
     fn point(&self, at: Point) -> Point {
@@ -161,54 +274,5 @@ impl Frame {
             )),
             other => other,
         }
-    }
-
-    fn draw(
-        &self,
-        renderer: &mut CpuRenderer,
-        scene: &CommandScene,
-        mux: Option<Mux>,
-    ) -> AppResult {
-        let pixmap = renderer.render(scene, CLEAR, self.viewport, self.size)?;
-        let mut rgba = Vec::with_capacity(pixmap.pixels().len() * 4);
-        for px in pixmap.pixels() {
-            let c = px.demultiply();
-            rgba.extend_from_slice(&[c.red(), c.green(), c.blue(), c.alpha()]);
-        }
-        let mut png = Vec::new();
-        PngEncoder::new_with_quality(&mut png, CompressionType::Fast, FilterType::Adaptive)
-            .write_image(
-                &rgba,
-                self.size.width,
-                self.size.height,
-                image::ExtendedColorType::Rgba8,
-            )
-            .map_err(|err| {
-                Error::message(
-                    ErrorKind::Software,
-                    format_args!("pixel frame encode failed: {err}"),
-                )
-            })?;
-        let data = base64(&png);
-        let chunks: Vec<&[u8]> = data.as_bytes().chunks(CHUNK).collect();
-        let mut out = Vec::with_capacity(data.len() + chunks.len() * 16 + 64);
-        out.extend_from_slice(b"\x1b[?2026h\x1b[H");
-        for (index, chunk) in chunks.iter().enumerate() {
-            let more = u8::from(index + 1 < chunks.len());
-            let head = if index == 0 {
-                format!(
-                    "a=T,f=100,i={IMAGE},p=1,q=2,C=1,z=1,c={},r={},m={more}",
-                    self.cols, self.rows
-                )
-            } else {
-                format!("m={more}")
-            };
-            let body = std::str::from_utf8(chunk).unwrap_or_default();
-            write_mux(&mut out, &format!("\x1b_G{head};{body}\x1b\\"), mux).map_err(Error::io)?;
-        }
-        out.extend_from_slice(b"\x1b[?2026l");
-        let mut stdout = io::stdout().lock();
-        stdout.write_all(&out).map_err(Error::io)?;
-        stdout.flush().map_err(Error::io)
     }
 }

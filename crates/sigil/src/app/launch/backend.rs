@@ -11,7 +11,7 @@ use crate::{Error, ErrorKind};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 const ENV: &str = "SIGIL_BACKEND";
-const SURFACE_CLEAR: Color = Color::rgba(0.03, 0.04, 0.05, 1.0);
+use crate::renderer::SURFACE_CLEAR;
 const TRANSPARENT_CLEAR: Color = Color::rgba(0.0, 0.0, 0.0, 0.0);
 
 pub(in crate::app) struct Backend {

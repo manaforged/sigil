@@ -87,7 +87,56 @@ impl CpuRenderer {
             "viewport dimensions must be strictly positive (width > 0, height > 0)",
         ))?;
         target.fill(shapes::color(clear));
-        let scale = physical_scale(size, viewport);
+        self.paint(&mut target, scene, viewport);
+        Ok(target)
+    }
+
+    /// Paints `scene` over the pixels already in `target`.
+    fn paint(&mut self, target: &mut Pixmap, scene: &CommandScene, viewport: (f32, f32)) {
+        let size = PhysicalSize::new(target.width(), target.height());
+        self.walk(
+            target,
+            scene,
+            physical_scale(size, viewport),
+            Point::new(0.0, 0.0),
+        );
+    }
+
+    #[cfg(feature = "terminal")]
+    /// Repaints the `[x, y, w, h]` pixel region of `canvas` from `scene`, with masks sized to the region.
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_wrap,
+        reason = "pixel coordinates of a frame fit f32 and i32"
+    )]
+    pub(crate) fn paint_region(
+        &mut self,
+        canvas: &mut Pixmap,
+        scene: &CommandScene,
+        (viewport, clear): ((f32, f32), Color),
+        [x, y, w, h]: [u32; 4],
+    ) {
+        let Some(mut region) = Pixmap::new(w, h) else {
+            return;
+        };
+        region.fill(shapes::color(clear));
+        let size = PhysicalSize::new(canvas.width(), canvas.height());
+        let origin = Point::new(x as f32, y as f32);
+        self.walk(&mut region, scene, physical_scale(size, viewport), origin);
+        canvas.draw_pixmap(
+            x as i32,
+            y as i32,
+            region.as_ref(),
+            &tiny_skia::PixmapPaint {
+                blend_mode: tiny_skia::BlendMode::Source,
+                ..tiny_skia::PixmapPaint::default()
+            },
+            tiny_skia::Transform::identity(),
+            None,
+        );
+    }
+
+    fn walk(&mut self, target: &mut Pixmap, scene: &CommandScene, scale: f32, origin: Point) {
         self.stats = FrameStats::default();
         self.quads.begin_frame();
         self.stats.scene_commands = scene.commands.len();
@@ -97,15 +146,8 @@ impl CpuRenderer {
             pool: &mut self.layers,
             covers: &mut self.covers,
         };
-        CpuPainter::new(
-            &mut target,
-            scale,
-            Point::new(0.0, 0.0),
-            SceneState::default(),
-            scratch,
-        )
-        .walk(&build_tree(&scene.commands));
-        Ok(target)
+        CpuPainter::new(target, scale, origin, SceneState::default(), scratch)
+            .walk(&build_tree(&scene.commands));
     }
 
     pub fn render_command_scene(

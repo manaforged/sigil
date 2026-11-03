@@ -8,6 +8,8 @@ use crate::terminal::graphics::Mux;
 
 #[cfg(feature = "scene")]
 mod draw;
+#[cfg(feature = "scene")]
+mod tiles;
 
 const ENV: &str = "SIGIL_TERMINAL";
 

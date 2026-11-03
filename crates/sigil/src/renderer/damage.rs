@@ -17,7 +17,7 @@ use crate::style::{Color, Rgba8};
 const FULL_OPACITY: u16 = 10_000;
 const CLEAR_BLEED: f32 = 2.0;
 const MAX_REGIONS: usize = 3;
-const GPU_BUDGET: Budget = Budget {
+pub(crate) const GPU_BUDGET: Budget = Budget {
     max_regions: MAX_REGIONS,
     margin: 1.0,
     max_share: 0.6,
@@ -58,6 +58,14 @@ impl Retained {
         let area = Rect::new(Point::new(0.0, 0.0), key.viewport.0, key.viewport.1);
         scene_damage((&self.scene, scene), (area, key.scale), GPU_BUDGET)
     }
+}
+
+/// Keeps the commands of `scene` that can paint inside `region`, with no clip around them.
+#[cfg(feature = "terminal")]
+pub(crate) fn culled(scene: &CommandScene, region: Rect) -> CommandScene {
+    let mut commands = Vec::with_capacity(scene.commands.len());
+    cull_into(&scene.commands, region, &mut commands);
+    CommandScene { commands }
 }
 
 pub(crate) fn clipped(scene: &CommandScene, regions: &[Rect], clear: Color) -> CommandScene {
