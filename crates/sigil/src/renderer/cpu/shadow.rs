@@ -141,7 +141,7 @@ fn to_linear([r, g, b, a]: [u8; 4]) -> [f32; 4] {
 
 fn to_encoded([r, g, b, a]: [f32; 4]) -> [u8; 4] {
     let byte = |v: f32| (v * 255.0).round().clamp(0.0, 255.0) as u8;
-    let [r, g, b] = [r, g, b].map(|v| byte(srgb::encode(v)));
+    let [r, g, b] = [r, g, b].map(srgb::encode_byte);
     [r, g, b, byte(a)]
 }
 

@@ -63,10 +63,10 @@ pub(super) fn color(color: crate::style::Color) -> TsColor {
     .unwrap_or(TsColor::TRANSPARENT)
 }
 
-pub(super) use crate::style::srgb::{decode, encode};
+pub(super) use crate::style::srgb::{decode, encode, encode_byte};
 
 pub(super) fn stored(linear: f32, alpha: f32) -> u8 {
-    (encode(linear * alpha) * 255.0).round() as u8
+    encode_byte(linear * alpha)
 }
 
 pub(super) fn coverage_table(linear: [f32; 3], alpha: f32) -> [[u8; 4]; 256] {
@@ -95,13 +95,18 @@ pub(super) fn ts_color(color: Rgba8, opacity: f32) -> TsColor {
     .unwrap_or(TsColor::TRANSPARENT)
 }
 
-pub(super) const BLEND_SPACE: ColorSpace = ColorSpace::FullSRGBGamma;
+pub(super) const BLEND_SPACE: ColorSpace = ColorSpace::Gamma2;
 
 pub(super) fn solid(color: Rgba8, opacity: f32) -> Paint<'static> {
     let mut paint = Paint::default();
-    paint.set_color(ts_color(color, opacity));
+    let color = ts_color(color, opacity);
+    paint.set_color(color);
     paint.anti_alias = true;
-    paint.colorspace = BLEND_SPACE;
+    paint.colorspace = if color.is_opaque() {
+        ColorSpace::Linear
+    } else {
+        BLEND_SPACE
+    };
     paint
 }
 

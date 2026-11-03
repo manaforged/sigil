@@ -24,7 +24,7 @@ use crate::renderer::sprite_atlas::{
 
 use super::bound::CpuBound;
 use super::pattern::{PatternPlacement, shader};
-use super::shapes::{Brush, decode, encode, stored};
+use super::shapes::{Brush, decode, encode_byte, stored};
 use super::sprite_tint::tint;
 
 const ICON_PX: u32 = 128;
@@ -322,8 +322,7 @@ fn blit(
 fn over(dst: &mut [u8; 4], src: [u8; 4]) {
     let keep = 1.0 - f32::from(src[3]) / 255.0;
     for (d, s) in dst.iter_mut().zip(src).take(3) {
-        let linear = decode(*d).mul_add(keep, decode(s));
-        *d = (encode(linear) * 255.0).round() as u8;
+        *d = encode_byte(decode(*d).mul_add(keep, decode(s)));
     }
     dst[3] = f32::from(dst[3]).mul_add(keep, f32::from(src[3])).round() as u8;
 }
