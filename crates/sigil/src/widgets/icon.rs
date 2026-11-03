@@ -1,6 +1,3 @@
-#[cfg(feature = "scene")]
-use std::rc::Rc;
-
 use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 #[cfg(feature = "scene")]
@@ -19,7 +16,7 @@ static ICON_GLYPH_COLOR: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 enum Glyph {
     Text(TextContent),
     #[cfg(feature = "scene")]
-    Svg(Rc<str>),
+    Svg(std::sync::Arc<str>),
 }
 
 /// Builder of an icon.
@@ -61,7 +58,7 @@ impl<T: Into<TextContent>> IntoIconSource for T {
 #[cfg(feature = "scene")]
 impl IntoIconSource for crate::icons::Icon {
     fn into_icon_source(self) -> IconSource {
-        IconSource(Glyph::Svg(Rc::from(self.svg())))
+        IconSource(Glyph::Svg(std::sync::Arc::from(self.svg())))
     }
 }
 
@@ -74,7 +71,7 @@ pub fn icon(glyph: impl IntoIconSource) -> IconBuilder {
 /// An SVG icon.
 #[cfg(feature = "scene")]
 #[must_use]
-pub fn icon_svg(svg: impl Into<Rc<str>>) -> IconBuilder {
+pub fn icon_svg(svg: impl Into<std::sync::Arc<str>>) -> IconBuilder {
     let mut builder = IconBuilder::new("");
     builder.glyph = Glyph::Svg(svg.into());
     builder

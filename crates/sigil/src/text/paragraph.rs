@@ -4,8 +4,6 @@
     clippy::cast_sign_loss
 )]
 
-use std::cell::{Cell, OnceCell};
-use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::geometry::{Point, Rect};
@@ -187,7 +185,7 @@ pub(crate) struct FaceEntry {
 
 const OBLIQUE_ID: u64 = 1 << 63;
 
-pub(crate) type FaceTable = Rc<[FaceEntry]>;
+pub(crate) type FaceTable = Arc<[FaceEntry]>;
 
 pub(crate) fn face_table(faces: &[FaceSpec], size_px: f32) -> FaceTable {
     faces
@@ -222,14 +220,14 @@ struct ParagraphInner {
     line_height: f32,
     fonts: FaceTable,
     min_content_hint: f32,
-    content_widths: Cell<Option<ContentWidths>>,
+    content_widths: std::sync::OnceLock<ContentWidths>,
     #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
-    ink: OnceCell<Option<Rect>>,
+    ink: std::sync::OnceLock<Option<Rect>>,
 }
 
 #[derive(Clone)]
 pub struct Paragraph {
-    inner: Rc<ParagraphInner>,
+    inner: std::sync::Arc<ParagraphInner>,
 }
 
 impl Paragraph {
@@ -240,23 +238,24 @@ impl Paragraph {
         min_content_hint: f32,
     ) -> Self {
         Self {
-            inner: Rc::new(ParagraphInner {
+            inner: Arc::new(ParagraphInner {
                 lines,
                 font_size: metrics.font_size,
                 line_height: metrics.line_height,
                 fonts,
                 min_content_hint,
-                content_widths: Cell::new(None),
+                content_widths: std::sync::OnceLock::new(),
                 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
-                ink: OnceCell::new(),
+                ink: std::sync::OnceLock::new(),
             }),
         }
     }
 
     fn content_widths(&self) -> ContentWidths {
-        if let Some(cached) = self.inner.content_widths.get() {
-            return cached;
-        }
+        *self.inner.content_widths.get_or_init(|| self.measure_widths())
+    }
+
+    fn measure_widths(&self) -> ContentWidths {
         let max = self
             .inner
             .lines
@@ -268,13 +267,11 @@ impl Paragraph {
         } else {
             max
         };
-        let result = ContentWidths {
+        ContentWidths {
             min: min.min(max),
             #[cfg(any(test, feature = "kittest"))]
             max,
-        };
-        self.inner.content_widths.set(Some(result));
-        result
+        }
     }
 
     #[must_use]

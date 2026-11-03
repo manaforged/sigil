@@ -215,14 +215,14 @@ impl OwnedTextEngine {
                 .collect(),
         );
         if let Some(hit) = self.face_tables.borrow().get(&key) {
-            return Rc::clone(hit);
+            return std::sync::Arc::clone(hit);
         }
         let table = face_table(faces, size_px);
         let mut tables = self.face_tables.borrow_mut();
         if tables.len() >= FACE_TABLES_CAP {
             tables.clear();
         }
-        tables.insert(key, Rc::clone(&table));
+        tables.insert(key, std::sync::Arc::clone(&table));
         table
     }
 

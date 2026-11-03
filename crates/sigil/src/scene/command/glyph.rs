@@ -1,6 +1,6 @@
 use core::fmt;
 use std::ops::Deref;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::geometry::Rect;
 use crate::hal::RenderedGlyph;
@@ -48,7 +48,7 @@ pub struct GlyphRun {
     pub node: Option<NodeId>,
     /// The rect.
     pub rect: Rect,
-    shared: Rc<SharedGlyph>,
+    shared: Arc<SharedGlyph>,
 }
 
 impl GlyphRun {
@@ -64,7 +64,7 @@ impl GlyphRun {
         Self {
             node: None,
             rect,
-            shared: Rc::new(SharedGlyph {
+            shared: Arc::new(SharedGlyph {
                 text: text.into(),
                 color,
                 style,
@@ -128,7 +128,7 @@ impl GlyphRun {
 
     #[cfg(feature = "scene")]
     pub(crate) fn with_paragraph(mut self, paragraph: Paragraph) -> Self {
-        let shared = Rc::make_mut(&mut self.shared);
+        let shared = Arc::make_mut(&mut self.shared);
         shared.positioned_glyphs = paragraph.rendered_glyphs();
         shared.paragraph = Some(paragraph);
         self
@@ -136,14 +136,14 @@ impl GlyphRun {
 
     #[cfg(feature = "scene")]
     pub(crate) fn with_glyphs(mut self, color: Rgba8, glyphs: Vec<RenderedGlyph>) -> Self {
-        let shared = Rc::make_mut(&mut self.shared);
+        let shared = Arc::make_mut(&mut self.shared);
         shared.color = color;
         shared.positioned_glyphs = glyphs;
         self
     }
 
     pub(crate) fn with_inks(mut self, inks: Vec<RunInk>) -> Self {
-        Rc::make_mut(&mut self.shared).inks = inks;
+        Arc::make_mut(&mut self.shared).inks = inks;
         self
     }
 
@@ -153,7 +153,7 @@ impl GlyphRun {
     }
 
     pub(crate) fn with_cell(mut self, flow: TextFlow, tone: Option<Tone>) -> Self {
-        let shared = Rc::make_mut(&mut self.shared);
+        let shared = Arc::make_mut(&mut self.shared);
         shared.flow = flow;
         shared.tone = tone;
         self
@@ -205,7 +205,7 @@ impl PartialEq for GlyphRun {
     fn eq(&self, other: &Self) -> bool {
         self.rect == other.rect
             && self.node == other.node
-            && (Rc::ptr_eq(&self.shared, &other.shared) || same_shared(&self.shared, &other.shared))
+            && (Arc::ptr_eq(&self.shared, &other.shared) || same_shared(&self.shared, &other.shared))
     }
 }
 

@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::kernel::Role;
 
 use crate::kernel::{A11yProps, AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, NodeType};
@@ -13,7 +11,7 @@ pub struct ImageSource {
     id: u64,
     width: u32,
     height: u32,
-    rgba: Rc<Vec<u8>>,
+    rgba: std::sync::Arc<Vec<u8>>,
 }
 
 impl ImageSource {
@@ -45,7 +43,7 @@ impl ImageSource {
             id,
             width,
             height,
-            rgba: Rc::new(rgba),
+            rgba: std::sync::Arc::new(rgba),
         })
     }
 
@@ -115,23 +113,23 @@ fn content_id(width: u32, height: u32, rgba: &[u8]) -> u64 {
     hash
 }
 
-type RasterFn = dyn Fn(u32, u32, f32) -> Option<ImageSource>;
+type RasterFn = dyn Fn(u32, u32, f32) -> Option<ImageSource> + Send + Sync;
 
 /// Resolution-independent source of an image.
 #[derive(Clone)]
 pub struct ImageRaster {
     key: u64,
-    raster: Rc<RasterFn>,
+    raster: std::sync::Arc<RasterFn>,
 }
 
 impl ImageRaster {
     pub(crate) fn new(
         key: u64,
-        raster: impl Fn(u32, u32, f32) -> Option<ImageSource> + 'static,
+        raster: impl Fn(u32, u32, f32) -> Option<ImageSource> + Send + Sync + 'static,
     ) -> Self {
         Self {
             key,
-            raster: Rc::new(raster),
+            raster: std::sync::Arc::new(raster),
         }
     }
 

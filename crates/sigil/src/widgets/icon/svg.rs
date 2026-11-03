@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::icons::{BakedIcon, bake};
 use crate::kernel::{
@@ -15,12 +15,12 @@ const CACHE_CAP: usize = 256;
 type TintKey = (u64, [u8; 4]);
 
 thread_local! {
-    static BAKED: RefCell<HashMap<u64, Option<Rc<BakedIcon>>>> = RefCell::new(HashMap::new());
+    static BAKED: RefCell<HashMap<u64, Option<Arc<BakedIcon>>>> = RefCell::new(HashMap::new());
     static TINTED: RefCell<HashMap<TintKey, ImageSource>> = RefCell::new(HashMap::new());
 }
 
 pub(super) struct SvgGlyph {
-    pub(super) svg: Rc<str>,
+    pub(super) svg: Arc<str>,
     pub(super) pixels: u32,
     pub(super) token: Token,
     pub(super) extent: f32,
@@ -33,7 +33,7 @@ fn bake_key(svg: &str, pixels: u32) -> u64 {
     hasher.finish()
 }
 
-fn baked(svg: &str, pixels: u32) -> Option<(u64, Rc<BakedIcon>)> {
+fn baked(svg: &str, pixels: u32) -> Option<(u64, Arc<BakedIcon>)> {
     let key = bake_key(svg, pixels);
     BAKED.with(|map| {
         let mut map = map.borrow_mut();
@@ -41,7 +41,7 @@ fn baked(svg: &str, pixels: u32) -> Option<(u64, Rc<BakedIcon>)> {
             map.clear();
         }
         map.entry(key)
-            .or_insert_with(|| bake(svg, pixels, pixels).ok().map(Rc::new))
+            .or_insert_with(|| bake(svg, pixels, pixels).ok().map(Arc::new))
             .clone()
             .map(|icon| (key, icon))
     })
@@ -86,9 +86,9 @@ impl SvgGlyph {
         tint(key, &icon, color)
     }
 
-    fn bind(self: &Rc<Self>, base: u64, theme: &Theme) -> ImageRaster {
+    fn bind(self: &Arc<Self>, base: u64, theme: &Theme) -> ImageRaster {
         let color = theme.color(self.token);
-        let glyph = Rc::clone(self);
+        let glyph = Arc::clone(self);
         let key = base ^ u64::from(u32::from_le_bytes([color.r, color.g, color.b, color.a]));
         ImageRaster::new(key, move |width, height, _| {
             glyph.sized(color, width.max(height))
@@ -105,8 +105,8 @@ impl IntoNode for SvgGlyph {
         let id = image(source).build(cx);
         let layout = LayoutStyle::block().fixed_size(extent, extent).shrink(0.0);
         let base = bake_key(&self.svg, 0);
-        let glyph = Rc::new(self);
-        let fallback = Rc::clone(&glyph);
+        let glyph = Arc::new(self);
+        let fallback = Arc::clone(&glyph);
         let themed = ThemedImage::new(
             move |theme| fallback.source(theme),
             move |theme| glyph.bind(base, theme),

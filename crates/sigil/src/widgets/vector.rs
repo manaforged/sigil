@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::geometry::Rect;
 use crate::kernel::{
@@ -186,7 +186,7 @@ impl PathNode {
         let Some(source) = self.rasterize(theme) else {
             return;
         };
-        let path = Rc::new(self);
+        let path = Arc::new(self);
         scene.draw_image(DrawImage {
             node: None,
             source,
@@ -243,9 +243,9 @@ impl PathNode {
         self.raster(fill.as_ref(), stroke, key, target)
     }
 
-    fn bind(self: &Rc<Self>, theme: &Theme) -> ImageRaster {
+    fn bind(self: &Arc<Self>, theme: &Theme) -> ImageRaster {
         let (fill, stroke, key) = self.resolved(theme);
-        let path = Rc::clone(self);
+        let path = Arc::clone(self);
         ImageRaster::new(key, move |width, height, scale| {
             path.raster(fill.as_ref(), stroke, key, (width, height, scale))
         })
@@ -311,8 +311,8 @@ impl IntoNode for PathNode {
             None => image(source),
         };
         let id = overrides.finish(picture.into_node_builder()).build(cx);
-        let path = Rc::new(self);
-        let fallback = Rc::clone(&path);
+        let path = Arc::new(self);
+        let fallback = Arc::clone(&path);
         let themed = ThemedImage::new(
             move |theme| fallback.rasterize(theme),
             move |theme| path.bind(theme),

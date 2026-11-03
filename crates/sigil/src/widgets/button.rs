@@ -31,7 +31,7 @@ pub struct ButtonBuilder {
     pending: Option<Signal<bool>>,
     square: bool,
     #[cfg(feature = "scene")]
-    leading: Option<Rc<str>>,
+    leading: Option<std::sync::Arc<str>>,
 }
 
 /// A push button.
@@ -113,7 +113,7 @@ impl ButtonBuilder {
     /// Sets the icon svg.
     #[cfg(feature = "scene")]
     #[must_use]
-    pub fn icon_svg(mut self, svg: impl Into<Rc<str>>) -> Self {
+    pub fn icon_svg(mut self, svg: impl Into<std::sync::Arc<str>>) -> Self {
         self.leading = Some(svg.into());
         self
     }

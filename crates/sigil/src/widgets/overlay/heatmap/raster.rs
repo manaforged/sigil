@@ -1,5 +1,5 @@
 use std::hash::{Hash, Hasher};
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::kernel::{ImageRaster, ImageSource, ThemedImage, cached_image};
 use crate::style::Rgba8;
@@ -9,7 +9,7 @@ const MAX_SIDE: usize = 4096;
 pub(super) struct HeatGrid {
     width: u32,
     height: u32,
-    rgba: Rc<[u8]>,
+    rgba: Arc<[u8]>,
     key: u64,
 }
 
@@ -34,7 +34,7 @@ impl HeatGrid {
         Some(Self {
             width: u32::try_from(grid_w).ok()?,
             height: u32::try_from(grid_h).ok()?,
-            rgba: Rc::from(rgba),
+            rgba: Arc::from(rgba),
             key: hasher.finish(),
         })
     }
@@ -52,16 +52,16 @@ impl HeatGrid {
     }
 
     pub(super) fn themed(&self, source: ImageSource) -> ThemedImage {
-        let grid = Rc::new(Self {
+        let grid = Arc::new(Self {
             width: self.width,
             height: self.height,
-            rgba: Rc::clone(&self.rgba),
+            rgba: Arc::clone(&self.rgba),
             key: self.key,
         });
         ThemedImage::new(
             move |_| Some(source.clone()),
             move |_| {
-                let grid = Rc::clone(&grid);
+                let grid = Arc::clone(&grid);
                 ImageRaster::new(grid.key, move |width, height, _| grid.scaled(width, height))
             },
         )
