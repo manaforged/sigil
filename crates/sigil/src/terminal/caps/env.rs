@@ -41,6 +41,7 @@ pub(super) fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
                 ClipRoute::Osc52
             },
             backdrop: backdrop(env),
+            background: None,
             notices: known.map(Known::notices).unwrap_or_default(),
             fills: fills(env, known),
             cell: cell(env),

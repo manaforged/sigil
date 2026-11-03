@@ -10,6 +10,15 @@ fn an_osc_11_reply_sets_the_backdrop_from_its_luma() {
     assert_eq!(dark.backdrop, Some(Backdrop::Dark));
     assert_eq!(light.backdrop, Some(Backdrop::Light));
     assert_eq!(none.backdrop, None);
+    assert_eq!(
+        dark.background,
+        Some(crate::style::Rgba8 {
+            r: 10,
+            g: 10,
+            b: 10,
+            a: 255
+        })
+    );
 }
 
 #[test]

@@ -1,4 +1,5 @@
 use crate::app::Ambiguous;
+use crate::style::Rgba8;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
 use crate::terminal::term::{Calibration, ProbeRow};
@@ -146,6 +147,8 @@ pub struct Caps {
     pub clipboard: ClipRoute,
     /// The backdrop, if any.
     pub backdrop: Option<Backdrop>,
+    /// The background color the terminal reported, if it answered.
+    pub background: Option<Rgba8>,
     /// The notices.
     pub notices: Notices,
     /// The fills.
@@ -171,6 +174,7 @@ impl Default for Caps {
             sync: true,
             clipboard: ClipRoute::Osc52,
             backdrop: None,
+            background: None,
             notices: Notices {
                 notify: None,
                 progress: false,
@@ -192,6 +196,7 @@ struct Answers {
     sync: bool,
     kitty_keys: bool,
     backdrop: Option<Backdrop>,
+    background: Option<Rgba8>,
     truecolor: bool,
     version: Version,
     measured: Calibration,
@@ -270,6 +275,7 @@ impl Draft {
         if self.caps.backdrop.is_none() {
             self.caps.backdrop = answers.backdrop;
         }
+        self.caps.background = answers.background.or(self.caps.background);
         if self.ask.has(Question::Keys) {
             self.caps.keyboard = if answers.kitty_keys {
                 Keyboard::Kitty

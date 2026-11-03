@@ -3,6 +3,7 @@ use std::os::fd::AsFd;
 use std::time::{Duration, Instant};
 
 use super::{Answers, Backdrop, Known, Question, Questions, Version};
+use crate::style::Rgba8;
 use crate::terminal::term::{ProbeRow, calibration, measure};
 
 const TIMEOUT: Duration = Duration::from_millis(500);
@@ -129,7 +130,8 @@ pub(super) fn parse(reply: &str) -> Answers {
             .skip(1)
             .any(|rest| rest.starts_with(['1', '2', '3', '4'])),
         kitty_keys: csi_params(reply, 'u').is_some(),
-        backdrop: backdrop(reply),
+        backdrop: background(reply).map(backdrop),
+        background: background(reply),
         truecolor: dcs(reply, "\x1bP1$r").is_some_and(truecolor),
         version: dcs(reply, "\x1bP>|").map_or(Version::Silent, |name| {
             Known::from_version(name).map_or(Version::Unnamed, Version::Named)
@@ -182,22 +184,27 @@ fn csi_params(reply: &str, last: char) -> Option<&str> {
     })
 }
 
-fn backdrop(reply: &str) -> Option<Backdrop> {
+fn background(reply: &str) -> Option<Rgba8> {
     let (_, rest) = reply.split_once("\x1b]11;rgb:")?;
     let body = rest.split(['\x1b', '\x07']).next()?;
     let mut channels = body.split('/').map(|hex| {
         let digits = u32::try_from(hex.len()).ok()?;
         let value = u32::from_str_radix(hex, 16).ok()?;
         let top = 16_u32.checked_pow(digits)?.checked_sub(1)?;
-        Some(f64::from(value) / f64::from(top.max(1)))
+        u8::try_from(value * 255 / top.max(1)).ok()
     });
     let (r, g, b) = (channels.next()??, channels.next()??, channels.next()??);
+    Some(Rgba8 { r, g, b, a: 255 })
+}
+
+fn backdrop(color: Rgba8) -> Backdrop {
+    let [r, g, b] = [color.r, color.g, color.b].map(|c| f64::from(c) / 255.0);
     let luma = 0.0722f64.mul_add(b, 0.2126f64.mul_add(r, 0.7152 * g));
-    Some(if luma < 0.5 {
+    if luma < 0.5 {
         Backdrop::Dark
     } else {
         Backdrop::Light
-    })
+    }
 }
 
 #[cfg(test)]

@@ -14,6 +14,8 @@ use crate::renderer::damage::{GPU_BUDGET, culled};
 use crate::renderer::{CpuRenderer, SURFACE_CLEAR};
 use crate::scene::CommandScene;
 use crate::scene::damage::{Damage, scene_damage};
+use crate::style::srgb::decode;
+use crate::style::{Color, Rgba8};
 use crate::terminal::graphics::Mux;
 use crate::terminal::pixels::tiles::{Grid, Tiles};
 use crate::terminal::run::CELL;
@@ -63,7 +65,7 @@ impl Draw {
     pub(super) fn enter(&mut self) -> io::Result<()> {
         self.fresh = true;
         let mut stdout = io::stdout().lock();
-        stdout.write_all(b"\x1b[2J")?;
+        stdout.write_all(b"\x1b[?25l\x1b[2J")?;
         stdout.flush()
     }
 
@@ -109,7 +111,8 @@ impl Draw {
         );
         out.layout?;
         if let Some(scene) = scene {
-            self.paint(frame, scene, force, caps.mux)?;
+            let clear = caps.background.map_or(SURFACE_CLEAR, opaque);
+            self.paint(frame, scene, force, (caps.mux, clear))?;
         }
         profile::tick_frame();
         Ok(out.exit)
@@ -121,7 +124,7 @@ impl Draw {
         frame: Frame,
         scene: CommandScene,
         force: bool,
-        mux: Option<Mux>,
+        (mux, clear): (Option<Mux>, Color),
     ) -> AppResult {
         let render = profile::span(Phase::RenderCpu);
         let scale = frame.scale();
@@ -165,7 +168,7 @@ impl Draw {
                 let culled = culled(&scene, frame.logical(job));
                 let rect = job.map(|n| u32::try_from(n).unwrap_or(u32::MAX));
                 let pixmap = RENDERER.with_borrow_mut(|renderer| {
-                    renderer.render_region(&culled, (frame.viewport, SURFACE_CLEAR), size, rect)
+                    renderer.render_region(&culled, (frame.viewport, clear), size, rect)
                 });
                 (job, pixmap)
             })
@@ -185,6 +188,11 @@ impl Draw {
             .send(frame.grid, canvas, dirty.as_deref(), mux)
             .map_err(Error::io)
     }
+}
+
+/// The opaque linear color of an sRGB byte color.
+fn opaque(color: Rgba8) -> Color {
+    Color::rgba(decode(color.r), decode(color.g), decode(color.b), 1.0)
 }
 
 #[derive(Clone, Copy, PartialEq)]

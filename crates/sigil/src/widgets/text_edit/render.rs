@@ -76,7 +76,7 @@ pub(super) fn build_base_node(
             binary_style_state(interaction, disabled)
         })
         .seal_style()
-        .child(edit_inner(lines, runtime, interaction))
+        .child(edit_inner(lines, runtime, (interaction, chrome)))
 }
 
 pub(super) fn edit_layout() -> LayoutStyle {
@@ -90,7 +90,7 @@ pub(super) fn edit_layout() -> LayoutStyle {
 fn edit_inner(
     lines: TextBuilder,
     runtime: &TextEditRuntime,
-    interaction: InteractionState,
+    (interaction, chrome): (InteractionState, bool),
 ) -> NodeBuilder {
     let down = runtime.clone();
     let moved = runtime.clone();
@@ -116,7 +116,7 @@ fn edit_inner(
         )
         .animate_height(extent)
         .child(text_box);
-    container()
+    let viewport = container()
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()
@@ -125,14 +125,18 @@ fn edit_inner(
                 .overflow_y(Overflow::Hidden),
         )
         .size_reactive(runtime.viewport_size)
-        .class(Radius::Sm.atom())
-        .class(Token::Surface.bg())
-        .pointer_down(move |event| pointer_drag(event, &down, scroll_y, true))
-        .pointer_move(move |event| pointer_drag(event, &moved, scroll_y, false))
-        .pointer_up(move |event| {
-            let _ = interaction.release_pointer(event);
-        })
-        .child(body)
+        .class(Radius::Sm.atom());
+    if chrome {
+        viewport.class(Token::Surface.bg())
+    } else {
+        viewport
+    }
+    .pointer_down(move |event| pointer_drag(event, &down, scroll_y, true))
+    .pointer_move(move |event| pointer_drag(event, &moved, scroll_y, false))
+    .pointer_up(move |event| {
+        let _ = interaction.release_pointer(event);
+    })
+    .child(body)
 }
 
 static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.bg()];
