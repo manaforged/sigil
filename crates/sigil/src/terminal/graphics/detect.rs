@@ -79,6 +79,9 @@ pub fn detect(env: impl Fn(&str) -> Option<String>) -> Option<Protocol> {
     if program == "WarpTerminal" {
         return Some(Protocol::Iterm2);
     }
+    if program == "herdr" {
+        return Some(Protocol::Kitty);
+    }
     if sixel_capable(&term, &program) {
         return Some(Protocol::Sixel);
     }
