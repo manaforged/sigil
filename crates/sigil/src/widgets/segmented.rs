@@ -14,8 +14,6 @@ static SEGMENTED_FRAME: &[StyleAtom] = &[
 ];
 
 const SEGMENTED_HEIGHT: f32 = 32.0;
-const CELL_ACTIVE_OPEN: &str = "[";
-const CELL_ACTIVE_CLOSE: &str = "]";
 
 /// Builder of a segmented control.
 pub struct SegmentedBuilder {
@@ -91,12 +89,7 @@ fn segment(
     selected: bool,
     height: f32,
 ) -> NodeBuilder {
-    let shown = if CellForm::new(false, selected).pick() {
-        format!("{CELL_ACTIVE_OPEN}{label}{CELL_ACTIVE_CLOSE}")
-    } else {
-        label.to_owned()
-    };
-    let choice = button(shown)
+    let choice = button(label.to_owned())
         .accessible(label.to_owned())
         .height(height)
         .activate(move || active.set(index));

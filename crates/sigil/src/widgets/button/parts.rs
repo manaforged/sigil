@@ -44,6 +44,7 @@ pub(super) static LABEL_TEXT_SOLID: &[StyleAtom] = &[
     StyleAtom::FontWeight(500),
     StyleAtom::LetterSpacing(-10),
 ];
+static LABEL_TEXT_SOLID_CELL: &[StyleAtom] = &[StyleAtom::FgOnSolid, StyleAtom::FontWeight(700)];
 pub(super) static LABEL_TEXT_SOFT: &[StyleAtom] = &[
     StyleAtom::FgToneStep(11),
     StyleAtom::FontWeight(500),
@@ -77,9 +78,9 @@ impl ButtonFill {
         }
     }
 
-    pub(super) const fn label_atoms(self) -> &'static [StyleAtom] {
+    pub(super) fn label_atoms(self) -> &'static [StyleAtom] {
         match self {
-            Self::Solid => LABEL_TEXT_SOLID,
+            Self::Solid => crate::layout::snap::CellForm::new(LABEL_TEXT_SOLID, LABEL_TEXT_SOLID_CELL).pick(),
             Self::Soft | Self::Ghost | Self::Outline => LABEL_TEXT_SOFT,
         }
     }

@@ -1,7 +1,7 @@
 use sigil::prelude::*;
 use sigil::widgets::{ColWidth, Orientation, TableColumn, TableState, TreeNode};
 
-use super::{present, step};
+use super::{painted, present, step};
 
 fn line_with<'a>(grid: &'a str, needle: &str) -> &'a str {
     grid.lines()
@@ -128,15 +128,26 @@ fn a_slider_track_fills_whole_cells() {
     );
 }
 
+fn bold_at(grid: &sigil::terminal::Grid, needle: &str) -> bool {
+    let text = grid.text();
+    let (row, line) = text
+        .lines()
+        .enumerate()
+        .find(|(_, line)| line.contains(needle))
+        .unwrap_or_else(|| panic!("{text}"));
+    let col = line[..line.find(needle).expect("needle")].chars().count();
+    grid.row(row)[col].bold
+}
+
 #[test]
 fn the_active_segment_is_marked() {
-    let grid = present(
+    let grid = painted(
         || segmented(signal(1), vec!["Day".into(), "Week".into(), "Month".into()]),
         40,
         4,
-        &[],
     );
-    assert!(grid.contains("[Week]") && !grid.contains("[Day]"), "{grid}");
+    assert!(bold_at(&grid, "Week") && !bold_at(&grid, "Day"), "{}", grid.text());
+    assert!(!grid.text().contains('['), "{}", grid.text());
 }
 
 #[test]
@@ -273,7 +284,7 @@ fn a_one_cell_segmented_control_stays_on_its_row() {
         &[],
     );
     let range = row_of(&grid, "range");
-    assert!(line_with(&grid, "range").contains("[24h]"), "{grid}");
+    assert!(line_with(&grid, "range").contains("24h"), "{grid}");
     assert_eq!(row_of(&grid, "below"), range + 1, "{grid}");
 }
 

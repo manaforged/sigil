@@ -46,6 +46,7 @@ static LINE_ACTIVE: &[StyleAtom] = &[Token::Accent.border()];
 static LINE_ACTIVE_HOVER: &[StyleAtom] = &[Token::Accent.border(), Token::SurfaceHover.bg()];
 static LABEL_MUTED: &[StyleAtom] = &[Token::Gray11.text(), StyleAtom::FontWeight(500)];
 static LABEL_ACTIVE: &[StyleAtom] = &[Token::OnSurface.text(), StyleAtom::FontWeight(600)];
+static LABEL_ACTIVE_CELL: &[StyleAtom] = &[Token::OnSurface.text(), StyleAtom::FontWeight(700)];
 static LINE_BASE: &[StyleAtom] = &[
     StyleAtom::Transition(presets::SMOOTH),
     StyleAtom::BorderBottom(2),
@@ -95,21 +96,13 @@ static LINE_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
 );
 
 fn tab_label(label: String, selected: Signal<bool>) -> TextBuilder {
-    let node = if CellForm::new(false, true).pick() {
-        text(derived(move || {
-            if selected.get() {
-                format!("[{label}]")
-            } else {
-                format!(" {label} ")
-            }
-        }))
-    } else {
-        text(label)
-    };
+    let cell = CellForm::new(false, true).pick();
+    let node = if cell { text(format!(" {label} ")) } else { text(label) };
+    let active = if cell { LABEL_ACTIVE_CELL } else { LABEL_ACTIVE };
     node.layout(LayoutStyle::block())
         .style_reactive(move || {
             if selected.get() {
-                LABEL_ACTIVE
+                active
             } else {
                 LABEL_MUTED
             }
