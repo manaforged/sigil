@@ -104,10 +104,12 @@ pub(in crate::widgets) fn edit_keys(
     node = node.key_any(move |event| insert_text(event, &any_key));
     for (key, action) in KEY_ACTIONS {
         if let KeyAction::Edit(op) = action {
-            let runtime = runtime.clone();
-            node = node.key(key, move |event| {
-                edit_value(event, &runtime, |edit| op.apply(edit));
-            });
+            for shortcut in [key.into(), Shortcut::new(key, ModifiersState::SHIFT)] {
+                let runtime = runtime.clone();
+                node = node.key(shortcut, move |event| {
+                    edit_value(event, &runtime, |edit| op.apply(edit));
+                });
+            }
             continue;
         }
         for extend in [false, true] {
