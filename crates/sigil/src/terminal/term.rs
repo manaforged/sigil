@@ -120,6 +120,12 @@ impl Term {
         self.caps
     }
 
+    pub(crate) fn set_backdrop(&mut self, backdrop: crate::terminal::Backdrop) {
+        self.caps.backdrop = Some(backdrop);
+        CAPS.with(|slot| slot.set(Some(self.caps)));
+        self.redraw = true;
+    }
+
     pub(crate) const fn mark_cell_stale(&mut self) {
         self.cell_stale = self.caps.cell.is_some();
     }

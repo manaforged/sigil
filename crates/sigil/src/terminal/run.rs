@@ -184,6 +184,7 @@ fn live<N: IntoNode>(
     let ((mut async_rt, waker, _theme_watch), mut term, _guards, (mut cols, mut rows)) =
         setup(config)?;
     let tree = std::rc::Rc::new(tree);
+    let _follow = crate::terminal::backdrop::Follow::start(term.caps().backdrop);
     let mut host = Host::new(crate::kernel::HostMode::Cell);
     crate::terminal::clipboard::install_clipboard(term.caps());
     host.set_hyperlinks(term.caps().hyperlinks);
@@ -198,12 +199,21 @@ fn live<N: IntoNode>(
         if crate::terminal::signals::stopped() {
             break;
         }
+        let woke = pump(pixels.host().unwrap_or(&host), &mut async_rt);
+        if let Some(backdrop) = crate::terminal::backdrop()
+            .peek()
+            .filter(|now| term.caps().backdrop != Some(*now))
+        {
+            term.set_backdrop(backdrop);
+            default_theme(config, backdrop);
+            screen.invalidate();
+            settle = true;
+        }
         if pixels.sync(&tree, &mut host).map_err(Error::io)? {
             settle = true;
             screen.invalidate();
             term.redraw = true;
         }
-        let woke = pump(pixels.host().unwrap_or(&host), &mut async_rt);
         let deadline = pixels.host().map_or_else(|| screen.deadline(), |_| None);
         let timing = turn_wait(config.frame_interval, woke, last, deadline);
         let pending = inspect_pending() || due(deadline);
@@ -375,9 +385,17 @@ fn enter(config: &AppConfig) -> AppResult<Term> {
     }
     let term = Term::enter(config).map_err(Error::io)?;
     crate::app::set_ambiguous(term.caps().ambiguous);
-    let dark = term.caps().backdrop == Some(crate::terminal::Backdrop::Dark);
-    if config.theme_file.is_none() && dark {
-        crate::app::set_theme(crate::style::Theme::dark());
+    if term.caps().backdrop == Some(crate::terminal::Backdrop::Dark) {
+        default_theme(config, crate::terminal::Backdrop::Dark);
     }
     Ok(term)
+}
+
+fn default_theme(config: &AppConfig, backdrop: crate::terminal::Backdrop) {
+    if config.theme_file.is_none() {
+        crate::app::set_theme(match backdrop {
+            crate::terminal::Backdrop::Dark => crate::style::Theme::dark(),
+            crate::terminal::Backdrop::Light => crate::style::Theme::light(),
+        });
+    }
 }

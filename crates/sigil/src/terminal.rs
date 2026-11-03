@@ -1,4 +1,5 @@
 mod access;
+mod backdrop;
 mod caps;
 #[cfg(feature = "scene")]
 mod capture;
@@ -27,6 +28,7 @@ mod transcript;
 mod write;
 
 pub use access::{Access, FocusCursor};
+pub use backdrop::backdrop;
 pub use caps::{Backdrop, Borders, Caps, ColorDepth, Cursor, Fills, Keyboard, Notify};
 kittest_pub! {
     #[doc(hidden)]
