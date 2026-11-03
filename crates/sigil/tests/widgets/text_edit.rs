@@ -85,6 +85,34 @@ fn text_field_undo_restores_previous_value() {
 }
 
 #[test]
+fn text_field_undo_answers_the_terminal_undo_keys() {
+    for (key, physical) in [
+        ("_", PhysicalKey::Minus),
+        ("-", PhysicalKey::Minus),
+        ("7", PhysicalKey::Digit7),
+    ] {
+        sigil::reactive::Owner::scope("sigil-widget-text-field-terminal-undo", || {
+            let value = signal(String::new());
+            let mut cx = Cx::new_root();
+            let root = cx.add(text_field(value));
+            let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+            layout
+                .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+                .expect("layout computes");
+            let mut router = EventRouter::new();
+            router.set_focus(&mut cx, Some(root));
+            router.route(
+                &mut cx,
+                &layout,
+                Event::typed("a").physical(PhysicalKey::KeyA),
+            );
+            router.route(&mut cx, &layout, ctrl_key(key, physical));
+            assert_eq!(value.get(), "", "ctrl+{key} should undo");
+        });
+    }
+}
+
+#[test]
 fn text_field_redo_reapplies_undone_change() {
     sigil::reactive::Owner::scope("sigil-widget-text-field-redo", || {
         let value = signal(String::new());

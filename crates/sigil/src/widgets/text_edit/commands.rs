@@ -37,13 +37,22 @@ pub(in crate::widgets) fn history_keys(node: NodeBuilder, runtime: TextEditRunti
             history(event, edit, TextEdit::undo);
         }),
     ];
-    command_keys(node, &runtime, &commands).key(
+    let redo = runtime.clone();
+    let node = command_keys(node, &runtime, &commands).key(
         Shortcut::ctrl(LogicalKey::character("y")),
         move |event| {
-            history(event, &runtime, TextEdit::redo);
+            history(event, &redo, TextEdit::redo);
         },
-    )
+    );
+    TERMINAL_UNDO.iter().fold(node, |node, key| {
+        let runtime = runtime.clone();
+        node.key(Shortcut::ctrl(LogicalKey::character(*key)), move |event| {
+            history(event, &runtime, TextEdit::undo);
+        })
+    })
 }
+
+const TERMINAL_UNDO: [&str; 3] = ["_", "-", "7"];
 
 fn command_keys(
     mut node: NodeBuilder,
