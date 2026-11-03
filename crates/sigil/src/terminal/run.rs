@@ -204,8 +204,9 @@ fn live<N: IntoNode>(
             term.redraw = true;
         }
         let woke = pump(pixels.host().unwrap_or(&host), &mut async_rt);
-        let timing = turn_wait(config.frame_interval, woke, last, screen.deadline());
-        let pending = inspect_pending() || due(screen.deadline());
+        let deadline = pixels.host().map_or_else(|| screen.deadline(), |_| None);
+        let timing = turn_wait(config.frame_interval, woke, last, deadline);
+        let pending = inspect_pending() || due(deadline);
         let input = match gather_input(&mut first, config, &mut pointer, hooks, (&waker, timing))? {
             Incoming::Quit => break,
             Incoming::Idle if idle(settle, woke, &term, pending) => continue,
