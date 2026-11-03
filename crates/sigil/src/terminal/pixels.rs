@@ -12,6 +12,8 @@ mod draw;
 mod tiles;
 
 const ENV: &str = "SIGIL_TERMINAL";
+/// The cell in pixels when the terminal reports none; Kitty scales each tile to its cells, so a guess only sets sharpness.
+const GUESS: [u16; 2] = [16, 34];
 
 static REQUESTED: AtomicBool = AtomicBool::new(false);
 static AVAILABLE: AtomicBool = AtomicBool::new(false);
@@ -30,10 +32,15 @@ pub fn pixels() -> bool {
 }
 
 fn available(config: &AppConfig, caps: Caps) -> bool {
-    cfg!(feature = "scene")
-        && !config.inline
-        && caps.graphics == Some(crate::terminal::Protocol::Kitty)
-        && caps.cell.is_some_and(|[w, h]| w > 0 && h > 0)
+    cfg!(feature = "scene") && !config.inline && cell(caps).is_some()
+}
+
+/// The cell size pixel mode draws at: the reported one, else a guess on a Kitty terminal.
+fn cell(caps: Caps) -> Option<[u16; 2]> {
+    if caps.graphics != Some(crate::terminal::Protocol::Kitty) {
+        return None;
+    }
+    Some(caps.cell.filter(|[w, h]| *w > 0 && *h > 0).unwrap_or(GUESS))
 }
 
 /// The pixel host of a terminal run, mounted the first time pixel mode turns on.
@@ -52,7 +59,7 @@ impl Pixels {
             if !available {
                 tracing::warn!(
                     target: "sigil::terminal",
-                    "{ENV}=pixels needs the desktop feature, the kitty graphics protocol, and a cell size; drawing cells"
+                    "{ENV}=pixels needs the desktop feature and the kitty graphics protocol; drawing cells"
                 );
             }
         }
@@ -109,8 +116,8 @@ impl Pixels {
         dt: f32,
     ) -> crate::AppResult<bool> {
         #[cfg(feature = "scene")]
-        if let Some(inner) = &mut self.inner {
-            return inner.turn(input, size, term, dt);
+        if let (Some(inner), Some(cell)) = (&mut self.inner, cell(term.caps())) {
+            return inner.turn(input, size, cell, term, dt);
         }
         let _ = (input, size, term, dt);
         Ok(false)

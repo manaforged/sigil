@@ -109,31 +109,18 @@ impl CpuRenderer {
         clippy::cast_possible_wrap,
         reason = "pixel coordinates of a frame fit f32 and i32"
     )]
-    pub(crate) fn paint_region(
+    pub(crate) fn render_region(
         &mut self,
-        canvas: &mut Pixmap,
         scene: &CommandScene,
         (viewport, clear): ((f32, f32), Color),
+        size: PhysicalSize,
         [x, y, w, h]: [u32; 4],
-    ) {
-        let Some(mut region) = Pixmap::new(w, h) else {
-            return;
-        };
+    ) -> Option<Pixmap> {
+        let mut region = Pixmap::new(w, h)?;
         region.fill(shapes::color(clear));
-        let size = PhysicalSize::new(canvas.width(), canvas.height());
         let origin = Point::new(x as f32, y as f32);
         self.walk(&mut region, scene, physical_scale(size, viewport), origin);
-        canvas.draw_pixmap(
-            x as i32,
-            y as i32,
-            region.as_ref(),
-            &tiny_skia::PixmapPaint {
-                blend_mode: tiny_skia::BlendMode::Source,
-                ..tiny_skia::PixmapPaint::default()
-            },
-            tiny_skia::Transform::identity(),
-            None,
-        );
+        Some(region)
     }
 
     fn walk(&mut self, target: &mut Pixmap, scene: &CommandScene, scale: f32, origin: Point) {

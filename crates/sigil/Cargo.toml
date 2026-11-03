@@ -50,6 +50,7 @@ zeno = { workspace = true, optional = true }
 half = { workspace = true, optional = true }
 softbuffer = { workspace = true, optional = true }
 image = { workspace = true, optional = true }
+rayon = { workspace = true, optional = true }
 base64 = { workspace = true, optional = true }
 usvg = { workspace = true, optional = true }
 lyon_geom = { workspace = true, optional = true }
@@ -129,7 +130,7 @@ media = ["desktop", "dep:playwire", "dep:raw-window-handle"]
 hotkey = ["desktop", "dep:global-hotkey"]
 pty = ["dep:portable-pty", "dep:vt100"]
 hot = ["dep:subsecond", "dep:dioxus-devtools"]
-terminal = ["dep:crossterm", "dep:rustix", "dep:signal-hook", "image-decode"]
+terminal = ["dep:crossterm", "dep:rustix", "dep:signal-hook", "dep:rayon", "image-decode"]
 
 [dev-dependencies]
 image = { workspace = true, features = ["webp"] }

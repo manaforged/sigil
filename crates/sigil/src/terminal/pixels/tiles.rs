@@ -2,6 +2,7 @@ use std::io::{self, Write as _};
 
 use image::ImageEncoder as _;
 use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+use rayon::prelude::*;
 use tiny_skia::Pixmap;
 
 use crate::profile::{self, Phase};
@@ -52,27 +53,33 @@ impl Tiles {
             self.erase(&mut out, mux)?;
         }
         out.extend_from_slice(b"\x1b[?2026h\x1b7");
-        let mut index = 0;
         let [cols, rows] = grid.tile();
+        let mut tiles = Vec::new();
         for top in (0..grid.rows).step_by(usize::from(rows)) {
             for left in (0..grid.cols).step_by(usize::from(cols)) {
-                let tile = Tile {
+                tiles.push(Tile {
                     left,
                     top,
                     cols: cols.min(grid.cols - left),
                     rows: rows.min(grid.rows - top),
-                };
-                let id = IMAGE + index;
-                index += 1;
-                let rect = tile.pixels(grid.cell);
-                if dirty.is_some_and(|rects| !rects.iter().any(|r| meets(*r, rect))) {
-                    continue;
-                }
-                tile.write(&mut out, id, &png(pixmap, rect)?, mux)?;
+                });
             }
         }
+        let count = u32::try_from(tiles.len()).map_err(io::Error::other)?;
+        let encoded: Vec<(u32, &Tile, Vec<u8>)> = tiles
+            .par_iter()
+            .zip(0..count)
+            .filter(|(tile, _)| {
+                let rect = tile.pixels(grid.cell);
+                dirty.is_none_or(|rects| rects.iter().any(|r| meets(*r, rect)))
+            })
+            .map(|(tile, index)| Ok((IMAGE + index, tile, png(pixmap, tile.pixels(grid.cell))?)))
+            .collect::<io::Result<_>>()?;
+        for (id, tile, png) in &encoded {
+            tile.write(&mut out, *id, png, mux)?;
+        }
         out.extend_from_slice(b"\x1b8\x1b[?2026l");
-        self.sent = index;
+        self.sent = count;
         self.grid = Some(grid);
         drop(encode);
         let _write = profile::span(Phase::TuiWrite);

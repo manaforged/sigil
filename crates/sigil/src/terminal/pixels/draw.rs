@@ -1,6 +1,8 @@
+use std::cell::RefCell;
 use std::io::{self, Write as _};
 use std::rc::Rc;
 
+use rayon::prelude::*;
 use tiny_skia::Pixmap;
 
 use crate::app::{FrameHooks, FrameInfo};
@@ -16,14 +18,17 @@ use crate::terminal::graphics::Mux;
 use crate::terminal::pixels::tiles::{Grid, Tiles};
 use crate::terminal::run::CELL;
 use crate::terminal::term::Term;
-use crate::{AppResult, Error, ErrorKind, Host};
+use crate::{AppResult, Error, Host};
 
 const ROW: f32 = 18.0;
+
+thread_local! {
+    static RENDERER: RefCell<CpuRenderer> = RefCell::new(CpuRenderer::new());
+}
 
 /// The pixel host and the renderer that turns its frames into Kitty images.
 pub(super) struct Draw {
     host: Host,
-    renderer: CpuRenderer,
     fresh: bool,
     last: Option<Frame>,
     canvas: Option<Pixmap>,
@@ -38,7 +43,6 @@ impl Draw {
         host.mount_app(move || shared());
         Self {
             host,
-            renderer: CpuRenderer::new(),
             fresh: true,
             last: None,
             canvas: None,
@@ -73,16 +77,11 @@ impl Draw {
         &mut self,
         input: Vec<Event>,
         (cols, rows): (u16, u16),
+        cell: [u16; 2],
         term: &mut Term,
         dt: f32,
     ) -> AppResult<bool> {
         let caps = term.caps();
-        let Some(cell) = caps.cell else {
-            return Err(Error::fixed(
-                ErrorKind::Software,
-                "terminal stopped reporting its cell size",
-            ));
-        };
         let frame = Frame::new(cols, rows, cell);
         let events: Vec<Event> = input.into_iter().map(|event| frame.remap(event)).collect();
         let force = core::mem::take(&mut self.fresh) || self.last != Some(frame);
@@ -154,16 +153,27 @@ impl Draw {
         };
         let regions: Vec<[usize; 4]> = match &rects {
             Some(rects) => rects.iter().map(|rect| frame.pixels(*rect)).collect(),
-            None => frame.bands(),
+            None => vec![[0, 0, size.width as usize, size.height as usize]],
         };
-        for region in &regions {
-            let culled = culled(&scene, frame.logical(*region));
-            self.renderer.paint_region(
-                canvas,
-                &culled,
-                (frame.viewport, SURFACE_CLEAR),
-                region.map(|n| u32::try_from(n).unwrap_or(u32::MAX)),
-            );
+        let jobs: Vec<[usize; 4]> = regions
+            .iter()
+            .flat_map(|region| frame.strips(*region))
+            .collect();
+        let painted: Vec<([usize; 4], Option<Pixmap>)> = jobs
+            .par_iter()
+            .map(|&job| {
+                let culled = culled(&scene, frame.logical(job));
+                let rect = job.map(|n| u32::try_from(n).unwrap_or(u32::MAX));
+                let pixmap = RENDERER.with_borrow_mut(|renderer| {
+                    renderer.render_region(&culled, (frame.viewport, SURFACE_CLEAR), size, rect)
+                });
+                (job, pixmap)
+            })
+            .collect();
+        for (job, pixmap) in &painted {
+            if let Some(pixmap) = pixmap {
+                place(canvas, pixmap, *job);
+            }
         }
         let dirty = rects.is_some().then_some(regions);
         drop(render);
@@ -243,14 +253,20 @@ impl Frame {
         )
     }
 
-    fn bands(&self) -> Vec<[usize; 4]> {
-        let width = self.size.width as usize;
-        let height = self.size.height as usize;
-        let band = usize::from(self.grid.cell[1]) * usize::from(self.grid.tile()[1]);
-        (0..height)
-            .step_by(band.max(1))
-            .map(|y| [0, y, width, band.min(height - y)])
-            .collect()
+    /// Cuts a pixel rect at tile-row boundaries so its parts paint in parallel.
+    fn strips(&self, [x, y, w, h]: [usize; 4]) -> impl Iterator<Item = [usize; 4]> {
+        let band = (usize::from(self.grid.cell[1]) * usize::from(self.grid.tile()[1])).max(1);
+        let bottom = y + h;
+        let mut top = y;
+        std::iter::from_fn(move || {
+            (top < bottom).then(|| {
+                let end = ((top / band + 1) * band).min(bottom);
+                let strip = [x, top, w, end - top];
+                top = end;
+                strip
+            })
+        })
+        .filter(|[_, _, w, h]| *w > 0 && *h > 0)
     }
 
     fn point(&self, at: Point) -> Point {
@@ -273,6 +289,17 @@ impl Frame {
                 Scale::ONE.to_physical(LogicalSize::new(self.viewport.0, self.viewport.1)),
             )),
             other => other,
+        }
+    }
+}
+
+fn place(canvas: &mut Pixmap, region: &Pixmap, [x, y, w, _]: [usize; 4]) {
+    let stride = canvas.width() as usize * 4;
+    let row = w * 4;
+    for (line, source) in region.data().chunks_exact(row).enumerate() {
+        let at = (y + line) * stride + x * 4;
+        if let Some(dest) = canvas.data_mut().get_mut(at..at + row) {
+            dest.copy_from_slice(source);
         }
     }
 }
