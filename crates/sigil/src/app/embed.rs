@@ -191,7 +191,7 @@ impl Host {
         super::dialog::layer::sync(&mut self.cx, self.root, &mut self.dialogs);
     }
 
-    fn attach_theme(&mut self, theme: Theme) {
+    pub(crate) fn attach_theme(&mut self, theme: Theme) {
         if let Some(root) = self.root
             && let Some(node) = self.cx.get_mut(root)
         {

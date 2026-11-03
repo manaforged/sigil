@@ -11,6 +11,7 @@ use crate::profile;
 use crate::terminal::caps::Caps;
 use crate::terminal::input::{Incoming, InputWake, gather_input, limit};
 use crate::terminal::paint::Grid;
+use crate::terminal::pixels::Pixels;
 use crate::terminal::screen::Screen;
 use crate::terminal::signals::SignalGuard;
 pub use crate::terminal::term::calibrate;
@@ -182,30 +183,27 @@ fn live<N: IntoNode>(
 ) -> AppResult {
     let ((mut async_rt, waker, _theme_watch), mut term, _guards, (mut cols, mut rows)) =
         setup(config)?;
-    #[cfg(feature = "scene")]
-    if crate::terminal::pixels::wanted(config, term.caps()) {
-        return crate::terminal::pixels::live(
-            config,
-            tree,
-            (&mut async_rt, &waker),
-            &mut term,
-            (cols, rows),
-            hooks,
-        );
-    }
+    let tree = std::rc::Rc::new(tree);
     let mut host = Host::new(crate::kernel::HostMode::Cell);
     crate::terminal::clipboard::install_clipboard(term.caps());
     host.set_hyperlinks(term.caps().hyperlinks);
-    host.mount_app(tree);
+    let shared = tree.clone();
+    host.mount_app(move || shared());
     prime(&mut host, cols, rows)?;
     let mut screen = open_screen(config, (cols, rows), term.caps());
+    let mut pixels = Pixels::open(config, term.caps());
     let mut pointer = crate::geometry::Point::new(0.0, 0.0);
     let (mut first, mut settle, mut last) = (true, true, Instant::now());
     loop {
         if crate::terminal::signals::stopped() {
             break;
         }
-        let woke = pump(&host, &mut async_rt);
+        if pixels.sync(&tree, &mut host).map_err(Error::io)? {
+            settle = true;
+            screen.invalidate();
+            term.redraw = true;
+        }
+        let woke = pump(pixels.host().unwrap_or(&host), &mut async_rt);
         let timing = turn_wait(config.frame_interval, woke, last, screen.deadline());
         let pending = inspect_pending() || due(screen.deadline());
         let input = match gather_input(&mut first, config, &mut pointer, hooks, (&waker, timing))? {
@@ -222,10 +220,18 @@ fn live<N: IntoNode>(
             }
         };
         remeasure(&mut term, &mut screen);
+        settle = !input.is_empty();
+        if pixels.host().is_some() {
+            let dt = last.elapsed().as_secs_f32();
+            last = Instant::now();
+            if pixels.turn(input, (cols, rows), &mut term, dt)? {
+                break;
+            }
+            continue;
+        }
         if !timing.1 {
             pump(&host, &mut async_rt);
         }
-        settle = !input.is_empty();
         let mut turn = Turn {
             last: &mut last,
             screen: &mut screen,
@@ -237,7 +243,7 @@ fn live<N: IntoNode>(
             break;
         }
     }
-    Ok(())
+    pixels.close(term.caps().mux).map_err(Error::io)
 }
 
 fn remeasure(term: &mut Term, screen: &mut Screen) {
@@ -268,7 +274,7 @@ fn due(deadline: Option<Instant>) -> bool {
     deadline.is_some_and(|due| due <= Instant::now())
 }
 
-pub(super) fn frame_due() -> bool {
+fn frame_due() -> bool {
     Runtime::frame_dirty()
         || crate::animation_runtime::active_count() > 0
         || crate::animation_runtime::running_clocks() > 0
