@@ -21,6 +21,7 @@ use crate::layout::snap::CellForm;
 const CLOSE_AFFORDANCE_WIDTH: f32 = space(4);
 const TAB_PADDING_X: f32 = space(3);
 const LINE_STRIP: CellForm<f32> = CellForm::new(STRIP_HEIGHT, space(4));
+const BARE_TAB: CellForm<f32> = CellForm::new(TAB_HEIGHT, crate::Host::CELL);
 const CLOSE_GAP: CellForm<f32> = CellForm::new(space(1), 0.0);
 
 pub(super) fn line_strip_height() -> f32 {
@@ -31,7 +32,7 @@ pub(super) fn tab_height(chrome: StripChrome) -> f32 {
     if matches!(chrome, StripChrome::Line) {
         line_strip_height()
     } else {
-        TAB_HEIGHT
+        BARE_TAB.pick()
     }
 }
 

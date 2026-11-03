@@ -323,3 +323,43 @@ fn a_canvas_half_cell_fill_paints_a_half_block() {
         "{grid}"
     );
 }
+
+#[test]
+fn tabs_built_from_a_label_list_print_every_label() {
+    for labels in [
+        vec![
+            "Models".to_string(),
+            "Providers".to_string(),
+            "Usage".to_string(),
+        ],
+        vec!["One".to_string()],
+    ] {
+        let shown = labels.clone();
+        let grid = present(
+            move || {
+                container()
+                    .layout(
+                        LayoutStyle::flex_row()
+                            .height(sigil::Host::CELL)
+                            .align_items(AlignItems::Center),
+                    )
+                    .child(
+                        tabs()
+                            .labels(shown.clone())
+                            .active(signal(0))
+                            .label("Settings tabs"),
+                    )
+            },
+            60,
+            3,
+            &[],
+        );
+        let first = grid.lines().next().unwrap_or_default();
+        for label in &labels {
+            assert!(
+                first.contains(label.as_str()),
+                "{label} not on the tab row:\n{grid}"
+            );
+        }
+    }
+}
