@@ -43,10 +43,19 @@ pub(super) fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
             backdrop: backdrop(env),
             notices: known.map(Known::notices).unwrap_or_default(),
             fills: fills(env, known),
-            cell: None,
+            cell: cell(env),
         },
         #[cfg(unix)]
         ask: questions(env, (sync, keys), color, known),
+    }
+}
+
+fn cell(env: &impl Fn(&str) -> Option<String>) -> Option<[u16; 2]> {
+    let value = env("SIGIL_CELL")?;
+    let (width, height) = value.trim().split_once('x')?;
+    match (width.parse(), height.parse()) {
+        (Ok(width), Ok(height)) if width > 0 && height > 0 => Some([width, height]),
+        _ => None,
     }
 }
 

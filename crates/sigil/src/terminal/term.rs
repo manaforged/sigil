@@ -128,8 +128,8 @@ impl Term {
         if !self.cell_stale {
             return None;
         }
-        let cell = crate::terminal::caps::ask_cell()?;
         self.cell_stale = false;
+        let cell = crate::terminal::caps::ask_cell()?;
         if Some(cell) == self.caps.cell {
             return None;
         }

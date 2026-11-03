@@ -263,7 +263,7 @@ const fn ask_terminal(Draft { caps }: Draft, _: Option<ProbeRow>) -> (Caps, Cali
 impl Draft {
     fn settle(mut self, answers: &Answers) -> Caps {
         self.caps.notices.activity = answers.activity;
-        self.caps.cell = answers.cell;
+        self.caps.cell = answers.cell.or(self.caps.cell);
         if self.ask.has(Question::Sync) {
             self.caps.sync = answers.sync;
         }

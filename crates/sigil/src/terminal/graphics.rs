@@ -19,7 +19,7 @@ pub(crate) use encode::blocks_window;
 pub use encode::{blocks, png, sextants};
 pub(crate) use encode::{png_window, sextant, sextants_window};
 
-const CHUNK: usize = 4096;
+pub(super) const CHUNK: usize = 4096;
 const CACHE: usize = 16;
 
 /// An image placed on the cell grid.

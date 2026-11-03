@@ -16,6 +16,8 @@ pub(crate) use keys::fuzz_strip;
 mod mouse;
 mod notify;
 mod paint;
+#[cfg(feature = "scene")]
+mod pixels;
 mod placeholder;
 mod run;
 mod screen;

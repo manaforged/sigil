@@ -182,6 +182,17 @@ fn live<N: IntoNode>(
 ) -> AppResult {
     let ((mut async_rt, waker, _theme_watch), mut term, _guards, (mut cols, mut rows)) =
         setup(config)?;
+    #[cfg(feature = "scene")]
+    if crate::terminal::pixels::wanted(config, term.caps()) {
+        return crate::terminal::pixels::live(
+            config,
+            tree,
+            (&mut async_rt, &waker),
+            &mut term,
+            (cols, rows),
+            hooks,
+        );
+    }
     let mut host = Host::new(crate::kernel::HostMode::Cell);
     crate::terminal::clipboard::install_clipboard(term.caps());
     host.set_hyperlinks(term.caps().hyperlinks);
@@ -244,7 +255,7 @@ fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Caps) -> Scre
     screen
 }
 
-fn pump(host: &Host, async_rt: &mut crate::tasks::AsyncRuntime) -> usize {
+pub(super) fn pump(host: &Host, async_rt: &mut crate::tasks::AsyncRuntime) -> usize {
     let _env = host.enter();
     async_rt.pump()
 }
@@ -257,14 +268,14 @@ fn due(deadline: Option<Instant>) -> bool {
     deadline.is_some_and(|due| due <= Instant::now())
 }
 
-fn frame_due() -> bool {
+pub(super) fn frame_due() -> bool {
     Runtime::frame_dirty()
         || crate::animation_runtime::active_count() > 0
         || crate::animation_runtime::running_clocks() > 0
         || crate::reactive::next_interval_deadline().is_some_and(|due| due <= Instant::now())
 }
 
-fn turn_wait(
+pub(super) fn turn_wait(
     tick: Duration,
     woke: usize,
     last: Instant,

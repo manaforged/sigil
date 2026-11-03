@@ -42,6 +42,12 @@ Inside GNU screen (`STY` is set), Sigil does not send Kitty or Sixel images.
 
 To choose the protocol yourself, set `SIGIL_GRAPHICS` to `kitty`, `iterm2`, or `sixel`. `SIGIL_GRAPHICS=off` (or `none`) turns images off and shows glyphs. Other values are ignored.
 
+## Draw the window layout in the terminal
+
+`SIGIL_TERMINAL=pixels` makes the terminal host lay out the app as the window host does, draw it with the CPU renderer, and show each frame as one Kitty image. It needs a build with the `desktop` feature, the Kitty protocol, and the size of one cell in pixels. Without one of these, the host draws cells. Inline mode always draws cells.
+
+If the terminal does not report its cell size (some multiplexers do not), set it as `SIGIL_CELL=<width>x<height>` in pixels, for example `SIGIL_CELL=16x34`.
+
 ## Colors are wrong in the terminal
 
 The terminal host picks a color depth once, at start:
