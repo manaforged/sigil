@@ -3,6 +3,8 @@ use crate::app::HostCaps;
 use crate::style::{TextFace, TextRun, Token};
 use crate::widgets::text_search::NextMatch;
 
+const MAX_MATH_BYTES: usize = 512;
+
 fn find_from(next: &mut NextMatch, source: &str, from: usize) -> Option<usize> {
     next.find(source.get(from..)?).map(|at| at + from)
 }
@@ -24,6 +26,44 @@ impl Inlines<'_> {
             && let Some(end) = find_from(&mut self.tick, source, i + 1)
         {
             return Some((Inline::Code(source[i + 1..end].to_string()), end + 1));
+        }
+        let delimiters = if rest.starts_with("\\(") {
+            Some(("\\(", "\\)"))
+        } else if rest.starts_with("\\[") {
+            Some(("\\[", "\\]"))
+        } else if rest.starts_with("$$") {
+            Some(("$$", "$$"))
+        } else if rest.starts_with('$')
+            && rest
+                .chars()
+                .nth(1)
+                .is_some_and(|ch| !ch.is_whitespace() && !ch.is_ascii_digit())
+        {
+            Some(("$", "$"))
+        } else {
+            None
+        };
+        if let Some((open, close)) = delimiters {
+            let body = rest.get(open.len()..)?;
+            let mut limit = body.len().min(MAX_MATH_BYTES);
+            while !body.is_char_boundary(limit) {
+                limit -= 1;
+            }
+            if let Some(end) = body[..limit].find(close) {
+                let expression = body[..end].trim();
+                let valid_dollar = open != "$"
+                    || (!body[..end].ends_with(char::is_whitespace)
+                        && !body[end + close.len()..]
+                            .chars()
+                            .next()
+                            .is_some_and(|ch| ch.is_alphanumeric() || ch == '_'));
+                if !expression.is_empty() && valid_dollar {
+                    let rendered = rust_latex_parser::to_unicode(
+                        &rust_latex_parser::parse_equation(expression),
+                    );
+                    return Some((Inline::Text(rendered), i + open.len() + end + close.len()));
+                }
+            }
         }
         if rest.starts_with('[')
             && let Some((label, href, next)) = self.link_at(i)

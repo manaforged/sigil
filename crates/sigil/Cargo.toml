@@ -36,6 +36,7 @@ unicode-linebreak = "0.1"
 unicode-script = "0.5"
 unicode-segmentation = "1"
 unicode-width = { workspace = true }
+rust-latex-parser = { version = "0.2", default-features = false, features = ["unicode"] }
 web-time = "1"
 
 accesskit_winit = { workspace = true, optional = true }

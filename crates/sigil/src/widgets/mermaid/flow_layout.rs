@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use super::flow::{FlowEdge, FlowNode, GAP_COLS, GAP_ROWS, Graph, GridRect, NodeShape, SPACING};
 
+const MAX_LABEL_GAP: usize = 24;
+
 pub(super) fn expand(mut graph: Graph, mut ranks: Vec<usize>) -> (Graph, Vec<usize>) {
     let mut edges = Vec::new();
     for edge in std::mem::take(&mut graph.edges) {
@@ -179,7 +181,17 @@ impl Graph {
                     .unwrap_or(1)
             })
             .collect();
-        let gap = if vertical { GAP_ROWS } else { GAP_COLS };
+        let gap = if vertical {
+            GAP_ROWS
+        } else {
+            let label_width = self
+                .edges
+                .iter()
+                .map(|edge| edge.label.chars().count())
+                .max()
+                .unwrap_or(0);
+            GAP_COLS.max(label_width.min(MAX_LABEL_GAP).saturating_add(2))
+        };
         let offsets = offsets(layers, &rank_size, gap, self.dir.forward());
         let positions = self.positions(layers, &across);
         self.nodes
