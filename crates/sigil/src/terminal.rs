@@ -1,5 +1,5 @@
 mod access;
-mod backdrop;
+pub(crate) mod backdrop;
 mod caps;
 #[cfg(feature = "scene")]
 mod capture;

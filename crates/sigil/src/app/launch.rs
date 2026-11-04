@@ -64,6 +64,8 @@ where
     #[cfg(target_arch = "wasm32")]
     shell.set_canvas(config.canvas.clone());
     let async_rt = install_async_runtime(&shell, config.task_workers);
+    #[cfg(feature = "terminal")]
+    let _follow = crate::terminal::backdrop::Follow::start(None);
     crate::text::on_fonts_changed(wake_fn(&shell));
     let windows = initial_windows(&mut shell, config, tree)?;
     let _theme_watch = crate::app::launch_theme(config.theme_file.as_deref());
