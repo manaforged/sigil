@@ -615,7 +615,7 @@ fn main() {
 | `kv_row` | `fn kv_row(label, value: impl IntoNode + 'static) -> NodeBuilder` | One key/value row. |
 | `tabs` | `fn tabs()`; `.tab(label, component)`, `.active(Signal<usize>)` | Tabs. Each `tab` adds a label and its content component; the component builds once, so a tab keeps its state while another is shown. When tabs have content, the active tab's content fills the space left below the tab strip. |
 | `code_edit` | `fn code_edit(lines: Signal<Vec<String>>, caret: Signal<(usize, usize)>)` | A code editor with built-in `text_edit` editing. |
-| `highlight` | `fn highlight(language: &str, source: &str) -> Vec<Vec<Highlight>>` | Syntax marks per line, in the grapheme columns `code_edit(..).highlights(..)` takes, for rust, sh, toml, json, python, javascript, typescript, go, c/cpp, yaml, css, html, sql, markdown, and diff. Other languages get no marks. |
+| `highlight` | `fn highlight(language: &str, source: &str) -> Vec<Vec<Highlight>>` | Syntax marks per line, in the grapheme columns `code_edit(..).highlights(..)` takes, for rust, sh, toml, json, lean, python, javascript, typescript, go, c/cpp, yaml, css, html, sql, markdown, and diff. Other languages get no marks. |
 | `markdown` | `fn markdown(source: Signal<String>) -> NodeBuilder` | Rendered markdown. Each link is exposed as a `Link` node with its URL and on-screen area, and a click on it reaches the nearest `link` handler. |
 | `markdown_inline` | `fn markdown_inline(source: &str) -> TextBuilder` | One wrapped paragraph with inline markdown spans. |
 | `markdown_edit` | `fn markdown_edit(source: Signal<String>)` | A markdown editor with preview. |

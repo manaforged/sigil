@@ -36,7 +36,7 @@ struct Lang {
     number: Option<Token>,
 }
 
-/// Syntax marks per line, in the grapheme columns `code_edit` takes, for rust, sh, toml, json, python, javascript, typescript, go, c/cpp, yaml, css, html, sql, markdown, and diff.
+/// Syntax marks per line, in the grapheme columns `code_edit` takes, for rust, sh, toml, json, lean, python, javascript, typescript, go, c/cpp, yaml, css, html, sql, markdown, and diff.
 #[must_use]
 pub fn highlight(language: &str, source: &str) -> Vec<Vec<Highlight>> {
     source

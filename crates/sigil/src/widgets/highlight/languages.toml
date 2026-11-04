@@ -53,6 +53,23 @@ strings = ["\""]
 numbers = true
 words.literal = ["true", "false", "null"]
 
+[lang.lean]
+aliases = ["lean4"]
+line_comments = ["--"]
+block_comment = ["/-", "-/"]
+strings = ["\""]
+numbers = true
+words.keyword = [
+    "abbrev", "apply", "assumption", "by", "cases", "class", "constructor", "def", "deriving",
+    "do", "else", "end", "exact", "example", "export", "extends", "for", "fun", "have",
+    "if", "import", "in", "induction", "inductive", "instance", "intro", "let", "match",
+    "namespace", "noncomputable", "open", "private", "protected", "refine", "rfl", "rw",
+    "section", "show", "simp", "structure", "syntax", "then", "theorem", "universe",
+    "variable", "where", "with",
+]
+words.literal = ["true", "false"]
+words.type = ["Bool", "Int", "Nat", "Prop", "Rat", "Real", "Type"]
+
 [lang.python]
 aliases = ["py", "python3"]
 line_comments = ["#"]
