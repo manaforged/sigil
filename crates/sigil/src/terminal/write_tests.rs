@@ -192,6 +192,46 @@ fn a_toned_glyph_uses_the_warning_colour() {
 }
 
 #[test]
+fn explicit_tab_colours_survive_ansi16_tones() {
+    use crate::terminal::paint::{CellPaint, Marks, raster_with};
+
+    let scene = CommandScene::new(vec![
+        fill(rgba(0, 255, 255, 255), false),
+        label(
+            "Tasks 2/3",
+            rgba(10, 12, 18, 255),
+            TextStyle::default(),
+            Some(Tone::Info),
+        ),
+    ]);
+    let theme = Theme::dark();
+    let marks = Marks::default();
+    let mut grid = Grid::new(20, 3);
+    raster_with(
+        &mut grid,
+        &scene,
+        &CellPaint {
+            theme: &theme,
+            cell: 8.0,
+            caps: Caps {
+                color: ColorDepth::Ansi16,
+                ..Caps::default()
+            },
+            marks: &marks,
+        },
+    );
+    let cell = grid.get(0, 0).expect("tab label");
+    assert_eq!(
+        paint(cell.fg, ColorDepth::Ansi16),
+        crossterm::style::Color::Black
+    );
+    assert_eq!(
+        paint(cell.bg, ColorDepth::Ansi16),
+        crossterm::style::Color::Cyan
+    );
+}
+
+#[test]
 fn an_untoned_row_sets_no_colour() {
     let grid = draw(vec![plain("plain", None)], 20, 3);
     let out = bytes(&grid, 0);

@@ -8,8 +8,8 @@ use crate::scene::{
     CellBorder, CommandScene, DrawDecoration, DrawGradient, DrawImage, DrawRect, GlyphRun,
     LayerEffect, LinearGradient, SceneCommand,
 };
-use crate::style::{Rgba8, Theme, Tone};
-use crate::terminal::caps::{Caps, ColorDepth, Fills};
+use crate::style::{Rgba8, Theme};
+use crate::terminal::caps::{Caps, Fills};
 
 use super::decoration::{self, BorderEdge};
 use super::fill::{self, FillSurface};
@@ -166,13 +166,6 @@ struct CellWalk<'a> {
 type SceneArea = (Rect, (usize, usize), (usize, usize));
 
 impl CellWalk<'_> {
-    const fn ink(&self, colour: Rgba8, tone: Option<Tone>) -> Ink {
-        match (self.paint.caps.color, tone) {
-            (ColorDepth::Ansi16 | ColorDepth::Monochrome, Some(tone)) => Ink::Of(tone),
-            _ => Ink::pick(colour, tone),
-        }
-    }
-
     fn command(&mut self, command: &SceneCommand) {
         if self.state.apply(command) || self.layer(command) || self.state.clipped_out() {
             return;
@@ -299,7 +292,7 @@ impl CellWalk<'_> {
         }
         if !draw.outline {
             let color = self.fade(draw.color, draw.opacity);
-            let ink = self.ink(color, draw.tone);
+            let ink = Ink::pick(color, draw.tone);
             if ink.set() {
                 let surface = FillSurface {
                     rect: self.map(draw.rect),
@@ -358,7 +351,7 @@ impl CellWalk<'_> {
             clip: self.clip(),
             content: &run.text,
             flow: run.flow,
-            ink: self.ink(self.fade(run.color, run.opacity), run.tone),
+            ink: Ink::pick(self.fade(run.color, run.opacity), run.tone),
             face: self.face(draw),
             link: self.paint.marks.link(run.node),
             theme: self.paint.theme,
