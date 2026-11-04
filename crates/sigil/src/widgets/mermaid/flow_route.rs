@@ -136,7 +136,14 @@ pub(super) fn route(canvas: &mut Canvas, edge: &FlowEdge, from: GridRect, to: Gr
         }
         let (x5, y5) = pen.point(qp, qs);
         canvas.set(x5, y5, head);
-        label(canvas, &pen, edge, (pp, ps), pp.saturating_add(qp) / 2);
+        let label_start = if dir.vertical() { pp } else { pp.min(qp) };
+        label(
+            canvas,
+            &pen,
+            edge,
+            (label_start, ps),
+            pp.saturating_add(qp) / 2,
+        );
         return;
     }
     jog(canvas, &pen, edge, [(pp, ps), (qp, qs)], head);
@@ -167,7 +174,11 @@ fn jog(
     }
     let (x8, y8) = pen.point(qp, qs);
     canvas.set(x8, y8, head);
-    label(canvas, pen, edge, (pp, ps), pp);
+    if pen.dir.vertical() {
+        label(canvas, pen, edge, (pp, ps), pp);
+    } else {
+        label(canvas, pen, edge, (mid.min(qp), qs), mid);
+    }
 }
 
 fn label(
