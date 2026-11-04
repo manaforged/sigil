@@ -37,7 +37,7 @@ impl Inlines<'_> {
             && rest
                 .chars()
                 .nth(1)
-                .is_some_and(|ch| !ch.is_whitespace() && !ch.is_ascii_digit())
+                .is_some_and(|ch| !ch.is_whitespace())
         {
             Some(("$", "$"))
         } else {
