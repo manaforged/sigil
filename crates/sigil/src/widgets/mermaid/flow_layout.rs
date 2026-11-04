@@ -181,7 +181,18 @@ impl Graph {
                     .unwrap_or(1)
             })
             .collect();
-        let positions = self.positions(layers, &across);
+        let spacing = if vertical {
+            let width = self
+                .edges
+                .iter()
+                .map(|edge| edge.label.chars().count())
+                .max()
+                .unwrap_or(0);
+            SPACING.max(width.min(MAX_LABEL_GAP).saturating_add(2))
+        } else {
+            SPACING
+        };
+        let positions = self.positions(layers, &across, spacing);
         let gap = if vertical {
             GAP_ROWS
         } else {
@@ -228,7 +239,12 @@ impl Graph {
             .collect()
     }
 
-    fn positions(&self, layers: &[Vec<usize>], across: &dyn Fn(usize) -> usize) -> Vec<usize> {
+    fn positions(
+        &self,
+        layers: &[Vec<usize>],
+        across: &dyn Fn(usize) -> usize,
+        spacing: usize,
+    ) -> Vec<usize> {
         let mut positions = vec![0_usize; self.nodes.len()];
         for layer in layers {
             let mut cursor = 0_usize;
@@ -241,10 +257,10 @@ impl Graph {
                 if let Some(slot) = positions.get_mut(*node) {
                     *slot = at;
                 }
-                cursor = at.saturating_add(extent).saturating_add(SPACING);
+                cursor = at.saturating_add(extent).saturating_add(spacing);
             }
         }
-        compact(layers, &mut positions, across);
+        compact(layers, &mut positions, across, spacing);
         positions
     }
 
@@ -270,13 +286,18 @@ impl Graph {
     }
 }
 
-fn compact(layers: &[Vec<usize>], positions: &mut [usize], across: &dyn Fn(usize) -> usize) {
+fn compact(
+    layers: &[Vec<usize>],
+    positions: &mut [usize],
+    across: &dyn Fn(usize) -> usize,
+    spacing: usize,
+) {
     let span = |layer: &Vec<usize>| {
         layer
             .iter()
-            .map(|node| across(*node).saturating_add(SPACING))
+            .map(|node| across(*node).saturating_add(spacing))
             .sum::<usize>()
-            .saturating_sub(SPACING)
+            .saturating_sub(spacing)
     };
     let widest = layers.iter().map(span).max().unwrap_or(0);
     for layer in layers {

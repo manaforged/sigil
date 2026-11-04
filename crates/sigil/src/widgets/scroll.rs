@@ -10,9 +10,11 @@ use super::layout_ext::LayoutOverrides;
 
 mod bar;
 pub(crate) mod geometry;
+mod horizontal;
 mod input;
 
 pub(crate) use bar::{THUMB_ATOMS, TRACK_ATOMS, scrollbar};
+pub(crate) use horizontal::{Horizontal, probe as horizontal_probe};
 pub(crate) use input::{ScrollAxis, WheelAxis, contain_scroll, pin_to_bottom, wheel};
 
 const VIEWPORT_HEIGHT: f32 = space(60);

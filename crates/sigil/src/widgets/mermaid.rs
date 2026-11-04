@@ -1,8 +1,10 @@
 use crate::kernel::{NodeBuilder, Role, container, fragment, text};
 use crate::layout::LayoutStyle;
 use crate::layout::snap::CellForm;
-use crate::reactive::Reactive;
+use crate::reactive::{Reactive, signal};
+use crate::style::space;
 use crate::widgets::Widget;
+use crate::widgets::scroll::Horizontal;
 
 mod canvas;
 mod flow;
@@ -25,15 +27,22 @@ pub fn mermaid(source: impl Reactive<String>) -> NodeBuilder {
 
 pub(crate) fn figure(source: &str) -> NodeBuilder {
     let lines = draw(source);
+    let width = lines
+        .iter()
+        .map(|line| line.chars().count())
+        .max()
+        .unwrap_or(0);
+    let extent = f32::from(u16::try_from(width).unwrap_or(u16::MAX)) * space(2);
     let col = container()
-        .role(Role::Figure)
-        .label(diagram_name(source))
-        .description(bound_source(source).trim_end().to_string())
         .layout(LayoutStyle::flex_column().fill_width())
         .class("font-mono text-sm");
     let form =
         CellForm::<fn(NodeBuilder, &[String]) -> NodeBuilder>::new(strokes::window, text_lines);
-    form.pick()(col, &lines)
+    Horizontal::new(signal(extent), None)
+        .wrap(form.pick()(col, &lines))
+        .role(Role::Figure)
+        .label(diagram_name(source))
+        .description(bound_source(source).trim_end().to_string())
 }
 
 fn text_lines(mut col: NodeBuilder, lines: &[String]) -> NodeBuilder {
