@@ -57,6 +57,7 @@ words.literal = ["true", "false", "null"]
 aliases = ["lean4"]
 line_comments = ["--"]
 block_comment = ["/-", "-/"]
+nested_block_comments = true
 strings = ["\""]
 numbers = true
 words.keyword = [

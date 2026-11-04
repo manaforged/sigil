@@ -26,6 +26,7 @@ struct Lang {
     names: Vec<String>,
     line_comments: Vec<String>,
     block_comment: Option<(String, String)>,
+    nested_block_comments: bool,
     strings: Vec<char>,
     numbers: bool,
     words: HashMap<String, Token>,
@@ -60,7 +61,7 @@ pub fn highlight(language: &str, source: &str) -> Vec<Vec<Highlight>> {
 pub(crate) fn byte_marks(language: &str, source: &str) -> Vec<Vec<Highlight>> {
     let tag = language.trim().to_ascii_lowercase();
     let lang = CATALOG.iter().find(|lang| lang.names.contains(&tag));
-    let mut open = false;
+    let mut open = 0;
     source
         .split('\n')
         .map(|line| lang.map_or_else(Vec::new, |lang| lang.line(line, &mut open)))
@@ -166,9 +167,15 @@ fn lang(name: &str, spec: &Table, style: &impl Fn(&str) -> Option<Token>) -> Lan
         names,
         line_comments: strings(spec.get("line_comments")),
         block_comment: match block.as_slice() {
-            [open, close] => Some((open.clone(), close.clone())),
+            [open, close] if !open.is_empty() && !close.is_empty() => {
+                Some((open.clone(), close.clone()))
+            }
             _ => None,
         },
+        nested_block_comments: spec
+            .get("nested_block_comments")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
         strings: strings(spec.get("strings"))
             .iter()
             .filter_map(|quote| quote.chars().next())
@@ -212,7 +219,7 @@ fn string_end(line: &str, from: usize, quote: char) -> usize {
 
 struct SpanMarks {
     spans: Vec<Highlight>,
-    open: bool,
+    open: usize,
 }
 
 impl SpanMarks {
@@ -225,7 +232,7 @@ impl SpanMarks {
 }
 
 impl Lang {
-    fn line(&self, line: &str, open: &mut bool) -> Vec<Highlight> {
+    fn line(&self, line: &str, open: &mut usize) -> Vec<Highlight> {
         if let Some((_, token)) = self
             .prefixes
             .iter()
@@ -243,7 +250,7 @@ impl Lang {
         };
         let mut i = self.marker(line, &mut marks);
         while let Some(ch) = line.get(i..).and_then(|rest| rest.chars().next()) {
-            i = if marks.open {
+            i = if marks.open > 0 {
                 self.close_block(line, i, &mut marks)
             } else {
                 self.token_at(line, i, ch, &mut marks)
@@ -254,7 +261,7 @@ impl Lang {
     }
 
     fn marker(&self, line: &str, marks: &mut SpanMarks) -> usize {
-        if marks.open {
+        if marks.open > 0 {
             return 0;
         }
         let indent = line.len() - line.trim_start().len();
@@ -268,10 +275,37 @@ impl Lang {
     }
 
     fn close_block(&self, line: &str, i: usize, marks: &mut SpanMarks) -> usize {
-        let close = self.block_comment.as_ref().map_or("", |(_, close)| close);
-        let found = line[i..].find(close).filter(|_| !close.is_empty());
-        marks.open = found.is_none();
-        let end = found.map_or(line.len(), |at| i + at + close.len());
+        let Some((open, close)) = &self.block_comment else {
+            marks.open = 0;
+            return marks.push(i, line.len(), self.comment);
+        };
+        if !self.nested_block_comments {
+            let found = line[i..].find(close);
+            marks.open = usize::from(found.is_none());
+            let end = found.map_or(line.len(), |at| i + at + close.len());
+            return marks.push(i, end, self.comment);
+        }
+        let mut end = i;
+        for (offset, _) in line[i..].char_indices() {
+            let at = i + offset;
+            if at < end {
+                continue;
+            }
+            let rest = &line[at..];
+            if rest.starts_with(close) {
+                marks.open -= 1;
+                end = at + close.len();
+                if marks.open == 0 {
+                    break;
+                }
+            } else if rest.starts_with(open) {
+                marks.open = marks.open.saturating_add(1);
+                end = at + open.len();
+            }
+        }
+        if marks.open > 0 {
+            end = line.len();
+        }
         marks.push(i, end, self.comment)
     }
 
@@ -285,7 +319,7 @@ impl Lang {
             .as_ref()
             .filter(|(opener, _)| rest.starts_with(opener.as_str()))
         {
-            marks.open = true;
+            marks.open = 1;
             return marks.push(i, i + opener.len(), self.comment);
         }
         if self.strings.contains(&ch) {
