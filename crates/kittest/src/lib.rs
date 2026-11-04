@@ -6,6 +6,8 @@ mod compare;
 pub use compare::Golden;
 pub use sigil::kernel::WithCx;
 mod error;
+mod explore;
+pub use explore::Step;
 pub use error::Error;
 pub mod gpu;
 mod harness;

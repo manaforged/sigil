@@ -129,6 +129,32 @@ let mut ui = Harness::new(|| button("Save")).pixels(200, 60);
 ui.snapshot("save_button");
 ```
 
+## Every sequence
+
+`Harness::explore` runs every sequence of user steps up to a depth, shortest first, each on a fresh app. Each step drives the app and applies the same change to a small model of what the app should do. After each step, a check compares the app with the model. A failure names the shortest sequence that breaks it. `Harness::walk` runs one long sequence picked from a seed, and the seed replays it.
+
+```rust
+# use sigil::prelude::*;
+# use sigil_kittest::{Harness, Step};
+fn counter() -> impl IntoNode {
+    let count = signal(0);
+    row()
+        .child(text(move || format!("Count: {}", count.get())))
+        .child(button("+").activate(move || count.update(|n| *n += 1)))
+}
+
+let steps: [Step<i32>; 1] = [("click +", |ui, count| {
+    ui.click("+");
+    *count += 1;
+})];
+let check = |ui: &mut Harness, count: &i32| {
+    let shown = format!("Count: {count}");
+    if ui.text().contains(&shown) { Ok(()) } else { Err(format!("expected {shown}")) }
+};
+Harness::explore(counter, &steps, 3, check);
+Harness::walk(counter, &steps, 20, 7, check);
+```
+
 ## Lower level
 
 `ui.host()` returns the `Host` for anything the harness does not cover. `ui.accessibility_snapshot()` returns the text dump that a failed `get` prints. [Headless driving](automation.md) describes the host calls the harness is built on.
