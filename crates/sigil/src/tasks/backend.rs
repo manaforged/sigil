@@ -68,6 +68,7 @@ impl Backend {
             return Some(handle.clone());
         }
         if !matches!(*pool, Pool::Idle) {
+            tracing::warn!("task runtime is shut down; cancelled the work");
             return None;
         }
         let runtime = match build(self.lazy.workers) {

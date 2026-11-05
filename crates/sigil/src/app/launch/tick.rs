@@ -60,8 +60,8 @@ impl LoopState {
         if let Some(handle) = target {
             self.frame_window(shell, handle)?;
         }
-        apply_commands(shell, &mut self.windows, target);
         open_requested(shell, &mut self.windows)?;
+        apply_commands(shell, &mut self.windows, target);
         dispatch_events(shell, &mut self.windows);
         if crate::app::exit::take_exit() {
             self.exit_requested = true;

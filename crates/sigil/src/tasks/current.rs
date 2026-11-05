@@ -79,11 +79,14 @@ where
     F: std::future::Future<Output = Result<T, E>> + Send + 'static,
 {
     let status = crate::reactive::signal(crate::tasks::Status::Pending);
-    if let Some((owner, parts)) = scope_parts("spawn") {
+    let started = scope_parts("spawn").and_then(|(owner, parts)| {
         let target = status.into_sendable();
-        let _handle = crate::tasks::dispatch::spawn_into(&parts, owner, future, move |done| {
+        crate::tasks::dispatch::spawn_into(&parts, owner, future, move |done| {
             target.into_signal().try_set_always(done);
-        });
+        })
+    });
+    if started.is_none() {
+        status.update(|state| *state = crate::tasks::Status::Idle);
     }
     status
 }

@@ -43,7 +43,10 @@ where
 {
     let owner = Owner::current();
     let start: Start<T, E> = Rc::new(move |status, current, id| {
-        let owner = owner?;
+        let Some(owner) = owner else {
+            tracing::warn!(target: "sigil::tasks", caller = "task", "created outside a reactive scope; dropped the work");
+            return None;
+        };
         let parts = host_parts("task")?;
         let (status, current) = (status.into_sendable(), current.into_sendable());
         spawn_into(&parts, owner, make(), move |done| {
@@ -67,8 +70,13 @@ impl<T: 'static, E: 'static> Task<T, E> {
     /// Starts the task again.
     pub fn run(self) {
         let id = self.retire();
-        self.status.update(|status| *status = Status::Pending);
         let handle = (self.start.peek())(self.status, self.current, id);
+        let next = if handle.is_some() {
+            Status::Pending
+        } else {
+            Status::Idle
+        };
+        self.status.update(|status| *status = next);
         self.current.update(|run| *run = TaskRun { id, handle });
     }
 

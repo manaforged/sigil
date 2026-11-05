@@ -73,6 +73,7 @@ where
     D: FnOnce(Status<T, E>) + Send + 'static,
 {
     if !owner.is_alive() {
+        tracing::warn!(target: "sigil::tasks", owner = ?owner, "owner is disposed; dropped the work");
         drop(future);
         return None;
     }
@@ -82,7 +83,7 @@ where
             Outcome::Done(Ok(value)) => Status::Ok(value),
             Outcome::Done(Err(error)) => Status::Err(error),
             Outcome::Panicked(message) => Status::Panicked(message),
-            Outcome::Cancelled => return,
+            Outcome::Cancelled => Status::Idle,
         };
         dispatch_to_owner(&dispatcher, owner, move || deliver(status));
     });
