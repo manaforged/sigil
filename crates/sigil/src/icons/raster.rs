@@ -18,16 +18,27 @@ pub(super) fn rasterize(
     let ss_h = height * SS;
     let mut ss_buf = vec![0u8; (ss_w * ss_h) as usize];
 
+    let mut crossings: Vec<(f32, i32)> = Vec::new();
     for py in 0..ss_h {
         let vy = ss_to_vb(py, ss_h, view_box.height);
         let band = band_buf
             .bands
             .get(band_index(vy, band_buf.band_height))
             .map_or(&[][..], Vec::as_slice);
+        row_crossings(vy, band, &mut crossings);
+        let mut winding: i32 = crossings.iter().map(|&(_, dir)| dir).sum();
+        let mut next = 0;
+        let row = (py * ss_w) as usize;
         for px in 0..ss_w {
             let vx = ss_to_vb(px, ss_w, view_box.width);
-            if winding_number(vx, vy, band) != 0
-                && let Some(slot) = ss_buf.get_mut((py * ss_w + px) as usize)
+            while let Some(&(x, dir)) = crossings.get(next)
+                && x <= vx
+            {
+                winding -= dir;
+                next += 1;
+            }
+            if winding != 0
+                && let Some(slot) = ss_buf.get_mut(row + px as usize)
             {
                 *slot = 255;
             }
@@ -46,22 +57,22 @@ fn ss_to_vb(p: u32, ss_extent: u32, extent: f32) -> f32 {
     norm * extent
 }
 
-fn winding_number(vx: f32, vy: f32, band: &[QuadCurve]) -> i32 {
-    let mut winding = 0_i32;
+fn row_crossings(vy: f32, band: &[QuadCurve], out: &mut Vec<(f32, i32)>) {
+    out.clear();
     for curve in band {
         let crossing = crossing_code(vy, curve);
         if crossing == 0 {
             continue;
         }
         let (first, second) = quad_y_roots(vy, curve);
-        if crossing & 1 != 0 && quad_eval_x(first, curve) > vx {
-            winding += 1;
+        if crossing & 1 != 0 {
+            out.push((quad_eval_x(first, curve), 1));
         }
-        if crossing > 1 && quad_eval_x(second, curve) > vx {
-            winding -= 1;
+        if crossing > 1 {
+            out.push((quad_eval_x(second, curve), -1));
         }
     }
-    winding
+    out.sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
 }
 
 fn crossing_code(vy: f32, curve: &QuadCurve) -> u32 {
