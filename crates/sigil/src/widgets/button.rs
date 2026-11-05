@@ -32,6 +32,8 @@ pub struct ButtonBuilder {
     square: bool,
     #[cfg(feature = "scene")]
     leading: Option<std::sync::Arc<str>>,
+    #[cfg(feature = "scene")]
+    trailing: Option<std::sync::Arc<str>>,
 }
 
 /// A push button.
@@ -69,6 +71,8 @@ impl ButtonBuilder {
             square: false,
             #[cfg(feature = "scene")]
             leading: None,
+            #[cfg(feature = "scene")]
+            trailing: None,
         }
     }
 
@@ -123,6 +127,14 @@ impl ButtonBuilder {
     #[must_use]
     pub fn icon(self, icon: crate::icons::Icon) -> Self {
         self.icon_svg(icon.svg())
+    }
+
+    /// Sets the icon shown after the label, such as a dropdown chevron.
+    #[cfg(feature = "scene")]
+    #[must_use]
+    pub fn trailing(mut self, icon: crate::icons::Icon) -> Self {
+        self.trailing = Some(icon.svg().into());
+        self
     }
 
     /// Applies the ghost option.

@@ -33,20 +33,22 @@ impl ButtonBuilder {
     #[cfg(feature = "scene")]
     pub(super) fn label_content(&self, node: NodeBuilder) -> NodeBuilder {
         let label = self.label_text(self.compact());
-        let Some(svg) = self.leading.clone() else {
+        if self.leading.is_none() && self.trailing.is_none() {
             return node.child(label);
-        };
-        node.child(
-            container()
-                .hittable(false)
-                .layout(
-                    LayoutStyle::flex_row()
-                        .align_items(AlignItems::Center)
-                        .gap(Metrics::current().gap(ControlSize::Compact)),
-                )
-                .child(self.leading_icon(svg))
-                .child(label),
-        )
+        }
+        let mut row = container().hittable(false).layout(
+            LayoutStyle::flex_row()
+                .align_items(AlignItems::Center)
+                .gap(Metrics::current().gap(ControlSize::Compact)),
+        );
+        if let Some(svg) = self.leading.clone() {
+            row = row.child(self.leading_icon(svg));
+        }
+        row = row.child(label);
+        if let Some(svg) = self.trailing.clone() {
+            row = row.child(self.leading_icon(svg).px(12.0));
+        }
+        node.child(row)
     }
 
     #[cfg(not(feature = "scene"))]
