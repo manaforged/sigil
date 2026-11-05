@@ -28,7 +28,11 @@ pub fn markdown(source: Signal<String>) -> NodeBuilder {
         blocks
             .get()
             .iter()
-            .map(|(key, block)| (*key, KeyedBlock(Rc::clone(block))))
+            .enumerate()
+            .map(|(at, (key, block))| {
+                let lead = at > 0 && matches!(**block, Block::Heading { .. });
+                (*key, KeyedBlock(Rc::clone(block), lead))
+            })
             .collect::<Vec<_>>()
     })
 }
@@ -40,11 +44,18 @@ pub fn markdown_inline(source: &str) -> TextBuilder {
     text(body.text).runs(body.runs)
 }
 
-struct KeyedBlock(Rc<Block>);
+struct KeyedBlock(Rc<Block>, bool);
 
 impl IntoNode for KeyedBlock {
     fn build(self, cx: &mut Cx) -> NodeId {
-        block_node(Rc::unwrap_or_clone(self.0)).build(cx)
+        let node = block_node(Rc::unwrap_or_clone(self.0));
+        if !self.1 {
+            return node.build(cx);
+        }
+        container()
+            .layout(LayoutStyle::block().fill_width().padding_top(CellForm::new(space(2), 0.0).pick()))
+            .child(node)
+            .build(cx)
     }
 }
 
