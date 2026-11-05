@@ -50,6 +50,10 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
         *surface = None;
         return Ok(());
     }
+    #[cfg(not(target_arch = "wasm32"))]
+    if renderer.recover(surface)? {
+        Runtime::mark_frame_dirty();
+    }
     if surface.is_some() {
         return Ok(());
     }
@@ -67,6 +71,8 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
     }
     let logical = LogicalSize::new(viewport.0, viewport.1);
 
+    #[cfg(not(target_arch = "wasm32"))]
+    renderer.set_wake(super::wake_fn(shell));
     let new_surface = renderer.create_surface(Arc::clone(window), scale.to_physical(logical))?;
     tracing::info!(
         "sigil-app: rendering with the {} backend",

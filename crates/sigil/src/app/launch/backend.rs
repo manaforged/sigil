@@ -111,6 +111,53 @@ impl Backend {
         cpu
     }
 
+    fn use_cpu(&mut self, cpu: CpuRenderer) {
+        self.inner = BackendInner::Cpu(Box::new(cpu));
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.device = None;
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(super) fn set_wake(&mut self, wake: impl Fn() + Send + Sync + 'static) {
+        if let BackendInner::Wgpu(renderer) = &mut self.inner {
+            renderer.set_on_lost(std::sync::Arc::new(wake));
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(super) fn recover(&mut self, surface: &mut Option<RenderSurface>) -> Result<bool, Error> {
+        let mismatched = matches!(
+            (&self.inner, &*surface),
+            (BackendInner::Wgpu(_), Some(RenderSurface::Cpu(_)))
+                | (BackendInner::Cpu(_), Some(RenderSurface::Wgpu(_)))
+        );
+        if mismatched {
+            *surface = None;
+        }
+        let (BackendInner::Wgpu(renderer), Some(RenderSurface::Wgpu(gpu))) =
+            (&mut self.inner, surface.as_mut())
+        else {
+            return Ok(false);
+        };
+        match renderer.recover_lost_device(gpu) {
+            Ok(rebuilt) => {
+                if rebuilt {
+                    self.adopt_gpu_status();
+                }
+                Ok(rebuilt)
+            }
+            Err(err) if self.fallback => {
+                let cpu = self.fall_back_to_cpu(&err);
+                self.use_cpu(cpu);
+                *surface = None;
+                Ok(true)
+            }
+            Err(err) => Err(err),
+        }
+    }
+
     #[cfg(target_arch = "wasm32")]
     pub(super) fn request_device(&mut self, wake: impl Fn() + Send + Sync + 'static) {
         if let BackendInner::Wgpu(renderer) = &self.inner {
@@ -122,31 +169,27 @@ impl Backend {
 
     #[cfg(target_arch = "wasm32")]
     pub(super) fn ready(&mut self) -> Result<bool, Error> {
-        let Some(request) = &mut self.device else {
+        let (Some(request), BackendInner::Wgpu(renderer)) = (&mut self.device, &mut self.inner)
+        else {
             return Ok(true);
         };
-        if let BackendInner::Wgpu(renderer) = &self.inner
-            && renderer.device_lost()
-            && !request.waiting()
-        {
+        if renderer.device_lost() && !request.waiting() {
             tracing::warn!("sigil-app: GPU device lost; requesting a new one");
             request.start(renderer);
         }
         let Some(result) = request.take() else {
             return Ok(!request.waiting());
         };
-        match (result, &mut self.inner) {
-            (Ok(parts), BackendInner::Wgpu(renderer)) => {
+        match result {
+            Ok(parts) => {
                 renderer.adopt_device(parts);
                 self.adopt_gpu_status();
             }
-            (Ok(_), BackendInner::Cpu(_)) => {}
-            (Err(err), _) if self.fallback => {
+            Err(err) if self.fallback => {
                 let cpu = self.fall_back_to_cpu(&err);
-                self.inner = BackendInner::Cpu(Box::new(cpu));
-                self.device = None;
+                self.use_cpu(cpu);
             }
-            (Err(err), _) => return Err(err),
+            Err(err) => return Err(err),
         }
         Ok(true)
     }
@@ -196,7 +239,7 @@ impl Backend {
             Err(err) if self.fallback => {
                 let mut cpu = self.fall_back_to_cpu(&err);
                 let surface = cpu.create_surface(into_window_handle(window), size)?;
-                self.inner = BackendInner::Cpu(Box::new(cpu));
+                self.use_cpu(cpu);
                 Ok(RenderSurface::Cpu(surface))
             }
             Err(err) => Err(err),
@@ -224,7 +267,12 @@ impl Backend {
     ) -> Result<(), Error> {
         match (&mut self.inner, surface) {
             (BackendInner::Wgpu(r), RenderSurface::Wgpu(s)) => {
-                r.render_command_scene(s, scene, clear, viewport)
+                let lost = r.device_lost();
+                let result = r.render_command_scene(s, scene, clear, viewport);
+                if lost && result.is_ok() {
+                    self.adopt_gpu_status();
+                }
+                result
             }
             (BackendInner::Cpu(r), RenderSurface::Cpu(s)) => {
                 r.render_command_scene(s, scene, clear, viewport)
@@ -266,7 +314,7 @@ impl Backend {
             Err(err) if self.fallback && !had_device => {
                 let mut cpu = self.fall_back_to_cpu(&err);
                 let image = render_to_image(ImageRenderer::Cpu(&mut cpu), scene, target);
-                self.inner = BackendInner::Cpu(Box::new(cpu));
+                self.use_cpu(cpu);
                 image
             }
             Err(err) => Err(err),

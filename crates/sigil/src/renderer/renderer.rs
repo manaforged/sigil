@@ -16,9 +16,9 @@ use crate::hal::Renderer;
 use crate::profile::gpu::snapshot;
 use crate::style::Color;
 
-use crate::renderer::device_state::DeviceState;
 #[cfg(feature = "desktop")]
 use crate::renderer::device_state::ReadyState;
+use crate::renderer::device_state::{DeviceState, OnLost};
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::layer_composite::LayerCompositePipeline;
 use crate::renderer::scene_command::CommandScene;
@@ -32,6 +32,7 @@ pub struct WgpuRenderer {
     transparent: bool,
     pub(crate) last_frame_stats: FrameStats,
     retained: Option<crate::renderer::damage::Retained>,
+    on_lost: Option<OnLost>,
 }
 
 impl Default for WgpuRenderer {
@@ -48,6 +49,7 @@ impl WgpuRenderer {
             transparent: false,
             last_frame_stats: FrameStats::default(),
             retained: None,
+            on_lost: None,
         }
     }
 
@@ -73,13 +75,23 @@ impl WgpuRenderer {
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) fn adopt_device(&mut self, parts: crate::renderer::DeviceParts) {
-        self.frame_transients.clear();
+        self.drop_device_resources();
         self.state.adopt(parts);
     }
 
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(feature = "desktop")]
     pub(crate) fn device_lost(&self) -> bool {
         self.state.is_lost()
+    }
+
+    #[cfg(all(feature = "desktop", not(target_arch = "wasm32")))]
+    pub(crate) fn set_on_lost(&mut self, on_lost: OnLost) {
+        self.on_lost = Some(on_lost);
+    }
+
+    fn drop_device_resources(&mut self) {
+        self.frame_transients.clear();
+        self.retained = None;
     }
 
     #[cfg(feature = "desktop")]
@@ -183,16 +195,18 @@ impl WgpuRenderer {
         Ok(())
     }
 
-    fn recover_lost_device(&mut self, surface: &WgpuSurface) -> Result<(), Error> {
+    pub(crate) fn recover_lost_device(&mut self, surface: &mut WgpuSurface) -> Result<bool, Error> {
         if !self.state.is_lost() || cfg!(target_arch = "wasm32") {
-            return Ok(());
+            return Ok(false);
         }
-        self.frame_transients.clear();
-        self.state.reset();
-        let ready = self.state.ensure_ready(&surface.surface)?;
+        self.state.rebuild(&surface.surface, self.on_lost.clone())?;
+        self.drop_device_resources();
+        surface.backbuffer = None;
+        let ready = self.state.ready()?;
         surface.surface.configure(&ready.device, &surface.config);
         tracing::info!("GPU device rebuilt after loss");
-        self.prepare_compositing(surface.config.format)
+        self.prepare_compositing(surface.config.format)?;
+        Ok(true)
     }
 
     pub fn render_command_scene(
@@ -239,7 +253,7 @@ impl Renderer for WgpuRenderer {
             .instance()
             .create_surface(handle)
             .map_err(Error::gpu_surface)?;
-        let ready = self.state.ensure_ready(&surface)?;
+        let ready = self.state.ensure_ready(&surface, self.on_lost.clone())?;
         let caps = surface.get_capabilities(&ready.adapter);
         let format = caps
             .formats

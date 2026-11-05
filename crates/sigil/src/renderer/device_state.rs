@@ -142,11 +142,15 @@ impl DeviceState {
         }
     }
 
-    pub(crate) fn reset(&mut self) {
-        if let Self::Ready(ready) = self {
-            let instance = ready.instance.clone();
-            *self = Self::Uninitialized(instance);
-        }
+    pub(crate) fn rebuild(
+        &mut self,
+        surface: &wgpu::Surface<'_>,
+        on_lost: Option<OnLost>,
+    ) -> Result<(), Error> {
+        let instance = self.instance().clone();
+        let parts = request_blocking(&instance, Some(surface), on_lost)?;
+        *self = Self::Ready(ReadyState::boxed(instance, parts));
+        Ok(())
     }
 
     pub(crate) fn ready(&self) -> Result<&ReadyState, Error> {
@@ -172,13 +176,16 @@ impl DeviceState {
     pub(crate) fn ensure_ready(
         &mut self,
         surface: &wgpu::Surface<'_>,
+        on_lost: Option<OnLost>,
     ) -> Result<&ReadyState, Error> {
-        self.ensure_ready_for(Some(surface)).map(|ready| &*ready)
+        self.ensure_ready_for(Some(surface), on_lost)
+            .map(|ready| &*ready)
     }
 
     #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn request_headless() -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), Error> {
-        let (adapter, device, queue, _lost, _forced) = request_blocking(&new_instance(), None)?;
+        let (adapter, device, queue, _lost, _forced) =
+            request_blocking(&new_instance(), None, None)?;
         Ok((adapter, device, queue))
     }
 
@@ -199,7 +206,7 @@ impl DeviceState {
 
     #[cfg(any(test, feature = "inspect", feature = "kittest"))]
     pub(crate) fn ensure_ready_headless(&mut self) -> Result<&mut ReadyState, Error> {
-        self.ensure_ready_for(None)
+        self.ensure_ready_for(None, None)
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -224,9 +231,10 @@ impl DeviceState {
     fn ensure_ready_for(
         &mut self,
         surface: Option<&wgpu::Surface<'_>>,
+        on_lost: Option<OnLost>,
     ) -> Result<&mut ReadyState, Error> {
         if let Self::Uninitialized(instance) = self {
-            let parts = request_blocking(instance, surface)?;
+            let parts = request_blocking(instance, surface, on_lost)?;
             *self = Self::Ready(ReadyState::boxed(instance.clone(), parts));
         }
         self.ready_mut()
@@ -251,14 +259,16 @@ fn new_instance() -> wgpu::Instance {
 fn request_blocking(
     instance: &wgpu::Instance,
     surface: Option<&wgpu::Surface<'_>>,
+    on_lost: Option<OnLost>,
 ) -> Result<DeviceParts, Error> {
-    request_adapter_and_device(instance, surface, None).block_on()
+    request_adapter_and_device(instance, surface, on_lost).block_on()
 }
 
 #[cfg(target_arch = "wasm32")]
-const fn request_blocking(
+fn request_blocking(
     _instance: &wgpu::Instance,
     _surface: Option<&wgpu::Surface<'_>>,
+    _on_lost: Option<OnLost>,
 ) -> Result<DeviceParts, Error> {
     Err(Error::fixed(
         ErrorKind::NotInitialized,
