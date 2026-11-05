@@ -105,9 +105,10 @@ impl TooltipBuilder {
                     .align_items(AlignItems::Center)
                     .justify_content(JustifyContent::Center),
             );
-        let mut root = hover_reveal(root, visible, self.delay_ms);
+        let reveal = Reveal::new(visible);
+        let mut root = hover_reveal(root, reveal.clone(), self.delay_ms);
         if let Some(inner) = self.child {
-            root = root.child(TooltipTarget { inner, visible });
+            root = root.child(TooltipTarget { inner, reveal });
         }
         root = root.child(bubble);
         if !self.style_accumulator.is_empty() {
@@ -119,46 +120,72 @@ impl TooltipBuilder {
 
 builder_impls!([] TooltipBuilder: paint(style_accumulator), widget, node);
 
-fn hover_reveal(root: NodeBuilder, visible: Signal<bool>, delay_ms: u64) -> NodeBuilder {
-    let pending: Rc<Cell<Option<IntervalId>>> = Rc::new(Cell::new(None));
-    let pending_for_enter = Rc::clone(&pending);
+#[derive(Clone)]
+struct Reveal {
+    visible: Signal<bool>,
+    pending: Rc<Cell<Option<IntervalId>>>,
+    focused: Rc<Cell<bool>>,
+}
+
+impl Reveal {
+    fn new(visible: Signal<bool>) -> Self {
+        Self {
+            visible,
+            pending: Rc::new(Cell::new(None)),
+            focused: Rc::new(Cell::new(false)),
+        }
+    }
+
+    fn cancel_pending(&self) {
+        if let Some(id) = self.pending.take() {
+            id.cancel();
+        }
+    }
+
+    fn hide(&self) -> bool {
+        self.cancel_pending();
+        hide(self.visible)
+    }
+}
+
+fn hover_reveal(root: NodeBuilder, reveal: Reveal, delay_ms: u64) -> NodeBuilder {
+    let enter = reveal.clone();
     root.pointer_enter(move |event| {
         event.stop_propagation();
-        if visible.peek() || pending_for_enter.get().is_some() {
+        if enter.visible.peek() || enter.pending.get().is_some() {
             return;
         }
         if delay_ms == 0 {
-            visible.set(true);
+            enter.visible.set(true);
             return;
         }
-        let pending_for_cb = Rc::clone(&pending_for_enter);
+        let fire = enter.clone();
         let id = interval(Duration::from_millis(delay_ms), move || {
-            visible.set(true);
-            if let Some(id) = pending_for_cb.take() {
-                id.cancel();
-            }
+            fire.visible.set(true);
+            fire.cancel_pending();
         });
-        pending_for_enter.set(Some(id));
+        enter.pending.set(Some(id));
     })
     .pointer_leave(move |event| {
-        if let Some(id) = pending.take() {
-            id.cancel();
+        if reveal.focused.get() {
+            reveal.cancel_pending();
+        } else {
+            reveal.hide();
         }
-        hide(visible);
         event.stop_propagation();
     })
 }
 
 struct TooltipTarget {
     inner: Box<dyn IntoNode>,
-    visible: Signal<bool>,
+    reveal: Reveal,
 }
 
 impl IntoNode for TooltipTarget {
     fn build(self, cx: &mut Cx) -> NodeId {
         let id = self.inner.build(cx);
         if let Some(target) = first_focusable(cx, id) {
-            watch_focus(cx, target, self.visible);
+            watch_focus(cx, target, self.reveal);
         }
         id
     }
@@ -174,21 +201,27 @@ fn first_focusable(cx: &Cx, id: NodeId) -> Option<NodeId> {
         .find_map(|child| first_focusable(cx, *child))
 }
 
-fn watch_focus(cx: &mut Cx, target: NodeId, visible: Signal<bool>) {
+fn watch_focus(cx: &mut Cx, target: NodeId, reveal: Reveal) {
     let Some(node) = cx.get_mut(target) else {
         return;
     };
     mutate_handlers(node, move |handlers| {
+        let focus_in = reveal.clone();
         handlers.add_focus_in(Box::new(move || {
             if focus_from_keyboard() {
-                visible.set(true);
+                focus_in.focused.set(true);
+                focus_in.visible.set(true);
             }
         }));
-        handlers.add_focus_out(Box::new(move || visible.set(false)));
+        let focus_out = reveal.clone();
+        handlers.add_focus_out(Box::new(move || {
+            focus_out.focused.set(false);
+            focus_out.hide();
+        }));
         handlers.add_key(
             Key::Escape.into(),
             Box::new(move |event| {
-                if hide(visible) {
+                if reveal.hide() {
                     event.stop_propagation();
                 }
             }),

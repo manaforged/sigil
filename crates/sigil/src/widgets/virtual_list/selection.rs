@@ -90,6 +90,7 @@ impl SelectionState {
 
     fn toggle(&mut self, index: usize) {
         toggle(&mut self.selected, index);
+        self.anchor = Some(index);
     }
 
     fn extend(&mut self, index: usize) {

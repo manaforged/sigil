@@ -8,6 +8,7 @@ use crate::widgets::Widget;
 
 use super::listbox::{ListModel, Matcher, listbox, scrolled};
 use super::popup::{self, ItemSlots, POPUP_GAP, item_row};
+use super::shared::disabled_now;
 use super::text_field::{TextFieldBuilder, text_field};
 
 const MAX_VISIBLE: usize = 8;
@@ -90,8 +91,7 @@ impl Combobox {
             .peek()
             .and_then(|index| self.filtered().iter().position(|(i, _)| *i == index))
             .unwrap_or(0);
-        self.cursor.set(row);
-        self.open.set(true);
+        self.reveal(row);
     }
 
     /// Closes the list.
@@ -141,6 +141,9 @@ impl Combobox {
 
     /// Chooses the option at `index`.
     pub fn commit(self, index: usize) {
+        if disabled_now(self.disabled) {
+            return;
+        }
         let Some(label) = self.options.peek().get(index).cloned() else {
             return;
         };
@@ -159,9 +162,20 @@ impl Combobox {
         true
     }
 
-    fn edit(self, text: &str) {
+    fn reveal(self, row: usize) {
+        if disabled_now(self.disabled) {
+            return;
+        }
+        self.cursor.set(row);
         self.open.set(true);
-        self.cursor.set(0);
+    }
+
+    fn shown(self) -> bool {
+        self.open.get() && !self.filtered().is_empty()
+    }
+
+    fn edit(self, text: &str) {
+        self.reveal(0);
         let matches_selection = self
             .selected
             .peek()
@@ -217,7 +231,7 @@ pub fn combobox(state: Combobox) -> NodeBuilder {
         container()
             .role(Role::ComboBox)
             .label(label)
-            .expanded(state.open)
+            .expanded(derived(move || state.shown()))
             .layout(LayoutStyle::block().fill_width().height(FIELD_HEIGHT)),
         state,
     )
@@ -229,7 +243,7 @@ fn field_host(state: Combobox) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fill_width())
         .pointer_down_capture(move |_| {
-            if !state.disabled.is_some_and(|disabled| disabled.peek()) && !state.open.peek() {
+            if !state.open.peek() {
                 state.open();
             }
         })
@@ -259,9 +273,8 @@ fn build_field(state: Combobox) -> TextFieldBuilder {
 
 fn popup_host(state: Combobox) -> NodeBuilder {
     container().children_reactive(move || {
-        let matches = state.filtered();
-        if state.open.get() && !matches.is_empty() {
-            vec![build_popup(state, matches)]
+        if state.shown() {
+            vec![build_popup(state, state.filtered())]
         } else {
             Vec::new()
         }

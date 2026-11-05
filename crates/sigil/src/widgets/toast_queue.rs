@@ -16,7 +16,7 @@ const SWEEP_PERIOD: Duration = Duration::from_millis(250);
 pub(crate) struct ToastEntry {
     pub(crate) tone: Tone,
     pub(crate) message: String,
-    pushed_at: Instant,
+    shown_at: Option<Instant>,
 }
 
 const TOAST_TTL: Duration = Duration::from_secs(4);
@@ -48,9 +48,13 @@ impl ToastQueue {
         let entry = ToastEntry {
             tone,
             message: message.into(),
-            pushed_at: Instant::now(),
+            shown_at: None,
         };
-        self.entries.update(|entries| entries.push(entry));
+        let now = Instant::now();
+        self.entries.update(|entries| {
+            entries.push(entry);
+            stamp_visible(entries, now);
+        });
     }
 
     /// Shows an information toast.
@@ -74,8 +78,17 @@ impl ToastQueue {
     }
 
     fn dismiss_expired(self, now: Instant) {
+        let expired = |entry: &ToastEntry| {
+            entry
+                .shown_at
+                .is_some_and(|at| now.saturating_duration_since(at) >= TOAST_TTL)
+        };
+        if !self.entries.peek().iter().any(expired) {
+            return;
+        }
         self.entries.update(|entries| {
-            entries.retain(|e| now.saturating_duration_since(e.pushed_at) < TOAST_TTL);
+            entries.retain(|entry| !expired(entry));
+            stamp_visible(entries, now);
         });
     }
 
@@ -83,6 +96,17 @@ impl ToastQueue {
         let entries = self.entries.get();
         let start = entries.len().saturating_sub(MAX_VISIBLE);
         entries.get(start..).unwrap_or(&[]).to_vec()
+    }
+}
+
+fn stamp_visible(entries: &mut [ToastEntry], now: Instant) {
+    let start = entries.len().saturating_sub(MAX_VISIBLE);
+    for (index, entry) in entries.iter_mut().enumerate() {
+        if index < start {
+            entry.shown_at = None;
+        } else {
+            entry.shown_at.get_or_insert(now);
+        }
     }
 }
 

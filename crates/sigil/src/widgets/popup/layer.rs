@@ -70,7 +70,7 @@ impl PopupLayer {
 
     pub(crate) fn announce_open(self, name: &'static str, open: impl Fn() -> String + 'static) {
         let show = self.show;
-        let prev = Rc::new(Cell::new(true));
+        let prev = Rc::new(Cell::new(false));
         effect_named(name, move || {
             let open_now = show.get();
             let was_open = prev.replace(open_now);

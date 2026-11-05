@@ -33,6 +33,17 @@ pub(super) struct OptionCtx {
     pub(super) trigger_height: f32,
 }
 
+impl OptionCtx {
+    fn commit(self, index: usize, on_change: &IndexChange) {
+        if disabled_now(self.disabled) {
+            return;
+        }
+        self.selected.set(index);
+        on_change(index);
+        self.open.set(false);
+    }
+}
+
 pub(super) struct DropdownModel {
     pub(super) ctx: OptionCtx,
     pub(super) options: Rc<Vec<String>>,
@@ -65,12 +76,7 @@ impl ListModel for DropdownModel {
     }
 
     fn commit(&self, index: usize) {
-        if disabled_now(self.ctx.disabled) {
-            return;
-        }
-        self.ctx.selected.set(index);
-        (self.on_change)(index);
-        self.ctx.open.set(false);
+        self.ctx.commit(index, &self.on_change);
     }
 
     fn close(&self) {
@@ -113,9 +119,7 @@ fn build_option(
             if event.is_captured() || disabled_now(ctx.disabled) {
                 return;
             }
-            ctx.selected.set(index);
-            ctx.open.set(false);
-            on_change(index);
+            ctx.commit(index, &on_change);
             event.stop_propagation();
         })
         .pointer_enter(move |_| ctx.cursor.set(index))

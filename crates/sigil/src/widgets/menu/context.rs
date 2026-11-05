@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::events::MouseButton;
 use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::{LayoutStyle, Position};
@@ -19,9 +21,11 @@ pub fn context_menu(
     let open = signal(false);
     let pos: Signal<(f32, f32)> = signal((0.0, 0.0));
     let host = Owner::current();
+    let items = Rc::new(items);
+    let items_for_open = Rc::clone(&items);
     container()
         .pointer_down(move |event| {
-            if event.button == Some(MouseButton::Right) {
+            if event.button == Some(MouseButton::Right) && !items_for_open().is_empty() {
                 pos.set((event.window_position.x, event.window_position.y));
                 open.set(true);
                 event.stop_propagation();
@@ -40,6 +44,7 @@ pub fn context_menu(
                             .fill_height(),
                     )
                     .children_reactive(move || {
+                        let at = pos.get();
                         if !open.get() {
                             return Vec::new();
                         }
@@ -47,7 +52,7 @@ pub fn context_menu(
                         if rows.is_empty() {
                             return Vec::new();
                         }
-                        vec![anchored_menu(rows, open, pos.get(), host)]
+                        vec![anchored_menu(rows, open, at, host)]
                     }),
             ),
         )
