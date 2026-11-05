@@ -47,6 +47,7 @@ tokens! {
     SurfaceInset => "surface-inset",
     OnSurface => "on-surface",
     OnSurfaceMuted => "on-surface-muted",
+    Placeholder => "placeholder",
     Border => "border",
     BorderStrong => "border-strong",
     BorderSubtle => "border-subtle",

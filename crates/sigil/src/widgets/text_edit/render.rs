@@ -234,7 +234,7 @@ fn edit_lines(runtime: &TextEditRuntime, placeholder: TextContent) -> NodeBuilde
         .children_reactive(move || {
             let lines = if empty.get() {
                 let placeholder = placeholder.clone();
-                text(derived(move || placeholder.resolve())).class(Token::OnSurfaceMuted.text())
+                text(derived(move || placeholder.resolve())).class(Token::Placeholder.text())
             } else {
                 typed_lines(&runtime).class(Token::OnSurface.text())
             };

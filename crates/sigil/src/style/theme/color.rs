@@ -109,7 +109,7 @@ impl Theme {
             Token::SurfaceSubtle => self.surface_subtle(),
             Token::SurfaceInset | Token::TableHeader => self.gray.step(1),
             Token::BorderSubtle => alpha_mix(self.surface, self.border, 0.5),
-            Token::OnSurfaceMuted => self.text_muted(),
+            Token::OnSurfaceMuted | Token::Placeholder => self.text_muted(),
             Token::OnSolid => self.on_solid,
             Token::Scrim => SCRIM,
             _ => {
