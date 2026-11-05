@@ -9,6 +9,7 @@ use crate::renderer::layer_composite::LayerInstance;
 use crate::renderer::quad_paint::QuadInstance;
 use crate::renderer::renderer::record_clear;
 use crate::renderer::scene_command::SceneCommand;
+use crate::scene::command::{MAX_PIGMENTS, PatternKind};
 use crate::renderer::scene_instance::MAX_GRADIENT_STOPS;
 use crate::renderer::scene_instance::{
     FillInstance, GpuStop, RectInstance, SceneUniforms, ShadowInstance,
@@ -86,8 +87,12 @@ impl SplitEncoder {
                     storage += (stops * size_of::<GpuStop>()) as u64 + self.storage_alignment;
                     vertices += size_of::<FillInstance>() as u64;
                 }
-                SceneCommand::Pattern(_) => {
-                    storage += size_of::<GpuStop>() as u64 + self.storage_alignment;
+                SceneCommand::Pattern(draw) => {
+                    let stops = match draw.pattern {
+                        PatternKind::Wash(_) => MAX_PIGMENTS + 1,
+                        _ => 1,
+                    };
+                    storage += (stops * size_of::<GpuStop>()) as u64 + self.storage_alignment;
                     vertices += size_of::<FillInstance>() as u64;
                 }
                 SceneCommand::DrawShadow { .. } => vertices += size_of::<ShadowInstance>() as u64,

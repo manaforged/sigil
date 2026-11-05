@@ -35,6 +35,8 @@ pub enum PatternKind {
         /// The cell.
         cell: f32,
     },
+    /// The watercolour wash pattern kind.
+    Wash(super::wash::Wash),
 }
 
 impl PatternKind {
@@ -68,6 +70,7 @@ impl PatternKind {
                 color_b,
                 cell: pattern_length(cell),
             },
+            Self::Wash(wash) => Self::Wash(wash.normalized()),
         }
     }
 
@@ -77,9 +80,12 @@ impl PatternKind {
         match self.normalized() {
             Self::Slash { period, .. } => period,
             Self::Checker { cell, .. } => cell * 2.0,
+            Self::Wash(_) => WASH_EXTENT,
         }
     }
 }
+
+const WASH_EXTENT: f32 = 1.0e6;
 
 pub(crate) const TRANSPARENT: Rgba8 = Rgba8 {
     r: 0,

@@ -54,6 +54,7 @@ impl BlendSpace {
 pub(crate) const FILL_KIND_GRADIENT: u32 = 0;
 pub(crate) const FILL_KIND_SLASH: u32 = 1;
 pub(crate) const FILL_KIND_CHECKER: u32 = 2;
+pub(crate) const FILL_KIND_WASH: u32 = 3;
 
 pub(crate) const fn affine_rows(transform: Transform) -> [[f32; 4]; 2] {
     let [[a, b, tx], [c, d, ty]] = transform;
@@ -206,13 +207,14 @@ pub(crate) fn draw_pattern_instance(
     draw: &DrawPattern,
     opacity_scale: f32,
     space: BlendSpace,
+    [stop_offset, stop_count]: [u32; 2],
 ) -> FillInstance {
     let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
     let base = fill_base(draw.rect, draw.border_radius, draw.stroke, opacity, space);
     let (fill_kind, line, pattern_a, pattern_b) = pack_pattern(draw.pattern, space);
     FillInstance {
         line,
-        stop_range: [0, 0, fill_kind, 0],
+        stop_range: [stop_offset, stop_count, fill_kind, 0],
         pattern_a,
         pattern_b,
         ..base
@@ -268,7 +270,31 @@ fn pack_pattern(kind: PatternKind, space: BlendSpace) -> PatternPack {
             premultiplied(space, color_a),
             premultiplied(space, color_b),
         ),
+        PatternKind::Wash(wash) => (
+            FILL_KIND_WASH,
+            [wash.scale, wash.seed as f32, 0.0, 0.0],
+            [wash.density, wash.pools, wash.edges, wash.granulation],
+            [
+                wash.grain,
+                wash.specks,
+                f32::from(u8::from(wash.band) | (u8::from(wash.dark()) << 1)),
+                0.0,
+            ],
+        ),
     }
+}
+
+/// The paper and pigment stops a wash reads, with their positions in the palette.
+pub(crate) fn wash_stops(kind: PatternKind) -> Option<Vec<GradientStop>> {
+    let PatternKind::Wash(wash) = kind else {
+        return None;
+    };
+    Some(
+        wash.palette()
+            .enumerate()
+            .map(|(index, color)| GradientStop::new(index as f32, color))
+            .collect(),
+    )
 }
 
 fn premultiplied(space: BlendSpace, color: Rgba8) -> [f32; 4] {

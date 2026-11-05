@@ -9,7 +9,7 @@ use crate::renderer::scene_command::{
 };
 use crate::renderer::scene_instance::{
     BlendSpace, draw_gradient_instance, draw_pattern_instance, draw_rect_instance,
-    draw_shadow_instance, gradient_stop_records,
+    draw_shadow_instance, gradient_stop_records, wash_stops,
 };
 use crate::renderer::scene_paint::{PaintCtx, ScenePipeline};
 use crate::renderer::shadow_paint::Shadow;
@@ -154,7 +154,13 @@ impl SceneWalk<'_> {
         local.border_radius = trimmed.radii;
         let phase = tile_phase(trimmed.shift, draw.pattern.tile_extent());
         let space = BlendSpace::from_format(self.ctx.format);
-        let instance = draw_pattern_instance(&local, self.state.current_opacity(), space);
+        let stops = wash_stops(draw.pattern).map_or_else(Vec::new, |stops| gradient_stop_records(&stops, space));
+        let range = [
+            u32::try_from(self.ctx.pending.stops.len()).unwrap_or(u32::MAX),
+            u32::try_from(stops.len()).unwrap_or(u32::MAX),
+        ];
+        self.ctx.pending.stops.extend(stops);
+        let instance = draw_pattern_instance(&local, self.state.current_opacity(), space, range);
         self.ctx.pending.fills.push(
             instance
                 .with_phase(phase)

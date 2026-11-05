@@ -48,7 +48,7 @@ kittest_pub! {
 }
 #[cfg(any(test, feature = "terminal"))]
 pub(crate) use command::{CellBorder, TextFlow};
-pub use command::{CommandScene, DrawRect, GlyphRun, SceneCommand};
+pub use command::{CommandScene, DrawRect, GlyphRun, SceneCommand, Wash};
 kittest_pub! {
     #[doc(hidden)]
     pub use command::Transform;

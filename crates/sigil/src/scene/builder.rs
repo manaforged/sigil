@@ -1,6 +1,7 @@
 #![allow(clippy::redundant_pub_crate)]
 #[cfg(any(test, feature = "kittest"))]
-use crate::scene::command::{DrawPattern, DrawSprite};
+use crate::scene::command::DrawSprite;
+use crate::scene::command::{DrawPattern, PatternKind, Wash};
 
 use crate::geometry::Rect;
 use crate::kernel::NodeId;
@@ -25,6 +26,12 @@ impl SceneBuilder {
         Self {
             commands: Vec::new(),
         }
+    }
+
+    /// Fills `rect` with a watercolour wash.
+    pub fn draw_wash(&mut self, rect: Rect, wash: Wash) {
+        self.commands
+            .push(SceneCommand::Pattern(DrawPattern::new(rect, PatternKind::Wash(wash))));
     }
 
     /// Appends a rectangle.
