@@ -45,7 +45,7 @@ The family pages carry signatures, options, and behavior notes:
 - **markdown(Signal\<String\>)**: a read-only document: headings, paragraphs, lists, fenced code, pipe tables, plus `**bold**`, `` `code` ``, and `[label](url)`. Not an in-place editor.
 - **html(Signal\<String\>)**: the same nodes as `markdown`, from an HTML subset (`h1`-`h3`, `p`, `ul`/`ol`/`li`, `pre`/`code`, `a`, `strong`/`em`, `table`). Scripts and styles are dropped. Not a browser.
 - **markdown_edit(Signal\<String\>)**: a source `text_edit` plus a live `markdown` preview. The caret stays in the source string.
-- **terminal(lines, on_input)**: a mono `virtual_list` of PTY rows, pinned to the bottom. Bind a prelude `Session` (feature `pty`). Paint is `Session.lines`. `Session::write` needs `Session::spawn`.
+- **terminal(lines, on_input)**: a mono `virtual_list` of PTY rows, pinned to the bottom. Bind a prelude `Session` (feature `pty`). Paint is `Session.lines`. `Session::write` needs `Session::spawn` or `Session::spawn_in`. A focused terminal receives every key except command-key shortcuts.
 - **surface(key)**: a layout hole for a native view. After layout, `Host::surfaces` returns the rect. The GPU does not paint it.
 
 ## Containers and overlays

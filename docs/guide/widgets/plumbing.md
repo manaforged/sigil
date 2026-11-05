@@ -49,9 +49,9 @@ drag_ghost(drag, |item| text(item.clone()).nowrap());
 
 ## terminal
 
-`terminal(lines: Signal<Vec<String>>, on_input: Fn(String)) -> NodeBuilder`. A dumb pipe view, not an emulator: it paints `lines` as monospace rows in a `virtual_list` pinned to the bottom, and forwards key-down input as strings: typed text verbatim, Enter as `\n`, Backspace as `DEL`, Tab as `\t`. The node is a focusable `Role::TextInput`.
+`terminal(lines: Signal<Vec<String>>, on_input: Fn(String)) -> NodeBuilder`. A dumb pipe view, not an emulator: it paints `lines` as monospace rows in a `virtual_list` pinned to the bottom, and forwards key-down input as terminal bytes: typed text verbatim, Enter as `\r`, Backspace as `DEL`, Tab as `\t`, Escape, the arrows, Home, End and Delete as their escape sequences, and Ctrl+letter as its control byte. The node is a focusable `Role::Terminal`, and nothing inside it takes focus. While it has focus it receives every key, Tab included, and the window's handlers and shortcuts see only keys held with the command key.
 
-Pair it with `Session` (`sigil::app::Session` or via the prelude under `pty`): `Session::spawn(program)` opens a PTY, parses output through vt100 into `session.lines` (a `Signal<Vec<String>>`), and `session.write(&bytes)` sends input to the child. Spawn requires a `Owner::scope` owner. `Session` exists only with the `pty` feature. Dropping the session kills the child. The `terminal` widget itself is not feature-gated. Feed it lines from anywhere.
+Pair it with `Session` (`sigil::app::Session` or via the prelude under `pty`): `Session::spawn(program)` opens a PTY (`Session::spawn_in(program, dir)` starts it in `dir`), parses output through vt100 into `session.lines` (a `Signal<Vec<String>>`), and `session.write(&bytes)` sends input to the child. Spawn requires a `Owner::scope` owner. `Session` exists only with the `pty` feature. Dropping the session kills the child. The `terminal` widget itself is not feature-gated. Feed it lines from anywhere.
 
 ## States, keys, and accessibility
 

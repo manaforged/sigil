@@ -189,6 +189,14 @@ name = "terminal_probe"
 required-features = ["terminal", "pty"]
 
 [[test]]
+name = "terminal_keys"
+required-features = ["terminal"]
+
+[[test]]
+name = "terminal_session"
+required-features = ["pty"]
+
+[[test]]
 name = "image_jpeg"
 required-features = ["image-decode"]
 

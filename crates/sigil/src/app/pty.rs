@@ -34,6 +34,15 @@ impl Session {
 
     /// Starts `program` in a new pseudo-terminal.
     pub fn spawn(program: &str) -> AppResult<Self> {
+        Self::start(program, None)
+    }
+
+    /// Starts `program` in a new pseudo-terminal with `dir` as its working directory.
+    pub fn spawn_in(program: &str, dir: &std::path::Path) -> AppResult<Self> {
+        Self::start(program, Some(dir))
+    }
+
+    fn start(program: &str, dir: Option<&std::path::Path>) -> AppResult<Self> {
         use std::io::Write;
         use std::thread;
 
@@ -57,10 +66,11 @@ impl Session {
                 pixel_height: 0,
             })
             .map_err(pty_err)?;
-        let mut child = pair
-            .slave
-            .spawn_command(CommandBuilder::new(program))
-            .map_err(pty_err)?;
+        let mut command = CommandBuilder::new(program);
+        if let Some(dir) = dir {
+            command.cwd(dir);
+        }
+        let mut child = pair.slave.spawn_command(command).map_err(pty_err)?;
         let killer = child.clone_killer();
         let reader = pair.master.try_clone_reader().map_err(pty_err)?;
         let mut writer = pair.master.take_writer().map_err(pty_err)?;
