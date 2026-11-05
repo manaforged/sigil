@@ -67,6 +67,7 @@ lucide_icons! {
     EyeOff => "eye-off",
     Eye => "eye",
     FileCode => "file-code",
+    FileDiff => "file-diff",
     FileText => "file-text",
     File => "file",
     FolderOpen => "folder-open",
