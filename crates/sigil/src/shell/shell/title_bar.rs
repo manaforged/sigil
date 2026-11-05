@@ -42,17 +42,22 @@ pub(super) fn centre_controls(window: &Window, bar: f32) {
     };
     let height = ns_window.frame().size.height;
     let mut frame: NSRect = container.frame();
-    frame.origin.y = height - bar;
-    frame.size.height = bar;
-    container.setFrame(frame);
+    if (frame.origin.y - (height - bar)).abs() > 0.5 || (frame.size.height - bar).abs() > 0.5 {
+        frame.origin.y = height - bar;
+        frame.size.height = bar;
+        container.setFrame(frame);
+    }
     for (index, kind) in buttons.into_iter().enumerate() {
         let Some(button) = ns_window.standardWindowButton(kind) else {
             continue;
         };
-        let size = button.frame().size;
+        let now = button.frame();
         #[allow(clippy::cast_precision_loss, reason = "three buttons")]
         let x = CONTROLS_LEFT + index as f64 * CONTROLS_GAP;
-        button.setFrameOrigin(NSPoint::new(x, (bar - size.height) / 2.0));
+        let y = (bar - now.size.height) / 2.0;
+        if (now.origin.x - x).abs() > 0.5 || (now.origin.y - y).abs() > 0.5 {
+            button.setFrameOrigin(NSPoint::new(x, y));
+        }
     }
 }
 

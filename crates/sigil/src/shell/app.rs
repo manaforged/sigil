@@ -118,6 +118,9 @@ where
                 }
                 self.app_redraw_pending = false;
                 let target = self.shell.handle_for(window_id);
+                if let Some(handle) = target {
+                    self.shell.centre_controls(handle);
+                }
                 self.run_frame(event_loop, target);
             }
             event => {

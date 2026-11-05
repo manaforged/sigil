@@ -210,7 +210,7 @@ impl WinitShell {
         self.redraw_target = target;
     }
 
-    fn centre_controls(&self, handle: WinitWindowHandle) {
+    pub(crate) fn centre_controls(&self, handle: WinitWindowHandle) {
         let bar = self.title_bars.iter().find_map(|(h, bar)| (*h == handle).then_some(*bar));
         if let (Some(bar), Some(window)) = (bar, self.window_for(handle)) {
             title_bar::centre_controls(window, bar);
