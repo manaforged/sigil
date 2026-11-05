@@ -12,6 +12,7 @@ mod flow_layout;
 mod flow_paint;
 mod flow_parse;
 mod flow_route;
+mod flow_vector;
 mod label;
 mod pie;
 mod rank;
@@ -26,6 +27,24 @@ pub fn mermaid(source: impl Reactive<String>) -> NodeBuilder {
 }
 
 pub(crate) fn figure(source: &str) -> NodeBuilder {
+    if !crate::style::Metrics::current().is_grid()
+        && !crate::widgets::source_too_large(source)
+        && let Some((diagram, width)) = flow_vector::figure(&bound_source(source))
+    {
+        let centred = container()
+            .layout(
+                LayoutStyle::flex_row()
+                    .fill_width()
+                    .min_size(width, 0.0)
+                    .justify_content(crate::layout::JustifyContent::Center),
+            )
+            .child(diagram);
+        return Horizontal::new(signal(width), None)
+            .wrap(centred)
+            .role(Role::Figure)
+            .label(diagram_name(source))
+            .description(bound_source(source).trim_end().to_string());
+    }
     let lines = draw(source);
     let width = lines
         .iter()

@@ -77,9 +77,14 @@ pub(super) fn draw(source: &str) -> Option<Vec<String>> {
 }
 
 pub(super) fn render(graph: Graph) -> Vec<String> {
+    let (graph, rects) = arrange(graph);
+    graph.paint(&rects)
+}
+
+pub(super) fn arrange(graph: Graph) -> (Graph, Vec<GridRect>) {
     let ranks = graph.fold(graph.rank());
     let (graph, ranks) = expand(graph, ranks);
     let layers = graph.order(&ranks);
     let rects = graph.place(&ranks, &layers);
-    graph.paint(&rects)
+    (graph, rects)
 }
