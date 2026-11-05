@@ -9,6 +9,7 @@ use accesskit::{NodeId as AccessNodeId, TreeId, TreeUpdate};
 use smallvec::{SmallVec, smallvec};
 
 use crate::events::hit_test::visible;
+use crate::events::ime_handlers::ImeSession;
 
 mod scope;
 mod targets;
@@ -79,6 +80,7 @@ pub(crate) struct FocusManager {
     ring_generation: u64,
     ring_layout_generation: u64,
     scope_stack: Vec<FocusScopeEntry>,
+    pub(crate) ime_session: ImeSession,
 }
 
 impl Default for FocusManager {
@@ -89,6 +91,7 @@ impl Default for FocusManager {
             ring_generation: u64::MAX,
             ring_layout_generation: u64::MAX,
             scope_stack: Vec::new(),
+            ime_session: ImeSession::Idle,
         }
     }
 }
@@ -112,6 +115,7 @@ impl FocusManager {
         if self.focused == target {
             return;
         }
+        self.ime_session.end(cx);
         let previous = self.focused;
         self.focused = target;
         if let Some(previous) = previous {

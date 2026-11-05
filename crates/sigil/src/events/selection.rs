@@ -48,8 +48,10 @@ fn clear() {
 }
 
 pub(crate) fn drag(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
-    if matches!(event.phase, PointerPhase::Move | PointerPhase::Up) {
-        extend(cx, layout, event);
+    match event.phase {
+        PointerPhase::Move | PointerPhase::Up => extend(cx, layout, event),
+        PointerPhase::Cancel => end_drag(),
+        _ => {}
     }
 }
 

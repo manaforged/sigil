@@ -41,7 +41,7 @@ pub fn invoke_node(
     layout: &crate::layout::LayoutEngine,
     target: crate::kernel::NodeId,
 ) {
-    pointer_dispatch::invoke_node(cx, layout, target);
+    pointer_dispatch::invoke_node(cx, layout, target, false);
 }
 
 pub(crate) use crate::hal::events::ClickConfig;

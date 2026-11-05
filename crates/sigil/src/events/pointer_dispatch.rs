@@ -108,14 +108,17 @@ pub(crate) fn pointer_targets(
     targets
 }
 
-pub(crate) fn invoke_node(cx: &Cx, layout: &LayoutEngine, target: NodeId) {
+pub(crate) fn invoke_node(cx: &Cx, layout: &LayoutEngine, target: NodeId, hovered: bool) {
     let target = pointer_target_for_node(cx, layout, target, false);
-    for phase in [
+    let press = [PointerPhase::Down, PointerPhase::Up];
+    let visit = [
         PointerPhase::Enter,
         PointerPhase::Down,
         PointerPhase::Up,
         PointerPhase::Leave,
-    ] {
+    ];
+    let phases: &[PointerPhase] = if hovered { &press } else { &visit };
+    for phase in phases.iter().copied() {
         let button =
             matches!(phase, PointerPhase::Down | PointerPhase::Up).then_some(MouseButton::Left);
         let mut event = mouse_event(target.origin, button, phase);

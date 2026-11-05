@@ -17,7 +17,7 @@ pub(crate) fn apply(
     match request.action {
         Action::Focus if focusable => router.set_focus(cx, Some(target)),
         Action::Click if clickable => {
-            crate::events::pointer_dispatch::invoke_node(cx, layout, target);
+            router.invoke_node(cx, layout, target);
         }
         Action::Increment if focusable => adjust_value(cx, target, true),
         Action::Decrement if focusable => adjust_value(cx, target, false),

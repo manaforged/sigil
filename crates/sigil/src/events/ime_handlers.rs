@@ -50,36 +50,44 @@ pub(crate) enum ImeSession {
     Cancelled,
 }
 
+impl ImeSession {
+    pub(crate) fn end(&mut self, cx: &Cx) {
+        if let Self::Active(owner) = *self {
+            dispatch_to_owner(cx, owner, &ImeEvent::Disabled);
+            *self = Self::Cancelled;
+        }
+    }
+}
+
 impl EventRouter {
     pub(crate) fn route_ime(&mut self, cx: &Cx, layout: &LayoutEngine, event: &ImeEvent) {
-        if let ImeSession::Active(owner) = self.ime_session
+        if let ImeSession::Active(owner) = self.focus.ime_session
             && (self.focus() != Some(owner) || !valid_ime_target(self, cx, layout, owner))
         {
-            dispatch_to_owner(cx, owner, &ImeEvent::Disabled);
-            self.ime_session = ImeSession::Cancelled;
+            self.focus.ime_session.end(cx);
         }
-        match (self.ime_session, event) {
+        match (self.focus.ime_session, event) {
             (ImeSession::Idle, ImeEvent::Enabled | ImeEvent::Preedit(..))
             | (ImeSession::Cancelled, ImeEvent::Enabled) => {
-                self.ime_session = self
+                self.focus.ime_session = self
                     .focus()
                     .filter(|id| valid_ime_target(self, cx, layout, *id))
                     .map_or(ImeSession::Idle, ImeSession::Active);
             }
             (ImeSession::Cancelled, ImeEvent::Disabled) => {
-                self.ime_session = ImeSession::Idle;
+                self.focus.ime_session = ImeSession::Idle;
                 return;
             }
             (ImeSession::Cancelled, ImeEvent::Preedit(..) | ImeEvent::Commit(_))
             | (ImeSession::Idle, ImeEvent::Commit(_) | ImeEvent::Disabled) => return,
             (ImeSession::Active(_), _) => {}
         }
-        let ImeSession::Active(owner) = self.ime_session else {
+        let ImeSession::Active(owner) = self.focus.ime_session else {
             return;
         };
         dispatch_to_owner(cx, owner, event);
         if matches!(event, ImeEvent::Disabled) {
-            self.ime_session = ImeSession::Idle;
+            self.focus.ime_session = ImeSession::Idle;
         }
     }
 

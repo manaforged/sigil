@@ -24,8 +24,7 @@ pub(crate) use paste::PasteHandlers;
 kittest_pub! {
     #[derive(Debug, Default)]
     pub struct EventRouter {
-        focus: FocusManager,
-        pub(crate) ime_session: crate::events::ime_handlers::ImeSession,
+        pub(crate) focus: FocusManager,
         pointer_capture: Option<NodeId>,
         hover_targets: PointerTargets,
         last_pointer: Option<PointerEvent>,
@@ -216,7 +215,7 @@ impl EventRouter {
         }
         let Some(path) = self.hit_cache.hit_path(cx, layout, event.position) else {
             self.clear_hover(cx, &event);
-            self.release_capture_on_terminal_phase(event.phase);
+            self.end_press(event.phase);
             return;
         };
         if event.phase == PointerPhase::Down {
@@ -231,7 +230,7 @@ impl EventRouter {
         if event.capture_requested() {
             self.pointer_capture = capture_requester.or_else(|| path.last().copied());
         }
-        self.release_capture_on_terminal_phase(event.phase);
+        self.end_press(event.phase);
     }
 
     fn follow_link(&mut self, cx: &Cx, path: &NodePath, event: &PointerEvent, at: Point) {
@@ -264,7 +263,10 @@ impl EventRouter {
             self.pointer_capture = None;
             return false;
         };
-        if !matches!(event.phase, PointerPhase::Move | PointerPhase::Up) {
+        if !matches!(
+            event.phase,
+            PointerPhase::Move | PointerPhase::Up | PointerPhase::Cancel
+        ) {
             return false;
         }
         event.set_captured(true);
@@ -274,8 +276,13 @@ impl EventRouter {
             event,
             global_position,
         );
-        self.release_capture_on_terminal_phase(event.phase);
+        self.end_press(event.phase);
         true
+    }
+
+    pub(crate) fn invoke_node(&self, cx: &Cx, layout: &LayoutEngine, target: NodeId) {
+        let hovered = self.hover_targets.iter().any(|hover| hover.id == target);
+        crate::events::pointer_dispatch::invoke_node(cx, layout, target, hovered);
     }
 
     pub(crate) fn reconcile_hover(&mut self, cx: &Cx, layout: &LayoutEngine) {
@@ -335,6 +342,7 @@ impl EventRouter {
                 pointer_target_for_node(cx, layout, captured, self.hit_cache.visual_transforms);
             dispatch_synthetic_target(cx, target, &source, PointerPhase::Cancel);
         }
+        self.link_press = None;
         crate::events::selection::end_drag();
         self.clear_hover(cx, &source);
     }
@@ -346,12 +354,10 @@ impl EventRouter {
         self.hover_targets.clear();
     }
 
-    const fn release_capture_on_terminal_phase(&mut self, phase: PointerPhase) {
-        if matches!(
-            phase,
-            PointerPhase::Up | PointerPhase::Leave | PointerPhase::Cancel
-        ) {
+    fn end_press(&mut self, phase: PointerPhase) {
+        if matches!(phase, PointerPhase::Up | PointerPhase::Cancel) {
             self.pointer_capture = None;
+            self.link_press = None;
         }
     }
 
