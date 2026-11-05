@@ -60,6 +60,7 @@ where
     F: Fn(T) + 'static,
     C: FnOnce() + 'static,
 {
+    let location = core::panic::Location::caller();
     let Some((owner, parts)) = scope_parts("on_message") else {
         return;
     };
@@ -79,6 +80,7 @@ where
             }
             dispatch_to_owner(&dispatcher, owner, move || {
                 if let Some(current) = slot.into_signal().try_peek() {
+                    let _site = crate::profile::site(location, crate::profile::SiteKind::Message);
                     crate::reactive::batch(|| burst.into_iter().for_each(|value| (current.message)(value)));
                 }
             });

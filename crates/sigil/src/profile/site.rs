@@ -12,6 +12,8 @@ pub enum SiteKind {
     Effect,
     /// A child list built, moved or removed its nodes.
     Mount,
+    /// A task message handler ran on the UI thread.
+    Message,
 }
 
 impl SiteKind {
@@ -21,6 +23,7 @@ impl SiteKind {
         match self {
             Self::Effect => "effect",
             Self::Mount => "mount",
+            Self::Message => "message",
         }
     }
 }
