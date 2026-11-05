@@ -8,7 +8,7 @@ use crate::layout::{
     CaretGeometry, IntoPx, LayoutStyle, Overflow, Position, TextStyleCapture, rows,
     with_text_geometry,
 };
-use crate::reactive::{Signal, derived, effect};
+use crate::reactive::{Owner, Signal, derived, effect, interval, signal};
 use crate::style::TransitionId;
 use crate::style::{
     BORDER_WIDTH, DISABLED_OPACITY, Radius, StateStyle, StyleAtom, StyleOverlay, StyleVariant,
@@ -141,16 +141,42 @@ fn edit_inner(
 
 static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.bg()];
 const CARET_W: f32 = 1.5;
+const BLINK: core::time::Duration = core::time::Duration::from_millis(530);
+
+/// Whether a focused caret is lit: it blinks, and stays lit for a beat after `moved` changes.
+pub(in crate::widgets) fn blink(interaction: InteractionState, moved: impl Fn() + 'static) -> Signal<bool> {
+    let lit = signal(true);
+    let held = std::rc::Rc::new(std::cell::Cell::new(false));
+    let hold = held.clone();
+    effect(move || {
+        moved();
+        interaction.focus_visible().with(|_| ());
+        hold.set(true);
+        lit.set(true);
+    });
+    if Owner::current().is_some() {
+        interval(BLINK, move || {
+            if interaction.focus_visible().peek() && !held.replace(false) {
+                lit.set(!lit.peek());
+            }
+        });
+    }
+    lit
+}
 
 fn caret_layer(runtime: &TextEditRuntime, interaction: InteractionState) -> NodeBuilder {
     let value = runtime.value;
     let caret = runtime.caret;
     let caret_visible = runtime.caret_visible;
+    let lit = blink(interaction, move || {
+        value.with(|_| ());
+        caret.with(|_| ());
+    });
     let runtime = runtime.clone();
     fragment()
         .layout(LayoutStyle::block())
         .children_reactive(move || {
-            if !interaction.focus_visible().get() || !caret_visible.get() {
+            if !interaction.focus_visible().get() || !caret_visible.get() || !lit.get() {
                 return Vec::new();
             }
             let (buffer, byte) = runtime.ime.composing_caret(&value.get(), caret.get());

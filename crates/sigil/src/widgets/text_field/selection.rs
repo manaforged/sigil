@@ -10,7 +10,7 @@ use crate::widgets::Widget;
 
 use crate::widgets::interaction::InteractionState;
 
-use super::super::text_edit::overlay_rect;
+use super::super::text_edit::{blink, overlay_rect};
 use super::handlers::TextFieldRuntime;
 
 const CARET_W: f32 = 2.0;
@@ -68,7 +68,16 @@ fn track(
             let runtime = runtime.clone();
             overlay_layer().children_reactive(move || selection_rects(&runtime))
         })
-        .child(overlay_layer().children_reactive(move || caret_rects(&runtime, interaction)))
+        .child({
+            let (value, caret) = (runtime.input.value, runtime.input.caret);
+            let lit = blink(interaction, move || {
+                value.with(|_| ());
+                caret.with(|_| ());
+            });
+            overlay_layer().children_reactive(move || {
+                if lit.get() { caret_rects(&runtime, interaction) } else { Vec::new() }
+            })
+        })
         .child(field_text(displayed, placeholder_visible))
 }
 
