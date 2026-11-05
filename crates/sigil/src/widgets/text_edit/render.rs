@@ -88,7 +88,7 @@ pub(super) fn edit_layout() -> LayoutStyle {
 }
 
 fn edit_inner(
-    lines: TextBuilder,
+    lines: NodeBuilder,
     runtime: &TextEditRuntime,
     (interaction, chrome): (InteractionState, bool),
 ) -> NodeBuilder {
@@ -198,26 +198,44 @@ fn pointer_drag(
     }
 }
 
-fn edit_lines(runtime: &TextEditRuntime, placeholder: TextContent) -> TextBuilder {
+fn edit_lines(runtime: &TextEditRuntime, placeholder: TextContent) -> NodeBuilder {
+    let (value, preedit) = (runtime.value, runtime.ime.preedit);
+    let empty = derived(move || value.get().is_empty() && preedit.get().is_empty());
+    let runtime = runtime.clone();
+    container()
+        .hittable(false)
+        .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0))
+        .children_reactive(move || {
+            let lines = if empty.get() {
+                let placeholder = placeholder.clone();
+                text(derived(move || placeholder.resolve())).class(Token::OnSurfaceMuted.text())
+            } else {
+                typed_lines(&runtime).class(Token::OnSurface.text())
+            };
+            let text_style = runtime.text_style;
+            vec![
+                lines
+                    .mutate(move |node| {
+                        let _ = node.attach(TextStyleCapture::new(text_style));
+                    })
+                    .hittable(false)
+                    .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0)),
+            ]
+        })
+        .into()
+}
+
+fn typed_lines(runtime: &TextEditRuntime) -> TextBuilder {
     let (value, preedit, caret) = (runtime.value, runtime.ime.preedit, runtime.caret);
-    let text_style = runtime.text_style;
     text(derived(move || {
-        let current = value.get();
         let composing = preedit.get();
-        if !composing.is_empty() {
-            splice_preedit(&current, caret.get(), &composing)
-        } else if current.is_empty() {
-            placeholder.resolve()
-        } else {
+        let current = value.get();
+        if composing.is_empty() {
             current
+        } else {
+            splice_preedit(&current, caret.get(), &composing)
         }
     }))
-    .mutate(move |node| {
-        let _ = node.attach(TextStyleCapture::new(text_style));
-    })
-    .hittable(false)
-    .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0))
-    .class(Token::OnSurface.text())
 }
 
 pub(crate) fn splice_preedit(value: &str, caret: usize, preedit: &str) -> String {
