@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 use std::rc::Rc;
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container, node, schedule_keyed_rebuild};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container, node, schedule_keyed_rebuild_at};
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Signal, derived, effect_named, signal as signal_of};
 use crate::widgets::Widget;
@@ -26,6 +26,7 @@ pub(super) struct BoundStrip<T, R> {
     pub row_key: Option<super::RowKey<T>>,
     pub measure: Option<Measure>,
     pub tops: Option<Tops>,
+    pub location: &'static core::panic::Location<'static>,
 }
 
 pub(super) fn bound_strip<S, T, R>(
@@ -170,7 +171,7 @@ where
             self.generation.get(),
             Some(&self.prior),
         );
-        schedule_keyed_rebuild(self.parent, Rc::clone(&self.prior), incoming);
+        schedule_keyed_rebuild_at(self.parent, self.spec.location, Rc::clone(&self.prior), incoming);
     }
 }
 

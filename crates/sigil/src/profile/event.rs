@@ -8,6 +8,12 @@ pub(crate) enum TraceEvent {
         start_us: u64,
         dur_us: u64,
     },
+    Site {
+        location: &'static core::panic::Location<'static>,
+        kind: crate::profile::site::SiteKind,
+        start_us: u64,
+        dur_us: u64,
+    },
     Instant {
         name: &'static str,
         cat: &'static str,

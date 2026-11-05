@@ -10,6 +10,7 @@ use serde_json::{Value, json};
 
 use crate::profile::attr::Attribution;
 use crate::profile::event::TraceEvent;
+use crate::profile::site::{Site, SiteKind};
 use crate::profile::key::{
     BackendStatus, Cause, Counter, CounterValue, Phase, PhaseTime, accumulate,
 };
@@ -20,6 +21,7 @@ const ENV_UNSET: u8 = 0;
 const ENV_OFF: u8 = 1;
 const ENV_ON: u8 = 2;
 const WARN_CAP: u8 = 8;
+const SITE_SLICE_NS: u64 = 50_000;
 
 kittest_pub! {
     /// The budget of one 60 Hz frame in nanoseconds.
@@ -57,6 +59,8 @@ pub struct Frame {
     pub hot: Vec<Attribution>,
     /// The gpu passes.
     pub gpu_passes: Vec<(&'static str, u64)>,
+    /// The time each effect and child list line took, slowest first once the frame closes.
+    pub sites: Vec<Site>,
     /// The end us.
     pub end_us: u64,
 }
@@ -99,11 +103,16 @@ impl Frame {
     /// Returns the working phase that took longest, preferring nested phases over their parents.
     #[must_use]
     pub fn hottest(&self) -> Option<PhaseTime> {
+        let wait = self.total_ns().saturating_sub(self.work_ns());
         let working = || {
             self.phases
                 .iter()
                 .copied()
                 .filter(|(phase, _)| *phase != Phase::GpuWait)
+                .map(move |(phase, ns)| match phase {
+                    Phase::Paint | Phase::RenderCpu => (phase, ns.saturating_sub(wait)),
+                    _ => (phase, ns),
+                })
         };
         working()
             .filter(|(phase, _)| !phase.is_top_level())
@@ -122,6 +131,8 @@ struct Store {
     open_start: Option<Instant>,
     next_flow: u64,
     open_flow: Option<(&'static str, u64, u64)>,
+    site_stack: Vec<u64>,
+    site_index: ahash::AHashMap<(usize, SiteKind), usize>,
 }
 
 impl Store {
@@ -136,6 +147,8 @@ impl Store {
             open_start: None,
             next_flow: 1,
             open_flow: None,
+            site_stack: Vec::new(),
+            site_index: ahash::AHashMap::new(),
         }
     }
 
@@ -226,6 +239,38 @@ pub(crate) fn complete(phase: Phase, start_us: u64, dur_ns: u64) {
     });
 }
 
+pub(crate) fn site_enter() {
+    with_store(|store| store.site_stack.push(0));
+}
+
+pub(crate) fn site_exit(
+    location: &'static core::panic::Location<'static>,
+    kind: SiteKind,
+    start_us: u64,
+    total_ns: u64,
+) {
+    with_store(|store| {
+        let nested = store.site_stack.pop().unwrap_or(0);
+        if let Some(parent) = store.site_stack.last_mut() {
+            *parent = parent.saturating_add(total_ns);
+        }
+        let self_ns = total_ns.saturating_sub(nested);
+        let key = (core::ptr::from_ref(location) as usize, kind);
+        let sites = &mut store.open.sites;
+        let index = *store.site_index.entry(key).or_insert_with(|| {
+            sites.push(Site { location, kind, self_ns: 0, total_ns: 0, runs: 0 });
+            sites.len() - 1
+        });
+        let site = &mut sites[index];
+        site.self_ns = site.self_ns.saturating_add(self_ns);
+        site.total_ns = site.total_ns.saturating_add(total_ns);
+        site.runs = site.runs.saturating_add(1);
+        if total_ns >= SITE_SLICE_NS {
+            store.push(TraceEvent::Site { location, kind, start_us, dur_us: total_ns / 1_000 });
+        }
+    });
+}
+
 pub(crate) fn count_add(counter: Counter, n: u64) {
     with_store(|store| accumulate(&mut store.open.counts, counter, n));
 }
@@ -288,6 +333,8 @@ fn close_frame(store: &mut Store) {
         });
     }
     let mut frame = std::mem::take(&mut store.open);
+    store.site_index.clear();
+    frame.sites.sort_by_key(|site| std::cmp::Reverse(site.self_ns));
     for &(counter, value) in &frame.counts {
         store.push(TraceEvent::Counter {
             counter,

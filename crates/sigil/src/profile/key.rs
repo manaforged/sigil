@@ -256,6 +256,17 @@ named!(
     RowRebuild => "widget.row_rebuild",
 });
 
+impl Hotspot {
+    /// Returns the unit its counts are in.
+    #[must_use]
+    pub(crate) const fn unit(self) -> &'static str {
+        match self {
+            Self::GpuLayer => " px",
+            _ => "",
+        }
+    }
+}
+
 named!(
     /// A renderer backend.
     pub BackendKind {

@@ -4,7 +4,7 @@ use std::fmt::{Display, Write as _};
 use crate::profile::attr::budget_ns;
 use crate::profile::key::{Cause, Phase};
 
-use crate::profile::report_why::{write_bottlenecks, write_gpu_passes, write_why};
+use crate::profile::report_why::{write_bottlenecks, write_gpu_passes, write_sites, write_why};
 use crate::profile::store::{self, Frame};
 
 const CAUSE_PHASES: usize = 7;
@@ -18,7 +18,7 @@ pub(crate) fn summary() -> String {
     let mut out = format!("sigil-profile  (ms, budget {:.2}ms)\n", ns_ms(budget));
     let _ = writeln!(
         out,
-        "{:<14} {:>8} {:>8} {:>8} {:>8}",
+        "{:<26} {:>8} {:>8} {:>8} {:>8}",
         "phase", "p50", "p95", "max", "last"
     );
     for phase in distinct(frames.iter().flat_map(|frame| keys(&frame.phases))) {
@@ -47,10 +47,11 @@ pub(crate) fn summary() -> String {
     }
     write_gpu_passes(&mut out, &frames);
     write_why(&mut out, &frames);
+    write_sites(&mut out, &frames);
     write_bottlenecks(&mut out, &frames, budget);
     let over = frames
         .iter()
-        .filter(|frame| frame.total_ns() > budget)
+        .filter(|frame| frame.work_ns() > budget)
         .count();
     let _ = write!(out, "{} frames", frames.len());
     if over > 0 {
@@ -68,7 +69,7 @@ fn write_row<T: Copy + Default + Display + PartialOrd>(
     let [p50, p95, max, last] = spread(samples.collect());
     let _ = writeln!(
         out,
-        "{name:<14} {p50:>8.3} {p95:>8.3} {max:>8.3} {last:>8.3}"
+        "{name:<26} {p50:>8.3} {p95:>8.3} {max:>8.3} {last:>8.3}"
     );
 }
 

@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::fmt::Write as _;
 
 use crate::profile::attr::Attribution;
+use crate::profile::chrome::site_name;
 use crate::profile::key::{Cause, Counter, Hotspot};
 use crate::profile::report::{distinct, ns_ms, spread};
 use crate::profile::store::{Frame, INTERACT_BUDGET_NS};
@@ -9,6 +10,7 @@ use crate::profile::store::{Frame, INTERACT_BUDGET_NS};
 const TOP_PASSES: usize = 12;
 const TOP_SUBJECTS: usize = 8;
 const TOP_SLOW: usize = 12;
+const TOP_SITES: usize = 15;
 
 pub(super) fn write_gpu_passes(out: &mut String, frames: &[Frame]) {
     let mut labels: Vec<(&'static str, Vec<f64>)> = Vec::new();
@@ -86,10 +88,11 @@ pub(super) fn write_why(out: &mut String, frames: &[Frame]) {
         {
             let _ = writeln!(
                 out,
-                "  {:<20} {} \u{d7}{}/frame ({} frames)",
+                "  {:<20} {} \u{d7}{}{}/frame ({} frames)",
                 hotspot,
                 agg.subject,
                 agg.total / agg.frames.max(1),
+                hotspot.unit(),
                 agg.frames
             );
         }
@@ -117,8 +120,24 @@ pub(super) fn write_bottlenecks(out: &mut String, frames: &[Frame], budget: u64)
                 ns_ms(hot_ns),
                 frame.counter(Counter::SceneCmds)
             );
+            if let Some(site) = frame.sites.first() {
+                let _ = write!(
+                    out,
+                    "  {} {}={:.1}",
+                    site.kind.name(),
+                    site_name(site.location),
+                    ns_ms(site.self_ns)
+                );
+            }
             if let Some(top) = frame.hot.iter().max_by_key(|a| a.count) {
-                let _ = write!(out, "  {} {} \u{d7}{}", top.hotspot, top.subject, top.count);
+                let _ = write!(
+                    out,
+                    "  {} {} \u{d7}{}{}",
+                    top.hotspot,
+                    top.subject,
+                    top.count,
+                    top.hotspot.unit()
+                );
             }
             out.push('\n');
         }
@@ -132,6 +151,34 @@ pub(super) fn write_bottlenecks(out: &mut String, frames: &[Frame], budget: u64)
             out,
             "  {inp} interactions over 200ms (Chrome INP; native bar is {:.2}ms)",
             ns_ms(budget)
+        );
+    }
+}
+
+pub(super) fn write_sites(out: &mut String, frames: &[Frame]) {
+    let mut sites: Vec<(String, &'static str, u64, u64, u64)> = Vec::new();
+    for site in frames.iter().flat_map(|frame| &frame.sites) {
+        let name = site_name(site.location);
+        match sites.iter_mut().find(|row| row.0 == name && row.1 == site.kind.name()) {
+            Some(row) => {
+                row.2 = row.2.saturating_add(site.self_ns);
+                row.3 = row.3.max(site.self_ns);
+                row.4 = row.4.saturating_add(u64::from(site.runs));
+            }
+            None => sites.push((name, site.kind.name(), site.self_ns, site.self_ns, u64::from(site.runs))),
+        }
+    }
+    if sites.is_empty() {
+        return;
+    }
+    sites.sort_by_key(|row| std::cmp::Reverse(row.2));
+    let _ = writeln!(out, "\nsites (self ms){:>32} {:>9} {:>8}", "total", "max", "runs");
+    for (name, kind, total, max, runs) in sites.into_iter().take(TOP_SITES) {
+        let _ = writeln!(
+            out,
+            "  {kind:<6} {name:<38} {:>9.3} {:>9.3} {runs:>8}",
+            ns_ms(total),
+            ns_ms(max)
         );
     }
 }

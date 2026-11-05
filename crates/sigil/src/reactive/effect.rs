@@ -17,34 +17,42 @@ pub fn effect<F: FnMut() + 'static>(f: F) {
 kittest_pub! {
     #[track_caller]
     pub fn effect_named<F: FnMut() + 'static>(name: &'static str, f: F) {
-        let location = Location::caller();
-        let key = with_rt(|rt| {
-            let owner = rt
-                .current_owner
-                .unwrap_or_else(|| no_scope("effect()", location));
-            assert!(
-                rt.owners.contains(owner),
-                "effect() with a disposed current owner (at {location})"
-            );
-            let key = rt.effects.insert(EffectSlot {
-                owner,
-                run_owner: None,
-                f: Some(Box::new(f)),
-                deps: SmallVec::new(),
-                prev_deps: SmallVec::new(),
-                prev_dep_cursor: 0,
-                location,
-                name,
-            });
-            rt.owners
-                .get_mut(owner)
-                .expect("current owner slot missing")
-                .effects
-                .push(key);
-            key
-        });
-        run_effect(key);
+        effect_at(name, Location::caller(), f);
     }
+}
+
+/// Runs `f` as an effect that profiles and reports errors at `location`.
+pub(crate) fn effect_at<F: FnMut() + 'static>(
+    name: &'static str,
+    location: &'static Location<'static>,
+    f: F,
+) {
+    let key = with_rt(|rt| {
+        let owner = rt
+            .current_owner
+            .unwrap_or_else(|| no_scope("effect()", location));
+        assert!(
+            rt.owners.contains(owner),
+            "effect() with a disposed current owner (at {location})"
+        );
+        let key = rt.effects.insert(EffectSlot {
+            owner,
+            run_owner: None,
+            f: Some(Box::new(f)),
+            deps: SmallVec::new(),
+            prev_deps: SmallVec::new(),
+            prev_dep_cursor: 0,
+            location,
+            name,
+        });
+        rt.owners
+            .get_mut(owner)
+            .expect("current owner slot missing")
+            .effects
+            .push(key);
+        key
+    });
+    run_effect(key);
 }
 
 /// Run `f` without subscribing the current effect to its reads.

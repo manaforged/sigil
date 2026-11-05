@@ -98,6 +98,7 @@ where
     max_scroll_bind: Option<Signal<f32>>,
     measured: bool,
     estimate: Option<f32>,
+    location: &'static core::panic::Location<'static>,
     scrollbar: bool,
     style_accumulator: crate::style::Style,
 }
@@ -146,6 +147,7 @@ where
 
 /// A list that builds only the visible rows.
 #[must_use]
+#[track_caller]
 pub fn virtual_list<T, R, N, I>(items: I, render: R) -> VirtualListBuilder<T, R>
 where
     T: 'static,
@@ -153,7 +155,9 @@ where
     N: IntoNode + 'static,
     I: IntoList<T, R>,
 {
-    items.into_list(render)
+    let mut list = items.into_list(render);
+    list.location = core::panic::Location::caller();
+    list
 }
 
 fn from_vec<T, R>(items: Vec<T>, render: R) -> VirtualListBuilder<T, R>
@@ -187,6 +191,7 @@ where
         max_scroll_bind: None,
         measured: false,
         estimate: None,
+        location: core::panic::Location::caller(),
         scrollbar: false,
         style_accumulator: crate::style::Style::new(),
     }

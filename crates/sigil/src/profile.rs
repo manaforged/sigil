@@ -12,10 +12,13 @@ mod input;
 mod key;
 mod report;
 mod report_why;
+mod site;
 mod span;
 mod store;
 
 pub(crate) use key::Hotspot;
+pub(crate) use site::site;
+pub use site::{Site, SiteKind};
 pub use key::{BackendKind, BackendStatus, Cause, Counter, FallbackCause, Phase};
 kittest_pub! {
     #[doc(hidden)]

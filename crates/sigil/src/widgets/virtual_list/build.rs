@@ -144,6 +144,7 @@ where
                 row_key: self.row_key,
                 measure,
                 tops: axes.tops,
+                location: self.location,
             },
             axes.scroll_y,
         );

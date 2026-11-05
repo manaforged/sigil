@@ -7,6 +7,7 @@ struct RunGuard {
     prev_owner: Option<OwnerKey>,
     prev_effect: Option<EffectKey>,
     f: Option<Box<dyn FnMut()>>,
+    location: &'static core::panic::Location<'static>,
 }
 
 impl Drop for RunGuard {
@@ -158,6 +159,7 @@ fn go_setup(rt: &mut RuntimeState, key: EffectKey) -> Option<(RunGuard, Option<O
         prev_owner: rt.current_owner.replace(run_owner),
         prev_effect: rt.current_effect.replace(key),
         f: Some(f),
+        location,
     };
     Some((guard, prev_run_owner))
 }
@@ -180,7 +182,10 @@ pub(crate) fn run_effect(key: EffectKey) {
             crate::reactive::debug::run_effect_leak_check(prev, name, location);
         }
     }
-    guard.f.as_mut().expect("closure just stored in guard")();
+    {
+        let _site = crate::profile::site(guard.location, crate::profile::SiteKind::Effect);
+        guard.f.as_mut().expect("closure just stored in guard")();
+    }
     drop(guard);
     crate::reactive::effect::run_deferred(key);
     trace_effect_run(key);

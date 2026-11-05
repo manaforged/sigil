@@ -278,20 +278,23 @@ impl NodeBuilder {
 
     /// Sets the children reactive.
     #[must_use]
+    #[track_caller]
     pub fn children_reactive<F, I, N>(mut self, f: F) -> Self
     where
         F: Fn() -> I + 'static,
         I: IntoIterator<Item = N>,
         N: IntoNode + 'static,
     {
+        let location = core::panic::Location::caller();
         self.reactive_children = Some(Box::new(move |parent| {
-            reactive_children::install(parent, f);
+            reactive_children::install(parent, location, f);
         }));
         self
     }
 
     /// Sets the children keyed.
     #[must_use]
+    #[track_caller]
     pub fn children_keyed<F, I, K, N>(self, f: F) -> Self
     where
         F: Fn() -> I + 'static,
@@ -303,6 +306,7 @@ impl NodeBuilder {
     }
 
     #[must_use]
+    #[track_caller]
     pub(crate) fn keyed_children<F, I, K, N>(mut self, f: F) -> Self
     where
         F: Fn() -> I + 'static,
@@ -310,8 +314,9 @@ impl NodeBuilder {
         K: Clone + Eq + std::hash::Hash + 'static,
         N: IntoNode + 'static,
     {
+        let location = core::panic::Location::caller();
         self.reactive_children = Some(Box::new(move |parent| {
-            reactive_children::install_keyed(parent, f);
+            reactive_children::install_keyed(parent, location, f);
         }));
         self
     }

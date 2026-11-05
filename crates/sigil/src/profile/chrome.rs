@@ -58,6 +58,10 @@ fn frame_value(frame: &Frame) -> Value {
         "phases_ns": named(&frame.phases, Phase::name),
         "counts": named(&frame.counts, Counter::name),
         "gpu_passes_ns": frame.gpu_passes,
+        "sites": frame.sites.iter().map(|site| json!([
+            site_name(site.location), site.kind.name(), site.self_ns, site.total_ns, site.runs
+        ])).collect::<Vec<_>>(),
+        "hot": frame.hot.iter().map(|hot| json!([hot.hotspot.name(), hot.subject, hot.count])).collect::<Vec<_>>(),
         "backend": frame.backend.map(|status| status.to_string())
     })
 }
@@ -87,6 +91,15 @@ fn event_value(event: TraceEvent) -> Value {
             "name": phase.name(), "cat": phase.category().name(), "ph": "X", "ts": start_us,
             "dur": dur_us, "pid": 1, "tid": tid
         }),
+        TraceEvent::Site {
+            location,
+            kind,
+            start_us,
+            dur_us,
+        } => json!({
+            "name": format!("{} {}", kind.name(), site_name(location)), "cat": "site", "ph": "X",
+            "ts": start_us, "dur": dur_us.max(1), "pid": 1, "tid": 1
+        }),
         TraceEvent::Instant { name, cat, ts_us } => json!({
             "name": name, "cat": cat, "ph": "i", "s": "t",
             "ts": ts_us, "pid": 1, "tid": 1
@@ -108,6 +121,15 @@ fn event_value(event: TraceEvent) -> Value {
             "id": id, "ts": ts_us, "pid": 1, "tid": 1
         }),
     }
+}
+
+pub(crate) fn site_name(location: &core::panic::Location<'_>) -> String {
+    let file = location.file();
+    let file = file
+        .rfind("/src/")
+        .and_then(|at| file[..at].rfind('/').map(|start| &file[start + 1..]))
+        .unwrap_or(file);
+    format!("{file}:{}", location.line())
 }
 
 fn named<K: Copy>(list: &[(K, u64)], name: fn(K) -> &'static str) -> Vec<(&'static str, u64)> {
