@@ -221,7 +221,7 @@ impl CodeEditBuilder {
                     diagnostics: self.diagnostics,
                     start,
                     viewport,
-                    caret_shown: caret_shown(interaction.focus_visible()),
+                    caret_shown: caret_shown(interaction.focused()),
                 },
                 row_h,
             ));

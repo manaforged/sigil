@@ -136,7 +136,7 @@ fn selection_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
 }
 
 fn caret_rects(runtime: &TextFieldRuntime, interaction: InteractionState) -> Vec<NodeBuilder> {
-    if !interaction.focus_visible().get() || !runtime.input.caret_visible.get() {
+    if !interaction.focused().get() || !runtime.input.caret_visible.get() {
         return Vec::new();
     }
     let (composed, cursor) = runtime

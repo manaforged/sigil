@@ -153,13 +153,13 @@ pub(in crate::widgets) fn blink(
     let hold = held.clone();
     effect(move || {
         moved();
-        interaction.focus_visible().with(|_| ());
+        interaction.focused().with(|_| ());
         hold.set(true);
         lit.set(true);
     });
     if Owner::current().is_some() {
         interval(BLINK, move || {
-            if interaction.focus_visible().peek() && !held.replace(false) {
+            if interaction.focused().peek() && !held.replace(false) {
                 lit.set(!lit.peek());
             }
         });
@@ -179,7 +179,7 @@ fn caret_layer(runtime: &TextEditRuntime, interaction: InteractionState) -> Node
     fragment()
         .layout(LayoutStyle::block())
         .children_reactive(move || {
-            if !interaction.focus_visible().get() || !caret_visible.get() || !lit.get() {
+            if !interaction.focused().get() || !caret_visible.get() || !lit.get() {
                 return Vec::new();
             }
             let (buffer, byte) = runtime.ime.composing_caret(&value.get(), caret.get());

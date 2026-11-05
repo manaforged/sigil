@@ -78,7 +78,7 @@ impl InteractionState {
 
     /// Returns the signal that is true while the node has focus.
     #[must_use]
-    pub const fn focus_visible(self) -> Signal<bool> {
+    pub const fn focused(self) -> Signal<bool> {
         self.focused
     }
 
