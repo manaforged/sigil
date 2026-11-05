@@ -130,7 +130,7 @@ tokens! {
     Info12 => "info-12",
 }
 
-const SEMANTIC: usize = 21;
+const SEMANTIC: usize = Token::Gray1 as usize;
 const STEPS: usize = 12;
 const ROLES: [ScaleRole; 6] = [
     ScaleRole::Gray,
