@@ -9,7 +9,7 @@ use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
 use unicode_segmentation::UnicodeSegmentation;
 
-use super::{INLINE, LIVE, LIVE_ROWS, REDRAW, current_caps};
+use super::{INLINE, LIVE, LIVE_ROWS, REDRAW, RESTORED, current_caps};
 use crate::app::cell_width;
 use crate::{Error, ErrorKind};
 
@@ -26,6 +26,12 @@ pub fn print_above(text: &str) -> Result<(), crate::Error> {
         return Err(unsupported(
             ErrorKind::NotLive,
             "print_above: no live terminal on this thread",
+        ));
+    }
+    if RESTORED.load(Ordering::Relaxed) {
+        return Err(unsupported(
+            ErrorKind::NotLive,
+            "print_above: the terminal is released",
         ));
     }
     if !INLINE.load(Ordering::Relaxed) {

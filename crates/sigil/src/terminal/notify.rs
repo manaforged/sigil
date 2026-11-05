@@ -3,11 +3,11 @@ use std::sync::{Mutex, PoisonError};
 
 use crate::terminal::caps::{Caps, Notify};
 use crate::terminal::graphics::write_mux;
-use crate::terminal::term::{current_caps, live};
+use crate::terminal::term::{applied, current_caps, live};
 
 /// Sends a desktop notification through the terminal.
 pub fn notify(title: &str, body: &str) -> Result<(), crate::Error> {
-    if !live() {
+    if !applied() {
         return Ok(());
     }
     let caps = current_caps();
@@ -17,7 +17,7 @@ pub fn notify(title: &str, body: &str) -> Result<(), crate::Error> {
 /// Reports task progress to the terminal.
 pub fn progress(value: Option<u8>) -> Result<(), crate::Error> {
     let caps = current_caps();
-    if !live() || !caps.notices.progress {
+    if !applied() || !caps.notices.progress {
         return Ok(());
     }
     let seq = value.map_or_else(
@@ -63,6 +63,9 @@ pub fn activity(app: &str, value: Option<Activity>) -> Result<(), crate::Error> 
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .clone_from(&seq);
+    if !applied() {
+        return Ok(());
+    }
     send(caps, if seq.is_empty() { CLEAR_ACTIVITY } else { &seq })
 }
 
@@ -94,7 +97,7 @@ pub(crate) fn held_activity(shown: bool) -> Option<String> {
 
 /// Rings the terminal bell.
 pub fn bell(note: Option<&str>) -> Result<(), crate::Error> {
-    if !live() {
+    if !applied() {
         return Ok(());
     }
     let caps = current_caps();

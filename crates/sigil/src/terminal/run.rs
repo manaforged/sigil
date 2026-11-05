@@ -235,7 +235,7 @@ fn live<N: IntoNode>(
         if pixels.host().is_some() {
             let dt = last.elapsed().as_secs_f32();
             last = Instant::now();
-            if pixels.turn(input, (cols, rows), &mut term, dt)? {
+            if pixels.turn(config.panic_policy, input, (cols, rows), &mut term, dt)? {
                 break;
             }
             continue;
@@ -331,11 +331,12 @@ impl Turn<'_> {
         self.screen.set_dt(self.last.elapsed().as_secs_f32());
         *self.last = Instant::now();
         profile::begin_frame(profile::BackendStatus::TERMINAL);
-        let recovered = frame_isolated(config.panic_policy, self.screen, self.host, incoming, size)
-            .map_err(Error::io)?;
-        if recovered {
-            restore();
-            self.term.reenter().map_err(Error::io)?;
+        let (screen, host) = (&mut *self.screen, &mut *self.host);
+        let frame = isolated(config.panic_policy, || {
+            screen.frame(host, incoming, size).map(|_| ())
+        })?;
+        if frame.is_none() {
+            recover(self.term)?;
         }
         if let Some(after) = hooks.after_frame.as_mut() {
             after(self.host, self.screen);
@@ -354,25 +355,30 @@ impl Turn<'_> {
     }
 }
 
-fn frame_isolated(
+/// Runs one frame under `policy`; `None` means the frame panicked and was isolated.
+pub(super) fn isolated<T>(
     policy: PanicPolicy,
-    screen: &mut Screen,
-    host: &mut Host,
-    incoming: Vec<Event>,
-    size: (u16, u16),
-) -> Result<bool, Error> {
+    frame: impl FnOnce() -> Result<T, Error>,
+) -> Result<Option<T>, Error> {
     match policy {
-        PanicPolicy::Abort => screen.frame(host, incoming, size).map(|_| false),
-        PanicPolicy::Isolate => std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            screen.frame(host, incoming, size).map(|_| false)
-        }))
-        .unwrap_or_else(|payload| {
-            let detail = crate::tasks::panic_message(&*payload);
-            eprintln!("sigil-terminal: frame isolated after panic: {detail}");
-            Runtime::recover_from_panic();
-            Ok(true)
-        }),
+        PanicPolicy::Abort => frame().map(Some),
+        PanicPolicy::Isolate => std::panic::catch_unwind(std::panic::AssertUnwindSafe(frame))
+            .map_or_else(
+                |payload| {
+                    let detail = crate::tasks::panic_message(&*payload);
+                    eprintln!("sigil-terminal: frame isolated after panic: {detail}");
+                    Runtime::recover_from_panic();
+                    Ok(None)
+                },
+                |result| result.map(Some),
+            ),
     }
+}
+
+/// Re-applies the terminal modes the panic hook restored during an isolated frame.
+pub(super) fn recover(term: &mut Term) -> AppResult<()> {
+    restore();
+    term.reenter().map_err(Error::io)
 }
 
 #[cfg(test)]

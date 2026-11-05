@@ -5,6 +5,8 @@ use crate::AppConfig;
 use crate::kernel::IntoNode;
 use crate::terminal::caps::Caps;
 use crate::terminal::graphics::Mux;
+#[cfg(feature = "scene")]
+use crate::terminal::run::{isolated, recover};
 
 #[cfg(feature = "scene")]
 mod draw;
@@ -107,9 +109,10 @@ impl Pixels {
         None
     }
 
-    /// Runs one pixel frame and returns whether the app asked to exit.
+    /// Runs one pixel frame under `policy` and returns whether the app asked to exit.
     pub(super) fn turn(
         &mut self,
+        policy: crate::app::PanicPolicy,
         input: Vec<crate::events::Event>,
         size: (u16, u16),
         term: &mut crate::terminal::term::Term,
@@ -117,19 +120,37 @@ impl Pixels {
     ) -> crate::AppResult<bool> {
         #[cfg(feature = "scene")]
         if let (Some(inner), Some(cell)) = (&mut self.inner, cell(term.caps())) {
-            return inner.turn(input, size, cell, term, dt);
+            let frame = isolated(policy, || inner.turn(input, size, cell, term, dt))?;
+            if frame.is_none() {
+                recover(term)?;
+                inner.enter().map_err(crate::Error::io)?;
+            }
+            return Ok(frame.unwrap_or(false));
         }
-        let _ = (input, size, term, dt);
+        let _ = (policy, input, size, term, dt);
         Ok(false)
     }
 
     /// Removes the image when the run ends in pixel mode.
     pub(super) fn close(mut self, mux: Option<Mux>) -> io::Result<()> {
+        self.leave(mux)
+    }
+
+    fn leave(&mut self, mux: Option<Mux>) -> io::Result<()> {
         #[cfg(feature = "scene")]
-        if let (true, Some(inner)) = (self.on, &mut self.inner) {
+        if let (true, Some(inner)) = (core::mem::take(&mut self.on), &mut self.inner) {
             return inner.leave(mux);
         }
-        let _ = (&mut self, mux);
+        let _ = mux;
         Ok(())
+    }
+}
+
+impl Drop for Pixels {
+    fn drop(&mut self) {
+        AVAILABLE.store(false, Ordering::Relaxed);
+        if let Err(err) = self.leave(crate::terminal::term::current_caps().mux) {
+            tracing::warn!(target: "sigil::terminal", error = %err, "pixel image cleanup failed");
+        }
     }
 }

@@ -145,11 +145,7 @@ impl Term {
     }
 
     pub(crate) fn reenter(&mut self) -> io::Result<()> {
-        enter_screen(self.inline)?;
-        enter_modes(self.inline)?;
-        if self.inline {
-            ground(&mut self.out)?;
-        }
+        reapply(self.inline, &mut self.out)?;
         self.redraw = true;
         Ok(())
     }
@@ -159,6 +155,7 @@ impl Drop for Term {
     fn drop(&mut self) {
         LIVE.with(|live| live.set(false));
         restore();
+        INLINE.store(false, Ordering::Relaxed);
         if self.inline {
             drop(execute!(io::stdout(), Print("\n")));
         }
@@ -188,7 +185,6 @@ fn keyboard_flags() -> KeyboardEnhancementFlags {
 }
 
 fn enter_screen(inline: bool) -> io::Result<()> {
-    INLINE.store(inline, Ordering::Relaxed);
     if !inline {
         execute!(io::stdout(), EnterAlternateScreen, DisableLineWrap)?;
     }
@@ -197,7 +193,6 @@ fn enter_screen(inline: bool) -> io::Result<()> {
 
 fn enter_modes(inline: bool) -> io::Result<()> {
     INLINE.store(inline, Ordering::Relaxed);
-    RESTORED.store(false, Ordering::Relaxed);
     enable_raw_mode()?;
     let mut out = io::stdout();
     execute!(out, EnableBracketedPaste, EnableFocusChange, cursor::Hide)?;
@@ -249,6 +244,18 @@ fn write_title(title: &str) -> io::Result<()> {
     execute!(io::stdout(), SetTitle(title))
 }
 
+fn reapply(inline: bool, out: &mut impl Write) -> io::Result<()> {
+    if !RESTORED.swap(false, Ordering::Relaxed) {
+        return Ok(());
+    }
+    enter_screen(inline)?;
+    enter_modes(inline)?;
+    if inline {
+        ground(out)?;
+    }
+    Ok(())
+}
+
 fn ground(out: &mut impl Write) -> io::Result<()> {
     queue!(out, cursor::MoveToColumn(0))?;
     let Ok((_, row)) = cursor::position() else {
@@ -289,7 +296,7 @@ pub(crate) fn restore() {
         Print(MOUSE_OFF),
         cursor::Show
     ));
-    if !INLINE.swap(false, Ordering::Relaxed) {
+    if !INLINE.load(Ordering::Relaxed) {
         drop(execute!(out, LeaveAlternateScreen, EnableLineWrap));
     }
     drop(disable_raw_mode());
@@ -307,10 +314,9 @@ pub fn suspend<R>(run: impl FnOnce() -> R) -> Result<R, crate::Error> {
     let inline = INLINE.load(Ordering::Relaxed);
     restore();
     let result = run();
-    enter_screen(inline)?;
-    enter_modes(inline)?;
-    if inline {
-        ground(&mut io::stdout())?;
+    {
+        let _painting = signals::painting();
+        reapply(inline, &mut io::stdout())?;
     }
     REDRAW.with(|flag| flag.set(true));
     Ok(result)
@@ -319,7 +325,7 @@ pub fn suspend<R>(run: impl FnOnce() -> R) -> Result<R, crate::Error> {
 /// Sets the terminal title.
 pub fn set_title(title: &str) -> Result<(), crate::Error> {
     TITLE.with(|slot| *slot.borrow_mut() = Some(title.to_owned()));
-    if live() {
+    if applied() {
         write_title(title)?;
     }
     Ok(())
@@ -329,10 +335,15 @@ pub(crate) fn live() -> bool {
     LIVE.with(Cell::get)
 }
 
+/// Whether this thread drives the terminal and its modes are applied, so escape sequences reach it.
+pub(crate) fn applied() -> bool {
+    live() && !RESTORED.load(Ordering::Relaxed)
+}
+
 /// Sets how much mouse movement the terminal reports.
 pub fn set_mouse_tracking(tracking: MouseTracking) -> Result<(), crate::Error> {
     MOUSE.with(|mouse| mouse.set(tracking));
-    if live() {
+    if applied() {
         write_mouse(&mut io::stdout(), tracking)?;
     }
     Ok(())

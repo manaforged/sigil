@@ -48,7 +48,7 @@ fn send(out: &mut impl Write, seq: &str, mux: Option<Mux>) -> std::io::Result<()
 fn osc52_read(mux: Option<Mux>) -> Option<String> {
     use base64::Engine;
     const REPLY: &str = "\x1b]52;c;";
-    if !crate::terminal::term::live() {
+    if !crate::terminal::term::applied() {
         return None;
     }
     let reply = crate::terminal::caps::exchange(
