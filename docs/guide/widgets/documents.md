@@ -34,7 +34,7 @@ The widget edits the `lines`, `caret`, and `.selection()` signals through the `t
 
 ## mermaid
 
-`mermaid(source: impl Into<String>) -> NodeBuilder`. Renders a diagram into a monospace text canvas (`font-mono text-sm` lines), not vectors. Supported heads: `graph`/`flowchart` (and `stateDiagram` / `stateDiagram-v2`), `sequenceDiagram`, and `pie`. Anything else renders the raw source inside a drawn box frame rather than failing.
+`mermaid(source: impl Into<String>) -> NodeBuilder`. In a window it renders through the `mermaid-svg` crate, which covers flowchart, sequence, class, state, ER, gantt, pie, xychart, quadrant, timeline, mindmap, sankey and the other mermaid diagram kinds. The diagram takes its colors from the active theme: series and slices use the accent, success, warn, error and info scales, and text uses the bundled Fira Sans. A wider diagram scrolls horizontally. In a terminal, or when `mermaid-svg` rejects the source, it renders into a monospace text canvas. That path supports `graph`/`flowchart` (and `stateDiagram` / `stateDiagram-v2`), `sequenceDiagram`, and `pie`, and frames any other source as raw text.
 
 Input is bounded to 256 lines of 512 chars and output to 512 lines of 1024 chars.
 
@@ -64,7 +64,7 @@ On a terminal, `code_edit` uses one row per line and shows the caret only while 
 
 ## Terminal notes
 
-- `mermaid` renders to monospace text, so it reads the same in a terminal.
+- `mermaid` renders to monospace text in a terminal.
 - A markdown image uses the terminal image rules. Without `image-decode`, it paints as `[alt]` text.
 - A link in `markdown` or `html` becomes an OSC 8 hyperlink when the terminal supports hyperlinks.
 - `diff` in `DiffView::Split` needs about 80 columns to show both sides. Use `DiffView::Unified` in a narrow terminal.

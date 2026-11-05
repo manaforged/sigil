@@ -14,6 +14,8 @@ mod flow_parse;
 mod flow_route;
 mod flow_vector;
 mod label;
+#[cfg(feature = "scene")]
+mod picture;
 mod pie;
 mod rank;
 mod sequence;
@@ -29,7 +31,8 @@ pub fn mermaid(source: impl Reactive<String>) -> NodeBuilder {
 pub(crate) fn figure(source: &str) -> NodeBuilder {
     if !crate::style::Metrics::current().is_grid()
         && !crate::widgets::source_too_large(source)
-        && let Some((diagram, width)) = flow_vector::figure(&bound_source(source))
+        && let Some((diagram, width)) = picture(&bound_source(source))
+            .or_else(|| flow_vector::figure(&bound_source(source)))
             .or_else(|| sequence::vector(&bound_source(source)))
     {
         let centred = container()
@@ -63,6 +66,16 @@ pub(crate) fn figure(source: &str) -> NodeBuilder {
         .role(Role::Figure)
         .label(diagram_name(source))
         .description(bound_source(source).trim_end().to_string())
+}
+
+#[cfg(feature = "scene")]
+fn picture(source: &str) -> Option<(NodeBuilder, f32)> {
+    picture::figure(source)
+}
+
+#[cfg(not(feature = "scene"))]
+const fn picture(_source: &str) -> Option<(NodeBuilder, f32)> {
+    None
 }
 
 fn text_lines(mut col: NodeBuilder, lines: &[String]) -> NodeBuilder {

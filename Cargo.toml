@@ -123,6 +123,8 @@ sha2 = "0.10"
 hex = "0.4"
 unicode-width = "0.2"
 usvg = { version = "0.48", default-features = false }
+resvg = { version = "0.48", default-features = false }
+mermaid-svg = "0.7"
 lyon_geom = "1.0"
 
 [profile.release]
