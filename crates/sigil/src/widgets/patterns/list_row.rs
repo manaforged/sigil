@@ -164,7 +164,11 @@ pub fn list_row(
         row = row.child(leading_slot(leading));
     }
     let tone = slots.tone;
-    row = row.child(title_text(title.into(), &slots));
+    let title = title.into();
+    if let TextContent::Static(name) = &title {
+        row = row.label(name.clone());
+    }
+    row = row.child(title_text(title, &slots));
     if let Some(detail) = slots.detail.take() {
         row = row.child(detail_text(detail, tone));
     }
