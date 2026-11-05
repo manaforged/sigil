@@ -240,6 +240,8 @@ fn speck(wash: &Wash, x: f32, y: f32, body: f32, dark: bool, out: [f32; 3]) -> [
     }
 }
 
+const UNDERWASH: f32 = 0.7;
+
 fn pool(amount: f32, pools: f32, edges: f32) -> f32 {
     if pools < 1.0 {
         return amount;
@@ -249,7 +251,7 @@ fn pool(amount: f32, pools: f32, edges: f32) -> f32 {
     let rest = x - level;
     let settled = (level + smoothstep(0.80, 1.0, rest)) / pools;
     let rim = (1.0 - smoothstep(0.0, 0.16, rest)) * if level >= 1.0 { 1.0 } else { 0.0 };
-    settled + edges * rim * (0.9 / pools)
+    (settled + edges * rim * (0.9 / pools)).max(UNDERWASH * amount)
 }
 
 fn band(u: f32, v: f32, wx: f32, wy: f32, seed: u32) -> f32 {
