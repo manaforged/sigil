@@ -16,7 +16,7 @@ use crate::style::{
 };
 use crate::widgets::Widget;
 
-use crate::widgets::interaction::InteractionState;
+use crate::widgets::interaction::{InteractionState, is_primary};
 
 use super::super::shared::binary_style_state;
 use super::handlers::TextEditRuntime;
@@ -144,7 +144,10 @@ const CARET_W: f32 = 1.5;
 const BLINK: core::time::Duration = core::time::Duration::from_millis(530);
 
 /// Whether a focused caret is lit: it blinks, and stays lit for a beat after `moved` changes.
-pub(in crate::widgets) fn blink(interaction: InteractionState, moved: impl Fn() + 'static) -> Signal<bool> {
+pub(in crate::widgets) fn blink(
+    interaction: InteractionState,
+    moved: impl Fn() + 'static,
+) -> Signal<bool> {
     let lit = signal(true);
     let held = std::rc::Rc::new(std::cell::Cell::new(false));
     let hold = held.clone();
@@ -205,7 +208,12 @@ fn pointer_drag(
     scroll_y: Signal<f32>,
     down: bool,
 ) {
-    if runtime.disabled() || !(down || event.is_captured()) {
+    let owned = if down {
+        is_primary(event)
+    } else {
+        event.is_captured()
+    };
+    if runtime.disabled() || !owned {
         return;
     }
     let offset = runtime.offset_at_point(event.position.x, event.position.y, scroll_y.peek());

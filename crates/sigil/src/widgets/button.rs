@@ -219,7 +219,7 @@ impl ButtonBuilder {
             self.width = ButtonWidth::Fixed(self.height);
             self.padding_x = 0.0;
         }
-        let interaction = InteractionState::new(true);
+        let interaction = InteractionState::new(true).disabled(self.disabled);
         let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
         let user_overlay = self.style_accumulator.take_state_overlay();
         let mut node = self.base_node(interaction, activate, user_overlay, look_disabled);

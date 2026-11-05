@@ -9,7 +9,6 @@ use crate::style::Style;
 use crate::widgets::interaction::InteractionState;
 
 use super::super::layout_ext::LayoutOverrides;
-use super::super::shared::disabled_now;
 use super::handlers::{TextEditRuntime, TextEditState, attach_key_handlers, noop_change};
 use super::ime::attach_ime_handlers;
 use super::render::{build_base_node, content_padding, edit_layout};
@@ -161,7 +160,7 @@ impl TextEditBuilder {
 
     fn root(mut self) -> NodeBuilder {
         let value = self.value;
-        let interaction = InteractionState::new(!disabled_now(self.disabled));
+        let interaction = InteractionState::new(true).disabled(self.disabled);
         let state = self.state.unwrap_or_else(|| {
             let caret = self.caret_position;
             TextEditState::new(value, caret.unwrap_or_else(|| signal(value.peek().len())))

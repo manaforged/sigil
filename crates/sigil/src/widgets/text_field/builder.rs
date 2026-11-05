@@ -9,7 +9,6 @@ use crate::widgets::Widget;
 use crate::widgets::interaction::InteractionState;
 
 use super::super::layout_ext::LayoutOverrides;
-use super::super::shared::disabled_now;
 use super::super::text_edit::{TextEditRuntime, TextEditState, noop_change};
 use super::adorn::{Adornments, FocusSlot, clear_button};
 use super::handlers::{TextFieldRuntime, attach_key_handlers};
@@ -193,7 +192,7 @@ impl TextFieldBuilder {
         let width = self.layout_overrides.width_hint();
         let height = self.layout_overrides.height_hint();
         let runtime = self.runtime(super::selection::column_width(width));
-        let interaction = InteractionState::new(!disabled_now(self.disabled));
+        let interaction = InteractionState::new(true).disabled(self.disabled);
         let clip_fail = runtime.input.clip_fail;
         let invalid = self.invalid;
         let inputs = FieldInputs {

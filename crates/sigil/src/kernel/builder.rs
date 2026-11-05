@@ -163,6 +163,13 @@ impl NodeBuilder {
         self
     }
 
+    /// Sets the signal that announces the node as mixed, neither checked nor unchecked.
+    #[must_use]
+    pub const fn mixed(mut self, signal: Signal<bool>) -> Self {
+        self.a11y.mixed = Some(signal);
+        self
+    }
+
     /// Sets the selected.
     #[must_use]
     pub const fn selected(mut self, signal: Signal<bool>) -> Self {

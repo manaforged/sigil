@@ -18,9 +18,7 @@ use super::super::layout_ext::LayoutOverrides;
 
 use super::super::listbox::listbox;
 use super::super::popup::{ChevronDirection, chevron};
-use super::super::shared::{
-    Activate, DIMMED, Press, RELEASE, disabled_now, press, reactive_style_state,
-};
+use super::super::shared::{Activate, DIMMED, Press, RELEASE, press, reactive_style_state};
 use super::popup::{DropdownModel, OptionCtx, SURFACE_HOVER, build_popup, trigger_height};
 
 #[cfg(test)]
@@ -100,8 +98,7 @@ impl DropdownBuilder {
     }
 
     fn root(mut self) -> NodeBuilder {
-        let enabled = !disabled_now(self.disabled);
-        let interaction = InteractionState::new(enabled);
+        let interaction = InteractionState::new(true).disabled(self.disabled);
         let open = signal(false);
         let cursor = signal(self.selected.peek());
         let on_change = self

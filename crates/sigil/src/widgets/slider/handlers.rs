@@ -4,7 +4,7 @@ use crate::events::{A11yEdit, with_handlers};
 use crate::events::{Key, KeyEvent};
 use crate::kernel::NodeBuilder;
 
-use crate::widgets::interaction::{InteractionState, ValueStep, pointer_drag, step_keys};
+use crate::widgets::interaction::{DragEnd, InteractionState, ValueStep, pointer_drag, step_keys};
 
 use super::builder::{SliderRuntime, ValueChange};
 
@@ -64,11 +64,12 @@ pub(super) fn attach_pointer_drag(
             if runtime.disabled() {
                 return None;
             }
+            let start = runtime.value.peek();
             interaction.drag(true);
             runtime.set_from_position(event);
-            Some(())
+            Some(start)
         },
-        move |(), event| {
+        move |_, event| {
             if !runtime.disabled() {
                 runtime.set_from_position(event);
                 event.stop_propagation();
@@ -77,8 +78,10 @@ pub(super) fn attach_pointer_drag(
         move |ended, event| {
             interaction.drag(false);
             let _released = interaction.release_pointer(event);
-            if ended.is_some() {
-                on_change(runtime.value.peek());
+            match ended {
+                DragEnd::Release => on_change(runtime.value.peek()),
+                DragEnd::Cancel(start) => runtime.value.set(start),
+                DragEnd::Idle => {}
             }
         },
     )

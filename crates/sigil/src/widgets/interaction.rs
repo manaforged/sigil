@@ -1,19 +1,19 @@
 mod drag;
 mod steps;
 
-use crate::events::{KeyEvent, MouseButton, PointerEvent};
+use crate::events::{KeyEvent, MouseButton, PointerEvent, PointerKind, PointerPhase};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 use crate::style::StyleState;
 use crate::widgets::Widget;
 
-pub(crate) use drag::{axis_of, pointer_drag};
+pub(crate) use drag::{DragEnd, axis_of, pointer_drag};
 pub(crate) use steps::{ValueStep, step_keys};
 
 /// Hover, press, and focus signals.
 #[derive(Clone, Copy)]
 pub struct InteractionState {
-    enabled: bool,
+    disabled: Option<Signal<bool>>,
     hovered: Signal<bool>,
     pressed: Signal<bool>,
     dragging: Signal<bool>,
@@ -26,7 +26,7 @@ impl InteractionState {
     #[must_use]
     pub fn new(enabled: bool) -> Self {
         Self {
-            enabled,
+            disabled: (!enabled).then(|| signal(true)),
             hovered: signal(false),
             pressed: signal(false),
             dragging: signal(false),
@@ -35,18 +35,29 @@ impl InteractionState {
         }
     }
 
+    /// Makes the state follow `disabled` instead of the flag given to `new`.
+    #[must_use]
+    pub const fn disabled(mut self, disabled: Option<Signal<bool>>) -> Self {
+        self.disabled = disabled;
+        self
+    }
+
     /// Returns the enabled.
     #[cfg(any(test, feature = "kittest"))]
     #[must_use]
-    pub const fn enabled(self) -> bool {
-        self.enabled
+    pub fn enabled(self) -> bool {
+        self.is_enabled()
+    }
+
+    fn is_enabled(self) -> bool {
+        !self.disabled.is_some_and(Signal::peek)
     }
 
     /// Returns the style state.
     #[must_use]
     pub fn style_state(self) -> StyleState {
         StyleState {
-            disabled: !self.enabled,
+            disabled: self.disabled.is_some_and(Signal::get),
             hovered: self.hovered.get(),
             pressed: self.pressed.get() || self.dragging.get(),
             focused: self.focused.get(),
@@ -65,7 +76,7 @@ impl InteractionState {
         set_if_changed(self.dragging, next);
     }
 
-    /// Returns the focus visible.
+    /// Returns the signal that is true while the node has focus.
     #[must_use]
     pub const fn focus_visible(self) -> Signal<bool> {
         self.focused
@@ -74,8 +85,12 @@ impl InteractionState {
     /// Attaches the state's handlers to `node`.
     #[must_use]
     pub fn install(self, node: NodeBuilder) -> NodeBuilder {
-        node.focusable(self.enabled)
-            .hittable(self.enabled)
+        let node = match self.disabled {
+            Some(flag) => node.mutate(move |node| node.a11y.disabled = Some(flag)),
+            None => node,
+        };
+        node.focusable(true)
+            .hittable(true)
             .focus_ring(self.focus_ring())
             .focus_in(move || self.on_focus_in())
             .focus_out(move || self.on_focus_out())
@@ -96,12 +111,12 @@ impl InteractionState {
             .pointer_enter(move |_| set_if_changed(self.hovered, true))
             .pointer_leave(move |_| self.leave())
             .pointer_down(move |event| {
-                if event.button == Some(MouseButton::Left) {
+                if is_primary(event) {
                     set_if_changed(self.pressed, true);
                 }
             })
             .pointer_up(move |event| {
-                if event.button == Some(MouseButton::Left) {
+                if is_primary(event) || is_cancel(event) {
                     set_if_changed(self.pressed, false);
                 }
             })
@@ -109,38 +124,37 @@ impl InteractionState {
 
     /// Handles a pointer release and returns whether it activates.
     pub fn release_pointer(self, event: &mut PointerEvent) -> bool {
-        if event.button != Some(MouseButton::Left) {
+        let cancelled = is_cancel(event);
+        if !is_primary(event) && !cancelled {
             return false;
         }
         let was_pressed = self.pressed.peek();
         set_if_changed(self.pressed, false);
-        if self.enabled {
+        let enabled = self.is_enabled();
+        if enabled {
             event.stop_propagation();
         }
-        self.enabled && was_pressed && self.hovered.peek()
+        enabled && !cancelled && was_pressed && self.hovered.peek()
     }
 
     /// Handles a key and returns whether it activates.
-    #[allow(
-        clippy::missing_const_for_fn,
-        reason = "const-eligible only under one cfg configuration"
-    )]
     pub fn activate_key(self, event: &mut KeyEvent) -> bool {
-        if self.enabled {
+        let enabled = self.is_enabled();
+        if enabled {
             event.stop_propagation();
         }
-        self.enabled
+        enabled
     }
 
     fn pointer_enter(self, event: &mut PointerEvent) {
-        if self.enabled {
+        if self.is_enabled() {
             set_if_changed(self.hovered, true);
             event.stop_propagation();
         }
     }
 
     fn pointer_leave(self, event: &mut PointerEvent) {
-        if self.enabled {
+        if self.is_enabled() {
             self.leave();
             event.stop_propagation();
         }
@@ -152,7 +166,7 @@ impl InteractionState {
     }
 
     fn pointer_down(self, event: &mut PointerEvent) {
-        if self.enabled && event.button == Some(MouseButton::Left) {
+        if self.is_enabled() && is_primary(event) {
             set_if_changed(self.pressed, true);
             event.stop_propagation();
         }
@@ -167,6 +181,17 @@ impl InteractionState {
         set_if_changed(self.focused, false);
         set_if_changed(self.ring_visible, false);
     }
+}
+
+pub(crate) fn is_primary(event: &PointerEvent) -> bool {
+    match event.button {
+        Some(button) => button == MouseButton::Left,
+        None => event.kind != PointerKind::Mouse,
+    }
+}
+
+pub(crate) fn is_cancel(event: &PointerEvent) -> bool {
+    event.phase == PointerPhase::Cancel
 }
 
 fn set_if_changed<T: Clone + PartialEq + 'static>(signal: Signal<T>, next: T) {

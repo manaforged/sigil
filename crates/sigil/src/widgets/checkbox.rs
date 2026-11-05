@@ -18,7 +18,7 @@ use crate::widgets::interaction::InteractionState;
 use super::layout_ext::LayoutOverrides;
 use super::shared::{
     BoolChange, Press, RELEASE_ENTER_SPACE, accessible_name_or, binary_style_state, control_row,
-    control_surface, disabled_now, noop_bool_change, press, static_label,
+    control_surface, noop_bool_change, press, static_label,
 };
 
 const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
@@ -126,8 +126,7 @@ impl CheckboxBuilder {
     }
 
     fn root(mut self) -> NodeBuilder {
-        let enabled = !disabled_now(self.disabled);
-        let interaction = InteractionState::new(enabled);
+        let interaction = InteractionState::new(true).disabled(self.disabled);
         let on_change = self
             .on_change
             .as_ref()
@@ -160,6 +159,7 @@ impl CheckboxBuilder {
                 StringKey::Checkbox,
             ))
             .checked(checked)
+            .mixed(partial)
             .layout(checkbox_layout(self.label.is_some()));
         let mut node = press(
             control_surface(root, interaction, disabled, user_overlay),

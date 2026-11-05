@@ -18,7 +18,7 @@ use crate::widgets::interaction::InteractionState;
 use super::layout_ext::LayoutOverrides;
 use super::shared::{
     BoolChange, CONTROL_INSET, Press, RELEASE_ENTER_SPACE, accessible_name_or, binary_style_state,
-    control_row, control_surface, disabled_now, noop_bool_change, press, static_label,
+    control_row, control_surface, noop_bool_change, press, static_label,
 };
 
 /// Builder of a switch.
@@ -125,8 +125,7 @@ impl ToggleBuilder {
     }
 
     fn root(mut self) -> NodeBuilder {
-        let enabled = !disabled_now(self.disabled);
-        let interaction = InteractionState::new(enabled);
+        let interaction = InteractionState::new(true).disabled(self.disabled);
         let on_change = self.on_change.clone().unwrap_or_else(noop_bool_change);
         let has_label = self.label.is_some();
         let user_overlay = self.style.take_state_overlay();

@@ -8,7 +8,7 @@ use crate::reactive::{Signal, derived};
 use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom, TextStyle, Token};
 use crate::widgets::Widget;
 
-use crate::widgets::interaction::InteractionState;
+use crate::widgets::interaction::{InteractionState, is_primary};
 
 use super::super::text_edit::{blink, overlay_rect};
 use super::handlers::TextFieldRuntime;
@@ -160,7 +160,7 @@ const fn downstream(byte: usize) -> HitPosition {
 }
 
 fn pointer_down(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
-    if runtime.input.disabled() {
+    if runtime.input.disabled() || !is_primary(event) {
         return;
     }
     let byte = runtime.hit(event.position.x);

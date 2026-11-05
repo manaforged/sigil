@@ -142,7 +142,7 @@ impl SliderBuilder {
 
     fn root(mut self) -> NodeBuilder {
         let runtime = self.runtime;
-        let interaction = InteractionState::new(!runtime.disabled());
+        let interaction = InteractionState::new(true).disabled(runtime.disabled);
         let on_change: ValueChange = self.on_change.take().unwrap_or_else(|| Rc::new(|_| {}));
         let user_overlay = self.style_accumulator.take_state_overlay();
         let root = slider_root(&self, interaction, user_overlay);

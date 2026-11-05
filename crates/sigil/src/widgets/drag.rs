@@ -1,5 +1,7 @@
+use std::rc::Rc;
+
 use crate::kernel::NodeBuilder;
-use crate::widgets::interaction::{axis_of, pointer_drag};
+use crate::widgets::interaction::{DragEnd, axis_of, pointer_drag};
 use crate::widgets::orientation::Orientation;
 
 /// Drag along one axis.
@@ -13,6 +15,8 @@ pub fn axis_drag<S>(
 where
     S: Clone + 'static,
 {
+    let on_delta = Rc::new(on_delta);
+    let restore = Rc::clone(&on_delta);
     pointer_drag(
         node,
         move |event| {
@@ -30,8 +34,10 @@ where
             event.stop_propagation();
         },
         move |ended, event| {
-            if ended.is_some() {
-                on_end();
+            match ended {
+                DragEnd::Release => on_end(),
+                DragEnd::Cancel((_, base)) => restore(base, 0.0),
+                DragEnd::Idle => {}
             }
             event.stop_propagation();
         },

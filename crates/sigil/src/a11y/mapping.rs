@@ -1,6 +1,7 @@
 use super::text::RunNodes;
 use crate::geometry::Rect;
 use crate::kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
+use crate::reactive::Signal;
 use accesskit::{
     Action, Invalid, Node as AkNode, NodeId as AkNodeId, Toggled, TreeId, TreeInfo, TreeUpdate,
 };
@@ -249,7 +250,9 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
         ak.set_disabled();
     }
     if let Some(sig) = a11y.checked {
-        let toggled = if sig.peek() {
+        let toggled = if a11y.mixed.is_some_and(Signal::peek) {
+            Toggled::Mixed
+        } else if sig.peek() {
             Toggled::True
         } else {
             Toggled::False

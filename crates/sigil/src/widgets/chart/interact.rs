@@ -2,12 +2,13 @@ use std::cell::Cell;
 use std::ops::Range;
 use std::rc::Rc;
 
-use crate::events::{MouseButton, MouseButtons, PointerEvent, ScrollDelta, ScrollEvent};
+use crate::events::{PointerEvent, ScrollDelta, ScrollEvent};
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Signal, signal};
 use crate::style::{Token, space};
 use crate::widgets::Widget;
+use crate::widgets::interaction::is_primary;
 
 use super::axis::format_tick;
 
@@ -97,7 +98,7 @@ impl Interact {
             let (Some(range), Some(last)) = (range, drag.get()) else {
                 return;
             };
-            if !event.buttons.contains(MouseButtons::LEFT) {
+            if !event.is_captured() {
                 drag.set(None);
                 return;
             }
@@ -106,7 +107,7 @@ impl Interact {
             drag.set(Some(event.position.x));
         })
         .pointer_down(move |event: &mut PointerEvent| {
-            if range.is_some() && event.button == Some(MouseButton::Left) {
+            if range.is_some() && is_primary(event) {
                 down_drag.set(Some(event.position.x));
                 event.capture_pointer();
             }

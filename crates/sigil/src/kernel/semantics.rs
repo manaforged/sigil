@@ -78,6 +78,8 @@ pub struct A11yProps {
     pub hittable: bool,
     /// The checked, if any.
     pub checked: Option<Signal<bool>>,
+    /// The mixed state of a checkbox, if any.
+    pub mixed: Option<Signal<bool>>,
     /// The selected, if any.
     pub selected: Option<Signal<bool>>,
     /// The value now, if any.
@@ -143,6 +145,7 @@ impl Default for A11yProps {
             keyboard_shortcut: None,
             hittable: true,
             checked: None,
+            mixed: None,
             selected: None,
             value_now: None,
             value_min: None,
