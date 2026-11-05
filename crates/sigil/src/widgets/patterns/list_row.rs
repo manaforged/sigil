@@ -329,7 +329,7 @@ fn status_text(
     if shrink {
         node.layout(LayoutStyle::block().shrink(1.0).min_size(0.0, 0.0))
     } else {
-        node
+        node.layout(LayoutStyle::block().shrink(0.0))
     }
 }
 
