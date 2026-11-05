@@ -10,6 +10,7 @@ pub(super) type SubmitObserver = Rc<dyn Fn(&str)>;
 pub(super) enum PaletteEntry {
     Leaf {
         label: String,
+        detail: Option<String>,
         action: Option<Activate>,
         disabled: bool,
     },
@@ -25,6 +26,17 @@ impl PaletteEntry {
         match self {
             Self::Leaf { disabled, .. } | Self::Submenu { disabled, .. } => *disabled,
         }
+    }
+
+    pub(super) fn detail(&self) -> Option<&str> {
+        match self {
+            Self::Leaf { detail, .. } => detail.as_deref(),
+            Self::Submenu { .. } => None,
+        }
+    }
+
+    fn search_text(&self) -> String {
+        self.detail().map_or_else(|| self.label().to_owned(), |detail| format!("{} {detail}", self.label()))
     }
 
     pub(super) fn label(&self) -> &str {
@@ -66,7 +78,8 @@ fn first_enabled(entries: &[PaletteEntry], shown: &[usize]) -> usize {
 }
 
 fn ranked(entries: &[PaletteEntry], query: &str) -> Vec<usize> {
-    Matcher::Fuzzy.rank(query, entries.iter().map(PaletteEntry::label))
+    let texts: Vec<String> = entries.iter().map(PaletteEntry::search_text).collect();
+    Matcher::Fuzzy.rank(query, texts.iter().map(String::as_str))
 }
 
 #[derive(Clone, Copy)]

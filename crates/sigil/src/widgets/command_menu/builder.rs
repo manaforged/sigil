@@ -17,9 +17,16 @@ impl LevelDef {
     fn item(&mut self, label: impl Into<String>, action: impl Fn() + 'static) {
         self.entries.push(PaletteEntry::Leaf {
             label: label.into(),
+            detail: None,
             action: Some(Rc::new(action)),
             disabled: false,
         });
+    }
+
+    fn detail(&mut self, text: impl Into<String>) {
+        if let Some(PaletteEntry::Leaf { detail, .. }) = self.entries.last_mut() {
+            *detail = Some(text.into());
+        }
     }
 
     fn submenu(&mut self, label: impl Into<String>, def: Self) {
@@ -33,6 +40,7 @@ impl LevelDef {
     fn disabled(&mut self, label: impl Into<String>) {
         self.entries.push(PaletteEntry::Leaf {
             label: label.into(),
+            detail: None,
             action: None,
             disabled: true,
         });
@@ -46,6 +54,13 @@ pub struct SubmenuBuilder {
 }
 
 impl SubmenuBuilder {
+    /// Sets the last item's trailing detail, such as a shortcut; search matches it too.
+    #[must_use]
+    pub fn detail(mut self, text: impl Into<String>) -> Self {
+        self.level.detail(text);
+        self
+    }
+
     /// Adds an item.
     #[must_use]
     pub fn item(mut self, label: impl Into<String>, action: impl Fn() + 'static) -> Self {
@@ -88,6 +103,13 @@ pub fn command_menu() -> CommandMenuBuilder {
 }
 
 impl CommandMenuBuilder {
+    /// Sets the last item's trailing detail, such as a shortcut; search matches it too.
+    #[must_use]
+    pub fn detail(mut self, text: impl Into<String>) -> Self {
+        self.level.detail(text);
+        self
+    }
+
     /// Adds an item.
     #[must_use]
     pub fn item(mut self, label: impl Into<String>, action: impl Fn() + 'static) -> Self {

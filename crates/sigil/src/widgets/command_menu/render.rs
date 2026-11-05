@@ -212,6 +212,7 @@ fn build_row(entry: &PaletteEntry, idx: usize, row: &MenuRowCtx) -> NodeBuilder 
     let disabled = entry.disabled();
     let slots = ItemSlots {
         chevron: matches!(entry, PaletteEntry::Submenu { .. }),
+        shortcut: entry.detail().map(str::to_owned),
         disabled,
         ..ItemSlots::new(entry.label().to_owned())
     };
