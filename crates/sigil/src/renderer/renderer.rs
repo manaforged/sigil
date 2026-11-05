@@ -33,6 +33,7 @@ pub struct WgpuRenderer {
     pub(crate) last_frame_stats: FrameStats,
     retained: Option<crate::renderer::damage::Retained>,
     on_lost: Option<OnLost>,
+    device_generation: u64,
 }
 
 impl Default for WgpuRenderer {
@@ -50,6 +51,7 @@ impl WgpuRenderer {
             last_frame_stats: FrameStats::default(),
             retained: None,
             on_lost: None,
+            device_generation: 0,
         }
     }
 
@@ -92,6 +94,7 @@ impl WgpuRenderer {
     fn drop_device_resources(&mut self) {
         self.frame_transients.clear();
         self.retained = None;
+        self.device_generation += 1;
     }
 
     #[cfg(feature = "desktop")]
@@ -196,17 +199,30 @@ impl WgpuRenderer {
     }
 
     pub(crate) fn recover_lost_device(&mut self, surface: &mut WgpuSurface) -> Result<bool, Error> {
+        let rebuilt = self.rebuild_lost_device(surface)?;
+        self.adopt_surface(surface)?;
+        Ok(rebuilt)
+    }
+
+    fn rebuild_lost_device(&mut self, surface: &WgpuSurface) -> Result<bool, Error> {
         if !self.state.is_lost() || cfg!(target_arch = "wasm32") {
             return Ok(false);
         }
         self.state.rebuild(&surface.surface, self.on_lost.clone())?;
         self.drop_device_resources();
+        tracing::info!("GPU device rebuilt after loss");
+        Ok(true)
+    }
+
+    fn adopt_surface(&mut self, surface: &mut WgpuSurface) -> Result<(), Error> {
+        if surface.device_generation == self.device_generation {
+            return Ok(());
+        }
         surface.backbuffer = None;
         let ready = self.state.ready()?;
         surface.surface.configure(&ready.device, &surface.config);
-        tracing::info!("GPU device rebuilt after loss");
-        self.prepare_compositing(surface.config.format)?;
-        Ok(true)
+        surface.device_generation = self.device_generation;
+        self.prepare_compositing(surface.config.format)
     }
 
     pub fn render_command_scene(
@@ -285,6 +301,7 @@ impl Renderer for WgpuRenderer {
             surface,
             config,
             backbuffer: None,
+            device_generation: self.device_generation,
         })
     }
 

@@ -3,6 +3,7 @@ pub struct WgpuSurface {
 
     pub(crate) config: wgpu::SurfaceConfiguration,
     pub(crate) backbuffer: Option<Box<wgpu::Texture>>,
+    pub(crate) device_generation: u64,
 }
 
 impl WgpuSurface {
