@@ -11,7 +11,6 @@ use crate::profile::{count, span};
 use crate::renderer::fill_paint::setup::{
     QuadDesc, QuadPipeline, clipped_pass, linear_sampler, texture_group, texture_layout,
 };
-use crate::renderer::layer_pool::LayerPool;
 use crate::renderer::scene_paint::PaintCtx;
 use crate::scene::{CornerRadii, Transform};
 use shader::LAYER_SHADER;
@@ -93,8 +92,8 @@ impl LayerCompositePipeline {
         self.quad.format
     }
 
-    pub(crate) fn retain(&mut self, pool: &LayerPool) {
-        self.textures.retain(|(view, _)| pool.contains(view));
+    pub(crate) fn retain(&mut self, keep: impl Fn(&wgpu::TextureView) -> bool) {
+        self.textures.retain(|(view, _)| keep(view));
     }
 
     pub(crate) fn composite(&mut self, mut ctx: PaintCtx<'_>, request: CompositeRequest<'_>) {

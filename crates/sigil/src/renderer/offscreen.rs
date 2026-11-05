@@ -93,6 +93,7 @@ impl PipelineCache {
             layer_pipelines,
             blur_pipelines,
             layer_pool,
+            wash_cache,
             pending,
         } = self;
         walk_command_scene(
@@ -114,6 +115,7 @@ impl PipelineCache {
                 layer_pipelines,
                 blur_pipelines,
                 layer_pool,
+                wash_cache,
                 pending,
                 stats,
             },

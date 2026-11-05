@@ -103,8 +103,9 @@ pub(crate) fn walk_layer_command_scene(
     };
     let result = render_nodes(&mut ctx, &nodes, target);
     if let Some(pool) = ctx.layer_pool.as_ref() {
+        let washes = &*ctx.wash_cache;
         for pipeline in &mut *ctx.layer_pipelines {
-            pipeline.retain(pool);
+            pipeline.retain(|view| pool.contains(view) || washes.contains(view));
         }
         pool.record_profile();
     }
@@ -306,6 +307,7 @@ const fn reborrow_ctx<'a>(
         layer_pipelines: &mut *ctx.layer_pipelines,
         blur_pipelines: &mut *ctx.blur_pipelines,
         layer_pool: &mut *ctx.layer_pool,
+        wash_cache: &mut *ctx.wash_cache,
         pending: &mut *ctx.pending,
         stats: &mut *ctx.stats,
     }

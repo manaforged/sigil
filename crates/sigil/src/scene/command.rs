@@ -42,7 +42,8 @@ pub use glyph::shape_glyph_run;
 pub(crate) use glyph::{RunInk, shape_run};
 pub(crate) use payloads::{CellBorder, CellRect};
 pub use payloads::{DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite};
-pub use wash::{MAX_PIGMENTS, Wash};
+pub(crate) use wash::MAX_PIGMENTS;
+pub use wash::Wash;
 #[cfg(all(
     feature = "scene",
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")

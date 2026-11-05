@@ -1,5 +1,6 @@
 use crate::geometry::{Point, Rect};
 
+use crate::renderer::wash_cache::WashCache;
 use crate::Error;
 use crate::renderer::blur_paint::BlurPipeline;
 use crate::renderer::decoration_paint::DecorationInstance;
@@ -41,6 +42,7 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) layer_pipelines: &'a mut Vec<LayerCompositePipeline>,
     pub(crate) blur_pipelines: &'a mut Vec<BlurPipeline>,
     pub(crate) layer_pool: &'a mut Option<LayerPool>,
+    pub(crate) wash_cache: &'a mut WashCache,
     pub(crate) pending: &'a mut WalkPending,
     pub(crate) stats: &'a mut FrameStats,
 }
@@ -80,8 +82,9 @@ pub(crate) fn walk_command_scene(ctx: WalkCtx<'_>, scene: &CommandScene) -> Resu
     };
     if let Some(pool) = ctx.layer_pool.as_mut() {
         pool.prepare(ctx.view.texture());
+        let washes = &*ctx.wash_cache;
         for pipeline in &mut *ctx.layer_pipelines {
-            pipeline.retain(pool);
+            pipeline.retain(|view| pool.contains(view) || washes.contains(view));
         }
     }
     if plan::needs_layers(&scene.commands) {

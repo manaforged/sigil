@@ -9,7 +9,7 @@
 use crate::style::Rgba8;
 
 /// The most pigments one wash carries.
-pub const MAX_PIGMENTS: usize = 4;
+pub(crate) const MAX_PIGMENTS: usize = 4;
 const SEED_MASK: u32 = 0x00ff_ffff;
 
 /// A watercolour wash: pigment pooled over paper, or light over a night sky when the paper is dark.

@@ -94,6 +94,7 @@ mod shadow_paint;
 pub(crate) mod slug;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod split_encoder;
+mod wash_cache;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod sprite_atlas;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]

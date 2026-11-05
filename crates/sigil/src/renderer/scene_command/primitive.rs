@@ -5,7 +5,7 @@ use crate::renderer::frame_upload::FrameUploads;
 use crate::renderer::scene_command::walk::transform_rect;
 use crate::renderer::scene_command::walk::{SceneWalk, pipeline_for, rect_from_fields};
 use crate::renderer::scene_command::{
-    DrawDecoration, DrawGradient, DrawPattern, DrawRect, Stroke, StrokeBand, Transform,
+    DrawDecoration, DrawGradient, DrawPattern, DrawRect, PatternKind, Stroke, StrokeBand, Transform,
 };
 use crate::renderer::scene_instance::{
     BlendSpace, draw_gradient_instance, draw_pattern_instance, draw_rect_instance,
@@ -144,6 +144,11 @@ impl SceneWalk<'_> {
     }
 
     pub(super) fn queue_pattern(&mut self, draw: &DrawPattern) {
+        if let PatternKind::Wash(wash) = draw.pattern
+            && self.draw_wash(draw, wash)
+        {
+            return;
+        }
         let Some((transform, trimmed, dash)) =
             self.trimmed(draw.rect, draw.border_radius, draw.stroke)
         else {

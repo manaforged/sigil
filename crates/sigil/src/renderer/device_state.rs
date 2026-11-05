@@ -12,6 +12,7 @@ use crate::renderer::scene_paint::ScenePipeline;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::SlugTextPipeline;
 use crate::renderer::split_encoder::GpuTimer;
+use crate::renderer::wash_cache::WashCache;
 use crate::{Error, ErrorKind};
 #[cfg(not(target_arch = "wasm32"))]
 use pollster::FutureExt as _;
@@ -33,6 +34,7 @@ pub(crate) struct PipelineCache {
     pub(crate) layer_pipelines: Vec<LayerCompositePipeline>,
     pub(crate) blur_pipelines: Vec<BlurPipeline>,
     pub(crate) layer_pool: Option<LayerPool>,
+    pub(crate) wash_cache: WashCache,
     pub(crate) pending: WalkPending,
 }
 
@@ -48,6 +50,7 @@ impl Default for PipelineCache {
             layer_pipelines: Vec::new(),
             blur_pipelines: Vec::new(),
             layer_pool: Some(LayerPool::new()),
+            wash_cache: WashCache::default(),
             pending: WalkPending::default(),
         }
     }
