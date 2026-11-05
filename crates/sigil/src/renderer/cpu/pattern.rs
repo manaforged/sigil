@@ -92,7 +92,7 @@ enum Look {
         line: f64,
         aa: f64,
     },
-    Wash(crate::scene::Wash),
+    Wash(crate::scene::Wash, (f32, f32)),
 }
 
 struct Field {
@@ -125,7 +125,9 @@ impl Field {
                 aa: f64::from((inverse.sx - inverse.ky).abs() + (inverse.kx - inverse.sy).abs())
                     * 0.5,
             },
-            PatternKind::Wash(wash) => Look::Wash(wash),
+            PatternKind::Wash(wash) => {
+                Look::Wash(wash, (place.rect.width / 2.0, place.rect.height / 2.0))
+            }
         };
         Self {
             look,
@@ -156,7 +158,7 @@ impl Field {
                 let level = (mask * 255.0).round().clamp(0.0, 255.0) as usize;
                 table.get(level).copied().unwrap_or_default()
             }
-            Look::Wash(wash) => wash_pixel(wash, u, v),
+            Look::Wash(wash, centre) => wash_pixel(wash, *centre, u, v),
         }
     }
 }
@@ -186,9 +188,9 @@ fn full(color: Rgba8) -> [u8; 4] {
     rgba_table(color, 1.0).last().copied().unwrap_or_default()
 }
 
-fn wash_pixel(wash: &crate::scene::Wash, x: f64, y: f64) -> [u8; 4] {
+fn wash_pixel(wash: &crate::scene::Wash, centre: (f32, f32), x: f64, y: f64) -> [u8; 4] {
     let alpha = f32::from(wash.paper.a) / 255.0;
-    let [r, g, b] = wash.shade(x as f32, y as f32);
+    let [r, g, b] = wash.shade(x as f32, y as f32, centre);
     let byte = |channel: f32| (channel * alpha * 255.0).round().clamp(0.0, 255.0) as u8;
     [byte(r), byte(g), byte(b), wash.paper.a]
 }

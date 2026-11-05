@@ -173,7 +173,7 @@ fn wash_rand(x: i32, y: i32, seed: u32) -> f32 {
 fn wash_noise(x: f32, y: f32, seed: u32) -> f32 {
     let c = floor(vec2<f32>(x, y));
     let f = vec2<f32>(x, y) - c;
-    let s = f * f * (3.0 - 2.0 * f);
+    let s = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
     let i = vec2<i32>(c);
     let a = wash_rand(i.x, i.y, seed);
     let b = wash_rand(i.x + 1, i.y, seed);
@@ -195,8 +195,9 @@ fn wash_fbm(x_in: f32, y_in: f32, octaves: u32, seed: u32) -> f32 {
         sum = sum + wash_noise(x + shift * 17.3, y - shift * 9.1, seed) * weight;
         total = total + weight;
         weight = weight * 0.5;
-        x = x * 2.03;
-        y = y * 2.03;
+        let turned = 2.03 * (0.8 * x - 0.6 * y);
+        y = 2.03 * (0.6 * x + 0.8 * y);
+        x = turned;
     }
     return sum / total;
 }
@@ -216,8 +217,9 @@ fn wash_ridged(x_in: f32, y_in: f32, seed: u32) -> f32 {
         sum = sum + ridge * weight;
         total = total + weight;
         weight = weight * 0.55;
-        x = x * 2.1;
-        y = y * 2.1;
+        let turned = 2.1 * (0.8 * x - 0.6 * y);
+        y = 2.1 * (0.6 * x + 0.8 * y);
+        x = turned;
     }
     return sum / total;
 }
@@ -300,7 +302,9 @@ fn wash_color(p: vec2<f32>, base: u32, count: u32, a: vec4<f32>, b: vec4<f32>, l
     let wy = v + 1.1 * (wash_fbm(u * 0.8 - 5.0, v * 0.8 + 1.0, 3u, seed) - 0.5);
     var body: f32;
     if band {
-        body = wash_band(u, v, wx, wy, seed);
+        let bits = bitcast<u32>(b.w);
+        let centre = vec2<f32>(f32(bits & 0xffffu), f32(bits >> 16u)) / scale;
+        body = wash_band(u - centre.x, v - centre.y, wx, wy, seed);
     } else {
         body = smoothstep(0.38, 0.78, wash_fbm(wx * 0.9, wy * 0.9, 5u, seed));
     }
@@ -310,7 +314,7 @@ fn wash_color(p: vec2<f32>, base: u32, count: u32, a: vec4<f32>, b: vec4<f32>, l
     let fringe = smoothstep(0.60, 0.66, ridge) * (1.0 - inside);
     let wet = smoothstep(0.05, 0.5, amount);
     amount = amount * (1.0 - 0.35 * inside * edges) + fringe * 0.12 * edges * wet;
-    let fibre = wash_noise(p.x / 9.0, p.y / 2.2, seed ^ 0x13u);
+    let fibre = wash_noise((0.8 * p.x + 0.6 * p.y) / 7.0, (0.8 * p.y - 0.6 * p.x) / 3.0, seed ^ 0x13u);
     let grains = 0.6 * wash_noise(p.x / 1.7, p.y / 1.7, seed ^ 0x51u) + 0.4 * wash_noise(p.x / 5.0, p.y / 5.0, seed ^ 0x77u);
     amount = amount * (1.0 + granulation * (grains - 0.5) * 1.6 * wet);
     amount = clamp(amount * (1.0 + grain * 0.25 * (fibre - 0.5)), 0.0, 1.0);

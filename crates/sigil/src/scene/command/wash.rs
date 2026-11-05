@@ -9,6 +9,12 @@
 use crate::style::Rgba8;
 
 /// The most pigments one wash carries.
+/// Packs an area's centre in whole pixels into the bits of one float for the shader.
+pub(crate) fn centre_bits(width: f32, height: f32) -> f32 {
+    let half = |extent: f32| (extent / 2.0).round().clamp(0.0, 65_535.0) as u32;
+    f32::from_bits(half(width) | (half(height) << 16))
+}
+
 pub(crate) const MAX_PIGMENTS: usize = 4;
 const SEED_MASK: u32 = 0x00ff_ffff;
 
@@ -148,16 +154,16 @@ impl Wash {
         (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0 < 0.5
     }
 
-    /// The colour at `(x, y)` pixels from the top-left of the area, in 0..1 sRGB.
+    /// The colour at `(x, y)` pixels from the top-left of an area centred on `centre`, in 0..1 sRGB.
     #[must_use]
-    pub(crate) fn shade(&self, x: f32, y: f32) -> [f32; 3] {
+    pub(crate) fn shade(&self, x: f32, y: f32, centre: (f32, f32)) -> [f32; 3] {
         let wash = self.normalized();
         let seed = wash.seed;
         let (u, v) = (x / wash.scale, y / wash.scale);
         let wx = u + 1.1 * (fbm(u * 0.8 + 3.0, v * 0.8 + 7.0, 3, seed) - 0.5);
         let wy = v + 1.1 * (fbm(u * 0.8 - 5.0, v * 0.8 + 1.0, 3, seed) - 0.5);
         let body = if wash.band {
-            band(u, v, wx, wy, seed)
+            band(u - centre.0 / wash.scale, v - centre.1 / wash.scale, wx, wy, seed)
         } else {
             smoothstep(0.38, 0.78, fbm(wx * 0.9, wy * 0.9, 5, seed))
         };
@@ -167,7 +173,7 @@ impl Wash {
         let fringe = smoothstep(0.60, 0.66, ridge) * (1.0 - inside);
         let wet = smoothstep(0.05, 0.5, amount);
         amount = amount * (1.0 - 0.35 * inside * wash.edges) + fringe * 0.12 * wash.edges * wet;
-        let fibre = noise(x / 9.0, y / 2.2, seed ^ 0x13);
+        let fibre = noise(0.8f32.mul_add(x, 0.6 * y) / 7.0, 0.8f32.mul_add(y, -0.6 * x) / 3.0, seed ^ 0x13);
         let grains = 0.6 * noise(x / 1.7, y / 1.7, seed ^ 0x51) + 0.4 * noise(x / 5.0, y / 5.0, seed ^ 0x77);
         amount *= 1.0 + wash.granulation * (grains - 0.5) * 1.6 * wet;
         amount *= 1.0 + wash.grain * 0.25 * (fibre - 0.5);
@@ -300,7 +306,7 @@ fn rand(x: i32, y: i32, seed: u32) -> f32 {
 fn noise(x: f32, y: f32, seed: u32) -> f32 {
     let (cx, cy) = (x.floor(), y.floor());
     let (fx, fy) = (x - cx, y - cy);
-    let (sx, sy) = (fx * fx * (3.0 - 2.0 * fx), fy * fy * (3.0 - 2.0 * fy));
+    let (sx, sy) = (fade(fx), fade(fy));
     let (ix, iy) = (cx as i32, cy as i32);
     let a = rand(ix, iy, seed);
     let b = rand(ix + 1, iy, seed);
@@ -311,6 +317,14 @@ fn noise(x: f32, y: f32, seed: u32) -> f32 {
     top + (bottom - top) * sy
 }
 
+fn fade(t: f32) -> f32 {
+    t * t * t * t.mul_add(t.mul_add(6.0, -15.0), 10.0)
+}
+
+fn turn(x: f32, y: f32, scale: f32) -> (f32, f32) {
+    (scale * 0.8f32.mul_add(x, -0.6 * y), scale * 0.6f32.mul_add(x, 0.8 * y))
+}
+
 fn fbm(mut x: f32, mut y: f32, octaves: u32, seed: u32) -> f32 {
     let (mut sum, mut weight, mut total) = (0.0, 1.0, 0.0);
     for octave in 0..octaves {
@@ -318,8 +332,7 @@ fn fbm(mut x: f32, mut y: f32, octaves: u32, seed: u32) -> f32 {
         sum += noise(x + shift * 17.3, y - shift * 9.1, seed) * weight;
         total += weight;
         weight *= 0.5;
-        x *= 2.03;
-        y *= 2.03;
+        (x, y) = turn(x, y, 2.03);
     }
     sum / total
 }
@@ -334,8 +347,7 @@ fn ridged(mut x: f32, mut y: f32, seed: u32) -> f32 {
         sum += ridge * weight;
         total += weight;
         weight *= 0.55;
-        x *= 2.1;
-        y *= 2.1;
+        (x, y) = turn(x, y, 2.1);
     }
     sum / total
 }

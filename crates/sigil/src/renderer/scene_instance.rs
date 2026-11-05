@@ -211,7 +211,10 @@ pub(crate) fn draw_pattern_instance(
 ) -> FillInstance {
     let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
     let base = fill_base(draw.rect, draw.border_radius, draw.stroke, opacity, space);
-    let (fill_kind, line, pattern_a, pattern_b) = pack_pattern(draw.pattern, space);
+    let (fill_kind, line, pattern_a, mut pattern_b) = pack_pattern(draw.pattern, space);
+    if fill_kind == FILL_KIND_WASH {
+        pattern_b[3] = crate::scene::command::wash_centre_bits(draw.rect.width, draw.rect.height);
+    }
     FillInstance {
         line,
         stop_range: [stop_offset, stop_count, fill_kind, 0],

@@ -42,7 +42,7 @@ pub use glyph::shape_glyph_run;
 pub(crate) use glyph::{RunInk, shape_run};
 pub(crate) use payloads::{CellBorder, CellRect};
 pub use payloads::{DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite};
-pub(crate) use wash::MAX_PIGMENTS;
+pub(crate) use wash::{MAX_PIGMENTS, centre_bits as wash_centre_bits};
 pub use wash::Wash;
 #[cfg(all(
     feature = "scene",
