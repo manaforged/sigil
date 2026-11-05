@@ -2,7 +2,7 @@ use std::env;
 use std::fmt::Write;
 use std::sync::atomic::{AtomicU8, Ordering};
 
-use crate::profile::{self, FRAME_BUDGET_NS, Frame};
+use crate::profile::{self, Frame};
 
 const UNSET: u8 = 0;
 const OFF: u8 = 1;
@@ -38,10 +38,11 @@ pub(crate) fn take_state_change() -> bool {
     SEEN.swap(state(), Ordering::Relaxed) != state()
 }
 
-pub(crate) const fn level(wall_ns: u64) -> u8 {
-    if wall_ns > FRAME_BUDGET_NS {
+pub(crate) fn level(work_ns: u64) -> u8 {
+    let budget = profile::budget_ns();
+    if work_ns > budget {
         2
-    } else if wall_ns > FRAME_BUDGET_NS / 2 {
+    } else if work_ns > budget / 2 {
         1
     } else {
         0
@@ -51,17 +52,24 @@ pub(crate) const fn level(wall_ns: u64) -> u8 {
 #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
 pub(crate) fn compact(frame: &Frame) -> String {
     let ms = |ns: u64| ns as f64 / 1_000_000.0;
+    let work = frame.work_ns();
     let mut line = format!(
-        "f{} {} {:.1}ms",
+        "f{} {} {:.1}ms wait {:.1}",
         frame.index,
         frame.cause,
-        ms(frame.wall_ns)
+        ms(work),
+        ms(frame.total_ns().saturating_sub(work))
     );
     if let Some(backend) = frame.backend {
         let _ = write!(line, " [{backend}]");
     }
-    for &(name, ns) in frame.phases.iter().take(4) {
+    if let Some((name, ns)) = frame.hottest() {
         let _ = write!(line, " {name}={:.1}", ms(ns));
+    }
+    if let Some(site) = frame.sites.first() {
+        let name = crate::profile::site_name(site.location);
+        let short = name.rsplitn(3, '/').take(2).collect::<Vec<_>>();
+        let _ = write!(line, " {}/{}={:.1}", short.get(1).unwrap_or(&""), short[0], ms(site.self_ns));
     }
     let nodes = frame.counter(crate::profile::Counter::TuiNodes)
         + frame.counter(crate::profile::Counter::SceneCmds);
@@ -75,7 +83,7 @@ pub(crate) fn compact(frame: &Frame) -> String {
 mod overlay {
     use super::{compact, level};
     use crate::geometry::{Point, Rect};
-    use crate::profile::{self, FRAME_BUDGET_NS, Frame};
+    use crate::profile::{self, Frame};
     use crate::scene::command::{DrawRect, shape_glyph_run};
     use crate::scene::corner_radii::CornerRadii;
     use crate::scene::{CommandScene, SceneCommand};
@@ -95,6 +103,7 @@ mod overlay {
     const BAR_GAP: f32 = 1.0;
     const BAR_MAX_H: f32 = 26.0;
     const PAD: f32 = 8.0;
+    const TEXT_ADVANCE: f32 = 6.0;
 
     const fn at(x: f32, y: f32, w: f32, h: f32) -> Rect {
         Rect::new(Point::new(x, y), w, h)
@@ -102,13 +111,13 @@ mod overlay {
 
     fn bars(scene: &mut CommandScene, shown: &[&Frame], x0: f32, y0: f32) {
         #[allow(clippy::cast_precision_loss, reason = "ns scale → px divisor")]
-        let scale = FRAME_BUDGET_NS.saturating_mul(2) as f32;
+        let scale = profile::budget_ns().saturating_mul(2) as f32;
         let mut x = x0 + PAD;
         for frame in shown {
             #[allow(clippy::cast_precision_loss, reason = "ns → px bar height")]
-            let frac = (frame.wall_ns as f32 / scale).clamp(0.02, 1.0);
+            let frac = (frame.work_ns() as f32 / scale).clamp(0.02, 1.0);
             let h = (frac * BAR_MAX_H).max(2.0);
-            let color = match level(frame.wall_ns) {
+            let color = match level(frame.work_ns()) {
                 2 => ERR,
                 1 => WARN,
                 _ => OK,
@@ -128,9 +137,13 @@ mod overlay {
             return;
         }
         let shown: Vec<&Frame> = frames.iter().rev().take(BARS).rev().collect();
+        let line = shown.iter().max_by_key(|frame| frame.work_ns()).map(|worst| compact(worst));
+        let text = line.as_ref().map_or(0.0, |line| line.chars().count() as f32 * TEXT_ADVANCE);
         let inner = (shown.len() as f32)
             .mul_add(BAR_W + BAR_GAP, -BAR_GAP)
-            .max(120.0);
+            .max(120.0)
+            .max(text)
+            .min(viewport.0 - 40.0);
         let width = PAD.mul_add(2.0, inner);
         let x0 = (viewport.0 - width - 10.0).max(4.0);
         let y0 = 10.0;
@@ -140,7 +153,7 @@ mod overlay {
                 .border_radius(CornerRadii::uniform(6.0)),
         ));
         bars(scene, &shown, x0, y0);
-        if let Some(last) = frames.last() {
+        if let Some(line) = line {
             let style = TextStyle {
                 font_size: 10.0,
                 ..TextStyle::default()
@@ -151,7 +164,7 @@ mod overlay {
                     PAD.mul_add(-2.0, width),
                     12.0,
                 ),
-                compact(last),
+                line,
                 TEXT,
                 style,
                 10_000,

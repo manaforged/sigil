@@ -17,6 +17,8 @@ mod span;
 mod store;
 
 pub(crate) use key::Hotspot;
+pub(crate) use attr::budget_ns;
+pub(crate) use chrome::site_name;
 pub(crate) use site::site;
 pub use site::{Site, SiteKind};
 pub use key::{BackendKind, BackendStatus, Cause, Counter, FallbackCause, Phase};

@@ -3,8 +3,8 @@ use crate::profile::{self, Frame};
 use crate::style::Tone;
 use crate::terminal::paint::{Grid, Ink};
 
-const fn tone(wall_ns: u64) -> Tone {
-    match hud::level(wall_ns) {
+fn tone(work_ns: u64) -> Tone {
+    match hud::level(work_ns) {
         2 => Tone::Error,
         1 => Tone::Warn,
         _ => Tone::Success,
@@ -15,9 +15,9 @@ const fn tone(wall_ns: u64) -> Tone {
     clippy::cast_precision_loss,
     reason = "frame times fit in f32 at glyph precision"
 )]
-fn spark(wall_ns: u64) -> char {
-    let scale = crate::profile::FRAME_BUDGET_NS.saturating_mul(2);
-    crate::widgets::spark_glyph(wall_ns as f32 / scale.max(1) as f32)
+fn spark(work_ns: u64) -> char {
+    let scale = profile::budget_ns().saturating_mul(2);
+    crate::widgets::spark_glyph(work_ns as f32 / scale.max(1) as f32)
 }
 
 pub(crate) fn draw(grid: &mut Grid) {
@@ -33,8 +33,8 @@ pub(crate) fn draw(grid: &mut Grid) {
     let col = cols.saturating_sub(width + 1);
     let shown: Vec<&Frame> = frames.iter().rev().take(width).rev().collect();
     for (i, frame) in shown.iter().enumerate() {
-        let glyph = spark(frame.wall_ns).to_string();
-        grid.overlay_text(col + i, 0, &glyph, Ink::Of(tone(frame.wall_ns)));
+        let glyph = spark(frame.work_ns()).to_string();
+        grid.overlay_text(col + i, 0, &glyph, Ink::Of(tone(frame.work_ns())));
     }
     let Some(last) = frames.last() else {
         return;
