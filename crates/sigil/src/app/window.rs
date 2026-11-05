@@ -63,6 +63,12 @@ impl WindowId {
         id
     }
 
+    /// The window whose tree is being mounted or updated; `None` outside a window.
+    #[must_use]
+    pub fn current() -> Option<Self> {
+        current_window()
+    }
+
     /// Closes this window.
     pub fn close(self) {
         self.command(WindowCommand::Close);

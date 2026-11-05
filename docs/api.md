@@ -1139,6 +1139,8 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | Show progress in the terminal tab | `sigil::terminal::progress(Some(percent)) -> io::Result<()>` |
 | Handle pasted text on a node | `.on_paste(f)` from `Widget`; `f` takes `&str` and returns true to stop the paste |
 | Check whether the terminal window has focus | `sigil::terminal::focused() -> bool` |
+| Check whether a native window has focus | `sigil::app::WindowId::current()` while mounting, then `.focused() -> Option<Signal<bool>>` |
+| Show a desktop notification from a native window | `sigil::app::notify::Notification::new(title, body).send()` (feature `notify`) |
 | Follow the OS light or dark setting | `sigil::terminal::backdrop()`, `Backdrop` |
 | Send Ctrl+C to the tree instead of exiting | `AppConfig::quit_on_ctrl_c(false)` |
 | Set the terminal frame interval (default 1/60 s, 60 Hz) | `AppConfig::frame_interval(Duration)` |
