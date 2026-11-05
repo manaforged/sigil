@@ -6,23 +6,23 @@ use crate::profile::store;
 /// Measures one phase from creation until drop.
 pub struct Span {
     phase: Phase,
-    start: Option<(u64, Instant)>,
+    start: Option<Instant>,
 }
 
 impl Span {
     pub(crate) fn new(phase: Phase) -> Self {
         Self {
             phase,
-            start: store::enabled().then(|| (store::now_us(), Instant::now())),
+            start: store::enabled().then(Instant::now),
         }
     }
 }
 
 impl Drop for Span {
     fn drop(&mut self) {
-        if let Some((start_us, start)) = self.start.take() {
+        if let Some(start) = self.start.take() {
             let elapsed = u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX);
-            store::complete(self.phase, start_us, elapsed);
+            store::complete(self.phase, start, elapsed);
         }
     }
 }

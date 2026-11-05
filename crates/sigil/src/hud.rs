@@ -84,7 +84,9 @@ mod overlay {
     use super::{compact, level};
     use crate::geometry::{Point, Rect};
     use crate::profile::{self, Frame};
-    use crate::scene::command::{DrawRect, shape_glyph_run};
+    use std::cell::RefCell;
+
+    use crate::scene::command::{DrawRect, GlyphRun, shape_glyph_run};
     use crate::scene::corner_radii::CornerRadii;
     use crate::scene::{CommandScene, SceneCommand};
     use crate::style::{Rgba8, TextStyle};
@@ -96,7 +98,7 @@ mod overlay {
     const OK: Rgba8 = rgba(0x4c, 0xc0, 0x6a, 0xff);
     const WARN: Rgba8 = rgba(0xe0, 0xb0, 0x40, 0xff);
     const ERR: Rgba8 = rgba(0xe0, 0x50, 0x50, 0xff);
-    const TEXT: Rgba8 = rgba(0xc8, 0xcd, 0xd8, 0xff);
+    const TEXT_INK: Rgba8 = rgba(0xc8, 0xcd, 0xd8, 0xff);
     const BACKDROP: Rgba8 = rgba(0x08, 0x0a, 0x10, 0xc0);
     const BARS: usize = 64;
     const BAR_W: f32 = 4.0;
@@ -109,15 +111,15 @@ mod overlay {
         Rect::new(Point::new(x, y), w, h)
     }
 
-    fn bars(scene: &mut CommandScene, shown: &[&Frame], x0: f32, y0: f32) {
+    fn bars(scene: &mut CommandScene, works: &[u64], x0: f32, y0: f32) {
         #[allow(clippy::cast_precision_loss, reason = "ns scale → px divisor")]
         let scale = profile::budget_ns().saturating_mul(2) as f32;
         let mut x = x0 + PAD;
-        for frame in shown {
+        for &work in works {
             #[allow(clippy::cast_precision_loss, reason = "ns → px bar height")]
-            let frac = (frame.work_ns() as f32 / scale).clamp(0.02, 1.0);
+            let frac = (work as f32 / scale).clamp(0.02, 1.0);
             let h = (frac * BAR_MAX_H).max(2.0);
-            let color = match level(frame.work_ns()) {
+            let color = match level(work) {
                 2 => ERR,
                 1 => WARN,
                 _ => OK,
@@ -130,30 +132,35 @@ mod overlay {
         }
     }
 
+    struct Text {
+        frame: u32,
+        viewport: u32,
+        width: f32,
+        run: GlyphRun,
+    }
+
+    thread_local! {
+        static TEXT: RefCell<Option<Text>> = const { RefCell::new(None) };
+    }
+
     #[allow(clippy::cast_precision_loss, reason = "≤64 bars → f32 is exact")]
-    pub(crate) fn overlay(scene: &mut CommandScene, viewport: (f32, f32)) {
-        let frames = profile::frames();
-        if frames.is_empty() {
-            return;
-        }
-        let shown: Vec<&Frame> = frames.iter().rev().take(BARS).rev().collect();
-        let line = shown.iter().max_by_key(|frame| frame.work_ns()).map(|worst| compact(worst));
-        let text = line.as_ref().map_or(0.0, |line| line.chars().count() as f32 * TEXT_ADVANCE);
-        let inner = (shown.len() as f32)
-            .mul_add(BAR_W + BAR_GAP, -BAR_GAP)
-            .max(120.0)
-            .max(text)
-            .min(viewport.0 - 40.0);
-        let width = PAD.mul_add(2.0, inner);
-        let x0 = (viewport.0 - width - 10.0).max(4.0);
-        let y0 = 10.0;
-        let height = PAD.mul_add(2.0, BAR_MAX_H) + 14.0;
-        scene.commands.push(SceneCommand::Rect(
-            DrawRect::new(at(x0, y0, width, height), BACKDROP)
-                .border_radius(CornerRadii::uniform(6.0)),
-        ));
-        bars(scene, &shown, x0, y0);
-        if let Some(line) = line {
+    fn text(worst: &Frame, viewport: (f32, f32), bars: usize) -> (f32, GlyphRun) {
+        TEXT.with(|cell| {
+            let mut cached = cell.borrow_mut();
+            if let Some(text) = cached.as_ref()
+                && text.frame == worst.index
+                && text.viewport == viewport.0.to_bits()
+            {
+                return (text.width, text.run.clone());
+            }
+            let line = compact(worst);
+            let inner = (bars as f32)
+                .mul_add(BAR_W + BAR_GAP, -BAR_GAP)
+                .max(120.0)
+                .max(line.chars().count() as f32 * TEXT_ADVANCE)
+                .min(viewport.0 - 40.0);
+            let width = PAD.mul_add(2.0, inner);
+            let (x0, y0) = origin(viewport, width);
             let style = TextStyle {
                 font_size: 10.0,
                 ..TextStyle::default()
@@ -165,12 +172,44 @@ mod overlay {
                     12.0,
                 ),
                 line,
-                TEXT,
+                TEXT_INK,
                 style,
                 10_000,
             );
-            scene.commands.push(SceneCommand::GlyphRun(run));
-        }
+            *cached = Some(Text { frame: worst.index, viewport: viewport.0.to_bits(), width, run: run.clone() });
+            (width, run)
+        })
+    }
+
+    fn origin(viewport: (f32, f32), width: f32) -> (f32, f32) {
+        ((viewport.0 - width - 10.0).max(4.0), 10.0)
+    }
+
+    pub(crate) fn overlay(scene: &mut CommandScene, viewport: (f32, f32)) {
+        let mut works = [0_u64; BARS];
+        let Some((count, width, run)) = profile::with_frames(|frames| {
+            let start = frames.len().saturating_sub(BARS);
+            let mut worst: Option<&Frame> = None;
+            for (slot, frame) in works.iter_mut().zip(frames.range(start..)) {
+                *slot = frame.work_ns();
+                if worst.is_none_or(|best| best.work_ns() < *slot) {
+                    worst = Some(frame);
+                }
+            }
+            let worst = worst?;
+            let (width, run) = text(worst, viewport, frames.len() - start);
+            Some((frames.len() - start, width, run))
+        }) else {
+            return;
+        };
+        let (x0, y0) = origin(viewport, width);
+        let height = PAD.mul_add(2.0, BAR_MAX_H) + 14.0;
+        scene.commands.push(SceneCommand::Rect(
+            DrawRect::new(at(x0, y0, width, height), BACKDROP)
+                .border_radius(CornerRadii::uniform(6.0)),
+        ));
+        bars(scene, &works[..count], x0, y0);
+        scene.commands.push(SceneCommand::GlyphRun(run));
     }
 }
 

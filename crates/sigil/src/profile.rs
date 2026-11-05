@@ -133,6 +133,8 @@ pub(crate) fn dump_if_enabled() {
     }
 }
 
+pub(crate) use store::with_frames;
+
 /// Returns the recorded frames.
 #[must_use]
 pub fn frames() -> Vec<Frame> {

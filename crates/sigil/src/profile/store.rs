@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use std::env;
 use std::path::PathBuf;
 use std::process::id;
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 use web_time::Instant;
 
 use serde_json::{Value, json};
@@ -31,9 +31,7 @@ kittest_pub! {
 /// The budget of one interaction in nanoseconds.
 pub(crate) const INTERACT_BUDGET_NS: u64 = 200_000_000;
 
-static FORCED: AtomicBool = AtomicBool::new(false);
-static TEST_OFF: AtomicBool = AtomicBool::new(false);
-static ENV: AtomicU8 = AtomicU8::new(ENV_UNSET);
+static STATE: AtomicU8 = AtomicU8::new(ENV_UNSET);
 static WARNS: AtomicU8 = AtomicU8::new(0);
 
 thread_local! {
@@ -156,6 +154,10 @@ impl Store {
         u64::try_from(self.origin.elapsed().as_micros()).unwrap_or(u64::MAX)
     }
 
+    fn since_origin_us(&self, at: Instant) -> u64 {
+        u64::try_from(at.saturating_duration_since(self.origin).as_micros()).unwrap_or(u64::MAX)
+    }
+
     fn push(&mut self, event: TraceEvent) {
         if self.events.len() >= MAX_EVENTS {
             self.events.pop_front();
@@ -166,32 +168,23 @@ impl Store {
 }
 
 pub(crate) fn enabled() -> bool {
-    if TEST_OFF.load(Ordering::Relaxed) {
-        return false;
-    }
-    if FORCED.load(Ordering::Relaxed) {
-        return true;
-    }
-    match ENV.load(Ordering::Relaxed) {
+    match STATE.load(Ordering::Relaxed) {
         ENV_ON => true,
         ENV_OFF => false,
         _ => {
             let on = dump_path().is_some();
-            ENV.store(if on { ENV_ON } else { ENV_OFF }, Ordering::Relaxed);
+            STATE.store(if on { ENV_ON } else { ENV_OFF }, Ordering::Relaxed);
             on
         }
     }
 }
 
 pub(crate) fn enable() {
-    TEST_OFF.store(false, Ordering::Relaxed);
-    FORCED.store(true, Ordering::Relaxed);
+    STATE.store(ENV_ON, Ordering::Relaxed);
 }
 
 pub(crate) fn disable() {
-    FORCED.store(false, Ordering::Relaxed);
-    TEST_OFF.store(true, Ordering::Relaxed);
-    ENV.store(ENV_UNSET, Ordering::Relaxed);
+    STATE.store(ENV_OFF, Ordering::Relaxed);
     reset();
 }
 
@@ -209,10 +202,6 @@ pub(crate) fn dump_path() -> Option<PathBuf> {
     }
 }
 
-pub(crate) fn now_us() -> u64 {
-    STORE.with(|cell| cell.borrow().now_us())
-}
-
 fn with_store(f: impl FnOnce(&mut Store)) {
     if enabled() {
         STORE.with(|cell| f(&mut cell.borrow_mut()));
@@ -227,8 +216,9 @@ pub(crate) fn begin_frame(backend: BackendStatus) {
     });
 }
 
-pub(crate) fn complete(phase: Phase, start_us: u64, dur_ns: u64) {
+pub(crate) fn complete(phase: Phase, start: Instant, dur_ns: u64) {
     with_store(|store| {
+        let start_us = store.since_origin_us(start);
         store.push(TraceEvent::Complete {
             phase,
             tid: 1,
@@ -246,7 +236,7 @@ pub(crate) fn site_enter() {
 pub(crate) fn site_exit(
     location: &'static core::panic::Location<'static>,
     kind: SiteKind,
-    start_us: u64,
+    start: Instant,
     total_ns: u64,
 ) {
     with_store(|store| {
@@ -266,6 +256,7 @@ pub(crate) fn site_exit(
         site.total_ns = site.total_ns.saturating_add(total_ns);
         site.runs = site.runs.saturating_add(1);
         if total_ns >= SITE_SLICE_NS {
+            let start_us = store.since_origin_us(start);
             store.push(TraceEvent::Site { location, kind, start_us, dur_us: total_ns / 1_000 });
         }
     });
@@ -379,7 +370,11 @@ fn warn_slow(frame: &Frame) {
 }
 
 pub(crate) fn frames() -> Vec<Frame> {
-    STORE.with(|cell| cell.borrow().frames.iter().cloned().collect())
+    with_frames(|frames| frames.iter().cloned().collect())
+}
+
+pub(crate) fn with_frames<R>(f: impl FnOnce(&VecDeque<Frame>) -> R) -> R {
+    STORE.with(|cell| f(&cell.borrow().frames))
 }
 
 pub(crate) fn events() -> Vec<TraceEvent> {

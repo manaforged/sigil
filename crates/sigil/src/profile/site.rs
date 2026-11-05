@@ -45,23 +45,23 @@ pub struct Site {
 
 /// Times one run of a site from creation until drop.
 pub(crate) struct SiteSpan {
-    open: Option<(&'static Location<'static>, SiteKind, u64, Instant)>,
+    open: Option<(&'static Location<'static>, SiteKind, Instant)>,
 }
 
 pub(crate) fn site(location: &'static Location<'static>, kind: SiteKind) -> SiteSpan {
     SiteSpan {
         open: store::enabled().then(|| {
             store::site_enter();
-            (location, kind, store::now_us(), Instant::now())
+            (location, kind, Instant::now())
         }),
     }
 }
 
 impl Drop for SiteSpan {
     fn drop(&mut self) {
-        if let Some((location, kind, start_us, start)) = self.open.take() {
+        if let Some((location, kind, start)) = self.open.take() {
             let total_ns = u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX);
-            store::site_exit(location, kind, start_us, total_ns);
+            store::site_exit(location, kind, start, total_ns);
         }
     }
 }
