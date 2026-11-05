@@ -251,7 +251,7 @@ fn pool(amount: f32, pools: f32, edges: f32) -> f32 {
     let rest = x - level;
     let settled = (level + smoothstep(0.80, 1.0, rest)) / pools;
     let rim = (1.0 - smoothstep(0.0, 0.16, rest)) * if level >= 1.0 { 1.0 } else { 0.0 };
-    (settled + edges * rim * (0.9 / pools)).max(UNDERWASH * amount)
+    (settled + edges * rim * (0.9 / pools)).max(UNDERWASH * amount.sqrt())
 }
 
 fn band(u: f32, v: f32, wx: f32, wy: f32, seed: u32) -> f32 {
