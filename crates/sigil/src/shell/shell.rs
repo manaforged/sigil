@@ -21,6 +21,7 @@ mod attrs;
 mod commands;
 mod events;
 mod shell_impl;
+mod title_bar;
 #[cfg(target_arch = "wasm32")]
 mod web;
 #[cfg(target_arch = "wasm32")]
@@ -51,6 +52,7 @@ pub struct WinitShell {
     windows: Vec<(WinitWindowHandle, Arc<Window>)>,
     window_scales: Vec<(WinitWindowHandle, Scale)>,
     window_zooms: Vec<(WinitWindowHandle, f32)>,
+    title_bars: Vec<(WinitWindowHandle, f32)>,
     failed: Vec<(WinitWindowHandle, String)>,
     events: Vec<TaggedEvent>,
     event_window: WinitWindowHandle,
@@ -105,6 +107,7 @@ impl WinitShell {
             windows: Vec::new(),
             window_scales: Vec::new(),
             window_zooms: Vec::new(),
+            title_bars: Vec::new(),
             failed: Vec::new(),
             events: Vec::new(),
             event_window: WinitWindowHandle::from_raw(0),
@@ -207,6 +210,13 @@ impl WinitShell {
         self.redraw_target = target;
     }
 
+    fn centre_controls(&self, handle: WinitWindowHandle) {
+        let bar = self.title_bars.iter().find_map(|(h, bar)| (*h == handle).then_some(*bar));
+        if let (Some(bar), Some(window)) = (bar, self.window_for(handle)) {
+            title_bar::centre_controls(window, bar);
+        }
+    }
+
     pub(crate) fn handle_for(&self, id: winit::window::WindowId) -> Option<WinitWindowHandle> {
         self.windows
             .iter()
@@ -223,6 +233,7 @@ impl WinitShell {
         self.windows.retain(|(h, _)| *h != handle);
         self.window_scales.retain(|(h, _)| *h != handle);
         self.window_zooms.retain(|(h, _)| *h != handle);
+        self.title_bars.retain(|(h, _)| *h != handle);
         self.a11y_adapters.retain(|entry| entry.handle != handle);
         self.events.retain(|(h, _)| *h != handle);
     }

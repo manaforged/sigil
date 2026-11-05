@@ -43,9 +43,15 @@ impl WinitShell {
         let scale = self.window_scale(handle);
         self.event_window = handle;
         match event {
-            WinitWindowEvent::Resized(size) => self.push_window_resized(size),
+            WinitWindowEvent::Resized(size) => {
+                self.centre_controls(handle);
+                self.push_window_resized(size)
+            }
             WinitWindowEvent::Destroyed => self.push_window(SigilWindowEvent::Destroyed),
-            WinitWindowEvent::Focused(focused) => self.push_focus(focused),
+            WinitWindowEvent::Focused(focused) => {
+                self.centre_controls(handle);
+                self.push_focus(focused)
+            }
             WinitWindowEvent::KeyboardInput { event, .. } => self.push_key(event),
             WinitWindowEvent::ModifiersChanged(modifiers) => self.update_modifiers(modifiers),
             WinitWindowEvent::Ime(event) => self.push_ime(event),

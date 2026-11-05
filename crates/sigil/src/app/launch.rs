@@ -167,6 +167,7 @@ where
             crate::app::WindowOpts {
                 overlay: config.overlay,
                 frameless: config.frameless,
+                inset_title_bar: config.inset_title_bar,
                 anchor: config.anchor,
                 user_zoom: ((config.user_zoom - 1.0).abs() > f32::EPSILON)
                     .then_some(config.user_zoom),

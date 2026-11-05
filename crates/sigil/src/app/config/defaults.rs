@@ -13,6 +13,8 @@ impl AppConfig {
             #[cfg(feature = "desktop")]
             frameless: false,
             #[cfg(feature = "desktop")]
+            inset_title_bar: None,
+            #[cfg(feature = "desktop")]
             anchor: None,
             theme_file: None,
             #[cfg(feature = "desktop")]

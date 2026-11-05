@@ -68,6 +68,8 @@ pub struct AppConfig {
     #[cfg(feature = "desktop")]
     pub(crate) frameless: bool,
     #[cfg(feature = "desktop")]
+    pub(crate) inset_title_bar: Option<f32>,
+    #[cfg(feature = "desktop")]
     pub(crate) anchor: Option<crate::app::Anchor>,
     pub(crate) theme_file: Option<std::path::PathBuf>,
     #[cfg(feature = "desktop")]
@@ -168,6 +170,14 @@ impl AppConfig {
     #[must_use]
     pub const fn frameless(mut self, yes: bool) -> Self {
         self.frameless = yes;
+        self
+    }
+
+    /// Draws content under the title bar and centres the window controls in a bar this tall.
+    #[cfg(feature = "desktop")]
+    #[must_use]
+    pub const fn inset_title_bar(mut self, height: f32) -> Self {
+        self.inset_title_bar = Some(height);
         self
     }
 

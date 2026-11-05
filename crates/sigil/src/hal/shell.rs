@@ -23,6 +23,7 @@ pub enum Anchor {
 pub struct WindowOpts {
     pub overlay: bool,
     pub frameless: bool,
+    pub inset_title_bar: Option<f32>,
     pub anchor: Option<Anchor>,
     pub user_zoom: Option<f32>,
     pub min_size: Option<LogicalSize>,

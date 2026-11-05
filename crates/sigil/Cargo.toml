@@ -91,7 +91,8 @@ web-sys = { version = "0.3", features = ["Clipboard", "CompositionEvent", "CssSt
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-text = { version = "21", optional = true }
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSAccessibility", "NSEvent", "NSWorkspace"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSAccessibility", "NSButton", "NSControl", "NSEvent", "NSResponder", "NSView", "NSWindow", "NSWorkspace", "objc2-core-foundation"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSGeometry", "objc2-core-foundation"] }
 
 [features]
 default = ["desktop"]
