@@ -33,7 +33,7 @@ impl ButtonBuilder {
     #[cfg(feature = "scene")]
     pub(super) fn label_content(&self, node: NodeBuilder) -> NodeBuilder {
         let label = self.label_text(self.compact());
-        if self.leading.is_none() && self.trailing.is_none() {
+        if self.leading.is_none() && self.trailing.is_none() && self.shortcut.is_none() {
             return node.child(label);
         }
         let mut row = container().hittable(false).layout(
@@ -47,6 +47,10 @@ impl ButtonBuilder {
         row = row.child(label);
         if let Some(svg) = self.trailing.clone() {
             row = row.child(self.leading_icon(svg).px(12.0));
+        }
+        if let Some(key) = self.shortcut.clone() {
+            let (tone, atoms) = (self.resolved_tone(), self.resolved_fill().label_atoms());
+            row = row.child(label_node(key.into(), tone, atoms, true).class("opacity-60"));
         }
         node.child(row)
     }

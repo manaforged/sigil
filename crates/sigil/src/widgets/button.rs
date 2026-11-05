@@ -34,6 +34,7 @@ pub struct ButtonBuilder {
     leading: Option<std::sync::Arc<str>>,
     #[cfg(feature = "scene")]
     trailing: Option<std::sync::Arc<str>>,
+    shortcut: Option<String>,
 }
 
 /// A push button.
@@ -73,6 +74,7 @@ impl ButtonBuilder {
             leading: None,
             #[cfg(feature = "scene")]
             trailing: None,
+            shortcut: None,
         }
     }
 
@@ -134,6 +136,13 @@ impl ButtonBuilder {
     #[must_use]
     pub fn trailing(mut self, icon: crate::icons::Icon) -> Self {
         self.trailing = Some(icon.svg().into());
+        self
+    }
+
+    /// Sets the key that triggers this button, shown faint after the label.
+    #[must_use]
+    pub fn shortcut(mut self, key: impl Into<String>) -> Self {
+        self.shortcut = Some(key.into());
         self
     }
 
