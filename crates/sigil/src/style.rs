@@ -22,6 +22,7 @@ pub(crate) mod engine;
 pub(crate) mod focus_ring;
 pub(crate) mod font_family;
 mod grid;
+mod text_scale;
 mod install;
 pub(crate) mod intern;
 pub(crate) mod locale;
@@ -79,6 +80,7 @@ kittest_pub! {
 }
 pub use font_family::FontFamily;
 pub use grid::grid;
+pub use text_scale::text_scale;
 pub(crate) use grid::{cell_size, swap_cell};
 pub use locale::Direction;
 kittest_pub! {

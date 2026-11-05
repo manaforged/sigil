@@ -7,17 +7,18 @@ use crate::style::intern::intern;
 use crate::style::{StyleAtom, parse_class_string, parser::ParseError};
 
 pub(crate) fn parse_classes(input: &'static str) -> &'static [StyleAtom] {
-    static CACHE: OnceLock<Mutex<HashMap<&'static str, &'static [StyleAtom]>>> = OnceLock::new();
+    static CACHE: OnceLock<Mutex<HashMap<(u32, &'static str), &'static [StyleAtom]>>> = OnceLock::new();
 
     let mut cache = CACHE
         .get_or_init(|| Mutex::new(HashMap::new()))
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
-    if let Some(atoms) = cache.get(input).copied() {
+    let key = (crate::style::text_scale::current(), input);
+    if let Some(atoms) = cache.get(&key).copied() {
         return atoms;
     }
     let atoms = parse_and_leak(input);
-    cache.insert(input, atoms);
+    cache.insert(key, atoms);
     atoms
 }
 

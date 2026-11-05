@@ -123,7 +123,7 @@ const COLOR_PREFIXES: [ColorPrefix; 3] = [
 
 pub(super) fn parse_table_token(token: &str) -> Option<StyleAtom> {
     if let Some(atom) = KEYWORDS.get(token) {
-        return Some(*atom);
+        return Some(crate::style::text_scale::scaled(*atom));
     }
     for (prefix, value) in PREFIXES {
         let Some(raw) = token.strip_prefix(prefix) else {
