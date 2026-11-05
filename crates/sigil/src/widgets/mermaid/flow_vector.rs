@@ -7,8 +7,8 @@ use crate::widgets::vector::{PathNode, path};
 use super::flow::{Graph, GridRect, NodeShape, arrange};
 use super::flow_parse::parse;
 
-const CELL_W: f32 = 7.0;
-const CELL_H: f32 = space(4);
+pub(super) const CELL_W: f32 = 7.0;
+pub(super) const CELL_H: f32 = space(4);
 const CORNER: f32 = 8.0;
 const HEAD: f32 = 7.0;
 const DASH: f32 = 4.0;
@@ -20,14 +20,14 @@ const LABEL_H: f32 = 20.0;
 const LABEL_CHAR: f32 = 7.0;
 const CIRCLE_K: f32 = 0.552_284_8;
 
-type Point = (f32, f32);
+pub(super) type Point = (f32, f32);
 
 #[derive(Clone, Copy)]
-struct Area {
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
+pub(super) struct Area {
+    pub(super) x: f32,
+    pub(super) y: f32,
+    pub(super) w: f32,
+    pub(super) h: f32,
 }
 
 impl Area {
@@ -48,7 +48,7 @@ impl Area {
     }
 }
 
-fn cells(count: usize, cell: f32) -> f32 {
+pub(super) fn cells(count: usize, cell: f32) -> f32 {
     f32::from(u16::try_from(count).unwrap_or(u16::MAX)) * cell
 }
 
@@ -124,11 +124,11 @@ pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
     Some((root, size.0))
 }
 
-fn edge_width() -> f32 {
+pub(super) fn edge_width() -> f32 {
     f32::from(BORDER_WIDTH) * 1.25
 }
 
-fn canvas(size: (f32, f32)) -> PathNode {
+pub(super) fn canvas(size: (f32, f32)) -> PathNode {
     #[allow(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -138,7 +138,7 @@ fn canvas(size: (f32, f32)) -> PathNode {
     path(width.max(1), height.max(1))
 }
 
-fn layer(node: PathNode, size: (f32, f32)) -> PathNode {
+pub(super) fn layer(node: PathNode, size: (f32, f32)) -> PathNode {
     node.retina().layout(
         LayoutStyle::block()
             .position(Position::Absolute)
@@ -185,7 +185,7 @@ fn shape(node: PathNode, shape: NodeShape, area: Area) -> PathNode {
     }
 }
 
-fn rounded(node: PathNode, area: Area, radius: f32) -> PathNode {
+pub(super) fn rounded(node: PathNode, area: Area, radius: f32) -> PathNode {
     let r = radius.min(area.w / 2.0).min(area.h / 2.0);
     let (x0, y0, x1, y1) = (area.x, area.y, area.right(), area.bottom());
     node.move_to(x0 + r, y0)
@@ -255,7 +255,7 @@ fn flag(node: PathNode, area: Area) -> PathNode {
         .close()
 }
 
-fn node_label(lines: &[String], area: Area) -> NodeBuilder {
+pub(super) fn node_label(lines: &[String], area: Area) -> NodeBuilder {
     let mut column = container().layout(
         LayoutStyle::flex_column()
             .position(Position::Absolute)
@@ -382,7 +382,7 @@ fn unit(from: Point, to: Point) -> (Point, f32) {
     ((dx / length, dy / length), length)
 }
 
-fn polyline(mut node: PathNode, points: &[Point]) -> PathNode {
+pub(super) fn polyline(mut node: PathNode, points: &[Point]) -> PathNode {
     let points = distinct(points);
     let Some(first) = points.first() else {
         return node;
@@ -403,7 +403,7 @@ fn polyline(mut node: PathNode, points: &[Point]) -> PathNode {
     }
 }
 
-fn dashed_line(mut node: PathNode, points: &[Point]) -> PathNode {
+pub(super) fn dashed_line(mut node: PathNode, points: &[Point]) -> PathNode {
     for pair in distinct(points).windows(2) {
         let ((ux, uy), length) = unit(pair[0], pair[1]);
         let mut at = 0.0;
@@ -452,7 +452,7 @@ fn middle(points: &[Point]) -> Point {
     }
 }
 
-fn edge_label(label: &str, at: Point) -> NodeBuilder {
+pub(super) fn edge_label(label: &str, at: Point) -> NodeBuilder {
     let width = cells(label.chars().count(), LABEL_CHAR) + 2.0 * space(2);
     container()
         .layout(

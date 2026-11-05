@@ -30,6 +30,7 @@ pub(crate) fn figure(source: &str) -> NodeBuilder {
     if !crate::style::Metrics::current().is_grid()
         && !crate::widgets::source_too_large(source)
         && let Some((diagram, width)) = flow_vector::figure(&bound_source(source))
+            .or_else(|| sequence::vector(&bound_source(source)))
     {
         let centred = container()
             .layout(

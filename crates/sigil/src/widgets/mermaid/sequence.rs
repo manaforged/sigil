@@ -1,4 +1,5 @@
 mod paint;
+mod vector;
 
 use super::label::{flat, width, wrapped};
 use paint::render;
@@ -50,6 +51,14 @@ struct SequenceFrame {
 }
 
 pub(super) fn draw(source: &str) -> Option<Vec<String>> {
+    parse(source).map(|diagram| render(&diagram))
+}
+
+pub(super) fn vector(source: &str) -> Option<(crate::kernel::NodeBuilder, f32)> {
+    parse(source).map(|diagram| vector::figure(&diagram))
+}
+
+fn parse(source: &str) -> Option<Diagram> {
     let mut lines = source
         .lines()
         .map(str::trim)
@@ -64,7 +73,7 @@ pub(super) fn draw(source: &str) -> Option<Vec<String>> {
     if diagram.participants.is_empty() {
         return None;
     }
-    Some(render(&diagram))
+    Some(diagram)
 }
 
 const IGNORED: &[&str] = &[
