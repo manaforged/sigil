@@ -178,6 +178,8 @@ pub(crate) mod overlay;
 mod panel;
 pub(crate) mod patterns;
 mod popup;
+pub use popup::close_top_escape;
+pub(crate) use popup::close_light as popup_close_light;
 mod progress;
 mod radio_group;
 mod scroll;

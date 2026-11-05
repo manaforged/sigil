@@ -181,7 +181,10 @@ impl MenuBuilder {
         }
         let panel = overrides.finish(panel);
 
-        PopupLayer::new(open, PopupAnchor::Inline)
+        let layer = PopupLayer::new(open, PopupAnchor::Inline);
+        layer.register_escape();
+        layer.register_light();
+        layer
             .dismiss_outside(container().layout(layout))
             .style_reactive(move || popup::shown(open))
             .child(panel)

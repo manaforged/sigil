@@ -213,7 +213,15 @@ impl EventRouter {
         if self.route_captured_pointer(cx, layout, &mut event, global_position) {
             return;
         }
-        let Some(path) = self.hit_cache.hit_path(cx, layout, event.position) else {
+        let path = self.hit_cache.hit_path(cx, layout, event.position);
+        if event.phase == PointerPhase::Down
+            && !path.as_ref().is_some_and(|path| in_popup(cx, path))
+            && crate::widgets::popup_close_light()
+        {
+            self.end_press(event.phase);
+            return;
+        }
+        let Some(path) = path else {
             self.clear_hover(cx, &event);
             self.end_press(event.phase);
             return;
@@ -381,4 +389,10 @@ impl EventRouter {
 struct ShortcutIndex {
     generation: u64,
     entries: SmallVec<[(Shortcut, NodeId); 8]>,
+}
+
+fn in_popup(cx: &Cx, path: &NodePath) -> bool {
+    path.iter().any(|id| {
+        cx.get(*id).is_some_and(|node| node.a11y.focus_scope == Some(crate::kernel::FocusScopeKind::Popup))
+    })
 }

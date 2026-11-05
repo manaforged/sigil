@@ -68,6 +68,16 @@ impl PopupLayer {
         register_escape(self.show);
     }
 
+    /// Closes this popup when a press lands outside every popup panel.
+    pub(crate) fn register_light(self) {
+        let id = NEXT_ESCAPE_LAYER_ID.fetch_add(1, Ordering::Relaxed);
+        let show = self.show;
+        LIGHT_LAYERS.with(|stack| stack.borrow_mut().push(EscapeLayer { id, show }));
+        on_cleanup(move || {
+            LIGHT_LAYERS.with(|stack| stack.borrow_mut().retain(|layer| layer.id != id));
+        });
+    }
+
     pub(crate) fn announce_open(self, name: &'static str, open: impl Fn() -> String + 'static) {
         let show = self.show;
         let prev = Rc::new(Cell::new(false));
@@ -119,6 +129,15 @@ thread_local! {
     static ESCAPE_LAYERS: RefCell<Vec<EscapeLayer>> = const {
         RefCell::new(Vec::new())
     };
+    static LIGHT_LAYERS: RefCell<Vec<EscapeLayer>> = const {
+        RefCell::new(Vec::new())
+    };
+}
+
+/// Closes every open light popup; false when none was open.
+pub(crate) fn close_light() -> bool {
+    let open: Vec<EscapeLayer> = LIGHT_LAYERS.with(|stack| stack.borrow().iter().copied().filter(|layer| layer.show.peek()).collect());
+    open.iter().fold(false, |closed, layer| hide(layer.show) || closed)
 }
 
 static NEXT_ESCAPE_LAYER_ID: AtomicU64 = AtomicU64::new(1);
@@ -133,7 +152,8 @@ fn register_escape(show: Signal<bool>) {
     });
 }
 
-fn close_top_escape() -> bool {
+/// Closes the topmost open popup; false when none is open.
+pub fn close_top_escape() -> bool {
     ESCAPE_LAYERS.with(|stack| {
         let top = stack
             .borrow()

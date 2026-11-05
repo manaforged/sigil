@@ -10,7 +10,8 @@ use crate::style::{
 use crate::widgets::Widget;
 
 pub(crate) use item::{ChevronDirection, ItemSlots, chevron, footer, item_row};
-pub(crate) use layer::{PopupAnchor, PopupLayer, close_on_escape, hide, shown, shown_when};
+pub(crate) use layer::{PopupAnchor, PopupLayer, close_light, close_on_escape, hide, shown, shown_when};
+pub use layer::close_top_escape;
 
 pub(crate) const PANEL_INSET: f32 = space(1) + 1.0;
 pub(crate) const PANEL_WIDTH: f32 = space(48);

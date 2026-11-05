@@ -33,7 +33,13 @@ pub fn context_menu(
         })
         .child(target)
         .child(
-            PopupLayer::new(open, PopupAnchor::Top).wrap(
+            {
+                let layer = PopupLayer::new(open, PopupAnchor::Top);
+                layer.register_escape();
+                layer.register_light();
+                layer
+            }
+            .wrap(
                 container()
                     .layout(
                         LayoutStyle::block()
