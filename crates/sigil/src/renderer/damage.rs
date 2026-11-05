@@ -133,7 +133,8 @@ pub(crate) fn note_plan(plan: &Plan) {
         Plan::Regions(_) => crate::profile::count(crate::profile::Counter::GpuPlanRegions),
         Plan::Full(reason) => {
             crate::profile::count(crate::profile::Counter::GpuPlanFull);
-            crate::profile::attribute(crate::profile::Hotspot::GpuFullRepaint, 1, || {
+            let key = reason.name().as_ptr() as usize as u64;
+            crate::profile::attribute(crate::profile::Hotspot::GpuFullRepaint, 1, key, || {
                 reason.name().to_owned()
             });
         }

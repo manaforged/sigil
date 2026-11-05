@@ -24,33 +24,13 @@ pub struct Attribution {
     pub count: u64,
 }
 
-pub(crate) fn attribute(hotspot: Hotspot, n: u64, subject: impl FnOnce() -> String) {
-    if !store::enabled() {
-        return;
-    }
-    let subject = subject();
-    store::with_open(|frame| {
-        let hot = &mut frame.hot;
-        let known = hot
-            .iter()
-            .any(|a| a.hotspot == hotspot && a.subject == subject);
-        let distinct = hot.iter().filter(|a| a.hotspot == hotspot).count();
-        let subject = if !known && distinct + 1 >= MAX_SUBJECTS {
+/// Adds `n` to `hotspot` for the subject `key` names; `subject` runs once per key per frame.
+pub(crate) fn attribute(hotspot: Hotspot, n: u64, key: u64, subject: impl FnOnce() -> String) {
+    store::attribute(hotspot, n, key, |distinct| {
+        if distinct + 1 >= MAX_SUBJECTS {
             String::from(OTHER_SUBJECT)
         } else {
-            subject
-        };
-        if let Some(entry) = hot
-            .iter_mut()
-            .find(|a| a.hotspot == hotspot && a.subject == subject)
-        {
-            entry.count = entry.count.saturating_add(n);
-        } else {
-            hot.push(Attribution {
-                hotspot,
-                subject,
-                count: n,
-            });
+            subject()
         }
     });
 }

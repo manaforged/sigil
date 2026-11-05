@@ -45,6 +45,7 @@ impl LayerReason {
         crate::profile::attribute(
             crate::profile::Hotspot::GpuLayer,
             u64::from(width) * u64::from(height),
+            (name.as_ptr() as usize as u64) ^ (u64::from(width) << 40) ^ (u64::from(height) << 20),
             || format!("{name} {width}x{height}"),
         );
     }

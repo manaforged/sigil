@@ -217,7 +217,8 @@ impl<'t> EmitWalk<'_, 't> {
     fn record_node(&mut self, id: NodeId, node: &Node, rect: Rect, paint: &NodePaint<'_>) {
         if crate::profile::enabled() {
             let cx = self.cx;
-            crate::profile::attribute(crate::profile::Hotspot::EmitResolved, 1, || cx.describe(id));
+            let key = slotmap::Key::data(&id.key()).as_ffi();
+            crate::profile::attribute(crate::profile::Hotspot::EmitResolved, 1, key, || cx.describe(id));
         }
         push_focus_ring(self.scene, id, node, rect, paint);
         push_node(self.scene, id, node, rect, paint);

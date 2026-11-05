@@ -10,10 +10,10 @@ pub(super) fn note_dirty(cx: &Cx, dirty: &[NodeId], kernel_len: usize) {
     crate::profile::count_add(Counter::LayoutDirtyKernel, kernel.len() as u64);
     crate::profile::count_add(Counter::LayoutDirtySeed, seeded.len() as u64);
     for id in kernel.iter().copied() {
-        crate::profile::attribute(Hotspot::LayoutDirtyKernel, 1, || cx.describe(id));
+        crate::profile::attribute(Hotspot::LayoutDirtyKernel, 1, key(id), || cx.describe(id));
     }
     for id in seeded.iter().copied() {
-        crate::profile::attribute(Hotspot::LayoutDirtySeed, 1, || cx.describe(id));
+        crate::profile::attribute(Hotspot::LayoutDirtySeed, 1, key(id), || cx.describe(id));
     }
 }
 
@@ -22,7 +22,7 @@ pub(super) fn note_resized(cx: &Cx, resized: &[NodeId]) {
         return;
     }
     for id in resized.iter().copied() {
-        crate::profile::attribute(Hotspot::LayoutResized, 1, || cx.describe(id));
+        crate::profile::attribute(Hotspot::LayoutResized, 1, key(id), || cx.describe(id));
     }
 }
 
@@ -38,7 +38,8 @@ pub(super) fn note_roots(cx: &Cx, roots: &[NodeId], resized: &[NodeId]) {
             .copied()
             .find(|id| contains(cx, root, *id))
             .or_else(|| resized.first().copied());
-        crate::profile::attribute(Hotspot::LayoutRoot, nodes, || {
+        let pair = key(root) ^ trigger.map_or(0, |id| key(id).rotate_left(32));
+        crate::profile::attribute(Hotspot::LayoutRoot, nodes, pair, || {
             trigger.map_or_else(
                 || cx.describe(root),
                 |trigger| format!("{} <- {}", cx.describe(root), cx.describe(trigger)),
@@ -53,7 +54,13 @@ pub(super) fn note_full_root(cx: &Cx, root: NodeId, reason: Counter) {
     }
     let nodes = subtree_len(cx, root);
     crate::profile::count_add(Counter::LayoutSolvedNodes, nodes);
-    crate::profile::attribute(Hotspot::LayoutRoot, nodes, || format!("full: {reason}"));
+    crate::profile::attribute(Hotspot::LayoutRoot, nodes, u64::MAX - reason as u64, || {
+        format!("full: {reason}")
+    });
+}
+
+fn key(id: NodeId) -> u64 {
+    slotmap::Key::data(&id.key()).as_ffi()
 }
 
 fn subtree_len(cx: &Cx, root: NodeId) -> u64 {

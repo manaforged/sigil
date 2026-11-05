@@ -12,7 +12,7 @@ use crate::profile::attr::Attribution;
 use crate::profile::event::TraceEvent;
 use crate::profile::site::{Site, SiteKind};
 use crate::profile::key::{
-    BackendStatus, Cause, Counter, CounterValue, Phase, PhaseTime, accumulate,
+    BackendStatus, Cause, Counter, CounterValue, Hotspot, Phase, PhaseTime, accumulate,
 };
 
 const MAX_EVENTS: usize = 65_536;
@@ -131,6 +131,8 @@ struct Store {
     open_flow: Option<(&'static str, u64, u64)>,
     site_stack: Vec<u64>,
     site_index: ahash::AHashMap<(usize, SiteKind), usize>,
+    attr_index: ahash::AHashMap<(Hotspot, u64), usize>,
+    attr_distinct: ahash::AHashMap<Hotspot, usize>,
 }
 
 impl Store {
@@ -147,6 +149,8 @@ impl Store {
             open_flow: None,
             site_stack: Vec::new(),
             site_index: ahash::AHashMap::new(),
+            attr_index: ahash::AHashMap::new(),
+            attr_distinct: ahash::AHashMap::new(),
         }
     }
 
@@ -262,6 +266,31 @@ pub(crate) fn site_exit(
     });
 }
 
+pub(crate) fn attribute(
+    hotspot: Hotspot,
+    n: u64,
+    key: u64,
+    subject: impl FnOnce(usize) -> String,
+) {
+    with_store(|store| {
+        let hot = &mut store.open.hot;
+        let distinct = &mut store.attr_distinct;
+        let index = *store.attr_index.entry((hotspot, key)).or_insert_with(|| {
+            let seen = distinct.entry(hotspot).or_insert(0);
+            let name = subject(*seen);
+            hot.iter()
+                .position(|a| a.hotspot == hotspot && a.subject == name)
+                .unwrap_or_else(|| {
+                    *seen += 1;
+                    hot.push(Attribution { hotspot, subject: name, count: 0 });
+                    hot.len() - 1
+                })
+        });
+        let entry = &mut hot[index];
+        entry.count = entry.count.saturating_add(n);
+    });
+}
+
 pub(crate) fn count_add(counter: Counter, n: u64) {
     with_store(|store| accumulate(&mut store.open.counts, counter, n));
 }
@@ -325,6 +354,8 @@ fn close_frame(store: &mut Store) {
     }
     let mut frame = std::mem::take(&mut store.open);
     store.site_index.clear();
+    store.attr_index.clear();
+    store.attr_distinct.clear();
     frame.sites.sort_by_key(|site| std::cmp::Reverse(site.self_ns));
     for &(counter, value) in &frame.counts {
         store.push(TraceEvent::Counter {
