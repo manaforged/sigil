@@ -84,10 +84,31 @@ impl Frame {
             .sum()
     }
 
-    /// Returns the hottest.
+    /// Returns the frame time minus the time spent waiting for the GPU or display.
+    #[must_use]
+    pub fn work_ns(&self) -> u64 {
+        let wait = self
+            .phases
+            .iter()
+            .filter(|(phase, _)| *phase == Phase::GpuWait)
+            .map(|(_, ns)| *ns)
+            .sum();
+        self.total_ns().saturating_sub(wait)
+    }
+
+    /// Returns the working phase that took longest, preferring nested phases over their parents.
     #[must_use]
     pub fn hottest(&self) -> Option<PhaseTime> {
-        self.phases.iter().copied().max_by_key(|(_, ns)| *ns)
+        let working = || {
+            self.phases
+                .iter()
+                .copied()
+                .filter(|(phase, _)| *phase != Phase::GpuWait)
+        };
+        working()
+            .filter(|(phase, _)| !phase.is_top_level())
+            .max_by_key(|(_, ns)| *ns)
+            .or_else(|| working().max_by_key(|(_, ns)| *ns))
     }
 }
 
@@ -289,20 +310,21 @@ fn close_frame(store: &mut Store) {
 
 #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
 fn warn_slow(frame: &Frame) {
-    if frame.total_ns() <= FRAME_BUDGET_NS
+    if frame.work_ns() <= crate::profile::attr::budget_ns()
         || frame.cause == Cause::Idle
         || WARNS.load(Ordering::Relaxed) >= WARN_CAP
     {
         return;
     }
     WARNS.fetch_add(1, Ordering::Relaxed);
-    let ms = frame.total_ns() as f64 / 1_000_000.0;
+    let ms = frame.work_ns() as f64 / 1_000_000.0;
+    let wait_ms = frame.total_ns().saturating_sub(frame.work_ns()) as f64 / 1_000_000.0;
     let (hot, peak) = frame
         .hottest()
         .map_or(("", 0), |(phase, ns)| (phase.name(), ns));
     let peak_ms = peak as f64 / 1_000_000.0;
     eprintln!(
-        "sigil-profile: frame {} {} {ms:.1}ms {hot}={peak_ms:.1} cmds={}",
+        "sigil-profile: frame {} {} work={ms:.1}ms wait={wait_ms:.1}ms {hot}={peak_ms:.1} cmds={}",
         frame.index,
         frame.cause,
         frame.counter(Counter::SceneCmds)

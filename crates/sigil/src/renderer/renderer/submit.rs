@@ -11,7 +11,11 @@ pub(super) fn acquire_frame(
     ready: &ReadyState,
     surface: &WgpuSurface,
 ) -> Result<Option<(wgpu::SurfaceTexture, wgpu::TextureView)>, Error> {
-    let frame = match surface.surface.get_current_texture() {
+    let acquired = {
+        let _wait = crate::profile::span(crate::profile::Phase::GpuWait);
+        surface.surface.get_current_texture()
+    };
+    let frame = match acquired {
         wgpu::CurrentSurfaceTexture::Success(f) | wgpu::CurrentSurfaceTexture::Suboptimal(f) => f,
         wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
             surface.surface.configure(&ready.device, &surface.config);

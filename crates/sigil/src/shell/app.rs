@@ -83,6 +83,7 @@ where
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         crate::shell::exit_hook::run();
+        crate::profile::dump_if_enabled();
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {

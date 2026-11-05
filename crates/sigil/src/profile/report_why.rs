@@ -99,10 +99,10 @@ pub(super) fn write_why(out: &mut String, frames: &[Frame]) {
 pub(super) fn write_bottlenecks(out: &mut String, frames: &[Frame], budget: u64) {
     let mut slow: Vec<&Frame> = frames
         .iter()
-        .filter(|frame| frame.total_ns() > budget)
+        .filter(|frame| frame.work_ns() > budget)
         .collect();
     if !slow.is_empty() {
-        slow.sort_by_key(|frame| std::cmp::Reverse(frame.total_ns()));
+        slow.sort_by_key(|frame| std::cmp::Reverse(frame.work_ns()));
         let _ = writeln!(out, "\nbottlenecks (over {:.2}ms)", ns_ms(budget));
         for frame in slow.iter().take(TOP_SLOW) {
             let (hot, hot_ns) = frame
@@ -113,7 +113,7 @@ pub(super) fn write_bottlenecks(out: &mut String, frames: &[Frame], budget: u64)
                 "  #{:<4} {:<10} {:>7.1}ms  {hot}={:.1}  cmds={}",
                 frame.index,
                 frame.cause,
-                ns_ms(frame.total_ns()),
+                ns_ms(frame.work_ns()),
                 ns_ms(hot_ns),
                 frame.counter(Counter::SceneCmds)
             );

@@ -126,9 +126,6 @@ fn drive(shell: WinitShell, mut state: LoopState, owner: Owner) -> AppResult<()>
         })
         .map_err(Error::window)
         .and_then(|()| failure.take().map_or(Ok(()), Err));
-    if cfg!(not(target_arch = "wasm32")) {
-        crate::profile::dump_if_enabled();
-    }
     result
 }
 
