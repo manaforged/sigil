@@ -75,9 +75,13 @@ pub(crate) fn picture(
     render: impl Fn(&Theme) -> Option<String> + 'static,
 ) -> Option<(NodeBuilder, (f32, f32))> {
     let light = Theme::light();
-    let tree = Arc::new(parse(&render(&light)?)?);
+    let svg = render(&light)?;
+    let tree = Arc::new(parse(&svg)?);
     let size = (tree.size().width(), tree.size().height());
-    let key = key.bytes().fold(OFFSET, |key, byte| mix(key, u64::from(byte)));
+    let key = key
+        .bytes()
+        .chain(svg.bytes())
+        .fold(OFFSET, |key, byte| mix(key, u64::from(byte)));
     let picture = Arc::new(Picture {
         render: Box::new(render),
         key,
