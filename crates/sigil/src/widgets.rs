@@ -206,6 +206,7 @@ mod toast_queue;
 mod toggle;
 mod tooltip;
 mod tree;
+mod ui_surface;
 mod vector;
 mod virtual_list;
 mod widget;
@@ -309,6 +310,7 @@ pub use toggle::toggle;
 pub(crate) use tooltip::TooltipBuilder;
 pub use tooltip::tooltip;
 pub use tree::{TreeNode, tree};
+pub use ui_surface::{SurfaceAction, SurfaceBuilder, ui_surface};
 pub use vector::{PathNode, path};
 pub use virtual_list::{
     RowRender, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder, virtual_list,
