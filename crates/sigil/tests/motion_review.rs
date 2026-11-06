@@ -5,6 +5,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::float_cmp)]
 
 use core::f32::consts::TAU;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use sigil::animation::{Easing, Keyframes, Property};
@@ -253,4 +255,77 @@ fn a_zero_duration_transition_waits_for_its_delay() {
         let after = seen(&mut ui).opacity;
         assert!((after - 1.0).abs() < 2e-3, "after the delay: got {after}, want 1");
     });
+}
+
+fn slide(index: u16) -> Keyframes {
+    Keyframes::new(Duration::from_secs(1))
+        .ease(Easing::Linear)
+        .keyframe(0.0, Property::TranslateX(f32::from(index) / 1_024.0))
+        .keyframe(1.0, Property::TranslateX(100.0))
+}
+
+#[test]
+fn the_first_of_three_hundred_held_animations_still_plays() {
+    Owner::scope("review-held-animations", || {
+        let flags: Vec<Signal<bool>> = (0..300).map(|_| signal(false)).collect();
+        let mut list = column();
+        for (index, flag) in (0_u16..).zip(&flags) {
+            let keyframes = slide(index);
+            list = list.child(square().paint_when(*flag, move |state| state.animate(keyframes)));
+        }
+        let mut ui = Harness::new(list).pixels(200, 200);
+        ui.settle();
+        start(&mut ui, flags[0]);
+        run(&mut ui, 0.5);
+        let moved = seen(&mut ui).matrix[0][2];
+        assert!((moved - 50.0).abs() < 0.5, "the first held animation: moved {moved}, want 50");
+    });
+}
+
+struct Warnings(Arc<AtomicUsize>);
+
+impl tracing::Subscriber for Warnings {
+    fn enabled(&self, _: &tracing::Metadata<'_>) -> bool {
+        true
+    }
+
+    fn new_span(&self, _: &tracing::span::Attributes<'_>) -> tracing::span::Id {
+        tracing::span::Id::from_u64(1)
+    }
+
+    fn record(&self, _: &tracing::span::Id, _: &tracing::span::Record<'_>) {}
+
+    fn record_follows_from(&self, _: &tracing::span::Id, _: &tracing::span::Id) {}
+
+    fn event(&self, event: &tracing::Event<'_>) {
+        let meta = event.metadata();
+        if meta.target() == "sigil::animation" && *meta.level() == tracing::Level::WARN {
+            self.0.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    fn enter(&self, _: &tracing::span::Id) {}
+
+    fn exit(&self, _: &tracing::span::Id) {}
+}
+
+#[test]
+fn an_unscoped_animation_that_was_evicted_warns() {
+    let warnings = Arc::new(AtomicUsize::new(0));
+    tracing::subscriber::with_default(Warnings(Arc::clone(&warnings)), || {
+        let owner = Owner::new("review-unscoped", None);
+        let flag = owner.with(|| signal(false));
+        let node = square().paint_when(flag, |state| state.animate(slide(1_000)));
+        for index in 1_001..1_400 {
+            drop(container().animate(slide(index)));
+        }
+        owner.with(|| {
+            let mut ui = Harness::new(column().child(node)).pixels(200, 200);
+            ui.settle();
+            start(&mut ui, flag);
+            run(&mut ui, 0.25);
+        });
+        owner.dispose();
+    });
+    assert_eq!(warnings.load(Ordering::Relaxed), 1, "an evicted animation warns once");
 }

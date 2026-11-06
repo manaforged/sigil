@@ -15,6 +15,7 @@ use std::time::Duration;
 
 use sigil::animation::{Keyframes, Property};
 use sigil::prelude::*;
+use sigil::reactive::Owner;
 
 const CALLS: u32 = 1_000;
 const BUDGET: i64 = 4_096;
@@ -95,4 +96,14 @@ fn equal_nan_keyframes_share_one_entry() {
 fn keyframes_built_from_changing_values_stay_bounded() {
     let bytes = retained(CALLS, |call| fade(call as f32 / 4_096.0));
     assert!(bytes < BUDGET, "1000 distinct keyframes kept {bytes} bytes after warm-up");
+}
+
+#[test]
+fn keyframes_pinned_by_disposed_scopes_are_released() {
+    let bytes = retained(CALLS, |call| {
+        let keyframes = fade(0.25 + call as f32 / 8_192.0);
+        Owner::scope("pinned-animation", || drop(container().animate(keyframes.clone())));
+        keyframes
+    });
+    assert!(bytes < BUDGET, "1000 scoped distinct keyframes kept {bytes} bytes after warm-up");
 }

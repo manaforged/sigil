@@ -1,7 +1,9 @@
-use std::collections::HashMap;
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use super::Keyframes;
+use crate::reactive::{Owner, on_cleanup};
 
 const CAPACITY: usize = 256;
 const KEEP_RECENT: u64 = 128;
@@ -26,6 +28,34 @@ struct Store {
     clock: u64,
 }
 
+thread_local! {
+    static PINS: RefCell<HashSet<(Owner, KeyframesId)>> = RefCell::new(HashSet::new());
+    static MISSED: RefCell<HashSet<KeyframesId>> = RefCell::new(HashSet::new());
+}
+
+fn pin(id: KeyframesId, keyframes: Arc<Keyframes>) {
+    let Some(owner) = Owner::current() else {
+        return;
+    };
+    if !PINS.with_borrow_mut(|pins| pins.insert((owner, id))) {
+        return;
+    }
+    on_cleanup(move || {
+        drop(keyframes);
+        PINS.with_borrow_mut(|pins| pins.remove(&(owner, id)));
+    });
+}
+
+fn report_miss(id: KeyframesId) {
+    if MISSED.with_borrow_mut(|missed| missed.insert(id)) {
+        tracing::warn!(
+            target: "sigil::animation",
+            ?id,
+            "a keyframe animation built outside any reactive scope was evicted before it played"
+        );
+    }
+}
+
 fn with_store<R>(job: impl FnOnce(&mut Store) -> R) -> R {
     static STORE: OnceLock<Mutex<Store>> = OnceLock::new();
     let mut store = STORE
@@ -37,16 +67,22 @@ fn with_store<R>(job: impl FnOnce(&mut Store) -> R) -> R {
 
 impl KeyframesId {
     pub(crate) fn new(keyframes: Keyframes) -> Self {
-        with_store(|store| store.insert(keyframes))
+        let (id, keyframes) = with_store(|store| store.insert(keyframes));
+        pin(id, keyframes);
+        id
     }
 
     pub(crate) fn get(self) -> Option<Arc<Keyframes>> {
-        with_store(|store| {
+        let found = with_store(|store| {
             let slot = store.slots.get(self.slot as usize)?;
             (slot.generation == self.generation)
                 .then(|| slot.keyframes.clone())
                 .flatten()
-        })
+        });
+        if found.is_none() {
+            report_miss(self);
+        }
+        found
     }
 }
 
@@ -60,17 +96,19 @@ impl Store {
         }
     }
 
-    fn insert(&mut self, keyframes: Keyframes) -> KeyframesId {
+    fn insert(&mut self, keyframes: Keyframes) -> (KeyframesId, Arc<Keyframes>) {
         self.clock += 1;
         let clock = self.clock;
         if let Some(&slot) = self.index.get(&keyframes)
             && let Some(entry) = self.slots.get_mut(slot as usize)
+            && let Some(held) = entry.keyframes.clone()
         {
             entry.used = clock;
-            return KeyframesId {
+            let id = KeyframesId {
                 slot,
                 generation: entry.generation,
             };
+            return (id, held);
         }
         if self.index.len() >= CAPACITY {
             self.evict_one();
@@ -82,8 +120,8 @@ impl Store {
             entry.used = clock;
             entry.generation
         });
-        self.index.insert(keyframes, slot);
-        KeyframesId { slot, generation }
+        self.index.insert(Arc::clone(&keyframes), slot);
+        (KeyframesId { slot, generation }, keyframes)
     }
 
     fn claim(&mut self) -> u32 {
