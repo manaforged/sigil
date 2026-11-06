@@ -6,10 +6,14 @@ use std::io;
 use std::path::Path;
 
 mod cli;
+#[cfg(target_os = "macos")]
+mod dmg;
 mod files;
 mod pack;
 
 pub use cli::pack_cli;
+#[cfg(target_os = "macos")]
+pub use dmg::{Dmg, macos_dmg, notarize};
 pub use pack::{AppBundle, CodeSign, PackError, ResourceCopy, macos_app, windows_dir};
 
 use minisign::{PError, PublicKey, SecretKey, SecretKeyBox, SignatureBox};
