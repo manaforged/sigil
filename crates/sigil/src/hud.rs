@@ -84,8 +84,6 @@ mod overlay {
     use super::{compact, level};
     use crate::geometry::{Point, Rect};
     use crate::profile::{self, Frame};
-    use std::cell::RefCell;
-
     use crate::scene::command::{DrawRect, GlyphRun, shape_glyph_run};
     use crate::scene::corner_radii::CornerRadii;
     use crate::scene::{CommandScene, SceneCommand};
@@ -132,53 +130,26 @@ mod overlay {
         }
     }
 
-    struct Text {
-        frame: u32,
-        viewport: u32,
-        width: f32,
-        run: GlyphRun,
-    }
-
-    thread_local! {
-        static TEXT: RefCell<Option<Text>> = const { RefCell::new(None) };
-    }
-
     #[allow(clippy::cast_precision_loss, reason = "≤64 bars → f32 is exact")]
     fn text(worst: &Frame, viewport: (f32, f32), bars: usize) -> (f32, GlyphRun) {
-        TEXT.with(|cell| {
-            let mut cached = cell.borrow_mut();
-            if let Some(text) = cached.as_ref()
-                && text.frame == worst.index
-                && text.viewport == viewport.0.to_bits()
-            {
-                return (text.width, text.run.clone());
-            }
-            let line = compact(worst);
-            let inner = (bars as f32)
-                .mul_add(BAR_W + BAR_GAP, -BAR_GAP)
-                .max(120.0)
-                .max(line.chars().count() as f32 * TEXT_ADVANCE)
-                .min(viewport.0 - 40.0);
-            let width = PAD.mul_add(2.0, inner);
-            let (x0, y0) = origin(viewport, width);
-            let style = TextStyle {
-                font_size: 10.0,
-                ..TextStyle::default()
-            };
-            let run = shape_glyph_run(
-                Rect::new(
-                    Point::new(x0 + PAD, y0 + PAD + BAR_MAX_H + 2.0),
-                    PAD.mul_add(-2.0, width),
-                    12.0,
-                ),
-                line,
-                TEXT_INK,
-                style,
-                10_000,
-            );
-            *cached = Some(Text { frame: worst.index, viewport: viewport.0.to_bits(), width, run: run.clone() });
-            (width, run)
-        })
+        let line = compact(worst);
+        let inner = (bars as f32)
+            .mul_add(BAR_W + BAR_GAP, -BAR_GAP)
+            .max(120.0)
+            .max(line.chars().count() as f32 * TEXT_ADVANCE)
+            .min(viewport.0 - 40.0);
+        let width = PAD.mul_add(2.0, inner);
+        let (x0, y0) = origin(viewport, width);
+        let style = TextStyle {
+            font_size: 10.0,
+            ..TextStyle::default()
+        };
+        let rect = Rect::new(
+            Point::new(x0 + PAD, y0 + PAD + BAR_MAX_H + 2.0),
+            PAD.mul_add(-2.0, width),
+            12.0,
+        );
+        (width, shape_glyph_run(rect, line, TEXT_INK, style, 10_000))
     }
 
     fn origin(viewport: (f32, f32), width: f32) -> (f32, f32) {

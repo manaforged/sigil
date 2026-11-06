@@ -10,7 +10,8 @@ use serde_json::{Value, json};
 
 use crate::profile::attr::Attribution;
 use crate::profile::event::TraceEvent;
-use crate::profile::site::{Site, SiteKind};
+use crate::profile::key::SiteKind;
+use crate::profile::site::Site;
 use crate::profile::key::{
     BackendStatus, Cause, Counter, CounterValue, Hotspot, Phase, PhaseTime, accumulate,
 };

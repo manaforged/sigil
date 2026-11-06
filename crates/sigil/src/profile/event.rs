@@ -10,7 +10,7 @@ pub(crate) enum TraceEvent {
     },
     Site {
         location: &'static core::panic::Location<'static>,
-        kind: crate::profile::site::SiteKind,
+        kind: crate::profile::key::SiteKind,
         start_us: u64,
         dur_us: u64,
     },
