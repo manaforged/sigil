@@ -39,6 +39,7 @@ const fn pointer(phase: PointerPhase, x: f32, y: f32) -> Event {
     let (button, buttons) = match phase {
         PointerPhase::Down => (Some(MouseButton::Left), MouseButtons::LEFT),
         PointerPhase::Move => (None, MouseButtons::LEFT),
+        PointerPhase::Up => (Some(MouseButton::Left), MouseButtons::empty()),
         _ => (None, MouseButtons::empty()),
     };
     Event::pointer(phase, Point::new(x, y))
@@ -50,6 +51,10 @@ const fn right_down(x: f32, y: f32) -> Event {
     Event::pointer(PointerPhase::Down, Point::new(x, y))
         .button(Some(MouseButton::Right))
         .buttons(MouseButtons::RIGHT)
+}
+
+const fn right_up(x: f32, y: f32) -> Event {
+    Event::pointer(PointerPhase::Up, Point::new(x, y)).button(Some(MouseButton::Right))
 }
 
 fn route(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, event: Event) {

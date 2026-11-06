@@ -51,12 +51,7 @@ fn plain_click_and_right_click_never_start_a_session() {
             &layout,
             pointer(PointerPhase::Move, 60.0, 30.0),
         );
-        route(
-            &mut router,
-            &mut cx,
-            &layout,
-            pointer(PointerPhase::Up, 60.0, 30.0),
-        );
+        route(&mut router, &mut cx, &layout, right_up(60.0, 30.0));
         assert!(!state.is_active(), "right-drag never starts a session");
         assert!(drops.borrow().is_empty(), "no drops fired");
         assert_eq!(

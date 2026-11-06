@@ -109,16 +109,28 @@ fn modal_without_title_announces_default_dialog_label() {
 }
 
 #[test]
-fn modal_open_at_mount_does_not_announce() {
+fn modal_open_at_mount_announces_once() {
     sigil::reactive::Owner::scope("sigil-widget-modal-mount-open", || {
         let mut cx = Cx::new_root();
         let visible = signal(true);
         let _ = cx.add(modal(visible).title("Mounted open"));
 
         cx.flush_announcements();
-        assert!(
-            cx.live_region_id().is_none(),
-            "modal opened at mount must not announce; live region should not exist yet"
-        );
+        let id = cx
+            .live_region_id()
+            .expect("a modal built open tells the screen reader it opened");
+        let node = cx.get_mut(id).expect("live region node exists");
+        match &node.a11y.name {
+            AccessibleName::Static(text) => assert_eq!(text, "Mounted open"),
+            other => panic!("expected the title, got {other:?}"),
+        }
+        node.a11y.name = AccessibleName::Static(String::from("<sentinel>"));
+
+        visible.set(true);
+        cx.flush_announcements();
+        match &cx.get(id).expect("node still alive").a11y.name {
+            AccessibleName::Static(text) => assert_eq!(text, "<sentinel>"),
+            other => panic!("the open at mount announced again: {other:?}"),
+        }
     });
 }
