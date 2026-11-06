@@ -1,17 +1,29 @@
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::rc::Rc;
 use std::sync::{Arc, LazyLock};
 
-use resvg::tiny_skia::{Pixmap, PremultipliedColorU8, Transform};
+use resvg::tiny_skia::{Pixmap, PixmapMut, PremultipliedColorU8, Transform};
 use resvg::usvg::{self, Tree, fontdb};
 
 use crate::fnv::{OFFSET, mix};
-use crate::kernel::{ImageRaster, ImageSource, NodeBuilder, ThemedImage, cached_image, image};
-use crate::layout::LayoutStyle;
+use crate::kernel::{ImageSource, NodeBuilder, cached_image};
 use crate::style::srgb::{decode, encode_byte};
 use crate::style::{Rgba8, Theme, Token};
-use crate::widgets::Widget;
+
+mod clip;
+mod fallback;
+mod filter;
+mod gradient;
+mod group;
+mod lower;
+mod paint;
+mod pattern;
+mod shape;
+mod vector;
+
+use lower::Draw;
+#[cfg(feature = "kittest")]
+pub use lower::{SvgMode, svg_scene};
 
 pub(crate) const FONT_FAMILY: &str = "Fira Sans";
 const MAX_SIDE: f32 = 4096.0;
@@ -59,33 +71,25 @@ impl Picture {
         *self.tree.borrow_mut() = Some((key, Arc::clone(&tree)));
         Some((key, tree))
     }
-
-    fn source(&self, theme: &Theme) -> Option<ImageSource> {
-        let (key, tree) = self.tree(theme)?;
-        let size = tree.size();
-        raster(key, &tree, (size.width(), size.height()), surface(theme))
-    }
-
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "device pixel extents are far below 2^24"
-    )]
-    fn bind(&self, theme: &Theme) -> ImageRaster {
-        let found = self.tree(theme);
-        let id = found.as_ref().map_or(0, |(key, _)| *key);
-        let backdrop = surface(theme);
-        ImageRaster::new(id, move |width, height, _| {
-            let (key, tree) = found.as_ref()?;
-            raster(*key, tree, (width as f32, height as f32), backdrop)
-        })
-    }
 }
 
-/// An image of the SVG that `render` writes for each theme, with its size in logical pixels.
+/// A vector picture of the SVG that `render` writes for each theme, with its size in logical pixels.
 pub(crate) fn picture(
     key: &str,
     render: impl Fn(&Theme) -> Option<String> + 'static,
 ) -> Option<(NodeBuilder, (f32, f32))> {
+    drawn(key, Box::new(render), Draw::Vector)
+}
+
+/// A bitmap picture of the SVG that `render` writes for each theme, rastered again at the device size.
+pub(crate) fn bitmap(
+    key: &str,
+    render: impl Fn(&Theme) -> Option<String> + 'static,
+) -> Option<(NodeBuilder, (f32, f32))> {
+    drawn(key, Box::new(render), Draw::Bitmap)
+}
+
+fn drawn(key: &str, render: Render, draw: Draw) -> Option<(NodeBuilder, (f32, f32))> {
     let light = Theme::light();
     let svg = run(&render, &light)?;
     let tree = Arc::new(parse(&svg)?);
@@ -94,24 +98,12 @@ pub(crate) fn picture(
         .bytes()
         .chain(svg.bytes())
         .fold(OFFSET, |key, byte| mix(key, u64::from(byte)));
-    let picture = Rc::new(Picture {
-        render: Box::new(render),
+    let picture = Picture {
+        render,
         key: hash,
         tree: RefCell::new(Some((theme_key(hash, &light), tree))),
-    });
-    let first = picture.source(&light)?;
-    let fallback = Rc::clone(&picture);
-    let themed = ThemedImage::new(
-        move |theme| fallback.source(theme),
-        move |theme| picture.bind(theme),
-    );
-    let node = image(first)
-        .layout(LayoutStyle::block().fixed_size(size.0, size.1).shrink(0.0))
-        .mutate(move |node| {
-            let _ = node.attach(themed);
-        })
-        .into_node_builder();
-    Some((node, size))
+    };
+    Some((vector::node(picture, size, draw), size))
 }
 
 /// The `#rrggbb` form of a theme color.
@@ -134,16 +126,29 @@ fn parse(svg: &str) -> Option<Tree> {
     (tree.size().width() >= 1.0 && tree.size().height() >= 1.0).then_some(tree)
 }
 
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "each side is clamped to MAX_SIDE before the cast"
-)]
 fn raster(
     key: u64,
     tree: &Tree,
     (width, height): (f32, f32),
     backdrop: [u8; 3],
+) -> Option<ImageSource> {
+    let size = tree.size();
+    raster_with(key, (width, height), Some(backdrop), |pixels, (x, y)| {
+        let fit = Transform::from_scale(x / size.width(), y / size.height());
+        resvg::render(tree, fit, pixels);
+    })
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "each side is clamped to MAX_SIDE before the cast"
+)]
+fn raster_with(
+    key: u64,
+    (width, height): (f32, f32),
+    backdrop: Option<[u8; 3]>,
+    paint: impl FnOnce(&mut PixmapMut<'_>, (f32, f32)),
 ) -> Option<ImageSource> {
     let shrink = (MAX_SIDE / width.max(height)).min(1.0);
     let width = (width * shrink).round().clamp(1.0, MAX_SIDE);
@@ -154,9 +159,7 @@ fn raster(
     );
     cached_image(sized, || {
         let mut pixmap = Pixmap::new(width as u32, height as u32)?;
-        let size = tree.size();
-        let transform = Transform::from_scale(width / size.width(), height / size.height());
-        resvg::render(tree, transform, &mut pixmap.as_mut());
+        paint(&mut pixmap.as_mut(), (width, height));
         let rgba = pixmap
             .pixels()
             .iter()
@@ -171,14 +174,19 @@ fn surface(theme: &Theme) -> [u8; 3] {
     [r, g, b]
 }
 
+fn linear_over(pixel: PremultipliedColorU8, backdrop: Option<[u8; 3]>) -> [u8; 4] {
+    let color = pixel.demultiply();
+    let rgba = [color.red(), color.green(), color.blue(), color.alpha()];
+    backdrop.map_or(rgba, |backdrop| over_surface(rgba, backdrop))
+}
+
+/// The straight color whose linear-light composite over `backdrop` equals the sRGB composite of `rgba`.
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     reason = "alpha is clamped to 1..=255 before the cast"
 )]
-fn linear_over(pixel: PremultipliedColorU8, backdrop: [u8; 3]) -> [u8; 4] {
-    let color = pixel.demultiply();
-    let [r, g, b, alpha] = [color.red(), color.green(), color.blue(), color.alpha()];
+fn over_surface([r, g, b, alpha]: [u8; 4], backdrop: [u8; 3]) -> [u8; 4] {
     if alpha == 0 || alpha == u8::MAX {
         return [r, g, b, alpha];
     }
@@ -193,14 +201,14 @@ fn linear_over(pixel: PremultipliedColorU8, backdrop: [u8; 3]) -> [u8; 4] {
         .zip(under)
         .map(|(target, paper)| least_alpha(*target, paper))
         .fold(coverage, f32::max);
-    let alpha = (least * 255.0).ceil().clamp(1.0, 255.0) as u8;
-    let coverage = f32::from(alpha) / 255.0;
+    let raised = (least * 255.0).ceil().clamp(1.0, 255.0) as u8;
+    let kept = f32::from(raised) / 255.0;
     let mut rgb = [0; 3];
     for ((channel, target), paper) in rgb.iter_mut().zip(over).zip(under) {
-        *channel = encode_byte(paper.mul_add(coverage - 1.0, target) / coverage);
+        *channel = encode_byte(paper.mul_add(kept - 1.0, target) / kept);
     }
-    let [r, g, b] = rgb;
-    [r, g, b, alpha]
+    let [red, green, blue] = rgb;
+    [red, green, blue, raised]
 }
 
 #[allow(

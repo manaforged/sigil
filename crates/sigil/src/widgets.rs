@@ -223,6 +223,9 @@ pub(crate) use code_edit::CodeEditBuilder;
 pub use code_edit::{ChangeKind, DiagSeverity, DiagSpan, code_edit};
 pub use color_field::color_field;
 pub(crate) use color_field::{ColorFieldBuilder, parse_hex as parse_color_hex};
+#[cfg(all(feature = "scene", feature = "kittest"))]
+#[doc(hidden)]
+pub use svg_picture::{SvgMode, svg_scene};
 
 pub use combobox::{Combobox, combobox};
 pub use command_menu::command_menu;

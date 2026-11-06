@@ -214,7 +214,7 @@ fn shift_rect(rect: Rect, dx: f32, dy: f32) -> Rect {
     )
 }
 
-fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
+pub(crate) fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
     match command {
         SceneCommand::PushClip(clip) => clip.shift(dx, dy),
         SceneCommand::Rect(draw) => {

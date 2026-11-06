@@ -16,7 +16,7 @@ use crate::tasks::{Status, spawn};
 use crate::widgets::Widget;
 use crate::widgets::scroll::Horizontal;
 use crate::widgets::source_too_large;
-use crate::widgets::svg_picture::picture;
+use crate::widgets::svg_picture::bitmap;
 
 use super::Fallback;
 use super::engine::{self, Chart, Failure, Job, Outcome};
@@ -71,9 +71,14 @@ pub(super) fn figure(source: &str, fallback: Fallback) -> Option<NodeBuilder> {
     let object = value.as_object()?;
     let spec = Rc::new(Spec {
         source: source.into(),
-        key: source.bytes().fold(OFFSET, |key, byte| mix(key, u64::from(byte))),
+        key: source
+            .bytes()
+            .fold(OFFSET, |key, byte| mix(key, u64::from(byte))),
         name: name(object),
-        about: object.get("description").and_then(Value::as_str).map(str::to_string),
+        about: object
+            .get("description")
+            .and_then(Value::as_str)
+            .map(str::to_string),
         height: height(object),
         fallback,
         requested: RefCell::default(),
@@ -141,7 +146,7 @@ fn chart_picture(
         };
         outcome.ok().map(|chart| chart.svg.clone())
     };
-    picture(&spec.source, render)
+    bitmap(&spec.source, render)
 }
 
 fn placeholder(height: f32) -> NodeBuilder {
@@ -197,6 +202,8 @@ fn name(spec: &Map<String, Value>) -> String {
 fn height(spec: &Map<String, Value>) -> f32 {
     spec.get("height")
         .and_then(Value::as_f64)
-        .map_or(PLOT_HEIGHT, |height| height.clamp(0.0, f64::from(MAX_HEIGHT)) as f32)
+        .map_or(PLOT_HEIGHT, |height| {
+            height.clamp(0.0, f64::from(MAX_HEIGHT)) as f32
+        })
         + AXIS_HEIGHT
 }

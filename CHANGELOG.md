@@ -27,6 +27,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Mermaid, Graphviz and math pictures lower their SVG to scene commands instead of one resvg bitmap: paths with fill rules, caps, joins and dashes, linear and radial gradients with spread methods and transforms, clip paths, masks, group opacity and blend modes, patterns, images, and blur, drop-shadow, saturate and hue-rotate filters. They stay sharp under zoom and past the 4096 px bitmap cap, and a theme change lowers them again instead of rastering. Vega-Lite charts keep one resvg bitmap. Other filter primitives, focal radial gradients and patterns of more than 4096 tiles keep a resvg bitmap for that subtree only, rastered again at the device size.
+- Each vector SVG picture draws in one darken layer over a light surface and one lighten layer over a dark surface. Sigil blends those in sRGB-encoded space, so antialiased edges and translucent ink composite like resvg over the actual backdrop.
 - `math()` typesets with RaTeX and the KaTeX fonts instead of latex-rust: 136 of 138 common constructs draw, up from 115. `\label` and `\iddots` no longer parse and fall back to text.
 - Charts pick nice ticks in steps of 1, 2 or 5 × 10^k, include zero on the value axis, label time axes with time ticks, and draw a zero rule; `stacked()` puts the first series on top. Vega-Lite fences sort categories ascending, honor `sort` and `scale.domain`, show axis titles, break lines at nulls, and default to a 300 px plot.
 - Color transitions mix in premultiplied gamma-encoded sRGB, as CSS Color 4 specifies for legacy colors, instead of linear light; black to white at 50% is now 128, was 188.
