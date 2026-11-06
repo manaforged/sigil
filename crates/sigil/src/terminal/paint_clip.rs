@@ -252,6 +252,7 @@ fn styled(run: &ClipRun<'_>, offset: usize) -> StyledCell {
     let ink = inks.get(index).copied().unwrap_or_default();
     out.face.bold |= face.bold;
     out.face.italic |= face.italic;
+    out.face.strike |= face.strike;
     if face.link.is_some() && !node.hyperlinks {
         out.face.underline = Underline::Straight;
     }
@@ -268,6 +269,7 @@ fn paint_cell(cell: &mut Cell, theme: &Theme, styled: &StyledCell) {
     cell.italic = styled.face.italic;
     cell.dim = styled.face.dim;
     cell.link.clone_from(&styled.link);
+    cell.lines.strike |= styled.face.strike;
     if styled.face.underline != Underline::None {
         cell.lines.underline = styled.face.underline;
     }

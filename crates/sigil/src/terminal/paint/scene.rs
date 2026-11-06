@@ -368,6 +368,7 @@ impl CellWalk<'_> {
             bold: style.font_weight >= 700,
             italic: style.italic,
             dim: style.font_weight < 400,
+            strike: false,
             underline: if linked && !self.paint.caps.hyperlinks {
                 Underline::Straight
             } else {

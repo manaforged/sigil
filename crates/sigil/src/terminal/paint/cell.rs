@@ -113,5 +113,6 @@ pub(in crate::terminal) struct Face {
     pub(in crate::terminal) bold: bool,
     pub(in crate::terminal) italic: bool,
     pub(in crate::terminal) dim: bool,
+    pub(in crate::terminal) strike: bool,
     pub(in crate::terminal) underline: Underline,
 }

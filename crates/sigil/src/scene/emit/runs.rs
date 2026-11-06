@@ -29,7 +29,7 @@ pub(super) const fn split(_: &mut SceneBuilder, _: NodeId, run: GlyphRun) -> Gly
 
 #[cfg(feature = "scene")]
 pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> GlyphRun {
-    use crate::scene::command::{CellRect, DrawRect};
+    use crate::scene::command::{CellRect, DecorationKind, DrawRect};
     use crate::scene::corner_radii::CornerRadii;
     let Some(runs) = run.style.runs.clone() else {
         return run;
@@ -53,8 +53,12 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
                 scene.draw_rect_for_node(id, style(*rect), CellRect::default());
             }
         }
+        let ink_color = ink.color.unwrap_or(run.color);
         if face.link.is_some() {
-            underline(scene, &rects, ink.color.unwrap_or(run.color), &run);
+            line(scene, &rects, ink_color, &run, DecorationKind::Underline);
+        }
+        if face.strike {
+            line(scene, &rects, ink_color, &run, DecorationKind::Strikethrough);
         }
         let Some(color) = ink.color else {
             continue;
@@ -99,20 +103,25 @@ fn run_rects(
 }
 
 #[cfg(feature = "scene")]
-fn underline(
+fn line(
     scene: &mut SceneBuilder,
     rects: &[crate::geometry::Rect],
     color: crate::style::Rgba8,
     run: &GlyphRun,
+    kind: crate::scene::command::DecorationKind,
 ) {
+    use crate::scene::command::DecorationKind;
     use crate::geometry::{Point, Rect};
-    use crate::scene::command::{DecorationKind, DrawDecoration};
+    use crate::scene::command::DrawDecoration;
     let thickness = (run.style.font_size * 0.06).max(1.0);
     for rect in rects {
-        let y = rect.origin.y + rect.height - thickness * 2.0;
+        let y = match kind {
+            DecorationKind::Strikethrough => rect.origin.y + (rect.height - thickness) / 2.0,
+            _ => rect.origin.y + rect.height - thickness * 2.0,
+        };
         let band = Rect::new(Point::new(rect.origin.x, y), rect.width, thickness);
         scene.draw_decoration(
-            DrawDecoration::new(DecorationKind::Underline, band, color)
+            DrawDecoration::new(kind, band, color)
                 .opacity(run.opacity)
                 .line_width(thickness),
         );

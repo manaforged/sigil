@@ -48,6 +48,8 @@ pub struct TextFace {
     pub italic: bool,
     /// Whether mono.
     pub mono: bool,
+    /// Whether struck through.
+    pub strike: bool,
     /// The color, if any.
     pub color: Option<crate::style::Token>,
     /// The background, if any.
