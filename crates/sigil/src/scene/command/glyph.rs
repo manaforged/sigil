@@ -87,10 +87,7 @@ impl GlyphRun {
         self.shared.positioned_glyphs.len()
     }
 
-    #[cfg(all(
-        feature = "scene",
-        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
-    ))]
+    #[cfg(feature = "scene")]
     #[must_use]
     pub(crate) fn positioned_glyphs(&self) -> &[RenderedGlyph] {
         &self.shared.positioned_glyphs

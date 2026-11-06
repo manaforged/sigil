@@ -332,7 +332,7 @@ impl Paragraph {
         rects
     }
 
-    #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+    #[cfg(any(test, feature = "kittest", feature = "scene"))]
     pub fn for_each_font<F>(&self, mut f: F)
     where
         F: FnMut(u64, &[u8], u32),

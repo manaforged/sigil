@@ -42,7 +42,10 @@ pub(crate) mod color_glyph_paint;
 pub(crate) const SURFACE_CLEAR: crate::style::Color =
     crate::style::Color::rgba(0.03, 0.04, 0.05, 1.0);
 
-#[cfg(feature = "cpu")]
+#[cfg(all(
+    feature = "cpu",
+    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+))]
 mod cpu;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 pub(crate) mod damage;
@@ -110,6 +113,7 @@ mod test_state;
 #[path = "renderer/lib_tests.rs"]
 mod tests;
 pub(crate) mod vector;
+#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod vector_pass;
 mod wash_cache;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]

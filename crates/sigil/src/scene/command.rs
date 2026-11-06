@@ -63,6 +63,10 @@ pub(crate) use payloads::{MITER_LIMIT, PathCmd, PathStroke, outline_key, rounded
 ))]
 pub(crate) use stroke_band::{StrokeBand, StrokeDash};
 pub use wash::Wash;
+#[cfg(all(
+    feature = "scene",
+    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+))]
 pub(crate) use wash::{MAX_PIGMENTS, centre_bits as wash_centre_bits};
 
 /// The ordered drawing commands of one frame.
