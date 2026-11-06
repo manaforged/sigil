@@ -14,13 +14,16 @@ static SERIAL: Mutex<()> = Mutex::new(());
 
 #[test]
 fn committing_lines_above_the_live_region_repaints_it() -> Result<(), crate::Error> {
+    let _serial = SERIAL.lock().unwrap_or_else(PoisonError::into_inner);
     LIVE.with(|live| live.set(true));
     INLINE.store(true, Ordering::Relaxed);
+    RESTORED.store(false, Ordering::Relaxed);
     REDRAW.with(|flag| flag.set(false));
     let printed = print_above("committed");
     let pending = REDRAW.with(Cell::get);
     LIVE.with(|live| live.set(false));
     INLINE.store(false, Ordering::Relaxed);
+    RESTORED.store(true, Ordering::Relaxed);
     printed?;
     assert!(
         pending,
