@@ -136,7 +136,22 @@ fn parse(svg: &str) -> Option<Arc<Tree>> {
     Some(tree)
 }
 
+const MAX_SOURCE_BYTES: usize = 32 << 20;
+const MAX_XML_NODES: u32 = 1 << 22;
+
 fn parse_tree(svg: &str) -> Option<Tree> {
+    if svg.len() > MAX_SOURCE_BYTES {
+        return None;
+    }
+    let parsing = usvg::roxmltree::ParsingOptions {
+        allow_dtd: true,
+        nodes_limit: MAX_XML_NODES,
+        ..Default::default()
+    };
+    let document = usvg::roxmltree::Document::parse_with_options(svg, parsing).ok()?;
+    if !budget::document_fits(&document) {
+        return None;
+    }
     let options = usvg::Options {
         font_family: FONT_FAMILY.to_string(),
         fontdb: fonts(),
@@ -146,7 +161,7 @@ fn parse_tree(svg: &str) -> Option<Tree> {
         },
         ..usvg::Options::default()
     };
-    let tree = Tree::from_str(svg, &options).ok()?;
+    let tree = Tree::from_xmltree(&document, &options).ok()?;
     (tree.size().width() >= 1.0 && tree.size().height() >= 1.0).then_some(tree)
 }
 
