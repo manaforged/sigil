@@ -10,7 +10,7 @@ pub(crate) const fn candidates(script: Script) -> &'static [&'static str] {
         Script::Khmer => &["Khmer Sangam MN"],
         Script::Thai => &["Thonburi"],
         Script::Lao => &["Lao Sangam MN"],
-        Script::Other => &["Apple Symbols", "Apple Braille"],
+        Script::Other => &["Menlo", "Apple Symbols", "Apple Braille", "STIX Two Math"],
         Script::Latin | Script::Common => &[],
     }
 }
