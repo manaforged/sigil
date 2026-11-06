@@ -149,3 +149,35 @@ fn an_fsharp_type_variable_does_not_open_a_string() {
     assert!(!has_token(&lines[0], Token::Success11), "{:?}", lines[0]);
     assert!(lines[0].iter().any(|mark| mark.start == 0 && mark.end == 3));
 }
+
+const NEW_KINDS: [(&str, &str); 4] = [
+    (
+        "venn-beta\n  set Desirable\n  set Feasible\n  union Desirable,Feasible[\"Buildable\"]\n",
+        "union Desirable",
+    ),
+    (
+        "wardley-beta\ntitle Tea Shop\nanchor Business [0.95, 0.63]\ncomponent Tea [0.63, 0.81]\nBusiness -> Tea\n",
+        "anchor Business",
+    ),
+    (
+        "railroad-ebnf-beta\ndigit = \"0\" | \"1\" ;\n",
+        "digit =",
+    ),
+    (
+        "agentflow-beta TB\n  flow reviewer[\"Review Agent\"]\n    changes[\"Gather changes\"]@{ shape: input }\n    lint[\"run_linter\"]@{ shape: tool }\n    changes --> lint\n  end\n",
+        "flow reviewer",
+    ),
+];
+
+#[test]
+fn newer_mermaid_kinds_draw_a_diagram_instead_of_their_source() {
+    for (source, raw) in NEW_KINDS {
+        let mut ui = Harness::new(move || container().child(mermaid(source))).pixels(800, 600);
+        ui.settle();
+        let shown = ui.text();
+        assert!(
+            shown.contains("Name=\"Show code\""),
+            "{raw:?} fell back to source text:\n{shown}"
+        );
+    }
+}

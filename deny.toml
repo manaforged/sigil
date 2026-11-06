@@ -155,6 +155,14 @@ skip = [
     # rand_core 0.6 skips removed). skrifa converged the same day (req 0.42,
     # read-fonts skip removed).
 
+    # --- merman 0.9.3 (mermaid renderer) ---------------------------------
+    { crate = "base64@0.22.1",        reason = "sigil-ui uses 0.22; merman-render and usvg 0.48 use 0.23" },
+    { crate = "phf@0.13.1",           reason = "htmlize 1.1 via merman pins 0.13; cssparser/accesskit use 0.14" },
+    { crate = "phf_codegen@0.13.1",   reason = "follows phf 0.13.1 (htmlize build)" },
+    { crate = "phf_generator@0.13.1", reason = "follows phf 0.13.1 (htmlize build)" },
+    { crate = "phf_shared@0.13.1",    reason = "follows phf 0.13.1 (htmlize)" },
+    { crate = "quick-xml@0.41.0",     reason = "wayland-scanner 0.31 pins 0.41; merman-render uses 0.42" },
+
     # --- misc upstream splits ----------------------------------------------
     { crate = "miniz_oxide@0.8.9",   reason = "png 0.18 via image 0.25; flate2 uses 0.9" },
     { crate = "rustix@0.38.44",      reason = "calloop 0.13 + crossterm 0.28.1 (winit/smithay chains); zbus/wayland on 1.x" },

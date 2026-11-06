@@ -20,7 +20,6 @@ mod flow_paint;
 mod flow_parse;
 mod flow_route;
 mod flow_vector;
-mod gantt;
 mod label;
 #[cfg(feature = "scene")]
 mod lightbox;
@@ -113,9 +112,6 @@ impl View {
 }
 
 fn svg(source: &str) -> Option<Drawn> {
-    if !gantt::bounded(source) {
-        return None;
-    }
     let (node, size) = picture(source)?;
     Some(Drawn {
         node,
