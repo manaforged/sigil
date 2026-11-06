@@ -139,15 +139,10 @@ impl LayoutEngine {
             let Some(result) = self.fresh(id) else {
                 continue;
             };
-            if self.published_result.get(id.key()).copied() == Some(result) {
-                continue;
-            }
-            cx.delta.record(id, DeltaKind::Layout);
+            let rect = result.rect();
             let node = cx
                 .get_mut_untracked(id)
                 .ok_or_else(|| Error::node_missing(id))?;
-            let _ = node.attach_untracked(result);
-            let rect = result.rect();
             if let Some(size) = node.get_extension::<crate::layout::SizeReactive>() {
                 self.republished |= size.publish((rect.width, rect.height));
             }
@@ -155,6 +150,11 @@ impl LayoutEngine {
                 self.republished |=
                     bounds.publish((rect.origin.x, rect.origin.y, rect.width, rect.height));
             }
+            if self.published_result.get(id.key()).copied() == Some(result) {
+                continue;
+            }
+            let _ = node.attach_untracked(result);
+            cx.delta.record(id, DeltaKind::Layout);
             self.published_result.insert(id.key(), result);
         }
         Ok(())

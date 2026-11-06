@@ -16,17 +16,18 @@ pub fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static)
     .row_height(rows(1.0))
     .follow_end(true)
     .keyboard(false);
-    shell(move |event| key_payload(event, false).map(&on_input).is_some()).child(list)
-}
-
-fn shell(on_key: impl Fn(&KeyEvent) -> bool + 'static) -> NodeBuilder {
     let focused = signal(false);
-    container()
-        .role(Role::Terminal)
-        .focusable(true)
+    shell(move |event| key_payload(event, false).map(&on_input).is_some())
         .focus_ring(focused)
         .focus_in(move || focused.set(true))
         .focus_out(move || focused.set(false))
+        .child(list)
+}
+
+fn shell(on_key: impl Fn(&KeyEvent) -> bool + 'static) -> NodeBuilder {
+    container()
+        .role(Role::Terminal)
+        .focusable(true)
         .layout(LayoutStyle::flex_column().fill())
         .class("font-mono")
         .class(Token::Surface.bg())

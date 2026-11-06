@@ -5,11 +5,10 @@ use crate::app::Session;
 use crate::app::pty::{Modes, Mouse, Row};
 use crate::events::{MouseButton, PointerEvent, ScrollDelta, ScrollEvent};
 use crate::kernel::{NodeBuilder, container, text};
-use crate::layout::{mono_cell, rows};
-use crate::reactive::{effect_named, signal};
+use crate::layout::{LayoutStyle, mono_cell, rows};
+use crate::reactive::{Signal, derived, effect_named, signal};
 use crate::style::theme::ambient::ActiveTheme;
 use crate::widgets::Widget;
-use crate::widgets::virtual_list::virtual_list;
 
 use super::{key_payload, shell};
 
@@ -17,12 +16,7 @@ impl Session {
     /// Builds a view of this terminal that fills its space, sizes the terminal to it, and takes keys, paste, the mouse and the wheel.
     #[must_use]
     pub fn view(self: &Rc<Self>) -> NodeBuilder {
-        let list = virtual_list(self.rows, |_i, row: &Row| {
-            container().child(text(row.text.clone()).runs(row.runs.clone()))
-        })
-        .row_height(rows(1.0))
-        .follow_end(true)
-        .keyboard(false);
+        let list = screen(self.rows);
         let size = signal((0.0_f32, 0.0_f32));
         self.follow(size);
         let (keys, pasted) = (Rc::clone(self), Rc::clone(self));
@@ -34,7 +28,7 @@ impl Session {
         pointer(wheel(node, self), self)
     }
 
-    fn follow(self: &Rc<Self>, size: crate::reactive::Signal<(f32, f32)>) {
+    fn follow(self: &Rc<Self>, size: Signal<(f32, f32)>) {
         let sized = Rc::clone(self);
         effect_named("sigil::terminal::size", move || {
             let (width, height) = size.get();
@@ -59,6 +53,23 @@ impl Session {
         drop(self.scroll(i32::MIN));
         self.write(payload.as_bytes()).is_ok()
     }
+}
+
+fn screen(lines: Signal<Vec<Row>>) -> NodeBuilder {
+    let count = derived(move || lines.with(Vec::len));
+    container()
+        .layout(LayoutStyle::flex_column().fill_width().min_size(0.0, 0.0))
+        .children_reactive(move || (0..count.get()).map(|at| line(lines, at)).collect::<Vec<NodeBuilder>>())
+}
+
+fn line(lines: Signal<Vec<Row>>, at: usize) -> NodeBuilder {
+    let row = derived(move || lines.with(|rows| rows.get(at).cloned().unwrap_or_default()));
+    container()
+        .layout(LayoutStyle::block().fill_width().height(rows(1.0)).shrink(0.0))
+        .children_reactive(move || {
+            let row = row.get();
+            vec![text(row.text).runs(row.runs).nowrap()]
+        })
 }
 
 fn cells(span: f32, cell: f32) -> u16 {
