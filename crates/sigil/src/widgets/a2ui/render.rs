@@ -10,7 +10,6 @@ use crate::widgets::{
     Widget, button, card, divider_horizontal, divider_vertical, markdown_inline, tabs,
 };
 
-use super::SurfaceAction;
 use super::document::{MAX_DEPTH, Surface};
 use super::model::{Model, display};
 use super::spec::{Axis, ButtonLook, Children, Dynamic, Event, Flex, Kind, TextStyle};
@@ -19,7 +18,7 @@ use super::{glyph, media};
 const MAX_RENDERED: usize = 2048;
 const MAX_TEMPLATE_ITEMS: usize = 256;
 
-pub(super) type Handler = Rc<dyn Fn(SurfaceAction)>;
+pub(super) type Handler = Rc<dyn Fn(&str, &str)>;
 
 #[derive(Clone)]
 pub(super) struct Render {
@@ -243,10 +242,7 @@ impl Render {
                 for (key, value) in &context {
                     map.insert(key.clone(), render.value(value));
                 }
-                handler(SurfaceAction {
-                    name: name.clone(),
-                    context: Value::Object(map),
-                });
+                handler(&name, &Value::Object(map).to_string());
             });
         }
         control.into()

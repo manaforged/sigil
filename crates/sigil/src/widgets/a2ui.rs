@@ -1,7 +1,5 @@
 use std::rc::Rc;
 
-use serde_json::Value;
-
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal, signal, untrack};
@@ -21,26 +19,17 @@ use render::{Handler, Render};
 
 const MAX_SHOWN_SOURCE: usize = 16 << 10;
 
-/// A button event from a UI surface: the action name and its context resolved against the data model.
-#[derive(Clone, Debug, PartialEq)]
-pub struct SurfaceAction {
-    /// The `action.event.name` of the button.
-    pub name: String,
-    /// The `action.event.context` object with each bound path replaced by its current value.
-    pub context: Value,
-}
-
-/// Builder of a UI surface that renders A2UI v0.9 messages with native widgets.
-pub struct SurfaceBuilder {
+/// Builder of an A2UI v0.9 surface rendered with native widgets.
+pub struct A2uiBuilder {
     source: Signal<String>,
     handler: Option<Handler>,
     layout_overrides: LayoutOverrides,
 }
 
-/// A UI surface from A2UI v0.9 JSON: one message, an array of messages, or `{"messages": [..]}`.
+/// An A2UI v0.9 surface from JSON: one message, an array of messages, or `{"messages": [..]}`.
 #[must_use]
-pub fn ui_surface(json: impl Reactive<String>) -> SurfaceBuilder {
-    SurfaceBuilder {
+pub fn a2ui(json: impl Reactive<String>) -> A2uiBuilder {
+    A2uiBuilder {
         source: json.into_signal(),
         handler: None,
         layout_overrides: LayoutOverrides::default(),
@@ -81,10 +70,11 @@ fn surface(source: &str, handler: Option<Handler>) -> NodeBuilder {
     }
 }
 
-impl SurfaceBuilder {
-    /// Calls `f` with the action each time a button with an `action.event` is pressed.
-    pub fn on_action(mut self, f: impl Fn(SurfaceAction) + 'static) -> Self {
-        self.handler = Some(Rc::new(f));
+impl A2uiBuilder {
+    /// Calls `activate` with a pressed button's action name and its context as JSON.
+    #[must_use]
+    pub fn activate(mut self, activate: impl Fn(&str, &str) + 'static) -> Self {
+        self.handler = Some(Rc::new(activate));
         self
     }
 
@@ -96,10 +86,10 @@ impl SurfaceBuilder {
     }
 }
 
-impl From<SurfaceBuilder> for NodeBuilder {
-    fn from(surface: SurfaceBuilder) -> Self {
+impl From<A2uiBuilder> for NodeBuilder {
+    fn from(surface: A2uiBuilder) -> Self {
         surface.into_node_builder()
     }
 }
 
-crate::widgets::builder_impls!([] SurfaceBuilder: widget, node(pub));
+crate::widgets::builder_impls!([] A2uiBuilder: widget, node(pub));
