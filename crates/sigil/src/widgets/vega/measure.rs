@@ -1,29 +1,16 @@
 use std::collections::HashMap;
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 
-use resvg::usvg::{self, Node, Tree, fontdb};
+use resvg::usvg::{self, Node, Tree};
 
-use crate::widgets::svg_picture::FONT_FAMILY;
+use crate::widgets::svg_picture::{FONT_FAMILY, fonts};
 
 const MAX_ENTRIES: usize = 16_384;
 
-static OPTIONS: LazyLock<usvg::Options<'static>> = LazyLock::new(|| {
-    let mut fonts = fontdb::Database::new();
-    for face in [
-        sigil_fonts::FIRA_SANS_REGULAR,
-        sigil_fonts::FIRA_SANS_MEDIUM,
-        sigil_fonts::FIRA_SANS_SEMIBOLD,
-        sigil_fonts::CASCADIA_MONO_REGULAR,
-    ] {
-        fonts.load_font_data(face.to_vec());
-    }
-    fonts.set_sans_serif_family(FONT_FAMILY);
-    fonts.set_monospace_family("Cascadia Mono");
-    usvg::Options {
-        font_family: FONT_FAMILY.to_string(),
-        fontdb: Arc::new(fonts),
-        ..usvg::Options::default()
-    }
+static OPTIONS: LazyLock<usvg::Options<'static>> = LazyLock::new(|| usvg::Options {
+    font_family: FONT_FAMILY.to_string(),
+    fontdb: fonts(),
+    ..usvg::Options::default()
 });
 
 pub(super) struct Font<'a> {

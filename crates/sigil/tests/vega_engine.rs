@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use accesskit::{Node, NodeId, Role as AkRole};
 use sigil::prelude::*;
+use sigil::scene::SceneCommand;
 use sigil_kittest::{Harness, Query};
 
 const RENDERING: &str = "Rendering chart";
@@ -18,6 +19,7 @@ const UNTITLED: &str = "Chart";
 const WAIT: Duration = Duration::from_secs(10);
 const DEADLINE_BOUND: Duration = Duration::from_millis(3500);
 const MEMORY_BOUND: Duration = Duration::from_millis(1500);
+const THEME_SWITCH_BOUND: Duration = Duration::from_millis(500);
 
 const CPU_BOMB: &str = r#"{"data":{"sequence":{"start":0,"stop":40000,"as":"x"}},"transform":[{"window":[{"op":"median","field":"x","as":"m"}],"frame":[-20000,20000]}],"mark":"point","encoding":{"x":{"field":"x","type":"quantitative"},"y":{"field":"m","type":"quantitative"}}}"#;
 const RANDOM: &str = r#"{"data":{"sequence":{"start":0,"stop":6,"as":"i"}},"transform":[{"calculate":"floor(random()*1000000)","as":"r"}],"mark":"text","encoding":{"y":{"field":"i","type":"ordinal"},"text":{"field":"r","type":"quantitative","format":"d"}}}"#;
@@ -223,4 +225,63 @@ fn two_renders_of_a_random_transform_paint_the_same_pixels() {
     let (a, b) = (first.image(), second.image());
     let (a, b) = (a.expect("render").expect("gpu"), b.expect("render").expect("gpu"));
     assert!(a == b, "two renders of the same random spec differ");
+}
+
+fn image_ids(ui: &mut Harness) -> Vec<u64> {
+    ui.host()
+        .emit((1600.0, 1200.0))
+        .commands
+        .iter()
+        .filter_map(|command| match command {
+            SceneCommand::Image(draw) => Some(draw.source.id()),
+            _ => None,
+        })
+        .collect()
+}
+
+fn wait_for_images(ui: &mut Harness, unlike: &[u64]) -> Vec<u64> {
+    let start = Instant::now();
+    loop {
+        let ids = image_ids(ui);
+        if !ids.is_empty() && ids != unlike {
+            return ids;
+        }
+        assert!(start.elapsed() < WAIT, "no new chart image after {WAIT:?}");
+        std::thread::sleep(Duration::from_millis(5));
+        ui.settle();
+    }
+}
+
+#[test]
+fn a_custom_theme_renders_off_the_ui_thread_and_keeps_the_last_image() {
+    let _serial = serial();
+    let chart = fence(&bar("Custom", "Theme"));
+    let held = std::rc::Rc::new(std::cell::Cell::new(None));
+    let slot = std::rc::Rc::clone(&held);
+    let first = chart.clone();
+    let mut ui = Harness::new(move || {
+        let source = signal(first.clone());
+        slot.set(Some(source));
+        markdown(source)
+    })
+    .pixels(1600, 1200);
+    ui.settle();
+    let light = wait_for_images(&mut ui, &[]);
+    let busy = fence(&CPU_BOMB.replace("40000", "40001"));
+    held.get().expect("source").set(format!("{chart}\n\n{busy}"));
+    ui.settle();
+    assert_eq!(image_ids(&mut ui), light, "adding a chart redrew the first one");
+    assert!(
+        ui.query(&Query::text(RENDERING)).is_some(),
+        "the busy chart finished before the theme switch"
+    );
+    set_theme(Theme::console_dark());
+    let start = Instant::now();
+    ui.settle();
+    let shown = image_ids(&mut ui);
+    let took = start.elapsed();
+    assert!(took < THEME_SWITCH_BOUND, "the theme switch blocked the frame for {took:?}");
+    assert_eq!(shown, light, "the chart image went away while its theme rendered");
+    let themed = wait_for_images(&mut ui, &light);
+    assert_eq!(themed.len(), light.len(), "the themed chart replaced the wrong images");
 }

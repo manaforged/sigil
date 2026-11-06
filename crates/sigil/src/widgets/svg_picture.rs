@@ -3,12 +3,13 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 use std::sync::{Arc, LazyLock};
 
-use resvg::tiny_skia::{Pixmap, Transform};
+use resvg::tiny_skia::{Pixmap, PremultipliedColorU8, Transform};
 use resvg::usvg::{self, Tree, fontdb};
 
 use crate::fnv::{OFFSET, mix};
 use crate::kernel::{ImageRaster, ImageSource, NodeBuilder, ThemedImage, cached_image, image};
 use crate::layout::LayoutStyle;
+use crate::style::srgb::{decode, encode_byte};
 use crate::style::{Rgba8, Theme, Token};
 use crate::widgets::Widget;
 
@@ -32,6 +33,11 @@ static FONTS: LazyLock<Arc<fontdb::Database>> = LazyLock::new(|| {
     Arc::new(fonts)
 });
 
+/// The faces every SVG picture lays out its text with.
+pub(crate) fn fonts() -> Arc<fontdb::Database> {
+    Arc::clone(&FONTS)
+}
+
 struct Picture {
     render: Render,
     key: u64,
@@ -46,7 +52,10 @@ impl Picture {
         {
             return Some((key, Arc::clone(tree)));
         }
-        let tree = Arc::new(parse(&run(&self.render, theme)?)?);
+        let Some(tree) = run(&self.render, theme).and_then(|svg| parse(&svg)) else {
+            return self.tree.borrow().clone();
+        };
+        let tree = Arc::new(tree);
         *self.tree.borrow_mut() = Some((key, Arc::clone(&tree)));
         Some((key, tree))
     }
@@ -54,7 +63,7 @@ impl Picture {
     fn source(&self, theme: &Theme) -> Option<ImageSource> {
         let (key, tree) = self.tree(theme)?;
         let size = tree.size();
-        raster(key, &tree, (size.width(), size.height()))
+        raster(key, &tree, (size.width(), size.height()), surface(theme))
     }
 
     #[allow(
@@ -64,9 +73,10 @@ impl Picture {
     fn bind(&self, theme: &Theme) -> ImageRaster {
         let found = self.tree(theme);
         let id = found.as_ref().map_or(0, |(key, _)| *key);
+        let backdrop = surface(theme);
         ImageRaster::new(id, move |width, height, _| {
             let (key, tree) = found.as_ref()?;
-            raster(*key, tree, (width as f32, height as f32))
+            raster(*key, tree, (width as f32, height as f32), backdrop)
         })
     }
 }
@@ -113,7 +123,7 @@ pub(crate) fn hex(theme: &Theme, token: Token) -> String {
 fn parse(svg: &str) -> Option<Tree> {
     let options = usvg::Options {
         font_family: FONT_FAMILY.to_string(),
-        fontdb: Arc::clone(&FONTS),
+        fontdb: fonts(),
         image_href_resolver: usvg::ImageHrefResolver {
             resolve_data: Box::new(|_, _, _| None),
             resolve_string: Box::new(|_, _| None),
@@ -129,7 +139,12 @@ fn parse(svg: &str) -> Option<Tree> {
     clippy::cast_sign_loss,
     reason = "each side is clamped to MAX_SIDE before the cast"
 )]
-fn raster(key: u64, tree: &Tree, (width, height): (f32, f32)) -> Option<ImageSource> {
+fn raster(
+    key: u64,
+    tree: &Tree,
+    (width, height): (f32, f32),
+    backdrop: [u8; 3],
+) -> Option<ImageSource> {
     let shrink = (MAX_SIDE / width.max(height)).min(1.0);
     let width = (width * shrink).round().clamp(1.0, MAX_SIDE);
     let height = (height * shrink).round().clamp(1.0, MAX_SIDE);
@@ -145,13 +160,68 @@ fn raster(key: u64, tree: &Tree, (width, height): (f32, f32)) -> Option<ImageSou
         let rgba = pixmap
             .pixels()
             .iter()
-            .flat_map(|pixel| {
-                let color = pixel.demultiply();
-                [color.red(), color.green(), color.blue(), color.alpha()]
-            })
+            .flat_map(|pixel| linear_over(*pixel, backdrop))
             .collect();
         ImageSource::from_rgba8(pixmap.width(), pixmap.height(), rgba)
     })
+}
+
+fn surface(theme: &Theme) -> [u8; 3] {
+    let Rgba8 { r, g, b, .. } = theme.color(Token::Surface);
+    [r, g, b]
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "alpha is clamped to 1..=255 before the cast"
+)]
+fn linear_over(pixel: PremultipliedColorU8, backdrop: [u8; 3]) -> [u8; 4] {
+    let color = pixel.demultiply();
+    let [r, g, b, alpha] = [color.red(), color.green(), color.blue(), color.alpha()];
+    if alpha == 0 || alpha == u8::MAX {
+        return [r, g, b, alpha];
+    }
+    let coverage = f32::from(alpha) / 255.0;
+    let under = backdrop.map(decode);
+    let mut over = [0.0; 3];
+    for ((target, channel), paper) in over.iter_mut().zip([r, g, b]).zip(backdrop) {
+        *target = decode(blend(channel, paper, coverage));
+    }
+    let least = over
+        .iter()
+        .zip(under)
+        .map(|(target, paper)| least_alpha(*target, paper))
+        .fold(coverage, f32::max);
+    let alpha = (least * 255.0).ceil().clamp(1.0, 255.0) as u8;
+    let coverage = f32::from(alpha) / 255.0;
+    let mut rgb = [0; 3];
+    for ((channel, target), paper) in rgb.iter_mut().zip(over).zip(under) {
+        *channel = encode_byte(paper.mul_add(coverage - 1.0, target) / coverage);
+    }
+    let [r, g, b] = rgb;
+    [r, g, b, alpha]
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a mix of two bytes stays within 0..=255"
+)]
+fn blend(color: u8, backdrop: u8, coverage: f32) -> u8 {
+    f32::from(color)
+        .mul_add(coverage, f32::from(backdrop) * (1.0 - coverage))
+        .round() as u8
+}
+
+fn least_alpha(target: f32, backdrop: f32) -> f32 {
+    if target < backdrop {
+        1.0 - target / backdrop
+    } else if target > backdrop {
+        (target - backdrop) / (1.0 - backdrop)
+    } else {
+        0.0
+    }
 }
 
 fn run(render: &impl Fn(&Theme) -> Option<String>, theme: &Theme) -> Option<String> {

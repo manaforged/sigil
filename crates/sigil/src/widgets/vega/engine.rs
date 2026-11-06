@@ -51,6 +51,10 @@ impl Job {
             key: (source, theme),
         }
     }
+
+    pub(super) const fn theme(&self) -> u64 {
+        self.key.1
+    }
 }
 
 enum Reply {
