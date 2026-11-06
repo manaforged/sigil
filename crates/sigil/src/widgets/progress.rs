@@ -138,8 +138,7 @@ fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> N
         .child(
             container()
                 .layout(LayoutStyle::block().height(track_h).width(0.0))
-                .style_reactive(move || grow_atoms(filled.get()))
-                .class(fill_atoms(tone))
+                .style_reactive(move || fill_style(filled.get(), tone))
                 .tone_scope(tone),
         )
         .child(empty_segment(empty, track_h))
@@ -159,6 +158,23 @@ fn fill_atoms(tone: Tone) -> [StyleAtom; 2] {
         _ => tone.fill().bg(),
     };
     [Radius::Md.atom(), paint]
+}
+
+fn fill_style(units: u16, tone: Tone) -> &'static [StyleAtom] {
+    type FillAtoms = HashMap<(u16, Tone), &'static [StyleAtom]>;
+    static CACHE: OnceLock<Mutex<FillAtoms>> = OnceLock::new();
+    if units == 0 {
+        return grow_atoms(0);
+    }
+    let mut map = CACHE
+        .get_or_init(Mutex::default)
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    map.entry((units, tone))
+        .or_insert_with(|| -> &'static [StyleAtom] {
+            let [radius, paint] = fill_atoms(tone);
+            Box::leak(Box::new([StyleAtom::FlexGrow(units), radius, paint]))
+        })
 }
 
 const GROW_SCALE: u16 = 1_000;
