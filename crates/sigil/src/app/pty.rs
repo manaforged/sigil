@@ -1,11 +1,20 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 
+use crate::events::ModifiersState;
 use crate::reactive::{Signal, signal};
-use crate::style::TextRun;
+use crate::style::{Rgba8, TextRun};
 use crate::{AppResult, Error};
 
+mod mouse;
+mod reply;
 mod view;
+
+pub(crate) use mouse::Mouse;
+use reply::{Colors, Replies};
+
+type Parser = vt100::Parser<Replies>;
 
 const SCROLLBACK: usize = 5000;
 
@@ -26,14 +35,29 @@ enum Control {
     Scroll(i32),
 }
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Modes {
+    pub(crate) cursor_keys: bool,
+    pub(crate) alternate: bool,
+    pub(crate) mouse: vt100::MouseProtocolMode,
+    encoding: vt100::MouseProtocolEncoding,
+}
+
 /// Child process in a pseudo-terminal (feature `pty`).
 pub struct Session {
     /// The lines.
     pub lines: Signal<Vec<String>>,
+    /// The title the program set.
+    pub title: Signal<String>,
+    /// How many times the program rang the bell.
+    pub bell: Signal<u64>,
+    /// The program's exit code, once it has exited.
+    pub exited: Signal<Option<u32>>,
     pub(crate) rows: Signal<Vec<Row>>,
     tx: Sender<Vec<u8>>,
     control: Sender<Control>,
-    parser: Arc<Mutex<vt100::Parser>>,
+    parser: Arc<Mutex<Parser>>,
+    colors: Colors,
     killer: Option<Box<dyn portable_pty::ChildKiller + Send + Sync>>,
 }
 
@@ -82,25 +106,60 @@ impl Session {
             .map_err(|_| pty_err("Session::scroll after the terminal closed"))
     }
 
+    pub(crate) fn modes(&self) -> Option<Modes> {
+        let parser = self.parser.lock().ok()?;
+        let screen = parser.screen();
+        Some(Modes {
+            cursor_keys: screen.application_cursor(),
+            alternate: screen.alternate_screen(),
+            mouse: screen.mouse_protocol_mode(),
+            encoding: screen.mouse_protocol_encoding(),
+        })
+    }
+
+    pub(crate) fn report(
+        &self,
+        event: Mouse,
+        at: (u16, u16),
+        modifiers: ModifiersState,
+        modes: Modes,
+    ) -> bool {
+        mouse::report(event, at, modifiers, modes.mouse, modes.encoding)
+            .is_some_and(|bytes| self.write(&bytes).is_ok())
+    }
+
+    pub(crate) fn set_colors(&self, ink: Rgba8, background: Rgba8) {
+        if let Ok(mut colors) = self.colors.lock() {
+            *colors = (ink, background);
+        }
+    }
+
     /// Starts `program` in a new pseudo-terminal.
     pub fn spawn(program: &str) -> AppResult<Self> {
-        Self::start(program, None)
+        Self::start(portable_pty::CommandBuilder::new(program), None)
     }
 
     /// Starts `program` in a new pseudo-terminal with `dir` as its working directory.
     pub fn spawn_in(program: &str, dir: &std::path::Path) -> AppResult<Self> {
-        Self::start(program, Some(dir))
+        Self::start(portable_pty::CommandBuilder::new(program), Some(dir))
     }
 
-    fn start(program: &str, dir: Option<&std::path::Path>) -> AppResult<Self> {
+    /// Starts the user's login shell in a new pseudo-terminal with `dir` as its working directory.
+    pub fn shell_in(dir: &std::path::Path) -> AppResult<Self> {
+        Self::start(portable_pty::CommandBuilder::new_default_prog(), Some(dir))
+    }
+
+    fn start(
+        mut command: portable_pty::CommandBuilder,
+        dir: Option<&std::path::Path>,
+    ) -> AppResult<Self> {
         use std::thread;
 
-        use portable_pty::{CommandBuilder, native_pty_system};
+        use portable_pty::native_pty_system;
 
         let (owner, dispatcher) = context()?;
         let pair = native_pty_system().openpty(size(80, 24)).map_err(pty_err)?;
-        let mut command = CommandBuilder::new(program);
-        command.env("TERM", "xterm-256color");
+        prepare(&mut command);
         if let Some(dir) = dir {
             command.cwd(dir);
         }
@@ -108,27 +167,48 @@ impl Session {
         let killer = child.clone_killer();
         let reader = pair.master.try_clone_reader().map_err(pty_err)?;
         let tx = input(pair.master.take_writer().map_err(pty_err)?);
+        let colors: Colors = Arc::new(Mutex::new(default_colors()));
+        let replies = Replies::new(tx.clone(), Arc::clone(&colors));
+        let parser = Arc::new(Mutex::new(vt100::Parser::new_with_callbacks(
+            24, 80, SCROLLBACK, replies,
+        )));
+        let published = Published::new();
+        let exited = signal(None);
+        let publish = Publish::new(dispatcher, owner, Arc::clone(&parser), published);
+        let (done, sent) = (publish.clone(), exited.into_sendable());
         thread::spawn(move || {
-            drop(child.wait());
+            let code = child.wait().map_or(1, |status| status.exit_code());
+            done.finish(sent, code);
         });
-        let lines = signal(Vec::new());
-        let rows = signal(Vec::new());
-        let parser = Arc::new(Mutex::new(vt100::Parser::new(24, 80, SCROLLBACK)));
-        let publish = Publish::new(dispatcher, owner, lines, rows);
         let (control, orders) = mpsc::channel::<Control>();
-        let (held, master, painter) = (Arc::clone(&parser), pair.master, publish.clone());
-        thread::spawn(move || steer(&orders, master.as_ref(), &held, &painter));
-        let held = Arc::clone(&parser);
-        thread::spawn(move || read_rows(reader, &held, &publish));
+        let (master, painter) = (pair.master, publish.clone());
+        thread::spawn(move || steer(&orders, master.as_ref(), &painter));
+        thread::spawn(move || read_rows(reader, &publish));
         Ok(Self {
-            lines,
-            rows,
+            lines: published.lines,
+            title: published.title,
+            bell: published.bell,
+            exited,
+            rows: published.rows,
             tx,
             control,
             parser,
+            colors,
             killer: Some(killer),
         })
     }
+}
+
+fn prepare(command: &mut portable_pty::CommandBuilder) {
+    command.env("TERM", "xterm-256color");
+    command.env("COLORTERM", "truecolor");
+    if cfg!(target_os = "macos") && command.get_env("LANG").is_none() && command.get_env("LC_ALL").is_none() {
+        command.env("LANG", "en_US.UTF-8");
+    }
+}
+
+fn default_colors() -> (Rgba8, Rgba8) {
+    crate::style::theme::ambient::ActiveTheme::capture().with(|theme| (theme.on_surface, theme.surface))
 }
 
 fn context() -> AppResult<(crate::reactive::Owner, crate::tasks::runtime::Dispatcher)> {
@@ -154,47 +234,90 @@ fn input(mut writer: Box<dyn std::io::Write + Send>) -> Sender<Vec<u8>> {
     tx
 }
 
+#[derive(Clone, Copy)]
+struct Published {
+    lines: Signal<Vec<String>>,
+    rows: Signal<Vec<Row>>,
+    title: Signal<String>,
+    bell: Signal<u64>,
+}
+
+impl Published {
+    fn new() -> Self {
+        Self {
+            lines: signal(Vec::new()),
+            rows: signal(Vec::new()),
+            title: signal(String::new()),
+            bell: signal(0),
+        }
+    }
+}
+
 #[derive(Clone)]
 struct Publish {
     dispatcher: crate::tasks::runtime::Dispatcher,
     owner: crate::reactive::Owner,
+    parser: Arc<Mutex<Parser>>,
     lines: crate::reactive::SendableSignal<Vec<String>>,
     rows: crate::reactive::SendableSignal<Vec<Row>>,
-    pending: Arc<Mutex<Option<Frame>>>,
+    title: crate::reactive::SendableSignal<String>,
+    bell: crate::reactive::SendableSignal<u64>,
+    queued: Arc<AtomicBool>,
 }
 
 impl Publish {
     fn new(
         dispatcher: crate::tasks::runtime::Dispatcher,
         owner: crate::reactive::Owner,
-        lines: Signal<Vec<String>>,
-        rows: Signal<Vec<Row>>,
+        parser: Arc<Mutex<Parser>>,
+        published: Published,
     ) -> Self {
         Self {
             dispatcher,
             owner,
-            lines: lines.into_sendable(),
-            rows: rows.into_sendable(),
-            pending: Arc::default(),
+            parser,
+            lines: published.lines.into_sendable(),
+            rows: published.rows.into_sendable(),
+            title: published.title.into_sendable(),
+            bell: published.bell.into_sendable(),
+            queued: Arc::default(),
         }
     }
 
-    fn send(&self, parser: &vt100::Parser) -> bool {
-        let Ok(mut slot) = self.pending.lock() else {
-            return false;
-        };
-        if slot.replace(frame_of(parser)).is_some() {
-            return true;
+    fn send(&self) {
+        if self.queued.swap(true, Ordering::AcqRel) {
+            return;
         }
-        drop(slot);
-        let (pending, lines, rows) = (Arc::clone(&self.pending), self.lines, self.rows);
+        let publish = self.clone();
         crate::tasks::dispatch::dispatch_to_owner(&self.dispatcher, self.owner, move || {
-            if let Some(frame) = pending.lock().ok().and_then(|mut held| held.take()) {
-                lines.into_signal().set(frame.lines);
-                rows.into_signal().set(frame.rows);
-            }
+            publish.paint();
         });
-        true
+    }
+
+    fn paint(&self) {
+        self.queued.store(false, Ordering::Release);
+        let Ok(mut parser) = self.parser.lock() else {
+            return;
+        };
+        let frame = frame_of(&parser);
+        let replies = parser.callbacks_mut();
+        let (title, bell) = (replies.title.take(), replies.bell);
+        drop(parser);
+        self.lines.into_signal().set(frame.lines);
+        self.rows.into_signal().set(frame.rows);
+        if let Some(title) = title {
+            self.title.into_signal().set(title);
+        }
+        let rung = self.bell.into_signal();
+        if rung.peek() != bell {
+            rung.set(bell);
+        }
+    }
+
+    fn finish(&self, exited: crate::reactive::SendableSignal<Option<u32>>, code: u32) {
+        crate::tasks::dispatch::dispatch_to_owner(&self.dispatcher, self.owner, move || {
+            exited.into_signal().set(Some(code));
+        });
     }
 }
 
@@ -207,7 +330,7 @@ const fn size(cols: u16, rows: u16) -> portable_pty::PtySize {
     }
 }
 
-pub(crate) fn rows_of(parser: &vt100::Parser) -> Vec<String> {
+pub(crate) fn rows_of<C: vt100::Callbacks>(parser: &vt100::Parser<C>) -> Vec<String> {
     parser
         .screen()
         .contents()
@@ -216,7 +339,7 @@ pub(crate) fn rows_of(parser: &vt100::Parser) -> Vec<String> {
         .collect()
 }
 
-pub(crate) fn frame_of(parser: &vt100::Parser) -> Frame {
+pub(crate) fn frame_of<C: vt100::Callbacks>(parser: &vt100::Parser<C>) -> Frame {
     Frame {
         lines: rows_of(parser),
         rows: view::rows(parser.screen()),
@@ -230,11 +353,10 @@ fn pty_err(err: impl std::fmt::Display) -> Error {
 fn steer(
     orders: &mpsc::Receiver<Control>,
     master: &dyn portable_pty::MasterPty,
-    parser: &Mutex<vt100::Parser>,
     publish: &Publish,
 ) {
     while let Ok(order) = orders.recv() {
-        let Ok(mut parser) = parser.lock() else {
+        let Ok(mut parser) = publish.parser.lock() else {
             return;
         };
         match order {
@@ -253,17 +375,12 @@ fn steer(
                 parser.screen_mut().set_scrollback(next);
             }
         }
-        if !publish.send(&parser) {
-            return;
-        }
+        drop(parser);
+        publish.send();
     }
 }
 
-fn read_rows(
-    mut reader: Box<dyn std::io::Read + Send>,
-    parser: &Mutex<vt100::Parser>,
-    publish: &Publish,
-) {
+fn read_rows(mut reader: Box<dyn std::io::Read + Send>, publish: &Publish) {
     let mut buf = [0_u8; 4096];
     loop {
         let n = match reader.read(&mut buf) {
@@ -271,15 +388,17 @@ fn read_rows(
             Ok(n) => n,
         };
         let (got, _) = buf.split_at(n);
-        let Ok(mut parser) = parser.lock() else {
+        let Ok(mut parser) = publish.parser.lock() else {
             break;
         };
-        parser.screen_mut().set_scrollback(0);
         parser.process(got);
-        if !publish.send(&parser) {
-            break;
+        let synced = parser.callbacks().synced;
+        drop(parser);
+        if !synced {
+            publish.send();
         }
     }
+    publish.send();
 }
 
 #[cfg(test)]

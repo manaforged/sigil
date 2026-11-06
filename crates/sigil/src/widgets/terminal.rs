@@ -16,10 +16,10 @@ pub fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static)
     .row_height(rows(1.0))
     .follow_end(true)
     .keyboard(false);
-    shell(on_input).child(list)
+    shell(move |event| key_payload(event, false).map(&on_input).is_some()).child(list)
 }
 
-fn shell(on_input: impl Fn(String) + 'static) -> NodeBuilder {
+fn shell(on_key: impl Fn(&KeyEvent) -> bool + 'static) -> NodeBuilder {
     let focused = signal(false);
     container()
         .role(Role::Terminal)
@@ -31,95 +31,146 @@ fn shell(on_input: impl Fn(String) + 'static) -> NodeBuilder {
         .class("font-mono")
         .class(Token::Surface.bg())
         .key_any(move |event: &mut KeyEvent| {
-            if let Some(payload) = key_payload(event) {
-                on_input(payload);
+            if on_key(event) {
                 event.stop_propagation();
             }
         })
 }
 
-#[cfg(feature = "pty")]
-impl crate::app::Session {
-    /// Builds a view of this terminal that fills its space, sizes the terminal to it, and takes keys, paste and the wheel.
-    #[must_use]
-    pub fn view(self: &std::rc::Rc<Self>) -> NodeBuilder {
-        use std::rc::Rc;
-
-        let list = virtual_list(self.rows, |_i, row: &crate::app::pty::Row| {
-            container().child(text(row.text.clone()).runs(row.runs.clone()))
-        })
-        .row_height(rows(1.0))
-        .follow_end(true)
-        .keyboard(false);
-        let size = signal((0.0_f32, 0.0_f32));
-        let sized = Rc::clone(self);
-        crate::reactive::effect_named("sigil::terminal::size", move || {
-            let (width, height) = size.get();
-            let (cell_width, cell_height) = crate::layout::mono_cell();
-            if width > 0.0 && height > 0.0 {
-                drop(sized.resize(cells(width, cell_width), cells(height, cell_height)));
-            }
-        });
-        let (keys, pasted, wheel) = (Rc::clone(self), Rc::clone(self), Rc::clone(self));
-        shell(move |bytes| drop(keys.write(bytes.as_bytes())))
-            .child(list)
-            .size_reactive(size)
-            .on_paste(move |text| pasted.paste(text).is_ok())
-            .on_scroll(move |event| {
-                let count = match event.delta {
-                    crate::events::ScrollDelta::Lines(point) => point.y,
-                    crate::events::ScrollDelta::Pixels(point) => {
-                        point.y / crate::layout::mono_cell().1.max(1.0)
-                    }
-                };
-                let count = count.round() as i32;
-                if count != 0 {
-                    drop(wheel.scroll(count));
-                    event.stop_propagation();
-                }
-            })
-    }
-}
-
-#[cfg(feature = "pty")]
-fn cells(span: f32, cell: f32) -> u16 {
-    (span / cell.max(1.0)).floor().clamp(1.0, 999.0) as u16
-}
-
-fn key_payload(event: &KeyEvent) -> Option<String> {
-    if event.phase != KeyPhase::Down {
+fn key_payload(event: &KeyEvent, application: bool) -> Option<String> {
+    if event.phase != KeyPhase::Down || event.modifiers.contains(ModifiersState::META) {
         return None;
     }
-    if event.modifiers.contains(ModifiersState::CONTROL)
-        && let LogicalKey::Character(letter) = &event.key
-        && let [byte @ b'a'..=b'z'] = letter.to_ascii_lowercase().as_bytes()
-    {
-        return Some(char::from(byte & 0x1f).to_string());
-    }
-    if let LogicalKey::Named(key) = &event.key
-        && let Some(sequence) = named_sequence(*key)
-    {
-        return Some(sequence.to_string());
-    }
-    event.text.clone().filter(|text| !text.is_empty())
+    let named = match &event.key {
+        LogicalKey::Named(key) => named_sequence(*key, event.modifiers, application),
+        LogicalKey::Character(text) if event.modifiers.contains(ModifiersState::CONTROL) => {
+            control_byte(text).map(|byte| alt_prefixed(event.modifiers, char::from(byte).to_string()))
+        }
+        _ => None,
+    };
+    named.or_else(|| typed(event))
 }
 
-fn named_sequence(key: Key) -> Option<&'static str> {
+fn typed(event: &KeyEvent) -> Option<String> {
+    if event.modifiers.contains(ModifiersState::CONTROL) {
+        return None;
+    }
+    let text = event.text.clone().filter(|text| !text.is_empty())?;
+    Some(if text.is_ascii() {
+        alt_prefixed(event.modifiers, text)
+    } else {
+        text
+    })
+}
+
+fn alt_prefixed(modifiers: ModifiersState, text: String) -> String {
+    if modifiers.contains(ModifiersState::ALT) {
+        format!("\u{1b}{text}")
+    } else {
+        text
+    }
+}
+
+fn control_byte(key: &str) -> Option<u8> {
+    let [byte] = key.as_bytes() else {
+        return None;
+    };
+    match byte.to_ascii_lowercase() {
+        letter @ b'a'..=b'z' => Some(letter & 0x1f),
+        b'[' => Some(0x1b),
+        b'\\' => Some(0x1c),
+        b']' => Some(0x1d),
+        b' ' | b'@' => Some(0),
+        b'^' => Some(0x1e),
+        b'_' | b'/' => Some(0x1f),
+        b'?' => Some(0x7f),
+        _ => None,
+    }
+}
+
+fn modifier_code(modifiers: ModifiersState) -> u8 {
+    let bit = |key: ModifiersState, value: u8| if modifiers.contains(key) { value } else { 0 };
+    1 + bit(ModifiersState::SHIFT, 1) + bit(ModifiersState::ALT, 2) + bit(ModifiersState::CONTROL, 4)
+}
+
+fn cursor(end: char, code: u8, application: bool) -> String {
+    match (code, application) {
+        (1, true) => format!("\u{1b}O{end}"),
+        (1, false) => format!("\u{1b}[{end}"),
+        _ => format!("\u{1b}[1;{code}{end}"),
+    }
+}
+
+fn tilde(number: u8, code: u8) -> String {
+    if code == 1 {
+        format!("\u{1b}[{number}~")
+    } else {
+        format!("\u{1b}[{number};{code}~")
+    }
+}
+
+fn edit_sequence(key: Key, modifiers: ModifiersState) -> Option<String> {
+    let has = |key: ModifiersState| modifiers.contains(key);
     Some(match key {
-        Key::Enter => "\r",
-        Key::Backspace => "\u{7f}",
-        Key::Tab => "\t",
-        Key::Escape => "\u{1b}",
-        Key::ArrowUp => "\u{1b}[A",
-        Key::ArrowDown => "\u{1b}[B",
-        Key::ArrowRight => "\u{1b}[C",
-        Key::ArrowLeft => "\u{1b}[D",
-        Key::Home => "\u{1b}[H",
-        Key::End => "\u{1b}[F",
-        Key::Delete => "\u{1b}[3~",
+        Key::Enter if has(ModifiersState::SHIFT) || has(ModifiersState::ALT) => "\u{1b}\r".to_string(),
+        Key::Enter => "\r".to_string(),
+        Key::Backspace if has(ModifiersState::CONTROL) => "\u{8}".to_string(),
+        Key::Backspace => alt_prefixed(modifiers, "\u{7f}".to_string()),
+        Key::Tab if has(ModifiersState::CONTROL) => return None,
+        Key::Tab if has(ModifiersState::SHIFT) => "\u{1b}[Z".to_string(),
+        Key::Tab => "\t".to_string(),
+        Key::Escape => "\u{1b}".to_string(),
         _ => return None,
     })
 }
+
+fn cursor_end(key: Key) -> Option<(char, bool)> {
+    Some(match key {
+        Key::ArrowUp => ('A', false),
+        Key::ArrowDown => ('B', false),
+        Key::ArrowRight => ('C', false),
+        Key::ArrowLeft => ('D', false),
+        Key::Home => ('H', false),
+        Key::End => ('F', false),
+        Key::F1 => ('P', true),
+        Key::F2 => ('Q', true),
+        Key::F3 => ('R', true),
+        Key::F4 => ('S', true),
+        _ => return None,
+    })
+}
+
+const fn tilde_number(key: Key) -> Option<u8> {
+    Some(match key {
+        Key::Insert => 2,
+        Key::Delete => 3,
+        Key::PageUp => 5,
+        Key::PageDown => 6,
+        Key::F5 => 15,
+        Key::F6 => 17,
+        Key::F7 => 18,
+        Key::F8 => 19,
+        Key::F9 => 20,
+        Key::F10 => 21,
+        Key::F11 => 23,
+        Key::F12 => 24,
+        _ => return None,
+    })
+}
+
+fn named_sequence(key: Key, modifiers: ModifiersState, application: bool) -> Option<String> {
+    let code = modifier_code(modifiers);
+    if let Some((end, always)) = cursor_end(key) {
+        return Some(cursor(end, code, always || application));
+    }
+    tilde_number(key)
+        .map(|number| tilde(number, code))
+        .or_else(|| edit_sequence(key, modifiers))
+}
+
+#[cfg(feature = "pty")]
+#[path = "terminal_session.rs"]
+mod session;
 
 #[cfg(test)]
 #[path = "terminal_tests.rs"]

@@ -1,21 +1,6 @@
-use crate::style::{TextFace, TextRun, Token};
+use crate::style::{Rgba8, TextFace, TextRun, Token};
 
 use super::Row;
-
-const GRAYS: [Token; 12] = [
-    Token::Gray1,
-    Token::Gray2,
-    Token::Gray3,
-    Token::Gray4,
-    Token::Gray5,
-    Token::Gray6,
-    Token::Gray7,
-    Token::Gray8,
-    Token::Gray9,
-    Token::Gray10,
-    Token::Gray11,
-    Token::Gray12,
-];
 
 const BASE: [Token; 16] = [
     Token::Gray3,
@@ -78,69 +63,68 @@ fn push(runs: &mut Vec<TextRun>, start: usize, end: usize, face: TextFace) {
 }
 
 fn face(cell: &vt100::Cell) -> TextFace {
-    let (mut color, mut background) = (token(cell.fgcolor()), token(cell.bgcolor()));
+    let (mut front, mut back) = (ink(cell.fgcolor()), ink(cell.bgcolor()));
     if cell.inverse() {
-        (color, background) = (
-            background.or(Some(Token::Surface)),
-            color.or(Some(Token::OnSurface)),
+        (front, back) = (
+            back.or(Some(Ink::Token(Token::Surface))),
+            front.or(Some(Ink::Token(Token::OnSurface))),
         );
     }
+    let (color, ink) = split(front);
+    let (background, fill) = split(back);
     TextFace {
         bold: cell.bold(),
         italic: cell.italic(),
+        underline: cell.underline(),
+        dim: cell.dim(),
         mono: true,
+        square: true,
         color,
         background,
+        ink,
+        fill,
         ..TextFace::default()
     }
 }
 
-pub(super) fn token(color: vt100::Color) -> Option<Token> {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Ink {
+    Token(Token),
+    Exact(Rgba8),
+}
+
+const fn split(ink: Option<Ink>) -> (Option<Token>, Option<Rgba8>) {
+    match ink {
+        None => (None, None),
+        Some(Ink::Token(token)) => (Some(token), None),
+        Some(Ink::Exact(color)) => (None, Some(color)),
+    }
+}
+
+const fn exact(r: u8, g: u8, b: u8) -> Ink {
+    Ink::Exact(Rgba8 { r, g, b, a: 255 })
+}
+
+fn ink(color: vt100::Color) -> Option<Ink> {
     match color {
         vt100::Color::Default => None,
         vt100::Color::Idx(index) => Some(indexed(index)),
-        vt100::Color::Rgb(red, green, blue) => Some(nearest(red, green, blue)),
+        vt100::Color::Rgb(red, green, blue) => Some(exact(red, green, blue)),
     }
 }
 
-fn indexed(index: u8) -> Token {
+fn indexed(index: u8) -> Ink {
     match index {
-        0..=15 => BASE[usize::from(index)],
+        0..=15 => Ink::Token(BASE[usize::from(index)]),
         16..=231 => {
             let level = |step: u8| if step == 0 { 0 } else { 55 + step * 40 };
             let cube = index - 16;
-            nearest(level(cube / 36), level(cube / 6 % 6), level(cube % 6))
+            exact(level(cube / 36), level(cube / 6 % 6), level(cube % 6))
         }
         _ => {
             let gray = 8 + (index - 232) * 10;
-            nearest(gray, gray, gray)
+            exact(gray, gray, gray)
         }
-    }
-}
-
-fn nearest(red: u8, green: u8, blue: u8) -> Token {
-    let (red, green, blue) = (f32::from(red), f32::from(green), f32::from(blue));
-    let high = red.max(green).max(blue);
-    let low = red.min(green).min(blue);
-    let light = (high + low) / 510.0;
-    if high - low < 40.0 {
-        return GRAYS[(light * 11.0).round() as usize];
-    }
-    let hue = if (high - red).abs() < f32::EPSILON {
-        60.0 * ((green - blue) / (high - low)).rem_euclid(6.0)
-    } else if (high - green).abs() < f32::EPSILON {
-        60.0 * ((blue - red) / (high - low) + 2.0)
-    } else {
-        60.0 * ((red - green) / (high - low) + 4.0)
-    };
-    let bright = light > 0.6;
-    let pick = |dim: Token, lit: Token| if bright { lit } else { dim };
-    match hue as u16 {
-        0..=19 | 330..=360 => pick(Token::Error9, Token::Error11),
-        20..=69 => pick(Token::Warn9, Token::Warn11),
-        70..=169 => pick(Token::Success9, Token::Success11),
-        170..=259 => pick(Token::Info9, Token::Info11),
-        _ => pick(Token::Accent9, Token::Accent11),
     }
 }
 

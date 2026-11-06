@@ -27,9 +27,20 @@ fn red_text_paints_in_the_theme_error_color() {
 }
 
 #[test]
-fn truecolor_green_maps_to_the_success_scale() {
-    let parser = screen(b"\x1b[38;2;30;200;60mok");
-    assert_eq!(color_at(&parser, 0, 0), Some(Token::Success9));
+fn truecolor_paints_the_exact_color_the_program_asked_for() {
+    let parser = screen(b"\x1b[38;2;30;200;60;48;2;1;2;3mok");
+    let rows = rows(parser.screen());
+    let face = &rows[0].runs[0].face;
+    assert_eq!(face.ink, Some(crate::style::Rgba8 { r: 30, g: 200, b: 60, a: 255 }));
+    assert_eq!(face.fill, Some(crate::style::Rgba8 { r: 1, g: 2, b: 3, a: 255 }));
+}
+
+#[test]
+fn underline_and_dim_reach_the_face() {
+    let parser = screen(b"\x1b[4;2mok");
+    let rows = rows(parser.screen());
+    let face = &rows[0].runs[0].face;
+    assert!(face.underline && face.dim);
 }
 
 #[test]

@@ -43,7 +43,7 @@ thread_local! {
     static LAST_DOWN: RefCell<Option<(Instant, Point)>> = const { RefCell::new(None) };
 }
 
-fn clear() {
+pub(crate) fn clear() {
     STATE.set(None);
 }
 

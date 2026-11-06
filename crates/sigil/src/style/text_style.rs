@@ -54,6 +54,16 @@ pub struct TextFace {
     pub color: Option<crate::style::Token>,
     /// The background, if any.
     pub background: Option<crate::style::Token>,
+    /// The exact color, if any; it wins over `color`.
+    pub ink: Option<crate::style::Rgba8>,
+    /// The exact background, if any; it wins over `background`.
+    pub fill: Option<crate::style::Rgba8>,
+    /// Whether underlined.
+    pub underline: bool,
+    /// Whether drawn fainter.
+    pub dim: bool,
+    /// Whether the background has square corners, as a terminal cell does.
+    pub square: bool,
     /// The link, if any.
     pub link: Option<std::sync::Arc<str>>,
 }

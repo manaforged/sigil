@@ -8,18 +8,33 @@ pub(super) fn inks(runs: Option<&TextRuns>, theme: &Theme) -> Vec<RunInk> {
         runs.0
             .iter()
             .map(|run| {
-                let background = run.face.background.map(|token| theme.color(token));
+                let face = &run.face;
+                let background = face
+                    .fill
+                    .or_else(|| face.background.map(|token| theme.color(token)));
                 let under = background.unwrap_or(theme.surface);
+                let color = face.ink.or_else(|| {
+                    face.color
+                        .map(|token| Theme::legible(theme.color(token), under))
+                });
                 RunInk {
-                    color: run
-                        .face
-                        .color
-                        .map(|token| Theme::legible(theme.color(token), under)),
+                    color: if face.dim {
+                        Some(faint(color.unwrap_or(theme.on_surface)))
+                    } else {
+                        color
+                    },
                     background,
                 }
             })
             .collect()
     })
+}
+
+fn faint(color: crate::style::Rgba8) -> crate::style::Rgba8 {
+    crate::style::Rgba8 {
+        a: color.a / 5 * 3,
+        ..color
+    }
 }
 
 #[cfg(not(feature = "scene"))]
@@ -46,7 +61,7 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
         if let Some(background) = ink.background {
             let style = |rect: crate::geometry::Rect| {
                 DrawRect::new(rect, background)
-                    .border_radius(CornerRadii::uniform(3.0))
+                    .border_radius(CornerRadii::uniform(if face.square { 0.0 } else { 3.0 }))
                     .opacity(run.opacity)
             };
             for rect in &rects {
@@ -54,7 +69,7 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
             }
         }
         let ink_color = ink.color.unwrap_or(run.color);
-        if face.link.is_some() {
+        if face.link.is_some() || face.underline {
             line(scene, &rects, ink_color, &run, DecorationKind::Underline);
         }
         if face.strike {
