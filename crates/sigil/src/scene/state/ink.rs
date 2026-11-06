@@ -49,6 +49,7 @@ pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
         SceneCommand::GlyphRun(draw) => draw.ink_rect()?.expand(1.0 / scale),
         SceneCommand::Sprite(draw) => draw.destination,
         SceneCommand::Image(draw) => draw.destination,
+        SceneCommand::Path(draw) => draw.bounds.expand(1.0 / scale),
         SceneCommand::Decoration(draw) => draw.band.expand(draw.line_width * 2.0),
         SceneCommand::PushLayer(scope) => match scope.effect {
             LayerEffect::Transform(transform) => transform_rect(transform, scope.clip),

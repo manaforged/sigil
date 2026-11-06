@@ -31,7 +31,11 @@ pub(crate) use decoration::DecorationGeometry;
 pub use effects::{DecorationKind, LayerEffect, LayerScope, SpriteKind, SpriteSource, Transform};
 #[cfg(any(test, feature = "kittest"))]
 pub use fills::PaintFill;
-pub use fills::{GradientStop, LinearGradient, PatternKind, Stroke, StrokeAlign, StrokeStyle};
+pub(crate) use fills::{FillRule, PathPaint};
+pub use fills::{
+    GradientStop, LinearGradient, PatternKind, Stroke, StrokeAlign, StrokeCap, StrokeJoin,
+    StrokeStyle,
+};
 pub use glyph::GlyphRun;
 pub(crate) use glyph::TextFlow;
 #[cfg(all(
@@ -41,14 +45,17 @@ pub(crate) use glyph::TextFlow;
 pub use glyph::shape_glyph_run;
 pub(crate) use glyph::{RunInk, shape_run};
 pub(crate) use payloads::{CellBorder, CellRect};
-pub use payloads::{DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite};
-pub(crate) use wash::{MAX_PIGMENTS, centre_bits as wash_centre_bits};
-pub use wash::Wash;
+pub use payloads::{
+    DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawRect, DrawSprite,
+};
+pub(crate) use payloads::{MITER_LIMIT, PathCmd, PathStroke};
 #[cfg(all(
     feature = "scene",
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")
 ))]
 pub(crate) use stroke_band::{StrokeBand, StrokeDash};
+pub use wash::Wash;
+pub(crate) use wash::{MAX_PIGMENTS, centre_bits as wash_centre_bits};
 
 /// The ordered drawing commands of one frame.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -116,6 +123,8 @@ pub enum SceneCommand {
     Sprite(DrawSprite),
     /// The image scene command.
     Image(DrawImage),
+    /// The vector path scene command.
+    Path(DrawPath),
     /// The decoration scene command.
     Decoration(DrawDecoration),
 }

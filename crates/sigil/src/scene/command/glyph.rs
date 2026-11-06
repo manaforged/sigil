@@ -205,7 +205,8 @@ impl PartialEq for GlyphRun {
     fn eq(&self, other: &Self) -> bool {
         self.rect == other.rect
             && self.node == other.node
-            && (Arc::ptr_eq(&self.shared, &other.shared) || same_shared(&self.shared, &other.shared))
+            && (Arc::ptr_eq(&self.shared, &other.shared)
+                || same_shared(&self.shared, &other.shared))
     }
 }
 

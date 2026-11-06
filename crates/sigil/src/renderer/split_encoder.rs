@@ -9,12 +9,12 @@ use crate::renderer::layer_composite::LayerInstance;
 use crate::renderer::quad_paint::QuadInstance;
 use crate::renderer::renderer::record_clear;
 use crate::renderer::scene_command::SceneCommand;
-use crate::scene::command::{MAX_PIGMENTS, PatternKind};
 use crate::renderer::scene_instance::MAX_GRADIENT_STOPS;
 use crate::renderer::scene_instance::{
     FillInstance, GpuStop, RectInstance, SceneUniforms, ShadowInstance,
 };
 use crate::renderer::slug::SLUG_INSTANCE_BYTES;
+use crate::scene::command::{MAX_PIGMENTS, PatternKind};
 use crate::style::Color;
 
 pub(crate) use timing::GpuTimer;
@@ -240,6 +240,25 @@ impl SplitEncoder {
             destination.as_image_copy(),
             source.size(),
         );
+    }
+
+    pub(crate) fn submit_with<R>(
+        &mut self,
+        record: impl FnOnce(&mut wgpu::CommandEncoder) -> R,
+    ) -> R {
+        self.end_pass();
+        let result = record(&mut self.encoder);
+        let fresh = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("sigil-renderer vector submission"),
+            });
+        let full = replace(&mut self.encoder, fresh);
+        self.flush();
+        self.queue.submit(core::iter::once(full.finish()));
+        count(crate::profile::Counter::GpuSplitSubmissions);
+        self.passes = 0;
+        result
     }
 
     pub(crate) fn submit(mut self) -> (UploadBuffers, Option<GpuTimer>) {

@@ -309,6 +309,7 @@ const fn reborrow_ctx<'a>(
         layer_pool: &mut *ctx.layer_pool,
         wash_cache: &mut *ctx.wash_cache,
         pending: &mut *ctx.pending,
+        vector: &mut *ctx.vector,
         stats: &mut *ctx.stats,
     }
 }

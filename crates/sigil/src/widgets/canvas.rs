@@ -4,8 +4,9 @@ use crate::geometry::Rect;
 use crate::kernel::{NodeBuilder, container};
 use crate::reactive::Signal;
 use crate::scene::SceneBuilder;
+use crate::style::Theme;
 
-type Recorder = Rc<dyn Fn(&mut SceneBuilder, Rect)>;
+pub(crate) type Recorder = Rc<dyn Fn(&mut SceneBuilder, Rect, &Theme)>;
 
 #[derive(Clone)]
 pub(crate) struct CanvasPaint {
@@ -14,10 +15,17 @@ pub(crate) struct CanvasPaint {
 }
 
 impl CanvasPaint {
-    pub(crate) fn record(&self, scene: &mut SceneBuilder, rect: Rect) {
+    pub(crate) fn themed(record: Recorder) -> Self {
+        Self {
+            record,
+            version: None,
+        }
+    }
+
+    pub(crate) fn record(&self, scene: &mut SceneBuilder, rect: Rect, theme: &Theme) {
         scene.with_clip(rect, |scene| {
             let start = scene.recorded();
-            (self.record)(scene, rect);
+            (self.record)(scene, rect, theme);
             scene.mark_leaf_from(start);
         });
     }
@@ -38,7 +46,7 @@ pub struct CanvasBuilder {
 #[must_use]
 pub fn canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static) -> CanvasBuilder {
     CanvasBuilder {
-        record: Rc::new(record),
+        record: Rc::new(move |scene: &mut SceneBuilder, rect: Rect, _: &Theme| record(scene, rect)),
         version: None,
         layout_overrides: crate::widgets::layout_ext::LayoutOverrides::new(),
     }

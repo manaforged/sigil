@@ -1,8 +1,11 @@
 #![allow(clippy::redundant_pub_crate)]
 
 mod marks;
+mod path;
 
 pub use marks::{DrawDecoration, DrawSprite};
+pub use path::DrawPath;
+pub(crate) use path::{MITER_LIMIT, PathCmd, PathStroke};
 
 use crate::geometry::Rect;
 use crate::kernel::NodeId;

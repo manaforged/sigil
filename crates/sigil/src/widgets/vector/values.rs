@@ -56,18 +56,3 @@ pub(crate) enum PathFill {
         stops: Vec<(f32, Rgba8)>,
     },
 }
-
-/// One path command.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum PathCmd {
-    /// The move to path cmd.
-    MoveTo(f32, f32),
-    /// The line to path cmd.
-    LineTo(f32, f32),
-    /// The quad to path cmd.
-    QuadTo(f32, f32, f32, f32),
-    /// The cubic to path cmd.
-    CubicTo(f32, f32, f32, f32, f32, f32),
-    /// The close path cmd.
-    Close,
-}

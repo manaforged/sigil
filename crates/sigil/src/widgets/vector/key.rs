@@ -1,4 +1,5 @@
-use super::{PathCmd, PathFill};
+use super::PathCmd;
+use crate::scene::command::{GradientStop, PathPaint};
 use crate::style::Rgba8;
 
 pub(super) fn mix(hash: &mut u64, byte: u8) {
@@ -24,10 +25,10 @@ fn mix_tagged(hash: &mut u64, tag: u8, values: &[f32]) {
     }
 }
 
-fn mix_stops(hash: &mut u64, stops: &[(f32, Rgba8)]) {
-    for &(pos, color) in stops {
-        mix_f32(hash, pos);
-        mix_rgba(hash, color);
+fn mix_stops(hash: &mut u64, stops: &[GradientStop]) {
+    for stop in stops {
+        mix_f32(hash, stop.offset);
+        mix_rgba(hash, stop.color);
     }
 }
 
@@ -54,24 +55,25 @@ pub(super) fn mix_stroke(hash: &mut u64, stroke: Option<(Rgba8, f32)>) {
     }
 }
 
-pub(super) fn mix_fill(hash: &mut u64, fill: Option<&PathFill>) {
+pub(super) fn mix_fill(hash: &mut u64, fill: Option<&PathPaint>) {
     match fill {
-        Some(PathFill::Solid(color)) => {
+        Some(PathPaint::Solid(color)) => {
             mix(hash, 1);
             mix_rgba(hash, *color);
         }
-        Some(PathFill::Linear { start, end, stops }) => {
-            mix_tagged(hash, 2, &[start.0, start.1, end.0, end.1]);
-            mix_stops(hash, stops);
+        Some(PathPaint::Linear(linear)) => {
+            let (start, end) = (linear.start, linear.end);
+            mix_tagged(hash, 2, &[start.x, start.y, end.x, end.y]);
+            mix_stops(hash, &linear.stops);
         }
-        Some(PathFill::Radial {
+        Some(PathPaint::Radial {
             center,
             radius,
             stops,
         }) => {
-            mix_tagged(hash, 3, &[center.0, center.1, *radius]);
+            mix_tagged(hash, 3, &[center.x, center.y, *radius]);
             mix_stops(hash, stops);
         }
-        Some(PathFill::Theme(_)) | None => mix(hash, 0),
+        None => mix(hash, 0),
     }
 }

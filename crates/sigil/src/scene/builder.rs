@@ -30,8 +30,10 @@ impl SceneBuilder {
 
     /// Fills `rect` with a watercolour wash.
     pub fn draw_wash(&mut self, rect: Rect, wash: Wash) {
-        self.commands
-            .push(SceneCommand::Pattern(DrawPattern::new(rect, PatternKind::Wash(wash))));
+        self.commands.push(SceneCommand::Pattern(DrawPattern::new(
+            rect,
+            PatternKind::Wash(wash),
+        )));
     }
 
     /// Appends a rectangle.
@@ -91,6 +93,10 @@ impl SceneBuilder {
     pub fn draw_image(&mut self, draw: crate::scene::command::DrawImage) {
         self.commands.push(SceneCommand::Image(draw));
     }
+    }
+
+    pub(crate) fn draw_path(&mut self, draw: crate::scene::command::DrawPath) {
+        self.commands.push(SceneCommand::Path(draw));
     }
 
     pub(crate) fn draw_rect_for_node(&mut self, node: NodeId, draw: DrawRect, cell: CellRect) {

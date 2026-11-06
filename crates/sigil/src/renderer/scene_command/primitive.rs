@@ -159,7 +159,8 @@ impl SceneWalk<'_> {
         local.border_radius = trimmed.radii;
         let phase = tile_phase(trimmed.shift, draw.pattern.tile_extent());
         let space = BlendSpace::from_format(self.ctx.format);
-        let stops = wash_stops(draw.pattern).map_or_else(Vec::new, |stops| gradient_stop_records(&stops, space));
+        let stops = wash_stops(draw.pattern)
+            .map_or_else(Vec::new, |stops| gradient_stop_records(&stops, space));
         let range = [
             u32::try_from(self.ctx.pending.stops.len()).unwrap_or(u32::MAX),
             u32::try_from(stops.len()).unwrap_or(u32::MAX),

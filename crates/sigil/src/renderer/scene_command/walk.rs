@@ -1,6 +1,5 @@
 use crate::geometry::{Point, Rect};
 
-use crate::renderer::wash_cache::WashCache;
 use crate::Error;
 use crate::renderer::blur_paint::BlurPipeline;
 use crate::renderer::decoration_paint::DecorationInstance;
@@ -21,6 +20,8 @@ use crate::renderer::scene_paint::ScenePipeline;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::{QueuedRun, SlugTextPipeline};
 use crate::renderer::split_encoder::SplitEncoder;
+use crate::renderer::vector_pass::VectorPass;
+use crate::renderer::wash_cache::WashCache;
 pub(crate) use crate::scene::command::effects::transform_rect;
 pub(crate) use crate::scene::geometry::{IDENTITY, compose, intersect_rect};
 
@@ -44,6 +45,7 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) layer_pool: &'a mut Option<LayerPool>,
     pub(crate) wash_cache: &'a mut WashCache,
     pub(crate) pending: &'a mut WalkPending,
+    pub(crate) vector: &'a mut VectorPass,
     pub(crate) stats: &'a mut FrameStats,
 }
 
@@ -82,9 +84,11 @@ pub(crate) fn walk_command_scene(ctx: WalkCtx<'_>, scene: &CommandScene) -> Resu
     };
     if let Some(pool) = ctx.layer_pool.as_mut() {
         pool.prepare(ctx.view.texture());
-        let washes = &*ctx.wash_cache;
+        let (washes, vector) = (&*ctx.wash_cache, &*ctx.vector);
         for pipeline in &mut *ctx.layer_pipelines {
-            pipeline.retain(|view| pool.contains(view) || washes.contains(view));
+            pipeline.retain(|view| {
+                pool.contains(view) || washes.contains(view) || vector.contains(view)
+            });
         }
     }
     if plan::needs_layers(&scene.commands) {
@@ -166,6 +170,7 @@ impl<'a> SceneWalk<'a> {
                 shadow,
             } => self.queue_shadow(*rect, *radii, *shadow),
             SceneCommand::Decoration(draw) => self.queue_decoration(draw),
+            SceneCommand::Path(draw) => self.queue_path(draw),
             _ => {}
         }
     }
@@ -183,6 +188,9 @@ impl<'a> SceneWalk<'a> {
         if keep != Batch::Decoration {
             self.flush_decorations();
         }
+        if keep != Batch::Path {
+            self.flush_paths();
+        }
     }
 
     pub(super) fn finish(&mut self) {
@@ -195,6 +203,7 @@ impl<'a> SceneWalk<'a> {
         self.flush_fills();
         self.flush_shadows();
         self.flush_decorations();
+        self.flush_paths();
     }
 
     fn glyphs_under(&self, rect: Rect) -> bool {

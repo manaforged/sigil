@@ -145,6 +145,7 @@ impl<'a> CpuPainter<'a> {
             SceneCommand::Sprite(draw) => self.sprite(draw),
             SceneCommand::Image(draw) => self.image(draw),
             SceneCommand::Decoration(draw) => self.decoration(draw),
+            SceneCommand::Path(draw) => self.path(draw),
         }
     }
 

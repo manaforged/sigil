@@ -134,7 +134,11 @@ impl Wash {
     /// Returns this wash with its values in range.
     #[must_use]
     pub const fn normalized(mut self) -> Self {
-        self.scale = if self.scale.is_finite() { self.scale.max(8.0) } else { 260.0 };
+        self.scale = if self.scale.is_finite() {
+            self.scale.max(8.0)
+        } else {
+            260.0
+        };
         self.density = finite_clamp(self.density, 0.0, 2.0);
         self.pools = finite_clamp(self.pools, 0.0, 16.0);
         self.edges = finite_clamp(self.edges, 0.0, 1.0);
@@ -146,7 +150,12 @@ impl Wash {
 
     /// The colors the renderer reads: the paper, then each pigment.
     pub(crate) fn palette(&self) -> impl Iterator<Item = Rgba8> + '_ {
-        std::iter::once(self.paper).chain(self.pigments.iter().take(usize::from(self.count.max(1))).copied())
+        std::iter::once(self.paper).chain(
+            self.pigments
+                .iter()
+                .take(usize::from(self.count.max(1)))
+                .copied(),
+        )
     }
 
     pub(crate) fn dark(&self) -> bool {
@@ -163,18 +172,33 @@ impl Wash {
         let wx = u + 1.1 * (fbm(u * 0.8 + 3.0, v * 0.8 + 7.0, 3, seed) - 0.5);
         let wy = v + 1.1 * (fbm(u * 0.8 - 5.0, v * 0.8 + 1.0, 3, seed) - 0.5);
         let body = if wash.band {
-            band(u - centre.0 / wash.scale, v - centre.1 / wash.scale, wx, wy, seed)
+            band(
+                u - centre.0 / wash.scale,
+                v - centre.1 / wash.scale,
+                wx,
+                wy,
+                seed,
+            )
         } else {
             smoothstep(0.38, 0.78, fbm(wx * 0.9, wy * 0.9, 5, seed))
         };
-        let mut amount = pool((body * wash.density).clamp(0.0, 1.0), wash.pools, wash.edges);
+        let mut amount = pool(
+            (body * wash.density).clamp(0.0, 1.0),
+            wash.pools,
+            wash.edges,
+        );
         let ridge = ridged(wx * 1.4 + 31.0, wy * 1.4 - 17.0, seed);
         let inside = smoothstep(0.66, 0.74, ridge);
         let fringe = smoothstep(0.60, 0.66, ridge) * (1.0 - inside);
         let wet = smoothstep(0.05, 0.5, amount);
         amount = amount * (1.0 - 0.35 * inside * wash.edges) + fringe * 0.12 * wash.edges * wet;
-        let fibre = noise(0.8f32.mul_add(x, 0.6 * y) / 7.0, 0.8f32.mul_add(y, -0.6 * x) / 3.0, seed ^ 0x13);
-        let grains = 0.6 * noise(x / 1.7, y / 1.7, seed ^ 0x51) + 0.4 * noise(x / 5.0, y / 5.0, seed ^ 0x77);
+        let fibre = noise(
+            0.8f32.mul_add(x, 0.6 * y) / 7.0,
+            0.8f32.mul_add(y, -0.6 * x) / 3.0,
+            seed ^ 0x13,
+        );
+        let grains =
+            0.6 * noise(x / 1.7, y / 1.7, seed ^ 0x51) + 0.4 * noise(x / 5.0, y / 5.0, seed ^ 0x77);
         amount *= 1.0 + wash.granulation * (grains - 0.5) * 1.6 * wet;
         amount *= 1.0 + wash.grain * 0.25 * (fibre - 0.5);
         let amount = amount.clamp(0.0, 1.0);
@@ -197,7 +221,11 @@ impl Wash {
 }
 
 const fn finite_clamp(value: f32, lo: f32, hi: f32) -> f32 {
-    if value.is_finite() { value.clamp(lo, hi) } else { lo }
+    if value.is_finite() {
+        value.clamp(lo, hi)
+    } else {
+        lo
+    }
 }
 
 fn rgb(color: Rgba8) -> [f32; 3] {
@@ -256,11 +284,16 @@ fn pool(amount: f32, pools: f32, edges: f32) -> f32 {
 
 fn band(u: f32, v: f32, wx: f32, wy: f32, seed: u32) -> f32 {
     let roll = |salt: i32| rand(salt, 0x5eed, seed);
-    let flip = if roll(2) > 0.5 { std::f32::consts::PI } else { 0.0 };
+    let flip = if roll(2) > 0.5 {
+        std::f32::consts::PI
+    } else {
+        0.0
+    };
     let angle = (roll(1) - 0.5) * 1.8 + flip;
     let (sin, cos) = angle.sin_cos();
     let along = u * cos + v * sin;
-    let curve = (roll(30) - 0.5) * 0.45 * along * along + (roll(31) - 0.5) * 0.35 * (along * (1.2 + 1.6 * roll(32))).sin();
+    let curve = (roll(30) - 0.5) * 0.45 * along * along
+        + (roll(31) - 0.5) * 0.35 * (along * (1.2 + 1.6 * roll(32))).sin();
     let across = v * cos - u * sin - (roll(3) - 0.5) * 0.6 - curve;
     let swell = ((fbm(along * 0.55 + 9.0, 2.0, 3, seed) - 0.5) * 3.0 + 0.5).clamp(0.0, 1.0);
     let width = 0.42 * (0.8 + 0.4 * roll(6)) * (0.7 + 0.65 * swell);
@@ -324,7 +357,10 @@ fn fade(t: f32) -> f32 {
 }
 
 fn turn(x: f32, y: f32, scale: f32) -> (f32, f32) {
-    (scale * 0.8f32.mul_add(x, -0.6 * y), scale * 0.6f32.mul_add(x, 0.8 * y))
+    (
+        scale * 0.8f32.mul_add(x, -0.6 * y),
+        scale * 0.6f32.mul_add(x, 0.8 * y),
+    )
 }
 
 fn fbm(mut x: f32, mut y: f32, octaves: u32, seed: u32) -> f32 {

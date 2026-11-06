@@ -229,6 +229,7 @@ fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
         SceneCommand::Image(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
         SceneCommand::Sprite(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
         SceneCommand::Decoration(draw) => draw.band = shift_rect(draw.band, dx, dy),
+        SceneCommand::Path(draw) => draw.shift(dx, dy),
         SceneCommand::DrawShadow { rect, .. } => {
             rect[0] += dx;
             rect[1] += dy;

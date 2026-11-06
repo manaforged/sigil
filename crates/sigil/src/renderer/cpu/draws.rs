@@ -38,7 +38,7 @@ fn shader_paint(shader: Shader<'_>) -> Paint<'_> {
 }
 
 impl CpuPainter<'_> {
-    fn with_brush(
+    pub(super) fn with_brush(
         &mut self,
         bounds: Rect,
         opacity: f32,

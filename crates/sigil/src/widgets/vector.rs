@@ -1,28 +1,28 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::geometry::Rect;
-use crate::kernel::{
-    Cx, ImageRaster, ImageSource, IntoNode, NodeId, ObjectFit, ThemedImage, cached_image,
-    container, image,
-};
+use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::scene::SceneBuilder;
-use crate::scene::command::DrawImage;
+use crate::scene::command::{
+    DrawPath, FillRule, PathPaint, PathStroke, StrokeCap, StrokeJoin, Transform,
+};
 use crate::style::{Rgba8, Theme};
-use crate::widgets::Widget;
 use crate::widgets::layout_ext::LayoutOverrides;
-use tiny_skia::{FillRule, Paint, Pixmap, Transform};
+use crate::widgets::{CanvasPaint, Widget};
 
 mod key;
-mod raster;
+mod paint;
 mod values;
 
-use crate::fnv::OFFSET;
-use key::{hash_cmd, mix, mix_fill, mix_stroke};
-use raster::{build_ts_path, fill_shader, straight_rgba, stroke_path};
-pub(crate) use values::{PathCmd, PathColor, PathFill};
+pub(crate) use crate::scene::command::PathCmd;
+pub(crate) use values::{PathColor, PathFill};
 
-type ResolvedPaint = (Option<PathFill>, Option<(Rgba8, f32)>, u64);
+type Recorded = RefCell<Option<(Rect, u64, DrawPath)>>;
+
+const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 
 /// Builder of a vector path.
 pub struct PathNode {
@@ -31,13 +31,14 @@ pub struct PathNode {
     cmds: Vec<PathCmd>,
     fill: Option<PathFill>,
     stroke: Option<(PathColor, f32)>,
+    rule: FillRule,
+    cap: Option<StrokeCap>,
+    join: Option<StrokeJoin>,
+    dash: Vec<f32>,
     fit: Option<LayoutStyle>,
     layout_overrides: LayoutOverrides,
-    scale: u8,
     non_scaling: bool,
 }
-
-type RasterSize = (u32, u32, f32);
 
 /// A vector path.
 #[must_use]
@@ -48,9 +49,12 @@ pub const fn path(width: u32, height: u32) -> PathNode {
         cmds: Vec::new(),
         fill: None,
         stroke: None,
+        rule: FillRule::NonZero,
+        cap: None,
+        join: None,
+        dash: Vec::new(),
         fit: None,
         layout_overrides: LayoutOverrides::new(),
-        scale: 1,
         non_scaling: false,
     }
 }
@@ -133,10 +137,38 @@ impl PathNode {
         self
     }
 
+    /// Fills with the even-odd rule instead of nonzero.
+    #[must_use]
+    pub const fn even_odd(mut self) -> Self {
+        self.rule = FillRule::EvenOdd;
+        self
+    }
+
     /// Sets the stroke.
     #[must_use]
     pub fn stroke(mut self, color: impl Into<PathColor>, width: f32) -> Self {
         self.stroke = Some((color.into(), width));
+        self
+    }
+
+    /// Sets the shape of the stroke's open ends.
+    #[must_use]
+    pub const fn cap(mut self, cap: StrokeCap) -> Self {
+        self.cap = Some(cap);
+        self
+    }
+
+    /// Sets the shape where stroke segments meet.
+    #[must_use]
+    pub const fn join(mut self, join: StrokeJoin) -> Self {
+        self.join = Some(join);
+        self
+    }
+
+    /// Dashes the stroke with alternating on and off lengths.
+    #[must_use]
+    pub fn dash(mut self, lengths: &[f32]) -> Self {
+        self.dash = lengths.to_vec();
         self
     }
 
@@ -165,166 +197,117 @@ impl PathNode {
     }
 
     fn fit_box(mut self, width: f32, height: f32) -> Self {
-        self.scale = 2;
-        self.fit = Some(
-            LayoutStyle::block()
-                .fixed_size(width, height)
-                .shrink(0.0)
-                .min_size(width, height),
-        );
+        self.fit = Some(fixed(width, height));
         self
     }
 
     #[must_use]
-    pub(crate) const fn retina(mut self) -> Self {
-        self.scale = 2;
+    pub(crate) const fn retina(self) -> Self {
         self
     }
 
     /// Record a vector path into a `canvas` scene.
     pub fn draw(self, scene: &mut SceneBuilder, destination: Rect, theme: &Theme) {
-        let Some(source) = self.rasterize(theme) else {
-            return;
+        if let Some(draw) = self.draw_path(destination, theme) {
+            scene.draw_path(draw);
+        }
+    }
+
+    fn draw_path(&self, destination: Rect, theme: &Theme) -> Option<DrawPath> {
+        if self.cmds.is_empty() || (self.fill.is_none() && self.stroke.is_none()) {
+            return None;
+        }
+        let (fill, stroke) = paint::resolve(self.fill.as_ref(), self.stroke, theme);
+        let key = paint::path_key(self, fill.as_ref(), stroke);
+        let view = self.view(destination);
+        let (outline, transform, baked) = if self.non_scaling {
+            (paint::bake(&self.cmds, view), IDENTITY, Some(view))
+        } else {
+            (Arc::from(self.cmds.as_slice()), view, None)
         };
-        let path = Arc::new(self);
-        scene.draw_image(DrawImage {
-            node: None,
-            source,
-            fit: ObjectFit::Fill,
-            destination,
-            opacity: 10_000,
-            crop: None,
-            raster: Some(path.bind(theme)),
-        });
+        let mut draw = DrawPath::new(outline, transform, key);
+        if let Some(fill) = fill {
+            let fill = baked.map_or_else(|| fill.clone(), |view| paint::map(&fill, view));
+            draw = draw.with_fill(self.rule, fill);
+        }
+        if let Some((color, width)) = stroke {
+            draw = draw.with_stroke(self.path_stroke(color, width));
+        }
+        Some(draw)
     }
 
-    fn resolved(&self, theme: &Theme) -> ResolvedPaint {
-        let fill = self.fill.as_ref().map(|fill| match fill {
-            PathFill::Theme(token) => PathFill::Solid(theme.color(*token)),
-            other => other.clone(),
-        });
-        let stroke = self
-            .stroke
-            .map(|(color, width)| (color.resolve(theme), width));
-        let key = self.intern_key(fill.as_ref(), stroke);
-        (fill, stroke, key)
-    }
-
-    fn intern_key(&self, fill: Option<&PathFill>, stroke: Option<(Rgba8, f32)>) -> u64 {
-        let mut hash = OFFSET;
-        for byte in self
-            .width
-            .to_le_bytes()
-            .into_iter()
-            .chain(self.height.to_le_bytes())
-        {
-            mix(&mut hash, byte);
+    fn path_stroke(&self, color: Rgba8, width: f32) -> PathStroke {
+        let (cap, join) = if self.non_scaling {
+            (StrokeCap::Round, StrokeJoin::Round)
+        } else {
+            (StrokeCap::Butt, StrokeJoin::Miter)
+        };
+        PathStroke {
+            paint: PathPaint::Solid(color),
+            width,
+            cap: self.cap.unwrap_or(cap),
+            join: self.join.unwrap_or(join),
+            dash: self.dash.iter().copied().collect(),
         }
-        mix(&mut hash, u8::from(self.non_scaling));
-        for cmd in &self.cmds {
-            hash_cmd(&mut hash, *cmd);
-        }
-        mix_stroke(&mut hash, stroke);
-        mix_fill(&mut hash, fill);
-        hash
     }
 
     #[allow(
         clippy::cast_precision_loss,
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
         reason = "path extents are small positive integers"
     )]
-    fn rasterize(&self, theme: &Theme) -> Option<ImageSource> {
-        let (fill, stroke, key) = self.resolved(theme);
-        let scale = f32::from(self.scale.max(1));
-        let pixels = |extent: u32| ((extent as f32) * scale).round() as u32;
-        let target = (pixels(self.width), pixels(self.height), scale);
-        self.raster(fill.as_ref(), stroke, key, target)
+    fn view(&self, destination: Rect) -> Transform {
+        let sx = destination.width / self.width.max(1) as f32;
+        let sy = destination.height / self.height.max(1) as f32;
+        [
+            [sx, 0.0, destination.origin.x],
+            [0.0, sy, destination.origin.y],
+        ]
     }
 
-    fn bind(self: &Arc<Self>, theme: &Theme) -> ImageRaster {
-        let (fill, stroke, key) = self.resolved(theme);
-        let path = Arc::clone(self);
-        ImageRaster::new(key, move |width, height, scale| {
-            path.raster(fill.as_ref(), stroke, key, (width, height, scale))
-        })
-    }
-
-    fn raster(
-        &self,
-        fill: Option<&PathFill>,
-        stroke: Option<(Rgba8, f32)>,
-        mut key: u64,
-        size: RasterSize,
-    ) -> Option<ImageSource> {
-        for byte in size.0.to_le_bytes().into_iter().chain(size.1.to_le_bytes()) {
-            mix(&mut key, byte);
+    fn record(&self, last: &Recorded, scene: &mut SceneBuilder, rect: Rect, theme: &Theme) {
+        let stamp = paint::theme_key(self, theme);
+        let mut last = last.borrow_mut();
+        let fresh = last
+            .as_ref()
+            .is_none_or(|(at, seen, _)| *at != rect || *seen != stamp);
+        if fresh {
+            *last = self
+                .draw_path(rect, theme)
+                .map(|draw| (rect, stamp, draw));
         }
-        key::mix_f32(&mut key, size.2);
-        cached_image(key, || {
-            crate::profile::count(crate::profile::Counter::PathRaster);
-            self.paint(fill, stroke, size)
-        })
+        if let Some((_, _, draw)) = last.as_ref() {
+            scene.draw_path(draw.clone());
+        }
     }
 
     #[allow(
         clippy::cast_precision_loss,
-        reason = "pixel extents are bounded by the raster size cap"
+        reason = "path extents are small positive integers"
     )]
-    fn paint(
-        &self,
-        fill: Option<&PathFill>,
-        stroke: Option<(Rgba8, f32)>,
-        (width, height, scale): RasterSize,
-    ) -> Option<ImageSource> {
-        let path = build_ts_path(&self.cmds)?;
-        let mut pixmap = Pixmap::new(width, height)?;
-        let transform = Transform::from_scale(
-            width as f32 / self.width.max(1) as f32,
-            height as f32 / self.height.max(1) as f32,
-        );
-        if let Some(fill) = fill {
-            let paint = Paint {
-                shader: fill_shader(fill),
-                anti_alias: true,
-                ..Paint::default()
-            };
-            pixmap.fill_path(&path, &paint, FillRule::Winding, transform, None);
-        }
-        if let Some((color, line)) = stroke {
-            let fixed = self.non_scaling.then_some(scale);
-            stroke_path(&mut pixmap, &path, (color, line), transform, fixed);
-        }
-        ImageSource::from_rgba8(width, height, straight_rgba(&pixmap))
+    fn root(mut self) -> NodeBuilder {
+        let layout = self
+            .fit
+            .take()
+            .unwrap_or_else(|| fixed(self.width as f32, self.height as f32));
+        let path = Rc::new(self);
+        let last = Recorded::default();
+        let paint = CanvasPaint::themed(Rc::new(move |scene, rect, theme| {
+            path.record(&last, scene, rect, theme);
+        }));
+        container().layout(layout).mutate(move |node| {
+            let _ = node.attach(paint);
+        })
     }
 }
 
-impl IntoNode for PathNode {
-    fn build(mut self, cx: &mut Cx) -> NodeId {
-        let overrides = std::mem::take(&mut self.layout_overrides);
-        let Some(source) = self.rasterize(&Theme::light()) else {
-            return overrides.finish(container()).build(cx);
-        };
-        let picture = match self.fit.take() {
-            Some(fit) => image(source).layout(fit),
-            None => image(source),
-        };
-        let id = overrides.finish(picture.into_node_builder()).build(cx);
-        let path = Arc::new(self);
-        let fallback = Arc::clone(&path);
-        let themed = ThemedImage::new(
-            move |theme| fallback.rasterize(theme),
-            move |theme| path.bind(theme),
-        );
-        if let Some(node) = cx.get_mut(id) {
-            let _ = node.attach(themed);
-        }
-        id
-    }
+fn fixed(width: f32, height: f32) -> LayoutStyle {
+    LayoutStyle::block()
+        .fixed_size(width, height)
+        .shrink(0.0)
+        .min_size(width, height)
 }
 
-builder_impls!([] PathNode: widget);
+builder_impls!([] PathNode: widget, node(pub(crate)));
 
 #[cfg(test)]
 #[path = "vector_tests.rs"]

@@ -254,3 +254,55 @@ pub struct Stroke {
     /// The align.
     pub align: StrokeAlign,
 }
+
+/// The shape at the open ends of a stroked path.
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub enum StrokeCap {
+    /// Ends flat at the end point.
+    #[default]
+    Butt,
+    /// Ends in a half circle around the end point.
+    Round,
+    /// Ends in a half square past the end point.
+    Square,
+}
+
+/// The shape where two stroked segments meet.
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub enum StrokeJoin {
+    /// Extends the outer edges to a point.
+    #[default]
+    Miter,
+    /// Rounds the corner with a circle.
+    Round,
+    /// Cuts the corner straight across.
+    Bevel,
+}
+
+/// Which areas of a self-crossing path count as inside.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) enum FillRule {
+    /// Inside where the winding number is not zero.
+    #[default]
+    NonZero,
+    /// Inside where the winding number is odd.
+    EvenOdd,
+}
+
+/// The paint of a path's fill or stroke, in path units.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum PathPaint {
+    /// One color.
+    Solid(Rgba8),
+    /// A gradient along a straight axis.
+    Linear(LinearGradient),
+    /// A gradient out from a center.
+    Radial {
+        /// The center.
+        center: Point,
+        /// The radius.
+        radius: f32,
+        /// The stops.
+        stops: SmallVec<[GradientStop; 4]>,
+    },
+}

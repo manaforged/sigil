@@ -218,12 +218,14 @@ impl<'t> EmitWalk<'_, 't> {
         if crate::profile::enabled() {
             let cx = self.cx;
             let key = slotmap::Key::data(&id.key()).as_ffi();
-            crate::profile::attribute(crate::profile::Hotspot::EmitResolved, 1, key, || cx.describe(id));
+            crate::profile::attribute(crate::profile::Hotspot::EmitResolved, 1, key, || {
+                cx.describe(id)
+            });
         }
         push_focus_ring(self.scene, id, node, rect, paint);
         push_node(self.scene, id, node, rect, paint);
         if let Some(canvas) = node.get_extension::<CanvasPaint>() {
-            canvas.record(self.scene, rect);
+            canvas.record(self.scene, rect, paint.theme);
         }
     }
 

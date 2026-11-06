@@ -114,8 +114,11 @@ impl SceneWalk<'_> {
         let clip = self.state.current_clip();
         let transform = self.state.current_transform();
         let opacity = self.state.current_opacity() * f32::from(draw.opacity) / 10_000.0;
-        let pipeline =
-            LayerCompositePipeline::for_format(self.ctx.layer_pipelines, self.ctx.device, self.ctx.format);
+        let pipeline = LayerCompositePipeline::for_format(
+            self.ctx.layer_pipelines,
+            self.ctx.device,
+            self.ctx.format,
+        );
         pipeline.composite(
             PaintCtx {
                 device: self.ctx.device,

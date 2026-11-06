@@ -18,6 +18,7 @@ use super::paint_clip::{Text, image_crop, paint_text};
 use super::{Face, Grid, Ink, Underline, cell_edge, floor_cell};
 
 mod image;
+mod path;
 
 pub(crate) struct CellPaint<'a> {
     pub theme: &'a Theme,
@@ -188,6 +189,7 @@ impl CellWalk<'_> {
                 }
             }
             SceneCommand::Image(draw) => self.image(draw),
+            SceneCommand::Path(draw) => self.path(draw),
             SceneCommand::Decoration(draw) => {
                 if self.wanted(draw.band) {
                     self.decoration(draw);

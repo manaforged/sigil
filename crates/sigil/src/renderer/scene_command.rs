@@ -2,6 +2,7 @@
 
 mod draw_handlers;
 mod layer_walk;
+mod path_run;
 mod primitive;
 mod wash;
 pub(crate) use crate::scene::state;

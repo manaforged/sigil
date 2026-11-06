@@ -18,6 +18,7 @@ mod draws;
 mod glyph_outline;
 mod layers;
 mod paint;
+mod path;
 mod pattern;
 mod quad;
 mod shadow;

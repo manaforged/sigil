@@ -94,7 +94,6 @@ mod shadow_paint;
 pub(crate) mod slug;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod split_encoder;
-mod wash_cache;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod sprite_atlas;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
@@ -106,6 +105,9 @@ mod test_state;
 #[cfg(test)]
 #[path = "renderer/lib_tests.rs"]
 mod tests;
+pub(crate) mod vector;
+mod vector_pass;
+mod wash_cache;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod window_handle;
 

@@ -19,6 +19,8 @@ pub(crate) mod emit_cache;
     all(feature = "scene", feature = "kittest")
 ))]
 pub(crate) mod geometry;
+#[cfg(any(feature = "scene", feature = "terminal"))]
+pub(crate) mod path_raster;
 pub(crate) mod shadow;
 #[cfg(any(
     test,
@@ -48,14 +50,14 @@ kittest_pub! {
 }
 #[cfg(any(test, feature = "terminal"))]
 pub(crate) use command::{CellBorder, TextFlow};
-pub use command::{CommandScene, DrawRect, GlyphRun, SceneCommand, Wash};
+pub use command::{CommandScene, DrawRect, GlyphRun, SceneCommand, StrokeCap, StrokeJoin, Wash};
 kittest_pub! {
     #[doc(hidden)]
     pub use command::Transform;
 }
 kittest_pub! {
     #[doc(hidden)]
-    pub use command::{DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawSprite, GradientStop, LayerEffect, LayerScope, LinearGradient, PatternKind, SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle};
+    pub use command::{DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawSprite, GradientStop, LayerEffect, LayerScope, LinearGradient, PatternKind, SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle};
 }
 kittest_pub! {
     #[doc(hidden)]

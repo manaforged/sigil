@@ -58,7 +58,13 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
             line(scene, &rects, ink_color, &run, DecorationKind::Underline);
         }
         if face.strike {
-            line(scene, &rects, ink_color, &run, DecorationKind::Strikethrough);
+            line(
+                scene,
+                &rects,
+                ink_color,
+                &run,
+                DecorationKind::Strikethrough,
+            );
         }
         let Some(color) = ink.color else {
             continue;
@@ -110,8 +116,8 @@ fn line(
     run: &GlyphRun,
     kind: crate::scene::command::DecorationKind,
 ) {
-    use crate::scene::command::DecorationKind;
     use crate::geometry::{Point, Rect};
+    use crate::scene::command::DecorationKind;
     use crate::scene::command::DrawDecoration;
     let thickness = (run.style.font_size * 0.06).max(1.0);
     for rect in rects {

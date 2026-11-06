@@ -95,6 +95,7 @@ impl PipelineCache {
             layer_pool,
             wash_cache,
             pending,
+            vector,
         } = self;
         walk_command_scene(
             WalkCtx {
@@ -117,6 +118,7 @@ impl PipelineCache {
                 layer_pool,
                 wash_cache,
                 pending,
+                vector,
                 stats,
             },
             scene,
