@@ -477,6 +477,8 @@ fn main() {
 | `Layer` | `enum Layer { Page, Sunken, Raised, Overlay }` | A place in the visual stack. `.layer(Layer::Raised)` sets the fill, border, corners, and shadow together. `card` is `Raised` and popups are `Overlay`. The terminal host draws no shadows. |
 | `FlawKind` | `enum FlawKind { Column, Inset, ClippedText, UnevenControls, Overlap, Overflow, Contrast, SmallTarget }` | A design rule. Debug builds report each break once through `tracing` target `sigil::design`. `Harness` fails on one. |
 | `Widget::allow_flaw` | `fn allow_flaw(self, kind: FlawKind, reason: &'static str) -> Self` | Opt a node and its children out of one design rule. |
+| `View` | `View::new(text)`; `.watch(path)`, `.signal(name, Signal<String>)`, `.flag(name, Signal<bool>)`, `.action(name, f)`, `.slot(name, f)`, `.check() -> Result<(), Error>` | A widget tree read from `.sigil` text, reloaded when its watched file changes. See [Hot reload](guide/hot-reload.md). |
+| `view!` | `sigil::view!("path/from/manifest.sigil")` | Builds a `View` from a file relative to `Cargo.toml`, watched in debug builds. |
 | `ControlSize` | `enum ControlSize { Compact, Default, Wide, Grow }` | Size step of a control, as in `button(..).size(ControlSize::Compact)`. |
 | `FontFamily` | `enum FontFamily { Sans, Mono, Serif, Icon, Display }` | Font family for `font_family`. |
 | `Rgba8` | `struct Rgba8 { r, g, b, a: u8 }` | An 8-bit RGBA color. |

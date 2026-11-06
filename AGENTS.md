@@ -68,6 +68,22 @@ fn app() -> impl IntoNode {
 - Write signals on the UI thread. From another thread, use `signal_writer`, or `tasks::on_message` for a channel.
 - Public event, command, error, and config types are `#[non_exhaustive]`. Match them with a `_` arm, and build `AppConfig` with its builder methods.
 
+## Follow the design rules
+
+Sigil holds the design rules in its types and in its test harness. Use the named steps. A bare pixel value does not compile where a step is expected.
+
+- Spacing: `.gap(Space::Md)` and `.padding(Space::Lg)` take a step of the scale: `None`, `Xxs`, `Xs`, `Sm`, `Md`, `Lg`, `Xl`, `Xxl`, `Xxxl`.
+- Type: `.text_role(TextRole::Title)` sets size, line height, and weight together. `.font_size(px, "reason")` needs a reason.
+- Depth: `.layer(Layer::Raised)` sets fill, border, corners, and shadow together. `card` is `Raised`, and popups are `Overlay`. Do not add shadows by hand.
+- Controls: a field and a button in one `row()` are the same height and are centred. Use `ControlSize` to change the height of both.
+- A `Harness` checks the laid-out tree when it is dropped. A flaw fails the test, and the message names the node and the fix: clipped text, uneven controls, overlap, overflow, contrast, a small target, a broken column, or an uneven inset. Debug builds also log each flaw through `tracing` target `sigil::design`.
+
+Fix the flaw. When a design needs the exception, say why with `.allow_flaw(FlawKind::Overflow, "reason")` on the node. Call `.unaudited()` only on a test fixture that breaks a rule on purpose. With the `inspect` feature, the query `layout::audit` lists the flaws of a running app.
+
+## Iterate on a screen without a rebuild
+
+Put the shape of a screen in a `.sigil` file and load it with `sigil::view!("src/screen.sigil")`. In a debug build the running app shows each save within 200 ms. Bind state with `.signal`, `.flag`, and `.action`. Put a widget that the file cannot name in a `.slot`. The widgets and properties are in [Hot reload](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/hot-reload.md).
+
 ## Test the app
 
 ```rust

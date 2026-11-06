@@ -1,0 +1,15 @@
+// Edit this file while the example runs. The window changes when you save.
+column gap=lg padding=xl {
+  text "Profile" role=title
+  card gap=md padding=lg {
+    field "Name" {
+      text_field value=$name placeholder="Your name"
+    }
+    checkbox "Send me updates" checked=$updates
+    row gap=sm {
+      button "Save" primary activate=@save
+      button "Reset" outline activate=@reset
+    }
+    slot status
+  }
+}

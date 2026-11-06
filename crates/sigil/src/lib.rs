@@ -116,6 +116,7 @@ pub mod text;
 #[allow(unused_imports, reason = "public only under kittest")]
 pub(crate) mod text;
 /// The widget catalog.
+mod view;
 pub mod widgets;
 
 pub use crate::app::config::AppConfig;
@@ -123,6 +124,7 @@ pub use crate::app::embed::Host;
 pub use crate::app::exit::request_exit;
 pub use crate::error::{AppResult, Error, ErrorKind};
 pub use crate::kernel::{Cx, Live, Node, NodeId, Surface, TopLayer, announce};
+pub use crate::view::View;
 kittest_pub! {
     #[doc(hidden)]
     pub use crate::kernel::NodeType;
@@ -235,6 +237,7 @@ pub mod prelude {
         TextRole, Theme, Token, Tone,
     };
     pub use crate::tasks::{SignalWriter, Status, Task, signal_writer, spawn, task};
+    pub use crate::view::View;
     pub use crate::widgets::{
         ColWidth, Combobox, Date, Density, DiffView, Disclosure, DragState, Identifiable,
         ListRowSlots, MenuItem, ModalBuilder, Orientation, PathNode, SelectionMode, Side,
