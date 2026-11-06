@@ -58,6 +58,7 @@ usvg = { workspace = true, optional = true }
 resvg = { workspace = true, optional = true, features = ["text"] }
 mermaid-svg = { workspace = true, optional = true }
 latex-rust = { workspace = true, optional = true }
+layout-rs = { workspace = true, optional = true }
 lyon_geom = { workspace = true, optional = true }
 harfrust = { version = "0.13", optional = true }
 rfd = { version = "0.17", optional = true }
@@ -115,6 +116,7 @@ scene = [
     "dep:resvg",
     "dep:mermaid-svg",
     "dep:latex-rust",
+    "dep:layout-rs",
     "dep:lyon_geom",
     "dep:zed-font-kit",
     "dep:sigil-fonts",

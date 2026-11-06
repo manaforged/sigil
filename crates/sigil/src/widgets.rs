@@ -161,6 +161,7 @@ mod field;
 mod fuzzy;
 mod gauge;
 mod grapheme;
+mod graphviz;
 mod highlight;
 mod html;
 mod icon;
@@ -242,6 +243,7 @@ pub use field::field;
 pub use fuzzy::fuzzy_score;
 pub(crate) use gauge::GaugeBuilder;
 pub use gauge::gauge;
+pub use graphviz::graphviz;
 pub use highlight::{Highlight, highlight};
 pub use html::html;
 #[cfg(feature = "scene")]
