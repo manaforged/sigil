@@ -1,3 +1,4 @@
+use crate::animation_runtime::binding_animate_color::mix;
 use crate::geometry::Point;
 use crate::style::Rgba8;
 use smallvec::SmallVec;
@@ -147,16 +148,19 @@ pub(super) fn normalize_stops(
     stops: &[GradientStop],
     degenerate: bool,
 ) -> SmallVec<[GradientStop; 4]> {
-    let mut sorted: SmallVec<[GradientStop; 4]> = stops
+    let mut floor = f32::NEG_INFINITY;
+    let placed: SmallVec<[GradientStop; 4]> = stops
         .iter()
-        .copied()
         .filter(|stop| stop.offset.is_finite())
+        .map(|stop| {
+            floor = floor.max(stop.offset);
+            GradientStop::new(floor, stop.color)
+        })
         .collect();
-    sorted.sort_by(|a, b| a.offset.total_cmp(&b.offset));
-    match sorted.last() {
+    match placed.last() {
         None => smallvec::smallvec![GradientStop::new(0.0, TRANSPARENT)],
         Some(last) if degenerate => smallvec::smallvec![GradientStop::new(0.0, last.color)],
-        Some(_) => clamp_stops(&sorted),
+        Some(_) => clamp_stops(&placed),
     }
 }
 
@@ -179,36 +183,17 @@ fn clamp_stops(sorted: &[GradientStop]) -> SmallVec<[GradientStop; 4]> {
     out
 }
 
+/// The color at offset `t` of stops in offset order, mixed in premultiplied gamma-encoded sRGB.
 pub(crate) fn color_at(sorted: &[GradientStop], t: f32) -> Rgba8 {
     let span = sorted.windows(2).find_map(|pair| match pair {
         [a, b] if a.offset <= t && t < b.offset => Some((*a, *b)),
         _ => None,
     });
     match (span, sorted.first(), sorted.last()) {
-        (Some((a, b)), _, _) => {
-            lerp_color(a.color, b.color, (t - a.offset) / (b.offset - a.offset))
-        }
+        (Some((a, b)), _, _) => mix(a.color, b.color, (t - a.offset) / (b.offset - a.offset)),
         (None, Some(first), _) if t < first.offset => first.color,
         (None, _, Some(last)) => last.color,
         (None, _, None) => TRANSPARENT,
-    }
-}
-
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "the channel is rounded and clamped to 0..=255 before the cast"
-)]
-fn lerp_color(a: Rgba8, b: Rgba8, amount: f32) -> Rgba8 {
-    let channel = |x: u8, y: u8| {
-        let value = (f32::from(y) - f32::from(x)).mul_add(amount, f32::from(x));
-        value.round().clamp(0.0, 255.0) as u8
-    };
-    Rgba8 {
-        r: channel(a.r, b.r),
-        g: channel(a.g, b.g),
-        b: channel(a.b, b.b),
-        a: channel(a.a, b.a),
     }
 }
 
@@ -301,15 +286,6 @@ pub(crate) enum FillRule {
 pub(crate) enum PathPaint {
     /// One color.
     Solid(Rgba8),
-    /// A gradient along a straight axis.
-    Linear(LinearGradient),
-    /// A gradient out from a center.
-    Radial {
-        /// The center.
-        center: Point,
-        /// The radius.
-        radius: f32,
-        /// The stops.
-        stops: SmallVec<[GradientStop; 4]>,
-    },
+    /// A linear, radial, or conic gradient.
+    Gradient(super::gradient::Gradient),
 }

@@ -50,7 +50,7 @@ kittest_pub! {
 }
 #[cfg(any(test, feature = "terminal"))]
 pub(crate) use command::{CellBorder, TextFlow};
-pub use command::{Clip, CommandScene, DrawRect, GlyphRun, SceneCommand, StrokeCap, StrokeJoin, Wash};
+pub use command::{BlendMode, Clip, CommandScene, DrawRect, GlyphRun, SceneCommand, StrokeCap, StrokeJoin, Wash};
 kittest_pub! {
     #[doc(hidden)]
     pub use command::Transform;
@@ -61,7 +61,7 @@ kittest_pub! {
 }
 kittest_pub! {
     #[doc(hidden)]
-    pub use command::{DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawSprite, Gradient, GradientKind, GradientStop, LayerEffect, LayerScope, LinearGradient, Mask, MaskMode, PatternKind, SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle};
+    pub use command::{DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawSprite, Filter, Gradient, GradientKind, GradientStop, LayerEffect, LayerScope, LinearGradient, Mask, MaskMode, PatternKind, SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle};
 }
 kittest_pub! {
     #[doc(hidden)]

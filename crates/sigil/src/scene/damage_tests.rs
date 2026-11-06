@@ -169,6 +169,7 @@ fn layered(effect: crate::scene::command::LayerEffect, color: Rgba8) -> CommandS
             clip_radii: crate::scene::corner_radii::CornerRadii::default(),
             effect,
             opacity: 1.0,
+            blend: crate::scene::BlendMode::Normal,
         }));
     layer
         .commands

@@ -202,7 +202,7 @@ pub(crate) fn draw_gradient_instance(
             stop_offset,
             stop_count.min(MAX_GRADIENT_STOPS_U32),
             fill_kind,
-            0,
+            u32::from(space == BlendSpace::Linear),
         ],
         pattern_a,
         pattern_b: [first, last, f32::from(u8::from(span.is_some())), 0.0],

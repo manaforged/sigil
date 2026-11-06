@@ -143,6 +143,7 @@ impl Gen<'_, '_, '_> {
             clip_radii,
             effect,
             opacity: self.opacity_f32(),
+            blend: sigil::scene::BlendMode::Normal,
         }
     }
 

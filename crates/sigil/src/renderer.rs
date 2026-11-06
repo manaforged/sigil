@@ -56,6 +56,8 @@ pub(crate) use device_state::{DeviceParts, OnLost};
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod fill_paint;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+mod filter;
+#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 pub(crate) mod frame_stats;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod frame_upload;

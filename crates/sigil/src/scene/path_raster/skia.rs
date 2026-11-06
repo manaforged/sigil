@@ -1,11 +1,10 @@
 use tiny_skia::{
-    Color as TsColor, FillRule as TsFillRule, GradientStop as TsStop, LineCap, LineJoin,
-    LinearGradient, Paint, PathBuilder, Pixmap, Point as TsPoint, RadialGradient, Shader,
-    SpreadMode, Stroke, StrokeDash, Transform as TsTransform,
+    Color as TsColor, ColorSpace, FillRule as TsFillRule, LineCap, LineJoin, Paint, PathBuilder,
+    Pixmap, Shader, Stroke, StrokeDash, Transform as TsTransform,
 };
 
 use crate::scene::command::{
-    DrawPath, FillRule, GradientStop, MITER_LIMIT, PathCmd, PathPaint, PathStroke, StrokeCap,
+    DrawPath, FillRule, MITER_LIMIT, PathCmd, PathPaint, PathStroke, StrokeCap,
     StrokeJoin, Transform,
 };
 use crate::scene::geometry::compose;
@@ -76,42 +75,15 @@ fn color(color: Rgba8, opacity: f32) -> TsColor {
 }
 
 fn skia_paint(paint: &PathPaint, opacity: f32) -> Paint<'static> {
-    let transparent = Shader::SolidColor(TsColor::TRANSPARENT);
-    let stops = |stops: &[GradientStop]| {
-        stops
-            .iter()
-            .map(|stop| TsStop::new(stop.offset, color(stop.color, opacity)))
-            .collect::<Vec<_>>()
-    };
-    let point = |p: crate::geometry::Point| TsPoint::from_xy(p.x, p.y);
-    let shader = match paint {
-        PathPaint::Solid(solid) => Shader::SolidColor(color(*solid, opacity)),
-        PathPaint::Linear(linear) => LinearGradient::new(
-            point(linear.start),
-            point(linear.end),
-            stops(&linear.stops),
-            SpreadMode::Pad,
-            TsTransform::identity(),
-        )
-        .unwrap_or(transparent),
-        PathPaint::Radial {
-            center,
-            radius,
-            stops: list,
-        } => RadialGradient::new(
-            point(*center),
-            0.0,
-            point(*center),
-            *radius,
-            stops(list),
-            SpreadMode::Pad,
-            TsTransform::identity(),
-        )
-        .unwrap_or(transparent),
+    let (shader, colorspace) = match paint {
+        PathPaint::Solid(solid) => (Shader::SolidColor(color(*solid, opacity)), ColorSpace::Linear),
+        PathPaint::Gradient(gradient) => super::gradient::shader(gradient, opacity)
+            .unwrap_or((Shader::SolidColor(TsColor::TRANSPARENT), ColorSpace::Linear)),
     };
     Paint {
         shader,
         anti_alias: true,
+        colorspace,
         ..Paint::default()
     }
 }

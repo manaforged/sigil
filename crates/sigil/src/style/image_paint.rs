@@ -1,34 +1,58 @@
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Mutex, PoisonError};
+use crate::kernel::{ImageSource, Node};
 
-use crate::kernel::ImageSource;
+#[derive(Clone, Default)]
+pub(crate) struct ImagePaints(Vec<ImageSource>);
 
-const MAX_IMAGES: usize = 512;
-
-#[derive(Default)]
-struct Registry {
-    images: HashMap<u64, ImageSource>,
-    order: VecDeque<u64>,
-}
-
-static REGISTRY: Mutex<Option<Registry>> = Mutex::new(None);
-
-pub(crate) fn register(source: ImageSource) -> u64 {
-    let id = source.id();
-    let mut guard = REGISTRY.lock().unwrap_or_else(PoisonError::into_inner);
-    let registry = guard.get_or_insert_with(Registry::default);
-    if registry.images.insert(id, source).is_none() {
-        registry.order.push_back(id);
+impl ImagePaints {
+    pub(crate) fn push(&mut self, source: ImageSource) -> u64 {
+        let id = source.id();
+        if self.get(id).is_none() {
+            self.0.push(source);
+        }
+        id
     }
-    while registry.order.len() > MAX_IMAGES {
-        if let Some(oldest) = registry.order.pop_front() {
-            registry.images.remove(&oldest);
+
+    pub(crate) fn get(&self, id: u64) -> Option<&ImageSource> {
+        self.0.iter().find(|source| source.id() == id)
+    }
+
+    pub(crate) const fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub(crate) fn install(self, node: &mut Node) {
+        if self.is_empty() {
+            return;
+        }
+        if let Some(owned) = node.get_extension_mut::<Self>() {
+            for source in self.0 {
+                owned.push(source);
+            }
+        } else {
+            let _previous = node.attach(self);
         }
     }
-    id
 }
 
-pub(crate) fn lookup(id: u64) -> Option<ImageSource> {
-    let guard = REGISTRY.lock().unwrap_or_else(PoisonError::into_inner);
-    guard.as_ref()?.images.get(&id).cloned()
+pub(crate) fn lookup(node: &Node, id: u64) -> Option<&ImageSource> {
+    node.get_extension::<ImagePaints>()?.get(id)
 }
+
+impl std::fmt::Debug for ImagePaints {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list()
+            .entries(self.0.iter().map(ImageSource::id))
+            .finish()
+    }
+}
+
+impl PartialEq for ImagePaints {
+    fn eq(&self, other: &Self) -> bool {
+        self.0
+            .iter()
+            .map(ImageSource::id)
+            .eq(other.0.iter().map(ImageSource::id))
+    }
+}
+
+impl Eq for ImagePaints {}

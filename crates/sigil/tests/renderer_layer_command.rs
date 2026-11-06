@@ -129,6 +129,7 @@ fn layer_scene() -> CommandScene {
         clip_radii: CornerRadii::ZERO,
         effect: LayerEffect::Identity,
         opacity: 0.5,
+        blend: sigil::scene::BlendMode::Normal,
     });
     builder.draw_rect(
         DrawRect::new(rect(40.0, 24.0, 96.0, 64.0), color(240, 240, 250, 255))
@@ -146,6 +147,7 @@ fn rounded_clip_scene() -> CommandScene {
             clip_radii: CornerRadii::uniform(24.0),
             effect: LayerEffect::Identity,
             opacity: 1.0,
+            blend: sigil::scene::BlendMode::Normal,
         },
         |scene| {
             scene.draw_rect(DrawRect::new(
@@ -164,6 +166,7 @@ fn nested_layer_scene() -> CommandScene {
         clip_radii: CornerRadii::ZERO,
         effect: LayerEffect::Identity,
         opacity: 1.0,
+        blend: sigil::scene::BlendMode::Normal,
     };
     builder.with_composite_layer(plain(rect(30.0, 10.0, 160.0, 100.0)), |scene| {
         scene.with_composite_layer(plain(rect(80.0, 35.0, 60.0, 50.0)), |scene| {

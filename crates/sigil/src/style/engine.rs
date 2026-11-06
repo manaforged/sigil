@@ -164,6 +164,15 @@ impl<'theme> StyleEngine<'theme> {
             StyleAtom::Paint(paint) => self.apply_paint(paint, &mut render.paint),
             StyleAtom::ClipPath(shape) => render.clip_path = Some(shape),
             StyleAtom::Space(atom) => render.space.apply(atom),
+            StyleAtom::Mask(atom) => render.mask.apply(atom.0),
+            StyleAtom::MixBlend(mode) => render.blend = mode,
+            StyleAtom::Filter(atom) => render.filter.apply(atom.0),
+            StyleAtom::DropShadowColor(color) => {
+                render.filter.drop_color = Some(self.resolve_color(color));
+            }
+            StyleAtom::TextShadowColor(color) => {
+                render.filter.text_color = Some(self.resolve_color(color));
+            }
         }
     }
 
@@ -281,6 +290,11 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::Paint(_)
         | StyleAtom::ClipPath(_)
         | StyleAtom::Space(_)
+        | StyleAtom::Mask(_)
+        | StyleAtom::MixBlend(_)
+        | StyleAtom::Filter(_)
+        | StyleAtom::DropShadowColor(_)
+        | StyleAtom::TextShadowColor(_)
         | StyleAtom::BgToneStep(_)
         | StyleAtom::FgToneStep(_)
         | StyleAtom::FgOnSolid => {}

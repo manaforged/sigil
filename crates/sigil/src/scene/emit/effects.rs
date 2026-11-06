@@ -1,7 +1,7 @@
 use crate::geometry::Rect;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutResult;
-use crate::scene::command::effects::transform_rect;
+use crate::scene::command::effects::{filter_reach, transform_rect};
 use crate::scene::command::{LayerEffect, LayerScope};
 use crate::scene::corner_radii::CornerRadii;
 use crate::style::atom::SpaceStyle;
@@ -25,7 +25,8 @@ impl<'t> EmitWalk<'_, 't> {
             return;
         };
         let rect = result.rect();
-        let content = content_bounds(self.cx, id).unwrap_or(rect).expand(1.0);
+        let reach = filter_reach(&style.filter.filters());
+        let content = content_bounds(self.cx, id).unwrap_or(rect).expand(1.0 + reach);
         let (effect, screen) = layer_effect(self.cx, id, &style, rect, content);
         let flat = style.transform.is_identity() && style.space.is_flat();
         let Some(bounds) = visible_bounds(content, clip, screen, flat) else {
@@ -34,6 +35,7 @@ impl<'t> EmitWalk<'_, 't> {
         };
         let opacity = f32::from(style.opacity) / 10_000.0;
         style.opacity = 10_000;
+        let blend = std::mem::take(&mut style.blend);
         style.transform = Transform2D::IDENTITY;
         style.space = SpaceStyle::FLAT;
         let cx = self.cx;
@@ -46,6 +48,7 @@ impl<'t> EmitWalk<'_, 't> {
                 clip_radii: CornerRadii::ZERO,
                 effect,
                 opacity,
+                blend,
             },
             |scene| {
                 EmitWalk {
@@ -55,7 +58,7 @@ impl<'t> EmitWalk<'_, 't> {
                     selection,
                     track,
                 }
-                .push_contents(id, inherited, None, &style);
+                .push_masked(id, inherited, None, style);
             },
         );
     }
@@ -103,7 +106,7 @@ fn visible_bounds(
     screen?.intersects(clip).then_some(bounds)
 }
 
-fn content_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
+pub(super) fn content_bounds(cx: &Cx, id: NodeId) -> Option<Rect> {
     let node = cx.get(id)?;
     if is_display_none(node) {
         return None;

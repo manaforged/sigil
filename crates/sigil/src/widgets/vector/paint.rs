@@ -6,7 +6,7 @@ use super::key::{hash_cmd, mix, mix_f32, mix_fill, mix_stroke};
 use super::{PathCmd, PathFill, PathNode};
 use crate::fnv::OFFSET;
 use crate::geometry::Point;
-use crate::scene::command::{GradientStop, LinearGradient, PathPaint, Transform};
+use crate::scene::command::{Gradient, GradientKind, GradientStop, PathPaint, Transform};
 use crate::style::{Rgba8, Theme};
 
 type Resolved = (Option<PathPaint>, Option<(Rgba8, f32)>);
@@ -27,17 +27,17 @@ pub(super) fn resolve(
         PathFill::Solid(color) => PathPaint::Solid(*color),
         PathFill::Theme(token) => PathPaint::Solid(theme.color(*token)),
         PathFill::Linear { start, end, stops: list } => {
-            PathPaint::Linear(LinearGradient::new(point(*start), point(*end), stops(list)))
+            let kind = GradientKind::Linear { start: point(*start), end: point(*end) };
+            PathPaint::Gradient(Gradient::new(kind, stops(list)))
         }
         PathFill::Radial {
             center,
             radius,
             stops: list,
-        } => PathPaint::Radial {
-            center: point(*center),
-            radius: *radius,
-            stops: stops(list),
-        },
+        } => {
+            let kind = GradientKind::Radial { center: point(*center), radius: [*radius; 2] };
+            PathPaint::Gradient(Gradient::new(kind, stops(list)))
+        }
     });
     let stroke = stroke.map(|(color, width)| (color.resolve(theme), width));
     (fill, stroke)
@@ -107,17 +107,17 @@ pub(super) fn map(paint: &PathPaint, view: Transform) -> PathPaint {
     };
     match paint {
         PathPaint::Solid(color) => PathPaint::Solid(*color),
-        PathPaint::Linear(linear) => {
-            PathPaint::Linear(LinearGradient::new(at(linear.start), at(linear.end), linear.stops.clone()))
+        PathPaint::Gradient(gradient) => {
+            let mut mapped = gradient.clone();
+            mapped.kind = match gradient.kind {
+                GradientKind::Linear { start, end } => GradientKind::Linear { start: at(start), end: at(end) },
+                GradientKind::Radial { center, radius } => GradientKind::Radial {
+                    center: at(center),
+                    radius: [radius[0] * view[0][0].abs(), radius[1] * view[1][1].abs()],
+                },
+                GradientKind::Conic { center, angle } => GradientKind::Conic { center: at(center), angle },
+            };
+            PathPaint::Gradient(mapped)
         }
-        PathPaint::Radial {
-            center,
-            radius,
-            stops,
-        } => PathPaint::Radial {
-            center: at(*center),
-            radius: radius * (view[0][0].abs() + view[1][1].abs()) * 0.5,
-            stops: stops.clone(),
-        },
     }
 }

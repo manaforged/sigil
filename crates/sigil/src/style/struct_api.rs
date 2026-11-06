@@ -1,5 +1,7 @@
 use smallvec::SmallVec;
 
+use crate::kernel::ImageSource;
+use crate::style::image_paint::ImagePaints;
 use crate::style::state::PerState;
 use crate::style::{StateSlot, StyleAtom, StyleOverlay};
 
@@ -7,6 +9,7 @@ use crate::style::{StateSlot, StyleAtom, StyleOverlay};
 pub(crate) struct Style {
     atoms: SmallVec<[StyleAtom; 16]>,
     states: PerState<SmallVec<[StyleAtom; 4]>>,
+    images: ImagePaints,
 }
 
 impl Style {
@@ -22,7 +25,7 @@ impl Style {
 
     #[must_use]
     pub(crate) fn is_empty(&self) -> bool {
-        self.atoms.is_empty() && !self.has_state_overlays()
+        self.atoms.is_empty() && !self.has_state_overlays() && self.images.is_empty()
     }
 
     #[must_use]
@@ -41,6 +44,14 @@ impl Style {
 
     pub(crate) fn take_atoms(&mut self) -> SmallVec<[StyleAtom; 16]> {
         std::mem::take(&mut self.atoms)
+    }
+
+    pub(crate) fn push_image(&mut self, source: ImageSource) -> u64 {
+        self.images.push(source)
+    }
+
+    pub(crate) fn take_images(&mut self) -> ImagePaints {
+        std::mem::take(&mut self.images)
     }
 
     pub(crate) fn push_atom(&mut self, atom: StyleAtom) {

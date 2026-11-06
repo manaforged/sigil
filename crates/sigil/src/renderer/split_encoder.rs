@@ -242,6 +242,27 @@ impl SplitEncoder {
         );
     }
 
+    pub(crate) fn copy_region(
+        &mut self,
+        source: &wgpu::Texture,
+        destination: &wgpu::Texture,
+        (x, y, width, height): (u32, u32, u32, u32),
+    ) {
+        self.end_pass();
+        self.encoder.copy_texture_to_texture(
+            wgpu::TexelCopyTextureInfo {
+                origin: wgpu::Origin3d { x, y, z: 0 },
+                ..source.as_image_copy()
+            },
+            destination.as_image_copy(),
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
     pub(crate) fn submit_with<R>(
         &mut self,
         record: impl FnOnce(&mut wgpu::CommandEncoder) -> R,

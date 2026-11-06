@@ -71,6 +71,7 @@ pub fn layer_depth(depth: usize, blur: bool) -> GeneratedScene {
             clip_radii: CornerRadii::uniform(4.0),
             effect,
             opacity: 0.99,
+            blend: sigil::scene::BlendMode::Normal,
         }));
         commands.push(SceneCommand::SaveLayer { opacity: 0.99 });
     }

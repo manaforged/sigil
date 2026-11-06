@@ -58,6 +58,7 @@ pub(super) struct NodePaint<'a> {
     pub(super) tone: Option<Tone>,
     pub(super) leaf: bool,
     pub(super) selected: Option<(usize, usize)>,
+    pub(super) text_fill: Option<&'a Gradient>,
 }
 
 impl NodePaint<'_> {
@@ -111,8 +112,13 @@ fn push_text_decoration(
     );
 }
 
-fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &NodePaint<'_>) {
-    let style = paint.style;
+fn push_container(
+    scene: &mut SceneBuilder,
+    node: (NodeId, &Node),
+    rect: Rect,
+    paint: &NodePaint<'_>,
+) {
+    let (id, style) = (node.0, paint.style);
     let radii = corner_radii_for(style.border_radius);
     if let Some(elevation) = style.shadow {
         scene.draw_shadow(rect, radii, elevation_shadow(elevation));
@@ -125,6 +131,13 @@ fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &Node
     }
     let fill = super::background::fill(rect, style, paint.theme).filter(|_| !style.paint.clip_text);
     if let Some(fill) = fill {
+        if let Some(color) = style.background_color {
+            scene.draw_rect(
+                DrawRect::new(rect, color)
+                    .border_radius(radii)
+                    .opacity(style.opacity),
+            );
+        }
         let mut draw = DrawGradient::new(rect, fill)
             .border_radius(radii)
             .opacity(style.opacity);
@@ -142,7 +155,7 @@ fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &Node
         }
         scene.draw_rect_for_node(id, draw, cell);
     }
-    super::background::push_image(scene, id, rect, style);
+    super::background::push_image(scene, node, rect, style);
     if !super::dashes::push_styled_border(scene, id, rect, paint) {
         super::borders::push_side_borders(scene, id, rect, paint);
     }
@@ -157,7 +170,7 @@ pub(super) fn push_node(
 ) {
     let style = paint.style;
     match &node.kind {
-        NodeType::Container => push_container(scene, id, rect, paint),
+        NodeType::Container => push_container(scene, (id, node), rect, paint),
         NodeType::Text { .. } => push_text(scene, id, node, rect, paint),
         NodeType::Image { source, fit } => {
             let themed = node.get_extension::<ThemedImage>();
@@ -212,7 +225,9 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
             },
         );
     }
-    let clip = super::background::fill(rect, style, paint.theme).filter(|_| style.paint.clip_text);
+    let clip = super::background::fill(rect, style, paint.theme)
+        .filter(|_| style.paint.clip_text)
+        .or_else(|| paint.text_fill.cloned());
     let color = clip.as_ref().map_or(color, text_color);
     let run = shape_run(
         GlyphRun::new(rect, text, color, text_style.clone(), style.opacity)
@@ -225,7 +240,11 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
     };
     let run = super::runs::split(scene, id, run);
     let overflows = *ellipsis && overflows(&run, rect);
+    let shadows = style.filter.text_shadows();
     let emit = |target: &mut SceneBuilder| {
+        for shadow in shadows.iter().rev() {
+            target.draw_text_shadow(&run, *shadow);
+        }
         push_color_glyphs(target, id, &run, style.opacity);
         target.draw_glyph_run_for_node(id, run);
     };

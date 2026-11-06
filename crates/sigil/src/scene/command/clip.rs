@@ -111,6 +111,7 @@ impl Clip {
             },
             effect: LayerEffect::Identity,
             opacity: 1.0,
+            blend: super::BlendMode::Normal,
         }
     }
 

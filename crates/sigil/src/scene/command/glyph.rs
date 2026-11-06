@@ -177,6 +177,19 @@ impl GlyphRun {
         self.shared.fill.as_ref()
     }
 
+    pub(crate) fn tinted(&self, color: Rgba8) -> Self {
+        let mut run = self.clone();
+        run.node = None;
+        let shared = Arc::make_mut(&mut run.shared);
+        shared.color = color;
+        shared.fill = None;
+        for ink in &mut shared.inks {
+            ink.color = ink.color.map(|_| color);
+            ink.background = None;
+        }
+        run
+    }
+
     pub(crate) fn shift(&mut self, dx: f32, dy: f32) {
         self.rect.origin.x += dx;
         self.rect.origin.y += dy;

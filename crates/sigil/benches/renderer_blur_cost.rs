@@ -203,6 +203,7 @@ fn push_blur_surface(scene: &mut SceneBuilder, x: f32, y: f32, w: f32, h: f32, s
         clip_radii: CornerRadii::ZERO,
         effect: blur_effect(sigma),
         opacity: 1.0,
+        blend: sigil::scene::BlendMode::Normal,
     });
     scene.draw_rect(
         DrawRect::new(clip, rgba(240, 240, 250, 220)).border_radius(CornerRadii::uniform(12.0)),

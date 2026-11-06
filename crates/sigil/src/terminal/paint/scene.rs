@@ -193,7 +193,8 @@ impl CellWalk<'_> {
                     LayerEffect::Projected { transform, .. } => transform.affine_fit(scope.clip),
                     LayerEffect::Identity
                     | LayerEffect::LayerBlur { .. }
-                    | LayerEffect::Mask(_) => IDENTITY,
+                    | LayerEffect::Mask(_)
+                    | LayerEffect::Filter(_) => IDENTITY,
                 });
             }
             SceneCommand::PopLayer => {

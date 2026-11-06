@@ -26,6 +26,8 @@ use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, 
 
 #[path = "masks/perf.rs"]
 mod perf;
+#[path = "masks/style.rs"]
+mod style;
 
 const SIDE: u32 = 60;
 const SCALE: f32 = 2.0;
@@ -98,6 +100,7 @@ fn masked_red(scene: &mut SceneBuilder, rect: Rect, mask: Mask) {
         clip_radii: CornerRadii::ZERO,
         effect: LayerEffect::Mask(mask),
         opacity: 1.0,
+        blend: sigil::scene::BlendMode::Normal,
     };
     scene.with_composite_layer(scope, |scene| scene.draw_rect(DrawRect::new(rect, RED)));
 }

@@ -59,10 +59,10 @@ pub(crate) use animator_overlay::{ColorAtomKind, NumericAtomKind};
 pub(crate) use atom::Px;
 pub(crate) use atom::SPACING_STEP;
 pub(crate) use atom::TextDecoration;
-pub use atom::{ClipShape, ColorAtom, Conic, Elevation, GradientAxis, Radial, RadialExtent, Rgba8};
+pub use atom::{ClipShape, ColorAtom, Conic, Elevation, GradientAxis, MaskImage, MaskSize, Radial, RadialExtent, Rgba8};
 kittest_pub! {
     #[doc(hidden)]
-    pub use atom::{BgGradient, BorderStyle, GradientShape, GradientStopKey, MillisU16, PaintAtom, PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, StyleAtom, TransitionId};
+    pub use atom::{BgGradient, BorderStyle, GradientShape, GradientStopKey, FilterAtom, MaskAtom, MillisU16, PaintAtom, PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, StyleAtom, TransitionId};
 }
 pub(crate) use binding::ReactiveStateSlot;
 #[cfg(not(feature = "kittest"))]

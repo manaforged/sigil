@@ -5,24 +5,21 @@ use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::{FontRef, GlyphId, MetadataProvider};
 
 use crate::scene::command::fills::{FillRule, color_at};
-use crate::scene::command::{
-    DrawPath, GlyphRun, Gradient, GradientKind, LinearGradient, PathCmd, PathPaint, Transform,
-    outline_key,
-};
+use crate::scene::command::{DrawPath, GlyphRun, Gradient, PathCmd, PathPaint, Transform, outline_key};
+
+const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+const TEXT_FILL_SEED: u64 = 0x7478_7466;
 
 struct Pen<'a> {
     out: &'a mut Vec<PathCmd>,
     x: f32,
     y: f32,
     skew: f32,
-    squash: f32,
-    pivot: f32,
 }
 
 impl Pen<'_> {
     fn at(&self, x: f32, y: f32) -> (f32, f32) {
-        let down = self.y - y;
-        (self.skew.mul_add(y, self.x + x), (down - self.pivot).mul_add(self.squash, self.pivot))
+        (self.skew.mul_add(y, self.x + x), self.y - y)
     }
 }
 
@@ -52,16 +49,16 @@ impl OutlinePen for Pen<'_> {
     }
 }
 
-/// The glyph outlines of `run` filled with `gradient`, or `None` for a paint paths cannot draw.
+/// The glyph outlines of `run` filled with `gradient`, or `None` when the run has no outlines.
 pub(super) fn glyph_fill(run: &GlyphRun, gradient: &Gradient) -> Option<DrawPath> {
-    let (paint, squash, pivot) = path_paint(&gradient.normalized())?;
-    let outline = outlines(run, squash, pivot);
+    let outline = outlines(run);
     if outline.is_empty() {
         return None;
     }
-    let transform: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0 / squash, pivot - pivot / squash]];
-    let key = outline_key(crate::fnv::mix(0x7478_7466, u64::from(squash.to_bits())), &outline);
-    let mut draw = DrawPath::new(Arc::from(outline), transform, key).with_fill(FillRule::NonZero, paint);
+    let gradient = gradient.normalized();
+    let key = outline_key(gradient.key(TEXT_FILL_SEED), &outline);
+    let paint = PathPaint::Gradient(gradient);
+    let mut draw = DrawPath::new(Arc::from(outline), IDENTITY, key).with_fill(FillRule::NonZero, paint);
     draw.node = run.node;
     draw.opacity = run.opacity;
     Some(draw)
@@ -72,26 +69,7 @@ pub(super) fn flat_color(gradient: &Gradient) -> crate::style::Rgba8 {
     color_at(&gradient.normalized().stops, 0.5)
 }
 
-fn path_paint(gradient: &Gradient) -> Option<(PathPaint, f32, f32)> {
-    let stops = gradient.stops.clone();
-    match gradient.kind {
-        GradientKind::Linear { start, end } => {
-            Some((PathPaint::Linear(LinearGradient::new(start, end, stops)), 1.0, 0.0))
-        }
-        GradientKind::Radial { center, radius } => {
-            let squash = radius[0] / radius[1].max(f32::EPSILON);
-            let paint = PathPaint::Radial {
-                center,
-                radius: radius[0],
-                stops,
-            };
-            Some((paint, squash, center.y))
-        }
-        GradientKind::Conic { .. } => None,
-    }
-}
-
-fn outlines(run: &GlyphRun, squash: f32, pivot: f32) -> Vec<PathCmd> {
+fn outlines(run: &GlyphRun) -> Vec<PathCmd> {
     let mut out = Vec::new();
     let Some(paragraph) = run.paragraph() else {
         return out;
@@ -120,11 +98,13 @@ fn outlines(run: &GlyphRun, squash: f32, pivot: f32) -> Vec<PathCmd> {
                 x: origin.x + g.x,
                 y: origin.y + g.y,
                 skew: g.skew,
-                squash,
-                pivot,
             };
             let settings = DrawSettings::unhinted(Size::new(g.size), LocationRef::new(&coords));
-            let _ = glyph.draw(settings, &mut pen);
+            let start = pen.out.len();
+            if let Err(error) = glyph.draw(settings, &mut pen) {
+                tracing::warn!(glyph = g.glyph_id, %error, "gradient text skips a glyph it cannot outline");
+                pen.out.truncate(start);
+            }
         }
     });
     out

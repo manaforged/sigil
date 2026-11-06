@@ -7,7 +7,7 @@
 )]
 
 use crate::geometry::{Point, Rect};
-use tiny_skia::{Paint, Path, Pixmap, Shader};
+use tiny_skia::{ColorSpace, Paint, Path, Pixmap, Shader};
 
 use crate::renderer::scene_command::state::shadow_reach;
 use crate::renderer::scene_command::walk::{intersect_rect, transform_rect};
@@ -24,16 +24,16 @@ use super::paint::{CpuPainter, brush, shader_brush};
 use super::pattern::PatternPlacement;
 use super::quad::{QuadCache, RunPlacement};
 use super::shadow::{ShadowPlacement, shadow};
-use super::gradient::gradient;
 use super::shapes::{self, Brush, opacity_of, rgba_table, solid};
 use super::stroke::stroke;
 use crate::renderer::glyph_place::GlyphMode;
+use crate::scene::path_raster::gradient::shader as gradient_shader;
 
-fn shader_paint(shader: Shader<'_>) -> Paint<'_> {
+fn shader_paint(shader: Shader<'_>, colorspace: ColorSpace) -> Paint<'_> {
     Paint {
         shader,
         anti_alias: true,
-        colorspace: shapes::BLEND_SPACE,
+        colorspace,
         ..Paint::default()
     }
 }
@@ -152,8 +152,8 @@ impl CpuPainter<'_> {
             opacity,
             false,
             |target, _, path, brush, _| {
-                if let Some(shader) = gradient(&draw.gradient, opacity) {
-                    shapes::fill(target, path, &shader_paint(shader), brush);
+                if let Some((shader, space)) = gradient_shader(&draw.gradient, opacity) {
+                    shapes::fill(target, path, &shader_paint(shader, space), brush);
                 }
             },
         ) {
@@ -179,7 +179,7 @@ impl CpuPainter<'_> {
                     size: [target.width(), target.height()],
                 };
                 if let Some(shader) = quads.pattern(&place) {
-                    shapes::fill(target, path, &shader_paint(shader), brush);
+                    shapes::fill(target, path, &shader_paint(shader, shapes::BLEND_SPACE), brush);
                 }
             },
         ) {

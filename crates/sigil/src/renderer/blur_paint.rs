@@ -95,10 +95,6 @@ impl BlurPipeline {
         }
     }
 
-    pub(crate) const fn format(&self) -> wgpu::TextureFormat {
-        self.quad.format
-    }
-
     pub(crate) fn apply(
         &self,
         ctx: &mut PassCtx<'_>,

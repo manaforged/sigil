@@ -14,12 +14,12 @@ use crate::renderer::plan::{MaskSource, PlanNode};
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::{IDENTITY, transform_rect};
 use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Transform};
+use crate::scene::command::BlendMode;
 use crate::scene::corner_radii::CornerRadii;
 
 use super::bound::rect_mask;
 use super::clip::multiplied;
 use super::paint::{CpuPainter, fade};
-use super::shadow::blur;
 use super::shapes::{blit, cover, ts_transform};
 
 impl CpuPainter<'_> {
@@ -80,7 +80,7 @@ impl CpuPainter<'_> {
         let Some((layer, at)) = self.render_region(bounds, state, children) else {
             return;
         };
-        self.composite(&layer, at, opacity, None);
+        self.composite(&layer, at, Ink::plain(opacity), None);
         self.release_pixmap(layer);
     }
 
@@ -99,9 +99,7 @@ impl CpuPainter<'_> {
         let Some((mut layer, at)) = self.render_region(region, state, children) else {
             return;
         };
-        if let LayerEffect::LayerBlur { sigma } = scope.effect {
-            blur(&mut layer, sigma * self.scale);
-        }
+        super::filter::filter(&mut layer, &scope.effect, self.scale);
         let rounded = self.rounded_mask(clip_logical, scope.clip_radii);
         let keep = match mask {
             Some(MaskSource::Path(draw)) => self.path_mask(draw, bounds).map(Some),
@@ -111,7 +109,8 @@ impl CpuPainter<'_> {
             None => Some(rounded),
         };
         if let Some(mask) = keep {
-            self.composite(&layer, at, scope.opacity, mask.as_ref());
+            let ink = Ink::of(&scope).prepared(&mut layer);
+            self.composite(&layer, at, ink, mask.as_ref());
         }
         self.release_pixmap(layer);
     }
@@ -120,10 +119,10 @@ impl CpuPainter<'_> {
         &mut self,
         layer: &Pixmap,
         transform: TsTransform,
-        opacity: f32,
+        ink: Ink,
         mask: Option<&Mask>,
     ) {
-        let opacity = opacity * self.state.current_opacity();
+        let opacity = ink.opacity * self.state.current_opacity();
         let (width, height) = (self.target.width(), self.target.height());
         let Self {
             target,
@@ -137,7 +136,7 @@ impl CpuPainter<'_> {
         let Some(faded) = fade(&mut masks.faded, base, opacity) else {
             return;
         };
-        blit(target, layer, transform, faded);
+        blit(target, layer, transform, faded, ink.blend);
         stats.offscreen_layers += 1;
     }
 
@@ -200,7 +199,8 @@ impl CpuPainter<'_> {
             .state
             .current_clip()
             .and_then(|clip| self.layer_mask(clip, CornerRadii::ZERO));
-        self.composite(&layer, placement, scope.opacity, mask.as_ref());
+        let ink = Ink::of(&scope).prepared(&mut layer);
+        self.composite(&layer, placement, ink, mask.as_ref());
         self.release_pixmap(layer);
     }
 
@@ -227,4 +227,67 @@ fn source_mask(scope: LayerScope, bounds: Rect, size: (u32, u32), scale: f32) ->
     let origin = Point::new(bounds.origin.x * scale, bounds.origin.y * scale);
     let transform = ts_transform(IDENTITY, scale, origin);
     rect_mask(scope.clip, scope.clip_radii, transform, size)
+}
+
+#[derive(Clone, Copy)]
+struct Ink {
+    opacity: f32,
+    blend: tiny_skia::BlendMode,
+}
+
+impl Ink {
+    const fn plain(opacity: f32) -> Self {
+        Self {
+            opacity,
+            blend: tiny_skia::BlendMode::SourceOver,
+        }
+    }
+
+    const fn of(scope: &LayerScope) -> Self {
+        Self {
+            opacity: scope.opacity,
+            blend: skia_blend(scope.blend),
+        }
+    }
+
+    fn prepared(self, layer: &mut Pixmap) -> Self {
+        if !matches!(self.blend, tiny_skia::BlendMode::SourceOver) {
+            encode_premultiplied(layer);
+        }
+        self
+    }
+}
+
+fn encode_premultiplied(layer: &mut Pixmap) {
+    for pixel in layer.data_mut().chunks_exact_mut(4) {
+        let [r, g, b, a] = [0, 1, 2, 3].map(|i| pixel.get(i).copied().unwrap_or(0));
+        if a == 0 || a == u8::MAX {
+            continue;
+        }
+        let gain = (f32::from(a) / 255.0).sqrt();
+        let scaled = |channel: u8| ((f32::from(channel) * gain).round() as u8).min(a);
+        pixel.copy_from_slice(&[scaled(r), scaled(g), scaled(b), a]);
+    }
+}
+
+const fn skia_blend(mode: BlendMode) -> tiny_skia::BlendMode {
+    use tiny_skia::BlendMode as Skia;
+    match mode {
+        BlendMode::Normal => Skia::SourceOver,
+        BlendMode::Multiply => Skia::Multiply,
+        BlendMode::Screen => Skia::Screen,
+        BlendMode::Overlay => Skia::Overlay,
+        BlendMode::Darken => Skia::Darken,
+        BlendMode::Lighten => Skia::Lighten,
+        BlendMode::ColorDodge => Skia::ColorDodge,
+        BlendMode::ColorBurn => Skia::ColorBurn,
+        BlendMode::HardLight => Skia::HardLight,
+        BlendMode::SoftLight => Skia::SoftLight,
+        BlendMode::Difference => Skia::Difference,
+        BlendMode::Exclusion => Skia::Exclusion,
+        BlendMode::Hue => Skia::Hue,
+        BlendMode::Saturation => Skia::Saturation,
+        BlendMode::Color => Skia::Color,
+        BlendMode::Luminosity => Skia::Luminosity,
+    }
 }

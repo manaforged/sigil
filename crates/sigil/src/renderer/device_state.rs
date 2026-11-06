@@ -1,6 +1,6 @@
 #[cfg(feature = "desktop")]
 use crate::profile::{BackendKind, BackendStatus, FallbackCause};
-use crate::renderer::blur_paint::BlurPipeline;
+use crate::renderer::filter::FilterPipeline;
 use crate::renderer::decoration_paint::DecorationPipeline;
 use crate::renderer::fill_paint::FillPipeline;
 use crate::renderer::frame_upload::UploadBuffers;
@@ -34,7 +34,7 @@ pub(crate) struct PipelineCache {
     pub(crate) quad_pipelines: Vec<AtlasPipeline>,
     pub(crate) decoration_pipelines: Vec<DecorationPipeline>,
     pub(crate) layer_pipelines: Vec<LayerCompositePipeline>,
-    pub(crate) blur_pipelines: Vec<BlurPipeline>,
+    pub(crate) filter_pipelines: Vec<FilterPipeline>,
     pub(crate) projected_pipelines: Vec<ProjectedPipeline>,
     pub(crate) layer_pool: Option<LayerPool>,
     pub(crate) wash_cache: WashCache,
@@ -52,7 +52,7 @@ impl Default for PipelineCache {
             quad_pipelines: Vec::new(),
             decoration_pipelines: Vec::new(),
             layer_pipelines: Vec::new(),
-            blur_pipelines: Vec::new(),
+            filter_pipelines: Vec::new(),
             projected_pipelines: Vec::new(),
             layer_pool: Some(LayerPool::new()),
             wash_cache: WashCache::default(),

@@ -109,6 +109,7 @@ pub(super) fn shadow(target: &mut Pixmap, shadow: &Shadow, place: &ShadowPlaceme
         &scratch,
         Transform::from_translate(origin.x, origin.y),
         mask,
+        tiny_skia::BlendMode::SourceOver,
     );
 }
 

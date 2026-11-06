@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use crate::geometry::{Point, Rect};
 
 use super::effects::Transform;
@@ -112,11 +114,6 @@ impl Transform3D {
         ]
     }
 
-    pub(crate) fn project(self, point: Point) -> Option<Point> {
-        let [x, y, w] = apply(self.homography(), [point.x, point.y, 1.0]);
-        (w > MIN_W).then(|| Point::new(x / w, y / w))
-    }
-
     pub(crate) fn unproject(self, point: Point) -> Option<Point> {
         let forward = self.homography();
         let [u, v, s] = apply(invert(forward)?, [point.x, point.y, 1.0]);
@@ -128,7 +125,26 @@ impl Transform3D {
         (w > MIN_W && local.x.is_finite() && local.y.is_finite()).then_some(local)
     }
 
-    pub(crate) fn quad(self, rect: Rect) -> Option<[Point; 4]> {
+    pub(crate) fn polygon(self, corners: &[Point]) -> SmallVec<[Point; 8]> {
+        let plane = self.homography();
+        let mapped: SmallVec<[[f32; 3]; 8]> =
+            corners.iter().map(|p| apply(plane, [p.x, p.y, 1.0])).collect();
+        let mut out = SmallVec::new();
+        for (index, &a) in mapped.iter().enumerate() {
+            let b = mapped.get(index + 1).or(mapped.first()).copied().unwrap_or(a);
+            if a[2] >= MIN_W {
+                out.push(Point::new(a[0] / a[2], a[1] / a[2]));
+            }
+            if (a[2] >= MIN_W) != (b[2] >= MIN_W) {
+                let t = (MIN_W - a[2]) / (b[2] - a[2]);
+                let at = |k: usize| (b[k] - a[k]).mul_add(t, a[k]);
+                out.push(Point::new(at(0) / MIN_W, at(1) / MIN_W));
+            }
+        }
+        out
+    }
+
+    pub(crate) fn bounds(self, rect: Rect) -> Option<Rect> {
         let (right, bottom) = (rect.origin.x + rect.width, rect.origin.y + rect.height);
         let corners = [
             rect.origin,
@@ -136,18 +152,10 @@ impl Transform3D {
             Point::new(right, bottom),
             Point::new(rect.origin.x, bottom),
         ];
-        let mapped = corners.map(|corner| self.project(corner));
-        if mapped.iter().any(Option::is_none) {
-            return None;
-        }
-        Some(mapped.map(|point| point.unwrap_or(Point::new(0.0, 0.0))))
-    }
-
-    pub(crate) fn bounds(self, rect: Rect) -> Option<Rect> {
-        let quad = self.quad(rect)?;
-        let (mut x0, mut y0) = (f32::INFINITY, f32::INFINITY);
-        let (mut x1, mut y1) = (f32::NEG_INFINITY, f32::NEG_INFINITY);
-        for point in quad {
+        let visible = self.polygon(&corners);
+        let first = visible.first()?;
+        let (mut x0, mut y0, mut x1, mut y1) = (first.x, first.y, first.x, first.y);
+        for point in &visible {
             (x0, y0) = (x0.min(point.x), y0.min(point.y));
             (x1, y1) = (x1.max(point.x), y1.max(point.y));
         }

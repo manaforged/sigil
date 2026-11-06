@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::scene::command::{DrawPath, LayerEffect, LayerScope, Mask, SceneCommand};
+use crate::scene::command::{BlendMode, DrawPath, LayerEffect, LayerScope, Mask, SceneCommand};
 use crate::scene::state::SceneState;
 
 #[derive(Clone, Copy)]
@@ -75,7 +75,8 @@ fn push_layer<'a>(
     scope: &'a LayerScope,
     children: &'a [SceneCommand],
 ) {
-    let Some(effect) = SceneState::inline_transform(scope) else {
+    let inline = SceneState::inline_transform(scope).filter(|_| scope.blend == BlendMode::Normal);
+    let Some(effect) = inline else {
         let mask = match &scope.effect {
             LayerEffect::Mask(mask) => Some(MaskSource::Scene(mask)),
             _ => None,

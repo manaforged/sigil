@@ -90,6 +90,7 @@ fn blur_scene(sigma: f32) -> CommandScene {
         clip_radii: CornerRadii::ZERO,
         effect: LayerEffect::LayerBlur { sigma },
         opacity: 1.0,
+        blend: sigil::scene::BlendMode::Normal,
     });
     builder.pop_layer();
     builder.finish()

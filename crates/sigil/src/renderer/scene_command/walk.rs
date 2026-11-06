@@ -1,7 +1,7 @@
 use crate::geometry::{Point, Rect};
 
 use crate::Error;
-use crate::renderer::blur_paint::BlurPipeline;
+use crate::renderer::filter::FilterPipeline;
 use crate::renderer::decoration_paint::DecorationInstance;
 use crate::renderer::decoration_paint::DecorationPipeline;
 use crate::renderer::fill_paint::FillPipeline;
@@ -42,7 +42,7 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) quad_pipelines: &'a mut Vec<AtlasPipeline>,
     pub(crate) decoration_pipelines: &'a mut Vec<DecorationPipeline>,
     pub(crate) layer_pipelines: &'a mut Vec<LayerCompositePipeline>,
-    pub(crate) blur_pipelines: &'a mut Vec<BlurPipeline>,
+    pub(crate) filter_pipelines: &'a mut Vec<FilterPipeline>,
     pub(crate) projected_pipelines: &'a mut Vec<ProjectedPipeline>,
     pub(crate) layer_pool: &'a mut Option<LayerPool>,
     pub(crate) wash_cache: &'a mut WashCache,

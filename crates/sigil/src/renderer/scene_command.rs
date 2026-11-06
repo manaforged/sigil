@@ -10,7 +10,7 @@ pub(crate) mod walk;
 
 pub(crate) use crate::scene::command::{
     CommandScene, DecorationGeometry, DecorationKind, DrawDecoration, DrawGradient, DrawImage,
-    DrawPattern, DrawRect, DrawSprite, GlyphRun, Gradient, GradientKind, GradientStop, LayerEffect,
+    DrawPattern, DrawRect, DrawSprite, GlyphRun, GradientStop, LayerEffect,
     LayerScope,
     LinearGradient, PatternKind, SceneCommand, SpriteKind, SpriteSource, Stroke, StrokeBand,
     StrokeDash, Transform,

@@ -1,5 +1,5 @@
 use crate::geometry::Rect;
-use crate::scene::command::effects::transform_rect;
+use crate::scene::command::effects::{filter_reach, transform_rect};
 use crate::scene::command::{LayerEffect, LayerScope, SceneCommand};
 use crate::scene::geometry::{compose, intersect_rect};
 
@@ -26,6 +26,10 @@ impl SceneState {
             }
             LayerEffect::LayerBlur { sigma } => {
                 let reach = (sigma.max(0.0) * 3.0).min(MAX_BLUR_REACH);
+                self.target_clip(scope, visible.expand(reach))
+            }
+            LayerEffect::Filter(ref filters) => {
+                let reach = filter_reach(filters).min(MAX_BLUR_REACH);
                 self.target_clip(scope, visible.expand(reach))
             }
             LayerEffect::Identity | LayerEffect::Mask(_) => self.target_clip(scope, visible),

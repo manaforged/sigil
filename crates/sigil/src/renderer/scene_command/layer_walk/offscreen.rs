@@ -1,23 +1,25 @@
 use crate::geometry::Rect;
 
 use crate::Error;
-use crate::renderer::blur_paint::{BlurPipeline, PassCtx, PassSrc};
-use crate::renderer::layer_composite::{CompositeRequest, LayerCompositePipeline};
+use crate::renderer::blur_paint::{PassCtx, PassSrc};
+use crate::renderer::filter::{FilterPipeline, LayerFilters};
 use crate::renderer::layer_pool::LayerHandle;
 use crate::renderer::plan::MaskSource;
-use crate::renderer::projected::{ProjectedFrame, ProjectedPipeline, ProjectedRequest};
+use crate::renderer::projected::ProjectedFrame;
 use crate::renderer::scene_command::state::SceneState;
-use crate::renderer::scene_command::walk::{IDENTITY, compose, transform_rect};
-use crate::renderer::scene_command::walk::{WalkCtx, pipeline_for, translation};
+use crate::renderer::scene_command::walk::{IDENTITY, transform_rect};
+use crate::renderer::scene_command::walk::{WalkCtx, pipeline_for};
 use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Transform};
 use crate::renderer::scene_instance::LAYER_FORMAT;
-use crate::renderer::scene_paint::PaintCtx;
-use crate::scene::command::Transform3D;
+use crate::scene::command::{BlendMode, Transform3D};
 use crate::scene::corner_radii::CornerRadii;
 use crate::style::Color;
 
-use super::mask;
-use super::{LayerTarget, local_rect, physical_extent};
+use super::{LayerTarget, physical_extent};
+
+#[path = "composite.rs"]
+mod composite;
+pub(super) use composite::composite_layer;
 
 pub(super) struct OffscreenLayer<'n> {
     handle: LayerHandle,
@@ -34,6 +36,8 @@ enum LayerReason {
     Opacity,
     OpacityGroup,
     Blur,
+    Filter,
+    Blend,
     Transform,
     Other,
 }
@@ -47,6 +51,8 @@ impl LayerReason {
             Self::Opacity => "opacity",
             Self::OpacityGroup => "opacity group",
             Self::Blur => "blur",
+            Self::Filter => "filter",
+            Self::Blend => "blend",
             Self::Transform => "transform",
             Self::Other => "other",
         };
@@ -60,8 +66,10 @@ impl LayerReason {
 
     fn of(scope: &LayerScope) -> Self {
         match scope.effect {
+            LayerEffect::Identity if scope.blend != BlendMode::Normal => Self::Blend,
             LayerEffect::Transform(_) | LayerEffect::Projected { .. } => Self::Transform,
             LayerEffect::LayerBlur { .. } => Self::Blur,
+            LayerEffect::Filter(_) => Self::Filter,
             LayerEffect::Mask(_) => Self::Mask,
             LayerEffect::Identity if scope.clip_radii != CornerRadii::ZERO => Self::RoundedClip,
             LayerEffect::Identity if scope.opacity < 1.0 => Self::Opacity,
@@ -78,9 +86,10 @@ pub(super) struct LayerPlan<'n> {
     opacity: f32,
     clip_radii: CornerRadii,
     transform: Transform,
-    blur_sigma: Option<f32>,
+    filters: Option<LayerFilters>,
     mask: Option<MaskSource<'n>>,
     projection: Option<Transform3D>,
+    blend: BlendMode,
 }
 
 impl<'n> LayerPlan<'n> {
@@ -113,9 +122,10 @@ pub(super) fn layer_plan<'n>(
             opacity: scope.opacity,
             clip_radii: CornerRadii::ZERO,
             transform: IDENTITY,
-            blur_sigma: None,
+            filters: None,
             mask: None,
             projection: Some(frame.composite),
+        blend: scope.blend,
         });
     }
     if let LayerEffect::Transform(effect) = scope.effect {
@@ -130,9 +140,10 @@ pub(super) fn layer_plan<'n>(
             opacity: scope.opacity,
             clip_radii: frame.scope.clip_radii,
             transform: frame.composite,
-            blur_sigma: None,
+            filters: None,
             mask: None,
             projection: None,
+        blend: scope.blend,
         });
     }
     let bounds = target.state.layer_bounds(&scope, target.bounds)?;
@@ -145,12 +156,10 @@ pub(super) fn layer_plan<'n>(
         opacity: scope.opacity,
         clip_radii: scope.clip_radii,
         transform: IDENTITY,
-        blur_sigma: match scope.effect {
-            LayerEffect::LayerBlur { sigma } => Some(sigma),
-            _ => None,
-        },
+        filters: LayerFilters::of(&scope.effect),
         mask: None,
         projection: None,
+        blend: scope.blend,
     })
 }
 
@@ -169,9 +178,10 @@ pub(super) fn group_plan<'n>(
         opacity: opacity.clamp(0.0, 1.0),
         clip_radii: CornerRadii::ZERO,
         transform: IDENTITY,
-        blur_sigma: None,
+        filters: None,
         mask: None,
         projection: None,
+        blend: BlendMode::Normal,
     })
 }
 
@@ -214,19 +224,19 @@ pub(super) fn close_layer<'n>(
 ) -> Result<OffscreenLayer<'n>, Error> {
     ctx.format = open.parent_format;
     let mut layer = open.layer;
-    let Some(sigma) = layer.plan.blur_sigma else {
+    let Some(filters) = layer.plan.filters.take() else {
         return Ok(layer);
     };
-    if let Some(view) = blurred_view(ctx, &layer.handle, sigma * ctx.scale)? {
+    if let Some(view) = filtered_view(ctx, &layer.handle, &filters)? {
         layer.view = view;
     }
     Ok(layer)
 }
 
-fn blurred_view(
+fn filtered_view(
     ctx: &mut WalkCtx<'_>,
     handle: &LayerHandle,
-    sigma: f32,
+    filters: &LayerFilters,
 ) -> Result<Option<wgpu::TextureView>, Error> {
     let mut pass = PassCtx {
         device: ctx.device,
@@ -234,105 +244,16 @@ fn blurred_view(
         retained: ctx.retained,
     };
     let pool = ctx.layer_pool.get_or_insert_with(Default::default);
-    let blur = pipeline_for(
-        ctx.blur_pipelines,
+    let pipeline = pipeline_for(
+        ctx.filter_pipelines,
         ctx.device,
         LAYER_FORMAT,
-        (BlurPipeline::format, BlurPipeline::new),
+        (FilterPipeline::format, FilterPipeline::new),
     );
     let src = PassSrc {
         view: &handle.view,
         w: handle.width,
         h: handle.height,
     };
-    blur.apply(&mut pass, pool, src, sigma)
-}
-
-pub(super) fn composite_layer(
-    ctx: &mut WalkCtx<'_>,
-    target: &LayerTarget,
-    layer: OffscreenLayer<'_>,
-) {
-    if let Some(projection) = layer.plan.projection {
-        composite_projected(ctx, target, layer, projection);
-        return;
-    }
-    let origin = target.bounds.origin;
-    let mask = layer
-        .plan
-        .mask
-        .map(|source| mask::render(ctx, target, source, (layer.plan.dest, layer.extent)));
-    let request = CompositeRequest {
-        layer_view: &layer.view,
-        dest: local_rect(layer.plan.dest, origin),
-        round: local_rect(layer.plan.round, origin),
-        texture_size: (layer.handle.width, layer.handle.height),
-        source_extent: layer.extent,
-        opacity: layer.plan.opacity * target.state.current_opacity(),
-        clip_radii: layer.plan.clip_radii,
-        transform: compose(
-            translation(-origin.x, -origin.y),
-            compose(layer.plan.transform, translation(origin.x, origin.y)),
-        ),
-    };
-    let pipeline = LayerCompositePipeline::for_format(ctx.layer_pipelines, ctx.device, ctx.format);
-    let paint = PaintCtx {
-        device: ctx.device,
-        queue: ctx.queue,
-        encoder: &mut *ctx.encoder,
-        view: &target.view,
-        viewport: target.viewport(ctx.scale),
-        clip: target
-            .state
-            .current_clip()
-            .map(|clip| local_rect(clip, origin)),
-        scale: ctx.scale,
-    };
-    match &mask {
-        None => pipeline.composite(paint, request),
-        Some(Some(mask)) => pipeline.composite_masked(paint, request, mask.layer_mask()),
-        Some(None) => {}
-    }
-    if let Some(Some(mask)) = mask {
-        mask.release(ctx);
-    }
-    ctx.layer_pool
-        .as_mut()
-        .expect("layer pool acquired the texture")
-        .release(layer.handle);
-}
-
-fn composite_projected(
-    ctx: &mut WalkCtx<'_>,
-    target: &LayerTarget,
-    layer: OffscreenLayer<'_>,
-    projection: Transform3D,
-) {
-    let origin = target.bounds.origin;
-    let request = ProjectedRequest {
-        layer_view: &layer.view,
-        dest: layer.plan.dest,
-        texture_size: (layer.handle.width, layer.handle.height),
-        source_extent: layer.extent,
-        opacity: layer.plan.opacity * target.state.current_opacity(),
-        transform: Transform3D::from(translation(-origin.x, -origin.y)).then(projection),
-    };
-    let pipeline = ProjectedPipeline::for_format(ctx.projected_pipelines, ctx.device, ctx.format);
-    let paint = PaintCtx {
-        device: ctx.device,
-        queue: ctx.queue,
-        encoder: &mut *ctx.encoder,
-        view: &target.view,
-        viewport: target.viewport(ctx.scale),
-        clip: target
-            .state
-            .current_clip()
-            .map(|clip| local_rect(clip, origin)),
-        scale: ctx.scale,
-    };
-    pipeline.composite(paint, request);
-    ctx.layer_pool
-        .as_mut()
-        .expect("layer pool acquired the texture")
-        .release(layer.handle);
+    pipeline.apply(&mut pass, pool, src, filters, ctx.scale)
 }

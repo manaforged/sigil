@@ -9,7 +9,7 @@
 use crate::geometry::{Point, Rect};
 use crate::style::Rgba8;
 use tiny_skia::{
-    Color as TsColor, ColorSpace, FillRule, FilterQuality, IntSize, Mask, Paint, Path,
+    BlendMode, Color as TsColor, ColorSpace, FillRule, FilterQuality, IntSize, Mask, Paint, Path,
     PathBuilder, Pattern, Pixmap, SpreadMode, Stroke as TsStroke,
     Transform as TsTransform,
 };
@@ -125,7 +125,13 @@ pub(super) fn cover(covers: &mut Vec<Mask>, width: u32, height: u32) -> Option<&
     covers.get(found.unwrap_or(covers.len() - 1))
 }
 
-pub(super) fn blit(target: &mut Pixmap, source: &Pixmap, transform: TsTransform, mask: &Mask) {
+pub(super) fn blit(
+    target: &mut Pixmap,
+    source: &Pixmap,
+    transform: TsTransform,
+    mask: &Mask,
+    blend_mode: BlendMode,
+) {
     let whole = Rect::new(
         Point::new(0.0, 0.0),
         source.width() as f32,
@@ -143,7 +149,11 @@ pub(super) fn blit(target: &mut Pixmap, source: &Pixmap, transform: TsTransform,
             TsTransform::identity(),
         ),
         anti_alias: false,
-        colorspace: BLEND_SPACE,
+        blend_mode,
+        colorspace: match blend_mode {
+            BlendMode::SourceOver => BLEND_SPACE,
+            _ => ColorSpace::Linear,
+        },
         ..Paint::default()
     };
     target.fill_rect(rect, &paint, transform, Some(mask));

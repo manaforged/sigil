@@ -306,12 +306,12 @@ fn transform_chain(cx: &Cx, target: NodeId) -> NodePath {
 pub(crate) fn visual_bounds(cx: &Cx, target: NodeId, rect: Rect) -> Rect {
     let right = rect.origin.x + rect.width;
     let bottom = rect.origin.y + rect.height;
-    let mut corners = [
+    let mut corners: SmallVec<[Point; 8]> = SmallVec::from_slice(&[
         rect.origin,
         Point::new(right, rect.origin.y),
-        Point::new(rect.origin.x, bottom),
         Point::new(right, bottom),
-    ];
+        Point::new(rect.origin.x, bottom),
+    ]);
     for id in transform_chain(cx, target) {
         let Some(node) = cx.get(id) else {
             continue;
@@ -321,17 +321,18 @@ pub(crate) fn visual_bounds(cx: &Cx, target: NodeId, rect: Rect) -> Rect {
             && let Some(result) = node.get_extension::<crate::layout::LayoutResult>()
             && let Some(transform) = node_transform(cx, id, binding, result.rect())
         {
-            for corner in &mut corners {
-                *corner = transform.project(*corner).unwrap_or(*corner);
-            }
+            corners = transform.polygon(&corners);
         }
     }
     let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
-    for corner in corners {
+    for corner in &corners {
         x0 = x0.min(corner.x);
         y0 = y0.min(corner.y);
         x1 = x1.max(corner.x);
         y1 = y1.max(corner.y);
+    }
+    if corners.is_empty() {
+        return Rect::new(rect.origin, 0.0, 0.0);
     }
     Rect::new(Point::new(x0, y0), x1 - x0, y1 - y0)
 }

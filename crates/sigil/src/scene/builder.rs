@@ -11,7 +11,10 @@ use crate::scene::command::{
     SceneCommand, Transform,
 };
 use crate::scene::corner_radii::CornerRadii;
+use crate::scene::command::{BlendMode, Filter, LayerEffect};
 use crate::scene::shadow::Shadow;
+use crate::style::Rgba8;
+use crate::style::srgb::encode_byte;
 
 /// Appends drawing commands to a scene.
 #[derive(Debug)]
@@ -53,11 +56,12 @@ impl SceneBuilder {
         }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
+    kittest_pub! {
     /// Appends a gradient fill.
     #[doc(hidden)]
     pub fn draw_gradient(&mut self, draw: DrawGradient) {
         self.commands.push(SceneCommand::Gradient(draw));
+    }
     }
 
     #[cfg(any(test, feature = "kittest"))]
@@ -131,6 +135,35 @@ impl SceneBuilder {
     pub fn draw_glyph_run_for_node(&mut self, node: NodeId, run: GlyphRun) {
         self.commands
             .push(SceneCommand::GlyphRun(run.with_node(node)));
+    }
+
+    /// Draws `shadow` behind `run` like CSS `text-shadow`, with `shadow.blur` as the standard deviation; draw a run's shadows last to first, then the run.
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "alpha is clamped to 0..=1 before the byte cast"
+    )]
+    pub fn draw_text_shadow(&mut self, run: &GlyphRun, shadow: Shadow) {
+        let [dx, dy] = shadow.offset;
+        let [r, g, b, a] = shadow.color;
+        let [r, g, b] = [r, g, b].map(encode_byte);
+        let alpha = (a.clamp(0.0, 1.0) * 255.0).round() as u8;
+        let mut copy = run.tinted(Rgba8 { r, g, b, a: alpha });
+        copy.shift(dx, dy);
+        if shadow.blur <= 0.0 {
+            self.draw_glyph_run(copy);
+            return;
+        }
+        let scope = LayerScope {
+            clip: copy.rect.expand(shadow.blur.mul_add(3.0, copy.rect.height * 0.5)),
+            clip_radii: CornerRadii::ZERO,
+            effect: LayerEffect::Filter([Filter::Blur(shadow.blur)].into()),
+            opacity: 1.0,
+            blend: BlendMode::default(),
+        };
+        self.with_scope(SceneCommand::PushLayer(scope), SceneCommand::PopLayer, |scene| {
+            scene.draw_glyph_run(copy);
+        });
     }
 
     /// Clips the commands that `body` appends to `clip`.

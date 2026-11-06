@@ -52,7 +52,7 @@ struct VertexOut {
     @location(4) opacity: f32,
     @location(5) start: vec2<f32>,
     @location(6) axis: vec2<f32>,
-    @location(7) @interpolate(flat) stops_meta: vec2<u32>,
+    @location(7) @interpolate(flat) stops_meta: vec4<u32>,
     @location(8) stroke_params: vec4<f32>,
     @location(9) stroke_meta: vec4<f32>,
     @location(10) pattern_a: vec4<f32>,
@@ -86,7 +86,7 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
     out.opacity = inst.params.x;
     out.start = inst.line.xy;
     out.axis = inst.line.zw - inst.line.xy;
-    out.stops_meta = inst.stop_range.xy;
+    out.stops_meta = inst.stop_range;
     out.stroke_params = inst.stroke_params;
     out.stroke_meta = inst.stroke_meta;
     out.dash_origin = inst.params.zw;
@@ -106,7 +106,32 @@ fn read_stop(base: u32, index: u32) -> StopData {
     return out;
 }
 
-fn sample_gradient(base: u32, count_in: u32, t: f32) -> vec4<f32> {
+fn srgb_encode(c: vec3<f32>) -> vec3<f32> {
+    let v = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+    let high = 1.055 * pow(v, vec3<f32>(1.0 / 2.4)) - vec3<f32>(0.055);
+    return select(high, v * 12.92, v <= vec3<f32>(0.0031308));
+}
+
+fn srgb_decode(c: vec3<f32>) -> vec3<f32> {
+    let v = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+    let high = pow((v + vec3<f32>(0.055)) / 1.055, vec3<f32>(2.4));
+    return select(high, v / 12.92, v <= vec3<f32>(0.04045));
+}
+
+fn gamma_premultiplied(color: vec4<f32>, linear: bool) -> vec4<f32> {
+    let rgb = select(color.rgb, srgb_encode(color.rgb), linear);
+    return vec4<f32>(rgb * color.a, color.a);
+}
+
+fn target_premultiplied(mixed: vec4<f32>, linear: bool) -> vec4<f32> {
+    if mixed.a <= 0.0 {
+        return vec4<f32>(0.0);
+    }
+    let rgb = mixed.rgb / mixed.a;
+    return vec4<f32>(select(rgb, srgb_decode(rgb), linear) * mixed.a, mixed.a);
+}
+
+fn sample_gradient(base: u32, count_in: u32, t: f32, linear: bool) -> vec4<f32> {
     let count = clamp(count_in, 1u, 8u);
     var prev = read_stop(base, 0u);
     if t < prev.offset {
@@ -116,7 +141,9 @@ fn sample_gradient(base: u32, count_in: u32, t: f32) -> vec4<f32> {
         let next = read_stop(base, i);
         if t < next.offset {
             let amount = (t - prev.offset) / (next.offset - prev.offset);
-            return premultiply(mix(prev.color, next.color, amount));
+            let a = gamma_premultiplied(prev.color, linear);
+            let b = gamma_premultiplied(next.color, linear);
+            return target_premultiplied(mix(a, b, amount), linear);
         }
         prev = next;
     }
@@ -388,7 +415,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         color = checker_color(in.local + in.half_size + in.start + in.axis, in.start, in.pattern_a, in.pattern_b);
     } else {
         let t = gradient_t(in.fill_kind, in.pos_px, in.start, in.axis, in.pattern_a);
-        color = sample_gradient(in.stops_meta.x, in.stops_meta.y, repeat_t(t, in.pattern_b));
+        color = sample_gradient(in.stops_meta.x, in.stops_meta.y, repeat_t(t, in.pattern_b), in.stops_meta.w == 1u);
     }
 
     let alpha = color.a * in.opacity * coverage;

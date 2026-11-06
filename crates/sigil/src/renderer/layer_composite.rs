@@ -5,6 +5,8 @@ use std::slice::from_ref;
 
 #[path = "layer_composite/shader.rs"]
 mod shader;
+#[path = "layer_composite/variant.rs"]
+mod variant;
 
 use crate::geometry::Rect;
 use crate::profile::{count, span};
@@ -12,9 +14,10 @@ use crate::renderer::fill_paint::setup::{
     QuadDesc, QuadPipeline, clipped_pass, linear_sampler, texture_group, texture_layout,
 };
 use crate::renderer::scene_paint::PaintCtx;
-use crate::scene::command::MaskMode;
+use crate::scene::command::{BlendMode, MaskMode};
 use crate::scene::{CornerRadii, Transform};
 use shader::LAYER_SHADER;
+use variant::{BLENDED, MASKED, Variant, blend_index};
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -35,6 +38,21 @@ pub(crate) struct LayerInstance {
     round: [f32; 4],
     mask: [f32; 4],
     luminance: f32,
+    backdrop: [f32; 2],
+    blend: u32,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct Backdrop<'a> {
+    pub(crate) view: &'a wgpu::TextureView,
+    pub(crate) origin: [f32; 2],
+    pub(crate) mode: BlendMode,
+}
+
+#[derive(Clone, Copy, Default)]
+struct Inputs<'a> {
+    mask: Option<LayerMask<'a>>,
+    backdrop: Option<Backdrop<'a>>,
 }
 
 #[derive(Clone, Copy)]
@@ -47,6 +65,7 @@ pub(crate) struct LayerMask<'a> {
 pub(crate) struct LayerCompositePipeline {
     quad: QuadPipeline,
     masked: Option<QuadPipeline>,
+    blended: Option<QuadPipeline>,
     uniform_layout: wgpu::BindGroupLayout,
     uniforms: Option<(wgpu::Buffer, wgpu::BindGroup)>,
     texture_layout: wgpu::BindGroupLayout,
@@ -92,6 +111,7 @@ impl LayerCompositePipeline {
         Self {
             quad,
             masked: None,
+            blended: None,
             uniform_layout,
             uniforms: None,
             texture_layout,
@@ -109,7 +129,7 @@ impl LayerCompositePipeline {
     }
 
     pub(crate) fn composite(&mut self, ctx: PaintCtx<'_>, request: CompositeRequest<'_>) {
-        self.draw(ctx, request, None);
+        self.draw(ctx, request, Inputs::default());
     }
 
     pub(crate) fn composite_masked(
@@ -119,27 +139,41 @@ impl LayerCompositePipeline {
         mask: LayerMask<'_>,
     ) {
         if self.masked.is_none() {
-            self.masked = Some(self.masked_pipeline(ctx.device));
+            self.masked = Some(self.extra_pipeline(ctx.device, MASKED));
         }
-        self.draw(ctx, request, Some(mask));
+        let inputs = Inputs {
+            mask: Some(mask),
+            backdrop: None,
+        };
+        self.draw(ctx, request, inputs);
     }
 
-    fn draw(
+    pub(crate) fn composite_blended(
         &mut self,
-        mut ctx: PaintCtx<'_>,
+        ctx: PaintCtx<'_>,
         request: CompositeRequest<'_>,
         mask: Option<LayerMask<'_>>,
+        backdrop: Backdrop<'_>,
     ) {
-        let mut instance = instance_of(&request);
-        instance.mask = mask.map_or([0.0; 4], |mask| mask.rect);
-        instance.luminance = match mask.map(|mask| mask.mode) {
-            Some(MaskMode::Luminance) => 1.0,
-            Some(MaskMode::Alpha) | None => 0.0,
+        if self.blended.is_none() {
+            self.blended = Some(self.extra_pipeline(ctx.device, BLENDED));
+        }
+        let inputs = Inputs {
+            mask,
+            backdrop: Some(backdrop),
         };
+        self.draw(ctx, request, inputs);
+    }
+
+    fn draw(&mut self, mut ctx: PaintCtx<'_>, request: CompositeRequest<'_>, inputs: Inputs<'_>) {
+        let instance = instance_with(&request, inputs);
         let offset = self.uniform(&mut ctx);
         let instances = ctx.encoder.upload(from_ref(&instance));
         let texture = self.texture(ctx.device, request.layer_view);
-        let masked = mask.map(|mask| self.texture(ctx.device, mask.view));
+        let masked = inputs.mask.map(|mask| self.texture(ctx.device, mask.view));
+        let behind = inputs
+            .backdrop
+            .map(|backdrop| self.texture(ctx.device, backdrop.view));
         let (_, uniform_bg) = self.uniforms.as_ref().expect("layer uniforms initialized");
         let group = |index: usize| {
             self.textures
@@ -148,10 +182,19 @@ impl LayerCompositePipeline {
                 .expect("layer texture initialized")
         };
         let base = group(texture);
-        let all = [uniform_bg, base, masked.map_or(base, group)];
-        let (quad, count) = match (masked, self.masked.as_ref()) {
-            (Some(_), Some(quad)) => (quad, 3),
-            _ => (&self.quad, 2),
+        let all = [
+            uniform_bg,
+            base,
+            masked.map_or(base, group),
+            behind.map_or(base, group),
+        ];
+        let (quad, count) = match (behind, masked) {
+            (Some(_), _) => (self.blended.as_ref(), 4),
+            (None, Some(_)) => (self.masked.as_ref(), 3),
+            (None, None) => (Some(&self.quad), 2),
+        };
+        let Some(quad) = quad else {
+            return;
         };
         if let Some(pass) = clipped_pass(&mut ctx, "sigil-renderer layer composite pass") {
             quad.draw(
@@ -164,21 +207,19 @@ impl LayerCompositePipeline {
         }
     }
 
-    fn masked_pipeline(&self, device: &wgpu::Device) -> QuadPipeline {
+    fn extra_pipeline(&self, device: &wgpu::Device, variant: Variant) -> QuadPipeline {
+        let texture = Some(&self.texture_layout);
+        let groups = [Some(&self.uniform_layout), texture, texture, texture];
         QuadPipeline::new(
             device,
             self.quad.format,
             QuadDesc {
-                label: "sigil-renderer masked layer composite",
+                label: variant.label,
                 wgsl: LAYER_SHADER,
-                groups: &[
-                    Some(&self.uniform_layout),
-                    Some(&self.texture_layout),
-                    Some(&self.texture_layout),
-                ],
+                groups: groups.get(..variant.groups).unwrap_or_default(),
                 instance: INSTANCE_LAYOUT,
-                fs_entry: "fs_masked",
-                blend: wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING,
+                fs_entry: variant.fs_entry,
+                blend: variant.blend,
             },
         )
     }
@@ -218,6 +259,22 @@ impl LayerCompositePipeline {
     }
 }
 
+fn instance_with(request: &CompositeRequest<'_>, inputs: Inputs<'_>) -> LayerInstance {
+    let mut instance = instance_of(request);
+    if let Some(mask) = inputs.mask {
+        instance.mask = mask.rect;
+        instance.luminance = match mask.mode {
+            MaskMode::Luminance => 1.0,
+            MaskMode::Alpha => 0.0,
+        };
+    }
+    if let Some(backdrop) = inputs.backdrop {
+        instance.backdrop = backdrop.origin;
+        instance.blend = blend_index(backdrop.mode);
+    }
+    instance
+}
+
 fn instance_of(request: &CompositeRequest<'_>) -> LayerInstance {
     LayerInstance {
         dest: [
@@ -244,6 +301,8 @@ fn instance_of(request: &CompositeRequest<'_>) -> LayerInstance {
         ],
         mask: [0.0; 4],
         luminance: 0.0,
+        backdrop: [0.0; 2],
+        blend: 0,
     }
 }
 
@@ -308,5 +367,7 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
         7 => Float32x4,
         8 => Float32x4,
         9 => Float32,
+        10 => Float32x2,
+        11 => Uint32,
     ],
 };

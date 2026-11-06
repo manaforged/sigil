@@ -1,16 +1,20 @@
 use vello_cpu::kurbo::{Affine, BezPath, Cap, Join, Stroke};
-use vello_cpu::peniko::{Brush, Fill, Gradient};
+use vello_cpu::peniko::{
+    Extend, Fill, Gradient as Shape, InterpolationAlphaSpace, color::ColorSpaceTag,
+};
 use vello_cpu::{PaintType, color::AlphaColor, color::Srgb};
 
+use crate::geometry::Point;
 use crate::scene::command::{
-    DrawPath, FillRule, MITER_LIMIT, PathCmd, PathPaint, PathStroke, StrokeCap, StrokeJoin,
-    Transform,
+    DrawPath, FillRule, Gradient, GradientKind, MITER_LIMIT, PathCmd, PathPaint, PathStroke,
+    StrokeCap, StrokeJoin, Transform,
 };
 use crate::style::Rgba8;
 
 pub(crate) trait PathSink {
     fn transform(&mut self, transform: Affine);
     fn paint(&mut self, paint: PaintType);
+    fn paint_transform(&mut self, transform: Affine);
     fn fill(&mut self, path: &BezPath, rule: Fill);
     fn stroke(&mut self, path: &BezPath, stroke: Stroke);
 }
@@ -22,6 +26,10 @@ impl PathSink for vello_cpu::RenderContext {
 
     fn paint(&mut self, paint: PaintType) {
         self.set_paint(paint);
+    }
+
+    fn paint_transform(&mut self, transform: Affine) {
+        self.set_paint_transform(transform);
     }
 
     fn fill(&mut self, path: &BezPath, rule: Fill) {
@@ -44,6 +52,10 @@ impl PathSink for vello_gpu::Scene {
         self.set_paint(paint);
     }
 
+    fn paint_transform(&mut self, transform: Affine) {
+        self.set_paint_transform(transform);
+    }
+
     fn fill(&mut self, path: &BezPath, rule: Fill) {
         self.set_fill_rule(rule);
         self.fill_path(path);
@@ -59,11 +71,11 @@ pub(crate) fn record(sink: &mut impl PathSink, draw: &DrawPath, device: Transfor
     let path = outline(&draw.outline);
     sink.transform(affine(device) * affine(draw.transform));
     if let Some((rule, paint)) = &draw.fill {
-        sink.paint(brush(paint, opacity));
+        set_paint(sink, paint, opacity);
         sink.fill(&path, fill_rule(*rule));
     }
     if let Some(stroke) = &draw.stroke {
-        sink.paint(brush(&stroke.paint, opacity));
+        set_paint(sink, &stroke.paint, opacity);
         sink.stroke(&path, kurbo_stroke(stroke));
     }
 }
@@ -122,26 +134,60 @@ fn color(color: Rgba8, opacity: f32) -> AlphaColor<Srgb> {
     AlphaColor::from_rgba8(color.r, color.g, color.b, color.a).multiply_alpha(opacity)
 }
 
-fn brush(paint: &PathPaint, opacity: f32) -> PaintType {
-    let stops = |stops: &[crate::scene::command::GradientStop]| -> Vec<(f32, AlphaColor<Srgb>)> {
-        stops
-            .iter()
-            .map(|stop| (stop.offset, color(stop.color, opacity)))
-            .collect()
+fn set_paint(sink: &mut impl PathSink, paint: &PathPaint, opacity: f32) {
+    let (brush, placement) = match paint {
+        PathPaint::Solid(solid) => (PaintType::Solid(color(*solid, opacity)), Affine::IDENTITY),
+        PathPaint::Gradient(gradient) => gradient_brush(&gradient.normalized(), opacity),
     };
-    let point = |p: crate::geometry::Point| (f64::from(p.x), f64::from(p.y));
-    match paint {
-        PathPaint::Solid(solid) => Brush::Solid(color(*solid, opacity)),
-        PathPaint::Linear(linear) => Brush::Gradient(
-            Gradient::new_linear(point(linear.start), point(linear.end))
-                .with_stops(stops(&linear.stops).as_slice()),
-        ),
-        PathPaint::Radial {
-            center,
-            radius,
-            stops: list,
-        } => Brush::Gradient(
-            Gradient::new_radial(point(*center), *radius).with_stops(stops(list).as_slice()),
-        ),
+    sink.paint_transform(placement);
+    sink.paint(brush);
+}
+
+fn gradient_brush(gradient: &Gradient, opacity: f32) -> (PaintType, Affine) {
+    if let [only] = gradient.stops.as_slice() {
+        return (PaintType::Solid(color(only.color, opacity)), Affine::IDENTITY);
+    }
+    let ([first, last], stops) = gradient.spread();
+    let extend = if gradient.repeat_span().is_some() {
+        Extend::Repeat
+    } else {
+        Extend::Pad
+    };
+    let (shape, placement) = shape(gradient.kind, first, last);
+    let stops: Vec<(f32, AlphaColor<Srgb>)> = stops
+        .iter()
+        .map(|stop| (stop.offset, color(stop.color, opacity)))
+        .collect();
+    let shape = shape
+        .with_extend(extend)
+        .with_interpolation_cs(ColorSpaceTag::Srgb)
+        .with_interpolation_alpha_space(InterpolationAlphaSpace::Premultiplied)
+        .with_stops(stops.as_slice());
+    (PaintType::Gradient(shape), placement)
+}
+
+fn shape(kind: GradientKind, first: f32, last: f32) -> (Shape, Affine) {
+    let point = |p: Point| (f64::from(p.x), f64::from(p.y));
+    match kind {
+        GradientKind::Linear { start, end } => {
+            let at = |t: f32| {
+                Point::new((end.x - start.x).mul_add(t, start.x), (end.y - start.y).mul_add(t, start.y))
+            };
+            (Shape::new_linear(point(at(first)), point(at(last))), Affine::IDENTITY)
+        }
+        GradientKind::Radial { center, radius } => {
+            let [rx, ry] = radius.map(|r| f64::from(r.max(MIN_RADIUS)));
+            let place = Affine::translate(point(center)) * Affine::scale_non_uniform(rx, ry);
+            (Shape::new_two_point_radial((0.0, 0.0), first, (0.0, 0.0), last), place)
+        }
+        GradientKind::Conic { center, angle } => {
+            let turn = f64::from((angle - QUARTER).to_radians());
+            let place = Affine::translate(point(center)) * Affine::rotate(turn);
+            (Shape::new_sweep((0.0, 0.0), first * TAU, last * TAU), place)
+        }
     }
 }
+
+const QUARTER: f32 = 90.0;
+const TAU: f32 = std::f32::consts::TAU;
+const MIN_RADIUS: f32 = 1.0 / 4096.0;

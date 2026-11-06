@@ -16,6 +16,7 @@ pub fn backdrop_blur() -> (CommandScene, (f32, f32), Color) {
             clip_radii: CornerRadii::ZERO,
             effect: LayerEffect::LayerBlur { sigma },
             opacity: 1.0,
+            blend: crate::scene::BlendMode::Normal,
         });
         draw_bar_pattern(&mut scene, clip);
         scene.pop_layer();

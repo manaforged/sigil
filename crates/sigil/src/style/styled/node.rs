@@ -7,6 +7,12 @@ pub(crate) fn attach_style(builder: NodeBuilder, style: Style) -> NodeBuilder {
         return builder;
     }
     let mut style = style;
+    let images = style.take_images();
+    let builder = if images.is_empty() {
+        builder
+    } else {
+        builder.mutate(move |node| images.install(node))
+    };
     let overlay = style.take_state_overlay();
     let builder = if overlay.is_empty() {
         builder

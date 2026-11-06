@@ -9,6 +9,8 @@ use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::{SceneWalk, WalkCtx, pipeline_for, translation};
 use crate::renderer::scene_command::{CommandScene, SceneCommand};
 
+#[path = "layer_walk/backdrop.rs"]
+mod backdrop;
 #[path = "layer_walk/mask.rs"]
 mod mask;
 #[path = "layer_walk/offscreen.rs"]
@@ -103,7 +105,11 @@ pub(crate) fn walk_layer_command_scene(
         bounds: Rect::new(Point::new(0.0, 0.0), ctx.viewport.0, ctx.viewport.1),
         state: SceneState::default(),
     };
-    let result = render_nodes(&mut ctx, &nodes, target);
+    let result = if backdrop::needs_isolation(&scene.commands, ctx.view) {
+        backdrop::render_isolated(&mut ctx, &nodes, target)
+    } else {
+        render_nodes(&mut ctx, &nodes, target)
+    };
     if let Some(pool) = ctx.layer_pool.as_ref() {
         let (washes, vector) = (&*ctx.wash_cache, &*ctx.vector);
         for pipeline in &mut *ctx.layer_pipelines {
@@ -320,7 +326,7 @@ const fn reborrow_ctx<'a>(
         quad_pipelines: &mut *ctx.quad_pipelines,
         decoration_pipelines: &mut *ctx.decoration_pipelines,
         layer_pipelines: &mut *ctx.layer_pipelines,
-        blur_pipelines: &mut *ctx.blur_pipelines,
+        filter_pipelines: &mut *ctx.filter_pipelines,
         projected_pipelines: &mut *ctx.projected_pipelines,
         layer_pool: &mut *ctx.layer_pool,
         wash_cache: &mut *ctx.wash_cache,

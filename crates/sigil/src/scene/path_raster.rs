@@ -33,6 +33,7 @@ mod vello {
     }
 }
 
+pub(crate) mod gradient;
 #[cfg(not(feature = "scene"))]
 mod skia;
 

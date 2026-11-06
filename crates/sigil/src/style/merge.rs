@@ -5,7 +5,7 @@ use std::sync::{Mutex, OnceLock};
 use smallvec::SmallVec;
 
 use crate::style::StyleAtom;
-use crate::style::atom::{PaintAtom, SpaceAtom, StopSlot};
+use crate::style::atom::{Amount, FilterPart, MaskPart, PaintAtom, SpaceAtom, StopSlot};
 
 /// Identifies a component's style.
 pub(crate) type ComponentId = u64;
@@ -200,6 +200,45 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::Paint(paint) => paint_slot(paint),
         StyleAtom::ClipPath(_) => ResolvedSlot::ClipPath,
         StyleAtom::Space(atom) => space_slot(atom),
+        StyleAtom::Mask(atom) => mask_slot(atom.0),
+        StyleAtom::MixBlend(_) => ResolvedSlot::MixBlend,
+        StyleAtom::Filter(atom) => filter_slot(atom.0),
+        StyleAtom::DropShadowColor(_) => ResolvedSlot::DropShadowColor,
+        StyleAtom::TextShadowColor(_) => ResolvedSlot::TextShadowColor,
+    }
+}
+
+const fn filter_slot(part: FilterPart) -> ResolvedSlot {
+    match part {
+        FilterPart::Blur(_) => ResolvedSlot::Blur,
+        FilterPart::Amount(Amount::Brightness, _) => ResolvedSlot::Brightness,
+        FilterPart::Amount(Amount::Contrast, _) => ResolvedSlot::Contrast,
+        FilterPart::Amount(Amount::Grayscale, _) => ResolvedSlot::Grayscale,
+        FilterPart::Amount(Amount::Invert, _) => ResolvedSlot::Invert,
+        FilterPart::Amount(Amount::Saturate, _) => ResolvedSlot::Saturate,
+        FilterPart::Amount(Amount::Sepia, _) => ResolvedSlot::Sepia,
+        FilterPart::HueRotate(_) => ResolvedSlot::HueRotate,
+        FilterPart::DropShadow(_) => ResolvedSlot::DropShadow,
+        FilterPart::TextShadow(_) => ResolvedSlot::TextShadow,
+    }
+}
+
+const fn mask_slot(part: MaskPart) -> ResolvedSlot {
+    match part {
+        MaskPart::None
+        | MaskPart::Linear(_)
+        | MaskPart::Radial(_)
+        | MaskPart::Conic(_)
+        | MaskPart::Image(_) => ResolvedSlot::MaskImage,
+        MaskPart::Stop(_, StopSlot::To, _) => ResolvedSlot::MaskTo,
+        MaskPart::Stop(..) => ResolvedSlot::MaskFrom,
+        MaskPart::Circle(_) => ResolvedSlot::MaskShape,
+        MaskPart::Extent(_) => ResolvedSlot::MaskExtent,
+        MaskPart::RadialAt(_) => ResolvedSlot::MaskRadialAt,
+        MaskPart::Luminance(_) => ResolvedSlot::MaskMode,
+        MaskPart::Size(_) => ResolvedSlot::MaskSize,
+        MaskPart::Position(_) => ResolvedSlot::MaskPosition,
+        MaskPart::Repeat(_) => ResolvedSlot::MaskRepeat,
     }
 }
 
@@ -302,4 +341,27 @@ pub(crate) enum ResolvedSlot {
     Perspective,
     PerspectiveOrigin,
     Backface,
+    MaskImage,
+    MaskFrom,
+    MaskTo,
+    MaskShape,
+    MaskExtent,
+    MaskRadialAt,
+    MaskMode,
+    MaskSize,
+    MaskPosition,
+    MaskRepeat,
+    MixBlend,
+    Blur,
+    Brightness,
+    Contrast,
+    Grayscale,
+    Invert,
+    Saturate,
+    Sepia,
+    HueRotate,
+    DropShadow,
+    TextShadow,
+    DropShadowColor,
+    TextShadowColor,
 }

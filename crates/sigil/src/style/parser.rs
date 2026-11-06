@@ -8,10 +8,13 @@ use crate::style::StateSlot;
 use crate::style::{Px, StyleAtom};
 
 mod atoms;
+mod filter;
+mod mask;
 mod paint;
 mod table;
 
 use atoms::push_border_side_atoms;
+use mask::push_mask_atoms;
 use table::parse_table_token;
 
 const STRUCTURAL_TOKENS: [&str; 81] = [
@@ -139,7 +142,7 @@ pub(crate) fn parse_class_string(input: &str) -> Result<SmallVec<[StyleAtom; 16]
         if push_overflow_atoms(token, &mut atoms)? {
             continue;
         }
-        if push_border_side_atoms(token, &mut atoms) {
+        if push_border_side_atoms(token, &mut atoms) || push_mask_atoms(token, &mut atoms) {
             continue;
         }
         atoms.push(parse_token(token)?);

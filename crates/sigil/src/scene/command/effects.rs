@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::geometry::{Point, Rect};
 
 use crate::scene::corner_radii::CornerRadii;
+use crate::scene::shadow::Shadow;
 
 use super::transform3d::Transform3D;
 use super::{CommandScene, SceneCommand};
@@ -79,6 +80,68 @@ pub struct LayerScope {
     pub effect: LayerEffect,
     /// The opacity.
     pub opacity: f32,
+    /// How the layer's pixels mix with the pixels behind it, as in CSS `mix-blend-mode`.
+    pub blend: BlendMode,
+}
+
+/// A CSS `mix-blend-mode`: the formula that mixes a layer's colors with its backdrop, in sRGB-encoded space.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum BlendMode {
+    /// The source color replaces the backdrop color.
+    #[default]
+    Normal,
+    /// Source times backdrop.
+    Multiply,
+    /// The inverse of the product of the inverses.
+    Screen,
+    /// Multiply or screen, chosen by the backdrop.
+    Overlay,
+    /// The darker of source and backdrop.
+    Darken,
+    /// The lighter of source and backdrop.
+    Lighten,
+    /// Brightens the backdrop toward the source.
+    ColorDodge,
+    /// Darkens the backdrop toward the source.
+    ColorBurn,
+    /// Multiply or screen, chosen by the source.
+    HardLight,
+    /// Darkens or lightens, chosen by the source, like a diffused spotlight.
+    SoftLight,
+    /// The absolute difference of source and backdrop.
+    Difference,
+    /// Like difference with lower contrast.
+    Exclusion,
+    /// The source's hue with the backdrop's saturation and luminosity.
+    Hue,
+    /// The source's saturation with the backdrop's hue and luminosity.
+    Saturation,
+    /// The source's hue and saturation with the backdrop's luminosity.
+    Color,
+    /// The source's luminosity with the backdrop's hue and saturation.
+    Luminosity,
+}
+
+impl BlendMode {
+    /// Every mode in CSS Compositing and Blending order.
+    pub const ALL: [Self; 16] = [
+        Self::Normal,
+        Self::Multiply,
+        Self::Screen,
+        Self::Overlay,
+        Self::Darken,
+        Self::Lighten,
+        Self::ColorDodge,
+        Self::ColorBurn,
+        Self::HardLight,
+        Self::SoftLight,
+        Self::Difference,
+        Self::Exclusion,
+        Self::Hue,
+        Self::Saturation,
+        Self::Color,
+        Self::Luminosity,
+    ];
 }
 
 /// An effect applied to a composite layer.
@@ -102,6 +165,53 @@ pub enum LayerEffect {
     },
     /// The layer's pixels are scaled by a mask, as in CSS `mask-image`.
     Mask(Mask),
+    /// The layer's pixels pass through each filter in order, as in CSS `filter`.
+    Filter(Arc<[Filter]>),
+}
+
+/// One CSS filter function, applied in sRGB as Filter Effects 1 §13 defines it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Filter {
+    /// A Gaussian blur whose standard deviation is this many logical pixels.
+    Blur(f32),
+    /// The layer's alpha, blurred by `blur` as a standard deviation, offset, tinted by `color`, drawn under the layer; `spread` is ignored.
+    DropShadow(Shadow),
+    /// Multiplies each color channel by the amount.
+    Brightness(f32),
+    /// Scales each color channel away from mid-gray by the amount.
+    Contrast(f32),
+    /// Mixes toward the luminance gray by the amount, clamped to 1.
+    Grayscale(f32),
+    /// Rotates the hue by this many degrees.
+    HueRotate(f32),
+    /// Mixes toward the inverted color by the amount, clamped to 1.
+    Invert(f32),
+    /// Multiplies alpha by the amount, clamped to 1.
+    Opacity(f32),
+    /// Scales saturation by the amount.
+    Saturate(f32),
+    /// Mixes toward sepia by the amount, clamped to 1.
+    Sepia(f32),
+}
+
+impl Filter {
+    pub(crate) const fn is_color(self) -> bool {
+        !matches!(self, Self::Blur(_) | Self::DropShadow(_))
+    }
+}
+
+pub(crate) fn filter_reach(filters: &[Filter]) -> f32 {
+    filters
+        .iter()
+        .map(|filter| match *filter {
+            Filter::Blur(sigma) => sigma.max(0.0) * 3.0,
+            Filter::DropShadow(shadow) => {
+                let [x, y] = shadow.offset;
+                shadow.blur.max(0.0).mul_add(3.0, x.abs().max(y.abs()))
+            }
+            _ => 0.0,
+        })
+        .sum()
 }
 
 /// Which channel of a mask scales the masked pixels, as in CSS `mask-mode`.

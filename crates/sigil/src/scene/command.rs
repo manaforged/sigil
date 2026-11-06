@@ -33,7 +33,7 @@ mod wash;
 pub(crate) use decoration::DecorationGeometry;
 pub use clip::Clip;
 pub use effects::{
-    DecorationKind, LayerEffect, LayerScope, Mask, MaskMode, SpriteKind, SpriteSource, Transform,
+    BlendMode, DecorationKind, Filter, LayerEffect, LayerScope, Mask, MaskMode, SpriteKind, SpriteSource, Transform,
 };
 pub use transform3d::Transform3D;
 #[cfg(any(test, feature = "kittest"))]

@@ -11,7 +11,7 @@ use crate::style::{Rgba8, StyleBinding, TextStyle, Theme};
 use ahash::AHasher;
 
 use crate::scene::builder::SceneBuilder;
-use crate::scene::command::SceneCommand;
+use crate::scene::command::{LayerEffect, LayerScope, SceneCommand};
 
 const CAP: usize = 4_096;
 
@@ -237,12 +237,23 @@ fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
             rect[0] += dx;
             rect[1] += dy;
         }
-        SceneCommand::PushLayer(scope) => scope.clip = shift_rect(scope.clip, dx, dy),
+        SceneCommand::PushLayer(scope) => shift_layer(scope, dx, dy),
         SceneCommand::PopClip
         | SceneCommand::PushTransform(_)
         | SceneCommand::PopTransform
         | SceneCommand::SaveLayer { .. }
         | SceneCommand::RestoreLayer
         | SceneCommand::PopLayer => {}
+    }
+}
+
+fn shift_layer(scope: &mut LayerScope, dx: f32, dy: f32) {
+    scope.clip = shift_rect(scope.clip, dx, dy);
+    if let LayerEffect::Mask(mask) = &mut scope.effect {
+        let mut commands = mask.commands.to_vec();
+        for command in &mut commands {
+            shift_command(command, dx, dy);
+        }
+        mask.commands = commands.into();
     }
 }

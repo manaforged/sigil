@@ -1,49 +1,26 @@
-#[cfg(any(test, feature = "kittest"))]
-use crate::style::BgGradient;
-#[cfg(any(test, feature = "kittest"))]
-use crate::style::Transform2D;
-#[cfg(any(test, feature = "kittest"))]
-use crate::style::TransitionId;
 use std::time::Duration;
 
 use crate::animation::{Easing, Keyframes, KeyframesId};
 use crate::animation_runtime::presets;
-use crate::style::engine::encode_px;
 use crate::kernel::ImageSource;
-use crate::style::atom::{Backface, BorderStyle, GradientShape, PaintAtom, SpaceAtom, StopSlot};
+use crate::scene::{BlendMode, Shadow};
+use crate::style::atom::{
+    Amount, Backface, BorderStyle, GradientShape, MaskPart, PaintAtom, SpaceAtom, StopSlot,
+};
+use crate::style::engine::encode_px;
 use crate::style::{
-    ClipShape, ColorAtom, Conic, Elevation, FontFamily, GradientAxis, Radial, Radius, Style, StyleAtom,
-    TextDecoration,
+    ClipShape, ColorAtom, Conic, Elevation, FontFamily, GradientAxis, MaskImage, MaskSize, Radial,
+    Radius, StyleAtom, TextDecoration,
 };
 
-mod sealed {
-    use crate::style::Style;
-
-    pub struct StyleSlot<'a>(pub(crate) &'a mut Style);
-
-    pub trait PaintTarget: Sized {
-        fn style_slot(&mut self) -> StyleSlot<'_>;
-    }
-}
-
-pub(crate) use sealed::{PaintTarget, StyleSlot};
-
+mod filters;
+mod slot;
+mod space;
 mod units;
 
+pub(crate) use slot::{PaintTarget, StyleSlot};
+use slot::{mask, paint, push};
 use units::{fraction_units, letter_spacing_units, millis, opacity_units};
-
-fn push<T: PaintTarget>(mut target: T, atom: StyleAtom) -> T {
-    target.style_slot().0.push_atom(atom);
-    target
-}
-
-fn space<T: PaintTarget>(target: T, atom: SpaceAtom) -> T {
-    push(target, StyleAtom::Space(atom))
-}
-
-fn paint<T: PaintTarget>(target: T, atom: PaintAtom) -> T {
-    push(target, StyleAtom::Paint(atom))
-}
 
 /// Typed paint on nodes, text, widget builders, and state closures.
 pub trait Paint: PaintTarget {
@@ -57,7 +34,7 @@ pub trait Paint: PaintTarget {
     #[doc(hidden)]
     /// Sets the background gradient.
     #[must_use]
-    fn background_gradient(self, gradient: BgGradient) -> Self {
+    fn background_gradient(self, gradient: crate::style::BgGradient) -> Self {
         push(self, StyleAtom::BackgroundGradient(gradient))
     }
 
@@ -76,7 +53,10 @@ pub trait Paint: PaintTarget {
     /// Fills the background with a conic gradient, like Tailwind `bg-conic-*`.
     #[must_use]
     fn bg_conic(self, conic: impl Into<Conic>) -> Self {
-        paint(self, PaintAtom::Gradient(GradientShape::Conic(conic.into())))
+        paint(
+            self,
+            PaintAtom::Gradient(GradientShape::Conic(conic.into())),
+        )
     }
 
     /// Sets the first gradient color, like Tailwind `from-*`.
@@ -124,7 +104,7 @@ pub trait Paint: PaintTarget {
     /// Tiles `image` over the background at its natural size, like CSS `background-image: url(..)`.
     #[must_use]
     fn bg_image(self, image: ImageSource) -> Self {
-        paint(self, PaintAtom::Image(crate::style::image_paint::register(image)))
+        slot::image(self, image, |id| StyleAtom::Paint(PaintAtom::Image(id)))
     }
 
     /// Draws a solid border, like Tailwind `border-solid`.
@@ -199,6 +179,37 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::ClipPath(shape))
     }
 
+    /// Masks the node and its children with `image`, like CSS `mask-image`.
+    #[must_use]
+    fn mask_image(self, image: MaskImage) -> Self {
+        slot::mask_image(self, image)
+    }
+    /// Sets where a gradient mask is opaque and where it is clear, in percent, like Tailwind `mask-linear-from-*` and `mask-linear-to-*`.
+    #[must_use]
+    fn mask_stops(self, from: u8, to: u8) -> Self {
+        slot::mask_stops(self, from, to)
+    }
+    /// Reads the mask through its luminance instead of its alpha, like Tailwind `mask-luminance`.
+    #[must_use]
+    fn mask_luminance(self) -> Self {
+        mask(self, MaskPart::Luminance(true))
+    }
+    /// Sizes the mask image against the border box, like Tailwind `mask-cover` and `mask-contain`.
+    #[must_use]
+    fn mask_size(self, size: MaskSize) -> Self {
+        mask(self, MaskPart::Size(size))
+    }
+    /// Places the mask image at fractions of the free space, like Tailwind `mask-center`; default 0, 0.
+    #[must_use]
+    fn mask_position(self, x: f32, y: f32) -> Self {
+        mask(self, MaskPart::Position([x, y].map(fraction_units)))
+    }
+    /// Sets whether the mask image tiles the box, like Tailwind `mask-repeat` and `mask-no-repeat`; default true.
+    #[must_use]
+    fn mask_repeat(self, repeat: bool) -> Self {
+        mask(self, MaskPart::Repeat(repeat))
+    }
+
     /// Sets the shadow.
     #[must_use]
     fn shadow(self, elevation: Elevation) -> Self {
@@ -212,61 +223,23 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::Opacity(opacity_units(value)))
     }
 
+    filters::filter_setters!();
+
+    /// Sets the CSS mix-blend-mode.
+    #[must_use]
+    fn mix_blend(self, mode: BlendMode) -> Self {
+        push(self, StyleAtom::MixBlend(mode))
+    }
+
     #[cfg(any(test, feature = "kittest"))]
     #[doc(hidden)]
     /// Sets the transform.
     #[must_use]
-    fn transform(self, transform: Transform2D) -> Self {
+    fn transform(self, transform: crate::style::Transform2D) -> Self {
         push(self, StyleAtom::Transform(transform))
     }
 
-    /// Gives the children a 3D viewing distance in px, like Tailwind `perspective-*`.
-    #[must_use]
-    fn perspective(self, px: f32) -> Self {
-        space(self, SpaceAtom::Perspective(Some(px.max(1.0))))
-    }
-
-    /// Sets the point the children are viewed from, as fractions of the box, like Tailwind `perspective-origin-*`.
-    #[must_use]
-    fn perspective_origin(self, x: f32, y: f32) -> Self {
-        space(self, SpaceAtom::PerspectiveOrigin([x, y].map(fraction_units)))
-    }
-
-    /// Turns the node around the x axis by `degrees`, like Tailwind `rotate-x-*`.
-    #[must_use]
-    fn rotate_x(self, degrees: f32) -> Self {
-        space(self, SpaceAtom::RotateX(degrees.to_radians()))
-    }
-
-    /// Turns the node around the y axis by `degrees`, like Tailwind `rotate-y-*`.
-    #[must_use]
-    fn rotate_y(self, degrees: f32) -> Self {
-        space(self, SpaceAtom::RotateY(degrees.to_radians()))
-    }
-
-    /// Turns the node around the z axis by `degrees`, like Tailwind `rotate-z-*`.
-    #[must_use]
-    fn rotate_z(self, degrees: f32) -> Self {
-        space(self, SpaceAtom::RotateZ(degrees.to_radians()))
-    }
-
-    /// Moves the node toward the viewer by `px`, like Tailwind `translate-z-*`.
-    #[must_use]
-    fn translate_z(self, px: f32) -> Self {
-        space(self, SpaceAtom::TranslateZ(px))
-    }
-
-    /// Draws nothing while the node's back faces the viewer, like Tailwind `backface-hidden`.
-    #[must_use]
-    fn backface_hidden(self) -> Self {
-        space(self, SpaceAtom::Backface(Backface::Hidden))
-    }
-
-    /// Shows the node's back when it turns away, like Tailwind `backface-visible`.
-    #[must_use]
-    fn backface_visible(self) -> Self {
-        space(self, SpaceAtom::Backface(Backface::Visible))
-    }
+    space::space_setters!();
 
     /// Sets the font size.
     #[must_use]
@@ -326,7 +299,7 @@ pub trait Paint: PaintTarget {
     #[doc(hidden)]
     /// Sets the transition preset.
     #[must_use]
-    fn transition_preset(self, id: TransitionId) -> Self {
+    fn transition_preset(self, id: crate::style::TransitionId) -> Self {
         push(self, StyleAtom::Transition(id))
     }
 
@@ -380,9 +353,3 @@ pub trait Paint: PaintTarget {
 }
 
 impl<T: PaintTarget> Paint for T {}
-
-impl PaintTarget for Style {
-    fn style_slot(&mut self) -> StyleSlot<'_> {
-        StyleSlot(self)
-    }
-}

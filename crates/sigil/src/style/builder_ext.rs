@@ -83,10 +83,16 @@ impl NodeBuilder {
     #[must_use]
     pub(crate) fn flush_paint(mut self) -> Self {
         let atoms = self.pending_style().take_atoms();
+        let images = self.pending_style().take_images();
+        let this = if images.is_empty() {
+            self
+        } else {
+            self.mutate(move |node| images.install(node))
+        };
         if atoms.is_empty() {
-            return self;
+            return this;
         }
-        self.mutate(move |node| install_class(node, ClassSource::Owned(Box::new(atoms))))
+        this.mutate(move |node| install_class(node, ClassSource::Owned(Box::new(atoms))))
     }
 }
 
@@ -139,7 +145,13 @@ pub(crate) fn paint_when(
     active: impl Reactive<bool> + 'static,
     paint: StateStyleBuilder,
 ) -> NodeBuilder {
-    let atoms = intern_atoms(paint.into_atoms());
+    let (atoms, images) = paint.into_parts();
+    let atoms = intern_atoms(atoms);
+    let node = if images.is_empty() {
+        node
+    } else {
+        node.mutate(move |node| images.install(node))
+    };
     node.style_reactive(move || if active.read() { atoms } else { EMPTY_ATOMS })
 }
 

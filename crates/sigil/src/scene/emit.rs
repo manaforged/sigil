@@ -10,7 +10,7 @@ use crate::style::{RenderStyle, Rgba8, StyleBinding, TextStyle, Theme, ToneConte
 use crate::widgets::CanvasPaint;
 
 use crate::scene::builder::SceneBuilder;
-use crate::scene::command::{CommandScene, LayerEffect, LayerScope};
+use crate::scene::command::{BlendMode, CommandScene, LayerEffect, LayerScope};
 use crate::scene::emit_cache;
 use crate::scene::style_adapter::{corner_radii_for, render_style_for};
 
@@ -24,10 +24,14 @@ mod selection;
 mod text_fill;
 use paint::{NodePaint, push_focus_ring, push_node};
 mod effects;
+mod filter;
+mod mask;
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
 mod memo;
 mod subtree;
 mod top_layer;
+mod text_clip;
+use text_clip::TextFill;
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
 pub(crate) use memo::EmitMemo;
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
@@ -104,6 +108,7 @@ fn run<'t>(
         theme_stamp: std::ptr::from_ref(theme) as u64,
         text_color: None,
         text_style: Rc::new(TextStyle::default()),
+        text_fill: None,
     };
     let mut deferred: Vec<(NodeId, Inherited<'_>, Option<Rect>)> = Vec::new();
     let mut walk = EmitWalk {
@@ -136,6 +141,7 @@ struct Inherited<'t> {
     theme_stamp: u64,
     text_color: Option<Rgba8>,
     text_style: Rc<TextStyle>,
+    text_fill: Option<Rc<TextFill>>,
 }
 
 impl<'t> EmitWalk<'_, 't> {
@@ -161,49 +167,17 @@ impl<'t> EmitWalk<'_, 't> {
         let style = render_style_for(id, node, theme, inherited.text_color);
         let layered = (!style.transform.is_identity()
             || !style.space.is_flat()
-            || style.opacity < 10_000)
+            || style.opacity < 10_000
+            || style.blend != BlendMode::Normal)
             && node.get_extension::<LayoutResult>().is_some();
-        let cut = style
-            .clip_path
-            .zip(node.get_extension::<LayoutResult>().map(LayoutResult::rect));
-        if let Some((shape, rect)) = cut.filter(|_| style.opacity > 0) {
-            self.walk_clip_path(id, inherited, clip, style, shape.resolve(rect));
-        } else if style.opacity > 0 && layered {
+        let cut = style.clip_path.is_some() && node.get_extension::<LayoutResult>().is_some();
+        if style.opacity > 0 && layered {
             self.push_effect(id, inherited, clip, style);
-        } else if style.opacity > 0 && !outside_clip(node, clip) {
-            self.push_contents(id, inherited, clip, &style);
+        } else if style.opacity > 0 && (cut || !outside_clip(node, clip)) {
+            self.push_masked(id, inherited, clip, style);
         } else {
             self.defer_top_layer(node, || child_inherited(node, inherited, &style));
         }
-    }
-
-    fn walk_clip_path(
-        &mut self,
-        id: NodeId,
-        inherited: &Inherited<'t>,
-        clip: Option<Rect>,
-        mut style: RenderStyle,
-        shape: crate::scene::Clip,
-    ) {
-        style.clip_path = None;
-        let layered =
-            !style.transform.is_identity() || !style.space.is_flat() || style.opacity < 10_000;
-        let (cx, deferred, selection) = (self.cx, &mut *self.deferred, self.selection);
-        let track = &mut *self.track;
-        self.scene.with_clip(shape, |scene| {
-            let mut walk = EmitWalk {
-                scene,
-                cx,
-                deferred,
-                selection,
-                track,
-            };
-            if layered {
-                walk.push_effect(id, inherited, clip, style);
-            } else {
-                walk.push_contents(id, inherited, clip, &style);
-            }
-        });
     }
 
     fn push_contents(
@@ -229,6 +203,7 @@ impl<'t> EmitWalk<'_, 't> {
                     .map(|context| context.tone),
                 leaf: !has_laid_child(self.cx, node),
                 selected: self.selection.get(&id).copied(),
+                text_fill: inherited.text_fill.as_deref().map(|fill| &fill.gradient),
             };
             let inherit =
                 emit_cache::inherit_key(theme, inherited.text_color, inherited.text_style.as_ref())
@@ -236,7 +211,8 @@ impl<'t> EmitWalk<'_, 't> {
                     ^ u64::from(paint.leaf)
                     ^ node
                         .get_extension::<CanvasPaint>()
-                        .map_or(0, CanvasPaint::version);
+                        .map_or(0, CanvasPaint::version)
+                    ^ inherited.text_fill.as_ref().map_or(0, |fill| fill.key);
             let selected = paint.selected.is_some();
             let key = (self.cx.instance_id(), id);
             if selected || !emit_cache::replay(self.scene, key, node, rect, inherit) {
@@ -305,6 +281,7 @@ impl<'t> EmitWalk<'_, 't> {
                 clip_radii,
                 effect: LayerEffect::Identity,
                 opacity: 1.0,
+                blend: crate::scene::BlendMode::Normal,
             };
             self.scene.with_composite_layer(scope, body);
         } else {
@@ -378,10 +355,12 @@ fn child_inherited<'t>(
                     std::ptr::from_ref(theme) as u64 ^ u64::from(node.version()).rotate_left(32),
                 )
             });
+    let text_fill = TextFill::of(node, style, theme).map_or_else(|| inherited.text_fill.clone(), Some);
     Inherited {
         theme,
         theme_stamp,
         text_color: style.text_color.or(inherited.text_color),
         text_style,
+        text_fill,
     }
 }

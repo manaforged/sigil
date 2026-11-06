@@ -11,9 +11,15 @@ pub(crate) struct Px(pub i16);
 
 mod clip;
 mod color;
+mod filter;
 mod gradient;
+mod mask;
 mod space;
 pub use clip::ClipShape;
+pub use filter::FilterAtom;
+pub(crate) use filter::{Amount, FilterPart, FilterStyle, ShadowSpec, TextShadows};
+pub use mask::{MaskAtom, MaskImage, MaskSize};
+pub(crate) use mask::{MaskKind, MaskPart, MaskStyle};
 pub use space::{Backface, SpaceAtom, SpaceStyle};
 pub use color::{BgGradient, ColorAtom, GradientAxis, GradientStopKey, Rgba8};
 pub use gradient::{
@@ -84,6 +90,10 @@ pub struct RenderStyle {
     pub clip_path: Option<ClipShape>,
     /// The 3D turn, depth, perspective, and backface.
     pub space: SpaceStyle,
+    pub(crate) mask: MaskStyle,
+    /// The CSS mix-blend-mode.
+    pub blend: crate::scene::BlendMode,
+    pub(crate) filter: FilterStyle,
 }
 
 impl Default for RenderStyle {
@@ -112,6 +122,9 @@ impl Default for RenderStyle {
             },
             clip_path: None,
             space: SpaceStyle::FLAT,
+            mask: MaskStyle::NONE,
+            blend: crate::scene::BlendMode::Normal,
+            filter: FilterStyle::NONE,
         }
     }
 }
@@ -269,6 +282,16 @@ pub enum StyleAtom {
     ClipPath(ClipShape),
     /// The 3D transform style atom.
     Space(SpaceAtom),
+    /// The mask style atom.
+    Mask(MaskAtom),
+    /// The mix-blend-mode style atom.
+    MixBlend(crate::scene::BlendMode),
+    /// The filter and text shadow style atom.
+    Filter(FilterAtom),
+    /// The drop shadow color style atom.
+    DropShadowColor(ColorAtom),
+    /// The text shadow color style atom.
+    TextShadowColor(ColorAtom),
 }
 
 impl StyleAtom {

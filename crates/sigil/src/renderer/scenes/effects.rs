@@ -53,6 +53,7 @@ pub fn layer_pool() -> (CommandScene, (f32, f32), Color) {
         clip_radii: CornerRadii::ZERO,
         effect: LayerEffect::Identity,
         opacity: 0.5,
+        blend: crate::scene::BlendMode::Normal,
     });
     scene.draw_rect(fill(rect(390.0, 80.0, 180.0, 160.0)));
     scene.pop_layer();

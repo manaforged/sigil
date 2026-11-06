@@ -1,5 +1,5 @@
 use super::PathCmd;
-use crate::scene::command::{GradientStop, PathPaint};
+use crate::scene::command::PathPaint;
 use crate::style::Rgba8;
 
 pub(super) fn mix(hash: &mut u64, byte: u8) {
@@ -22,13 +22,6 @@ fn mix_tagged(hash: &mut u64, tag: u8, values: &[f32]) {
     mix(hash, tag);
     for value in values {
         mix_f32(hash, *value);
-    }
-}
-
-fn mix_stops(hash: &mut u64, stops: &[GradientStop]) {
-    for stop in stops {
-        mix_f32(hash, stop.offset);
-        mix_rgba(hash, stop.color);
     }
 }
 
@@ -61,19 +54,7 @@ pub(super) fn mix_fill(hash: &mut u64, fill: Option<&PathPaint>) {
             mix(hash, 1);
             mix_rgba(hash, *color);
         }
-        Some(PathPaint::Linear(linear)) => {
-            let (start, end) = (linear.start, linear.end);
-            mix_tagged(hash, 2, &[start.x, start.y, end.x, end.y]);
-            mix_stops(hash, &linear.stops);
-        }
-        Some(PathPaint::Radial {
-            center,
-            radius,
-            stops,
-        }) => {
-            mix_tagged(hash, 3, &[center.x, center.y, *radius]);
-            mix_stops(hash, stops);
-        }
+        Some(PathPaint::Gradient(gradient)) => *hash = gradient.key(crate::fnv::mix(*hash, 2)),
         None => mix(hash, 0),
     }
 }

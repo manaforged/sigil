@@ -59,6 +59,7 @@ fn scene(cards: Cards) -> CommandScene {
             clip_radii: CornerRadii::ZERO,
             effect: effect(cards, rect),
             opacity: 1.0,
+            blend: sigil::scene::BlendMode::Normal,
         };
         scene.with_composite_layer(scope, |scene| scene.draw_rect(DrawRect::new(rect, INK)));
     }

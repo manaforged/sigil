@@ -3,6 +3,7 @@ use crate::layout::{AlignItems, Display, FlexDirection, FlexWrap, JustifyContent
 use crate::style::atom::{
     height_px, max_height_px, max_width_px, min_height_px, min_width_px, width_px,
 };
+use crate::scene::BlendMode;
 use crate::style::atom::{BorderStyle, GradientShape, PaintAtom};
 use crate::style::{
     ColorAtom, Conic, Elevation, FontFamily, GradientAxis, Radial, StyleAtom, TextDecoration,
@@ -93,6 +94,22 @@ static KEYWORDS: phf::Map<&'static str, StyleAtom> = phf::phf_map! {
     "border-solid" => paint(PaintAtom::Border(BorderStyle::Solid)),
     "border-dashed" => paint(PaintAtom::Border(BorderStyle::Dashed)),
     "border-dotted" => paint(PaintAtom::Border(BorderStyle::Dotted)),
+    "mix-blend-normal" => StyleAtom::MixBlend(BlendMode::Normal),
+    "mix-blend-multiply" => StyleAtom::MixBlend(BlendMode::Multiply),
+    "mix-blend-screen" => StyleAtom::MixBlend(BlendMode::Screen),
+    "mix-blend-overlay" => StyleAtom::MixBlend(BlendMode::Overlay),
+    "mix-blend-darken" => StyleAtom::MixBlend(BlendMode::Darken),
+    "mix-blend-lighten" => StyleAtom::MixBlend(BlendMode::Lighten),
+    "mix-blend-color-dodge" => StyleAtom::MixBlend(BlendMode::ColorDodge),
+    "mix-blend-color-burn" => StyleAtom::MixBlend(BlendMode::ColorBurn),
+    "mix-blend-hard-light" => StyleAtom::MixBlend(BlendMode::HardLight),
+    "mix-blend-soft-light" => StyleAtom::MixBlend(BlendMode::SoftLight),
+    "mix-blend-difference" => StyleAtom::MixBlend(BlendMode::Difference),
+    "mix-blend-exclusion" => StyleAtom::MixBlend(BlendMode::Exclusion),
+    "mix-blend-hue" => StyleAtom::MixBlend(BlendMode::Hue),
+    "mix-blend-saturation" => StyleAtom::MixBlend(BlendMode::Saturation),
+    "mix-blend-color" => StyleAtom::MixBlend(BlendMode::Color),
+    "mix-blend-luminosity" => StyleAtom::MixBlend(BlendMode::Luminosity),
 };
 
 const fn paint(atom: PaintAtom) -> StyleAtom {
@@ -153,6 +170,9 @@ pub(super) fn parse_table_token(token: &str) -> Option<StyleAtom> {
         }
     }
     if let Some(atom) = super::paint::parse_paint_token(token) {
+        return Some(atom);
+    }
+    if let Some(atom) = super::filter::parse_filter_token(token) {
         return Some(atom);
     }
     COLOR_PREFIXES

@@ -27,6 +27,7 @@ struct SpanKey {
     text_color: Option<Rgba8>,
     text_style: Rc<TextStyle>,
     clip: Option<[u32; 4]>,
+    fill: u64,
 }
 
 impl SpanKey {
@@ -36,6 +37,7 @@ impl SpanKey {
             text_color: inherited.text_color,
             text_style: Rc::clone(&inherited.text_style),
             clip: clip.map(rect_bits),
+            fill: fill_key(inherited),
         }
     }
 
@@ -43,9 +45,14 @@ impl SpanKey {
         self.theme == inherited.theme_stamp ^ emit_cache::theme_epoch().rotate_left(37)
             && self.text_color == inherited.text_color
             && self.clip == clip.map(rect_bits)
+            && self.fill == fill_key(inherited)
             && (Rc::ptr_eq(&self.text_style, &inherited.text_style)
                 || *self.text_style == *inherited.text_style)
     }
+}
+
+fn fill_key(inherited: &Inherited<'_>) -> u64 {
+    inherited.text_fill.as_ref().map_or(0, |fill| fill.key)
 }
 
 pub(super) const fn rect_bits(rect: Rect) -> [u32; 4] {

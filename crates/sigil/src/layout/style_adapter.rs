@@ -101,6 +101,11 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
         | StyleAtom::Paint(_)
         | StyleAtom::ClipPath(_)
         | StyleAtom::Space(_)
+        | StyleAtom::Mask(_)
+        | StyleAtom::MixBlend(_)
+        | StyleAtom::Filter(_)
+        | StyleAtom::DropShadowColor(_)
+        | StyleAtom::TextShadowColor(_)
         | StyleAtom::BgToneStep(_)
         | StyleAtom::FgToneStep(_)
         | StyleAtom::FgOnSolid => {}

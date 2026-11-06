@@ -8,11 +8,12 @@
 use std::f32::consts::SQRT_2;
 
 use crate::geometry::{Point, Rect};
-use crate::kernel::{NodeId, ObjectFit};
+use crate::kernel::{Node, NodeId, ObjectFit};
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::fills::TRANSPARENT;
 use crate::scene::command::{DrawImage, Gradient, GradientKind, GradientStop};
 use crate::style::atom::{GradientShape, PaintStyle};
+use crate::style::image_paint::lookup;
 use crate::style::{
     BgGradient, Conic, GradientAxis, Radial, RadialExtent, RenderStyle, StyleEngine, Theme,
 };
@@ -85,7 +86,7 @@ fn center_of(rect: Rect, [x, y]: [u8; 2]) -> Point {
     )
 }
 
-fn radial(rect: Rect, radial: Radial) -> GradientKind {
+pub(super) fn radial(rect: Rect, radial: Radial) -> GradientKind {
     let center = center_of(rect, radial.at);
     let dx = [center.x - rect.origin.x, rect.origin.x + rect.width - center.x];
     let dy = [center.y - rect.origin.y, rect.origin.y + rect.height - center.y];
@@ -104,19 +105,16 @@ fn radial(rect: Rect, radial: Radial) -> GradientKind {
     GradientKind::Radial { center, radius }
 }
 
-fn conic(rect: Rect, conic: Conic) -> GradientKind {
+pub(super) fn conic(rect: Rect, conic: Conic) -> GradientKind {
     GradientKind::Conic {
         center: center_of(rect, conic.at),
         angle: f32::from(conic.from),
     }
 }
 
-pub(super) fn push_image(scene: &mut SceneBuilder, id: NodeId, rect: Rect, style: &RenderStyle) {
-    let Some(source) = style
-        .paint
-        .image
-        .and_then(crate::style::image_paint::lookup)
-    else {
+pub(super) fn push_image(scene: &mut SceneBuilder, node: (NodeId, &Node), rect: Rect, style: &RenderStyle) {
+    let (id, node) = node;
+    let Some(source) = style.paint.image.and_then(|image| lookup(node, image)) else {
         return;
     };
     let (width, height) = (source.width() as f32, source.height() as f32);

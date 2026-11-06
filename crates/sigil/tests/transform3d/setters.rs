@@ -70,3 +70,42 @@ fn a_turned_card_hits_inside_its_projected_quad_and_reports_its_bounds() {
         assert!((got - want).abs() <= 1.0, "a11y bounds {found:?} match the quad bounds {:?}", [x0, y0, x1, y1]);
     }
 }
+
+fn near_button() -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::block().fixed_size(300.0, 300.0).padding_x(50.0).padding_y(100.0))
+        .bg(Rgba8 { r: 255, g: 255, b: 255, a: 255 })
+        .perspective(80.0)
+        .child(
+            button("near")
+                .layout(LayoutStyle::block().fixed_size(200.0, 100.0))
+                .bg(Rgba8 { r: 255, g: 0, b: 0, a: 255 })
+                .rotate_y(60.0),
+        )
+}
+
+fn ink_box(frame: &image::RgbaImage) -> [f32; 4] {
+    let mut found = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+    for (x, y, pixel) in frame.enumerate_pixels() {
+        if pixel.0[1] < 128 {
+            let (x, y) = (x as f32, y as f32);
+            found = [found[0].min(x), found[1].min(y), found[2].max(x + 1.0), found[3].max(y + 1.0)];
+        }
+    }
+    found
+}
+
+#[test]
+fn a_card_with_an_edge_behind_the_viewer_reports_the_bounds_it_draws() {
+    let mut ui = Harness::new(near_button).pixels(300, 300);
+    let drawn = ink_box(&frame_of(&mut ui));
+    let bounds = ui.get_by_role(Role::Button, "near").bounds().expect("a11y bounds");
+    let found = [bounds.origin.x, bounds.origin.y, bounds.origin.x + bounds.width, bounds.origin.y + bounds.height];
+    println!("a11y bounds {found:?}, drawn ink {drawn:?}");
+    assert!(found.iter().all(|value| value.is_finite()), "finite a11y bounds {found:?}");
+    assert!(drawn[0] < drawn[2], "the near card draws ink");
+    for (got, want) in found.iter().zip(drawn) {
+        let got = got.clamp(0.0, 300.0);
+        assert!((got - want).abs() <= 3.0, "a11y bounds {found:?} in the view match the drawn ink {drawn:?}");
+    }
+}
