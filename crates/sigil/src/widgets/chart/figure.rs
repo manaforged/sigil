@@ -4,14 +4,15 @@ use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_label};
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
 
+use super::scales::Scales;
 use super::{ChartMark, ChartSeries, ChartView, Stack, interact, plot, summary};
 
-#[derive(Clone, Copy)]
 pub(super) struct Look {
     pub(super) mark: ChartMark,
     pub(super) stack: Stack,
     pub(super) frame: plot::PlotFrame,
     pub(super) theme: ActiveTheme,
+    pub(super) scales: Scales,
 }
 
 pub(super) fn frame(frame: plot::PlotFrame) -> NodeBuilder {
@@ -38,7 +39,7 @@ pub(super) fn content(
     series: &[ChartSeries],
     labels: &[String],
     positions: Option<&[f32]>,
-    look: Look,
+    look: &Look,
     interact: &interact::Interact,
 ) -> Vec<NodeBuilder> {
     let stride = look.mark.stride();
@@ -77,6 +78,7 @@ pub(super) fn content(
             count: window.len(),
             total,
             frame: look.frame,
+            scales: &look.scales,
         },
         interact,
     )

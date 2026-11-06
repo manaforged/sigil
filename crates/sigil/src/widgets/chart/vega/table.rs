@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use super::Row;
-use super::spec::{Aggregate, Channel, Kind};
+use super::channel::{Aggregate, Channel, Kind, key_text};
+use super::order::{self, Facts};
 use super::time::epoch_ms;
 
 const MAX_CATEGORIES: usize = 500;
@@ -11,7 +12,9 @@ const MAX_SERIES: usize = 10;
 
 pub(super) struct Table {
     pub(super) labels: Vec<String>,
+    pub(super) label_slots: Vec<usize>,
     pub(super) series: Vec<(String, Vec<f32>)>,
+    pub(super) slots: Vec<usize>,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -23,32 +26,61 @@ struct Cell {
 #[derive(Default)]
 struct Keys {
     names: Vec<String>,
+    nulls: Vec<bool>,
+    counts: Vec<u32>,
     index: HashMap<String, usize>,
 }
 
 impl Keys {
-    fn slot(&mut self, name: String, limit: usize) -> Option<usize> {
-        if let Some(at) = self.index.get(&name) {
-            return Some(*at);
+    fn slot(&mut self, key: (String, bool), limit: usize) -> Option<usize> {
+        let (name, null) = key;
+        if let Some(at) = self.index.get(&name).copied() {
+            if let Some(count) = self.counts.get_mut(at) {
+                *count += 1;
+            }
+            return Some(at);
         }
         if self.names.len() >= limit {
             return None;
         }
         self.index.insert(name.clone(), self.names.len());
         self.names.push(name);
+        self.nulls.push(null);
+        self.counts.push(1);
         Some(self.names.len() - 1)
+    }
+
+    fn rank(&self, channel: Option<&Channel>, totals: &[f64], reorder: bool) -> (Vec<usize>, Vec<usize>) {
+        let Some(channel) = channel else {
+            return ((0..self.names.len()).collect(), (0..self.names.len()).collect());
+        };
+        if matches!(channel.kind, Kind::Quantitative | Kind::Temporal) {
+            let order = by_place(&self.names, channel.kind);
+            let slots = (0..order.len()).collect();
+            return (order, slots);
+        }
+        let facts = Facts {
+            names: &self.names,
+            nulls: &self.nulls,
+            counts: &self.counts,
+            totals,
+        };
+        let ranked = order::rank(&facts, &channel.sort, channel.name);
+        order::domain(ranked, &self.names, &channel.scale.domain, reorder)
     }
 }
 
-fn key(row: &Row, channel: Option<&Channel>) -> Option<String> {
-    let Some(field) = channel.and_then(|channel| channel.field.as_deref()) else {
-        return Some(String::new());
+fn key(row: &Row, channel: Option<&Channel>) -> Option<(String, bool)> {
+    let Some(channel) = channel else {
+        return Some((String::new(), false));
     };
-    match row.get(field)? {
-        Value::String(text) => Some(text.clone()),
-        Value::Number(number) => Some(number.to_string()),
-        Value::Bool(flag) => Some(flag.to_string()),
-        _ => None,
+    let value = row.get(channel.field.as_deref()?)?;
+    let continuous = matches!(channel.kind, Kind::Quantitative | Kind::Temporal);
+    match value {
+        Value::Null if continuous => None,
+        Value::Null => Some(("null".to_owned(), true)),
+        Value::Array(_) | Value::Object(_) => None,
+        _ => Some((key_text(value)?, false)),
     }
 }
 
@@ -100,54 +132,79 @@ impl Cell {
     }
 }
 
-pub(super) fn pivot(
-    rows: &[Row],
-    category: &Channel,
-    value: &Channel,
-    color: Option<&Channel>,
-) -> Option<Table> {
+pub(super) struct Pivot<'a> {
+    pub(super) category: &'a Channel,
+    pub(super) value: &'a Channel,
+    pub(super) color: Option<&'a Channel>,
+    pub(super) keep_nulls: bool,
+}
+
+type Cells = HashMap<(usize, usize), Cell>;
+
+fn gather(rows: &[Row], pivot: &Pivot<'_>) -> Option<(Keys, Keys, Cells)> {
     let (mut labels, mut groups) = (Keys::default(), Keys::default());
-    let mut cells: HashMap<(usize, usize), Cell> = HashMap::new();
+    let mut cells = Cells::new();
     for row in rows {
-        let (Some(label), Some(group)) = (key(row, Some(category)), key(row, color)) else {
+        let (Some(label), Some(group)) = (key(row, Some(pivot.category)), key(row, pivot.color))
+        else {
             continue;
         };
-        let Some(amount) = measure(row, value)? else {
+        let amount = measure(row, pivot.value)?;
+        if amount.is_none() && !pivot.keep_nulls {
             continue;
-        };
+        }
         let at = (
             groups.slot(group, MAX_SERIES)?,
             labels.slot(label, MAX_CATEGORIES)?,
         );
-        let cell = cells.entry(at).or_default();
-        cell.sum += f64::from(amount);
-        cell.count += 1;
+        if let Some(amount) = amount {
+            let cell = cells.entry(at).or_default();
+            cell.sum += f64::from(amount);
+            cell.count += 1;
+        }
     }
-    let order = order(&labels.names, category.kind)?;
-    let series = groups
-        .names
-        .into_iter()
-        .enumerate()
-        .map(|(group, name)| {
-            let values = order
+    Some((labels, groups, cells))
+}
+
+pub(super) fn pivot(rows: &[Row], pivot: &Pivot<'_>) -> Option<Table> {
+    let (labels, groups, cells) = gather(rows, pivot)?;
+    let aggregate = pivot.value.aggregate;
+    let mut totals = vec![0.0_f64; labels.names.len()];
+    for ((_, label), cell) in &cells {
+        if let (Some(total), Some(value)) = (totals.get_mut(*label), cell.value(aggregate)) {
+            *total += f64::from(value);
+        }
+    }
+    let reorder = pivot.category.name != "color";
+    let (label_order, label_slots) = labels.rank(Some(pivot.category), &totals, reorder);
+    let (group_order, slots) = groups.rank(pivot.color, &[], true);
+    let series = group_order
+        .iter()
+        .map(|group| {
+            let values = label_order
                 .iter()
                 .map(|label| {
                     cells
-                        .get(&(group, *label))
-                        .map_or(Some(f32::NAN), |cell| cell.value(value.aggregate))
+                        .get(&(*group, *label))
+                        .map_or(Some(f32::NAN), |cell| cell.value(aggregate))
                 })
                 .collect::<Option<Vec<_>>>()?;
-            Some((name, values))
+            Some((groups.names.get(*group)?.clone(), values))
         })
         .collect::<Option<Vec<_>>>()?;
-    let labels = order
+    let labels = label_order
         .iter()
         .filter_map(|at| labels.names.get(*at).cloned())
         .collect();
-    (!series.is_empty()).then_some(Table { labels, series })
+    (!series.is_empty()).then_some(Table {
+        labels,
+        label_slots,
+        series,
+        slots,
+    })
 }
 
-fn place(name: &str, kind: Kind) -> Option<f64> {
+pub(super) fn place(name: &str, kind: Kind) -> Option<f64> {
     match kind {
         Kind::Quantitative => name.parse::<f64>().ok().filter(|value| value.is_finite()),
         Kind::Temporal => epoch_ms(name),
@@ -155,37 +212,20 @@ fn place(name: &str, kind: Kind) -> Option<f64> {
     }
 }
 
-fn order(names: &[String], kind: Kind) -> Option<Vec<usize>> {
+fn by_place(names: &[String], kind: Kind) -> Vec<usize> {
     let mut order = (0..names.len()).collect::<Vec<_>>();
-    let at = match kind {
-        Kind::Nominal | Kind::Ordinal => return Some(order),
-        Kind::Quantitative => names
-            .iter()
-            .map(|name| place(name, kind).unwrap_or(f64::NAN))
-            .collect::<Vec<_>>(),
-        Kind::Temporal => names
-            .iter()
-            .map(|name| place(name, kind))
-            .collect::<Option<Vec<_>>>()?,
-    };
+    let at = names
+        .iter()
+        .map(|name| place(name, kind).unwrap_or(f64::NAN))
+        .collect::<Vec<_>>();
     let key = |index: &usize| at.get(*index).copied().unwrap_or(f64::NAN);
     order.sort_by(|a, b| key(a).total_cmp(&key(b)));
-    Some(order)
+    order
 }
 
 impl Table {
-    #[allow(
-        clippy::cast_possible_truncation,
-        reason = "chart positions render at f32 precision"
-    )]
-    pub(super) fn positions(&self) -> Option<Vec<f32>> {
-        self.labels
-            .iter()
-            .map(|name| {
-                let value = place(name, Kind::Quantitative)? as f32;
-                value.is_finite().then_some(value)
-            })
-            .collect()
+    pub(super) fn positions(&self, kind: Kind) -> Option<Vec<f64>> {
+        self.labels.iter().map(|name| place(name, kind)).collect()
     }
 
     pub(super) fn fill_missing(&mut self, gap: f32) {
@@ -204,7 +244,7 @@ pub(super) fn points(
     x: &Channel,
     y: &Channel,
     color: Option<&Channel>,
-) -> Option<Points> {
+) -> Option<(Points, Vec<usize>)> {
     let mut groups = Keys::default();
     let mut series: Points = Vec::new();
     for row in rows {
@@ -214,11 +254,18 @@ pub(super) fn points(
         let (Some(px), Some(py)) = (measure(row, x)?, measure(row, y)?) else {
             continue;
         };
-        let at = groups.slot(group.clone(), MAX_SERIES)?;
+        let name = group.0.clone();
+        let at = groups.slot(group, MAX_SERIES)?;
         if at == series.len() {
-            series.push((group, Vec::new()));
+            series.push((name, Vec::new()));
         }
         series.get_mut(at)?.1.push((px, py));
     }
-    (!series.is_empty()).then_some(series)
+    let (order, slots) = groups.rank(color, &[], true);
+    let mut taken = series.into_iter().map(Some).collect::<Vec<_>>();
+    let sorted = order
+        .iter()
+        .filter_map(|at| taken.get_mut(*at).and_then(Option::take))
+        .collect::<Points>();
+    (!sorted.is_empty()).then_some((sorted, slots))
 }

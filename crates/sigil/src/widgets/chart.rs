@@ -12,17 +12,21 @@ use palette::Hue;
 
 mod axis;
 mod bars;
+mod clock;
 mod decimate;
 mod figure;
 mod interact;
+mod layers;
 mod marks;
 mod palette;
 mod pie;
 mod plot;
 mod readout;
+mod scales;
 mod scatter;
 mod span;
 mod summary;
+mod ticks;
 mod tips;
 mod vega;
 
@@ -94,6 +98,7 @@ pub struct ChartBuilder {
     tooltip: bool,
     whole: bool,
     positions: Option<Rc<[f32]>>,
+    scales: scales::Scales,
     layout_overrides: LayoutOverrides,
     style_accumulator: Style,
 }
@@ -125,6 +130,7 @@ impl ChartBuilder {
             tooltip: false,
             whole: false,
             positions: None,
+            scales: scales::Scales::default(),
             layout_overrides: LayoutOverrides::new(),
             style_accumulator: Style::new(),
         }
@@ -210,6 +216,13 @@ impl ChartBuilder {
         self.mark(ChartMark::Bar)
     }
 
+    /// Lays the bars along rows, with values on the x axis.
+    #[must_use]
+    pub fn horizontal(mut self) -> Self {
+        self.scales.orient = scales::Orient::Horizontal;
+        self.mark(ChartMark::Bar)
+    }
+
     /// Applies the line option.
     #[must_use]
     pub const fn line(self) -> Self {
@@ -261,6 +274,23 @@ impl ChartBuilder {
         self.push(name.into(), Rc::new(values), Hue::of(tone))
     }
 
+    fn titles(&self) -> u8 {
+        u8::from(self.scales.x_title.is_some()) + u8::from(self.scales.y_title.is_some())
+    }
+
+    fn natural_height(&self) -> f32 {
+        let Some(plot) = self.scales.plot_height else {
+            return DEFAULT_HEIGHT;
+        };
+        let legend = self.series.len() > 1 || self.series.iter().any(|item| !item.name.is_empty());
+        let chrome = if matches!(self.mark, ChartMark::Pie | ChartMark::Donut) {
+            0.0
+        } else {
+            plot::PlotFrame::chrome(self.titles(), legend)
+        };
+        plot + chrome
+    }
+
     fn frame(&mut self) -> plot::PlotFrame {
         let width = self
             .layout_overrides
@@ -269,7 +299,8 @@ impl ChartBuilder {
         let height = self
             .layout_overrides
             .height_hint()
-            .map_or(DEFAULT_HEIGHT, |px| px.max(MIN_HEIGHT));
+            .unwrap_or_else(|| self.natural_height())
+            .max(MIN_HEIGHT);
         if let Some(px) = width {
             self.layout_overrides.edit(LayoutEdit::Width(px));
         }
@@ -278,6 +309,7 @@ impl ChartBuilder {
             width,
             height,
             whole: self.whole,
+            titles: self.titles(),
         }
     }
 
@@ -288,6 +320,7 @@ impl ChartBuilder {
             stack: self.stack,
             frame: self.frame(),
             theme,
+            scales: std::mem::take(&mut self.scales),
         };
         let sources = std::mem::take(&mut self.series);
         let series = derived(move || {
@@ -315,7 +348,7 @@ impl ChartBuilder {
         }
         root.children_reactive(move || {
             series.with(|series| {
-                figure::content(series, &labels, positions.as_deref(), look, &interact)
+                figure::content(series, &labels, positions.as_deref(), &look, &interact)
             })
         })
     }

@@ -28,6 +28,7 @@ pub(super) struct Slices<'a> {
     pub(super) labels: &'a [String],
     pub(super) side: f32,
     pub(super) donut: bool,
+    pub(super) hues: Option<&'a [Hue]>,
 }
 
 impl Slices<'_> {
@@ -43,6 +44,12 @@ impl Slices<'_> {
                 .map(|value| (weight(*value) / total) as f32)
                 .collect()
         })
+    }
+
+    fn hue(&self, index: usize) -> Hue {
+        self.hues
+            .and_then(|hues| hues.get(index).copied())
+            .unwrap_or_else(|| Hue::nth(index))
     }
 
     fn label(&self, index: usize) -> String {
@@ -84,7 +91,7 @@ pub(super) fn draw(slices: &Slices<'_>, interact: &Interact) -> Vec<NodeBuilder>
     );
     let mut start = 0.0;
     for (index, end) in ends.iter().enumerate() {
-        picture = picture.child(wedge(start, *end, hole, Hue::nth(index)));
+        picture = picture.child(wedge(start, *end, hole, slices.hue(index)));
         start = *end;
     }
     let lines = tip_lines(slices);
@@ -154,7 +161,7 @@ fn wedge(start: f32, end: f32, hole: f32, hue: Hue) -> PathNode {
     };
     shape
         .close()
-        .fill(hue.token())
+        .fill(hue.paint())
         .stroke(Token::Surface, EDGE)
         .non_scaling_stroke()
         .layout(layer_layout())
@@ -176,7 +183,7 @@ fn legend(slices: &Slices<'_>, shares: &[f32]) -> NodeBuilder {
             column.child(legend_row(
                 &slices.label(index),
                 &format!("{} · {:.0}%", format_tick(value), share * PERCENT),
-                Hue::nth(index),
+                slices.hue(index),
             ))
         })
 }
@@ -191,7 +198,7 @@ fn legend_row(name: &str, value: &str, hue: Hue) -> NodeBuilder {
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(SWATCH, SWATCH).shrink(0.0))
-                .class([Radius::Sm.atom(), hue.token().bg()]),
+                .class([Radius::Sm.atom(), hue.bg()]),
         )
         .child(
             text(name.to_owned())

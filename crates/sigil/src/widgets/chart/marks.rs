@@ -1,8 +1,8 @@
 use crate::layout::{LayoutStyle, Position};
-use crate::style::{Token, Tone};
+use crate::style::Tone;
 use crate::widgets::Widget;
 
-use super::super::vector::{PathNode, path};
+use super::super::vector::{PathColor, PathNode, path};
 use super::decimate::{self, Candle};
 use super::span::ValueSpan;
 
@@ -10,7 +10,7 @@ pub(super) const VIEW_W: u32 = 400;
 pub(super) const VIEW_H: u32 = 200;
 pub(super) const VIEW_W_F: f32 = 400.0;
 pub(super) const VIEW_H_F: f32 = 200.0;
-pub(super) const INSET: f32 = 4.0;
+pub(super) const INSET: f32 = 0.0;
 const LINE_STROKE: f32 = 2.0;
 const WICK_STROKE: f32 = 1.0;
 const BODY_SHARE: f32 = 0.6;
@@ -27,7 +27,7 @@ pub(super) fn layer_layout() -> LayoutStyle {
 }
 
 pub(super) fn y_of(span: ValueSpan, value: f32) -> f32 {
-    (1.0 - span.fraction(value)).mul_add(2.0f32.mul_add(-INSET, VIEW_H_F), INSET)
+    (1.0 - span.share(value)).mul_add(2.0f32.mul_add(-INSET, VIEW_H_F), INSET)
 }
 
 #[allow(
@@ -48,7 +48,7 @@ impl Placed<'_> {
     pub(super) fn fraction(self, index: usize) -> f32 {
         self.at
             .get(index)
-            .map_or(f32::NAN, |value| self.span.fraction(*value))
+            .map_or(f32::NAN, |value| self.span.share(*value))
     }
 }
 
@@ -82,8 +82,9 @@ impl Trace<'_> {
 
 pub(super) fn stack_tops(series: &[&[f32]]) -> Vec<Vec<f32>> {
     let mut running: Vec<f32> = Vec::new();
-    series
+    let mut tops = series
         .iter()
+        .rev()
         .map(|values| {
             if running.len() < values.len() {
                 running.resize(values.len(), 0.0);
@@ -95,10 +96,12 @@ pub(super) fn stack_tops(series: &[&[f32]]) -> Vec<Vec<f32>> {
             }
             running.get(..values.len()).unwrap_or_default().to_vec()
         })
-        .collect()
+        .collect::<Vec<_>>();
+    tops.reverse();
+    tops
 }
 
-pub(super) fn line(trace: &Trace<'_>, color: Token) -> PathNode {
+pub(super) fn line(trace: &Trace<'_>, color: PathColor) -> PathNode {
     let mut stroke = path(VIEW_W, VIEW_H);
     let mut pen_down = false;
     for (x, value) in trace.points() {
@@ -120,25 +123,24 @@ pub(super) fn line(trace: &Trace<'_>, color: Token) -> PathNode {
         .layout(layer_layout())
 }
 
-pub(super) fn area(trace: &Trace<'_>, color: Token) -> PathNode {
-    let points = trace
-        .points()
-        .into_iter()
-        .filter(|(_, value)| value.is_finite())
-        .collect::<Vec<_>>();
-    let (Some(first), Some(last)) = (points.first(), points.last()) else {
-        return path(VIEW_W, VIEW_H).layout(layer_layout());
-    };
+pub(super) fn area(trace: &Trace<'_>, color: PathColor) -> PathNode {
     let base = y_of(trace.span, 0.0_f32.clamp(trace.span.lo, trace.span.hi));
-    let shape = points.iter().fold(
-        path(VIEW_W, VIEW_H).move_to(first.0, base),
-        |shape, (x, value)| shape.line_to(*x, y_of(trace.span, *value)),
-    );
-    shape
-        .line_to(last.0, base)
-        .close()
-        .fill(color)
-        .layout(layer_layout())
+    let points = trace.points();
+    let runs = points
+        .split(|(_, value)| !value.is_finite())
+        .filter(|run| !run.is_empty());
+    let shape = runs.fold(path(VIEW_W, VIEW_H), |shape, run| {
+        let (Some(first), Some(last)) = (run.first(), run.last()) else {
+            return shape;
+        };
+        run.iter()
+            .fold(shape.move_to(first.0, base), |shape, (x, value)| {
+                shape.line_to(*x, y_of(trace.span, *value))
+            })
+            .line_to(last.0, base)
+            .close()
+    });
+    shape.fill(color).layout(layer_layout())
 }
 
 #[allow(

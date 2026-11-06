@@ -1,12 +1,15 @@
-use crate::style::{Token, Tone};
+use crate::style::{ColorAtom, Rgba8, StyleAtom, Token, Tone};
+use super::super::vector::PathColor;
 
 const FILL: u8 = 9;
 const SOFT_DROP: u8 = 5;
+const SOFT_ALPHA: u8 = 0x70;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Hue {
     pub(super) tone: Tone,
     step: u8,
+    rgb: Option<Rgba8>,
 }
 
 const PALETTE: [Hue; 10] = [
@@ -24,7 +27,19 @@ const PALETTE: [Hue; 10] = [
 
 impl Hue {
     const fn new(tone: Tone, step: u8) -> Self {
-        Self { tone, step }
+        Self {
+            tone,
+            step,
+            rgb: None,
+        }
+    }
+
+    pub(super) const fn rgb(color: Rgba8) -> Self {
+        Self {
+            tone: Tone::Primary,
+            step: FILL,
+            rgb: Some(color),
+        }
     }
 
     pub(super) const fn of(tone: Tone) -> Self {
@@ -42,8 +57,26 @@ impl Hue {
         self.tone.token(self.step)
     }
 
-    pub(super) fn soft(self) -> Token {
-        self.tone.token(self.step.saturating_sub(SOFT_DROP).max(2))
+    pub(super) fn color(self) -> ColorAtom {
+        self.rgb.map_or(ColorAtom::Token(self.token()), ColorAtom::Rgba8)
+    }
+
+    pub(super) fn paint(self) -> PathColor {
+        self.rgb.map_or(PathColor::Token(self.token()), PathColor::Rgba)
+    }
+
+    pub(super) fn bg(self) -> StyleAtom {
+        match self.rgb {
+            Some(color) => StyleAtom::BackgroundColor(ColorAtom::Rgba8(color)),
+            None => self.tone.token(self.step).bg(),
+        }
+    }
+
+    pub(super) fn soft(self) -> PathColor {
+        self.rgb.map_or_else(
+            || PathColor::Token(self.tone.token(self.step.saturating_sub(SOFT_DROP).max(2))),
+            |color| PathColor::Rgba(Rgba8 { a: SOFT_ALPHA, ..color }),
+        )
     }
 }
 

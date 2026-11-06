@@ -1,6 +1,7 @@
 use crate::widgets::Date;
 
-const DAY_MS: f64 = 86_400_000.0;
+use super::super::clock::{DAY_MS, days};
+
 const HOUR_MS: f64 = 3_600_000.0;
 const MINUTE_MS: f64 = 60_000.0;
 const SECOND_MS: f64 = 1_000.0;
@@ -33,15 +34,7 @@ pub(super) fn epoch_ms(text: &str) -> Option<f64> {
     reason = "a day count from a calendar year is far below f64 precision"
 )]
 fn day_ms(date: Date) -> f64 {
-    let year = i64::from(date.year) - i64::from(date.month <= 2);
-    let era = year.div_euclid(400);
-    let of_era = year.rem_euclid(400);
-    let month = i64::from(date.month);
-    let of_year =
-        (153 * (month + if month > 2 { -3 } else { 9 }) + 2) / 5 + i64::from(date.day) - 1;
-    let of_cycle = of_era * 365 + of_era / 4 - of_era / 100 + of_year;
-    let days = (era * 146_097 + of_cycle - 719_468) as f64;
-    days * DAY_MS
+    days(date) as f64 * DAY_MS
 }
 
 fn iso(text: &str) -> Option<f64> {

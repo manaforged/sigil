@@ -1,6 +1,8 @@
 use serde_json::Value;
 
+use super::super::scales::Dot;
 use super::Row;
+use super::channel::Channel;
 
 const MAX_ROWS: usize = 5_000;
 const TOP_KEYS: [&str; 12] = [
@@ -18,7 +20,6 @@ const TOP_KEYS: [&str; 12] = [
     "background",
 ];
 const CHANNELS: [&str; 6] = ["x", "y", "color", "theta", "tooltip", "xOffset"];
-const REJECTED: [&str; 6] = ["bin", "timeUnit", "value", "datum", "condition", "impute"];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Mark {
@@ -29,87 +30,60 @@ pub(super) enum Mark {
     Arc,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum Kind {
-    Quantitative,
-    Nominal,
-    Ordinal,
-    Temporal,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum Aggregate {
-    Sum,
-    Mean,
-    Count,
-}
-
-#[derive(Clone, Debug)]
-pub(super) struct Channel {
-    pub(super) field: Option<String>,
-    pub(super) kind: Kind,
-    pub(super) aggregate: Option<Aggregate>,
-    pub(super) stacked: bool,
-}
-
 pub(super) struct Spec {
     pub(super) mark: Mark,
     pub(super) donut: bool,
+    pub(super) dot: Dot,
     pub(super) rows: Vec<Row>,
     pub(super) x: Option<Channel>,
     pub(super) y: Option<Channel>,
     pub(super) color: Option<Channel>,
     pub(super) theta: Option<Channel>,
     pub(super) offset: bool,
+    pub(super) zero: Option<bool>,
     pub(super) title: Option<String>,
     pub(super) width: Option<f32>,
     pub(super) height: Option<f32>,
 }
 
-impl Mark {
-    fn parse(value: &Value) -> Option<(Self, bool)> {
-        let (name, donut) = match value {
-            Value::String(name) => (name.as_str(), false),
-            Value::Object(map) => (
-                map.get("type")?.as_str()?,
-                map.get("innerRadius")
-                    .and_then(Value::as_f64)
-                    .is_some_and(|radius| radius > 0.0),
-            ),
-            _ => return None,
-        };
-        let mark = match name {
-            "bar" => Self::Bar,
-            "line" => Self::Line,
-            "area" => Self::Area,
-            "point" | "circle" | "square" => Self::Point,
-            "arc" => Self::Arc,
-            _ => return None,
-        };
-        Some((mark, donut))
-    }
+struct Shape {
+    mark: Mark,
+    donut: bool,
+    dot: Dot,
 }
 
-impl Kind {
-    fn parse(name: &str) -> Option<Self> {
-        match name {
-            "quantitative" | "Q" => Some(Self::Quantitative),
-            "nominal" | "N" => Some(Self::Nominal),
-            "ordinal" | "O" => Some(Self::Ordinal),
-            "temporal" | "T" => Some(Self::Temporal),
-            _ => None,
-        }
+impl Shape {
+    fn kind(name: &str, filled: Option<bool>) -> Option<(Mark, Dot)> {
+        let hollow = |default: bool| {
+            if filled.unwrap_or(default) {
+                Dot::Disc
+            } else {
+                Dot::Ring
+            }
+        };
+        Some(match name {
+            "bar" => (Mark::Bar, Dot::Disc),
+            "line" => (Mark::Line, Dot::Disc),
+            "area" => (Mark::Area, Dot::Disc),
+            "point" => (Mark::Point, hollow(false)),
+            "circle" => (Mark::Point, hollow(true)),
+            "square" => (Mark::Point, Dot::Square),
+            "arc" => (Mark::Arc, Dot::Disc),
+            _ => return None,
+        })
     }
-}
 
-impl Aggregate {
-    fn parse(name: &str) -> Option<Self> {
-        match name {
-            "sum" => Some(Self::Sum),
-            "mean" | "average" => Some(Self::Mean),
-            "count" => Some(Self::Count),
-            _ => None,
-        }
+    fn parse(value: &Value) -> Option<Self> {
+        let (name, map) = match value {
+            Value::String(name) => (name.as_str(), None),
+            Value::Object(map) => (map.get("type")?.as_str()?, Some(map)),
+            _ => return None,
+        };
+        let number = |key: &str| map.and_then(|map| map.get(key)).and_then(Value::as_f64);
+        let filled = map.and_then(|map| map.get("filled")).and_then(Value::as_bool);
+        let (mark, dot) = Self::kind(name, filled)?;
+        let donut = number("innerRadius").is_some_and(|radius| radius > 0.0);
+        Some(Self { mark, donut, dot })
     }
 }
 
@@ -117,41 +91,11 @@ impl Aggregate {
     clippy::option_option,
     reason = "the outer None rejects the spec and the inner None means the key is absent"
 )]
-fn optional<T>(
+pub(super) fn optional<T>(
     value: Option<&Value>,
     parse: impl FnOnce(&Value) -> Option<T>,
 ) -> Option<Option<T>> {
     value.map_or(Some(None), |value| parse(value).map(Some))
-}
-
-impl Channel {
-    fn parse(value: &Value) -> Option<Self> {
-        let map = value.as_object()?;
-        if REJECTED.iter().any(|key| map.contains_key(*key)) {
-            return None;
-        }
-        let field = optional(map.get("field"), |field| field.as_str().map(str::to_owned))?;
-        let aggregate = optional(map.get("aggregate"), |name| {
-            Aggregate::parse(name.as_str()?)
-        })?;
-        let declared = optional(map.get("type"), |name| Kind::parse(name.as_str()?))?;
-        let kind = declared.unwrap_or_else(|| {
-            if aggregate.is_some() {
-                Kind::Quantitative
-            } else {
-                Kind::Nominal
-            }
-        });
-        if field.is_none() && aggregate != Some(Aggregate::Count) {
-            return None;
-        }
-        Some(Self {
-            field,
-            kind,
-            aggregate,
-            stacked: !matches!(map.get("stack"), Some(Value::Null | Value::Bool(false))),
-        })
-    }
 }
 
 fn rows(data: &Value) -> Option<Vec<Row>> {
@@ -190,27 +134,35 @@ fn size(value: Option<&Value>) -> Option<f32> {
         .map(|px| px as f32)
 }
 
+fn zero(config: Option<&Value>) -> Option<bool> {
+    config?.get("scale")?.get("zero")?.as_bool()
+}
+
 impl Spec {
     pub(super) fn parse(value: &Value) -> Option<Self> {
         let top = value.as_object()?;
         if top.keys().any(|key| !TOP_KEYS.contains(&key.as_str())) {
             return None;
         }
-        let (mark, donut) = Mark::parse(top.get("mark")?)?;
+        let shape = Shape::parse(top.get("mark")?)?;
         let encoding = top.get("encoding")?.as_object()?;
         if encoding.keys().any(|key| !CHANNELS.contains(&key.as_str())) {
             return None;
         }
-        let channel = |name: &str| optional(encoding.get(name), Channel::parse);
+        let channel = |name: &'static str| {
+            optional(encoding.get(name), |value| Channel::parse(name, value))
+        };
         Some(Self {
-            mark,
-            donut,
+            mark: shape.mark,
+            donut: shape.donut,
+            dot: shape.dot,
             rows: rows(top.get("data")?)?,
             x: channel("x")?,
             y: channel("y")?,
             color: channel("color")?,
             theta: channel("theta")?,
             offset: encoding.contains_key("xOffset"),
+            zero: zero(top.get("config")),
             title: optional(top.get("title"), title)?,
             width: size(top.get("width")),
             height: size(top.get("height")),

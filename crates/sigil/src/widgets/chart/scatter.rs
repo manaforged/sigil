@@ -1,18 +1,20 @@
 use std::rc::Rc;
 
-use crate::kernel::{NodeBuilder, container, text};
-use crate::layout::{JustifyContent, LayoutStyle};
-use crate::style::Token;
+use crate::kernel::{NodeBuilder, container};
+use crate::layout::{Dimension, LayoutStyle, Position};
+use crate::style::{Radius, StyleAtom};
 use crate::widgets::Widget;
 
-use super::super::vector::{PathNode, path};
+use super::super::vector::path;
 use super::ChartView;
-use super::axis::format_tick;
 use super::marks::{INSET, VIEW_H, VIEW_H_F, VIEW_W, VIEW_W_F, layer_layout, y_of};
+use super::scales::{Dot, Fit};
 use super::span::ValueSpan;
 
 const DOT: f32 = 7.0;
 const DOT_RUN: f32 = 0.01;
+const MARKER: f32 = 7.0;
+const RING: i16 = 2;
 
 #[derive(Clone, Copy)]
 pub(super) struct Spans {
@@ -21,16 +23,16 @@ pub(super) struct Spans {
 }
 
 impl Spans {
-    pub(super) fn of(series: &[ChartView<'_>], y: ValueSpan) -> Self {
+    pub(super) fn of(series: &[ChartView<'_>], y: ValueSpan, x: Fit) -> Self {
         Self {
-            x: ValueSpan::scatter_x(series),
+            x: ValueSpan::scatter_x(series, x),
             y,
         }
     }
 
     fn x_of(self, value: f32) -> f32 {
         self.x
-            .fraction(value)
+            .share(value)
             .mul_add(2.0f32.mul_add(-INSET, VIEW_W_F), INSET)
     }
 
@@ -48,15 +50,51 @@ pub(super) fn pairs(values: &[f32]) -> impl Iterator<Item = (f32, f32)> + '_ {
         .filter(|(x, y)| x.is_finite() && y.is_finite())
 }
 
-pub(super) fn dots(item: &ChartView<'_>, spans: Spans) -> PathNode {
+pub(super) fn dots(layer: NodeBuilder, item: &ChartView<'_>, spans: Spans, dot: Dot) -> NodeBuilder {
+    if dot != Dot::Disc {
+        return markers(layer, item, spans, dot);
+    }
     let shape = pairs(item.values).fold(path(VIEW_W, VIEW_H), |shape, (x, y)| {
         let (x, y) = spans.view(x, y);
         shape.move_to(x, y).line_to(x + DOT_RUN, y)
     });
-    shape
-        .stroke(item.hue.token(), DOT)
-        .non_scaling_stroke()
-        .layout(layer_layout())
+    layer.child(
+        shape
+            .stroke(item.hue.paint(), DOT)
+            .non_scaling_stroke()
+            .layout(layer_layout()),
+    )
+}
+
+fn markers(layer: NodeBuilder, item: &ChartView<'_>, spans: Spans, dot: Dot) -> NodeBuilder {
+    let paint = match dot {
+        Dot::Ring => [
+            Radius::Full.atom(),
+            StyleAtom::BorderWidth(RING),
+            StyleAtom::BorderColor(item.hue.color()),
+        ],
+        Dot::Square | Dot::Disc => [
+            Radius::None.atom(),
+            item.hue.bg(),
+            StyleAtom::BorderWidth(0),
+        ],
+    };
+    pairs(item.values).fold(layer, |layer, (x, y)| {
+        let (x, y) = spans.view(x, y);
+        layer.child(
+            container()
+                .layout(
+                    LayoutStyle::block()
+                        .position(Position::Absolute)
+                        .inset_left(Dimension::Percent(x / VIEW_W_F))
+                        .inset_top(Dimension::Percent(y / VIEW_H_F))
+                        .margin_left(-MARKER / 2.0)
+                        .margin_top(-MARKER / 2.0)
+                        .fixed_size(MARKER, MARKER),
+                )
+                .class(paint),
+        )
+    })
 }
 
 pub(super) fn normalized(series: &[ChartView<'_>], spans: Spans) -> Rc<[(f32, f32)]> {
@@ -68,26 +106,4 @@ pub(super) fn normalized(series: &[ChartView<'_>], spans: Spans) -> Rc<[(f32, f3
             (x / VIEW_W_F, y / VIEW_H_F)
         })
         .collect()
-}
-
-pub(super) fn x_axis(span: ValueSpan, height: f32, pad: f32) -> NodeBuilder {
-    let ticks = [span.lo, span.lo.midpoint(span.hi), span.hi];
-    ticks.into_iter().fold(
-        container().layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .height(height)
-                .shrink(0.0)
-                .padding_x(pad)
-                .justify_content(JustifyContent::SpaceBetween),
-        ),
-        |row, value| {
-            row.child(
-                text(format_tick(value))
-                    .nowrap()
-                    .class("text-xs")
-                    .class(Token::Gray11.text()),
-            )
-        },
-    )
 }

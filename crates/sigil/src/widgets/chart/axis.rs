@@ -4,67 +4,121 @@ use crate::style::{Radius, Token, space};
 use crate::widgets::Widget;
 
 use super::ChartView;
-use super::marks::Placed;
-use super::plot::{AXIS, X_AXIS};
-use super::span::ValueSpan;
+use super::plot::{AXIS, ROW, X_AXIS};
+use super::ticks::Tick;
 
 const SIGNIFICANT: f32 = 3.0;
 const MAX_DECIMALS: f32 = 12.0;
 const WHOLE_FROM: f32 = 100.0;
-
-pub(super) fn y_axis(span: ValueSpan, x_axis_on: bool, mid_tick: bool) -> NodeBuilder {
-    let mut ticks = container()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .grow(1.0)
-                .align_items(AlignItems::End)
-                .justify_content(JustifyContent::SpaceBetween),
-        )
-        .child(tick(format_tick(span.hi)));
-    if mid_tick {
-        ticks = ticks.child(tick(format_tick(span.lo.midpoint(span.hi))));
-    }
-    ticks = ticks.child(tick(format_tick(span.lo)));
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .width(AXIS)
-                .fill_height()
-                .padding_bottom(if x_axis_on { X_AXIS } else { 0.0 }),
-        )
-        .child(ticks)
-}
-
-fn tick(value: String) -> impl IntoNode + 'static {
-    text(value)
-        .nowrap()
-        .class("text-xs")
-        .class(Token::Gray11.text())
-}
+const CHAR_PX: f32 = 6.5;
+const LABEL_GAP: f32 = 6.0;
+const TICK_H: f32 = 16.0;
+const TICK_W: f32 = 120.0;
+const AXIS_PAD: f32 = 6.0;
+const MAX_AXIS: f32 = 200.0;
 
 #[allow(
     clippy::cast_precision_loss,
-    reason = "a label stride and count are small"
+    reason = "a label length is a small character count"
 )]
-pub(super) fn placed_axis(
-    labels: &[String],
-    placed: Placed<'_>,
-    stride: usize,
-    pad: f32,
-) -> NodeBuilder {
-    let stride = stride.max(1);
-    let half = 0.5 * stride as f32 / placed.at.len().max(1) as f32;
-    let layer = (0..placed.at.len()).step_by(stride).fold(
-        container().layout(LayoutStyle::block().fill()),
-        |layer, index| {
-            let name = labels
-                .get(index)
-                .cloned()
-                .unwrap_or_else(|| (index + 1).to_string());
-            layer.child(placed_label(name, placed.fraction(index), half))
-        },
+pub(super) fn text_px(label: &str) -> f32 {
+    label.chars().count() as f32 * CHAR_PX
+}
+
+pub(super) fn axis_width<'a>(labels: impl Iterator<Item = &'a str>) -> f32 {
+    labels
+        .map(|label| text_px(label) + AXIS_PAD)
+        .fold(AXIS, f32::max)
+        .min(MAX_AXIS)
+}
+
+pub(super) struct Gutter {
+    pub(super) width: f32,
+    pub(super) top: f32,
+    pub(super) bottom: f32,
+}
+
+impl Gutter {
+    fn column(&self) -> NodeBuilder {
+        container().layout(
+            LayoutStyle::flex_column()
+                .width(self.width)
+                .shrink(0.0)
+                .fill_height()
+                .padding_top(self.top)
+                .padding_bottom(self.bottom),
+        )
+    }
+}
+
+fn y_label(item: &Tick) -> NodeBuilder {
+    container()
+        .layout(
+            LayoutStyle::flex_row()
+                .position(Position::Absolute)
+                .inset_left(0.0)
+                .inset_top(Dimension::Percent(1.0 - item.at))
+                .margin_top(-TICK_H / 2.0)
+                .fill_width()
+                .height(TICK_H)
+                .justify_content(JustifyContent::End)
+                .align_items(AlignItems::Center),
+        )
+        .child(tick(item.text.clone()))
+}
+
+pub(super) fn y_axis(ticks: &[Tick], gutter: &Gutter) -> NodeBuilder {
+    let layer = container().layout(
+        LayoutStyle::block()
+            .fill_width()
+            .grow(1.0)
+            .min_size(0.0, 0.0),
     );
+    gutter
+        .column()
+        .child(ticks.iter().map(y_label).fold(layer, NodeBuilder::child))
+}
+
+pub(super) fn crowded(ticks: &[Tick], width_px: f32) -> bool {
+    let kept = ticks.iter().collect::<Vec<_>>();
+    overlaps(&kept, width_px)
+}
+
+fn overlaps(kept: &[&Tick], width_px: f32) -> bool {
+    kept.windows(2).any(|pair| {
+        let room = (pair[1].at - pair[0].at).abs() * width_px;
+        room < (text_px(&pair[0].text) + text_px(&pair[1].text)) / 2.0 + LABEL_GAP
+    })
+}
+
+fn parity(ticks: &[Tick], width_px: f32) -> Vec<&Tick> {
+    let mut kept = ticks.iter().collect::<Vec<_>>();
+    while kept.len() > 1 && overlaps(&kept, width_px) {
+        kept = kept.into_iter().step_by(2).collect();
+    }
+    kept
+}
+
+fn x_label(item: &Tick) -> NodeBuilder {
+    container()
+        .layout(
+            LayoutStyle::flex_row()
+                .position(Position::Absolute)
+                .inset_top(0.0)
+                .inset_left(Dimension::Percent(item.at))
+                .margin_left(-TICK_W / 2.0)
+                .width(TICK_W)
+                .height(TICK_H)
+                .justify_content(JustifyContent::Center),
+        )
+        .child(tick(item.text.clone()))
+}
+
+pub(super) fn x_axis(ticks: &[Tick], width_px: f32, pad: f32) -> NodeBuilder {
+    let layer = parity(ticks, width_px)
+        .into_iter()
+        .map(x_label)
+        .fold(container().layout(LayoutStyle::block().fill()), NodeBuilder::child);
     container()
         .layout(
             LayoutStyle::block()
@@ -76,43 +130,66 @@ pub(super) fn placed_axis(
         .child(layer)
 }
 
-fn placed_label(name: String, fraction: f32, half: f32) -> NodeBuilder {
-    let start = (fraction - half).clamp(0.0, 1.0);
-    let end = (fraction + half).clamp(start, 1.0);
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .position(Position::Absolute)
-                .inset_top(0.0)
-                .inset_left(0.0)
-                .fill(),
-        )
-        .child(share(start))
-        .child(
+pub(super) fn category_axis(labels: &[String], count: usize, gutter: &Gutter) -> NodeBuilder {
+    (0..count).fold(gutter.column(), |column, index| {
+        let name = labels
+            .get(index)
+            .cloned()
+            .unwrap_or_else(|| (index + 1).to_string());
+        column.child(
             container()
                 .layout(
                     LayoutStyle::flex_row()
-                        .grow(end - start)
+                        .grow(1.0)
                         .flex_basis(Dimension::Px(0.0))
                         .min_size(0.0, 0.0)
-                        .justify_content(JustifyContent::Center),
+                        .justify_content(JustifyContent::End)
+                        .align_items(AlignItems::Center),
                 )
                 .child(tick(name)),
         )
-        .child(share(1.0 - end))
+    })
 }
 
-fn share(grow: f32) -> NodeBuilder {
-    container().layout(
-        LayoutStyle::block()
-            .grow(grow)
-            .flex_basis(Dimension::Px(0.0))
-            .min_size(0.0, 0.0),
-    )
+pub(super) fn title(name: &str, lead: f32, centered: bool) -> NodeBuilder {
+    let justify = if centered {
+        JustifyContent::Center
+    } else {
+        JustifyContent::Start
+    };
+    container()
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .height(ROW)
+                .shrink(0.0)
+                .padding_left(lead)
+                .justify_content(justify),
+        )
+        .child(
+            text(name.to_owned())
+                .nowrap()
+                .class("text-xs")
+                .class("font-bold")
+                .class(Token::Gray12.text()),
+        )
+}
+
+fn tick(value: String) -> impl IntoNode + 'static {
+    text(value)
+        .nowrap()
+        .class("text-xs")
+        .class(Token::Gray11.text())
 }
 
 pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
-    let mut row = container().layout(LayoutStyle::flex_row().gap(space(3)));
+    let mut row = container().layout(
+        LayoutStyle::flex_row()
+            .height(ROW)
+            .shrink(0.0)
+            .gap(space(3))
+            .align_items(AlignItems::Center),
+    );
     for item in series.iter().filter(|item| !item.legend.is_empty()) {
         row = row.child(
             container()
@@ -124,7 +201,7 @@ pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(8.0, 8.0))
-                        .class([Radius::Sm.atom(), item.hue.token().bg()]),
+                        .class([Radius::Sm.atom(), item.hue.bg()]),
                 )
                 .child(
                     text(item.legend.clone())
