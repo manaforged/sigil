@@ -2,6 +2,7 @@ use smallvec::SmallVec;
 
 use super::{Keyframes, Property};
 use crate::animation::Easing;
+use crate::animation_runtime::binding_animate_color::mix;
 use crate::style::{ColorAtom, ColorAtomKind, NumericAtomKind, Rgba8};
 
 type Stops<V> = SmallVec<[(f32, V); 8]>;
@@ -65,28 +66,4 @@ fn segment<V: Copy>(stops: &[(f32, V)], progress: f32, easing: impl Fn(f32) -> E
         1.0
     };
     (from, to, easing(start).apply(local))
-}
-
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "each channel is clamped to 0..=255 before the cast"
-)]
-fn mix(from: Rgba8, to: Rgba8, t: f32) -> Rgba8 {
-    let alpha = |color: Rgba8| f32::from(color.a) / 255.0;
-    let (a0, a1) = (alpha(from), alpha(to));
-    let a = (a1 - a0).mul_add(t, a0);
-    if a <= 0.0 {
-        return Rgba8 { r: 0, g: 0, b: 0, a: 0 };
-    }
-    let channel = |c0: u8, c1: u8| {
-        let (p0, p1) = (f32::from(c0) * a0, f32::from(c1) * a1);
-        ((p1 - p0).mul_add(t, p0) / a).round().clamp(0.0, 255.0) as u8
-    };
-    Rgba8 {
-        r: channel(from.r, to.r),
-        g: channel(from.g, to.g),
-        b: channel(from.b, to.b),
-        a: (a * 255.0).round().clamp(0.0, 255.0) as u8,
-    }
 }

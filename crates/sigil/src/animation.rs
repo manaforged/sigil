@@ -8,6 +8,10 @@ pub use crate::animation_runtime::clock::clock;
 pub use crate::animation_runtime::reduced_motion;
 pub use easing::Easing;
 pub use keyframes::{Keyframes, Property};
+kittest_pub! {
+    #[doc(hidden)]
+    pub use keyframes::KeyframesId;
+}
 pub(crate) use motion::Motion;
 pub(crate) use spring::Spring;
 kittest_pub! {

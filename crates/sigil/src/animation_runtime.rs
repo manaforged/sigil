@@ -15,7 +15,7 @@ pub(crate) mod state;
 pub(crate) mod style;
 
 pub use animator::Animator;
-pub use binding_animate_color::{linear_channel_to_srgb, srgb_channel_to_linear};
+pub use binding_animate_color::linear_channel_to_srgb;
 #[cfg(test)]
 pub(crate) use clock::tick_clocks;
 pub use clock::{clock, running_clocks};

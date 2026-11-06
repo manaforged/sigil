@@ -19,7 +19,7 @@ pub(crate) fn register_config(signal: Signal<f32>, config: AnimationConfig) -> A
         AnimationConfig::Tween { ms, easing, delay_ms } => {
             Motion::tween(initial, ms, easing, delay_ms)
         }
-        AnimationConfig::Playback { end } => Motion::playback(end),
+        AnimationConfig::Playback { end, cycle } => Motion::playback(end, cycle),
     };
     register(signal, motion)
 }

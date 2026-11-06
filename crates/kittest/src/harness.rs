@@ -172,23 +172,28 @@ impl Harness {
     }
 
     fn frame(&mut self, events: Vec<Event>) -> Result<(), Error> {
+        self.frame_at(events, FRAME_DT)
+    }
+
+    fn frame_at(&mut self, events: Vec<Event>, dt: f32) -> Result<(), Error> {
         let _ = self.tasks.pump();
         let owner = self.owner;
         profile::begin_frame(self.surface.backend());
-        let painted = owner.with(|| self.paint(events));
+        let painted = owner.with(|| self.paint(events, dt));
         profile::tick_frame();
         painted
     }
 
-    fn paint(&mut self, events: Vec<Event>) -> Result<(), Error> {
+    fn paint(&mut self, events: Vec<Event>, dt: f32) -> Result<(), Error> {
         let layout = match &mut self.surface {
             HarnessSurface::Cells { screen, size } => {
+                screen.set_dt(dt);
                 screen.frame(&mut self.host, events, *size).map(|_| ())
             }
             HarnessSurface::Pixels { size, .. } => {
                 let viewport = (crate::extent_f32(size.0), crate::extent_f32(size.1));
                 self.host
-                    .frame(viewport, FRAME_DT, hooks(events, None))
+                    .frame(viewport, dt, hooks(events, None))
                     .layout
             }
             HarnessSurface::Gpu(gpu) => {
@@ -197,7 +202,7 @@ impl Harness {
                     Box::new(|host: &mut Host, _: &FrameInfo| gpu.paint(host));
                 let layout = self
                     .host
-                    .frame(viewport, FRAME_DT, hooks(events, Some(paint)))
+                    .frame(viewport, dt, hooks(events, Some(paint)))
                     .layout;
                 gpu.take_error()?;
                 layout
@@ -208,7 +213,7 @@ impl Harness {
 
     fn frames(&mut self, events: Vec<Event>) -> Result<(), Error> {
         self.frame(events)?;
-        crate::settle::settle(busy, || self.frame(Vec::new()))
+        crate::settle::settle(busy, || self.frame_at(Vec::new(), settle_dt()))
     }
 
     #[track_caller]
@@ -331,6 +336,12 @@ fn hooks(events: Vec<Event>, paint: Option<FramePaintHook<'_>>) -> FrameHooks<'_
 
 fn busy() -> bool {
     Runtime::frame_dirty() || sigil::animation_runtime::active_count() > 0
+}
+
+fn settle_dt() -> f32 {
+    let perpetual_only = sigil::animation_runtime::active_count() == 0
+        && sigil::animation_runtime::running_clocks() > 0;
+    if perpetual_only { 0.0 } else { FRAME_DT }
 }
 
 impl Drop for Harness {

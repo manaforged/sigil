@@ -4,11 +4,11 @@ use crate::geometry::{Point, Rect};
 
 use super::{AnimatorOverlay, NumericAtomKind, StyleAtom, StyleBinding};
 
-const SHIFT_UNITS: f32 = 10_000.0;
+const SHIFT_UNITS: f32 = 2_048.0;
 
 #[expect(
     clippy::cast_possible_truncation,
-    reason = "the fraction is clamped to the i16 range of ten-thousandths before the cast"
+    reason = "the fraction is clamped to the i16 range of 1/2048 steps before the cast"
 )]
 fn shift_units(fraction: f32) -> i16 {
     (fraction * SHIFT_UNITS)

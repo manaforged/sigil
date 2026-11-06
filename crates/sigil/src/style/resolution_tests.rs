@@ -135,7 +135,7 @@ fn paint_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::TransitionDelay(delay) => {
             style.delay(std::time::Duration::from_millis(u64::from(delay.0)))
         }
-        StyleAtom::Animation(keyframes) => style.animate(keyframes.clone()),
+        StyleAtom::Animation(id) => style.animate(crate::animation::Keyframes::clone(&id.get().unwrap())),
         other => panic!("{other:?} has no typed paint method"),
     }
 }

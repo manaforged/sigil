@@ -6,7 +6,7 @@ use crate::style::Transform2D;
 use crate::style::TransitionId;
 use std::time::Duration;
 
-use crate::animation::{Easing, Keyframes};
+use crate::animation::{Easing, Keyframes, KeyframesId};
 use crate::animation_runtime::presets;
 use crate::style::MillisU16;
 use crate::style::engine::encode_px;
@@ -255,7 +255,7 @@ pub trait Paint: PaintTarget {
     /// Plays a keyframe animation, like Tailwind `animate-*`.
     #[must_use]
     fn animate(self, keyframes: Keyframes) -> Self {
-        push(self, StyleAtom::Animation(keyframes.interned()))
+        push(self, StyleAtom::Animation(KeyframesId::new(keyframes)))
     }
 }
 

@@ -236,7 +236,7 @@ pub enum StyleAtom {
     /// The transition delay style atom.
     TransitionDelay(MillisU16),
     /// The keyframe animation style atom.
-    Animation(&'static crate::animation::Keyframes),
+    Animation(crate::animation::KeyframesId),
     /// The unknown theme ref style atom.
     UnknownThemeRef(&'static str),
 }

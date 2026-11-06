@@ -80,9 +80,12 @@ impl Easing {
     /// The Tailwind `ease-in-out` curve, `cubic-bezier(0.4, 0, 0.2, 1)`.
     pub const IN_OUT: Self = Self::cubic_bezier(0.4, 0.0, 0.2, 1.0);
 
-    /// Creates the CSS `cubic-bezier(x1, y1, x2, y2)` easing; `x1` and `x2` are clamped to 0..=1.
+    /// Creates the CSS `cubic-bezier(x1, y1, x2, y2)` easing; `x1` and `x2` are clamped to 0..=1, and a non-finite point gives `Linear`.
     #[must_use]
     pub const fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32) -> Self {
+        if !(x1.is_finite() && y1.is_finite() && x2.is_finite() && y2.is_finite()) {
+            return Self::Linear;
+        }
         Self::CubicBezier {
             x1: x1.clamp(0.0, 1.0),
             y1,
@@ -131,7 +134,7 @@ impl Easing {
     /// Maps progress `t` through this easing curve.
     #[must_use]
     pub fn apply(self, t: f32) -> f32 {
-        let t = t.clamp(0.0, 1.0);
+        let t = unit(t);
         match self {
             Self::Linear => t,
             Self::QuadIn => t * t,
@@ -181,8 +184,14 @@ impl Easing {
     }
 }
 
-fn cubic_bezier(x: f32, [x1, y1, x2, y2]: [f32; 4]) -> f32 {
-    if x <= 0.0 || x >= 1.0 {
+#[allow(clippy::manual_clamp, reason = "max then min maps NaN to 0.0, where clamp keeps NaN")]
+fn unit(t: f32) -> f32 {
+    t.max(0.0).min(1.0)
+}
+
+fn cubic_bezier(x: f32, points: [f32; 4]) -> f32 {
+    let [x1, y1, x2, y2] = points;
+    if x <= 0.0 || x >= 1.0 || !points.iter().all(|point| point.is_finite()) {
         return x;
     }
     let (mut low, mut high) = (0.0_f32, 1.0_f32);

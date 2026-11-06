@@ -1,13 +1,14 @@
 use core::f32::consts::TAU;
-use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
-use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::Duration;
 
 use super::Easing;
 use crate::style::{ColorAtom, ColorAtomKind, NumericAtomKind};
 
 mod sample;
+mod store;
+
+pub use store::KeyframesId;
 
 /// One property value that a keyframe sets.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -66,7 +67,6 @@ impl Property {
     }
 
     fn key(self) -> (u8, u32, Option<ColorAtom>) {
-        let bits = |value: f32| (value + 0.0).to_bits();
         match self {
             Self::Opacity(value) => (0, bits(value), None),
             Self::TranslateX(value) => (1, bits(value), None),
@@ -82,8 +82,16 @@ impl Property {
     }
 }
 
+fn bits(value: f32) -> u32 {
+    if value.is_nan() {
+        f32::NAN.to_bits()
+    } else {
+        (value + 0.0).to_bits()
+    }
+}
+
 /// A CSS keyframe animation: property values at offsets of one pass, its timing, and its repeats.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub struct Keyframes {
     duration: Duration,
@@ -193,28 +201,21 @@ impl Keyframes {
             .infinite()
     }
 
-    pub(crate) fn interned(self) -> &'static Self {
-        static CACHE: OnceLock<Mutex<HashSet<&'static Keyframes>>> = OnceLock::new();
-        let mut cache = CACHE
-            .get_or_init(Mutex::default)
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner);
-        if let Some(interned) = cache.get(&self).copied() {
-            return interned;
+    pub(crate) fn end(&self) -> Option<f64> {
+        let pass = self.duration.as_secs_f64();
+        if pass <= 0.0 {
+            return Some(0.0);
         }
-        let interned: &'static Self = Box::leak(Box::new(self));
-        cache.insert(interned);
-        interned
+        self.iterations.map(|count| f64::from(count) * pass)
     }
 
-    pub(crate) fn end(&self) -> Option<f32> {
-        self.iterations
-            .map(|count| count as f32 * self.duration.as_secs_f32())
+    pub(crate) fn cycle(&self) -> f64 {
+        2.0 * self.duration.as_secs_f64()
     }
 
     pub(crate) fn progress(&self, elapsed: f32) -> Option<f32> {
         let duration = self.duration.as_secs_f32();
-        if duration <= 0.0 || self.end().is_some_and(|end| elapsed >= end) {
+        if duration <= 0.0 {
             return None;
         }
         let passes = elapsed.max(0.0) / duration;
@@ -250,16 +251,36 @@ fn unit(offset: f32) -> f32 {
     }
 }
 
+impl Keyframes {
+    fn timing(&self) -> (Duration, Easing, Option<u32>, bool, bool) {
+        (self.duration, self.easing, self.iterations, self.reverse, self.alternate)
+    }
+
+    fn stop_keys(&self) -> impl Iterator<Item = (u32, (u8, u32, Option<ColorAtom>))> + '_ {
+        self.keyframes
+            .iter()
+            .map(|(offset, property)| (offset.to_bits(), property.key()))
+    }
+
+    fn easing_keys(&self) -> impl Iterator<Item = (u32, Easing)> + '_ {
+        self.easings.iter().map(|(offset, easing)| (offset.to_bits(), *easing))
+    }
+}
+
+impl PartialEq for Keyframes {
+    fn eq(&self, other: &Self) -> bool {
+        self.timing() == other.timing()
+            && self.stop_keys().eq(other.stop_keys())
+            && self.easing_keys().eq(other.easing_keys())
+    }
+}
+
 impl Eq for Keyframes {}
 
 impl Hash for Keyframes {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        (self.duration, self.easing, self.iterations, self.reverse, self.alternate).hash(state);
-        for (offset, property) in &self.keyframes {
-            (offset.to_bits(), property.key()).hash(state);
-        }
-        for (offset, easing) in &self.easings {
-            (offset.to_bits(), easing).hash(state);
-        }
+        self.timing().hash(state);
+        self.stop_keys().for_each(|key| key.hash(state));
+        self.easing_keys().for_each(|key| key.hash(state));
     }
 }
