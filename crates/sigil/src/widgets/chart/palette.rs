@@ -1,5 +1,5 @@
-use crate::style::{ColorAtom, Rgba8, StyleAtom, Token, Tone};
 use super::super::vector::PathColor;
+use crate::style::{ColorAtom, Rgba8, StyleAtom, Token, Tone};
 
 const FILL: u8 = 9;
 const SOFT_DROP: u8 = 5;
@@ -58,11 +58,13 @@ impl Hue {
     }
 
     pub(super) fn color(self) -> ColorAtom {
-        self.rgb.map_or(ColorAtom::Token(self.token()), ColorAtom::Rgba8)
+        self.rgb
+            .map_or(ColorAtom::Token(self.token()), ColorAtom::Rgba8)
     }
 
     pub(super) fn paint(self) -> PathColor {
-        self.rgb.map_or(PathColor::Token(self.token()), PathColor::Rgba)
+        self.rgb
+            .map_or(PathColor::Token(self.token()), PathColor::Rgba)
     }
 
     pub(super) fn bg(self) -> StyleAtom {
@@ -75,7 +77,12 @@ impl Hue {
     pub(super) fn soft(self) -> PathColor {
         self.rgb.map_or_else(
             || PathColor::Token(self.tone.token(self.step.saturating_sub(SOFT_DROP).max(2))),
-            |color| PathColor::Rgba(Rgba8 { a: SOFT_ALPHA, ..color }),
+            |color| {
+                PathColor::Rgba(Rgba8 {
+                    a: SOFT_ALPHA,
+                    ..color
+                })
+            },
         )
     }
 }

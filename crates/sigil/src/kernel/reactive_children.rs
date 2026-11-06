@@ -131,8 +131,7 @@ pub(crate) fn install_keyed<F, I, K, N>(
     parent: NodeId,
     location: &'static Location<'static>,
     mut f: F,
-)
-where
+) where
     F: FnMut() -> I + 'static,
     I: IntoIterator<Item = (K, N)>,
     K: Clone + Eq + Hash + 'static,
@@ -146,7 +145,13 @@ where
                 .map(|(key, child)| (key, Some(Box::new(child) as Box<dyn ErasedComponent>)))
                 .collect()
         });
-        enqueue_keyed(parent, location, Rc::clone(&prior), incoming, Some(generation));
+        enqueue_keyed(
+            parent,
+            location,
+            Rc::clone(&prior),
+            incoming,
+            Some(generation),
+        );
     });
 }
 
@@ -182,7 +187,10 @@ fn apply_positional(
 
 /// Rebuilds the keyed children of `parent` from `incoming` before the next layout.
 #[track_caller]
-#[cfg_attr(not(feature = "kittest"), allow(dead_code, reason = "public only under kittest"))]
+#[cfg_attr(
+    not(feature = "kittest"),
+    allow(dead_code, reason = "public only under kittest")
+)]
 pub fn schedule_keyed_rebuild<K, N>(
     parent: NodeId,
     prior: Rc<RefCell<Vec<(K, NodeId)>>>,

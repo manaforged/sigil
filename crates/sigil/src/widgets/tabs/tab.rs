@@ -97,16 +97,18 @@ static LINE_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
 
 fn tab_label(label: String, selected: Signal<bool>) -> TextBuilder {
     let cell = CellForm::new(false, true).pick();
-    let node = if cell { text(format!(" {label} ")) } else { text(label) };
-    let active = if cell { LABEL_ACTIVE_CELL } else { LABEL_ACTIVE };
+    let node = if cell {
+        text(format!(" {label} "))
+    } else {
+        text(label)
+    };
+    let active = if cell {
+        LABEL_ACTIVE_CELL
+    } else {
+        LABEL_ACTIVE
+    };
     node.layout(LayoutStyle::block())
-        .style_reactive(move || {
-            if selected.get() {
-                active
-            } else {
-                LABEL_MUTED
-            }
-        })
+        .style_reactive(move || if selected.get() { active } else { LABEL_MUTED })
         .hittable(false)
 }
 

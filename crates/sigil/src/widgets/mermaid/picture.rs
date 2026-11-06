@@ -99,7 +99,8 @@ fn host_theme(theme: &Theme) -> Option<HostTheme> {
     for (role, token) in ROLES {
         host = host.try_with_role(role, color(token)).ok()?;
     }
-    host.try_with_series_palette(series_tokens().map(color)).ok()
+    host.try_with_series_palette(series_tokens().map(color))
+        .ok()
 }
 
 fn environment() -> SvgEnvironment {

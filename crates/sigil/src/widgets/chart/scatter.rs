@@ -50,7 +50,12 @@ pub(super) fn pairs(values: &[f32]) -> impl Iterator<Item = (f32, f32)> + '_ {
         .filter(|(x, y)| x.is_finite() && y.is_finite())
 }
 
-pub(super) fn dots(layer: NodeBuilder, item: &ChartView<'_>, spans: Spans, dot: Dot) -> NodeBuilder {
+pub(super) fn dots(
+    layer: NodeBuilder,
+    item: &ChartView<'_>,
+    spans: Spans,
+    dot: Dot,
+) -> NodeBuilder {
     if dot != Dot::Disc {
         return markers(layer, item, spans, dot);
     }

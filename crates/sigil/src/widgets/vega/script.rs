@@ -61,7 +61,8 @@ impl Script {
 
     fn start(&self, spec: &str, config: &str) -> Result<(), Failure> {
         self.context.with(|ctx| {
-            let render: Function<'_> = ctx.globals().get("__render").map_err(|_| Failure::Engine)?;
+            let render: Function<'_> =
+                ctx.globals().get("__render").map_err(|_| Failure::Engine)?;
             render
                 .call::<_, ()>((spec, config))
                 .map_err(|_| self.failure(&caught(&ctx)))
@@ -96,7 +97,8 @@ impl Script {
     fn tick(&self) -> Result<bool, Failure> {
         self.context.with(|ctx| {
             let tick: Function<'_> = ctx.globals().get("__tick").map_err(|_| Failure::Engine)?;
-            tick.call::<_, bool>(()).map_err(|_| self.failure(&caught(&ctx)))
+            tick.call::<_, bool>(())
+                .map_err(|_| self.failure(&caught(&ctx)))
         })
     }
 

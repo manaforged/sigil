@@ -23,9 +23,18 @@ fn keys_reach_the_shell_as_terminal_bytes() {
         super::key_payload(&event)
     };
     let none = ModifiersState::empty();
-    assert_eq!(pressed(LogicalKey::Named(Key::ArrowUp), none).as_deref(), Some("\u{1b}[A"));
-    assert_eq!(pressed(LogicalKey::Named(Key::Enter), none).as_deref(), Some("\r"));
-    assert_eq!(pressed(LogicalKey::Named(Key::Escape), none).as_deref(), Some("\u{1b}"));
+    assert_eq!(
+        pressed(LogicalKey::Named(Key::ArrowUp), none).as_deref(),
+        Some("\u{1b}[A")
+    );
+    assert_eq!(
+        pressed(LogicalKey::Named(Key::Enter), none).as_deref(),
+        Some("\r")
+    );
+    assert_eq!(
+        pressed(LogicalKey::Named(Key::Escape), none).as_deref(),
+        Some("\u{1b}")
+    );
     assert_eq!(
         pressed(LogicalKey::Character("c".into()), ModifiersState::CONTROL).as_deref(),
         Some("\u{3}")
@@ -41,7 +50,10 @@ fn only_the_terminal_itself_takes_focus() {
         let mut stack = cx.get(root).expect("terminal root").children().to_vec();
         while let Some(id) = stack.pop() {
             let node = cx.get(id).expect("node");
-            assert!(!node.a11y.focusable, "a node inside the terminal takes focus away from it");
+            assert!(
+                !node.a11y.focusable,
+                "a node inside the terminal takes focus away from it"
+            );
             stack.extend(node.children().iter().copied());
         }
         assert!(cx.get(root).expect("terminal root").a11y.focusable);

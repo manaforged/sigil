@@ -43,9 +43,9 @@ kittest_pub! {
     pub use channel::EventChannel;
 }
 pub use derived::derived;
+pub(crate) use effect::effect_at;
 #[cfg(not(feature = "kittest"))]
 pub(crate) use effect::effect_named;
-pub(crate) use effect::effect_at;
 pub(crate) use effect::{current_effect_owner, run_dispatch_deferred};
 pub use effect::{defer, effect, untrack};
 pub(crate) use frame::tick_frame;

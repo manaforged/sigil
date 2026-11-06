@@ -44,7 +44,9 @@ pub(super) struct Job {
 
 impl Job {
     pub(super) fn new(spec: &Arc<str>, source: u64, config: String) -> Self {
-        let theme = config.bytes().fold(OFFSET, |key, byte| mix(key, u64::from(byte)));
+        let theme = config
+            .bytes()
+            .fold(OFFSET, |key, byte| mix(key, u64::from(byte)));
         Self {
             spec: Arc::clone(spec),
             config: config.into(),
@@ -107,7 +109,9 @@ static CACHE: LazyLock<Mutex<Cache>> = LazyLock::new(Mutex::default);
 static QUEUE: LazyLock<Option<Sender<(Job, Reply)>>> = LazyLock::new(start);
 
 fn size(outcome: &Outcome) -> usize {
-    outcome.as_ref().map_or(0, |chart| chart.svg.len() + chart.text.len())
+    outcome
+        .as_ref()
+        .map_or(0, |chart| chart.svg.len() + chart.text.len())
 }
 
 pub(super) fn cached(job: &Job) -> Option<Outcome> {
@@ -171,7 +175,11 @@ fn run(script: &mut Option<Script>, job: &Job) -> Outcome {
         .ok_or(Failure::Engine)
         .and_then(|engine| engine.render(&job.spec, &job.config))
         .map(Arc::new);
-    if outcome.as_ref().err().is_some_and(|failure| failure.hits_a_cap()) {
+    if outcome
+        .as_ref()
+        .err()
+        .is_some_and(|failure| failure.hits_a_cap())
+    {
         *script = None;
     }
     if !matches!(outcome, Err(Failure::Engine)) {

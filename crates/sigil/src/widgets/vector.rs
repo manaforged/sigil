@@ -266,9 +266,7 @@ impl PathNode {
             .as_ref()
             .is_none_or(|(at, seen, _)| *at != rect || *seen != stamp);
         if fresh {
-            *last = self
-                .draw_path(rect, theme)
-                .map(|draw| (rect, stamp, draw));
+            *last = self.draw_path(rect, theme).map(|draw| (rect, stamp, draw));
         }
         if let Some((_, _, draw)) = last.as_ref() {
             scene.draw_path(draw.clone());

@@ -252,7 +252,10 @@ impl Paragraph {
     }
 
     fn content_widths(&self) -> ContentWidths {
-        *self.inner.content_widths.get_or_init(|| self.measure_widths())
+        *self
+            .inner
+            .content_widths
+            .get_or_init(|| self.measure_widths())
     }
 
     fn measure_widths(&self) -> ContentWidths {

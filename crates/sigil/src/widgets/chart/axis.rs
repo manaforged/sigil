@@ -115,10 +115,10 @@ fn x_label(item: &Tick) -> NodeBuilder {
 }
 
 pub(super) fn x_axis(ticks: &[Tick], width_px: f32, pad: f32) -> NodeBuilder {
-    let layer = parity(ticks, width_px)
-        .into_iter()
-        .map(x_label)
-        .fold(container().layout(LayoutStyle::block().fill()), NodeBuilder::child);
+    let layer = parity(ticks, width_px).into_iter().map(x_label).fold(
+        container().layout(LayoutStyle::block().fill()),
+        NodeBuilder::child,
+    );
     container()
         .layout(
             LayoutStyle::block()

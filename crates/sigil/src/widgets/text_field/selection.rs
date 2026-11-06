@@ -75,7 +75,11 @@ fn track(
                 caret.with(|_| ());
             });
             overlay_layer().children_reactive(move || {
-                if lit.get() { caret_rects(&runtime, interaction) } else { Vec::new() }
+                if lit.get() {
+                    caret_rects(&runtime, interaction)
+                } else {
+                    Vec::new()
+                }
             })
         })
         .child(field_text(displayed, placeholder_visible))

@@ -108,7 +108,6 @@ impl Stream {
     }
 }
 
-
 #[cfg(test)]
 #[path = "stream_tests.rs"]
 mod tests;

@@ -33,7 +33,12 @@ pub(crate) fn draw(grid: &mut Grid) {
         let mut glyph = [0_u8; 4];
         for (i, frame) in frames.range(start..).enumerate() {
             let work = frame.work_ns();
-            grid.overlay_text(col + i, 0, spark(work).encode_utf8(&mut glyph), Ink::Of(tone(work)));
+            grid.overlay_text(
+                col + i,
+                0,
+                spark(work).encode_utf8(&mut glyph),
+                Ink::Of(tone(work)),
+            );
             if worst.is_none_or(|best| best.work_ns() < work) {
                 worst = Some(frame);
             }

@@ -136,8 +136,16 @@ thread_local! {
 
 /// Closes every open light popup; false when none was open.
 pub(crate) fn close_light() -> bool {
-    let open: Vec<EscapeLayer> = LIGHT_LAYERS.with(|stack| stack.borrow().iter().copied().filter(|layer| layer.show.peek()).collect());
-    open.iter().fold(false, |closed, layer| hide(layer.show) || closed)
+    let open: Vec<EscapeLayer> = LIGHT_LAYERS.with(|stack| {
+        stack
+            .borrow()
+            .iter()
+            .copied()
+            .filter(|layer| layer.show.peek())
+            .collect()
+    });
+    open.iter()
+        .fold(false, |closed, layer| hide(layer.show) || closed)
 }
 
 static NEXT_ESCAPE_LAYER_ID: AtomicU64 = AtomicU64::new(1);

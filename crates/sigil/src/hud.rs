@@ -69,7 +69,13 @@ pub(crate) fn compact(frame: &Frame) -> String {
     if let Some(site) = frame.sites.first() {
         let name = crate::profile::site_name(site.location);
         let short = name.rsplitn(3, '/').take(2).collect::<Vec<_>>();
-        let _ = write!(line, " {}/{}={:.1}", short.get(1).unwrap_or(&""), short[0], ms(site.self_ns));
+        let _ = write!(
+            line,
+            " {}/{}={:.1}",
+            short.get(1).unwrap_or(&""),
+            short[0],
+            ms(site.self_ns)
+        );
     }
     if frame.overhead_ns > 0 {
         let _ = write!(line, " prof={:.2}", ms(frame.overhead_ns));
@@ -179,7 +185,12 @@ mod overlay {
                 style,
                 10_000,
             );
-            *cached = Some(Text { frame: worst.index, viewport: viewport.0.to_bits(), width, run: run.clone() });
+            *cached = Some(Text {
+                frame: worst.index,
+                viewport: viewport.0.to_bits(),
+                width,
+                run: run.clone(),
+            });
             (width, run)
         })
     }

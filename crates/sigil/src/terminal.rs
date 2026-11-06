@@ -59,10 +59,10 @@ kittest_pub! {
 }
 pub use notify::{Activity, activity, bell, notify, progress};
 pub use paint::{Cell, Grid, Ink, Lines, Underline};
+pub use pixels::{pixels, set_pixels};
 pub(crate) use run::run;
 pub use run::{Hooks, calibrate};
 #[cfg(test)]
 pub(crate) use run::{present, step};
 pub use screen::Screen;
-pub use pixels::{pixels, set_pixels};
 pub use term::{caps, focused, print_above, set_mouse_tracking, set_title, suspend};

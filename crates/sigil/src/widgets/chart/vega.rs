@@ -134,12 +134,19 @@ fn scatter(spec: &Spec) -> Option<ChartBuilder> {
         return None;
     }
     let (series, slots) = table::points(&spec.rows, x, y, spec.color.as_ref())?;
-    let names = series.iter().map(|(name, _)| name.clone()).collect::<Vec<_>>();
+    let names = series
+        .iter()
+        .map(|(name, _)| name.clone())
+        .collect::<Vec<_>>();
     let flat = series
         .into_iter()
         .map(|(name, rows)| (name, rows.into_iter().flat_map(<[f32; 2]>::from).collect()))
         .collect();
-    let mut chart = build(flat, &hues(&names, &slots, spec.color.as_ref()), ChartMark::Scatter);
+    let mut chart = build(
+        flat,
+        &hues(&names, &slots, spec.color.as_ref()),
+        ChartMark::Scatter,
+    );
     let zero = Some(spec.zero.unwrap_or(true));
     chart.scales.x = fit(x, zero);
     chart.scales.y = fit(y, zero);
@@ -187,7 +194,11 @@ fn columns(spec: &Spec) -> Option<ChartBuilder> {
     } else {
         f32::NAN
     });
-    let names = table.series.iter().map(|(name, _)| name.clone()).collect::<Vec<_>>();
+    let names = table
+        .series
+        .iter()
+        .map(|(name, _)| name.clone())
+        .collect::<Vec<_>>();
     let hues = hues(&names, &table.slots, spec.color.as_ref());
     let labels = shown_labels(&table.labels, category.kind);
     let mut chart = build(table.series, &hues, mark).labels(labels);

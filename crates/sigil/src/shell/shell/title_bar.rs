@@ -35,8 +35,8 @@ pub(super) fn centre_controls(window: &Window, bar: f32) {
         return;
     };
     // SAFETY: the close button and its title bar view are live subviews of this window.
-    let Some(container) = (unsafe { close.superview() })
-        .and_then(|bar_view| unsafe { bar_view.superview() })
+    let Some(container) =
+        (unsafe { close.superview() }).and_then(|bar_view| unsafe { bar_view.superview() })
     else {
         return;
     };

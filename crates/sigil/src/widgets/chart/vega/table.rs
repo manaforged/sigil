@@ -50,9 +50,17 @@ impl Keys {
         Some(self.names.len() - 1)
     }
 
-    fn rank(&self, channel: Option<&Channel>, totals: &[f64], reorder: bool) -> (Vec<usize>, Vec<usize>) {
+    fn rank(
+        &self,
+        channel: Option<&Channel>,
+        totals: &[f64],
+        reorder: bool,
+    ) -> (Vec<usize>, Vec<usize>) {
         let Some(channel) = channel else {
-            return ((0..self.names.len()).collect(), (0..self.names.len()).collect());
+            return (
+                (0..self.names.len()).collect(),
+                (0..self.names.len()).collect(),
+            );
         };
         if matches!(channel.kind, Kind::Quantitative | Kind::Temporal) {
             let order = by_place(&self.names, channel.kind);

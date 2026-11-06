@@ -147,8 +147,12 @@ fn instants(every: Every, lo: f64, hi: f64) -> Vec<f64> {
             }
             out
         }
-        Every::Days(gap) => calendar_days(first_day, lo, hi, |day| (civil(day).2 - 1) as i64 % gap == 0),
-        Every::Week => calendar_days(first_day, lo, hi, |day| (day + SUNDAY_OFFSET).rem_euclid(7) == 0),
+        Every::Days(gap) => calendar_days(first_day, lo, hi, |day| {
+            (civil(day).2 - 1) as i64 % gap == 0
+        }),
+        Every::Week => calendar_days(first_day, lo, hi, |day| {
+            (day + SUNDAY_OFFSET).rem_euclid(7) == 0
+        }),
         Every::Months(gap) => calendar_months(lo, hi, |_, month| (month - 1) % gap == 0),
         Every::Years(gap) => calendar_months(lo, hi, |year, month| month == 1 && year % gap == 0),
     }
@@ -179,7 +183,11 @@ fn calendar_months(lo: f64, hi: f64, keep: impl Fn(i64, u32) -> bool) -> Vec<f64
         if at >= lo && keep(year, month) {
             out.push(at);
         }
-        (year, month) = if month == 12 { (year + 1, 1) } else { (year, month + 1) };
+        (year, month) = if month == 12 {
+            (year + 1, 1)
+        } else {
+            (year, month + 1)
+        };
     }
 }
 
@@ -224,7 +232,11 @@ pub(super) fn format(at: f64) -> String {
         return format!("{:02}:{minutes:02}", twelve(hours));
     }
     if hours != 0 {
-        return format!("{:02} {}", twelve(hours), if hours < 12 { "AM" } else { "PM" });
+        return format!(
+            "{:02} {}",
+            twelve(hours),
+            if hours < 12 { "AM" } else { "PM" }
+        );
     }
     let name = MONTHS.get(month as usize - 1).copied().unwrap_or_default();
     if date != 1 {
@@ -232,7 +244,10 @@ pub(super) fn format(at: f64) -> String {
         return if weekday == 0 {
             format!("{} {date:02}", name.get(..3).unwrap_or(name))
         } else {
-            format!("{} {date:02}", WEEKDAYS.get(weekday).copied().unwrap_or_default())
+            format!(
+                "{} {date:02}",
+                WEEKDAYS.get(weekday).copied().unwrap_or_default()
+            )
         };
     }
     if month != 1 {

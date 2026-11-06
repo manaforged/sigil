@@ -47,12 +47,15 @@ pub(in super::super) fn figure(diagram: &Diagram) -> (NodeBuilder, f32) {
     });
     let cols = right.saturating_add(margin);
     let notes = diagram.events.iter().filter_map(|event| match event {
-        SequenceEvent::Note { from, to, text } if from == to => centres
-            .get(*from)
-            .map(|centre| x_at(*centre) + 2.0 * CELL_W + cells(width(text).saturating_add(5), CELL_W)),
+        SequenceEvent::Note { from, to, text } if from == to => centres.get(*from).map(|centre| {
+            x_at(*centre) + 2.0 * CELL_W + cells(width(text).saturating_add(5), CELL_W)
+        }),
         _ => None,
     });
-    let size = (notes.fold(cells(cols, CELL_W), f32::max), cells(rows, CELL_H));
+    let size = (
+        notes.fold(cells(cols, CELL_W), f32::max),
+        cells(rows, CELL_H),
+    );
     let mut pens = Pens {
         lines: canvas(size),
         dashes: canvas(size),
@@ -66,13 +69,22 @@ pub(in super::super) fn figure(diagram: &Diagram) -> (NodeBuilder, f32) {
     };
     for centre in &centres {
         let x = x_at(*centre);
-        with(&mut pens.frame_dashes, |pen| dashed_line(pen, &[(x, cells(3, CELL_H)), (x, cells(rows.saturating_sub(3), CELL_H))]));
+        with(&mut pens.frame_dashes, |pen| {
+            dashed_line(
+                pen,
+                &[
+                    (x, cells(3, CELL_H)),
+                    (x, cells(rows.saturating_sub(3), CELL_H)),
+                ],
+            )
+        });
     }
     for (participant, centre) in diagram.participants.iter().zip(&centres) {
         for top in [0, rows.saturating_sub(3)] {
             let area = participant_area(&participant.label, *centre, top);
             with(&mut pens.boxes, |pen| rounded(pen, area, RADIUS));
-            pens.labels.push(node_label(std::slice::from_ref(&participant.label), area));
+            pens.labels
+                .push(node_label(std::slice::from_ref(&participant.label), area));
         }
     }
     events(&mut pens, diagram, &centres, cols);
@@ -86,12 +98,27 @@ pub(in super::super) fn figure(diagram: &Diagram) -> (NodeBuilder, f32) {
     root = root
         .child(layer(pens.frames.stroke(Token::Border, thin), size))
         .child(layer(pens.frame_dashes.stroke(Token::Border, thin), size))
-        .child(layer(pens.lines.stroke(Token::OnSurfaceMuted, edge_width()), size))
-        .child(layer(pens.dashes.stroke(Token::OnSurfaceMuted, edge_width()), size))
+        .child(layer(
+            pens.lines.stroke(Token::OnSurfaceMuted, edge_width()),
+            size,
+        ))
+        .child(layer(
+            pens.dashes.stroke(Token::OnSurfaceMuted, edge_width()),
+            size,
+        ))
         .child(layer(pens.heads.fill(Token::OnSurfaceMuted), size))
-        .child(layer(pens.open_heads.stroke(Token::OnSurfaceMuted, edge_width()), size))
-        .child(layer(pens.boxes.fill(Token::Surface).stroke(Token::Border, thin), size))
-        .child(layer(pens.notes.fill(Token::Accent3).stroke(Token::Accent7, thin), size));
+        .child(layer(
+            pens.open_heads.stroke(Token::OnSurfaceMuted, edge_width()),
+            size,
+        ))
+        .child(layer(
+            pens.boxes.fill(Token::Surface).stroke(Token::Border, thin),
+            size,
+        ))
+        .child(layer(
+            pens.notes.fill(Token::Accent3).stroke(Token::Accent7, thin),
+            size,
+        ));
     for label in pens.labels {
         root = root.child(label);
     }
@@ -115,7 +142,13 @@ fn events(pens: &mut Pens, diagram: &Diagram, centres: &[usize], cols: usize) {
     for event in &diagram.events {
         let at = |index: usize| centres.get(index).copied().unwrap_or(0);
         y = match event {
-            SequenceEvent::Message { from, to, text, dashed, head } => {
+            SequenceEvent::Message {
+                from,
+                to,
+                text,
+                dashed,
+                head,
+            } => {
                 number = number.saturating_add(1);
                 let mut text = text.clone();
                 if diagram.numbered
@@ -149,24 +182,42 @@ fn events(pens: &mut Pens, diagram: &Diagram, centres: &[usize], cols: usize) {
     }
 }
 
-fn message(pens: &mut Pens, ends: (usize, usize), text: &[String], style: (bool, char), y: usize) -> usize {
+fn message(
+    pens: &mut Pens,
+    ends: (usize, usize),
+    text: &[String],
+    style: (bool, char),
+    y: usize,
+) -> usize {
     let (dashed, head) = style;
     let arrow = y.saturating_add(text.len());
     let (a, b) = (x_at(ends.0), x_at(ends.1));
     let line_y = y_at(arrow);
     if ends.0 == ends.1 {
         for (row, part) in text.iter().enumerate() {
-            pens.labels.push(caption(part, a + LOOP + CELL_W, y_at(y.saturating_add(row))));
+            pens.labels.push(caption(
+                part,
+                a + LOOP + CELL_W,
+                y_at(y.saturating_add(row)),
+            ));
         }
         let back = line_y + CELL_H;
-        let points = [(a, line_y), (a + LOOP, line_y), (a + LOOP, back), (a + HEAD, back)];
+        let points = [
+            (a, line_y),
+            (a + LOOP, line_y),
+            (a + LOOP, back),
+            (a + HEAD, back),
+        ];
         stroke(pens, &points, dashed);
-        with(&mut pens.heads, |pen| filled_head(pen, (a + HEAD, back), (a, back)));
+        with(&mut pens.heads, |pen| {
+            filled_head(pen, (a + HEAD, back), (a, back))
+        });
         return arrow.saturating_add(2);
     }
     let middle = f32::midpoint(a, b);
     for (row, part) in text.iter().enumerate() {
-        pens.labels.push(centred_caption(part, middle, y_at(y.saturating_add(row))));
+        pens.labels
+            .push(centred_caption(part, middle, y_at(y.saturating_add(row))));
     }
     let direction = (b - a).signum();
     let base = b - direction * HEAD;
@@ -244,7 +295,12 @@ fn frame(pens: &mut Pens, span: (usize, usize), rows: (usize, usize), label: &st
     if right - left <= 2.0 * CELL_W {
         return;
     }
-    let area = Area { x: left, y: top, w: right - left, h: bottom - top };
+    let area = Area {
+        x: left,
+        y: top,
+        w: right - left,
+        h: bottom - top,
+    };
     with(&mut pens.frames, |pen| rounded(pen, area, RADIUS));
     pens.labels.push(tag(label, left + CELL_W, top));
 }
@@ -253,7 +309,9 @@ fn divider(pens: &mut Pens, level: usize, cols: usize, row: usize, label: &str) 
     let left = cells(level, CELL_W) + CELL_W / 2.0;
     let right = cells(cols.saturating_sub(level), CELL_W) - CELL_W / 2.0;
     let y = y_at(row);
-    with(&mut pens.frame_dashes, |pen| dashed_line(pen, &[(left, y), (right, y)]));
+    with(&mut pens.frame_dashes, |pen| {
+        dashed_line(pen, &[(left, y), (right, y)])
+    });
     if !label.is_empty() {
         pens.labels.push(tag(label, left + CELL_W, y));
     }

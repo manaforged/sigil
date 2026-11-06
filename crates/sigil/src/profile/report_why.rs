@@ -159,20 +159,33 @@ pub(super) fn write_sites(out: &mut String, frames: &[Frame]) {
     let mut sites: Vec<(String, &'static str, u64, u64, u64)> = Vec::new();
     for site in frames.iter().flat_map(|frame| &frame.sites) {
         let name = site_name(site.location);
-        match sites.iter_mut().find(|row| row.0 == name && row.1 == site.kind.name()) {
+        match sites
+            .iter_mut()
+            .find(|row| row.0 == name && row.1 == site.kind.name())
+        {
             Some(row) => {
                 row.2 = row.2.saturating_add(site.self_ns);
                 row.3 = row.3.max(site.self_ns);
                 row.4 = row.4.saturating_add(u64::from(site.runs));
             }
-            None => sites.push((name, site.kind.name(), site.self_ns, site.self_ns, u64::from(site.runs))),
+            None => sites.push((
+                name,
+                site.kind.name(),
+                site.self_ns,
+                site.self_ns,
+                u64::from(site.runs),
+            )),
         }
     }
     if sites.is_empty() {
         return;
     }
     sites.sort_by_key(|row| std::cmp::Reverse(row.2));
-    let _ = writeln!(out, "\nsites (self ms){:>32} {:>9} {:>8}", "total", "max", "runs");
+    let _ = writeln!(
+        out,
+        "\nsites (self ms){:>32} {:>9} {:>8}",
+        "total", "max", "runs"
+    );
     for (name, kind, total, max, runs) in sites.into_iter().take(TOP_SITES) {
         let _ = writeln!(
             out,

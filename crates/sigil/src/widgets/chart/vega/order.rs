@@ -50,9 +50,9 @@ pub(super) fn rank(facts: &Facts<'_>, sort: &Sort, own: &str) -> Vec<usize> {
         Sort::Channel(name, descending) if name == own => {
             order.sort_by(|a, b| flip(facts.natural(*a, *b), *descending));
         }
-        Sort::Channel(_, descending) => order.sort_by(|a, b| {
-            flip(facts.total(*a).total_cmp(&facts.total(*b)), *descending)
-        }),
+        Sort::Channel(_, descending) => {
+            order.sort_by(|a, b| flip(facts.total(*a).total_cmp(&facts.total(*b)), *descending))
+        }
         Sort::Count(descending) => {
             order.sort_by(|a, b| flip(facts.count(*a).cmp(&facts.count(*b)), *descending));
         }
@@ -67,7 +67,11 @@ fn lead(order: Vec<usize>, names: &[String], listed: &[String]) -> Vec<usize> {
             .get(*index)
             .and_then(|name| listed.iter().position(|item| item == name))
     };
-    let mut first = order.iter().filter(|index| at(index).is_some()).copied().collect::<Vec<_>>();
+    let mut first = order
+        .iter()
+        .filter(|index| at(index).is_some())
+        .copied()
+        .collect::<Vec<_>>();
     first.sort_by_key(|index| at(index));
     first.extend(order.iter().filter(|index| at(index).is_none()));
     first

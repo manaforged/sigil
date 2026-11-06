@@ -36,7 +36,10 @@ impl PaletteEntry {
     }
 
     fn search_text(&self) -> String {
-        self.detail().map_or_else(|| self.label().to_owned(), |detail| format!("{} {detail}", self.label()))
+        self.detail().map_or_else(
+            || self.label().to_owned(),
+            |detail| format!("{} {detail}", self.label()),
+        )
     }
 
     pub(super) fn label(&self) -> &str {

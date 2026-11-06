@@ -10,10 +10,10 @@ use serde_json::{Value, json};
 
 use crate::profile::attr::Attribution;
 use crate::profile::event::TraceEvent;
-use crate::profile::site::{Site, SiteKind};
 use crate::profile::key::{
     BackendStatus, Cause, Counter, CounterValue, Hotspot, Phase, PhaseTime, accumulate,
 };
+use crate::profile::site::{Site, SiteKind};
 
 const MAX_EVENTS: usize = 65_536;
 const MAX_FRAMES: usize = 4_096;
@@ -262,7 +262,13 @@ pub(crate) fn site_exit(
         let key = (core::ptr::from_ref(location) as usize, kind);
         let sites = &mut store.open.sites;
         let index = *store.site_index.entry(key).or_insert_with(|| {
-            sites.push(Site { location, kind, self_ns: 0, total_ns: 0, runs: 0 });
+            sites.push(Site {
+                location,
+                kind,
+                self_ns: 0,
+                total_ns: 0,
+                runs: 0,
+            });
             sites.len() - 1
         });
         let site = &mut sites[index];
@@ -271,17 +277,17 @@ pub(crate) fn site_exit(
         site.runs = site.runs.saturating_add(1);
         if total_ns >= SITE_SLICE_NS {
             let start_us = store.since_origin_us(start);
-            store.push(TraceEvent::Site { location, kind, start_us, dur_us: total_ns / 1_000 });
+            store.push(TraceEvent::Site {
+                location,
+                kind,
+                start_us,
+                dur_us: total_ns / 1_000,
+            });
         }
     });
 }
 
-pub(crate) fn attribute(
-    hotspot: Hotspot,
-    n: u64,
-    key: u64,
-    subject: impl FnOnce(usize) -> String,
-) {
+pub(crate) fn attribute(hotspot: Hotspot, n: u64, key: u64, subject: impl FnOnce(usize) -> String) {
     with_store(|store| {
         let hot = &mut store.open.hot;
         let distinct = &mut store.attr_distinct;
@@ -292,7 +298,11 @@ pub(crate) fn attribute(
                 .position(|a| a.hotspot == hotspot && a.subject == name)
                 .unwrap_or_else(|| {
                     *seen += 1;
-                    hot.push(Attribution { hotspot, subject: name, count: 0 });
+                    hot.push(Attribution {
+                        hotspot,
+                        subject: name,
+                        count: 0,
+                    });
                     hot.len() - 1
                 })
         });
@@ -368,13 +378,18 @@ fn calibrate() -> Costs {
     };
     let start = Instant::now();
     for _ in 0..RUNS {
-        drop(std::hint::black_box(crate::profile::span::Span::new(Phase::AppUpdate)));
+        drop(std::hint::black_box(crate::profile::span::Span::new(
+            Phase::AppUpdate,
+        )));
     }
     let span_ns = per_run(start);
     let location = core::panic::Location::caller();
     let start = Instant::now();
     for _ in 0..RUNS {
-        drop(std::hint::black_box(crate::profile::site::site(location, SiteKind::Effect)));
+        drop(std::hint::black_box(crate::profile::site::site(
+            location,
+            SiteKind::Effect,
+        )));
     }
     let site_ns = per_run(start);
     STORE.with(|cell| cell.replace(saved));
@@ -406,7 +421,9 @@ fn close_frame(store: &mut Store, costs: Costs) {
     store.site_index.clear();
     store.attr_index.clear();
     store.attr_distinct.clear();
-    frame.sites.sort_by_key(|site| std::cmp::Reverse(site.self_ns));
+    frame
+        .sites
+        .sort_by_key(|site| std::cmp::Reverse(site.self_ns));
     for &(counter, value) in &frame.counts {
         store.push(TraceEvent::Counter {
             counter,

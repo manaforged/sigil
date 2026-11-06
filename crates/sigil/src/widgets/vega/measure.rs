@@ -30,7 +30,10 @@ impl Widths {
         if font.size <= 0.0 || text.trim().is_empty() {
             return 0.0;
         }
-        let face = format!("{}|{}|{}|{}", font.size, font.family, font.weight, font.style);
+        let face = format!(
+            "{}|{}|{}|{}",
+            font.size, font.family, font.weight, font.style
+        );
         let key = (text.to_string(), face);
         if let Some(width) = self.known.get(&key) {
             return *width;
@@ -54,7 +57,10 @@ fn svg(text: &str, font: &Font<'_>, plain: bool) -> String {
     let mut attrs = format!("font-size=\"{}\"", font.size);
     let family = if plain { "sans-serif" } else { font.family };
     if !family.is_empty() {
-        attrs.push_str(&format!(" font-family=\"{}\"", family.replace(['"', '\''], "")));
+        attrs.push_str(&format!(
+            " font-family=\"{}\"",
+            family.replace(['"', '\''], "")
+        ));
     }
     for (name, value) in [("font-weight", font.weight), ("font-style", font.style)] {
         if !plain && !value.is_empty() {

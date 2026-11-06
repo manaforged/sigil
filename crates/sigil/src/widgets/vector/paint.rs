@@ -26,8 +26,15 @@ pub(super) fn resolve(
     let fill = fill.map(|fill| match fill {
         PathFill::Solid(color) => PathPaint::Solid(*color),
         PathFill::Theme(token) => PathPaint::Solid(theme.color(*token)),
-        PathFill::Linear { start, end, stops: list } => {
-            let kind = GradientKind::Linear { start: point(*start), end: point(*end) };
+        PathFill::Linear {
+            start,
+            end,
+            stops: list,
+        } => {
+            let kind = GradientKind::Linear {
+                start: point(*start),
+                end: point(*end),
+            };
             PathPaint::Gradient(Gradient::new(kind, stops(list)))
         }
         PathFill::Radial {
@@ -35,7 +42,10 @@ pub(super) fn resolve(
             radius,
             stops: list,
         } => {
-            let kind = GradientKind::Radial { center: point(*center), radius: [*radius; 2] };
+            let kind = GradientKind::Radial {
+                center: point(*center),
+                radius: [*radius; 2],
+            };
             PathPaint::Gradient(Gradient::new(kind, stops(list)))
         }
     });
@@ -43,9 +53,18 @@ pub(super) fn resolve(
     (fill, stroke)
 }
 
-pub(super) fn path_key(node: &PathNode, fill: Option<&PathPaint>, stroke: Option<(Rgba8, f32)>) -> u64 {
+pub(super) fn path_key(
+    node: &PathNode,
+    fill: Option<&PathPaint>,
+    stroke: Option<(Rgba8, f32)>,
+) -> u64 {
     let mut hash = OFFSET;
-    for byte in node.width.to_le_bytes().into_iter().chain(node.height.to_le_bytes()) {
+    for byte in node
+        .width
+        .to_le_bytes()
+        .into_iter()
+        .chain(node.height.to_le_bytes())
+    {
         mix(&mut hash, byte);
     }
     mix(&mut hash, u8::from(node.non_scaling));
@@ -72,7 +91,10 @@ pub(super) fn theme_key(node: &PathNode, theme: &Theme) -> u64 {
 }
 
 fn apply([[sx, kx, tx], [ky, sy, ty]]: Transform, (x, y): (f32, f32)) -> (f32, f32) {
-    (sx.mul_add(x, kx.mul_add(y, tx)), ky.mul_add(x, sy.mul_add(y, ty)))
+    (
+        sx.mul_add(x, kx.mul_add(y, tx)),
+        ky.mul_add(x, sy.mul_add(y, ty)),
+    )
 }
 
 pub(super) fn bake(cmds: &[PathCmd], view: Transform) -> Arc<[PathCmd]> {
@@ -110,12 +132,18 @@ pub(super) fn map(paint: &PathPaint, view: Transform) -> PathPaint {
         PathPaint::Gradient(gradient) => {
             let mut mapped = gradient.clone();
             mapped.kind = match gradient.kind {
-                GradientKind::Linear { start, end } => GradientKind::Linear { start: at(start), end: at(end) },
+                GradientKind::Linear { start, end } => GradientKind::Linear {
+                    start: at(start),
+                    end: at(end),
+                },
                 GradientKind::Radial { center, radius } => GradientKind::Radial {
                     center: at(center),
                     radius: [radius[0] * view[0][0].abs(), radius[1] * view[1][1].abs()],
                 },
-                GradientKind::Conic { center, angle } => GradientKind::Conic { center: at(center), angle },
+                GradientKind::Conic { center, angle } => GradientKind::Conic {
+                    center: at(center),
+                    angle,
+                },
             };
             PathPaint::Gradient(mapped)
         }

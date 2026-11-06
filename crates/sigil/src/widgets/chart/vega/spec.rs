@@ -80,7 +80,9 @@ impl Shape {
             _ => return None,
         };
         let number = |key: &str| map.and_then(|map| map.get(key)).and_then(Value::as_f64);
-        let filled = map.and_then(|map| map.get("filled")).and_then(Value::as_bool);
+        let filled = map
+            .and_then(|map| map.get("filled"))
+            .and_then(Value::as_bool);
         let (mark, dot) = Self::kind(name, filled)?;
         let donut = number("innerRadius").is_some_and(|radius| radius > 0.0);
         Some(Self { mark, donut, dot })
@@ -149,9 +151,8 @@ impl Spec {
         if encoding.keys().any(|key| !CHANNELS.contains(&key.as_str())) {
             return None;
         }
-        let channel = |name: &'static str| {
-            optional(encoding.get(name), |value| Channel::parse(name, value))
-        };
+        let channel =
+            |name: &'static str| optional(encoding.get(name), |value| Channel::parse(name, value));
         Some(Self {
             mark: shape.mark,
             donut: shape.donut,

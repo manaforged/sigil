@@ -80,7 +80,9 @@ impl ButtonFill {
 
     pub(super) fn label_atoms(self) -> &'static [StyleAtom] {
         match self {
-            Self::Solid => crate::layout::snap::CellForm::new(LABEL_TEXT_SOLID, LABEL_TEXT_SOLID_CELL).pick(),
+            Self::Solid => {
+                crate::layout::snap::CellForm::new(LABEL_TEXT_SOLID, LABEL_TEXT_SOLID_CELL).pick()
+            }
             Self::Soft | Self::Ghost | Self::Outline => LABEL_TEXT_SOFT,
         }
     }

@@ -131,7 +131,9 @@ impl Domain {
     fn parse(value: &Value) -> Option<Self> {
         match value {
             Value::Array(values) => match values.as_slice() {
-                [Value::Number(lo), Value::Number(hi)] => Some(Self::Span(lo.as_f64()?, hi.as_f64()?)),
+                [Value::Number(lo), Value::Number(hi)] => {
+                    Some(Self::Span(lo.as_f64()?, hi.as_f64()?))
+                }
                 _ => keys(values).map(Self::Values),
             },
             Value::Object(map) => keys(map.get("unionWith")?.as_array()?).map(Self::Union),
@@ -177,14 +179,21 @@ fn title(map: &Map<String, Value>, field: Option<&str>, aggregate: Option<&str>)
         .get("title")
         .or_else(|| axis.and_then(|axis| axis.get("title")));
     if let Some(written) = written {
-        return written.as_str().filter(|text| !text.is_empty()).map(str::to_owned);
+        return written
+            .as_str()
+            .filter(|text| !text.is_empty())
+            .map(str::to_owned);
     }
     match (aggregate, field) {
         (Some("count"), _) => Some("Count of Records".to_owned()),
         (Some(op), Some(field)) => {
             let mut letters = op.chars();
             let head = letters.next().map(|first| first.to_ascii_uppercase());
-            Some(format!("{}{} of {field}", head.unwrap_or_default(), letters.as_str()))
+            Some(format!(
+                "{}{} of {field}",
+                head.unwrap_or_default(),
+                letters.as_str()
+            ))
         }
         (None, Some(field)) => Some(field.to_owned()),
         (_, None) => None,
@@ -198,8 +207,12 @@ impl Channel {
             return None;
         }
         let field = optional(map.get("field"), |field| field.as_str().map(str::to_owned))?;
-        let op = optional(map.get("aggregate"), |name| name.as_str().map(str::to_owned))?;
-        let aggregate = optional(map.get("aggregate"), |name| Aggregate::parse(name.as_str()?))?;
+        let op = optional(map.get("aggregate"), |name| {
+            name.as_str().map(str::to_owned)
+        })?;
+        let aggregate = optional(map.get("aggregate"), |name| {
+            Aggregate::parse(name.as_str()?)
+        })?;
         let declared = optional(map.get("type"), |name| Kind::parse(name.as_str()?))?;
         let kind = declared.unwrap_or(if aggregate.is_some() {
             Kind::Quantitative

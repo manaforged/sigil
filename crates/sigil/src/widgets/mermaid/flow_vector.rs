@@ -64,8 +64,16 @@ fn outer(rect: GridRect) -> Area {
 fn body(rect: GridRect, dummy: bool, vertical: bool) -> Area {
     let area = outer(rect);
     match (dummy, vertical) {
-        (true, true) => Area { x: area.cx(), w: 0.0, ..area },
-        (true, false) => Area { y: area.cy(), h: 0.0, ..area },
+        (true, true) => Area {
+            x: area.cx(),
+            w: 0.0,
+            ..area
+        },
+        (true, false) => Area {
+            y: area.cy(),
+            h: 0.0,
+            ..area
+        },
         (false, _) => Area {
             x: area.x + CELL_W / 2.0,
             y: area.y + CELL_H / 2.0,
@@ -89,14 +97,21 @@ pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
         .zip(&rects)
         .map(|(node, rect)| body(*rect, node.dummy, vertical))
         .collect();
-    let size = rects.iter().map(|rect| outer(*rect)).fold((0.0_f32, 0.0_f32), |size, area| {
-        (size.0.max(area.right()), size.1.max(area.bottom()))
-    });
+    let size = rects
+        .iter()
+        .map(|rect| outer(*rect))
+        .fold((0.0_f32, 0.0_f32), |size, area| {
+            (size.0.max(area.right()), size.1.max(area.bottom()))
+        });
     let back = graph.edges.iter().any(|edge| {
         let (Some(from), Some(to)) = (areas.get(edge.from), areas.get(edge.to)) else {
             return false;
         };
-        if vertical { to.cy() < from.cy() } else { to.cx() < from.cx() }
+        if vertical {
+            to.cy() < from.cy()
+        } else {
+            to.cx() < from.cx()
+        }
     });
     let margin = if back { 2.0 * LANE } else { 0.0 };
     let size = (size.0 + margin, size.1 + margin);
@@ -108,8 +123,14 @@ pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
     );
     let (lines, dashes, heads, labels) = edges(&graph, &areas, size);
     root = root
-        .child(layer(lines.stroke(Token::OnSurfaceMuted, edge_width()), size))
-        .child(layer(dashes.stroke(Token::OnSurfaceMuted, edge_width()), size))
+        .child(layer(
+            lines.stroke(Token::OnSurfaceMuted, edge_width()),
+            size,
+        ))
+        .child(layer(
+            dashes.stroke(Token::OnSurfaceMuted, edge_width()),
+            size,
+        ))
         .child(layer(heads.fill(Token::OnSurfaceMuted), size))
         .child(layer(shapes(&graph, &areas, size), size))
         .child(layer(dots(&graph, &areas, size), size));
@@ -155,7 +176,8 @@ fn shapes(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathNode {
             node = shape(node, entry.shape, *area);
         }
     }
-    node.fill(Token::Surface).stroke(Token::Border, f32::from(BORDER_WIDTH))
+    node.fill(Token::Surface)
+        .stroke(Token::Border, f32::from(BORDER_WIDTH))
 }
 
 fn dots(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathNode {
@@ -229,11 +251,25 @@ fn cylinder(node: PathNode, area: Area) -> PathNode {
         .cubic_to(x0, top - lip, area.cx() - k, area.y, area.cx(), area.y)
         .cubic_to(area.cx() + k, area.y, x1, top - lip, x1, top)
         .line_to(x1, bottom)
-        .cubic_to(x1, bottom + lip, area.cx() + k, area.bottom(), area.cx(), area.bottom())
+        .cubic_to(
+            x1,
+            bottom + lip,
+            area.cx() + k,
+            area.bottom(),
+            area.cx(),
+            area.bottom(),
+        )
         .cubic_to(area.cx() - k, area.bottom(), x0, bottom + lip, x0, bottom)
         .close()
         .move_to(x0, top)
-        .cubic_to(x0, top + lip, area.cx() - k, top + 2.0 * lip, area.cx(), top + 2.0 * lip)
+        .cubic_to(
+            x0,
+            top + lip,
+            area.cx() - k,
+            top + 2.0 * lip,
+            area.cx(),
+            top + 2.0 * lip,
+        )
         .cubic_to(area.cx() + k, top + 2.0 * lip, x1, top + lip, x1, top)
 }
 
@@ -310,7 +346,11 @@ fn edges(graph: &Graph, areas: &[Area], size: (f32, f32)) -> Edges {
 
 fn shared(a0: f32, a1: f32, b0: f32, b1: f32) -> Option<f32> {
     let (lo, hi) = (a0.max(b0), a1.min(b1));
-    let need = if a1 - a0 < 1.0 || b1 - b0 < 1.0 { 0.0 } else { OVERLAP };
+    let need = if a1 - a0 < 1.0 || b1 - b0 < 1.0 {
+        0.0
+    } else {
+        OVERLAP
+    };
     (hi - lo >= need).then(|| f32::midpoint(lo, hi))
 }
 
@@ -346,7 +386,12 @@ fn lane_right(from: Area, to: Area, areas: &[Area]) -> Vec<Point> {
         .map(|area| area.right())
         .fold(from.right().max(to.right()), f32::max)
         + LANE;
-    vec![(from.right(), from.cy()), (lane, from.cy()), (lane, to.cy()), (to.right(), to.cy())]
+    vec![
+        (from.right(), from.cy()),
+        (lane, from.cy()),
+        (lane, to.cy()),
+        (to.right(), to.cy()),
+    ]
 }
 
 fn lane_below(from: Area, to: Area, areas: &[Area]) -> Vec<Point> {
@@ -357,7 +402,12 @@ fn lane_below(from: Area, to: Area, areas: &[Area]) -> Vec<Point> {
         .map(|area| area.bottom())
         .fold(from.bottom().max(to.bottom()), f32::max)
         + LANE;
-    vec![(from.cx(), from.bottom()), (from.cx(), lane), (to.cx(), lane), (to.cx(), to.bottom())]
+    vec![
+        (from.cx(), from.bottom()),
+        (from.cx(), lane),
+        (to.cx(), lane),
+        (to.cx(), to.bottom()),
+    ]
 }
 
 fn distinct(points: &[Point]) -> Vec<Point> {
@@ -393,9 +443,12 @@ pub(super) fn polyline(mut node: PathNode, points: &[Point]) -> PathNode {
         let ((ux, uy), into) = unit(before, corner);
         let ((vx, vy), out) = unit(corner, after);
         let r = CORNER.min(into / 2.0).min(out / 2.0);
-        node = node
-            .line_to(corner.0 - ux * r, corner.1 - uy * r)
-            .quad_to(corner.0, corner.1, corner.0 + vx * r, corner.1 + vy * r);
+        node = node.line_to(corner.0 - ux * r, corner.1 - uy * r).quad_to(
+            corner.0,
+            corner.1,
+            corner.0 + vx * r,
+            corner.1 + vy * r,
+        );
     }
     match points.last() {
         Some(last) if points.len() > 1 => node.line_to(last.0, last.1),
@@ -420,7 +473,10 @@ pub(super) fn dashed_line(mut node: PathNode, points: &[Point]) -> PathNode {
 
 fn arrow_head(node: PathNode, points: &mut Vec<Point>) -> PathNode {
     let count = points.len();
-    let (Some(tip), Some(before)) = (points.last().copied(), distinct(points).iter().rev().nth(1).copied()) else {
+    let (Some(tip), Some(before)) = (
+        points.last().copied(),
+        distinct(points).iter().rev().nth(1).copied(),
+    ) else {
         return node;
     };
     let ((ux, uy), length) = unit(before, tip);
@@ -468,5 +524,10 @@ pub(super) fn edge_label(label: &str, at: Point) -> NodeBuilder {
         .rounded(Radius::Full)
         .border_w(1)
         .border_color(Token::BorderSubtle)
-        .child(text(label.to_string()).class("text-xs").text_color(Token::OnSurfaceMuted).nowrap())
+        .child(
+            text(label.to_string())
+                .class("text-xs")
+                .text_color(Token::OnSurfaceMuted)
+                .nowrap(),
+        )
 }
