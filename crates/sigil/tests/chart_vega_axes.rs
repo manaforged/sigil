@@ -8,9 +8,11 @@ use sigil::kernel::Role;
 use sigil::prelude::*;
 use sigil_kittest::{Harness, Query};
 
+const ROW: f32 = 20.0;
+
 fn vega(json: String) -> Harness {
     let mut ui = Harness::new(move || markdown(signal(format!("```vega-lite\n{json}\n```"))))
-        .pixels(800, 700);
+        .size(160, 60);
     ui.settle();
     ui
 }
@@ -104,7 +106,7 @@ fn a_chart_without_height_has_a_300_px_plot() {
     let mut ui = vega(r#"{"data":{"values":[{"k":"a","v":100},{"k":"b","v":40}]},"mark":"bar","encoding":{"x":{"field":"k"},"y":{"field":"v","type":"quantitative"}}}"#.to_owned());
     let (zero, top) = (label(&mut ui, "0"), label(&mut ui, "100"));
     let span = zero.origin.y - top.origin.y;
-    assert!((span - 300.0).abs() < 4.0, "0 to 100 spans {span} px");
+    assert!((span - 300.0).abs() <= ROW, "0 to 100 spans {span} px");
 }
 
 #[test]

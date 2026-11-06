@@ -151,9 +151,7 @@ fn styled_block(block: Block, tone: TokenTone) -> NodeBuilder {
         Block::Code { lang, body } => render::code(&lang, &body),
         Block::Math(source) => blocks::math(&source),
         Block::Mermaid(body) => super::mermaid::mermaid(body),
-        Block::VegaLite(source) => {
-            super::chart::vega_lite(&source).unwrap_or_else(|| render::code("json", &source))
-        }
+        Block::VegaLite(source) => super::vega::figure(&source, vega_fallback),
         Block::Graphviz(source) => super::graphviz::figure(&source),
         Block::Chart(data) => chart_node(data),
         Block::Image { alt, src } => image_node(&alt, &src),
@@ -165,6 +163,10 @@ fn styled_block(block: Block, tone: TokenTone) -> NodeBuilder {
         }
         Block::Rule => render::rule(),
     }
+}
+
+fn vega_fallback(source: &str) -> NodeBuilder {
+    super::chart::vega_lite(source).unwrap_or_else(|| render::code("json", source))
 }
 
 fn chart_node(data: chart_parse::ChartData) -> NodeBuilder {

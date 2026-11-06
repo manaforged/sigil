@@ -208,6 +208,7 @@ mod toggle;
 mod tooltip;
 mod tree;
 mod vector;
+mod vega;
 mod virtual_list;
 mod widget;
 

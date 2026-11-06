@@ -15,7 +15,7 @@ fn fence(json: &str) -> String {
 }
 
 fn vega(json: &'static str) -> Harness {
-    let mut ui = Harness::new(move || markdown(signal(fence(json)))).pixels(800, 700);
+    let mut ui = Harness::new(move || markdown(signal(fence(json)))).size(160, 60);
     ui.settle();
     ui
 }
@@ -60,7 +60,7 @@ fn x_of(ui: &mut Harness, label: &str) -> f32 {
 #[test]
 fn vega_temporal_months_keep_time_order() {
     let json = r#"{"data":{"values":[{"t":"Jan 1, 2024","v":1},{"t":"Feb 1, 2024","v":2},{"t":"Mar 1, 2024","v":3}]},"mark":"line","encoding":{"x":{"field":"t","type":"temporal"},"y":{"field":"v","type":"quantitative"}}}"#;
-    let mut ui = Harness::new(move || markdown(signal(fence(json)))).pixels(800, 400);
+    let mut ui = Harness::new(move || markdown(signal(fence(json)))).size(160, 60);
     ui.settle();
     let (feb, mar) = (x_of(&mut ui, "February"), x_of(&mut ui, "March"));
     assert!(feb < mar, "February at {feb} is right of March at {mar}");
@@ -70,7 +70,7 @@ fn vega_temporal_months_keep_time_order() {
 #[test]
 fn vega_area_with_color_stacks() {
     let json = r#"{"data":{"values":[{"x":"p","g":"A","y":6},{"x":"q","g":"A","y":6},{"x":"p","g":"B","y":6},{"x":"q","g":"B","y":6}]},"mark":"area","encoding":{"x":{"field":"x","type":"nominal"},"y":{"field":"y","type":"quantitative"},"color":{"field":"g","type":"nominal"}}}"#;
-    let mut ui = Harness::new(move || markdown(signal(fence(json)))).pixels(800, 400);
+    let mut ui = Harness::new(move || markdown(signal(fence(json)))).size(160, 60);
     ui.settle();
     assert!(
         ui.query(&Query::text("12")).is_some() && ui.query(&Query::text("20")).is_none(),
@@ -82,7 +82,7 @@ fn vega_area_with_color_stacks() {
 #[test]
 fn vega_quantitative_x_line_is_spaced_by_value() {
     let json = r#"{"data":{"values":[{"x":1,"y":1},{"x":2,"y":2},{"x":10,"y":3}]},"mark":"line","encoding":{"x":{"field":"x","type":"quantitative"},"y":{"field":"y","type":"quantitative"}}}"#;
-    let mut ui = Harness::new(move || markdown(signal(fence(json)))).pixels(800, 400);
+    let mut ui = Harness::new(move || markdown(signal(fence(json)))).size(160, 60);
     ui.settle();
     let (a, b, c) = (x_of(&mut ui, "1"), x_of(&mut ui, "2"), x_of(&mut ui, "10"));
     assert!(
@@ -113,9 +113,9 @@ fn scatter_of_one_large_point_has_distinct_ticks() {
 #[test]
 fn small_fractional_bars_keep_their_values() {
     let json = r#"{"data":{"values":[{"k":"a","v":0.4},{"k":"b","v":0.2}]},"mark":"bar","encoding":{"x":{"field":"k","type":"nominal"},"y":{"field":"v","type":"quantitative"}}}"#;
-    let mut ui = Harness::new(move || markdown(signal(fence(json)))).pixels(600, 400);
+    let mut ui = Harness::new(move || markdown(signal(fence(json)))).size(160, 60);
     ui.settle();
-    let shown = ui.text();
+    let shown = ui.accessibility_snapshot();
     assert!(
         shown.contains("Name=\"0.4\""),
         "bar caption for 0.4: {shown}"
@@ -159,9 +159,9 @@ fn pie_of_huge_values_reads_fifty_percent() {
 #[test]
 fn vega_sum_overflow_keeps_the_bar() {
     let json = r#"{"data":{"values":[{"k":"a","v":2e38},{"k":"a","v":2e38},{"k":"b","v":1}]},"mark":"bar","encoding":{"x":{"field":"k","type":"nominal"},"y":{"field":"v","type":"quantitative","aggregate":"sum"}}}"#;
-    let mut ui = Harness::new(move || markdown(signal(fence(json)))).pixels(600, 400);
+    let mut ui = Harness::new(move || markdown(signal(fence(json)))).size(160, 60);
     ui.settle();
-    let shown = ui.text();
+    let shown = ui.accessibility_snapshot();
     assert!(!shown.contains("inf"), "axis or caption reads inf: {shown}");
 }
 
