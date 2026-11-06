@@ -7,6 +7,7 @@ use crate::events::{MouseButton, PointerEvent, ScrollDelta, ScrollEvent};
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{LayoutStyle, mono_cell, rows};
 use crate::reactive::{Signal, derived, effect_named, signal};
+use crate::style::TextRun;
 use crate::style::theme::ambient::ActiveTheme;
 use crate::widgets::Widget;
 
@@ -62,8 +63,29 @@ fn screen(lines: Signal<Vec<Row>>) -> NodeBuilder {
         .children_reactive(move || (0..count.get()).map(|at| line(lines, at)).collect::<Vec<NodeBuilder>>())
 }
 
+fn trimmed(row: &Row) -> Row {
+    let painted = |run: &TextRun| run.face.background.is_some() || run.face.fill.is_some();
+    let keep = row.runs.iter().rev().find_map(|run| {
+        if painted(run) {
+            return Some(run.end);
+        }
+        let text = row.text.get(run.start..run.end)?.trim_end();
+        (!text.is_empty()).then_some(run.start + text.len())
+    });
+    let keep = keep.unwrap_or(0);
+    Row {
+        text: row.text.get(..keep).unwrap_or_default().to_owned(),
+        runs: row
+            .runs
+            .iter()
+            .filter(|run| run.start < keep)
+            .map(|run| TextRun { end: run.end.min(keep), ..run.clone() })
+            .collect(),
+    }
+}
+
 fn line(lines: Signal<Vec<Row>>, at: usize) -> NodeBuilder {
-    let row = derived(move || lines.with(|rows| rows.get(at).cloned().unwrap_or_default()));
+    let row = derived(move || lines.with(|rows| rows.get(at).map(trimmed).unwrap_or_default()));
     container()
         .layout(LayoutStyle::block().fill_width().height(rows(1.0)).shrink(0.0))
         .children_reactive(move || {

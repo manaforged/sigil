@@ -62,7 +62,7 @@ pub struct TextFace {
     pub underline: bool,
     /// Whether drawn fainter.
     pub dim: bool,
-    /// Whether the background has square corners, as a terminal cell does.
+    /// Whether this is a terminal cell: a square background on a fixed character grid.
     pub square: bool,
     /// The link, if any.
     pub link: Option<std::sync::Arc<str>>,

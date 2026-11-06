@@ -183,6 +183,7 @@ pub(crate) struct FaceStyle {
     pub(crate) weight: u16,
     pub(crate) features: SmallVec<[FeatureTag; 4]>,
     pub(crate) letter_spacing_em: f32,
+    pub(crate) cell_grid: bool,
 }
 
 impl FaceStyle {
@@ -192,6 +193,7 @@ impl FaceStyle {
             weight: 400,
             features: SmallVec::new(),
             letter_spacing_em: 0.0,
+            cell_grid: false,
         }
     }
 }

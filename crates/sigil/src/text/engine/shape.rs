@@ -237,6 +237,44 @@ pub(super) fn shape_validated(
     level: u8,
     style: &FaceStyle,
 ) -> (u16, ShapedRun) {
+    let (slot, mut run) = shape_in_chain(chain, initial_slot, fragment, level, style);
+    if style.cell_grid && slot != 0 {
+        fit_cells(&mut run, cell_width(chain, style));
+    }
+    (slot, run)
+}
+
+fn cell_width(chain: &[Font], style: &FaceStyle) -> f32 {
+    chain.first().map_or(style.size_px, |primary| {
+        let sample = Shaper::new(primary).shape(&TextSegment::at_level("0", 0), style);
+        run_total_advance(&sample)
+    })
+}
+
+fn fit_cells(run: &mut ShapedRun, cell: f32) {
+    if cell <= 0.0 {
+        return;
+    }
+    let mut at = 0;
+    while let Some(cluster) = run.glyphs.get(at).map(|glyph| glyph.cluster) {
+        let count = run.glyphs[at..].iter().take_while(|glyph| glyph.cluster == cluster).count();
+        let last = at + count - 1;
+        let natural: f32 = run.glyphs[at..=last].iter().map(|glyph| glyph.advance).sum();
+        let extra = (natural / cell).round().max(1.0).mul_add(cell, -natural);
+        run.glyphs[last].advance += extra;
+        run.glyphs[at].offset_x += extra / 2.0;
+        run.width += extra;
+        at = last + 1;
+    }
+}
+
+fn shape_in_chain(
+    chain: &[Font],
+    initial_slot: u16,
+    fragment: &str,
+    level: u8,
+    style: &FaceStyle,
+) -> (u16, ShapedRun) {
     let seg = TextSegment::at_level(fragment, level);
     if let Some(font) = chain.get(initial_slot as usize) {
         let run = Shaper::new(font).shape(&seg, style);

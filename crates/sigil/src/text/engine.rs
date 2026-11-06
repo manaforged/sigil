@@ -338,6 +338,10 @@ fn to_shaper_style(style: &TextStyle) -> FaceStyle {
             smallvec::SmallVec::new()
         },
         letter_spacing_em: finite_or(style.letter_spacing_em, 0.0),
+        cell_grid: style
+            .runs
+            .as_ref()
+            .is_some_and(|runs| runs.0.iter().any(|run| run.face.square)),
     }
 }
 
