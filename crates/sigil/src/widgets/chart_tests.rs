@@ -4,7 +4,8 @@ use super::*;
 use crate::Host;
 use crate::kernel::Cx;
 use crate::kernel::HostMode;
-use crate::kernel::{IntoNode, container};
+use crate::kernel::{IntoNode, container, text};
+use crate::layout::LayoutStyle;
 use crate::reactive::Owner;
 use crate::widgets::Widget;
 

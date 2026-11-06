@@ -4,7 +4,8 @@ use crate::style::{Radius, Token, space};
 use crate::widgets::Widget;
 
 use super::ChartView;
-use super::plot::{AXIS, ValueSpan, X_AXIS};
+use super::plot::{AXIS, X_AXIS};
+use super::span::ValueSpan;
 
 pub(super) fn y_axis(span: ValueSpan, x_axis_on: bool, mid_tick: bool) -> NodeBuilder {
     let mut ticks = container()
@@ -39,7 +40,7 @@ fn tick(value: String) -> impl IntoNode + 'static {
 
 pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
     let mut row = container().layout(LayoutStyle::flex_row().gap(space(3)));
-    for item in series.iter().filter(|item| !item.name.is_empty()) {
+    for item in series.iter().filter(|item| !item.legend.is_empty()) {
         row = row.child(
             container()
                 .layout(
@@ -50,10 +51,10 @@ pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(8.0, 8.0))
-                        .class([Radius::Sm.atom(), item.tone.fill().bg()]),
+                        .class([Radius::Sm.atom(), item.hue.token().bg()]),
                 )
                 .child(
-                    text(item.name.to_owned())
+                    text(item.legend.clone())
                         .nowrap()
                         .class("text-xs")
                         .class(Token::Gray12.text()),

@@ -1,18 +1,18 @@
-use std::rc::Rc;
-
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle};
-use crate::style::{Radius, Token, space};
+use crate::layout::{Dimension, JustifyContent, LayoutStyle};
+use crate::style::{Token, space};
 use crate::widgets::Widget;
 
 use super::axis::{legend, y_axis};
+use super::bars::{self, GROUP_GAP};
 use super::decimate::Candle;
 use super::interact::Interact;
-use super::{ChartMark, ChartView, marks, nice_max};
+use super::scatter::{self, Spans};
+use super::span::ValueSpan;
+use super::{ChartMark, ChartView, Stack, marks, pie, readout};
 
 pub(super) const AXIS: f32 = 32.0;
 const PLOT_PAD: f32 = space(2);
-const GROUP_GAP: f32 = space(2);
 pub(super) const X_AXIS: f32 = space(8);
 const PAD: f32 = space(3);
 const COMPACT_PAD: f32 = space(1);
@@ -38,6 +38,11 @@ impl PlotFrame {
         } else {
             PAD
         }
+    }
+
+    fn mid_tick(self, span: ValueSpan, legend: bool) -> bool {
+        let midpoint = span.lo.midpoint(span.hi);
+        self.plot_height(legend) >= MID_TICK_MIN && (!self.whole || midpoint.fract() == 0.0)
     }
 
     fn inner(self, legend: bool) -> f32 {
@@ -86,23 +91,44 @@ pub(super) struct Plot<'a> {
     pub(super) series: &'a [ChartView<'a>],
     pub(super) labels: &'a [String],
     pub(super) mark: ChartMark,
+    pub(super) stack: Stack,
     pub(super) count: usize,
     pub(super) total: usize,
     pub(super) frame: PlotFrame,
 }
 
 pub(super) fn draw(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
-    let (series, frame, count) = (plot.series, plot.frame, plot.count);
-    let span = ValueSpan::of(series, plot.mark);
-    let (area, gap) = match plot.mark {
-        ChartMark::Bar => (bars(series, count, span), GROUP_GAP),
-        ChartMark::Line => (lines(series, count, span, frame.columns()), 0.0),
-        ChartMark::Candle => (candles(series, span, frame.columns()), 0.0),
+    let donut = match plot.mark {
+        ChartMark::Pie => false,
+        ChartMark::Donut => true,
+        _ => return cartesian(plot, interact),
     };
-    let area = interact.attach(area, plot.total, PLOT_PAD, || {
-        probe_values(series, plot.mark)
+    let slices = pie::Slices {
+        values: plot.series.first().map_or(&[], |item| item.values),
+        labels: plot.labels,
+        side: plot.frame.inner(false).max(MIN_PLOT),
+        donut,
+    };
+    pie::draw(&slices, interact)
+}
+
+fn cartesian(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
+    let (series, frame, count) = (plot.series, plot.frame, plot.count);
+    let span = ValueSpan::of(series, plot.mark, plot.stack);
+    let spans = Spans::of(series, span);
+    let columns = frame.columns();
+    let area = match plot.mark {
+        ChartMark::Bar => bars::bars(series, count, span, plot.stack, PLOT_PAD),
+        ChartMark::Candle => candles(series, span, columns),
+        ChartMark::Scatter => dots(series, spans),
+        _ => traces(series, span, count, columns, plot.mark == ChartMark::Area),
+    };
+    let area = interact.attach(area, plot.total, PLOT_PAD, || match plot.mark {
+        ChartMark::Candle => readout::candles(series, plot.labels),
+        ChartMark::Scatter => readout::points(series, spans),
+        _ => readout::columns(series, plot.labels, count),
     });
-    let has_legend = series.iter().any(|item| !item.name.is_empty());
+    let has_legend = series.iter().any(|item| !item.legend.is_empty());
     let x_axis_on = frame.shows_x_axis(has_legend);
     let mut column = container()
         .layout(
@@ -113,11 +139,9 @@ pub(super) fn draw(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
         )
         .child(area);
     if x_axis_on {
-        column = column.child(x_axis(plot.labels, count, gap, frame.label_stride(count)));
+        column = column.child(bottom_axis(plot, spans));
     }
-    let midpoint = span.lo.midpoint(span.hi);
-    let mid_tick =
-        frame.plot_height(has_legend) >= MID_TICK_MIN && (!frame.whole || midpoint.fract() == 0.0);
+    let mid_tick = frame.mid_tick(span, has_legend);
     let mut nodes = vec![
         container()
             .layout(
@@ -136,76 +160,12 @@ pub(super) fn draw(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
     nodes
 }
 
-fn probe_values(series: &[ChartView<'_>], mark: ChartMark) -> Rc<[f32]> {
-    let Some(first) = series.first() else {
-        return Rc::from(Vec::new());
-    };
-    match mark {
-        ChartMark::Candle => Candle::rows(first.values)
-            .iter()
-            .map(|row| row.close)
-            .collect(),
-        ChartMark::Bar | ChartMark::Line => Rc::from(first.values),
-    }
-}
-
-#[derive(Clone, Copy)]
-pub(super) struct ValueSpan {
-    pub(super) lo: f32,
-    pub(super) hi: f32,
-}
-
-impl ValueSpan {
-    fn of(series: &[ChartView<'_>], mark: ChartMark) -> Self {
-        if mark == ChartMark::Candle {
-            return Self::tight(series);
-        }
-        let (mut peak, mut trough) = (0.0_f32, 0.0_f32);
-        for item in series {
-            for &value in item.values {
-                peak = peak.max(value);
-                trough = trough.min(value);
-            }
-        }
-        Self {
-            lo: if trough < 0.0 {
-                -nice_max(-trough)
-            } else {
-                0.0
-            },
-            hi: if peak > 0.0 || trough >= 0.0 {
-                nice_max(peak)
-            } else {
-                0.0
-            },
-        }
-    }
-
-    fn tight(series: &[ChartView<'_>]) -> Self {
-        let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
-        for item in series {
-            for &value in item.values {
-                if value.is_finite() {
-                    lo = lo.min(value);
-                    hi = hi.max(value);
-                }
-            }
-        }
-        if !(lo.is_finite() && hi.is_finite()) {
-            return Self { lo: 0.0, hi: 1.0 };
-        }
-        if hi > lo {
-            Self { lo, hi }
-        } else {
-            Self {
-                lo: lo - 1.0,
-                hi: hi + 1.0,
-            }
-        }
-    }
-
-    pub(super) fn width(self) -> f32 {
-        self.hi - self.lo
+fn bottom_axis(plot: &Plot<'_>, spans: Spans) -> NodeBuilder {
+    let (count, stride) = (plot.count, plot.frame.label_stride(plot.count));
+    match plot.mark {
+        ChartMark::Scatter => scatter::x_axis(spans.x, X_AXIS, PLOT_PAD),
+        ChartMark::Bar => x_axis(plot.labels, count, GROUP_GAP, stride),
+        _ => x_axis(plot.labels, count, 0.0, stride),
     }
 }
 
@@ -251,84 +211,40 @@ fn axis_slot(text: String, width: usize) -> NodeBuilder {
         )
 }
 
-fn bars(series: &[ChartView<'_>], count: usize, span: ValueSpan) -> NodeBuilder {
-    let mut row = container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .grow(1.0)
-                .min_size(0.0, 0.0)
-                .gap(GROUP_GAP)
-                .align_items(AlignItems::End)
-                .padding(PLOT_PAD),
-        )
-        .class("border-b")
-        .class(Token::Gray6.border());
-    for index in 0..count {
-        let mut group = container().layout(
-            LayoutStyle::flex_row()
-                .grow(1.0)
-                .flex_basis(Dimension::Px(0.0))
-                .min_size(0.0, 0.0)
-                .fill_height()
-                .gap(2.0)
-                .align_items(AlignItems::End),
-        );
-        for item in series {
-            let value = item.values.get(index).copied().unwrap_or(0.0);
-            group = group.child(bar_col(span, item.tone, item.name, value));
-        }
-        row = row.child(group);
-    }
-    row
-}
-
-fn bar_col(span: ValueSpan, tone: super::Tone, name: &str, value: f32) -> NodeBuilder {
-    let column = container().layout(
-        LayoutStyle::flex_column()
-            .grow(1.0)
-            .flex_basis(Dimension::Px(0.0))
-            .min_size(0.0, 0.0)
-            .fill_height(),
-    );
-    if value == 0.0 || !value.is_finite() {
-        return column;
-    }
-    let caption = if name.is_empty() {
-        format!("{value:.0}")
-    } else {
-        format!("{name} {value:.0}")
+fn traces<'a>(
+    series: &'a [ChartView<'a>],
+    span: ValueSpan,
+    count: usize,
+    columns: usize,
+    filled: bool,
+) -> NodeBuilder {
+    let shown = series.iter().filter(|item| !item.values.is_empty());
+    let trace = |item: &'a ChartView<'a>| marks::Trace {
+        values: item.values,
+        count,
+        span,
+        columns,
     };
-    let value = value.clamp(span.lo, span.hi);
-    let unit = 100.0 / span.width();
-    let above = (span.hi - value.max(0.0)) * unit;
-    let fill = (value.abs() * unit).max(1.0);
-    let below = (value.min(0.0) - span.lo) * unit;
-    column
-        .child(container().layout(LayoutStyle::block().fill_width().grow(above.max(0.01))))
-        .child(
-            container()
-                .label(caption)
-                .layout(
-                    LayoutStyle::block()
-                        .fill_width()
-                        .grow(fill)
-                        .min_size(0.0, 2.0),
-                )
-                .class([Radius::Sm.atom(), tone.fill().bg()])
-                .tone_scope(tone),
-        )
-        .child(container().layout(LayoutStyle::block().fill_width().grow(below.max(0.01))))
-}
-
-fn lines(series: &[ChartView<'_>], count: usize, span: ValueSpan, columns: usize) -> NodeBuilder {
     let mut layer = container().layout(LayoutStyle::block().fill());
-    for item in series {
-        if !item.values.is_empty() {
-            layer = layer.child(marks::line(item.values, item.tone, count, span, columns));
+    if filled {
+        for item in shown.clone() {
+            layer = layer.child(marks::area(&trace(item), item.hue.soft()));
         }
+    }
+    for item in shown {
+        layer = layer.child(marks::line(&trace(item), item.hue.token()));
     }
     plot_area(layer)
+}
+
+fn dots(series: &[ChartView<'_>], spans: Spans) -> NodeBuilder {
+    let layer = container().layout(LayoutStyle::block().fill());
+    plot_area(
+        series
+            .iter()
+            .map(|item| scatter::dots(item, spans))
+            .fold(layer, NodeBuilder::child),
+    )
 }
 
 fn candles(series: &[ChartView<'_>], span: ValueSpan, columns: usize) -> NodeBuilder {
