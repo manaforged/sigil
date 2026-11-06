@@ -9,6 +9,10 @@ use crate::geometry::Rect;
 use crate::renderer::split_encoder::SplitEncoder;
 use crate::scene::command::{DrawPath, Transform};
 
+mod linear;
+
+use linear::Linearize;
+
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 const SRGB_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const MAX_RETAINED: usize = 8;
@@ -17,6 +21,7 @@ struct Gpu {
     device: wgpu::Device,
     renderer: vello_gpu::Renderer,
     resources: vello_gpu::Resources,
+    linearize: Linearize,
 }
 
 #[derive(Clone, PartialEq)]
@@ -36,7 +41,7 @@ struct Retained {
     pixels: Pixels,
     draws: Vec<Queued>,
     unorm: wgpu::TextureView,
-    srgb: wgpu::TextureView,
+    linear: wgpu::TextureView,
 }
 
 pub(crate) struct Rendered {
@@ -77,7 +82,7 @@ impl VectorPass {
     pub(crate) fn contains(&self, view: &wgpu::TextureView) -> bool {
         self.retained
             .iter()
-            .any(|target| target.unorm == *view || target.srgb == *view)
+            .any(|target| target.unorm == *view || target.linear == *view)
     }
 
     pub(crate) fn render(
@@ -97,7 +102,7 @@ impl VectorPass {
         let found = self.find(pixels, draws, (device, queue), encoder)?;
         let target = &self.retained[found];
         Some(Rendered {
-            view: if linear { target.srgb.clone() } else { target.unorm.clone() },
+            view: if linear { target.linear.clone() } else { target.unorm.clone() },
             origin: (u32::from(pixels.origin.0), u32::from(pixels.origin.1)),
             size: (u32::from(pixels.size.0), u32::from(pixels.size.1)),
             bounds,
@@ -175,7 +180,9 @@ impl VectorPass {
                 None,
                 &vello_gpu::TextureBindings::new(),
                 vello_gpu::TargetInit::Clear(vello_gpu::ClearSettings::default()),
-            )
+            )?;
+            gpu.linearize.run(device, raw, &target.unorm, &target.linear);
+            Ok::<(), vello_gpu::RenderError>(())
         });
         result.is_ok()
     }
@@ -206,34 +213,34 @@ fn gpu<'a>(slot: &'a mut Option<Gpu>, device: &wgpu::Device, size: (u16, u16)) -
             device: device.clone(),
             renderer,
             resources,
+            linearize: Linearize::new(device, SRGB_FORMAT),
         }
     })
 }
 
 fn new_target(device: &wgpu::Device, pixels: Pixels) -> Retained {
-    let texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("sigil-renderer vector target"),
-        size: wgpu::Extent3d {
-            width: u32::from(pixels.size.0),
-            height: u32::from(pixels.size.1),
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[SRGB_FORMAT],
-    });
-    let unorm = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let srgb = texture.create_view(&wgpu::TextureViewDescriptor {
-        format: Some(SRGB_FORMAT),
-        ..wgpu::TextureViewDescriptor::default()
-    });
+    let view = |label, format| {
+        device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some(label),
+                size: wgpu::Extent3d {
+                    width: u32::from(pixels.size.0),
+                    height: u32::from(pixels.size.1),
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&wgpu::TextureViewDescriptor::default())
+    };
     Retained {
         pixels,
         draws: Vec::new(),
-        unorm,
-        srgb,
+        unorm: view("sigil-renderer vector target", FORMAT),
+        linear: view("sigil-renderer linear vector target", SRGB_FORMAT),
     }
 }

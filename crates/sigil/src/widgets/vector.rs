@@ -197,7 +197,7 @@ impl PathNode {
     }
 
     fn fit_box(mut self, width: f32, height: f32) -> Self {
-        self.fit = Some(fixed(width, height));
+        self.fit = Some(fixed(width, height).min_size(width, height));
         self
     }
 
@@ -301,10 +301,7 @@ impl PathNode {
 }
 
 fn fixed(width: f32, height: f32) -> LayoutStyle {
-    LayoutStyle::block()
-        .fixed_size(width, height)
-        .shrink(0.0)
-        .min_size(width, height)
+    LayoutStyle::block().fixed_size(width, height).shrink(0.0)
 }
 
 builder_impls!([] PathNode: widget, node(pub(crate)));
