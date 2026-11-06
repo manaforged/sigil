@@ -717,7 +717,7 @@ fn main() {
 | `avatar` | `fn avatar(initials) -> NodeBuilder` | Initials in a circle. |
 | `spinner` | `fn spinner() -> NodeBuilder` | A busy indicator named "Loading". |
 | `icon` | `fn icon(glyph: impl IntoIconSource) -> IconBuilder` | An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, or a text glyph. |
-| `Icon` | `enum Icon` (105 variants); `Icon::ALL`, `name()`, `svg()` | The bundled Lucide icon set (ISC). `name` is the kebab-case file name and `svg` the SVG source (feature `scene`). |
+| `Icon` | `enum Icon` (108 variants); `Icon::ALL`, `name()`, `svg()` | The bundled Lucide icon set (ISC). `name` is the kebab-case file name and `svg` the SVG source (feature `scene`). |
 | `path` | `const fn path(width: u32, height: u32) -> PathNode` | A vector path. |
 | `widgets::canvas` | `fn canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static)`; `redraw_on(Signal<u64>)`, `layout(LayoutStyle)` | Custom drawing: the closure records scene commands for the node's rect when the node paints, clipped to that rect. It runs again on resize and each time the `redraw_on` signal changes. The terminal host paints the same commands to cells; a fill that covers part of a cell paints as a half or eighth block. |
 | `widgets::PathNode::draw` | `fn draw(self, scene: &mut SceneBuilder, destination: Rect, theme: &Theme)` | Record a vector path into a `canvas` scene. It rasterizes again at the drawn size. |

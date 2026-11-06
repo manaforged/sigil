@@ -96,6 +96,7 @@ lucide_icons! {
     LogIn => "log-in",
     LogOut => "log-out",
     Mail => "mail",
+    Maximize2 => "maximize-2",
     Menu => "menu",
     Minus => "minus",
     Monitor => "monitor",
@@ -137,4 +138,6 @@ lucide_icons! {
     VolumeX => "volume-x",
     X => "x",
     Zap => "zap",
+    ZoomIn => "zoom-in",
+    ZoomOut => "zoom-out",
 }

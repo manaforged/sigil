@@ -91,7 +91,7 @@ impl Chrome {
             .child(self.copy(source));
         if expandable {
             let open = self.open;
-            bar = bar.child(tool(Icon::Search, move || open.set(true)).accessible("Expand diagram"));
+            bar = bar.child(tool(Icon::Maximize2, move || open.set(true)).accessible("Expand diagram"));
         }
         bar
     }
