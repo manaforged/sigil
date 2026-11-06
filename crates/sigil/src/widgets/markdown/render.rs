@@ -37,14 +37,16 @@ pub(super) fn heading(level: u8, body: &[Inline]) -> NodeBuilder {
     let class = match level {
         1 => CellForm::new("text-xl font-bold", "font-bold underline").pick(),
         2 => "text-lg font-bold",
-        _ => "text-base font-bold",
+        3 => "text-base font-bold",
+        _ => "text-sm font-bold",
     };
     let grid = match level {
         1 | 2 => Token::Accent11,
         3 => Token::OnSurface,
         _ => Token::OnSurfaceMuted,
     };
-    let tone = TokenTone(CellForm::new(Token::OnSurface, grid).pick());
+    let window = if level > 4 { Token::OnSurfaceMuted } else { Token::OnSurface };
+    let tone = TokenTone(CellForm::new(window, grid).pick());
     let level = usize::from(level);
     rich(body, class, tone, Role::Heading).mutate(move |node| node.a11y.level = Some(level))
 }

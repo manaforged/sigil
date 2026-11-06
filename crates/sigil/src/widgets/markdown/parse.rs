@@ -1,31 +1,52 @@
-use super::chart_parse::{ChartData, fence_block};
+use std::ops::Range;
+
+use pulldown_cmark::BlockQuoteKind;
+
+use super::chart_parse::ChartData;
 pub(crate) use super::containers::{List, ListItem};
-use super::containers::{
-    heading, image_line, list_marker, rule, take_list, take_quote, take_table,
-};
+use super::events::located;
+pub(crate) use super::table_data::Table;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Block {
     Heading { level: u8, body: Vec<Inline> },
     Paragraph(Vec<Inline>),
     Quote(Vec<Self>),
+    Alert { kind: BlockQuoteKind, blocks: Vec<Self> },
+    Details { summary: Vec<Inline>, blocks: Vec<Self> },
     List(List),
     Code { lang: String, body: String },
+    Math(String),
     Mermaid(String),
     Chart(ChartData),
     Image { alt: String, src: String },
-    Table(Vec<Vec<Vec<Inline>>>),
+    Table(Table),
+    Footnotes(Vec<Note>),
+    Html(String),
     Rule,
 }
 
 impl Eq for Block {}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Note {
+    pub(crate) label: String,
+    pub(crate) blocks: Vec<Block>,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum Inline {
     Text(String),
     Strong(Vec<Self>),
     Em(Vec<Self>),
+    Strike(Vec<Self>),
     Code(String),
+    Math(String),
+    Note(String),
+    Image {
+        alt: String,
+        src: String,
+    },
     Link {
         href: String,
         body: Vec<Self>,
@@ -38,8 +59,14 @@ impl Inline {
         let mut out = String::new();
         for inline in body {
             match inline {
-                Self::Text(text) | Self::Code(text) => out.push_str(text),
-                Self::Strong(inner) | Self::Em(inner) | Self::Link { body: inner, .. } => {
+                Self::Text(text) | Self::Code(text) | Self::Math(text) | Self::Note(text) => {
+                    out.push_str(text);
+                }
+                Self::Image { alt, .. } => out.push_str(alt),
+                Self::Strong(inner)
+                | Self::Em(inner)
+                | Self::Strike(inner)
+                | Self::Link { body: inner, .. } => {
                     out.push_str(&Self::plain(inner));
                 }
             }
@@ -66,169 +93,57 @@ impl Inline {
     }
 }
 
-pub(crate) use super::inline::parse_inlines;
-
-const MAX_NESTING: usize = 16;
-
-#[derive(Default)]
-struct Blocks {
-    out: Vec<Block>,
-    para: String,
-    fence: Option<(String, String)>,
-    depth: usize,
-}
-
 #[cfg(test)]
 pub(crate) fn parse_blocks(source: &str) -> Vec<Block> {
     parse_tail(source).0
 }
 
 pub(crate) fn parse_tail(source: &str) -> (Vec<Block>, Option<(usize, usize)>) {
-    parse_at_depth(source, 0)
-}
-
-fn parse_at_depth(source: &str, depth: usize) -> (Vec<Block>, Option<(usize, usize)>) {
     if crate::widgets::source_too_large(source) {
         return (vec![crate::widgets::oversize_block()], None);
     }
-    let mut lines = Vec::new();
-    let mut ends = Vec::new();
-    let mut offset = 0;
-    for raw in source.split_inclusive('\n') {
-        offset += raw.len();
-        lines.push(raw.trim_end());
-        ends.push(raw.ends_with('\n').then_some(offset));
-    }
-    let mut blocks = Blocks {
-        depth,
-        ..Blocks::default()
+    let source = super::latex::delimiters(source);
+    let top = located(&source);
+    let boundary = cut(&source, &top);
+    (top.into_iter().map(|(_, block)| block).collect(), boundary)
+}
+
+pub(super) fn nested(source: &str) -> Vec<Block> {
+    located(source).into_iter().map(|(_, block)| block).collect()
+}
+
+fn cut(source: &str, top: &[(Range<usize>, Block)]) -> Option<(usize, usize)> {
+    let [.., (prev, _), (last, _)] = top else {
+        return None;
     };
-    let mut boundary = None;
-    let mut i = 0;
-    while i < lines.len() {
-        let eaten = blocks.step(&lines, i).max(1);
-        if eaten == 1
-            && blocks.fence.is_none()
-            && lines.get(i).is_some_and(|line| line.trim().is_empty())
-            && let Some(Some(end)) = ends.get(i)
-        {
-            boundary = Some((*end, blocks.out.len()));
-        }
-        i += eaten;
-    }
-    (blocks.finish(), boundary)
+    let gap = source.get(prev.end..last.start)?;
+    let head = source.get(..last.start)?.trim_end_matches([' ', '\t']);
+    let blank = head
+        .strip_suffix('\n')?
+        .trim_end_matches([' ', '\t', '\r'])
+        .ends_with('\n');
+    (blank && gap.trim().is_empty()).then_some((last.start, top.len() - 1))
 }
 
-pub(super) fn parse_nested(source: &str, depth: usize) -> Vec<Block> {
-    if depth < MAX_NESTING {
-        return parse_at_depth(source, depth).0;
-    }
-    let text = source.split_whitespace().collect::<Vec<_>>().join(" ");
-    vec![Block::Paragraph(parse_inlines(&text))]
-}
-
-fn fence_open(line: &str) -> Option<String> {
-    let rest = line.trim_start().strip_prefix("```")?;
-    Some(rest.trim_start_matches('`').trim().to_string())
-}
-
-impl Blocks {
-    fn step(&mut self, lines: &[&str], i: usize) -> usize {
-        let Some(&line) = lines.get(i) else {
-            return 1;
+pub(crate) fn parse_inlines(source: &str) -> Vec<Inline> {
+    let mut out = Vec::new();
+    for block in nested(&super::latex::delimiters(source)) {
+        let body = match block {
+            Block::Paragraph(body) | Block::Heading { body, .. } => body,
+            Block::Html(html) => vec![Inline::Text(html.trim_end().to_string())],
+            _ => return vec![Inline::Text(source.to_string())],
         };
-        if self.feed_fence(line) {
-            return 1;
+        if !out.is_empty() {
+            Inline::push_text(&mut out, "\n");
         }
-        if let Some(lang) = fence_open(line) {
-            self.flush();
-            self.fence = Some((lang, String::new()));
-            return 1;
-        }
-        if rule(line) {
-            self.flush();
-            self.out.push(Block::Rule);
-            return 1;
-        }
-        if let Some(eaten) = self.container(lines, i) {
-            return eaten;
-        }
-        if let Some((level, heading)) = heading(line) {
-            self.flush();
-            self.out.push(Block::Heading {
-                level,
-                body: parse_inlines(heading),
-            });
-            return 1;
-        }
-        if line.trim().is_empty() {
-            self.flush();
-            return 1;
-        }
-        if !self.para.is_empty() {
-            self.para.push(' ');
-        }
-        self.para.push_str(line.trim());
-        1
-    }
-
-    fn container(&mut self, lines: &[&str], i: usize) -> Option<usize> {
-        let line = lines.get(i).copied()?;
-        let (block, eaten) = if let Some((quote, eaten)) = take_quote(lines, i) {
-            (Block::Quote(parse_nested(&quote, self.depth + 1)), eaten)
-        } else if let Some((rows, eaten)) = take_table(lines, i) {
-            let rows = rows
-                .iter()
-                .map(|row| row.iter().map(|cell| parse_inlines(cell)).collect())
-                .collect();
-            (Block::Table(rows), eaten)
-        } else if let Some((alt, src)) = image_line(line) {
-            let (alt, src) = (alt.to_string(), src.to_string());
-            (Block::Image { alt, src }, 1)
-        } else if list_marker(line).is_some() {
-            let (list, eaten) = take_list(lines, i, self.depth + 1)?;
-            (Block::List(list), eaten)
-        } else {
-            return None;
-        };
-        self.flush();
-        self.out.push(block);
-        Some(eaten)
-    }
-
-    fn feed_fence(&mut self, line: &str) -> bool {
-        let Some((lang, buf)) = self.fence.as_mut() else {
-            return false;
-        };
-        if line.trim_start().starts_with("```") {
-            let body = std::mem::take(buf);
-            let lang = std::mem::take(lang);
-            self.out.push(fence_block(&lang, body));
-            self.fence = None;
-        } else {
-            if !buf.is_empty() {
-                buf.push('\n');
+        for inline in body {
+            match inline {
+                Inline::Text(text) => Inline::push_text(&mut out, &text),
+                other => out.push(other),
             }
-            buf.push_str(line);
         }
-        true
     }
-
-    fn flush(&mut self) {
-        let trimmed = self.para.trim();
-        if !trimmed.is_empty() {
-            self.out.push(Block::Paragraph(parse_inlines(trimmed)));
-        }
-        self.para.clear();
-    }
-
-    fn finish(mut self) -> Vec<Block> {
-        if let Some((lang, buf)) = self.fence.take() {
-            self.out.push(fence_block(&lang, buf));
-        }
-        self.flush();
-        self.out
-    }
+    Inline::finish(out)
 }
 
 #[cfg(test)]

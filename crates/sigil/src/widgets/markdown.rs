@@ -1,10 +1,17 @@
+mod blocks;
 mod chart_parse;
 mod containers;
+mod details;
+mod events;
 mod inline;
+mod latex;
 pub(crate) mod parse;
 mod render;
+mod repair;
+mod spans;
 mod stream;
 mod table;
+mod table_data;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, container, text};
 use crate::layout::LayoutStyle;
@@ -133,12 +140,20 @@ fn styled_block(block: Block, tone: TokenTone) -> NodeBuilder {
         Block::Heading { level, body } => render::heading(level, &body),
         Block::Paragraph(body) => render::rich(&body, "", tone, Role::Paragraph),
         Block::Quote(blocks) => render::quote(blocks, styled_block),
+        Block::Alert { kind, blocks } => blocks::alert(kind, blocks, styled_block),
+        Block::Details { summary, blocks } => blocks::details(summary, blocks, styled_block),
         Block::List(list) => render::list(list, tone, styled_block),
         Block::Code { lang, body } => render::code(&lang, &body),
+        Block::Math(source) => blocks::math(&source),
         Block::Mermaid(body) => super::mermaid::mermaid(body),
         Block::Chart(data) => chart_node(data),
         Block::Image { alt, src } => image_node(&alt, &src),
-        Block::Table(rows) => table::table(&rows),
+        Block::Table(data) => table::table(data),
+        Block::Footnotes(notes) => blocks::footnotes(notes, styled_block),
+        Block::Html(html) => {
+            let body = [parse::Inline::Text(html.trim_end().to_string())];
+            render::rich(&body, "", tone, Role::Paragraph)
+        }
         Block::Rule => render::rule(),
     }
 }

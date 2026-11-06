@@ -1,160 +1,8 @@
 use super::parse::Inline;
 use crate::app::HostCaps;
 use crate::style::{TextFace, TextRun, Token};
-use crate::widgets::text_search::NextMatch;
 
-const MAX_MATH_BYTES: usize = 512;
-
-fn find_from(next: &mut NextMatch, source: &str, from: usize) -> Option<usize> {
-    next.find(source.get(from..)?).map(|at| at + from)
-}
-
-struct Inlines<'a> {
-    source: &'a str,
-    tick: NextMatch,
-    star: NextMatch,
-    double: NextMatch,
-    bracket: NextMatch,
-    paren: NextMatch,
-}
-
-impl Inlines<'_> {
-    fn span_at(&mut self, i: usize) -> Option<(Inline, usize)> {
-        let source = self.source;
-        let rest = source.get(i..)?;
-        if rest.starts_with('`')
-            && let Some(end) = find_from(&mut self.tick, source, i + 1)
-        {
-            return Some((Inline::Code(source[i + 1..end].to_string()), end + 1));
-        }
-        let delimiters = if rest.starts_with("\\(") {
-            Some(("\\(", "\\)"))
-        } else if rest.starts_with("\\[") {
-            Some(("\\[", "\\]"))
-        } else if rest.starts_with("$$") {
-            Some(("$$", "$$"))
-        } else if rest.starts_with('$') && rest.chars().nth(1).is_some_and(|ch| !ch.is_whitespace())
-        {
-            Some(("$", "$"))
-        } else {
-            None
-        };
-        if let Some((open, close)) = delimiters {
-            let body = rest.get(open.len()..)?;
-            let mut limit = body.len().min(MAX_MATH_BYTES);
-            while !body.is_char_boundary(limit) {
-                limit -= 1;
-            }
-            if let Some(end) = body[..limit].find(close) {
-                let expression = body[..end].trim();
-                let valid_dollar = open != "$"
-                    || (!body[..end].ends_with(char::is_whitespace)
-                        && !body[end + close.len()..]
-                            .chars()
-                            .next()
-                            .is_some_and(|ch| ch.is_alphanumeric() || ch == '_'));
-                if !expression.is_empty() && valid_dollar {
-                    let rendered = crate::widgets::math::unicode(expression);
-                    return Some((Inline::Text(rendered), i + open.len() + end + close.len()));
-                }
-            }
-        }
-        if rest.starts_with('[')
-            && let Some((label, href, next)) = self.link_at(i)
-        {
-            return Some((link(label, href), next));
-        }
-        if let Some(url) = rest
-            .strip_prefix('<')
-            .and_then(|tail| tail.split_once('>'))
-            .map(|(url, _)| url)
-            .filter(|url| url.contains("://") && !url.contains(char::is_whitespace))
-        {
-            return Some((link(url.to_string(), url.to_string()), i + url.len() + 2));
-        }
-        if rest.starts_with("**")
-            && opens(source, i + 2)
-            && let Some(end) = find_from(&mut self.double, source, i + 2)
-                .filter(|&end| end > i + 2 && closes(source, end))
-        {
-            return Some((Inline::Strong(parse_inlines(&source[i + 2..end])), end + 2));
-        }
-        if rest.starts_with('*')
-            && opens(source, i + 1)
-            && let Some(end) = find_from(&mut self.star, source, i + 1)
-                .filter(|&end| end > i + 1 && closes(source, end))
-        {
-            return Some((Inline::Em(parse_inlines(&source[i + 1..end])), end + 1));
-        }
-        None
-    }
-
-    fn link_at(&mut self, i: usize) -> Option<(String, String, usize)> {
-        let source = self.source;
-        let close = find_from(&mut self.bracket, source, i + 1)?;
-        let label = source[i + 1..close].to_string();
-        source.get(close + 1..)?.strip_prefix('(')?;
-        let end = find_from(&mut self.paren, source, close + 2)?;
-        let url = source[close + 2..end].to_string();
-        Some((label, url, end + 1))
-    }
-}
-
-fn link(label: String, href: String) -> Inline {
-    let label_is_href = label == href;
-    let body = if label.contains("://") {
-        vec![Inline::Text(label)]
-    } else {
-        parse_inlines(&label)
-    };
-    Inline::Link {
-        href,
-        body,
-        label_is_href,
-    }
-}
-
-pub(crate) fn parse_inlines(source: &str) -> Vec<Inline> {
-    let mut scan = Inlines {
-        source,
-        tick: NextMatch::new("`", false),
-        star: NextMatch::new("*", false),
-        double: NextMatch::new("**", false),
-        bracket: NextMatch::new("]", false),
-        paren: NextMatch::new(")", false),
-    };
-    let mut out = Vec::new();
-    let mut i = 0;
-    let mut text = 0;
-    while i < source.len() {
-        if let Some((span, next)) = scan.span_at(i) {
-            Inline::push_text(&mut out, &source[text..i]);
-            out.push(span);
-            i = next;
-            text = next;
-            continue;
-        }
-        i += source[i..].chars().next().map_or(1, char::len_utf8);
-    }
-    Inline::push_text(&mut out, source.get(text..).unwrap_or_default());
-    Inline::finish(out)
-}
-
-fn opens(source: &str, at: usize) -> bool {
-    source
-        .get(at..)
-        .and_then(|rest| rest.chars().next())
-        .is_some_and(|ch| !ch.is_whitespace())
-}
-
-fn closes(source: &str, end: usize) -> bool {
-    source
-        .get(..end)
-        .and_then(|head| head.chars().next_back())
-        .is_some_and(|ch| !ch.is_whitespace())
-}
-
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct StyledText {
     pub(super) text: String,
     pub(super) runs: Vec<TextRun>,
@@ -170,21 +18,12 @@ fn push_spans(out: &mut StyledText, spans: &[Inline], face: &TextFace) {
     for span in spans {
         match span {
             Inline::Text(body) => push_run(out, body, face),
-            Inline::Strong(body) => push_spans(
+            Inline::Strong(body) => push_spans(out, body, &TextFace { bold: true, ..face.clone() }),
+            Inline::Em(body) => push_spans(out, body, &TextFace { italic: true, ..face.clone() }),
+            Inline::Strike(body) => push_spans(
                 out,
-                body,
-                &TextFace {
-                    bold: true,
-                    ..face.clone()
-                },
-            ),
-            Inline::Em(body) => push_spans(
-                out,
-                body,
-                &TextFace {
-                    italic: true,
-                    ..face.clone()
-                },
+                &struck(body),
+                &TextFace { color: Some(Token::OnSurfaceMuted), ..face.clone() },
             ),
             Inline::Code(body) => {
                 let code = TextFace {
@@ -195,13 +34,47 @@ fn push_spans(out: &mut StyledText, spans: &[Inline], face: &TextFace) {
                 };
                 push_run(out, &unbreakable(body), &code);
             }
-            Inline::Link {
-                href,
-                body,
-                label_is_href,
-            } => push_link(out, face, (body, *label_is_href), href),
+            Inline::Math(body) => push_run(out, &crate::widgets::math::unicode(body), face),
+            Inline::Note(label) => push_note(out, label, face),
+            Inline::Image { alt, .. } => {
+                let muted = TextFace { color: Some(Token::OnSurfaceMuted), ..face.clone() };
+                push_run(out, &format!("[{alt}]"), &muted);
+            }
+            Inline::Link { href, body, label_is_href } => {
+                push_link(out, face, (body, *label_is_href), href);
+            }
         }
     }
+}
+
+const STRIKE: char = '\u{336}';
+
+fn struck(body: &[Inline]) -> Vec<Inline> {
+    body.iter()
+        .map(|inline| match inline {
+            Inline::Text(text) => Inline::Text(text.chars().flat_map(|ch| [ch, STRIKE]).collect()),
+            Inline::Strong(inner) => Inline::Strong(struck(inner)),
+            Inline::Em(inner) => Inline::Em(struck(inner)),
+            other => other.clone(),
+        })
+        .collect()
+}
+
+pub(super) fn note_mark(label: &str) -> String {
+    const DIGITS: [char; 10] = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+    if label.bytes().all(|byte| byte.is_ascii_digit()) {
+        label
+            .bytes()
+            .filter_map(|byte| DIGITS.get(usize::from(byte - b'0')))
+            .collect()
+    } else {
+        format!("[{label}]")
+    }
+}
+
+fn push_note(out: &mut StyledText, label: &str, face: &TextFace) {
+    let mark = TextFace { color: Some(Token::Accent11), ..face.clone() };
+    push_run(out, &note_mark(label), &mark);
 }
 
 fn push_link(

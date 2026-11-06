@@ -1,4 +1,5 @@
 use super::super::containers::{List, ListItem, TaskMark};
+use super::super::table_data::{Align, Table};
 use super::{Block, Inline, parse_blocks, parse_inlines};
 
 fn text(body: &str) -> Vec<Inline> {
@@ -52,10 +53,10 @@ fn parse_headings_list_fence_and_paragraph() {
     );
     assert_eq!(
         parse_blocks("| a | b |\n| --- | --- |\n| 1 | 2 |\n"),
-        vec![Block::Table(vec![
-            vec![text("a"), text("b")],
-            vec![text("1"), text("2")],
-        ])]
+        vec![Block::Table(Table {
+            align: vec![Align::Start; 2],
+            rows: vec![vec![text("a"), text("b")], vec![text("1"), text("2")]],
+        })]
     );
 }
 
