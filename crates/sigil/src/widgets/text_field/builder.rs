@@ -190,7 +190,6 @@ impl TextFieldBuilder {
 
     pub(super) fn into_node_builder(mut self) -> (NodeBuilder, TextFieldRuntime) {
         let width = self.layout_overrides.width_hint();
-        let height = self.layout_overrides.height_hint();
         let runtime = self.runtime(super::selection::column_width(width));
         let interaction = InteractionState::new(true).disabled(self.disabled);
         let clip_fail = runtime.input.clip_fail;
@@ -201,7 +200,6 @@ impl TextFieldBuilder {
             })),
             overlay: self.style_accumulator.take_state_overlay(),
             width,
-            height,
         };
         let mut adorn = std::mem::take(&mut self.adorn);
         if self.clearable {
