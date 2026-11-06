@@ -163,6 +163,25 @@ skip = [
     { crate = "phf_shared@0.13.1",    reason = "follows phf 0.13.1 (htmlize)" },
     { crate = "quick-xml@0.41.0",     reason = "wayland-scanner 0.31 pins 0.41; merman-render uses 0.42" },
 
+    # --- ratex 0.1.15 (math widget) ----------------------------------------
+    { crate = "bit-set@0.8.0",        reason = "fancy-regex 0.14 via ratex-parser; naga 30 uses 0.10" },
+    { crate = "bit-vec@0.8.0",        reason = "follows bit-set 0.8.0 (fancy-regex via ratex-parser)" },
+    { crate = "fontdb@0.23.0",        reason = "ratex-unicode-font 0.1.15 pins 0.23; usvg 0.48 uses 0.24" },
+    { crate = "roxmltree@0.20.0",     reason = "fontconfig-parser 0.5 via fontdb 0.23 (ratex-unicode-font); usvg 0.48 uses 0.21" },
+    { crate = "phf@0.11.3",           reason = "ratex-font 0.1.15 pins 0.11; cssparser/accesskit use 0.14" },
+    { crate = "phf_macros@0.11.3",    reason = "follows phf 0.11.3 (ratex-font)" },
+    { crate = "phf_generator@0.11.3", reason = "follows phf 0.11.3 (ratex-font)" },
+    { crate = "phf_shared@0.11.3",    reason = "follows phf 0.11.3 (ratex-font)" },
+    { crate = "sha2@0.10.9",          reason = "minisign 0.7.9 (sigil-sign) via scrypt; rust-embed-utils (ratex-katex-fonts) uses 0.11" },
+    { crate = "digest@0.10.7",        reason = "follows sha2 0.10.9 (minisign)" },
+    { crate = "block-buffer@0.10.4",  reason = "follows digest 0.10.7 (minisign)" },
+    { crate = "crypto-common@0.1.7",  reason = "follows digest 0.10.7 (minisign)" },
+    { crate = "cpufeatures@0.2.17",   reason = "follows sha2 0.10.9 (minisign)" },
+
+    # --- vello 0.3.0 (vello_gpu / vello_cpu) -------------------------------
+    { crate = "lalrpop-util@0.22.2",  reason = "lalrpop 0.22 build dep of wgsl-parse via vello_gpu_shaders; merman-core uses 0.23" },
+    { crate = "string_cache@0.8.9",   reason = "lalrpop 0.22 build dep of wgsl-parse via vello_gpu_shaders; html5ever 0.40 uses 0.11" },
+
     # --- misc upstream splits ----------------------------------------------
     { crate = "miniz_oxide@0.8.9",   reason = "png 0.18 via image 0.25; flate2 uses 0.9" },
     { crate = "rustix@0.38.44",      reason = "calloop 0.13 + crossterm 0.28.1 (winit/smithay chains); zbus/wayland on 1.x" },

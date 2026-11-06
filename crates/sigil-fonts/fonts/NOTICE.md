@@ -25,3 +25,11 @@ list; keep the result under the crates.io package-size budget.
 ## Sigil Symbols
 
 `SigilSymbols.ttf` is a subset of DejaVu Sans 2.37 (<https://github.com/dejavu-fonts/dejavu-fonts>) reduced to the symbol ranges a user interface draws: arrows (U+2190–21FF), miscellaneous technical keys such as ⌘ ⌥ ⌃ (U+2300–23FF), geometric shapes (U+25A0–25FF), miscellaneous symbols (U+2600–26FF), dingbats such as ✓ and ✕ (U+2700–27BF), U+2B00–2BFF, ×, •, and …. It is the fallback the text engine reaches for after the sans and mono faces. Fonts are (c) Bitstream; DejaVu changes are in the public domain; glyphs imported from Arev are (c) Tavmjong Bah. As the Bitstream Vera license requires for a modified font, the subset is renamed "Sigil Symbols" and does not use the words "Bitstream" or "Vera". Produced with `pyftsubset` (fontTools) and the name table rewritten with fontTools.
+
+## KaTeX fonts
+
+The `math` widget in `sigil-ui` draws formulas with the KaTeX fonts, which it embeds through the `ratex-katex-fonts` crate (version 0.1.15, <https://github.com/KaTeX/KaTeX>). They are not files in this directory. They are licensed under the SIL Open Font License, Version 1.1; the full text is in `LICENSE-OFL.txt`. The `ratex-katex-fonts` package names an `OFL.txt` that it does not ship, so this notice carries the terms.
+
+| Family | Copyright | Reserved Font Name |
+|--------|-----------|--------------------|
+| KaTeX_AMS, KaTeX_Caligraphic, KaTeX_Fraktur, KaTeX_Main, KaTeX_Math, KaTeX_SansSerif, KaTeX_Script, KaTeX_Size1, KaTeX_Size2, KaTeX_Size3, KaTeX_Size4, KaTeX_Typewriter | Copyright (c) 2009-2010, Design Science, Inc. (<www.mathjax.org>); Copyright (c) 2014-2018 Khan Academy (<www.khanacademy.org>) | The family name of each font, for example "KaTeX_Main" |

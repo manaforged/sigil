@@ -1,0 +1,138 @@
+\frac	\frac{a}{b}
+\sqrt	\sqrt{x} + \sqrt[3]{y}
+\text	x = 1 \text{ if } y > 0
+\text{..$..$}	\text{for all $x$}
+\sum	\sum_{i=1}^{n} x_i
+\int	\int_0^1 f(x)\,dx
+\left \right	\left( \frac{a}{b} \right)
+\mathbb	\mathbb{R}^n
+\mathrm	\mathrm{d}x
+\mathbf	\mathbf{x}^\top \mathbf{y}
+\cdot	a \cdot b
+\le \ge \ne	a \le b \ge c \ne d
+\leq \geq \neq	a \leq b \geq c \neq d
+\partial	\frac{\partial f}{\partial x}
+\infty	\lim_{n \to \infty} a_n
+\operatorname	\operatorname{softmax}(z)
+\operatorname*	\operatorname*{arg\,max}_x f(x)
+\arg\max	\arg\max_x f(x)
+\argmax	\argmax_x f(x)
+\argmin	\argmin_x f(x)
+aligned	\begin{aligned} a &= b \\ c &= d \end{aligned}
+align	\begin{align} a &= b \\ c &= d \end{align}
+align*	\begin{align*} a &= b \\ c &= d \end{align*}
+cases	f(x) = \begin{cases} 1 & x > 0 \\ 0 & \text{otherwise} \end{cases}
+pmatrix	\begin{pmatrix} a & b \\ c & d \end{pmatrix}
+bmatrix	\begin{bmatrix} a & b \\ c & d \end{bmatrix}
+vmatrix	\begin{vmatrix} a & b \\ c & d \end{vmatrix}
+matrix	\begin{matrix} a & b \\ c & d \end{matrix}
+array	\begin{array}{cc} a & b \\ c & d \end{array}
+array|hline	\begin{array}{c|c} a & b \\ \hline c & d \end{array}
+equation	\begin{equation} E = mc^2 \end{equation}
+equation*	\begin{equation*} E = mc^2 \end{equation*}
+gather	\begin{gather} a = b \\ c = d \end{gather}
+gather*	\begin{gather*} a = b \\ c = d \end{gather*}
+split	\begin{equation}\begin{split} a &= b \\ &= c \end{split}\end{equation}
+top-level \\	a = b \\ c = d
+\boxed	\boxed{x = 2}
+\hat \bar \vec \tilde	\hat{y} + \bar{x} + \vec{v} + \tilde{z}
+\dot \ddot	\dot{x} + \ddot{x}
+\overline \underline	\overline{AB} + \underline{x}
+\widehat \widetilde	\widehat{xy} + \widetilde{xy}
+\ldots \cdots \dots	1, \ldots, n + \cdots + \dots
+\vdots \ddots	\vdots \ddots
+\quad \qquad	a \quad b \qquad c
+\, \; \! \:	a\,b\;c\!d\:e
+\mathcal	\mathcal{L}
+\boldsymbol	\boldsymbol{\theta}
+\bm	\bm{\theta}
+\textbf	\textbf{bold}
+\textit	\textit{it}
+\mathit	\mathit{it}
+\mathsf	\mathsf{A}
+\mathtt	\mathtt{A}
+\mathfrak	\mathfrak{g}
+\displaystyle	\displaystyle \sum_i x_i
+\dfrac \tfrac	\dfrac{a}{b} + \tfrac{a}{b}
+\binom	\binom{n}{k}
+\choose	{n \choose k}
+\over	{a \over b}
+\pmod	a \equiv b \pmod{n}
+\mod	a \mod n
+\bmod	a \bmod n
+\equiv \approx \sim \propto \simeq \cong	a \equiv b \approx c \sim d \propto e \simeq f \cong g
+\nabla \hbar \ell	\nabla f + \hbar + \ell
+\to \mapsto \rightarrow \Rightarrow	a \to b \mapsto c \rightarrow d \Rightarrow e
+\implies \iff \impliedby	a \implies b \iff c \impliedby d
+\Leftrightarrow \leftrightarrow	a \Leftrightarrow b \leftrightarrow c
+\xrightarrow	a \xrightarrow{f} b
+\xleftarrow	a \xleftarrow{f} b
+\underbrace \overbrace	\underbrace{a+b}_{n} + \overbrace{c+d}^{m}
+\substack	\sum_{\substack{i<n \\ j<m}} x
+\limits	\sum\limits_{i} x
+\lim \max \min \sup \inf	\lim_{x} \max_x \min_x \sup_x \inf_x
+\log \ln \exp \sin \cos \tan	\log x + \ln x + \exp x + \sin x + \cos x + \tan x
+\det \Pr \dim \ker	\det A + \Pr(X) + \dim V + \ker f
+\langle \rangle	\langle u, v \rangle
+\lVert \rVert	\lVert x \rVert
+\|	\| x \|_2
+\lvert \rvert	\lvert x \rvert
+\mid	\{ x \mid x > 0 \}
+\{ \}	\{ 1, 2 \}
+\lfloor \rceil	\lfloor x \rfloor + \lceil x \rceil
+\big \Big \bigg	\big( \Big( \bigg( x \bigg) \Big) \big)
+\top \intercal \dagger	A^\top + A^\intercal + A^\dagger
+\perp \parallel	a \perp b \parallel c
+\in \notin \subset \subseteq	a \in A \notin B \subset C \subseteq D
+\cup \cap \setminus \emptyset \varnothing	A \cup B \cap C \setminus D \emptyset \varnothing
+\forall \exists \neg \land \lor	\forall x \exists y \neg p \land q \lor r
+\times \div \pm \mp	a \times b \div c \pm d \mp e
+\circ	90^\circ + f \circ g
+\degree	90\degree
+\prime	f^\prime
+\prod \coprod	\prod_i x_i \coprod_i y_i
+\iint \iiint \oint	\iint f + \iiint g + \oint h
+\color	{\color{red} x} + y
+\textcolor	\textcolor{red}{x}
+\tag	E = mc^2 \tag{1}
+\label	E = mc^2 \label{eq:1}
+\R \N \Z \C	\R + \N + \Z
+\checkmark	\checkmark
+\% \$ \# \_ \&	\% \$ \# \_ \&
+\hspace	a \hspace{1em} b
+\phantom	a \phantom{x} b
+\stackrel	\stackrel{?}{=}
+\overset \underset	\overset{def}{=} + \underset{x}{\min}
+\cancel	\cancel{x}
+\sqrt nested frac	\sqrt{\frac{a^2 + b^2}{2}}
+\epsilon \varepsilon \phi \varphi	\epsilon \varepsilon \phi \varphi
+\Delta \Omega \Sigma	\Delta \Omega \Sigma
+\mathbb{1}	\mathbb{1}_{x>0}
+\mathbb{E}	\mathbb{E}[X]
+\coloneqq	a \coloneqq b
+\triangleq	a \triangleq b
+\ll \gg	a \ll b \gg c
+\sim\mathcal{N}	X \sim \mathcal{N}(\mu, \sigma^2)
+\begin{smallmatrix}	\begin{smallmatrix} a & b \end{smallmatrix}
+\begin{Bmatrix}	\begin{Bmatrix} a & b \end{Bmatrix}
+\begin{dcases}	\begin{dcases} a & b \end{dcases}
+\text{} accent	\text{naïve}
+unicode α	α + β = γ
+\newcommand	\newcommand{\RR}{\mathbb{R}} \RR
+\def	\def\RR{\mathbb{R}} \RR
+\verb	\verb|x|
+\ce	\ce{H2O}
+\iddots	\iddots
+\middle	\left\{ x \middle| x>0 \right\}
+corpus-noKaTeX:KaTeX	K, \large K
+corpus-noKaTeX:MathDefaultFonts	Ax2k\breve{a}\omega\Omega\imath+K
+corpus-noKaTeX:MathBb	\mathbb{Ax2k\breve{a}\omega\Omega\imath+K}
+corpus-noKaTeX:MathBf	\mathbf{Ax2k\breve{a}\omega\Omega\imath+K}
+corpus-noKaTeX:MathCal	\mathcal{Ax2k\breve{a}\omega\Omega\imath+K}
+corpus-noKaTeX:MathFrak	\mathfrak{Ax2k\breve{a}\omega\Omega\imath+K}
+corpus-noKaTeX:MathIt	\mathit{Ax2k\breve{a}\omega\Omega\imath+K}
+corpus-noKaTeX:MathRm	\mathrm{Ax2k\breve{a}\omega\Omega\imath+K}
+corpus-noKaTeX:MathSf	\mathsf{Ax2k\breve{a}\omega\Omega\imath+K}
+corpus-noKaTeX:MathScr	\mathscr{Ax2k\breve{a}\omega\Omega\imath+K}
+corpus-noKaTeX:MathTt	\mathtt{Ax2k\breve{a}\omega\Omega\imath+K}
+corpus-noKaTeX:NegativeSpace	\boxed{\$1,\!000,\!000}K

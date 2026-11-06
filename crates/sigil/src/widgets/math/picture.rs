@@ -1,36 +1,40 @@
-use std::sync::LazyLock;
-
-use latex_rust::{Color, Dim, MathBox, MathFont, MathStyle, SvgOptions};
+use ratex_layout::{LayoutOptions, layout, to_display_list, validate_layout};
+use ratex_parser::{ParseNode, parse};
+use ratex_svg::{SvgOptions, render_to_svg};
+use ratex_types::color::Color;
+use ratex_types::math_style::MathStyle;
 
 use crate::kernel::NodeBuilder;
 use crate::style::{Rgba8, Theme, Token};
 use crate::widgets::svg_picture::picture;
 
-static FONT: LazyLock<Option<MathFont>> = LazyLock::new(|| MathFont::stix_two_math().ok());
+const EM_PX: f64 = 12.75;
+const STROKE_PER_EM: f64 = 1.5 / 40.0;
 
 pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
-    let font = FONT.as_ref()?;
-    let tree = layout(source, font)?;
-    let (node, (width, _)) = picture(source, move |theme| {
-        latex_rust::render_svg(&tree, font, &options(theme)).ok()
-    })?;
+    let ast = parse(source).ok()?;
+    let (node, (width, _)) = picture(source, move |theme| svg(&ast, theme))?;
     Some((node, width))
 }
 
-fn layout(source: &str, font: &MathFont) -> Option<MathBox> {
-    let ast = latex_rust::parse(source).ok()?;
-    latex_rust::layout_with_em_size_pt(&ast, font, MathStyle::Display, &em()).ok()
-}
-
-fn options(theme: &Theme) -> SvgOptions {
+fn svg(ast: &[ParseNode], theme: &Theme) -> Option<String> {
     let Rgba8 { r, g, b, .. } = theme.color(Token::OnSurface);
-    SvgOptions {
-        font_size_pt: em(),
-        color: Color::rgb(r, g, b),
-        display: true,
-    }
+    let color = Color::rgb(unit(r), unit(g), unit(b));
+    let options = LayoutOptions::default()
+        .with_style(MathStyle::Display)
+        .with_color(color);
+    let tree = layout(ast, &options);
+    validate_layout(&tree).ok()?;
+    let svg = SvgOptions {
+        font_size: EM_PX,
+        padding: 0.0,
+        stroke_width: EM_PX * STROKE_PER_EM,
+        embed_glyphs: true,
+        font_dir: String::new(),
+    };
+    Some(render_to_svg(&to_display_list(&tree), &svg))
 }
 
-fn em() -> Dim {
-    Dim::ratio(105, 8)
+fn unit(channel: u8) -> f32 {
+    f32::from(channel) / 255.0
 }

@@ -45,6 +45,9 @@ winit = { workspace = true, optional = true }
 raw-window-handle = { workspace = true, optional = true }
 sigil-fonts = { workspace = true, optional = true }
 wgpu = { workspace = true, optional = true }
+vello_gpu = { workspace = true, optional = true }
+vello_cpu = { workspace = true, optional = true }
+rquickjs = { workspace = true, optional = true }
 pollster = { workspace = true, optional = true }
 bytemuck = { workspace = true, optional = true }
 skrifa = { workspace = true, optional = true }
@@ -57,7 +60,10 @@ base64 = { workspace = true, optional = true }
 usvg = { workspace = true, optional = true }
 resvg = { workspace = true, optional = true, features = ["text"] }
 merman = { workspace = true, optional = true }
-latex-rust = { workspace = true, optional = true }
+ratex-parser = { workspace = true, optional = true }
+ratex-layout = { workspace = true, optional = true }
+ratex-types = { workspace = true, optional = true }
+ratex-svg = { workspace = true, optional = true }
 layout-rs = { workspace = true, optional = true }
 lyon_geom = { workspace = true, optional = true }
 harfrust = { version = "0.13", optional = true }
@@ -106,6 +112,9 @@ scene = [
     "cpu",
     "shaping-complex",
     "dep:wgpu",
+    "dep:vello_gpu",
+    "dep:vello_cpu",
+    "dep:rquickjs",
     "dep:pollster",
     "dep:bytemuck",
     "dep:skrifa",
@@ -115,7 +124,10 @@ scene = [
     "dep:usvg",
     "dep:resvg",
     "dep:merman",
-    "dep:latex-rust",
+    "dep:ratex-parser",
+    "dep:ratex-layout",
+    "dep:ratex-types",
+    "dep:ratex-svg",
     "dep:layout-rs",
     "dep:lyon_geom",
     "dep:zed-font-kit",
@@ -142,7 +154,7 @@ media = ["desktop", "dep:playwire", "dep:raw-window-handle"]
 hotkey = ["desktop", "dep:global-hotkey"]
 pty = ["dep:portable-pty", "dep:vt100"]
 hot = ["dep:subsecond", "dep:dioxus-devtools"]
-terminal = ["dep:crossterm", "dep:dark-light", "dep:rustix", "dep:signal-hook", "dep:rayon", "image-decode"]
+terminal = ["dep:crossterm", "dep:dark-light", "dep:rustix", "dep:signal-hook", "dep:rayon", "dep:vello_cpu", "image-decode"]
 
 [dev-dependencies]
 image = { workspace = true, features = ["webp"] }

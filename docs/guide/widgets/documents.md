@@ -42,7 +42,7 @@ The widget edits the `lines`, `caret`, and `.selection()` signals through the `t
 
 ## math
 
-`math(source: impl Reactive<String>) -> NodeBuilder`. In a window it typesets a LaTeX formula in display style with the `latex-rust` crate and its STIX Two Math font, in the theme text color, at about 1.25 times body size. In a terminal, or when the formula does not parse, it shows a Unicode approximation. The accessible description is the LaTeX source.
+`math(source: impl Reactive<String>) -> NodeBuilder`. In a window it typesets a LaTeX formula in display style with the RaTeX crates (`ratex-parser`, `ratex-layout`, `ratex-svg`) and the KaTeX fonts they embed, in the theme text color, at about 1.25 times body size. It reads KaTeX syntax, including environments such as `align*`, `gather*` and `dcases`, and commands such as `\operatorname*`, `\middle`, `\pmod` and `\ce`. `\label` and `\iddots` do not parse. In a terminal, or when the formula does not parse, it shows a Unicode approximation. The accessible description is the LaTeX source.
 
 Input is bounded to 256 lines of 512 chars and output to 512 lines of 1024 chars.
 
