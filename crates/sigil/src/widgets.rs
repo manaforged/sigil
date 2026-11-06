@@ -191,6 +191,8 @@ mod spinner;
 mod splitter;
 mod stat;
 mod surface;
+#[cfg(feature = "scene")]
+mod svg_picture;
 mod table;
 mod tabs;
 mod terminal;
