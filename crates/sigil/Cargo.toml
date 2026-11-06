@@ -337,6 +337,10 @@ name = "renderer_blur_cost"
 harness = false
 
 [[bench]]
+name = "renderer_vector_paths"
+harness = false
+
+[[bench]]
 name = "style_style_ops"
 harness = false
 

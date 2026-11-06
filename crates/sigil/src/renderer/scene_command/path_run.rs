@@ -26,6 +26,7 @@ impl SceneWalk<'_> {
         let side = |value: u32| u16::try_from(value).unwrap_or(u16::MAX);
         let run = Run {
             size: (side(extent.width), side(extent.height)),
+            scale,
             visible,
             opacity: f32::from(draw.opacity) / 10_000.0 * self.state.current_opacity(),
         };
@@ -41,7 +42,7 @@ impl SceneWalk<'_> {
         };
         let scale = ctx.scale;
         let dest = Rect::new(
-            Point::new(0.0, 0.0),
+            Point::new(rendered.origin.0 as f32 / scale, rendered.origin.1 as f32 / scale),
             rendered.size.0 as f32 / scale,
             rendered.size.1 as f32 / scale,
         );

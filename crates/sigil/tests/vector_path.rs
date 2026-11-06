@@ -19,6 +19,9 @@ use sigil::widgets::{PathNode, canvas, path};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
 
+#[path = "vector_path/retained.rs"]
+mod retained;
+
 const SIDE: u32 = 60;
 const SCALE: f32 = 2.0;
 const MAX_EDGE_PX: usize = 2;
