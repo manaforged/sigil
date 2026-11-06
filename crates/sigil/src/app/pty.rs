@@ -1,16 +1,39 @@
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{self, Sender};
+use std::sync::{Arc, Mutex};
 
-use crate::reactive::Signal;
-use crate::reactive::signal;
-use std::sync::mpsc;
-
+use crate::reactive::{Signal, signal};
+use crate::style::TextRun;
 use crate::{AppResult, Error};
+
+mod view;
+
+const SCROLLBACK: usize = 5000;
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct Row {
+    pub(crate) text: String,
+    pub(crate) runs: Vec<TextRun>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct Frame {
+    pub(crate) lines: Vec<String>,
+    pub(crate) rows: Vec<Row>,
+}
+
+enum Control {
+    Resize(u16, u16),
+    Scroll(i32),
+}
 
 /// Child process in a pseudo-terminal (feature `pty`).
 pub struct Session {
     /// The lines.
     pub lines: Signal<Vec<String>>,
+    pub(crate) rows: Signal<Vec<Row>>,
     tx: Sender<Vec<u8>>,
+    control: Sender<Control>,
+    parser: Arc<Mutex<vt100::Parser>>,
     killer: Option<Box<dyn portable_pty::ChildKiller + Send + Sync>>,
 }
 
@@ -32,6 +55,33 @@ impl Session {
             .map_err(|_| pty_err("Session::write needs Session::spawn"))
     }
 
+    /// Sends pasted text, bracketed when the program asked for bracketed paste.
+    pub fn paste(&self, text: &str) -> AppResult<()> {
+        let bracketed = self
+            .parser
+            .lock()
+            .is_ok_and(|parser| parser.screen().bracketed_paste());
+        if bracketed {
+            self.write(format!("\u{1b}[200~{text}\u{1b}[201~").as_bytes())
+        } else {
+            self.write(text.as_bytes())
+        }
+    }
+
+    /// Resizes the terminal to `cols` by `rows` cells.
+    pub fn resize(&self, cols: u16, rows: u16) -> AppResult<()> {
+        self.control
+            .send(Control::Resize(cols.max(1), rows.max(1)))
+            .map_err(|_| pty_err("Session::resize after the terminal closed"))
+    }
+
+    /// Scrolls the view `rows` into the scrollback; a negative count scrolls back toward the live screen.
+    pub fn scroll(&self, rows: i32) -> AppResult<()> {
+        self.control
+            .send(Control::Scroll(rows))
+            .map_err(|_| pty_err("Session::scroll after the terminal closed"))
+    }
+
     /// Starts `program` in a new pseudo-terminal.
     pub fn spawn(program: &str) -> AppResult<Self> {
         Self::start(program, None)
@@ -43,56 +93,117 @@ impl Session {
     }
 
     fn start(program: &str, dir: Option<&std::path::Path>) -> AppResult<Self> {
-        use std::io::Write;
         use std::thread;
 
-        use crate::reactive::Owner;
-        use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+        use portable_pty::{CommandBuilder, native_pty_system};
 
-        let owner = Owner::current().ok_or_else(|| {
-            Error::task(std::io::Error::other("Session::spawn needs Owner::scope"))
-        })?;
-        let dispatcher = crate::tasks::current::dispatcher().ok_or_else(|| {
-            Error::task(std::io::Error::other(
-                "Session::spawn requires AsyncRuntime::install_current",
-            ))
-        })?;
-        let pty = native_pty_system();
-        let pair = pty
-            .openpty(PtySize {
-                rows: 24,
-                cols: 80,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
-            .map_err(pty_err)?;
+        let (owner, dispatcher) = context()?;
+        let pair = native_pty_system().openpty(size(80, 24)).map_err(pty_err)?;
         let mut command = CommandBuilder::new(program);
+        command.env("TERM", "xterm-256color");
         if let Some(dir) = dir {
             command.cwd(dir);
         }
         let mut child = pair.slave.spawn_command(command).map_err(pty_err)?;
         let killer = child.clone_killer();
         let reader = pair.master.try_clone_reader().map_err(pty_err)?;
-        let mut writer = pair.master.take_writer().map_err(pty_err)?;
-        let (tx, rx) = mpsc::channel::<Vec<u8>>();
-        thread::spawn(move || {
-            while let Ok(bytes) = rx.recv() {
-                if writer.write_all(&bytes).is_err() {
-                    break;
-                }
-            }
-        });
+        let tx = input(pair.master.take_writer().map_err(pty_err)?);
         thread::spawn(move || {
             drop(child.wait());
         });
         let lines = signal(Vec::new());
-        let painted = lines.into_sendable();
-        thread::spawn(move || read_rows(reader, dispatcher, owner, painted));
+        let rows = signal(Vec::new());
+        let parser = Arc::new(Mutex::new(vt100::Parser::new(24, 80, SCROLLBACK)));
+        let publish = Publish::new(dispatcher, owner, lines, rows);
+        let (control, orders) = mpsc::channel::<Control>();
+        let (held, master, painter) = (Arc::clone(&parser), pair.master, publish.clone());
+        thread::spawn(move || steer(&orders, master.as_ref(), &held, &painter));
+        let held = Arc::clone(&parser);
+        thread::spawn(move || read_rows(reader, &held, &publish));
         Ok(Self {
             lines,
+            rows,
             tx,
+            control,
+            parser,
             killer: Some(killer),
         })
+    }
+}
+
+fn context() -> AppResult<(crate::reactive::Owner, crate::tasks::runtime::Dispatcher)> {
+    let owner = crate::reactive::Owner::current()
+        .ok_or_else(|| Error::task(std::io::Error::other("Session::spawn needs Owner::scope")))?;
+    let dispatcher = crate::tasks::current::dispatcher().ok_or_else(|| {
+        Error::task(std::io::Error::other(
+            "Session::spawn requires AsyncRuntime::install_current",
+        ))
+    })?;
+    Ok((owner, dispatcher))
+}
+
+fn input(mut writer: Box<dyn std::io::Write + Send>) -> Sender<Vec<u8>> {
+    let (tx, rx) = mpsc::channel::<Vec<u8>>();
+    std::thread::spawn(move || {
+        while let Ok(bytes) = rx.recv() {
+            if writer.write_all(&bytes).is_err() {
+                break;
+            }
+        }
+    });
+    tx
+}
+
+#[derive(Clone)]
+struct Publish {
+    dispatcher: crate::tasks::runtime::Dispatcher,
+    owner: crate::reactive::Owner,
+    lines: crate::reactive::SendableSignal<Vec<String>>,
+    rows: crate::reactive::SendableSignal<Vec<Row>>,
+    pending: Arc<Mutex<Option<Frame>>>,
+}
+
+impl Publish {
+    fn new(
+        dispatcher: crate::tasks::runtime::Dispatcher,
+        owner: crate::reactive::Owner,
+        lines: Signal<Vec<String>>,
+        rows: Signal<Vec<Row>>,
+    ) -> Self {
+        Self {
+            dispatcher,
+            owner,
+            lines: lines.into_sendable(),
+            rows: rows.into_sendable(),
+            pending: Arc::default(),
+        }
+    }
+
+    fn send(&self, parser: &vt100::Parser) -> bool {
+        let Ok(mut slot) = self.pending.lock() else {
+            return false;
+        };
+        if slot.replace(frame_of(parser)).is_some() {
+            return true;
+        }
+        drop(slot);
+        let (pending, lines, rows) = (Arc::clone(&self.pending), self.lines, self.rows);
+        crate::tasks::dispatch::dispatch_to_owner(&self.dispatcher, self.owner, move || {
+            if let Some(frame) = pending.lock().ok().and_then(|mut held| held.take()) {
+                lines.into_signal().set(frame.lines);
+                rows.into_signal().set(frame.rows);
+            }
+        });
+        true
+    }
+}
+
+const fn size(cols: u16, rows: u16) -> portable_pty::PtySize {
+    portable_pty::PtySize {
+        rows,
+        cols,
+        pixel_width: 0,
+        pixel_height: 0,
     }
 }
 
@@ -105,47 +216,69 @@ pub(crate) fn rows_of(parser: &vt100::Parser) -> Vec<String> {
         .collect()
 }
 
+pub(crate) fn frame_of(parser: &vt100::Parser) -> Frame {
+    Frame {
+        lines: rows_of(parser),
+        rows: view::rows(parser.screen()),
+    }
+}
+
 fn pty_err(err: impl std::fmt::Display) -> Error {
     Error::io(std::io::Error::other(err.to_string()))
 }
 
-#[allow(
-    clippy::needless_pass_by_value,
-    reason = "the API takes ownership by contract at this boundary"
-)]
+fn steer(
+    orders: &mpsc::Receiver<Control>,
+    master: &dyn portable_pty::MasterPty,
+    parser: &Mutex<vt100::Parser>,
+    publish: &Publish,
+) {
+    while let Ok(order) = orders.recv() {
+        let Ok(mut parser) = parser.lock() else {
+            return;
+        };
+        match order {
+            Control::Resize(cols, rows) => {
+                if parser.screen().size() == (rows, cols) {
+                    continue;
+                }
+                parser.screen_mut().set_size(rows, cols);
+                if let Err(err) = master.resize(size(cols, rows)) {
+                    tracing::warn!(target: "sigil::pty", error = %err, "PTY resize failed");
+                }
+            }
+            Control::Scroll(delta) => {
+                let at = parser.screen().scrollback();
+                let next = at.saturating_add_signed(isize::try_from(delta).unwrap_or(0));
+                parser.screen_mut().set_scrollback(next);
+            }
+        }
+        if !publish.send(&parser) {
+            return;
+        }
+    }
+}
+
 fn read_rows(
     mut reader: Box<dyn std::io::Read + Send>,
-    dispatcher: crate::tasks::runtime::Dispatcher,
-    owner: crate::reactive::Owner,
-    painted: crate::reactive::SendableSignal<Vec<String>>,
+    parser: &Mutex<vt100::Parser>,
+    publish: &Publish,
 ) {
-    use std::io::Read;
-
     let mut buf = [0_u8; 4096];
-    let mut parser = vt100::Parser::new(24, 80, 0);
-    let pending: std::sync::Arc<std::sync::Mutex<Option<Vec<String>>>> = std::sync::Arc::default();
     loop {
         let n = match reader.read(&mut buf) {
             Ok(0) | Err(_) => break,
             Ok(n) => n,
         };
         let (got, _) = buf.split_at(n);
-        parser.process(got);
-        let rows = rows_of(&parser);
-        let Ok(mut slot) = pending.lock() else {
+        let Ok(mut parser) = parser.lock() else {
             break;
         };
-        if slot.replace(rows).is_some() {
-            continue;
+        parser.screen_mut().set_scrollback(0);
+        parser.process(got);
+        if !publish.send(&parser) {
+            break;
         }
-        drop(slot);
-        let pending = std::sync::Arc::clone(&pending);
-        crate::tasks::dispatch::dispatch_to_owner(&dispatcher, owner, move || {
-            let latest = pending.lock().ok().and_then(|mut held| held.take());
-            if let Some(screen) = latest {
-                painted.into_signal().set(screen);
-            }
-        });
     }
 }
 

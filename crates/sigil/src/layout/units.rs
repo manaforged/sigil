@@ -120,6 +120,19 @@ fn col() -> f32 {
     })
 }
 
+pub(crate) fn mono_cell() -> (f32, f32) {
+    let style = TextStyle {
+        font_family: "mono".to_string(),
+        ..TextStyle::default()
+    };
+    let end = downstream(ADVANCE_SAMPLE.len());
+    let width = with_text_geometry(|geometry| geometry.caret(ADVANCE_SAMPLE, &style, None, end).x)
+        .map(|width| width / ADVANCE_SAMPLE.len() as f32)
+        .filter(|advance| *advance > 0.0)
+        .unwrap_or_else(col);
+    (width, row())
+}
+
 const fn downstream(byte_index: usize) -> HitPosition {
     HitPosition {
         byte_index,

@@ -16,6 +16,10 @@ pub fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static)
     .row_height(rows(1.0))
     .follow_end(true)
     .keyboard(false);
+    shell(on_input).child(list)
+}
+
+fn shell(on_input: impl Fn(String) + 'static) -> NodeBuilder {
     let focused = signal(false);
     container()
         .role(Role::Terminal)
@@ -32,7 +36,54 @@ pub fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static)
                 event.stop_propagation();
             }
         })
-        .child(list)
+}
+
+#[cfg(feature = "pty")]
+impl crate::app::Session {
+    /// Builds a view of this terminal that fills its space, sizes the terminal to it, and takes keys, paste and the wheel.
+    #[must_use]
+    pub fn view(self: &std::rc::Rc<Self>) -> NodeBuilder {
+        use std::rc::Rc;
+
+        let list = virtual_list(self.rows, |_i, row: &crate::app::pty::Row| {
+            container().child(text(row.text.clone()).runs(row.runs.clone()))
+        })
+        .row_height(rows(1.0))
+        .follow_end(true)
+        .keyboard(false);
+        let size = signal((0.0_f32, 0.0_f32));
+        let sized = Rc::clone(self);
+        crate::reactive::effect_named("sigil::terminal::size", move || {
+            let (width, height) = size.get();
+            let (cell_width, cell_height) = crate::layout::mono_cell();
+            if width > 0.0 && height > 0.0 {
+                drop(sized.resize(cells(width, cell_width), cells(height, cell_height)));
+            }
+        });
+        let (keys, pasted, wheel) = (Rc::clone(self), Rc::clone(self), Rc::clone(self));
+        shell(move |bytes| drop(keys.write(bytes.as_bytes())))
+            .child(list)
+            .size_reactive(size)
+            .on_paste(move |text| pasted.paste(text).is_ok())
+            .on_scroll(move |event| {
+                let count = match event.delta {
+                    crate::events::ScrollDelta::Lines(point) => point.y,
+                    crate::events::ScrollDelta::Pixels(point) => {
+                        point.y / crate::layout::mono_cell().1.max(1.0)
+                    }
+                };
+                let count = count.round() as i32;
+                if count != 0 {
+                    drop(wheel.scroll(count));
+                    event.stop_propagation();
+                }
+            })
+    }
+}
+
+#[cfg(feature = "pty")]
+fn cells(span: f32, cell: f32) -> u16 {
+    (span / cell.max(1.0)).floor().clamp(1.0, 999.0) as u16
 }
 
 fn key_payload(event: &KeyEvent) -> Option<String> {

@@ -53,6 +53,8 @@ drag_ghost(drag, |item| text(item.clone()).nowrap());
 
 Pair it with `Session` (`sigil::app::Session` or via the prelude under `pty`): `Session::spawn(program)` opens a PTY (`Session::spawn_in(program, dir)` starts it in `dir`), parses output through vt100 into `session.lines` (a `Signal<Vec<String>>`), and `session.write(&bytes)` sends input to the child. Spawn requires a `Owner::scope` owner. `Session` exists only with the `pty` feature. Dropping the session kills the child. The `terminal` widget itself is not feature-gated. Feed it lines from anywhere.
 
+For a full-screen program, use `session.view()` on an `Rc<Session>` instead of `terminal`. The view fills its space and resizes the terminal to the cells that fit, so the program sees the new size. It paints colors from the active theme: the 16 ANSI colors, the 256-color palette and truecolor map to the gray, error, warn, success, info and accent scales. It shows bold, italic, inverse and the cursor, and takes paste (bracketed when the program asks for it) and the wheel (5000 rows of scrollback). `session.resize(cols, rows)`, `session.scroll(rows)` and `session.paste(text)` do the same from code. The child starts with `TERM=xterm-256color`.
+
 ## States, keys, and accessibility
 
 The visual catalog captures `interactive` in default, hover, pressed, focused, and disabled, and `terminal` in default, hover, pressed, and focused.

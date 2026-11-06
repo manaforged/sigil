@@ -62,3 +62,4 @@ pub use text_geometry::CaretGeometry;
 pub use text_geometry::set_text_geometry;
 pub(crate) use text_geometry::{TextStyleCapture, with_text_geometry};
 pub use units::{IntoPx, cols, em, rows};
+pub(crate) use units::mono_cell;
