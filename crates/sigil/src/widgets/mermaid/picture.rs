@@ -2,22 +2,10 @@ use std::borrow::Cow;
 
 use crate::kernel::NodeBuilder;
 use crate::style::{Theme, Token};
+use crate::widgets::chart::series_tokens;
 use crate::widgets::svg_picture::{FONT_FAMILY, hex, picture};
 
 const FONT_SIZE: f64 = 14.0;
-
-const SERIES: [Token; 10] = [
-    Token::Accent9,
-    Token::Success9,
-    Token::Warn9,
-    Token::Error9,
-    Token::Info9,
-    Token::Accent7,
-    Token::Success7,
-    Token::Warn7,
-    Token::Error7,
-    Token::Info7,
-];
 
 pub(super) fn figure(source: &str) -> Option<(NodeBuilder, (f32, f32))> {
     let owned = source.to_string();
@@ -28,8 +16,7 @@ pub(super) fn figure(source: &str) -> Option<(NodeBuilder, (f32, f32))> {
 
 fn palette(theme: &Theme) -> mermaid_svg::Theme {
     let c = |token| Cow::Owned(hex(theme, token));
-    let series: Cow<'static, [Cow<'static, str>]> =
-        Cow::Owned(SERIES.iter().map(|token| c(*token)).collect());
+    let series: Cow<'static, [Cow<'static, str>]> = Cow::Owned(series_tokens().map(c).collect());
     mermaid_svg::Theme {
         fg: c(Token::OnSurface),
         fg_muted: c(Token::OnSurfaceMuted),

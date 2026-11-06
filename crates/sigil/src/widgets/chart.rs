@@ -26,6 +26,8 @@ mod summary;
 mod tips;
 mod vega;
 
+#[cfg(feature = "scene")]
+pub(crate) use palette::series_tokens;
 pub(crate) use vega::vega_lite;
 
 const DEFAULT_HEIGHT: f32 = 180.0;
@@ -91,6 +93,7 @@ pub struct ChartBuilder {
     crosshair: bool,
     tooltip: bool,
     whole: bool,
+    positions: Option<Rc<[f32]>>,
     layout_overrides: LayoutOverrides,
     style_accumulator: Style,
 }
@@ -121,6 +124,7 @@ impl ChartBuilder {
             crosshair: false,
             tooltip: false,
             whole: false,
+            positions: None,
             layout_overrides: LayoutOverrides::new(),
             style_accumulator: Style::new(),
         }
@@ -297,6 +301,7 @@ impl ChartBuilder {
                 .collect::<Vec<_>>()
         });
         let labels = Rc::new(std::mem::take(&mut self.labels));
+        let positions = self.positions.take();
         let label_names = Rc::clone(&labels);
         let description =
             derived(move || series.with(|series| summary::summary(series, &label_names, theme)));
@@ -309,7 +314,9 @@ impl ChartBuilder {
             root = root.style(paint);
         }
         root.children_reactive(move || {
-            series.with(|series| figure::content(series, &labels, look, &interact))
+            series.with(|series| {
+                figure::content(series, &labels, positions.as_deref(), look, &interact)
+            })
         })
     }
 }

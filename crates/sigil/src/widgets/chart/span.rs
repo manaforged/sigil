@@ -1,6 +1,7 @@
 use super::{ChartMark, ChartView, Stack, nice_max};
 
 const NICE_TICKS: f32 = 4.0;
+const FLAT_PAD: f32 = 0.1;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct ValueSpan {
@@ -17,15 +18,17 @@ impl ValueSpan {
                     .iter()
                     .flat_map(|item| item.values.iter().skip(1).step_by(2)),
             )),
-            (ChartMark::Bar, Stack::Stacked) => Self::stacked(series),
+            (ChartMark::Bar | ChartMark::Area, Stack::Stacked) => Self::stacked(series),
             _ => Self::zero_based(series.iter().flat_map(|item| item.values)),
         }
     }
 
     pub(super) fn scatter_x(series: &[ChartView<'_>]) -> Self {
-        Self::rounded(Self::tight(
-            series.iter().flat_map(|item| item.values.iter().step_by(2)),
-        ))
+        Self::scale(series.iter().flat_map(|item| item.values.iter().step_by(2)))
+    }
+
+    pub(super) fn scale<'a>(values: impl Iterator<Item = &'a f32>) -> Self {
+        Self::rounded(Self::tight(values))
     }
 
     fn zero_based<'a>(values: impl Iterator<Item = &'a f32>) -> Self {
@@ -80,9 +83,10 @@ impl ValueSpan {
         if hi > lo {
             Self { lo, hi }
         } else {
+            let pad = (lo.abs() * FLAT_PAD).max(1.0);
             Self {
-                lo: lo - 1.0,
-                hi: hi + 1.0,
+                lo: lo - pad,
+                hi: hi + pad,
             }
         }
     }

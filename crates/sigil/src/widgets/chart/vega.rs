@@ -12,6 +12,7 @@ use super::{ChartBuilder, ChartMark, Stack};
 
 mod spec;
 mod table;
+mod time;
 
 use spec::{Channel, Kind, Mark, Spec};
 
@@ -107,17 +108,32 @@ fn columns(spec: &Spec) -> Option<ChartBuilder> {
     if value.kind != Kind::Quantitative {
         return None;
     }
-    let mut table = table::pivot(&spec.rows, category, value, spec.color.as_ref())?;
-    let (mark, gap) = match spec.mark {
-        Mark::Line => (ChartMark::Line, f32::NAN),
-        Mark::Area => (ChartMark::Area, f32::NAN),
-        Mark::Bar | Mark::Point | Mark::Arc => (ChartMark::Bar, 0.0),
+    let mark = match spec.mark {
+        Mark::Line => ChartMark::Line,
+        Mark::Area => ChartMark::Area,
+        Mark::Bar | Mark::Point | Mark::Arc => ChartMark::Bar,
     };
-    table.fill_missing(gap);
+    let by_value = category.kind == Kind::Quantitative;
+    if by_value && mark == ChartMark::Bar {
+        return None;
+    }
+    let stacked = mark != ChartMark::Line && spec.color.is_some() && value.stacked && !spec.offset;
+    let mut table = table::pivot(&spec.rows, category, value, spec.color.as_ref())?;
+    let positions = if by_value {
+        Some(table.positions()?)
+    } else {
+        None
+    };
+    table.fill_missing(if stacked || mark == ChartMark::Bar {
+        0.0
+    } else {
+        f32::NAN
+    });
     let mut chart = build(table.series, mark).labels(table.labels);
-    if mark == ChartMark::Bar && spec.color.is_some() && value.stacked && !spec.offset {
+    if stacked {
         chart.stack = Stack::Stacked;
     }
+    chart.positions = positions.map(Rc::from);
     chart.whole = value.aggregate == Some(spec::Aggregate::Count);
     Some(chart)
 }

@@ -38,11 +38,26 @@ fn x_of(index: usize, count: usize) -> f32 {
     VIEW_W_F * (index as f32 + 0.5) / count.max(1) as f32
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct Placed<'a> {
+    pub(super) at: &'a [f32],
+    pub(super) span: ValueSpan,
+}
+
+impl Placed<'_> {
+    pub(super) fn fraction(self, index: usize) -> f32 {
+        self.at
+            .get(index)
+            .map_or(f32::NAN, |value| self.span.fraction(*value))
+    }
+}
+
 pub(super) struct Trace<'a> {
     pub(super) values: &'a [f32],
     pub(super) count: usize,
     pub(super) span: ValueSpan,
     pub(super) columns: usize,
+    pub(super) placed: Option<Placed<'a>>,
 }
 
 impl Trace<'_> {
@@ -53,9 +68,34 @@ impl Trace<'_> {
             .unwrap_or(&[]);
         decimate::min_max(shown, self.columns)
             .into_iter()
-            .map(|(index, value)| (x_of(index, self.count), value))
+            .map(|(index, value)| {
+                let x = self.placed.map_or_else(
+                    || x_of(index, self.count),
+                    |placed| placed.fraction(index) * VIEW_W_F,
+                );
+                (x, value)
+            })
+            .filter(|(x, _)| x.is_finite())
             .collect()
     }
+}
+
+pub(super) fn stack_tops(series: &[&[f32]]) -> Vec<Vec<f32>> {
+    let mut running: Vec<f32> = Vec::new();
+    series
+        .iter()
+        .map(|values| {
+            if running.len() < values.len() {
+                running.resize(values.len(), 0.0);
+            }
+            for (total, value) in running.iter_mut().zip(values.iter()) {
+                if value.is_finite() {
+                    *total += value;
+                }
+            }
+            running.get(..values.len()).unwrap_or_default().to_vec()
+        })
+        .collect()
 }
 
 pub(super) fn line(trace: &Trace<'_>, color: Token) -> PathNode {

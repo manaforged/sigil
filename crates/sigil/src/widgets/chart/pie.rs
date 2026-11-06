@@ -31,20 +31,18 @@ pub(super) struct Slices<'a> {
 }
 
 impl Slices<'_> {
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "a share is a fraction in 0..=1"
+    )]
     fn shares(&self) -> Option<Vec<f32>> {
-        let shares = self
-            .values
-            .iter()
-            .map(|value| {
-                if value.is_finite() {
-                    value.max(0.0)
-                } else {
-                    0.0
-                }
-            })
-            .collect::<Vec<_>>();
-        let total: f32 = shares.iter().sum();
-        (total > 0.0).then(|| shares.iter().map(|share| share / total).collect())
+        let total = total(self.values);
+        (total > 0.0).then(|| {
+            self.values
+                .iter()
+                .map(|value| (weight(*value) / total) as f32)
+                .collect()
+        })
     }
 
     fn label(&self, index: usize) -> String {
@@ -53,6 +51,18 @@ impl Slices<'_> {
             .cloned()
             .unwrap_or_else(|| (index + 1).to_string())
     }
+}
+
+fn weight(value: f32) -> f64 {
+    if value.is_finite() {
+        f64::from(value.max(0.0))
+    } else {
+        0.0
+    }
+}
+
+fn total(values: &[f32]) -> f64 {
+    values.iter().map(|value| weight(*value)).sum()
 }
 
 pub(super) fn draw(slices: &Slices<'_>, interact: &Interact) -> Vec<NodeBuilder> {
@@ -102,16 +112,12 @@ fn tip_lines(slices: &Slices<'_>) -> super::tips::Lines {
         .map(|index| slices.label(index))
         .collect::<Vec<_>>();
     let values = slices.values.to_vec();
-    let total: f32 = values
-        .iter()
-        .filter(|value| value.is_finite())
-        .map(|value| value.max(0.0))
-        .sum();
+    let total = total(&values);
     Rc::new(move |index| {
         let (Some(name), Some(value)) = (names.get(index), values.get(index)) else {
             return Vec::new();
         };
-        let percent = value / total * PERCENT;
+        let percent = f64::from(*value) / total * f64::from(PERCENT);
         vec![
             name.clone(),
             format!("{} ({percent:.1}%)", format_tick(*value)),

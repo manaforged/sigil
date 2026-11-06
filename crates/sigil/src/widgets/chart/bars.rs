@@ -3,6 +3,7 @@ use crate::layout::{AlignItems, Dimension, LayoutStyle};
 use crate::style::{Radius, Token};
 use crate::widgets::Widget;
 
+use super::axis::format_tick;
 use super::palette::Hue;
 use super::span::ValueSpan;
 use super::{ChartView, Stack};
@@ -74,9 +75,9 @@ impl Cell<'_> {
 
     fn segment(&self, grow: f32) -> NodeBuilder {
         let caption = if self.name.is_empty() {
-            format!("{:.0}", self.value)
+            format_tick(self.value)
         } else {
-            format!("{} {:.0}", self.name, self.value)
+            format!("{} {}", self.name, format_tick(self.value))
         };
         container()
             .label(caption)

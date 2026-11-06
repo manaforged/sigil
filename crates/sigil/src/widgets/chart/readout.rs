@@ -33,6 +33,12 @@ pub(super) fn columns(series: &[ChartView<'_>], labels: &[String], count: usize)
     }
 }
 
+pub(super) fn placed(series: &[ChartView<'_>], labels: &[String], fractions: Rc<[f32]>) -> Tips {
+    let mut tips = columns(series, labels, fractions.len());
+    tips.pick = Pick::Placed(fractions);
+    tips
+}
+
 pub(super) fn candles(series: &[ChartView<'_>], labels: &[String]) -> Tips {
     let rows = series
         .first()

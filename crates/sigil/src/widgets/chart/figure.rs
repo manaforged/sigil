@@ -37,6 +37,7 @@ pub(super) fn frame(frame: plot::PlotFrame) -> NodeBuilder {
 pub(super) fn content(
     series: &[ChartSeries],
     labels: &[String],
+    positions: Option<&[f32]>,
     look: Look,
     interact: &interact::Interact,
 ) -> Vec<NodeBuilder> {
@@ -70,6 +71,7 @@ pub(super) fn content(
         &plot::Plot {
             series: &visible,
             labels: shown,
+            positions: positions.map(|at| clip(at, window.start, window.end)),
             mark: look.mark,
             stack: look.stack,
             count: window.len(),

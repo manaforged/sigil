@@ -3,12 +3,14 @@ use crate::layout::{Dimension, JustifyContent, LayoutStyle};
 use crate::style::{Token, space};
 use crate::widgets::Widget;
 
-use super::axis::{legend, y_axis};
+use super::axis::{legend, placed_axis, y_axis};
 use super::bars::{self, GROUP_GAP};
 use super::decimate::Candle;
 use super::interact::Interact;
+use super::marks::Placed;
 use super::scatter::{self, Spans};
 use super::span::ValueSpan;
+use super::tips::Tips;
 use super::{ChartMark, ChartView, Stack, marks, pie, readout};
 
 pub(super) const AXIS: f32 = 32.0;
@@ -90,6 +92,7 @@ impl PlotFrame {
 pub(super) struct Plot<'a> {
     pub(super) series: &'a [ChartView<'a>],
     pub(super) labels: &'a [String],
+    pub(super) positions: Option<&'a [f32]>,
     pub(super) mark: ChartMark,
     pub(super) stack: Stack,
     pub(super) count: usize,
@@ -112,22 +115,45 @@ pub(super) fn draw(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
     pie::draw(&slices, interact)
 }
 
+fn placed<'a>(plot: &Plot<'a>) -> Option<Placed<'a>> {
+    let at = plot
+        .positions
+        .filter(|_| matches!(plot.mark, ChartMark::Line | ChartMark::Area))?;
+    Some(Placed {
+        at,
+        span: ValueSpan::scale(at.iter()),
+    })
+}
+
+fn tips(plot: &Plot<'_>, spans: Spans, placed: Option<Placed<'_>>) -> Tips {
+    let (series, labels) = (plot.series, plot.labels);
+    match (plot.mark, placed) {
+        (ChartMark::Candle, _) => readout::candles(series, labels),
+        (ChartMark::Scatter, _) => readout::points(series, spans),
+        (_, Some(placed)) => readout::placed(
+            series,
+            labels,
+            (0..placed.at.len())
+                .map(|index| placed.fraction(index))
+                .collect(),
+        ),
+        _ => readout::columns(series, labels, plot.count),
+    }
+}
+
 fn cartesian(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
     let (series, frame, count) = (plot.series, plot.frame, plot.count);
     let span = ValueSpan::of(series, plot.mark, plot.stack);
     let spans = Spans::of(series, span);
     let columns = frame.columns();
+    let placed = placed(plot);
     let area = match plot.mark {
         ChartMark::Bar => bars::bars(series, count, span, plot.stack, PLOT_PAD),
         ChartMark::Candle => candles(series, span, columns),
         ChartMark::Scatter => dots(series, spans),
-        _ => traces(series, span, count, columns, plot.mark == ChartMark::Area),
+        _ => traces(plot, span, columns, placed),
     };
-    let area = interact.attach(area, plot.total, PLOT_PAD, || match plot.mark {
-        ChartMark::Candle => readout::candles(series, plot.labels),
-        ChartMark::Scatter => readout::points(series, spans),
-        _ => readout::columns(series, plot.labels, count),
-    });
+    let area = interact.attach(area, plot.total, PLOT_PAD, || tips(plot, spans, placed));
     let has_legend = series.iter().any(|item| !item.legend.is_empty());
     let x_axis_on = frame.shows_x_axis(has_legend);
     let mut column = container()
@@ -139,7 +165,7 @@ fn cartesian(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
         )
         .child(area);
     if x_axis_on {
-        column = column.child(bottom_axis(plot, spans));
+        column = column.child(bottom_axis(plot, spans, placed));
     }
     let mid_tick = frame.mid_tick(span, has_legend);
     let mut nodes = vec![
@@ -160,11 +186,12 @@ fn cartesian(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
     nodes
 }
 
-fn bottom_axis(plot: &Plot<'_>, spans: Spans) -> NodeBuilder {
+fn bottom_axis(plot: &Plot<'_>, spans: Spans, placed: Option<Placed<'_>>) -> NodeBuilder {
     let (count, stride) = (plot.count, plot.frame.label_stride(plot.count));
-    match plot.mark {
-        ChartMark::Scatter => scatter::x_axis(spans.x, X_AXIS, PLOT_PAD),
-        ChartMark::Bar => x_axis(plot.labels, count, GROUP_GAP, stride),
+    match (plot.mark, placed) {
+        (ChartMark::Scatter, _) => scatter::x_axis(spans.x, X_AXIS, PLOT_PAD),
+        (ChartMark::Bar, _) => x_axis(plot.labels, count, GROUP_GAP, stride),
+        (_, Some(placed)) => placed_axis(plot.labels, placed, stride, PLOT_PAD),
         _ => x_axis(plot.labels, count, 0.0, stride),
     }
 }
@@ -211,28 +238,48 @@ fn axis_slot(text: String, width: usize) -> NodeBuilder {
         )
 }
 
-fn traces<'a>(
-    series: &'a [ChartView<'a>],
+fn traces(
+    plot: &Plot<'_>,
     span: ValueSpan,
-    count: usize,
     columns: usize,
-    filled: bool,
+    placed: Option<Placed<'_>>,
 ) -> NodeBuilder {
-    let shown = series.iter().filter(|item| !item.values.is_empty());
-    let trace = |item: &'a ChartView<'a>| marks::Trace {
-        values: item.values,
-        count,
+    let filled = plot.mark == ChartMark::Area;
+    let stacked = filled && plot.stack == Stack::Stacked;
+    let raw = plot
+        .series
+        .iter()
+        .map(|item| item.values)
+        .collect::<Vec<_>>();
+    let tops = stacked.then(|| marks::stack_tops(&raw));
+    let values = tops
+        .as_ref()
+        .map_or(raw, |tops| tops.iter().map(Vec::as_slice).collect());
+    let shown = plot
+        .series
+        .iter()
+        .zip(values)
+        .filter(|(_, values)| !values.is_empty())
+        .collect::<Vec<_>>();
+    let trace = |values| marks::Trace {
+        values,
+        count: plot.count,
         span,
         columns,
+        placed,
     };
     let mut layer = container().layout(LayoutStyle::block().fill());
     if filled {
-        for item in shown.clone() {
-            layer = layer.child(marks::area(&trace(item), item.hue.soft()));
+        let mut under = shown.clone();
+        if stacked {
+            under.reverse();
+        }
+        for (item, values) in under {
+            layer = layer.child(marks::area(&trace(values), item.hue.soft()));
         }
     }
-    for item in shown {
-        layer = layer.child(marks::line(&trace(item), item.hue.token()));
+    for (item, values) in shown {
+        layer = layer.child(marks::line(&trace(values), item.hue.token()));
     }
     plot_area(layer)
 }

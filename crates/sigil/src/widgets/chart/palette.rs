@@ -46,3 +46,8 @@ impl Hue {
         self.tone.token(self.step.saturating_sub(SOFT_DROP).max(2))
     }
 }
+
+#[cfg(feature = "scene")]
+pub(crate) fn series_tokens() -> impl Iterator<Item = Token> {
+    PALETTE.into_iter().map(Hue::token)
+}

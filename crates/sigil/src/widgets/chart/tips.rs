@@ -24,6 +24,7 @@ pub(super) enum Pick {
     Columns(usize),
     Slices { ends: Rc<[f32]>, hole: f32 },
     Points(Rc<[(f32, f32)]>),
+    Placed(Rc<[f32]>),
 }
 
 pub(super) type Lines = Rc<dyn Fn(usize) -> Vec<String>>;
@@ -40,6 +41,7 @@ impl Tips {
             Pick::Columns(count) => column(at, *count, pad),
             Pick::Slices { ends, hole } => slice(at, ends, *hole),
             Pick::Points(points) => nearest(at, points, pad),
+            Pick::Placed(fractions) => nearest_x(at, fractions, pad),
         }
     }
 }
@@ -86,6 +88,16 @@ fn nearest(at: Probe, points: &[(f32, f32)], pad: f32) -> Option<usize> {
         .enumerate()
         .min_by(|a, b| gap(a.1).total_cmp(&gap(b.1)))?;
     (gap(point) <= NEAR).then_some(index)
+}
+
+fn nearest_x(at: Probe, fractions: &[f32], pad: f32) -> Option<usize> {
+    let fx = (at.x - pad) / span_px(at.width, pad);
+    fractions
+        .iter()
+        .enumerate()
+        .filter(|(_, fraction)| fraction.is_finite())
+        .min_by(|a, b| (a.1 - fx).abs().total_cmp(&(b.1 - fx).abs()))
+        .map(|(index, _)| index)
 }
 
 pub(super) fn card(at: Probe, lines: Vec<String>) -> Option<NodeBuilder> {

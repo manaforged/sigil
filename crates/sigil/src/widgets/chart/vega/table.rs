@@ -4,6 +4,7 @@ use serde_json::Value;
 
 use super::Row;
 use super::spec::{Aggregate, Channel, Kind};
+use super::time::epoch_ms;
 
 const MAX_CATEGORIES: usize = 500;
 const MAX_SERIES: usize = 10;
@@ -15,7 +16,7 @@ pub(super) struct Table {
 
 #[derive(Clone, Copy, Default)]
 struct Cell {
-    sum: f32,
+    sum: f64,
     count: u32,
 }
 
@@ -85,12 +86,17 @@ impl Cell {
         clippy::cast_precision_loss,
         reason = "row counts are bounded by the row limit"
     )]
-    fn value(self, aggregate: Option<Aggregate>) -> f32 {
-        match aggregate {
-            Some(Aggregate::Mean) if self.count > 0 => self.sum / self.count as f32,
-            Some(Aggregate::Count) => self.count as f32,
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "chart values render at f32 precision and overflow is rejected"
+    )]
+    fn value(self, aggregate: Option<Aggregate>) -> Option<f32> {
+        let value = match aggregate {
+            Some(Aggregate::Mean) if self.count > 0 => self.sum / f64::from(self.count),
+            Some(Aggregate::Count) => f64::from(self.count),
             _ => self.sum,
-        }
+        } as f32;
+        value.is_finite().then_some(value)
     }
 }
 
@@ -114,10 +120,10 @@ pub(super) fn pivot(
             labels.slot(label, MAX_CATEGORIES)?,
         );
         let cell = cells.entry(at).or_default();
-        cell.sum += amount;
+        cell.sum += f64::from(amount);
         cell.count += 1;
     }
-    let order = order(&labels.names, category.kind);
+    let order = order(&labels.names, category.kind)?;
     let series = groups
         .names
         .into_iter()
@@ -128,12 +134,12 @@ pub(super) fn pivot(
                 .map(|label| {
                     cells
                         .get(&(group, *label))
-                        .map_or(f32::NAN, |cell| cell.value(value.aggregate))
+                        .map_or(Some(f32::NAN), |cell| cell.value(value.aggregate))
                 })
-                .collect();
-            (name, values)
+                .collect::<Option<Vec<_>>>()?;
+            Some((name, values))
         })
-        .collect::<Vec<_>>();
+        .collect::<Option<Vec<_>>>()?;
     let labels = order
         .iter()
         .filter_map(|at| labels.names.get(*at).cloned())
@@ -141,25 +147,47 @@ pub(super) fn pivot(
     (!series.is_empty()).then_some(Table { labels, series })
 }
 
-fn order(names: &[String], kind: Kind) -> Vec<usize> {
-    let mut order = (0..names.len()).collect::<Vec<_>>();
+fn place(name: &str, kind: Kind) -> Option<f64> {
     match kind {
-        Kind::Quantitative => order.sort_by(|a, b| {
-            let parse = |at: &usize| {
-                names
-                    .get(*at)
-                    .and_then(|name| name.parse::<f64>().ok())
-                    .unwrap_or(f64::NAN)
-            };
-            parse(a).total_cmp(&parse(b))
-        }),
-        Kind::Temporal => order.sort_by(|a, b| names.get(*a).cmp(&names.get(*b))),
-        Kind::Nominal | Kind::Ordinal => {}
+        Kind::Quantitative => name.parse::<f64>().ok().filter(|value| value.is_finite()),
+        Kind::Temporal => epoch_ms(name),
+        Kind::Nominal | Kind::Ordinal => None,
     }
-    order
+}
+
+fn order(names: &[String], kind: Kind) -> Option<Vec<usize>> {
+    let mut order = (0..names.len()).collect::<Vec<_>>();
+    let at = match kind {
+        Kind::Nominal | Kind::Ordinal => return Some(order),
+        Kind::Quantitative => names
+            .iter()
+            .map(|name| place(name, kind).unwrap_or(f64::NAN))
+            .collect::<Vec<_>>(),
+        Kind::Temporal => names
+            .iter()
+            .map(|name| place(name, kind))
+            .collect::<Option<Vec<_>>>()?,
+    };
+    let key = |index: &usize| at.get(*index).copied().unwrap_or(f64::NAN);
+    order.sort_by(|a, b| key(a).total_cmp(&key(b)));
+    Some(order)
 }
 
 impl Table {
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "chart positions render at f32 precision"
+    )]
+    pub(super) fn positions(&self) -> Option<Vec<f32>> {
+        self.labels
+            .iter()
+            .map(|name| {
+                let value = place(name, Kind::Quantitative)? as f32;
+                value.is_finite().then_some(value)
+            })
+            .collect()
+    }
+
     pub(super) fn fill_missing(&mut self, gap: f32) {
         for (_, values) in &mut self.series {
             for value in values.iter_mut().filter(|value| value.is_nan()) {
