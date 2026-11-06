@@ -44,7 +44,7 @@ pub(super) fn pairs(values: &[f32]) -> impl Iterator<Item = (f32, f32)> + '_ {
         .as_chunks::<2>()
         .0
         .iter()
-        .map(|&[x, y]| (x, y))
+        .map(|&pair| pair.into())
         .filter(|(x, y)| x.is_finite() && y.is_finite())
 }
 

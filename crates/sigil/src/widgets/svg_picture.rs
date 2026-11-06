@@ -1,4 +1,6 @@
-use std::sync::{Arc, LazyLock, Mutex};
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::{Arc, LazyLock};
 
 use resvg::tiny_skia::{Pixmap, Transform};
 use resvg::usvg::{self, Tree, fontdb};
@@ -32,20 +34,19 @@ static FONTS: LazyLock<Arc<fontdb::Database>> = LazyLock::new(|| {
 struct Picture {
     render: Render,
     key: u64,
-    tree: Mutex<Option<(u64, Arc<Tree>)>>,
+    tree: RefCell<Option<(u64, Arc<Tree>)>>,
 }
 
 impl Picture {
     fn tree(&self, theme: &Theme) -> Option<(u64, Arc<Tree>)> {
         let key = theme_key(self.key, theme);
-        let mut slot = self.tree.lock().ok()?;
-        if let Some((cached, tree)) = slot.as_ref()
+        if let Some((cached, tree)) = self.tree.borrow().as_ref()
             && *cached == key
         {
             return Some((key, Arc::clone(tree)));
         }
         let tree = Arc::new(parse(&(self.render)(theme)?)?);
-        *slot = Some((key, Arc::clone(&tree)));
+        *self.tree.borrow_mut() = Some((key, Arc::clone(&tree)));
         Some((key, tree))
     }
 
@@ -61,8 +62,8 @@ impl Picture {
     )]
     fn bind(&self, theme: &Theme) -> ImageRaster {
         let found = self.tree(theme);
-        let key = found.as_ref().map_or(0, |(key, _)| *key);
-        ImageRaster::new(key, move |width, height, _| {
+        let id = found.as_ref().map_or(0, |(key, _)| *key);
+        ImageRaster::new(id, move |width, height, _| {
             let (key, tree) = found.as_ref()?;
             raster(*key, tree, (width as f32, height as f32))
         })
@@ -78,17 +79,17 @@ pub(crate) fn picture(
     let svg = render(&light)?;
     let tree = Arc::new(parse(&svg)?);
     let size = (tree.size().width(), tree.size().height());
-    let key = key
+    let hash = key
         .bytes()
         .chain(svg.bytes())
         .fold(OFFSET, |key, byte| mix(key, u64::from(byte)));
-    let picture = Arc::new(Picture {
+    let picture = Rc::new(Picture {
         render: Box::new(render),
-        key,
-        tree: Mutex::new(Some((theme_key(key, &light), tree))),
+        key: hash,
+        tree: RefCell::new(Some((theme_key(hash, &light), tree))),
     });
     let first = picture.source(&light)?;
-    let fallback = Arc::clone(&picture);
+    let fallback = Rc::clone(&picture);
     let themed = ThemedImage::new(
         move |theme| fallback.source(theme),
         move |theme| picture.bind(theme),
@@ -130,7 +131,10 @@ fn parse(svg: &str) -> Option<Tree> {
 fn raster(key: u64, tree: &Tree, (width, height): (f32, f32)) -> Option<ImageSource> {
     let shrink = (MAX_PIXELS / (width * height).max(1.0)).sqrt().min(1.0);
     let (width, height) = ((width * shrink).round(), (height * shrink).round());
-    let sized = mix(mix(key, u64::from(width.to_bits())), u64::from(height.to_bits()));
+    let sized = mix(
+        mix(key, u64::from(width.to_bits())),
+        u64::from(height.to_bits()),
+    );
     cached_image(sized, || {
         let mut pixmap = Pixmap::new(width.max(1.0) as u32, height.max(1.0) as u32)?;
         let size = tree.size();

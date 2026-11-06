@@ -94,13 +94,11 @@ impl Render {
     }
 
     pub(super) fn live(&self, value: &Dynamic) -> TextContent {
-        match self.bound(value) {
-            Some(path) => {
-                let model = self.model;
-                TextContent::from(move || display(&model.get(&path)))
-            }
-            None => TextContent::from(display(&self.value(value))),
-        }
+        let model = self.model;
+        self.bound(value).map_or_else(
+            || TextContent::from(display(&self.value(value))),
+            |path| TextContent::from(move || display(&model.get(&path))),
+        )
     }
 
     fn kind(&self, kind: &Kind) -> NodeBuilder {
@@ -151,12 +149,11 @@ impl Render {
             TextStyle::Body => ("text-sm", Token::OnSurface),
             TextStyle::Caption => ("text-xs", Token::OnSurfaceMuted),
         };
-        let node = match self.bound(value) {
-            Some(_) => text(self.live(value)),
-            None => {
-                let source = display(&self.value(value));
-                markdown_inline(source.trim_start_matches('#').trim_start())
-            }
+        let node = if self.bound(value).is_some() {
+            text(self.live(value))
+        } else {
+            let source = display(&self.value(value));
+            markdown_inline(source.trim_start_matches('#').trim_start())
         };
         node.wrap().class(size).class(tone.text()).into()
     }

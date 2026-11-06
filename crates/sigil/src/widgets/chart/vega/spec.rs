@@ -113,6 +113,10 @@ impl Aggregate {
     }
 }
 
+#[allow(
+    clippy::option_option,
+    reason = "the outer None rejects the spec and the inner None means the key is absent"
+)]
 fn optional<T>(
     value: Option<&Value>,
     parse: impl FnOnce(&Value) -> Option<T>,
@@ -131,10 +135,12 @@ impl Channel {
             Aggregate::parse(name.as_str()?)
         })?;
         let declared = optional(map.get("type"), |name| Kind::parse(name.as_str()?))?;
-        let kind = declared.unwrap_or(if aggregate.is_some() {
-            Kind::Quantitative
-        } else {
-            Kind::Nominal
+        let kind = declared.unwrap_or_else(|| {
+            if aggregate.is_some() {
+                Kind::Quantitative
+            } else {
+                Kind::Nominal
+            }
         });
         if field.is_none() && aggregate != Some(Aggregate::Count) {
             return None;

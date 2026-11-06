@@ -55,6 +55,10 @@ fn key(row: &Row, channel: Option<&Channel>) -> Option<String> {
     clippy::cast_possible_truncation,
     reason = "chart values render at f32 precision"
 )]
+#[allow(
+    clippy::option_option,
+    reason = "the outer None rejects the row and the inner None means the value is absent"
+)]
 fn number(value: Option<&Value>) -> Option<Option<f32>> {
     let parsed = match value {
         None | Some(Value::Null) => return Some(None),
@@ -65,6 +69,10 @@ fn number(value: Option<&Value>) -> Option<Option<f32>> {
     parsed.is_finite().then_some(Some(parsed))
 }
 
+#[allow(
+    clippy::option_option,
+    reason = "the outer None rejects the row and the inner None means the value is absent"
+)]
 fn measure(row: &Row, channel: &Channel) -> Option<Option<f32>> {
     if channel.aggregate == Some(Aggregate::Count) {
         return Some(Some(1.0));

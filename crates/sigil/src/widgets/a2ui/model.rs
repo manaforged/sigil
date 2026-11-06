@@ -68,10 +68,11 @@ fn place(node: &mut Value, key: &str, value: Option<Value>) {
             let Ok(index) = key.parse::<usize>() else {
                 return;
             };
-            match value {
-                Some(value) if index < items.len() => items[index] = value,
-                Some(value) if index == items.len() => items.push(value),
-                None if index < items.len() => {
+            let len = items.len();
+            match (value, items.get_mut(index)) {
+                (Some(value), Some(slot)) => *slot = value,
+                (Some(value), None) if index == len => items.push(value),
+                (None, Some(_)) => {
                     items.remove(index);
                 }
                 _ => {}

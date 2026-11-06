@@ -73,11 +73,11 @@ impl Render {
                 .parse::<f64>()
                 .ok()
                 .and_then(serde_json::Number::from_f64);
-            let value = match (kind, number) {
+            let written = match (kind, number) {
                 (FieldKind::Number, Some(number)) => Value::Number(number),
                 _ => Value::String(typed.to_string()),
             };
-            render.write(path.as_ref(), value);
+            render.write(path.as_ref(), written);
         });
         if matches!(kind, FieldKind::Obscured) {
             control = control.password();
@@ -115,7 +115,7 @@ impl Render {
     fn picker(&self, picker: &Picker) -> NodeBuilder {
         let chosen = selected(&self.value(&picker.value));
         if picker.multiple {
-            return self.many(picker, chosen);
+            return self.many(picker, &chosen);
         }
         let pick = signal(chosen.first().cloned().unwrap_or_default());
         let mut group = radio_group(pick).label(display(&self.value(&picker.label)));
@@ -132,7 +132,7 @@ impl Render {
         self.labelled(&picker.label, group)
     }
 
-    fn many(&self, picker: &Picker, chosen: Vec<String>) -> NodeBuilder {
+    fn many(&self, picker: &Picker, chosen: &[String]) -> NodeBuilder {
         let path = self.bound(&picker.value);
         let mut column = container().layout(LayoutStyle::flex_column().gap(space(1)));
         for option in &picker.options {

@@ -43,6 +43,8 @@ pub(crate) fn figure(source: &str) -> NodeBuilder {
     View::new().figure(source)
 }
 
+type Draw = fn(&str) -> Option<Drawn>;
+
 struct Drawn {
     node: NodeBuilder,
     width: f32,
@@ -69,13 +71,12 @@ impl View {
     }
 
     fn figure(&self, source: &str) -> NodeBuilder {
-        if crate::style::Metrics::current().is_grid() || crate::widgets::source_too_large(source)
-        {
+        if crate::style::Metrics::current().is_grid() || crate::widgets::source_too_large(source) {
             return text_figure(source);
         }
         let bounded = bound_source(source);
         let last = self.last.borrow().clone().unwrap_or_default();
-        let attempts: [(&str, fn(&str) -> Option<Drawn>); 4] = [
+        let attempts: [(&str, Draw); 4] = [
             (&bounded, svg),
             (&last, svg),
             (&bounded, vector),
