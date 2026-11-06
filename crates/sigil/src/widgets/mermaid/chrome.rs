@@ -46,7 +46,10 @@ impl Chrome {
             .pointer_leave(move |_| self.hover.set(false))
             .focus_in(move || self.focus.set(true))
             .focus_out(move || self.focus.set(false))
-            .child(self.body(drawn, source).paint_when(stale, |s| s.opacity(0.6)))
+            .child(
+                self.body(drawn, source)
+                    .paint_when(stale, |s| s.opacity(0.6)),
+            )
             .child(self.toolbar(source, expandable));
         if stale {
             root = root.child(updating());
@@ -91,7 +94,8 @@ impl Chrome {
             .child(self.copy(source));
         if expandable {
             let open = self.open;
-            bar = bar.child(tool(Icon::Maximize2, move || open.set(true)).accessible("Expand diagram"));
+            bar = bar
+                .child(tool(Icon::Maximize2, move || open.set(true)).accessible("Expand diagram"));
         }
         bar
     }
@@ -99,7 +103,12 @@ impl Chrome {
     fn toggle(self) -> ButtonBuilder {
         let code = self.code;
         let name = derived(move || {
-            if code.get() { "Show diagram" } else { "Show code" }.to_string()
+            if code.get() {
+                "Show diagram"
+            } else {
+                "Show code"
+            }
+            .to_string()
         });
         tool(Icon::Code, move || code.update(|on| *on = !*on))
             .accessible(AccessibleName::Derived(name))
@@ -110,7 +119,12 @@ impl Chrome {
         let copied = self.copied;
         let body = source.trim_end().to_string();
         let name = derived(move || {
-            if copied.get() { "Copied" } else { "Copy source" }.to_string()
+            if copied.get() {
+                "Copied"
+            } else {
+                "Copy source"
+            }
+            .to_string()
         });
         tool(Icon::Copy, move || {
             if crate::clipboard::copy(&body).is_ok() {

@@ -4,22 +4,40 @@ use pulldown_cmark::BlockQuoteKind;
 
 use super::chart_parse::ChartData;
 pub(crate) use super::containers::{List, ListItem};
-use super::events::located;
+use super::events::{located, scan};
+use super::refs::{Refs, Report};
 pub(crate) use super::table_data::Table;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Block {
-    Heading { level: u8, body: Vec<Inline> },
+    Heading {
+        level: u8,
+        body: Vec<Inline>,
+    },
     Paragraph(Vec<Inline>),
     Quote(Vec<Self>),
-    Alert { kind: BlockQuoteKind, blocks: Vec<Self> },
-    Details { summary: Vec<Inline>, blocks: Vec<Self> },
+    Alert {
+        kind: BlockQuoteKind,
+        blocks: Vec<Self>,
+    },
+    Details {
+        summary: Vec<Inline>,
+        blocks: Vec<Self>,
+    },
     List(List),
-    Code { lang: String, body: String },
+    Code {
+        lang: String,
+        body: String,
+    },
     Math(String),
     Mermaid(String),
+    VegaLite(String),
+    Graphviz(String),
     Chart(ChartData),
-    Image { alt: String, src: String },
+    Image {
+        alt: String,
+        src: String,
+    },
     Table(Table),
     Footnotes(Vec<Note>),
     Html(String),
@@ -95,34 +113,70 @@ impl Inline {
 
 #[cfg(test)]
 pub(crate) fn parse_blocks(source: &str) -> Vec<Block> {
-    parse_tail(source).0
+    parse_tail(source, &Refs::default()).blocks
 }
 
-pub(crate) fn parse_tail(source: &str) -> (Vec<Block>, Option<(usize, usize)>) {
+pub(super) struct Tail {
+    pub(super) blocks: Vec<Block>,
+    pub(super) cut: Option<(usize, usize)>,
+    pub(super) report: Report,
+}
+
+pub(super) fn parse_tail(source: &str, refs: &Refs) -> Tail {
     if crate::widgets::source_too_large(source) {
-        return (vec![crate::widgets::oversize_block()], None);
+        return Tail {
+            blocks: vec![crate::widgets::oversize_block()],
+            cut: None,
+            report: Report::default(),
+        };
     }
     let source = super::latex::delimiters(source);
-    let top = located(&source);
-    let boundary = cut(&source, &top);
-    (top.into_iter().map(|(_, block)| block).collect(), boundary)
+    let (top, report) = scan(&source, refs);
+    let cut = cut(&source, &top);
+    let blocks = top.into_iter().map(|(_, block)| block).collect();
+    Tail {
+        blocks,
+        cut,
+        report,
+    }
 }
 
 pub(super) fn nested(source: &str) -> Vec<Block> {
-    located(source).into_iter().map(|(_, block)| block).collect()
+    located(source)
+        .into_iter()
+        .map(|(_, block)| block)
+        .collect()
 }
 
 fn cut(source: &str, top: &[(Range<usize>, Block)]) -> Option<(usize, usize)> {
-    let [.., (prev, _), (last, _)] = top else {
+    let last_at = top.len().checked_sub(1)?;
+    let at = top
+        .iter()
+        .position(|(_, block)| matches!(block, Block::Footnotes(_)))
+        .map_or(last_at, |note| note.min(last_at));
+    let (prev, block) = top.get(at.checked_sub(1)?)?;
+    let (last, _) = top.get(at)?;
+    if continues(source, prev, block) {
         return None;
-    };
+    }
     let gap = source.get(prev.end..last.start)?;
     let head = source.get(..last.start)?.trim_end_matches([' ', '\t']);
     let blank = head
         .strip_suffix('\n')?
         .trim_end_matches([' ', '\t', '\r'])
         .ends_with('\n');
-    (blank && gap.trim().is_empty()).then_some((last.start, top.len() - 1))
+    (blank && gap.trim().is_empty()).then_some((last.start, at))
+}
+
+fn continues(source: &str, range: &Range<usize>, block: &Block) -> bool {
+    match block {
+        Block::List(_) | Block::Footnotes(_) => true,
+        Block::Code { .. } => !source.get(range.clone()).is_some_and(|code| {
+            let code = code.trim_start();
+            code.starts_with("```") || code.starts_with("~~~")
+        }),
+        _ => false,
+    }
 }
 
 pub(crate) fn parse_inlines(source: &str) -> Vec<Inline> {

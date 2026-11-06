@@ -6,6 +6,7 @@ mod events;
 mod inline;
 mod latex;
 pub(crate) mod parse;
+mod refs;
 mod render;
 mod repair;
 mod spans;
@@ -60,7 +61,11 @@ impl IntoNode for KeyedBlock {
             return node.build(cx);
         }
         container()
-            .layout(LayoutStyle::block().fill_width().padding_top(CellForm::new(space(2), 0.0).pick()))
+            .layout(
+                LayoutStyle::block()
+                    .fill_width()
+                    .padding_top(CellForm::new(space(2), 0.0).pick()),
+            )
             .child(node)
             .build(cx)
     }
@@ -146,6 +151,10 @@ fn styled_block(block: Block, tone: TokenTone) -> NodeBuilder {
         Block::Code { lang, body } => render::code(&lang, &body),
         Block::Math(source) => blocks::math(&source),
         Block::Mermaid(body) => super::mermaid::mermaid(body),
+        Block::VegaLite(source) => {
+            super::chart::vega_lite(&source).unwrap_or_else(|| render::code("json", &source))
+        }
+        Block::Graphviz(source) => super::graphviz::figure(&source),
         Block::Chart(data) => chart_node(data),
         Block::Image { alt, src } => image_node(&alt, &src),
         Block::Table(data) => table::table(data),

@@ -1,24 +1,52 @@
 use super::parse::Block;
 
-pub(super) fn fence_block(lang: &str, body: String) -> Block {
-    if lang == "mermaid" {
-        let xychart = body
-            .lines()
-            .map(str::trim)
-            .find(|line| !line.is_empty() && !line.starts_with("%%"))
-            .is_some_and(|line| line.starts_with("xychart"));
-        if xychart {
-            chart_block(&body, false)
-        } else {
-            Block::Mermaid(body)
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Fence {
+    Mermaid,
+    Chart,
+    XyChart,
+    VegaLite,
+    Graphviz,
+    Code,
+}
+
+impl Fence {
+    fn of(lang: &str) -> Self {
+        match lang.to_ascii_lowercase().as_str() {
+            "mermaid" => Self::Mermaid,
+            "chart" => Self::Chart,
+            "xychart" | "xychart-beta" => Self::XyChart,
+            "vega-lite" | "vegalite" | "vega" => Self::VegaLite,
+            "dot" | "graphviz" | "gv" => Self::Graphviz,
+            _ => Self::Code,
         }
-    } else if matches!(lang, "chart" | "xychart" | "xychart-beta") {
-        chart_block(&body, lang.starts_with("xychart"))
-    } else {
-        Block::Code {
+    }
+}
+
+pub(super) fn fence_block(lang: &str, body: String) -> Block {
+    match Fence::of(lang) {
+        Fence::Mermaid => mermaid_block(body),
+        Fence::Chart => chart_block(&body, false),
+        Fence::XyChart => chart_block(&body, true),
+        Fence::VegaLite => Block::VegaLite(body),
+        Fence::Graphviz => Block::Graphviz(body),
+        Fence::Code => Block::Code {
             lang: lang.to_string(),
             body,
-        }
+        },
+    }
+}
+
+fn mermaid_block(body: String) -> Block {
+    let xychart = body
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty() && !line.starts_with("%%"))
+        .is_some_and(|line| line.starts_with("xychart"));
+    if xychart {
+        chart_block(&body, false)
+    } else {
+        Block::Mermaid(body)
     }
 }
 

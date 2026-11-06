@@ -180,8 +180,9 @@ pub(crate) mod overlay;
 mod panel;
 pub(crate) mod patterns;
 mod popup;
-pub use popup::close_top_escape;
 pub(crate) use popup::close_light as popup_close_light;
+pub use popup::close_top_escape;
+mod a2ui;
 mod progress;
 mod radio_group;
 mod scroll;
@@ -206,7 +207,6 @@ mod toast_queue;
 mod toggle;
 mod tooltip;
 mod tree;
-mod a2ui;
 mod vector;
 mod virtual_list;
 mod widget;
@@ -298,6 +298,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use table::MIN_COL_WIDTH;
 }
+pub use a2ui::{A2uiBuilder, a2ui};
 pub(crate) use tabs::TabsBuilder;
 pub use tabs::tabs;
 pub use terminal::terminal;
@@ -310,7 +311,6 @@ pub use toggle::toggle;
 pub(crate) use tooltip::TooltipBuilder;
 pub use tooltip::tooltip;
 pub use tree::{TreeNode, tree};
-pub use a2ui::{A2uiBuilder, a2ui};
 pub use vector::{PathNode, path};
 pub use virtual_list::{
     RowRender, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder, virtual_list,

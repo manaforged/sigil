@@ -18,12 +18,29 @@ fn push_spans(out: &mut StyledText, spans: &[Inline], face: &TextFace) {
     for span in spans {
         match span {
             Inline::Text(body) => push_run(out, body, face),
-            Inline::Strong(body) => push_spans(out, body, &TextFace { bold: true, ..face.clone() }),
-            Inline::Em(body) => push_spans(out, body, &TextFace { italic: true, ..face.clone() }),
+            Inline::Strong(body) => push_spans(
+                out,
+                body,
+                &TextFace {
+                    bold: true,
+                    ..face.clone()
+                },
+            ),
+            Inline::Em(body) => push_spans(
+                out,
+                body,
+                &TextFace {
+                    italic: true,
+                    ..face.clone()
+                },
+            ),
             Inline::Strike(body) => push_spans(
                 out,
-                &struck(body),
-                &TextFace { color: Some(Token::OnSurfaceMuted), ..face.clone() },
+                body,
+                &TextFace {
+                    strike: true,
+                    ..face.clone()
+                },
             ),
             Inline::Code(body) => {
                 let code = TextFace {
@@ -37,27 +54,21 @@ fn push_spans(out: &mut StyledText, spans: &[Inline], face: &TextFace) {
             Inline::Math(body) => push_run(out, &crate::widgets::math::unicode(body), face),
             Inline::Note(label) => push_note(out, label, face),
             Inline::Image { alt, .. } => {
-                let muted = TextFace { color: Some(Token::OnSurfaceMuted), ..face.clone() };
+                let muted = TextFace {
+                    color: Some(Token::OnSurfaceMuted),
+                    ..face.clone()
+                };
                 push_run(out, &format!("[{alt}]"), &muted);
             }
-            Inline::Link { href, body, label_is_href } => {
+            Inline::Link {
+                href,
+                body,
+                label_is_href,
+            } => {
                 push_link(out, face, (body, *label_is_href), href);
             }
         }
     }
-}
-
-const STRIKE: char = '\u{336}';
-
-fn struck(body: &[Inline]) -> Vec<Inline> {
-    body.iter()
-        .map(|inline| match inline {
-            Inline::Text(text) => Inline::Text(text.chars().flat_map(|ch| [ch, STRIKE]).collect()),
-            Inline::Strong(inner) => Inline::Strong(struck(inner)),
-            Inline::Em(inner) => Inline::Em(struck(inner)),
-            other => other.clone(),
-        })
-        .collect()
 }
 
 pub(super) fn note_mark(label: &str) -> String {
@@ -73,7 +84,10 @@ pub(super) fn note_mark(label: &str) -> String {
 }
 
 fn push_note(out: &mut StyledText, label: &str, face: &TextFace) {
-    let mark = TextFace { color: Some(Token::Accent11), ..face.clone() };
+    let mark = TextFace {
+        color: Some(Token::Accent11),
+        ..face.clone()
+    };
     push_run(out, &note_mark(label), &mark);
 }
 

@@ -77,7 +77,10 @@ pub(super) fn details(summary: Vec<Inline>, blocks: Vec<Block>, node: BlockNode)
         ))
 }
 
-#[expect(clippy::cast_precision_loss, reason = "marker widths are a few columns")]
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "marker widths are a few columns"
+)]
 pub(super) fn footnotes(notes: Vec<Note>, node: BlockNode) -> NodeBuilder {
     let tone = TokenTone(Token::OnSurfaceMuted);
     let mut column = container()
@@ -98,8 +101,11 @@ pub(super) fn footnotes(notes: Vec<Note>, node: BlockNode) -> NodeBuilder {
         .min(12)
         + 2;
     for note in notes {
-        let mark = tinted(text(note_mark(&note.label)).nowrap(), TokenTone(Token::Accent11))
-            .layout(LayoutStyle::block().width(cols(width as f32)).shrink(0.0));
+        let mark = tinted(
+            text(note_mark(&note.label)).nowrap(),
+            TokenTone(Token::Accent11),
+        )
+        .layout(LayoutStyle::block().width(cols(width as f32)).shrink(0.0));
         let row = container()
             .role(Role::ListItem)
             .layout(

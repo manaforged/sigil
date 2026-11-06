@@ -24,16 +24,8 @@ mod scatter;
 mod span;
 mod summary;
 mod tips;
-#[allow(
-    dead_code,
-    reason = "markdown renders vega-lite fences through vega_lite"
-)]
 mod vega;
 
-#[allow(
-    unused_imports,
-    reason = "markdown renders vega-lite fences through vega_lite"
-)]
 pub(crate) use vega::vega_lite;
 
 const DEFAULT_HEIGHT: f32 = 180.0;

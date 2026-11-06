@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use super::events::Located;
+use super::events::{Located, MAX_NESTING};
 use super::parse::{Block, Inline, nested};
 use crate::widgets::text_search::find_ci;
 
@@ -20,6 +20,7 @@ struct Open {
 struct Fold {
     out: Vec<Located>,
     open: Vec<Open>,
+    flat: usize,
 }
 
 pub(super) fn fold_blocks(blocks: Vec<Block>) -> Vec<Block> {
@@ -36,7 +37,10 @@ pub(super) fn fold(items: Vec<Located>) -> Vec<Located> {
     for (range, block) in items {
         end = range.end;
         match block {
-            Block::Html(html) if find_ci(&html, "<details").is_some() || find_ci(&html, "</details").is_some() => {
+            Block::Html(html)
+                if find_ci(&html, "<details").is_some()
+                    || find_ci(&html, "</details").is_some() =>
+            {
                 for piece in pieces(&html) {
                     fold.piece(piece, &range);
                 }
@@ -60,11 +64,13 @@ impl Fold {
 
     fn piece(&mut self, piece: Piece, range: &Range<usize>) {
         match piece {
+            Piece::Open(_) if self.open.len() >= MAX_NESTING => self.flat += 1,
             Piece::Open(summary) => self.open.push(Open {
                 start: range.start,
                 summary: summary_inlines(&summary),
                 blocks: Vec::new(),
             }),
+            Piece::Close if self.flat > 0 => self.flat -= 1,
             Piece::Close => self.close(range.end),
             Piece::Text(text) => {
                 for block in nested(&text) {
@@ -92,31 +98,41 @@ fn summary_inlines(summary: &str) -> Vec<Inline> {
     vec![Inline::Text(text.to_string())]
 }
 
+const OPEN: &str = "<details";
+const CLOSE: &str = "</details>";
+
+fn find_from(html: &str, from: usize, needle: &str) -> Option<usize> {
+    find_ci(html.get(from..)?, needle).map(|at| at + from)
+}
+
 fn pieces(html: &str) -> Vec<Piece> {
     let mut out = Vec::new();
-    let mut rest = html;
+    let mut at = 0;
+    let mut close = find_from(html, 0, CLOSE);
     loop {
-        let open = find_ci(rest, "<details");
-        let close = find_ci(rest, "</details>");
-        let at = match (open, close) {
+        let open = find_from(html, at, OPEN);
+        let next = match (open, close) {
             (Some(open), Some(close)) => open.min(close),
-            (Some(at), None) | (None, Some(at)) => at,
+            (Some(next), None) | (None, Some(next)) => next,
             (None, None) => break,
         };
-        text_piece(&mut out, &rest[..at]);
-        rest = &rest[at..];
-        if close == Some(at) {
+        text_piece(&mut out, &html[at..next]);
+        if close == Some(next) {
             out.push(Piece::Close);
-            rest = &rest["</details>".len()..];
+            at = next + CLOSE.len();
+            close = find_from(html, at, CLOSE);
             continue;
         }
+        let rest = &html[next..];
         let tag_end = rest.find('>').map_or(rest.len(), |end| end + 1);
-        rest = &rest[tag_end..];
-        let (summary, after) = take_summary(rest);
+        let (summary, after) = take_summary(&rest[tag_end..]);
         out.push(Piece::Open(summary));
-        rest = after;
+        at = html.len() - after.len();
+        if close.is_some_and(|close| close < at) {
+            close = find_from(html, at, CLOSE);
+        }
     }
-    text_piece(&mut out, rest);
+    text_piece(&mut out, &html[at..]);
     out
 }
 

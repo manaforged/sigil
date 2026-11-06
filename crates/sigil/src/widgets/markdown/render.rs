@@ -45,7 +45,11 @@ pub(super) fn heading(level: u8, body: &[Inline]) -> NodeBuilder {
         3 => Token::OnSurface,
         _ => Token::OnSurfaceMuted,
     };
-    let window = if level > 4 { Token::OnSurfaceMuted } else { Token::OnSurface };
+    let window = if level > 4 {
+        Token::OnSurfaceMuted
+    } else {
+        Token::OnSurface
+    };
     let tone = TokenTone(CellForm::new(window, grid).pick());
     let level = usize::from(level);
     rich(body, class, tone, Role::Heading).mutate(move |node| node.a11y.level = Some(level))

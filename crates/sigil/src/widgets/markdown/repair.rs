@@ -26,12 +26,12 @@ struct Scan {
 }
 
 pub(super) fn tail(source: &str) -> Cow<'_, str> {
-    if in_fence(source) {
+    let line_start = source.rfind('\n').map_or(0, |at| at + 1);
+    let body = source.trim_end();
+    if body.len() <= line_start || in_fence(source) {
         return Cow::Borrowed(source);
     }
-    let body = source.trim_end();
-    let segment_start = body.rfind("\n\n").map_or(0, |at| at + 2);
-    let scan = scan(&body[segment_start..]);
+    let scan = scan(&body[line_start..]);
     let mut closers = scan.inner.unwrap_or_default();
     for mark in scan.stack.iter().rev() {
         closers.push_str(mark.closer());
@@ -85,7 +85,10 @@ fn scan(segment: &str) -> Scan {
 }
 
 fn code(segment: &str, at: usize, out: &mut Scan) -> Option<usize> {
-    let run = segment[at..].bytes().take_while(|byte| *byte == b'`').count();
+    let run = segment[at..]
+        .bytes()
+        .take_while(|byte| *byte == b'`')
+        .count();
     let fence = &segment[at..at + run];
     match segment[at + run..].find(fence) {
         Some(end) => Some(run + end + run),

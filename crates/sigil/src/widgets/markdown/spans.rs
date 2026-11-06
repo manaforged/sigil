@@ -161,8 +161,7 @@ fn next_url(text: &str) -> Option<(usize, usize)> {
         .unwrap_or(tail.len());
     loop {
         let url = &tail[..end];
-        let unbalanced =
-            url.ends_with(')') && url.matches('(').count() < url.matches(')').count();
+        let unbalanced = url.ends_with(')') && url.matches('(').count() < url.matches(')').count();
         if url.ends_with(['.', ',', ':', ';', '!', '?', '\'', '"']) || unbalanced {
             end -= 1;
         } else {

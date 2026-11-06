@@ -106,7 +106,11 @@ struct Grid {
 
 impl Grid {
     fn cell(&self, row: usize, column: usize) -> NodeBuilder {
-        let extent = self.widths.get(column).copied().unwrap_or(Extent { min: 0.0, max: 0.0 });
+        let extent = self
+            .widths
+            .get(column)
+            .copied()
+            .unwrap_or(Extent { min: 0.0, max: 0.0 });
         let edge = cols(3.0).into_px();
         let basis = extent.min + edge;
         let body = self
@@ -209,7 +213,12 @@ pub(super) fn table(data: Table) -> NodeBuilder {
         .sum::<f32>()
         + cols(2.0).into_px();
     let sortable = data.rows.len() > 2;
-    let grid = Rc::new(Grid { data, cells, widths, sort: signal(None) });
+    let grid = Rc::new(Grid {
+        data,
+        cells,
+        widths,
+        sort: signal(None),
+    });
     let table = container()
         .role(Role::Table)
         .layout(LayoutStyle::flex_column().fill_width())

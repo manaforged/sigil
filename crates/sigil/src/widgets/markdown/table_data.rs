@@ -66,7 +66,11 @@ impl Table {
         let keys: Vec<String> = self
             .rows
             .iter()
-            .map(|row| row.get(column).map(|cell| Inline::plain(cell)).unwrap_or_default())
+            .map(|row| {
+                row.get(column)
+                    .map(|cell| Inline::plain(cell))
+                    .unwrap_or_default()
+            })
             .collect();
         let numeric = order
             .iter()
@@ -103,7 +107,11 @@ impl Table {
         for (index, row) in self.shown(order).enumerate() {
             out.push_str(&line(
                 (0..columns)
-                    .map(|at| row.get(at).map(|cell| markdown_cell(cell)).unwrap_or_default())
+                    .map(|at| {
+                        row.get(at)
+                            .map(|cell| markdown_cell(cell))
+                            .unwrap_or_default()
+                    })
                     .collect(),
             ));
             if index == 0 {
@@ -141,7 +149,10 @@ fn number(key: &str) -> Option<f64> {
         .chars()
         .filter(|ch| !matches!(ch, ',' | '_' | '$' | '%' | '€' | '£' | ' '))
         .collect();
-    cleaned.parse::<f64>().ok().filter(|value| value.is_finite())
+    cleaned
+        .parse::<f64>()
+        .ok()
+        .filter(|value| value.is_finite())
 }
 
 fn compare_numbers(a: &str, b: &str) -> Ordering {

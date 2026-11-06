@@ -2,6 +2,8 @@ use std::ops::Range;
 
 use pulldown_cmark::{BlockQuoteKind, CodeBlockKind, Event, Options, Parser, Tag, TagEnd};
 
+use super::refs::{self, Refs, Report};
+
 use super::chart_parse::fence_block;
 use super::containers::{List, ListItem, TaskMark};
 use super::details;
@@ -11,7 +13,7 @@ use super::table_data::{Align, Cell, Table};
 
 pub(super) type Located = (Range<usize>, Block);
 
-const MAX_NESTING: usize = 16;
+pub(super) const MAX_NESTING: usize = 16;
 
 pub(super) const OPTIONS: Options = Options::ENABLE_TABLES
     .union(Options::ENABLE_TASKLISTS)
@@ -61,6 +63,10 @@ pub(super) struct Builder<'s> {
 }
 
 pub(super) fn located(source: &str) -> Vec<Located> {
+    scan(source, &Refs::default()).0
+}
+
+pub(super) fn scan(source: &str, refs: &Refs) -> (Vec<Located>, Report) {
     let mut builder = Builder {
         source,
         frames: vec![Frame::new(Container::Root)],
@@ -70,10 +76,16 @@ pub(super) fn located(source: &str) -> Vec<Located> {
         flat: 0,
         top: Vec::new(),
     };
-    for (event, range) in Parser::new_ext(source, OPTIONS).into_offset_iter() {
+    let mut broken = Vec::new();
+    let callback = |link: pulldown_cmark::BrokenLink<'_>| refs.resolve(&link, &mut broken);
+    let mut events =
+        Parser::new_with_broken_link_callback(source, OPTIONS, Some(callback)).into_offset_iter();
+    for (event, range) in &mut events {
         builder.event(event, range);
     }
-    details::fold(builder.top)
+    let defs = refs::found(events.reference_definitions());
+    drop(events);
+    (details::fold(builder.top), Report::new(defs, broken))
 }
 
 impl Builder<'_> {
@@ -109,7 +121,11 @@ impl Builder<'_> {
             }
             Tag::CodeBlock(kind) => {
                 let lang = match kind {
-                    CodeBlockKind::Fenced(info) => info.split_whitespace().next().unwrap_or_default().to_string(),
+                    CodeBlockKind::Fenced(info) => info
+                        .split_whitespace()
+                        .next()
+                        .unwrap_or_default()
+                        .to_string(),
                     CodeBlockKind::Indented => String::new(),
                 };
                 self.leaf = Some(Leaf::Code(lang, String::new()));
@@ -132,7 +148,13 @@ impl Builder<'_> {
             }
             TagEnd::Heading(level) => {
                 let body = Inline::finish(self.close_base());
-                self.push_block(Block::Heading { level: level as u8, body }, range);
+                self.push_block(
+                    Block::Heading {
+                        level: level as u8,
+                        body,
+                    },
+                    range,
+                );
             }
             TagEnd::TableCell => self.cell(),
             TagEnd::TableHead | TagEnd::TableRow => self.row(),
@@ -240,7 +262,12 @@ impl Builder<'_> {
             Container::Root => return,
             Container::Quote(None) => Block::Quote(blocks),
             Container::Quote(Some(kind)) => Block::Alert { kind, blocks },
-            Container::List(start, items) => Block::List(List { start, items }),
+            Container::List(start, mut items) => {
+                if !blocks.is_empty() {
+                    items.push(ListItem::plain(blocks));
+                }
+                Block::List(List { start, items })
+            }
             Container::Item(task) => return self.push_item(ListItem { task, blocks }, range),
             Container::Note(label) => Block::Footnotes(vec![Note { label, blocks }]),
             Container::Table(align, rows, _) => Block::Table(Table { align, rows }),
