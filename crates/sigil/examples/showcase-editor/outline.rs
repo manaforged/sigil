@@ -1,5 +1,4 @@
 use sigil::prelude::*;
-use sigil::style::space;
 
 use super::facts::{SYMBOLS, Symbol};
 use super::state::Workspace;
@@ -52,7 +51,7 @@ pub(crate) fn outline(ws: Workspace) -> NodeBuilder {
             LayoutStyle::flex_column()
                 .fill()
                 .min_size(0.0, 0.0)
-                .padding_y(space(1)),
+                .padding_y(Space::Xs),
         )
         .bg(Token::SurfaceSubtle)
         .rounded(Radius::Md)

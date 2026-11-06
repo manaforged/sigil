@@ -9,6 +9,7 @@
 mod support;
 
 use sigil::kernel::{ImageSource, ObjectFit, container, image};
+use sigil::layout::Space;
 use sigil::layout::{LayoutStyle, Overflow};
 use sigil::prelude::Widget;
 use sigil::scene::{SceneCommand, emit_scene};
@@ -208,7 +209,11 @@ fn overflow_hidden_scissors_image_pixels() {
                 )
                 .child(child);
             container()
-                .layout(LayoutStyle::block().fixed_size(32.0, 32.0).padding(8.0))
+                .layout(
+                    LayoutStyle::block()
+                        .fixed_size(32.0, 32.0)
+                        .padding(Space::Sm),
+                )
                 .child(clipped)
         },
         [32, 32],

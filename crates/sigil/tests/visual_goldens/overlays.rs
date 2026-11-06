@@ -1,5 +1,6 @@
 use super::*;
 use sigil::layout::Position;
+use sigil::layout::Space;
 
 #[test]
 fn modal_open() {
@@ -243,7 +244,7 @@ fn menu_submenu_open() {
 fn tooltip_visible() {
     let img = Harness::render(|| {
         container()
-            .layout(LayoutStyle::flex_column().padding_y(30.0))
+            .layout(LayoutStyle::flex_column().padding_y(Space::raw(30.0, "test fixture")))
             .child(tooltip("Save the file").child(button("Save")))
     })
     .stub()
@@ -271,7 +272,7 @@ fn tooltip_offscreen_clamp() {
 fn tooltip_with_keyboard_shortcut() {
     let img = Harness::render(|| {
         container()
-            .layout(LayoutStyle::flex_column().padding_y(30.0))
+            .layout(LayoutStyle::flex_column().padding_y(Space::raw(30.0, "test fixture")))
             .child(
                 tooltip("Save the file")
                     .hint(Some("Ctrl+S"))

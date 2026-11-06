@@ -5,6 +5,7 @@ use sigil::geometry::Point;
 use sigil::kernel::HostMode;
 use sigil::kernel::{IntoNode, container, text};
 use sigil::layout::LayoutStyle;
+use sigil::layout::Space;
 use sigil::prelude::Widget;
 use sigil::prelude::{Paint, Signal};
 use sigil::reactive::{Owner, signal};
@@ -63,7 +64,7 @@ fn tree(state: State) -> impl IntoNode {
         .child(text(state.status))
         .child(
             container()
-                .layout(LayoutStyle::flex_row().gap(CELL))
+                .layout(LayoutStyle::flex_row().gap(Space::raw(CELL, "test fixture")))
                 .child(button("first"))
                 .child(button("second"))
                 .child(

@@ -20,7 +20,7 @@ fn on_black(inner: impl IntoNode + 'static, w: f32, h: f32) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_column()
                 .fixed_size(w, h)
-                .padding(6.0)
+                .padding(Space::raw(6.0, "test fixture"))
                 .align_items(AlignItems::Stretch),
         )
         .child(inner)

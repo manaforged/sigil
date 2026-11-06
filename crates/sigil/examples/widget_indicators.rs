@@ -15,7 +15,7 @@ pub(crate) fn chip_demo() -> impl IntoNode {
 
 pub(crate) fn dot_demo() -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_row().gap(8.0))
+        .layout(LayoutStyle::flex_row().gap(Space::Sm))
         .child(dot(Tone::Success))
         .child(dot(Tone::Warn))
         .child(dot(Tone::Error))

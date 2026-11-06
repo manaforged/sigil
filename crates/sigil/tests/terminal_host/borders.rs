@@ -1,11 +1,12 @@
 use super::*;
+use sigil::layout::Space;
 use sigil::prelude::Radius;
 
 fn boxed(rounded: bool) -> String {
     present(
         move || {
             let frame = container()
-                .layout(sigil::layout::LayoutStyle::block().padding_x(8.0))
+                .layout(sigil::layout::LayoutStyle::block().padding_x(Space::Sm))
                 .border_w(1)
                 .child(text("inside"));
             if rounded {
@@ -128,7 +129,7 @@ fn a_thick_rounded_border_stays_heavy() {
     let grid = present(
         || {
             container()
-                .layout(sigil::layout::LayoutStyle::block().padding_x(8.0))
+                .layout(sigil::layout::LayoutStyle::block().padding_x(Space::Sm))
                 .border_w(8)
                 .rounded(Radius::Md)
                 .child(text("inside"))
@@ -144,7 +145,7 @@ fn padded_backdrop(backdrop: sigil::layout::LayoutStyle) -> usize {
     let grid = painted(
         move || {
             container()
-                .layout(sigil::layout::LayoutStyle::block().padding(8.0))
+                .layout(sigil::layout::LayoutStyle::block().padding(Space::Sm))
                 .child(
                     container()
                         .layout(backdrop.clone())

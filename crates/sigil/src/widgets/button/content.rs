@@ -1,4 +1,5 @@
 use crate::kernel::{NodeBuilder, container};
+use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics};
@@ -39,7 +40,7 @@ impl ButtonBuilder {
         let mut row = container().hittable(false).layout(
             LayoutStyle::flex_row()
                 .align_items(AlignItems::Center)
-                .gap(Metrics::current().gap(ControlSize::Compact)),
+                .gap(Space::px(Metrics::current().gap(ControlSize::Compact))),
         );
         if let Some(svg) = self.leading.clone() {
             row = row.child(self.leading_icon(svg));
@@ -93,7 +94,7 @@ impl ButtonBuilder {
             .layout(
                 LayoutStyle::flex_row()
                     .align_items(AlignItems::Center)
-                    .gap(Metrics::current().gap(ControlSize::Compact)),
+                    .gap(Space::px(Metrics::current().gap(ControlSize::Compact))),
             )
             .class(atoms)
             .children_reactive(move || {

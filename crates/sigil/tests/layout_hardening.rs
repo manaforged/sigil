@@ -4,6 +4,7 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::layout::Space;
 use sigil::widgets::Widget;
 use std::cell::Cell;
 use std::rc::Rc;
@@ -62,7 +63,7 @@ fn non_finite_style_values_never_reach_a_rect() {
     for leaf in [
         LayoutStyle::block().width(f32::NAN),
         LayoutStyle::block().height(f32::INFINITY),
-        LayoutStyle::block().padding(f32::NAN),
+        LayoutStyle::block().padding(Space::raw(f32::NAN, "test fixture")),
     ] {
         let rect = leaf_rect(
             LayoutStyle::block().fixed_size(200.0, 400.0),
@@ -80,7 +81,7 @@ fn non_finite_style_values_never_reach_a_rect() {
 fn padded_text_in_a_flex_row_wraps_inside_its_row() {
     let rect = leaf_rect(
         LayoutStyle::flex_row().fixed_size(200.0, 400.0),
-        LayoutStyle::block().padding(20.0),
+        LayoutStyle::block().padding(Space::raw(20.0, "test fixture")),
         Box::new(Wrapping),
     );
     assert!((rect.width - 200.0).abs() < 0.5, "{rect:?}");
@@ -90,7 +91,9 @@ fn padded_text_in_a_flex_row_wraps_inside_its_row() {
 fn a_fixed_width_wraps_text_at_its_content_box() {
     let rect = leaf_rect(
         LayoutStyle::block().fixed_size(400.0, 400.0),
-        LayoutStyle::block().padding(20.0).width(100.0),
+        LayoutStyle::block()
+            .padding(Space::raw(20.0, "test fixture"))
+            .width(100.0),
         Box::new(Wrapping),
     );
     assert_eq!((rect.width, rect.height), (100.0, 90.0));

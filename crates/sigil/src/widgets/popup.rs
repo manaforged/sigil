@@ -3,10 +3,9 @@ mod layer;
 
 use crate::kernel::{NodeBuilder, Role, TopLayer, container};
 use crate::layout::LayoutStyle;
+use crate::layout::Space;
 use crate::layout::{Popup, PopupSide};
-use crate::style::{
-    BORDER_WIDTH, ControlSize, Layer, Metrics, StyleAtom, Token, space,
-};
+use crate::style::{BORDER_WIDTH, ControlSize, Layer, Metrics, StyleAtom, Token, space};
 use crate::widgets::Widget;
 
 pub(crate) use item::{ChevronDirection, ItemSlots, chevron, footer, item_row};
@@ -58,8 +57,8 @@ pub(crate) fn separator() -> NodeBuilder {
                 .fill_width()
                 .height(separator_height())
                 .shrink(0.0)
-                .padding_x(metrics.padding(ControlSize::Default))
-                .padding_y(metrics.overlay_padding()),
+                .padding_x(Space::px(metrics.padding(ControlSize::Default)))
+                .padding_y(Space::px(metrics.overlay_padding())),
         )
         .child(
             container()

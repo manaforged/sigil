@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::sync::Arc;
 
 use crate::events::{Key, MouseButton, PointerEvent};
@@ -219,7 +220,7 @@ fn row_layout(height: f32, pad_x: f32) -> LayoutStyle {
         .fill_width()
         .height(height)
         .align_items(AlignItems::Center)
-        .padding_x(pad_x)
+        .padding_x(Space::px(pad_x))
         .overflow_x(Overflow::Hidden)
 }
 

@@ -1,3 +1,4 @@
+use sigil::layout::Space;
 use sigil::prelude::{
     AlignItems, ControlSize, FontFamily, Icon, LayoutStyle, NodeBuilder, Paint, Radius,
     TextContent, Token, Tone, button, container, derived, divider_horizontal, dropdown, field,
@@ -5,7 +6,6 @@ use sigil::prelude::{
     toggle,
 };
 use sigil::prelude::{IntoNode, Widget};
-use sigil::style::space;
 
 use super::data::{
     CANARY_STEP, HEALTH_PATH, INSPECTOR_WIDTH, Job, LOG_HEIGHT, LogLine, Region, SURGE_MAX,
@@ -32,8 +32,8 @@ pub(crate) fn panel(console: Console) -> NodeBuilder {
                     .layout(
                         LayoutStyle::flex_column()
                             .fill_width()
-                            .padding(space(3))
-                            .gap(space(3)),
+                            .padding(Space::Md)
+                            .gap(Space::Md),
                     )
                     .child(section_label("Live log"))
                     .child(log_view(console))
@@ -56,8 +56,8 @@ fn header(console: Console) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()
-                .padding(space(3))
-                .gap(space(2)),
+                .padding(Space::Md)
+                .gap(Space::Sm),
         )
         .child(title_row(console))
         .child(
@@ -76,7 +76,7 @@ fn header(console: Console) -> NodeBuilder {
 fn inline_row() -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill_width()
-        .gap(space(2))
+        .gap(Space::Sm)
         .align_items(AlignItems::Center)
 }
 
@@ -86,7 +86,7 @@ fn title_row(console: Console) -> NodeBuilder {
         .child(
             text(read(console, |job| job.sha.to_owned()))
                 .nowrap()
-                .font_size(TEXT_TITLE)
+                .font_size(TEXT_TITLE, "example layout")
                 .font_weight(WEIGHT_STRONG)
                 .font_family(FontFamily::Mono),
         )
@@ -119,8 +119,8 @@ fn log_view(console: Console) -> impl IntoNode {
             .layout(
                 LayoutStyle::flex_column()
                     .fill_width()
-                    .padding(space(2))
-                    .gap(space(1)),
+                    .padding(Space::Sm)
+                    .gap(Space::Xs),
             )
             .children_reactive(move || {
                 let slot = console.focus.get();
@@ -147,7 +147,7 @@ fn quiet(body: &'static str) -> NodeBuilder {
     container().child(
         text(body)
             .nowrap()
-            .font_size(TEXT_SMALL)
+            .font_size(TEXT_SMALL, "example layout")
             .text_color(Token::OnSurfaceMuted),
     )
 }
@@ -157,13 +157,13 @@ fn log_line(line: LogLine) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .gap(space(3))
+                .gap(Space::Md)
                 .align_items(AlignItems::Start),
         )
         .child(
             text(line.time)
                 .nowrap()
-                .font_size(TEXT_SMALL)
+                .font_size(TEXT_SMALL, "example layout")
                 .font_family(FontFamily::Mono)
                 .text_color(Token::OnSurfaceMuted)
                 .layout(LayoutStyle::block().shrink(0.0)),
@@ -171,7 +171,7 @@ fn log_line(line: LogLine) -> NodeBuilder {
         .child(
             text(line.text)
                 .wrap()
-                .font_size(TEXT_SMALL)
+                .font_size(TEXT_SMALL, "example layout")
                 .font_family(FontFamily::Mono)
                 .text_color(line.tone.solid())
                 .layout(LayoutStyle::block().grow(1.0).min_width(0.0)),
@@ -185,7 +185,7 @@ fn form(rollout: Rollout) -> NodeBuilder {
         .collect();
     let canary = rollout.canary;
     container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(space(3)))
+        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Md))
         .child(field(
             "Target region",
             dropdown(rollout.region, regions).label("Target region"),
@@ -196,7 +196,7 @@ fn form(rollout: Rollout) -> NodeBuilder {
                 .layout(
                     LayoutStyle::flex_row()
                         .fill_width()
-                        .gap(space(3))
+                        .gap(Space::Md)
                         .align_items(AlignItems::Center),
                 )
                 .child(

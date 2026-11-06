@@ -17,7 +17,11 @@ fn scroll_and_pointer_handlers_see_the_same_local_position() {
         let seen = signal((Point::new(0.0, 0.0), Point::new(0.0, 0.0)));
         let mut ui = Harness::new(move || {
             container()
-                .layout(LayoutStyle::block().fill().padding(100.0))
+                .layout(
+                    LayoutStyle::block()
+                        .fill()
+                        .padding(Space::raw(100.0, "test fixture")),
+                )
                 .child(
                     container()
                         .layout(LayoutStyle::block().width(300.0).height(200.0))

@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -7,7 +8,6 @@ use crate::widgets::button::icon_button;
 
 use super::handlers::TextFieldRuntime;
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::style::space;
 
 #[derive(Default)]
 pub(super) struct Adornments {
@@ -70,9 +70,9 @@ fn slot(content: Box<dyn IntoNode>, leading: bool) -> NodeBuilder {
         .shrink(0.0)
         .align_items(AlignItems::Center);
     let layout = if leading {
-        layout.padding_left(space(3))
+        layout.padding_left(Space::Md)
     } else {
-        layout.padding_right(space(3))
+        layout.padding_right(Space::Md)
     };
     container().layout(layout).child(content)
 }

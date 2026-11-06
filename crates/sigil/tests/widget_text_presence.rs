@@ -103,7 +103,7 @@ fn text_survives_the_equal_columns_idiom() {
                     .child(child)
             }
             container()
-                .layout(LayoutStyle::flex_row().fill_width().gap(8.0))
+                .layout(LayoutStyle::flex_row().fill_width().gap(Space::Sm))
                 .child(cell(dropdown(signal(0_usize), vec!["Banana".into()])))
                 .child(cell(button("Save")))
         });

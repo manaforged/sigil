@@ -4,6 +4,7 @@
 )]
 #![allow(clippy::panic)]
 
+use sigil::layout::Space;
 use std::hint::black_box;
 use std::time::Duration;
 
@@ -13,8 +14,8 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
 use sigil::style::{
-    ColorAtom, Elevation, FontFamily, Paint, Radius, RenderStyle, Rgba8, StateStyle,
-    StyleAtom, StyleBinding, StyleEngine, StyleState, Theme, Token, TransitionId,
+    ColorAtom, Elevation, FontFamily, Paint, Radius, RenderStyle, Rgba8, StateStyle, StyleAtom,
+    StyleBinding, StyleEngine, StyleState, Theme, Token, TransitionId,
 };
 
 static APPLY_ATOMS: &[StyleAtom] = &[
@@ -47,7 +48,7 @@ static STATE_DISABLED: &[StyleAtom] = &[
 
 fn paint_node() -> NodeBuilder {
     container()
-        .layout(LayoutStyle::default().padding(16.0).gap(16.0))
+        .layout(LayoutStyle::default().padding(Space::Lg).gap(Space::Lg))
         .bg(Token::Surface)
         .text_color(Token::OnSurface)
         .border_color(Token::Border)
@@ -55,7 +56,7 @@ fn paint_node() -> NodeBuilder {
         .rounded(Radius::Md)
         .shadow(Elevation::Sm)
         .opacity(0.8)
-        .font_size(14.0)
+        .font_size(14.0, "benchmark fixture")
         .font_weight(400)
         .font_family(FontFamily::Sans)
         .line_height_px(16.0)
@@ -99,7 +100,7 @@ fn paint_override_last_wins(c: &mut Criterion) {
                 .rounded(Radius::Lg)
                 .shadow(Elevation::Lg)
                 .opacity(1.0)
-                .font_size(18.0)
+                .font_size(18.0, "benchmark fixture")
                 .font_weight(700)
                 .line_height_px(24.0)
                 .transition_preset(TransitionId(2))

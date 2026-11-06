@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::f32::consts::TAU;
 use std::rc::Rc;
 
@@ -106,8 +107,8 @@ pub(super) fn card(at: Probe, lines: Vec<String>) -> Option<NodeBuilder> {
     }
     let mut layout = LayoutStyle::flex_column()
         .position(Position::Absolute)
-        .padding_x(space(2))
-        .padding_y(space(1));
+        .padding_x(Space::Sm)
+        .padding_y(Space::Xs);
     layout = if at.x > at.width / 2.0 {
         layout.inset_right(at.width - at.x + OFFSET)
     } else {

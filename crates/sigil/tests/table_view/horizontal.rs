@@ -5,6 +5,7 @@ use sigil::events::{ScrollDelta, ScrollPhase};
 use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
+use sigil::layout::Space;
 
 fn wide_state() -> TableState<Item> {
     TableState::new(
@@ -224,7 +225,7 @@ fn fraction_columns_stretch_in_a_measured_viewport() {
                 .layout(
                     LayoutStyle::flex_column()
                         .fixed_size(800.0, 400.0)
-                        .padding(10.0),
+                        .padding(Space::raw(10.0, "test fixture")),
                 )
                 .child(
                     table(state)

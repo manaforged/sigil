@@ -1,5 +1,6 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
+use crate::layout::Space;
 use crate::style::Token;
 use crate::widgets::Widget;
 
@@ -93,7 +94,7 @@ fn plot_area(layer: NodeBuilder, pad: f32) -> NodeBuilder {
                 .fill_width()
                 .grow(1.0)
                 .min_size(0.0, 0.0)
-                .padding(pad),
+                .padding(Space::px(pad)),
         )
         .class("border-b")
         .class(Token::Gray6.border())

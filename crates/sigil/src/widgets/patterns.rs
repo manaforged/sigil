@@ -1,4 +1,5 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
+use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{theme_label, theme_string};
@@ -37,7 +38,7 @@ pub fn app_shell(
                         .fill_width()
                         .grow(1.0)
                         .min_size(0.0, 0.0)
-                        .padding(space(2)),
+                        .padding(Space::Sm),
                 )
                 .class(Token::Surface.bg())
                 .child(work),
@@ -74,8 +75,8 @@ fn chrome_section(
                 .fill_width()
                 .height(height)
                 .shrink(0.0)
-                .padding_x(space(2))
-                .gap(space(2))
+                .padding_x(Space::Sm)
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .class(chrome)
@@ -145,8 +146,8 @@ impl HintOverlayBuilder {
             .label(theme_label(StringKey::KeyboardShortcuts))
             .layout(
                 LayoutStyle::flex_column()
-                    .padding(space(3))
-                    .gap(space(2))
+                    .padding(Space::Md)
+                    .gap(Space::Sm)
                     .align_items(AlignItems::Start)
                     .justify_content(JustifyContent::Start),
             )
@@ -159,7 +160,7 @@ impl HintOverlayBuilder {
                     .role(Role::GenericContainer)
                     .layout(
                         LayoutStyle::flex_row()
-                            .gap(space(2))
+                            .gap(Space::Sm)
                             .align_items(AlignItems::Center)
                             .justify_content(JustifyContent::Start),
                     )
@@ -200,8 +201,8 @@ pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) 
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()
-                .padding(space(12))
-                .gap(space(3))
+                .padding(Space::Xxxl)
+                .gap(Space::Md)
                 .align_items(AlignItems::Center),
         )
         .child(
@@ -220,7 +221,7 @@ pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(row_height())
-                .padding_x(space(2)),
+                .padding_x(Space::Sm),
         )
         .child(text(title).class("text-xs").class(Token::Gray11.text()))
 }
@@ -233,7 +234,7 @@ pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> 
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(row_height())
-                .padding_x(space(2))
+                .padding_x(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .child(text(keys).class("text-xs").class(Token::Gray11.text()))

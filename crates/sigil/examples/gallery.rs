@@ -57,8 +57,8 @@ fn nav(page: Signal<usize>) -> NodeBuilder {
     let mut col = container().layout(
         LayoutStyle::flex_column()
             .fill_height()
-            .padding(12.0)
-            .gap(2.0),
+            .padding(Space::Md)
+            .gap(Space::Xxs),
     );
     col = col.child(section_label("Widgets"));
     for (index, name) in PAGES.iter().enumerate() {
@@ -76,12 +76,12 @@ fn nav_row(page: Signal<usize>, index: usize, name: &'static str) -> NodeBuilder
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(28.0)
-                .padding_x(8.0)
+                .padding_x(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .rounded(Radius::Md)
         .paint_when(active, |s| s.bg(Token::Accent4))
-        .child(text(name).nowrap().font_size(14.0))
+        .child(text(name).nowrap().text_role(TextRole::Body))
         .pointer_up(move |_| page.set(index))
 }
 
@@ -96,8 +96,8 @@ fn content(
             .layout(
                 LayoutStyle::flex_column()
                     .fill_width()
-                    .padding(24.0)
-                    .gap(20.0),
+                    .padding(Space::Xl)
+                    .gap(Space::raw(20.0, "example layout")),
             )
             .children_reactive(move || {
                 vec![match page.get() {
@@ -115,13 +115,13 @@ fn content(
 }
 
 fn page_layout() -> LayoutStyle {
-    LayoutStyle::flex_column().fill_width().gap(8.0)
+    LayoutStyle::flex_column().fill_width().gap(Space::Sm)
 }
 
 fn row_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill_width()
-        .gap(8.0)
+        .gap(Space::Sm)
         .align_items(AlignItems::Center)
 }
 

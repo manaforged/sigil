@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use pulldown_cmark::BlockQuoteKind;
@@ -47,8 +48,8 @@ pub(super) fn alert(kind: BlockQuoteKind, blocks: Vec<Block>, node: BlockNode) -
             LayoutStyle::flex_column()
                 .fill_width()
                 .padding_x(cols(1.0))
-                .padding_y(pad)
-                .gap(space(1)),
+                .padding_y(Space::px(pad))
+                .gap(Space::Xs),
         )
         .class([
             style.tint.bg(),
@@ -88,8 +89,8 @@ pub(super) fn footnotes(notes: Vec<Note>, node: BlockNode) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()
-                .padding_top(CellForm::new(space(2), 0.0).pick())
-                .gap(space(1)),
+                .padding_top(Space::px(CellForm::new(space(2), 0.0).pick()))
+                .gap(Space::Xs),
         )
         .class("text-sm")
         .class([StyleAtom::BorderTop(1), Token::Border.border()]);

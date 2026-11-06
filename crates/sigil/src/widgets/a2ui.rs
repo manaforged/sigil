@@ -1,9 +1,10 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal, signal, untrack};
-use crate::style::{Tone, space};
+use crate::style::Tone;
 use crate::widgets::layout_ext::LayoutOverrides;
 use crate::widgets::{Widget, markdown, notice_band};
 
@@ -59,7 +60,7 @@ fn fence(source: &str) -> String {
 
 fn invalid(message: &str, source: &str) -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(space(1)))
+        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs))
         .child(notice_band(message.to_string(), Tone::Warn))
         .child(markdown(signal(fence(source))))
 }

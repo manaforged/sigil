@@ -33,7 +33,11 @@ pub(crate) fn sidebar_demo() -> NodeBuilder {
         .layout(LayoutStyle::flex_row().fill_width().height(144.0))
         .child(sidebar(
             container()
-                .layout(LayoutStyle::flex_column().padding(8.0).gap(2.0))
+                .layout(
+                    LayoutStyle::flex_column()
+                        .padding(Space::Sm)
+                        .gap(Space::Xxs),
+                )
                 .child(section_label("Widgets"))
                 .child(list_row(true, "Controls", ListRowSlots::default()))
                 .child(list_row(false, "Inputs", ListRowSlots::default())),
@@ -68,7 +72,7 @@ pub(crate) fn splitter_demo() -> impl IntoNode {
 
 fn scroll_lines() -> NodeBuilder {
     (1..=12).fold(
-        container().layout(LayoutStyle::flex_column().fill_width().gap(4.0)),
+        container().layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs)),
         |column, index| column.child(text(format!("Scrolled line {index}")).nowrap()),
     )
 }

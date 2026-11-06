@@ -71,7 +71,11 @@ pub(crate) fn paint<N: IntoNode + 'static>(
         container()
             .theme(theme)
             .bg(Token::Surface)
-            .layout(LayoutStyle::flex_column().fill().padding(pad))
+            .layout(
+                LayoutStyle::flex_column()
+                    .fill()
+                    .padding(Space::raw(pad, "example layout")),
+            )
             .child(child())
     };
     let extra = (2.0 * pad) as u32;

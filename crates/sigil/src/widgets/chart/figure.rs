@@ -1,8 +1,9 @@
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::LayoutStyle;
+use crate::layout::Space;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_label};
-use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token};
 
 use super::scales::Scales;
 use super::{ChartMark, ChartSeries, ChartView, Stack, interact, plot, summary};
@@ -30,8 +31,8 @@ pub(super) fn frame(frame: plot::PlotFrame) -> NodeBuilder {
                 .fill_width()
                 .min_width(0.0)
                 .height(frame.height)
-                .padding(frame.padding())
-                .gap(space(2)),
+                .padding(Space::px(frame.padding()))
+                .gap(Space::Sm),
         )
 }
 

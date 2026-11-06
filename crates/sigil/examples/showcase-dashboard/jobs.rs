@@ -1,9 +1,9 @@
+use sigil::layout::Space;
 use sigil::prelude::Widget;
 use sigil::prelude::{
     AlignItems, Icon, LayoutStyle, NodeBuilder, Paint, TableState, Token, Tone, button, chip,
     container, derived, icon, spacer, stat, text, text_field,
 };
-use sigil::style::space;
 
 use super::data::{
     Bucket, DEPLOYS_BEFORE_OPEN, TEXT_SMALL, TEXT_TITLE, WEIGHT_STRONG, duration_label,
@@ -23,8 +23,8 @@ pub(crate) fn main_panel(console: Console, state: &TableState<JobRow>) -> NodeBu
                 .flex_basis(0.0)
                 .fill_height()
                 .min_size(0.0, 0.0)
-                .padding(space(2))
-                .gap(space(3)),
+                .padding(Space::Sm)
+                .gap(Space::Md),
         )
         .child(toolbar(console, state))
         .child(metrics(console))
@@ -48,7 +48,7 @@ fn toolbar(console: Console, state: &TableState<JobRow>) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .gap(space(2))
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .child(
@@ -74,13 +74,13 @@ fn heading(console: Console) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_column()
                 .min_width(0.0)
-                .padding_x(space(2)),
+                .padding_x(Space::Sm),
         )
         .child(
             text(move || console.service.get().name().to_owned())
                 .nowrap()
                 .ellipsize()
-                .font_size(TEXT_TITLE)
+                .font_size(TEXT_TITLE, "example layout")
                 .font_weight(WEIGHT_STRONG),
         )
         .child(
@@ -89,14 +89,14 @@ fn heading(console: Console) -> NodeBuilder {
                 format!("Deploys · {env}")
             })
             .nowrap()
-            .font_size(TEXT_SMALL)
+            .font_size(TEXT_SMALL, "example layout")
             .text_color(Token::OnSurfaceMuted),
         )
 }
 
 fn pause_controls(console: Console) -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_row().gap(space(2)))
+        .layout(LayoutStyle::flex_row().gap(Space::Sm))
         .child(
             button("Pause all")
                 .outline()
@@ -131,7 +131,7 @@ fn metrics(console: Console) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .gap(space(2))
+                .gap(Space::Sm)
                 .align_items(AlignItems::Stretch),
         )
         .child(tile(
@@ -174,7 +174,7 @@ fn search_row(state: &TableState<JobRow>) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .gap(space(2))
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .child(
@@ -187,7 +187,7 @@ fn search_row(state: &TableState<JobRow>) -> NodeBuilder {
         .child(
             text(move || format!("{} jobs", visible.get().len()))
                 .nowrap()
-                .font_size(TEXT_SMALL)
+                .font_size(TEXT_SMALL, "example layout")
                 .tabular_nums(true)
                 .text_color(Token::OnSurfaceMuted),
         )

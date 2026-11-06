@@ -10,12 +10,26 @@ const SIDE: u32 = 4000;
 
 fn blurred() -> NodeBuilder {
     container()
-        .layout(LayoutStyle::block().fixed_size(SIDE as f32, SIDE as f32).padding(50.0))
-        .bg(Rgba8 { r: 255, g: 255, b: 255, a: 255 })
+        .layout(
+            LayoutStyle::block()
+                .fixed_size(SIDE as f32, SIDE as f32)
+                .padding(Space::raw(50.0, "test fixture")),
+        )
+        .bg(Rgba8 {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
+        })
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(SIDE as f32 - 100.0, SIDE as f32 - 100.0))
-                .bg(Rgba8 { r: 0, g: 0, b: 0, a: 255 })
+                .bg(Rgba8 {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 255,
+                })
                 .blur(4096.0),
         )
 }

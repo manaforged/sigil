@@ -6,6 +6,7 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
+use sigil::layout::Space;
 use sigil_kittest::FakeMeasure;
 use stub::stub_engine;
 
@@ -51,7 +52,7 @@ fn flex_column_gap_offsets_children() {
 
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_column()
-            .gap(4.0)
+            .gap(Space::Xs)
             .align_items(AlignItems::Start),
     );
 
@@ -78,7 +79,7 @@ fn padding_moves_content_origin() {
 
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_row()
-            .padding(6.0)
+            .padding(Space::raw(6.0, "test fixture"))
             .align_items(AlignItems::Start),
     );
 
@@ -139,9 +140,11 @@ fn nested_absolute_uses_positioned_parent_origin() {
     cx.get_mut(root)
         .expect("root exists")
         .attach(LayoutStyle::flex_row().fixed_size(200.0, 100.0));
-    cx.get_mut(parent)
-        .expect("parent exists")
-        .attach(LayoutStyle::flex_row().fixed_size(120.0, 80.0).padding(5.0));
+    cx.get_mut(parent).expect("parent exists").attach(
+        LayoutStyle::flex_row()
+            .fixed_size(120.0, 80.0)
+            .padding(Space::raw(5.0, "test fixture")),
+    );
     cx.get_mut(child).expect("child exists").attach(
         LayoutStyle::default()
             .fixed_size(30.0, 20.0)
@@ -206,7 +209,7 @@ fn fragment_children_treated_as_siblings_of_parent() {
 
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_column()
-            .gap(4.0)
+            .gap(Space::Xs)
             .align_items(AlignItems::Start),
     );
 

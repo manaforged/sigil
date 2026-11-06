@@ -25,10 +25,14 @@ fn square_in_padded_box() -> impl IntoNode {
         .fill(INK)
         .layout(LayoutStyle::block().fixed_size(SQUARE as f32, SQUARE as f32));
     container()
-        .layout(LayoutStyle::flex_column().padding(OUTER))
+        .layout(LayoutStyle::flex_column().padding(Space::raw(OUTER, "test fixture")))
         .child(
             container()
-                .layout(LayoutStyle::block().fixed_size(30.0, 30.0).padding(INNER))
+                .layout(
+                    LayoutStyle::block()
+                        .fixed_size(30.0, 30.0)
+                        .padding(Space::raw(INNER, "test fixture")),
+                )
                 .child(square),
         )
 }
@@ -98,5 +102,3 @@ fn a_resized_path_in_a_padded_offset_box_lands_in_the_box_on_the_cpu() {
         assert_placed(&image, scale, &format!("cpu {scale}x"));
     }
 }
-
-

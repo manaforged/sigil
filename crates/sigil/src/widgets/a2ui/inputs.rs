@@ -1,9 +1,9 @@
+use crate::layout::Space;
 use serde_json::Value;
 
 use crate::kernel::{IntoNode, NodeBuilder, container, fragment};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Signal, effect, signal, untrack};
-use crate::style::space;
 use crate::widgets::{Date, Widget, checkbox, date_field, field, radio_group, slider, text_field};
 
 use super::model::display;
@@ -175,7 +175,7 @@ impl Render {
     fn many(&self, picker: &Picker) -> NodeBuilder {
         let chosen = selected(&self.value(&picker.value));
         let path = self.bound(&picker.value);
-        let mut column = container().layout(LayoutStyle::flex_column().gap(space(1)));
+        let mut column = container().layout(LayoutStyle::flex_column().gap(Space::Xs));
         for option in &picker.options {
             let on = signal(chosen.contains(&option.value));
             let key = option.value.clone();

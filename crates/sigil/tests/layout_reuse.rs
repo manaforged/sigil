@@ -47,7 +47,7 @@ fn a_wheel_step_moves_scroll_content_without_a_layout_solve() {
     let _recorder = alone();
     Owner::scope("sigil-scroll-translate", || {
         let offset = signal(0.0_f32);
-        let mut rows = container().layout(LayoutStyle::flex_column().gap(4.0));
+        let mut rows = container().layout(LayoutStyle::flex_column().gap(Space::Xs));
         for index in 0..ROWS {
             rows = rows.child(text(format!("row {index}")));
         }
@@ -82,10 +82,10 @@ fn changing_one_label_reuses_the_measurements_of_its_siblings() {
     let _recorder = alone();
     Owner::scope("sigil-intrinsic-reuse", || {
         let label = signal(String::from("short"));
-        let mut list = container().layout(LayoutStyle::flex_column().gap(2.0));
+        let mut list = container().layout(LayoutStyle::flex_column().gap(Space::Xxs));
         for index in 0..ROWS {
             let row = container()
-                .layout(LayoutStyle::flex_row().gap(4.0))
+                .layout(LayoutStyle::flex_row().gap(Space::Xs))
                 .child(text(format!("name {index}")))
                 .child(text(format!("value {index}")));
             list = list.child(if index == 7 {

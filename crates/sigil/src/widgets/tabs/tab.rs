@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -154,8 +155,8 @@ fn tab_frame(
         .layout(
             LayoutStyle::flex_row()
                 .height(tab_height(chrome))
-                .padding_x(TAB_PADDING_X)
-                .gap(CLOSE_GAP.pick())
+                .padding_x(Space::px(TAB_PADDING_X))
+                .gap(Space::px(CLOSE_GAP.pick()))
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )

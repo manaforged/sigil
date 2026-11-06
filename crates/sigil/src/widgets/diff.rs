@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, text};
@@ -214,7 +215,7 @@ fn status_row(status: String) -> TextBuilder {
         .layout(
             LayoutStyle::block()
                 .fill_width()
-                .padding_x(ROW_INSET)
+                .padding_x(Space::px(ROW_INSET))
                 .min_size(0.0, 0.0),
         )
         .class("text-xs")
@@ -228,7 +229,7 @@ fn root_layout() -> LayoutStyle {
         .fill_width()
         .min_size(0.0, 0.0)
         .overflow_x(Overflow::Hidden)
-        .gap(0.0)
+        .gap(Space::None)
 }
 
 #[cfg(all(test, feature = "terminal"))]

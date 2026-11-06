@@ -49,9 +49,7 @@ pub(crate) struct Shot {
 
 impl Shot {
     pub(crate) fn at(&self, x: f32, y: f32) -> [u8; 3] {
-        let pixel = self
-            .image
-            .get_pixel((x * SCALE) as u32, (y * SCALE) as u32);
+        let pixel = self.image.get_pixel((x * SCALE) as u32, (y * SCALE) as u32);
         [pixel[0], pixel[1], pixel[2]]
     }
 }
@@ -72,7 +70,10 @@ pub(crate) fn shoot<A: IntoNode + 'static>(
     let image = match surface {
         Surface::Pixels => frame_of(&mut Harness::new(app).pixels(width, height).scale(SCALE)),
         Surface::Gpu => frame_of(&mut Harness::new(app).gpu(width, height, SCALE)),
-        Surface::Cpu => cpu_frame(&mut Harness::new(app).pixels(width, height).scale(SCALE), size),
+        Surface::Cpu => cpu_frame(
+            &mut Harness::new(app).pixels(width, height).scale(SCALE),
+            size,
+        ),
     };
     Shot { image, surface }
 }
@@ -139,7 +140,13 @@ fn a_radial_gradient_is_the_from_color_at_its_centre_and_the_to_color_at_the_cor
     for surface in SURFACES {
         let shot = shoot(radial_box, (100, 60), surface);
         assert_near(&shot, (50.0, 30.0), RED, 24, "the centre");
-        assert_near(&shot, (0.5, 0.5), BLUE, 40, "the corner of the farthest-corner ellipse");
+        assert_near(
+            &shot,
+            (0.5, 0.5),
+            BLUE,
+            40,
+            "the corner of the farthest-corner ellipse",
+        );
         let edge = shot.at(99.5, 30.0);
         assert!(
             edge[0] > 20 && edge[2] > 20,
@@ -154,7 +161,12 @@ fn closest_side_circle() -> impl IntoNode {
         60.0,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 60.0))
-            .bg_radial(Radial::new().circle(true).extent(RadialExtent::ClosestSide).at(25, 50))
+            .bg_radial(
+                Radial::new()
+                    .circle(true)
+                    .extent(RadialExtent::ClosestSide)
+                    .at(25, 50),
+            )
             .gradient_from(RED)
             .gradient_to(BLUE),
     )
@@ -165,7 +177,13 @@ fn a_closest_side_circle_reaches_the_to_color_at_the_nearest_side() {
     for surface in SURFACES {
         let shot = shoot(closest_side_circle, (100, 60), surface);
         assert_near(&shot, (25.0, 30.0), RED, 60, "the centre at 25% 50%");
-        assert_near(&shot, (25.0 + 31.0, 30.0), BLUE, 24, "just past the 25 px radius");
+        assert_near(
+            &shot,
+            (25.0 + 31.0, 30.0),
+            BLUE,
+            24,
+            "just past the 25 px radius",
+        );
         assert_near(&shot, (25.0, 0.5), BLUE, 40, "the top side, 30 px away");
     }
 }
@@ -193,11 +211,22 @@ fn a_conic_gradient_turns_clockwise_from_the_top() {
         let shot = shoot(|| conic_box(0), (80, 80), surface);
         let probe = |degrees: f32| {
             let angle = degrees.to_radians();
-            shot.at(30.0f32.mul_add(angle.sin(), 40.0), 30.0f32.mul_add(-angle.cos(), 40.0))
+            shot.at(
+                30.0f32.mul_add(angle.sin(), 40.0),
+                30.0f32.mul_add(-angle.cos(), 40.0),
+            )
         };
         let [top, right, bottom, left] = [3.0, 90.0, 180.0, 270.0].map(probe);
-        assert_eq!(dominant(top), 0, "{surface:?}: just past 0° is red, got {top:?}");
-        assert_eq!(dominant(bottom), 1, "{surface:?}: 180° is green, got {bottom:?}");
+        assert_eq!(
+            dominant(top),
+            0,
+            "{surface:?}: just past 0° is red, got {top:?}"
+        );
+        assert_eq!(
+            dominant(bottom),
+            1,
+            "{surface:?}: 180° is green, got {bottom:?}"
+        );
         assert!(
             right[2] < 16 && right[0] > 40 && right[1] > 40,
             "{surface:?}: 90° mixes red and green only, got {right:?}"
@@ -227,7 +256,7 @@ fn gradient_word() -> impl IntoNode {
         240.0,
         60.0,
         text("MMMMMM")
-            .font_size(40.0)
+            .font_size(40.0, "test fixture")
             .font_weight(900)
             .text_color(INK)
             .bg_linear(GradientAxis::LeftToRight)
@@ -252,7 +281,11 @@ fn ink_mean(shot: &Shot, columns: std::ops::Range<u32>) -> [f32; 3] {
             }
         }
     }
-    assert!(count > 20.0, "{:?}: the text has glyph pixels in {columns:?}", shot.surface);
+    assert!(
+        count > 20.0,
+        "{:?}: the text has glyph pixels in {columns:?}",
+        shot.surface
+    );
     sum.map(|total| total / count)
 }
 
@@ -300,7 +333,13 @@ fn tiled() -> impl IntoNode {
 fn an_image_paint_tiles_at_its_natural_size() {
     for surface in SURFACES {
         let shot = shoot(tiled, (40, 20), surface);
-        for (x, want) in [(2.5, RED), (7.5, BLUE), (12.5, RED), (17.5, BLUE), (32.5, RED)] {
+        for (x, want) in [
+            (2.5, RED),
+            (7.5, BLUE),
+            (12.5, RED),
+            (17.5, BLUE),
+            (32.5, RED),
+        ] {
             assert_near(&shot, (x, 5.0), want, 40, "a first-row tile");
             assert_near(&shot, (x, 15.0), want, 40, "a second-row tile");
         }

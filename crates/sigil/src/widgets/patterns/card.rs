@@ -1,9 +1,10 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal};
-use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, StyleAtom, Token};
 use crate::widgets::Widget;
 
 use super::super::shared::Activate;
@@ -36,8 +37,8 @@ pub fn card(child: impl IntoNode + 'static) -> CardBuilder {
             .role(Role::GenericContainer)
             .layout(
                 LayoutStyle::flex_column()
-                    .padding(space(3))
-                    .gap(space(2))
+                    .padding(Space::Md)
+                    .gap(Space::Sm)
                     .fill_width()
                     .min_width(0.0),
             )

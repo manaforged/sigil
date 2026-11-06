@@ -9,6 +9,7 @@ mod stub;
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
+use sigil::layout::Space;
 use sigil::layout::{LayoutResult, TrackSize, *};
 use sigil::widgets::Widget;
 
@@ -30,7 +31,11 @@ fn grid_rects(
     cells: &[f32],
 ) -> Vec<(f32, f32, f32, f32)> {
     let mut cx = Cx::new_root();
-    let mut root_b = container().layout(LayoutStyle::grid(columns).width(w).gap(gap));
+    let mut root_b = container().layout(
+        LayoutStyle::grid(columns)
+            .width(w)
+            .gap(Space::raw(gap, "test fixture")),
+    );
     for &h in cells {
         root_b = root_b.child(container().layout(LayoutStyle::block().height(h)));
     }
@@ -89,7 +94,7 @@ fn grid_rects_with_rows(rows: Vec<TrackSize>, cells: &[f32]) -> Vec<(f32, f32, f
         LayoutStyle::grid(vec![TrackSize::Fr(1.0), TrackSize::Fr(1.0)])
             .width(200.0)
             .grid_rows(rows)
-            .gap(0.0),
+            .gap(Space::None),
     );
     for &h in cells {
         root_b = root_b.child(container().layout(LayoutStyle::block().height(h)));
@@ -125,7 +130,7 @@ fn grid_span_rects(
     cells: &[(f32, u16)],
 ) -> Vec<(f32, f32, f32, f32)> {
     let mut cx = Cx::new_root();
-    let mut root_b = container().layout(LayoutStyle::grid(columns).width(w).gap(0.0));
+    let mut root_b = container().layout(LayoutStyle::grid(columns).width(w).gap(Space::None));
     for &(h, span) in cells {
         root_b =
             root_b.child(container().layout(LayoutStyle::block().height(h).grid_column_span(span)));
@@ -144,7 +149,12 @@ fn grid_span_rects_dense(
     cells: &[(f32, u16)],
 ) -> Vec<(f32, f32, f32, f32)> {
     let mut cx = Cx::new_root();
-    let mut root_b = container().layout(LayoutStyle::grid(columns).width(w).gap(0.0).grid_dense());
+    let mut root_b = container().layout(
+        LayoutStyle::grid(columns)
+            .width(w)
+            .gap(Space::None)
+            .grid_dense(),
+    );
     for &(h, span) in cells {
         root_b =
             root_b.child(container().layout(LayoutStyle::block().height(h).grid_column_span(span)));

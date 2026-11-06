@@ -14,7 +14,12 @@ fn nowrap_text_shrunk_by_flex_paints_on_one_line() {
         let mut ui = Harness::new(|| {
             column().child(
                 container()
-                    .layout(LayoutStyle::flex_row().width(220.0).height(20.0).gap(6.0))
+                    .layout(
+                        LayoutStyle::flex_row()
+                            .width(220.0)
+                            .height(20.0)
+                            .gap(Space::raw(6.0, "test fixture")),
+                    )
                     .child(text("8e34241").nowrap())
                     .child(
                         text("guard word graph against lane overflow")

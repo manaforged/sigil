@@ -227,12 +227,16 @@ pub(crate) fn app_tree() -> impl IntoNode {
         )
         .child(
             container()
-                .layout(LayoutStyle::flex_row().fill_width().padding(PANE_PADDING))
+                .layout(
+                    LayoutStyle::flex_row()
+                        .fill_width()
+                        .padding(Space::raw(PANE_PADDING, "example layout")),
+                )
                 .child(text(move || format!("# {}", current_name(chat))).nowrap())
                 .child(spacer())
                 .child(show(
                     wide,
-                    || text("sigil-chat").nowrap().font_size(14.0),
+                    || text("sigil-chat").nowrap().text_role(TextRole::Body),
                     move || button("Channels").activate(show_picker),
                 )),
         )
@@ -272,7 +276,7 @@ fn work(chat: Chat, posts: Sender<Post>) -> NodeBuilder {
                     LayoutStyle::flex_column()
                         .fill()
                         .gap(rows(1.0))
-                        .padding(PANE_PADDING),
+                        .padding(Space::raw(PANE_PADDING, "example layout")),
                 )
                 .child(transcript(chat))
                 .child(composer(chat, posts)),
@@ -331,7 +335,7 @@ fn message(chat: Chat, index: usize) -> NodeBuilder {
         .child(
             text(head)
                 .nowrap()
-                .font_size(14.0)
+                .text_role(TextRole::Body)
                 .text_color(Token::Accent),
         )
         .child(body.wrap())

@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextBuilder, TextContent, container, text};
@@ -216,8 +217,8 @@ fn row_frame(depth: u16, indent_cols: f32, disclosure: Disclosure) -> NodeBuilde
         LayoutStyle::flex_row()
             .fill_width()
             .height(row_height())
-            .padding_x(pad)
-            .gap(pad)
+            .padding_x(Space::px(pad))
+            .gap(Space::px(pad))
             .align_items(AlignItems::Center),
     );
     if depth > 0 {

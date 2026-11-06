@@ -1,4 +1,5 @@
 use super::*;
+use sigil::layout::Space;
 
 #[test]
 fn vector_path_shapes() {
@@ -19,8 +20,8 @@ fn vector_path_shapes() {
             .layout(
                 LayoutStyle::flex_row()
                     .fixed_size(150.0, 76.0)
-                    .gap(12.0)
-                    .padding(8.0),
+                    .gap(Space::Md)
+                    .padding(Space::Sm),
             )
             .bg(Token::Surface)
             .child(
@@ -81,8 +82,8 @@ fn vector_gradient_fill() {
             .layout(
                 LayoutStyle::flex_row()
                     .fixed_size(150.0, 76.0)
-                    .gap(12.0)
-                    .padding(8.0),
+                    .gap(Space::Md)
+                    .padding(Space::Sm),
             )
             .bg(Token::Surface)
             .child(square(gold, rose, true))
@@ -106,7 +107,7 @@ fn emoji_text_line() {
             .layout(
                 LayoutStyle::flex_column()
                     .fixed_size(300.0, 60.0)
-                    .padding(16.0),
+                    .padding(Space::Lg),
             )
             .bg(Token::Surface)
             .child(text("OK \u{2705} go \u{1F680}").text_color(Token::OnSurface));

@@ -119,7 +119,7 @@ fn paint_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::Shadow(elevation) => style.shadow(elevation),
         StyleAtom::Opacity(units) => style.opacity(f32::from(units) / 10_000.0),
         StyleAtom::Transform(transform) => style.transform(transform),
-        StyleAtom::FontSize(px) => style.font_size(f32::from(px)),
+        StyleAtom::FontSize(px) => style.font_size(f32::from(px), ""),
         StyleAtom::FontWeight(weight) => style.font_weight(weight),
         StyleAtom::FontItalic(italic) => style.font_italic(italic),
         StyleAtom::LineHeight(px) => style.line_height_px(f32::from(px)),
@@ -135,7 +135,9 @@ fn paint_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::TransitionDelay(delay) => {
             style.delay(std::time::Duration::from_millis(u64::from(delay.0)))
         }
-        StyleAtom::Animation(id) => style.animate(crate::animation::Keyframes::clone(&id.get().unwrap())),
+        StyleAtom::Animation(id) => {
+            style.animate(crate::animation::Keyframes::clone(&id.get().unwrap()))
+        }
         other => panic!("{other:?} has no typed paint method"),
     }
 }

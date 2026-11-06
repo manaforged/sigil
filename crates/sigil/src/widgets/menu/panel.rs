@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::events::MouseButton;
@@ -71,7 +72,7 @@ pub(super) fn panel_layout(top: f32, left: f32, width: f32, height: f32) -> Layo
         .inset_left(left)
         .width(width)
         .height(height)
-        .padding(Metrics::current().overlay_padding())
+        .padding(Space::px(Metrics::current().overlay_padding()))
         .shrink(0.0)
         .align_items(AlignItems::Stretch)
         .justify_content(JustifyContent::Start)

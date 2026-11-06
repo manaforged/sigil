@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock, PoisonError};
 
@@ -123,7 +124,7 @@ fn captioned_row(caption: TextContent, bar: NodeBuilder) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .gap(metrics.gap(ControlSize::Default))
+                .gap(Space::px(metrics.gap(ControlSize::Default)))
                 .align_items(AlignItems::Center),
         )
         .child(text(caption).nowrap())

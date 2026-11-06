@@ -1,10 +1,10 @@
+use sigil::layout::Space;
 use sigil::prelude::{
     AlignItems, ColWidth, FontFamily, Identifiable, LayoutStyle, MenuItem, NodeBuilder, Paint,
     TableColumn, TableState, Token, Tone, chip, container, effect, table, text,
 };
 use sigil::prelude::{IntoNode, Widget};
 use sigil::reactive::untrack;
-use sigil::style::space;
 
 use super::data::{
     BRANCH_WIDTH, COMMIT_MIN_WIDTH, DURATION_WIDTH, Job, JobStatus, REGION_WIDTH, SHA_WIDTH,
@@ -119,7 +119,7 @@ fn commit_cell(job: &'static Job) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill_width()
                 .min_width(0.0)
-                .gap(space(2))
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .child(

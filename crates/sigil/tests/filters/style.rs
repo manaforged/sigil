@@ -15,7 +15,7 @@ fn page(child: impl IntoNode + 'static, pad: f32) -> NodeBuilder {
         .layout(
             LayoutStyle::block()
                 .fixed_size(SIDE as f32, SIDE as f32)
-                .padding(pad),
+                .padding(Space::raw(pad, "test fixture")),
         )
         .bg(BLACK)
         .child(child)
@@ -81,7 +81,7 @@ fn the_blur_setter_spreads_the_node_past_its_box() {
 fn shadowed_text() -> NodeBuilder {
     page(
         text("HI")
-            .font_size(40.0)
+            .font_size(40.0, "test fixture")
             .font_weight(800)
             .text_color(WHITE)
             .text_shadow(Shadow::new([3.0, 3.0], 0.0, 0.0, [1.0, 0.0, 0.0, 1.0])),
@@ -119,7 +119,7 @@ fn the_text_shadow_setter_draws_below_and_right_of_the_glyphs() {
 }
 
 fn glyphs() -> TextBuilder {
-    text("HI").font_size(16.0).font_weight(800)
+    text("HI").font_size(16.0, "test fixture").font_weight(800)
 }
 
 fn stacked(top: impl IntoNode + 'static, parent: fn(NodeBuilder) -> NodeBuilder) -> NodeBuilder {
@@ -128,7 +128,7 @@ fn stacked(top: impl IntoNode + 'static, parent: fn(NodeBuilder) -> NodeBuilder)
             .layout(
                 LayoutStyle::block()
                     .fixed_size(SIDE as f32, SIDE as f32)
-                    .padding(4.0),
+                    .padding(Space::Xs),
             )
             .bg(WHITE)
             .text_color(WHITE),
@@ -153,8 +153,14 @@ fn assert_top_cancelled(name: &str, frame: &image::RgbaImage) {
     let cancelled = darkened(frame, 0..middle);
     let inherited = darkened(frame, middle..frame.height());
     println!("{name}: cancelled child {cancelled}, inheriting sibling {inherited} dark pixels");
-    assert_eq!(cancelled, 0, "{name}: an explicit none draws no shadow pixels");
-    assert!(inherited > 20, "{name}: the sibling inherits the parent's shadow");
+    assert_eq!(
+        cancelled, 0,
+        "{name}: an explicit none draws no shadow pixels"
+    );
+    assert!(
+        inherited > 20,
+        "{name}: the sibling inherits the parent's shadow"
+    );
 }
 
 #[test]
@@ -199,7 +205,12 @@ fn turning_a_parent_shadow_off_redraws_the_cached_child_text() {
                 .bg(BLACK)
                 .text_shadow(red)
                 .paint_when(off, |state| state.text_shadow(None))
-                .child(text("HI").font_size(40.0).font_weight(800).text_color(WHITE))
+                .child(
+                    text("HI")
+                        .font_size(40.0, "test fixture")
+                        .font_weight(800)
+                        .text_color(WHITE),
+                )
         };
         let mut ui = Harness::new(app).pixels(SIDE, SIDE).scale(SCALE);
         let on = red_pixels(&gpu_frame(&mut ui));

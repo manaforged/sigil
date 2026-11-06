@@ -8,6 +8,7 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
+use sigil::layout::Space;
 use sigil::widgets::Widget;
 use stub::{layout_rect, stub_engine};
 
@@ -17,7 +18,11 @@ use sigil::layout::*;
 
 fn chip_builder(label: &'static str) -> sigil::kernel::NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_row().padding_x(8.0).padding_y(2.0))
+        .layout(
+            LayoutStyle::flex_row()
+                .padding_x(Space::Sm)
+                .padding_y(Space::Xxs),
+        )
         .child(text(label.to_owned()))
 }
 
@@ -26,7 +31,7 @@ fn chip_row_is_laid_out_without_overlap() {
     let mut cx = Cx::new_root();
     let mut row_builder = container().layout(
         LayoutStyle::flex_row()
-            .gap(12.0)
+            .gap(Space::Md)
             .align_items(AlignItems::Start),
     );
     for label in ["NEUTRAL", "INFO", "SUCCESS", "WARN", "ERROR"] {
@@ -69,7 +74,7 @@ fn container_intrinsic_main_does_not_double_count_padding() {
         container()
             .layout(
                 LayoutStyle::flex_row()
-                    .gap(0.0)
+                    .gap(Space::None)
                     .align_items(AlignItems::Start),
             )
             .child(chip),

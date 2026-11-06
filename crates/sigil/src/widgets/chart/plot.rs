@@ -1,4 +1,5 @@
 use crate::kernel::{NodeBuilder, container};
+use crate::layout::Space;
 use crate::layout::{Dimension, JustifyContent, LayoutStyle};
 use crate::style::{Token, space};
 use crate::widgets::Widget;
@@ -236,7 +237,7 @@ fn cartesian(plot: &Plot<'_>, interact: &Interact) -> Vec<NodeBuilder> {
                     .fill_width()
                     .grow(1.0)
                     .min_size(0.0, 0.0)
-                    .gap(GAP),
+                    .gap(Space::px(GAP)),
             )
             .child(left)
             .child(column),
@@ -322,7 +323,7 @@ fn slots(labels: &[String], count: usize, stride: usize) -> NodeBuilder {
             .fill_width()
             .height(X_AXIS)
             .shrink(0.0)
-            .padding_x(PLOT_PAD),
+            .padding_x(Space::px(PLOT_PAD)),
     );
     for slot in 0..count.div_ceil(stride) {
         let first = slot * stride;

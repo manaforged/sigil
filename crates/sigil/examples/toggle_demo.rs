@@ -14,7 +14,12 @@ fn build() -> impl IntoNode {
     let disabled = signal(true);
     container()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_row().fill().gap(24.0).padding(32.0))
+        .layout(
+            LayoutStyle::flex_row()
+                .fill()
+                .gap(Space::Xl)
+                .padding(Space::Xxl),
+        )
         .bg(Token::Surface)
         .child(toggle(on).change(move |v| on.set(v)))
         .child(toggle(signal(true)))

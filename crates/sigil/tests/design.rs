@@ -12,7 +12,7 @@ use sigil::prelude::*;
 use sigil_kittest::Harness;
 
 fn field_of(value: &str, font: f32, height: Option<f32>) -> impl IntoNode + use<> {
-    let mut field = text_field(signal(value.to_owned())).font_size(font);
+    let mut field = text_field(signal(value.to_owned())).font_size(font, "test fixture");
     field.caret_visible().set(false);
     let field = match height {
         Some(height) => field.height(height),
@@ -26,7 +26,13 @@ fn blank() -> NodeBuilder {
 }
 
 fn plain_rows(value: &'static str, font: f32) -> u32 {
-    let shot = frame(move || page(text(value).font_size(font).text_color(Token::OnSurface)));
+    let shot = frame(move || {
+        page(
+            text(value)
+                .font_size(font, "test fixture")
+                .text_color(Token::OnSurface),
+        )
+    });
     ink(&shot).rows
 }
 
@@ -137,4 +143,55 @@ fn a_card_on_the_terminal_keeps_its_border_and_draws_no_shadow() {
     let screen = ui.text();
     assert!(screen.contains('╭') && screen.contains('╰'), "{screen}");
     assert!(!screen.contains(['░', '▒', '▓']), "{screen}");
+}
+
+#[test]
+fn a_gap_step_is_the_distance_between_children() {
+    let mut ui = Harness::new(|| {
+        page(
+            column()
+                .gap(Space::Xl)
+                .child(button("First"))
+                .child(button("Second")),
+        )
+    })
+    .pixels(360, 160);
+    let first = ui.get_by_role(Role::Button, "First").bounds().unwrap();
+    let second = ui.get_by_role(Role::Button, "Second").bounds().unwrap();
+    let between = second.origin.y - (first.origin.y + first.height);
+    assert!((between - 24.0).abs() < 0.5, "gap is {between}");
+}
+
+#[test]
+fn each_text_role_is_larger_than_the_one_below_it() {
+    let height = |role| {
+        ink(&frame(move || {
+            page(text("Hg").text_role(role).text_color(Token::OnSurface))
+        }))
+        .rows
+    };
+    let heights = [
+        height(TextRole::Caption),
+        height(TextRole::Body),
+        height(TextRole::Subtitle),
+        height(TextRole::Title),
+        height(TextRole::Heading),
+        height(TextRole::Display),
+    ];
+    assert!(heights.is_sorted_by(|low, high| low < high), "{heights:?}");
+}
+
+#[test]
+fn a_row_centres_short_children_against_tall_ones() {
+    let mut ui = Harness::new(|| {
+        page(
+            row()
+                .child(button("Tall").height(64.0))
+                .child(button("Short")),
+        )
+    })
+    .pixels(360, 160);
+    let tall = ui.get_by_role(Role::Button, "Tall").center().unwrap();
+    let short = ui.get_by_role(Role::Button, "Short").center().unwrap();
+    assert!((tall.y - short.y).abs() < 0.5, "{} and {}", tall.y, short.y);
 }

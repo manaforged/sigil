@@ -63,7 +63,11 @@ pub(crate) fn command_menu_demo() -> impl IntoNode {
 
 pub(crate) fn tooltip_demo() -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_column().fill_width().padding_top(40.0))
+        .layout(
+            LayoutStyle::flex_column()
+                .fill_width()
+                .padding_top(Space::raw(40.0, "example layout")),
+        )
         .child(
             tooltip("Saves the document")
                 .delay(0)

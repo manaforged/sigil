@@ -31,10 +31,14 @@ fn editor_view(name: &str, body: &str) -> NodeBuilder {
     let line_count = body.lines().count().max(1);
     let extent = (line_count as f32).mul_add(16.8, 20.0);
     let mono = text(body.to_owned())
-        .font_size(14.0)
+        .font_size(14.0, "test fixture")
         .font_family(FontFamily::Mono);
     let code = container()
-        .layout(LayoutStyle::flex_column().padding(10.0).width(2000.0))
+        .layout(
+            LayoutStyle::flex_column()
+                .padding(Space::raw(10.0, "test fixture"))
+                .width(2000.0),
+        )
         .child(mono);
     let column = LayoutStyle::flex_column()
         .grow(1.0)
@@ -42,9 +46,11 @@ fn editor_view(name: &str, body: &str) -> NodeBuilder {
     container()
         .layout(column)
         .child(
-            container()
-                .label(name.to_owned())
-                .layout(LayoutStyle::flex_row().height(28.0).padding_x(10.0)),
+            container().label(name.to_owned()).layout(
+                LayoutStyle::flex_row()
+                    .height(28.0)
+                    .padding_x(Space::raw(10.0, "test fixture")),
+            ),
         )
         .child(scroll(code).extent(extent).width(580.0).height(720.0))
 }
@@ -187,7 +193,11 @@ fn shell_root(selected: Signal<usize>, files: Vec<(String, String)>) -> NodeBuil
         .layout(LayoutStyle::flex_row().grow(1.0))
         .child(
             container()
-                .layout(LayoutStyle::flex_column().width(248.0).padding(6.0))
+                .layout(
+                    LayoutStyle::flex_column()
+                        .width(248.0)
+                        .padding(Space::raw(6.0, "test fixture")),
+                )
                 .children_reactive(move || {
                     let active = selected.get();
                     explorer_files
@@ -212,7 +222,7 @@ fn explorer_row(selected: Signal<usize>, idx: usize, name: &str, active: bool) -
         .role(Role::Button)
         .label(name.to_owned())
         .focusable(true)
-        .layout(LayoutStyle::flex_row().height(22.0).padding_x(8.0));
+        .layout(LayoutStyle::flex_row().height(22.0).padding_x(Space::Sm));
     let row = if active { row.bg(Token::Accent) } else { row };
     row.pointer_down(move |ev| {
         selected.set(idx);
@@ -326,7 +336,11 @@ fn deep_reactive_scroll_switch_stays_positioned() {
                     .join("\n");
                 let extent = (lines as f32).mul_add(16.8, 20.0);
                 let code = container()
-                    .layout(LayoutStyle::flex_column().padding(10.0).width(2000.0))
+                    .layout(
+                        LayoutStyle::flex_column()
+                            .padding(Space::raw(10.0, "test fixture"))
+                            .width(2000.0),
+                    )
                     .child(text(body));
                 vec![scroll(code).extent(extent).width(580.0).height(720.0)]
             });

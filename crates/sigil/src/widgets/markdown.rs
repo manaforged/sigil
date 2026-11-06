@@ -16,6 +16,7 @@ mod table_data;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, container, text};
 use crate::layout::LayoutStyle;
+use crate::layout::Space;
 use crate::layout::cols;
 use crate::layout::snap::CellForm;
 use crate::reactive::Reactive;
@@ -64,7 +65,7 @@ impl IntoNode for KeyedBlock {
             .layout(
                 LayoutStyle::block()
                     .fill_width()
-                    .padding_top(CellForm::new(space(2), 0.0).pick()),
+                    .padding_top(Space::px(CellForm::new(space(2), 0.0).pick())),
             )
             .child(node)
             .build(cx)
@@ -80,7 +81,7 @@ fn frame() -> NodeBuilder {
         LayoutStyle::flex_column()
             .fill_width()
             .padding_right(cols(2.0))
-            .gap(space(2)),
+            .gap(Space::Sm),
     )
 }
 
@@ -174,8 +175,8 @@ fn chart_node(data: chart_parse::ChartData) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()
-                .padding(space(2))
-                .gap(space(1)),
+                .padding(Space::Sm)
+                .gap(Space::Xs),
         )
         .class([Token::Field.bg(), Radius::Md.atom()]);
     if let Some(title) = data.title {

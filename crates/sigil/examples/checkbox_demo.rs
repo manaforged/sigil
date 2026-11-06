@@ -17,7 +17,12 @@ fn build() -> impl IntoNode {
     let disabled = signal(true);
     container()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().fill().gap(16.0).padding(32.0))
+        .layout(
+            LayoutStyle::flex_column()
+                .fill()
+                .gap(Space::Lg)
+                .padding(Space::Xxl),
+        )
         .bg(Token::Surface)
         .child(checkbox(checked).change(move |v| checked.set(v)))
         .child(checkbox(signal(true)).tone(Tone::Neutral))

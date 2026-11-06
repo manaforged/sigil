@@ -3,6 +3,7 @@ use crate::kernel::{
 };
 use crate::layout::Display;
 use crate::layout::LayoutStyle;
+use crate::layout::Space;
 use crate::reactive::{Reactive, Signal, derived};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_text;
@@ -100,7 +101,11 @@ impl<C: IntoNode + 'static> IntoNode for FieldBuilder<C> {
         let required = self.required;
         let mut root = container()
             .role(Role::GenericContainer)
-            .layout(LayoutStyle::flex_column().fill_width().gap(FIELD_GAP))
+            .layout(
+                LayoutStyle::flex_column()
+                    .fill_width()
+                    .gap(Space::px(FIELD_GAP)),
+            )
             .child(label_row(self.label, required))
             .child(self.control)
             .on_added(move |tree, id| {
@@ -168,7 +173,7 @@ fn label_row(label: TextContent, required: Option<Signal<bool>>) -> Box<dyn Into
         Some(required) => node(
             container()
                 .role(Role::GenericContainer)
-                .layout(LayoutStyle::flex_row().gap(FIELD_GAP))
+                .layout(LayoutStyle::flex_row().gap(Space::px(FIELD_GAP)))
                 .child(label)
                 .child(
                     text(theme_text(StringKey::RequiredMark))

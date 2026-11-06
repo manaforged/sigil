@@ -1,5 +1,4 @@
 use sigil::prelude::*;
-use sigil::style::space;
 
 use super::facts::{DIAGNOSTICS, Diagnostic, OUTPUT, PROMPT, severity_icon, severity_tone};
 use super::state::{BottomTab, Workspace};
@@ -38,7 +37,7 @@ fn echo(lines: &mut Vec<String>, input: &str) {
 
 fn problems(ws: Workspace) -> NodeBuilder {
     let list = DIAGNOSTICS.iter().fold(
-        container().layout(LayoutStyle::flex_column().fill_width().padding_y(space(1))),
+        container().layout(LayoutStyle::flex_column().fill_width().padding_y(Space::Xs)),
         |list, diag| list.child(problem_row(ws, *diag)),
     );
     fill_scroll(list)
@@ -49,15 +48,15 @@ fn output() -> NodeBuilder {
         container().layout(
             LayoutStyle::flex_column()
                 .fill_width()
-                .padding_x(space(3))
-                .padding_y(space(2))
-                .gap(space(1)),
+                .padding_x(Space::Md)
+                .padding_y(Space::Sm)
+                .gap(Space::Xs),
         ),
         |list, line| {
             list.child(
                 text(*line)
                     .nowrap()
-                    .font_size(super::TEXT_XS)
+                    .font_size(super::TEXT_XS, "example layout")
                     .font_family(FontFamily::Mono),
             )
         },
@@ -71,8 +70,8 @@ fn terminal_view(ws: Workspace) -> NodeBuilder {
             LayoutStyle::flex_column()
                 .fill()
                 .min_size(0.0, 0.0)
-                .padding_x(space(3))
-                .padding_y(space(1)),
+                .padding_x(Space::Md)
+                .padding_y(Space::Xs),
         )
         .child(terminal(ws.terminal, move |input| {
             ws.terminal.update(|lines| echo(lines, &input));

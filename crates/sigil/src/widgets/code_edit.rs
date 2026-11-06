@@ -4,6 +4,7 @@ mod render;
 mod scroll;
 
 use super::highlight::Highlight;
+use crate::layout::Space;
 use crate::reactive::Reactive;
 use crate::style::locale::Direction;
 use crate::style::strings::StringKey;
@@ -204,7 +205,7 @@ impl CodeEditBuilder {
             .class("w-full h-full")
             .layout(
                 LayoutStyle::flex_column()
-                    .padding(CellForm::new(space(1), 0.0).pick())
+                    .padding(Space::px(CellForm::new(space(1), 0.0).pick()))
                     .overflow_x(Overflow::Hidden)
                     .overflow_y(Overflow::Hidden),
             )

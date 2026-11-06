@@ -56,16 +56,19 @@ fn built(shape: fn(Rect) -> Clip) -> CommandScene {
 }
 
 fn avatars() -> impl IntoNode {
-    let mut grid = container().layout(LayoutStyle::flex_row()
-        .fixed_size(VIEW.0, VIEW.1)
-        .flex_wrap(FlexWrap::Wrap));
+    let mut grid = container().layout(
+        LayoutStyle::flex_row()
+            .fixed_size(VIEW.0, VIEW.1)
+            .flex_wrap(FlexWrap::Wrap),
+    );
     for index in 0..COLS * ROWS {
-        let child = image(source(index % 8)).layout(LayoutStyle::block().fixed_size(AVATAR, AVATAR));
+        let child =
+            image(source(index % 8)).layout(LayoutStyle::block().fixed_size(AVATAR, AVATAR));
         let avatar = container()
             .layout(
                 LayoutStyle::block()
                     .fixed_size(AVATAR, AVATAR)
-                    .margin((CELL - AVATAR) * 0.5)
+                    .margin(Space::raw((CELL - AVATAR) * 0.5, "test fixture"))
                     .overflow_x(Overflow::Hidden)
                     .overflow_y(Overflow::Hidden),
             )
@@ -108,7 +111,10 @@ fn two_hundred_clipped_avatars_frame_time() {
     let scenes: [(&str, CommandScene); 4] = [
         ("rect scissor", built(Clip::Rect)),
         ("rounded overflow", emitted),
-        ("circle clip", built(|rect| Clip::rounded(rect, rect.width * 0.5))),
+        (
+            "circle clip",
+            built(|rect| Clip::rounded(rect, rect.width * 0.5)),
+        ),
         ("ellipse mask", built(Clip::ellipse)),
     ];
     let mut samples: Vec<Vec<f64>> = scenes.iter().map(|_| Vec::new()).collect();
@@ -122,7 +128,10 @@ fn two_hundred_clipped_avatars_frame_time() {
         }
     }
     let base = median(&mut samples[0].clone());
-    println!("200 avatars, {}x{} at {SCALE}x, {ROUNDS} interleaved rounds", VIEW.0, VIEW.1);
+    println!(
+        "200 avatars, {}x{} at {SCALE}x, {ROUNDS} interleaved rounds",
+        VIEW.0, VIEW.1
+    );
     for ((name, _), list) in scenes.iter().zip(&samples) {
         let mut paired: Vec<f64> = list.iter().zip(&samples[0]).map(|(a, b)| a - b).collect();
         println!(

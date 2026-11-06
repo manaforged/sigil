@@ -23,8 +23,18 @@ use sigil_kittest::Harness;
 use sigil_kittest::gpu::headless_renderer;
 use sigil_kittest::parity::{Frame, cpu_rgba, gpu_rgba};
 
-const BLACK: Rgba8 = Rgba8 { r: 0, g: 0, b: 0, a: 255 };
-const WHITE: Rgba8 = Rgba8 { r: 255, g: 255, b: 255, a: 255 };
+const BLACK: Rgba8 = Rgba8 {
+    r: 0,
+    g: 0,
+    b: 0,
+    a: 255,
+};
+const WHITE: Rgba8 = Rgba8 {
+    r: 255,
+    g: 255,
+    b: 255,
+    a: 255,
+};
 
 fn cpu_frame(scene: &CommandScene, side: (u32, u32)) -> image::RgbaImage {
     let frame = Frame {
@@ -95,17 +105,38 @@ fn assert_ink(surface: Rgba8, fill: &str, want: [u8; 3]) {
             }
         }
     }
-    assert!(failures.is_empty(), "opaque {fill} rect on surface {surface:?}: {failures:#?}");
+    assert!(
+        failures.is_empty(),
+        "opaque {fill} rect on surface {surface:?}: {failures:#?}"
+    );
 }
 
 #[test]
 fn an_opaque_white_svg_rect_stays_white_on_a_light_gray_surface() {
-    assert_ink(Rgba8 { r: 200, g: 200, b: 200, a: 255 }, "#ffffff", [255, 255, 255]);
+    assert_ink(
+        Rgba8 {
+            r: 200,
+            g: 200,
+            b: 200,
+            a: 255,
+        },
+        "#ffffff",
+        [255, 255, 255],
+    );
 }
 
 #[test]
 fn an_opaque_black_svg_rect_stays_black_on_a_dark_surface() {
-    assert_ink(Rgba8 { r: 40, g: 40, b: 40, a: 255 }, "#000000", [0, 0, 0]);
+    assert_ink(
+        Rgba8 {
+            r: 40,
+            g: 40,
+            b: 40,
+            a: 255,
+        },
+        "#000000",
+        [0, 0, 0],
+    );
 }
 
 fn halves() -> NodeBuilder {
@@ -115,7 +146,11 @@ fn halves() -> NodeBuilder {
             .bg(color)
     };
     container()
-        .layout(LayoutStyle::flex_column().fixed_size(120.0, 80.0).padding(20.0))
+        .layout(
+            LayoutStyle::flex_column()
+                .fixed_size(120.0, 80.0)
+                .padding(Space::raw(20.0, "test fixture")),
+        )
         .bg(WHITE)
         .child(
             container()
@@ -143,19 +178,35 @@ fn blur_mixes_a_black_white_edge_in_srgb_as_filter_effects_requires() {
         let edge = (u16::from(left) + u16::from(right)) / 2;
         println!("{name}: edge pixels {left} {right}");
         if edge.abs_diff(128) > 16 {
-            failures.push(format!("{name}: edge mean {edge}, sRGB blur gives ~128, linear blur ~188"));
+            failures.push(format!(
+                "{name}: edge mean {edge}, sRGB blur gives ~128, linear blur ~188"
+            ));
         }
     }
     assert!(failures.is_empty(), "{failures:#?}");
 }
 
-const BACKDROP: Rgba8 = Rgba8 { r: 200, g: 100, b: 50, a: 255 };
-const SOURCE: Rgba8 = Rgba8 { r: 50, g: 150, b: 250, a: 255 };
+const BACKDROP: Rgba8 = Rgba8 {
+    r: 200,
+    g: 100,
+    b: 50,
+    a: 255,
+};
+const SOURCE: Rgba8 = Rgba8 {
+    r: 50,
+    g: 150,
+    b: 250,
+    a: 255,
+};
 const MULTIPLIED: [u8; 3] = [39, 59, 49];
 
 fn turned_multiply() -> NodeBuilder {
     container()
-        .layout(LayoutStyle::block().fixed_size(100.0, 100.0).padding(30.0))
+        .layout(
+            LayoutStyle::block()
+                .fixed_size(100.0, 100.0)
+                .padding(Space::raw(30.0, "test fixture")),
+        )
         .bg(BACKDROP)
         .perspective(400.0)
         .child(
@@ -180,8 +231,14 @@ fn mix_blend_on_a_3d_turned_node_still_multiplies() {
     let mut failures = Vec::new();
     for (name, frame) in &frames {
         let found = frame.get_pixel(50, 50).0;
-        if found[..3].iter().zip(MULTIPLIED).any(|(a, b)| a.abs_diff(b) > 4) {
-            failures.push(format!("{name}: centre {found:?}, multiply gives {MULTIPLIED:?}"));
+        if found[..3]
+            .iter()
+            .zip(MULTIPLIED)
+            .any(|(a, b)| a.abs_diff(b) > 4)
+        {
+            failures.push(format!(
+                "{name}: centre {found:?}, multiply gives {MULTIPLIED:?}"
+            ));
         }
     }
     assert!(failures.is_empty(), "{failures:#?}");
@@ -204,7 +261,10 @@ fn nested_patterns_lower_to_a_bounded_number_of_commands() {
     let started = std::time::Instant::now();
     let (scene, fallbacks) = svg_scene(tree(NESTED), 9, (400.0, 400.0), WHITE, SvgMode::Vector);
     let count = scene.commands.len();
-    println!("{count} commands, fallbacks {fallbacks:?}, {:?}", started.elapsed());
+    println!(
+        "{count} commands, fallbacks {fallbacks:?}, {:?}",
+        started.elapsed()
+    );
     assert!(
         count <= 100_000,
         "a 600-byte SVG lowered to {count} scene commands in {:?}",
@@ -222,12 +282,20 @@ fn red_pixels(frame: &image::RgbaImage) -> usize {
 fn shadowed_text(on_parent: bool) -> impl Fn() -> NodeBuilder {
     move || {
         let shadow = sigil::scene::Shadow::new([3.0, 3.0], 0.0, 0.0, [1.0, 0.0, 0.0, 1.0]);
-        let label = text("Shadow").font_size(32.0);
-        let label = if on_parent { label } else { label.text_shadow(shadow) };
+        let label = text("Shadow").font_size(32.0, "test fixture");
+        let label = if on_parent {
+            label
+        } else {
+            label.text_shadow(shadow)
+        };
         let parent = container()
             .layout(LayoutStyle::block().fixed_size(200.0, 60.0))
             .bg(WHITE);
-        let parent = if on_parent { parent.text_shadow(shadow) } else { parent };
+        let parent = if on_parent {
+            parent.text_shadow(shadow)
+        } else {
+            parent
+        };
         parent.child(label)
     }
 }

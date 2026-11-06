@@ -1,4 +1,5 @@
 use crate::kernel::{NodeBuilder, container};
+use crate::layout::Space;
 use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle};
 use crate::style::{Radius, Token};
 use crate::widgets::Widget;
@@ -110,7 +111,7 @@ pub(super) fn bars(plot: &Bars<'_>) -> NodeBuilder {
                 .fill_width()
                 .grow(1.0)
                 .min_size(0.0, 0.0)
-                .padding(plot.pad),
+                .padding(Space::px(plot.pad)),
         )
         .class("border-b")
         .class(Token::Gray6.border())

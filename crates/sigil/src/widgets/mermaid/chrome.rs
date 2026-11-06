@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::time::Duration;
 
 use crate::icons::Icon;
@@ -81,8 +82,8 @@ impl Chrome {
                     .position(Position::Absolute)
                     .inset_top(space(1))
                     .inset_right(space(1))
-                    .gap(space(1))
-                    .padding(space(1))
+                    .gap(Space::Xs)
+                    .padding(Space::Xs)
                     .align_items(AlignItems::Center),
             )
             .bg(Token::Surface)
@@ -145,7 +146,7 @@ fn code_view(source: &str) -> NodeBuilder {
     let mut block = container()
         .role(Role::Code)
         .class("font-mono text-sm")
-        .layout(LayoutStyle::flex_column().fill_width().padding(space(3)))
+        .layout(LayoutStyle::flex_column().fill_width().padding(Space::Md))
         .bg(Token::Field)
         .rounded(Radius::Md)
         .selectable_text(true);
@@ -163,8 +164,8 @@ fn updating() -> NodeBuilder {
                 .position(Position::Absolute)
                 .inset_top(space(1))
                 .inset_left(space(1))
-                .padding_x(space(2))
-                .padding_y(space(1)),
+                .padding_x(Space::Sm)
+                .padding_y(Space::Xs),
         )
         .bg(Token::SurfaceSubtle)
         .rounded(Radius::Md)

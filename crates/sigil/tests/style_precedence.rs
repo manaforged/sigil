@@ -46,7 +46,7 @@ fn rest_and_hover_colors(build: impl IntoNode) -> (Vec<Rgba8>, Vec<Rgba8>) {
 fn a_padding_class_widens_a_button() {
     Owner::scope("precedence-class-padding", || {
         let plain = width(button("A"));
-        let padded = width(button("A").layout(LayoutStyle::default().padding(32.0)));
+        let padded = width(button("A").layout(LayoutStyle::default().padding(Space::Xxl)));
         assert!(
             padded >= plain + 40.0,
             "padding(32) left the button at {padded} (plain {plain})"
@@ -58,7 +58,7 @@ fn a_padding_class_widens_a_button() {
 fn typed_padding_widens_a_button() {
     Owner::scope("precedence-typed-padding", || {
         let plain = width(button("A"));
-        let padded = width(button("A").layout(LayoutStyle::default().padding_x(32.0)));
+        let padded = width(button("A").layout(LayoutStyle::default().padding_x(Space::Xxl)));
         assert!(
             padded >= plain + 40.0,
             "padding_x(32) left the button at {padded} (plain {plain})"

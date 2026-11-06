@@ -1,9 +1,10 @@
+use crate::layout::Space;
 use std::f32::consts::TAU;
 use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
-use crate::style::{Radius, Token, space};
+use crate::style::{Radius, Token};
 use crate::widgets::Widget;
 
 use super::super::vector::{PathNode, path};
@@ -106,7 +107,7 @@ pub(super) fn draw(slices: &Slices<'_>, interact: &Interact) -> Vec<NodeBuilder>
                     .fill_width()
                     .grow(1.0)
                     .min_size(0.0, 0.0)
-                    .gap(space(4))
+                    .gap(Space::Lg)
                     .align_items(AlignItems::Center),
             )
             .child(picture)
@@ -172,7 +173,7 @@ fn legend(slices: &Slices<'_>, shares: &[f32]) -> NodeBuilder {
         LayoutStyle::flex_column()
             .grow(1.0)
             .min_size(0.0, 0.0)
-            .gap(space(1))
+            .gap(Space::Xs)
             .justify_content(JustifyContent::Center),
     );
     shares
@@ -192,7 +193,7 @@ fn legend_row(name: &str, value: &str, hue: Hue) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
-                .gap(6.0)
+                .gap(Space::px(6.0))
                 .align_items(AlignItems::Center),
         )
         .child(

@@ -23,7 +23,7 @@ fn delta(a: &Rgba<u8>, b: &Rgba<u8>) -> i32 {
 
 pub(crate) fn page(child: impl IntoNode + 'static) -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_column().padding(16.0))
+        .layout(LayoutStyle::flex_column().padding(Space::Lg))
         .bg(Token::Surface)
         .child(child)
 }
@@ -74,7 +74,9 @@ pub(crate) fn ink(image: &RgbaImage) -> Ink {
 pub(crate) fn shadow_rows(image: &RgbaImage) -> u32 {
     let page = *image.get_pixel(WIDTH - 1, HEIGHT - 1);
     let middle = WIDTH / 2;
-    let solid = (0..HEIGHT).rev().find(|y| delta(image.get_pixel(middle, *y), &page) > 24);
+    let solid = (0..HEIGHT)
+        .rev()
+        .find(|y| delta(image.get_pixel(middle, *y), &page) > 24);
     let Some(solid) = solid else {
         return (0..HEIGHT)
             .filter(|y| delta(image.get_pixel(middle, *y), image.get_pixel(0, 0)) > 0)

@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::ops::Range;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
@@ -50,7 +51,11 @@ pub(super) fn render(row: &DiffRow, draw: Draw) -> NodeBuilder {
 
 pub(super) fn text_row(body: String, class: &'static str, tone: Token) -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_row().fill_width().padding_x(ROW_INSET))
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .padding_x(Space::px(ROW_INSET)),
+        )
         .child(
             text(body)
                 .nowrap()
@@ -115,9 +120,9 @@ pub(super) fn source_row(cell: &DiffCell, draw: Draw) -> NodeBuilder {
         LayoutStyle::flex_row()
             .fill_width()
             .min_size(0.0, 0.0)
-            .padding_x(ROW_INSET)
+            .padding_x(Space::px(ROW_INSET))
             .align_items(AlignItems::Center)
-            .gap(0.0),
+            .gap(Space::None),
     );
     let row = match bg {
         Some(bg) => row.class(bg.bg()),
@@ -155,7 +160,7 @@ fn half(cell: Option<&DiffCell>, draw: Draw, ruled: bool) -> NodeBuilder {
         column
     };
     column.child(cell.map_or_else(
-        || container().layout(LayoutStyle::flex_row().fill_width().gap(0.0)),
+        || container().layout(LayoutStyle::flex_row().fill_width().gap(Space::None)),
         |cell| source_row(cell, draw),
     ))
 }
@@ -166,7 +171,7 @@ fn split_row(left: Option<&DiffCell>, right: Option<&DiffCell>, draw: Draw) -> N
             LayoutStyle::flex_row()
                 .fill_width()
                 .min_size(0.0, 0.0)
-                .gap(0.0),
+                .gap(Space::None),
         )
         .child(half(left, draw, true))
         .child(half(right, draw, false))

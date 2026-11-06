@@ -1,4 +1,5 @@
 use super::*;
+use sigil::layout::Space;
 
 #[test]
 fn wrapped_label_fills_the_container_width() {
@@ -43,12 +44,12 @@ fn wrapped_label_inside_modal_band_wraps() {
                                         LayoutStyle::flex_row()
                                             .fill_width()
                                             .min_size(0.0, 0.0)
-                                            .padding_x(8.0),
+                                            .padding_x(Space::Sm),
                                     )
                                     .child(
                                         text(body.clone())
                                             .wrap()
-                                            .font_size(12.0)
+                                            .font_size(12.0, "test fixture")
                                             .layout(LayoutStyle::block().fill_width()),
                                     ),
                             ),
@@ -76,7 +77,7 @@ fn wrapped_label_inside_flex_row_band_wraps() {
                         LayoutStyle::flex_row()
                             .fill_width()
                             .min_size(0.0, 0.0)
-                            .padding_x(8.0),
+                            .padding_x(Space::Sm),
                     )
                     .child(
                         text(body.clone())
@@ -104,8 +105,8 @@ fn grow_fill_does_not_clip_row_labels() {
                     LayoutStyle::flex_column()
                         .fill_width()
                         .min_size(0.0, 0.0)
-                        .padding_x(24.0)
-                        .gap(0.0),
+                        .padding_x(Space::Xl)
+                        .gap(Space::None),
                 )
                 .child(
                     container()
@@ -114,7 +115,7 @@ fn grow_fill_does_not_clip_row_labels() {
                                 .fill_width()
                                 .shrink(0.0)
                                 .align_items(AlignItems::Center)
-                                .gap(8.0),
+                                .gap(Space::Sm),
                         )
                         .children_reactive(|| {
                             vec![

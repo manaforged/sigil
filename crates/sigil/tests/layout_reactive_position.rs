@@ -8,6 +8,7 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
+use sigil::layout::Space;
 use sigil::widgets::Widget;
 use stub::{layout_rect, stub_engine};
 
@@ -74,7 +75,7 @@ fn bounds_reactive_publishes_the_absolute_rect() {
                 .layout(
                     LayoutStyle::flex_column()
                         .fixed_size(800.0, 600.0)
-                        .padding(10.0),
+                        .padding(Space::raw(10.0, "test fixture")),
                 )
                 .child(
                     container()
@@ -204,7 +205,11 @@ fn incremental_root_with_margin_keeps_its_place() {
                 .child(container().layout(LayoutStyle::block().fixed_size(100.0, 20.0)))
                 .child(
                     container()
-                        .layout(LayoutStyle::block().fixed_size(120.0, 40.0).margin(10.0))
+                        .layout(
+                            LayoutStyle::block()
+                                .fixed_size(120.0, 40.0)
+                                .margin(Space::raw(10.0, "test fixture")),
+                        )
                         .child(text(move || label.get())),
                 ),
         );

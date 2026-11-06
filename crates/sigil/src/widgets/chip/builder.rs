@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, Role};
@@ -79,8 +80,8 @@ impl ChipBuilder {
             .layout(
                 LayoutStyle::flex_row()
                     .height(line(space(5)))
-                    .padding_x(space(2))
-                    .gap(space(1))
+                    .padding_x(Space::Sm)
+                    .gap(Space::Xs)
                     .align_items(AlignItems::Center)
                     .shrink(0.0),
             )

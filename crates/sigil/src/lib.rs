@@ -224,14 +224,14 @@ pub mod prelude {
     };
     pub use crate::layout::{
         AlignItems, Dimension, Display, FlexWrap, JustifyContent, LayoutStyle, Overflow, Position,
-        TrackSize, cols, column, em, row, rows,
+        Space, TrackSize, cols, column, em, row, rows,
     };
     pub use crate::reactive::{IntervalId, Reactive, Signal, derived, effect, interval, signal};
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::run;
     pub use crate::style::{
         ColorAtom, ControlSize, Elevation, FontFamily, Layer, Paint, Radius, Rgba8, StateVariants,
-        Theme, Token, Tone,
+        TextRole, Theme, Token, Tone,
     };
     pub use crate::tasks::{SignalWriter, Status, Task, signal_writer, spawn, task};
     pub use crate::widgets::{

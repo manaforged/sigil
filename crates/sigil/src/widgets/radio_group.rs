@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use crate::reactive::Reactive;
 use std::rc::Rc;
 
@@ -5,7 +6,7 @@ use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived};
-use crate::style::{ControlSize, Metrics, Style, StyleAtom, StyleOverlay, Token, Tone, space};
+use crate::style::{ControlSize, Metrics, Style, StyleAtom, StyleOverlay, Token, Tone};
 use crate::widgets::Widget;
 
 use super::layout_ext::LayoutOverrides;
@@ -92,7 +93,7 @@ impl RadioGroupBuilder {
             .focusable(true)
             .with(
                 self.layout_overrides
-                    .apply(LayoutStyle::flex_column().gap(space(1))),
+                    .apply(LayoutStyle::flex_column().gap(Space::Xs)),
             )
             .focus_in(move || group_focus.set(true))
             .focus_out(move || group_focus.set(false))
@@ -150,8 +151,8 @@ fn option_row(
         container().layout(
             LayoutStyle::flex_row()
                 .height(Metrics::current().control_height(ControlSize::Default))
-                .padding_x(space(1))
-                .gap(space(2))
+                .padding_x(Space::Xs)
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         ),
     );

@@ -1,10 +1,11 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use serde_json::{Map, Value};
 
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::LayoutStyle;
-use crate::style::{Token, space};
+use crate::style::Token;
 use crate::widgets::Widget;
 
 use super::palette::Hue;
@@ -52,7 +53,7 @@ fn frame(spec: &Spec, mut chart: ChartBuilder) -> NodeBuilder {
         return chart.into_node_builder();
     };
     container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(space(2)))
+        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Sm))
         .child(
             text(title.clone())
                 .wrap()

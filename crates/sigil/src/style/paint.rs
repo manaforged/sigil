@@ -10,7 +10,7 @@ use crate::style::atom::{
 use crate::style::engine::encode_px;
 use crate::style::{
     ClipShape, ColorAtom, Conic, Elevation, FontFamily, GradientAxis, Layer, MaskImage, MaskSize,
-    Radial, Radius, StyleAtom, TextDecoration,
+    Radial, Radius, StyleAtom, TextDecoration, TextRole,
 };
 
 mod filters;
@@ -250,9 +250,17 @@ pub trait Paint: PaintTarget {
 
     space::space_setters!();
 
-    /// Sets the font size.
+    /// Sets the size, line height, and weight of a step of the type scale.
     #[must_use]
-    fn font_size(self, px: f32) -> Self {
+    fn text_role(self, role: TextRole) -> Self {
+        role.atoms()
+            .iter()
+            .fold(self, |target, atom| push(target, *atom))
+    }
+
+    /// Sets a font size off the type scale, with the reason it cannot be a `TextRole`.
+    #[must_use]
+    fn font_size(self, px: f32, _reason: &'static str) -> Self {
         push(self, StyleAtom::FontSize(encode_px(px).0))
     }
 

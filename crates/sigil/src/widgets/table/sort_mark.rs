@@ -1,4 +1,5 @@
 use crate::kernel::{NodeBuilder, container};
+use crate::layout::Space;
 use crate::reactive::{Signal, derived};
 
 use super::state::TableState;
@@ -23,7 +24,6 @@ pub(super) fn sort_mark<Row: 'static>(
 ) -> NodeBuilder {
     use crate::icons::builtin::{ARROW_DOWN_SVG, ARROW_UP_SVG, CHEVRONS_UP_DOWN_SVG};
     use crate::layout::LayoutStyle;
-    use crate::style::space;
     use crate::widgets::Widget;
     use crate::widgets::icon_svg;
     let mark = state.sort_state(column, sortable);
@@ -39,7 +39,7 @@ pub(super) fn sort_mark<Row: 'static>(
             SortMark::Descending => icon_svg(ARROW_DOWN_SVG).strong(),
         };
         let slot = container()
-            .layout(LayoutStyle::flex_row().padding_left(space(1)).shrink(0.0))
+            .layout(LayoutStyle::flex_row().padding_left(Space::Xs).shrink(0.0))
             .child(icon.px(12.0));
         vec![if current == SortMark::Idle {
             slot.class(IDLE)

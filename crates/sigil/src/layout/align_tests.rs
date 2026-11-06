@@ -1,5 +1,6 @@
 use crate::geometry::Size;
 use crate::kernel::{Cx, NodeBuilder, NodeId, container};
+use crate::layout::Space;
 use crate::layout::{LayoutEngine, LayoutStyle};
 use crate::reactive::Owner;
 use crate::widgets::Orientation;
@@ -101,9 +102,9 @@ fn inset(left: f32, right: f32) -> NodeBuilder {
         .layout(
             LayoutStyle::block()
                 .fixed_size(100.0, 10.0)
-                .padding_y(3.0)
-                .padding_left(left)
-                .padding_right(right),
+                .padding_y(Space::px(3.0))
+                .padding_left(Space::px(left))
+                .padding_right(Space::px(right)),
         )
         .child(container().layout(LayoutStyle::block().height(4.0)))
 }
@@ -128,8 +129,8 @@ fn a_nested_near_miss_inset_is_measured_from_its_own_parent() {
         .layout(
             LayoutStyle::block()
                 .fixed_size(200.0, 60.0)
-                .padding_left(30.0)
-                .padding_y(20.0),
+                .padding_left(Space::px(30.0))
+                .padding_y(Space::px(20.0)),
         )
         .child(inset(4.0, 2.0));
     let near = found("align-inset-nested", tree);
@@ -176,7 +177,7 @@ fn text_inside_a_wider_box_is_not_an_inset() {
         .layout(
             LayoutStyle::block()
                 .fixed_size(10.0, 10.0)
-                .padding_left(1.0),
+                .padding_left(Space::px(1.0)),
         )
         .child(crate::kernel::text("label").layout(LayoutStyle::block().width(5.0)));
     assert_eq!(found("align-text", tree), Vec::new());
@@ -197,16 +198,16 @@ fn a_vertical_near_miss_is_measured_from_a_parent_below_the_top() {
         .layout(
             LayoutStyle::block()
                 .fixed_size(100.0, 10.0)
-                .padding_x(3.0)
-                .padding_top(4.0)
-                .padding_bottom(2.0),
+                .padding_x(Space::px(3.0))
+                .padding_top(Space::Xs)
+                .padding_bottom(Space::Xxs),
         )
         .child(container().layout(LayoutStyle::block().height(4.0)));
     let tree = container()
         .layout(
             LayoutStyle::block()
                 .fixed_size(200.0, 60.0)
-                .padding_top(2.0),
+                .padding_top(Space::Xxs),
         )
         .child(uneven);
     let near = found("align-inset-vertical", tree);

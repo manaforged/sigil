@@ -6,6 +6,7 @@
 
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeId, container};
+use sigil::layout::Space;
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::Widget;
 use sigil_kittest::FakeMeasure;
@@ -22,7 +23,7 @@ fn two_cells(with_child: bool) -> Vec<f32> {
     };
     let root = cx.add(
         container()
-            .layout(LayoutStyle::flex_row().fill_width().gap(12.0))
+            .layout(LayoutStyle::flex_row().fill_width().gap(Space::Md))
             .child(cell())
             .child(cell()),
     );

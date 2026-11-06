@@ -1,4 +1,5 @@
 use crate::kernel::{NodeBuilder, Role, TextBuilder, container, text};
+use crate::layout::Space;
 use crate::layout::cols;
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle};
@@ -71,7 +72,7 @@ pub(super) fn stack(
             .grow(1.0)
             .shrink(1.0)
             .min_width(0.0)
-            .gap(gap),
+            .gap(Space::px(gap)),
     );
     for block in blocks {
         column = column.child(node(block, tone));
@@ -118,7 +119,7 @@ pub(super) fn list(
         + 1;
     let mut column = container()
         .role(Role::List)
-        .layout(LayoutStyle::flex_column().fill_width().gap(space(1)));
+        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs));
     for (index, item) in list.items.into_iter().enumerate() {
         let row = container().role(Role::ListItem).layout(
             LayoutStyle::flex_row()
@@ -213,8 +214,8 @@ pub(super) fn code(lang: &str, body: &str) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()
-                .padding_x(space(2))
-                .padding_y(pad),
+                .padding_x(Space::Sm)
+                .padding_y(Space::px(pad)),
         );
     let (shown, hidden) = clip(body);
     for (line, marks) in shown.split('\n').zip(byte_marks(lang, &shown)) {

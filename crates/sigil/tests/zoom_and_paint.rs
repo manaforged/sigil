@@ -38,7 +38,7 @@ fn zoomed(scale: f32) -> NodeBuilder {
                         LayoutStyle::block()
                             .width(20.0)
                             .height(20.0)
-                            .margin_left(10.25),
+                            .margin_left(Space::raw(10.25, "test fixture")),
                     ),
                 ),
         )

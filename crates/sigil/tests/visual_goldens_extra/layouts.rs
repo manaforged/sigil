@@ -1,4 +1,5 @@
 use super::*;
+use sigil::layout::Space;
 
 #[test]
 fn hint_overlay_default() {
@@ -32,11 +33,11 @@ fn pattern_app_shell() {
             .child(sigil::widgets::app_shell(
                 container()
                     .bg(Token::Accent)
-                    .layout(LayoutStyle::flex_row().fill().padding(8.0))
+                    .layout(LayoutStyle::flex_row().fill().padding(Space::Sm))
                     .child(text("Top bar")),
                 container()
                     .bg(Token::SurfaceHover)
-                    .layout(LayoutStyle::flex_column().fill().padding(8.0))
+                    .layout(LayoutStyle::flex_column().fill().padding(Space::Sm))
                     .child(text("Work")),
                 status_bar([chip("READY", Tone::Success)]),
                 None::<NodeBuilder>,
@@ -60,7 +61,7 @@ fn pattern_field() {
             .layout(
                 LayoutStyle::flex_column()
                     .fixed_size(220.0, 70.0)
-                    .padding(8.0),
+                    .padding(Space::Sm),
             )
             .bg(Token::Surface)
             .child(sigil::widgets::field("Username", text_field(buffer)));
@@ -81,7 +82,7 @@ fn pattern_kv_grid() {
             .layout(
                 LayoutStyle::flex_column()
                     .fixed_size(280.0, 96.0)
-                    .padding(8.0),
+                    .padding(Space::Sm),
             )
             .bg(Token::Surface)
             .child(sigil::widgets::kv_grid([

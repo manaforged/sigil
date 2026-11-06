@@ -1,9 +1,10 @@
 use crate::events::{ScrollDelta, ScrollEvent};
 use crate::icons::Icon;
 use crate::kernel::{NodeBuilder, container, text};
+use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, effect, signal, untrack};
-use crate::style::{ControlSize, Token, space};
+use crate::style::{ControlSize, Token};
 use crate::widgets::interaction::{DragEnd, pointer_drag};
 use crate::widgets::{ModalBuilder, Widget, button, icon_button, modal};
 
@@ -134,7 +135,7 @@ fn controls(camera: Camera) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
-                .gap(space(2))
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .child(

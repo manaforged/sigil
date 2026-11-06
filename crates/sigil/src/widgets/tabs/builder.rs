@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, container};
@@ -255,7 +256,7 @@ fn wrap_pill(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill_width()
                 .shrink(0.0)
-                .padding_y(space(6))
+                .padding_y(Space::Xl)
                 .justify_content(justify),
         )
         .child(
@@ -263,7 +264,7 @@ fn wrap_pill(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
                 .layout(
                     LayoutStyle::flex_row()
                         .height(STRIP_HEIGHT)
-                        .padding(space(1))
+                        .padding(Space::Xs)
                         .align_items(AlignItems::Center),
                 )
                 .class([Radius::Md.atom(), Token::SurfacePressed.bg()])

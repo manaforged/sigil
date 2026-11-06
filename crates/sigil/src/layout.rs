@@ -28,6 +28,7 @@ pub(crate) mod reactive_position;
 mod resolve;
 mod result;
 pub(crate) mod snap;
+mod space;
 pub(crate) mod style_adapter;
 mod style_data;
 #[cfg(feature = "scene")]
@@ -49,6 +50,7 @@ pub use measure::TextMeasure;
 pub(crate) use reactive_position::SizeReactive;
 pub use reactive_position::{BoundsReactive, ReactivePosition};
 pub use result::LayoutResult;
+pub use space::Space;
 #[cfg(any(test, feature = "kittest"))]
 pub use style_adapter::apply_style_atoms;
 pub use style_data::{
@@ -61,6 +63,6 @@ pub use text_geometry::CaretGeometry;
 #[cfg(any(test, feature = "kittest"))]
 pub use text_geometry::set_text_geometry;
 pub(crate) use text_geometry::{TextStyleCapture, with_text_geometry};
-pub use units::{IntoPx, cols, em, rows};
 #[cfg(feature = "pty")]
 pub(crate) use units::mono_cell;
+pub use units::{IntoPx, cols, em, rows};

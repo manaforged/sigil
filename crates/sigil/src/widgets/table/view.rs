@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use crate::reactive::Reactive;
 use std::rc::Rc;
 
@@ -321,7 +322,7 @@ fn default_empty() -> NodeBuilder {
             LayoutStyle::flex_column()
                 .fill_width()
                 .grow(1.0)
-                .padding(space(6))
+                .padding(Space::Xl)
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )

@@ -26,7 +26,7 @@ fn main() -> sigil::AppResult<()> {
 fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
-        .layout(LayoutStyle::default().padding(32.0))
+        .layout(LayoutStyle::default().padding(Space::Xxl))
         .bg(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
@@ -82,13 +82,13 @@ Styling is typed Rust. Paint goes through the `Paint` methods. Layout goes throu
 # use sigil::prelude::*;
 # let _ = {
 container()
-    .layout(LayoutStyle::default().padding(16.0).gap(8.0))
+    .layout(LayoutStyle::default().padding(Space::Lg).gap(Space::Sm))
     .bg(Token::Overlay)
     .border_w(1)
     .border_color(Token::OverlayBorder)
     .rounded(Radius::Md)
     .shadow(Elevation::Md)
-    .child(text("Title").font_size(18.0).font_weight(600).text_color(Token::OnSurface))
+    .child(text("Title").text_role(TextRole::Title).text_color(Token::OnSurface))
     .child(text("12:30").font_family(FontFamily::Mono).text_color(Token::OnSurfaceMuted))
 # };
 ```
@@ -154,7 +154,7 @@ Static styling works on any node. Interaction styling goes through `interactive(
 # let _ = {
 interactive(
     container()
-        .layout(LayoutStyle::block().fixed_size(328.0, 304.0).padding(32.0))
+        .layout(LayoutStyle::block().fixed_size(328.0, 304.0).padding(Space::Xxl))
         .bg(Token::Accent)
         .rounded(Radius::Md),
 )

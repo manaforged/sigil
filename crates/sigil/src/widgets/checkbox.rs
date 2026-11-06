@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use crate::reactive::Reactive;
 use crate::style::strings::StringKey;
 use std::rc::Rc;
@@ -193,7 +194,7 @@ fn checkbox_layout(has_label: bool) -> LayoutStyle {
     let gap = metrics.gap(ControlSize::Default);
     let row = control_row(LayoutStyle::flex_row())
         .height(root_size)
-        .gap(gap)
+        .gap(Space::px(gap))
         .align_items(AlignItems::Center);
     if has_label {
         row.fill_width()

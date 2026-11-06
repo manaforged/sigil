@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::ActiveTheme;
 
@@ -231,7 +232,7 @@ fn root_layout(side: Option<Side>) -> LayoutStyle {
     root.fill()
         .position(Position::Absolute)
         .inset(0.0)
-        .padding(pad)
+        .padding(Space::px(pad))
         .align_items(align)
         .justify_content(justify)
 }
@@ -303,11 +304,11 @@ fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
 fn dialog_layout(side: Option<Side>) -> LayoutStyle {
     let padding_x = snap::line(DIALOG_PADDING);
     let base = LayoutStyle::flex_column()
-        .padding_x(padding_x)
-        .padding_right((padding_x - BODY_GUTTER).max(0.0))
-        .padding_y(snap::detail(DIALOG_PADDING))
+        .padding_x(Space::px(padding_x))
+        .padding_right(Space::px((padding_x - BODY_GUTTER).max(0.0)))
+        .padding_y(Space::px(snap::detail(DIALOG_PADDING)))
         .overflow_y(snap::CellForm::new(Overflow::Visible, Overflow::Hidden).pick())
-        .gap(space(2))
+        .gap(Space::Sm)
         .align_items(AlignItems::Start)
         .justify_content(JustifyContent::Start)
         .max_size(Dimension::Percent(1.0), Dimension::Percent(1.0))

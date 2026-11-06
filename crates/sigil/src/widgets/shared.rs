@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 mod press;
@@ -79,7 +80,7 @@ pub(crate) static FIELD_VARIANT: StyleVariant = StyleVariant::new(
 pub(crate) const CONTROL_INSET: f32 = space(1);
 
 pub(crate) fn control_row(layout: LayoutStyle) -> LayoutStyle {
-    layout.padding_x(CONTROL_INSET)
+    layout.padding_x(Space::px(CONTROL_INSET))
 }
 
 pub(crate) fn control_surface(

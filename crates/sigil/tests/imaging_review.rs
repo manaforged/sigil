@@ -37,7 +37,12 @@ enum Surface {
 
 const SURFACES: [Surface; 3] = [Surface::Pixels, Surface::Gpu, Surface::Cpu];
 
-fn shoot<A: IntoNode + 'static>(app: impl Fn() -> A + 'static, w: u32, h: u32, surface: Surface) -> image::RgbaImage {
+fn shoot<A: IntoNode + 'static>(
+    app: impl Fn() -> A + 'static,
+    w: u32,
+    h: u32,
+    surface: Surface,
+) -> image::RgbaImage {
     let mut ui = match surface {
         Surface::Pixels => Harness::new(app).pixels(w, h).scale(SCALE),
         Surface::Gpu => Harness::new(app).gpu(w, h, SCALE),
@@ -46,9 +51,15 @@ fn shoot<A: IntoNode + 'static>(app: impl Fn() -> A + 'static, w: u32, h: u32, s
             let viewport = (w as f32, h as f32);
             let scene = ui.host().emit(viewport);
             let size = PhysicalSize::new((w as f32 * SCALE) as u32, (h as f32 * SCALE) as u32);
-            let frame = Frame { scene: &scene, viewport, size, clear: Color::rgba(1.0, 1.0, 1.0, 1.0) };
+            let frame = Frame {
+                scene: &scene,
+                viewport,
+                size,
+                clear: Color::rgba(1.0, 1.0, 1.0, 1.0),
+            };
             let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
-            return image::RgbaImage::from_raw(size.width, size.height, rgba).expect("cpu frame size");
+            return image::RgbaImage::from_raw(size.width, size.height, rgba)
+                .expect("cpu frame size");
         }
     };
     match ui.image() {
@@ -63,7 +74,11 @@ fn check(failures: &[String]) {
     for line in failures {
         println!("FAIL {line}");
     }
-    assert!(failures.is_empty(), "{} probe(s) failed: {failures:#?}", failures.len());
+    assert!(
+        failures.is_empty(),
+        "{} probe(s) failed: {failures:#?}",
+        failures.len()
+    );
 }
 
 fn at(frame: &image::RgbaImage, x: f32, y: f32) -> [u8; 3] {
@@ -107,7 +122,9 @@ fn gradient_midpoint_mixes_in_srgb_on_every_surface() {
         let mid = at(&shoot(black_to_white, 200, 20, surface), half, 10.0);
         println!("{surface:?}: black-to-white radial at t=0.5 is {mid:?}");
         if mid[0].abs_diff(128) > 10 {
-            failures.push(format!("{surface:?}: CSS mixes stops in sRGB, t=0.5 is ~128, got {mid:?}"));
+            failures.push(format!(
+                "{surface:?}: CSS mixes stops in sRGB, t=0.5 is ~128, got {mid:?}"
+            ));
         }
     }
     check(&failures);
@@ -132,7 +149,12 @@ fn half_red() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 20.0))
-            .bg(Rgba8 { r: 255, g: 0, b: 0, a: 128 }),
+            .bg(Rgba8 {
+                r: 255,
+                g: 0,
+                b: 0,
+                a: 128,
+            }),
     )
 }
 
@@ -142,8 +164,19 @@ fn a_from_stop_fading_to_the_default_transparent_stop_keeps_its_hue() {
     for surface in SURFACES {
         let mid = at(&shoot(red_to_default, 200, 20, surface), 100.0, 10.0);
         let solid = at(&shoot(half_red, 200, 20, surface), 100.0, 10.0);
-        println!("{surface:?}: red-to-transparent midpoint {mid:?}, solid rgba(255,0,0,0.5) {solid:?}");
-        if off(mid, Rgba8 { r: solid[0], g: solid[1], b: solid[2], a: 255 }) > 12 {
+        println!(
+            "{surface:?}: red-to-transparent midpoint {mid:?}, solid rgba(255,0,0,0.5) {solid:?}"
+        );
+        if off(
+            mid,
+            Rgba8 {
+                r: solid[0],
+                g: solid[1],
+                b: solid[2],
+                a: 255,
+            },
+        ) > 12
+        {
             failures.push(format!(
                 "{surface:?}: a premultiplied mix makes the midpoint rgba(255,0,0,0.5), drawn as {solid:?}, got {mid:?}"
             ));
@@ -196,7 +229,10 @@ fn mean_ink(frame: &image::RgbaImage, columns: std::ops::Range<u32>) -> [f32; 3]
 }
 
 fn word() -> TextBuilder {
-    text("MMMMMM").font_size(40.0).font_weight(900).text_color(BLACK)
+    text("MMMMMM")
+        .font_size(40.0, "test fixture")
+        .font_weight(900)
+        .text_color(BLACK)
 }
 
 fn container_clip_text() -> NodeBuilder {
@@ -262,7 +298,10 @@ fn shifted(clip: bool) -> NodeBuilder {
         .bg(RED)
         .transform(Transform2D::IDENTITY.translate(-30.0, 0.0));
     let node = if clip {
-        node.clip_path(ClipShape::Inset { inset: [0, 0, 0, 30], round: 0 })
+        node.clip_path(ClipShape::Inset {
+            inset: [0, 0, 0, 30],
+            round: 0,
+        })
     } else {
         node
     };
@@ -274,7 +313,10 @@ fn a_clip_path_moves_with_its_node_transform() {
     let mut failures = Vec::new();
     for surface in SURFACES {
         let control = at(&shoot(|| shifted(false), 60, 60, surface), 15.0, 30.0);
-        assert!(off(control, RED) <= 40, "{surface:?}: control, the translated box covers (15, 30), got {control:?}");
+        assert!(
+            off(control, RED) <= 40,
+            "{surface:?}: control, the translated box covers (15, 30), got {control:?}"
+        );
         let probe = at(&shoot(|| shifted(true), 60, 60, surface), 15.0, 30.0);
         if off(probe, RED) > 40 {
             failures.push(format!("{surface:?}: clip-path is in local space, its right half lands at x 0..30, got {probe:?} at (15, 30)"));
@@ -285,7 +327,12 @@ fn a_clip_path_moves_with_its_node_transform() {
 
 fn near_card(degrees: f32) -> NodeBuilder {
     container()
-        .layout(LayoutStyle::block().fixed_size(300.0, 300.0).padding_x(50.0).padding_y(100.0))
+        .layout(
+            LayoutStyle::block()
+                .fixed_size(300.0, 300.0)
+                .padding_x(Space::raw(50.0, "test fixture"))
+                .padding_y(Space::raw(100.0, "test fixture")),
+        )
         .bg(WHITE)
         .perspective(80.0)
         .child(
@@ -301,7 +348,10 @@ fn a_card_with_one_edge_behind_the_viewer_still_draws_its_centre() {
     let mut failures = Vec::new();
     for surface in SURFACES {
         let control = at(&shoot(|| near_card(30.0), 300, 300, surface), 150.0, 150.0);
-        assert!(off(control, RED) <= 40, "{surface:?}: control, rotate_y(30) edge z 50 < 80 draws, got {control:?}");
+        assert!(
+            off(control, RED) <= 40,
+            "{surface:?}: control, rotate_y(30) edge z 50 < 80 draws, got {control:?}"
+        );
         let centre = at(&shoot(|| near_card(60.0), 300, 300, surface), 150.0, 150.0);
         if off(centre, RED) > 40 {
             failures.push(format!("{surface:?}: rotate_y(60) edge z 86.6 > perspective 80; centre (z 0, w 1) must draw, got {centre:?}"));
@@ -331,14 +381,20 @@ fn a_stop_placed_before_an_earlier_stop_is_clamped_not_reordered() {
     for surface in SURFACES {
         let left = at(&shoot(reversed_positions, 100, 20, surface), 10.0, 10.0);
         if off(left, RED) > 40 {
-            failures.push(format!("{surface:?}: CSS clamps to-20% up to 80%, x=10 is red, got {left:?}"));
+            failures.push(format!(
+                "{surface:?}: CSS clamps to-20% up to 80%, x=10 is red, got {left:?}"
+            ));
         }
     }
     check(&failures);
 }
 
 fn many_images(count: u32) -> NodeBuilder {
-    let mut grid = container().layout(LayoutStyle::flex_row().fixed_size(240.0, 40.0).flex_wrap(FlexWrap::Wrap));
+    let mut grid = container().layout(
+        LayoutStyle::flex_row()
+            .fixed_size(240.0, 40.0)
+            .flex_wrap(FlexWrap::Wrap),
+    );
     for index in 0..count {
         let color = if index == 0 {
             [255, 0, 0, 255]
@@ -357,8 +413,22 @@ fn many_images(count: u32) -> NodeBuilder {
 
 #[test]
 fn the_first_of_600_background_images_still_draws() {
-    let control = at(&shoot(|| many_images(1), 240, 40, Surface::Pixels), 2.0, 2.0);
-    assert!(off(control, RED) <= 40, "control, one image draws, got {control:?}");
-    let probe = at(&shoot(|| many_images(600), 240, 40, Surface::Pixels), 2.0, 2.0);
-    assert!(off(probe, RED) <= 40, "the first node's 1x1 red tile, got {probe:?}");
+    let control = at(
+        &shoot(|| many_images(1), 240, 40, Surface::Pixels),
+        2.0,
+        2.0,
+    );
+    assert!(
+        off(control, RED) <= 40,
+        "control, one image draws, got {control:?}"
+    );
+    let probe = at(
+        &shoot(|| many_images(600), 240, 40, Surface::Pixels),
+        2.0,
+        2.0,
+    );
+    assert!(
+        off(probe, RED) <= 40,
+        "the first node's 1x1 red tile, got {probe:?}"
+    );
 }

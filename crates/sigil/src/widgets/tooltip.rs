@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -254,9 +255,9 @@ fn build_bubble(
         .layout(
             LayoutStyle::flex_column()
                 .max_width(BUBBLE_MAX_WIDTH)
-                .padding_x(metrics.padding(ControlSize::Compact))
-                .padding_y(metrics.overlay_padding())
-                .gap(metrics.overlay_padding())
+                .padding_x(Space::px(metrics.padding(ControlSize::Compact)))
+                .padding_y(Space::px(metrics.overlay_padding()))
+                .gap(Space::px(metrics.overlay_padding()))
                 .align_items(AlignItems::Start)
                 .justify_content(JustifyContent::Center)
                 .position(Position::Absolute)

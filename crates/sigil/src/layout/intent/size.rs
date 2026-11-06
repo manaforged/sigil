@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use crate::layout::style_data::{Axes, Dimension};
 
 use super::{LayoutFields, LayoutStyle};
@@ -55,7 +56,7 @@ impl LayoutStyle {
     /// Creates a style with a fixed width and height.
     #[must_use]
     pub fn pane(width: f32, height: f32) -> Self {
-        Self::flex_column().fixed_size(width, height).gap(4.0)
+        Self::flex_column().fixed_size(width, height).gap(Space::Xs)
     }
 
     /// Applies the fill width option.

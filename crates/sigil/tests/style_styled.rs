@@ -20,6 +20,7 @@ use sigil::events::EventRouter;
 use sigil::geometry::Point;
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, IntoNode, NodeBuilder, container, text};
+use sigil::layout::Space;
 use sigil::layout::{
     AlignItems, Dimension, Display, FlexDirection, JustifyContent, LayoutStyle, Overflow,
 };
@@ -122,7 +123,7 @@ fn default_impl_chains_correctly() {
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(80.0, 20.0)
-                .padding_x(16.0),
+                .padding_x(Space::Lg),
         )
         .child(
             container()
@@ -202,13 +203,13 @@ fn bg_accepts_color_atom() {
 #[test]
 fn padding_methods_sweep_order_preserved() {
     let style = LayoutStyle::default()
-        .padding(8.0)
-        .padding_x(16.0)
-        .padding_y(24.0)
-        .padding_top(32.0)
-        .padding_right(40.0)
-        .padding_bottom(48.0)
-        .padding_left(56.0);
+        .padding(Space::Sm)
+        .padding_x(Space::Lg)
+        .padding_y(Space::Xl)
+        .padding_top(Space::Xxl)
+        .padding_right(Space::raw(40.0, "test fixture"))
+        .padding_bottom(Space::Xxxl)
+        .padding_left(Space::raw(56.0, "test fixture"));
     let padding = sigil::testing::style_data(&style).padding;
     assert_eq!(padding.top, Dimension::Px(32.0));
     assert_eq!(padding.right, Dimension::Px(40.0));
@@ -303,7 +304,7 @@ fn font_methods_emit_typography_atoms() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         text("Aa")
-            .font_size(14.0)
+            .font_size(14.0, "test fixture")
             .font_weight(600)
             .font_family(FontFamily::Mono)
             .line_height_px(20.0),
@@ -324,7 +325,7 @@ fn flex_layout_methods_emit_correct_atoms() {
         .flex_direction(FlexDirection::Row)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)
-        .gap(8.0)
+        .gap(Space::Sm)
         .grow(1.0)
         .shrink(0.5);
     let data = sigil::testing::style_data(&style);

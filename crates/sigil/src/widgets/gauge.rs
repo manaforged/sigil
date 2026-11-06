@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 
@@ -80,7 +81,7 @@ impl GaugeBuilder {
             .value(value, 0.0, max)
             .layout(
                 LayoutStyle::flex_row()
-                    .gap(GAUGE_GAP)
+                    .gap(Space::px(GAUGE_GAP))
                     .align_items(AlignItems::Center),
             );
         if let Some(label) = self.label {

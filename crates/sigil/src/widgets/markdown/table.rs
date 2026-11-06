@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::app::cell_width;
@@ -5,7 +6,7 @@ use crate::kernel::{NodeBuilder, Role, SortDirection, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{Dimension, IntoPx, JustifyContent, LayoutStyle, cols};
 use crate::reactive::{Signal, derived, signal};
-use crate::style::{StyleAtom, TextRun, TextRuns, TextStyle, Token, space};
+use crate::style::{StyleAtom, TextRun, TextRuns, TextStyle, Token};
 use crate::widgets::Widget;
 use crate::widgets::button::button;
 use crate::widgets::interaction::InteractionState;
@@ -229,7 +230,7 @@ pub(super) fn table(data: Table) -> NodeBuilder {
         LayoutStyle::flex_column()
             .width(total)
             .max_width(Dimension::Percent(1.0))
-            .gap(space(1)),
+            .gap(Space::Xs),
     );
     if CellForm::new(true, false).pick() && grid.data.rows.len() > 1 {
         frame = frame.child(actions(&grid));
@@ -274,7 +275,7 @@ fn actions(grid: &Rc<Grid>) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill_width()
                 .justify_content(JustifyContent::End)
-                .gap(space(1)),
+                .gap(Space::Xs),
         )
         .child(button("Copy Markdown").ghost().activate(move || {
             let order = markdown.data.order(markdown.sort.peek());

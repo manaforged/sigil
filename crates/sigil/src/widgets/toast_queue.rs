@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::time::Duration;
 use web_time::Instant;
 
@@ -123,7 +124,7 @@ pub fn toast_queue(queue: ToastQueue) -> NodeBuilder {
                 .position(Position::Absolute)
                 .inset_bottom(space(4))
                 .inset_right(space(4))
-                .gap(space(2))
+                .gap(Space::Sm)
                 .align_items(AlignItems::End),
         )
         .children_reactive(move || {
@@ -135,8 +136,8 @@ pub fn toast_queue(queue: ToastQueue) -> NodeBuilder {
                         .layout(
                             LayoutStyle::flex_row()
                                 .align_items(AlignItems::Center)
-                                .gap(space(2))
-                                .padding(space(3)),
+                                .gap(Space::Sm)
+                                .padding(Space::Md),
                         )
                         .class(SURFACE)
                         .child(dot(entry.tone))

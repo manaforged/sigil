@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use crate::reactive::Reactive;
 use crate::style::strings::StringKey;
 use std::rc::Rc;
@@ -181,7 +182,7 @@ fn toggle_layout(has_label: bool) -> LayoutStyle {
     let layout = control_row(LayoutStyle::flex_row())
         .height(height)
         .shrink(0.0)
-        .gap(metrics.gap(ControlSize::Default))
+        .gap(Space::px(metrics.gap(ControlSize::Default)))
         .align_items(AlignItems::Center);
     if has_label || CellForm::new(false, true).pick() {
         layout
@@ -219,7 +220,7 @@ fn toggle_track(
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(space(9), space(5))
-                .padding(3.0)
+                .padding(Space::px(3.0))
                 .align_items(AlignItems::Center),
         )
         .style(Style::new().radius(10))

@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use std::rc::Rc;
@@ -85,8 +86,8 @@ impl MenuBarBuilder {
                 let row = if self.fill { row.fill_width() } else { row };
                 row.height(TRIGGER_H)
                     .shrink(0.0)
-                    .padding_x(space(1))
-                    .gap(space(1))
+                    .padding_x(Space::Xs)
+                    .gap(Space::Xs)
                     .align_items(AlignItems::Center)
             })
             .class(BAR_SURFACE);
@@ -164,7 +165,7 @@ fn interactive_trigger(
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(Metrics::current().control_height(ControlSize::Compact))
-                .padding_x(space(2))
+                .padding_x(Space::Sm)
                 .align_items(AlignItems::Center),
         )
         .style_reactive(move || {

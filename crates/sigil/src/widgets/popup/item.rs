@@ -1,4 +1,5 @@
 use crate::kernel::{IntoNode, NodeBuilder, container, text};
+use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Overflow};
 use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics, Radius, StyleAtom, Token, Tone, space};
@@ -43,8 +44,8 @@ pub(crate) fn item_row(slots: ItemSlots, highlight: Signal<bool>) -> NodeBuilder
                 .fill_width()
                 .height(metrics.control_height(ControlSize::Default))
                 .shrink(0.0)
-                .padding_x(metrics.padding(ControlSize::Default))
-                .gap(metrics.gap(ControlSize::Default))
+                .padding_x(Space::px(metrics.padding(ControlSize::Default)))
+                .gap(Space::px(metrics.gap(ControlSize::Default)))
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::SpaceBetween)
                 .overflow_x(Overflow::Hidden)
@@ -129,8 +130,8 @@ pub(crate) fn footer(actions: Vec<Box<dyn IntoNode>>, inset_end: f32) -> NodeBui
         LayoutStyle::flex_row()
             .fill_width()
             .shrink(0.0)
-            .padding_right(inset_end)
-            .gap(space(2))
+            .padding_right(Space::px(inset_end))
+            .gap(Space::Sm)
             .align_items(AlignItems::Center)
             .justify_content(JustifyContent::End),
     );

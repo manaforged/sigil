@@ -32,7 +32,7 @@ fn engine() -> LayoutEngine {
 
 fn lines(count: Signal<usize>) -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_column().gap(4.0))
+        .layout(LayoutStyle::flex_column().gap(Space::Xs))
         .children_reactive(move || {
             (0..count.get())
                 .map(|index| text(format!("line {index}")))
@@ -46,7 +46,7 @@ fn page(above: Signal<usize>, inside: Signal<usize>) -> NodeBuilder {
         .child(lines(above))
         .child(
             container()
-                .layout(LayoutStyle::flex_column().padding(24.0))
+                .layout(LayoutStyle::flex_column().padding(Space::Xl))
                 .child(
                     modal(signal(true)).title("Edit").width(320.0).child(
                         container()

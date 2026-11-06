@@ -1,5 +1,6 @@
 use crate::events::MouseButton;
 use crate::kernel::{NodeBuilder, Role, container};
+use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::strings::StringKey;
@@ -93,7 +94,7 @@ impl CommandMenuBuilder {
             .label(theme_label(StringKey::CommandMenu))
             .layout(
                 LayoutStyle::flex_row()
-                    .gap(LEVEL_GAP)
+                    .gap(Space::px(LEVEL_GAP))
                     .align_items(AlignItems::Start),
             )
             .children_reactive(move || {
@@ -152,8 +153,8 @@ fn panel_layout(row_count: usize, with_field: bool) -> LayoutStyle {
     let field = if with_field { item_height + gap } else { 0.0 };
     LayoutStyle::flex_column()
         .height(popup::panel_height([rows * item_height, field]))
-        .padding(Metrics::current().overlay_padding())
-        .gap(gap)
+        .padding(Space::px(Metrics::current().overlay_padding()))
+        .gap(Space::px(gap))
         .shrink(0.0)
         .align_items(AlignItems::Stretch)
 }

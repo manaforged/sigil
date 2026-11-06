@@ -8,7 +8,7 @@ use crate::events::{
 use crate::kernel::NodeBuilder;
 use crate::layout::builder_ext::asymmetric;
 use crate::layout::reactive_position;
-use crate::layout::{IntoPx, LayoutStyle};
+use crate::layout::{IntoPx, LayoutStyle, Space};
 use crate::reactive::{Reactive, Signal};
 use crate::style::builder_ext as look;
 use crate::style::{
@@ -195,6 +195,18 @@ pub trait Widget: Sealed {
     #[must_use]
     fn layout(self, style: LayoutStyle) -> Self {
         self.edit(Edit::Layout(LayoutEdit::Merge(style)))
+    }
+
+    /// Sets the space between the node's children.
+    #[must_use]
+    fn gap(self, gap: impl Into<Space>) -> Self {
+        self.layout(LayoutStyle::default().gap(gap))
+    }
+
+    /// Sets the space inside the node's edges.
+    #[must_use]
+    fn padding(self, padding: impl Into<Space>) -> Self {
+        self.layout(LayoutStyle::default().padding(padding))
     }
 
     /// Marks the node as intentionally asymmetric, with the reason.

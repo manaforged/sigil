@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -251,7 +252,7 @@ impl Render {
 
     fn flex(&self, layout: LayoutStyle, children: &Children, flex: Flex) -> NodeBuilder {
         let layout = layout
-            .gap(space(2))
+            .gap(Space::Sm)
             .min_width(0.0)
             .justify_content(flex.justify)
             .align_items(flex.align);

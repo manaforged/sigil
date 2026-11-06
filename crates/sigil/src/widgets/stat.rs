@@ -1,9 +1,10 @@
+use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::Reactive;
-use crate::style::{StyleAtom, Token, Tone, space};
+use crate::style::{StyleAtom, Token, Tone};
 use crate::widgets::Widget;
 
 use super::patterns::card;
@@ -81,7 +82,7 @@ impl StatBuilder {
         let mut body = container()
             .role(Role::Group)
             .label(name)
-            .layout(LayoutStyle::flex_column().fill_width().gap(space(1)))
+            .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs))
             .child(caption_text(
                 self.label,
                 "text-sm",

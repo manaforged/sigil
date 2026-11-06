@@ -205,16 +205,20 @@ fn items_bind_app_shape_batched_keystrokes() {
         let root = cx.add(
             virtual_list(rows, |i, s: &String| {
                 container()
-                    .layout(LayoutStyle::flex_row().fixed_size(900.0, 22.0).gap(8.0))
+                    .layout(
+                        LayoutStyle::flex_row()
+                            .fixed_size(900.0, 22.0)
+                            .gap(Space::Sm),
+                    )
                     .child(
                         text(format!("{i}"))
                             .text_color(Token::OnSurface)
-                            .font_size(12.0),
+                            .font_size(12.0, "test fixture"),
                     )
                     .child(
                         text(s.clone())
                             .text_color(Token::OnSurface)
-                            .font_size(12.0)
+                            .font_size(12.0, "test fixture")
                             .font_family(FontFamily::Mono),
                     )
             })

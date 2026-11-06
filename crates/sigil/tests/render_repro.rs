@@ -39,7 +39,7 @@ fn position_relative_child_paints() {
             .layout(
                 LayoutStyle::block()
                     .fixed_size(150.0, 150.0)
-                    .padding(ROOT_PADDING as f32),
+                    .padding(Space::raw(ROOT_PADDING as f32, "test fixture")),
             )
             .bg(Token::Surface)
             .child(middle)
@@ -89,7 +89,7 @@ fn narrow_text_renders_glyph() {
             .layout(
                 LayoutStyle::block()
                     .fixed_size(200.0, 80.0)
-                    .padding(ROOT_PADDING as f32),
+                    .padding(Space::raw(ROOT_PADDING as f32, "test fixture")),
             )
             .bg(Token::Surface)
             .child(wrapper)

@@ -1,5 +1,6 @@
 use crate::events::Key;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
+use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, signal};
 use crate::style::StateVariants;
@@ -57,8 +58,8 @@ impl SidebarBuilder {
         let column = container()
             .layout(
                 LayoutStyle::flex_column()
-                    .padding(space(2))
-                    .gap(space(1))
+                    .padding(Space::Sm)
+                    .gap(Space::Xs)
                     .grow(1.0)
                     .min_size(0.0, 0.0),
             )

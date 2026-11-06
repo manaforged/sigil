@@ -96,7 +96,11 @@ fn button_styled_accepts_full_compile_surface() {
         let build = || {
             button("X")
                 .bg(B)
-                .layout(LayoutStyle::default().padding_x(48.0).padding_y(8.0))
+                .layout(
+                    LayoutStyle::default()
+                        .padding_x(Space::Xxxl)
+                        .padding_y(Space::Sm),
+                )
                 .hover(|s| s.bg(A))
         };
         assert_paints(&painted(build(), Drive::Rest), B, "button bg");
@@ -157,7 +161,7 @@ fn panel_accepts_styled_surface() {
             panel()
                 .title("Settings")
                 .bg(A)
-                .layout(LayoutStyle::default().padding_x(padding))
+                .layout(LayoutStyle::default().padding_x(Space::raw(padding, "test fixture")))
         };
         assert_paints(&painted(build(20.0), Drive::Rest), A, "panel bg");
         assert!(width(build(20.0)) >= width(build(0.0)));
@@ -171,7 +175,7 @@ fn text_field_styled_composes_with_state_variant() {
             let field = text_field(signal(String::new()))
                 .placeholder("Search…")
                 .bg(A)
-                .layout(LayoutStyle::default().padding_x(10.0))
+                .layout(LayoutStyle::default().padding_x(Space::raw(10.0, "test fixture")))
                 .hover(|s| s.bg(B))
                 .focus(|s| s.bg(C))
                 .pressed(|s| s.bg(D));
@@ -190,7 +194,7 @@ fn slider_accepts_styled_surface() {
     Owner::scope("widget-styled-slider", || {
         let build = slider(signal(0.5_f32), 0.0..=1.0)
             .bg(A)
-            .layout(LayoutStyle::default().padding(8.0));
+            .layout(LayoutStyle::default().padding(Space::Sm));
         assert_paints(&painted(build, Drive::Rest), A, "slider bg");
     });
 }
@@ -207,15 +211,15 @@ fn progress_accepts_styled_surface() {
 fn style_and_typed_methods_share_one_store() {
     Owner::scope("widget-styled-one-store", || {
         let layered = button("X")
-            .layout(LayoutStyle::default().padding(8.0))
-            .layout(LayoutStyle::default().padding(12.0));
-        let single = button("X").layout(LayoutStyle::default().padding(12.0));
+            .layout(LayoutStyle::default().padding(Space::Sm))
+            .layout(LayoutStyle::default().padding(Space::Md));
+        let single = button("X").layout(LayoutStyle::default().padding(Space::Md));
         assert!(
             (width(layered) - width(single)).abs() < f32::EPSILON,
             "the later padding must win"
         );
 
-        let padded = LayoutStyle::default().padding(4.0);
+        let padded = LayoutStyle::default().padding(Space::Xs);
         let _cb = checkbox(signal(false)).layout(padded.clone());
         let _tg = toggle(signal(false)).layout(padded.clone());
         let _sl = slider(signal(0.5_f32), 0.0..=1.0).layout(padded);
@@ -228,7 +232,7 @@ fn modal_accepts_styled_surface() {
         let build = modal(signal(true))
             .title("Confirm action")
             .bg(A)
-            .layout(LayoutStyle::default().padding_x(20.0));
+            .layout(LayoutStyle::default().padding_x(Space::raw(20.0, "test fixture")));
         assert_paints(&painted(build, Drive::Rest), A, "modal bg");
     });
 }
@@ -268,7 +272,7 @@ fn menu_accepts_styled_surface() {
             .separator()
             .item(MenuItem::new("Quit"))
             .bg(A)
-            .layout(LayoutStyle::default().padding_x(20.0));
+            .layout(LayoutStyle::default().padding_x(Space::raw(20.0, "test fixture")));
         assert_paints(&painted(build, Drive::Rest), A, "menu bg");
     });
 }

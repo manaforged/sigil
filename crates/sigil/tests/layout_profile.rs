@@ -6,6 +6,7 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
+use sigil::layout::Space;
 use stub::stub_engine;
 
 use sigil::geometry::Size;
@@ -264,7 +265,11 @@ fn derived_text_increment_records_layout_path() {
         let label = derived(move || format!("Count: {}", count.get()));
         let mut cx = Cx::new_root();
         let mut col = container()
-            .layout(LayoutStyle::flex_column().fixed_size(480.0, 800.0).gap(4.0))
+            .layout(
+                LayoutStyle::flex_column()
+                    .fixed_size(480.0, 800.0)
+                    .gap(Space::Xs),
+            )
             .child(text(label))
             .child(text("Increment"));
         for i in 0..40 {

@@ -6,6 +6,7 @@
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
+use sigil::layout::Space;
 use sigil::layout::{LayoutEngine, LayoutResult, LayoutStyle};
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
@@ -68,7 +69,7 @@ fn styled_text_typography_emits_in_scene() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         text("Large")
-            .font_size(20.0)
+            .font_size(20.0, "test fixture")
             .font_weight(700)
             .line_height_px(32.0),
     );
@@ -123,10 +124,18 @@ fn nested_text_scene_rect_is_absolute() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
-            .layout(LayoutStyle::block().fixed_size(240.0, 120.0).padding(24.0))
+            .layout(
+                LayoutStyle::block()
+                    .fixed_size(240.0, 120.0)
+                    .padding(Space::Xl),
+            )
             .child(
                 container()
-                    .layout(LayoutStyle::block().fixed_size(120.0, 60.0).padding(8.0))
+                    .layout(
+                        LayoutStyle::block()
+                            .fixed_size(120.0, 60.0)
+                            .padding(Space::Sm),
+                    )
                     .child(text("Nested")),
             ),
     );
@@ -230,7 +239,7 @@ fn container_font_classes_cascade_to_child_glyph_style() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .font_size(18.0)
+            .font_size(18.0, "test fixture")
             .font_weight(700)
             .font_family(FontFamily::Mono)
             .line_height_px(24.0)
@@ -260,9 +269,9 @@ fn own_font_class_beats_inherited_typography() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .font_size(18.0)
+            .font_size(18.0, "test fixture")
             .font_weight(700)
-            .child(text("Own").font_size(12.0)),
+            .child(text("Own").font_size(12.0, "test fixture")),
     );
 
     layout(&mut cx, root);
@@ -289,7 +298,7 @@ fn deferred_top_layer_subtree_keeps_inherited_typography() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .font_size(18.0)
+            .font_size(18.0, "test fixture")
             .font_weight(700)
             .text_color(Token::Accent)
             .child(popup),

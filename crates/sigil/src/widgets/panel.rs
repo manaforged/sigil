@@ -1,11 +1,11 @@
 use super::layout_ext::LayoutOverrides;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::LayoutStyle;
+use crate::layout::Space;
 use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, Style, StyleAtom, Token, space};
 use crate::widgets::Widget;
 
 const PANEL_MIN_HEIGHT: f32 = space(12);
-const DEFAULT_PADDING: f32 = space(4);
 const TITLE_GAP: f32 = space(2);
 
 /// Builder of a panel.
@@ -13,7 +13,7 @@ pub struct PanelBuilder {
     /// The title, if any.
     pub title: Option<String>,
     /// The padding.
-    pub padding: f32,
+    pub padding: Space,
     /// The elevation.
     pub elevation: u32,
     content: Option<Box<dyn IntoNode>>,
@@ -33,7 +33,7 @@ impl PanelBuilder {
     pub fn new() -> Self {
         Self {
             title: None,
-            padding: DEFAULT_PADDING,
+            padding: Space::Lg,
             elevation: 1,
             content: None,
             style_accumulator: Style::new(),
@@ -50,8 +50,8 @@ impl PanelBuilder {
 
     /// Sets the padding.
     #[must_use]
-    pub const fn padding(mut self, px: f32) -> Self {
-        self.padding = px;
+    pub fn padding(mut self, padding: impl Into<Space>) -> Self {
+        self.padding = padding.into();
         self
     }
 
@@ -75,7 +75,7 @@ impl PanelBuilder {
             .layout(
                 LayoutStyle::flex_column()
                     .padding(self.padding)
-                    .gap(TITLE_GAP)
+                    .gap(Space::px(TITLE_GAP))
                     .fill_width()
                     .min_size(crate::layout::Dimension::Auto, PANEL_MIN_HEIGHT),
             )

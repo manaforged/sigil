@@ -18,7 +18,12 @@ fn build() -> impl IntoNode {
     let url = signal(String::from("https://example.com"));
     container()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().fill().gap(16.0).padding(32.0))
+        .layout(
+            LayoutStyle::flex_column()
+                .fill()
+                .gap(Space::Lg)
+                .padding(Space::Xxl),
+        )
         .bg(Token::Surface)
         .child(text_field(name).placeholder("Enter your name"))
         .child(text_field(url).submit(|v| println!("submit: {v}")))

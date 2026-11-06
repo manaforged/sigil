@@ -1,13 +1,14 @@
 use super::field::{FieldParser, ParsedField};
 use super::shared::disabled_look;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
+use crate::layout::Space;
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, Dimension, LayoutStyle, cols};
 use crate::reactive::Reactive;
 use crate::reactive::Signal;
 use crate::style::locale::Locale;
 use crate::style::{
-    BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Rgba8, StateSlot, StyleAtom, Token, space,
+    BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Rgba8, StateSlot, StyleAtom, Token,
 };
 use crate::widgets::layout_ext::LayoutOverrides;
 use crate::widgets::{Edit, Sealed, StateTarget, Widget};
@@ -61,7 +62,7 @@ impl ColorFieldBuilder {
                 LayoutStyle::flex_row()
                     .fill_width()
                     .align_items(AlignItems::Center)
-                    .gap(space(2)),
+                    .gap(Space::Sm),
             )
             .child(disabled_look(swatch(self.value), self.disabled))
             .child(field)

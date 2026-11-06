@@ -9,6 +9,7 @@ mod stub;
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
+use sigil::layout::Space;
 use sigil::layout::*;
 use sigil::widgets::Widget;
 
@@ -253,7 +254,7 @@ fn flex_absolute_toast_queue_shape_anchors_fully_inside() {
                             .position(Position::Absolute)
                             .inset_bottom(16.0)
                             .inset_right(16.0)
-                            .gap(8.0)
+                            .gap(Space::Sm)
                             .align_items(AlignItems::End),
                     )
                     .child(
@@ -261,8 +262,8 @@ fn flex_absolute_toast_queue_shape_anchors_fully_inside() {
                             .layout(
                                 LayoutStyle::flex_row()
                                     .align_items(AlignItems::Center)
-                                    .gap(8.0)
-                                    .padding(12.0),
+                                    .gap(Space::Sm)
+                                    .padding(Space::Md),
                             )
                             .child(container().layout(LayoutStyle::default().fixed_size(8.0, 8.0)))
                             .child(text("hey")),

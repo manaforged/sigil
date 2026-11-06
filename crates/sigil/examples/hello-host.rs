@@ -15,7 +15,7 @@ fn main() {
                 .layout(
                     LayoutStyle::flex_column()
                         .fixed_size(480.0, 240.0)
-                        .gap(16.0),
+                        .gap(Space::Lg),
                 )
                 .child(text(label_text))
                 .child(button("Increment").primary().activate(move || {

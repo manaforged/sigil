@@ -1,4 +1,5 @@
 use crate::kernel::{NodeBuilder, Role, container};
+use crate::layout::Space;
 use crate::layout::snap::{self, CellForm};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
@@ -58,8 +59,8 @@ impl SegmentedBuilder {
                 LayoutStyle::flex_row()
                     .height(height)
                     .shrink(0.0)
-                    .gap(2.0)
-                    .padding(snap::detail(2.0))
+                    .gap(Space::Xxs)
+                    .padding(Space::px(snap::detail(2.0)))
                     .align_items(AlignItems::Center),
             )
             .class(Radius::Lg.atom())

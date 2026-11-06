@@ -1,4 +1,5 @@
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
+use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{ColorAtom, Paint, Token};
 use crate::widgets::Widget;
@@ -228,7 +229,7 @@ fn number_text(number: usize, row_h: f32) -> NodeBuilder {
                 .height(row_h)
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::End)
-                .padding_x(GUTTER_PAD),
+                .padding_x(Space::px(GUTTER_PAD)),
         )
         .child(
             text(number.to_string())

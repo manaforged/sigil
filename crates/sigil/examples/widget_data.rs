@@ -126,7 +126,7 @@ pub(crate) fn list_row_tree_demo(selected: bool) -> NodeBuilder {
         )
     };
     container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(2.0))
+        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xxs))
         .child(entry(0, Disclosure::Expanded, "src", false))
         .child(entry(1, Disclosure::Collapsed, "widgets", selected))
         .child(entry(1, Disclosure::Leaf, "lib.rs", false))

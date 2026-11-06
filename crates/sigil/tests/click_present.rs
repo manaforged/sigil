@@ -20,7 +20,7 @@ fn increment_layout_emit_under_frame_budget() {
                 .layout(
                     LayoutStyle::flex_column()
                         .fixed_size(480.0, 240.0)
-                        .gap(16.0),
+                        .gap(Space::Lg),
                 )
                 .child(text(label))
                 .child(text("Increment"))

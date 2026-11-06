@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -69,7 +70,7 @@ pub(super) fn header_row<Row: 'static>(
                 .height(snap::ruled(spec.height))
                 .shrink(0.0)
                 .align_items(AlignItems::Center)
-                .padding_x(spec.pad_x),
+                .padding_x(Space::px(spec.pad_x)),
         )
         .class("border-b")
         .class([Token::TableHeader.bg(), Token::Border.border()])
@@ -156,7 +157,7 @@ fn header_title<Row: 'static>(
         .layout(
             LayoutStyle::flex_row()
                 .grow(1.0)
-                .padding_x(pad_x)
+                .padding_x(Space::px(pad_x))
                 .align_items(AlignItems::Center)
                 .justify_content(justify),
         )

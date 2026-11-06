@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -105,10 +106,7 @@ fn field_style_channel(
 pub(super) fn field_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill_width()
-        .min_size(
-            0.0,
-            Metrics::current().control_height(ControlSize::Default),
-        )
+        .min_size(0.0, Metrics::current().control_height(ControlSize::Default))
         .align_items(AlignItems::Center)
 }
 
@@ -128,9 +126,9 @@ fn field_inner_layout(inputs: &FieldInputs, adorn: &Adornments) -> LayoutStyle {
     };
     let edge = |side: bool| if side { space(2) } else { space(3) };
     base.align_items(AlignItems::Center)
-        .padding_left(edge(leading))
-        .padding_right(edge(trailing))
-        .padding_y(crate::layout::snap::detail(space(1)))
+        .padding_left(Space::px(edge(leading)))
+        .padding_right(Space::px(edge(trailing)))
+        .padding_y(Space::px(crate::layout::snap::detail(space(1))))
 }
 
 fn displayed_text(runtime: &TextFieldRuntime, placeholder: TextContent) -> Signal<String> {

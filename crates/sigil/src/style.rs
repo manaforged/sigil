@@ -1,7 +1,7 @@
 pub(crate) mod presence;
+pub(crate) mod projection;
 pub(crate) mod srgb;
 pub(crate) mod transform;
-pub(crate) mod projection;
 use phf as _;
 use smallvec as _;
 kittest_pub! {
@@ -59,7 +59,10 @@ pub(crate) use animator_overlay::{ColorAtomKind, Family, NumericAtomKind};
 pub(crate) use atom::Px;
 pub(crate) use atom::SPACING_STEP;
 pub(crate) use atom::TextDecoration;
-pub use atom::{ClipShape, ColorAtom, Conic, Elevation, GradientAxis, MaskImage, MaskSize, Radial, RadialExtent, Rgba8};
+pub use atom::{
+    ClipShape, ColorAtom, Conic, Elevation, GradientAxis, MaskImage, MaskSize, Radial,
+    RadialExtent, Rgba8,
+};
 kittest_pub! {
     #[doc(hidden)]
     pub use atom::{BgGradient, BorderStyle, GradientShape, GradientStopKey, FilterAtom, MaskAtom, MillisU16, PaintAtom, PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, StyleAtom, TransitionId};
@@ -99,7 +102,7 @@ pub(crate) use merge::merge_warning_count_for_component;
 #[doc(hidden)]
 pub use merge::unknown_class_warning_count;
 pub use metrics::{BORDER_WIDTH, Layer, Metrics, Radius, space};
-pub(crate) use metrics::{DISABLED_OPACITY, ICON_SIZE, OVERLAY_SHADOW};
+pub(crate) use metrics::{DISABLED_OPACITY, ICON_SIZE};
 pub(crate) use overlay::StyleOverlay;
 pub use paint::Paint;
 pub(crate) use paint::{PaintTarget, StyleSlot};
@@ -109,6 +112,7 @@ pub(crate) use parser::parse_stateful_token;
 pub(crate) use reactive::StyleReactiveEffect;
 #[cfg(any(test, feature = "kittest"))]
 pub use resolve::unsupported_style_warning_count_for;
+pub use text_scale::TextRole;
 kittest_pub! {
     #[doc(hidden)]
     pub use resolve::{render_style_for, text_style_for};

@@ -3,6 +3,7 @@ use crate::events::{ModifiersState, PointerEvent};
 use crate::geometry::Point;
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, fragment, text};
+use crate::layout::Space;
 use crate::layout::snap::CellForm;
 use crate::layout::{
     CaretGeometry, IntoPx, LayoutStyle, Overflow, Position, TextStyleCapture, rows,
@@ -84,7 +85,7 @@ pub(super) fn edit_layout() -> LayoutStyle {
         .fill_width()
         .height(CellForm::new(160.0, rows(DEFAULT_ROWS).into_px()).pick())
         .min_size(0.0, 0.0)
-        .padding(1.0)
+        .padding(Space::px(1.0))
 }
 
 fn edit_inner(
@@ -112,7 +113,7 @@ fn edit_inner(
             LayoutStyle::block()
                 .fill_width()
                 .min_size(0.0, 0.0)
-                .padding_x(padding_x),
+                .padding_x(Space::px(padding_x)),
         )
         .animate_height(extent)
         .child(text_box);

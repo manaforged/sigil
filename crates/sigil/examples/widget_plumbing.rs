@@ -14,7 +14,7 @@ pub(crate) fn interactive_demo(disabled: Signal<bool>) -> NodeBuilder {
     interactive(
         container()
             .layout(LayoutStyle::flex_column().fill_width())
-            .child(text("Interactive row").nowrap().font_size(14.0)),
+            .child(text("Interactive row").nowrap().text_role(TextRole::Body)),
     )
     .focusable(true)
     .rounded(Radius::Md)
@@ -42,7 +42,7 @@ pub(crate) fn drag_ghost_demo() -> NodeBuilder {
     let drag = DragState::<String>::new();
     let dropped = signal(String::from("Drop a card here"));
     container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(8.0))
+        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Sm))
         .child(
             NodeBuilder::from(card(text("Card A").nowrap()))
                 .drag_source(drag.clone(), String::from("Card A")),

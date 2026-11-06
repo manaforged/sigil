@@ -129,7 +129,7 @@ fn sandbox(first: Pick) -> impl IntoNode {
             LayoutStyle::flex_column()
                 .fill_width()
                 .fill_height()
-                .padding(24.0),
+                .padding(Space::Xl),
         )
         .bg(Token::Surface)
         .child(for_each(

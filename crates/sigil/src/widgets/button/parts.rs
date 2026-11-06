@@ -1,5 +1,6 @@
 use crate::animation_runtime::presets;
 use crate::kernel::{TextBuilder, TextContent, text};
+use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{
     BORDER_WIDTH, Elevation, GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, StyleAtom, StyleVariant,
@@ -19,7 +20,7 @@ pub(super) enum ButtonWidth {
 pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> LayoutStyle {
     let layout = LayoutStyle::flex_row()
         .height(height)
-        .padding_x(padding_x)
+        .padding_x(Space::px(padding_x))
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center);
     match width {

@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -6,7 +7,7 @@ use crate::events::request_focus;
 use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, derived, effect, untrack};
-use crate::style::{StyleOverlay, space};
+use crate::style::StyleOverlay;
 use crate::widgets::Widget;
 
 use super::super::listbox::{Move, RowSource, TAB_LIST};
@@ -100,7 +101,7 @@ pub(super) fn build_tab_list(
             LayoutStyle::flex_row()
                 .height(tab_height(spec.chrome))
                 .shrink(0.0)
-                .gap(space(1))
+                .gap(Space::Xs)
                 .align_items(AlignItems::Center),
         )
         .children_reactive(move || {

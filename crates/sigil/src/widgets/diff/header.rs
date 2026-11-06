@@ -1,6 +1,7 @@
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
+use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::style::{Token, space};
+use crate::style::Token;
 use crate::widgets::Widget;
 
 use super::DiffShape;
@@ -18,10 +19,10 @@ pub(super) fn header(shape: &DiffShape, added: usize, removed: usize) -> NodeBui
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .padding_x(ROW_INSET)
+                .padding_x(Space::px(ROW_INSET))
                 .min_size(0.0, 0.0)
                 .align_items(AlignItems::Center)
-                .gap(space(2)),
+                .gap(Space::Sm),
         )
         .child(
             text(shape.path.clone().unwrap_or_default())

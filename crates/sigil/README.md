@@ -32,7 +32,7 @@ fn main() -> sigil::AppResult<()> {
 fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
-        .layout(LayoutStyle::default().padding(32.0))
+        .layout(LayoutStyle::default().padding(Space::Xxl))
         .bg(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
@@ -78,6 +78,41 @@ Owner::scope("embed", || {
 Clipboard: call `copy("text")` inside `run`, or after `install(OsClipboard)` on an embed host.
 
 With the `desktop` feature, `open(url)` passes an `http`, `https`, or `mailto` URL to the OS handler. It rejects every other scheme.
+
+## Design rules
+
+Spacing, type, and depth come from named steps, so a layout stays on the scale by default:
+
+```rust,no_run
+use sigil::prelude::*;
+
+fn settings(name: Signal<String>) -> impl IntoNode {
+    card(
+        column()
+            .gap(Space::Md)
+            .child(text("Settings").text_role(TextRole::Title))
+            .child(field("Name", text_field(name))),
+    )
+}
+```
+
+A bare number does not compile:
+
+```rust,compile_fail
+use sigil::prelude::*;
+
+let _ = LayoutStyle::flex_column().gap(13.0);
+```
+
+Neither does a font size with no reason:
+
+```rust,compile_fail
+use sigil::prelude::*;
+
+let _ = text("Off the scale").font_size(13.0);
+```
+
+Off the scale, say why: `Space::raw(13.0, "matches the embedded video inset")`, `.font_size(13.0, "matches the host editor")`.
 
 ## Features
 

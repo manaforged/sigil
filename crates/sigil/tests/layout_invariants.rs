@@ -154,13 +154,13 @@ const WIDTHS: [f32; 4] = [320.0, 640.0, 1100.0, 1600.0];
 
 fn labeled_field(label: &'static str, control: impl IntoNode + 'static) -> NodeBuilder {
     container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(4.0))
+        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs))
         .child(text(label))
         .child(control)
 }
 
 fn columns(children: Vec<NodeBuilder>) -> NodeBuilder {
-    let mut row = container().layout(LayoutStyle::flex_row().fill_width().gap(12.0));
+    let mut row = container().layout(LayoutStyle::flex_row().fill_width().gap(Space::Md));
     for child in children {
         row = row.child(
             container()
@@ -192,8 +192,8 @@ fn stacked_widgets_are_sound_at_every_width() {
                 .layout(
                     LayoutStyle::flex_column()
                         .fill_width()
-                        .gap(8.0)
-                        .padding(16.0),
+                        .gap(Space::Sm)
+                        .padding(Space::Lg),
                 )
                 .child(labeled_field("progress", progress(signal(0.5_f32), 1.0)))
                 .child(labeled_field("toggle", toggle(signal(true))))
@@ -253,7 +253,7 @@ fn scrolled_content_is_sound_at_every_width() {
     for width in WIDTHS {
         assert_sound("scrolled page", width, || {
             let page = container()
-                .layout(LayoutStyle::flex_column().fill_width().gap(8.0))
+                .layout(LayoutStyle::flex_column().fill_width().gap(Space::Sm))
                 .child(labeled_field(
                     "field",
                     text_field(signal(String::from("hi"))),

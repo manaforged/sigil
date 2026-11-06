@@ -80,7 +80,7 @@ fn avatar() -> impl IntoNode {
         .layout(
             LayoutStyle::block()
                 .fixed_size(SIDE as f32, SIDE as f32)
-                .padding(10.0),
+                .padding(Space::raw(10.0, "test fixture")),
         )
         .child(parent)
 }
@@ -133,19 +133,21 @@ fn coverage(frame: &image::RgbaImage, (x, y): (f32, f32)) -> f32 {
 }
 
 #[track_caller]
-fn assert_probes<N: IntoNode + 'static>(
-    app: fn() -> N,
-    lit: &[(f32, f32)],
-    clear: &[(f32, f32)],
-) {
+fn assert_probes<N: IntoNode + 'static>(app: fn() -> N, lit: &[(f32, f32)], clear: &[(f32, f32)]) {
     for (name, frame) in frames(app) {
         for &point in lit {
             let found = coverage(&frame, point);
-            assert!(found > 0.9, "{name}: {point:?} keeps the child (coverage {found:.2})");
+            assert!(
+                found > 0.9,
+                "{name}: {point:?} keeps the child (coverage {found:.2})"
+            );
         }
         for &point in clear {
             let found = coverage(&frame, point);
-            assert!(found < 0.1, "{name}: {point:?} is clipped away (coverage {found:.2})");
+            assert!(
+                found < 0.1,
+                "{name}: {point:?} is clipped away (coverage {found:.2})"
+            );
         }
     }
 }
@@ -183,7 +185,11 @@ fn a_polygon_clip_keeps_only_the_triangle() {
 }
 
 fn ellipse() -> impl IntoNode {
-    clipped(vec![Clip::ellipse(Rect::new(Point::new(5.0, 20.0), 50.0, 20.0))])
+    clipped(vec![Clip::ellipse(Rect::new(
+        Point::new(5.0, 20.0),
+        50.0,
+        20.0,
+    ))])
 }
 
 #[test]
@@ -260,7 +266,11 @@ fn layers(clip: Clip) -> (usize, usize, usize) {
 #[test]
 fn a_rect_clip_draws_through_the_scissor_without_a_layer() {
     let rect = Rect::new(Point::new(10.0, 10.0), 40.0, 40.0);
-    assert_eq!(layers(Clip::Rect(rect)), (0, 0, 0), "(composited clips, cpu layers, gpu layers)");
+    assert_eq!(
+        layers(Clip::Rect(rect)),
+        (0, 0, 0),
+        "(composited clips, cpu layers, gpu layers)"
+    );
     assert_eq!(
         layers(Clip::circle(Point::new(30.0, 30.0), 20.0)),
         (1, 1, 1),
@@ -343,7 +353,11 @@ fn a_click_outside_the_clip_path_disc_misses_the_node() {
     })
     .pixels(SIDE, SIDE);
     ui.click(&Point::new(6.0, 6.0));
-    assert_eq!(clicks.get(), 0, "a click in the box corner, outside the 20 px disc, misses");
+    assert_eq!(
+        clicks.get(),
+        0,
+        "a click in the box corner, outside the 20 px disc, misses"
+    );
     ui.click(&Point::new(30.0, 30.0));
     assert_eq!(clicks.get(), 1, "a click at the disc centre hits");
 }

@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use std::cmp::Ordering;
 use std::rc::Rc;
 
@@ -209,7 +210,9 @@ impl<Row> TableColumn<Row> {
             if self.align == ColAlign::End {
                 style = style.justify_content(JustifyContent::End);
             }
-            style = style.padding_x(pad_x).overflow_x(Overflow::Hidden);
+            style = style
+                .padding_x(Space::px(pad_x))
+                .overflow_x(Overflow::Hidden);
         }
         let floor = self.min_width.max(0.0);
         if let Some(px) = override_px {

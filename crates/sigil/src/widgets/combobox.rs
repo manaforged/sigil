@@ -1,5 +1,6 @@
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::PopupSide;
+use crate::layout::Space;
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived, signal};
@@ -303,7 +304,7 @@ pub(super) fn list_popup(
         .inset_top(top)
         .inset_left(0.0)
         .height(2.0f32.mul_add(popup::inset(), view_h))
-        .padding(Metrics::current().overlay_padding());
+        .padding(Space::px(Metrics::current().overlay_padding()));
     let frame = popup::popup(Role::ListBox, PopupSide::Below).layout(match width {
         Some(width) => base.width(width),
         None => base.fill_width(),

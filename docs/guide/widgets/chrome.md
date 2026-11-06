@@ -20,7 +20,7 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 
 ## panel and card
 
-`panel()`: a titled surface: `.title(str)` adds a medium-weight title 8 px above the body, `.padding(px)` (default 16), `.elevation(tier)` picks the surface tier, `.child(node)`, `.width(px)`. Tier 0 is a flat `surface` fill. Tier 1 and above add a 1 px `border` and a shadow that deepens with each tier.
+`panel()`: a titled surface: `.title(str)` adds a medium-weight title 8 px above the body, `.padding(Space)` (default `Space::Lg`), `.elevation(tier)` picks the surface tier, `.child(node)`, `.width(px)`. Tier 0 is a flat `surface` fill. Tier 1 and above add a 1 px `border` and a shadow that deepens with each tier.
 
 `card(child) -> NodeBuilder`: the lighter variant: a `rounded-md` `surface` column with the same 1 px `border`, 12 px padding, and 8 px gaps. A panel at tier 1 and a card share one fill and one border.
 

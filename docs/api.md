@@ -247,7 +247,7 @@ fn main() {
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
-| `row` | `fn row() -> NodeBuilder` | A container that places its children left to right with the theme gap: 8 px in a window, one cell in a terminal. |
+| `row` | `fn row() -> NodeBuilder` | A container that places its children left to right, centred across the row, with the theme gap: 8 px in a window, one cell in a terminal. Set `align_items` to stretch them. |
 | `column` | `fn column() -> NodeBuilder` | A container that places its children top to bottom with the theme gap. |
 | `LayoutStyle` | `LayoutStyle::flex_column()`, `flex_row()`, `grid(cols)`, `block()`; `LayoutStyle::pane(w, h)`; size: `width(d)`, `height(d)`, `fixed_size(w, h)`, `fill()`, `fill_width()`, `fill_height()`, `min_width(d)`, `min_height(d)`, `min_size(w, h)`, `max_width(d)`, `max_height(d)`, `max_size(w, h)`; flex: `flex_wrap(FlexWrap)`, `flex_basis(d)`, `grow(f32)`, `shrink(f32)`; align: `align_items(AlignItems)`, `align_self(AlignItems)`, `justify_content(JustifyContent)`; grid: `grid_columns(Vec<TrackSize>)`, `grid_rows(Vec<TrackSize>)`, `grid_area(col, row)`, `grid_column_span(n)`, `grid_row_span(n)`, `grid_dense()`; position: `display(Display)`, `position(Position)`, `inset(v)`, `inset_top/right/bottom/left(v)`; `overflow(Overflow)`, `overflow_x(Overflow)`, `overflow_y(Overflow)` | Layout description of a node. `fill_width`, `fill_height`, and `fill` take the full size of the parent on that axis. `grow` also sets an `auto` minimum size to 0, so the node can shrink below its content. `pane(w, h)` is `flex_column().fixed_size(w, h).gap(4.0)`. `grid_area` sets the start column and row. |
 | `LayoutStyle` spacing | `padding(v)`, `padding_x/y(v)`, `padding_top/right/bottom/left(v)`, `margin(v)`, `margin_x(v)`, `margin_y(v)`, `margin_top(v)`, `margin_right(v)`, `margin_bottom(v)`, `margin_left(v)`, `gap(v)`, `gap_x(v)`, `gap_y(v)` | Padding, margin, and gap in px or text units. `margin_*` take the same type as `margin`; `gap_x` and `gap_y` take the same type as `gap`. |
@@ -460,7 +460,7 @@ fn main() {
 | Name | Signature | Purpose |
 | --- | --- | --- |
 | `Widget` style | `theme`, `tone_scope`, `focus_ring(Signal<bool>)`, `focus_ring_color(impl Into<ColorAtom>)`, `focus_ring_width(f32)`, `focus_ring_offset(f32)`, `focus_ring_opacity(u16)`, `presence(Signal<bool>, ..)`, `animate_opacity`, `animate_height`, and one `animate_*` setter per numeric property, `visible_when(impl Reactive<bool>)`, `paint_when(impl Reactive<bool>, \|s\| ..)` | Theme, tone, focus ring, presence, and animation of any builder. `visible_when` keeps the node mounted and hides it while the source is false; `show` mounts and unmounts instead. `paint_when` applies the paint from its closure while the source is true. `presence` animates the node in and out. |
-| `Paint` | `bg(c)`, `text_color(c)`, `border_color(c)`, `border_w(px)`, `border_top/right/bottom/left(px)`, `rounded(Radius)`, `layer(Layer)`, `shadow(Elevation)`, `opacity(f32)`, `font_size(f32)`, `font_weight(u16)`, `font_italic(bool)`, `font_family(FontFamily)`, `line_height_px(px)`, `letter_spacing_em(em)`, `tabular_nums(bool)`, `underline()`, `line_through()` | Typed paint on nodes, text, widget builders, and state closures. `c` is `impl Into<ColorAtom>`. Sealed. |
+| `Paint` | `bg(c)`, `text_color(c)`, `border_color(c)`, `border_w(px)`, `border_top/right/bottom/left(px)`, `rounded(Radius)`, `layer(Layer)`, `shadow(Elevation)`, `opacity(f32)`, `text_role(TextRole)`, `font_size(f32, reason)`, `font_weight(u16)`, `font_italic(bool)`, `font_family(FontFamily)`, `line_height_px(px)`, `letter_spacing_em(em)`, `tabular_nums(bool)`, `underline()`, `line_through()` | Typed paint on nodes, text, widget builders, and state closures. `c` is `impl Into<ColorAtom>`. Sealed. |
 | `Paint` backgrounds | `bg_linear(GradientAxis)`, `bg_radial(Radial)`, `bg_conic(impl Into<Conic>)`, `gradient_from(c)`, `gradient_via(c)`, `gradient_to(c)`, `gradient_from_position(u8)`, `gradient_via_position(u8)`, `gradient_to_position(u8)`, `bg_clip_text()`, `bg_image(ImageSource)` | Tailwind `bg-linear-to-*`, `bg-radial`, `bg-conic-*`, `from-*`, `via-*`, `to-*`, `from-<n>%`, `via-<n>%`, `to-<n>%`, and `bg-clip-text`. Stops default to Tailwind's: `from` and `to` are transparent, at 0%, 50%, and 100%; `via` is drawn only when set. Stops mix in premultiplied gamma-encoded sRGB, as CSS does for legacy colors, on every renderer; a stop placed before an earlier stop moves up to the earlier position (CSS Images 4 §3.5.3). `bg_clip_text` paints the gradient, in the node's box, through the glyphs of the node and its descendant text. `bg` paints under the gradient. `bg_image` tiles the image at its natural size inside the border box; the node owns the image. Fills, strokes, and gradient text follow the node's rounded corners. |
 | `Paint` borders | `border_solid()`, `border_dashed()`, `border_dotted()` | Tailwind `border-solid`, `border-dashed`, and `border-dotted`. Dashes follow corner arcs. A dash is 3 widths with a 2-width gap below a 3 px width, and 2 widths with a 1-width gap from 3 px, as Chromium draws them. Dots wider than 3 px are round, one every 2 widths; thinner dots are square. The period is fitted so a whole number of dashes fills the perimeter. |
 | `Paint::clip_path` | `fn clip_path(self, shape: ClipShape) -> Self` | Clips the node, its own background, and its children to `shape`, like CSS `clip-path`. The shape moves with the node's transform. A pointer outside the shape misses the node. |
@@ -472,6 +472,8 @@ fn main() {
 | `Token` | `enum Token { Accent, Surface, OnSurface, Border, .. }` | A theme color. Pass it to `bg`, `text_color`, or `border_color`. |
 | `Radius` | `enum Radius { None, Sm, Base, Md, Lg, Full }` | Corner radius from the theme: 2, 4, 6, 8, and 9999 px. 0 on a character grid. |
 | `Elevation` | `enum Elevation { Sm, Base, Md, Lg, Xl }` | Shadow depth from the theme. |
+| `Space` | `enum Space { None, Xxs, Xs, Sm, Md, Lg, Xl, Xxl, Xxxl }`, `Space::raw(px, reason)` | Steps of the spacing scale: 0, 2, 4, 8, 12, 16, 24, 32, and 48 px. `gap`, `padding`, and `margin` setters take a `Space` or a text length such as `rows(1.0)`, not a bare number. |
+| `TextRole` | `enum TextRole { Caption, Body, Label, Subtitle, Title, Heading, Display }` | `.text_role(role)` sets size, line height, and weight together. `text_scale` scales them. |
 | `Layer` | `enum Layer { Page, Sunken, Raised, Overlay }` | A place in the visual stack. `.layer(Layer::Raised)` sets the fill, border, corners, and shadow together. `card` is `Raised` and popups are `Overlay`. The terminal host draws no shadows. |
 | `ControlSize` | `enum ControlSize { Compact, Default, Wide, Grow }` | Size step of a control, as in `button(..).size(ControlSize::Compact)`. |
 | `FontFamily` | `enum FontFamily { Sans, Mono, Serif, Icon, Display }` | Font family for `font_family`. |
@@ -500,7 +502,7 @@ use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
     let card = container()
-        .layout(LayoutStyle::default().padding(8.0).margin_x(16.0).gap_y(4.0))
+        .layout(LayoutStyle::default().padding(Space::Sm).margin_x(Space::Lg).gap_y(Space::Xs))
         .bg(Rgba8 { r: 20, g: 20, b: 30, a: 255 })
         .rounded(Radius::Base)
         .shadow(Elevation::Md)
@@ -508,7 +510,7 @@ fn tree() -> impl IntoNode {
         .border_color(Token::Border)
         .hover(|s| s.bg(Token::SurfaceHover))
         .disabled_style(|s| s.opacity(0.5))
-        .child(text("Title").font_size(14.0).font_weight(600).text_color(Token::OnSurface))
+        .child(text("Title").text_role(TextRole::Body).font_weight(600).text_color(Token::OnSurface))
         .child(text("42").font_family(FontFamily::Mono).tabular_nums(true));
     let _ = (ColorAtom::from(Token::Accent), Token::Accent.color(), ThemeValue::Ms(150));
     let theme = Theme::dark();

@@ -1,10 +1,11 @@
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, text};
+use crate::layout::Space;
 use crate::layout::snap::CellForm;
 use crate::layout::{LayoutStyle, cols, rows};
 use crate::reactive::derived;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
-use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Tone, space};
+use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Tone};
 use crate::widgets::Widget;
 
 static NOTICE_BAND: &[StyleAtom] = &[
@@ -35,8 +36,8 @@ pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
             node.layout(
                 LayoutStyle::flex_row()
                     .fill_width()
-                    .padding_x(space(3))
-                    .padding_y(space(2)),
+                    .padding_x(Space::Md)
+                    .padding_y(Space::Sm),
             )
             .class(NOTICE_BAND)
         },

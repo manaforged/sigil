@@ -1,6 +1,7 @@
 use crate::kernel::{IntoNode, NodeBuilder, container, text};
+use crate::layout::Space;
 use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle, Position};
-use crate::style::{Radius, Token, space};
+use crate::style::{Radius, Token};
 use crate::widgets::Widget;
 
 use super::ChartView;
@@ -45,8 +46,8 @@ impl Gutter {
                 .width(self.width)
                 .shrink(0.0)
                 .fill_height()
-                .padding_top(self.top)
-                .padding_bottom(self.bottom),
+                .padding_top(Space::px(self.top))
+                .padding_bottom(Space::px(self.bottom)),
         )
     }
 }
@@ -58,7 +59,7 @@ fn y_label(item: &Tick) -> NodeBuilder {
                 .position(Position::Absolute)
                 .inset_left(0.0)
                 .inset_top(Dimension::Percent(1.0 - item.at))
-                .margin_top(-TICK_H / 2.0)
+                .margin_top(Space::px(-TICK_H / 2.0))
                 .fill_width()
                 .height(TICK_H)
                 .justify_content(JustifyContent::End)
@@ -106,7 +107,7 @@ fn x_label(item: &Tick) -> NodeBuilder {
                 .position(Position::Absolute)
                 .inset_top(0.0)
                 .inset_left(Dimension::Percent(item.at))
-                .margin_left(-TICK_W / 2.0)
+                .margin_left(Space::px(-TICK_W / 2.0))
                 .width(TICK_W)
                 .height(TICK_H)
                 .justify_content(JustifyContent::Center),
@@ -125,7 +126,7 @@ pub(super) fn x_axis(ticks: &[Tick], width_px: f32, pad: f32) -> NodeBuilder {
                 .fill_width()
                 .height(X_AXIS)
                 .shrink(0.0)
-                .padding_x(pad),
+                .padding_x(Space::px(pad)),
         )
         .child(layer)
 }
@@ -163,7 +164,7 @@ pub(super) fn title(name: &str, lead: f32, centered: bool) -> NodeBuilder {
                 .fill_width()
                 .height(ROW)
                 .shrink(0.0)
-                .padding_left(lead)
+                .padding_left(Space::px(lead))
                 .justify_content(justify),
         )
         .child(
@@ -187,7 +188,7 @@ pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
         LayoutStyle::flex_row()
             .height(ROW)
             .shrink(0.0)
-            .gap(space(3))
+            .gap(Space::Md)
             .align_items(AlignItems::Center),
     );
     for item in series.iter().filter(|item| !item.legend.is_empty()) {
@@ -195,7 +196,7 @@ pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
             container()
                 .layout(
                     LayoutStyle::flex_row()
-                        .gap(6.0)
+                        .gap(Space::px(6.0))
                         .align_items(AlignItems::Center),
                 )
                 .child(

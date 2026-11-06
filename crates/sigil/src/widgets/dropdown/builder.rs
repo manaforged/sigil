@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use crate::reactive::Reactive;
 use std::rc::Rc;
 
@@ -181,8 +182,8 @@ fn build_trigger(
         .layout(
             LayoutStyle::flex_row()
                 .fill()
-                .padding_x(10.0)
-                .gap(space(2))
+                .padding_x(Space::px(10.0))
+                .gap(Space::Sm)
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::SpaceBetween),
         )

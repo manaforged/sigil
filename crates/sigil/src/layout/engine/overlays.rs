@@ -1,3 +1,4 @@
+use crate::layout::Space;
 use crate::style::{NumericAtomKind, StyleBinding, StyleEngine, TextStyle};
 
 use crate::layout::LayoutStyle;
@@ -8,9 +9,9 @@ use crate::layout::text_style::{apply_text_binding, theme_for};
 type Overlay = (NumericAtomKind, fn(LayoutStyle, f32) -> LayoutStyle);
 
 const OVERLAYS: [Overlay; 5] = [
-    (NumericAtomKind::Gap, |s, v| s.gap(v)),
-    (NumericAtomKind::PaddingX, |s, v| s.padding_x(v)),
-    (NumericAtomKind::PaddingY, |s, v| s.padding_y(v)),
+    (NumericAtomKind::Gap, |s, v| s.gap(Space::px(v))),
+    (NumericAtomKind::PaddingX, |s, v| s.padding_x(Space::px(v))),
+    (NumericAtomKind::PaddingY, |s, v| s.padding_y(Space::px(v))),
     (NumericAtomKind::Width, |s, v| s.width(v)),
     (NumericAtomKind::Height, |s, v| s.height(v)),
 ];
