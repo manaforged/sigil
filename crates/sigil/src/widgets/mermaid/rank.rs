@@ -47,9 +47,11 @@ impl Graph {
         if !self.dir.vertical() {
             return ranks;
         }
+        let spacing = self.spacing();
         let mut rank = 0_usize;
         while ranks.iter().any(|at| *at >= rank) {
             let mut used = 0_usize;
+            let mut gap = SPACING;
             let mut spill = Vec::new();
             for (index, (node, at)) in self.nodes.iter().zip(&ranks).enumerate() {
                 if *at != rank {
@@ -59,12 +61,13 @@ impl Graph {
                 let need = if used == 0 {
                     width
                 } else {
-                    used.saturating_add(SPACING).saturating_add(width)
+                    used.saturating_add(gap).saturating_add(width)
                 };
                 if !spill.is_empty() || (used > 0 && need > FOLD_COLS) {
                     spill.push(index);
                 } else {
                     used = need;
+                    gap = spacing.get(index).copied().unwrap_or(SPACING);
                 }
             }
             if !spill.is_empty() {

@@ -181,18 +181,8 @@ impl Graph {
                     .unwrap_or(1)
             })
             .collect();
-        let spacing = if vertical {
-            let width = self
-                .edges
-                .iter()
-                .map(|edge| edge.label.chars().count())
-                .max()
-                .unwrap_or(0);
-            SPACING.max(width.min(MAX_LABEL_GAP).saturating_add(2))
-        } else {
-            SPACING
-        };
-        let positions = self.positions(layers, &across, spacing);
+        let spacing = self.spacing();
+        let positions = self.positions(layers, &across, &spacing);
         let gap = if vertical {
             GAP_ROWS
         } else {
@@ -239,11 +229,29 @@ impl Graph {
             .collect()
     }
 
+    pub(super) fn spacing(&self) -> Vec<usize> {
+        let mut spacing = vec![SPACING; self.nodes.len()];
+        if !self.dir.vertical() {
+            return spacing;
+        }
+        for edge in &self.edges {
+            let Some(node) = self.nodes.get(edge.to) else {
+                continue;
+            };
+            let right = size(node).0.div_ceil(2);
+            let room = (edge.label.chars().count() + 3).saturating_sub(right);
+            if let Some(slot) = spacing.get_mut(edge.to) {
+                *slot = (*slot).max(room);
+            }
+        }
+        spacing
+    }
+
     fn positions(
         &self,
         layers: &[Vec<usize>],
         across: &dyn Fn(usize) -> usize,
-        spacing: usize,
+        spacing: &[usize],
     ) -> Vec<usize> {
         let mut positions = vec![0_usize; self.nodes.len()];
         for layer in layers {
@@ -257,7 +265,8 @@ impl Graph {
                 if let Some(slot) = positions.get_mut(*node) {
                     *slot = at;
                 }
-                cursor = at.saturating_add(extent).saturating_add(spacing);
+                let after = spacing.get(*node).copied().unwrap_or(SPACING);
+                cursor = at.saturating_add(extent).saturating_add(after);
             }
         }
         compact(layers, &mut positions, across, spacing);
@@ -290,14 +299,15 @@ fn compact(
     layers: &[Vec<usize>],
     positions: &mut [usize],
     across: &dyn Fn(usize) -> usize,
-    spacing: usize,
+    spacing: &[usize],
 ) {
+    let after = |node: usize| spacing.get(node).copied().unwrap_or(SPACING);
     let span = |layer: &Vec<usize>| {
         layer
             .iter()
-            .map(|node| across(*node).saturating_add(spacing))
+            .map(|node| across(*node).saturating_add(after(*node)))
             .sum::<usize>()
-            .saturating_sub(spacing)
+            .saturating_sub(layer.last().map_or(0, |node| after(*node)))
     };
     let widest = layers.iter().map(span).max().unwrap_or(0);
     for layer in layers {
