@@ -5,7 +5,6 @@ use std::collections::HashMap;
 
 mod atlas;
 mod builder;
-mod icon;
 mod image_pack;
 mod kind;
 mod mask;
@@ -22,8 +21,7 @@ use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::slug::RunFrame;
 use crate::renderer::split_encoder::SplitEncoder;
 use crate::renderer::sprite_atlas::{
-    BUILTIN_ATLAS_HEIGHT, BUILTIN_ATLAS_WIDTH, BUILTIN_ICON_ATLAS_COUNT, builtin_atlas_rgba8,
-    builtin_icon_index,
+    BUILTIN_ATLAS_HEIGHT, BUILTIN_ATLAS_WIDTH, builtin_atlas_rgba8,
 };
 
 use self::atlas::{AtlasDesc, AtlasEntry, MAX_ATLASES, valid_atlas_desc};
@@ -85,7 +83,6 @@ pub(crate) struct AtlasPipeline {
     mask_group: Option<(wgpu::TextureView, wgpu::BindGroup)>,
     hinters: Hinters,
     builtin_atlas_slot: Option<usize>,
-    builtin_icon_slots: [Option<usize>; BUILTIN_ICON_ATLAS_COUNT],
     pub(super) image_slots: HashMap<u64, PackedImage>,
     pub(super) image_pack: ImagePack,
 }
@@ -129,7 +126,6 @@ impl AtlasPipeline {
             mask_group: None,
             hinters: Hinters::default(),
             builtin_atlas_slot: None,
-            builtin_icon_slots: [None; BUILTIN_ICON_ATLAS_COUNT],
             image_slots: HashMap::new(),
             image_pack: ImagePack::default(),
         }
@@ -200,9 +196,6 @@ impl AtlasPipeline {
         queue: &wgpu::Queue,
         raw_id: u32,
     ) -> Option<usize> {
-        if builtin_icon_index(raw_id).is_some() {
-            return self.resolve_builtin_icon_atlas(device, queue, raw_id);
-        }
         if raw_id != BUILTIN_SPRITE_ATLAS_ID {
             return Some(raw_id as usize);
         }

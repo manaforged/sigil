@@ -8,7 +8,6 @@
 
 use crate::geometry::{Point, Rect};
 use crate::hal::RenderedGlyph;
-use crate::icons::{bake, builtin};
 use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::quad_paint::QuadKind;
 use crate::renderer::raster::{GlyphMask, Hinters, RasterKey, subpixel_quantize};
@@ -19,15 +18,13 @@ use tiny_skia::{FilterQuality, Paint, Pattern, Pixmap, SpreadMode, Transform};
 use crate::renderer::quad_paint::BUILTIN_SPRITE_ATLAS_ID;
 use crate::renderer::scene_command::{DrawImage, DrawSprite, GlyphRun};
 use crate::renderer::sprite_atlas::{
-    BUILTIN_ATLAS_HEIGHT, BUILTIN_ATLAS_WIDTH, builtin_atlas_rgba8, builtin_icon_index,
+    BUILTIN_ATLAS_HEIGHT, BUILTIN_ATLAS_WIDTH, builtin_atlas_rgba8,
 };
 
 use super::bound::CpuBound;
 use super::pattern::{PatternPlacement, shader};
 use super::shapes::{Brush, decode, encode_byte, stored};
 use super::sprite_tint::tint;
-
-const ICON_PX: u32 = 128;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 struct SpriteKey {
@@ -224,24 +221,15 @@ impl QuadCache {
     }
 
     fn atlas(&mut self, id: u32) -> Option<&Pixmap> {
+        if id != BUILTIN_SPRITE_ATLAS_ID {
+            return None;
+        }
         if !self.atlases.contains_key(&id) {
-            let pixmap = if id == BUILTIN_SPRITE_ATLAS_ID {
-                from_rgba8(
-                    BUILTIN_ATLAS_WIDTH,
-                    BUILTIN_ATLAS_HEIGHT,
-                    &builtin_atlas_rgba8(),
-                )?
-            } else {
-                let index = builtin_icon_index(id)?;
-                let (_, svg) = builtin::ALL.get(index)?;
-                let icon = bake(svg, ICON_PX, ICON_PX).ok()?;
-                let rgba: Vec<u8> = icon
-                    .alpha
-                    .iter()
-                    .flat_map(|&a| [255, 255, 255, a])
-                    .collect();
-                from_rgba8(icon.width, icon.height, &rgba)?
-            };
+            let pixmap = from_rgba8(
+                BUILTIN_ATLAS_WIDTH,
+                BUILTIN_ATLAS_HEIGHT,
+                &builtin_atlas_rgba8(),
+            )?;
             self.atlases.insert(id, pixmap);
         }
         self.atlases.get(&id)

@@ -2,10 +2,7 @@
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::suboptimal_flops)]
 
-use std::sync::OnceLock;
-
 use crate::geometry::Rect;
-use crate::icons::{bake, builtin};
 use crate::style::Color;
 use crate::style::Rgba8;
 
@@ -26,15 +23,12 @@ use helpers::{
 };
 
 use crate::renderer::BUILTIN_SPRITE_ATLAS_ID;
+use crate::renderer::sprite_atlas::{MaskShape, mask_origin};
 use crate::scene::{
     CommandScene, CornerRadii, DecorationKind, DrawDecoration, DrawPattern, DrawRect, DrawSprite,
     PaintFill, PatternKind, SceneBuilder, Shadow, ShadowKind, SpriteKind, SpriteSource,
     StrokeAlign, StrokeStyle,
 };
-
-pub use crate::renderer::sprite_atlas::BUILTIN_ICON_ATLAS_BASE_ID;
-
-static BUILTIN_ICONS: OnceLock<Vec<crate::icons::BakedIcon>> = OnceLock::new();
 
 #[must_use]
 pub fn gradient() -> (CommandScene, (f32, f32), Color) {
@@ -230,11 +224,10 @@ pub fn sprite() -> (CommandScene, (f32, f32), Color) {
 
 #[must_use]
 pub fn icon() -> (CommandScene, (f32, f32), Color) {
-    let _ = BUILTIN_ICONS.get_or_init(bake_builtin_icons);
     let mut scene = SceneBuilder::new();
-    for (index, (dest, tint)) in ICON_DRAWS.into_iter().enumerate() {
+    for (shape, dest, tint) in ICON_DRAWS {
         scene.draw_sprite(DrawSprite::new(
-            icon_source(index),
+            icon_source(shape),
             dest,
             SpriteKind::Mono,
             tint,
@@ -243,33 +236,22 @@ pub fn icon() -> (CommandScene, (f32, f32), Color) {
     (scene.finish(), (1024.0, 320.0), DARK)
 }
 
-const ICON_DRAWS: [(Rect, Rgba8); 5] = [
-    (rect(40.0, 80.0, 128.0, 128.0), rgba(220, 80, 80, 255)),
-    (rect(208.0, 80.0, 128.0, 128.0), rgba(200, 200, 220, 255)),
-    (rect(376.0, 80.0, 128.0, 128.0), rgba(100, 220, 140, 255)),
-    (rect(544.0, 80.0, 128.0, 128.0), rgba(230, 200, 100, 255)),
-    (rect(712.0, 80.0, 128.0, 128.0), rgba(220, 100, 220, 255)),
+const ICON_DRAWS: [(MaskShape, Rect, Rgba8); 5] = [
+    (MaskShape::Disc, rect(40.0, 80.0, 128.0, 128.0), rgba(220, 80, 80, 255)),
+    (MaskShape::Ring, rect(208.0, 80.0, 128.0, 128.0), rgba(200, 200, 220, 255)),
+    (MaskShape::Square, rect(376.0, 80.0, 128.0, 128.0), rgba(100, 220, 140, 255)),
+    (MaskShape::Diamond, rect(544.0, 80.0, 128.0, 128.0), rgba(230, 200, 100, 255)),
+    (MaskShape::Cross, rect(712.0, 80.0, 128.0, 128.0), rgba(220, 100, 220, 255)),
 ];
 
-fn icon_source(index: usize) -> SpriteSource {
-    let atlas = ICON_ATLAS_IDS
-        .get(index)
-        .copied()
-        .unwrap_or(BUILTIN_ICON_ATLAS_BASE_ID);
+fn icon_source(shape: MaskShape) -> SpriteSource {
+    let (x, y) = mask_origin(shape);
     SpriteSource {
-        atlas,
-        region: rect(0.0, 0.0, 128.0, 128.0),
+        atlas: BUILTIN_SPRITE_ATLAS_ID,
+        region: rect(x, y, 128.0, 128.0),
         phase: 0.0,
     }
 }
-
-const ICON_ATLAS_IDS: [u32; 5] = [
-    BUILTIN_ICON_ATLAS_BASE_ID,
-    BUILTIN_ICON_ATLAS_BASE_ID + 1,
-    BUILTIN_ICON_ATLAS_BASE_ID + 2,
-    BUILTIN_ICON_ATLAS_BASE_ID + 3,
-    BUILTIN_ICON_ATLAS_BASE_ID + 4,
-];
 
 #[must_use]
 pub fn decoration() -> (CommandScene, (f32, f32), Color) {
@@ -308,17 +290,4 @@ pub fn decoration() -> (CommandScene, (f32, f32), Color) {
         });
     }
     (scene.finish(), (800.0, 240.0), DARK)
-}
-
-fn bake_builtin_icons() -> Vec<crate::icons::BakedIcon> {
-    builtin::ALL
-        .iter()
-        .map(|(_, svg)| {
-            bake(svg, 128, 128).unwrap_or_else(|_| crate::icons::BakedIcon {
-                width: 128,
-                height: 128,
-                alpha: vec![0; 128 * 128],
-            })
-        })
-        .collect()
 }

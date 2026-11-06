@@ -67,6 +67,7 @@ impl Producer {
 
 struct Drawn {
     images: usize,
+    sprites: usize,
     paths: usize,
 }
 
@@ -86,6 +87,7 @@ fn drawn(producer: Producer) -> Drawn {
     let scene = format!("{:?}", ui.host().emit((VIEW.0 as f32, VIEW.1 as f32)));
     Drawn {
         images: scene.matches("DrawImage {").count(),
+        sprites: scene.matches("DrawSprite {").count(),
         paths: scene.matches("DrawPath {").count(),
     }
 }
@@ -96,10 +98,10 @@ fn every_vector_producer_draws_paths_and_no_bitmap() {
         .into_iter()
         .filter_map(|producer| {
             let drawn = drawn(producer);
-            (drawn.images > 0 || drawn.paths == 0).then(|| {
+            (drawn.images > 0 || drawn.sprites > 0 || drawn.paths == 0).then(|| {
                 format!(
-                    "{producer:?}: {} images, {} paths",
-                    drawn.images, drawn.paths
+                    "{producer:?}: {} images, {} sprites, {} paths",
+                    drawn.images, drawn.sprites, drawn.paths
                 )
             })
         })

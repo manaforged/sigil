@@ -194,14 +194,21 @@ fn highlight_marks_markdown_headings_and_typescript_keywords() {
 }
 
 #[test]
-fn every_bundled_icon_bakes_to_visible_pixels() {
-    for icon in Icon::ALL {
-        let baked = sigil::icons::bake(icon.svg(), 24, 24)
-            .unwrap_or_else(|err| panic!("{} does not bake: {err:?}", icon.name()));
+fn every_bundled_icon_draws_visible_pixels() {
+    const BLACK: Rgba8 = Rgba8 { r: 0, g: 0, b: 0, a: 255 };
+    for bundled in Icon::ALL {
+        let mut ui = Harness::new(|| {
+            container()
+                .layout(LayoutStyle::block().fixed_size(32.0, 32.0))
+                .bg(BLACK)
+                .child(icon(*bundled).px(24.0))
+        })
+        .pixels(32, 32);
+        let frame = ui.image().expect("harness image").expect("gpu frame");
         assert!(
-            baked.alpha.iter().any(|a| *a > 0),
-            "{} bakes empty",
-            icon.name()
+            frame.pixels().any(|pixel| pixel.0[0] > 32),
+            "{} draws nothing",
+            bundled.name()
         );
     }
 }

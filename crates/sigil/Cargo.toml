@@ -65,7 +65,6 @@ ratex-layout = { workspace = true, optional = true }
 ratex-types = { workspace = true, optional = true }
 ratex-svg = { workspace = true, optional = true }
 layout-rs = { workspace = true, optional = true }
-lyon_geom = { workspace = true, optional = true }
 harfrust = { version = "0.13", optional = true }
 rfd = { version = "0.17", optional = true }
 muda = { version = "0.19", optional = true }
@@ -129,7 +128,6 @@ scene = [
     "dep:ratex-types",
     "dep:ratex-svg",
     "dep:layout-rs",
-    "dep:lyon_geom",
     "dep:zed-font-kit",
     "dep:sigil-fonts",
     "dep:core-text",

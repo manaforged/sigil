@@ -1,7 +1,6 @@
 use sigil::geometry::{Point, Rect};
 use sigil::kernel::{ImageCrop, ImageSource, ObjectFit};
 use sigil::renderer::BUILTIN_SPRITE_ATLAS_ID;
-use sigil::renderer::scenes::BUILTIN_ICON_ATLAS_BASE_ID;
 use sigil::scene::{
     DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite,
     GradientStop, LinearGradient, PatternKind, SceneCommand, SpriteKind, SpriteSource,
@@ -124,12 +123,7 @@ impl Gen<'_, '_, '_> {
         let color = self.color();
         let opacity = self.opacity_u16();
         let e = &mut *self.entropy;
-        let atlas = e.pick(&[
-            BUILTIN_SPRITE_ATLAS_ID,
-            BUILTIN_ICON_ATLAS_BASE_ID,
-            BUILTIN_ICON_ATLAS_BASE_ID + 3,
-            7,
-        ]);
+        let atlas = e.pick(&[BUILTIN_SPRITE_ATLAS_ID, 7]);
         let region = Rect::new(
             Point::new(
                 e.pick(&[0.0, 200.0, 400.0, 590.0, -10.0]),
