@@ -2,6 +2,8 @@ use serde_json::{Map, Value};
 
 use crate::reactive::{Signal, signal, untrack};
 
+use super::document::{MAX_DEPTH, Problem};
+
 #[derive(Clone, Copy)]
 pub(super) struct Model {
     data: Signal<Value>,
@@ -21,9 +23,18 @@ impl Model {
         untrack(|| self.get(path))
     }
 
+    pub(super) fn len(self, path: &str) -> usize {
+        self.data.with(|root| match lookup(root, path) {
+            Some(Value::Array(items)) => items.len(),
+            _ => 0,
+        })
+    }
+
     pub(super) fn set(self, path: &str, value: Value) {
-        if self.peek(path) != value {
-            self.data.update(|root| write(root, path, Some(value)));
+        if pointer(path).is_ok() && self.peek(path) != value {
+            self.data.update(|root| {
+                write(root, path, Some(value)).ok();
+            });
         }
     }
 }
@@ -39,6 +50,29 @@ fn token(raw: &str) -> String {
     raw.replace("~1", "/").replace("~0", "~")
 }
 
+fn pointer(path: &str) -> Result<Vec<String>, Problem> {
+    if path.is_empty() || path == "/" {
+        return Ok(Vec::new());
+    }
+    if !path.starts_with('/') {
+        return Err(Problem::BadPath);
+    }
+    if path.bytes().filter(|byte| *byte == b'/').count() > MAX_DEPTH {
+        return Err(Problem::TooDeep);
+    }
+    Ok(path.split('/').skip(1).map(token).collect())
+}
+
+fn index(key: &str) -> Option<usize> {
+    let digits = !key.is_empty() && key.bytes().all(|byte| byte.is_ascii_digit());
+    let canonical = key == "0" || !key.starts_with('0');
+    if digits && canonical {
+        key.parse().ok()
+    } else {
+        None
+    }
+}
+
 fn step<'a>(node: &'a mut Value, key: &str) -> Option<&'a mut Value> {
     if !node.is_object() && !node.is_array() {
         *node = Value::Object(Map::new());
@@ -46,7 +80,7 @@ fn step<'a>(node: &'a mut Value, key: &str) -> Option<&'a mut Value> {
     match node {
         Value::Object(map) => Some(map.entry(key.to_string()).or_insert(Value::Null)),
         Value::Array(items) => {
-            let index = key.parse::<usize>().ok()?;
+            let index = index(key)?;
             if index == items.len() {
                 items.push(Value::Null);
             }
@@ -65,7 +99,7 @@ fn place(node: &mut Value, key: &str, value: Option<Value>) {
             map.remove(key);
         }
         (Value::Array(items), value) => {
-            let Ok(index) = key.parse::<usize>() else {
+            let Some(index) = index(key) else {
                 return;
             };
             let len = items.len();
@@ -87,19 +121,21 @@ fn place(node: &mut Value, key: &str, value: Option<Value>) {
     }
 }
 
-pub(super) fn write(root: &mut Value, path: &str, value: Option<Value>) {
-    let keys: Vec<String> = path.split('/').skip(1).map(token).collect();
-    let whole = path.is_empty() || path == "/";
-    let Some((last, parents)) = keys.split_last().filter(|_| !whole) else {
+pub(super) fn write(root: &mut Value, path: &str, value: Option<Value>) -> Result<(), Problem> {
+    let keys = pointer(path)?;
+    let Some((last, parents)) = keys.split_last() else {
         *root = value.unwrap_or(Value::Null);
-        return;
+        return Ok(());
     };
     let mut node = root;
     for key in parents {
-        let Some(next) = step(node, key) else { return };
+        let Some(next) = step(node, key) else {
+            return Ok(());
+        };
         node = next;
     }
     place(node, last, value);
+    Ok(())
 }
 
 pub(super) fn display(value: &Value) -> String {

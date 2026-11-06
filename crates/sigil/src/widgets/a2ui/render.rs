@@ -3,20 +3,76 @@ use std::rc::Rc;
 
 use serde_json::Value;
 
-use crate::kernel::{NodeBuilder, TextContent, container, text};
+use crate::kernel::{NodeBuilder, TextContent, container, fragment, text};
 use crate::layout::{AlignItems, LayoutStyle};
+use crate::reactive::untrack;
 use crate::style::{Token, space};
-use crate::widgets::{
-    Widget, button, card, divider_horizontal, divider_vertical, markdown_inline, tabs,
-};
+use crate::widgets::{Widget, button, card, divider_horizontal, divider_vertical, tabs};
 
-use super::document::{MAX_DEPTH, Surface};
+use super::document::{MAX_BYTES, Surface};
 use super::model::{Model, display};
 use super::spec::{Axis, ButtonLook, Children, Dynamic, Event, Flex, Kind, TextStyle};
-use super::{glyph, media};
+use super::{glyph, media, prose};
 
-const MAX_RENDERED: usize = 2048;
+const MAX_RENDERED: usize = 1024;
+const MAX_RENDER_DEPTH: usize = 16;
+const MAX_TEXT_BYTES: usize = MAX_BYTES;
 const MAX_TEMPLATE_ITEMS: usize = 256;
+const TOO_LARGE: &str = "UI surface is too large to show in full.";
+
+pub(super) struct Budget {
+    nodes: Cell<usize>,
+    bytes: Cell<usize>,
+    noted: Cell<bool>,
+}
+
+impl Budget {
+    fn new() -> Self {
+        Self {
+            nodes: Cell::new(MAX_RENDERED),
+            bytes: Cell::new(MAX_TEXT_BYTES),
+            noted: Cell::new(false),
+        }
+    }
+
+    fn take(&self) -> bool {
+        let nodes = self.nodes.get();
+        let open = nodes > 0 && self.bytes.get() > 0;
+        if open {
+            self.nodes.set(nodes - 1);
+        }
+        open
+    }
+
+    fn spend(&self, bytes: usize) {
+        self.bytes.set(self.bytes.get().saturating_sub(bytes));
+    }
+
+    fn refuse(&self) -> NodeBuilder {
+        if self.noted.replace(true) {
+            fragment()
+        } else {
+            note(TOO_LARGE)
+        }
+    }
+}
+
+pub(super) struct Ancestor {
+    id: String,
+    scope: Rc<str>,
+    parent: Option<Rc<Self>>,
+}
+
+fn contains(chain: Option<&Rc<Ancestor>>, id: &str, scope: &str) -> bool {
+    let mut link = chain;
+    while let Some(ancestor) = link {
+        if ancestor.id == id && &*ancestor.scope == scope {
+            return true;
+        }
+        link = ancestor.parent.as_ref();
+    }
+    false
+}
 
 pub(super) type Handler = Rc<dyn Fn(&str, &str)>;
 
@@ -27,7 +83,8 @@ pub(super) struct Render {
     pub(super) handler: Option<Handler>,
     pub(super) scope: Rc<str>,
     pub(super) depth: usize,
-    pub(super) budget: Rc<Cell<usize>>,
+    pub(super) budget: Rc<Budget>,
+    pub(super) chain: Option<Rc<Ancestor>>,
 }
 
 pub(super) fn note(message: impl Into<String>) -> NodeBuilder {
@@ -47,21 +104,34 @@ impl Render {
             handler,
             scope: Rc::from(""),
             depth: 0,
-            budget: Rc::new(Cell::new(MAX_RENDERED)),
+            budget: Rc::new(Budget::new()),
+            chain: None,
         }
     }
 
+    fn mark(&self, message: String) -> NodeBuilder {
+        self.budget.spend(message.len());
+        note(message)
+    }
+
     pub(super) fn node(&self, id: &str) -> NodeBuilder {
-        let left = self.budget.get();
-        if self.depth > MAX_DEPTH || left == 0 {
-            return note("UI surface is too large to show in full.");
+        if self.depth > MAX_RENDER_DEPTH || !self.budget.take() {
+            return self.budget.refuse();
         }
-        self.budget.set(left - 1);
+        if contains(self.chain.as_ref(), id, &self.scope) {
+            return self.mark(format!("Component \"{id}\" contains itself."));
+        }
         let Some(component) = self.surface.components.get(id) else {
-            return note(format!("Missing component \"{id}\"."));
+            return self.mark(format!("Missing component \"{id}\"."));
+        };
+        let chain = Ancestor {
+            id: id.to_string(),
+            scope: Rc::clone(&self.scope),
+            parent: self.chain.clone(),
         };
         let inner = Self {
             depth: self.depth + 1,
+            chain: Some(Rc::new(chain)),
             ..self.clone()
         };
         let node = inner.kind(&component.kind);
@@ -93,10 +163,17 @@ impl Render {
         }
     }
 
+    pub(super) fn shown(&self, value: &Dynamic) -> String {
+        let shown = display(&self.value(value));
+        self.budget.spend(shown.len());
+        shown
+    }
+
     pub(super) fn live(&self, value: &Dynamic) -> TextContent {
         let model = self.model;
+        let first = self.shown(value);
         self.bound(value).map_or_else(
-            || TextContent::from(display(&self.value(value))),
+            || TextContent::from(first),
             |path| TextContent::from(move || display(&model.get(&path))),
         )
     }
@@ -109,12 +186,7 @@ impl Render {
                 alt,
                 size,
                 fit,
-            } => media::picture(
-                &display(&self.value(url)),
-                display(&self.value(alt)),
-                *size,
-                *fit,
-            ),
+            } => media::picture(&self.shown(url), self.shown(alt), *size, *fit),
             Kind::Icon { glyph } => glyph::draw(*glyph).into(),
             Kind::Row { children, flex } => self.flex(LayoutStyle::flex_row(), children, *flex),
             Kind::Column { children, flex } => {
@@ -134,7 +206,7 @@ impl Render {
                 axis: Axis::Vertical,
             } => divider_vertical(),
             Kind::Button { child, look, event } => self.button(child, *look, event.as_ref()),
-            Kind::Unsupported { name } => note(format!("Unsupported component \"{name}\".")),
+            Kind::Unsupported { name } => self.mark(format!("Unsupported component \"{name}\".")),
             input => self.input(input),
         }
     }
@@ -152,8 +224,7 @@ impl Render {
         let node = if self.bound(value).is_some() {
             text(self.live(value))
         } else {
-            let source = display(&self.value(value));
-            markdown_inline(source.trim_start_matches('#').trim_start())
+            prose::plain_links(&self.shown(value))
         };
         node.wrap().class(size).class(tone.text()).into()
     }
@@ -163,10 +234,7 @@ impl Render {
             Children::Ids(ids) => ids.iter().map(|id| self.node(id)).collect(),
             Children::Template { id, path } => {
                 let path = self.path(path);
-                let count = match self.model.peek(&path) {
-                    Value::Array(items) => items.len().min(MAX_TEMPLATE_ITEMS),
-                    _ => 0,
-                };
+                let count = untrack(|| self.model.len(&path)).min(MAX_TEMPLATE_ITEMS);
                 (0..count)
                     .map(|index| {
                         let scope = Rc::from(format!("{path}/{index}"));
@@ -208,7 +276,7 @@ impl Render {
         let mut strip = tabs();
         for (title, child) in panes {
             let (render, child) = (self.clone(), child.clone());
-            strip = strip.tab(display(&self.value(title)), move || render.node(&child));
+            strip = strip.tab(self.shown(title), move || render.node(&child));
         }
         container()
             .layout(

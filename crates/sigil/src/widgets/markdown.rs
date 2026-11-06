@@ -191,13 +191,8 @@ fn chart_node(data: chart_parse::ChartData) -> NodeBuilder {
 
 fn image_node(alt: &str, src: &str) -> NodeBuilder {
     #[cfg(feature = "image-decode")]
-    if let Some(decoded) = decode_src(src)
-        && let Some((width, height)) = display_size(decoded.width(), decoded.height())
-        && let Some(source) = crate::kernel::ImageSource::from_rgba8(
-            decoded.width(),
-            decoded.height(),
-            decoded.into_raw(),
-        )
+    if let Some(source) = crate::kernel::ImageSource::from_data_uri(src)
+        && let Some((width, height)) = display_size(source.width(), source.height())
     {
         return container().child(
             crate::kernel::image(source)
@@ -208,19 +203,6 @@ fn image_node(alt: &str, src: &str) -> NodeBuilder {
     }
     let _ = src;
     container().child(text(format!("[{alt}]")).class(Token::Gray11.text()))
-}
-
-#[cfg(feature = "image-decode")]
-fn decode_src(src: &str) -> Option<::image::RgbaImage> {
-    use base64::Engine;
-    let (meta, payload) = src.strip_prefix("data:")?.split_once(',')?;
-    if !meta.contains("base64") || meta.contains("svg") {
-        return None;
-    }
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(payload)
-        .ok()?;
-    Some(::image::load_from_memory(&bytes).ok()?.into_rgba8())
 }
 
 #[cfg(feature = "image-decode")]

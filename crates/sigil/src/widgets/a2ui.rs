@@ -12,6 +12,7 @@ mod glyph;
 mod inputs;
 mod media;
 mod model;
+mod prose;
 mod render;
 mod spec;
 

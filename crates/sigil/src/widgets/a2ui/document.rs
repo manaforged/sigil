@@ -19,6 +19,7 @@ pub(super) enum Problem {
     TooLarge,
     TooDeep,
     TooMany,
+    BadPath,
     Json(String),
     NoMessages,
     NoRoot,
@@ -30,6 +31,7 @@ impl Problem {
             Self::TooLarge => format!("UI surface is larger than {} KiB.", MAX_BYTES >> 10),
             Self::TooDeep => format!("UI surface nests deeper than {MAX_DEPTH} levels."),
             Self::TooMany => format!("UI surface has more than {MAX_COMPONENTS} components."),
+            Self::BadPath => "UI surface has a data path that is not a JSON Pointer.".to_string(),
             Self::Json(error) => format!("UI surface is not valid JSON: {error}"),
             Self::NoMessages => "UI surface has no A2UI messages.".to_string(),
             Self::NoRoot => "UI surface has no component with id \"root\".".to_string(),
@@ -83,7 +85,7 @@ impl Surface {
         }
         if let Some(update) = message.get("updateDataModel") {
             let path = update.get("path").and_then(Value::as_str).unwrap_or("/");
-            write(&mut self.data, path, update.get("value").cloned());
+            write(&mut self.data, path, update.get("value").cloned())?;
         }
         if message.contains_key("deleteSurface") {
             self.components.clear();

@@ -8,15 +8,7 @@ use super::spec::ImageSize;
 
 #[cfg(feature = "image-decode")]
 fn decode(url: &str) -> Option<ImageSource> {
-    use base64::Engine;
-    let (meta, payload) = url.strip_prefix("data:")?.split_once(',')?;
-    if !meta.ends_with(";base64") || meta.contains("svg") {
-        return None;
-    }
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(payload.trim())
-        .ok()?;
-    ImageSource::decode(&bytes)
+    ImageSource::from_data_uri(url)
 }
 
 #[cfg(not(feature = "image-decode"))]

@@ -29,6 +29,20 @@ impl ImageSource {
         })
     }
 
+    /// Decodes a base64 raster `data:` URI; SVG and non-base64 URIs are refused.
+    #[cfg(feature = "image-decode")]
+    pub(crate) fn from_data_uri(uri: &str) -> Option<Self> {
+        use base64::Engine;
+        let (meta, payload) = uri.strip_prefix("data:")?.split_once(',')?;
+        if !meta.ends_with(";base64") || meta.contains("svg") {
+            return None;
+        }
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(payload)
+            .ok()?;
+        Self::decode(&bytes)
+    }
+
     /// Creates an image source from rgba8.
     #[must_use]
     pub fn from_rgba8(width: u32, height: u32, rgba: Vec<u8>) -> Option<Self> {
