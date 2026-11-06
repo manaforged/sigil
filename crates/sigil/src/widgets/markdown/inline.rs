@@ -2,51 +2,11 @@ use super::parse::Inline;
 use crate::app::HostCaps;
 use crate::style::{TextFace, TextRun, Token};
 use crate::widgets::text_search::NextMatch;
-use rust_latex_parser::EqNode;
 
 const MAX_MATH_BYTES: usize = 512;
 
 fn find_from(next: &mut NextMatch, source: &str, from: usize) -> Option<usize> {
     next.find(source.get(from..)?).map(|at| at + from)
-}
-
-fn math(source: &str) -> String {
-    let tree = rust_latex_parser::parse_equation(source);
-    let mut nodes = vec![&tree];
-    let mut marks = Vec::new();
-    while let Some(node) = nodes.pop() {
-        if let EqNode::Seq(parts) = &node.kind {
-            for pair in parts.windows(2) {
-                if let [left, right] = pair
-                    && matches!(left.kind, EqNode::Frac(..))
-                    && !matches!(right.kind, EqNode::Op { .. })
-                    && !matches!(right.kind, EqNode::Space(width) if width > 0.0)
-                {
-                    if left.span.is_empty() {
-                        return source.to_string();
-                    }
-                    marks.push((left.span.start, true));
-                    marks.push((left.span.end, false));
-                }
-            }
-        }
-        nodes.extend(node.children());
-    }
-    if marks.is_empty() {
-        return rust_latex_parser::to_unicode(&tree);
-    }
-    if marks
-        .iter()
-        .any(|(offset, _)| !source.is_char_boundary(*offset))
-    {
-        return source.to_string();
-    }
-    marks.sort_unstable_by_key(|mark| std::cmp::Reverse(*mark));
-    let mut grouped = source.to_string();
-    for (offset, open) in marks {
-        grouped.insert_str(offset, if open { r"\left(" } else { r"\right)" });
-    }
-    rust_latex_parser::to_unicode(&rust_latex_parser::parse_equation(&grouped))
 }
 
 struct Inlines<'a> {
@@ -94,7 +54,7 @@ impl Inlines<'_> {
                             .next()
                             .is_some_and(|ch| ch.is_alphanumeric() || ch == '_'));
                 if !expression.is_empty() && valid_dollar {
-                    let rendered = math(expression);
+                    let rendered = crate::widgets::math::unicode(expression);
                     return Some((Inline::Text(rendered), i + open.len() + end + close.len()));
                 }
             }

@@ -125,6 +125,8 @@ unicode-width = "0.2"
 usvg = { version = "0.48", default-features = false }
 resvg = { version = "0.48", default-features = false }
 mermaid-svg = "0.7"
+latex-rust = { version = "2.1", default-features = false, features = ["std"] }
+pulldown-cmark = { version = "0.13", default-features = false }
 lyon_geom = "1.0"
 
 [profile.release]

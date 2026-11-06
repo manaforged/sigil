@@ -168,6 +168,7 @@ mod interactive;
 pub(crate) mod layout_ext;
 mod listbox;
 mod markdown;
+pub(crate) mod math;
 mod menu;
 mod mermaid;
 mod modal;
@@ -250,6 +251,7 @@ pub use interactive::interactive;
 pub use listbox::{CursorEdge, ListState};
 pub(crate) use markdown::MarkdownEditBuilder;
 pub use markdown::{markdown, markdown_edit, markdown_inline};
+pub use math::math;
 pub(crate) use menu::{MenuBarBuilder, MenuBuilder};
 pub use menu::{MenuItem, context_menu, menu, menu_bar};
 #[cfg(fuzzing)]
