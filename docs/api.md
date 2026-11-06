@@ -752,7 +752,7 @@ fn main() {
 | `dot` | `fn dot(tone: Tone)` | A status dot. |
 | `avatar` | `fn avatar(initials) -> NodeBuilder` | Initials in a circle. |
 | `spinner` | `fn spinner() -> NodeBuilder` | A busy indicator named "Loading". |
-| `icon` | `fn icon(glyph: impl IntoIconSource) -> IconBuilder` | An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, or a text glyph. |
+| `icon` | `fn icon(glyph: impl IntoIconSource) -> IconBuilder` | An icon: a bundled `Icon`, such as `icon(Icon::Folder)`, drawn as vector paths, or a text glyph. |
 | `Icon` | `enum Icon` (108 variants); `Icon::ALL`, `name()`, `svg()` | The bundled Lucide icon set (ISC). `name` is the kebab-case file name and `svg` the SVG source (feature `scene`). |
 | `path` | `const fn path(width: u32, height: u32) -> PathNode` | A vector path. |
 | `widgets::canvas` | `fn canvas(record: impl Fn(&mut SceneBuilder, Rect) + 'static)`; `redraw_on(Signal<u64>)`, `layout(LayoutStyle)` | Custom drawing: the closure records scene commands for the node's rect when the node paints, clipped to that rect. It runs again on resize and each time the `redraw_on` signal changes. The terminal host paints the same commands to cells; a fill that covers part of a cell paints as a half or eighth block. |
@@ -1133,7 +1133,7 @@ Feature `kittest`. For tests that drive the kernel by hand; app tests use `sigil
 | Name | Signature | Purpose |
 | --- | --- | --- |
 | `widgets::spinner_frame` | `fn spinner_frame(tick: u64) -> &'static str` | The spinner glyph for a tick count. |
-| `widgets::icon_svg` | `fn icon_svg(svg: impl Into<Arc<str>>) -> IconBuilder` | An SVG icon. Its color comes from the tone and the active theme at paint time. |
+| `widgets::icon_svg` | `fn icon_svg(svg: impl Into<Arc<str>>) -> IconBuilder` | An SVG icon, drawn as vector paths. `currentColor` and a root with no `fill` take the color of the tone in the active theme, so a theme change recolors it without a raster; explicit colors in the SVG stay. |
 | `widgets::TreeNode` | `struct TreeNode<K>`; `new(id, label)`, `.leading(icon)`, `.status(text, Tone)`, `.detail(text)`, `.tone(RowTone)`, `.children(iter)`, `.child(node)` | One node of a `tree`. `leading` takes an `Icon` or a text glyph. |
 | `widgets::ListState`, `widgets::CursorEdge` | `struct ListState<K: Clone + Eq + Hash + 'static = String> { cursor: Signal<usize>, scroll: Signal<f32>, expanded: Signal<Vec<K>>, query: Signal<String>, caret: Signal<usize> }` (`Copy`); `new()`, `at(len) -> usize`, `shift(delta: isize, len, CursorEdge)`, `select(index)`, `is_expanded(&K) -> bool`, `toggle(&K)`, `toggle_only(&K)`, `collapse_all()`, `type_query(String)`, `filter<'a>(labels: impl IntoIterator<Item = &'a str>) -> Vec<usize>`; `enum CursorEdge { Clamp, Wrap }` | The state of a list: cursor row, scroll offset, expanded keys, and filter query with its caret. `at` clamps the cursor to `len` rows. `shift` moves it `delta` rows and stops at the ends or wraps around. `toggle_only` expands one key and collapses the rest, or collapses it when it was expanded. `filter` returns the indexes of the labels that fuzzy-match the query, best match first. |
 | `widgets::disclosure` | `fn disclosure<H: IntoNode, B: IntoNode>(open: Signal<bool>, header: impl Fn(bool) -> H, body: impl Fn() -> B) -> NodeBuilder` | An expand and collapse section. The header row shows the `Disclosure` chevron and `header(open)`; a click, Enter, or Space flips `open`. The body is built only while `open` is true. |

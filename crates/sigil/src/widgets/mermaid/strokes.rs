@@ -66,7 +66,7 @@ pub(super) fn window(root: NodeBuilder, lines: &[String]) -> NodeBuilder {
 }
 
 fn layer(node: PathNode, size: (f32, f32)) -> PathNode {
-    node.retina().layout(
+    node.layout(
         LayoutStyle::block()
             .position(Position::Absolute)
             .inset_top(0.0)

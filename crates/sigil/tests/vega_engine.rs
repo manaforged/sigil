@@ -108,13 +108,19 @@ fn shown(ui: &mut Harness) -> Shown {
 }
 
 fn gallery(file: &str) -> String {
-    let path = format!("{}/tests/data/vega/{file}.vl.json", env!("CARGO_MANIFEST_DIR"));
+    let path = format!(
+        "{}/tests/data/vega/{file}.vl.json",
+        env!("CARGO_MANIFEST_DIR")
+    );
     std::fs::read_to_string(path).expect("gallery spec")
 }
 
 fn description(json: &str) -> String {
     let spec: serde_json::Value = serde_json::from_str(json).expect("json");
-    spec["description"].as_str().expect("description").to_string()
+    spec["description"]
+        .as_str()
+        .expect("description")
+        .to_string()
 }
 
 fn figure_problem(json: &str, name: &str, about: Option<&str>, titles: &[&str]) -> Option<String> {
@@ -125,12 +131,18 @@ fn figure_problem(json: &str, name: &str, about: Option<&str>, titles: &[&str]) 
     if got != name {
         return Some(format!("drew a figure named {got:?}, not {name:?}"));
     }
-    let titled = lines.iter().map(String::as_str).skip(usize::from(about.is_some()));
+    let titled = lines
+        .iter()
+        .map(String::as_str)
+        .skip(usize::from(about.is_some()));
     if about.is_some_and(|about| lines.first().map(String::as_str) != Some(about)) {
         return Some(format!("describes itself as {lines:?}"));
     }
     let titled: Vec<&str> = titled.collect();
-    let missing: Vec<&&str> = titles.iter().filter(|title| !titled.contains(title)).collect();
+    let missing: Vec<&&str> = titles
+        .iter()
+        .filter(|title| !titled.contains(title))
+        .collect();
     (!missing.is_empty()).then(|| format!("hides axis titles {missing:?}: {lines:?}"))
 }
 
@@ -221,32 +233,41 @@ fn two_renders_of_a_random_transform_paint_the_same_pixels() {
     let _serial = serial();
     let (mut first, _) = drawn(RANDOM);
     let (mut second, _) = drawn(&format!("{RANDOM} "));
-    assert!(matches!(shown(&mut first), Shown::Figure { .. }), "the random spec fell back");
+    assert!(
+        matches!(shown(&mut first), Shown::Figure { .. }),
+        "the random spec fell back"
+    );
     let (a, b) = (first.image(), second.image());
-    let (a, b) = (a.expect("render").expect("gpu"), b.expect("render").expect("gpu"));
+    let (a, b) = (
+        a.expect("render").expect("gpu"),
+        b.expect("render").expect("gpu"),
+    );
     assert!(a == b, "two renders of the same random spec differ");
 }
 
-fn image_ids(ui: &mut Harness) -> Vec<u64> {
+fn chart_paths(ui: &mut Harness) -> Vec<String> {
     ui.host()
         .emit((1600.0, 1200.0))
         .commands
         .iter()
         .filter_map(|command| match command {
-            SceneCommand::Image(draw) => Some(draw.source.id()),
+            SceneCommand::Path(draw) => Some(format!("{draw:?}")),
             _ => None,
         })
         .collect()
 }
 
-fn wait_for_images(ui: &mut Harness, unlike: &[u64]) -> Vec<u64> {
+fn wait_for_paths(ui: &mut Harness, unlike: &[String]) -> Vec<String> {
     let start = Instant::now();
     loop {
-        let ids = image_ids(ui);
-        if !ids.is_empty() && ids != unlike {
-            return ids;
+        let paths = chart_paths(ui);
+        if !paths.is_empty() && paths != unlike {
+            return paths;
         }
-        assert!(start.elapsed() < WAIT, "no new chart image after {WAIT:?}");
+        assert!(
+            start.elapsed() < WAIT,
+            "no new chart drawing after {WAIT:?}"
+        );
         std::thread::sleep(Duration::from_millis(5));
         ui.settle();
     }
@@ -266,11 +287,17 @@ fn a_custom_theme_renders_off_the_ui_thread_and_keeps_the_last_image() {
     })
     .pixels(1600, 1200);
     ui.settle();
-    let light = wait_for_images(&mut ui, &[]);
+    let light = wait_for_paths(&mut ui, &[]);
     let busy = fence(&CPU_BOMB.replace("40000", "40001"));
-    held.get().expect("source").set(format!("{chart}\n\n{busy}"));
+    held.get()
+        .expect("source")
+        .set(format!("{chart}\n\n{busy}"));
     ui.settle();
-    assert_eq!(image_ids(&mut ui), light, "adding a chart redrew the first one");
+    assert_eq!(
+        chart_paths(&mut ui),
+        light,
+        "adding a chart redrew the first one"
+    );
     assert!(
         ui.query(&Query::text(RENDERING)).is_some(),
         "the busy chart finished before the theme switch"
@@ -278,10 +305,20 @@ fn a_custom_theme_renders_off_the_ui_thread_and_keeps_the_last_image() {
     set_theme(Theme::console_dark());
     let start = Instant::now();
     ui.settle();
-    let shown = image_ids(&mut ui);
+    let shown = chart_paths(&mut ui);
     let took = start.elapsed();
-    assert!(took < THEME_SWITCH_BOUND, "the theme switch blocked the frame for {took:?}");
-    assert_eq!(shown, light, "the chart image went away while its theme rendered");
-    let themed = wait_for_images(&mut ui, &light);
-    assert_eq!(themed.len(), light.len(), "the themed chart replaced the wrong images");
+    assert!(
+        took < THEME_SWITCH_BOUND,
+        "the theme switch blocked the frame for {took:?}"
+    );
+    assert_eq!(
+        shown, light,
+        "the chart drawing went away while its theme rendered"
+    );
+    let themed = wait_for_paths(&mut ui, &light);
+    assert_eq!(
+        themed.len(),
+        light.len(),
+        "the themed chart replaced the wrong drawing"
+    );
 }

@@ -36,6 +36,7 @@ enum Diagram {
     Graphviz,
     Math,
     Chain,
+    Chart,
 }
 
 impl Diagram {
@@ -47,6 +48,12 @@ impl Diagram {
             Self::Chain => mermaid(signal(
                 "flowchart LR\n  A --> B --> C --> D --> E --> F --> G --> H\n".to_string(),
             )),
+            Self::Chart => container().child(
+                chart(vec![1.0, 6.0, 2.0, 8.0, 3.0, 7.0])
+                    .line()
+                    .width(VIEW.0 as f32)
+                    .height(VIEW.1 as f32),
+            ),
         }
     }
 }
@@ -69,7 +76,7 @@ fn zoomed(diagram: Diagram, zoom: f32) -> NodeBuilder {
         )
 }
 
-fn capture(ui: &mut Harness, backend: Backend) -> image::RgbaImage {
+fn capture(ui: &mut Harness, backend: Backend, scale: f32) -> image::RgbaImage {
     match backend {
         Backend::Gpu => ui.image().expect("render").expect("gpu"),
         Backend::Cpu => {
@@ -78,7 +85,7 @@ fn capture(ui: &mut Harness, backend: Backend) -> image::RgbaImage {
             let mut scene = host.emit(viewport);
             paint_backdrop(&mut scene, host.theme(), viewport);
             let target = ImageTarget {
-                size: PhysicalSize::new(VIEW.0, VIEW.1),
+                size: PhysicalSize::new((viewport.0 * scale) as u32, (viewport.1 * scale) as u32),
                 viewport,
                 clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
             };
@@ -139,9 +146,15 @@ fn assert_sharp(diagram: Diagram, backend: Backend) {
 }
 
 fn assert_sharp_at(diagram: Diagram, backend: Backend, zoom: f32) {
-    let mut ui = Harness::new(move || zoomed(diagram, zoom)).pixels(VIEW.0, VIEW.1);
+    assert_sharp_scaled(diagram, backend, zoom, 1.0);
+}
+
+fn assert_sharp_scaled(diagram: Diagram, backend: Backend, zoom: f32, scale: f32) {
+    let mut ui = Harness::new(move || zoomed(diagram, zoom))
+        .pixels(VIEW.0, VIEW.1)
+        .scale(scale);
     ui.settle();
-    let image = capture(&mut ui, backend);
+    let image = capture(&mut ui, backend, scale);
     let mut widths = edge_widths(&image);
     assert!(
         widths.len() >= MIN_EDGES,
@@ -152,7 +165,7 @@ fn assert_sharp_at(diagram: Diagram, backend: Backend, zoom: f32) {
     let median = widths[widths.len() / 2];
     assert!(
         median <= MAX_EDGE,
-        "{diagram:?} on {backend:?} at zoom {zoom}: edges ramp over {median} px (median of {})",
+        "{diagram:?} on {backend:?} at zoom {zoom}, scale {scale}: edges ramp over {median} px (median of {})",
         widths.len()
     );
 }
@@ -199,4 +212,17 @@ fn a_wide_diagram_stays_sharp_past_the_bitmap_cap_on_cpu() {
 #[ignore = "needs a wgpu adapter"]
 fn a_wide_diagram_stays_sharp_past_the_bitmap_cap_on_gpu() {
     assert_sharp_at(Diagram::Chain, Backend::Gpu, DEEP_ZOOM);
+}
+
+#[test]
+fn a_chart_line_stays_sharp_at_2x_and_after_a_4x_zoom_on_cpu() {
+    assert_sharp_scaled(Diagram::Chart, Backend::Cpu, 1.0, 2.0);
+    assert_sharp_scaled(Diagram::Chart, Backend::Cpu, ZOOM, 2.0);
+}
+
+#[test]
+#[ignore = "needs a wgpu adapter"]
+fn a_chart_line_stays_sharp_at_2x_and_after_a_4x_zoom_on_gpu() {
+    assert_sharp_scaled(Diagram::Chart, Backend::Gpu, 1.0, 2.0);
+    assert_sharp_scaled(Diagram::Chart, Backend::Gpu, ZOOM, 2.0);
 }

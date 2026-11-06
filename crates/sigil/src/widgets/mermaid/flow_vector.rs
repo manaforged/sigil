@@ -139,7 +139,7 @@ pub(super) fn canvas(size: (f32, f32)) -> PathNode {
 }
 
 pub(super) fn layer(node: PathNode, size: (f32, f32)) -> PathNode {
-    node.retina().layout(
+    node.layout(
         LayoutStyle::block()
             .position(Position::Absolute)
             .inset_top(0.0)

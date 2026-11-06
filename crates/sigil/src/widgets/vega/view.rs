@@ -16,7 +16,7 @@ use crate::tasks::{Status, spawn};
 use crate::widgets::Widget;
 use crate::widgets::scroll::Horizontal;
 use crate::widgets::source_too_large;
-use crate::widgets::svg_picture::bitmap;
+use crate::widgets::svg_picture::picture;
 
 use super::Fallback;
 use super::engine::{self, Chart, Failure, Job, Outcome};
@@ -146,7 +146,7 @@ fn chart_picture(
         };
         outcome.ok().map(|chart| chart.svg.clone())
     };
-    bitmap(&spec.source, render)
+    picture(&spec.source, render)
 }
 
 fn placeholder(height: f32) -> NodeBuilder {

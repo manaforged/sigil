@@ -166,16 +166,14 @@ impl IconBuilder {
                     .hittable(false),
             ),
             #[cfg(feature = "scene")]
-            Glyph::Svg(svg) => container_node.child(svg::SvgGlyph {
-                svg,
-                pixels: svg_pixels(drawn),
-                token: if self.on_solid {
+            Glyph::Svg(svg) => {
+                let token = if self.on_solid {
                     Token::OnSolid
                 } else {
                     Token::scale(self.tone.scale_role(), self.step).unwrap_or(Token::Gray11)
-                },
-                extent: drawn,
-            }),
+                };
+                container_node.child(svg::glyph(svg, token, drawn))
+            }
         };
         if let Some(label) = self.label {
             container_node = container_node.label(label);
@@ -185,16 +183,6 @@ impl IconBuilder {
         }
         container_node
     }
-}
-
-#[cfg(feature = "scene")]
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "icon extents are small positive constants"
-)]
-fn svg_pixels(extent: f32) -> u32 {
-    (extent * 2.0).round() as u32
 }
 
 builder_impls!([] IconBuilder: paint(style_accumulator), widget, node);

@@ -10,17 +10,16 @@ use crate::scene::emit_cache::shift_command;
 use crate::style::Theme;
 use crate::widgets::{CanvasPaint, Widget};
 
-use super::fallback::bitmap;
-use super::lower::{Draw, lower};
 use super::Picture;
+use super::lower::lower;
 
 type Lowering = RefCell<Option<(u64, [u32; 2], Arc<[SceneCommand]>)>>;
 
 /// A node that paints `picture` as scene commands, lowered again when the theme or size changes.
-pub(super) fn node(picture: Picture, (width, height): (f32, f32), draw: Draw) -> NodeBuilder {
+pub(super) fn node(picture: Picture, (width, height): (f32, f32)) -> NodeBuilder {
     let last = Lowering::default();
     let paint = CanvasPaint::themed(Rc::new(move |scene, rect, theme| {
-        let Some(commands) = lowered(&picture, &last, (rect, draw), theme) else {
+        let Some(commands) = lowered(&picture, &last, rect, theme) else {
             return;
         };
         let (dx, dy) = (rect.origin.x, rect.origin.y);
@@ -41,7 +40,7 @@ pub(super) fn node(picture: Picture, (width, height): (f32, f32), draw: Draw) ->
 fn lowered(
     picture: &Picture,
     last: &Lowering,
-    (rect, draw): (Rect, Draw),
+    rect: Rect,
     theme: &Theme,
 ) -> Option<Arc<[SceneCommand]>> {
     let (key, tree) = picture.tree(theme)?;
@@ -53,16 +52,11 @@ fn lowered(
         return Some(Arc::clone(commands));
     }
     let size = (rect.width, rect.height);
-    let commands: Arc<[SceneCommand]> = match draw {
-        Draw::Vector => {
-            let lowered = lower(&tree, size, key);
-            for reason in &lowered.fallbacks {
-                tracing::debug!(%reason, "svg subtree drawn as a bitmap");
-            }
-            lowered.commands.into()
-        }
-        Draw::Bitmap => bitmap(tree, size, key).into(),
-    };
+    let lowered = lower(&tree, size, key);
+    for reason in &lowered.fallbacks {
+        tracing::debug!(%reason, "svg subtree drawn as a bitmap");
+    }
+    let commands: Arc<[SceneCommand]> = lowered.commands.into();
     *last.borrow_mut() = Some((key, at, Arc::clone(&commands)));
     Some(commands)
 }

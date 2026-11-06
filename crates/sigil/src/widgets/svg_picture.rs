@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, LazyLock};
 
@@ -21,12 +22,12 @@ mod pattern;
 mod shape;
 mod vector;
 
-use lower::Draw;
 #[cfg(feature = "kittest")]
 pub use lower::{SvgMode, svg_scene};
 
 pub(crate) const FONT_FAMILY: &str = "Fira Sans";
 const MAX_SIDE: f32 = 4096.0;
+const TREE_CAP: usize = 256;
 
 type Render = Box<dyn Fn(&Theme) -> Option<String>>;
 
@@ -44,6 +45,10 @@ static FONTS: LazyLock<Arc<fontdb::Database>> = LazyLock::new(|| {
     fonts.set_monospace_family("Cascadia Mono");
     Arc::new(fonts)
 });
+
+thread_local! {
+    static TREES: RefCell<HashMap<u64, Arc<Tree>>> = RefCell::new(HashMap::new());
+}
 
 /// The faces every SVG picture lays out its text with.
 pub(crate) fn fonts() -> Arc<fontdb::Database> {
@@ -67,7 +72,6 @@ impl Picture {
         let Some(tree) = run(&self.render, theme).and_then(|svg| parse(&svg)) else {
             return self.tree.borrow().clone();
         };
-        let tree = Arc::new(tree);
         *self.tree.borrow_mut() = Some((key, Arc::clone(&tree)));
         Some((key, tree))
     }
@@ -78,22 +82,23 @@ pub(crate) fn picture(
     key: &str,
     render: impl Fn(&Theme) -> Option<String> + 'static,
 ) -> Option<(NodeBuilder, (f32, f32))> {
-    drawn(key, Box::new(render), Draw::Vector)
+    drawn(key, Box::new(render), None)
 }
 
-/// A bitmap picture of the SVG that `render` writes for each theme, rastered again at the device size.
-pub(crate) fn bitmap(
+/// A vector picture of the SVG that `render` writes for each theme, drawn in a square of `side` logical pixels.
+pub(crate) fn square(
     key: &str,
+    side: f32,
     render: impl Fn(&Theme) -> Option<String> + 'static,
-) -> Option<(NodeBuilder, (f32, f32))> {
-    drawn(key, Box::new(render), Draw::Bitmap)
+) -> Option<NodeBuilder> {
+    drawn(key, Box::new(render), Some((side, side))).map(|(node, _)| node)
 }
 
-fn drawn(key: &str, render: Render, draw: Draw) -> Option<(NodeBuilder, (f32, f32))> {
+fn drawn(key: &str, render: Render, fit: Option<(f32, f32)>) -> Option<(NodeBuilder, (f32, f32))> {
     let light = Theme::light();
     let svg = run(&render, &light)?;
-    let tree = Arc::new(parse(&svg)?);
-    let size = (tree.size().width(), tree.size().height());
+    let tree = parse(&svg)?;
+    let size = fit.unwrap_or((tree.size().width(), tree.size().height()));
     let hash = key
         .bytes()
         .chain(svg.bytes())
@@ -103,7 +108,7 @@ fn drawn(key: &str, render: Render, draw: Draw) -> Option<(NodeBuilder, (f32, f3
         key: hash,
         tree: RefCell::new(Some((theme_key(hash, &light), tree))),
     };
-    Some((vector::node(picture, size, draw), size))
+    Some((vector::node(picture, size), size))
 }
 
 /// The `#rrggbb` form of a theme color.
@@ -112,7 +117,25 @@ pub(crate) fn hex(theme: &Theme, token: Token) -> String {
     format!("#{r:02x}{g:02x}{b:02x}")
 }
 
-fn parse(svg: &str) -> Option<Tree> {
+fn parse(svg: &str) -> Option<Arc<Tree>> {
+    let hash = svg
+        .bytes()
+        .fold(OFFSET, |key, byte| mix(key, u64::from(byte)));
+    if let Some(tree) = TREES.with(|trees| trees.borrow().get(&hash).cloned()) {
+        return Some(tree);
+    }
+    let tree = Arc::new(parse_tree(svg)?);
+    TREES.with(|trees| {
+        let mut trees = trees.borrow_mut();
+        if trees.len() >= TREE_CAP {
+            trees.clear();
+        }
+        trees.insert(hash, Arc::clone(&tree));
+    });
+    Some(tree)
+}
+
+fn parse_tree(svg: &str) -> Option<Tree> {
     let options = usvg::Options {
         font_family: FONT_FAMILY.to_string(),
         fontdb: fonts(),

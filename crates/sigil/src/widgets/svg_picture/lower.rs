@@ -21,15 +21,6 @@ mod probe;
 #[cfg(feature = "kittest")]
 pub use probe::{SvgMode, svg_scene};
 
-/// How a picture reaches the scene: lowered to scene commands or as one bitmap.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum Draw {
-    /// Scene commands, with a bitmap only for subtrees that have no scene equivalent.
-    Vector,
-    /// One resvg bitmap, rastered again at the device size.
-    Bitmap,
-}
-
 /// The scene commands of one SVG tree and the subtrees that fell back to a raster.
 pub(crate) struct Lowered {
     pub(crate) commands: Vec<SceneCommand>,

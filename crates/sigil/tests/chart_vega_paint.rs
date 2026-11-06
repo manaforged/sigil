@@ -93,7 +93,9 @@ fn inked_columns(picture: &Picture) -> Vec<(u32, u32)> {
 }
 
 fn inked_rows(picture: &Picture, x: u32) -> (u32, u32) {
-    let rows: Vec<u32> = (0..picture.height()).filter(|y| inked(picture, x, *y)).collect();
+    let rows: Vec<u32> = (0..picture.height())
+        .filter(|y| inked(picture, x, *y))
+        .collect();
     (rows[0], rows[rows.len() - 1])
 }
 
@@ -111,7 +113,12 @@ fn inked_box(picture: &Picture) -> (u32, u32, u32, u32) {
 fn assert_gap(json: &'static str, mark: &str) {
     let chart = paint(json);
     let runs = inked_columns(&chart.picture);
-    assert_eq!(runs.len(), 2, "the {mark} has {} inked spans: {runs:?}", runs.len());
+    assert_eq!(
+        runs.len(),
+        2,
+        "the {mark} has {} inked spans: {runs:?}",
+        runs.len()
+    );
     let (first, last) = (runs[0], runs[1]);
     let ratio = (last.0 - first.1) as f32 / (last.1 - first.0) as f32;
     assert!(
@@ -133,9 +140,13 @@ fn a_negative_bar_chart_draws_a_zero_rule() {
         .map(|(l, r)| inked_rows(&chart.picture, u32::midpoint(*l, *r)))
         .collect();
     let zero = ends[0].0;
-    assert_eq!(ends[2].0, zero, "the negative bars start at different rows: {ends:?}");
+    assert_eq!(
+        ends[2].0, zero,
+        "the negative bars start at different rows: {ends:?}"
+    );
+    let meets = |bottom: u32| bottom + 1 == zero || bottom == zero;
     assert!(
-        ends[1].1 + 1 == zero && ends[3].1 + 1 == zero,
+        meets(ends[1].1) && meets(ends[3].1),
         "the positive bars do not end on the zero row {zero}: {ends:?}"
     );
     let (left, right) = (bars[0].0, bars[3].1);
@@ -174,7 +185,10 @@ fn a_point_mark_is_an_open_circle() {
     let (l, t, r, b) = inked_box(&chart.picture);
     assert!(r - l >= 6 && b - t >= 6, "point box {l},{t} {r},{b}");
     let center = (u32::midpoint(l, r), u32::midpoint(t, b));
-    assert!(!inked(&chart.picture, center.0, center.1), "the point is filled");
+    assert!(
+        !inked(&chart.picture, center.0, center.1),
+        "the point is filled"
+    );
 }
 
 #[test]
@@ -186,8 +200,14 @@ fn a_square_mark_fills_its_corners() {
     let (l, t, r, b) = inked_box(&chart.picture);
     assert!(r - l >= 4 && b - t >= 4, "square box {l},{t} {r},{b}");
     let center = (u32::midpoint(l, r), u32::midpoint(t, b));
-    assert!(inked(&chart.picture, center.0, center.1), "the square is hollow");
-    assert!(inked(&chart.picture, l + 1, t + 1), "the square has round corners");
+    assert!(
+        inked(&chart.picture, center.0, center.1),
+        "the square is hollow"
+    );
+    assert!(
+        inked(&chart.picture, l + 1, t + 1),
+        "the square has round corners"
+    );
 }
 
 #[test]

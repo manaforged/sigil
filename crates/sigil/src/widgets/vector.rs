@@ -201,11 +201,6 @@ impl PathNode {
         self
     }
 
-    #[must_use]
-    pub(crate) const fn retina(self) -> Self {
-        self
-    }
-
     /// Record a vector path into a `canvas` scene.
     pub fn draw(self, scene: &mut SceneBuilder, destination: Rect, theme: &Theme) {
         if let Some(draw) = self.draw_path(destination, theme) {
