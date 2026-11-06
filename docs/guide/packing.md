@@ -36,7 +36,37 @@ sigil-pack codesign \
 
 The Rust API is `CodeSign::sign(&self, path: &Path) -> Result<(), PackError>` from `sigil_sign`. It signs the target in place and refuses symlinks. Native signing returns an error on other platforms. The `macos` command can still create an unsigned bundle on those platforms.
 
-Signing does not submit the target for notarization or staple a notarization ticket. Complete those steps separately before distributing a downloaded macOS app.
+Signing does not submit the target for notarization or staple a notarization ticket. Use `sigil-pack notarize` before distributing a downloaded macOS app.
+
+### Disk image
+
+```sh
+sigil-pack dmg \
+  --app MyApp.app \
+  --out MyApp.dmg \
+  --identity 'Developer ID Application: Example Company (TEAMID)' \
+  --background assets/dmg-background.tiff \
+  --layout assets/dmg-layout.DS_Store \
+  --icon assets/icon.icns
+```
+
+The command writes a zlib-compressed image with the app and an `Applications` link, then signs the image under the same identity rules as `codesign`. `--volume` names the mounted disk and defaults to the app's name. `--icon` sets the volume icon. `--background` copies the file to `.background.EXT` at the disk root. `--layout` copies a `.DS_Store` file to the disk root; it holds the window size, the icon positions and the background path, so its volume name and background path must match. Make the layout file once with `dmgbuild`, which uses the same background path, copy `.DS_Store` from the image it builds, and keep it with your assets. The command runs headless and never starts Finder. It refuses to run while a disk with the same name is mounted.
+
+### Notarization
+
+Store a notary credential once per machine:
+
+```sh
+xcrun notarytool store-credentials MyProfile --key AuthKey.p8 --key-id KEYID --issuer ISSUER
+```
+
+Then submit the signed image and staple the ticket:
+
+```sh
+sigil-pack notarize --file MyApp.dmg --profile MyProfile
+```
+
+`--profile` takes precedence over `SIGIL_NOTARY_PROFILE`. The command waits for Apple's result, and it fails when no ticket can be stapled.
 
 ## Windows
 

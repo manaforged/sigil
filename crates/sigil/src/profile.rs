@@ -18,10 +18,9 @@ mod store;
 
 pub(crate) use attr::budget_ns;
 pub(crate) use chrome::site_name;
-pub(crate) use key::Hotspot;
 pub use key::{BackendKind, BackendStatus, Cause, Counter, FallbackCause, Phase};
+pub(crate) use key::{Hotspot, SiteKind};
 pub(crate) use site::site;
-pub use site::{Site, SiteKind};
 kittest_pub! {
     #[doc(hidden)]
     pub use span::Span;

@@ -296,7 +296,7 @@ See [Units](guide/units.md) for the rules that map `rows`, `cols`, and `em` to p
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
-| `Signal` | `struct Signal<T>`; `get`, `peek`, `set`, `update`, `with`; `PartialEq`, `Eq`, `Hash` by identity | Reactive value. `set` skips a value equal to the current one; `update` always notifies. Two handles are equal when they name the same signal, so a store of signals can itself live in a signal. |
+| `Signal` | `struct Signal<T>`; `get`, `peek`, `try_peek`, `set`, `update`, `with`; `PartialEq`, `Eq`, `Hash` by identity | Reactive value. `set` skips a value equal to the current one; `update` always notifies. Two handles are equal when they name the same signal, so a store of signals can itself live in a signal. `try_peek` returns `None` once the signal's owner is disposed. |
 | `signal` | `fn signal<T: 'static>(initial: T) -> Signal<T>` | Create a signal. |
 | `derived` | `fn derived<T: Clone + PartialEq, F: FnMut() -> T>(f: F) -> Signal<T>` | A signal that `f` recomputes. Notifies readers only when the new value differs from the old one. |
 | `effect` | `fn effect<F: FnMut() + 'static>(f: F)` | Run `f` now and after each change it reads. |
@@ -1031,7 +1031,8 @@ fn main() -> AppResult<()> {
 | `profile::Counter`, `profile::Cause`, `profile::BackendKind`, `profile::FallbackCause` | `#[non_exhaustive] enum` with `name() -> &'static str` | Name a per-frame counter, the event that caused a frame, the active renderer backend, and why the host fell back from the GPU backend. |
 | `profile::BackendStatus` | `struct BackendStatus { kind: BackendKind, fallback: FallbackCause }`; `const TERMINAL` | Records which backend renders the frame and the fallback cause, if any. |
 | `profile::span` return value | drop guard | Measures one phase from creation until drop. Create it with `profile::span`. |
-| `profile::frames` element | `struct { index: u32, cause: Cause, wall_ns: u64, end_us: u64, phases: Vec<PhaseTime>, counts: Vec<CounterValue>, hot: Vec<Attribution>, gpu_passes: Vec<(&'static str, u64)>, backend: Option<BackendStatus> }`; `counter`, `total_ns`, `hottest` | Holds the recorded timings, counters, attributions, and GPU pass times of one frame. |
+| `profile::frames` element | `struct { index: u32, cause: Cause, wall_ns: u64, end_us: u64, phases: Vec<PhaseTime>, counts: Vec<CounterValue>, hot: Vec<Attribution>, gpu_passes: Vec<(&'static str, u64)>, sites: Vec<Site>, backend: Option<BackendStatus> }`; `counter`, `total_ns`, `work_ns`, `hottest` | Holds the recorded timings, counters, attributions, per-line times, and GPU pass times of one frame. `work_ns` is the frame time minus the time spent waiting for the GPU or display. |
+| `profile::frames` element `sites` item | `struct { location: &'static Location, kind: SiteKind, self_ns: u64, total_ns: u64, runs: u32 }`; `SiteKind { Effect, Mount, Message }` with `name()` | The time one effect, child list, or task message handler line took in the frame, slowest first. |
 | `profile::enable`, `profile::disable`, `profile::reset` | `fn enable()`; `fn disable()`; `fn reset()` | Turn frame recording on or off, and clear recorded frames. |
 | `profile::begin_frame`, `profile::tick_frame` | `fn begin_frame(backend: BackendStatus)`; `fn tick_frame()` | Open a new recorded frame with its backend status, and close the current frame. Hosts call these once per frame. |
 | `profile::span` | `fn span(phase: Phase) -> Span` | Starts timing `phase` in the current frame. |
@@ -1241,6 +1242,9 @@ Package `sigil-sign`, library `sigil_sign`. Guide: [Signing](guide/signing.md).
 | `sigil_sign::AppBundle` | Fields: `name`, `identifier`, `version`, `executable`, `exe_name`, `icon`, `provisioning_profile: Option<&Path>`, `min_system` | Bundle metadata and inputs. Set `provisioning_profile` to `None` when no macOS profile is required. |
 | `sigil_sign::CodeSign` | Fields: `identity: Option<&str>`, `entitlements: Option<&Path>`; `.sign(path: &Path) -> Result<(), PackError>` | Native macOS signing for an executable or a completed `.app`. `None` selects ad-hoc signing. Profiles belong to `AppBundle`. |
 | `sigil_sign::macos_app` | `fn macos_app(app: &AppBundle<'_>, resources: &[ResourceCopy<'_>], dest: &Path, sign: &CodeSign<'_>) -> Result<(), PackError>` | Build the app, copy an optional regular, non-symlink profile unchanged to `Contents/embedded.provisionprofile`, then sign on macOS. A profile requires a nonempty identity other than `-`. |
+| `sigil_sign::Dmg` | Fields: `app: &Path`, `volume: &str`, `background: Option<&Path>`, `icon: Option<&Path>`, `layout: Option<&Path>` | macOS only. Disk image inputs. `layout` is a `.DS_Store` file for the disk root. |
+| `sigil_sign::macos_dmg` | `fn macos_dmg(dmg: &Dmg<'_>, dest: &Path, sign: &CodeSign<'_>) -> Result<(), PackError>` | macOS only. Build a compressed image with the app and an `Applications` link, then sign it. |
+| `sigil_sign::notarize` | `fn notarize(file: &Path, profile: &str) -> Result<(), PackError>` | macOS only. Submit to Apple's notary service with a `notarytool` keychain profile, wait, and staple the ticket. |
 | `sigil_sign::windows_dir` | `fn windows_dir(app: &AppBundle<'_>, resources: &[ResourceCopy<'_>], dest: &Path) -> Result<(), PackError>` | Build the Windows app directory. Rejects `AppBundle::provisioning_profile`. |
 
 `sigil-pack macos --provisioning-profile PATH` sets the profile. Other commands reject this flag. `--identity` or `SIGIL_CODESIGN_IDENTITY` supplies the identity. Profile embedding does not validate the profile's contents, expiration, application identifier, or entitlements.
@@ -1251,7 +1255,7 @@ Package `sigil-sign`, library `sigil_sign`. Guide: [Signing](guide/signing.md).
 | --- | --- | --- |
 | `sigil::Error` | Every fallible call in the crate | One error type. `Error::kind` returns an `ErrorKind`; branch on it, never on the message. `Error::new` wraps any `std::error::Error` as `Other`, `Error::with_kind` sets the kind, `Error::message` builds one from a kind and a message, and `Error::node` returns the missing node of a `NodeMissing` error. `source()` returns the cause. |
 | `sigil_sign::SignError` | `sign_file`, `verify_file` | `KeyFile`, `Key`, `Package`, `Envelope`, `TrustedComment`, or `PasswordRequired`: the key, the package, the signature, or the signed file name or version failed, or an encrypted key had no password. |
-| `sigil_sign::PackError` | `macos_app`, `windows_dir` | `Missing`, `Io`, `Codesign`, `Escape`, `Symlink`, `Occupied`, or `NotFile`. |
+| `sigil_sign::PackError` | `macos_app`, `windows_dir` | `Missing`, `Io`, `Codesign`, `Tool`, `Escape`, `Symlink`, `Occupied`, or `NotFile`. |
 
 ## Test harness
 

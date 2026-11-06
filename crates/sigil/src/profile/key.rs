@@ -268,6 +268,14 @@ impl Hotspot {
 }
 
 named!(
+    /// What a timed source line was doing.
+    pub SiteKind {
+    Effect => "effect",
+    Mount => "mount",
+    Message => "message",
+});
+
+named!(
     /// A renderer backend.
     pub BackendKind {
     Gpu => "gpu",
