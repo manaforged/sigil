@@ -2,6 +2,7 @@ use super::*;
 use sigil::events::EventRouter;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
+use sigil_kittest::Harness;
 
 #[test]
 fn checkbox_click_flips_signal() {
@@ -81,9 +82,8 @@ fn checkbox_disabled_ignores_click() {
 
         assert!(!checked.get());
         assert_eq!(changes.get(), 0);
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
-        assert!(!node.a11y.hittable);
+        assert!(!router.is_focus_target(&cx, &layout, root));
+        assert!(!router.is_click_target(&cx, &layout, root));
     });
 }
 
@@ -109,13 +109,47 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
             emit_scene(&cx, root, None)
                 .commands
                 .iter()
-                .any(|command| matches!(
-                    command,
-                    SceneCommand::Image(image) if image.opacity == 10_000
-                )),
-            "checked scene must paint the white vector check mark"
+                .any(|command| matches!(command, SceneCommand::Path(_))),
+            "checked scene must draw the vector check mark"
         );
     });
+}
+
+#[test]
+fn checkbox_paints_a_light_mark_only_when_checked() {
+    assert_eq!(mark_pixels(false), 0, "unchecked box has no mark");
+    let lit = mark_pixels(true);
+    assert!(lit >= 8, "checked box must paint the mark, got {lit} px");
+}
+
+const BOX_CORNER_PX: u32 = 8;
+
+fn mark_pixels(checked: bool) -> usize {
+    let mut ui = Harness::new(move || checkbox(signal(checked)).tone(Tone::Primary))
+        .pixels(64, 64)
+        .scale(2.0);
+    let frame = match ui.image() {
+        Ok(Some(frame)) => frame,
+        other => panic!("cpu frame: {:?}", other.map(|frame| frame.is_some())),
+    };
+    let (width, height) = frame.dimensions();
+    let pixels = || (0..height).flat_map(|y| (0..width).map(move |x| (x, y)));
+    let accent: Vec<(u32, u32)> = pixels()
+        .filter(|&(x, y)| {
+            let [r, _, b, _] = frame.get_pixel(x, y).0;
+            u16::from(b) > u16::from(r) + 40
+        })
+        .collect();
+    let span = |at: fn(&(u32, u32)) -> u32| {
+        let low = accent.iter().map(at).min().unwrap_or(0);
+        let high = accent.iter().map(at).max().unwrap_or(0);
+        low + BOX_CORNER_PX..high.saturating_sub(BOX_CORNER_PX)
+    };
+    let (across, down) = (span(|at| at.0), span(|at| at.1));
+    pixels()
+        .filter(|(x, y)| across.contains(x) && down.contains(y))
+        .filter(|&(x, y)| frame.get_pixel(x, y).0[..3].iter().all(|c| *c > 220))
+        .count()
 }
 
 #[test]

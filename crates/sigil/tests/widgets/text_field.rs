@@ -90,9 +90,8 @@ fn text_field_disabled_ignores_typing() {
         router.route(&mut cx, &layout, text_down("a"));
 
         assert_eq!(value.get(), "");
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
-        assert!(!node.a11y.hittable);
+        assert!(!router.is_focus_target(&cx, &layout, root));
+        assert!(!router.is_click_target(&cx, &layout, root));
     });
 }
 

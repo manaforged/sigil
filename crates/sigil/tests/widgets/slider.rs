@@ -121,9 +121,8 @@ fn slider_disabled_ignores_input() {
         );
 
         assert_approx(value.get(), 25.0);
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
-        assert!(!node.a11y.hittable);
+        assert!(!router.is_focus_target(&cx, &layout, root));
+        assert!(!router.is_click_target(&cx, &layout, root));
     });
 }
 

@@ -233,6 +233,9 @@ fn apply_actions(ak: &mut AkNode, a11y: &A11yProps) {
     if a11y.is_disabled() {
         return;
     }
+    if a11y.focusable {
+        ak.add_action(Action::Focus);
+    }
     if a11y.text_value.is_some() || a11y.value_now.is_some() {
         ak.add_action(Action::SetValue);
     }

@@ -14,7 +14,7 @@ use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil_kittest::stub_text_measure;
-use widget_support::{compute, rect_colors};
+use widget_support::{assert_focus_follows_disabled, compute, rect_colors};
 
 const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
@@ -75,8 +75,8 @@ fn dropdown_disabled_not_focusable() {
         let disabled = signal(true);
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(signal(0_usize), vec!["A".to_owned()]).disabled(disabled));
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
+        let layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
+        assert_focus_follows_disabled(&mut cx, &layout, root, disabled);
     });
 }
 

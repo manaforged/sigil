@@ -17,7 +17,7 @@ use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, StrokeAlign, emit_scene};
 use sigil::style::scale::ScaleRole;
-use widget_support::{compute, rect_colors};
+use widget_support::{assert_focus_follows_disabled, compute, rect_colors};
 
 const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
@@ -136,9 +136,8 @@ fn checkbox_disabled_not_focusable() {
         let disabled = signal(true);
         let mut cx = Cx::new_root();
         let root = cx.add(checkbox(checked).disabled(disabled));
-        compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+        assert_focus_follows_disabled(&mut cx, &layout, root, disabled);
     });
 }
 
@@ -198,9 +197,8 @@ fn slider_disabled_not_focusable() {
         let disabled = signal(true);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0).disabled(disabled));
-        compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+        assert_focus_follows_disabled(&mut cx, &layout, root, disabled);
     });
 }
 
@@ -265,9 +263,8 @@ fn toggle_disabled_not_focusable() {
         let disabled = signal(true);
         let mut cx = Cx::new_root();
         let root = cx.add(toggle(on).disabled(disabled));
-        compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+        assert_focus_follows_disabled(&mut cx, &layout, root, disabled);
     });
 }
 
@@ -333,9 +330,8 @@ fn text_field_disabled_not_focusable() {
         let disabled = signal(true);
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).disabled(disabled));
-        compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
-        let node = cx.get(root).unwrap();
-        assert!(!node.a11y.focusable);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+        assert_focus_follows_disabled(&mut cx, &layout, root, disabled);
     });
 }
 
