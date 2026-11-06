@@ -184,9 +184,20 @@ impl FontCollection {
 
 pub(crate) type ChainScripts = SmallVec<[Script; 4]>;
 
+fn chain_script(ch: char) -> Script {
+    let symbol = matches!(
+        ch,
+        '\u{2300}'..='\u{23ff}'
+            | '\u{2600}'..='\u{27bf}'
+            | '\u{2b00}'..='\u{2bff}'
+            | '\u{1fb00}'..='\u{1fbff}'
+    );
+    if symbol { Script::Other } else { super::char_script(ch) }
+}
+
 pub(crate) fn chain_scripts(text: &str) -> ChainScripts {
     let mut scripts = ChainScripts::new();
-    for script in text.chars().map(super::char_script) {
+    for script in text.chars().map(chain_script) {
         if !crate::text::script_fonts::candidates(script).is_empty() && !scripts.contains(&script) {
             scripts.push(script);
         }
