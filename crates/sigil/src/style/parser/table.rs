@@ -3,7 +3,10 @@ use crate::layout::{AlignItems, Display, FlexDirection, FlexWrap, JustifyContent
 use crate::style::atom::{
     height_px, max_height_px, max_width_px, min_height_px, min_width_px, width_px,
 };
-use crate::style::{ColorAtom, Elevation, FontFamily, StyleAtom, TextDecoration};
+use crate::style::atom::{BorderStyle, GradientShape, PaintAtom};
+use crate::style::{
+    ColorAtom, Conic, Elevation, FontFamily, GradientAxis, Radial, StyleAtom, TextDecoration,
+};
 
 #[derive(Clone, Copy)]
 enum Value {
@@ -80,7 +83,21 @@ static KEYWORDS: phf::Map<&'static str, StyleAtom> = phf::phf_map! {
     "justify-between" => StyleAtom::JustifyContent(JustifyContent::SpaceBetween),
     "justify-around" => StyleAtom::JustifyContent(JustifyContent::SpaceAround),
     "justify-evenly" => StyleAtom::JustifyContent(JustifyContent::SpaceEvenly),
+    "bg-linear-to-t" => paint(PaintAtom::Gradient(GradientShape::Linear(GradientAxis::BottomToTop))),
+    "bg-linear-to-b" => paint(PaintAtom::Gradient(GradientShape::Linear(GradientAxis::TopToBottom))),
+    "bg-linear-to-l" => paint(PaintAtom::Gradient(GradientShape::Linear(GradientAxis::RightToLeft))),
+    "bg-linear-to-r" => paint(PaintAtom::Gradient(GradientShape::Linear(GradientAxis::LeftToRight))),
+    "bg-radial" => paint(PaintAtom::Gradient(GradientShape::Radial(Radial::new()))),
+    "bg-conic" => paint(PaintAtom::Gradient(GradientShape::Conic(Conic::new(0)))),
+    "bg-clip-text" => paint(PaintAtom::ClipText),
+    "border-solid" => paint(PaintAtom::Border(BorderStyle::Solid)),
+    "border-dashed" => paint(PaintAtom::Border(BorderStyle::Dashed)),
+    "border-dotted" => paint(PaintAtom::Border(BorderStyle::Dotted)),
 };
+
+const fn paint(atom: PaintAtom) -> StyleAtom {
+    StyleAtom::Paint(atom)
+}
 
 const PREFIXES: [(&str, Value); 28] = [
     ("gap-x-", Value::Scale(StyleAtom::GapX)),
@@ -134,6 +151,9 @@ pub(super) fn parse_table_token(token: &str) -> Option<StyleAtom> {
             Some(Parsed::Refused) => return None,
             None => {}
         }
+    }
+    if let Some(atom) = super::paint::parse_paint_token(token) {
+        return Some(atom);
     }
     COLOR_PREFIXES
         .iter()

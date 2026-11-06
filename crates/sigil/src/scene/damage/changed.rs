@@ -51,7 +51,7 @@ pub(super) fn changed_ink(
             inks.extend(unmoved(command, &state, &layers, scale));
         }
         match command {
-            SceneCommand::PushLayer(scope) => layers.push(*scope),
+            SceneCommand::PushLayer(scope) => layers.push(scope.clone()),
             SceneCommand::PopLayer => {
                 layers.pop();
             }
@@ -72,8 +72,8 @@ fn structural_ink(
 ) -> Option<ChangeBound> {
     let command = commands.get(index)?;
     Some(match command {
-        SceneCommand::PushClip(rect) => ChangeBound::Rect(within(
-            transform_rect(state.current_transform(), *rect),
+        SceneCommand::PushClip(clip) => ChangeBound::Rect(within(
+            transform_rect(state.current_transform(), clip.bounds()),
             state,
             layers,
         )),
@@ -101,7 +101,10 @@ fn unmoved(
     let SceneCommand::PushLayer(scope) = command else {
         return None;
     };
-    if !matches!(scope.effect, LayerEffect::Transform(_)) {
+    if !matches!(
+        scope.effect,
+        LayerEffect::Transform(_) | LayerEffect::Projected { .. }
+    ) {
         return None;
     }
     let still = LayerScope {
@@ -127,11 +130,14 @@ pub(crate) fn command_ink(
     layers: &[LayerScope],
     scale: f32,
 ) -> Option<Rect> {
-    let moved = layers
-        .iter()
-        .find(|layer| matches!(layer.effect, LayerEffect::Transform(_)));
+    let moved = layers.iter().find(|layer| {
+        matches!(
+            layer.effect,
+            LayerEffect::Transform(_) | LayerEffect::Projected { .. }
+        )
+    });
     let rect = match moved {
-        Some(layer) => ink_rect(&SceneCommand::PushLayer(*layer), scale)?,
+        Some(layer) => ink_rect(&SceneCommand::PushLayer(layer.clone()), scale)?,
         None => transform_rect(state.current_transform(), ink_rect(command, scale)?),
     };
     within(rect, state, layers)

@@ -5,7 +5,7 @@ use crate::style::StyleAtom;
 use super::{ResolvedSlot, expand_atom};
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub(crate) struct SlotSet(u64);
+pub(crate) struct SlotSet(u128);
 
 impl SlotSet {
     pub(crate) const EMPTY: Self = Self(0);
@@ -25,7 +25,7 @@ impl SlotSet {
     }
 
     pub(crate) const fn with(self, slot: ResolvedSlot) -> Self {
-        Self(self.0 | 1_u64 << slot as u8)
+        Self(self.0 | 1_u128 << slot as u8)
     }
 
     pub(crate) const fn union(self, other: Self) -> Self {

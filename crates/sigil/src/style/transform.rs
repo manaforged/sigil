@@ -139,9 +139,10 @@ impl Transform2D {
         let tx = sx_shift.mul_add(rect.width, self.translation[0]);
         let ty = sy_shift.mul_add(rect.height, self.translation[1]);
         let [sx, sy] = self.scale;
-        let [ox, oy] = self.origin.map(|value| f32::from(value) / 10_000.0);
-        let pivot_x = ox.mul_add(rect.width, rect.origin.x);
-        let pivot_y = oy.mul_add(rect.height, rect.origin.y);
+        let Point {
+            x: pivot_x,
+            y: pivot_y,
+        } = self.pivot(rect);
         let (sin, cos) = self.rotation.sin_cos();
         let (xx, xy, yx, yy) = (cos * sx, -sin * sy, sin * sx, cos * sy);
         [
@@ -158,31 +159,12 @@ impl Transform2D {
         ]
     }
 
-    pub(crate) fn apply(self, point: Point, rect: Rect) -> Point {
-        if self.is_identity() {
-            return point;
-        }
-        let [[xx, xy, tx], [yx, yy, ty]] = self.matrix(rect);
+    pub(crate) fn pivot(self, rect: Rect) -> Point {
+        let [ox, oy] = self.origin.map(|value| f32::from(value) / 10_000.0);
         Point::new(
-            xx.mul_add(point.x, xy.mul_add(point.y, tx)),
-            yx.mul_add(point.x, yy.mul_add(point.y, ty)),
+            ox.mul_add(rect.width, rect.origin.x),
+            oy.mul_add(rect.height, rect.origin.y),
         )
-    }
-
-    pub(crate) fn inverse(self, point: Point, rect: Rect) -> Option<Point> {
-        if self.is_identity() {
-            return Some(point);
-        }
-        let [[xx, xy, tx], [yx, yy, ty]] = self.matrix(rect);
-        let determinant = xx.mul_add(yy, -xy * yx);
-        if determinant == 0.0 || !determinant.is_finite() {
-            return None;
-        }
-        let (local_x, local_y) = (point.x - tx, point.y - ty);
-        Some(Point::new(
-            yy.mul_add(local_x, -xy * local_y) / determinant,
-            xx.mul_add(local_y, -yx * local_x) / determinant,
-        ))
     }
 
     pub(crate) fn for_binding(binding: &StyleBinding) -> Self {

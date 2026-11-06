@@ -216,16 +216,19 @@ fn shift_rect(rect: Rect, dx: f32, dy: f32) -> Rect {
 
 fn shift_command(command: &mut SceneCommand, dx: f32, dy: f32) {
     match command {
-        SceneCommand::PushClip(rect) => *rect = shift_rect(*rect, dx, dy),
+        SceneCommand::PushClip(clip) => clip.shift(dx, dy),
         SceneCommand::Rect(draw) => {
             draw.rect = shift_rect(draw.rect, dx, dy);
             if let Some(border) = draw.border.as_mut() {
                 border.rect = shift_rect(border.rect, dx, dy);
             }
         }
-        SceneCommand::Gradient(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
+        SceneCommand::Gradient(draw) => {
+            draw.rect = shift_rect(draw.rect, dx, dy);
+            draw.gradient.shift(dx, dy);
+        }
         SceneCommand::Pattern(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
-        SceneCommand::GlyphRun(draw) => draw.rect = shift_rect(draw.rect, dx, dy),
+        SceneCommand::GlyphRun(draw) => draw.shift(dx, dy),
         SceneCommand::Image(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
         SceneCommand::Sprite(draw) => draw.destination = shift_rect(draw.destination, dx, dy),
         SceneCommand::Decoration(draw) => draw.band = shift_rect(draw.band, dx, dy),

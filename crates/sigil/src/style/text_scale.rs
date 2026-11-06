@@ -22,7 +22,11 @@ pub(crate) fn scaled(atom: StyleAtom) -> StyleAtom {
     match atom {
         StyleAtom::FontSize(px) => {
             let scale = f32::from_bits(current());
-            StyleAtom::FontSize((f32::from(px) * scale).round().clamp(1.0, f32::from(i16::MAX)) as i16)
+            StyleAtom::FontSize(
+                (f32::from(px) * scale)
+                    .round()
+                    .clamp(1.0, f32::from(i16::MAX)) as i16,
+            )
         }
         other => other,
     }

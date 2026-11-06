@@ -9,14 +9,14 @@
 use crate::geometry::{Point, Rect};
 use crate::style::Rgba8;
 use tiny_skia::{
-    Color as TsColor, ColorSpace, FillRule, FilterQuality, GradientStop as TsStop, IntSize,
-    LinearGradient as TsGradient, Mask, Paint, Path, PathBuilder, Pattern, Pixmap,
-    Point as TsPoint, Shader, SpreadMode, Stroke as TsStroke, Transform as TsTransform,
+    Color as TsColor, ColorSpace, FillRule, FilterQuality, IntSize, Mask, Paint, Path,
+    PathBuilder, Pattern, Pixmap, SpreadMode, Stroke as TsStroke,
+    Transform as TsTransform,
 };
 
 use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::scene_command::{
-    DecorationGeometry, DecorationKind, DrawDecoration, LinearGradient, Transform,
+    DecorationGeometry, DecorationKind, DrawDecoration, Transform,
 };
 
 use super::bound::CpuBound;
@@ -161,25 +161,6 @@ pub(super) fn fill(target: &mut Pixmap, path: &Path, paint: &Paint<'_>, brush: &
         brush.transform,
         brush.mask_for(paint),
     );
-}
-
-pub(super) fn gradient(gradient: &LinearGradient, opacity: f32) -> Option<Shader<'static>> {
-    let gradient = gradient.normalized();
-    if let [only] = gradient.stops.as_slice() {
-        return Some(Shader::SolidColor(ts_color(only.color, opacity)));
-    }
-    let stops = gradient
-        .stops
-        .iter()
-        .map(|stop| TsStop::new(stop.offset.clamp(0.0, 1.0), ts_color(stop.color, opacity)))
-        .collect();
-    TsGradient::new(
-        TsPoint::from_xy(gradient.start.x, gradient.start.y),
-        TsPoint::from_xy(gradient.end.x, gradient.end.y),
-        stops,
-        SpreadMode::Pad,
-        TsTransform::identity(),
-    )
 }
 
 pub(super) fn decoration(target: &mut Pixmap, draw: &DrawDecoration, brush: &Brush<'_>) {

@@ -77,7 +77,7 @@ pub(crate) fn clipped(scene: &CommandScene, regions: &[Rect], clear: Color) -> C
     };
     let mut commands = Vec::with_capacity(scene.commands.len() + 3 * regions.len());
     for region in regions {
-        commands.push(SceneCommand::PushClip(*region));
+        commands.push(SceneCommand::PushClip((*region).into()));
         commands.push(SceneCommand::Rect(DrawRect {
             node: None,
             rect: region.expand(CLEAR_BLEED),
@@ -109,7 +109,7 @@ fn cull_into(source: &[SceneCommand], region: Rect, out: &mut Vec<SceneCommand>)
                     index = SceneState::layer_end(source, index + 1) + 1;
                     continue;
                 }
-                layers.push(*scope);
+                layers.push(scope.clone());
                 true
             }
             SceneCommand::PopLayer => {

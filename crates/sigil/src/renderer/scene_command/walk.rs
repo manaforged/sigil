@@ -9,6 +9,7 @@ use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::frame_upload::{FrameUploads, UploadCapacities};
 use crate::renderer::layer_composite::LayerCompositePipeline;
 use crate::renderer::layer_pool::{LayerHandle, LayerPool};
+use crate::renderer::projected::ProjectedPipeline;
 use crate::renderer::plan::{self};
 use crate::renderer::plan::{Batch, Flush, PlanStep};
 use crate::renderer::quad_paint::QuadInstance;
@@ -42,6 +43,7 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) decoration_pipelines: &'a mut Vec<DecorationPipeline>,
     pub(crate) layer_pipelines: &'a mut Vec<LayerCompositePipeline>,
     pub(crate) blur_pipelines: &'a mut Vec<BlurPipeline>,
+    pub(crate) projected_pipelines: &'a mut Vec<ProjectedPipeline>,
     pub(crate) layer_pool: &'a mut Option<LayerPool>,
     pub(crate) wash_cache: &'a mut WashCache,
     pub(crate) pending: &'a mut WalkPending,
@@ -160,7 +162,10 @@ impl<'a> SceneWalk<'a> {
             self.flush_shapes_except(batch);
         }
         match command {
-            SceneCommand::GlyphRun(draw) => self.queue_glyph_run(draw),
+            SceneCommand::GlyphRun(draw) => match draw.fill() {
+                Some(fill) => self.queue_path(fill),
+                None => self.queue_glyph_run(draw),
+            },
             SceneCommand::Rect(draw) => self.queue_rect(draw),
             SceneCommand::Gradient(draw) => self.queue_gradient(draw),
             SceneCommand::Pattern(draw) => self.queue_pattern(draw),

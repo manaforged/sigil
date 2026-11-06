@@ -14,10 +14,14 @@ use crate::scene::command::{CommandScene, LayerEffect, LayerScope};
 use crate::scene::emit_cache;
 use crate::scene::style_adapter::{corner_radii_for, render_style_for};
 
+mod background;
 mod borders;
+mod dashes;
 mod paint;
 mod runs;
 mod selection;
+#[cfg(feature = "scene")]
+mod text_fill;
 use paint::{NodePaint, push_focus_ring, push_node};
 mod effects;
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
@@ -155,15 +159,51 @@ impl<'t> EmitWalk<'_, 't> {
         }
         let theme = node.get_extension::<Theme>().unwrap_or(inherited.theme);
         let style = render_style_for(id, node, theme, inherited.text_color);
-        let layered = (!style.transform.is_identity() || style.opacity < 10_000)
+        let layered = (!style.transform.is_identity()
+            || !style.space.is_flat()
+            || style.opacity < 10_000)
             && node.get_extension::<LayoutResult>().is_some();
-        if style.opacity > 0 && layered {
+        let cut = style
+            .clip_path
+            .zip(node.get_extension::<LayoutResult>().map(LayoutResult::rect));
+        if let Some((shape, rect)) = cut.filter(|_| style.opacity > 0) {
+            self.walk_clip_path(id, inherited, clip, style, shape.resolve(rect));
+        } else if style.opacity > 0 && layered {
             self.push_effect(id, inherited, clip, style);
         } else if style.opacity > 0 && !outside_clip(node, clip) {
             self.push_contents(id, inherited, clip, &style);
         } else {
             self.defer_top_layer(node, || child_inherited(node, inherited, &style));
         }
+    }
+
+    fn walk_clip_path(
+        &mut self,
+        id: NodeId,
+        inherited: &Inherited<'t>,
+        clip: Option<Rect>,
+        mut style: RenderStyle,
+        shape: crate::scene::Clip,
+    ) {
+        style.clip_path = None;
+        let layered =
+            !style.transform.is_identity() || !style.space.is_flat() || style.opacity < 10_000;
+        let (cx, deferred, selection) = (self.cx, &mut *self.deferred, self.selection);
+        let track = &mut *self.track;
+        self.scene.with_clip(shape, |scene| {
+            let mut walk = EmitWalk {
+                scene,
+                cx,
+                deferred,
+                selection,
+                track,
+            };
+            if layered {
+                walk.push_effect(id, inherited, clip, style);
+            } else {
+                walk.push_contents(id, inherited, clip, &style);
+            }
+        });
     }
 
     fn push_contents(

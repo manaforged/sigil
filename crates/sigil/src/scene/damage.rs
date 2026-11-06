@@ -98,7 +98,7 @@ fn changed_inks(
 ) -> Damage<Inks> {
     let (before, after) = (&previous.commands, &next.commands);
     if after.iter().any(
-        |command| matches!(command, SceneCommand::PushLayer(scope) if !local_effect(scope.effect)),
+        |command| matches!(command, SceneCommand::PushLayer(scope) if !local_effect(&scope.effect)),
     ) {
         return Damage::Full(FullReason::NonLocalLayerEffect);
     }
@@ -200,11 +200,11 @@ fn mark(marks: &mut [bool], range: Range<usize>) {
     }
 }
 
-fn local_effect(effect: LayerEffect) -> bool {
-    match effect {
-        LayerEffect::Identity => true,
+fn local_effect(effect: &LayerEffect) -> bool {
+    match *effect {
+        LayerEffect::Identity | LayerEffect::Mask(_) => true,
         LayerEffect::Transform([[_, skew_x, _], [skew_y, _, _]]) => skew_x == 0.0 && skew_y == 0.0,
-        LayerEffect::LayerBlur { .. } => false,
+        LayerEffect::LayerBlur { .. } | LayerEffect::Projected { .. } => false,
     }
 }
 

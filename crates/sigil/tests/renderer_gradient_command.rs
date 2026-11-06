@@ -12,7 +12,8 @@ use scene_support::{color, rect};
 use sigil::geometry::Point;
 use sigil::renderer::{WgpuRenderer, WgpuSurface};
 use sigil::scene::{
-    CommandScene, CornerRadii, DrawGradient, DrawRect, GradientStop, LinearGradient, PaintFill,
+    CommandScene, CornerRadii, DrawGradient, DrawRect, Gradient, GradientStop, LinearGradient,
+    PaintFill,
     SceneBuilder, SceneCommand,
 };
 use sigil::style::Color;
@@ -37,7 +38,7 @@ fn command_scene_accepts_rect_and_gradient_draws() {
     let [_, SceneCommand::Gradient(draw)] = scene.commands.as_slice() else {
         panic!("expected gradient draw");
     };
-    assert_eq!(draw.gradient, gradient);
+    assert_eq!(draw.gradient, Gradient::from(gradient));
 
     let method: RenderCommandScene = WgpuRenderer::render_command_scene;
     let _ = method;

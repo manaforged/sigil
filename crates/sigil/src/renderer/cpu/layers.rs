@@ -10,19 +10,20 @@ use crate::geometry::{Point, Rect};
 use tiny_skia::{Mask, Pixmap, Transform as TsTransform};
 
 use crate::renderer::cache_limits::CacheLimits;
-use crate::renderer::plan::PlanNode;
+use crate::renderer::plan::{MaskSource, PlanNode};
 use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::{IDENTITY, transform_rect};
 use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Transform};
 use crate::scene::corner_radii::CornerRadii;
 
 use super::bound::rect_mask;
+use super::clip::multiplied;
 use super::paint::{CpuPainter, fade};
 use super::shadow::blur;
 use super::shapes::{blit, cover, ts_transform};
 
 impl CpuPainter<'_> {
-    fn take_pixmap(&mut self, width: u32, height: u32) -> Option<Pixmap> {
+    pub(super) fn take_pixmap(&mut self, width: u32, height: u32) -> Option<Pixmap> {
         if let Some(at) = self
             .pool
             .iter()
@@ -35,21 +36,30 @@ impl CpuPainter<'_> {
         Pixmap::new(width, height)
     }
 
-    fn release_pixmap(&mut self, layer: Pixmap) {
+    pub(super) fn release_pixmap(&mut self, layer: Pixmap) {
         if self.pool.len() < CacheLimits::DEFAULT.cpu_layer_pool {
             self.pool.push(layer);
         }
     }
 
-    pub(super) fn layer(&mut self, scope: LayerScope, children: &[PlanNode<'_>]) {
+    pub(super) fn layer(
+        &mut self,
+        scope: LayerScope,
+        mask: Option<MaskSource<'_>>,
+        children: &[PlanNode<'_>],
+    ) {
         if let LayerEffect::Transform(transform) = scope.effect {
             self.transformed_layer(scope, transform, children);
             return;
         }
-        self.untransformed_layer(scope, children);
+        if let LayerEffect::Projected { .. } = scope.effect {
+            self.projected_layer(scope, children);
+            return;
+        }
+        self.untransformed_layer(scope, mask, children);
     }
 
-    fn area(&self) -> Rect {
+    pub(super) fn area(&self) -> Rect {
         Rect::new(
             Point::new(self.origin.x / self.scale, self.origin.y / self.scale),
             self.target.width() as f32 / self.scale,
@@ -74,7 +84,12 @@ impl CpuPainter<'_> {
         self.release_pixmap(layer);
     }
 
-    fn untransformed_layer(&mut self, scope: LayerScope, children: &[PlanNode<'_>]) {
+    fn untransformed_layer(
+        &mut self,
+        scope: LayerScope,
+        mask: Option<MaskSource<'_>>,
+        children: &[PlanNode<'_>],
+    ) {
         let clip_logical = transform_rect(self.state.current_transform(), scope.clip);
         let Some(bounds) = self.state.layer_bounds(&scope, self.area()) else {
             return;
@@ -87,11 +102,17 @@ impl CpuPainter<'_> {
         if let LayerEffect::LayerBlur { sigma } = scope.effect {
             blur(&mut layer, sigma * self.scale);
         }
-        let rounded = scope.clip_radii.0.iter().any(|radius| *radius > 0.0);
-        let mask = rounded
-            .then(|| self.layer_mask(clip_logical, scope.clip_radii))
-            .flatten();
-        self.composite(&layer, at, scope.opacity, mask.as_ref());
+        let rounded = self.rounded_mask(clip_logical, scope.clip_radii);
+        let keep = match mask {
+            Some(MaskSource::Path(draw)) => self.path_mask(draw, bounds).map(Some),
+            Some(MaskSource::Scene(mask)) => self
+                .scene_mask(mask, region, bounds)
+                .map(|keep| Some(multiplied(keep, rounded.as_ref()))),
+            None => Some(rounded),
+        };
+        if let Some(mask) = keep {
+            self.composite(&layer, at, scope.opacity, mask.as_ref());
+        }
         self.release_pixmap(layer);
     }
 
@@ -120,7 +141,7 @@ impl CpuPainter<'_> {
         stats.offscreen_layers += 1;
     }
 
-    fn render_region(
+    pub(super) fn render_region(
         &mut self,
         bounds: Rect,
         state: SceneState,
@@ -181,6 +202,11 @@ impl CpuPainter<'_> {
             .and_then(|clip| self.layer_mask(clip, CornerRadii::ZERO));
         self.composite(&layer, placement, scope.opacity, mask.as_ref());
         self.release_pixmap(layer);
+    }
+
+    fn rounded_mask(&self, clip: Rect, radii: CornerRadii) -> Option<Mask> {
+        let rounded = radii.0.iter().any(|radius| *radius > 0.0);
+        rounded.then(|| self.layer_mask(clip, radii)).flatten()
     }
 
     fn layer_mask(&self, clip: Rect, radii: CornerRadii) -> Option<Mask> {

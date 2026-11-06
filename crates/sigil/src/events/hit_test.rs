@@ -1,8 +1,12 @@
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Cx, NodeId, TopLayer};
 use crate::layout::{LayoutEngine, LayoutResult};
-use crate::style::{StyleBinding, Transform2D};
+use crate::style::StyleBinding;
 use smallvec::SmallVec;
+
+#[path = "hit_test/projection.rs"]
+mod projection;
+use projection::{node_transform, to_local};
 
 #[cfg(test)]
 #[path = "hit_test_tests.rs"]
@@ -153,8 +157,7 @@ impl HitTestCache {
                     .get(item.id)
                     .and_then(|node| node.get_extension::<StyleBinding>())
             {
-                local =
-                    local.and_then(|point| Transform2D::for_binding(binding).inverse(point, rect));
+                local = local.and_then(|point| to_local(cx, item.id, binding, rect, point));
             }
             transform.query = self.query;
             transform.position = local;
@@ -211,6 +214,9 @@ pub(crate) fn visible(cx: &Cx, target: NodeId) -> bool {
 fn inside_clips(cx: &Cx, target: NodeId, position: Point) -> bool {
     let mut current = target;
     while let Some(node) = cx.get(current) {
+        if !projection::inside_clip_path(cx, current, node, position) {
+            return false;
+        }
         if node.get_extension::<TopLayer>().is_some() {
             break;
         }
@@ -313,10 +319,10 @@ pub(crate) fn visual_bounds(cx: &Cx, target: NodeId, rect: Rect) -> Rect {
         if let Some(binding) = node.get_extension::<StyleBinding>()
             && (binding.may_transform() || binding.animator_overlay().is_some())
             && let Some(result) = node.get_extension::<crate::layout::LayoutResult>()
+            && let Some(transform) = node_transform(cx, id, binding, result.rect())
         {
-            let transform = Transform2D::for_binding(binding);
             for corner in &mut corners {
-                *corner = transform.apply(*corner, result.rect());
+                *corner = transform.project(*corner).unwrap_or(*corner);
             }
         }
     }
@@ -337,7 +343,7 @@ pub(super) fn local_position(cx: &Cx, target: NodeId, mut point: Point) -> Optio
         if let Some(binding) = node.get_extension::<StyleBinding>()
             && let Some(result) = node.get_extension::<crate::layout::LayoutResult>()
         {
-            point = Transform2D::for_binding(binding).inverse(point, result.rect())?;
+            point = to_local(cx, id, binding, result.rect(), point)?;
         }
     }
     Some(point)

@@ -1,3 +1,4 @@
+use crate::style::atom::{PaintAtom, PaintStyle};
 use crate::style::{
     AnimatorOverlay, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, Rgba8, StyleAtom,
     TextLineHeight, TextStyle, Theme, Token, Tone,
@@ -32,6 +33,7 @@ impl<'theme> StyleEngine<'theme> {
 
     pub(crate) fn overlay_render(overlay: &dyn AnimatorOverlay, render: &mut RenderStyle) {
         render.transform = render.transform.overlay(overlay);
+        render.space.overlay(overlay);
         if let Some(value) = overlay.value_for(NumericAtomKind::Opacity) {
             render.opacity = encode_opacity(value);
         }
@@ -159,6 +161,22 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::TransitionDelay(_)
             | StyleAtom::Animation(_)
             | StyleAtom::UnknownThemeRef(_) => {}
+            StyleAtom::Paint(paint) => self.apply_paint(paint, &mut render.paint),
+            StyleAtom::ClipPath(shape) => render.clip_path = Some(shape),
+            StyleAtom::Space(atom) => render.space.apply(atom),
+        }
+    }
+
+    fn apply_paint(self, atom: PaintAtom, paint: &mut PaintStyle) {
+        match atom {
+            PaintAtom::Gradient(shape) => paint.gradient = Some(shape),
+            PaintAtom::Stop(slot, color) => {
+                paint.stops[slot.index()] = Some(self.resolve_color(color));
+            }
+            PaintAtom::StopAt(slot, percent) => paint.positions[slot.index()] = Some(percent),
+            PaintAtom::ClipText => paint.clip_text = true,
+            PaintAtom::Image(id) => paint.image = Some(id),
+            PaintAtom::Border(style) => paint.border = style,
         }
     }
 }
@@ -260,6 +278,9 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::TransitionDelay(_)
         | StyleAtom::Animation(_)
         | StyleAtom::UnknownThemeRef(_)
+        | StyleAtom::Paint(_)
+        | StyleAtom::ClipPath(_)
+        | StyleAtom::Space(_)
         | StyleAtom::BgToneStep(_)
         | StyleAtom::FgToneStep(_)
         | StyleAtom::FgOnSolid => {}

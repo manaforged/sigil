@@ -46,7 +46,7 @@ impl SceneState {
 
     pub(crate) fn apply(&mut self, command: &SceneCommand) -> bool {
         match command {
-            SceneCommand::PushClip(rect) => self.push_clip(*rect),
+            SceneCommand::PushClip(clip) => self.push_clip(clip.bounds()),
             SceneCommand::PopClip => self.pop_clip(),
             SceneCommand::PushTransform(transform) => self.push_transform(*transform),
             SceneCommand::PopTransform => self.pop_transform(),
@@ -110,6 +110,14 @@ impl SceneState {
         matching_end(commands, start, |command| match command {
             SceneCommand::PushLayer(_) => Some(true),
             SceneCommand::PopLayer => Some(false),
+            _ => None,
+        })
+    }
+
+    pub(crate) fn clip_end(commands: &[SceneCommand], start: usize) -> usize {
+        matching_end(commands, start, |command| match command {
+            SceneCommand::PushClip(_) => Some(true),
+            SceneCommand::PopClip => Some(false),
             _ => None,
         })
     }

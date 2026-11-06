@@ -42,7 +42,8 @@ pub fn clip_depth(depth: usize) -> GeneratedScene {
             inset,
             128.0 - inset,
             128.0 - inset,
-        )));
+        )
+        .into()));
         commands.push(SceneCommand::PushTransform([
             [1.0, 0.0, 0.01],
             [0.0, 1.0, 0.0],

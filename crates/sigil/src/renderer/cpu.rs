@@ -14,12 +14,15 @@ use crate::renderer::window_handle::{DisplayAndWindow, WindowHandle};
 use crate::{Error, ErrorKind};
 
 mod bound;
+mod clip;
 mod draws;
 mod glyph_outline;
+mod gradient;
 mod layers;
 mod paint;
 mod path;
 mod pattern;
+mod projected;
 mod quad;
 mod shadow;
 mod shadow_field;

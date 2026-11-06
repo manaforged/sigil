@@ -1,6 +1,6 @@
 mod tree;
 
-pub(crate) use tree::{PlanNode, build_tree};
+pub(crate) use tree::{MaskSource, PlanNode, build_tree};
 
 use crate::geometry::Rect;
 use crate::scene::command::SceneCommand;
@@ -33,12 +33,17 @@ pub(crate) enum PlanStep {
 pub(crate) fn needs_layers(commands: &[SceneCommand]) -> bool {
     commands
         .iter()
-        .any(|command| matches!(command, SceneCommand::PushLayer(_)))
+        .any(|command| match command {
+            SceneCommand::PushLayer(_) => true,
+            SceneCommand::PushClip(clip) => clip.composites(),
+            _ => false,
+        })
         || SceneState::has_composited_group(commands)
 }
 
-pub(crate) const fn batch_of(command: &SceneCommand) -> Option<Batch> {
+pub(crate) fn batch_of(command: &SceneCommand) -> Option<Batch> {
     match command {
+        SceneCommand::GlyphRun(run) if run.fill().is_some() => Some(Batch::Path),
         SceneCommand::GlyphRun(_) => Some(Batch::Glyphs),
         SceneCommand::Rect(_) => Some(Batch::Rect),
         SceneCommand::Gradient(_) | SceneCommand::Pattern(_) => Some(Batch::Fill),

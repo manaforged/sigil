@@ -28,6 +28,12 @@ pub enum Property {
     Scale(f32),
     /// Rotation in radians.
     Rotate(f32),
+    /// Rotation around the x axis in radians.
+    RotateX(f32),
+    /// Rotation around the y axis in radians.
+    RotateY(f32),
+    /// Translation toward the viewer in pixels.
+    TranslateZ(f32),
     /// Background color.
     Background(ColorAtom),
     /// Text color.
@@ -47,6 +53,9 @@ impl Property {
             (Self::TranslateX(px), NumericAtomKind::TranslateX)
             | (Self::TranslateY(px), NumericAtomKind::TranslateY)
             | (Self::Rotate(px), NumericAtomKind::Rotation)
+            | (Self::RotateX(px), NumericAtomKind::RotationX)
+            | (Self::RotateY(px), NumericAtomKind::RotationY)
+            | (Self::TranslateZ(px), NumericAtomKind::TranslateZ)
             | (Self::Scale(px), NumericAtomKind::ScaleX | NumericAtomKind::ScaleY) => Some(px),
             (Self::TranslateXPercent(percent), NumericAtomKind::TranslateXFraction)
             | (Self::TranslateYPercent(percent), NumericAtomKind::TranslateYFraction) => {
@@ -78,6 +87,9 @@ impl Property {
             Self::Background(color) => (7, 0, Some(color)),
             Self::TextColor(color) => (8, 0, Some(color)),
             Self::BorderColor(color) => (9, 0, Some(color)),
+            Self::RotateX(value) => (10, bits(value), None),
+            Self::RotateY(value) => (11, bits(value), None),
+            Self::TranslateZ(value) => (12, bits(value), None),
         }
     }
 }

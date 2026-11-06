@@ -14,6 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Vega-Lite fences in a window render through the official vega 6.4.0 and vega-lite 6.5.0 running in an embedded QuickJS, with a 2 s deadline, a 256 MB heap cap and no network; the native mapping is the fallback and the terminal path. The figure is named by the spec title and described by its axis titles.
 - `ChartBuilder::horizontal()` lays bars along rows.
 - `Easing::CubicBezier`, `Easing::cubic_bezier` and the `Easing::IN`, `OUT` and `IN_OUT` curves.
+- Radial and conic background gradients: `Paint::bg_radial(Radial)` with `RadialExtent`, `Paint::bg_conic(Conic)`, `Paint::bg_linear(GradientAxis)`, the `from`, `via` and `to` stops with positions, and repeating gradients. `scene::Gradient` and `scene::GradientKind` carry linear, radial and conic paints.
+- `Paint::bg_clip_text` paints the background gradient through the glyphs; `Paint::bg_image` tiles an image behind the content.
+- `Paint::border_dashed`, `border_dotted` and `border_solid`; dashes follow rounded corners.
+- `Paint::clip_path(ClipShape)` clips a node, its background and its children to an inset, circle, ellipse or polygon, and pointer hits outside the shape miss.
+- 3D transforms on `Paint`: `perspective`, `perspective_origin`, `rotate_x`, `rotate_y`, `rotate_z`, `translate_z`, `backface_hidden` and `backface_visible`, with `Property::RotateX`, `RotateY` and `TranslateZ` for keyframes.
+- Class strings parse `bg-linear-to-*`, `bg-radial`, `bg-conic-*`, `from-*`, `via-*`, `to-*`, `bg-clip-text`, `border-solid`, `border-dashed` and `border-dotted`.
 
 ### Changed
 
@@ -23,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Percent translate covers ±1600% in steps of 1/2048 of the width, was ±327.67%.
 - `Easing::cubic_bezier` with a non-finite control point eases linearly.
 - `Easing` has a new variant, so an exhaustive `match` on it needs a new arm.
+- `DrawGradient::new` takes `impl Into<Gradient>` and is no longer `const`; `DrawGradient::gradient` is a `Gradient`. A `LinearGradient` converts with `From`.
+- The GPU gradient pipeline mixes stops in linear light; the CPU renderer and CSS mix in sRGB, so mid-gradient colors differ slightly between them.
 
 ## [0.2.0] - 2026-11-02
 

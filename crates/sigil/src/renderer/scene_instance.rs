@@ -9,6 +9,7 @@ use crate::renderer::scene_command::walk::IDENTITY;
 use crate::renderer::scene_command::{
     DrawGradient, DrawPattern, DrawRect, GradientStop, PatternKind, Stroke, StrokeBand, Transform,
 };
+use crate::scene::command::{Gradient, GradientKind};
 use crate::renderer::shadow_paint::Shadow;
 use crate::scene::corner_radii::CornerRadii;
 pub(crate) use crate::scene::shadow::{expanded_shadow_rect, srgb_channel_to_linear};
@@ -55,6 +56,8 @@ pub(crate) const FILL_KIND_GRADIENT: u32 = 0;
 pub(crate) const FILL_KIND_SLASH: u32 = 1;
 pub(crate) const FILL_KIND_CHECKER: u32 = 2;
 pub(crate) const FILL_KIND_WASH: u32 = 3;
+pub(crate) const FILL_KIND_RADIAL: u32 = 4;
+pub(crate) const FILL_KIND_CONIC: u32 = 5;
 
 pub(crate) const fn affine_rows(transform: Transform) -> [[f32; 4]; 2] {
     let [[a, b, tx], [c, d, ty]] = transform;
@@ -190,16 +193,40 @@ pub(crate) fn draw_gradient_instance(
 ) -> FillInstance {
     let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
     let base = fill_base(draw.rect, draw.border_radius, draw.stroke, opacity, space);
-    let (start, end) = (draw.gradient.start, draw.gradient.end);
+    let (fill_kind, line, pattern_a) = pack_gradient(&draw.gradient);
+    let span = draw.gradient.repeat_span();
+    let [first, last] = span.unwrap_or([0.0, 1.0]);
     FillInstance {
-        line: [start.x, start.y, end.x, end.y],
+        line,
         stop_range: [
             stop_offset,
             stop_count.min(MAX_GRADIENT_STOPS_U32),
-            FILL_KIND_GRADIENT,
+            fill_kind,
             0,
         ],
+        pattern_a,
+        pattern_b: [first, last, f32::from(u8::from(span.is_some())), 0.0],
         ..base
+    }
+}
+
+fn pack_gradient(gradient: &Gradient) -> (u32, [f32; 4], [f32; 4]) {
+    match gradient.kind {
+        GradientKind::Linear { start, end } => (
+            FILL_KIND_GRADIENT,
+            [start.x, start.y, end.x, end.y],
+            [0.0; 4],
+        ),
+        GradientKind::Radial { center, radius } => (
+            FILL_KIND_RADIAL,
+            [center.x, center.y, center.x, center.y],
+            [radius[0], radius[1], 0.0, 0.0],
+        ),
+        GradientKind::Conic { center, angle } => (
+            FILL_KIND_CONIC,
+            [center.x, center.y, center.x, center.y],
+            [0.0, 0.0, angle, 0.0],
+        ),
     }
 }
 

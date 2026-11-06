@@ -5,6 +5,7 @@ use std::sync::{Mutex, OnceLock};
 use smallvec::SmallVec;
 
 use crate::style::StyleAtom;
+use crate::style::atom::{PaintAtom, SpaceAtom, StopSlot};
 
 /// Identifies a component's style.
 pub(crate) type ComponentId = u64;
@@ -196,6 +197,35 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::TransitionDelay(_) => ResolvedSlot::TransitionDelay,
         StyleAtom::Animation(_) => ResolvedSlot::Animation,
         StyleAtom::UnknownThemeRef(_) => ResolvedSlot::UnknownThemeRef,
+        StyleAtom::Paint(paint) => paint_slot(paint),
+        StyleAtom::ClipPath(_) => ResolvedSlot::ClipPath,
+        StyleAtom::Space(atom) => space_slot(atom),
+    }
+}
+
+const fn space_slot(atom: SpaceAtom) -> ResolvedSlot {
+    match atom {
+        SpaceAtom::RotateX(_) => ResolvedSlot::RotateX,
+        SpaceAtom::RotateY(_) => ResolvedSlot::RotateY,
+        SpaceAtom::RotateZ(_) => ResolvedSlot::RotateZ,
+        SpaceAtom::TranslateZ(_) => ResolvedSlot::TranslateZ,
+        SpaceAtom::Perspective(_) => ResolvedSlot::Perspective,
+        SpaceAtom::PerspectiveOrigin(_) => ResolvedSlot::PerspectiveOrigin,
+        SpaceAtom::Backface(_) => ResolvedSlot::Backface,
+    }
+}
+
+const fn paint_slot(atom: PaintAtom) -> ResolvedSlot {
+    match atom {
+        PaintAtom::Gradient(_) | PaintAtom::Image(_) => ResolvedSlot::BackgroundImage,
+        PaintAtom::Stop(StopSlot::From, _) => ResolvedSlot::GradientFrom,
+        PaintAtom::Stop(StopSlot::Via, _) => ResolvedSlot::GradientVia,
+        PaintAtom::Stop(StopSlot::To, _) => ResolvedSlot::GradientTo,
+        PaintAtom::StopAt(StopSlot::From, _) => ResolvedSlot::GradientFromPosition,
+        PaintAtom::StopAt(StopSlot::Via, _) => ResolvedSlot::GradientViaPosition,
+        PaintAtom::StopAt(StopSlot::To, _) => ResolvedSlot::GradientToPosition,
+        PaintAtom::ClipText => ResolvedSlot::BackgroundClip,
+        PaintAtom::Border(_) => ResolvedSlot::BorderStyle,
     }
 }
 
@@ -255,4 +285,21 @@ pub(crate) enum ResolvedSlot {
     TransitionDelay,
     Animation,
     UnknownThemeRef,
+    BackgroundImage,
+    GradientFrom,
+    GradientVia,
+    GradientTo,
+    GradientFromPosition,
+    GradientViaPosition,
+    GradientToPosition,
+    BackgroundClip,
+    BorderStyle,
+    ClipPath,
+    RotateX,
+    RotateY,
+    RotateZ,
+    TranslateZ,
+    Perspective,
+    PerspectiveOrigin,
+    Backface,
 }

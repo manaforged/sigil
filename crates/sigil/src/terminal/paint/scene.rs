@@ -6,7 +6,7 @@ use crate::scene::geometry::IDENTITY;
 use crate::scene::state::SceneState;
 use crate::scene::{
     CellBorder, CommandScene, DrawDecoration, DrawGradient, DrawImage, DrawRect, GlyphRun,
-    LayerEffect, LinearGradient, SceneCommand,
+    Gradient, LayerEffect, SceneCommand,
 };
 use crate::style::{Rgba8, Theme};
 use crate::terminal::caps::{Caps, Fills};
@@ -90,44 +90,8 @@ fn hull(regions: &[Rect]) -> Option<[f32; 4]> {
     })
 }
 
-fn gradient_flat(gradient: &LinearGradient) -> Rgba8 {
-    let mut stops = gradient.stops.iter();
-    let Some(first) = stops.next() else {
-        return Rgba8 {
-            r: 0,
-            g: 0,
-            b: 0,
-            a: 0,
-        };
-    };
-    if first.offset >= 0.5 {
-        return first.color;
-    }
-    let mut prev = first;
-    for next in stops {
-        if next.offset >= 0.5 {
-            let span = (next.offset - prev.offset).max(f32::EPSILON);
-            let t = ((0.5 - prev.offset) / span).clamp(0.0, 1.0);
-            return blend(prev.color, next.color, t);
-        }
-        prev = next;
-    }
-    prev.color
-}
-
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "channels are clamped to the u8 range before the cast"
-)]
-fn blend(a: Rgba8, b: Rgba8, t: f32) -> Rgba8 {
-    let mix = |x: u8, y: u8| (f32::from(x).mul_add(1.0 - t, f32::from(y) * t)).round() as u8;
-    Rgba8 {
-        r: mix(a.r, b.r),
-        g: mix(a.g, b.g),
-        b: mix(a.b, b.b),
-        a: mix(a.a, b.a),
-    }
+fn gradient_flat(gradient: &Gradient) -> Rgba8 {
+    crate::scene::command::fills::color_at(&gradient.stops, 0.5)
 }
 
 #[allow(
@@ -212,13 +176,24 @@ impl CellWalk<'_> {
     fn layer(&mut self, command: &SceneCommand) -> bool {
         match command {
             SceneCommand::PushLayer(scope) => {
-                self.state.push_clip(scope.clip);
+                self.state.push_clip(match scope.effect {
+                    LayerEffect::Projected {
+                        transform,
+                        hide_backface,
+                    } if transform.visible(hide_backface).is_none() => {
+                        Rect::new(scope.clip.origin, 0.0, 0.0)
+                    }
+                    _ => scope.clip,
+                });
                 self.state.apply(&SceneCommand::SaveLayer {
                     opacity: scope.opacity,
                 });
                 self.state.push_transform(match scope.effect {
                     LayerEffect::Transform(transform) => transform,
-                    LayerEffect::Identity | LayerEffect::LayerBlur { .. } => IDENTITY,
+                    LayerEffect::Projected { transform, .. } => transform.affine_fit(scope.clip),
+                    LayerEffect::Identity
+                    | LayerEffect::LayerBlur { .. }
+                    | LayerEffect::Mask(_) => IDENTITY,
                 });
             }
             SceneCommand::PopLayer => {

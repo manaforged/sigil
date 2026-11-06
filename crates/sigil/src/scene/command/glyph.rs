@@ -39,6 +39,7 @@ pub struct SharedGlyph {
     positioned_glyphs: Vec<RenderedGlyph>,
     #[cfg(feature = "scene")]
     paragraph: Option<Paragraph>,
+    fill: Option<super::DrawPath>,
 }
 
 /// Shaped glyphs with one style and origin.
@@ -75,6 +76,7 @@ impl GlyphRun {
                 positioned_glyphs: Vec::new(),
                 #[cfg(feature = "scene")]
                 paragraph: None,
+                fill: None,
             }),
         }
     }
@@ -163,6 +165,27 @@ impl GlyphRun {
         self.node = Some(node);
         self
     }
+
+    #[cfg(feature = "scene")]
+    pub(crate) fn with_fill(mut self, fill: super::DrawPath) -> Self {
+        Arc::make_mut(&mut self.shared).fill = Some(fill);
+        self
+    }
+
+    #[cfg(feature = "scene")]
+    pub(crate) fn fill(&self) -> Option<&super::DrawPath> {
+        self.shared.fill.as_ref()
+    }
+
+    pub(crate) fn shift(&mut self, dx: f32, dy: f32) {
+        self.rect.origin.x += dx;
+        self.rect.origin.y += dy;
+        if self.shared.fill.is_some()
+            && let Some(fill) = Arc::make_mut(&mut self.shared).fill.as_mut()
+        {
+            fill.shift(dx, dy);
+        }
+    }
 }
 
 #[cfg(feature = "scene")]
@@ -219,6 +242,7 @@ fn same_shared(this: &SharedGlyph, other: &SharedGlyph) -> bool {
         && this.tone == other.tone
         && this.inks == other.inks
         && this.positioned_glyphs == other.positioned_glyphs
+        && this.fill == other.fill
         && same_paragraph(this, other)
 }
 

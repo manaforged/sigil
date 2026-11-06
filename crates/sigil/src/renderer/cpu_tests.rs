@@ -66,7 +66,7 @@ fn rect_lands_at_physical_scale() {
 #[test]
 fn clip_limits_a_rect_to_the_pushed_bounds() {
     let commands = vec![
-        SceneCommand::PushClip(rect(0.0, 0.0, 2.0, 4.0)),
+        SceneCommand::PushClip(rect(0.0, 0.0, 2.0, 4.0).into()),
         solid(rect(0.0, 0.0, 4.0, 4.0)),
         SceneCommand::PopClip,
     ];

@@ -102,9 +102,13 @@ impl<'a> CpuPainter<'a> {
             match node {
                 PlanNode::Command(command) => self.handle(command),
                 PlanNode::State(command) => self.handle(command),
-                PlanNode::Layer { scope, children } => {
+                PlanNode::Layer {
+                    scope,
+                    mask,
+                    children,
+                } => {
                     if !self.state.clipped_out() {
-                        self.layer(*scope, children);
+                        self.layer(scope.clone(), *mask, children);
                     }
                 }
                 PlanNode::Group {
@@ -141,7 +145,10 @@ impl<'a> CpuPainter<'a> {
                 radii,
                 shadow: s,
             } => self.shadow(*rect, *radii, s),
-            SceneCommand::GlyphRun(draw) => self.glyph_run(draw),
+            SceneCommand::GlyphRun(draw) => match draw.fill() {
+                Some(fill) => self.path(fill),
+                None => self.glyph_run(draw),
+            },
             SceneCommand::Sprite(draw) => self.sprite(draw),
             SceneCommand::Image(draw) => self.image(draw),
             SceneCommand::Decoration(draw) => self.decoration(draw),

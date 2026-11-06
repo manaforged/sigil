@@ -1,6 +1,11 @@
+use std::sync::Arc;
+
 use crate::geometry::{Point, Rect};
 
 use crate::scene::corner_radii::CornerRadii;
+
+use super::transform3d::Transform3D;
+use super::{CommandScene, SceneCommand};
 
 /// A 2D affine transform as two rows of three values.
 pub type Transform = [[f32; 3]; 2];
@@ -64,7 +69,7 @@ pub enum DecorationKind {
 }
 
 /// The bounds and effects of a composite layer.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LayerScope {
     /// The clip.
     pub clip: Rect,
@@ -77,7 +82,7 @@ pub struct LayerScope {
 }
 
 /// An effect applied to a composite layer.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LayerEffect {
     /// The identity layer effect.
     Identity,
@@ -88,6 +93,43 @@ pub enum LayerEffect {
         /// The blur radius.
         sigma: f32,
     },
+    /// The layer is drawn as a CSS 3D plane through a perspective transform.
+    Projected {
+        /// The full transform from layer space to the parent's space.
+        transform: Transform3D,
+        /// Draws nothing when the transform shows the layer's back, like `backface-visibility: hidden`.
+        hide_backface: bool,
+    },
+    /// The layer's pixels are scaled by a mask, as in CSS `mask-image`.
+    Mask(Mask),
+}
+
+/// Which channel of a mask scales the masked pixels, as in CSS `mask-mode`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MaskMode {
+    /// The mask's alpha.
+    #[default]
+    Alpha,
+    /// The mask's luminance times its alpha.
+    Luminance,
+}
+
+/// Drawing commands whose alpha or luminance scales a layer's pixels.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Mask {
+    pub(crate) mode: MaskMode,
+    pub(crate) commands: Arc<[SceneCommand]>,
+}
+
+impl Mask {
+    /// A mask read through `mode` from the pixels `scene` draws, in the coordinates of the layer's children.
+    #[must_use]
+    pub fn new(mode: MaskMode, scene: CommandScene) -> Self {
+        Self {
+            mode,
+            commands: scene.commands.into(),
+        }
+    }
 }
 
 pub(crate) fn transform_rect(transform: Transform, rect: Rect) -> Rect {

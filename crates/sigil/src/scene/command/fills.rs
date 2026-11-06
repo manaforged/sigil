@@ -130,26 +130,33 @@ impl LinearGradient {
     /// Returns the normalized.
     #[must_use]
     pub fn normalized(&self) -> Self {
-        let mut sorted: SmallVec<[GradientStop; 4]> = self
-            .stops
-            .iter()
-            .copied()
-            .filter(|stop| stop.offset.is_finite())
-            .collect();
-        sorted.sort_by(|a, b| a.offset.total_cmp(&b.offset));
-        let stops = match sorted.last() {
-            None => smallvec::smallvec![GradientStop::new(0.0, TRANSPARENT)],
-            Some(last) if self.is_degenerate() => {
-                smallvec::smallvec![GradientStop::new(0.0, last.color)]
-            }
-            Some(_) => clamp_stops(&sorted),
-        };
-        Self::new(self.start, self.end, stops)
+        Self::new(
+            self.start,
+            self.end,
+            normalize_stops(&self.stops, self.is_degenerate()),
+        )
     }
 
-    fn is_degenerate(&self) -> bool {
+    pub(super) fn is_degenerate(&self) -> bool {
         let length = (self.end.x - self.start.x).hypot(self.end.y - self.start.y);
         length.is_nan() || length < DEGENERATE_LENGTH
+    }
+}
+
+pub(super) fn normalize_stops(
+    stops: &[GradientStop],
+    degenerate: bool,
+) -> SmallVec<[GradientStop; 4]> {
+    let mut sorted: SmallVec<[GradientStop; 4]> = stops
+        .iter()
+        .copied()
+        .filter(|stop| stop.offset.is_finite())
+        .collect();
+    sorted.sort_by(|a, b| a.offset.total_cmp(&b.offset));
+    match sorted.last() {
+        None => smallvec::smallvec![GradientStop::new(0.0, TRANSPARENT)],
+        Some(last) if degenerate => smallvec::smallvec![GradientStop::new(0.0, last.color)],
+        Some(_) => clamp_stops(&sorted),
     }
 }
 
@@ -172,7 +179,7 @@ fn clamp_stops(sorted: &[GradientStop]) -> SmallVec<[GradientStop; 4]> {
     out
 }
 
-fn color_at(sorted: &[GradientStop], t: f32) -> Rgba8 {
+pub(crate) fn color_at(sorted: &[GradientStop], t: f32) -> Rgba8 {
     let span = sorted.windows(2).find_map(|pair| match pair {
         [a, b] if a.offset <= t && t < b.offset => Some((*a, *b)),
         _ => None,

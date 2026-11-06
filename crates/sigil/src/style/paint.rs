@@ -8,9 +8,13 @@ use std::time::Duration;
 
 use crate::animation::{Easing, Keyframes, KeyframesId};
 use crate::animation_runtime::presets;
-use crate::style::MillisU16;
 use crate::style::engine::encode_px;
-use crate::style::{ColorAtom, Elevation, FontFamily, Radius, Style, StyleAtom, TextDecoration};
+use crate::kernel::ImageSource;
+use crate::style::atom::{Backface, BorderStyle, GradientShape, PaintAtom, SpaceAtom, StopSlot};
+use crate::style::{
+    ClipShape, ColorAtom, Conic, Elevation, FontFamily, GradientAxis, Radial, Radius, Style, StyleAtom,
+    TextDecoration,
+};
 
 mod sealed {
     use crate::style::Style;
@@ -24,43 +28,21 @@ mod sealed {
 
 pub(crate) use sealed::{PaintTarget, StyleSlot};
 
-const OPACITY_SCALE: f32 = 10_000.0;
-const LETTER_SPACING_SCALE: f32 = 1_000.0;
-const LETTER_SPACING_LIMIT: f32 = 2_000.0;
+mod units;
+
+use units::{fraction_units, letter_spacing_units, millis, opacity_units};
 
 fn push<T: PaintTarget>(mut target: T, atom: StyleAtom) -> T {
     target.style_slot().0.push_atom(atom);
     target
 }
 
-#[track_caller]
-fn opacity_units(value: f32) -> u16 {
-    debug_assert!(
-        value.is_finite() && (0.0..=1.0).contains(&value),
-        "opacity must be a finite value in 0.0..=1.0, got {value}",
-    );
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "values are bounded to the target range before the cast"
-    )]
-    let encoded = (value.clamp(0.0, 1.0) * OPACITY_SCALE).round() as u16;
-    encoded
+fn space<T: PaintTarget>(target: T, atom: SpaceAtom) -> T {
+    push(target, StyleAtom::Space(atom))
 }
 
-fn millis(duration: Duration) -> MillisU16 {
-    MillisU16(u16::try_from(duration.as_millis()).unwrap_or(u16::MAX))
-}
-
-fn letter_spacing_units(em: f32) -> i16 {
-    #[allow(
-        clippy::cast_possible_truncation,
-        reason = "values are bounded to the target range before the cast"
-    )]
-    let thousandths = (em * LETTER_SPACING_SCALE)
-        .round()
-        .clamp(-LETTER_SPACING_LIMIT, LETTER_SPACING_LIMIT) as i16;
-    thousandths
+fn paint<T: PaintTarget>(target: T, atom: PaintAtom) -> T {
+    push(target, StyleAtom::Paint(atom))
 }
 
 /// Typed paint on nodes, text, widget builders, and state closures.
@@ -77,6 +59,90 @@ pub trait Paint: PaintTarget {
     #[must_use]
     fn background_gradient(self, gradient: BgGradient) -> Self {
         push(self, StyleAtom::BackgroundGradient(gradient))
+    }
+
+    /// Fills the background with a linear gradient along `axis`, like Tailwind `bg-linear-to-*`.
+    #[must_use]
+    fn bg_linear(self, axis: GradientAxis) -> Self {
+        paint(self, PaintAtom::Gradient(GradientShape::Linear(axis)))
+    }
+
+    /// Fills the background with a radial gradient, like Tailwind `bg-radial`.
+    #[must_use]
+    fn bg_radial(self, radial: Radial) -> Self {
+        paint(self, PaintAtom::Gradient(GradientShape::Radial(radial)))
+    }
+
+    /// Fills the background with a conic gradient, like Tailwind `bg-conic-*`.
+    #[must_use]
+    fn bg_conic(self, conic: impl Into<Conic>) -> Self {
+        paint(self, PaintAtom::Gradient(GradientShape::Conic(conic.into())))
+    }
+
+    /// Sets the first gradient color, like Tailwind `from-*`.
+    #[must_use]
+    fn gradient_from(self, color: impl Into<ColorAtom>) -> Self {
+        paint(self, PaintAtom::Stop(StopSlot::From, color.into()))
+    }
+
+    /// Sets the middle gradient color, like Tailwind `via-*`.
+    #[must_use]
+    fn gradient_via(self, color: impl Into<ColorAtom>) -> Self {
+        paint(self, PaintAtom::Stop(StopSlot::Via, color.into()))
+    }
+
+    /// Sets the last gradient color, like Tailwind `to-*`.
+    #[must_use]
+    fn gradient_to(self, color: impl Into<ColorAtom>) -> Self {
+        paint(self, PaintAtom::Stop(StopSlot::To, color.into()))
+    }
+
+    /// Sets where the first color sits in percent, like Tailwind `from-<n>%`; default 0.
+    #[must_use]
+    fn gradient_from_position(self, percent: u8) -> Self {
+        paint(self, PaintAtom::StopAt(StopSlot::From, percent.min(100)))
+    }
+
+    /// Sets where the middle color sits in percent, like Tailwind `via-<n>%`; default 50.
+    #[must_use]
+    fn gradient_via_position(self, percent: u8) -> Self {
+        paint(self, PaintAtom::StopAt(StopSlot::Via, percent.min(100)))
+    }
+
+    /// Sets where the last color sits in percent, like Tailwind `to-<n>%`; default 100.
+    #[must_use]
+    fn gradient_to_position(self, percent: u8) -> Self {
+        paint(self, PaintAtom::StopAt(StopSlot::To, percent.min(100)))
+    }
+
+    /// Paints the background gradient inside the glyphs of a text node, like Tailwind `bg-clip-text`.
+    #[must_use]
+    fn bg_clip_text(self) -> Self {
+        paint(self, PaintAtom::ClipText)
+    }
+
+    /// Tiles `image` over the background at its natural size, like CSS `background-image: url(..)`.
+    #[must_use]
+    fn bg_image(self, image: ImageSource) -> Self {
+        paint(self, PaintAtom::Image(crate::style::image_paint::register(image)))
+    }
+
+    /// Draws a solid border, like Tailwind `border-solid`.
+    #[must_use]
+    fn border_solid(self) -> Self {
+        paint(self, PaintAtom::Border(BorderStyle::Solid))
+    }
+
+    /// Draws the border in dashes, like Tailwind `border-dashed`.
+    #[must_use]
+    fn border_dashed(self) -> Self {
+        paint(self, PaintAtom::Border(BorderStyle::Dashed))
+    }
+
+    /// Draws the border in round dots, like Tailwind `border-dotted`.
+    #[must_use]
+    fn border_dotted(self) -> Self {
+        paint(self, PaintAtom::Border(BorderStyle::Dotted))
     }
 
     /// Sets the text color.
@@ -127,6 +193,12 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::Radius(radius))
     }
 
+    /// Clips the node and its children to `shape`, like CSS `clip-path`.
+    #[must_use]
+    fn clip_path(self, shape: ClipShape) -> Self {
+        push(self, StyleAtom::ClipPath(shape))
+    }
+
     /// Sets the shadow.
     #[must_use]
     fn shadow(self, elevation: Elevation) -> Self {
@@ -146,6 +218,54 @@ pub trait Paint: PaintTarget {
     #[must_use]
     fn transform(self, transform: Transform2D) -> Self {
         push(self, StyleAtom::Transform(transform))
+    }
+
+    /// Gives the children a 3D viewing distance in px, like Tailwind `perspective-*`.
+    #[must_use]
+    fn perspective(self, px: f32) -> Self {
+        space(self, SpaceAtom::Perspective(Some(px.max(1.0))))
+    }
+
+    /// Sets the point the children are viewed from, as fractions of the box, like Tailwind `perspective-origin-*`.
+    #[must_use]
+    fn perspective_origin(self, x: f32, y: f32) -> Self {
+        space(self, SpaceAtom::PerspectiveOrigin([x, y].map(fraction_units)))
+    }
+
+    /// Turns the node around the x axis by `degrees`, like Tailwind `rotate-x-*`.
+    #[must_use]
+    fn rotate_x(self, degrees: f32) -> Self {
+        space(self, SpaceAtom::RotateX(degrees.to_radians()))
+    }
+
+    /// Turns the node around the y axis by `degrees`, like Tailwind `rotate-y-*`.
+    #[must_use]
+    fn rotate_y(self, degrees: f32) -> Self {
+        space(self, SpaceAtom::RotateY(degrees.to_radians()))
+    }
+
+    /// Turns the node around the z axis by `degrees`, like Tailwind `rotate-z-*`.
+    #[must_use]
+    fn rotate_z(self, degrees: f32) -> Self {
+        space(self, SpaceAtom::RotateZ(degrees.to_radians()))
+    }
+
+    /// Moves the node toward the viewer by `px`, like Tailwind `translate-z-*`.
+    #[must_use]
+    fn translate_z(self, px: f32) -> Self {
+        space(self, SpaceAtom::TranslateZ(px))
+    }
+
+    /// Draws nothing while the node's back faces the viewer, like Tailwind `backface-hidden`.
+    #[must_use]
+    fn backface_hidden(self) -> Self {
+        space(self, SpaceAtom::Backface(Backface::Hidden))
+    }
+
+    /// Shows the node's back when it turns away, like Tailwind `backface-visible`.
+    #[must_use]
+    fn backface_visible(self) -> Self {
+        space(self, SpaceAtom::Backface(Backface::Visible))
     }
 
     /// Sets the font size.

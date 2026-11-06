@@ -5,7 +5,7 @@ mod path;
 
 pub use marks::{DrawDecoration, DrawSprite};
 pub use path::DrawPath;
-pub(crate) use path::{MITER_LIMIT, PathCmd, PathStroke};
+pub(crate) use path::{MITER_LIMIT, PathCmd, PathStroke, outline_key, rounded_outline};
 
 use crate::geometry::Rect;
 use crate::kernel::NodeId;
@@ -13,7 +13,8 @@ use crate::style::{Rgba8, Tone};
 
 use crate::scene::corner_radii::CornerRadii;
 
-use super::fills::{LinearGradient, PatternKind, Stroke};
+use super::fills::{PatternKind, Stroke};
+use super::gradient::Gradient;
 
 /// A command that fills or strokes a rounded rectangle.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -142,7 +143,7 @@ pub struct DrawGradient {
     /// The rect.
     pub rect: Rect,
     /// The gradient.
-    pub gradient: LinearGradient,
+    pub gradient: Gradient,
     /// The border radius.
     pub border_radius: CornerRadii,
     /// The opacity.
@@ -162,11 +163,11 @@ pub struct DrawGradient {
 impl DrawGradient {
     /// A gradient rectangle with square corners at full opacity.
     #[must_use]
-    pub const fn new(rect: Rect, gradient: LinearGradient) -> Self {
+    pub fn new(rect: Rect, gradient: impl Into<Gradient>) -> Self {
         Self {
             node: None,
             rect,
-            gradient,
+            gradient: gradient.into(),
             border_radius: CornerRadii::ZERO,
             opacity: 10_000,
             stroke: None,

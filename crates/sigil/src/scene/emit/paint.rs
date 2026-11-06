@@ -4,15 +4,13 @@ use crate::scene::builder::SceneBuilder;
 use crate::scene::command::fills::TRANSPARENT;
 use crate::scene::command::{
     CellBorder, CellRect, DecorationKind, DrawDecoration, DrawGradient, DrawImage, DrawRect,
-    GlyphRun, GradientStop, LinearGradient, Stroke, StrokeAlign, StrokeStyle, TextFlow, shape_run,
+    GlyphRun, Gradient, Stroke, StrokeAlign, StrokeStyle, TextFlow, shape_run,
 };
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
 use crate::scene::style_adapter::{corner_radii_for, focus_ring_for, text_style_for};
-use crate::style::{
-    BgGradient, Elevation, GradientAxis, RenderStyle, Rgba8, StyleEngine, TextDecoration,
-    TextStyle, Theme, Tone,
-};
+use crate::style::atom::BorderStyle;
+use crate::style::{Elevation, RenderStyle, Rgba8, TextDecoration, TextStyle, Theme, Tone};
 
 pub(super) fn push_focus_ring(
     scene: &mut SceneBuilder,
@@ -119,16 +117,19 @@ fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &Node
     if let Some(elevation) = style.shadow {
         scene.draw_shadow(rect, radii, elevation_shadow(elevation));
     }
-    let stroke = super::borders::border_stroke(style, paint.theme);
-    if let Some(spec) = style.background_gradient {
-        let fill = gradient_fill(rect, spec, paint.theme);
+    let styled = style.paint.border != BorderStyle::Solid;
+    let stroke = super::borders::border_stroke(style, paint.theme).filter(|_| !styled);
+    let mut cell = paint.cell();
+    if stroke.is_some() {
+        cell.border = paint.border(rect);
+    }
+    let fill = super::background::fill(rect, style, paint.theme).filter(|_| !style.paint.clip_text);
+    if let Some(fill) = fill {
         let mut draw = DrawGradient::new(rect, fill)
             .border_radius(radii)
             .opacity(style.opacity);
-        let mut cell = paint.cell();
         if let Some(stroke) = stroke {
             draw = draw.stroke(stroke);
-            cell.border = paint.border(rect);
         }
         scene.draw_gradient_for_node(id, draw, cell);
     } else if style.background_color.is_some() || stroke.is_some() || paint.tone.is_some() {
@@ -136,14 +137,15 @@ fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &Node
         let mut draw = DrawRect::new(rect, fill)
             .border_radius(radii)
             .opacity(style.opacity);
-        let mut cell = paint.cell();
         if let Some(stroke) = stroke {
             draw = draw.stroke(stroke);
-            cell.border = paint.border(rect);
         }
         scene.draw_rect_for_node(id, draw, cell);
     }
-    super::borders::push_side_borders(scene, id, rect, paint);
+    super::background::push_image(scene, id, rect, style);
+    if !super::dashes::push_styled_border(scene, id, rect, paint) {
+        super::borders::push_side_borders(scene, id, rect, paint);
+    }
 }
 
 pub(super) fn push_node(
@@ -210,11 +212,17 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
             },
         );
     }
+    let clip = super::background::fill(rect, style, paint.theme).filter(|_| style.paint.clip_text);
+    let color = clip.as_ref().map_or(color, text_color);
     let run = shape_run(
         GlyphRun::new(rect, text, color, text_style.clone(), style.opacity)
             .with_cell(flow, paint.tone)
             .with_inks(super::runs::inks(text_style.runs.as_ref(), paint.theme)),
     );
+    let run = match clip {
+        Some(gradient) => gradient_text(run, &gradient),
+        None => run,
+    };
     let run = super::runs::split(scene, id, run);
     let overflows = *ellipsis && overflows(&run, rect);
     let emit = |target: &mut SceneBuilder| {
@@ -227,6 +235,29 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
         emit(scene);
     }
     push_text_decoration(scene, rect, color, style.opacity, &text_style);
+}
+
+#[cfg(feature = "scene")]
+fn text_color(gradient: &Gradient) -> Rgba8 {
+    super::text_fill::flat_color(gradient)
+}
+
+#[cfg(feature = "scene")]
+fn gradient_text(run: GlyphRun, gradient: &Gradient) -> GlyphRun {
+    match super::text_fill::glyph_fill(&run, gradient) {
+        Some(fill) => run.with_fill(fill),
+        None => run,
+    }
+}
+
+#[cfg(not(feature = "scene"))]
+fn text_color(gradient: &Gradient) -> Rgba8 {
+    crate::scene::command::fills::color_at(&gradient.normalized().stops, 0.5)
+}
+
+#[cfg(not(feature = "scene"))]
+const fn gradient_text(run: GlyphRun, _: &Gradient) -> GlyphRun {
+    run
 }
 
 #[cfg(feature = "scene")]
@@ -263,32 +294,4 @@ pub(super) const fn elevation_shadow(elevation: Elevation) -> Shadow {
         Elevation::Xl => (16.0, 28.0, -4.0, 0.20),
     };
     Shadow::new([0.0, offset_y], blur, spread, [0.0, 0.0, 0.0, alpha])
-}
-
-fn gradient_fill(rect: Rect, spec: BgGradient, theme: &Theme) -> LinearGradient {
-    let (left, top) = (rect.origin.x, rect.origin.y);
-    let (right, bottom) = (left + rect.width, top + rect.height);
-    let (mid_x, mid_y) = (left + rect.width / 2.0, top + rect.height / 2.0);
-    let (start, end) = match spec.axis {
-        GradientAxis::TopToBottom => ((mid_x, top), (mid_x, bottom)),
-        GradientAxis::BottomToTop => ((mid_x, bottom), (mid_x, top)),
-        GradientAxis::LeftToRight => ((left, mid_y), (right, mid_y)),
-        GradientAxis::RightToLeft => ((right, mid_y), (left, mid_y)),
-    };
-    let engine = StyleEngine::new(theme);
-    let stops = spec
-        .stops
-        .iter()
-        .map(|stop| {
-            GradientStop::new(
-                f32::from(stop.offset) / 1000.0,
-                engine.resolve_color(stop.color),
-            )
-        })
-        .collect::<Vec<_>>();
-    LinearGradient::new(
-        Point::new(start.0, start.1),
-        Point::new(end.0, end.1),
-        stops,
-    )
 }

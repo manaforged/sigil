@@ -9,6 +9,8 @@ use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::walk::{SceneWalk, WalkCtx, pipeline_for, translation};
 use crate::renderer::scene_command::{CommandScene, SceneCommand};
 
+#[path = "layer_walk/mask.rs"]
+mod mask;
 #[path = "layer_walk/offscreen.rs"]
 mod offscreen;
 use offscreen::close_layer;
@@ -41,7 +43,7 @@ struct LayerFrame<'n> {
     rest: &'n [PlanNode<'n>],
     scan: &'n [PlanNode<'n>],
     scan_target: LayerTarget,
-    layers: Vec<Option<OffscreenLayer>>,
+    layers: Vec<Option<OffscreenLayer<'n>>>,
 }
 
 impl<'n> LayerFrame<'n> {
@@ -60,7 +62,7 @@ impl<'n> LayerFrame<'n> {
 }
 
 struct Nested<'n> {
-    open: OpenLayer,
+    open: OpenLayer<'n>,
     frame: LayerFrame<'n>,
 }
 
@@ -103,9 +105,11 @@ pub(crate) fn walk_layer_command_scene(
     };
     let result = render_nodes(&mut ctx, &nodes, target);
     if let Some(pool) = ctx.layer_pool.as_ref() {
-        let washes = &*ctx.wash_cache;
+        let (washes, vector) = (&*ctx.wash_cache, &*ctx.vector);
         for pipeline in &mut *ctx.layer_pipelines {
-            pipeline.retain(|view| pool.contains(view) || washes.contains(view));
+            pipeline.retain(|view| {
+                pool.contains(view) || washes.contains(view) || vector.contains(view)
+            });
         }
         pool.record_profile();
     }
@@ -113,19 +117,25 @@ pub(crate) fn walk_layer_command_scene(
 }
 
 fn prepare_sprites(ctx: &mut WalkCtx<'_>, commands: &[SceneCommand]) {
-    if !commands
-        .iter()
-        .any(|command| matches!(command, SceneCommand::Image(_) | SceneCommand::Sprite(_)))
-    {
+    let sprites = |list: &[SceneCommand]| {
+        list.iter()
+            .any(|command| matches!(command, SceneCommand::Image(_) | SceneCommand::Sprite(_)))
+    };
+    let masks: Vec<&[SceneCommand]> = mask::mask_commands(commands)
+        .filter(|list| sprites(list))
+        .collect();
+    if !sprites(commands) && masks.is_empty() {
         return;
     }
-    pipeline_for(
+    let atlas = pipeline_for(
         ctx.quad_pipelines,
         ctx.device,
         ctx.format,
         (AtlasPipeline::format, AtlasPipeline::new),
-    )
-    .prepare(ctx.device, ctx.queue, commands, ctx.scale);
+    );
+    for list in std::iter::once(commands).chain(masks) {
+        atlas.prepare(ctx.device, ctx.queue, list, ctx.scale);
+    }
 }
 
 fn render_nodes(
@@ -193,7 +203,7 @@ fn render_batch(
     ctx: &mut WalkCtx<'_>,
     nodes: &[PlanNode<'_>],
     target: &mut LayerTarget,
-    prepared: Vec<Option<OffscreenLayer>>,
+    prepared: Vec<Option<OffscreenLayer<'_>>>,
 ) {
     let mut layers = prepared.into_iter();
     let mut batch: Vec<&SceneCommand> = Vec::new();
@@ -227,9 +237,14 @@ fn prepare_layers<'n>(
                 let _ = frame.scan_target.state.apply(command);
                 continue;
             }
-            PlanNode::Layer { scope, children } => {
-                (layer_plan(*scope, &frame.scan_target, ctx.scale), children)
-            }
+            PlanNode::Layer {
+                scope,
+                mask,
+                children,
+            } => (
+                layer_plan(scope, &frame.scan_target, ctx.scale).map(|plan| plan.masked(*mask)),
+                children,
+            ),
             PlanNode::Group {
                 opacity,
                 commands,
@@ -306,6 +321,7 @@ const fn reborrow_ctx<'a>(
         decoration_pipelines: &mut *ctx.decoration_pipelines,
         layer_pipelines: &mut *ctx.layer_pipelines,
         blur_pipelines: &mut *ctx.blur_pipelines,
+        projected_pipelines: &mut *ctx.projected_pipelines,
         layer_pool: &mut *ctx.layer_pool,
         wash_cache: &mut *ctx.wash_cache,
         pending: &mut *ctx.pending,

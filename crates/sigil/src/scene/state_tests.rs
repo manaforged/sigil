@@ -11,7 +11,8 @@ fn a_stray_pop_keeps_the_layer_bounds_clip() {
         Point::new(0.0, 0.0),
         5.0,
         5.0,
-    )));
+    )
+    .into()));
     state.apply(&SceneCommand::PopClip);
     state.apply(&SceneCommand::PopClip);
     assert_eq!(

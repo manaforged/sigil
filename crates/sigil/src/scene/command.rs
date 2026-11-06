@@ -3,10 +3,12 @@
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
 
+mod clip;
 mod decoration;
 pub(crate) mod effects;
 pub(crate) mod fills;
 mod glyph;
+pub(crate) mod gradient;
 pub(crate) mod image_fit;
 pub(crate) mod payloads;
 #[cfg(all(
@@ -19,6 +21,7 @@ pub(crate) mod stroke_band;
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")
 ))]
 pub(crate) mod trim;
+pub(crate) mod transform3d;
 mod wash;
 
 #[cfg(any(
@@ -28,7 +31,11 @@ mod wash;
     all(feature = "scene", feature = "kittest")
 ))]
 pub(crate) use decoration::DecorationGeometry;
-pub use effects::{DecorationKind, LayerEffect, LayerScope, SpriteKind, SpriteSource, Transform};
+pub use clip::Clip;
+pub use effects::{
+    DecorationKind, LayerEffect, LayerScope, Mask, MaskMode, SpriteKind, SpriteSource, Transform,
+};
+pub use transform3d::Transform3D;
 #[cfg(any(test, feature = "kittest"))]
 pub use fills::PaintFill;
 pub(crate) use fills::{FillRule, PathPaint};
@@ -37,6 +44,7 @@ pub use fills::{
     StrokeStyle,
 };
 pub use glyph::GlyphRun;
+pub use gradient::{Gradient, GradientKind};
 pub(crate) use glyph::TextFlow;
 #[cfg(all(
     feature = "scene",
@@ -48,7 +56,7 @@ pub(crate) use payloads::{CellBorder, CellRect};
 pub use payloads::{
     DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawRect, DrawSprite,
 };
-pub(crate) use payloads::{MITER_LIMIT, PathCmd, PathStroke};
+pub(crate) use payloads::{MITER_LIMIT, PathCmd, PathStroke, outline_key, rounded_outline};
 #[cfg(all(
     feature = "scene",
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")
@@ -83,8 +91,8 @@ impl CommandScene {
 /// One draw or state command in a `CommandScene`.
 #[derive(Clone, Debug, PartialEq)]
 pub enum SceneCommand {
-    /// The push clip scene command.
-    PushClip(crate::geometry::Rect),
+    /// Clips the commands up to the matching `PopClip`.
+    PushClip(Clip),
     /// The pop clip scene command.
     PopClip,
     /// The push transform scene command.

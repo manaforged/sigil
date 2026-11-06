@@ -1,13 +1,20 @@
 use std::borrow::Cow;
 
-use crate::scene::command::{LayerScope, SceneCommand};
+use crate::scene::command::{DrawPath, LayerEffect, LayerScope, Mask, SceneCommand};
 use crate::scene::state::SceneState;
+
+#[derive(Clone, Copy)]
+pub(crate) enum MaskSource<'a> {
+    Path(&'a DrawPath),
+    Scene(&'a Mask),
+}
 
 pub(crate) enum PlanNode<'a> {
     Command(&'a SceneCommand),
     State(Cow<'a, SceneCommand>),
     Layer {
         scope: LayerScope,
+        mask: Option<MaskSource<'a>>,
         children: Vec<Self>,
     },
     Group {
@@ -27,9 +34,18 @@ pub(crate) fn build_tree(commands: &[SceneCommand]) -> Vec<PlanNode<'_>> {
                 let end = SceneState::layer_end(commands, index);
                 push_layer(
                     &mut nodes,
-                    *scope,
+                    scope,
                     commands.get(index..end).unwrap_or_default(),
                 );
+                index = end + 1;
+            }
+            SceneCommand::PushClip(clip) if clip.composites() => {
+                let end = SceneState::clip_end(commands, index);
+                nodes.push(PlanNode::Layer {
+                    scope: clip.scope(),
+                    mask: clip.mask().map(MaskSource::Path),
+                    children: build_tree(commands.get(index..end).unwrap_or_default()),
+                });
                 index = end + 1;
             }
             SceneCommand::SaveLayer { opacity } => {
@@ -54,17 +70,26 @@ pub(crate) fn build_tree(commands: &[SceneCommand]) -> Vec<PlanNode<'_>> {
     nodes
 }
 
-fn push_layer<'a>(nodes: &mut Vec<PlanNode<'a>>, scope: LayerScope, children: &'a [SceneCommand]) {
-    let Some(effect) = SceneState::inline_transform(&scope) else {
+fn push_layer<'a>(
+    nodes: &mut Vec<PlanNode<'a>>,
+    scope: &'a LayerScope,
+    children: &'a [SceneCommand],
+) {
+    let Some(effect) = SceneState::inline_transform(scope) else {
+        let mask = match &scope.effect {
+            LayerEffect::Mask(mask) => Some(MaskSource::Scene(mask)),
+            _ => None,
+        };
         nodes.push(PlanNode::Layer {
-            scope,
+            scope: scope.clone(),
+            mask,
             children: build_tree(children),
         });
         return;
     };
     let state = |command: SceneCommand| PlanNode::State(Cow::Owned(command));
     nodes.push(state(SceneCommand::PushTransform(effect)));
-    nodes.push(state(SceneCommand::PushClip(scope.clip)));
+    nodes.push(state(SceneCommand::PushClip(scope.clip.into())));
     nodes.extend(build_tree(children));
     nodes.push(state(SceneCommand::PopClip));
     nodes.push(state(SceneCommand::PopTransform));

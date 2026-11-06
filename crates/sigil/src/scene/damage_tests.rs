@@ -182,7 +182,10 @@ fn only_a_layer_that_moves_cells_off_their_grid_repaints_whole() {
     use crate::scene::command::LayerEffect;
     let shifted = LayerEffect::Transform([[1.0, 0.0, 8.0], [0.0, 1.0, 0.0]]);
     for effect in [LayerEffect::Identity, shifted] {
-        let found = regions(&layered(effect, RED), &layered(effect, BLUE));
+        let found = regions(
+            &layered(effect.clone(), RED),
+            &layered(effect.clone(), BLUE),
+        );
         assert_ne!(
             found,
             Damage::Full(super::FullReason::NonLocalLayerEffect),
@@ -194,7 +197,10 @@ fn only_a_layer_that_moves_cells_off_their_grid_repaints_whole() {
     let blurred = LayerEffect::LayerBlur { sigma: 2.0 };
     for effect in [skewed, leaning, blurred] {
         assert_eq!(
-            regions(&layered(effect, RED), &layered(effect, BLUE)),
+            regions(
+                &layered(effect.clone(), RED),
+                &layered(effect.clone(), BLUE)
+            ),
             Damage::Full(super::FullReason::NonLocalLayerEffect),
             "{effect:?}"
         );
@@ -203,7 +209,7 @@ fn only_a_layer_that_moves_cells_off_their_grid_repaints_whole() {
 
 fn clipped(clip: Rect, inside: Rgba8) -> CommandScene {
     let mut clipped = CommandScene::default();
-    clipped.commands.push(SceneCommand::PushClip(clip));
+    clipped.commands.push(SceneCommand::PushClip(clip.into()));
     clipped
         .commands
         .extend(scene(&[(80.0, 40.0, inside)]).commands);

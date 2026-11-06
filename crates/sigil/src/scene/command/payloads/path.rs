@@ -64,6 +64,48 @@ impl PathStroke {
 
 pub(crate) const MITER_LIMIT: f32 = 4.0;
 
+const KAPPA: f32 = 0.552_284_8;
+
+/// A hash of `outline` mixed into `seed`.
+pub(crate) fn outline_key(seed: u64, outline: &[PathCmd]) -> u64 {
+    let mix = |hash: u64, value: f32| crate::fnv::mix(hash, u64::from(value.to_bits()));
+    outline.iter().fold(seed, |hash, cmd| {
+        cmd.points()
+            .iter()
+            .fold(crate::fnv::mix(hash, 1), |hash, (x, y)| mix(mix(hash, *x), *y))
+    })
+}
+
+/// The closed outline of `rect` with corner radii top-left, top-right, bottom-right, bottom-left.
+pub(crate) fn rounded_outline(rect: Rect, radii: [f32; 4]) -> Vec<PathCmd> {
+    let (l, t) = (rect.origin.x, rect.origin.y);
+    let (r, b) = (l + rect.width, t + rect.height);
+    let limit = rect.width.min(rect.height).max(0.0) * 0.5;
+    let [tl, tr, br, bl] = radii.map(|radius| radius.clamp(0.0, limit));
+    let arc = |x0: f32, y0: f32, x1: f32, y1: f32, cx: f32, cy: f32| {
+        PathCmd::CubicTo(
+            (cx - x0).mul_add(KAPPA, x0),
+            (cy - y0).mul_add(KAPPA, y0),
+            (cx - x1).mul_add(KAPPA, x1),
+            (cy - y1).mul_add(KAPPA, y1),
+            x1,
+            y1,
+        )
+    };
+    vec![
+        PathCmd::MoveTo(l + tl, t),
+        PathCmd::LineTo(r - tr, t),
+        arc(r - tr, t, r, t + tr, r, t),
+        PathCmd::LineTo(r, b - br),
+        arc(r, b - br, r - br, b, r, b),
+        PathCmd::LineTo(l + bl, b),
+        arc(l + bl, b, l, b - bl, l, b),
+        PathCmd::LineTo(l, t + tl),
+        arc(l, t + tl, l + tl, t, l, t),
+        PathCmd::Close,
+    ]
+}
+
 /// A command that fills and strokes a vector path.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DrawPath {

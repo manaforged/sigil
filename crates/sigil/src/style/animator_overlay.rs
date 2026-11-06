@@ -20,6 +20,9 @@ pub(crate) enum NumericAtomKind {
     Rotation,
     TranslateXFraction,
     TranslateYFraction,
+    RotationX,
+    RotationY,
+    TranslateZ,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -61,6 +64,8 @@ impl NumericAtomKind {
         Self::TranslateXFraction,
         Self::TranslateYFraction,
     ];
+
+    pub(crate) const SPACE: [Self; 3] = [Self::RotationX, Self::RotationY, Self::TranslateZ];
 }
 
 impl ColorAtomKind {
@@ -94,7 +99,7 @@ pub(crate) trait AnimatorOverlay {
 
     fn cache_key(&self) -> u64 {
         let mut hasher = AHasher::default();
-        for kind in NumericAtomKind::ALL {
+        for kind in NumericAtomKind::ALL.into_iter().chain(NumericAtomKind::SPACE) {
             if let Some(value) = self.value_for(kind) {
                 kind.hash(&mut hasher);
                 value.to_bits().hash(&mut hasher);

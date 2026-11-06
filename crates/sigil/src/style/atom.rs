@@ -9,8 +9,16 @@ pub(crate) const FACTOR_SCALE: f32 = 1000.0;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Px(pub i16);
 
+mod clip;
 mod color;
+mod gradient;
+mod space;
+pub use clip::ClipShape;
+pub use space::{Backface, SpaceAtom, SpaceStyle};
 pub use color::{BgGradient, ColorAtom, GradientAxis, GradientStopKey, Rgba8};
+pub use gradient::{
+    BorderStyle, Conic, GradientShape, PaintAtom, PaintStyle, Radial, RadialExtent, StopSlot,
+};
 
 /// Identifies a transition preset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -70,6 +78,12 @@ pub struct RenderStyle {
     pub opacity: u16,
     /// The transform.
     pub transform: Transform2D,
+    /// The gradient, image, clip, and border style paint.
+    pub paint: PaintStyle,
+    /// The clip path, if any.
+    pub clip_path: Option<ClipShape>,
+    /// The 3D turn, depth, perspective, and backface.
+    pub space: SpaceStyle,
 }
 
 impl Default for RenderStyle {
@@ -88,6 +102,16 @@ impl Default for RenderStyle {
             shadow: None,
             opacity: 10_000,
             transform: Transform2D::IDENTITY,
+            paint: PaintStyle {
+                gradient: None,
+                stops: [None; 3],
+                positions: [None; 3],
+                clip_text: false,
+                image: None,
+                border: BorderStyle::Solid,
+            },
+            clip_path: None,
+            space: SpaceStyle::FLAT,
         }
     }
 }
@@ -239,6 +263,12 @@ pub enum StyleAtom {
     Animation(crate::animation::KeyframesId),
     /// The unknown theme ref style atom.
     UnknownThemeRef(&'static str),
+    /// The gradient, image, clip, and border style atom.
+    Paint(PaintAtom),
+    /// The clip path style atom.
+    ClipPath(ClipShape),
+    /// The 3D transform style atom.
+    Space(SpaceAtom),
 }
 
 impl StyleAtom {

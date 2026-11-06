@@ -2,6 +2,8 @@ const FILL_KIND_GRADIENT: u32 = 0u;
 const FILL_KIND_SLASH: u32 = 1u;
 const FILL_KIND_CHECKER: u32 = 2u;
 const FILL_KIND_WASH: u32 = 3u;
+const FILL_KIND_RADIAL: u32 = 4u;
+const FILL_KIND_CONIC: u32 = 5u;
 
 struct Uniforms {
     viewport: vec2<f32>,
@@ -119,6 +121,28 @@ fn sample_gradient(base: u32, count_in: u32, t: f32) -> vec4<f32> {
         prev = next;
     }
     return premultiply(prev.color);
+}
+
+fn gradient_t(kind: u32, p: vec2<f32>, start: vec2<f32>, axis: vec2<f32>, shape: vec4<f32>) -> f32 {
+    if kind == FILL_KIND_RADIAL {
+        return length((p - start) / max(shape.xy, vec2<f32>(0.0001, 0.0001)));
+    }
+    if kind == FILL_KIND_CONIC {
+        let d = p - start;
+        let turn = atan2(d.x, -d.y) / 6.28318530718 - shape.z / 360.0;
+        return turn - floor(turn);
+    }
+    let axis_len = max(dot(axis, axis), 0.0001);
+    return dot(p - start, axis) / axis_len;
+}
+
+fn repeat_t(t: f32, span: vec4<f32>) -> f32 {
+    if span.z < 0.5 {
+        return t;
+    }
+    let width = max(span.y - span.x, 0.0001);
+    let r = (t - span.x) / width;
+    return span.x + (r - floor(r)) * width;
 }
 
 fn premultiply(color: vec4<f32>) -> vec4<f32> {
@@ -363,9 +387,8 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     } else if in.fill_kind == FILL_KIND_CHECKER {
         color = checker_color(in.local + in.half_size + in.start + in.axis, in.start, in.pattern_a, in.pattern_b);
     } else {
-        let axis_len = max(dot(in.axis, in.axis), 0.0001);
-        let t = dot(in.pos_px - in.start, in.axis) / axis_len;
-        color = sample_gradient(in.stops_meta.x, in.stops_meta.y, t);
+        let t = gradient_t(in.fill_kind, in.pos_px, in.start, in.axis, in.pattern_a);
+        color = sample_gradient(in.stops_meta.x, in.stops_meta.y, repeat_t(t, in.pattern_b));
     }
 
     let alpha = color.a * in.opacity * coverage;

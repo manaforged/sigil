@@ -8,6 +8,7 @@ use crate::style::StateSlot;
 use crate::style::{Px, StyleAtom};
 
 mod atoms;
+mod paint;
 mod table;
 
 use atoms::push_border_side_atoms;

@@ -6,6 +6,7 @@ use crate::renderer::fill_paint::FillPipeline;
 use crate::renderer::frame_upload::UploadBuffers;
 use crate::renderer::layer_composite::LayerCompositePipeline;
 use crate::renderer::layer_pool::LayerPool;
+use crate::renderer::projected::ProjectedPipeline;
 use crate::renderer::quad_paint::AtlasPipeline;
 use crate::renderer::scene_command::walk::WalkPending;
 use crate::renderer::scene_paint::ScenePipeline;
@@ -34,6 +35,7 @@ pub(crate) struct PipelineCache {
     pub(crate) decoration_pipelines: Vec<DecorationPipeline>,
     pub(crate) layer_pipelines: Vec<LayerCompositePipeline>,
     pub(crate) blur_pipelines: Vec<BlurPipeline>,
+    pub(crate) projected_pipelines: Vec<ProjectedPipeline>,
     pub(crate) layer_pool: Option<LayerPool>,
     pub(crate) wash_cache: WashCache,
     pub(crate) pending: WalkPending,
@@ -51,6 +53,7 @@ impl Default for PipelineCache {
             decoration_pipelines: Vec::new(),
             layer_pipelines: Vec::new(),
             blur_pipelines: Vec::new(),
+            projected_pipelines: Vec::new(),
             layer_pool: Some(LayerPool::new()),
             wash_cache: WashCache::default(),
             pending: WalkPending::default(),

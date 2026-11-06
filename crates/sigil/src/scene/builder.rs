@@ -7,7 +7,7 @@ use crate::geometry::Rect;
 use crate::kernel::NodeId;
 
 use crate::scene::command::{
-    CellRect, CommandScene, DrawDecoration, DrawGradient, DrawRect, GlyphRun, LayerScope,
+    CellRect, Clip, CommandScene, DrawDecoration, DrawGradient, DrawRect, GlyphRun, LayerScope,
     SceneCommand, Transform,
 };
 use crate::scene::corner_radii::CornerRadii;
@@ -133,9 +133,10 @@ impl SceneBuilder {
             .push(SceneCommand::GlyphRun(run.with_node(node)));
     }
 
-    /// Clips the commands that `body` appends to `rect`.
-    pub fn with_clip<F: FnOnce(&mut Self)>(&mut self, rect: Rect, body: F) {
-        self.with_scope(SceneCommand::PushClip(rect), SceneCommand::PopClip, body);
+    /// Clips the commands that `body` appends to `clip`.
+    pub fn with_clip<F: FnOnce(&mut Self)>(&mut self, clip: impl Into<Clip>, body: F) {
+        let open = SceneCommand::PushClip(clip.into());
+        self.with_scope(open, SceneCommand::PopClip, body);
     }
 
     /// Draw `body` under `transform`.

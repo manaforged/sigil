@@ -27,8 +27,7 @@ impl EventRouter {
             return;
         }
         self.shortcuts.refresh(cx);
-        if self.shortcuts.dispatch(cx, &mut event, focused) || event.propagation_stopped()
-        {
+        if self.shortcuts.dispatch(cx, &mut event, focused) || event.propagation_stopped() {
             return;
         }
         if matches!(event.key, LogicalKey::Named(Key::Escape))
@@ -47,7 +46,8 @@ impl EventRouter {
     }
 
     fn dispatch_focused_key(&mut self, cx: &mut Cx, event: &mut KeyEvent) {
-        let capture = self.focused_kind(cx) != Focused::Terminal || event.normalized_modifiers().meta();
+        let capture =
+            self.focused_kind(cx) != Focused::Terminal || event.normalized_modifiers().meta();
         let Some(focused) = self.focus.focus().filter(|id| visible(cx, *id)) else {
             self.focus.set_focus(cx, None);
             return;

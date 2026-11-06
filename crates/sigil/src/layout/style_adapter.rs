@@ -98,6 +98,9 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
         | StyleAtom::TransitionDelay(_)
         | StyleAtom::Animation(_)
         | StyleAtom::UnknownThemeRef(_)
+        | StyleAtom::Paint(_)
+        | StyleAtom::ClipPath(_)
+        | StyleAtom::Space(_)
         | StyleAtom::BgToneStep(_)
         | StyleAtom::FgToneStep(_)
         | StyleAtom::FgOnSolid => {}

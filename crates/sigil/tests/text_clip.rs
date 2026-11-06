@@ -8,7 +8,7 @@ use sigil::kernel::Cx;
 use sigil::kernel::TextBuilder;
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
-use sigil::scene::SceneCommand;
+use sigil::scene::{Clip, SceneCommand};
 
 const LONG: &str = "an over-long single-line value that cannot fit a ninety-six pixel box";
 
@@ -36,7 +36,7 @@ fn clip_for(cell: TextBuilder) -> (Option<sigil::geometry::Rect>, sigil::geometr
         let mut hit = None;
         for command in &scene.commands {
             match command {
-                SceneCommand::PushClip(push) => clip = Some(*push),
+                SceneCommand::PushClip(Clip::Rect(push)) => clip = Some(*push),
                 SceneCommand::PopClip => clip = None,
                 SceneCommand::GlyphRun(draw) if draw.node == Some(text_id) => hit = clip,
                 _ => {}

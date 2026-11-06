@@ -24,7 +24,8 @@ use super::paint::{CpuPainter, brush, shader_brush};
 use super::pattern::PatternPlacement;
 use super::quad::{QuadCache, RunPlacement};
 use super::shadow::{ShadowPlacement, shadow};
-use super::shapes::{self, Brush, gradient, opacity_of, rgba_table, solid};
+use super::gradient::gradient;
+use super::shapes::{self, Brush, opacity_of, rgba_table, solid};
 use super::stroke::stroke;
 use crate::renderer::glyph_place::GlyphMode;
 

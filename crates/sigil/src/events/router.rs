@@ -393,6 +393,7 @@ struct ShortcutIndex {
 
 fn in_popup(cx: &Cx, path: &NodePath) -> bool {
     path.iter().any(|id| {
-        cx.get(*id).is_some_and(|node| node.a11y.focus_scope == Some(crate::kernel::FocusScopeKind::Popup))
+        cx.get(*id)
+            .is_some_and(|node| node.a11y.focus_scope == Some(crate::kernel::FocusScopeKind::Popup))
     })
 }
