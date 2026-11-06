@@ -1,12 +1,12 @@
 # Documents
 
-Parsers and viewers for structured text: markdown, HTML, source code, diffs, and diagrams. `markdown`, `html`, and `mermaid` bound their input. A source over 1 MiB renders as a "Source is larger than the 1 MiB limit." paragraph instead of parsing; `diff` parses unbounded.
+Parsers and viewers for structured text: markdown, HTML, source code, diffs, diagrams, formulas and charts. `markdown`, `html`, `mermaid`, `graphviz` and `math` bound their input. A source over 1 MiB renders as a "Source is larger than the 1 MiB limit." paragraph instead of parsing; `diff` parses unbounded.
 
 ## markdown
 
 `markdown(Signal<String>) -> NodeBuilder`. Parses the signal into blocks inside a `derived`, so the document re-renders only when the parsed tree changes. The root is `Role::Document`, a vertical column.
 
-Supported blocks: headings (`#`–`###`), paragraphs, `-`/`*` bullet lists (no ordered lists), fenced code, pipe tables (rendered as a monospace grid), `![alt](src)` images, and three Sigil-aware fences: ` ```mermaid ` renders through `mermaid()`, ` ```chart ` parses an optional title plus `label: value` rows into a `chart()`, and ` ```xychart ` reads the mermaid xychart form (`title`, `x-axis`, `bar`/`line` rows). A chart fence that fails to parse falls back to the mermaid path. Inline spans: `**bold**`, `` `code` ``, and `[text](href)` links. `*italic*` parses but currently renders as plain text. This is a deliberately bounded subset. Read the parser before relying on an edge case.
+Parsing is CommonMark plus GitHub Flavored Markdown through `pulldown-cmark`. Blocks: headings h1–h6, paragraphs, nested ordered and bullet lists, task lists, block quotes, GFM alerts (`> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) as tinted callouts with a title, rules, fenced and indented code, and tables with column alignment from the delimiter row. A table sorts by a header click, and numeric columns sort numerically. In a window it also shows Copy Markdown and Copy CSV actions. `<details><summary>…</summary>…</details>` renders as a collapsed section. Other raw HTML renders as text. Footnotes render as marks with a footnotes section at the end. Display math renders through `math()`: a `$$…$$` block, or a paragraph that is only one `$…$` or `\[…\]` formula. Inline `$…$` and `\(…\)` render as Unicode math. A `$` next to a digit or a word (`$5`, `$HOME`) stays text. Sigil-aware fences: ` ```mermaid ` renders through `mermaid()`; ` ```dot `, ` ```graphviz ` and ` ```gv ` through `graphviz()`; ` ```vega-lite ` through the Vega-Lite subset of `chart()`; ` ```chart ` parses an optional title plus `label: value` rows into a `chart()`; and ` ```xychart ` reads the mermaid xychart form. A chart fence that fails to parse falls back to the mermaid path, and a Vega-Lite spec outside the subset shows as JSON code. Inline spans: bold, italic, strikethrough, code, links, `<url>` autolinks, and bare `https://` and `www.` URLs. While the source streams in, finished blocks keep their nodes, and the last block closes a dangling `**`, `*`, `~~`, backtick or `[text](` so raw markers do not flash.
 
 Images resolve `src` only as a `data:` base64 URI (SVG excluded). The widget never reads the filesystem or fetches a URL, so untrusted text cannot make it load a file. Images display at most 480×384 px. Decoding needs the `image-decode` feature. Without it, or on failure, the image renders as `[alt]` text.
 
@@ -16,7 +16,7 @@ Images resolve `src` only as a `data:` base64 URI (SVG excluded). The widget nev
 
 ## html
 
-`html(Signal<String>) -> NodeBuilder`. Parses a bounded HTML subset into the same `Block` tree as markdown and renders through the same `document` view: headings, paragraphs, lists, code, tables, images. `<script>` and `<style>` blocks are stripped entirely; unknown tags degrade to their text content. It is a viewer for trusted markup, not a browser engine.
+`html(Signal<String>) -> NodeBuilder`. Parses a bounded HTML subset into the same `Block` tree as markdown (tables get the same sort and copy actions, left-aligned) and renders through the same `document` view: headings, paragraphs, lists, code, tables, images. `<script>` and `<style>` blocks are stripped entirely; unknown tags degrade to their text content. It is a viewer for trusted markup, not a browser engine.
 
 ## code_edit
 
@@ -34,7 +34,15 @@ The widget edits the `lines`, `caret`, and `.selection()` signals through the `t
 
 ## mermaid
 
-`mermaid(source: impl Into<String>) -> NodeBuilder`. In a window it renders through the `mermaid-svg` crate, which covers flowchart, sequence, class, state, ER, gantt, pie, xychart, quadrant, timeline, mindmap, sankey and the other mermaid diagram kinds. The diagram takes its colors from the active theme: series and slices use the accent, success, warn, error and info scales, and text uses the bundled Fira Sans. A wider diagram scrolls horizontally. In a terminal, or when `mermaid-svg` rejects the source, it renders into a monospace text canvas. That path supports `graph`/`flowchart` (and `stateDiagram` / `stateDiagram-v2`), `sequenceDiagram`, and `pie`, and frames any other source as raw text.
+`mermaid(source: impl Into<String>) -> NodeBuilder`. In a window it renders through the `mermaid-svg` crate, which covers flowchart, sequence, class, state, ER, gantt, pie, xychart, quadrant, timeline, mindmap, sankey and the other mermaid diagram kinds. The diagram takes its colors from the active theme: series and slices use the accent, success, warn, error and info scales, and text uses the bundled Fira Sans. A diagram wider than its column scales down to fit, to 60% at the smallest, and scrolls sideways past that. Hover or focus shows a toolbar: Show code / Show diagram, Copy source, and Expand diagram. Expand opens the diagram in a dialog sized to the window, with Zoom in, Zoom out and Fit; Ctrl or Cmd with the wheel zooms, the wheel or a drag pans, and Escape closes. While a `mermaid(signal)` source changes and does not parse, the last diagram that rendered stays on screen, dimmed and marked "Updating…". In a terminal, or when `mermaid-svg` rejects the source and nothing has rendered yet, it draws a monospace text canvas. That path supports `graph`/`flowchart` (and `stateDiagram` / `stateDiagram-v2`), `sequenceDiagram`, and `pie`, and frames any other source as raw text.
+
+## graphviz
+
+`graphviz(source: impl Reactive<String>) -> NodeBuilder`. In a window it lays Graphviz DOT out with the `layout-rs` crate and draws it in theme colors: nodes in the accent scale, edges in the muted text color. Explicit `color` and `fillcolor` attributes override the theme. `layout-rs` supports box, circle, doublecircle, record and Mrecord shapes, and does not draw cluster boxes or apply `fontcolor`. In a terminal, or when the DOT does not parse, it shows the framed source.
+
+## math
+
+`math(source: impl Reactive<String>) -> NodeBuilder`. In a window it typesets a LaTeX formula in display style with the `latex-rust` crate and its STIX Two Math font, in the theme text color, at about 1.25 times body size. In a terminal, or when the formula does not parse, it shows a Unicode approximation. The accessible description is the LaTeX source.
 
 Input is bounded to 256 lines of 512 chars and output to 512 lines of 1024 chars.
 
@@ -64,7 +72,7 @@ On a terminal, `code_edit` uses one row per line and shows the caret only while 
 
 ## Terminal notes
 
-- `mermaid` renders to monospace text in a terminal.
+- `mermaid` and `graphviz` render to monospace text in a terminal, and `math` to Unicode text.
 - A markdown image uses the terminal image rules. Without `image-decode`, it paints as `[alt]` text.
 - A link in `markdown` or `html` becomes an OSC 8 hyperlink when the terminal supports hyperlinks.
 - `diff` in `DiffView::Split` needs about 80 columns to show both sides. Use `DiffView::Unified` in a narrow terminal.
