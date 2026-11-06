@@ -18,6 +18,7 @@ pub mod presets {
     pub const COLORS: TransitionId = TransitionId(20);
     pub const OPACITY: TransitionId = TransitionId(21);
     pub const TRANSFORM: TransitionId = TransitionId(22);
+    pub const ALL: TransitionId = TransitionId(23);
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -87,7 +88,11 @@ pub(crate) const fn config(id: TransitionId) -> Option<AnimationConfig> {
         presets::FAST => return Some(cubic_in_out(120)),
         presets::DEFAULT => return Some(cubic_in_out(200)),
         presets::SLOW => return Some(cubic_in_out(320)),
-        presets::TRANSITION | presets::COLORS | presets::OPACITY | presets::TRANSFORM => {
+        presets::TRANSITION
+        | presets::COLORS
+        | presets::OPACITY
+        | presets::TRANSFORM
+        | presets::ALL => {
             return Some(AnimationConfig::Tween {
                 ms: 150,
                 easing: Easing::IN_OUT,

@@ -22,8 +22,8 @@ pub(super) fn hue_rotate(degrees: f32) -> FilterPart {
     FilterPart::HueRotate(hue_units(degrees))
 }
 
-pub(super) fn drop_shadow(shadow: Shadow) -> FilterPart {
-    FilterPart::DropShadow(Some(ShadowSpec::of(shadow)))
+pub(super) fn drop_shadow(shadow: Option<Shadow>) -> FilterPart {
+    FilterPart::DropShadow(shadow.map(ShadowSpec::of))
 }
 
 pub(super) fn text_shadow(shadow: Option<Shadow>) -> FilterPart {
@@ -84,8 +84,8 @@ macro_rules! filter_setters {
 
         /// Draws `shadow` under the node's painted pixels, its blur a standard deviation, like Tailwind `drop-shadow-*`.
         #[must_use]
-        fn drop_shadow(self, shadow: Shadow) -> Self {
-            filters::filter(self, filters::drop_shadow(shadow))
+        fn drop_shadow(self, shadow: impl Into<Option<Shadow>>) -> Self {
+            filters::filter(self, filters::drop_shadow(shadow.into()))
         }
 
         /// Draws `shadow` under the node's glyphs, its blur a standard deviation, like Tailwind `text-shadow-*`; `None` cancels an inherited shadow.

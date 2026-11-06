@@ -190,3 +190,62 @@ fn a_translate_z_transition_moves_the_node_toward_the_viewer() {
         near(width_ratio(&mut ui), want, 2e-3, "translateZ(100px) at 50%");
     });
 }
+
+#[test]
+fn drop_shadow_none_turns_the_shadow_off() {
+    Owner::scope("props-drop-shadow-none", || {
+        let lit = shadow(8.0, 4.0, WHITE);
+        let mut ui = mount(square().drop_shadow(lit).drop_shadow(None));
+        assert!(
+            filters(&mut ui).is_empty(),
+            "a later none replaces the shadow"
+        );
+        let flag = signal(false);
+        let mut ui = mount(
+            square()
+                .drop_shadow(lit)
+                .paint_when(flag, |state| state.drop_shadow(None)),
+        );
+        assert_eq!(
+            filters(&mut ui).len(),
+            1,
+            "the shadow draws before the change"
+        );
+        start(&mut ui, flag);
+        assert!(
+            filters(&mut ui).is_empty(),
+            "a state can turn the shadow off"
+        );
+    });
+}
+
+fn radius_at_half(node: NodeBuilder) -> f32 {
+    let flag = signal(false);
+    let eased = node
+        .rounded(Radius::None)
+        .duration(Duration::from_secs(1))
+        .ease(Easing::Linear)
+        .paint_when(flag, |state| state.rounded(Radius::Lg));
+    let mut ui = mount(eased);
+    start(&mut ui, flag);
+    run(&mut ui, 0.5);
+    let scene = ui.host().emit(super::VIEW);
+    scene
+        .commands
+        .iter()
+        .find_map(|command| match command {
+            sigil::scene::SceneCommand::Rect(rect) => Some(rect.border_radius.0[0]),
+            _ => None,
+        })
+        .unwrap_or(0.0)
+}
+
+#[test]
+fn transition_all_moves_what_transition_leaves_alone() {
+    Owner::scope("props-transition-all", || {
+        let end = radius_at_half(square().transition());
+        let moving = radius_at_half(square().transition_all());
+        near(moving, end / 2.0, 0.5, "corner radius at 50%");
+        assert!(end > 2.0, "transition jumps to the end radius, got {end}");
+    });
+}

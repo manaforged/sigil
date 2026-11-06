@@ -309,6 +309,12 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::Transition(presets::TRANSITION))
     }
 
+    /// Transitions every animatable property over 150 ms, like Tailwind `transition-all`.
+    #[must_use]
+    fn transition_all(self) -> Self {
+        push(self, StyleAtom::Transition(presets::ALL))
+    }
+
     /// Transitions background, text, and border colors, like Tailwind `transition-colors`.
     #[must_use]
     fn transition_colors(self) -> Self {
