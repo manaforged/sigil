@@ -17,17 +17,16 @@ pub enum SvgMode {
     Vector,
 }
 
-/// The scene that paints `tree` into a box of `size` at the origin over `surface`, and the fallbacks the lowering took.
+/// The scene that paints `tree` into a box of `size` at the origin, and its fallbacks; it composites over any surface, so `_surface` is unused.
 pub fn svg_scene(
     tree: Arc<Tree>,
     key: u64,
     size: (f32, f32),
-    surface: Rgba8,
+    _surface: Rgba8,
     mode: SvgMode,
 ) -> (CommandScene, Vec<String>) {
-    let backdrop = [surface.r, surface.g, surface.b];
     if mode == SvgMode::Vector {
-        let lowered = lower(&tree, size, key, backdrop);
+        let lowered = lower(&tree, size, key);
         let fallbacks = lowered.fallbacks.iter().map(ToString::to_string).collect();
         return (
             CommandScene {
@@ -38,7 +37,7 @@ pub fn svg_scene(
     }
     (
         CommandScene {
-            commands: bitmap(tree, size, key, backdrop),
+            commands: bitmap(tree, size, key),
         },
         Vec::new(),
     )

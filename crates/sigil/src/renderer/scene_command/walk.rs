@@ -21,6 +21,7 @@ use crate::renderer::scene_paint::ScenePipeline;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::{QueuedRun, SlugTextPipeline};
 use crate::renderer::split_encoder::SplitEncoder;
+use crate::renderer::scene_command::KeptLayers;
 use crate::renderer::vector_pass::VectorPass;
 use crate::renderer::wash_cache::WashCache;
 pub(crate) use crate::scene::command::effects::transform_rect;
@@ -48,6 +49,7 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) wash_cache: &'a mut WashCache,
     pub(crate) pending: &'a mut WalkPending,
     pub(crate) vector: &'a mut VectorPass,
+    pub(crate) kept: &'a mut KeptLayers,
     pub(crate) stats: &'a mut FrameStats,
 }
 
@@ -80,6 +82,8 @@ impl WalkPending {
 
 pub(crate) fn walk_command_scene(ctx: WalkCtx<'_>, scene: &CommandScene) -> Result<(), Error> {
     ctx.encoder.reserve_draws(&scene.commands);
+    ctx.vector.begin_frame();
+    ctx.kept.begin_frame();
     *ctx.stats = FrameStats {
         scene_commands: scene.commands.len(),
         ..FrameStats::default()

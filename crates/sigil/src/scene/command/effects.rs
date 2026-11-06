@@ -84,8 +84,21 @@ pub struct LayerScope {
     pub blend: BlendMode,
 }
 
+impl LayerScope {
+    pub(crate) const fn srgb(clip: Rect) -> Self {
+        Self {
+            clip,
+            clip_radii: CornerRadii::ZERO,
+            effect: LayerEffect::Identity,
+            opacity: 1.0,
+            blend: BlendMode::SrgbOver,
+        }
+    }
+}
+
 /// A CSS `mix-blend-mode`: the formula that mixes a layer's colors with its backdrop, in sRGB-encoded space.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum BlendMode {
     /// The source color replaces the backdrop color.
     #[default]
@@ -120,6 +133,8 @@ pub enum BlendMode {
     Color,
     /// The source's luminosity with the backdrop's hue and saturation.
     Luminosity,
+    #[doc(hidden)]
+    SrgbOver,
 }
 
 impl BlendMode {
@@ -151,11 +166,6 @@ pub enum LayerEffect {
     Identity,
     /// The transform layer effect.
     Transform(Transform),
-    /// The layer blur layer effect.
-    LayerBlur {
-        /// The blur radius.
-        sigma: f32,
-    },
     /// The layer is drawn as a CSS 3D plane through a perspective transform.
     Projected {
         /// The full transform from layer space to the parent's space.
@@ -171,6 +181,7 @@ pub enum LayerEffect {
 
 /// One CSS filter function, applied in sRGB as Filter Effects 1 §13 defines it.
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum Filter {
     /// A Gaussian blur whose standard deviation is this many logical pixels.
     Blur(f32),

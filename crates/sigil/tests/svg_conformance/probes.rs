@@ -1,12 +1,31 @@
 use std::sync::Arc;
 
 use resvg::usvg::{self, Tree};
+use sigil::geometry::{Point, Rect};
+use sigil::scene::{CommandScene, DrawRect, SceneBuilder};
+use sigil::style::Rgba8;
 use sigil::widgets::SvgMode;
 
 use super::{
-    Backend, CHANNEL_TOLERANCE, MAX_OFF_FRACTION, Renderers, off_fraction, over_white,
+    Backend, CHANNEL_TOLERANCE, MAX_OFF_FRACTION, Renderers, WHITE, off_fraction, over,
     resvg_picture, scene,
 };
+
+const SURFACES: [Rgba8; 3] = [
+    WHITE,
+    Rgba8 {
+        r: 200,
+        g: 200,
+        b: 200,
+        a: 255,
+    },
+    Rgba8 {
+        r: 40,
+        g: 44,
+        b: 52,
+        a: 255,
+    },
+];
 
 const PROBES: [(&str, &str); 8] = [
     (
@@ -43,20 +62,36 @@ const PROBES: [(&str, &str); 8] = [
     ),
 ];
 
+fn on_surface(surface: Rgba8, picture: CommandScene) -> CommandScene {
+    let mut builder = SceneBuilder::new();
+    builder.draw_rect(DrawRect::new(
+        Rect::new(Point::new(0.0, 0.0), 100.0, 100.0),
+        surface,
+    ));
+    let mut scene = builder.finish();
+    scene.commands.extend(picture.commands);
+    scene
+}
+
 fn probe(backend: Backend) {
     let mut renderers = Renderers::new(backend);
     let mut failed = Vec::new();
     for (name, source) in PROBES {
         let tree = Arc::new(Tree::from_str(source, &usvg::Options::default()).expect("svg"));
-        let want = over_white(&resvg_picture(&tree, (100, 100)));
-        let (lowered, fallbacks) = scene(&tree, name, (100, 100), SvgMode::Vector);
-        let got = renderers.render(&lowered, (100, 100)).expect("render");
-        let off = off_fraction(&got, &want, CHANNEL_TOLERANCE);
-        if !fallbacks.is_empty() || off > MAX_OFF_FRACTION {
-            failed.push(format!(
-                "{name}: {:.1}% off, fallbacks {fallbacks:?}",
-                off * 100.0
-            ));
+        let reference = resvg_picture(&tree, (100, 100));
+        for surface in SURFACES {
+            let want = over(&reference, surface);
+            let (lowered, fallbacks) = scene(&tree, name, (100, 100), SvgMode::Vector);
+            let got = renderers
+                .render(&on_surface(surface, lowered), (100, 100))
+                .expect("render");
+            let off = off_fraction(&got, &want, CHANNEL_TOLERANCE);
+            if !fallbacks.is_empty() || off > MAX_OFF_FRACTION {
+                failed.push(format!(
+                    "{name} over {surface:?}: {:.1}% off, fallbacks {fallbacks:?}",
+                    off * 100.0
+                ));
+            }
         }
     }
     assert!(

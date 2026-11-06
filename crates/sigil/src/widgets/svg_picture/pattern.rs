@@ -4,6 +4,7 @@ use crate::geometry::{Point, Rect};
 use crate::scene::SceneBuilder;
 use crate::scene::command::{Clip, DrawPath, LayerEffect, LayerScope};
 
+use super::budget::MAX_COMMANDS;
 use super::fallback::Fallback;
 use super::group::{Scope, layer};
 use super::lower::Walk;
@@ -18,7 +19,7 @@ struct Tiles {
 }
 
 impl Walk {
-    /// Fills the area of `shape` with copies of the pattern tile drawn as scene commands.
+    /// Fills the area of `shape` with copies of the pattern tile, or fails when the copies exceed the budget.
     pub(super) fn pattern(
         &mut self,
         scene: &mut SceneBuilder,
@@ -26,20 +27,37 @@ impl Walk {
         shape: DrawPath,
         t: Transform,
     ) -> Result<(), Fallback> {
+        if self.exhausted {
+            return Err(Fallback::Budget);
+        }
         let space = t.pre_concat(pattern.transform());
         let tiles = tiles(pattern, shape.bounds, space).ok_or(Fallback::PatternTiles)?;
+        let mut body = SceneBuilder::new();
         let mut scope = Scope::default();
         let area = shape.bounds;
-        scope.clip(scene, Clip::Path(shape));
+        scope.clip(&mut body, Clip::Path(shape));
         if opacity < 1.0 {
             scope.layer(
-                scene,
+                &mut body,
                 LayerScope {
                     opacity,
                     ..layer(area, LayerEffect::Identity)
                 },
             );
         }
+        self.copies(&mut body, pattern, (&tiles, space))?;
+        scope.close(&mut body);
+        scene.extend_commands(body.finish().commands);
+        Ok(())
+    }
+
+    fn copies(
+        &mut self,
+        body: &mut SceneBuilder,
+        pattern: &Pattern,
+        (tiles, space): (&Tiles, Transform),
+    ) -> Result<(), Fallback> {
+        let start = self.spent;
         let inside = within(pattern);
         let rect = pattern.rect();
         for column in tiles.columns.0..=tiles.columns.1 {
@@ -53,10 +71,15 @@ impl Walk {
                     x.mul_add(rect.width(), rect.x()),
                     y.mul_add(rect.height(), rect.y()),
                 );
-                self.tile(scene, pattern, tile, inside);
+                self.tile(body, pattern, tile, inside);
+                self.spent = start + body.command_len();
+                if self.exhausted || self.spent > MAX_COMMANDS {
+                    self.exhausted = true;
+                    self.spent = start;
+                    return Err(Fallback::Budget);
+                }
             }
         }
-        scope.close(scene);
         Ok(())
     }
 

@@ -16,8 +16,10 @@ use crate::{Error, ErrorKind};
 mod bound;
 mod clip;
 mod draws;
+mod encoding;
 mod filter;
 mod glyph_outline;
+mod layer_cache;
 mod layers;
 mod paint;
 mod path;
@@ -38,6 +40,7 @@ type Shared = Arc<Box<dyn DisplayAndWindow>>;
 #[derive(Default)]
 pub struct CpuRenderer {
     quads: QuadCache,
+    cached: layer_cache::LayerCache,
     layers: Vec<Pixmap>,
     covers: Vec<tiny_skia::Mask>,
     transparent: bool,
@@ -130,9 +133,11 @@ impl CpuRenderer {
     fn walk(&mut self, target: &mut Pixmap, scene: &CommandScene, scale: f32, origin: Point) {
         self.stats = FrameStats::default();
         self.quads.begin_frame();
+        self.cached.begin_frame();
         self.stats.scene_commands = scene.commands.len();
         let scratch = paint::PaintScratch {
             quads: &mut self.quads,
+            cached: &mut self.cached,
             stats: &mut self.stats,
             pool: &mut self.layers,
             covers: &mut self.covers,

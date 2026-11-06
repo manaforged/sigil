@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use crate::geometry::{Point, Rect};
 use crate::kernel::{ImageCrop, Node, NodeId, NodeType, ThemedImage};
 use crate::scene::builder::SceneBuilder;
@@ -59,6 +61,7 @@ pub(super) struct NodePaint<'a> {
     pub(super) leaf: bool,
     pub(super) selected: Option<(usize, usize)>,
     pub(super) text_fill: Option<&'a Gradient>,
+    pub(super) text_shadows: &'a [Shadow],
 }
 
 impl NodePaint<'_> {
@@ -240,7 +243,7 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
     };
     let run = super::runs::split(scene, id, run);
     let overflows = *ellipsis && overflows(&run, rect);
-    let shadows = style.filter.text_shadows();
+    let shadows = text_shadows(style, paint.text_shadows);
     let emit = |target: &mut SceneBuilder| {
         for shadow in shadows.iter().rev() {
             target.draw_text_shadow(&run, *shadow);
@@ -254,6 +257,15 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
         emit(scene);
     }
     push_text_decoration(scene, rect, color, style.opacity, &text_style);
+}
+
+fn text_shadows(style: &RenderStyle, inherited: &[Shadow]) -> SmallVec<[Shadow; 3]> {
+    let own = style.filter.text_shadows();
+    if own.is_empty() {
+        inherited.iter().copied().collect()
+    } else {
+        own
+    }
 }
 
 #[cfg(feature = "scene")]

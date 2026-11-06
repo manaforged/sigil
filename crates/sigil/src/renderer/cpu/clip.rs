@@ -60,7 +60,10 @@ impl CpuPainter<'_> {
     ) -> Option<Mask> {
         let state = SceneState::new(Some(bounds), self.state.current_transform(), 1.0);
         let nodes = build_tree(&mask.commands);
-        let (pixels, at) = self.render_region(region, state, &nodes)?;
+        let (mut pixels, at) = self.render_region(region, state, &nodes)?;
+        if mask.mode == MaskMode::Luminance {
+            super::encoding::to_srgb(pixels.data_mut());
+        }
         let kind = match mask.mode {
             MaskMode::Alpha => MaskType::Alpha,
             MaskMode::Luminance => MaskType::Luminance,

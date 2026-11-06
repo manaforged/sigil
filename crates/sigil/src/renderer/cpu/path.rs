@@ -5,16 +5,16 @@
     reason = "the device window is clamped to the target size before the casts"
 )]
 
-use crate::geometry::{Point, Rect};
-use tiny_skia::{IntSize, Pixmap, Transform as TsTransform};
+use crate::geometry::Rect;
+use tiny_skia::{BlendMode, IntSize, Pixmap, Transform as TsTransform};
 
 use crate::renderer::scene_command::walk::{compose, transform_rect};
 use crate::scene::command::{DrawPath, Transform};
 use crate::scene::path_raster;
 
+use super::encoding::to_stored;
 use super::paint::CpuPainter;
-use super::quad::fill_scaled;
-use super::shapes::{Brush, opacity_of};
+use super::shapes::{BLEND_SPACE, blit_in, opacity_of};
 
 struct Window {
     x: u32,
@@ -36,24 +36,20 @@ impl CpuPainter<'_> {
         let device = self.device_transform(&window);
         let opacity = opacity_of(draw.opacity, self.state.current_opacity());
         let size = (window.width, window.height);
-        let Some(pixels) = path_raster::raster(draw, compose(device, current), size, opacity)
+        let Some(mut pixels) = path_raster::raster(draw, compose(device, current), size, opacity)
         else {
             return;
         };
+        to_stored(&mut pixels);
         let Some(source) = IntSize::from_wh(size.0.into(), size.1.into())
             .and_then(|size| Pixmap::from_vec(pixels, size))
         else {
             return;
         };
-        let (src, dest) = window.rects(self.scale, self.origin);
-        let transform = TsTransform::from_scale(self.scale, self.scale)
-            .post_translate(-self.origin.x, -self.origin.y);
+        let at = TsTransform::from_translate(window.x as f32, window.y as f32);
+        let ink = (BlendMode::SourceOver, BLEND_SPACE, 1.0);
         if self.with_brush(visible, 1.0, true, |target, _, brush| {
-            let device = Brush {
-                transform,
-                ..*brush
-            };
-            fill_scaled(target, &source, src, dest, &device);
+            blit_in(target, &source, at, brush.coverage(), ink);
             true
         }) {
             self.stats.sprite_draws += 1;
@@ -84,21 +80,5 @@ impl CpuPainter<'_> {
             [self.scale, 0.0, shift(self.origin.x, window.x)],
             [0.0, self.scale, shift(self.origin.y, window.y)],
         ]
-    }
-}
-
-impl Window {
-    fn rects(&self, scale: f32, origin: Point) -> (Rect, Rect) {
-        let (width, height) = (f32::from(self.width), f32::from(self.height));
-        let src = Rect::new(Point::new(0.0, 0.0), width, height);
-        let dest = Rect::new(
-            Point::new(
-                (self.x as f32 + origin.x) / scale,
-                (self.y as f32 + origin.y) / scale,
-            ),
-            width / scale,
-            height / scale,
-        );
-        (src, dest)
     }
 }

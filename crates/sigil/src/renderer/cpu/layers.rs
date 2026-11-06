@@ -20,20 +20,13 @@ use crate::scene::corner_radii::CornerRadii;
 use super::bound::rect_mask;
 use super::clip::multiplied;
 use super::paint::{CpuPainter, fade};
-use super::shapes::{blit, cover, ts_transform};
+use super::encoding::to_srgb;
+use super::layer_cache::LayerKey;
+use super::shapes::{BLEND_SPACE, blit_in, cover, ts_transform};
 
 impl CpuPainter<'_> {
     pub(super) fn take_pixmap(&mut self, width: u32, height: u32) -> Option<Pixmap> {
-        if let Some(at) = self
-            .pool
-            .iter()
-            .position(|p| p.width() == width && p.height() == height)
-        {
-            let mut reused = self.pool.swap_remove(at);
-            reused.fill(tiny_skia::Color::TRANSPARENT);
-            return Some(reused);
-        }
-        Pixmap::new(width, height)
+        take(self.pool, width, height)
     }
 
     pub(super) fn release_pixmap(&mut self, layer: Pixmap) {
@@ -46,7 +39,7 @@ impl CpuPainter<'_> {
         &mut self,
         scope: LayerScope,
         mask: Option<MaskSource<'_>>,
-        children: &[PlanNode<'_>],
+        (children, commands): (&[PlanNode<'_>], &[SceneCommand]),
     ) {
         if let LayerEffect::Transform(transform) = scope.effect {
             self.transformed_layer(scope, transform, children);
@@ -56,7 +49,7 @@ impl CpuPainter<'_> {
             self.projected_layer(scope, children);
             return;
         }
-        self.untransformed_layer(scope, mask, children);
+        self.untransformed_layer(scope, mask, (children, commands));
     }
 
     pub(super) fn area(&self) -> Rect {
@@ -88,18 +81,23 @@ impl CpuPainter<'_> {
         &mut self,
         scope: LayerScope,
         mask: Option<MaskSource<'_>>,
-        children: &[PlanNode<'_>],
+        nodes: (&[PlanNode<'_>], &[SceneCommand]),
     ) {
         let clip_logical = transform_rect(self.state.current_transform(), scope.clip);
         let Some(bounds) = self.state.layer_bounds(&scope, self.area()) else {
             return;
         };
-        let state = SceneState::new(Some(bounds), self.state.current_transform(), 1.0);
-        let region = SceneState::layer_region(bounds, self.area(), self.scale);
-        let Some((mut layer, at)) = self.render_region(region, state, children) else {
+        let key = LayerKey {
+            scope: scope.clone(),
+            bounds,
+            region: SceneState::layer_region(bounds, self.area(), self.scale),
+            transform: self.state.current_transform(),
+            place: (self.scale, self.origin),
+        };
+        let Some((mut layer, at)) = self.filtered_region(key, nodes) else {
             return;
         };
-        super::filter::filter(&mut layer, &scope.effect, self.scale);
+        let region = SceneState::layer_region(bounds, self.area(), self.scale);
         let rounded = self.rounded_mask(clip_logical, scope.clip_radii);
         let keep = match mask {
             Some(MaskSource::Path(draw)) => self.path_mask(draw, bounds).map(Some),
@@ -113,6 +111,12 @@ impl CpuPainter<'_> {
             self.composite(&layer, at, ink, mask.as_ref());
         }
         self.release_pixmap(layer);
+    }
+
+    pub(super) fn blended(&mut self, layer: &mut Pixmap, (x, y): (u32, u32), scope: &LayerScope) {
+        let ink = Ink::of(scope).prepared(layer);
+        let at = TsTransform::from_translate(x as f32, y as f32);
+        self.composite(layer, at, ink, None);
     }
 
     fn composite(
@@ -133,19 +137,18 @@ impl CpuPainter<'_> {
         let Some(base) = mask.or_else(|| cover(masks.covers, width, height)) else {
             return;
         };
-        let Some(faded) = fade(&mut masks.faded, base, opacity) else {
-            return;
-        };
-        blit(target, layer, transform, faded, ink.blend);
+        if ink.space == BLEND_SPACE && opacity < 1.0 {
+            let Some(faded) = fade(&mut masks.faded, base, opacity) else {
+                return;
+            };
+            blit_in(target, layer, transform, Some(faded), (ink.blend, ink.space, 1.0));
+        } else if opacity > 0.0 {
+            blit_in(target, layer, transform, Some(base), (ink.blend, ink.space, opacity.min(1.0)));
+        }
         stats.offscreen_layers += 1;
     }
 
-    pub(super) fn render_region(
-        &mut self,
-        bounds: Rect,
-        state: SceneState,
-        children: &[PlanNode<'_>],
-    ) -> Option<(Pixmap, TsTransform)> {
+    pub(super) fn pixel_window(&self, bounds: Rect) -> (f32, f32, u32, u32) {
         let x0 = bounds.origin.x.mul_add(self.scale, -self.origin.x).round();
         let y0 = bounds.origin.y.mul_add(self.scale, -self.origin.y).round();
         let x1 = (bounds.origin.x + bounds.width)
@@ -154,7 +157,17 @@ impl CpuPainter<'_> {
         let y1 = (bounds.origin.y + bounds.height)
             .mul_add(self.scale, -self.origin.y)
             .round();
-        let mut layer = self.take_pixmap((x1 - x0).max(1.0) as u32, (y1 - y0).max(1.0) as u32)?;
+        (x0, y0, (x1 - x0).max(1.0) as u32, (y1 - y0).max(1.0) as u32)
+    }
+
+    pub(super) fn render_region(
+        &mut self,
+        bounds: Rect,
+        state: SceneState,
+        children: &[PlanNode<'_>],
+    ) -> Option<(Pixmap, TsTransform)> {
+        let (x0, y0, width, height) = self.pixel_window(bounds);
+        let mut layer = self.take_pixmap(width, height)?;
         self.spawn(
             &mut layer,
             Point::new(self.origin.x + x0, self.origin.y + y0),
@@ -220,6 +233,18 @@ impl CpuPainter<'_> {
     }
 }
 
+pub(super) fn take(pool: &mut Vec<Pixmap>, width: u32, height: u32) -> Option<Pixmap> {
+    if let Some(at) = pool
+        .iter()
+        .position(|p| p.width() == width && p.height() == height)
+    {
+        let mut reused = pool.swap_remove(at);
+        reused.fill(tiny_skia::Color::TRANSPARENT);
+        return Some(reused);
+    }
+    Pixmap::new(width, height)
+}
+
 fn source_mask(scope: LayerScope, bounds: Rect, size: (u32, u32), scale: f32) -> Option<Mask> {
     if scope.clip_radii.0.iter().all(|radius| *radius <= 0.0) {
         return None;
@@ -233,6 +258,7 @@ fn source_mask(scope: LayerScope, bounds: Rect, size: (u32, u32), scale: f32) ->
 struct Ink {
     opacity: f32,
     blend: tiny_skia::BlendMode,
+    space: tiny_skia::ColorSpace,
 }
 
 impl Ink {
@@ -240,40 +266,34 @@ impl Ink {
         Self {
             opacity,
             blend: tiny_skia::BlendMode::SourceOver,
+            space: BLEND_SPACE,
         }
     }
 
     const fn of(scope: &LayerScope) -> Self {
+        let space = match scope.blend {
+            BlendMode::Normal => BLEND_SPACE,
+            _ => tiny_skia::ColorSpace::Linear,
+        };
         Self {
             opacity: scope.opacity,
             blend: skia_blend(scope.blend),
+            space,
         }
     }
 
     fn prepared(self, layer: &mut Pixmap) -> Self {
-        if !matches!(self.blend, tiny_skia::BlendMode::SourceOver) {
-            encode_premultiplied(layer);
+        if self.space == tiny_skia::ColorSpace::Linear {
+            to_srgb(layer.data_mut());
         }
         self
-    }
-}
-
-fn encode_premultiplied(layer: &mut Pixmap) {
-    for pixel in layer.data_mut().chunks_exact_mut(4) {
-        let [r, g, b, a] = [0, 1, 2, 3].map(|i| pixel.get(i).copied().unwrap_or(0));
-        if a == 0 || a == u8::MAX {
-            continue;
-        }
-        let gain = (f32::from(a) / 255.0).sqrt();
-        let scaled = |channel: u8| ((f32::from(channel) * gain).round() as u8).min(a);
-        pixel.copy_from_slice(&[scaled(r), scaled(g), scaled(b), a]);
     }
 }
 
 const fn skia_blend(mode: BlendMode) -> tiny_skia::BlendMode {
     use tiny_skia::BlendMode as Skia;
     match mode {
-        BlendMode::Normal => Skia::SourceOver,
+        BlendMode::Normal | BlendMode::SrgbOver => Skia::SourceOver,
         BlendMode::Multiply => Skia::Multiply,
         BlendMode::Screen => Skia::Screen,
         BlendMode::Overlay => Skia::Overlay,

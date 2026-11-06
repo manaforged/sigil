@@ -127,7 +127,7 @@ fn step(filter: Filter, c: Rgba) -> Rgba {
         Filter::Saturate(amount) => saturate(amount, c),
         Filter::HueRotate(degrees) => hue_rotate(degrees, c),
         Filter::Opacity(amount) => [c[0], c[1], c[2], c[3] * amount.min(1.0)],
-        Filter::Blur(_) | Filter::DropShadow(_) => c,
+        _ => c,
     };
     out.map(|v| v.clamp(0.0, 1.0))
 }

@@ -7,12 +7,12 @@ use crate::fnv::mix;
 use crate::geometry::{Point, Rect};
 use crate::scene::SceneBuilder;
 use crate::scene::command::{
-    BlendMode, CommandScene, DrawPath, FillRule, LayerEffect, LayerScope, PathCmd, PathPaint,
-    PathStroke, SceneCommand, outline_key,
+    CommandScene, DrawPath, FillRule, LayerScope, PathCmd, PathPaint, PathStroke, SceneCommand,
+    outline_key,
 };
 
-use super::fallback::Fallback;
-use super::group::layer;
+use super::budget::{self, MAX_COMMANDS};
+use super::fallback::{Fallback, bitmap};
 use super::paint::{self, Fill, OPAQUE};
 use super::shape::{self, outline, scene_transform, transform_key};
 
@@ -40,35 +40,43 @@ pub(crate) struct Lowered {
 pub(super) struct Walk {
     key: u64,
     count: u64,
+    pub(super) spent: usize,
+    pub(super) exhausted: bool,
     pub(super) fallbacks: Vec<Fallback>,
 }
 
-/// Lowers `tree` into a box of `size` at the origin, in one layer that blends with the backdrop in sRGB like resvg.
-pub(super) fn lower(
-    tree: &Tree,
-    (width, height): (f32, f32),
-    key: u64,
-    surface: [u8; 3],
-) -> Lowered {
+/// Lowers `tree` into a box of `size` at the origin, in one layer that composites over the backdrop in sRGB like resvg.
+pub(super) fn lower(tree: &Arc<Tree>, (width, height): (f32, f32), key: u64) -> Lowered {
+    if !budget::fits(tree) {
+        return whole(tree, (width, height), key);
+    }
     let size = tree.size();
     let base = Transform::from_scale(width / size.width(), height / size.height());
     let mut walk = Walk {
         key,
         count: 0,
+        spent: 0,
+        exhausted: false,
         fallbacks: Vec::new(),
     };
     let mut scene = SceneBuilder::new();
     let area = Rect::new(Point::new(0.0, 0.0), width, height);
-    let scope = LayerScope {
-        blend: ink_blend(surface),
-        ..layer(area, LayerEffect::Identity)
-    };
-    scene.extend_commands([SceneCommand::PushLayer(scope)]);
+    scene.extend_commands([SceneCommand::PushLayer(LayerScope::srgb(area))]);
     walk.group(&mut scene, tree.root(), base);
     scene.pop_layer();
+    if scene.command_len() > MAX_COMMANDS {
+        return whole(tree, (width, height), key);
+    }
     Lowered {
         commands: scene.finish().commands,
         fallbacks: walk.fallbacks,
+    }
+}
+
+fn whole(tree: &Arc<Tree>, size: (f32, f32), key: u64) -> Lowered {
+    Lowered {
+        commands: bitmap(Arc::clone(tree), size, key),
+        fallbacks: vec![Fallback::Budget],
     }
 }
 
@@ -201,16 +209,6 @@ impl Walk {
     fn draw(&mut self, cmds: Arc<[PathCmd]>, t: Transform) -> DrawPath {
         let key = transform_key(outline_key(self.next_key(), &cmds), t);
         DrawPath::new(cmds, scene_transform(t), key)
-    }
-}
-
-fn ink_blend(surface: [u8; 3]) -> BlendMode {
-    let [r, g, b] = surface.map(f32::from);
-    let luma = 0.2126f32.mul_add(r, 0.7152f32.mul_add(g, 0.0722 * b));
-    if luma >= 127.5 {
-        BlendMode::Darken
-    } else {
-        BlendMode::Lighten
     }
 }
 

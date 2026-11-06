@@ -13,6 +13,7 @@ use crate::renderer::scene_paint::ScenePipeline;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::SlugTextPipeline;
 use crate::renderer::split_encoder::GpuTimer;
+use crate::renderer::scene_command::KeptLayers;
 use crate::renderer::vector_pass::VectorPass;
 use crate::renderer::wash_cache::WashCache;
 use crate::{Error, ErrorKind};
@@ -40,6 +41,7 @@ pub(crate) struct PipelineCache {
     pub(crate) wash_cache: WashCache,
     pub(crate) pending: WalkPending,
     pub(crate) vector: VectorPass,
+    pub(crate) kept: KeptLayers,
 }
 
 impl Default for PipelineCache {
@@ -58,6 +60,7 @@ impl Default for PipelineCache {
             wash_cache: WashCache::default(),
             pending: WalkPending::default(),
             vector: VectorPass::default(),
+            kept: KeptLayers::default(),
         }
     }
 }

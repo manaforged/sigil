@@ -11,7 +11,9 @@ use crate::renderer::vector_pass::{Rendered, Run};
 use crate::scene::command::{DrawPath, LayerEffect, Mask, MaskMode};
 use crate::style::Color;
 
-use super::{LayerTarget, flush_command_batch, local_rect};
+use crate::renderer::plan::build_tree;
+
+use super::{LayerTarget, local_rect, render_nodes};
 
 pub(super) enum MaskTexture {
     Path(Rendered),
@@ -117,9 +119,15 @@ fn render_scene(
         state: SceneState::new(Some(dest), target.state.current_transform(), 1.0),
     };
     let parent_format = std::mem::replace(&mut ctx.format, LAYER_FORMAT);
-    let mut batch: Vec<&SceneCommand> = mask.commands.iter().collect();
-    flush_command_batch(ctx, &mut batch, &layer);
+    let nodes = build_tree(&mask.commands);
+    let drawn = render_nodes(ctx, &nodes, layer);
     ctx.format = parent_format;
+    if drawn.is_err() {
+        if let Some(pool) = ctx.layer_pool.as_mut() {
+            pool.release(handle);
+        }
+        return None;
+    }
     let local = local_rect(dest, target.bounds.origin);
     Some(MaskTexture::Scene {
         handle,

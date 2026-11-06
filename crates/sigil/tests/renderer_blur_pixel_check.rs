@@ -90,7 +90,7 @@ fn assert_control_preserves_contrast(pixels: &[u8], phys_w: u32) {
         "control_preserves_contrast: min_R across x=[{BAR_SCAN_RECT0_X}..{}] y={y} \
          is {min_r}; expected < 50. Bar k=13 (x=208..215) should be black (R≈0) \
          when sigma=0. If min_R≥50, the sigma=0 path is still blurring. \
-         Check that LayerEffect::LayerBlur {{ sigma: 0.0 }} triggers 0 Kawase \
+         Check that a Filter::Blur(0.0) layer triggers 0 Kawase \
          passes (pass-through composite only). Scanned R values: {r_values:?}",
         BAR_SCAN_RECT0_X + BAR_SCAN_LEN - 1,
     );

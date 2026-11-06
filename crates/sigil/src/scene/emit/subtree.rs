@@ -53,6 +53,7 @@ impl SpanKey {
 
 fn fill_key(inherited: &Inherited<'_>) -> u64 {
     inherited.text_fill.as_ref().map_or(0, |fill| fill.key)
+        ^ emit_cache::shadow_key(inherited.text_shadows.as_deref().unwrap_or_default())
 }
 
 pub(super) const fn rect_bits(rect: Rect) -> [u32; 4] {

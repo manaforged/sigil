@@ -17,6 +17,7 @@ use crate::renderer::scene_command::walk::{IDENTITY, intersect_rect};
 use crate::scene::corner_radii::CornerRadii;
 
 use super::bound::rect_mask;
+use super::layer_cache::LayerCache;
 use super::quad::QuadCache;
 use super::shapes::{Brush, cover, ts_transform};
 
@@ -33,12 +34,14 @@ pub(super) struct CpuPainter<'a> {
     pub(super) state: SceneState,
     pub(super) mask: Masks<'a>,
     pub(super) quads: &'a mut QuadCache,
+    pub(super) cached: &'a mut LayerCache,
     pub(super) stats: &'a mut FrameStats,
     pub(super) pool: &'a mut Vec<Pixmap>,
 }
 
 pub(super) struct PaintScratch<'a> {
     pub(super) quads: &'a mut QuadCache,
+    pub(super) cached: &'a mut LayerCache,
     pub(super) stats: &'a mut FrameStats,
     pub(super) pool: &'a mut Vec<Pixmap>,
     pub(super) covers: &'a mut Vec<Mask>,
@@ -61,6 +64,7 @@ impl<'a> CpuPainter<'a> {
         state: SceneState,
         PaintScratch {
             quads,
+            cached,
             stats,
             pool,
             covers,
@@ -77,6 +81,7 @@ impl<'a> CpuPainter<'a> {
                 faded: None,
             },
             quads,
+            cached,
             stats,
             pool,
         }
@@ -90,6 +95,7 @@ impl<'a> CpuPainter<'a> {
     ) -> CpuPainter<'b> {
         let scratch = PaintScratch {
             quads: &mut *self.quads,
+            cached: &mut *self.cached,
             stats: &mut *self.stats,
             pool: &mut *self.pool,
             covers: &mut *self.mask.covers,
@@ -106,9 +112,10 @@ impl<'a> CpuPainter<'a> {
                     scope,
                     mask,
                     children,
+                    commands,
                 } => {
                     if !self.state.clipped_out() {
-                        self.layer(scope.clone(), *mask, children);
+                        self.layer(scope.clone(), *mask, (children, commands));
                     }
                 }
                 PlanNode::Group {

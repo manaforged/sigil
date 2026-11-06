@@ -41,7 +41,6 @@ const WHITE: Rgba8 = Rgba8 {
 };
 const CHANNEL_TOLERANCE: u8 = 32;
 const MAX_OFF_FRACTION: f32 = 0.02;
-const GPU_RENEW: usize = 50;
 const SUITE_TAG: &str = "v0.48.1";
 
 struct Case {
@@ -68,12 +67,20 @@ fn key(name: &str) -> u64 {
 }
 
 fn over_white(picture: &Picture) -> Picture {
+    over(picture, WHITE)
+}
+
+fn over(picture: &Picture, surface: Rgba8) -> Picture {
     let mut out = picture.clone();
     for pixel in out.pixels_mut() {
         let [r, g, b, a] = pixel.0;
         let alpha = f32::from(a) / 255.0;
-        let mix = |c: u8| f32::from(c).mul_add(alpha, 255.0 * (1.0 - alpha)).round() as u8;
-        pixel.0 = [mix(r), mix(g), mix(b), 255];
+        let mix = |c: u8, under: u8| {
+            f32::from(c)
+                .mul_add(alpha, f32::from(under) * (1.0 - alpha))
+                .round() as u8
+        };
+        pixel.0 = [mix(r, surface.r), mix(g, surface.g), mix(b, surface.b), 255];
     }
     out
 }
@@ -335,14 +342,11 @@ fn the_resvg_suite_renders_through_sigil() {
     let fonts = fonts(&root);
     let mut runner = Runner {
         cpu: CpuRenderer::new(),
-        gpu: None,
+        gpu: headless_renderer().ok().flatten(),
         failures: String::new(),
     };
     let mut tallies: BTreeMap<String, Tally> = BTreeMap::new();
-    for (index, case) in cases.iter().enumerate() {
-        if index % GPU_RENEW == 0 {
-            runner.gpu = headless_renderer().ok().flatten();
-        }
+    for case in &cases {
         runner.run(
             case,
             &fonts,

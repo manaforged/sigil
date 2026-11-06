@@ -132,6 +132,20 @@ pub(super) fn blit(
     mask: &Mask,
     blend_mode: BlendMode,
 ) {
+    let space = match blend_mode {
+        BlendMode::SourceOver => BLEND_SPACE,
+        _ => ColorSpace::Linear,
+    };
+    blit_in(target, source, transform, Some(mask), (blend_mode, space, 1.0));
+}
+
+pub(super) fn blit_in(
+    target: &mut Pixmap,
+    source: &Pixmap,
+    transform: TsTransform,
+    mask: Option<&Mask>,
+    (blend_mode, colorspace, opacity): (BlendMode, ColorSpace, f32),
+) {
     let whole = Rect::new(
         Point::new(0.0, 0.0),
         source.width() as f32,
@@ -140,23 +154,27 @@ pub(super) fn blit(
     let Some(rect) = CpuBound::of(target, transform).clip_rect(whole) else {
         return;
     };
+    let encoded = colorspace == ColorSpace::Linear;
+    if encoded {
+        super::encoding::convert_under(target, transform, rect, super::encoding::to_srgb);
+    }
     let paint = Paint {
         shader: Pattern::new(
             source.as_ref(),
             SpreadMode::Pad,
             FilterQuality::Nearest,
-            1.0,
+            opacity,
             TsTransform::identity(),
         ),
         anti_alias: false,
         blend_mode,
-        colorspace: match blend_mode {
-            BlendMode::SourceOver => BLEND_SPACE,
-            _ => ColorSpace::Linear,
-        },
+        colorspace,
         ..Paint::default()
     };
-    target.fill_rect(rect, &paint, transform, Some(mask));
+    target.fill_rect(rect, &paint, transform, mask);
+    if encoded {
+        super::encoding::convert_under(target, transform, rect, super::encoding::to_stored);
+    }
 }
 
 pub(super) fn opacity_of(opacity: u16, layer: f32) -> f32 {

@@ -2,9 +2,12 @@ use crate::renderer::layer_composite::{
     Backdrop, CompositeRequest, LayerCompositePipeline, LayerMask,
 };
 use crate::renderer::projected::{ProjectedPipeline, ProjectedRequest};
-use crate::renderer::scene_command::walk::{WalkCtx, compose, translation};
+use crate::renderer::scene_command::walk::{IDENTITY, WalkCtx, compose, translation};
 use crate::renderer::scene_paint::PaintCtx;
+use crate::geometry::{Point, Rect};
 use crate::scene::command::{BlendMode, Transform3D};
+use crate::scene::corner_radii::CornerRadii;
+use crate::style::Color;
 
 use super::super::backdrop::{self, BackdropCopy};
 use super::super::{LayerTarget, local_rect, mask};
@@ -112,22 +115,69 @@ fn composite_projected(
         opacity: layer.plan.opacity * target.state.current_opacity(),
         transform: Transform3D::from(translation(-origin.x, -origin.y)).then(projection),
     };
+    match layer.plan.blend {
+        BlendMode::Normal => project(ctx, target, &target.view, request),
+        mode => project_blended(ctx, target, request, mode),
+    }
+    ctx.layer_pool
+        .as_mut()
+        .expect("layer pool acquired the texture")
+        .release(layer.handle);
+}
+
+fn project(
+    ctx: &mut WalkCtx<'_>,
+    target: &LayerTarget,
+    view: &wgpu::TextureView,
+    request: ProjectedRequest<'_>,
+) {
     let pipeline = ProjectedPipeline::for_format(ctx.projected_pipelines, ctx.device, ctx.format);
     let paint = PaintCtx {
         device: ctx.device,
         queue: ctx.queue,
         encoder: &mut *ctx.encoder,
-        view: &target.view,
+        view,
         viewport: target.viewport(ctx.scale),
         clip: target
             .state
             .current_clip()
-            .map(|clip| local_rect(clip, origin)),
+            .map(|clip| local_rect(clip, target.bounds.origin)),
         scale: ctx.scale,
     };
     pipeline.composite(paint, request);
-    ctx.layer_pool
-        .as_mut()
-        .expect("layer pool acquired the texture")
-        .release(layer.handle);
+}
+
+fn project_blended(
+    ctx: &mut WalkCtx<'_>,
+    target: &LayerTarget,
+    request: ProjectedRequest<'_>,
+    mode: BlendMode,
+) {
+    let texture = target.view.texture();
+    let (width, height) = (texture.width(), texture.height());
+    let pool = ctx.layer_pool.get_or_insert_with(Default::default);
+    let Ok(scratch) = pool.acquire(ctx.device, width, height, texture.format()) else {
+        return;
+    };
+    ctx.encoder.clear(&scratch.view, Color::TRANSPARENT);
+    project(ctx, target, &scratch.view, request);
+    let (w, h) = target.viewport(ctx.scale);
+    let whole = Rect::new(Point::new(0.0, 0.0), w, h);
+    let flat = CompositeRequest {
+        layer_view: &scratch.view,
+        dest: whole,
+        round: whole,
+        texture_size: (scratch.width, scratch.height),
+        source_extent: (width, height),
+        opacity: 1.0,
+        clip_radii: CornerRadii::ZERO,
+        transform: IDENTITY,
+    };
+    let copy = backdrop::copy(ctx, target, &flat);
+    let behind = copy.as_ref().map(|copy| copy.backdrop(mode));
+    draw(ctx, target, flat, (None, behind));
+    release(ctx, copy);
+    if let Some(pool) = ctx.layer_pool.as_mut() {
+        pool.release(scratch);
+    }
 }

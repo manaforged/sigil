@@ -63,12 +63,15 @@ fn cpu_pixels(
     target: ImageTarget,
 ) -> Result<Vec<u8>, Error> {
     let pixmap = renderer.render(scene, target.clear, target.viewport, target.size)?;
-    Ok(pixmap
-        .pixels()
-        .iter()
-        .flat_map(|px| {
-            let color = px.demultiply();
-            [color.red(), color.green(), color.blue(), color.alpha()]
-        })
-        .collect())
+    let mut rgba = pixmap.take();
+    for pixel in rgba.chunks_exact_mut(4) {
+        if pixel[3] == u8::MAX {
+            continue;
+        }
+        let premultiplied = tiny_skia::PremultipliedColorU8::from_rgba(pixel[0], pixel[1], pixel[2], pixel[3]);
+        if let Some(color) = premultiplied.map(|color| color.demultiply()) {
+            pixel.copy_from_slice(&[color.red(), color.green(), color.blue(), color.alpha()]);
+        }
+    }
+    Ok(rgba)
 }

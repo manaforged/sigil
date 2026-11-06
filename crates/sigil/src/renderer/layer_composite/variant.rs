@@ -23,7 +23,7 @@ pub(super) const BLENDED: Variant = Variant {
 
 pub(super) const fn blend_index(mode: BlendMode) -> u32 {
     match mode {
-        BlendMode::Normal => 0,
+        BlendMode::Normal | BlendMode::SrgbOver => 0,
         BlendMode::Multiply => 1,
         BlendMode::Screen => 2,
         BlendMode::Overlay => 3,

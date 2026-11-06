@@ -192,7 +192,6 @@ impl CellWalk<'_> {
                     LayerEffect::Transform(transform) => transform,
                     LayerEffect::Projected { transform, .. } => transform.affine_fit(scope.clip),
                     LayerEffect::Identity
-                    | LayerEffect::LayerBlur { .. }
                     | LayerEffect::Mask(_)
                     | LayerEffect::Filter(_) => IDENTITY,
                 });

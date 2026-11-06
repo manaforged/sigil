@@ -6,6 +6,7 @@
 )]
 
 use crate::geometry::Rect;
+use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::split_encoder::SplitEncoder;
 use crate::scene::command::{DrawPath, Transform};
 
@@ -15,7 +16,6 @@ use linear::Linearize;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 const SRGB_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-const MAX_RETAINED: usize = 8;
 
 struct Gpu {
     device: wgpu::Device,
@@ -39,6 +39,7 @@ struct Pixels {
 
 struct Retained {
     pixels: Pixels,
+    used: u64,
     draws: Vec<Queued>,
     unorm: wgpu::TextureView,
     linear: wgpu::TextureView,
@@ -66,9 +67,17 @@ pub(crate) struct VectorPass {
     pending: Vec<Queued>,
     run: Option<(Rect, Run)>,
     retained: Vec<Retained>,
+    frame: u64,
 }
 
 impl VectorPass {
+    pub(crate) fn begin_frame(&mut self) {
+        self.frame += 1;
+        let stale = CacheLimits::DEFAULT.vector_stale_frames;
+        let frame = self.frame;
+        self.retained.retain(|kept| kept.used + stale >= frame);
+    }
+
     pub(crate) fn queue(&mut self, draw: &DrawPath, device: Transform, run: Run) {
         self.pending.push(Queued {
             draw: draw.clone(),
@@ -121,14 +130,14 @@ impl VectorPass {
             .iter()
             .position(|kept| kept.pixels == pixels && kept.draws == draws)
         {
-            let kept = self.retained.remove(hit);
             self.pending = draws;
             self.pending.clear();
-            self.retained.push(kept);
-            return Some(self.retained.len() - 1);
+            self.retained[hit].used = self.frame;
+            return Some(hit);
         }
         let mut target = self.slot(device, pixels);
         target.pixels = pixels;
+        target.used = self.frame;
         let drawn = self.draw(&draws, &target, (device, queue), encoder);
         target.draws = if drawn { draws } else { Vec::new() };
         self.retained.push(target);
@@ -136,15 +145,30 @@ impl VectorPass {
     }
 
     fn slot(&mut self, device: &wgpu::Device, pixels: Pixels) -> Retained {
-        if self.retained.len() < MAX_RETAINED {
-            return new_target(device, pixels);
+        let budget = CacheLimits::DEFAULT.vector_pixels;
+        let area = |size: (u16, u16)| u64::from(size.0) * u64::from(size.1);
+        let mut held: u64 = self.retained.iter().map(|kept| area(kept.pixels.size)).sum();
+        let mut reused = None;
+        while held + area(pixels.size) > budget {
+            let Some(oldest) = self.oldest() else {
+                break;
+            };
+            let kept = self.retained.swap_remove(oldest);
+            held -= area(kept.pixels.size);
+            if kept.pixels.size == pixels.size {
+                reused = Some(kept);
+            }
         }
-        let oldest = self.retained.remove(0);
-        if oldest.pixels.size == pixels.size {
-            oldest
-        } else {
-            new_target(device, pixels)
-        }
+        reused.unwrap_or_else(|| new_target(device, pixels))
+    }
+
+    fn oldest(&self) -> Option<usize> {
+        self.retained
+            .iter()
+            .enumerate()
+            .filter(|(_, kept)| kept.used < self.frame)
+            .min_by_key(|(_, kept)| kept.used)
+            .map(|(index, _)| index)
     }
 
     fn draw(
@@ -239,6 +263,7 @@ fn new_target(device: &wgpu::Device, pixels: Pixels) -> Retained {
     };
     Retained {
         pixels,
+        used: 0,
         draws: Vec::new(),
         unorm: view("sigil-renderer vector target", FORMAT),
         linear: view("sigil-renderer linear vector target", SRGB_FORMAT),

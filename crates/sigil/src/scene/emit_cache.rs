@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use std::hash::{Hash as _, Hasher as _};
 
+use crate::fnv::mix;
 use crate::geometry::{Point, Rect};
 use crate::kernel::{Node, NodeId, NodeType, TextContent};
 use crate::style::text_identity::DiscreteTextStyle;
@@ -12,6 +13,7 @@ use ahash::AHasher;
 
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{LayerEffect, LayerScope, SceneCommand};
+use crate::scene::shadow::Shadow;
 
 const CAP: usize = 4_096;
 
@@ -184,6 +186,18 @@ pub(crate) fn inherit_key(theme: &Theme, text_color: Option<Rgba8>, text_style: 
     let size = u64::from(text_style.font_size.to_bits());
     let weight = u64::from(text_style.font_weight);
     theme_p ^ color.rotate_left(7) ^ size.rotate_left(17) ^ weight.rotate_left(27)
+}
+
+/// A key that changes when any inherited text shadow changes.
+pub(crate) fn shadow_key(shadows: &[Shadow]) -> u64 {
+    shadows.iter().fold(0, |key, shadow| {
+        let Shadow { color, offset, blur, spread, .. } = *shadow;
+        color
+            .into_iter()
+            .chain(offset)
+            .chain([blur, spread])
+            .fold(key.rotate_left(5), |key, value| mix(key, u64::from(value.to_bits())))
+    })
 }
 
 pub(crate) fn slot_tag(node: &Node) -> u8 {

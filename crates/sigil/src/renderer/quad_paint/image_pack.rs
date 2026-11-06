@@ -184,6 +184,13 @@ impl AtlasPipeline {
             self.upload_packed(queue, packed, source.rgba());
             return packed;
         }
+        if self.atlases.len() >= MAX_ATLASES || self.image_pack.pages.len() >= MAX_ATLASES {
+            let packed = self.reclaim_page(w, h).unwrap_or(PackedImage::NONE);
+            if !packed.is_none() {
+                self.upload_packed(queue, packed, source.rgba());
+            }
+            return packed;
+        }
         let zeros = vec![0_u8; (PAGE * PAGE * 4) as usize];
         let atlas = self.register_atlas(
             device,
@@ -203,6 +210,33 @@ impl AtlasPipeline {
         };
         self.upload_packed(queue, packed, source.rgba());
         packed
+    }
+
+    fn reclaim_page(&mut self, w: u32, h: u32) -> Option<PackedImage> {
+        let pack = &mut self.image_pack;
+        let frame = pack.frame;
+        let slots = &mut self.image_slots;
+        let busy = |atlas: u32| {
+            slots
+                .iter()
+                .any(|(id, packed)| packed.atlas == atlas && pack.last_used.get(id) == Some(&frame))
+        };
+        let index = pack.pages.iter().position(|page| !busy(page.atlas))?;
+        let page = pack.pages.get_mut(index)?;
+        let atlas = page.atlas;
+        page.x = 0;
+        page.y = 0;
+        page.shelf_h = 0;
+        let (x, y) = page.try_place(w.saturating_add(PAD), h.saturating_add(PAD))?;
+        let last_used = &mut pack.last_used;
+        slots.retain(|id, packed| {
+            let keep = packed.atlas != atlas;
+            if !keep {
+                last_used.remove(id);
+            }
+            keep
+        });
+        Some(PackedImage { atlas, x, y, w, h })
     }
 
     fn dedicated_image(

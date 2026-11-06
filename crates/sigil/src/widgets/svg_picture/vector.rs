@@ -12,7 +12,7 @@ use crate::widgets::{CanvasPaint, Widget};
 
 use super::fallback::bitmap;
 use super::lower::{Draw, lower};
-use super::{Picture, surface};
+use super::Picture;
 
 type Lowering = RefCell<Option<(u64, [u32; 2], Arc<[SceneCommand]>)>>;
 
@@ -55,13 +55,13 @@ fn lowered(
     let size = (rect.width, rect.height);
     let commands: Arc<[SceneCommand]> = match draw {
         Draw::Vector => {
-            let lowered = lower(&tree, size, key, surface(theme));
+            let lowered = lower(&tree, size, key);
             for reason in &lowered.fallbacks {
                 tracing::debug!(%reason, "svg subtree drawn as a bitmap");
             }
             lowered.commands.into()
         }
-        Draw::Bitmap => bitmap(tree, size, key, surface(theme)).into(),
+        Draw::Bitmap => bitmap(tree, size, key).into(),
     };
     *last.borrow_mut() = Some((key, at, Arc::clone(&commands)));
     Some(commands)

@@ -24,10 +24,6 @@ impl SceneState {
                 let inverse = invert(compose(self.current_transform(), effect))?;
                 intersect_rect(scope.clip, transform_rect(inverse, visible))
             }
-            LayerEffect::LayerBlur { sigma } => {
-                let reach = (sigma.max(0.0) * 3.0).min(MAX_BLUR_REACH);
-                self.target_clip(scope, visible.expand(reach))
-            }
             LayerEffect::Filter(ref filters) => {
                 let reach = filter_reach(filters).min(MAX_BLUR_REACH);
                 self.target_clip(scope, visible.expand(reach))

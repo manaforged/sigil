@@ -11,6 +11,7 @@ use crate::geometry::{Point, Rect};
 use crate::renderer::plan::PlanNode;
 use crate::renderer::projected::ProjectedFrame;
 use crate::renderer::scene_command::LayerScope;
+use crate::scene::command::BlendMode;
 use crate::renderer::scene_command::state::SceneState;
 use crate::scene::command::transform3d::{apply, invert};
 
@@ -43,7 +44,6 @@ impl CpuPainter<'_> {
             SceneState::new(Some(bounds), frame.content, 1.0),
         )
         .walk(children);
-        let opacity = scope.opacity * self.state.current_opacity();
         if let Some(inverse) = invert(frame.composite.homography())
             && let Some(screen) = self.screen_span(frame)
         {
@@ -54,10 +54,36 @@ impl CpuPainter<'_> {
                 bounds,
                 scale: self.scale,
             };
-            self.project_pixels(&source, inverse, screen, opacity);
+            self.place(&source, inverse, screen, &scope);
             self.stats.offscreen_layers += 1;
         }
         self.release_pixmap(layer);
+    }
+
+    fn place(&mut self, source: &Source<'_>, inverse: Plane, span: [u32; 4], scope: &LayerScope) {
+        let view = (self.scale, self.origin);
+        if scope.blend == BlendMode::Normal {
+            let canvas = Canvas {
+                stride: self.target.width() as usize * 4,
+                data: self.target.data_mut(),
+                at: (0, 0),
+            };
+            let opacity = scope.opacity * self.state.current_opacity();
+            project(canvas, source, (inverse, opacity), span, view);
+            return;
+        }
+        let [x0, y0, x1, y1] = span;
+        let Some(mut scratch) = self.take_pixmap(x1 - x0, y1 - y0) else {
+            return;
+        };
+        let canvas = Canvas {
+            stride: scratch.width() as usize * 4,
+            data: scratch.data_mut(),
+            at: (x0, y0),
+        };
+        project(canvas, source, (inverse, 1.0), span, view);
+        self.blended(&mut scratch, (x0, y0), scope);
+        self.release_pixmap(scratch);
     }
 
     fn screen_span(&self, frame: ProjectedFrame) -> Option<[u32; 4]> {
@@ -73,30 +99,38 @@ impl CpuPainter<'_> {
         let (x1, y1) = (x1.min(self.target.width()), y1.min(self.target.height()));
         (x0 < x1 && y0 < y1).then_some([x0, y0, x1, y1])
     }
+}
 
-    fn project_pixels(&mut self, source: &Source<'_>, inverse: Plane, span: [u32; 4], opacity: f32) {
-        let [x0, y0, x1, y1] = span;
-        let (scale, origin) = (self.scale, self.origin);
-        let stride = self.target.width() as usize * 4;
-        let data = self.target.data_mut();
-        for py in y0..y1 {
-            for px in x0..x1 {
-                let at = Point::new(
-                    (px as f32 + 0.5 + origin.x) / scale,
-                    (py as f32 + 0.5 + origin.y) / scale,
-                );
-                let Some(local) = unproject(inverse, at) else {
-                    continue;
-                };
-                let amount = opacity * source.coverage(inverse, at, local);
-                if amount <= 0.0 {
-                    continue;
-                }
-                let texel = source.sample(local);
-                let index = py as usize * stride + px as usize * 4;
-                if let Some(pixel) = data.get_mut(index..index + 4) {
-                    blend(pixel, texel, amount);
-                }
+struct Canvas<'a> {
+    data: &'a mut [u8],
+    stride: usize,
+    at: (u32, u32),
+}
+
+fn project(
+    canvas: Canvas<'_>,
+    source: &Source<'_>,
+    (inverse, opacity): (Plane, f32),
+    [x0, y0, x1, y1]: [u32; 4],
+    (scale, origin): (f32, Point),
+) {
+    for py in y0..y1 {
+        for px in x0..x1 {
+            let at = Point::new(
+                (px as f32 + 0.5 + origin.x) / scale,
+                (py as f32 + 0.5 + origin.y) / scale,
+            );
+            let Some(local) = unproject(inverse, at) else {
+                continue;
+            };
+            let amount = opacity * source.coverage(inverse, at, local);
+            if amount <= 0.0 {
+                continue;
+            }
+            let texel = source.sample(local);
+            let index = (py - canvas.at.1) as usize * canvas.stride + (px - canvas.at.0) as usize * 4;
+            if let Some(pixel) = canvas.data.get_mut(index..index + 4) {
+                blend(pixel, texel, amount);
             }
         }
     }

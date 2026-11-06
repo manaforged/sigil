@@ -11,12 +11,15 @@ use crate::renderer::scene_command::{CommandScene, SceneCommand};
 
 #[path = "layer_walk/backdrop.rs"]
 mod backdrop;
+#[path = "layer_walk/kept.rs"]
+mod kept;
+pub(crate) use kept::KeptLayers;
 #[path = "layer_walk/mask.rs"]
 mod mask;
 #[path = "layer_walk/offscreen.rs"]
 mod offscreen;
 use offscreen::close_layer;
-use offscreen::{OffscreenLayer, OpenLayer, group_plan, layer_plan};
+use offscreen::{LayerPlan, OffscreenLayer, OpenLayer, group_plan};
 use offscreen::{composite_layer, open_layer};
 
 #[derive(Clone)]
@@ -237,38 +240,47 @@ fn prepare_layers<'n>(
 ) -> Result<Option<Nested<'n>>, Error> {
     while let Some((node, rest)) = frame.scan.split_first() {
         frame.scan = rest;
-        let (plan, children) = match node {
-            PlanNode::Command(_) => continue,
+        let opened = match node {
+            PlanNode::Command(_) => None,
             PlanNode::State(command) => {
                 let _ = frame.scan_target.state.apply(command);
-                continue;
+                None
             }
             PlanNode::Layer {
                 scope,
                 mask,
                 children,
-            } => (
-                layer_plan(scope, &frame.scan_target, ctx.scale).map(|plan| plan.masked(*mask)),
-                children,
-            ),
+                commands,
+            } => kept::open_scope(ctx, frame, (scope, *mask), (children, commands))?,
             PlanNode::Group {
                 opacity,
                 commands,
                 children,
-            } => (
-                group_plan(*opacity, commands, &frame.scan_target, ctx.scale),
-                children,
-            ),
+            } => {
+                let plan = group_plan(*opacity, commands, &frame.scan_target, ctx.scale);
+                open_plan(ctx, frame, plan, children)?
+            }
         };
-        let Some(plan) = plan else {
-            frame.layers.push(None);
-            continue;
-        };
-        let (open, target) = open_layer(ctx, plan)?;
-        let child = LayerFrame::new(ctx, children, target);
-        return Ok(Some(Nested { open, frame: child }));
+        if opened.is_some() {
+            return Ok(opened);
+        }
     }
     Ok(None)
+}
+
+fn open_plan<'n>(
+    ctx: &mut WalkCtx<'_>,
+    frame: &mut LayerFrame<'n>,
+    plan: Option<LayerPlan<'n>>,
+    children: &'n [PlanNode<'n>],
+) -> Result<Option<Nested<'n>>, Error> {
+    let Some(plan) = plan else {
+        frame.layers.push(None);
+        return Ok(None);
+    };
+    let (open, target) = open_layer(ctx, plan)?;
+    let child = LayerFrame::new(ctx, children, target);
+    Ok(Some(Nested { open, frame: child }))
 }
 
 fn flush_command_batch(
@@ -332,6 +344,7 @@ const fn reborrow_ctx<'a>(
         wash_cache: &mut *ctx.wash_cache,
         pending: &mut *ctx.pending,
         vector: &mut *ctx.vector,
+        kept: &mut *ctx.kept,
         stats: &mut *ctx.stats,
     }
 }

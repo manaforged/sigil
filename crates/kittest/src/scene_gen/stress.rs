@@ -62,7 +62,7 @@ pub fn layer_depth(depth: usize, blur: bool) -> GeneratedScene {
     let mut commands = Vec::with_capacity(depth * 2 + 1);
     for _ in 0..depth {
         let effect = if blur {
-            LayerEffect::LayerBlur { sigma: 1.0 }
+            LayerEffect::Filter(std::sync::Arc::new([sigil::scene::Filter::Blur(1.0)]))
         } else {
             LayerEffect::Identity
         };

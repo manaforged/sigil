@@ -16,6 +16,7 @@ pub(crate) enum PlanNode<'a> {
         scope: LayerScope,
         mask: Option<MaskSource<'a>>,
         children: Vec<Self>,
+        commands: &'a [SceneCommand],
     },
     Group {
         opacity: f32,
@@ -41,10 +42,12 @@ pub(crate) fn build_tree(commands: &[SceneCommand]) -> Vec<PlanNode<'_>> {
             }
             SceneCommand::PushClip(clip) if clip.composites() => {
                 let end = SceneState::clip_end(commands, index);
+                let inner = commands.get(index..end).unwrap_or_default();
                 nodes.push(PlanNode::Layer {
                     scope: clip.scope(),
                     mask: clip.mask().map(MaskSource::Path),
-                    children: build_tree(commands.get(index..end).unwrap_or_default()),
+                    children: build_tree(inner),
+                    commands: inner,
                 });
                 index = end + 1;
             }
@@ -85,6 +88,7 @@ fn push_layer<'a>(
             scope: scope.clone(),
             mask,
             children: build_tree(children),
+            commands: children,
         });
         return;
     };

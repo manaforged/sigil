@@ -2,6 +2,7 @@
 
 mod draw_handlers;
 mod layer_walk;
+pub(crate) use layer_walk::KeptLayers;
 mod path_run;
 mod primitive;
 mod wash;

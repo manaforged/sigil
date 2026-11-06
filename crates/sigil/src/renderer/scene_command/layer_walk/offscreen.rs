@@ -3,6 +3,7 @@ use crate::geometry::Rect;
 use crate::Error;
 use crate::renderer::blur_paint::{PassCtx, PassSrc};
 use crate::renderer::filter::{FilterPipeline, LayerFilters};
+use crate::scene::command::Filter;
 use crate::renderer::layer_pool::LayerHandle;
 use crate::renderer::plan::MaskSource;
 use crate::renderer::projected::ProjectedFrame;
@@ -15,6 +16,7 @@ use crate::scene::command::{BlendMode, Transform3D};
 use crate::scene::corner_radii::CornerRadii;
 use crate::style::Color;
 
+use super::kept::KeptKey;
 use super::{LayerTarget, physical_extent};
 
 #[path = "composite.rs"]
@@ -68,7 +70,7 @@ impl LayerReason {
         match scope.effect {
             LayerEffect::Identity if scope.blend != BlendMode::Normal => Self::Blend,
             LayerEffect::Transform(_) | LayerEffect::Projected { .. } => Self::Transform,
-            LayerEffect::LayerBlur { .. } => Self::Blur,
+            LayerEffect::Filter(ref filters) if matches!(**filters, [Filter::Blur(_)]) => Self::Blur,
             LayerEffect::Filter(_) => Self::Filter,
             LayerEffect::Mask(_) => Self::Mask,
             LayerEffect::Identity if scope.clip_radii != CornerRadii::ZERO => Self::RoundedClip,
@@ -105,6 +107,26 @@ impl<'n> LayerPlan<'n> {
 pub(super) struct OpenLayer<'n> {
     layer: OffscreenLayer<'n>,
     parent_format: wgpu::TextureFormat,
+    keep: Option<(KeptKey, &'n [SceneCommand])>,
+}
+
+impl<'n> OpenLayer<'n> {
+    pub(super) fn kept(mut self, keep: Option<(KeptKey, &'n [SceneCommand])>) -> Self {
+        self.keep = keep;
+        self
+    }
+}
+
+pub(super) fn restored(
+    (handle, extent): (LayerHandle, (u32, u32)),
+    plan: LayerPlan<'_>,
+) -> OffscreenLayer<'_> {
+    OffscreenLayer {
+        view: handle.view.clone(),
+        handle,
+        extent,
+        plan,
+    }
 }
 
 pub(super) fn layer_plan<'n>(
@@ -213,6 +235,7 @@ pub(super) fn open_layer<'n>(
         OpenLayer {
             layer,
             parent_format,
+            keep: None,
         },
         target,
     ))
@@ -224,11 +247,13 @@ pub(super) fn close_layer<'n>(
 ) -> Result<OffscreenLayer<'n>, Error> {
     ctx.format = open.parent_format;
     let mut layer = open.layer;
-    let Some(filters) = layer.plan.filters.take() else {
-        return Ok(layer);
-    };
-    if let Some(view) = filtered_view(ctx, &layer.handle, &filters)? {
+    if let Some(filters) = layer.plan.filters.take()
+        && let Some(view) = filtered_view(ctx, &layer.handle, &filters)?
+    {
         layer.view = view;
+    }
+    if let Some(keep) = open.keep {
+        super::kept::keep(ctx, keep, &layer.view, layer.extent)?;
     }
     Ok(layer)
 }

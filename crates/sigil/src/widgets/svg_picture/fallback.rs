@@ -7,7 +7,7 @@ use resvg::usvg::{Node, NonZeroRect, Transform, Tree};
 use crate::geometry::{Point, Rect};
 use crate::kernel::{ImageRaster, ObjectFit};
 use crate::scene::SceneBuilder;
-use crate::scene::command::{DrawImage, SceneCommand};
+use crate::scene::command::{DrawImage, LayerScope, SceneCommand};
 
 use super::lower::Walk;
 use super::{raster, raster_with};
@@ -25,6 +25,8 @@ pub(crate) enum Fallback {
     FocalGradient,
     /// A pattern that needs more tiles than the cap.
     PatternTiles,
+    /// Lowering work past the per-picture command and node budget.
+    Budget,
 }
 
 impl fmt::Display for Fallback {
@@ -35,33 +37,34 @@ impl fmt::Display for Fallback {
             Self::FilterTransform => f.write_str("filter under rotation or skew"),
             Self::FocalGradient => f.write_str("focal radial gradient"),
             Self::PatternTiles => f.write_str("pattern tile count"),
+            Self::Budget => f.write_str("lowering budget"),
         }
     }
 }
 
-/// One `DrawImage` of all of `tree` in a box of `size` at the origin, composited over `surface` like resvg.
-pub(super) fn bitmap(
-    tree: Arc<Tree>,
-    size: (f32, f32),
-    key: u64,
-    surface: [u8; 3],
-) -> Vec<SceneCommand> {
-    let Some(source) = raster(key, &tree, size, surface) else {
+/// One `DrawImage` of all of `tree` in a box of `size` at the origin, in a layer that composites in sRGB like resvg.
+pub(super) fn bitmap(tree: Arc<Tree>, size: (f32, f32), key: u64) -> Vec<SceneCommand> {
+    let Some(source) = raster(key, &tree, size) else {
         return Vec::new();
     };
     #[allow(clippy::cast_precision_loss, reason = "device sides are below 2^24")]
     let image = ImageRaster::new(key, move |width, height, _| {
-        raster(key, &tree, (width as f32, height as f32), surface)
+        raster(key, &tree, (width as f32, height as f32))
     });
-    vec![SceneCommand::Image(DrawImage {
-        node: None,
-        source,
-        fit: ObjectFit::Fill,
-        destination: Rect::new(Point::new(0.0, 0.0), size.0, size.1),
-        opacity: 10_000,
-        crop: None,
-        raster: Some(image),
-    })]
+    let destination = Rect::new(Point::new(0.0, 0.0), size.0, size.1);
+    vec![
+        SceneCommand::PushLayer(LayerScope::srgb(destination)),
+        SceneCommand::Image(DrawImage {
+            node: None,
+            source,
+            fit: ObjectFit::Fill,
+            destination,
+            opacity: 10_000,
+            crop: None,
+            raster: Some(image),
+        }),
+        SceneCommand::PopLayer,
+    ]
 }
 
 struct Source {
@@ -95,9 +98,9 @@ impl Walk {
             shift: t.pre_translate(abs.x(), abs.y()),
             dest,
         });
-        let (key, backdrop) = (self.next_key(), None);
+        let key = self.next_key();
         let first = Arc::clone(&source);
-        let Some(image) = raster_with(key, (dest.width, dest.height), backdrop, |pixels, size| {
+        let Some(image) = raster_with(key, (dest.width, dest.height), |pixels, size| {
             first.paint(pixels, size);
         }) else {
             return;
@@ -105,7 +108,7 @@ impl Walk {
         let raster = ImageRaster::new(key, move |width, height, _| {
             #[allow(clippy::cast_precision_loss, reason = "device sides are below 2^24")]
             let size = (width as f32, height as f32);
-            raster_with(key, size, backdrop, |pixels, size| {
+            raster_with(key, size, |pixels, size| {
                 source.paint(pixels, size);
             })
         });

@@ -2,14 +2,14 @@ use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, LazyLock};
 
-use resvg::tiny_skia::{Pixmap, PixmapMut, PremultipliedColorU8, Transform};
+use resvg::tiny_skia::{Pixmap, PixmapMut, Transform};
 use resvg::usvg::{self, Tree, fontdb};
 
 use crate::fnv::{OFFSET, mix};
 use crate::kernel::{ImageSource, NodeBuilder, cached_image};
-use crate::style::srgb::{decode, encode_byte};
 use crate::style::{Rgba8, Theme, Token};
 
+mod budget;
 mod clip;
 mod fallback;
 mod filter;
@@ -126,14 +126,9 @@ fn parse(svg: &str) -> Option<Tree> {
     (tree.size().width() >= 1.0 && tree.size().height() >= 1.0).then_some(tree)
 }
 
-fn raster(
-    key: u64,
-    tree: &Tree,
-    (width, height): (f32, f32),
-    backdrop: [u8; 3],
-) -> Option<ImageSource> {
+fn raster(key: u64, tree: &Tree, (width, height): (f32, f32)) -> Option<ImageSource> {
     let size = tree.size();
-    raster_with(key, (width, height), Some(backdrop), |pixels, (x, y)| {
+    raster_with(key, (width, height), |pixels, (x, y)| {
         let fit = Transform::from_scale(x / size.width(), y / size.height());
         resvg::render(tree, fit, pixels);
     })
@@ -147,7 +142,6 @@ fn raster(
 fn raster_with(
     key: u64,
     (width, height): (f32, f32),
-    backdrop: Option<[u8; 3]>,
     paint: impl FnOnce(&mut PixmapMut<'_>, (f32, f32)),
 ) -> Option<ImageSource> {
     let shrink = (MAX_SIDE / width.max(height)).min(1.0);
@@ -163,73 +157,13 @@ fn raster_with(
         let rgba = pixmap
             .pixels()
             .iter()
-            .flat_map(|pixel| linear_over(*pixel, backdrop))
+            .flat_map(|pixel| {
+                let color = pixel.demultiply();
+                [color.red(), color.green(), color.blue(), color.alpha()]
+            })
             .collect();
         ImageSource::from_rgba8(pixmap.width(), pixmap.height(), rgba)
     })
-}
-
-fn surface(theme: &Theme) -> [u8; 3] {
-    let Rgba8 { r, g, b, .. } = theme.color(Token::Surface);
-    [r, g, b]
-}
-
-fn linear_over(pixel: PremultipliedColorU8, backdrop: Option<[u8; 3]>) -> [u8; 4] {
-    let color = pixel.demultiply();
-    let rgba = [color.red(), color.green(), color.blue(), color.alpha()];
-    backdrop.map_or(rgba, |backdrop| over_surface(rgba, backdrop))
-}
-
-/// The straight color whose linear-light composite over `backdrop` equals the sRGB composite of `rgba`.
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "alpha is clamped to 1..=255 before the cast"
-)]
-fn over_surface([r, g, b, alpha]: [u8; 4], backdrop: [u8; 3]) -> [u8; 4] {
-    if alpha == 0 || alpha == u8::MAX {
-        return [r, g, b, alpha];
-    }
-    let coverage = f32::from(alpha) / 255.0;
-    let under = backdrop.map(decode);
-    let mut over = [0.0; 3];
-    for ((target, channel), paper) in over.iter_mut().zip([r, g, b]).zip(backdrop) {
-        *target = decode(blend(channel, paper, coverage));
-    }
-    let least = over
-        .iter()
-        .zip(under)
-        .map(|(target, paper)| least_alpha(*target, paper))
-        .fold(coverage, f32::max);
-    let raised = (least * 255.0).ceil().clamp(1.0, 255.0) as u8;
-    let kept = f32::from(raised) / 255.0;
-    let mut rgb = [0; 3];
-    for ((channel, target), paper) in rgb.iter_mut().zip(over).zip(under) {
-        *channel = encode_byte(paper.mul_add(kept - 1.0, target) / kept);
-    }
-    let [red, green, blue] = rgb;
-    [red, green, blue, raised]
-}
-
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "a mix of two bytes stays within 0..=255"
-)]
-fn blend(color: u8, backdrop: u8, coverage: f32) -> u8 {
-    f32::from(color)
-        .mul_add(coverage, f32::from(backdrop) * (1.0 - coverage))
-        .round() as u8
-}
-
-fn least_alpha(target: f32, backdrop: f32) -> f32 {
-    if target < backdrop {
-        1.0 - target / backdrop
-    } else if target > backdrop {
-        (target - backdrop) / (1.0 - backdrop)
-    } else {
-        0.0
-    }
 }
 
 fn run(render: &impl Fn(&Theme) -> Option<String>, theme: &Theme) -> Option<String> {

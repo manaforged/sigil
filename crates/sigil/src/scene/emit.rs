@@ -12,6 +12,7 @@ use crate::widgets::CanvasPaint;
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{BlendMode, CommandScene, LayerEffect, LayerScope};
 use crate::scene::emit_cache;
+use crate::scene::shadow::Shadow;
 use crate::scene::style_adapter::{corner_radii_for, render_style_for};
 
 mod background;
@@ -109,6 +110,7 @@ fn run<'t>(
         text_color: None,
         text_style: Rc::new(TextStyle::default()),
         text_fill: None,
+        text_shadows: None,
     };
     let mut deferred: Vec<(NodeId, Inherited<'_>, Option<Rect>)> = Vec::new();
     let mut walk = EmitWalk {
@@ -142,6 +144,7 @@ struct Inherited<'t> {
     text_color: Option<Rgba8>,
     text_style: Rc<TextStyle>,
     text_fill: Option<Rc<TextFill>>,
+    text_shadows: Option<Rc<[Shadow]>>,
 }
 
 impl<'t> EmitWalk<'_, 't> {
@@ -204,15 +207,9 @@ impl<'t> EmitWalk<'_, 't> {
                 leaf: !has_laid_child(self.cx, node),
                 selected: self.selection.get(&id).copied(),
                 text_fill: inherited.text_fill.as_deref().map(|fill| &fill.gradient),
+                text_shadows: inherited.text_shadows.as_deref().unwrap_or_default(),
             };
-            let inherit =
-                emit_cache::inherit_key(theme, inherited.text_color, inherited.text_style.as_ref())
-                    ^ emit_cache::content_key(node)
-                    ^ u64::from(paint.leaf)
-                    ^ node
-                        .get_extension::<CanvasPaint>()
-                        .map_or(0, CanvasPaint::version)
-                    ^ inherited.text_fill.as_ref().map_or(0, |fill| fill.key);
+            let inherit = paint_key(node, inherited, &paint);
             let selected = paint.selected.is_some();
             let key = (self.cx.instance_id(), id);
             if selected || !emit_cache::replay(self.scene, key, node, rect, inherit) {
@@ -300,6 +297,17 @@ impl<'t> EmitWalk<'_, 't> {
     }
 }
 
+fn paint_key(node: &Node, inherited: &Inherited<'_>, paint: &NodePaint<'_>) -> u64 {
+    emit_cache::inherit_key(paint.theme, inherited.text_color, inherited.text_style.as_ref())
+        ^ emit_cache::content_key(node)
+        ^ u64::from(paint.leaf)
+        ^ node
+            .get_extension::<CanvasPaint>()
+            .map_or(0, CanvasPaint::version)
+        ^ inherited.text_fill.as_ref().map_or(0, |fill| fill.key)
+        ^ emit_cache::shadow_key(paint.text_shadows)
+}
+
 fn outside_clip(node: &Node, clip: Option<Rect>) -> bool {
     clip.zip(node.get_extension::<LayoutResult>())
         .is_some_and(|(clip, result)| !result.rect().intersects(clip))
@@ -356,11 +364,18 @@ fn child_inherited<'t>(
                 )
             });
     let text_fill = TextFill::of(node, style, theme).map_or_else(|| inherited.text_fill.clone(), Some);
+    let own = style.filter.text_shadows();
+    let text_shadows = if own.is_empty() {
+        inherited.text_shadows.clone()
+    } else {
+        Some(Rc::from(own.as_slice()))
+    };
     Inherited {
         theme,
         theme_stamp,
         text_color: style.text_color.or(inherited.text_color),
         text_style,
         text_fill,
+        text_shadows,
     }
 }

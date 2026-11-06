@@ -138,12 +138,15 @@ fn map_readback(
 
 fn strip_padding(mapped: &[u8], layout: ReadbackLayout) -> Vec<u8> {
     let unpadded = layout.unpadded_bytes_per_row as usize;
-    mapped
+    let rows = layout.extent.height as usize;
+    let mut pixels = Vec::with_capacity(unpadded * rows);
+    for row in mapped
         .chunks((layout.padded_bytes_per_row as usize).max(1))
-        .take(layout.extent.height as usize)
-        .flat_map(|row| row.get(..unpadded).unwrap_or_default())
-        .copied()
-        .collect()
+        .take(rows)
+    {
+        pixels.extend_from_slice(row.get(..unpadded).unwrap_or_default());
+    }
+    pixels
 }
 
 #[derive(Clone, Copy)]

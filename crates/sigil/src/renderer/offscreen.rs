@@ -57,6 +57,7 @@ impl WgpuRenderer {
         let result = if let Ok(ready) = self.state.ready_mut()
             && ready.device == *target.device
         {
+            ready.begin_frame();
             ready
                 .pipelines
                 .walk(&mut encoder, &mut Vec::new(), target, scene, stats)
@@ -97,6 +98,7 @@ impl PipelineCache {
             wash_cache,
             pending,
             vector,
+            kept,
         } = self;
         walk_command_scene(
             WalkCtx {
@@ -121,6 +123,7 @@ impl PipelineCache {
                 wash_cache,
                 pending,
                 vector,
+                kept,
                 stats,
             },
             scene,

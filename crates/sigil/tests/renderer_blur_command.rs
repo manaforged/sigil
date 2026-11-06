@@ -8,7 +8,9 @@
 mod scene_support;
 
 use scene_support::rect;
-use sigil::scene::{CommandScene, CornerRadii, LayerEffect, LayerScope, SceneBuilder};
+use std::sync::Arc;
+
+use sigil::scene::{CommandScene, CornerRadii, Filter, LayerEffect, LayerScope, SceneBuilder};
 use sigil::style::Color;
 use sigil_kittest::gpu::{Capture, render_capture};
 
@@ -74,8 +76,11 @@ fn assert_blur_command_shape(scene: &CommandScene, expected_sigma: f32) {
     else {
         panic!("expected push-layer, pop-layer; got {:?}", scene.commands);
     };
-    let LayerEffect::LayerBlur { sigma } = scope.effect else {
-        panic!("expected LayerBlur effect, got {:?}", scope.effect);
+    let LayerEffect::Filter(filters) = &scope.effect else {
+        panic!("expected a blur filter, got {:?}", scope.effect);
+    };
+    let [Filter::Blur(sigma)] = **filters else {
+        panic!("expected one blur filter, got {filters:?}");
     };
     assert!(
         (sigma - expected_sigma).abs() < f32::EPSILON,
@@ -88,7 +93,7 @@ fn blur_scene(sigma: f32) -> CommandScene {
     builder.push_layer(LayerScope {
         clip: rect(16.0, 8.0, 96.0, 48.0),
         clip_radii: CornerRadii::ZERO,
-        effect: LayerEffect::LayerBlur { sigma },
+        effect: LayerEffect::Filter(Arc::new([Filter::Blur(sigma)])),
         opacity: 1.0,
         blend: sigil::scene::BlendMode::Normal,
     });
