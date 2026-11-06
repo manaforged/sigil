@@ -72,6 +72,8 @@ pub(crate) mod offscreen;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod plan;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+mod projected;
+#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod quad_paint;
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 mod raster;

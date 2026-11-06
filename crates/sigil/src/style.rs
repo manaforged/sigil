@@ -1,6 +1,7 @@
 pub(crate) mod presence;
 pub(crate) mod srgb;
 pub(crate) mod transform;
+pub(crate) mod projection;
 use phf as _;
 use smallvec as _;
 kittest_pub! {
@@ -22,7 +23,7 @@ pub(crate) mod engine;
 pub(crate) mod focus_ring;
 pub(crate) mod font_family;
 mod grid;
-mod text_scale;
+pub(crate) mod image_paint;
 mod install;
 pub(crate) mod intern;
 pub(crate) mod locale;
@@ -34,6 +35,7 @@ pub(crate) mod palette;
 pub(crate) mod parser;
 pub(crate) mod reactive;
 pub(crate) mod resolve;
+mod text_scale;
 kittest_pub! {
     /// The color scales of the default themes.
     #[doc(hidden)]
@@ -57,10 +59,10 @@ pub(crate) use animator_overlay::{ColorAtomKind, NumericAtomKind};
 pub(crate) use atom::Px;
 pub(crate) use atom::SPACING_STEP;
 pub(crate) use atom::TextDecoration;
-pub use atom::{ColorAtom, Elevation, Rgba8};
+pub use atom::{ClipShape, ColorAtom, Conic, Elevation, GradientAxis, Radial, RadialExtent, Rgba8};
 kittest_pub! {
     #[doc(hidden)]
-    pub use atom::{BgGradient, GradientAxis, GradientStopKey, MillisU16, RenderStyle, StyleAtom, TransitionId};
+    pub use atom::{BgGradient, BorderStyle, GradientShape, GradientStopKey, MillisU16, PaintAtom, PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, StyleAtom, TransitionId};
 }
 pub(crate) use binding::ReactiveStateSlot;
 #[cfg(not(feature = "kittest"))]
@@ -80,9 +82,9 @@ kittest_pub! {
 }
 pub use font_family::FontFamily;
 pub use grid::grid;
-pub use text_scale::text_scale;
 pub(crate) use grid::{cell_size, swap_cell};
 pub use locale::Direction;
+pub use text_scale::text_scale;
 kittest_pub! {
     #[doc(hidden)]
     pub use locale::{DateOrder, Locale};
