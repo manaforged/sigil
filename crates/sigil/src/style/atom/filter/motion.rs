@@ -89,7 +89,7 @@ impl FilterStyle {
 
     pub(crate) const fn text_count(&self) -> usize {
         match self.text {
-            TextShadows::None => 0,
+            TextShadows::Unset | TextShadows::None => 0,
             TextShadows::Preset(list) => list.len(),
             TextShadows::One(_) => 1,
         }
@@ -99,7 +99,7 @@ impl FilterStyle {
         match self.text {
             TextShadows::One(spec) => Some(spec),
             TextShadows::Preset([spec]) => Some(*spec),
-            TextShadows::None | TextShadows::Preset(_) => None,
+            TextShadows::Unset | TextShadows::None | TextShadows::Preset(_) => None,
         }
     }
 

@@ -21,10 +21,16 @@ use crate::style::{
 
 static EMPTY_ATOMS: &[StyleAtom] = &[];
 
-pub(crate) enum ClassSource {
-    Static(&'static [StyleAtom]),
-    Owned(Box<SmallVec<[StyleAtom; 16]>>),
-    RawString(&'static str),
+kittest_pub! {
+    /// The Tailwind classes or atoms given to `class`.
+    pub enum ClassSource {
+        /// Interned atoms.
+        Static(&'static [StyleAtom]),
+        /// Owned atoms.
+        Owned(Box<SmallVec<[StyleAtom; 16]>>),
+        /// A class string.
+        RawString(&'static str),
+    }
 }
 
 impl From<&'static [StyleAtom]> for ClassSource {
@@ -64,11 +70,14 @@ impl From<Style> for ClassSource {
 }
 
 impl NodeBuilder {
-    #[must_use]
-    pub(crate) fn class(self, source: impl Into<ClassSource>) -> Self {
-        let source = source.into();
-        self.flush_paint()
-            .mutate(move |node| install_class(node, source))
+    kittest_pub! {
+        /// Adds Tailwind classes.
+        #[must_use]
+        pub fn class(self, source: impl Into<ClassSource>) -> Self {
+            let source = source.into();
+            self.flush_paint()
+                .mutate(move |node| install_class(node, source))
+        }
     }
 
     #[must_use]
@@ -97,10 +106,13 @@ impl NodeBuilder {
 }
 
 impl TextBuilder {
-    #[must_use]
-    pub(crate) fn class(self, source: impl Into<ClassSource>) -> Self {
-        let source = source.into();
-        self.map_node(move |node| node.class(source))
+    kittest_pub! {
+        /// Adds Tailwind classes.
+        #[must_use]
+        pub fn class(self, source: impl Into<ClassSource>) -> Self {
+            let source = source.into();
+            self.map_node(move |node| node.class(source))
+        }
     }
 
     #[must_use]

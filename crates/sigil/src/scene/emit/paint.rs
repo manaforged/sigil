@@ -260,11 +260,10 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
 }
 
 fn text_shadows(style: &RenderStyle, inherited: &[Shadow]) -> SmallVec<[Shadow; 3]> {
-    let own = style.filter.text_shadows();
-    if own.is_empty() {
+    if style.filter.inherits_text_shadows() {
         inherited.iter().copied().collect()
     } else {
-        own
+        style.filter.text_shadows()
     }
 }
 

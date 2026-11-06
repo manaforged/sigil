@@ -26,8 +26,10 @@ pub(super) fn drop_shadow(shadow: Shadow) -> FilterPart {
     FilterPart::DropShadow(Some(ShadowSpec::of(shadow)))
 }
 
-pub(super) fn text_shadow(shadow: Shadow) -> FilterPart {
-    FilterPart::TextShadow(TextShadows::One(ShadowSpec::of(shadow)))
+pub(super) fn text_shadow(shadow: Option<Shadow>) -> FilterPart {
+    FilterPart::TextShadow(shadow.map_or(TextShadows::None, |shadow| {
+        TextShadows::One(ShadowSpec::of(shadow))
+    }))
 }
 
 macro_rules! filter_setters {
@@ -86,10 +88,10 @@ macro_rules! filter_setters {
             filters::filter(self, filters::drop_shadow(shadow))
         }
 
-        /// Draws `shadow` under the node's glyphs, its blur a standard deviation, like Tailwind `text-shadow-*`.
+        /// Draws `shadow` under the node's glyphs, its blur a standard deviation, like Tailwind `text-shadow-*`; `None` cancels an inherited shadow.
         #[must_use]
-        fn text_shadow(self, shadow: Shadow) -> Self {
-            filters::filter(self, filters::text_shadow(shadow))
+        fn text_shadow(self, shadow: impl Into<Option<Shadow>>) -> Self {
+            filters::filter(self, filters::text_shadow(shadow.into()))
         }
     };
 }

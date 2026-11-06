@@ -70,7 +70,10 @@ pub(crate) use binding::{ReactiveStyleAtoms, StyleBinding};
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use binding::{ReactiveStyleAtoms, StyleBinding};
-pub(crate) use builder_ext::ClassSource;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use builder_ext::ClassSource;
+}
 pub(crate) use class_parse::parse_classes;
 kittest_pub! {
     #[doc(hidden)]

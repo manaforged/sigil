@@ -112,6 +112,7 @@ impl ShadowSpec {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum TextShadows {
+    Unset,
     None,
     Preset(&'static [ShadowSpec]),
     One(ShadowSpec),
@@ -159,7 +160,7 @@ impl FilterStyle {
         amounts: [None; 6],
         hue: None,
         drop: None,
-        text: TextShadows::None,
+        text: TextShadows::Unset,
         drop_color: None,
         text_color: None,
     };
@@ -211,9 +212,13 @@ impl FilterStyle {
         list
     }
 
+    pub(crate) const fn inherits_text_shadows(&self) -> bool {
+        matches!(self.text, TextShadows::Unset)
+    }
+
     pub(crate) fn text_shadows(&self) -> SmallVec<[Shadow; 3]> {
         let specs: &[ShadowSpec] = match &self.text {
-            TextShadows::None => &[],
+            TextShadows::Unset | TextShadows::None => &[],
             TextShadows::Preset(list) => list,
             TextShadows::One(spec) => std::slice::from_ref(spec),
         };

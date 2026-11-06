@@ -364,11 +364,10 @@ fn child_inherited<'t>(
                 )
             });
     let text_fill = TextFill::of(node, style, theme).map_or_else(|| inherited.text_fill.clone(), Some);
-    let own = style.filter.text_shadows();
-    let text_shadows = if own.is_empty() {
+    let text_shadows = if style.filter.inherits_text_shadows() {
         inherited.text_shadows.clone()
     } else {
-        Some(Rc::from(own.as_slice()))
+        Some(Rc::from(style.filter.text_shadows().as_slice()))
     };
     Inherited {
         theme,
