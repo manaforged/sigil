@@ -263,7 +263,7 @@ impl ButtonBuilder {
             .class(BUTTON_TRANSITION_ATOMS)
             .tone_scope(self.resolved_tone())
             .stateful_style(variant, user_overlay, move || {
-                reactive_style_state(interaction, look_disabled)
+                reactive_style_state(interaction.disabled(look_disabled), look_disabled)
             })
             .seal_style();
         let node = press(

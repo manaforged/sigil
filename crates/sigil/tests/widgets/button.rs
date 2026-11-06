@@ -3,7 +3,8 @@ use sigil::events::EventRouter;
 use sigil::kernel::Cx;
 use sigil::kernel::NodeType;
 use sigil::layout::LayoutEngine;
-use sigil::style::FocusRing;
+use sigil::style::{FocusRing, Rgba8};
+use sigil::widgets::ButtonBuilder;
 
 #[test]
 fn button_label_accepts_a_signal() {
@@ -118,5 +119,42 @@ fn label_accepts_reactive_text() {
         let node = cx.get(root).unwrap();
         let is_reactive_text = matches!(&node.kind, NodeType::Text { content, .. } if content.as_static_str().is_none());
         assert!(is_reactive_text);
+    });
+}
+
+fn resting_look(build: impl FnOnce() -> ButtonBuilder) -> Vec<Rgba8> {
+    let mut cx = Cx::new_root();
+    let root = cx.add(build().primary());
+    let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+    layout
+        .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+        .expect("layout computes");
+    rect_colors(&cx, root)
+}
+
+#[test]
+fn pending_button_keeps_its_enabled_look_and_blocks_clicks() {
+    sigil::reactive::Owner::scope("sigil-widget-button-pending-look", || {
+        let plain = resting_look(|| button("Save"));
+        let dimmed = resting_look(|| button("Save").disabled(signal(true)));
+        let pending = resting_look(|| button("Save").pending(signal(true)));
+        assert_ne!(plain.first(), dimmed.first(), "disabled must look disabled");
+        assert_eq!(pending.first(), plain.first(), "pending must not dim");
+
+        let hits = Rc::new(Cell::new(0_u32));
+        let mut cx = Cx::new_root();
+        let root = cx.add(button("Save").pending(signal(true)).activate({
+            let hits = Rc::clone(&hits);
+            move || hits.set(hits.get() + 1)
+        }));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, pointer_down(5.0, 5.0));
+        router.route(&mut cx, &layout, pointer_up(5.0, 5.0));
+        assert_eq!(hits.get(), 0, "pending blocks activation");
+        assert!(!router.is_click_target(&cx, &layout, root));
     });
 }
