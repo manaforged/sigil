@@ -191,7 +191,7 @@ struct Drive {
 }
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-fn physical_extent(logical: u32, scale: f32) -> u32 {
+pub(crate) fn physical_extent(logical: u32, scale: f32) -> u32 {
     (crate::extent_f32(logical) * scale).round().max(0.0) as u32
 }
 

@@ -34,6 +34,7 @@ enum HarnessSurface {
     },
     Pixels {
         size: (u32, u32),
+        scale: f32,
         fallback: FallbackCause,
     },
     Gpu(Box<GpuSurface>),
@@ -124,8 +125,23 @@ impl Harness {
         self.host = Host::new(sigil::kernel::HostMode::Pixel);
         self.surface = HarnessSurface::Pixels {
             size: (width, height),
+            scale: 1.0,
             fallback: FallbackCause::None,
         };
+        self
+    }
+
+    /// Sets the device scale of a pixel harness; its image is the logical size times this.
+    #[must_use]
+    #[track_caller]
+    pub fn scale(mut self, device_scale: f32) -> Self {
+        match &mut self.surface {
+            HarnessSurface::Pixels { scale, .. } => *scale = device_scale,
+            HarnessSurface::Cells { .. } => fail("scale needs a pixel harness: call pixels first"),
+            HarnessSurface::Gpu(_) => {
+                fail("a gpu harness takes its scale in gpu(width, height, scale)")
+            }
+        }
         self
     }
 
@@ -138,6 +154,7 @@ impl Harness {
             eprintln!("sigil-kittest: no GPU adapter; gpu surface falls back to pixels");
             self.surface = HarnessSurface::Pixels {
                 size: (width, height),
+                scale,
                 fallback: FallbackCause::NoAdapter,
             };
         }

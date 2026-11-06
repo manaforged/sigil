@@ -27,7 +27,7 @@ Harness::new(counter).click("+").expect_text("Count: 1");
 
 `click("+")` finds the control a user sees as "+". A label names the text on a button or tab, a checkbox label, or a field's label. When the label matches a control and a plain text, the control wins; a label on two controls fails the test. `expect_text` waits until a node shows the text, up to `EXPECT_TIMEOUT` (5 s), then fails with the accessibility tree. Every action runs frames until the UI settles, so a test never calls `settle` itself.
 
-`size(cols, rows)` uses the terminal cell host; the default is 80×24. `pixels(width, height)` uses the window host instead. Queries and actions behave the same on both.
+`size(cols, rows)` uses the terminal cell host; the default is 80×24. `pixels(width, height)` uses the window host instead, and `.scale(2.0)` renders it at twice the device pixels, like a Retina window. Queries and actions behave the same on both.
 
 ## Find controls
 
