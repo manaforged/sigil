@@ -1241,6 +1241,9 @@ Package `sigil-sign`, library `sigil_sign`. Guide: [Signing](guide/signing.md).
 | `sigil_sign::AppBundle` | Fields: `name`, `identifier`, `version`, `executable`, `exe_name`, `icon`, `provisioning_profile: Option<&Path>`, `min_system` | Bundle metadata and inputs. Set `provisioning_profile` to `None` when no macOS profile is required. |
 | `sigil_sign::CodeSign` | Fields: `identity: Option<&str>`, `entitlements: Option<&Path>`; `.sign(path: &Path) -> Result<(), PackError>` | Native macOS signing for an executable or a completed `.app`. `None` selects ad-hoc signing. Profiles belong to `AppBundle`. |
 | `sigil_sign::macos_app` | `fn macos_app(app: &AppBundle<'_>, resources: &[ResourceCopy<'_>], dest: &Path, sign: &CodeSign<'_>) -> Result<(), PackError>` | Build the app, copy an optional regular, non-symlink profile unchanged to `Contents/embedded.provisionprofile`, then sign on macOS. A profile requires a nonempty identity other than `-`. |
+| `sigil_sign::Dmg` | Fields: `app: &Path`, `volume: &str`, `background: Option<&Path>`, `icon: Option<&Path>`, `layout: Option<&Path>` | macOS only. Disk image inputs. `layout` is a `.DS_Store` file for the disk root. |
+| `sigil_sign::macos_dmg` | `fn macos_dmg(dmg: &Dmg<'_>, dest: &Path, sign: &CodeSign<'_>) -> Result<(), PackError>` | macOS only. Build a compressed image with the app and an `Applications` link, then sign it. |
+| `sigil_sign::notarize` | `fn notarize(file: &Path, profile: &str) -> Result<(), PackError>` | macOS only. Submit to Apple's notary service with a `notarytool` keychain profile, wait, and staple the ticket. |
 | `sigil_sign::windows_dir` | `fn windows_dir(app: &AppBundle<'_>, resources: &[ResourceCopy<'_>], dest: &Path) -> Result<(), PackError>` | Build the Windows app directory. Rejects `AppBundle::provisioning_profile`. |
 
 `sigil-pack macos --provisioning-profile PATH` sets the profile. Other commands reject this flag. `--identity` or `SIGIL_CODESIGN_IDENTITY` supplies the identity. Profile embedding does not validate the profile's contents, expiration, application identifier, or entitlements.
@@ -1251,7 +1254,7 @@ Package `sigil-sign`, library `sigil_sign`. Guide: [Signing](guide/signing.md).
 | --- | --- | --- |
 | `sigil::Error` | Every fallible call in the crate | One error type. `Error::kind` returns an `ErrorKind`; branch on it, never on the message. `Error::new` wraps any `std::error::Error` as `Other`, `Error::with_kind` sets the kind, `Error::message` builds one from a kind and a message, and `Error::node` returns the missing node of a `NodeMissing` error. `source()` returns the cause. |
 | `sigil_sign::SignError` | `sign_file`, `verify_file` | `KeyFile`, `Key`, `Package`, `Envelope`, `TrustedComment`, or `PasswordRequired`: the key, the package, the signature, or the signed file name or version failed, or an encrypted key had no password. |
-| `sigil_sign::PackError` | `macos_app`, `windows_dir` | `Missing`, `Io`, `Codesign`, `Escape`, `Symlink`, `Occupied`, or `NotFile`. |
+| `sigil_sign::PackError` | `macos_app`, `windows_dir` | `Missing`, `Io`, `Codesign`, `Tool`, `Escape`, `Symlink`, `Occupied`, or `NotFile`. |
 
 ## Test harness
 
