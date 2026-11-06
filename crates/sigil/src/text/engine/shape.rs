@@ -251,6 +251,8 @@ fn cell_width(chain: &[Font], style: &FaceStyle) -> f32 {
     })
 }
 
+const WIDE_MARGIN: f32 = 0.3;
+
 fn fit_cells(run: &mut ShapedRun, cell: f32) {
     if cell <= 0.0 {
         return;
@@ -260,7 +262,8 @@ fn fit_cells(run: &mut ShapedRun, cell: f32) {
         let count = run.glyphs[at..].iter().take_while(|glyph| glyph.cluster == cluster).count();
         let last = at + count - 1;
         let natural: f32 = run.glyphs[at..=last].iter().map(|glyph| glyph.advance).sum();
-        let extra = (natural / cell).round().max(1.0).mul_add(cell, -natural);
+        let cells = (natural / cell + WIDE_MARGIN).floor().max(1.0);
+        let extra = cells.mul_add(cell, -natural);
         run.glyphs[last].advance += extra;
         run.glyphs[at].offset_x += extra / 2.0;
         run.width += extra;
