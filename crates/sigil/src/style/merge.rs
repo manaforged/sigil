@@ -192,6 +192,9 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::OverflowY(_) => ResolvedSlot::OverflowY,
         StyleAtom::Transition(_) => ResolvedSlot::Transition,
         StyleAtom::TransitionDuration(_) => ResolvedSlot::TransitionDuration,
+        StyleAtom::TransitionEase(_) => ResolvedSlot::TransitionEase,
+        StyleAtom::TransitionDelay(_) => ResolvedSlot::TransitionDelay,
+        StyleAtom::Animation(_) => ResolvedSlot::Animation,
         StyleAtom::UnknownThemeRef(_) => ResolvedSlot::UnknownThemeRef,
     }
 }
@@ -248,5 +251,8 @@ pub(crate) enum ResolvedSlot {
     OverflowY,
     Transition,
     TransitionDuration,
+    TransitionEase,
+    TransitionDelay,
+    Animation,
     UnknownThemeRef,
 }

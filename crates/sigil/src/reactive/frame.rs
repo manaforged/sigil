@@ -58,7 +58,7 @@ pub(crate) fn try_with_sources<R>(change: impl FnOnce(&mut Sources) -> R) -> Opt
 pub(crate) fn tick_frame(dt: f32) -> (usize, bool) {
     let intervals = tick_intervals();
     let animating = active_count() > 0;
-    if animating {
+    if animating || running_clocks() > 0 {
         tick(dt);
     }
     tick_clocks(dt);

@@ -127,8 +127,15 @@ fn paint_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::TabularNums(on) => style.tabular_nums(on),
         StyleAtom::TextDecoration(TextDecoration::Underline) => style.underline(),
         StyleAtom::TextDecoration(TextDecoration::LineThrough) => style.line_through(),
-        StyleAtom::Transition(transition) => style.transition(transition),
-        StyleAtom::TransitionDuration(duration) => style.duration(duration),
+        StyleAtom::Transition(transition) => style.transition_preset(transition),
+        StyleAtom::TransitionDuration(duration) => {
+            style.duration(std::time::Duration::from_millis(u64::from(duration.0)))
+        }
+        StyleAtom::TransitionEase(easing) => style.ease(easing),
+        StyleAtom::TransitionDelay(delay) => {
+            style.delay(std::time::Duration::from_millis(u64::from(delay.0)))
+        }
+        StyleAtom::Animation(keyframes) => style.animate(keyframes.clone()),
         other => panic!("{other:?} has no typed paint method"),
     }
 }

@@ -18,6 +18,8 @@ pub(crate) enum NumericAtomKind {
     ScaleX,
     ScaleY,
     Rotation,
+    TranslateXFraction,
+    TranslateYFraction,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -41,7 +43,7 @@ impl NumericAtomKind {
         )
     }
 
-    pub(crate) const ALL: [Self; 14] = [
+    pub(crate) const ALL: [Self; 16] = [
         Self::Opacity,
         Self::BorderRadius,
         Self::FontSize,
@@ -56,6 +58,8 @@ impl NumericAtomKind {
         Self::ScaleX,
         Self::ScaleY,
         Self::Rotation,
+        Self::TranslateXFraction,
+        Self::TranslateYFraction,
     ];
 }
 

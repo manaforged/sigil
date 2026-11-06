@@ -106,7 +106,8 @@ container()
 | `font_size`, `font_weight`, `font_italic`, `font_family(FontFamily)` | Font |
 | `line_height_px`, `letter_spacing_em`, `tabular_nums` | Text metrics; each name carries its unit |
 | `underline`, `line_through` | Text decoration |
-| `transition`, `duration` | Style transitions |
+| `transition`, `transition_colors`, `transition_opacity`, `transition_transform`, `duration`, `ease`, `delay` | Style transitions, as in Tailwind |
+| `animate(Keyframes)` | Keyframe animation; `Keyframes::spin()`, `ping()`, `pulse()`, `bounce()` are the Tailwind ones |
 
 Spacing and size numbers are pixels. `LayoutStyle` sets padding, margin, gap, size, flex, and grid. `row()` and `column()` are flex containers with the default gap. Put all layout for one node in one `LayoutStyle` chain.
 

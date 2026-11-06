@@ -155,6 +155,9 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::OverflowY(_)
             | StyleAtom::Transition(_)
             | StyleAtom::TransitionDuration(_)
+            | StyleAtom::TransitionEase(_)
+            | StyleAtom::TransitionDelay(_)
+            | StyleAtom::Animation(_)
             | StyleAtom::UnknownThemeRef(_) => {}
         }
     }
@@ -253,6 +256,9 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::OverflowY(_)
         | StyleAtom::Transition(_)
         | StyleAtom::TransitionDuration(_)
+        | StyleAtom::TransitionEase(_)
+        | StyleAtom::TransitionDelay(_)
+        | StyleAtom::Animation(_)
         | StyleAtom::UnknownThemeRef(_)
         | StyleAtom::BgToneStep(_)
         | StyleAtom::FgToneStep(_)

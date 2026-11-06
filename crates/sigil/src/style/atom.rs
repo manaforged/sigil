@@ -231,6 +231,12 @@ pub enum StyleAtom {
     Transition(TransitionId),
     /// The transition duration style atom.
     TransitionDuration(MillisU16),
+    /// The transition easing style atom.
+    TransitionEase(crate::animation::Easing),
+    /// The transition delay style atom.
+    TransitionDelay(MillisU16),
+    /// The keyframe animation style atom.
+    Animation(&'static crate::animation::Keyframes),
     /// The unknown theme ref style atom.
     UnknownThemeRef(&'static str),
 }

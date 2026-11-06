@@ -513,17 +513,40 @@ fn main() {
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
+| `Paint` transitions | `transition()`, `transition_colors()`, `transition_opacity()`, `transition_transform()`, `duration(Duration)`, `ease(Easing)`, `delay(Duration)` | Tailwind `transition`, `transition-colors`, `transition-opacity`, `transition-transform`, `duration-*`, `ease-*`, and `delay-*`. A transition runs when a state closure or `paint_when` changes a covered property, and starts from the value on screen. The default is 150 ms on `Easing::IN_OUT`. `transition` covers colors, opacity, and transform. |
+| `Paint::animate` | `fn animate(self, keyframes: Keyframes) -> Self` | Plays a keyframe animation while the setter is in effect, like Tailwind `animate-*`. It starts again when the setter comes back. With reduced motion the node shows its plain style. |
+| `Keyframes` | `Keyframes::new(Duration)`, `keyframe(offset, Property)`, `ease(Easing)`, `ease_at(offset, Easing)`, `iterations(u32)`, `infinite()`, `reverse()`, `alternate()`; `spin()`, `ping()`, `pulse()`, `bounce()` | A CSS `@keyframes` animation. Offsets run from 0.0 to 1.0 of one pass. A property with no keyframe at 0.0 or 1.0 takes the node's own value there. `ease` sets the curve between each pair of keyframes, CSS `ease` by default; `ease_at` sets it from one offset to the next. A finished animation shows the node's own style. `spin`, `ping`, `pulse`, and `bounce` are the Tailwind animations. |
+| `Property` | `#[non_exhaustive] enum Property { Opacity(f32), TranslateX(px), TranslateY(px), TranslateXPercent(f32), TranslateYPercent(f32), Scale(f32), Rotate(radians), Background(ColorAtom), TextColor(ColorAtom), BorderColor(ColorAtom) }` | A property value that a keyframe sets. Percent translation is of the node's own size. Colors mix in sRGB with premultiplied alpha. |
+| `Easing` curves | `Easing::cubic_bezier(x1, y1, x2, y2)`, `Easing::IN`, `Easing::OUT`, `Easing::IN_OUT`, `Easing::Linear` | CSS `cubic-bezier()` and the Tailwind `ease-in`, `ease-out`, `ease-in-out`, and `ease-linear` curves. |
 
 ```rust,no_run
+use std::time::Duration;
+
 use sigil::animation::Easing;
-use sigil::animation::{clock, reduced_motion};
+use sigil::animation::{Keyframes, Property, clock, reduced_motion};
 use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
     let opacity = signal(0.0_f32);
+    let open = signal(false);
     let _ = (Easing::CubicInOut, reduced_motion());
     let _seconds: Signal<f64> = clock();
-    container().animate_opacity(opacity)
+    let fade = Keyframes::new(Duration::from_millis(400))
+        .keyframe(0.0, Property::Opacity(0.0))
+        .keyframe(1.0, Property::Opacity(1.0));
+    column()
+        .child(container().animate_opacity(opacity))
+        .child(container().animate(Keyframes::spin()))
+        .child(container().animate(fade))
+        .child(
+            container()
+                .opacity(0.5)
+                .transition()
+                .duration(Duration::from_millis(300))
+                .ease(Easing::OUT)
+                .delay(Duration::from_millis(50))
+                .paint_when(open, |state| state.opacity(1.0)),
+        )
 }
 
 fn main() {
@@ -847,7 +870,9 @@ Public items outside the prelude. Import them by path.
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
-| `animation::Easing` | `enum Easing` | Tween easing curve. |
+| `animation::Easing` | `enum Easing` | Tween easing curve, with `CubicBezier` and the Tailwind `IN`, `OUT`, and `IN_OUT` curves. |
+| `animation::Keyframes` | `struct Keyframes` | A CSS keyframe animation for `Paint::animate`. |
+| `animation::Property` | `enum Property` | A property value that a keyframe sets. |
 | `animation::reduced_motion` | `fn reduced_motion() -> bool` | Reduced-motion preference. `sigil::run` sets it from `AppConfig::reduced_motion`, else from the OS (macOS accessibility setting, GNOME `enable-animations`). |
 
 ## Module `app`

@@ -1,11 +1,14 @@
 #[cfg(any(test, feature = "kittest"))]
 use crate::style::BgGradient;
 #[cfg(any(test, feature = "kittest"))]
-use crate::style::MillisU16;
-#[cfg(any(test, feature = "kittest"))]
 use crate::style::Transform2D;
 #[cfg(any(test, feature = "kittest"))]
 use crate::style::TransitionId;
+use std::time::Duration;
+
+use crate::animation::{Easing, Keyframes};
+use crate::animation_runtime::presets;
+use crate::style::MillisU16;
 use crate::style::engine::encode_px;
 use crate::style::{ColorAtom, Elevation, FontFamily, Radius, Style, StyleAtom, TextDecoration};
 
@@ -43,6 +46,10 @@ fn opacity_units(value: f32) -> u16 {
     )]
     let encoded = (value.clamp(0.0, 1.0) * OPACITY_SCALE).round() as u16;
     encoded
+}
+
+fn millis(duration: Duration) -> MillisU16 {
+    MillisU16(u16::try_from(duration.as_millis()).unwrap_or(u16::MAX))
 }
 
 fn letter_spacing_units(em: f32) -> i16 {
@@ -197,18 +204,58 @@ pub trait Paint: PaintTarget {
 
     #[cfg(any(test, feature = "kittest"))]
     #[doc(hidden)]
-    /// Sets the transition.
+    /// Sets the transition preset.
     #[must_use]
-    fn transition(self, id: TransitionId) -> Self {
+    fn transition_preset(self, id: TransitionId) -> Self {
         push(self, StyleAtom::Transition(id))
     }
 
-    #[cfg(any(test, feature = "kittest"))]
-    #[doc(hidden)]
-    /// Sets the duration.
+    /// Transitions colors, opacity, and transform over 150 ms, like Tailwind `transition`.
     #[must_use]
-    fn duration(self, duration: MillisU16) -> Self {
-        push(self, StyleAtom::TransitionDuration(duration))
+    fn transition(self) -> Self {
+        push(self, StyleAtom::Transition(presets::TRANSITION))
+    }
+
+    /// Transitions background, text, and border colors, like Tailwind `transition-colors`.
+    #[must_use]
+    fn transition_colors(self) -> Self {
+        push(self, StyleAtom::Transition(presets::COLORS))
+    }
+
+    /// Transitions opacity, like Tailwind `transition-opacity`.
+    #[must_use]
+    fn transition_opacity(self) -> Self {
+        push(self, StyleAtom::Transition(presets::OPACITY))
+    }
+
+    /// Transitions translate, scale, and rotate, like Tailwind `transition-transform`.
+    #[must_use]
+    fn transition_transform(self) -> Self {
+        push(self, StyleAtom::Transition(presets::TRANSFORM))
+    }
+
+    /// Sets the transition duration, like Tailwind `duration-*`.
+    #[must_use]
+    fn duration(self, duration: Duration) -> Self {
+        push(self, StyleAtom::TransitionDuration(millis(duration)))
+    }
+
+    /// Sets the transition easing, like Tailwind `ease-*`.
+    #[must_use]
+    fn ease(self, easing: Easing) -> Self {
+        push(self, StyleAtom::TransitionEase(easing))
+    }
+
+    /// Holds the start value before a transition moves, like Tailwind `delay-*`.
+    #[must_use]
+    fn delay(self, delay: Duration) -> Self {
+        push(self, StyleAtom::TransitionDelay(millis(delay)))
+    }
+
+    /// Plays a keyframe animation, like Tailwind `animate-*`.
+    #[must_use]
+    fn animate(self, keyframes: Keyframes) -> Self {
+        push(self, StyleAtom::Animation(keyframes.interned()))
     }
 }
 

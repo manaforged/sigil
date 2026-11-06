@@ -5,8 +5,13 @@ pub(crate) enum Motion {
     Tween {
         current: f32,
         secs: f32,
+        delay: f32,
         easing: Easing,
         tween: Option<Tween>,
+    },
+    Playback {
+        elapsed: f32,
+        end: Option<f32>,
     },
 }
 
@@ -15,19 +20,30 @@ impl Motion {
         Self::Spring(Spring::from_preset(initial, preset))
     }
 
-    pub(crate) const fn tween(initial: f32, ms: u16, easing: Easing) -> Self {
+    pub(crate) const fn tween(initial: f32, ms: u16, easing: Easing, delay_ms: u16) -> Self {
         Self::Tween {
             current: initial,
             secs: ms as f32 / 1000.0,
+            delay: delay_ms as f32 / 1000.0,
             easing,
             tween: None,
         }
+    }
+
+    pub(crate) const fn playback(end: Option<f32>) -> Self {
+        Self::Playback { elapsed: 0.0, end }
     }
 
     pub(crate) fn tick(&mut self, dt: f32) {
         match self {
             Self::Spring(spring) => spring.advance(dt),
             Self::Tween { current, tween, .. } => step_tween(current, tween, dt),
+            Self::Playback { elapsed, end } => {
+                *elapsed += dt;
+                if let Some(end) = *end {
+                    *elapsed = elapsed.min(end);
+                }
+            }
         }
     }
 
@@ -37,6 +53,7 @@ impl Motion {
             Self::Tween {
                 current,
                 secs,
+                delay,
                 easing,
                 tween,
             } => {
@@ -46,9 +63,14 @@ impl Motion {
                 } else if (*current - value).abs() < f32::EPSILON {
                     None
                 } else {
-                    Some(Tween::new(*current, value, *secs).with_easing(*easing))
+                    Some(
+                        Tween::new(*current, value, *secs)
+                            .with_easing(*easing)
+                            .with_delay(*delay),
+                    )
                 };
             }
+            Self::Playback { .. } => {}
         }
     }
 
@@ -60,6 +82,11 @@ impl Motion {
                     *current = active.to();
                 }
             }
+            Self::Playback { elapsed, end } => {
+                if let Some(end) = *end {
+                    *elapsed = end;
+                }
+            }
         }
     }
 
@@ -67,6 +94,7 @@ impl Motion {
         match self {
             Self::Spring(spring) => spring.value(),
             Self::Tween { current, .. } => *current,
+            Self::Playback { elapsed, .. } => *elapsed,
         }
     }
 
@@ -74,7 +102,12 @@ impl Motion {
         match self {
             Self::Spring(spring) => spring.is_settled(),
             Self::Tween { tween, .. } => tween.is_none(),
+            Self::Playback { elapsed, end } => end.is_some_and(|end| *elapsed >= end),
         }
+    }
+
+    pub(crate) const fn is_perpetual(&self) -> bool {
+        matches!(self, Self::Playback { end: None, .. })
     }
 }
 

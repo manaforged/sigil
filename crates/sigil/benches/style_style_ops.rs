@@ -13,7 +13,7 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
 use sigil::style::{
-    ColorAtom, Elevation, FontFamily, MillisU16, Paint, Radius, RenderStyle, Rgba8, StateStyle,
+    ColorAtom, Elevation, FontFamily, Paint, Radius, RenderStyle, Rgba8, StateStyle,
     StyleAtom, StyleBinding, StyleEngine, StyleState, Theme, Token, TransitionId,
 };
 
@@ -59,8 +59,8 @@ fn paint_node() -> NodeBuilder {
         .font_weight(400)
         .font_family(FontFamily::Sans)
         .line_height_px(16.0)
-        .transition(TransitionId(1))
-        .duration(MillisU16(150))
+        .transition_preset(TransitionId(1))
+        .duration(Duration::from_millis(150))
 }
 
 fn paint_resolve_atoms(c: &mut Criterion) {
@@ -102,8 +102,8 @@ fn paint_override_last_wins(c: &mut Criterion) {
                 .font_size(18.0)
                 .font_weight(700)
                 .line_height_px(24.0)
-                .transition(TransitionId(2))
-                .duration(MillisU16(300));
+                .transition_preset(TransitionId(2))
+                .duration(Duration::from_millis(300));
             let id = cx.add(black_box(node));
             black_box(binding_len(&cx, id));
         });

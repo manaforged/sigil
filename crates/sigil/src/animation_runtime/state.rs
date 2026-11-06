@@ -16,7 +16,10 @@ pub(crate) fn register_config(signal: Signal<f32>, config: AnimationConfig) -> A
     let initial = signal.try_peek().unwrap_or_default();
     let motion = match config {
         AnimationConfig::Spring { preset } => Motion::spring(initial, preset),
-        AnimationConfig::Tween { ms, easing } => Motion::tween(initial, ms, easing),
+        AnimationConfig::Tween { ms, easing, delay_ms } => {
+            Motion::tween(initial, ms, easing, delay_ms)
+        }
+        AnimationConfig::Playback { end } => Motion::playback(end),
     };
     register(signal, motion)
 }
@@ -139,7 +142,15 @@ pub fn tick(dt: f32) {
 pub fn active_count() -> usize {
     with_sources(|sources| {
         animators(sources)
-            .filter(|entry| !entry.motion.is_settled())
+            .filter(|entry| !entry.motion.is_settled() && !entry.motion.is_perpetual())
+            .count()
+    })
+}
+
+pub(crate) fn perpetual_count() -> usize {
+    with_sources(|sources| {
+        animators(sources)
+            .filter(|entry| entry.motion.is_perpetual())
             .count()
     })
 }

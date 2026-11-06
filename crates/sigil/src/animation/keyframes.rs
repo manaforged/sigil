@@ -1,0 +1,265 @@
+use core::f32::consts::TAU;
+use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
+use std::sync::{Mutex, OnceLock, PoisonError};
+use std::time::Duration;
+
+use super::Easing;
+use crate::style::{ColorAtom, ColorAtomKind, NumericAtomKind};
+
+mod sample;
+
+/// One property value that a keyframe sets.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum Property {
+    /// Opacity, from 0.0 to 1.0.
+    Opacity(f32),
+    /// Horizontal translation in pixels.
+    TranslateX(f32),
+    /// Vertical translation in pixels.
+    TranslateY(f32),
+    /// Horizontal translation in percent of the node's width.
+    TranslateXPercent(f32),
+    /// Vertical translation in percent of the node's height.
+    TranslateYPercent(f32),
+    /// Uniform scale factor.
+    Scale(f32),
+    /// Rotation in radians.
+    Rotate(f32),
+    /// Background color.
+    Background(ColorAtom),
+    /// Text color.
+    TextColor(ColorAtom),
+    /// Border color.
+    BorderColor(ColorAtom),
+}
+
+const OPACITY_UNITS: f32 = 10_000.0;
+
+impl Property {
+    pub(crate) fn numeric(self, kind: NumericAtomKind) -> Option<f32> {
+        match (self, kind) {
+            (Self::Opacity(value), NumericAtomKind::Opacity) => {
+                Some(value.clamp(0.0, 1.0) * OPACITY_UNITS)
+            }
+            (Self::TranslateX(px), NumericAtomKind::TranslateX)
+            | (Self::TranslateY(px), NumericAtomKind::TranslateY)
+            | (Self::Rotate(px), NumericAtomKind::Rotation)
+            | (Self::Scale(px), NumericAtomKind::ScaleX | NumericAtomKind::ScaleY) => Some(px),
+            (Self::TranslateXPercent(percent), NumericAtomKind::TranslateXFraction)
+            | (Self::TranslateYPercent(percent), NumericAtomKind::TranslateYFraction) => {
+                Some(percent / 100.0)
+            }
+            _ => None,
+        }
+        .filter(|value| value.is_finite())
+    }
+
+    pub(crate) const fn color(self, kind: ColorAtomKind) -> Option<ColorAtom> {
+        match (self, kind) {
+            (Self::Background(color), ColorAtomKind::Background)
+            | (Self::TextColor(color), ColorAtomKind::Text)
+            | (Self::BorderColor(color), ColorAtomKind::Border) => Some(color),
+            _ => None,
+        }
+    }
+
+    fn key(self) -> (u8, u32, Option<ColorAtom>) {
+        let bits = |value: f32| (value + 0.0).to_bits();
+        match self {
+            Self::Opacity(value) => (0, bits(value), None),
+            Self::TranslateX(value) => (1, bits(value), None),
+            Self::TranslateY(value) => (2, bits(value), None),
+            Self::TranslateXPercent(value) => (3, bits(value), None),
+            Self::TranslateYPercent(value) => (4, bits(value), None),
+            Self::Scale(value) => (5, bits(value), None),
+            Self::Rotate(value) => (6, bits(value), None),
+            Self::Background(color) => (7, 0, Some(color)),
+            Self::TextColor(color) => (8, 0, Some(color)),
+            Self::BorderColor(color) => (9, 0, Some(color)),
+        }
+    }
+}
+
+/// A CSS keyframe animation: property values at offsets of one pass, its timing, and its repeats.
+#[derive(Clone, Debug, PartialEq)]
+#[must_use]
+pub struct Keyframes {
+    duration: Duration,
+    easing: Easing,
+    iterations: Option<u32>,
+    reverse: bool,
+    alternate: bool,
+    keyframes: Vec<(f32, Property)>,
+    easings: Vec<(f32, Easing)>,
+}
+
+const CSS_EASE: Easing = Easing::cubic_bezier(0.25, 0.1, 0.25, 1.0);
+
+impl Keyframes {
+    /// Creates an animation with one pass of `duration`, the CSS `ease` curve, and no keyframes.
+    pub const fn new(duration: Duration) -> Self {
+        Self {
+            duration,
+            easing: CSS_EASE,
+            iterations: Some(1),
+            reverse: false,
+            alternate: false,
+            keyframes: Vec::new(),
+            easings: Vec::new(),
+        }
+    }
+
+    /// Sets `property` at `offset`, from 0.0 (start of a pass) to 1.0 (end).
+    pub fn keyframe(mut self, offset: f32, property: Property) -> Self {
+        self.keyframes.push((unit(offset), property));
+        self
+    }
+
+    /// Sets the easing between each pair of keyframes, like `animation-timing-function`.
+    pub const fn ease(mut self, easing: Easing) -> Self {
+        self.easing = easing;
+        self
+    }
+
+    /// Sets the easing from the keyframes at `offset` to the next ones.
+    pub fn ease_at(mut self, offset: f32, easing: Easing) -> Self {
+        self.easings.push((unit(offset), easing));
+        self
+    }
+
+    /// Sets the number of passes; the default is 1.
+    pub const fn iterations(mut self, count: u32) -> Self {
+        self.iterations = Some(count);
+        self
+    }
+
+    /// Repeats the passes forever, like `animation-iteration-count: infinite`.
+    pub const fn infinite(mut self) -> Self {
+        self.iterations = None;
+        self
+    }
+
+    /// Plays each pass from 1.0 to 0.0, like `animation-direction: reverse`.
+    pub const fn reverse(mut self) -> Self {
+        self.reverse = true;
+        self
+    }
+
+    /// Plays every second pass the other way, like `animation-direction: alternate`.
+    pub const fn alternate(mut self) -> Self {
+        self.alternate = true;
+        self
+    }
+
+    /// The Tailwind `animate-spin` animation.
+    pub fn spin() -> Self {
+        Self::new(Duration::from_secs(1))
+            .ease(Easing::Linear)
+            .keyframe(1.0, Property::Rotate(TAU))
+            .infinite()
+    }
+
+    /// The Tailwind `animate-ping` animation.
+    pub fn ping() -> Self {
+        Self::new(Duration::from_secs(1))
+            .ease(Easing::OUT)
+            .keyframe(0.75, Property::Scale(2.0))
+            .keyframe(0.75, Property::Opacity(0.0))
+            .keyframe(1.0, Property::Scale(2.0))
+            .keyframe(1.0, Property::Opacity(0.0))
+            .infinite()
+    }
+
+    /// The Tailwind `animate-pulse` animation.
+    pub fn pulse() -> Self {
+        Self::new(Duration::from_secs(2))
+            .ease(Easing::cubic_bezier(0.4, 0.0, 0.6, 1.0))
+            .keyframe(0.5, Property::Opacity(0.5))
+            .infinite()
+    }
+
+    /// The Tailwind `animate-bounce` animation.
+    pub fn bounce() -> Self {
+        let fall = Easing::cubic_bezier(0.8, 0.0, 1.0, 1.0);
+        Self::new(Duration::from_secs(1))
+            .keyframe(0.0, Property::TranslateYPercent(-25.0))
+            .keyframe(0.5, Property::TranslateYPercent(0.0))
+            .keyframe(1.0, Property::TranslateYPercent(-25.0))
+            .ease_at(0.0, fall)
+            .ease_at(0.5, Easing::OUT)
+            .ease_at(1.0, fall)
+            .infinite()
+    }
+
+    pub(crate) fn interned(self) -> &'static Self {
+        static CACHE: OnceLock<Mutex<HashSet<&'static Keyframes>>> = OnceLock::new();
+        let mut cache = CACHE
+            .get_or_init(Mutex::default)
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if let Some(interned) = cache.get(&self).copied() {
+            return interned;
+        }
+        let interned: &'static Self = Box::leak(Box::new(self));
+        cache.insert(interned);
+        interned
+    }
+
+    pub(crate) fn end(&self) -> Option<f32> {
+        self.iterations
+            .map(|count| count as f32 * self.duration.as_secs_f32())
+    }
+
+    pub(crate) fn progress(&self, elapsed: f32) -> Option<f32> {
+        let duration = self.duration.as_secs_f32();
+        if duration <= 0.0 || self.end().is_some_and(|end| elapsed >= end) {
+            return None;
+        }
+        let passes = elapsed.max(0.0) / duration;
+        let pass = passes.floor();
+        let odd = pass % 2.0 >= 1.0;
+        let backward = self.reverse != (self.alternate && odd);
+        let local = passes - pass;
+        Some(if backward { 1.0 - local } else { local })
+    }
+
+    pub(crate) fn colors(&self) -> impl Iterator<Item = ColorAtom> + '_ {
+        self.keyframes.iter().flat_map(|(_, property)| {
+            ColorAtomKind::ALL
+                .into_iter()
+                .filter_map(move |kind| property.color(kind))
+        })
+    }
+
+    fn easing_at(&self, offset: f32) -> Easing {
+        self.easings
+            .iter()
+            .rev()
+            .find(|(at, _)| at.to_bits() == offset.to_bits())
+            .map_or(self.easing, |(_, easing)| *easing)
+    }
+}
+
+fn unit(offset: f32) -> f32 {
+    if offset.is_finite() {
+        offset.clamp(0.0, 1.0) + 0.0
+    } else {
+        0.0
+    }
+}
+
+impl Eq for Keyframes {}
+
+impl Hash for Keyframes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (self.duration, self.easing, self.iterations, self.reverse, self.alternate).hash(state);
+        for (offset, property) in &self.keyframes {
+            (offset.to_bits(), property.key()).hash(state);
+        }
+        for (offset, easing) in &self.easings {
+            (offset.to_bits(), easing).hash(state);
+        }
+    }
+}

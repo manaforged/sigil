@@ -24,7 +24,14 @@ impl Animator {
     #[doc(hidden)]
     /// Creates an animator that drives `signal` with a tween of `ms` milliseconds.
     pub fn tween(signal: Signal<f32>, ms: u16, easing: crate::animation::Easing) -> Self {
-        Self::new(signal, AnimationConfig::Tween { ms, easing })
+        Self::new(
+            signal,
+            AnimationConfig::Tween {
+                ms,
+                easing,
+                delay_ms: 0,
+            },
+        )
     }
 
     pub(crate) fn new(signal: Signal<f32>, config: AnimationConfig) -> Self {

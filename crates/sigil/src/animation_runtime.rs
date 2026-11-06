@@ -9,6 +9,7 @@ pub(crate) mod binding_animate_color;
 pub(crate) mod clock;
 pub(crate) mod config;
 pub(crate) mod motion;
+pub(crate) mod playback;
 pub(crate) mod registry;
 pub(crate) mod state;
 pub(crate) mod style;
@@ -25,6 +26,7 @@ pub use motion::MotionPrefs;
 #[cfg(not(feature = "kittest"))]
 pub(crate) use motion::MotionPrefs;
 pub use motion::reduced_motion;
+#[cfg(test)]
 pub(crate) use registry::config;
 pub use registry::presets;
 pub use state::{active_count, tick};

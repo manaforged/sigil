@@ -1,5 +1,5 @@
 use crate::animation::{Easing, SpringPreset};
-use crate::style::TransitionId;
+use crate::style::{NumericAtomKind, StyleAtom, TransitionId};
 
 use crate::animation_runtime::config::AnimationConfig;
 
@@ -14,6 +14,56 @@ pub mod presets {
     pub const FAST: TransitionId = TransitionId(16);
     pub const DEFAULT: TransitionId = TransitionId(17);
     pub const SLOW: TransitionId = TransitionId(18);
+    pub const TRANSITION: TransitionId = TransitionId(19);
+    pub const COLORS: TransitionId = TransitionId(20);
+    pub const OPACITY: TransitionId = TransitionId(21);
+    pub const TRANSFORM: TransitionId = TransitionId(22);
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Transitioned {
+    All,
+    Paint,
+    Colors,
+    Opacity,
+    Transform,
+}
+
+impl Transitioned {
+    pub(crate) const fn of(id: TransitionId) -> Self {
+        match id {
+            presets::TRANSITION => Self::Paint,
+            presets::COLORS => Self::Colors,
+            presets::OPACITY => Self::Opacity,
+            presets::TRANSFORM => Self::Transform,
+            _ => Self::All,
+        }
+    }
+
+    pub(crate) const fn numeric(self, kind: NumericAtomKind) -> bool {
+        let transform = matches!(
+            kind,
+            NumericAtomKind::TranslateX
+                | NumericAtomKind::TranslateY
+                | NumericAtomKind::TranslateXFraction
+                | NumericAtomKind::TranslateYFraction
+                | NumericAtomKind::ScaleX
+                | NumericAtomKind::ScaleY
+                | NumericAtomKind::Rotation
+        );
+        let opacity = matches!(kind, NumericAtomKind::Opacity);
+        match self {
+            Self::All => true,
+            Self::Paint => transform || opacity,
+            Self::Colors => false,
+            Self::Opacity => opacity,
+            Self::Transform => transform,
+        }
+    }
+
+    pub(crate) const fn colors(self) -> bool {
+        matches!(self, Self::All | Self::Paint | Self::Colors)
+    }
 }
 
 #[must_use]
@@ -27,6 +77,13 @@ pub(crate) const fn config(id: TransitionId) -> Option<AnimationConfig> {
         presets::FAST => return Some(cubic_in_out(120)),
         presets::DEFAULT => return Some(cubic_in_out(200)),
         presets::SLOW => return Some(cubic_in_out(320)),
+        presets::TRANSITION | presets::COLORS | presets::OPACITY | presets::TRANSFORM => {
+            return Some(AnimationConfig::Tween {
+                ms: 150,
+                easing: Easing::IN_OUT,
+                delay_ms: 0,
+            });
+        }
         _ => return None,
     };
     Some(AnimationConfig::Spring { preset })
@@ -36,5 +93,30 @@ const fn cubic_in_out(ms: u16) -> AnimationConfig {
     AnimationConfig::Tween {
         ms,
         easing: Easing::CubicInOut,
+        delay_ms: 0,
     }
+}
+
+pub(crate) fn transition_config(atoms: &[StyleAtom]) -> Option<(AnimationConfig, Transitioned)> {
+    let id = atoms.iter().rev().find_map(|atom| match atom {
+        StyleAtom::Transition(id) => Some(*id),
+        _ => None,
+    })?;
+    let mut config = config(id)?;
+    if let AnimationConfig::Tween {
+        ms,
+        easing,
+        delay_ms,
+    } = &mut config
+    {
+        for atom in atoms {
+            match atom {
+                StyleAtom::TransitionDuration(duration) => *ms = duration.0,
+                StyleAtom::TransitionEase(ease) => *easing = *ease,
+                StyleAtom::TransitionDelay(delay) => *delay_ms = delay.0,
+                _ => {}
+            }
+        }
+    }
+    Some((config, Transitioned::of(id)))
 }

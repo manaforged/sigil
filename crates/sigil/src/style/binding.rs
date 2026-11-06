@@ -126,7 +126,7 @@ impl StyleBinding {
 
     pub(crate) fn has_transition(&self) -> bool {
         self.cascade()
-            .any(|atom| matches!(atom, StyleAtom::Transition(_)))
+            .any(|atom| matches!(atom, StyleAtom::Transition(_) | StyleAtom::Animation(_)))
     }
 
     #[must_use]
