@@ -3,27 +3,22 @@ use std::sync::OnceLock;
 
 use smallvec::SmallVec;
 
-use crate::animation_runtime::binding_animate::{
-    AttachedAnimator, AttachedColorAnimator, find_numeric,
-};
+use crate::animation_runtime::binding_animate::{AttachedAnimator, AttachedColorAnimator};
 use crate::animation_runtime::binding_animate_color::{
     build_color_entry, read_color, retarget_color_entry,
 };
 use crate::animation_runtime::playback::{Player, animation};
 use crate::animation_runtime::registry::{Transitioned, transition_config};
+use crate::animation_runtime::targets::{Change, Targets, targets};
 use crate::animation_runtime::{AnimationConfig, Animator};
 use crate::kernel::{Cx, DeltaKind, NodeId, NodeTag};
 use crate::reactive::{Signal, effect_named, owner_by_id, signal};
 use crate::style::{
-    AnimatorOverlay, ColorAtomKind, NumericAtomKind, RenderStyle, Rgba8, StyleAtom, StyleBinding,
-    StyleEngine, Theme, Tone, ToneContext,
+    AnimatorOverlay, ColorAtomKind, NumericAtomKind, Rgba8, StyleAtom, StyleBinding, StyleEngine,
+    Theme, Tone, ToneContext,
 };
 
-#[derive(Clone, Copy, Default)]
-struct Targets {
-    numeric: [Option<f32>; 16],
-    colors: [Option<Rgba8>; 3],
-}
+const CLEAR: Rgba8 = Rgba8 { r: 0, g: 0, b: 0, a: 0 };
 
 #[derive(Default)]
 struct State {
@@ -69,10 +64,8 @@ impl State {
             .previous
             .and_then(|target| target.colors.get(kind as usize).copied().flatten());
         let fallback = match kind {
-            ColorAtomKind::Background => Rgba8 { r: 0, g: 0, b: 0, a: 0 },
-            ColorAtomKind::Text | ColorAtomKind::Border => {
-                self.inherited_text.unwrap_or(Rgba8 { r: 0, g: 0, b: 0, a: 0 })
-            }
+            ColorAtomKind::Text | ColorAtomKind::Border => self.inherited_text.unwrap_or(CLEAR),
+            _ => CLEAR,
         };
         self.transition_color(kind).or(target).unwrap_or(fallback)
     }
@@ -89,7 +82,7 @@ impl State {
         }
     }
 
-    fn reset(&mut self, previous: Targets, inherited_text: Rgba8) {
+    fn reset(&mut self, previous: &Targets, inherited_text: Rgba8) {
         for entry in &mut self.numeric {
             if let Some(Some(value)) = previous.numeric.get(entry.kind as usize) {
                 entry.signal.try_set(*value);
@@ -187,7 +180,7 @@ impl AnimatorOverlay for StyleAnimator {
         let target = state
             .previous
             .and_then(|target| target.numeric.get(kind as usize).copied().flatten());
-        let underlying = transitioned.or(target).unwrap_or_default();
+        let underlying = transitioned.or(target).unwrap_or_else(|| kind.initial());
         player.numeric(kind, underlying).or(transitioned)
     }
 
@@ -207,38 +200,33 @@ impl AnimatorOverlay for StyleAnimator {
         let mut state = self.state.borrow_mut();
         state.inherited_text = Some(inherited_text);
         self.update_player(&mut state, atoms, &StyleEngine::with_tone(theme, tone));
-        let Some(previous) = state.previous.replace(target) else {
+        let Some(previous) = state.previous else {
+            state.previous = Some(target);
             return;
         };
+        let change = Change::new(&previous, &target);
+        state.previous = Some(change.to);
         let Some(config) = transition_config(atoms) else {
             state.suspend();
             return;
         };
         if !state.enabled {
-            state.reset(previous, inherited_text);
+            state.reset(&previous, inherited_text);
         }
         state.enabled = true;
-        update_numeric(&mut state.numeric, (previous, target), config, self.tag);
-        update_colors(
-            &mut state.colors,
-            (previous, target),
-            config,
-            (inherited_text, self.tag),
-        );
+        update_numeric(&mut state.numeric, &change, config, self.tag);
+        update_colors(&mut state.colors, &change, config, (inherited_text, self.tag));
     }
 }
 
 fn update_numeric(
     entries: &mut Vec<AttachedAnimator>,
-    (previous, target): (Targets, Targets),
+    change: &Change,
     (config, group): Transition,
     tag: Option<NodeTag>,
 ) {
-    for ((kind, from), to) in NumericAtomKind::ALL
-        .into_iter()
-        .zip(previous.numeric)
-        .zip(target.numeric)
-    {
+    for kind in NumericAtomKind::ALL {
+        let (from, to) = change.numeric(kind);
         let (Some(from), Some(to)) = (from.filter(|_| group.numeric(kind)), to) else {
             if let Some(entry) = entries.iter_mut().find(|entry| entry.kind == kind) {
                 entry.animator.cancel();
@@ -270,15 +258,12 @@ fn update_numeric(
 
 fn update_colors(
     entries: &mut Vec<AttachedColorAnimator>,
-    (previous, target): (Targets, Targets),
+    change: &Change,
     (config, group): Transition,
     (inherited_text, tag): (Rgba8, Option<NodeTag>),
 ) {
-    for ((kind, from), to) in ColorAtomKind::ALL
-        .into_iter()
-        .zip(previous.colors)
-        .zip(target.colors)
-    {
+    for kind in ColorAtomKind::ALL {
+        let (from, to) = change.color(kind);
         if from == to {
             continue;
         }
@@ -288,7 +273,7 @@ fn update_colors(
         let fallback = color_fallback(kind, color, inherited_text);
         let to = to.unwrap_or(fallback);
         let existing = entries.iter_mut().find(|entry| entry.kind == kind);
-        if !group.colors() {
+        if !group.color(kind) || change.discrete(kind.family()) {
             if let Some(entry) = existing {
                 snap_color(entry, to);
             }
@@ -319,27 +304,7 @@ fn snap_color(entry: &mut AttachedColorAnimator, to: Rgba8) {
 const fn color_fallback(kind: ColorAtomKind, color: Rgba8, inherited_text: Rgba8) -> Rgba8 {
     match kind {
         ColorAtomKind::Text | ColorAtomKind::Border => inherited_text,
-        ColorAtomKind::Background => Rgba8 { a: 0, ..color },
-    }
-}
-
-fn targets(atoms: &[StyleAtom], theme: &Theme, tone: Tone) -> Targets {
-    let mut render = RenderStyle::default();
-    StyleEngine::with_tone(theme, tone).apply(atoms, &mut render);
-    Targets {
-        numeric: NumericAtomKind::ALL.map(|kind| match kind {
-            NumericAtomKind::Opacity => Some(f32::from(render.opacity)),
-            NumericAtomKind::BorderRadius => Some(f32::from(render.border_radius.unwrap_or(0))),
-            _ => render
-                .transform
-                .value(kind)
-                .or_else(|| find_numeric(kind, atoms)),
-        }),
-        colors: [
-            render.background_color,
-            render.text_color,
-            render.border_color,
-        ],
+        _ => Rgba8 { a: 0, ..color },
     }
 }
 

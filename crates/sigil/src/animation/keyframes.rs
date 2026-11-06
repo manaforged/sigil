@@ -3,104 +3,14 @@ use std::hash::{Hash, Hasher};
 use std::time::Duration;
 
 use super::Easing;
-use crate::style::{ColorAtom, ColorAtomKind, NumericAtomKind};
+use crate::style::{ColorAtom, ColorAtomKind};
 
+mod property;
 mod sample;
 mod store;
 
+pub use property::Property;
 pub use store::KeyframesId;
-
-/// One property value that a keyframe sets.
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[non_exhaustive]
-pub enum Property {
-    /// Opacity, from 0.0 to 1.0.
-    Opacity(f32),
-    /// Horizontal translation in pixels.
-    TranslateX(f32),
-    /// Vertical translation in pixels.
-    TranslateY(f32),
-    /// Horizontal translation in percent of the node's width.
-    TranslateXPercent(f32),
-    /// Vertical translation in percent of the node's height.
-    TranslateYPercent(f32),
-    /// Uniform scale factor.
-    Scale(f32),
-    /// Rotation in radians.
-    Rotate(f32),
-    /// Rotation around the x axis in radians.
-    RotateX(f32),
-    /// Rotation around the y axis in radians.
-    RotateY(f32),
-    /// Translation toward the viewer in pixels.
-    TranslateZ(f32),
-    /// Background color.
-    Background(ColorAtom),
-    /// Text color.
-    TextColor(ColorAtom),
-    /// Border color.
-    BorderColor(ColorAtom),
-}
-
-const OPACITY_UNITS: f32 = 10_000.0;
-
-impl Property {
-    pub(crate) fn numeric(self, kind: NumericAtomKind) -> Option<f32> {
-        match (self, kind) {
-            (Self::Opacity(value), NumericAtomKind::Opacity) => {
-                Some(value.clamp(0.0, 1.0) * OPACITY_UNITS)
-            }
-            (Self::TranslateX(px), NumericAtomKind::TranslateX)
-            | (Self::TranslateY(px), NumericAtomKind::TranslateY)
-            | (Self::Rotate(px), NumericAtomKind::Rotation)
-            | (Self::RotateX(px), NumericAtomKind::RotationX)
-            | (Self::RotateY(px), NumericAtomKind::RotationY)
-            | (Self::TranslateZ(px), NumericAtomKind::TranslateZ)
-            | (Self::Scale(px), NumericAtomKind::ScaleX | NumericAtomKind::ScaleY) => Some(px),
-            (Self::TranslateXPercent(percent), NumericAtomKind::TranslateXFraction)
-            | (Self::TranslateYPercent(percent), NumericAtomKind::TranslateYFraction) => {
-                Some(percent / 100.0)
-            }
-            _ => None,
-        }
-        .filter(|value| value.is_finite())
-    }
-
-    pub(crate) const fn color(self, kind: ColorAtomKind) -> Option<ColorAtom> {
-        match (self, kind) {
-            (Self::Background(color), ColorAtomKind::Background)
-            | (Self::TextColor(color), ColorAtomKind::Text)
-            | (Self::BorderColor(color), ColorAtomKind::Border) => Some(color),
-            _ => None,
-        }
-    }
-
-    fn key(self) -> (u8, u32, Option<ColorAtom>) {
-        match self {
-            Self::Opacity(value) => (0, bits(value), None),
-            Self::TranslateX(value) => (1, bits(value), None),
-            Self::TranslateY(value) => (2, bits(value), None),
-            Self::TranslateXPercent(value) => (3, bits(value), None),
-            Self::TranslateYPercent(value) => (4, bits(value), None),
-            Self::Scale(value) => (5, bits(value), None),
-            Self::Rotate(value) => (6, bits(value), None),
-            Self::Background(color) => (7, 0, Some(color)),
-            Self::TextColor(color) => (8, 0, Some(color)),
-            Self::BorderColor(color) => (9, 0, Some(color)),
-            Self::RotateX(value) => (10, bits(value), None),
-            Self::RotateY(value) => (11, bits(value), None),
-            Self::TranslateZ(value) => (12, bits(value), None),
-        }
-    }
-}
-
-fn bits(value: f32) -> u32 {
-    if value.is_nan() {
-        f32::NAN.to_bits()
-    } else {
-        (value + 0.0).to_bits()
-    }
-}
 
 /// A CSS keyframe animation: property values at offsets of one pass, its timing, and its repeats.
 #[derive(Clone, Debug)]
@@ -268,7 +178,7 @@ impl Keyframes {
         (self.duration, self.easing, self.iterations, self.reverse, self.alternate)
     }
 
-    fn stop_keys(&self) -> impl Iterator<Item = (u32, (u8, u32, Option<ColorAtom>))> + '_ {
+    fn stop_keys(&self) -> impl Iterator<Item = (u32, property::Key)> + '_ {
         self.keyframes
             .iter()
             .map(|(offset, property)| (offset.to_bits(), property.key()))

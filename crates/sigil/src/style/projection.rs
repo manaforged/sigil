@@ -4,22 +4,9 @@ use crate::layout::LayoutResult;
 use crate::scene::command::Transform3D;
 
 use super::atom::{Backface, SpaceStyle};
-use super::{AnimatorOverlay, NumericAtomKind, StyleAtom, StyleBinding, Transform2D};
+use super::{StyleAtom, StyleBinding, Transform2D};
 
 impl SpaceStyle {
-    pub(crate) fn overlay(&mut self, overlay: &dyn AnimatorOverlay) {
-        let [x, y, _] = &mut self.turn;
-        for (kind, slot) in [
-            (NumericAtomKind::RotationX, x),
-            (NumericAtomKind::RotationY, y),
-            (NumericAtomKind::TranslateZ, &mut self.depth),
-        ] {
-            if let Some(value) = overlay.value_for(kind) {
-                *slot = value;
-            }
-        }
-    }
-
     pub(crate) fn for_binding(binding: &StyleBinding) -> Self {
         let mut style = Self::FLAT;
         for atom in binding.cascade() {

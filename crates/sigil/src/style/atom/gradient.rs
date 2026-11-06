@@ -1,4 +1,5 @@
 use super::{ColorAtom, GradientAxis, Rgba8};
+use crate::style::{AnimatorOverlay, ColorAtomKind, NumericAtomKind};
 
 /// How far a radial gradient reaches, as in CSS `radial-gradient(<extent>)`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -188,6 +189,74 @@ impl StopSlot {
             Self::From => 0,
             Self::Via => 1,
             Self::To => 2,
+        }
+    }
+}
+
+const STOPS: [(NumericAtomKind, ColorAtomKind); 3] = [
+    (NumericAtomKind::StopFrom, ColorAtomKind::StopFrom),
+    (NumericAtomKind::StopVia, ColorAtomKind::StopVia),
+    (NumericAtomKind::StopTo, ColorAtomKind::StopTo),
+];
+
+const CLEAR: Rgba8 = Rgba8 {
+    r: 0,
+    g: 0,
+    b: 0,
+    a: 0,
+};
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the percent is clamped to 0..=100 before the cast"
+)]
+const fn percent_units(value: f32) -> u8 {
+    value.round().clamp(0.0, 100.0) as u8
+}
+
+impl PaintStyle {
+    const fn via(&self) -> bool {
+        matches!(self.stops, [_, Some(_), _])
+    }
+
+    const fn drawn(&self, index: usize) -> bool {
+        self.gradient.is_some() && (index != 1 || self.via())
+    }
+
+    pub(crate) fn value(&self, kind: NumericAtomKind) -> Option<f32> {
+        let index = STOPS.iter().position(|(owner, _)| *owner == kind)?;
+        let position = self.positions.get(index).copied().flatten();
+        self.drawn(index)
+            .then(|| position.map_or_else(|| kind.initial(), f32::from))
+    }
+
+    pub(crate) fn color(&self, kind: ColorAtomKind) -> Option<Rgba8> {
+        let index = STOPS.iter().position(|(_, owner)| *owner == kind)?;
+        let stop = self.stops.get(index).copied().flatten();
+        self.drawn(index).then(|| stop.unwrap_or(CLEAR))
+    }
+
+    pub(crate) const fn shape(&self) -> Option<(GradientShape, bool)> {
+        match self.gradient {
+            Some(shape) => Some((shape, self.via())),
+            None => None,
+        }
+    }
+
+    pub(crate) fn overlay(&mut self, overlay: &dyn AnimatorOverlay) {
+        let shown = [0, 1, 2].map(|index| self.drawn(index));
+        let slots = self.stops.iter_mut().zip(self.positions.iter_mut());
+        for ((stop, position), ((numeric, color), drawn)) in slots.zip(STOPS.into_iter().zip(shown)) {
+            if !drawn {
+                continue;
+            }
+            if let Some(color) = overlay.value_for_color(color) {
+                *stop = Some(color);
+            }
+            if let Some(percent) = overlay.value_for(numeric) {
+                *position = Some(percent_units(percent));
+            }
         }
     }
 }

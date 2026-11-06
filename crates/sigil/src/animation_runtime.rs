@@ -13,6 +13,7 @@ pub(crate) mod playback;
 pub(crate) mod registry;
 pub(crate) mod state;
 pub(crate) mod style;
+pub(crate) mod targets;
 
 pub use animator::Animator;
 pub use binding_animate_color::linear_channel_to_srgb;

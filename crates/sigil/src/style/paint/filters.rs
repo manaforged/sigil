@@ -1,12 +1,8 @@
-#![allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "amounts and lengths are clamped to the u16 and i16 ranges before the cast"
-)]
-
 use crate::scene::Shadow;
 use crate::style::StyleAtom;
-use crate::style::atom::{Amount, FilterAtom, FilterPart, ShadowSpec, TextShadows};
+use crate::style::atom::{
+    Amount, FilterAtom, FilterPart, ShadowSpec, TextShadows, blur_units, hue_units,
+};
 
 use super::slot::{PaintTarget, push};
 
@@ -15,15 +11,15 @@ pub(super) fn filter<T: PaintTarget>(target: T, part: FilterPart) -> T {
 }
 
 pub(super) fn blur(px: f32) -> FilterPart {
-    FilterPart::Blur((px.max(0.0) * 16.0).round().min(65_535.0) as u16)
+    FilterPart::Blur(blur_units(px))
 }
 
 pub(super) fn amount(kind: Amount, value: f32) -> FilterPart {
-    FilterPart::Amount(kind, (value.max(0.0) * 100.0).round().min(65_535.0) as u16)
+    FilterPart::Amount(kind, Amount::units(value))
 }
 
 pub(super) fn hue_rotate(degrees: f32) -> FilterPart {
-    FilterPart::HueRotate((degrees % 360.0).round() as i16)
+    FilterPart::HueRotate(hue_units(degrees))
 }
 
 pub(super) fn drop_shadow(shadow: Shadow) -> FilterPart {

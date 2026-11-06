@@ -22,7 +22,28 @@ pub(crate) enum NumericAtomKind {
     TranslateYFraction,
     RotationX,
     RotationY,
+    RotationZ,
     TranslateZ,
+    Perspective,
+    Blur,
+    Brightness,
+    Contrast,
+    Grayscale,
+    HueRotate,
+    Invert,
+    Saturate,
+    Sepia,
+    DropShadowX,
+    DropShadowY,
+    DropShadowBlur,
+    TextShadowX,
+    TextShadowY,
+    TextShadowBlur,
+    StopFrom,
+    StopVia,
+    StopTo,
+    MaskFrom,
+    MaskTo,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -30,23 +51,26 @@ pub(crate) enum ColorAtomKind {
     Background,
     Text,
     Border,
+    DropShadow,
+    TextShadow,
+    StopFrom,
+    StopVia,
+    StopTo,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Family {
+    Plain,
+    Filter,
+    TextShadow,
+    Gradient,
+    Mask,
 }
 
 impl NumericAtomKind {
-    pub(crate) const fn affects_layout(self) -> bool {
-        matches!(
-            self,
-            Self::FontSize
-                | Self::LineHeight
-                | Self::Gap
-                | Self::PaddingX
-                | Self::PaddingY
-                | Self::Width
-                | Self::Height
-        )
-    }
+    pub(crate) const COUNT: usize = 40;
 
-    pub(crate) const ALL: [Self; 16] = [
+    pub(crate) const ALL: [Self; Self::COUNT] = [
         Self::Opacity,
         Self::BorderRadius,
         Self::FontSize,
@@ -63,13 +87,98 @@ impl NumericAtomKind {
         Self::Rotation,
         Self::TranslateXFraction,
         Self::TranslateYFraction,
+        Self::RotationX,
+        Self::RotationY,
+        Self::RotationZ,
+        Self::TranslateZ,
+        Self::Perspective,
+        Self::Blur,
+        Self::Brightness,
+        Self::Contrast,
+        Self::Grayscale,
+        Self::HueRotate,
+        Self::Invert,
+        Self::Saturate,
+        Self::Sepia,
+        Self::DropShadowX,
+        Self::DropShadowY,
+        Self::DropShadowBlur,
+        Self::TextShadowX,
+        Self::TextShadowY,
+        Self::TextShadowBlur,
+        Self::StopFrom,
+        Self::StopVia,
+        Self::StopTo,
+        Self::MaskFrom,
+        Self::MaskTo,
     ];
 
-    pub(crate) const SPACE: [Self; 3] = [Self::RotationX, Self::RotationY, Self::TranslateZ];
+    pub(crate) const fn affects_layout(self) -> bool {
+        matches!(
+            self,
+            Self::FontSize
+                | Self::LineHeight
+                | Self::Gap
+                | Self::PaddingX
+                | Self::PaddingY
+                | Self::Width
+                | Self::Height
+        )
+    }
+
+    pub(crate) const fn initial(self) -> f32 {
+        match self {
+            Self::Opacity => 10_000.0,
+            Self::ScaleX | Self::ScaleY | Self::Brightness | Self::Contrast | Self::Saturate => 1.0,
+            Self::StopVia => 50.0,
+            Self::StopTo | Self::MaskTo => 100.0,
+            _ => 0.0,
+        }
+    }
+
+    pub(crate) const fn family(self) -> Family {
+        match self {
+            Self::Blur
+            | Self::Brightness
+            | Self::Contrast
+            | Self::Grayscale
+            | Self::HueRotate
+            | Self::Invert
+            | Self::Saturate
+            | Self::Sepia
+            | Self::DropShadowX
+            | Self::DropShadowY
+            | Self::DropShadowBlur => Family::Filter,
+            Self::TextShadowX | Self::TextShadowY | Self::TextShadowBlur => Family::TextShadow,
+            Self::StopFrom | Self::StopVia | Self::StopTo => Family::Gradient,
+            Self::MaskFrom | Self::MaskTo => Family::Mask,
+            _ => Family::Plain,
+        }
+    }
 }
 
 impl ColorAtomKind {
-    pub(crate) const ALL: [Self; 3] = [Self::Background, Self::Text, Self::Border];
+    pub(crate) const COUNT: usize = 8;
+
+    pub(crate) const ALL: [Self; Self::COUNT] = [
+        Self::Background,
+        Self::Text,
+        Self::Border,
+        Self::DropShadow,
+        Self::TextShadow,
+        Self::StopFrom,
+        Self::StopVia,
+        Self::StopTo,
+    ];
+
+    pub(crate) const fn family(self) -> Family {
+        match self {
+            Self::Background | Self::Text | Self::Border => Family::Plain,
+            Self::DropShadow => Family::Filter,
+            Self::TextShadow => Family::TextShadow,
+            Self::StopFrom | Self::StopVia | Self::StopTo => Family::Gradient,
+        }
+    }
 }
 
 pub(crate) trait AnimatorOverlay {
@@ -99,7 +208,7 @@ pub(crate) trait AnimatorOverlay {
 
     fn cache_key(&self) -> u64 {
         let mut hasher = AHasher::default();
-        for kind in NumericAtomKind::ALL.into_iter().chain(NumericAtomKind::SPACE) {
+        for kind in NumericAtomKind::ALL {
             if let Some(value) = self.value_for(kind) {
                 kind.hash(&mut hasher);
                 value.to_bits().hash(&mut hasher);

@@ -34,6 +34,9 @@ impl<'theme> StyleEngine<'theme> {
     pub(crate) fn overlay_render(overlay: &dyn AnimatorOverlay, render: &mut RenderStyle) {
         render.transform = render.transform.overlay(overlay);
         render.space.overlay(overlay);
+        render.filter.overlay(overlay);
+        render.paint.overlay(overlay);
+        render.mask.overlay(overlay);
         if let Some(value) = overlay.value_for(NumericAtomKind::Opacity) {
             render.opacity = encode_opacity(value);
         }

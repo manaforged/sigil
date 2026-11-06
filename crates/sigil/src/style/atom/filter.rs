@@ -9,9 +9,37 @@ use smallvec::SmallVec;
 use super::Rgba8;
 use crate::scene::Shadow;
 use crate::scene::command::Filter;
+use crate::style::NumericAtomKind;
 use crate::style::srgb::{decode, encode};
 
+mod motion;
+
+pub(crate) use motion::aligned;
+
 const SUB: f32 = 16.0;
+
+fn length(value: f32) -> i16 {
+    (value * SUB).round().clamp(-32_768.0, 32_767.0) as i16
+}
+
+pub(crate) fn blur_units(px: f32) -> u16 {
+    (px.max(0.0) * SUB).round().min(65_535.0) as u16
+}
+
+pub(crate) fn hue_units(degrees: f32) -> i16 {
+    (degrees % 360.0).round() as i16
+}
+
+pub(crate) fn shadow_color(shadow: Shadow) -> Rgba8 {
+    let [r, g, b, a] = shadow.color;
+    let byte = |value: f32| (value.clamp(0.0, 1.0) * 255.0).round() as u8;
+    Rgba8 {
+        r: byte(encode(r)),
+        g: byte(encode(g)),
+        b: byte(encode(b)),
+        a: byte(a),
+    }
+}
 
 /// A filter or text shadow style atom.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -39,18 +67,33 @@ impl ShadowSpec {
     }
 
     pub(crate) fn of(shadow: Shadow) -> Self {
-        let length = |value: f32| (value * SUB).round().clamp(-32_768.0, 32_767.0) as i16;
-        let [r, g, b, a] = shadow.color;
-        let byte = |value: f32| (value.clamp(0.0, 1.0) * 255.0).round() as u8;
         Self {
             offset: shadow.offset.map(length),
-            blur: (shadow.blur.max(0.0) * SUB).round().min(65_535.0) as u16,
-            color: Rgba8 {
-                r: byte(encode(r)),
-                g: byte(encode(g)),
-                b: byte(encode(b)),
-                a: byte(a),
-            },
+            blur: blur_units(shadow.blur),
+            color: shadow_color(shadow),
+        }
+    }
+
+    const CLEAR: Self = Self {
+        offset: [0, 0],
+        blur: 0,
+        color: Rgba8 {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        },
+    };
+
+    fn part(self, kind: NumericAtomKind) -> f32 {
+        match kind {
+            NumericAtomKind::DropShadowX | NumericAtomKind::TextShadowX => {
+                f32::from(self.offset[0]) / SUB
+            }
+            NumericAtomKind::DropShadowY | NumericAtomKind::TextShadowY => {
+                f32::from(self.offset[1]) / SUB
+            }
+            _ => f32::from(self.blur) / SUB,
         }
     }
 
@@ -102,6 +145,12 @@ pub(crate) struct FilterStyle {
     text: TextShadows,
     pub(crate) drop_color: Option<Rgba8>,
     pub(crate) text_color: Option<Rgba8>,
+}
+
+impl Amount {
+    pub(crate) fn units(value: f32) -> u16 {
+        (value.max(0.0) * 100.0).round().min(65_535.0) as u16
+    }
 }
 
 impl FilterStyle {

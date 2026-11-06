@@ -17,7 +17,10 @@ mod mask;
 mod space;
 pub use clip::ClipShape;
 pub use filter::FilterAtom;
-pub(crate) use filter::{Amount, FilterPart, FilterStyle, ShadowSpec, TextShadows};
+pub(crate) use filter::{
+    Amount, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units, hue_units,
+    shadow_color,
+};
 pub use mask::{MaskAtom, MaskImage, MaskSize};
 pub(crate) use mask::{MaskKind, MaskPart, MaskStyle};
 pub use space::{Backface, SpaceAtom, SpaceStyle};

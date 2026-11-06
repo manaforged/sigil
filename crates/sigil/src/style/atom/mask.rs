@@ -1,5 +1,6 @@
 use super::{Conic, Radial, RadialExtent, StopSlot};
 use crate::kernel::ImageSource;
+use crate::style::{AnimatorOverlay, NumericAtomKind};
 
 /// The image whose alpha or luminance shows the node, like CSS `mask-image`.
 #[derive(Clone)]
@@ -121,6 +122,45 @@ impl MaskStyle {
         match slot {
             StopSlot::From | StopSlot::Via => self.stops[0] = percent,
             StopSlot::To => self.stops[1] = percent,
+        }
+    }
+}
+
+impl MaskStyle {
+    pub(crate) const fn gradient(&self) -> Option<MaskKind> {
+        match self.kind {
+            Some(MaskKind::Image) | None => None,
+            kind => kind,
+        }
+    }
+
+    pub(crate) fn value(&self, kind: NumericAtomKind) -> Option<f32> {
+        let index = match kind {
+            NumericAtomKind::MaskFrom => 0,
+            NumericAtomKind::MaskTo => 1,
+            _ => return None,
+        };
+        let stop = self.stops.get(index).copied()?;
+        self.gradient().map(|_| f32::from(stop))
+    }
+
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "the percent is clamped to 0..=100 before the cast"
+    )]
+    pub(crate) fn overlay(&mut self, overlay: &dyn AnimatorOverlay) {
+        if self.gradient().is_none() {
+            return;
+        }
+        for (slot, kind) in self
+            .stops
+            .iter_mut()
+            .zip([NumericAtomKind::MaskFrom, NumericAtomKind::MaskTo])
+        {
+            if let Some(percent) = overlay.value_for(kind) {
+                *slot = percent.round().clamp(0.0, 100.0) as u8;
+            }
         }
     }
 }

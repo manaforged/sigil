@@ -55,7 +55,7 @@ pub(crate) mod variant;
 pub(crate) mod variant_kit;
 
 pub(crate) use animator_overlay::AnimatorOverlay;
-pub(crate) use animator_overlay::{ColorAtomKind, NumericAtomKind};
+pub(crate) use animator_overlay::{ColorAtomKind, Family, NumericAtomKind};
 pub(crate) use atom::Px;
 pub(crate) use atom::SPACING_STEP;
 pub(crate) use atom::TextDecoration;

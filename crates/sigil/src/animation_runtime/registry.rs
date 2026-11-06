@@ -1,5 +1,5 @@
 use crate::animation::{Easing, SpringPreset};
-use crate::style::{NumericAtomKind, StyleAtom, TransitionId};
+use crate::style::{ColorAtomKind, Family, NumericAtomKind, StyleAtom, TransitionId};
 
 use crate::animation_runtime::config::AnimationConfig;
 
@@ -50,19 +50,29 @@ impl Transitioned {
                 | NumericAtomKind::ScaleX
                 | NumericAtomKind::ScaleY
                 | NumericAtomKind::Rotation
+                | NumericAtomKind::RotationX
+                | NumericAtomKind::RotationY
+                | NumericAtomKind::RotationZ
+                | NumericAtomKind::TranslateZ
         );
         let opacity = matches!(kind, NumericAtomKind::Opacity);
+        let filter = matches!(kind.family(), Family::Filter);
         match self {
             Self::All => true,
-            Self::Paint => transform || opacity,
+            Self::Paint => transform || opacity || filter,
             Self::Colors => false,
             Self::Opacity => opacity,
             Self::Transform => transform,
         }
     }
 
-    pub(crate) const fn colors(self) -> bool {
-        matches!(self, Self::All | Self::Paint | Self::Colors)
+    pub(crate) const fn color(self, kind: ColorAtomKind) -> bool {
+        match self {
+            Self::All => true,
+            Self::Paint => !matches!(kind, ColorAtomKind::TextShadow),
+            Self::Colors => matches!(kind.family(), Family::Plain | Family::Gradient),
+            Self::Opacity | Self::Transform => false,
+        }
     }
 }
 

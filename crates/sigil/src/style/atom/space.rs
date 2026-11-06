@@ -1,5 +1,7 @@
 use std::hash::{Hash, Hasher};
 
+use crate::style::{AnimatorOverlay, NumericAtomKind};
+
 /// Whether a node's back shows when it turns away, like CSS `backface-visibility`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Backface {
@@ -70,6 +72,36 @@ impl SpaceStyle {
     #[must_use]
     pub fn is_flat(&self) -> bool {
         self.turn == [0.0; 3] && self.depth == 0.0
+    }
+
+    pub(crate) const fn value(&self, kind: NumericAtomKind) -> Option<f32> {
+        match kind {
+            NumericAtomKind::RotationX => Some(self.turn[0]),
+            NumericAtomKind::RotationY => Some(self.turn[1]),
+            NumericAtomKind::RotationZ => Some(self.turn[2]),
+            NumericAtomKind::TranslateZ => Some(self.depth),
+            NumericAtomKind::Perspective => self.perspective,
+            _ => None,
+        }
+    }
+
+    pub(crate) fn overlay(&mut self, overlay: &dyn AnimatorOverlay) {
+        let [x, y, z] = &mut self.turn;
+        for (kind, slot) in [
+            (NumericAtomKind::RotationX, x),
+            (NumericAtomKind::RotationY, y),
+            (NumericAtomKind::RotationZ, z),
+            (NumericAtomKind::TranslateZ, &mut self.depth),
+        ] {
+            if let Some(value) = overlay.value_for(kind) {
+                *slot = value;
+            }
+        }
+        if self.perspective.is_some()
+            && let Some(px) = overlay.value_for(NumericAtomKind::Perspective)
+        {
+            self.perspective = Some(px.max(1.0));
+        }
     }
 
     fn key(&self) -> [u32; 7] {

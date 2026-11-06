@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `Paint::mix_blend(BlendMode)` and the `mix-blend-*` classes.
 - Filters on `Paint`: `blur`, `brightness`, `contrast`, `grayscale`, `hue_rotate`, `invert`, `saturate`, `sepia`, `drop_shadow` and `text_shadow`, with the Tailwind `blur-*`, `brightness-*`, `contrast-*`, `grayscale`, `hue-rotate-*`, `invert`, `saturate-*`, `sepia`, `drop-shadow-*` and `text-shadow-*` classes.
 - 3D transforms on `Paint`: `perspective`, `perspective_origin`, `rotate_x`, `rotate_y`, `rotate_z`, `translate_z`, `backface_hidden` and `backface_visible`, with `Property::RotateX`, `RotateY` and `TranslateZ` for keyframes.
+- Keyframes and transitions animate filters, drop and text shadows, gradient stop colors and positions, mask stops and the 3D turns, depth and perspective. `Property` gains `RotateZ`, `Perspective`, `Blur`, `Brightness`, `Contrast`, `Grayscale`, `HueRotate`, `Invert`, `Saturate`, `Sepia`, `DropShadow`, `TextShadow`, `GradientFrom`, `GradientVia`, `GradientTo`, their `*Position` forms, `MaskFrom` and `MaskTo`. Filter lists, gradients and shadows interpolate as CSS does and jump when they do not match.
 - Class strings parse `bg-linear-to-*`, `bg-radial`, `bg-conic-*`, `from-*`, `via-*`, `to-*`, `bg-clip-text`, `border-solid`, `border-dashed` and `border-dotted`.
 
 ### Changed
