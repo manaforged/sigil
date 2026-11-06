@@ -1,4 +1,4 @@
-use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::panic::catch_unwind;
 
 use layout::gv::parser::ast::{AttrStmt, AttrStmtTarget, AttributeList, Graph, Stmt};
 use layout::gv::{DotParser, GraphBuilder};
@@ -9,6 +9,7 @@ use crate::style::{Theme, Token};
 use crate::widgets::svg_picture::{FONT_FAMILY, hex, picture};
 
 const TIMES: &str = "font-family: Times, serif;";
+const MAX_NESTING: usize = 32;
 
 pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
     let graph = parse(source)?;
@@ -17,20 +18,36 @@ pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
 }
 
 fn parse(source: &str) -> Option<Graph> {
+    if nesting(source) > MAX_NESTING {
+        return None;
+    }
     catch_unwind(|| DotParser::new(source).process().ok()).ok()?
+}
+
+fn nesting(source: &str) -> usize {
+    let mut depth = 0_usize;
+    let mut deepest = 0;
+    for ch in source.chars() {
+        match ch {
+            '{' => {
+                depth += 1;
+                deepest = deepest.max(depth);
+            }
+            '}' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+    }
+    deepest
 }
 
 fn render(graph: &Graph, theme: &Theme) -> Option<String> {
     let mut themed = graph.clone();
     themed.list.list.splice(0..0, defaults(theme));
-    let svg = catch_unwind(AssertUnwindSafe(|| {
-        let mut builder = GraphBuilder::new();
-        builder.visit_graph(&themed);
-        let mut writer = Tight::new();
-        builder.get().do_it(false, false, false, &mut writer);
-        writer.finish()
-    }))
-    .ok()??;
+    let mut builder = GraphBuilder::new();
+    builder.visit_graph(&themed);
+    let mut writer = Tight::new();
+    builder.get().do_it(false, false, false, &mut writer);
+    let svg = writer.finish()?;
     let text = format!(
         "font-family: '{FONT_FAMILY}', sans-serif; fill: {};",
         hex(theme, Token::OnSurface)

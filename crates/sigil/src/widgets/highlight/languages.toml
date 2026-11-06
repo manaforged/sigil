@@ -247,7 +247,7 @@ words.type = [
 ]
 
 [lang.csharp]
-aliases = ["cs", "c#", "fsharp", "fs"]
+aliases = ["cs", "c#"]
 line_comments = ["//"]
 block_comment = ["/*", "*/"]
 strings = ["\"", "'"]
@@ -265,6 +265,25 @@ words.literal = ["true", "false", "null"]
 words.type = [
     "int", "long", "short", "byte", "char", "bool", "float", "double", "decimal", "string",
     "object", "dynamic", "List", "Dictionary", "Task", "IEnumerable",
+]
+
+[lang.fsharp]
+aliases = ["fs", "fsi", "fsx", "f#"]
+line_comments = ["//"]
+block_comment = ["(*", "*)"]
+strings = ["\""]
+numbers = true
+words.keyword = [
+    "abstract", "and", "as", "async", "begin", "do", "done", "elif", "else", "end",
+    "exception", "finally", "for", "fun", "function", "if", "in", "inherit", "interface",
+    "lazy", "let", "match", "member", "module", "mutable", "namespace", "new", "not", "of",
+    "open", "or", "override", "rec", "return", "then", "to", "try", "type", "use", "val",
+    "when", "while", "with", "yield",
+]
+words.literal = ["true", "false", "null", "None", "Some"]
+words.type = [
+    "int", "int64", "float", "decimal", "string", "char", "bool", "unit", "list", "option",
+    "seq", "array", "byte", "obj",
 ]
 
 [lang.swift]
@@ -371,28 +390,54 @@ words.literal = ["true", "false", "None", "Some"]
 words.type = ["int", "float", "bool", "string", "char", "list", "option", "unit", "array"]
 
 [lang.elixir]
-aliases = ["ex", "exs", "erlang", "erl"]
-line_comments = ["#", "%"]
+aliases = ["ex", "exs"]
+line_comments = ["#"]
 strings = ["\"", "'"]
 numbers = true
 words.keyword = [
     "after", "alias", "case", "catch", "cond", "def", "defmodule", "defp", "defstruct", "do",
     "else", "end", "fn", "for", "if", "import", "in", "quote", "raise", "receive", "require",
-    "rescue", "try", "unless", "unquote", "use", "when", "with", "module", "export", "of",
+    "rescue", "try", "unless", "unquote", "use", "when", "with",
 ]
 words.literal = ["true", "false", "nil"]
 
+[lang.erlang]
+aliases = ["erl", "hrl"]
+line_comments = ["%"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "after", "and", "andalso", "begin", "case", "catch", "end", "fun", "if", "not", "of",
+    "or", "orelse", "receive", "try", "when", "module", "export", "import", "record",
+    "define", "spec", "type",
+]
+words.literal = ["true", "false", "undefined"]
+
 [lang.r]
-aliases = ["rscript", "julia", "jl"]
+aliases = ["rscript"]
 line_comments = ["#"]
 strings = ["\"", "'"]
 numbers = true
 words.keyword = [
     "if", "else", "for", "while", "repeat", "function", "return", "break", "next", "in",
-    "library", "require", "end", "module", "using", "import", "export", "struct", "mutable",
-    "begin", "let", "do", "local", "global", "const", "macro", "elseif",
+    "library", "require",
 ]
-words.literal = ["TRUE", "FALSE", "NULL", "NA", "Inf", "NaN", "true", "false", "nothing"]
+words.literal = ["TRUE", "FALSE", "NULL", "NA", "Inf", "NaN"]
+
+[lang.julia]
+aliases = ["jl"]
+line_comments = ["#"]
+block_comment = ["#=", "=#"]
+nested_block_comments = true
+strings = ["\""]
+numbers = true
+words.keyword = [
+    "if", "else", "elseif", "for", "while", "function", "return", "break", "continue", "in",
+    "end", "module", "using", "import", "export", "struct", "mutable", "begin", "let", "do",
+    "local", "global", "const", "macro", "try", "catch", "finally", "where", "abstract",
+    "primitive", "type", "quote",
+]
+words.literal = ["true", "false", "nothing", "missing", "Inf", "NaN"]
 
 [lang.dart]
 line_comments = ["//"]
@@ -410,15 +455,25 @@ words.literal = ["true", "false", "null"]
 words.type = ["int", "double", "num", "bool", "String", "List", "Map", "Set", "Future", "Stream", "Widget"]
 
 [lang.powershell]
-aliases = ["ps1", "pwsh", "ps", "bat", "cmd"]
-line_comments = ["#", "REM ", "::"]
+aliases = ["ps1", "psm1", "pwsh", "ps"]
+line_comments = ["#"]
 block_comment = ["<#", "#>"]
 strings = ["\"", "'"]
 numbers = true
 words.keyword = [
     "begin", "break", "catch", "class", "continue", "do", "else", "elseif", "end", "exit",
     "filter", "finally", "for", "foreach", "function", "if", "in", "param", "process",
-    "return", "switch", "throw", "trap", "try", "until", "while", "echo", "set", "goto", "call",
+    "return", "switch", "throw", "trap", "try", "until", "while",
+]
+
+[lang.batch]
+aliases = ["bat", "cmd"]
+line_comments = ["REM ", "rem ", "@REM ", "@rem ", "::"]
+strings = ["\""]
+numbers = true
+words.keyword = [
+    "if", "else", "for", "in", "do", "goto", "call", "exit", "set", "echo", "setlocal",
+    "endlocal", "not", "exist", "defined",
 ]
 
 [lang.dockerfile]

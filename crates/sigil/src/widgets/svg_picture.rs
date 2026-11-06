@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 use std::sync::{Arc, LazyLock};
 
@@ -12,7 +13,7 @@ use crate::style::{Rgba8, Theme, Token};
 use crate::widgets::Widget;
 
 pub(crate) const FONT_FAMILY: &str = "Fira Sans";
-const MAX_PIXELS: f32 = 4096.0 * 4096.0;
+const MAX_SIDE: f32 = 4096.0;
 
 type Render = Box<dyn Fn(&Theme) -> Option<String>>;
 
@@ -45,7 +46,7 @@ impl Picture {
         {
             return Some((key, Arc::clone(tree)));
         }
-        let tree = Arc::new(parse(&(self.render)(theme)?)?);
+        let tree = Arc::new(parse(&run(&self.render, theme)?)?);
         *self.tree.borrow_mut() = Some((key, Arc::clone(&tree)));
         Some((key, tree))
     }
@@ -76,7 +77,7 @@ pub(crate) fn picture(
     render: impl Fn(&Theme) -> Option<String> + 'static,
 ) -> Option<(NodeBuilder, (f32, f32))> {
     let light = Theme::light();
-    let svg = render(&light)?;
+    let svg = run(&render, &light)?;
     let tree = Arc::new(parse(&svg)?);
     let size = (tree.size().width(), tree.size().height());
     let hash = key
@@ -126,17 +127,18 @@ fn parse(svg: &str) -> Option<Tree> {
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    reason = "the raster is clamped to MAX_PIXELS before the cast"
+    reason = "each side is clamped to MAX_SIDE before the cast"
 )]
 fn raster(key: u64, tree: &Tree, (width, height): (f32, f32)) -> Option<ImageSource> {
-    let shrink = (MAX_PIXELS / (width * height).max(1.0)).sqrt().min(1.0);
-    let (width, height) = ((width * shrink).round(), (height * shrink).round());
+    let shrink = (MAX_SIDE / width.max(height)).min(1.0);
+    let width = (width * shrink).round().clamp(1.0, MAX_SIDE);
+    let height = (height * shrink).round().clamp(1.0, MAX_SIDE);
     let sized = mix(
         mix(key, u64::from(width.to_bits())),
         u64::from(height.to_bits()),
     );
     cached_image(sized, || {
-        let mut pixmap = Pixmap::new(width.max(1.0) as u32, height.max(1.0) as u32)?;
+        let mut pixmap = Pixmap::new(width as u32, height as u32)?;
         let size = tree.size();
         let transform = Transform::from_scale(width / size.width(), height / size.height());
         resvg::render(tree, transform, &mut pixmap.as_mut());
@@ -152,9 +154,17 @@ fn raster(key: u64, tree: &Tree, (width, height): (f32, f32)) -> Option<ImageSou
     })
 }
 
+fn run(render: &impl Fn(&Theme) -> Option<String>, theme: &Theme) -> Option<String> {
+    catch_unwind(AssertUnwindSafe(|| render(theme))).ok()?
+}
+
 fn theme_key(key: u64, theme: &Theme) -> u64 {
     Token::ALL.iter().fold(key, |key, token| {
         let Rgba8 { r, g, b, a } = theme.color(*token);
         mix(key, u64::from(u32::from_le_bytes([r, g, b, a])))
     })
 }
+
+#[cfg(test)]
+#[path = "svg_picture_tests.rs"]
+mod tests;

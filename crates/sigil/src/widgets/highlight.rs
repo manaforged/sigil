@@ -231,7 +231,32 @@ impl SpanMarks {
     }
 }
 
+enum Comment {
+    Line,
+    Block(usize),
+}
+
 impl Lang {
+    fn comment_at(&self, rest: &str) -> Option<Comment> {
+        let line = self
+            .line_comments
+            .iter()
+            .filter(|mark| rest.starts_with(mark.as_str()))
+            .map(String::len)
+            .max();
+        let block = self
+            .block_comment
+            .as_ref()
+            .map(|(opener, _)| opener)
+            .filter(|opener| rest.starts_with(opener.as_str()))
+            .map(String::len);
+        match (line, block) {
+            (_, Some(opener)) if opener >= line.unwrap_or(0) => Some(Comment::Block(opener)),
+            (Some(_), _) => Some(Comment::Line),
+            _ => None,
+        }
+    }
+
     fn line(&self, line: &str, open: &mut usize) -> Vec<Highlight> {
         if let Some((_, token)) = self
             .prefixes
@@ -310,17 +335,13 @@ impl Lang {
     }
 
     fn token_at(&self, line: &str, i: usize, ch: char, marks: &mut SpanMarks) -> usize {
-        let rest = &line[i..];
-        if self.line_comments.iter().any(|mark| rest.starts_with(mark)) {
-            return marks.push(i, line.len(), self.comment);
-        }
-        if let Some((opener, _)) = self
-            .block_comment
-            .as_ref()
-            .filter(|(opener, _)| rest.starts_with(opener.as_str()))
-        {
-            marks.open = 1;
-            return marks.push(i, i + opener.len(), self.comment);
+        match self.comment_at(&line[i..]) {
+            Some(Comment::Line) => return marks.push(i, line.len(), self.comment),
+            Some(Comment::Block(opener)) => {
+                marks.open = 1;
+                return marks.push(i, i + opener, self.comment);
+            }
+            None => {}
         }
         if self.strings.contains(&ch) {
             let end = string_end(line, i + ch.len_utf8(), ch);

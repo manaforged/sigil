@@ -20,6 +20,7 @@ mod flow_paint;
 mod flow_parse;
 mod flow_route;
 mod flow_vector;
+mod gantt;
 mod label;
 #[cfg(feature = "scene")]
 mod lightbox;
@@ -78,8 +79,8 @@ impl View {
         let last = self.last.borrow().clone().unwrap_or_default();
         let attempts: [(&str, Draw); 4] = [
             (&bounded, svg),
-            (&last, svg),
             (&bounded, vector),
+            (&last, svg),
             (&last, vector),
         ];
         for (shown, draw) in attempts {
@@ -112,6 +113,9 @@ impl View {
 }
 
 fn svg(source: &str) -> Option<Drawn> {
+    if !gantt::bounded(source) {
+        return None;
+    }
     let (node, size) = picture(source)?;
     Some(Drawn {
         node,
