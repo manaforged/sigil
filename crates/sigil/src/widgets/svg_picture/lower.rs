@@ -15,6 +15,7 @@ use super::budget::{self, MAX_COMMANDS};
 use super::fallback::{Fallback, bitmap};
 use super::paint::{self, Fill, OPAQUE};
 use super::shape::{self, outline, scene_transform, transform_key};
+use super::srgb::separated;
 
 #[cfg(feature = "kittest")]
 mod probe;
@@ -59,7 +60,7 @@ pub(super) fn lower(tree: &Arc<Tree>, (width, height): (f32, f32), key: u64) -> 
         return whole(tree, (width, height), key);
     }
     Lowered {
-        commands: scene.finish().commands,
+        commands: separated(scene.finish().commands),
         fallbacks: walk.fallbacks,
     }
 }
@@ -83,7 +84,9 @@ impl Walk {
     ) -> CommandScene {
         let mut scene = SceneBuilder::new();
         body(self, &mut scene);
-        scene.finish()
+        CommandScene {
+            commands: separated(scene.finish().commands),
+        }
     }
 
     pub(super) fn children(&mut self, scene: &mut SceneBuilder, group: &Group, t: Transform) {
@@ -96,7 +99,7 @@ impl Walk {
         match node {
             Node::Group(group) => self.group(scene, group, t),
             Node::Path(path) if path.is_visible() => {
-                if let Err(reason) = self.path(scene, path, t) {
+                if let Err(reason) = self.path(scene, path, t, 1.0) {
                     self.fallback(scene, node, t, reason);
                 }
             }
@@ -106,23 +109,25 @@ impl Walk {
         }
     }
 
-    fn path(
+    pub(super) fn path(
         &mut self,
         scene: &mut SceneBuilder,
         path: &usvg::Path,
         t: Transform,
+        fade: f32,
     ) -> Result<(), Fallback> {
         let fill = path
             .fill()
             .map(|fill| {
-                paint::fill(fill.paint(), fill.opacity().get())
+                paint::fill(fill.paint(), fill.opacity().get() * fade)
                     .map(|paint| (rule(fill.rule()), paint))
             })
             .transpose()?;
         let stroke = path
             .stroke()
             .map(|stroke| {
-                paint::fill(stroke.paint(), stroke.opacity().get()).map(|paint| (stroke, paint))
+                paint::fill(stroke.paint(), stroke.opacity().get() * fade)
+                    .map(|paint| (stroke, paint))
             })
             .transpose()?;
         let data = path.data();

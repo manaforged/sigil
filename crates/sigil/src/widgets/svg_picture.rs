@@ -20,6 +20,7 @@ mod lower;
 mod paint;
 mod pattern;
 mod shape;
+mod srgb;
 mod vector;
 
 #[cfg(feature = "kittest")]

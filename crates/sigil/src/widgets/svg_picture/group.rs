@@ -41,7 +41,7 @@ pub(super) const fn layer(area: Rect, effect: LayerEffect) -> LayerScope {
         clip_radii: CornerRadii::ZERO,
         effect,
         opacity: 1.0,
-        blend: BlendMode::Normal,
+        blend: BlendMode::SrgbOver,
     }
 }
 
@@ -64,6 +64,13 @@ impl Walk {
         }
         if !group.should_isolate() {
             self.children(scene, group, inner);
+            return;
+        }
+        if let Some(path) = lone_path(group) {
+            if let Err(reason) = self.path(scene, path, inner, group.opacity().get()) {
+                let node = Node::Group(Box::new(group.clone()));
+                self.fallback(scene, &node, t, reason);
+            }
             return;
         }
         let effects = match filters(group, inner) {
@@ -108,8 +115,9 @@ impl Walk {
             .map_or(LayerEffect::Identity, LayerEffect::Mask);
         let blend = blend(group.blend_mode());
         let opacity = group.opacity().get();
-        let plain =
-            matches!(first, LayerEffect::Identity) && opacity >= 1.0 && blend == BlendMode::Normal;
+        let plain = matches!(first, LayerEffect::Identity)
+            && opacity >= 1.0
+            && blend == BlendMode::SrgbOver;
         if !plain || group.isolate() {
             scope.layer(
                 scene,
@@ -138,6 +146,25 @@ impl Walk {
     }
 }
 
+/// The one path of a group that only fades it, when that path paints a fill or a stroke but not both, so the fade can go into its paint.
+fn lone_path(group: &Group) -> Option<&usvg::Path> {
+    let faded_only = group.mask().is_none()
+        && group.clip_path().is_none()
+        && group.filters().is_empty()
+        && group.blend_mode() == usvg::BlendMode::Normal
+        && !group.isolate();
+    match group.children() {
+        [Node::Path(path)]
+            if faded_only
+                && path.is_visible()
+                && path.fill().is_some() != path.stroke().is_some() =>
+        {
+            Some(path)
+        }
+        _ => None,
+    }
+}
+
 fn corners(rect: usvg::NonZeroRect, t: Transform) -> [Point; 4] {
     let mut points = [
         usvg::tiny_skia_path::Point::from_xy(rect.left(), rect.top()),
@@ -151,7 +178,7 @@ fn corners(rect: usvg::NonZeroRect, t: Transform) -> [Point; 4] {
 
 const fn blend(mode: usvg::BlendMode) -> BlendMode {
     match mode {
-        usvg::BlendMode::Normal => BlendMode::Normal,
+        usvg::BlendMode::Normal => BlendMode::SrgbOver,
         usvg::BlendMode::Multiply => BlendMode::Multiply,
         usvg::BlendMode::Screen => BlendMode::Screen,
         usvg::BlendMode::Overlay => BlendMode::Overlay,

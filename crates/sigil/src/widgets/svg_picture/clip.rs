@@ -23,6 +23,7 @@ pub(super) fn apply(
 ) {
     let inner = t.pre_concat(clip.transform());
     if let Some(path) = single(clip.root()) {
+        scope.layer(scene, layer(area, LayerEffect::Identity));
         scope.clip(scene, Clip::Path(shape(path, inner)));
     } else {
         let mask = Mask::new(MaskMode::Alpha, shapes(clip.root(), inner));

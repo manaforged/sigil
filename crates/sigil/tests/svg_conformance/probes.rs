@@ -27,7 +27,7 @@ const SURFACES: [Rgba8; 3] = [
     },
 ];
 
-const PROBES: [(&str, &str); 8] = [
+const PROBES: [(&str, &str); 10] = [
     (
         "reflected rotated linear gradient",
         r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><linearGradient id="g" x1="0.3" x2="0.6" spreadMethod="reflect" gradientTransform="rotate(30 0.5 0.5)"><stop offset="0" stop-color="#1060d0"/><stop offset="1" stop-color="#f0a020"/></linearGradient><rect width="100" height="100" fill="url(#g)"/></svg>"##,
@@ -60,7 +60,20 @@ const PROBES: [(&str, &str); 8] = [
         "group opacity and multiply blend",
         r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect x="10" y="10" width="60" height="60" fill="#30a0e0"/><g opacity="0.6" style="mix-blend-mode:multiply"><circle cx="60" cy="60" r="30" fill="#e04040"/><circle cx="45" cy="70" r="20" fill="#40c040"/></g></svg>"##,
     ),
+    (
+        "translucent fill drawn after a faded group",
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#b0c4de"/><g opacity="0.5"><rect x="4" y="4" width="8" height="8" fill="#30a0e0"/><rect x="8" y="8" width="8" height="8" fill="#e04040"/></g><rect x="10" y="20" width="80" height="70" fill="#000000" fill-opacity="0.7"/></svg>"##,
+    ),
+    (
+        "translucent fill under a clip path",
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><clipPath id="c"><circle cx="50" cy="50" r="45"/></clipPath><rect width="100" height="100" fill="#b0c4de"/><g clip-path="url(#c)"><rect width="100" height="100" fill="#000000" fill-opacity="0.7"/></g></svg>"##,
+    ),
 ];
+
+const GPU_PROBES: [(&str, &str); 1] = [(
+    "element opacity over an opaque mark",
+    r##"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#b0c4de"/><rect x="10" y="10" width="80" height="80" fill="#000000" opacity="0.7"/></svg>"##,
+)];
 
 fn on_surface(surface: Rgba8, picture: CommandScene) -> CommandScene {
     let mut builder = SceneBuilder::new();
@@ -76,7 +89,11 @@ fn on_surface(surface: Rgba8, picture: CommandScene) -> CommandScene {
 fn probe(backend: Backend) {
     let mut renderers = Renderers::new(backend);
     let mut failed = Vec::new();
-    for (name, source) in PROBES {
+    let extra = match backend {
+        Backend::Gpu => GPU_PROBES.as_slice(),
+        Backend::Cpu => &[],
+    };
+    for &(name, source) in PROBES.iter().chain(extra) {
         let tree = Arc::new(Tree::from_str(source, &usvg::Options::default()).expect("svg"));
         let reference = resvg_picture(&tree, (100, 100));
         for surface in SURFACES {
