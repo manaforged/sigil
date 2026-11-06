@@ -2,31 +2,8 @@ use core::panic::Location;
 
 use web_time::Instant;
 
+use crate::profile::key::SiteKind;
 use crate::profile::store;
-
-/// What a profiled site was doing.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum SiteKind {
-    /// An effect, derived value or child list closure ran.
-    Effect,
-    /// A child list built, moved or removed its nodes.
-    Mount,
-    /// A task message handler ran on the UI thread.
-    Message,
-}
-
-impl SiteKind {
-    /// Returns the name this kind has in profile output.
-    #[must_use]
-    pub const fn name(self) -> &'static str {
-        match self {
-            Self::Effect => "effect",
-            Self::Mount => "mount",
-            Self::Message => "message",
-        }
-    }
-}
 
 /// The time one source line spent in a frame.
 #[derive(Clone, Copy, Debug)]

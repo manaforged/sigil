@@ -296,7 +296,7 @@ See [Units](guide/units.md) for the rules that map `rows`, `cols`, and `em` to p
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
-| `Signal` | `struct Signal<T>`; `get`, `peek`, `set`, `update`, `with`; `PartialEq`, `Eq`, `Hash` by identity | Reactive value. `set` skips a value equal to the current one; `update` always notifies. Two handles are equal when they name the same signal, so a store of signals can itself live in a signal. |
+| `Signal` | `struct Signal<T>`; `get`, `peek`, `try_peek`, `set`, `update`, `with`; `PartialEq`, `Eq`, `Hash` by identity | Reactive value. `set` skips a value equal to the current one; `update` always notifies. Two handles are equal when they name the same signal, so a store of signals can itself live in a signal. `try_peek` returns `None` once the signal's owner is disposed. |
 | `signal` | `fn signal<T: 'static>(initial: T) -> Signal<T>` | Create a signal. |
 | `derived` | `fn derived<T: Clone + PartialEq, F: FnMut() -> T>(f: F) -> Signal<T>` | A signal that `f` recomputes. Notifies readers only when the new value differs from the old one. |
 | `effect` | `fn effect<F: FnMut() + 'static>(f: F)` | Run `f` now and after each change it reads. |
@@ -1031,7 +1031,8 @@ fn main() -> AppResult<()> {
 | `profile::Counter`, `profile::Cause`, `profile::BackendKind`, `profile::FallbackCause` | `#[non_exhaustive] enum` with `name() -> &'static str` | Name a per-frame counter, the event that caused a frame, the active renderer backend, and why the host fell back from the GPU backend. |
 | `profile::BackendStatus` | `struct BackendStatus { kind: BackendKind, fallback: FallbackCause }`; `const TERMINAL` | Records which backend renders the frame and the fallback cause, if any. |
 | `profile::span` return value | drop guard | Measures one phase from creation until drop. Create it with `profile::span`. |
-| `profile::frames` element | `struct { index: u32, cause: Cause, wall_ns: u64, end_us: u64, phases: Vec<PhaseTime>, counts: Vec<CounterValue>, hot: Vec<Attribution>, gpu_passes: Vec<(&'static str, u64)>, backend: Option<BackendStatus> }`; `counter`, `total_ns`, `hottest` | Holds the recorded timings, counters, attributions, and GPU pass times of one frame. |
+| `profile::frames` element | `struct { index: u32, cause: Cause, wall_ns: u64, end_us: u64, phases: Vec<PhaseTime>, counts: Vec<CounterValue>, hot: Vec<Attribution>, gpu_passes: Vec<(&'static str, u64)>, sites: Vec<Site>, backend: Option<BackendStatus> }`; `counter`, `total_ns`, `work_ns`, `hottest` | Holds the recorded timings, counters, attributions, per-line times, and GPU pass times of one frame. `work_ns` is the frame time minus the time spent waiting for the GPU or display. |
+| `profile::frames` element `sites` item | `struct { location: &'static Location, kind: SiteKind, self_ns: u64, total_ns: u64, runs: u32 }`; `SiteKind { Effect, Mount, Message }` with `name()` | The time one effect, child list, or task message handler line took in the frame, slowest first. |
 | `profile::enable`, `profile::disable`, `profile::reset` | `fn enable()`; `fn disable()`; `fn reset()` | Turn frame recording on or off, and clear recorded frames. |
 | `profile::begin_frame`, `profile::tick_frame` | `fn begin_frame(backend: BackendStatus)`; `fn tick_frame()` | Open a new recorded frame with its backend status, and close the current frame. Hosts call these once per frame. |
 | `profile::span` | `fn span(phase: Phase) -> Span` | Starts timing `phase` in the current frame. |

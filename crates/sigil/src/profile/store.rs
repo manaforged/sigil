@@ -10,7 +10,8 @@ use serde_json::{Value, json};
 
 use crate::profile::attr::Attribution;
 use crate::profile::event::TraceEvent;
-use crate::profile::site::{Site, SiteKind};
+use crate::profile::key::SiteKind;
+use crate::profile::site::Site;
 use crate::profile::key::{
     BackendStatus, Cause, Counter, CounterValue, Hotspot, Phase, PhaseTime, accumulate,
 };
@@ -61,10 +62,6 @@ pub struct Frame {
     pub sites: Vec<Site>,
     /// The end us.
     pub end_us: u64,
-    /// The spans and site runs recorded in this frame.
-    pub zones: u32,
-    /// The estimated time the profiler itself added to this frame.
-    pub overhead_ns: u64,
 }
 
 impl Frame {
@@ -137,8 +134,6 @@ struct Store {
     site_index: ahash::AHashMap<(usize, SiteKind), usize>,
     attr_index: ahash::AHashMap<(Hotspot, u64), usize>,
     attr_distinct: ahash::AHashMap<Hotspot, usize>,
-    open_spans: u32,
-    open_sites: u32,
 }
 
 impl Store {
@@ -157,8 +152,6 @@ impl Store {
             site_index: ahash::AHashMap::new(),
             attr_index: ahash::AHashMap::new(),
             attr_distinct: ahash::AHashMap::new(),
-            open_spans: 0,
-            open_sites: 0,
         }
     }
 
@@ -231,7 +224,6 @@ pub(crate) fn begin_frame(backend: BackendStatus) {
 pub(crate) fn complete(phase: Phase, start: Instant, dur_ns: u64) {
     with_store(|store| {
         let start_us = store.since_origin_us(start);
-        store.open_spans = store.open_spans.saturating_add(1);
         store.push(TraceEvent::Complete {
             phase,
             tid: 1,
@@ -254,7 +246,6 @@ pub(crate) fn site_exit(
 ) {
     with_store(|store| {
         let nested = store.site_stack.pop().unwrap_or(0);
-        store.open_sites = store.open_sites.saturating_add(1);
         if let Some(parent) = store.site_stack.last_mut() {
             *parent = parent.saturating_add(total_ns);
         }
@@ -342,58 +333,18 @@ pub(crate) fn interact(cause: Cause) {
 }
 
 pub(crate) fn tick_frame() {
-    if enabled() {
-        let costs = costs();
-        with_store(|store| close_frame(store, costs));
-    }
-}
-
-/// The calibrated cost of one recorded span and one site run.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Costs {
-    pub(crate) span_ns: u64,
-    pub(crate) site_ns: u64,
-}
-
-pub(crate) fn costs() -> Costs {
-    static COSTS: std::sync::OnceLock<Costs> = std::sync::OnceLock::new();
-    *COSTS.get_or_init(calibrate)
-}
-
-fn calibrate() -> Costs {
-    const RUNS: u32 = 4096;
-    let saved = STORE.with(|cell| cell.replace(Store::new()));
-    let per_run = |start: Instant| {
-        u64::try_from(start.elapsed().as_nanos() / u128::from(RUNS)).unwrap_or(u64::MAX)
-    };
-    let start = Instant::now();
-    for _ in 0..RUNS {
-        drop(std::hint::black_box(crate::profile::span::Span::new(Phase::AppUpdate)));
-    }
-    let span_ns = per_run(start);
-    let location = core::panic::Location::caller();
-    let start = Instant::now();
-    for _ in 0..RUNS {
-        drop(std::hint::black_box(crate::profile::site::site(location, SiteKind::Effect)));
-    }
-    let site_ns = per_run(start);
-    STORE.with(|cell| cell.replace(saved));
-    Costs { span_ns, site_ns }
+    with_store(close_frame);
 }
 
 pub(crate) fn close_open() {
-    if !enabled() {
-        return;
-    }
-    let costs = costs();
     with_store(|store| {
         if !store.open.phases.is_empty() || !store.open.counts.is_empty() {
-            close_frame(store, costs);
+            close_frame(store);
         }
     });
 }
 
-fn close_frame(store: &mut Store, costs: Costs) {
+fn close_frame(store: &mut Store) {
     let end_us = store.now_us();
     if let Some((name, id, _)) = store.open_flow.take() {
         store.push(TraceEvent::FlowFinish {
@@ -414,12 +365,6 @@ fn close_frame(store: &mut Store, costs: Costs) {
             value,
         });
     }
-    frame.zones = store.open_spans.saturating_add(store.open_sites);
-    frame.overhead_ns = u64::from(store.open_spans)
-        .saturating_mul(costs.span_ns)
-        .saturating_add(u64::from(store.open_sites).saturating_mul(costs.site_ns));
-    store.open_spans = 0;
-    store.open_sites = 0;
     frame.index = store.next_index;
     frame.end_us = end_us;
     frame.wall_ns = store.open_start.take().map_or(0, |start| {
