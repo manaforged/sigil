@@ -147,15 +147,15 @@ impl InteractionState {
     }
 
     fn pointer_enter(self, event: &mut PointerEvent) {
+        set_if_changed(self.hovered, true);
         if self.is_enabled() {
-            set_if_changed(self.hovered, true);
             event.stop_propagation();
         }
     }
 
     fn pointer_leave(self, event: &mut PointerEvent) {
+        self.leave();
         if self.is_enabled() {
-            self.leave();
             event.stop_propagation();
         }
     }
