@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::kernel::{NodeBuilder, Role, container, fragment, text};
 use crate::layout::LayoutStyle;
 use crate::layout::snap::CellForm;
@@ -7,6 +10,10 @@ use crate::widgets::Widget;
 use crate::widgets::scroll::Horizontal;
 
 mod canvas;
+#[cfg(feature = "scene")]
+mod chrome;
+#[cfg(feature = "scene")]
+mod fit;
 mod flow;
 mod flow_layout;
 mod flow_paint;
@@ -14,6 +21,8 @@ mod flow_parse;
 mod flow_route;
 mod flow_vector;
 mod label;
+#[cfg(feature = "scene")]
+mod lightbox;
 #[cfg(feature = "scene")]
 mod picture;
 mod pie;
@@ -25,30 +34,119 @@ mod strokes;
 /// A rendered mermaid diagram.
 #[must_use]
 pub fn mermaid(source: impl Reactive<String>) -> NodeBuilder {
-    fragment().children_reactive(move || [figure(&source.read())])
+    let view = View::new();
+    fragment().children_reactive(move || [view.figure(&source.read())])
 }
 
+#[cfg(any(test, fuzzing))]
 pub(crate) fn figure(source: &str) -> NodeBuilder {
-    if !crate::style::Metrics::current().is_grid()
-        && !crate::widgets::source_too_large(source)
-        && let Some((diagram, width)) = picture(&bound_source(source))
-            .or_else(|| flow_vector::figure(&bound_source(source)))
-            .or_else(|| sequence::vector(&bound_source(source)))
-    {
-        let centred = container()
-            .layout(
-                LayoutStyle::flex_row()
-                    .fill_width()
-                    .min_size(width, 0.0)
-                    .justify_content(crate::layout::JustifyContent::Center),
-            )
-            .child(diagram);
-        return Horizontal::new(signal(width), None)
-            .wrap(centred)
+    View::new().figure(source)
+}
+
+struct Drawn {
+    node: NodeBuilder,
+    width: f32,
+    #[cfg(feature = "scene")]
+    height: Option<f32>,
+    #[cfg(feature = "scene")]
+    source: String,
+}
+
+#[derive(Clone)]
+struct View {
+    last: Rc<RefCell<Option<String>>>,
+    #[cfg(feature = "scene")]
+    chrome: chrome::Chrome,
+}
+
+impl View {
+    fn new() -> Self {
+        Self {
+            last: Rc::new(RefCell::new(None)),
+            #[cfg(feature = "scene")]
+            chrome: chrome::Chrome::new(),
+        }
+    }
+
+    fn figure(&self, source: &str) -> NodeBuilder {
+        if crate::style::Metrics::current().is_grid() || crate::widgets::source_too_large(source)
+        {
+            return text_figure(source);
+        }
+        let bounded = bound_source(source);
+        let last = self.last.borrow().clone().unwrap_or_default();
+        let attempts: [(&str, fn(&str) -> Option<Drawn>); 4] = [
+            (&bounded, svg),
+            (&last, svg),
+            (&bounded, vector),
+            (&last, vector),
+        ];
+        for (shown, draw) in attempts {
+            if shown.is_empty() {
+                continue;
+            }
+            if let Some(drawn) = draw(shown) {
+                let fresh = shown == bounded;
+                if fresh {
+                    self.last.replace(Some(bounded.clone()));
+                }
+                return self.frame(drawn, &bounded, !fresh);
+            }
+        }
+        text_figure(source)
+    }
+
+    #[cfg(feature = "scene")]
+    fn frame(&self, drawn: Drawn, source: &str, stale: bool) -> NodeBuilder {
+        self.chrome.wrap(drawn, source, stale)
+    }
+
+    #[cfg(not(feature = "scene"))]
+    fn frame(&self, drawn: Drawn, source: &str, _stale: bool) -> NodeBuilder {
+        scrolled(drawn.node, drawn.width)
             .role(Role::Figure)
             .label(diagram_name(source))
-            .description(bound_source(source).trim_end().to_string());
+            .description(source.trim_end().to_string())
     }
+}
+
+fn svg(source: &str) -> Option<Drawn> {
+    let (node, size) = picture(source)?;
+    Some(Drawn {
+        node,
+        width: size.0,
+        #[cfg(feature = "scene")]
+        height: Some(size.1),
+        #[cfg(feature = "scene")]
+        source: source.to_string(),
+    })
+}
+
+fn vector(source: &str) -> Option<Drawn> {
+    let (node, width) = flow_vector::figure(source).or_else(|| sequence::vector(source))?;
+    Some(Drawn {
+        node,
+        width,
+        #[cfg(feature = "scene")]
+        height: None,
+        #[cfg(feature = "scene")]
+        source: source.to_string(),
+    })
+}
+
+fn scrolled(diagram: NodeBuilder, width: f32) -> NodeBuilder {
+    let centred = container()
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .min_size(width, 0.0)
+                .justify_content(crate::layout::JustifyContent::Center),
+        )
+        .child(diagram);
+    Horizontal::new(signal(width), None).wrap(centred)
+}
+
+fn text_figure(source: &str) -> NodeBuilder {
     let lines = draw(source);
     let width = lines
         .iter()
@@ -69,12 +167,12 @@ pub(crate) fn figure(source: &str) -> NodeBuilder {
 }
 
 #[cfg(feature = "scene")]
-fn picture(source: &str) -> Option<(NodeBuilder, f32)> {
+fn picture(source: &str) -> Option<(NodeBuilder, (f32, f32))> {
     picture::figure(source)
 }
 
 #[cfg(not(feature = "scene"))]
-const fn picture(_source: &str) -> Option<(NodeBuilder, f32)> {
+const fn picture(_source: &str) -> Option<(NodeBuilder, (f32, f32))> {
     None
 }
 

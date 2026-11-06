@@ -19,12 +19,11 @@ const SERIES: [Token; 10] = [
     Token::Info7,
 ];
 
-pub(super) fn figure(source: &str) -> Option<(NodeBuilder, f32)> {
+pub(super) fn figure(source: &str) -> Option<(NodeBuilder, (f32, f32))> {
     let owned = source.to_string();
-    let (node, (width, _)) = picture(source, move |theme| {
+    picture(source, move |theme| {
         mermaid_svg::render_with(&owned, &palette(theme)).ok()
-    })?;
-    Some((node, width))
+    })
 }
 
 fn palette(theme: &Theme) -> mermaid_svg::Theme {
