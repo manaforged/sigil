@@ -5,7 +5,7 @@ use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::signal;
 use crate::style::{Radius, StyleAtom, Token, space};
 use crate::widgets::Widget;
-use crate::widgets::highlight::{byte_marks, text_runs};
+use crate::widgets::highlight::{Highlight, byte_marks, text_runs};
 use crate::widgets::interaction::InteractionState;
 
 use super::super::checkbox::{CheckMark, checkbox_indicator};
@@ -154,6 +154,56 @@ fn task_mark(task: TaskMark) -> NodeBuilder {
         ))
 }
 
+const SHOWN_LINES: usize = 500;
+const SHOWN_COLUMNS: usize = 2_000;
+
+fn clip(body: &str) -> (String, usize) {
+    let mut shown = String::new();
+    for (index, line) in body.split('\n').take(SHOWN_LINES).enumerate() {
+        if index > 0 {
+            shown.push('\n');
+        }
+        match line.char_indices().nth(SHOWN_COLUMNS) {
+            Some((cut, _)) => {
+                shown.push_str(&line[..cut]);
+                shown.push('…');
+            }
+            None => shown.push_str(line),
+        }
+    }
+    (shown, body.split('\n').skip(SHOWN_LINES).count())
+}
+
+fn hidden_note(hidden: usize) -> NodeBuilder {
+    let noun = if hidden == 1 { "line" } else { "lines" };
+    container()
+        .layout(LayoutStyle::block().fill_width())
+        .child(tinted(
+            text(format!("{hidden} more {noun} not shown")),
+            TokenTone(Token::OnSurfaceMuted),
+        ))
+}
+
+fn code_line(line: &str, marks: &[Highlight]) -> NodeBuilder {
+    let rest = line.trim_start();
+    let lead = &line[..line.len() - rest.len()];
+    let mut row = container().layout(LayoutStyle::flex_row().fill_width());
+    if !lead.is_empty() {
+        row = row.child(
+            text(lead.to_string())
+                .nowrap()
+                .layout(LayoutStyle::block().shrink(0.0)),
+        );
+    }
+    let rest = if rest.is_empty() { " " } else { rest };
+    row.child(
+        text(rest.to_string())
+            .runs(text_runs(marks, lead.len()..usize::MAX))
+            .class(Token::OnSurface.text())
+            .layout(LayoutStyle::block().grow(1.0).shrink(1.0).min_width(0.0)),
+    )
+}
+
 pub(super) fn code(lang: &str, body: &str) -> NodeBuilder {
     let pad = CellForm::new(space(2), 0.0).pick();
     let mut block = container()
@@ -166,25 +216,12 @@ pub(super) fn code(lang: &str, body: &str) -> NodeBuilder {
                 .padding_x(space(2))
                 .padding_y(pad),
         );
-    for (line, marks) in body.split('\n').zip(byte_marks(lang, body)) {
-        let rest = line.trim_start();
-        let lead = &line[..line.len() - rest.len()];
-        let mut row = container().layout(LayoutStyle::flex_row().fill_width());
-        if !lead.is_empty() {
-            row = row.child(
-                text(lead.to_string())
-                    .nowrap()
-                    .layout(LayoutStyle::block().shrink(0.0)),
-            );
-        }
-        let rest = if rest.is_empty() { " " } else { rest };
-        row = row.child(
-            text(rest.to_string())
-                .runs(text_runs(&marks, lead.len()..usize::MAX))
-                .class(Token::OnSurface.text())
-                .layout(LayoutStyle::block().grow(1.0).shrink(1.0).min_width(0.0)),
-        );
-        block = block.child(row);
+    let (shown, hidden) = clip(body);
+    for (line, marks) in shown.split('\n').zip(byte_marks(lang, &shown)) {
+        block = block.child(code_line(line, &marks));
+    }
+    if hidden > 0 {
+        block = block.child(hidden_note(hidden));
     }
     block
 }

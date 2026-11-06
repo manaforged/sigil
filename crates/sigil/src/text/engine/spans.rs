@@ -1,3 +1,4 @@
+use std::ops::Range;
 use std::sync::Arc;
 
 use smallvec::SmallVec;
@@ -51,6 +52,7 @@ pub(super) fn shape_spans(
     }
     let levels = paragraph_bidi.levels();
     let mut out: Vec<ShapedSegment> = Vec::with_capacity(text.len().min(32));
+    let mut first_span = 0;
     for (word_start, fragment) in text.split_word_bound_indices() {
         if fragment.is_empty() {
             continue;
@@ -61,10 +63,7 @@ pub(super) fn shape_spans(
         }
         let is_ws = fragment.chars().all(char::is_whitespace);
         let word_end = word_start + fragment.len();
-        for span in spans
-            .iter()
-            .filter(|span| span.start < word_end && span.end > word_start)
-        {
+        for span in overlapping(spans, &mut first_span, word_start..word_end) {
             let lo = span.start.max(word_start);
             let Some(word) = text.get(lo..span.end.min(word_end)) else {
                 continue;
@@ -85,6 +84,19 @@ pub(super) fn shape_spans(
     }
     mark_break_opportunities(text, &mut out);
     out
+}
+
+fn overlapping<'s>(
+    spans: &'s [ShapeSpan],
+    first: &mut usize,
+    word: Range<usize>,
+) -> &'s [ShapeSpan] {
+    while spans.get(*first).is_some_and(|span| span.end <= word.start) {
+        *first += 1;
+    }
+    let rest = spans.get(*first..).unwrap_or_default();
+    let count = rest.iter().take_while(|span| span.start < word.end).count();
+    &rest[..count]
 }
 
 fn hard_break(start: usize, len: usize) -> ShapedSegment {

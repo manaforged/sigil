@@ -3,8 +3,8 @@ use std::ops::Range;
 use std::sync::LazyLock;
 
 use toml::{Table, Value};
+use unicode_segmentation::UnicodeSegmentation;
 
-use super::grapheme::col_count;
 use crate::style::{TextFace, TextRun, Token};
 
 static CATALOG: LazyLock<Vec<Lang>> =
@@ -44,7 +44,14 @@ pub fn highlight(language: &str, source: &str) -> Vec<Vec<Highlight>> {
         .split('\n')
         .zip(byte_marks(language, source))
         .map(|(line, marks)| {
-            let col = |byte: usize| line.get(..byte).map_or(0, col_count);
+            let starts: Vec<usize> = line.grapheme_indices(true).map(|(at, _)| at).collect();
+            let col = |byte: usize| {
+                if line.is_char_boundary(byte) {
+                    starts.partition_point(|&start| start < byte)
+                } else {
+                    0
+                }
+            };
             marks
                 .into_iter()
                 .map(|mark| Highlight {
