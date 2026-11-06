@@ -28,10 +28,10 @@ use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, 
 mod model;
 #[path = "filters/perf.rs"]
 mod perf;
-#[path = "filters/text.rs"]
-mod text;
 #[path = "filters/style.rs"]
 mod style;
+#[path = "filters/text.rs"]
+mod text;
 
 use model::{expected_bytes, gaussian_cdf, linear};
 
@@ -109,8 +109,11 @@ pub(crate) fn cpu_frame(scene: &CommandScene, width: u32) -> image::RgbaImage {
 pub(crate) fn frames_of<N: IntoNode + 'static>(
     app: impl Fn() -> N + Clone + 'static,
 ) -> Vec<(&'static str, image::RgbaImage)> {
-    let mut pixels = Harness::new(app.clone()).pixels(SIDE, SIDE).scale(SCALE);
-    let mut surface = Harness::new(app).gpu(SIDE, SIDE, SCALE);
+    let mut pixels = Harness::new(app.clone())
+        .unaudited()
+        .pixels(SIDE, SIDE)
+        .scale(SCALE);
+    let mut surface = Harness::new(app).unaudited().gpu(SIDE, SIDE, SCALE);
     let scene = surface.host().emit((SIDE as f32, SIDE as f32));
     vec![
         ("pixels", gpu_frame(&mut pixels)),

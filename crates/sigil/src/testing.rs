@@ -26,11 +26,11 @@ pub fn tree_size(name: &'static str, root: impl crate::kernel::IntoNode) -> usiz
     size
 }
 
-pub fn misalignments(
+pub fn flaws(
     host: &crate::Host,
-    tolerance: crate::layout::align::Tolerance,
-) -> Vec<crate::layout::align::Misalignment> {
-    host.misalignments(tolerance)
+    tolerance: crate::layout::audit::Tolerance,
+) -> Vec<crate::layout::audit::Flaw> {
+    host.flaws(tolerance)
 }
 
 pub fn emit_since(

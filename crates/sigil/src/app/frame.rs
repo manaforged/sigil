@@ -101,6 +101,10 @@ impl Host {
         if let Some(paint) = hooks.paint {
             paint(self, &info);
         }
+        #[cfg(debug_assertions)]
+        if layout_ok && !animating && !(info.delta.layout.is_empty() && !info.delta.structure) {
+            self.report_flaws();
+        }
         Runtime::end_frame();
         crate::reactive::run_dispatch_deferred();
         FrameOutput {

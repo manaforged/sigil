@@ -106,7 +106,7 @@ fn modal_page() -> impl IntoNode {
 }
 
 fn surface(app: impl IntoNode + 'static) -> Harness {
-    let mut ui = Harness::new(app).gpu(
+    let mut ui = Harness::new(app).unaudited().gpu(
         u32::from(SURFACE_WIDTH),
         u32::from(SURFACE_HEIGHT),
         SURFACE_SCALE,

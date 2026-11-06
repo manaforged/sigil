@@ -222,6 +222,7 @@ pub mod prelude {
         TextBuilder, TextContent, TextCursor, container, for_each, fragment, image, node, show,
         switch, text,
     };
+    pub use crate::layout::audit::FlawKind;
     pub use crate::layout::{
         AlignItems, Dimension, Display, FlexWrap, JustifyContent, LayoutStyle, Overflow, Position,
         Space, TrackSize, cols, column, em, row, rows,

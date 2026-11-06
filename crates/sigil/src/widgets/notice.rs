@@ -15,7 +15,7 @@ static NOTICE_BAND: &[StyleAtom] = &[
     StyleAtom::BorderToneStep(6),
 ];
 static NOTICE_CELL: &[StyleAtom] = &[StyleAtom::BgToneStep(3)];
-static NOTICE_TEXT: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
+static NOTICE_TEXT: &[StyleAtom] = &[StyleAtom::FgToneStep(12)];
 
 /// A full-width notice.
 #[must_use]

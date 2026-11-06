@@ -199,7 +199,7 @@ fn checkbox_layout(has_label: bool) -> LayoutStyle {
     if has_label {
         row.fill_width()
     } else {
-        row.width(root_size)
+        row.width(root_size).justify_content(JustifyContent::Center)
     }
 }
 

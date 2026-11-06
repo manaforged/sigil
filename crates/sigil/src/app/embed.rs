@@ -231,19 +231,39 @@ impl Host {
         self.root
     }
 
+    #[cfg(debug_assertions)]
+    pub(crate) fn report_flaws(&self) {
+        use crate::layout::audit::Tolerance;
+        thread_local! {
+            static SEEN: std::cell::RefCell<std::collections::HashSet<String>> = std::cell::RefCell::default();
+        }
+        let flaws = self.flaws(Tolerance::for_mode(self.host_mode()));
+        SEEN.with_borrow_mut(|seen| {
+            for flaw in flaws.iter().map(ToString::to_string) {
+                if seen.insert(flaw.clone()) {
+                    tracing::warn!(target: "sigil::design", "{flaw}");
+                    if matches!(self.host_mode(), crate::kernel::HostMode::Pixel) {
+                        eprintln!("sigil design flaw: {flaw}");
+                    }
+                }
+            }
+        });
+    }
+
     #[cfg(any(
         test,
+        debug_assertions,
         feature = "kittest",
         all(feature = "inspect", any(feature = "desktop", feature = "terminal"))
     ))]
     #[must_use]
-    pub(crate) fn misalignments(
+    pub(crate) fn flaws(
         &self,
-        tolerance: crate::layout::align::Tolerance,
-    ) -> Vec<crate::layout::align::Misalignment> {
+        tolerance: crate::layout::audit::Tolerance,
+    ) -> Vec<crate::layout::audit::Flaw> {
         let _env = self.enter();
         self.root.map_or_else(Vec::new, |root| {
-            crate::layout::align::misalignments(&self.cx, &self.layout, root, tolerance)
+            crate::layout::audit::flaws(&self.cx, &self.layout, (root, self.theme()), tolerance)
         })
     }
 

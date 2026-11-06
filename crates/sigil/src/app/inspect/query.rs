@@ -10,7 +10,7 @@ enum InspectQuery {
     Snapshot,
     Screenshot,
     Surfaces,
-    Align,
+    Audit,
     Settle,
     Profile,
     ProfileDump,
@@ -24,7 +24,7 @@ const QUERIES: [(&str, InspectQuery); 11] = [
     ("snapshot", InspectQuery::Snapshot),
     ("screenshot", InspectQuery::Screenshot),
     ("surfaces", InspectQuery::Surfaces),
-    ("layout::align", InspectQuery::Align),
+    ("layout::audit", InspectQuery::Audit),
     ("settle", InspectQuery::Settle),
     ("profile", InspectQuery::Profile),
     ("profile_dump", InspectQuery::ProfileDump),
@@ -47,7 +47,7 @@ pub(super) fn answer(request: &Value, host: &mut Host, view: &mut InspectView<'_
         }
         InspectQuery::Screenshot => screenshot_json(host, view),
         InspectQuery::Surfaces => surfaces_json(host, view.cell),
-        InspectQuery::Align => align_json(host),
+        InspectQuery::Audit => audit_json(host),
         InspectQuery::Settle => json!({
             "ok": true,
             "settled": !crate::reactive::Runtime::frame_dirty()
@@ -149,20 +149,16 @@ fn screenshot_json(host: &mut Host, view: &mut InspectView<'_>) -> Value {
     )
 }
 
-fn align_json(host: &Host) -> Value {
-    use crate::layout::align::{MisalignmentKind, Tolerance};
+fn audit_json(host: &Host) -> Value {
+    use crate::layout::audit::Tolerance;
     let found: Vec<Value> = host
-        .misalignments(Tolerance::for_mode(host.host_mode()))
+        .flaws(Tolerance::for_mode(host.host_mode()))
         .iter()
         .map(|item| {
-            let kind = match item.kind() {
-                MisalignmentKind::Column => "column",
-                MisalignmentKind::Inset => "inset",
-            };
-            json!({"kind": kind, "node": item.node().to_string(), "detail": item.to_string()})
+            json!({"kind": format!("{:?}", item.kind()), "node": item.node().to_string(), "detail": item.to_string()})
         })
         .collect();
-    json!({"ok": true, "misalignments": found})
+    json!({"ok": true, "flaws": found})
 }
 
 fn surfaces_json(host: &Host, cell: Option<f32>) -> Value {

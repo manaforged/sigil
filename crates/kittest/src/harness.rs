@@ -71,6 +71,7 @@ pub struct Harness {
     host: Host,
     surface: HarnessSurface,
     tasks: AsyncRuntime,
+    audited: bool,
 }
 
 impl Harness {
@@ -103,6 +104,7 @@ impl Harness {
             host: Host::new(sigil::kernel::HostMode::Cell),
             surface: Self::cells(80, 24),
             tasks,
+            audited: true,
         }
     }
 
@@ -192,9 +194,7 @@ impl Harness {
             }
             HarnessSurface::Pixels { size, .. } => {
                 let viewport = (crate::extent_f32(size.0), crate::extent_f32(size.1));
-                self.host
-                    .frame(viewport, dt, hooks(events, None))
-                    .layout
+                self.host.frame(viewport, dt, hooks(events, None)).layout
             }
             HarnessSurface::Gpu(gpu) => {
                 let viewport = gpu.viewport;
@@ -290,22 +290,31 @@ impl Harness {
         &mut self.host
     }
 
+    /// Lists the design rules that the current frame breaks.
     #[must_use]
-    pub fn misalignments(&mut self) -> Vec<sigil::layout::align::Misalignment> {
+    pub fn flaws(&mut self) -> Vec<sigil::layout::audit::Flaw> {
         self.live();
-        let tolerance = sigil::layout::align::Tolerance::for_mode(self.host.host_mode());
-        sigil::testing::misalignments(&self.host, tolerance)
+        let tolerance = sigil::layout::audit::Tolerance::for_mode(self.host.host_mode());
+        sigil::testing::flaws(&self.host, tolerance)
     }
 
+    /// Fails the test if the current frame breaks a design rule.
     #[track_caller]
-    pub fn assert_aligned(&mut self) {
-        let found = self.misalignments();
+    pub fn assert_no_flaws(&mut self) {
+        let found = self.flaws();
         if found.is_empty() {
             return;
         }
         let listed: Vec<String> = found.iter().map(ToString::to_string).collect();
         let text = self.text();
-        fail(format!("misaligned:\n{}\n{text}", listed.join("\n")));
+        fail(format!("design flaws:\n{}\n{text}", listed.join("\n")));
+    }
+
+    /// Turns off the design check that a harness runs when it is dropped.
+    #[must_use]
+    pub const fn unaudited(mut self) -> Self {
+        self.audited = false;
+        self
     }
 
     fn viewport(&self) -> (f32, f32) {
@@ -346,6 +355,9 @@ fn settle_dt() -> f32 {
 
 impl Drop for Harness {
     fn drop(&mut self) {
+        if self.audited && self.pending.is_none() && !std::thread::panicking() {
+            self.assert_no_flaws();
+        }
         __test_clear_clock();
         self.owner.dispose();
     }

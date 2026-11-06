@@ -6,6 +6,7 @@ use crate::events::{
     event_methods, handler_methods,
 };
 use crate::kernel::NodeBuilder;
+use crate::layout::audit::{AllowedFlaws, FlawKind};
 use crate::layout::builder_ext::asymmetric;
 use crate::layout::reactive_position;
 use crate::layout::{IntoPx, LayoutStyle, Space};
@@ -213,6 +214,20 @@ pub trait Widget: Sealed {
     #[must_use]
     fn asymmetric(self, reason: &'static str) -> Self {
         self.map_node(move |node| asymmetric(node, reason))
+    }
+
+    /// Opts the node and its children out of a design rule, with the reason.
+    #[must_use]
+    fn allow_flaw(self, kind: FlawKind, _reason: &'static str) -> Self {
+        self.map_node(move |node| {
+            node.mutate(move |node| {
+                if let Some(allowed) = node.get_extension_mut::<AllowedFlaws>() {
+                    allowed.0.push(kind);
+                } else {
+                    let _ = node.attach(AllowedFlaws(smallvec::smallvec![kind]));
+                }
+            })
+        })
     }
 
     /// Sets the node's width.

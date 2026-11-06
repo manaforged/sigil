@@ -129,6 +129,30 @@ let mut ui = Harness::new(|| button("Save")).pixels(200, 60);
 ui.snapshot("save_button");
 ```
 
+## Design rules
+
+A harness that mounted a tree checks it when the harness is dropped. The test fails if the laid-out tree breaks a design rule, and the message names the node and the fix.
+
+| `FlawKind` | The rule |
+| --- | --- |
+| `ClippedText` | Text fits inside the box that clips it. |
+| `UnevenControls` | Controls in one row have one height. |
+| `Overlap` | Siblings in normal flow do not cover each other. |
+| `Overflow` | A child stays inside a parent that does not clip or scroll. |
+| `Contrast` | Text meets WCAG 2.2 AA: 4.5:1, or 3:1 for large text. |
+| `SmallTarget` | A pointer control is at least 24 by 24 px. The terminal host skips this rule. |
+| `Column` | The cells of table rows line up. |
+| `Inset` | A lone child has even space around it, not nearly even space. |
+
+Call `ui.assert_no_flaws()` to check one state in the middle of a test, or `ui.flaws()` to read the list. Call `.unaudited()` on a fixture that breaks a rule on purpose. In app code, `.allow_flaw(FlawKind::Overflow, "reason")` opts a node and its children out of one rule.
+
+```rust,no_run
+# use sigil::prelude::*;
+# use sigil_kittest::Harness;
+let mut ui = Harness::new(|| row().child(button("Save")).child(button("Cancel"))).pixels(320, 80);
+ui.assert_no_flaws();
+```
+
 ## Every sequence
 
 `Harness::explore` runs every sequence of user steps up to a depth, shortest first, each on a fresh app. Each step drives the app and applies the same change to a small model of what the app should do. After each step, a check compares the app with the model. A failure names the shortest sequence that breaks it. `Harness::walk` runs one long sequence picked from a seed, and the seed replays it.

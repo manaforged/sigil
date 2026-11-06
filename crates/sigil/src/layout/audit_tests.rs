@@ -3,10 +3,11 @@ use crate::kernel::{Cx, NodeBuilder, NodeId, container};
 use crate::layout::Space;
 use crate::layout::{LayoutEngine, LayoutStyle};
 use crate::reactive::Owner;
+use crate::style::Theme;
 use crate::widgets::Orientation;
 use crate::widgets::Widget;
 
-use super::{Misalignment, Tolerance, misalignments};
+use super::{Flaw, Tolerance, flaws};
 
 fn cell(width: f32) -> NodeBuilder {
     container().layout(LayoutStyle::block().fixed_size(width, 2.0))
@@ -34,11 +35,11 @@ fn stack(rows: Vec<NodeBuilder>) -> NodeBuilder {
     )
 }
 
-fn found(name: &'static str, tree: NodeBuilder) -> Vec<Misalignment> {
+fn found(name: &'static str, tree: NodeBuilder) -> Vec<Flaw> {
     found_at(name, tree, Tolerance::points())
 }
 
-fn found_at(name: &'static str, tree: NodeBuilder, tolerance: Tolerance) -> Vec<Misalignment> {
+fn found_at(name: &'static str, tree: NodeBuilder, tolerance: Tolerance) -> Vec<Flaw> {
     Owner::scope(name, || {
         let mut cx = Cx::new_root();
         let root: NodeId = cx.add(tree);
@@ -47,7 +48,7 @@ fn found_at(name: &'static str, tree: NodeBuilder, tolerance: Tolerance) -> Vec<
         engine
             .compute(&mut cx, root, Size::fixed(200.0, 100.0))
             .expect("layout");
-        misalignments(&cx, &engine, root, tolerance)
+        flaws(&cx, &engine, (root, &Theme::default()), tolerance)
     })
 }
 
@@ -64,8 +65,8 @@ fn ragged_middle_column_is_reported() {
     let columns: Vec<usize> = found
         .iter()
         .filter_map(|item| match item {
-            Misalignment::Column { column, .. } => Some(*column),
-            Misalignment::Inset { .. } => None,
+            Flaw::Column { column, .. } => Some(*column),
+            _ => None,
         })
         .collect();
     assert_eq!(columns, vec![1, 2], "{found:?}");
@@ -115,7 +116,7 @@ fn near_miss_inset_is_reported_and_wide_one_is_not() {
     assert!(
         matches!(
             near.as_slice(),
-            [Misalignment::Inset { axis: Orientation::Horizontal, start, end, .. }]
+            [Flaw::Inset { axis: Orientation::Horizontal, start, end, .. }]
                 if (*start - 4.0).abs() < f32::EPSILON && (*end - 2.0).abs() < f32::EPSILON
         ),
         "{near:?}"
@@ -137,7 +138,7 @@ fn a_nested_near_miss_inset_is_measured_from_its_own_parent() {
     assert!(
         near.iter().any(|item| matches!(
             item,
-            Misalignment::Inset { axis: Orientation::Horizontal, start, end, .. }
+            Flaw::Inset { axis: Orientation::Horizontal, start, end, .. }
                 if (*start - 4.0).abs() < f32::EPSILON && (*end - 2.0).abs() < f32::EPSILON
         )),
         "{near:?}"
@@ -151,8 +152,8 @@ fn a_header_row_does_not_hide_ragged_rows_below_it() {
     let columns: Vec<usize> = found("align-header", stack(rows))
         .iter()
         .filter_map(|item| match item {
-            Misalignment::Column { column, .. } => Some(*column),
-            Misalignment::Inset { .. } => None,
+            Flaw::Column { column, .. } => Some(*column),
+            _ => None,
         })
         .collect();
     assert_eq!(columns, vec![1, 2]);
@@ -214,7 +215,7 @@ fn a_vertical_near_miss_is_measured_from_a_parent_below_the_top() {
     assert!(
         matches!(
             near.as_slice(),
-            [Misalignment::Inset { axis: Orientation::Vertical, start, end, .. }]
+            [Flaw::Inset { axis: Orientation::Vertical, start, end, .. }]
                 if (*start - 4.0).abs() < f32::EPSILON && (*end - 2.0).abs() < f32::EPSILON
         ),
         "{near:?}"
@@ -232,7 +233,7 @@ fn a_cell_host_reports_insets_up_to_three_cells_apart() {
     assert!(
         matches!(
             near.as_slice(),
-            [Misalignment::Inset {
+            [Flaw::Inset {
                 axis: Orientation::Horizontal,
                 ..
             }]
@@ -285,7 +286,7 @@ proptest::proptest! {
         proptest::prop_assert!(
             caught.iter().any(|item| matches!(
                 item,
-                Misalignment::Column { column: next, .. } if *next == column + 1
+                Flaw::Column { column: next, .. } if *next == column + 1
             )),
             "{caught:?}"
         );
@@ -297,7 +298,7 @@ proptest::proptest! {
         proptest::prop_assert_eq!(found("align-pad", inset(pad, pad)), Vec::new());
         let near = found("align-pad", inset(pad + f32::from(delta), pad));
         proptest::prop_assert!(
-            matches!(near.as_slice(), [Misalignment::Inset { axis: Orientation::Horizontal, .. }]),
+            matches!(near.as_slice(), [Flaw::Inset { axis: Orientation::Horizontal, .. }]),
             "{near:?}"
         );
     }

@@ -71,7 +71,7 @@ impl Metrics {
     #[must_use]
     pub fn control_height(self, size: ControlSize) -> f32 {
         self.cell.unwrap_or(match size {
-            ControlSize::Compact => space(5) + 2.0,
+            ControlSize::Compact => space(6),
             ControlSize::Default => space(7),
             ControlSize::Wide | ControlSize::Grow => space(9),
         })

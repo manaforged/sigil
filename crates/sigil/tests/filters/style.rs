@@ -212,7 +212,10 @@ fn turning_a_parent_shadow_off_redraws_the_cached_child_text() {
                         .text_color(WHITE),
                 )
         };
-        let mut ui = Harness::new(app).pixels(SIDE, SIDE).scale(SCALE);
+        let mut ui = Harness::new(app)
+            .unaudited()
+            .pixels(SIDE, SIDE)
+            .scale(SCALE);
         let on = red_pixels(&gpu_frame(&mut ui));
         off.set(true);
         ui.settle();

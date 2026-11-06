@@ -158,7 +158,7 @@ fn ink_box(frame: &image::RgbaImage) -> [f32; 4] {
 
 #[test]
 fn a_card_with_an_edge_behind_the_viewer_reports_the_bounds_it_draws() {
-    let mut ui = Harness::new(near_button).pixels(300, 300);
+    let mut ui = Harness::new(near_button).unaudited().pixels(300, 300);
     let drawn = ink_box(&frame_of(&mut ui));
     let bounds = ui
         .get_by_role(Role::Button, "near")

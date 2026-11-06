@@ -70,6 +70,7 @@ fn assert_placed(frame: &image::RgbaImage, scale: f32, what: &str) {
 fn a_resized_path_in_a_padded_offset_box_lands_in_the_box_on_pixels() {
     for scale in [1.0, 2.0] {
         let mut ui = Harness::new(square_in_padded_box)
+            .unaudited()
             .pixels(VIEW, VIEW)
             .scale(scale);
         assert_placed(&frame_of(&mut ui), scale, &format!("pixels {scale}x"));
@@ -79,7 +80,9 @@ fn a_resized_path_in_a_padded_offset_box_lands_in_the_box_on_pixels() {
 #[test]
 fn a_resized_path_in_a_padded_offset_box_lands_in_the_box_on_the_gpu() {
     for scale in [1.0, 2.0] {
-        let mut ui = Harness::new(square_in_padded_box).gpu(VIEW, VIEW, scale);
+        let mut ui = Harness::new(square_in_padded_box)
+            .unaudited()
+            .gpu(VIEW, VIEW, scale);
         assert_placed(&frame_of(&mut ui), scale, &format!("gpu {scale}x"));
     }
 }
@@ -87,7 +90,9 @@ fn a_resized_path_in_a_padded_offset_box_lands_in_the_box_on_the_gpu() {
 #[test]
 fn a_resized_path_in_a_padded_offset_box_lands_in_the_box_on_the_cpu() {
     for scale in [1.0, 2.0] {
-        let mut ui = Harness::new(square_in_padded_box).pixels(VIEW, VIEW);
+        let mut ui = Harness::new(square_in_padded_box)
+            .unaudited()
+            .pixels(VIEW, VIEW);
         let viewport = (VIEW as f32, VIEW as f32);
         let scene = ui.host().emit(viewport);
         let side = (VIEW as f32 * scale) as u32;

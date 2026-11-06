@@ -2,12 +2,14 @@
 #[path = "layout/lib_tests.rs"]
 mod tests;
 
-#[cfg(any(
-    test,
-    feature = "kittest",
-    all(feature = "inspect", any(feature = "desktop", feature = "terminal"))
-))]
-pub mod align;
+#[cfg_attr(
+    not(debug_assertions),
+    allow(
+        dead_code,
+        reason = "a release build only reads the audit through inspect or kittest"
+    )
+)]
+pub mod audit;
 mod block;
 mod block_collapse;
 mod block_size;

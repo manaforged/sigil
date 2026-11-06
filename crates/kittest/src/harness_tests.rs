@@ -212,12 +212,12 @@ fn subagent_rows(titles: [f32; 3]) -> impl IntoNode {
 fn assert_aligned_fails_on_ragged_rows() {
     Harness::new(|| subagent_rows([352.0, 416.0, 464.0]))
         .size(80, 6)
-        .assert_aligned();
+        .assert_no_flaws();
 }
 
 #[test]
 fn assert_aligned_passes_on_fixed_columns() {
     Harness::new(|| subagent_rows([464.0; 3]))
         .size(80, 6)
-        .assert_aligned();
+        .assert_no_flaws();
 }
