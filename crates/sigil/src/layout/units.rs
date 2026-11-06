@@ -120,6 +120,7 @@ fn col() -> f32 {
     })
 }
 
+#[cfg(feature = "pty")]
 pub(crate) fn mono_cell() -> (f32, f32) {
     let style = TextStyle {
         font_family: "mono".to_string(),
