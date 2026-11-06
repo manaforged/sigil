@@ -70,3 +70,17 @@ pub(crate) fn ink(image: &RgbaImage) -> Ink {
         rows: rows.len() as u32,
     }
 }
+
+pub(crate) fn shadow_rows(image: &RgbaImage) -> u32 {
+    let page = *image.get_pixel(WIDTH - 1, HEIGHT - 1);
+    let middle = WIDTH / 2;
+    let solid = (0..HEIGHT).rev().find(|y| delta(image.get_pixel(middle, *y), &page) > 24);
+    let Some(solid) = solid else {
+        return (0..HEIGHT)
+            .filter(|y| delta(image.get_pixel(middle, *y), image.get_pixel(0, 0)) > 0)
+            .count() as u32;
+    };
+    (solid + 1..HEIGHT)
+        .filter(|y| delta(image.get_pixel(middle, *y), &page) > 0)
+        .count() as u32
+}

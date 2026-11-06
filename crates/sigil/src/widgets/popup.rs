@@ -5,7 +5,7 @@ use crate::kernel::{NodeBuilder, Role, TopLayer, container};
 use crate::layout::LayoutStyle;
 use crate::layout::{Popup, PopupSide};
 use crate::style::{
-    BORDER_WIDTH, ControlSize, Metrics, OVERLAY_SHADOW, Radius, StyleAtom, Token, space,
+    BORDER_WIDTH, ControlSize, Layer, Metrics, StyleAtom, Token, space,
 };
 use crate::widgets::Widget;
 
@@ -19,13 +19,7 @@ pub(crate) const PANEL_INSET: f32 = space(1) + 1.0;
 pub(crate) const PANEL_WIDTH: f32 = space(48);
 pub(crate) const POPUP_GAP: f32 = space(1);
 
-pub(crate) static SURFACE: &[StyleAtom] = &[
-    Token::Overlay.bg(),
-    StyleAtom::BorderWidth(BORDER_WIDTH),
-    Token::OverlayBorder.border(),
-    StyleAtom::Shadow(OVERLAY_SHADOW),
-    Radius::Md.atom(),
-];
+pub(crate) static SURFACE: &[StyleAtom] = Layer::Overlay.atoms();
 
 static SEPARATOR_LINE: &[StyleAtom] = &[Token::OverlayBorder.bg()];
 

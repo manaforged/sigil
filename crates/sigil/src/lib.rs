@@ -230,8 +230,8 @@ pub mod prelude {
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::run;
     pub use crate::style::{
-        ColorAtom, ControlSize, Elevation, FontFamily, Paint, Radius, Rgba8, StateVariants, Theme,
-        Token, Tone,
+        ColorAtom, ControlSize, Elevation, FontFamily, Layer, Paint, Radius, Rgba8, StateVariants,
+        Theme, Token, Tone,
     };
     pub use crate::tasks::{SignalWriter, Status, Task, signal_writer, spawn, task};
     pub use crate::widgets::{

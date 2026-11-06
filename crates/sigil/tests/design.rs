@@ -7,7 +7,7 @@
 #[path = "design_support/mod.rs"]
 mod design_support;
 
-use design_support::{Ink, frame, ink, page};
+use design_support::{Ink, frame, ink, page, shadow_rows};
 use sigil::prelude::*;
 use sigil_kittest::Harness;
 
@@ -19,6 +19,10 @@ fn field_of(value: &str, font: f32, height: Option<f32>) -> impl IntoNode + use<
         None => field,
     };
     page(field)
+}
+
+fn blank() -> NodeBuilder {
+    container().layout(LayoutStyle::block().fill_width().height(40.0))
 }
 
 fn plain_rows(value: &'static str, font: f32) -> u32 {
@@ -94,4 +98,43 @@ fn an_empty_focused_field_shows_a_caret() {
         page(text_field(signal(String::new())).autofocus())
     }));
     assert!(empty.rows >= 10, "caret shows {} rows", empty.rows);
+}
+
+#[test]
+fn a_card_casts_a_shadow_on_the_page() {
+    let flat = frame(|| page(blank()));
+    let raised = frame(|| page(card(text("Hg"))));
+    assert_eq!(shadow_rows(&flat), 0, "the bare page has no shadow");
+    assert!(shadow_rows(&raised) > 0, "a card has no shadow");
+}
+
+#[test]
+fn a_raised_layer_casts_a_shadow_and_a_page_layer_does_not() {
+    let raised = frame(|| page(blank().layer(Layer::Raised)));
+    let flat = frame(|| page(blank().layer(Layer::Page)));
+    assert!(shadow_rows(&raised) > 0);
+    assert_eq!(shadow_rows(&flat), 0);
+}
+
+#[test]
+fn each_panel_elevation_casts_a_deeper_shadow() {
+    let depth = |tier| {
+        shadow_rows(&frame(move || {
+            page(panel().elevation(tier).child(text("Hg")))
+        }))
+    };
+    let (flat, low, mid, high) = (depth(0), depth(1), depth(2), depth(3));
+    assert_eq!(flat, 0);
+    assert!(
+        low > 0 && low < mid && mid < high,
+        "shadow rows by tier: {low}, {mid}, {high}"
+    );
+}
+
+#[test]
+fn a_card_on_the_terminal_keeps_its_border_and_draws_no_shadow() {
+    let mut ui = Harness::new(|| card(text("Hg")));
+    let screen = ui.text();
+    assert!(screen.contains('╭') && screen.contains('╰'), "{screen}");
+    assert!(!screen.contains(['░', '▒', '▓']), "{screen}");
 }

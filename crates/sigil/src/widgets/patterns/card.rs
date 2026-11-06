@@ -3,25 +3,21 @@ use std::rc::Rc;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal};
-use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, StyleAtom, Token, space};
 use crate::widgets::Widget;
 
 use super::super::shared::Activate;
 use super::ROW_SELECTED;
 use super::activatable::activatable;
 
-static CARD: &[StyleAtom] = &[
-    Radius::Md.atom(),
-    Token::Surface.bg(),
-    StyleAtom::BorderWidth(BORDER_WIDTH),
-    Token::Border.border(),
-];
+static CARD: &[StyleAtom] = Layer::Raised.atoms();
 
 static CARD_SELECTED: &[StyleAtom] = &[
     Radius::Md.atom(),
     ROW_SELECTED.bg(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::Accent8.border(),
+    StyleAtom::Shadow(Elevation::Sm),
 ];
 
 /// Builds a card.

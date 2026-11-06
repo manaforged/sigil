@@ -1,4 +1,4 @@
-use crate::style::{ControlSize, Elevation, SPACING_STEP, StyleAtom};
+use crate::style::{ControlSize, Elevation, SPACING_STEP, StyleAtom, Token};
 
 /// The default border width.
 pub const BORDER_WIDTH: i16 = 1;
@@ -135,6 +135,52 @@ impl Metrics {
     #[must_use]
     pub fn overlay_padding(self) -> f32 {
         self.cell.unwrap_or(space(1))
+    }
+}
+
+/// A place in the visual stack: its fill, border, corners, and shadow, set together.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Layer {
+    /// The window background.
+    Page,
+    /// A recessed well, such as a code block or a sidebar.
+    Sunken,
+    /// A card or panel above the page.
+    Raised,
+    /// A menu, popup, or dialog above everything else.
+    Overlay,
+}
+
+impl Layer {
+    #[must_use]
+    pub(crate) const fn atoms(self) -> &'static [StyleAtom] {
+        match self {
+            Self::Page => const { &[Token::Surface.bg()] },
+            Self::Sunken => const { &[Token::SurfaceSubtle.bg(), Radius::Md.atom()] },
+            Self::Raised => {
+                const {
+                    &[
+                        Token::Surface.bg(),
+                        StyleAtom::BorderWidth(BORDER_WIDTH),
+                        Token::Border.border(),
+                        StyleAtom::Shadow(Elevation::Sm),
+                        Radius::Md.atom(),
+                    ]
+                }
+            }
+            Self::Overlay => {
+                const {
+                    &[
+                        Token::Overlay.bg(),
+                        StyleAtom::BorderWidth(BORDER_WIDTH),
+                        Token::OverlayBorder.border(),
+                        StyleAtom::Shadow(OVERLAY_SHADOW),
+                        Radius::Md.atom(),
+                    ]
+                }
+            }
+        }
     }
 }
 

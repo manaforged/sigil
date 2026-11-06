@@ -98,7 +98,7 @@ pub(crate) use merge::merge_warning_count_for_component;
 #[cfg(any(test, feature = "kittest"))]
 #[doc(hidden)]
 pub use merge::unknown_class_warning_count;
-pub use metrics::{BORDER_WIDTH, Metrics, Radius, space};
+pub use metrics::{BORDER_WIDTH, Layer, Metrics, Radius, space};
 pub(crate) use metrics::{DISABLED_OPACITY, ICON_SIZE, OVERLAY_SHADOW};
 pub(crate) use overlay::StyleOverlay;
 pub use paint::Paint;

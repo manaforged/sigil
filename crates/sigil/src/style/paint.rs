@@ -9,8 +9,8 @@ use crate::style::atom::{
 };
 use crate::style::engine::encode_px;
 use crate::style::{
-    ClipShape, ColorAtom, Conic, Elevation, FontFamily, GradientAxis, MaskImage, MaskSize, Radial,
-    Radius, StyleAtom, TextDecoration,
+    ClipShape, ColorAtom, Conic, Elevation, FontFamily, GradientAxis, Layer, MaskImage, MaskSize,
+    Radial, Radius, StyleAtom, TextDecoration,
 };
 
 mod filters;
@@ -208,6 +208,15 @@ pub trait Paint: PaintTarget {
     #[must_use]
     fn mask_repeat(self, repeat: bool) -> Self {
         mask(self, MaskPart::Repeat(repeat))
+    }
+
+    /// Sets the fill, border, corners, and shadow of a place in the visual stack.
+    #[must_use]
+    fn layer(self, layer: Layer) -> Self {
+        layer
+            .atoms()
+            .iter()
+            .fold(self, |target, atom| push(target, *atom))
     }
 
     /// Sets the shadow.

@@ -1,7 +1,7 @@
 use super::layout_ext::LayoutOverrides;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::LayoutStyle;
-use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, Style, StyleAtom, Token, space};
 use crate::widgets::Widget;
 
 const PANEL_MIN_HEIGHT: f32 = space(12);
@@ -110,17 +110,20 @@ impl Default for PanelBuilder {
 
 builder_impls!([] PanelBuilder: paint(style_accumulator), widget, node);
 
+const fn raised(shadow: Elevation) -> [StyleAtom; 4] {
+    [
+        Token::SurfaceHover.bg(),
+        StyleAtom::BorderWidth(BORDER_WIDTH),
+        Token::Border.border(),
+        StyleAtom::Shadow(shadow),
+    ]
+}
+
 const fn surface_atoms(elevation: u32) -> &'static [StyleAtom] {
     match elevation {
-        0 => const { &[Token::Surface.bg()] },
-        _ => {
-            const {
-                &[
-                    Token::SurfaceHover.bg(),
-                    StyleAtom::BorderWidth(BORDER_WIDTH),
-                    Token::Border.border(),
-                ]
-            }
-        }
+        0 => Layer::Page.atoms(),
+        1 => const { &raised(Elevation::Sm) },
+        2 => const { &raised(Elevation::Base) },
+        _ => const { &raised(Elevation::Md) },
     }
 }
