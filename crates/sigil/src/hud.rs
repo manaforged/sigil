@@ -71,6 +71,9 @@ pub(crate) fn compact(frame: &Frame) -> String {
         let short = name.rsplitn(3, '/').take(2).collect::<Vec<_>>();
         let _ = write!(line, " {}/{}={:.1}", short.get(1).unwrap_or(&""), short[0], ms(site.self_ns));
     }
+    if frame.overhead_ns > 0 {
+        let _ = write!(line, " prof={:.2}", ms(frame.overhead_ns));
+    }
     let nodes = frame.counter(crate::profile::Counter::TuiNodes)
         + frame.counter(crate::profile::Counter::SceneCmds);
     if nodes > 0 {

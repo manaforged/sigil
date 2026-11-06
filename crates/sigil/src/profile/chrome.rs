@@ -55,6 +55,7 @@ fn frame_value(frame: &Frame) -> Value {
     json!({
         "index": frame.index, "cause": frame.cause.name(),
         "wall_ns": frame.total_ns(),
+        "zones": frame.zones, "profiler_ns": frame.overhead_ns,
         "phases_ns": named(&frame.phases, Phase::name),
         "counts": named(&frame.counts, Counter::name),
         "gpu_passes_ns": frame.gpu_passes,

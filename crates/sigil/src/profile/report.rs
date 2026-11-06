@@ -33,6 +33,11 @@ pub(crate) fn summary() -> String {
         "frame",
         frames.iter().map(|f| ns_ms(f.total_ns())),
     );
+    write_row(
+        &mut out,
+        "profiler (est.)",
+        frames.iter().map(|f| ns_ms(f.overhead_ns)),
+    );
     write_interact_rows(&mut out, &frames);
     let counters = distinct(frames.iter().flat_map(|frame| keys(&frame.counts)));
     if !counters.is_empty() {
@@ -53,6 +58,14 @@ pub(crate) fn summary() -> String {
         .iter()
         .filter(|frame| frame.work_ns() > budget)
         .count();
+    let costs = store::costs();
+    let _ = writeln!(
+        out,
+        "profiler: {} ns per span, {} ns per site run (calibrated), zones p50 {}",
+        costs.span_ns,
+        costs.site_ns,
+        median(frames.iter().map(|f| u64::from(f.zones)))
+    );
     let _ = write!(out, "{} frames", frames.len());
     if over > 0 {
         let _ = write!(out, ", {over} over {:.2}ms", ns_ms(budget));
@@ -160,4 +173,10 @@ fn pct<T: Copy + Default>(sorted: &[T], p: usize) -> T {
         .get(sorted.len().saturating_sub(1) * p / 100)
         .copied()
         .unwrap_or_default()
+}
+
+fn median(values: impl Iterator<Item = u64>) -> u64 {
+    let mut values: Vec<u64> = values.collect();
+    values.sort_unstable();
+    values.get(values.len() / 2).copied().unwrap_or(0)
 }
