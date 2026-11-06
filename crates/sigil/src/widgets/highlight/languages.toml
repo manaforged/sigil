@@ -225,3 +225,274 @@ markers.keyword = [
     "- [ ] ", "- [x] ", "- ", "* ", "+ ", "1. ", "2. ", "3. ", "4. ", "5. ", "6. ", "7. ",
     "8. ", "9. ",
 ]
+
+[lang.java]
+aliases = ["kotlin", "kt", "kts", "scala", "groovy", "gradle"]
+line_comments = ["//"]
+block_comment = ["/*", "*/"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "abstract", "break", "case", "catch", "class", "continue", "default", "do", "else", "enum",
+    "extends", "final", "finally", "for", "if", "implements", "import", "instanceof",
+    "interface", "new", "package", "private", "protected", "public", "return", "static",
+    "super", "switch", "synchronized", "this", "throw", "throws", "try", "var", "void",
+    "while", "fun", "val", "when", "object", "companion", "data", "sealed", "override",
+    "suspend", "def", "trait", "match", "with", "yield", "lazy", "implicit", "record",
+]
+words.literal = ["true", "false", "null", "Unit", "None", "Nil"]
+words.type = [
+    "int", "long", "short", "byte", "char", "boolean", "float", "double", "String", "Int",
+    "Long", "Boolean", "Double", "Float", "List", "Map", "Set", "Array", "Any", "Object",
+]
+
+[lang.csharp]
+aliases = ["cs", "c#", "fsharp", "fs"]
+line_comments = ["//"]
+block_comment = ["/*", "*/"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "abstract", "as", "async", "await", "base", "break", "case", "catch", "class", "const",
+    "continue", "default", "delegate", "do", "else", "enum", "event", "explicit", "extern",
+    "finally", "fixed", "for", "foreach", "get", "if", "implicit", "in", "interface",
+    "internal", "is", "lock", "namespace", "new", "operator", "out", "override", "params",
+    "partial", "private", "protected", "public", "readonly", "record", "ref", "return",
+    "sealed", "set", "static", "struct", "switch", "this", "throw", "try", "typeof", "using",
+    "var", "virtual", "void", "when", "where", "while", "yield", "let", "match", "with",
+]
+words.literal = ["true", "false", "null"]
+words.type = [
+    "int", "long", "short", "byte", "char", "bool", "float", "double", "decimal", "string",
+    "object", "dynamic", "List", "Dictionary", "Task", "IEnumerable",
+]
+
+[lang.swift]
+line_comments = ["//"]
+block_comment = ["/*", "*/"]
+nested_block_comments = true
+strings = ["\""]
+numbers = true
+words.keyword = [
+    "actor", "as", "async", "await", "break", "case", "catch", "class", "continue", "default",
+    "defer", "do", "else", "enum", "extension", "fileprivate", "for", "func", "guard", "if",
+    "import", "in", "init", "inout", "internal", "is", "let", "mutating", "open", "private",
+    "protocol", "public", "repeat", "return", "self", "static", "struct", "switch", "throw",
+    "throws", "try", "typealias", "var", "where", "while", "some", "any",
+]
+words.literal = ["true", "false", "nil"]
+words.type = [
+    "Int", "Double", "Float", "Bool", "String", "Character", "Array", "Dictionary", "Set",
+    "Optional", "Void", "Any",
+]
+
+[lang.ruby]
+aliases = ["rb", "gemfile", "rake"]
+line_comments = ["#"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "alias", "and", "begin", "break", "case", "class", "def", "do", "else",
+    "elsif", "end", "ensure", "for", "if", "in", "module", "next", "not", "or", "redo",
+    "rescue", "retry", "return", "self", "super", "then", "unless", "until", "when", "while",
+    "yield", "require", "attr_accessor", "attr_reader", "puts",
+]
+words.literal = ["true", "false", "nil"]
+
+[lang.php]
+line_comments = ["//", "#"]
+block_comment = ["/*", "*/"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "abstract", "as", "break", "case", "catch", "class", "const", "continue", "declare",
+    "default", "do", "echo", "else", "elseif", "enum", "extends", "final", "finally", "fn",
+    "for", "foreach", "function", "global", "if", "implements", "include", "interface",
+    "match", "namespace", "new", "private", "protected", "public", "readonly", "require",
+    "return", "static", "switch", "throw", "trait", "try", "use", "while", "yield",
+]
+words.literal = ["true", "false", "null", "TRUE", "FALSE", "NULL"]
+
+[lang.lua]
+line_comments = ["--"]
+block_comment = ["--[[", "]]"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "and", "break", "do", "else", "elseif", "end", "for", "function", "goto", "if", "in",
+    "local", "not", "or", "repeat", "return", "then", "until", "while",
+]
+words.literal = ["true", "false", "nil"]
+
+[lang.zig]
+line_comments = ["//"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "align", "and", "break", "catch", "comptime", "const", "continue", "defer", "else", "enum",
+    "errdefer", "error", "export", "extern", "fn", "for", "if", "inline", "noreturn", "or",
+    "orelse", "packed", "pub", "return", "struct", "switch", "test", "try", "union", "unreachable",
+    "usingnamespace", "var", "volatile", "while",
+]
+words.literal = ["true", "false", "null", "undefined"]
+words.type = [
+    "u8", "u16", "u32", "u64", "usize", "i8", "i16", "i32", "i64", "isize", "f32", "f64",
+    "bool", "void", "anytype", "type", "anyerror",
+]
+
+[lang.haskell]
+aliases = ["hs", "elm", "purescript", "purs"]
+line_comments = ["--"]
+block_comment = ["{-", "-}"]
+nested_block_comments = true
+strings = ["\""]
+numbers = true
+words.keyword = [
+    "case", "class", "data", "default", "deriving", "do", "else", "if", "import", "in",
+    "infix", "infixl", "infixr", "instance", "let", "module", "newtype", "of", "then", "type",
+    "where", "forall", "exposing", "port",
+]
+words.literal = ["True", "False", "Nothing", "Just"]
+words.type = ["Int", "Integer", "Double", "Float", "Bool", "Char", "String", "IO", "Maybe", "Either"]
+
+[lang.ocaml]
+aliases = ["ml", "mli", "reason"]
+block_comment = ["(*", "*)"]
+nested_block_comments = true
+strings = ["\""]
+numbers = true
+words.keyword = [
+    "and", "as", "begin", "class", "do", "done", "else", "end", "exception", "external", "for",
+    "fun", "function", "functor", "if", "in", "include", "let", "match", "method", "module",
+    "mutable", "of", "open", "rec", "sig", "struct", "then", "to", "try", "type", "val",
+    "when", "while", "with",
+]
+words.literal = ["true", "false", "None", "Some"]
+words.type = ["int", "float", "bool", "string", "char", "list", "option", "unit", "array"]
+
+[lang.elixir]
+aliases = ["ex", "exs", "erlang", "erl"]
+line_comments = ["#", "%"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "after", "alias", "case", "catch", "cond", "def", "defmodule", "defp", "defstruct", "do",
+    "else", "end", "fn", "for", "if", "import", "in", "quote", "raise", "receive", "require",
+    "rescue", "try", "unless", "unquote", "use", "when", "with", "module", "export", "of",
+]
+words.literal = ["true", "false", "nil"]
+
+[lang.r]
+aliases = ["rscript", "julia", "jl"]
+line_comments = ["#"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "if", "else", "for", "while", "repeat", "function", "return", "break", "next", "in",
+    "library", "require", "end", "module", "using", "import", "export", "struct", "mutable",
+    "begin", "let", "do", "local", "global", "const", "macro", "elseif",
+]
+words.literal = ["TRUE", "FALSE", "NULL", "NA", "Inf", "NaN", "true", "false", "nothing"]
+
+[lang.dart]
+line_comments = ["//"]
+block_comment = ["/*", "*/"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "abstract", "as", "async", "await", "break", "case", "catch", "class", "const", "continue",
+    "default", "do", "else", "enum", "extends", "factory", "final", "finally", "for", "if",
+    "implements", "import", "in", "is", "late", "library", "mixin", "new", "required",
+    "return", "static", "super", "switch", "this", "throw", "try", "var", "void", "while",
+    "with", "yield",
+]
+words.literal = ["true", "false", "null"]
+words.type = ["int", "double", "num", "bool", "String", "List", "Map", "Set", "Future", "Stream", "Widget"]
+
+[lang.powershell]
+aliases = ["ps1", "pwsh", "ps", "bat", "cmd"]
+line_comments = ["#", "REM ", "::"]
+block_comment = ["<#", "#>"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "begin", "break", "catch", "class", "continue", "do", "else", "elseif", "end", "exit",
+    "filter", "finally", "for", "foreach", "function", "if", "in", "param", "process",
+    "return", "switch", "throw", "trap", "try", "until", "while", "echo", "set", "goto", "call",
+]
+
+[lang.dockerfile]
+aliases = ["docker", "containerfile"]
+line_comments = ["#"]
+strings = ["\"", "'"]
+words.keyword = [
+    "FROM", "RUN", "CMD", "LABEL", "EXPOSE", "ENV", "ADD", "COPY", "ENTRYPOINT", "VOLUME",
+    "USER", "WORKDIR", "ARG", "ONBUILD", "STOPSIGNAL", "HEALTHCHECK", "SHELL", "AS",
+]
+
+[lang.makefile]
+aliases = ["make", "mk", "just", "justfile"]
+line_comments = ["#"]
+strings = ["\"", "'"]
+words.keyword = [
+    "ifeq", "ifneq", "ifdef", "ifndef", "else", "endif", "include", "define", "endef",
+    "export", "override", "set", "import", "mod",
+]
+words.meta = [".PHONY"]
+
+[lang.nix]
+line_comments = ["#"]
+block_comment = ["/*", "*/"]
+strings = ["\""]
+numbers = true
+words.keyword = ["assert", "else", "if", "in", "inherit", "let", "rec", "then", "with", "import"]
+words.literal = ["true", "false", "null"]
+
+[lang.hcl]
+aliases = ["terraform", "tf", "tfvars"]
+line_comments = ["#", "//"]
+block_comment = ["/*", "*/"]
+strings = ["\""]
+numbers = true
+words.keyword = [
+    "resource", "data", "variable", "output", "locals", "module", "provider", "terraform",
+    "for", "in", "if", "for_each", "count", "depends_on", "lifecycle", "dynamic",
+]
+words.literal = ["true", "false", "null"]
+words.type = ["string", "number", "bool", "list", "map", "set", "object", "tuple", "any"]
+
+[lang.protobuf]
+aliases = ["proto", "graphql", "gql", "thrift"]
+line_comments = ["//", "#"]
+block_comment = ["/*", "*/"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "syntax", "package", "import", "option", "message", "enum", "service", "rpc", "returns",
+    "repeated", "optional", "required", "oneof", "map", "reserved", "extend", "stream",
+    "type", "query", "mutation", "subscription", "fragment", "on", "schema", "input",
+    "interface", "union", "scalar", "directive", "implements", "struct", "namespace",
+]
+words.literal = ["true", "false", "null"]
+words.type = [
+    "int32", "int64", "uint32", "uint64", "sint32", "sint64", "fixed32", "fixed64", "bool",
+    "string", "bytes", "double", "float", "ID", "Int", "Float", "String", "Boolean",
+]
+
+[lang.ini]
+aliases = ["cfg", "conf", "properties", "env", "dotenv", "editorconfig", "gitconfig"]
+line_comments = ["#", ";"]
+strings = ["\"", "'"]
+numbers = true
+prefixes.meta = ["["]
+words.literal = ["true", "false", "yes", "no", "on", "off"]
+
+[lang.perl]
+aliases = ["pl", "pm"]
+line_comments = ["#"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "my", "our", "local", "sub", "if", "elsif", "else", "unless", "while", "until", "for",
+    "foreach", "last", "next", "redo", "return", "use", "require", "package", "print", "die",
+]
