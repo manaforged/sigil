@@ -317,6 +317,7 @@ First public release.
 - `CommandScene::glyph_runs()` returns the text runs of a scene in paint order.
 - `CommandScene::find_text` is public without feature `kittest`.
 - `Icon::Columns2`, the Lucide `columns-2` icon, for a split-pane control.
+- `Session::command` starts a `std::process::Command` in a pseudo-terminal with its arguments, environment and working directory.
 - `View` and `view!`: a widget tree in a `.sigil` file that the running app reloads on save, with no rebuild. A mistake keeps the previous screen and shows the line and column.
 - `Space`, `TextRole`, and `Layer`: named steps for spacing, type, and depth. `gap`, `padding`, and `margin` setters no longer take a bare number, and `font_size` takes a reason.
 - A `Harness` runs the design rules when it is dropped. See `Flaw`, `Issue`, `Harness::assert_no_flaws`, `Harness::unaudited`, and `Widget::allow_flaw`.

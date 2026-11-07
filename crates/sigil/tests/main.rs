@@ -321,6 +321,8 @@ mod terminal_marks;
 #[cfg(all(feature = "terminal", feature = "pty"))]
 mod terminal_probe;
 #[cfg(feature = "pty")]
+mod terminal_command;
+#[cfg(feature = "pty")]
 mod terminal_session;
 mod text_clip;
 mod text_edit;

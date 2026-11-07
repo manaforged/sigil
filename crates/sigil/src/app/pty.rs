@@ -163,6 +163,19 @@ impl Session {
         Self::start(portable_pty::CommandBuilder::new_default_prog(), Some(dir))
     }
 
+    /// Starts `command` in a new pseudo-terminal with its program, arguments, environment and working directory.
+    pub fn command(command: &std::process::Command) -> AppResult<Self> {
+        let mut built = portable_pty::CommandBuilder::new(command.get_program());
+        built.args(command.get_args());
+        for (key, value) in command.get_envs() {
+            match value {
+                Some(value) => built.env(key, value),
+                None => built.env_remove(key),
+            }
+        }
+        Self::start(built, command.get_current_dir())
+    }
+
     fn start(
         mut command: portable_pty::CommandBuilder,
         dir: Option<&std::path::Path>,
