@@ -17,9 +17,17 @@ const COMPACT_LABEL_HEIGHT: f32 = 32.0;
 impl ButtonBuilder {
     #[cfg(feature = "scene")]
     fn leading_icon(&self, svg: std::sync::Arc<str>) -> crate::widgets::icon::IconBuilder {
+        let metrics = Metrics::current();
+        let px = if metrics.is_grid() {
+            metrics.icon_size()
+        } else if self.height < 30.0 {
+            14.0
+        } else {
+            16.0
+        };
         icon_svg(svg)
             .tone(self.resolved_tone())
-            .px(if self.height < 30.0 { 14.0_f32 } else { 16.0 }.min(self.height))
+            .px(px.min(self.height))
             .on_solid(self.resolved_fill() == ButtonFill::Solid)
     }
 

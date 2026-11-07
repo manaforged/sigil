@@ -106,13 +106,17 @@ fn field_style_channel(
 const MIN_WIDTH: f32 = 96.0;
 
 pub(super) fn field_layout(width: Option<f32>) -> LayoutStyle {
-    LayoutStyle::flex_row()
+    let metrics = Metrics::current();
+    let height = metrics.control_height(ControlSize::Default);
+    let layout = LayoutStyle::flex_row()
         .fill_width()
-        .min_size(
-            width.map_or(MIN_WIDTH, |_| 0.0),
-            Metrics::current().control_height(ControlSize::Default),
-        )
-        .align_items(AlignItems::Stretch)
+        .min_size(width.map_or(MIN_WIDTH, |_| 0.0), height)
+        .align_items(AlignItems::Stretch);
+    if metrics.is_grid() {
+        layout.height(height)
+    } else {
+        layout
+    }
 }
 
 fn field_inner_layout(inputs: &FieldInputs, adorn: &Adornments) -> LayoutStyle {

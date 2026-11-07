@@ -108,7 +108,7 @@ impl StatBuilder {
             body = body.child(caption_text(
                 change,
                 "text-xs tabular-nums",
-                tone.solid().text(),
+                tone.token(12).text(),
             ));
         }
         if let Some(caption) = self.caption {
