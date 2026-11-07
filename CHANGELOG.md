@@ -6,60 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Added
-
-- `View` and `view!`: a widget tree in a `.sigil` file that the running app reloads on save, with no rebuild. A mistake keeps the previous screen and shows the line and column.
-- `Space`, `TextRole`, and `Layer`: named steps for spacing, type, and depth. `gap`, `padding`, and `margin` setters no longer take a bare number, and `font_size` takes a reason.
-- A `Harness` runs the design rules when it is dropped. See `FlawKind`, `Harness::assert_no_flaws`, `Harness::unaudited`, and `Widget::allow_flaw`.
-- Keyframe animations: `Paint::animate(Keyframes)`, with `Keyframes` stops, per-stop easing, iterations, `reverse` and `alternate`, and the Tailwind `spin`, `ping`, `pulse` and `bounce` presets. `Property` names the animated value.
-- CSS-style transitions on `Paint`: `transition`, `transition_all`, `transition_colors`, `transition_opacity`, `transition_transform`, `duration`, `ease` and `delay`.
-- Vector paths draw on the GPU through `vello_gpu` and on the CPU through `vello_cpu` instead of a tiny-skia bitmap. `PathNode` gains `even_odd`, `cap(StrokeCap)`, `join(StrokeJoin)` and `dash`; `scene::StrokeCap` and `scene::StrokeJoin` are new.
-- Vega-Lite fences in a window render through the official vega 6.4.0 and vega-lite 6.5.0 running in an embedded QuickJS, with a 2 s deadline, a 256 MB heap cap and no network; the native mapping is the fallback and the terminal path. The figure is named by the spec title and described by its axis titles.
-- `ChartBuilder::horizontal()` lays bars along rows.
-- `Easing::CubicBezier`, `Easing::cubic_bezier` and the `Easing::IN`, `OUT` and `IN_OUT` curves.
-- Radial and conic background gradients: `Paint::bg_radial(Radial)` with `RadialExtent`, `Paint::bg_conic(Conic)`, `Paint::bg_linear(GradientAxis)`, the `from`, `via` and `to` stops with positions, and repeating gradients. `scene::Gradient` and `scene::GradientKind` carry linear, radial and conic paints.
-- `Paint::bg_clip_text` paints the background gradient through the glyphs; `Paint::bg_image` tiles an image behind the content.
-- `Paint::border_dashed`, `border_dotted` and `border_solid`; dashes follow rounded corners.
-- `Paint::clip_path(ClipShape)` clips a node, its background and its children to an inset, circle, ellipse or polygon, and pointer hits outside the shape miss.
-- Masks on `Paint`: `mask_image(MaskImage)` with linear, radial, conic and image masks, `mask_stops`, `mask_luminance`, `mask_size(MaskSize)`, `mask_position` and `mask_repeat`, and the Tailwind `mask-*` classes for them.
-- `Paint::mix_blend(BlendMode)` and the `mix-blend-*` classes.
-- Filters on `Paint`: `blur`, `brightness`, `contrast`, `grayscale`, `hue_rotate`, `invert`, `saturate`, `sepia`, `drop_shadow` and `text_shadow`, with the Tailwind `blur-*`, `brightness-*`, `contrast-*`, `grayscale`, `hue-rotate-*`, `invert`, `saturate-*`, `sepia`, `drop-shadow-*` and `text-shadow-*` classes.
-- 3D transforms on `Paint`: `perspective`, `perspective_origin`, `rotate_x`, `rotate_y`, `rotate_z`, `translate_z`, `backface_hidden` and `backface_visible`, with `Property::RotateX`, `RotateY` and `TranslateZ` for keyframes.
-- Keyframes and transitions animate filters, drop and text shadows, gradient stop colors and positions, mask stops and the 3D turns, depth and perspective. `Property` gains `RotateZ`, `Perspective`, `Blur`, `Brightness`, `Contrast`, `Grayscale`, `HueRotate`, `Invert`, `Saturate`, `Sepia`, `DropShadow`, `TextShadow`, `GradientFrom`, `GradientVia`, `GradientTo`, their `*Position` forms, `MaskFrom` and `MaskTo`. Filter lists, gradients and shadows interpolate as CSS does and jump when they do not match.
-- Class strings parse `bg-linear-to-*`, `bg-radial`, `bg-conic-*`, `from-*`, `via-*`, `to-*`, `bg-clip-text`, `border-solid`, `border-dashed` and `border-dotted`.
-
-### Changed
-
-- Vega-Lite charts and SVG icons (`icon(Icon::*)`, `icon_svg`) lower to scene commands like Mermaid instead of a CPU bitmap, so no vector widget rasters on the CPU in a window build. `icon_svg` now keeps explicit colors in the SVG; `currentColor` and a root with no `fill` take the tone's color.
-- Mermaid, Graphviz and math pictures lower their SVG to scene commands instead of one resvg bitmap: paths with fill rules, caps, joins and dashes, linear and radial gradients with spread methods and transforms, clip paths, masks, group opacity and blend modes, patterns, images, and blur, drop-shadow, saturate and hue-rotate filters. They stay sharp under zoom and past the 4096 px bitmap cap, and a theme change lowers them again instead of rastering. Other filter primitives, focal radial gradients and patterns of more than 4096 tiles keep a resvg bitmap for that subtree only, rastered again at the device size.
-- Each SVG picture, vector or bitmap, draws in one layer that composites over its backdrop in sRGB-encoded space, so antialiased edges and translucent ink match resvg over any surface and opaque ink keeps its color.
-- An SVG picture lowers to at most 65,536 scene commands and 16,384 nodes, counted at each clip, mask and pattern use; past that it draws as one resvg bitmap. Nested patterns whose copies pass the budget draw the patterned shape as a bitmap.
-- `text_shadow` and the `text-shadow-*` classes inherit to descendant text, as CSS `text-shadow` does; a descendant's own text shadow replaces the inherited one, and `text_shadow(None)` or `text-shadow-none` cancels it.
-- `math()` typesets with RaTeX and the KaTeX fonts instead of latex-rust: 136 of 138 common constructs draw, up from 115. `\label` and `\iddots` no longer parse and fall back to text.
-- Charts pick nice ticks in steps of 1, 2 or 5 × 10^k, include zero on the value axis, label time axes with time ticks, and draw a zero rule; `stacked()` puts the first series on top. Vega-Lite fences sort categories ascending, honor `sort` and `scale.domain`, show axis titles, break lines at nulls, and default to a 300 px plot.
-- Color transitions mix in premultiplied gamma-encoded sRGB, as CSS Color 4 specifies for legacy colors, instead of linear light; black to white at 50% is now 128, was 188.
-- Percent translate covers ±1600% in steps of 1/2048 of the width, was ±327.67%.
-- `Easing::cubic_bezier` with a non-finite control point eases linearly.
-- `Easing` has a new variant, so an exhaustive `match` on it needs a new arm.
-- `DrawGradient::new` takes `impl Into<Gradient>` and is no longer `const`; `DrawGradient::gradient` is a `Gradient`. A `LinearGradient` converts with `From`.
-- Gradients mix their stops in premultiplied gamma-encoded sRGB on the GPU, the CPU renderer and vector paths, as CSS Color 4 specifies for legacy colors; black to white at 50% is 128 on every renderer, was 188 on the GPU and 180 on the CPU.
-- A gradient stop placed before an earlier stop moves up to the earlier stop's position, as in CSS Images 4 §3.5.3, instead of the stops being sorted.
-- Gradient text draws conic, elliptical radial and repeating gradients.
-- A 3D-transformed layer with part of its plane behind the viewer draws the part in front of the viewer, instead of nothing.
-
-### Migration
-
-| Before | After |
-| --- | --- |
-| `icons::bake`, `icons::BakedIcon`, `icons::QuadCurve`, `icons::cubic_to_quadratics`, `renderer::scenes::BUILTIN_ICON_ATLAS_BASE_ID` (public only under `kittest`) | removed; `icon(Icon::*)` and `icon_svg` draw paths |
-| `SceneCommand::PushClip(Rect)` | `SceneCommand::PushClip(Clip)`; pass `rect.into()` |
-| `const DrawGradient::new(rect, LinearGradient)` | `DrawGradient::new(rect, impl Into<Gradient>)`, not `const`; a `LinearGradient` converts with `From` |
-| `LayerScope { clip, clip_radii, effect, opacity }` | add `blend: BlendMode::Normal`, or use `..` with a base scope |
-| exhaustive `match` on `LayerEffect` | add arms for `Projected`, `Mask` and `Filter` |
-| `LayerEffect::LayerBlur { sigma }` | `LayerEffect::Filter(Arc::new([Filter::Blur(sigma)]))` |
-| exhaustive `match` on `BlendMode` or `Filter` | add a `_` arm; both are `#[non_exhaustive]` |
-
-## [0.2.0] - 2026-11-02
+## [0.2.0] - 2026-11-07
 
 First public release.
 
@@ -234,9 +181,62 @@ First public release.
 | `FocusScopeKind::Inert` under `kittest` | removed; nothing used it |
 | receive-only `CommandMenuBuilder`, `DateFieldBuilder`, `DotBuilder`, `DropdownBuilder`, `FieldBuilder`, `GaugeBuilder`, `HintOverlayBuilder`, `InteractiveBuilder`, `MenuBarBuilder`, `MenuBuilder`, `NumberFieldBuilder`, `PanelBuilder`, `ProgressBuilder`, `RadioGroupBuilder`, `ScrollBuilder`, `SegmentedBuilder`, `SidebarBuilder`, `SliderBuilder`, `SplitterBuilder`, `StatBuilder`, `StateStyleBuilder`, `SubmenuBuilder`, `TableBuilder`, `TabsBuilder`, `ToggleBuilder`, `TreeBuilder` as nameable paths | the function returns them and their methods work; write `-> impl IntoNode` |
 | `CellBorder`, `CellRect`, `ColorScale`, `ComponentId`, `DateOrder`, `DecorationKind`, `FontFamilyHint`, `GradientAxis`, `GradientStopKey`, `PaintFill`, `PatternKind`, `ShadowKind`, `SpriteKind`, `SpriteSource`, `StateSlot`, `TextDecoration`, `TextFace`, `TextFlow`, `TextRun`, `TokenTable`, `ToneContext`, `VariantTokens`, `AnimatorOverlay`, `Asymmetric`, `AttachedAnimator`, `AttachedAnimators`, `AttachedColorAnimator`, `BoundsReactive`, `DecorationGeometry`, `DeltaKind`, `EmitDiff`, `InteractionState`, `LayoutEngine`, `LayoutResult`, `Misalignment`, `MisalignmentKind`, `NodeLabel`, `NodeTag`, `OwnedTextEngine`, `Paragraph`, `ParagraphMetrics`, `ReactivePosition`, `StyleOverlay`, `StyleReactiveEffect`, `TextEngine`, `TextLineHeight`, `TextRuns`, `Tolerance` | crate-private or public only under `kittest`; no caller's non-test code named them |
+| --- | --- |
+| `icons::bake`, `icons::BakedIcon`, `icons::QuadCurve`, `icons::cubic_to_quadratics`, `renderer::scenes::BUILTIN_ICON_ATLAS_BASE_ID` (public only under `kittest`) | removed; `icon(Icon::*)` and `icon_svg` draw paths |
+| `SceneCommand::PushClip(Rect)` | `SceneCommand::PushClip(Clip)`; pass `rect.into()` |
+| `const DrawGradient::new(rect, LinearGradient)` | `DrawGradient::new(rect, impl Into<Gradient>)`, not `const`; a `LinearGradient` converts with `From` |
+| `LayerScope { clip, clip_radii, effect, opacity }` | add `blend: BlendMode::Normal`, or use `..` with a base scope |
+| exhaustive `match` on `LayerEffect` | add arms for `Projected`, `Mask` and `Filter` |
+| `LayerEffect::LayerBlur { sigma }` | `LayerEffect::Filter(Arc::new([Filter::Blur(sigma)]))` |
+| exhaustive `match` on `BlendMode` or `Filter` | add a `_` arm; both are `#[non_exhaustive]` |
+
+### Changed
+
+- Vega-Lite charts and SVG icons (`icon(Icon::*)`, `icon_svg`) lower to scene commands like Mermaid instead of a CPU bitmap, so no vector widget rasters on the CPU in a window build. `icon_svg` now keeps explicit colors in the SVG; `currentColor` and a root with no `fill` take the tone's color.
+- Mermaid, Graphviz and math pictures lower their SVG to scene commands instead of one resvg bitmap: paths with fill rules, caps, joins and dashes, linear and radial gradients with spread methods and transforms, clip paths, masks, group opacity and blend modes, patterns, images, and blur, drop-shadow, saturate and hue-rotate filters. They stay sharp under zoom and past the 4096 px bitmap cap, and a theme change lowers them again instead of rastering. Other filter primitives, focal radial gradients and patterns of more than 4096 tiles keep a resvg bitmap for that subtree only, rastered again at the device size.
+- Each SVG picture, vector or bitmap, draws in one layer that composites over its backdrop in sRGB-encoded space, so antialiased edges and translucent ink match resvg over any surface and opaque ink keeps its color.
+- An SVG picture lowers to at most 65,536 scene commands and 16,384 nodes, counted at each clip, mask and pattern use; past that it draws as one resvg bitmap. Nested patterns whose copies pass the budget draw the patterned shape as a bitmap.
+- `text_shadow` and the `text-shadow-*` classes inherit to descendant text, as CSS `text-shadow` does; a descendant's own text shadow replaces the inherited one, and `text_shadow(None)` or `text-shadow-none` cancels it.
+- `math()` typesets with RaTeX and the KaTeX fonts instead of latex-rust: 136 of 138 common constructs draw, up from 115. `\label` and `\iddots` no longer parse and fall back to text.
+- Charts pick nice ticks in steps of 1, 2 or 5 × 10^k, include zero on the value axis, label time axes with time ticks, and draw a zero rule; `stacked()` puts the first series on top. Vega-Lite fences sort categories ascending, honor `sort` and `scale.domain`, show axis titles, break lines at nulls, and default to a 300 px plot.
+- Color transitions mix in premultiplied gamma-encoded sRGB, as CSS Color 4 specifies for legacy colors, instead of linear light; black to white at 50% is now 128, was 188.
+- Percent translate covers ±1600% in steps of 1/2048 of the width, was ±327.67%.
+- `Easing::cubic_bezier` with a non-finite control point eases linearly.
+- `Easing` has a new variant, so an exhaustive `match` on it needs a new arm.
+- `DrawGradient::new` takes `impl Into<Gradient>` and is no longer `const`; `DrawGradient::gradient` is a `Gradient`. A `LinearGradient` converts with `From`.
+- Gradients mix their stops in premultiplied gamma-encoded sRGB on the GPU, the CPU renderer and vector paths, as CSS Color 4 specifies for legacy colors; black to white at 50% is 128 on every renderer, was 188 on the GPU and 180 on the CPU.
+- A gradient stop placed before an earlier stop moves up to the earlier stop's position, as in CSS Images 4 §3.5.3, instead of the stops being sorted.
+- Gradient text draws conic, elliptical radial and repeating gradients.
+- A 3D-transformed layer with part of its plane behind the viewer draws the part in front of the viewer, instead of nothing.
+
+### Fixed
+
+- Dragging a splitter handle or pressing its arrow keys resizes the panes; before, the panes did not move.
+- A splitter drag on panes below their minimum sizes no longer panics.
+- Drag-selecting text repaints only the frame instead of laying out the whole tree, so each pointer move costs about 0.42 times as much.
 
 ### Added
 
+- `View` and `view!`: a widget tree in a `.sigil` file that the running app reloads on save, with no rebuild. A mistake keeps the previous screen and shows the line and column.
+- `Space`, `TextRole`, and `Layer`: named steps for spacing, type, and depth. `gap`, `padding`, and `margin` setters no longer take a bare number, and `font_size` takes a reason.
+- A `Harness` runs the design rules when it is dropped. See `FlawKind`, `Harness::assert_no_flaws`, `Harness::unaudited`, and `Widget::allow_flaw`.
+- Keyframe animations: `Paint::animate(Keyframes)`, with `Keyframes` stops, per-stop easing, iterations, `reverse` and `alternate`, and the Tailwind `spin`, `ping`, `pulse` and `bounce` presets. `Property` names the animated value.
+- CSS-style transitions on `Paint`: `transition`, `transition_all`, `transition_colors`, `transition_opacity`, `transition_transform`, `duration`, `ease` and `delay`.
+- Vector paths draw on the GPU through `vello_gpu` and on the CPU through `vello_cpu` instead of a tiny-skia bitmap. `PathNode` gains `even_odd`, `cap(StrokeCap)`, `join(StrokeJoin)` and `dash`; `scene::StrokeCap` and `scene::StrokeJoin` are new.
+- Vega-Lite fences in a window render through the official vega 6.4.0 and vega-lite 6.5.0 running in an embedded QuickJS, with a 2 s deadline, a 256 MB heap cap and no network; the native mapping is the fallback and the terminal path. The figure is named by the spec title and described by its axis titles.
+- `ChartBuilder::horizontal()` lays bars along rows.
+- `Easing::CubicBezier`, `Easing::cubic_bezier` and the `Easing::IN`, `OUT` and `IN_OUT` curves.
+- Radial and conic background gradients: `Paint::bg_radial(Radial)` with `RadialExtent`, `Paint::bg_conic(Conic)`, `Paint::bg_linear(GradientAxis)`, the `from`, `via` and `to` stops with positions, and repeating gradients. `scene::Gradient` and `scene::GradientKind` carry linear, radial and conic paints.
+- `Paint::bg_clip_text` paints the background gradient through the glyphs; `Paint::bg_image` tiles an image behind the content.
+- `Paint::border_dashed`, `border_dotted` and `border_solid`; dashes follow rounded corners.
+- `Paint::clip_path(ClipShape)` clips a node, its background and its children to an inset, circle, ellipse or polygon, and pointer hits outside the shape miss.
+- Masks on `Paint`: `mask_image(MaskImage)` with linear, radial, conic and image masks, `mask_stops`, `mask_luminance`, `mask_size(MaskSize)`, `mask_position` and `mask_repeat`, and the Tailwind `mask-*` classes for them.
+- `Paint::mix_blend(BlendMode)` and the `mix-blend-*` classes.
+- Filters on `Paint`: `blur`, `brightness`, `contrast`, `grayscale`, `hue_rotate`, `invert`, `saturate`, `sepia`, `drop_shadow` and `text_shadow`, with the Tailwind `blur-*`, `brightness-*`, `contrast-*`, `grayscale`, `hue-rotate-*`, `invert`, `saturate-*`, `sepia`, `drop-shadow-*` and `text-shadow-*` classes.
+- 3D transforms on `Paint`: `perspective`, `perspective_origin`, `rotate_x`, `rotate_y`, `rotate_z`, `translate_z`, `backface_hidden` and `backface_visible`, with `Property::RotateX`, `RotateY` and `TranslateZ` for keyframes.
+- Keyframes and transitions animate filters, drop and text shadows, gradient stop colors and positions, mask stops and the 3D turns, depth and perspective. `Property` gains `RotateZ`, `Perspective`, `Blur`, `Brightness`, `Contrast`, `Grayscale`, `HueRotate`, `Invert`, `Saturate`, `Sepia`, `DropShadow`, `TextShadow`, `GradientFrom`, `GradientVia`, `GradientTo`, their `*Position` forms, `MaskFrom` and `MaskTo`. Filter lists, gradients and shadows interpolate as CSS does and jump when they do not match.
+- Class strings parse `bg-linear-to-*`, `bg-radial`, `bg-conic-*`, `from-*`, `via-*`, `to-*`, `bg-clip-text`, `border-solid`, `border-dashed` and `border-dotted`.
+- `SplitterBuilder::proportional` keeps pane shares when the parent resizes, and `SplitterBuilder::settle_bind` reports the sizes once when a drag or key move ends.
 - One error type for the crate: `sigil::Error` with `sigil::ErrorKind` replaces 13 module error types. `docs/guide/errors.md` maps each old type to its kind.
 - The host traits, the renderer, and the window host are crate-private. The `kittest` feature exposes them to the harness. Text measurement types are `sigil::text`.
 

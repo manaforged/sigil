@@ -736,7 +736,7 @@ fn main() {
 | `SortDirection` | `#[non_exhaustive] enum SortDirection { Ascending, Descending }` | Direction of a table sort. |
 | `SortKey` | `struct SortKey { column: &'static str, dir: SortDirection }` | Table sort column and direction. |
 | `Side` | `enum Side { Left, Right, Bottom }` | Edge of a sheet. |
-| `splitter` | `fn splitter(orientation: Orientation)` | Resizable panes. |
+| `splitter` | `fn splitter(orientation: Orientation) -> SplitterBuilder`; `.child(node, initial_size)`, `.pane(node)`, `.min_size(idx, px)`, `.max_size(idx, px)`, `.sizes_bind(Signal<Vec<f32>>)`, `.settle_bind(Signal<Vec<f32>>)`, `.proportional()`, `.snap_points(handle, points)`, `.snap_threshold(px)` | Resizable panes. Dragging a handle or pressing its arrow keys resizes both neighbours. `sizes_bind` gets the sizes on every move; `settle_bind` gets them once when a drag or key move ends. `proportional` treats the initial sizes as shares, fills the parent, and rescales the panes when the parent resizes. |
 | `scroll` | `fn scroll(content: NodeBuilder)` | A scroll area. It measures its content; `.extent(f32 or Signal<f32>)` sets a known content height instead. |
 | `section_label` | `fn section_label(title) -> NodeBuilder` | A section heading row. |
 | `hint_bar` | `fn hint_bar(keys, right) -> NodeBuilder` | A key hint row. |
