@@ -1,5 +1,5 @@
 use crate::geometry::{Point, Rect};
-use crate::kernel::{Cx, NodeId, TopLayer};
+use crate::kernel::{Cx, Node, NodeId, TopLayer};
 use crate::layout::{LayoutEngine, LayoutResult};
 use crate::style::StyleBinding;
 use smallvec::SmallVec;
@@ -194,21 +194,21 @@ pub(crate) fn visible(cx: &Cx, target: NodeId) -> bool {
         let Some(node) = cx.get(id) else {
             return false;
         };
-        if node
-            .get_extension::<crate::style::presence::Presence>()
-            .is_some_and(|presence| !presence.interactive())
-        {
-            return false;
-        }
-        if node
-            .get_extension::<StyleBinding>()
-            .is_some_and(StyleBinding::hides)
-        {
+        if conceals(node) {
             return false;
         }
         current = cx.parent(id);
     }
     true
+}
+
+/// Whether this node hides itself and its subtree from input and assistive tech.
+pub(crate) fn conceals(node: &Node) -> bool {
+    node.get_extension::<crate::style::presence::Presence>()
+        .is_some_and(|presence| !presence.interactive())
+        || node
+            .get_extension::<StyleBinding>()
+            .is_some_and(StyleBinding::hides)
 }
 
 fn inside_clips(cx: &Cx, target: NodeId, position: Point) -> bool {

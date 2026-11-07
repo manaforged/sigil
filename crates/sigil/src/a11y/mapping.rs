@@ -58,7 +58,7 @@ pub(crate) fn tree_scoped(
     let mut nodes = Vec::with_capacity(cx.len() + 1);
     for root in cx.roots().iter().copied() {
         flatten(cx, root, &mut top);
-        walk_subtree(cx, root, &walk, &mut nodes);
+        walk_subtree(cx, root, &walk, true, &mut nodes);
     }
     if scope == TreeScope::Full {
         super::modal_scope::hide_outside(cx, &mut nodes);
@@ -83,20 +83,27 @@ pub(crate) fn tree_scoped(
     }
 }
 
-fn walk_subtree(cx: &Cx, id: NodeId, walk: &AccessWalk<'_>, out: &mut Vec<(AkNodeId, AkNode)>) {
+fn walk_subtree(
+    cx: &Cx,
+    id: NodeId,
+    walk: &AccessWalk<'_>,
+    shown: bool,
+    out: &mut Vec<(AkNodeId, AkNode)>,
+) {
     let Some(kernel_node) = cx.get(id) else {
         return;
     };
+    let shown = shown && !crate::events::hit_test::conceals(kernel_node);
     if matches!(kernel_node.kind, NodeType::Fragment) {
         for &child in kernel_node.children() {
-            walk_subtree(cx, child, walk, out);
+            walk_subtree(cx, child, walk, shown, out);
         }
         return;
     }
     let kept = walk.keeps(id, kernel_node);
     let at = out.len();
     let has_runs = if kept {
-        let (projected, runs) = project(cx, id, walk.bounds);
+        let (projected, runs) = project(cx, id, walk.bounds, shown);
         out.push((id.to_accesskit(), projected));
         runs.map(|runs| out.extend(runs)).is_some()
     } else {
@@ -105,15 +112,16 @@ fn walk_subtree(cx: &Cx, id: NodeId, walk: &AccessWalk<'_>, out: &mut Vec<(AkNod
     let below = out.len();
     if has_runs {
         for control in embedded_controls(cx, kernel_node) {
-            walk_subtree(cx, control, walk, out);
+            let seen = crate::events::hit_test::visible(cx, control);
+            walk_subtree(cx, control, walk, seen, out);
         }
     } else {
         for &child in kernel_node.children() {
-            walk_subtree(cx, child, walk, out);
+            walk_subtree(cx, child, walk, shown, out);
         }
     }
     if !kept && out.len() > below {
-        let (projected, runs) = project(cx, id, walk.bounds);
+        let (projected, runs) = project(cx, id, walk.bounds, shown);
         let own = std::iter::once((id.to_accesskit(), projected)).chain(runs.into_iter().flatten());
         let _ = out.splice(at..at, own);
     }
@@ -143,10 +151,15 @@ fn retain_emitted(top: &mut Vec<NodeId>, nodes: &mut [(AkNodeId, AkNode)]) {
 #[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
-    project(cx, id, bounds).0
+    project(cx, id, bounds, crate::events::hit_test::visible(cx, id)).0
 }
 
-fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<RunNodes>) {
+fn project(
+    cx: &Cx,
+    id: NodeId,
+    bounds: BoundsLookup<'_>,
+    shown: bool,
+) -> (AkNode, Option<RunNodes>) {
     let Some(kernel_node) = cx.get(id) else {
         return (AkNode::new(accesskit::Role::Unknown), None);
     };
@@ -165,7 +178,7 @@ fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<Run
     apply_labelled_by(&mut ak, a11y);
     apply_actions(&mut ak, a11y);
     apply_state(&mut ak, a11y);
-    if !crate::events::hit_test::visible(cx, id) {
+    if !shown {
         ak.set_hidden();
     }
     apply_grid(&mut ak, a11y);

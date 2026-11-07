@@ -32,7 +32,7 @@ impl EventRouter {
         }
         if matches!(event.key, LogicalKey::Named(Key::Escape))
             && event.modifiers.is_empty()
-            && crate::events::selection::escape(cx)
+            && crate::events::selection::escape()
         {
             return;
         }

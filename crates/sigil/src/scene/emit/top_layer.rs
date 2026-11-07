@@ -25,25 +25,30 @@ impl<'t> EmitWalk<'_, 't> {
 }
 
 fn find_top_layer<'t>(cx: &'t Cx, node: &Node) -> Vec<(NodeId, Path<'t>)> {
-    cx.top_layers()
-        .iter()
-        .filter_map(|&id| Some((id, path_under(cx, node, id)?)))
-        .collect()
+    let reach = cx.top_layers();
+    let mut found = Vec::new();
+    collect(cx, &reach, node, &mut Path::new(), &mut found);
+    found.sort_by_key(|(id, _)| *id);
+    found
 }
 
-fn path_under<'t>(cx: &'t Cx, node: &Node, id: NodeId) -> Option<Path<'t>> {
-    let mut path = Path::new();
-    let mut current = cx.parent(id)?;
-    loop {
-        let step = cx.get(current)?;
-        if core::ptr::eq(step, node) {
-            path.reverse();
-            return Some(path);
+fn collect<'t>(
+    cx: &'t Cx,
+    reach: &[NodeId],
+    node: &Node,
+    path: &mut Path<'t>,
+    found: &mut Vec<(NodeId, Path<'t>)>,
+) {
+    for &id in node.children() {
+        let Some(child) = reach.binary_search(&id).is_ok().then(|| cx.get(id)).flatten() else {
+            continue;
+        };
+        if is_top_layer(child) {
+            found.push((id, path.clone()));
+        } else if !skips_paint(child) {
+            path.push((id, child));
+            collect(cx, reach, child, path, found);
+            path.pop();
         }
-        if is_top_layer(step) || skips_paint(step) {
-            return None;
-        }
-        path.push((current, step));
-        current = cx.parent(current)?;
     }
 }

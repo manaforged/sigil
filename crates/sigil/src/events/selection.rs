@@ -67,10 +67,10 @@ pub(crate) fn drag_active() -> bool {
     STATE.with_borrow(|state| state.is_some_and(|sel| sel.dragging))
 }
 
-pub(crate) fn escape(cx: &mut Cx) -> bool {
+pub(crate) fn escape() -> bool {
     let had = STATE.take().is_some();
     if had {
-        cx.mark_mutated();
+        crate::reactive::Runtime::mark_frame_dirty();
     }
     had
 }
@@ -104,7 +104,7 @@ pub(crate) fn down(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
         .flatten()
         .and_then(|region| Some((region, endpoint_at(cx, region, event.position)?)));
     let Some((region, endpoint)) = hit else {
-        escape(cx);
+        escape();
         return;
     };
     if shift_only {
@@ -112,7 +112,7 @@ pub(crate) fn down(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
         return;
     }
     if STATE.with_borrow(Option::is_some) {
-        cx.mark_mutated();
+        crate::reactive::Runtime::mark_frame_dirty();
     }
     let (span, unit) = press_span(cx, region, endpoint, event.position);
     let (anchor, focus) =
@@ -191,7 +191,7 @@ fn shift_extend(cx: &mut Cx, region: NodeId, endpoint: Endpoint, point: Point) {
     );
     STATE.set(Some(next));
     if existing.is_some() {
-        cx.mark_mutated();
+        crate::reactive::Runtime::mark_frame_dirty();
     }
 }
 
@@ -206,7 +206,7 @@ fn extend(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
             selection.focus = focus;
             selection.moved = true;
             crate::events::focus::reveal_focus(cx, layout, focus.node);
-            cx.mark_mutated();
+            crate::reactive::Runtime::mark_frame_dirty();
         }
     }
     if event.phase == PointerPhase::Move {
@@ -216,7 +216,7 @@ fn extend(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
     selection.dragging = false;
     if !selection.moved {
         clear();
-        cx.mark_mutated();
+        crate::reactive::Runtime::mark_frame_dirty();
         return;
     }
     event.stop_propagation();
