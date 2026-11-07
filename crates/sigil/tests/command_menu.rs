@@ -324,15 +324,57 @@ fn filtered_click() {
         .accessibility_tree()
         .nodes
         .iter()
-        .filter(|(_, node)| node.label().as_deref() == Some("Run"))
+        .filter(|(_, node)| node.label() == Some("Run"))
         .find_map(|(_, node)| node.bounds())
         .expect("the filtered list shows Run");
     let at = sigil::geometry::Point::new(
-        ((row.x0 + row.x1) / 2.0) as f32,
-        ((row.y0 + row.y1) / 2.0) as f32,
+        row.x0.midpoint(row.x1) as f32,
+        row.y0.midpoint(row.y1) as f32,
     );
     harness
         .send([Event::pointer_down(at), Event::pointer_up(at)])
         .settle();
     assert_eq!(chosen.get(), "Run");
+}
+
+fn bottoms(harness: &mut sigil_kittest::Harness, label: &str) -> (f64, f64) {
+    let tree = harness.accessibility_tree();
+    let bottom = |pick: &dyn Fn(&accesskit::Node) -> bool| {
+        tree.nodes
+            .iter()
+            .filter(|(_, node)| pick(node))
+            .find_map(|(_, node)| node.bounds())
+            .map_or(f64::NAN, |rect| rect.y1)
+    };
+    (
+        bottom(&|node| node.role() == accesskit::Role::Menu),
+        bottom(&|node| node.label() == Some(label)),
+    )
+}
+
+#[test]
+fn arrowing_past_the_last_visible_row_scrolls_it_into_view() {
+    Owner::scope("cmd-menu-scrolls", || {
+        let labels: Vec<String> = (1..=30).map(|n| format!("Action {n}")).collect();
+        let mut harness = sigil_kittest::Harness::new(move || {
+            labels.iter().fold(command_menu(), |menu, label| {
+                menu.item(label.clone(), || {})
+            })
+        })
+        .pixels(420, 600);
+        harness.settle();
+        let (start_panel, start_row) = bottoms(&mut harness, "Action 30");
+        assert!(
+            start_row > start_panel,
+            "a long list is cut: row {start_row} panel {start_panel}"
+        );
+        harness
+            .send((0..29).map(|_| Event::key_down(Key::ArrowDown).physical(PhysicalKey::ArrowDown)))
+            .settle();
+        let (panel, row) = bottoms(&mut harness, "Action 30");
+        assert!(
+            row <= panel,
+            "the cursor row is in view: row {row} panel {panel}"
+        );
+    });
 }
