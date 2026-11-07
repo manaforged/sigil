@@ -58,7 +58,7 @@ fn built_in_labels_come_from_the_theme_strings() {
             .apply();
         modal(signal(true)).title("Dialog").child(text("body"))
     })
-    .pixels(400, 300);
+    .pixels(480, 300);
     ui.settle();
     let names: Vec<String> = ui
         .find_all(&Query::role(Role::Button))
