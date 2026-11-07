@@ -135,7 +135,7 @@ fn query_field(chrome: &PanelChrome, depth: usize) -> TextFieldBuilder {
         .map_node(move |node| node.focus_in(move || active.focused.set(true)))
         .blur(move || {
             active.focused.set(false);
-            if palette.stack.peek().len() == depth + 1 {
+            if !active.pointed.peek() && palette.stack.peek().len() == depth + 1 {
                 palette.reset();
             }
         })

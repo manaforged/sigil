@@ -292,3 +292,47 @@ fn command_menu_disabled_item() {
         .delta(DELTA_PCT)
         .assert(img);
 }
+
+#[test]
+fn clicking_a_row_of_a_filtered_list_runs_that_row() {
+    Owner::scope("cmd-menu-filtered-click", filtered_click);
+}
+
+fn filtered_click() {
+    use sigil::events::{KeyPhase, LogicalKey, ModifiersState};
+
+    let chosen: Signal<String> = signal(String::new());
+    let mut harness = sigil_kittest::Harness::new(move || {
+        container().focusable(true).child(
+            command_menu()
+                .item("Attack", || {})
+                .item("Wait", || {})
+                .item("Run", || {})
+                .submit(move |label| chosen.set(label.to_owned())),
+        )
+    })
+    .pixels(420, 260);
+    harness.settle();
+    harness
+        .send([Event::key(LogicalKey::character("R"), KeyPhase::Down)
+            .modifiers(ModifiersState::empty())
+            .text(Some("R".into()))])
+        .settle();
+    let shown = harness.text();
+    assert!(!shown.contains("Attack"), "R filters the list: {shown}");
+    let row = harness
+        .accessibility_tree()
+        .nodes
+        .iter()
+        .filter(|(_, node)| node.label().as_deref() == Some("Run"))
+        .find_map(|(_, node)| node.bounds())
+        .expect("the filtered list shows Run");
+    let at = sigil::geometry::Point::new(
+        ((row.x0 + row.x1) / 2.0) as f32,
+        ((row.y0 + row.y1) / 2.0) as f32,
+    );
+    harness
+        .send([Event::pointer_down(at), Event::pointer_up(at)])
+        .settle();
+    assert_eq!(chosen.get(), "Run");
+}
