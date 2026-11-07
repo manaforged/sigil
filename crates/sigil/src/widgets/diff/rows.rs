@@ -24,7 +24,7 @@ const fn look(kind: LineKind) -> (Option<Token>, Token, &'static str, char) {
     match kind {
         LineKind::Removed => (Some(Token::Error3), Token::Error12, "removed", '-'),
         LineKind::Added => (Some(Token::Success3), Token::Success12, "added", '+'),
-        LineKind::Context | LineKind::Note => (None, Token::Gray11, "unchanged", ' '),
+        LineKind::Context | LineKind::Note => (None, Token::Gray12, "unchanged", ' '),
     }
 }
 

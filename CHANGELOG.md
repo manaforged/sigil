@@ -308,6 +308,7 @@ First public release.
 
 - Clicking a row of a filtered `command_menu` runs that row; before, the click cleared the filter and ran the row at the same position in the full list.
 - A `command_menu` longer than twelve rows scrolls, and the arrow keys keep the selected row in view; before, rows past the window edge could not be reached.
+- Every text in `diff` meets 4.5:1 contrast in the light and dark themes: the gutter, file and hunk headers, status row and changed lines use stronger gray and hue steps.
 - Dragging a splitter handle or pressing its arrow keys resizes the panes; before, the panes did not move.
 - A splitter drag on panes below their minimum sizes no longer panics.
 - Drag-selecting text repaints only the frame instead of laying out the whole tree, so each pointer move costs about 0.42 times as much.
