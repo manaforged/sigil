@@ -31,6 +31,7 @@ pub(super) fn install_handle_keys(
         let current = state.size_at(handle);
         let target = (current + step).clamp(low, high);
         state.nudge(handle, target - current);
+        state.settle();
     })
 }
 

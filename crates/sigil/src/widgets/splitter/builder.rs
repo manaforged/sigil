@@ -4,7 +4,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{BORDER_WIDTH, Paint, PaintTarget, Style, StyleAtom, StyleSlot, Token};
 
 use super::super::layout_ext::LayoutOverrides;
-use super::drag::{PaneLimits, SplitterState, install_handle_hooks};
+use super::drag::{Binds, PaneLimits, SplitterState, install_handle_hooks};
 use super::keys::install_handle_keys;
 use super::pane::{build_pane, shares_free_space};
 use crate::style::StateVariants;
@@ -28,6 +28,8 @@ pub struct SplitterBuilder {
     orientation: Orientation,
     panes: Vec<PaneEntry>,
     sizes_bind: Option<crate::reactive::Signal<Vec<f32>>>,
+    settle_bind: Option<crate::reactive::Signal<Vec<f32>>>,
+    proportional: bool,
     snap_points: Vec<(usize, Vec<f32>)>,
     snap_threshold: f32,
     layout_overrides: LayoutOverrides,
@@ -41,6 +43,8 @@ pub fn splitter(orientation: Orientation) -> SplitterBuilder {
         orientation,
         panes: Vec::new(),
         sizes_bind: None,
+        settle_bind: None,
+        proportional: false,
         snap_points: Vec::new(),
         snap_threshold: 8.0,
         layout_overrides: LayoutOverrides::new(),
@@ -106,6 +110,20 @@ impl SplitterBuilder {
         self
     }
 
+    /// Sets the signal that gets the pane sizes when a drag or a key move ends.
+    #[must_use]
+    pub const fn settle_bind(mut self, signal: crate::reactive::Signal<Vec<f32>>) -> Self {
+        self.settle_bind = Some(signal);
+        self
+    }
+
+    /// Keeps each pane's share when the splitter resizes; initial sizes are then shares.
+    #[must_use]
+    pub const fn proportional(mut self) -> Self {
+        self.proportional = true;
+        self
+    }
+
     /// Sets the snap points.
     #[must_use]
     pub fn snap_points(mut self, handle_idx: usize, points: &[f32]) -> Self {
@@ -120,9 +138,19 @@ impl SplitterBuilder {
         self
     }
 
-    fn root(self) -> NodeBuilder {
+    fn root(mut self) -> NodeBuilder {
         let orientation = self.orientation;
         let count = self.panes.len();
+        if self.proportional {
+            for pane in &mut self.panes {
+                pane.initial_size = if pane.initial_size > 0.0 {
+                    pane.initial_size
+                } else {
+                    1.0
+                };
+                pane.grow = 0.0;
+            }
+        }
         let grows: Vec<f32> = self
             .panes
             .iter()
@@ -133,20 +161,32 @@ impl SplitterBuilder {
             mins: self.panes.iter().map(|p| p.min).collect(),
             maxs: self.panes.iter().map(|p| p.max).collect(),
             grows: grows.clone(),
+            proportional: self.proportional,
         };
         let state = SplitterState::new(
             orientation,
             limits,
             self.snap_points,
             self.snap_threshold,
-            self.sizes_bind,
+            Binds {
+                sizes: self.sizes_bind,
+                settle: self.settle_bind,
+            },
         );
         let root_layout = match orientation {
             Orientation::Horizontal => LayoutStyle::flex_row().align_items(AlignItems::Stretch),
             Orientation::Vertical => LayoutStyle::flex_column().align_items(AlignItems::Stretch),
         };
+        let root_layout = if self.proportional {
+            root_layout.fill().min_size(0.0, 0.0)
+        } else {
+            root_layout
+        };
 
         let mut root = container().role(Role::GenericContainer).layout(root_layout);
+        if self.proportional {
+            root = fit_to_bounds(root, state, orientation, count);
+        }
 
         for (pane_idx, (entry, grow)) in self.panes.into_iter().zip(grows).enumerate() {
             root = root.child(build_pane(entry.content, pane_idx, state, grow));
@@ -256,6 +296,29 @@ impl PaintTarget for PaneBuilder {
     fn style_slot(&mut self) -> StyleSlot<'_> {
         StyleSlot(&mut self.splitter.style_accumulator)
     }
+}
+
+fn fit_to_bounds(
+    root: NodeBuilder,
+    state: SplitterState,
+    orientation: Orientation,
+    count: usize,
+) -> NodeBuilder {
+    let bounds = crate::reactive::signal((0.0, 0.0, 0.0, 0.0));
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "a splitter has a handful of panes"
+    )]
+    let handles = HANDLE_PX * count.saturating_sub(1) as f32;
+    crate::reactive::effect(move || {
+        let (_, _, width, height) = bounds.get();
+        let along = match orientation {
+            Orientation::Horizontal => width,
+            Orientation::Vertical => height,
+        };
+        state.fit(along - handles);
+    });
+    root.bounds_reactive(bounds)
 }
 
 fn build_handle(handle_idx: usize, orientation: Orientation, state: SplitterState) -> NodeBuilder {

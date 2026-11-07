@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
@@ -20,6 +20,9 @@ struct SplitterStateInner {
     snap_points: Vec<Vec<f32>>,
     snap_threshold: f32,
     sizes_bind: Option<Signal<Vec<f32>>>,
+    settle_bind: Option<Signal<Vec<f32>>>,
+    proportional: bool,
+    extent: Cell<f32>,
     revision: Signal<u64>,
 }
 
@@ -28,6 +31,12 @@ pub(super) struct PaneLimits {
     pub(super) mins: Vec<f32>,
     pub(super) maxs: Vec<f32>,
     pub(super) grows: Vec<f32>,
+    pub(super) proportional: bool,
+}
+
+pub(super) struct Binds {
+    pub(super) sizes: Option<Signal<Vec<f32>>>,
+    pub(super) settle: Option<Signal<Vec<f32>>>,
 }
 
 impl SplitterState {
@@ -36,7 +45,7 @@ impl SplitterState {
         limits: PaneLimits,
         snaps: Vec<(usize, Vec<f32>)>,
         snap_threshold: f32,
-        sizes_bind: Option<Signal<Vec<f32>>>,
+        binds: Binds,
     ) -> Self {
         let mut snap_points = vec![Vec::new(); limits.sizes.len().saturating_sub(1)];
         for (handle, points) in snaps {
@@ -44,7 +53,7 @@ impl SplitterState {
                 *slot = points;
             }
         }
-        if let Some(signal) = sizes_bind {
+        if let Some(signal) = binds.sizes {
             signal.set(limits.sizes.clone());
         }
         let inner = Box::leak(Box::new(SplitterStateInner {
@@ -55,7 +64,10 @@ impl SplitterState {
             grows: limits.grows,
             snap_points,
             snap_threshold: snap_threshold.max(0.0),
-            sizes_bind,
+            sizes_bind: binds.sizes,
+            settle_bind: binds.settle,
+            proportional: limits.proportional,
+            extent: Cell::new(0.0),
             revision: signal(0),
         }));
         Self { inner }
@@ -98,11 +110,44 @@ impl SplitterState {
             grows: &self.inner.grows,
         };
         let next = redistribute(snapshot, handle, delta, &bounds);
+        self.replace(next);
+    }
+
+    fn replace(self, next: Vec<f32>) {
         *self.inner.sizes.borrow_mut() = next;
         self.inner
             .revision
             .update(|value| *value = value.wrapping_add(1));
         if let Some(signal) = self.inner.sizes_bind {
+            signal.set(self.inner.sizes.borrow().clone());
+        }
+    }
+
+    /// Scales the panes to fill `extent` pixels, keeping their shares, in proportional mode.
+    pub(super) fn fit(self, extent: f32) {
+        let previous = self.inner.extent.get();
+        if !self.inner.proportional || extent <= 0.0 || (extent - previous).abs() < 0.5 {
+            return;
+        }
+        self.inner.extent.set(extent);
+        let total: f32 = self.inner.sizes.borrow().iter().sum();
+        if total <= 0.0 {
+            return;
+        }
+        let scale = extent / total;
+        let next = self
+            .inner
+            .sizes
+            .borrow()
+            .iter()
+            .map(|size| size * scale)
+            .collect();
+        self.replace(next);
+    }
+
+    /// Reports the sizes to the settle bind once a drag or key move ends.
+    pub(super) fn settle(self) {
+        if let Some(signal) = self.inner.settle_bind {
             signal.set(self.inner.sizes.borrow().clone());
         }
     }
@@ -149,6 +194,9 @@ fn redistribute(snapshot: &[f32], handle: usize, delta: f32, bounds: &PaneBounds
     };
     let max_delta = (max(handle) - grow_base).min(shrink_base - min(handle + 1));
     let min_delta = (min(handle) - grow_base).max(shrink_base - max(handle + 1));
+    if min_delta > max_delta {
+        return out;
+    }
     let applied = delta.clamp(min_delta, max_delta);
     if let Some(slot) = out.get_mut(handle) {
         *slot = grow_base + applied;
@@ -182,7 +230,10 @@ pub(super) fn install_handle_hooks(
         axis,
         move || state.inner.sizes.borrow().clone(),
         move |snapshot, delta| state.resize(&snapshot, handle_index, delta),
-        move || state.snap(handle_index),
+        move || {
+            state.snap(handle_index);
+            state.settle();
+        },
     )
 }
 
