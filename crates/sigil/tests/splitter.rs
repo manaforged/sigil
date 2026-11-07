@@ -212,3 +212,26 @@ fn sizes_bind_carries_initial_sizes() {
         );
     });
 }
+
+#[test]
+fn dragging_the_handle_resizes_the_panes() {
+    let pane = |name: &'static str| {
+        container()
+            .role(Role::Image)
+            .label(name)
+            .layout(LayoutStyle::flex_column().fill())
+    };
+    let mut ui = sigil_kittest::Harness::new(
+        splitter(Orientation::Horizontal)
+            .child(pane("left"), 200.0)
+            .child(pane("right"), 200.0),
+    )
+    .pixels(600, 200);
+    let handle = ui.get(&sigil_kittest::Query::role(Role::Splitter));
+    let from = handle.center().expect("handle bounds");
+    ui.drag(&handle, &Point::new(from.x + 50.0, from.y)).settle();
+    let left = ui.get_by_role(Role::Image, "left").bounds().expect("left bounds");
+    let right = ui.get_by_role(Role::Image, "right").bounds().expect("right bounds");
+    assert!((left.width - 250.0).abs() < 1.0, "left pane is {} px wide", left.width);
+    assert!((right.width - 150.0).abs() < 1.0, "right pane is {} px wide", right.width);
+}

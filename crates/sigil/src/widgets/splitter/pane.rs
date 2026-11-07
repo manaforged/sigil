@@ -33,7 +33,7 @@ pub(super) fn build_pane(
     let node = if grow > 0.0 {
         node
     } else {
-        node.style_reactive(move || pane_size_atom(orientation, state.size_at(pane_idx)))
+        node.style_reactive(move || pane_size_atom(orientation, state.tracked_size(pane_idx)))
     };
     node.child(content)
 }
