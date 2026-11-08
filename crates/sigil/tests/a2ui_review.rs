@@ -237,3 +237,14 @@ fn a2ui_and_markdown_accept_the_same_data_uris() {
         assert_eq!(surface, usize::from(meta == "image/png;base64"), "{meta}");
     }
 }
+
+#[test]
+fn a_version_1_binding_and_a_version_0_9_binding_both_show_their_data() {
+    let json = surface(
+        r#"[{"id":"root","component":"Column","children":["new","old"]},{"id":"new","component":"Text","text":{"@path":"/title"}},{"id":"old","component":"Text","text":{"path":"/owner"}}]"#,
+        r#"{"title":"Fix cart rounding","owner":"sam"}"#,
+    );
+    let shown = ui(&json).text();
+    assert!(shown.contains("Fix cart rounding"), "{shown}");
+    assert!(shown.contains("sam"), "{shown}");
+}

@@ -168,7 +168,8 @@ impl Dynamic {
     fn of(props: &Map<String, Value>, key: &str) -> Self {
         match props.get(key) {
             Some(Value::Object(map)) => map
-                .get("path")
+                .get("@path")
+                .or_else(|| map.get("path"))
                 .and_then(Value::as_str)
                 .map_or(Self::Literal(Value::Null), |path| {
                     Self::Path(path.to_string())
