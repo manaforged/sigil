@@ -328,7 +328,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use table::MIN_COL_WIDTH;
 }
-pub use a2ui::{A2uiBuilder, a2ui};
+pub use a2ui::{A2UI_CATALOG, A2uiBuilder, a2ui};
 pub(crate) use tabs::TabsBuilder;
 pub use tabs::tabs;
 pub use terminal::terminal;

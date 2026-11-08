@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/manaforged/sigil/a2ui/catalog/v1",
+  "catalogId": "https://github.com/manaforged/sigil/a2ui/catalog/v1",
+  "protocolVersion": "1.0",
+  "title": "Sigil catalog",
+  "description": "Components a Sigil renderer draws beside the A2UI basic catalog.",
+  "instructions": "Use these components together with the basic catalog. Use Item for rows a person scans and clicks, Table for aligned text, Stat for one headline number, Chart for numbers over labels, and Markdown, Mermaid or Diff for documents. Every property accepts a literal or an {\"@path\": ...} binding.",
+  "components": {
+    "Chart": {
+      "type": "object",
+      "description": "Values over labels.",
+      "properties": {
+        "component": {
+          "const": "Chart"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "bar",
+            "line",
+            "area",
+            "pie"
+          ],
+          "default": "bar",
+          "description": "The form of the chart."
+        },
+        "labels": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicStringList",
+          "description": "One label per value."
+        },
+        "series": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicValue",
+          "description": "A list of {name, values} objects, where values is a list of numbers, one per label."
+        }
+      },
+      "required": [
+        "component",
+        "series"
+      ]
+    },
+    "Stat": {
+      "type": "object",
+      "description": "One labelled value in a tile.",
+      "properties": {
+        "component": {
+          "const": "Stat"
+        },
+        "label": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicString",
+          "description": "What the value measures."
+        },
+        "value": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicString",
+          "description": "The value, already formatted."
+        },
+        "tone": {
+          "type": "string",
+          "enum": [
+            "neutral",
+            "success",
+            "warning",
+            "danger"
+          ],
+          "default": "neutral",
+          "description": "The meaning of the value, which the renderer colors."
+        }
+      },
+      "required": [
+        "component",
+        "label",
+        "value"
+      ]
+    },
+    "Table": {
+      "type": "object",
+      "description": "Rows of text under column names.",
+      "properties": {
+        "component": {
+          "const": "Table"
+        },
+        "columns": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicStringList",
+          "description": "The column names."
+        },
+        "rows": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicValue",
+          "description": "A list of rows, each a list of cells, one per column."
+        }
+      },
+      "required": [
+        "component",
+        "columns",
+        "rows"
+      ]
+    },
+    "Markdown": {
+      "type": "object",
+      "description": "Rendered Markdown.",
+      "properties": {
+        "component": {
+          "const": "Markdown"
+        },
+        "text": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicString",
+          "description": "CommonMark source."
+        }
+      },
+      "required": [
+        "component",
+        "text"
+      ]
+    },
+    "Mermaid": {
+      "type": "object",
+      "description": "A rendered Mermaid diagram.",
+      "properties": {
+        "component": {
+          "const": "Mermaid"
+        },
+        "source": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicString",
+          "description": "Mermaid diagram source."
+        }
+      },
+      "required": [
+        "component",
+        "source"
+      ]
+    },
+    "Diff": {
+      "type": "object",
+      "description": "A rendered unified diff.",
+      "properties": {
+        "component": {
+          "const": "Diff"
+        },
+        "patch": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicString",
+          "description": "A unified diff."
+        }
+      },
+      "required": [
+        "component",
+        "patch"
+      ]
+    },
+    "Item": {
+      "type": "object",
+      "description": "One row of a list or tree that a click can act on.",
+      "properties": {
+        "component": {
+          "const": "Item"
+        },
+        "title": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicString",
+          "description": "The row's main text."
+        },
+        "status": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicString",
+          "description": "A short status word or meta line at the end of the row."
+        },
+        "detail": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicString",
+          "description": "A second line under the title."
+        },
+        "marker": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/DynamicString",
+          "description": "A short leading mark, such as one glyph."
+        },
+        "tone": {
+          "type": "string",
+          "enum": [
+            "neutral",
+            "success",
+            "warning",
+            "danger"
+          ],
+          "default": "neutral",
+          "description": "The meaning of the value, which the renderer colors."
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "How far the row is indented, as in a tree."
+        },
+        "action": {
+          "$ref": "https://a2ui.org/specification/v1_0/common_types.json#/$defs/Action",
+          "description": "What a click on the row does."
+        }
+      },
+      "required": [
+        "component",
+        "title"
+      ]
+    }
+  },
+  "$defs": {
+    "anyComponent": {
+      "oneOf": [
+        {
+          "$ref": "#/components/Chart"
+        },
+        {
+          "$ref": "#/components/Stat"
+        },
+        {
+          "$ref": "#/components/Table"
+        },
+        {
+          "$ref": "#/components/Markdown"
+        },
+        {
+          "$ref": "#/components/Mermaid"
+        },
+        {
+          "$ref": "#/components/Diff"
+        },
+        {
+          "$ref": "#/components/Item"
+        }
+      ]
+    },
+    "anyFunction": false
+  }
+}

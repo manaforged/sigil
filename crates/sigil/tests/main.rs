@@ -73,6 +73,7 @@ mod a11y_live_regions;
 mod a11y_reactive_flow;
 mod a11y_rows_and_fields;
 mod a11y_transform_bounds;
+mod a2ui_catalog;
 mod a2ui_review;
 mod allocation_reuse;
 mod animated_goldens;
