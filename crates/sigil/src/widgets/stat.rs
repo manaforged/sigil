@@ -91,7 +91,7 @@ impl StatBuilder {
             .ellipsize()
             .class("text-xl font-semibold tabular-nums");
         let value = match self.tone {
-            Some(tone) => value.class(tone.solid().text()),
+            Some(tone) => value.class(tone.token(12).text()),
             None => value.class(Token::OnSurface.text()),
         };
         let mut body = container()

@@ -349,7 +349,7 @@ fn status_text(
 ) -> TextBuilder {
     let node = text(status).ellipsize().class("text-xs").class(
         status_tone
-            .map_or_else(|| tone.detail(), Tone::solid)
+            .map_or_else(|| tone.detail(), |shade| shade.token(12))
             .text(),
     );
     if shrink {
