@@ -4,6 +4,11 @@
 )]
 #![allow(clippy::print_stdout, reason = "the checks print their measures")]
 #![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
+#![allow(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -34,7 +39,7 @@ const RED: Rgba8 = Rgba8 {
     a: 255,
 };
 
-fn whole() -> Rect {
+const fn whole() -> Rect {
     Rect::new(Point::new(0.0, 0.0), SIDE as f32, SIDE as f32)
 }
 
@@ -55,7 +60,7 @@ fn clipped(clips: Vec<Clip>) -> impl IntoNode {
 
 fn nest(scene: &mut SceneBuilder, clips: &[Clip], rect: Rect) {
     match clips.split_first() {
-        Some((clip, rest)) => scene.with_clip(clip.clone(), |scene| nest(scene, rest, rect)),
+        Some((first, inner)) => scene.with_clip(first.clone(), |scene| nest(scene, inner, rect)),
         None => scene.draw_rect(DrawRect::new(rect, RED)),
     }
 }
@@ -241,7 +246,7 @@ fn layers(clip: Clip) -> (usize, usize, usize) {
         .iter()
         .filter(|command| {
             matches!(command, SceneCommand::PushLayer(_))
-                || matches!(command, SceneCommand::PushClip(clip) if !matches!(clip, Clip::Rect(_)))
+                || matches!(command, SceneCommand::PushClip(pushed) if !matches!(pushed, Clip::Rect(_)))
         })
         .count();
     let viewport = (SIDE as f32, SIDE as f32);

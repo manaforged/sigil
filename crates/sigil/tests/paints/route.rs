@@ -23,7 +23,7 @@ fn card(index: u32) -> Rect {
     let (w, h) = (VIEW.0 / COLS as f32, VIEW.1 / ROWS as f32);
     let (col, row) = (index % COLS, index / COLS);
     Rect::new(
-        Point::new(col as f32 * w + 2.0, row as f32 * h + 2.0),
+        Point::new((col as f32).mul_add(w, 2.0), (row as f32).mul_add(h, 2.0)),
         w - 4.0,
         h - 4.0,
     )

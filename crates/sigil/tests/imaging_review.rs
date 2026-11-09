@@ -9,6 +9,7 @@
     clippy::cast_sign_loss,
     reason = "pixel coordinates are small"
 )]
+#![allow(clippy::panic, reason = "a test fails loudly on a missing value")]
 
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;

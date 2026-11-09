@@ -9,6 +9,10 @@
     clippy::cast_sign_loss,
     reason = "cell counts and pixel sides are small"
 )]
+#![allow(
+    clippy::indexing_slicing,
+    reason = "a bench fails loudly on a missing sample"
+)]
 
 use std::time::Instant;
 
@@ -118,7 +122,7 @@ impl Shape {
 
 fn wave(index: u32, step: u32) -> f32 {
     let phase = (index.wrapping_mul(2_654_435_761) % 1000) as f32 / 159.0;
-    50.0 + 40.0 * (phase + step as f32 * 0.7).sin()
+    40.0f32.mul_add((step as f32).mul_add(0.7, phase).sin(), 50.0)
 }
 
 fn crop(rgba: &[u8], stride: u32, rect: Rect) -> ImageSource {
@@ -227,7 +231,7 @@ fn run(renderer: &mut WgpuRenderer, shape: Shape) {
     for ((name, _), list) in scenes.iter().zip(&samples) {
         report(name, list);
     }
-    let diffs: Vec<f64> = samples[2]
+    let mut diffs: Vec<f64> = samples[2]
         .iter()
         .zip(&samples[1])
         .map(|(v, b)| v.total - b.total)
@@ -235,7 +239,7 @@ fn run(renderer: &mut WgpuRenderer, shape: Shape) {
     let (low, high) = interval(&diffs);
     println!(
         "  vector - bitmap: median {:+.2} ms, 95% [{low:+.2}, {high:+.2}]",
-        median(&mut diffs.clone())
+        median(&mut diffs)
     );
 }
 

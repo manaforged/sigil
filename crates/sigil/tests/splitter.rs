@@ -273,8 +273,9 @@ fn shared(width: u32) -> sigil_kittest::Harness {
 }
 
 fn widths(ui: &mut sigil_kittest::Harness) -> (f32, f32) {
-    let width = |ui: &mut sigil_kittest::Harness, name| {
-        ui.get_by_role(Role::Image, name)
+    let width = |harness: &mut sigil_kittest::Harness, name| {
+        harness
+            .get_by_role(Role::Image, name)
             .bounds()
             .expect("pane bounds")
             .width

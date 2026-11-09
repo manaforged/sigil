@@ -32,8 +32,16 @@ fn effect(cards: Cards, rect: Rect) -> LayerEffect {
         Cards::Turned2D => {
             let (sin, cos) = (PI / 4.0).sin_cos();
             LayerEffect::Transform([
-                [cos, -sin, centre.x - cos * centre.x + sin * centre.y],
-                [sin, cos, centre.y - sin * centre.x - cos * centre.y],
+                [
+                    cos,
+                    -sin,
+                    sin.mul_add(centre.y, cos.mul_add(-centre.x, centre.x)),
+                ],
+                [
+                    sin,
+                    cos,
+                    cos.mul_add(-centre.y, sin.mul_add(-centre.x, centre.y)),
+                ],
             ])
         }
         Cards::Turned3D => {
@@ -52,8 +60,8 @@ fn scene(cards: Cards) -> CommandScene {
     let mut scene = SceneBuilder::new();
     for index in 0..COLUMNS * ROWS {
         let at = Point::new(
-            (index % COLUMNS) as f32 * PITCH + 5.0,
-            (index / COLUMNS) as f32 * PITCH + 5.0,
+            ((index % COLUMNS) as f32).mul_add(PITCH, 5.0),
+            ((index / COLUMNS) as f32).mul_add(PITCH, 5.0),
         );
         let rect = Rect::new(at, SIDE, SIDE);
         let scope = LayerScope {

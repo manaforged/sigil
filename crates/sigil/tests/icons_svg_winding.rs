@@ -2,6 +2,10 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
+#![allow(
+    clippy::cast_precision_loss,
+    reason = "pixel sizes and step counts are small"
+)]
 #![cfg(feature = "kittest")]
 
 use sigil::prelude::*;

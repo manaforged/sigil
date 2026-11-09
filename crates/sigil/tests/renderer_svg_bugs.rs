@@ -3,6 +3,10 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(
+    clippy::indexing_slicing,
+    reason = "a test fails loudly on a missing value"
+)]
+#![allow(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -37,7 +41,7 @@ const WHITE: Rgba8 = Rgba8 {
 };
 const TOLERANCE: u8 = 4;
 
-fn frame(scene: &CommandScene, side: u32) -> Frame<'_> {
+const fn frame(scene: &CommandScene, side: u32) -> Frame<'_> {
     Frame {
         scene,
         viewport: (side as f32, side as f32),
@@ -82,13 +86,15 @@ pub(crate) fn svg(body: &str, side: u32) -> String {
     )
 }
 
-fn pixel(rgba: &[u8], (x, y): (u32, u32)) -> [u8; 3] {
+const fn pixel(rgba: &[u8], (x, y): (u32, u32)) -> [u8; 3] {
     let at = ((y * SIDE + x) * 4) as usize;
     [rgba[at], rgba[at + 1], rgba[at + 2]]
 }
 
+type Probe = ((u32, u32), [u8; 3]);
+
 #[track_caller]
-fn assert_pixels(body: &str, probes: &[((u32, u32), [u8; 3])]) {
+fn assert_pixels(body: &str, probes: &[Probe]) {
     let scene = picture(&svg(body, SIDE), SIDE);
     let mut failures = Vec::new();
     for (name, rgba) in frames(&scene, SIDE) {

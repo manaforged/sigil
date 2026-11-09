@@ -37,6 +37,10 @@ fn decode(channel: u8) -> f32 {
     }
 }
 
+#[allow(
+    clippy::suboptimal_flops,
+    reason = "the model spells out the sRGB formula"
+)]
 fn encode(linear: f32) -> f32 {
     let c = if linear <= 0.003_130_8 {
         linear * 12.92
@@ -47,6 +51,10 @@ fn encode(linear: f32) -> f32 {
 }
 
 #[track_caller]
+#[allow(
+    clippy::suboptimal_flops,
+    reason = "the model spells out the linear blend formula"
+)]
 fn assert_linear_edge(frame: &image::RgbaImage, what: &str) {
     let background = frame.get_pixel(30, 30)[0];
     let edge = frame.get_pixel(10, 15)[0];

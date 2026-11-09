@@ -31,7 +31,7 @@ fn wedge(tip: (f32, f32)) -> PathNode {
         .fill(Token::OnSurface)
 }
 
-fn frame(scene: &CommandScene) -> Frame<'_> {
+const fn frame(scene: &CommandScene) -> Frame<'_> {
     Frame {
         scene,
         viewport: (SIDE, SIDE),

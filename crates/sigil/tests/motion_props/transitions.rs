@@ -201,19 +201,19 @@ fn drop_shadow_none_turns_the_shadow_off() {
             "a later none replaces the shadow"
         );
         let flag = signal(false);
-        let mut ui = mount(
+        let mut toggled = mount(
             square()
                 .drop_shadow(lit)
                 .paint_when(flag, |state| state.drop_shadow(None)),
         );
         assert_eq!(
-            filters(&mut ui).len(),
+            filters(&mut toggled).len(),
             1,
             "the shadow draws before the change"
         );
-        start(&mut ui, flag);
+        start(&mut toggled, flag);
         assert!(
-            filters(&mut ui).is_empty(),
+            filters(&mut toggled).is_empty(),
             "a state can turn the shadow off"
         );
     });

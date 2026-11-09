@@ -2,6 +2,11 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
 #![allow(clippy::print_stdout, reason = "the checks print their measures")]
 #![allow(
     clippy::cast_precision_loss,
@@ -204,15 +209,18 @@ fn a_path_under_a_four_times_transform_stays_sharp_on_the_gpu() {
 
 fn star(node: PathNode) -> PathNode {
     let point = |k: usize| {
-        let angle = (-90.0 + 144.0 * k as f32).to_radians();
-        (30.0 + 25.0 * angle.cos(), 30.0 + 25.0 * angle.sin())
+        let angle = 144.0f32.mul_add(k as f32, -90.0).to_radians();
+        (
+            25.0f32.mul_add(angle.cos(), 30.0),
+            25.0f32.mul_add(angle.sin(), 30.0),
+        )
     };
     let (x, y) = point(0);
     let node = node.move_to(x, y);
     (1..5)
         .fold(node, |node, k| {
-            let (x, y) = point(k);
-            node.line_to(x, y)
+            let (next_x, next_y) = point(k);
+            node.line_to(next_x, next_y)
         })
         .close()
         .fill(INK)

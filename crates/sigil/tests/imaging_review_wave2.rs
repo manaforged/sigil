@@ -9,6 +9,7 @@
     clippy::cast_sign_loss,
     reason = "pixel coordinates and channels are small"
 )]
+#![allow(clippy::panic, reason = "a test fails loudly on a missing value")]
 
 use std::sync::Arc;
 
@@ -175,7 +176,7 @@ fn blur_mixes_a_black_white_edge_in_srgb_as_filter_effects_requires() {
     for (name, frame) in &frames {
         let left = frame.get_pixel(59, 40).0[0];
         let right = frame.get_pixel(60, 40).0[0];
-        let edge = (u16::from(left) + u16::from(right)) / 2;
+        let edge = u16::midpoint(u16::from(left), u16::from(right));
         println!("{name}: edge pixels {left} {right}");
         if edge.abs_diff(128) > 16 {
             failures.push(format!(

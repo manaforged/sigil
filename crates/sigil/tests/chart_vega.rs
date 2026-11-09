@@ -2,6 +2,11 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
 
 use sigil::geometry::Rect;
 use sigil::kernel::Role;

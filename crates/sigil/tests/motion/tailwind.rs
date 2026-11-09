@@ -1,3 +1,8 @@
+#![allow(
+    clippy::suboptimal_flops,
+    reason = "the expected values spell out the curve formula"
+)]
+
 use std::f32::consts::{FRAC_PI_2, PI};
 use std::time::Duration;
 
@@ -52,6 +57,54 @@ fn tailwind_ease_classes_follow_their_curves() {
     });
 }
 
+fn colors_transition_animates_the_background() {
+    let flag = signal(false);
+    let colors = square()
+        .bg(BLACK)
+        .transition_colors()
+        .paint_when(flag, |state| state.bg(WHITE));
+    let mut ui = mount(colors);
+    start(&mut ui, flag);
+    run(&mut ui, 0.075);
+    let mid = seen(&mut ui).color.r;
+    assert!(
+        mid > 0 && mid < 255,
+        "transition-colors animates the background, got {mid}"
+    );
+}
+
+fn transform_transition_animates_translate() {
+    let flag = signal(false);
+    let moved = Transform2D::IDENTITY.translate(100.0, 0.0);
+    let transform = square()
+        .transition_transform()
+        .ease(Easing::Linear)
+        .paint_when(flag, move |state| state.transform(moved));
+    let mut ui = mount(transform);
+    start(&mut ui, flag);
+    run(&mut ui, 0.075);
+    near_px(
+        seen(&mut ui).translate_x(),
+        50.0,
+        "transition-transform animates translate",
+    );
+}
+
+fn opacity_transition_skips_colors() {
+    let flag = signal(false);
+    let opacity_only = square()
+        .bg(BLACK)
+        .transition_opacity()
+        .paint_when(flag, |state| state.bg(WHITE));
+    let mut ui = mount(opacity_only);
+    start(&mut ui, flag);
+    assert_eq!(
+        seen(&mut ui).color,
+        WHITE,
+        "transition-opacity skips colors"
+    );
+}
+
 #[test]
 fn tailwind_transition_groups_animate_only_their_properties() {
     Owner::scope("motion-tailwind-groups", || {
@@ -65,48 +118,9 @@ fn tailwind_transition_groups_animate_only_their_properties() {
             1.0,
             "transition-transform skips opacity",
         );
-
-        let flag = signal(false);
-        let colors = square()
-            .bg(BLACK)
-            .transition_colors()
-            .paint_when(flag, |state| state.bg(WHITE));
-        let mut ui = mount(colors);
-        start(&mut ui, flag);
-        run(&mut ui, 0.075);
-        let mid = seen(&mut ui).color.r;
-        assert!(
-            mid > 0 && mid < 255,
-            "transition-colors animates the background, got {mid}"
-        );
-
-        let flag = signal(false);
-        let moved = Transform2D::IDENTITY.translate(100.0, 0.0);
-        let transform = square()
-            .transition_transform()
-            .ease(Easing::Linear)
-            .paint_when(flag, move |state| state.transform(moved));
-        let mut ui = mount(transform);
-        start(&mut ui, flag);
-        run(&mut ui, 0.075);
-        near_px(
-            seen(&mut ui).translate_x(),
-            50.0,
-            "transition-transform animates translate",
-        );
-
-        let flag = signal(false);
-        let opacity_only = square()
-            .bg(BLACK)
-            .transition_opacity()
-            .paint_when(flag, |state| state.bg(WHITE));
-        let mut ui = mount(opacity_only);
-        start(&mut ui, flag);
-        assert_eq!(
-            seen(&mut ui).color,
-            WHITE,
-            "transition-opacity skips colors"
-        );
+        colors_transition_animates_the_background();
+        transform_transition_animates_translate();
+        opacity_transition_skips_colors();
     });
 }
 

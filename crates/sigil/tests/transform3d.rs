@@ -9,6 +9,11 @@
     clippy::cast_sign_loss,
     reason = "pixel coordinates are small"
 )]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
 
 use std::f32::consts::PI;
 
@@ -91,7 +96,7 @@ fn css_quad(radians: f32) -> [Point; 4] {
 fn inside(quad: &[Point; 4], point: Point) -> bool {
     (0..4).all(|i| {
         let (a, b) = (quad[i], quad[(i + 1) % 4]);
-        (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x) > 0.0
+        (b.y - a.y).mul_add(-(point.x - a.x), (b.x - a.x) * (point.y - a.y)) > 0.0
     })
 }
 
@@ -100,13 +105,16 @@ fn edge_probes(quad: &[Point; 4]) -> Vec<(Point, bool)> {
     let mut probes = Vec::new();
     for i in 0..4 {
         let (a, b) = (quad[i], quad[(i + 1) % 4]);
-        let mid = Point::new((a.x + b.x) / 2.0, (a.y + b.y) / 2.0);
+        let mid = Point::new(f32::midpoint(a.x, b.x), f32::midpoint(a.y, b.y));
         for point in [a, mid] {
             let (dx, dy) = (point.x - centre.x, point.y - centre.y);
             let length = dx.hypot(dy);
             let step = |sign: f32| {
                 let reach = sign * PROBE * if point == mid { 1.0 } else { 2.0 };
-                Point::new(point.x + dx / length * reach, point.y + dy / length * reach)
+                Point::new(
+                    (dx / length).mul_add(reach, point.x),
+                    (dy / length).mul_add(reach, point.y),
+                )
             };
             probes.push((step(-1.0), true));
             probes.push((step(1.0), false));

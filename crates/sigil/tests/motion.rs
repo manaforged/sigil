@@ -2,6 +2,13 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
+#![allow(clippy::panic, reason = "a test fails loudly on a missing value")]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "pixel sizes and step counts are small"
+)]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::float_cmp)]
 
 use std::time::Duration;
@@ -43,11 +50,11 @@ struct Seen {
 }
 
 impl Seen {
-    fn translate_x(&self) -> f32 {
+    const fn translate_x(&self) -> f32 {
         self.matrix[0][2]
     }
 
-    fn translate_y(&self) -> f32 {
+    const fn translate_y(&self) -> f32 {
         self.matrix[1][2]
     }
 

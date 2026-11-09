@@ -7,6 +7,18 @@
     reason = "a counting global allocator must implement the unsafe GlobalAlloc trait"
 )]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::float_cmp)]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
+#![allow(clippy::print_stdout, reason = "the checks print their measures")]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "frame counts and color channels are small and positive"
+)]
 
 use std::f32::consts::FRAC_PI_2;
 use std::time::Duration;
@@ -55,6 +67,10 @@ pub(crate) fn shadow(y: f32, blur: f32, color: Rgba8) -> Shadow {
     )
 }
 
+#[allow(
+    clippy::suboptimal_flops,
+    reason = "the model spells out the sRGB spec formula"
+)]
 pub(crate) fn srgb_byte(linear: f32) -> u8 {
     let encoded = if linear <= 0.003_130_8 {
         linear * 12.92

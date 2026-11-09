@@ -2,6 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
+#![allow(clippy::panic, reason = "a test fails loudly on a missing value")]
 
 use sigil::geometry::Rect;
 use sigil::kernel::Role;
@@ -95,16 +96,16 @@ fn the_y_axis_ends_near_the_data_maximum() {
         "the axis overshoots: {}",
         ui.text()
     );
-    let mut ui = vega(r#"{"height":200,"data":{"values":[{"k":"Europe","v":73},{"k":"USA","v":254}]},"mark":"bar","encoding":{"x":{"field":"k"},"y":{"field":"v","type":"quantitative"}}}"#.to_owned());
+    let mut bars = vega(r#"{"height":200,"data":{"values":[{"k":"Europe","v":73},{"k":"USA","v":254}]},"mark":"bar","encoding":{"x":{"field":"k"},"y":{"field":"v","type":"quantitative"}}}"#.to_owned());
     assert!(
-        has(&mut ui, "250") && has(&mut ui, "50"),
+        has(&mut bars, "250") && has(&mut bars, "50"),
         "ticks: {}",
-        ui.text()
+        bars.text()
     );
     assert!(
-        !has(&mut ui, "500"),
+        !has(&mut bars, "500"),
         "the axis doubles the maximum: {}",
-        ui.text()
+        bars.text()
     );
 }
 
@@ -129,22 +130,22 @@ fn both_axes_show_their_titles() {
         "titles: {}",
         ui.text()
     );
-    let mut ui = vega(r#"{"data":{"values":[{"a":"A","b":28}]},"mark":"bar","encoding":{"x":{"field":"a","type":"nominal","title":"\"Quoted\" Title"},"y":{"field":"b","type":"quantitative","axis":{"title":null}}}}"#.to_owned());
+    let mut explicit = vega(r#"{"data":{"values":[{"a":"A","b":28}]},"mark":"bar","encoding":{"x":{"field":"a","type":"nominal","title":"\"Quoted\" Title"},"y":{"field":"b","type":"quantitative","axis":{"title":null}}}}"#.to_owned());
     assert!(
-        has(&mut ui, "\"Quoted\" Title"),
+        has(&mut explicit, "\"Quoted\" Title"),
         "explicit title: {}",
-        ui.text()
+        explicit.text()
     );
     assert!(
-        !has(&mut ui, "b"),
+        !has(&mut explicit, "b"),
         "a null axis title still shows: {}",
-        ui.text()
+        explicit.text()
     );
-    let mut ui = vega(r#"{"data":{"values":[{"o":"USA"},{"o":"Japan"}]},"mark":"bar","encoding":{"x":{"field":"o"},"y":{"aggregate":"count"}}}"#.to_owned());
+    let mut counted = vega(r#"{"data":{"values":[{"o":"USA"},{"o":"Japan"}]},"mark":"bar","encoding":{"x":{"field":"o"},"y":{"aggregate":"count"}}}"#.to_owned());
     assert!(
-        has(&mut ui, "Count of Records"),
+        has(&mut counted, "Count of Records"),
         "count title: {}",
-        ui.text()
+        counted.text()
     );
 }
 

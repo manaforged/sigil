@@ -1,3 +1,8 @@
+#![allow(
+    clippy::suboptimal_flops,
+    reason = "the model spells out the spec formula"
+)]
+
 use sigil::prelude::Rgba8;
 use sigil::scene::Filter;
 
@@ -28,14 +33,13 @@ pub(crate) fn gaussian_cdf(z: f32) -> f32 {
     let t = 1.0 / (1.0 + 0.231_641_9 * z.abs());
     let poly = t
         * (0.319_381_53
-            + t * (-0.356_563_782
-                + t * (1.781_477_937 + t * (-1.821_255_978 + t * 1.330_274_429))));
+            + t * (-0.356_563_78 + t * (1.781_477_9 + t * (-1.821_255_9 + t * 1.330_274_5))));
     let tail = (-z * z / 2.0).exp() / (2.0 * std::f32::consts::PI).sqrt() * poly;
     if z >= 0.0 { 1.0 - tail } else { tail }
 }
 
-fn rows(m: [[f32; 3]; 3], [r, g, b, a]: Rgba) -> Rgba {
-    let row = |i: usize| m[i][0] * r + m[i][1] * g + m[i][2] * b;
+fn rows(matrix: [[f32; 3]; 3], [r, g, b, a]: Rgba) -> Rgba {
+    let row = |line: usize| matrix[line][0] * r + matrix[line][1] * g + matrix[line][2] * b;
     [row(0), row(1), row(2), a]
 }
 
@@ -110,8 +114,8 @@ fn hue_rotate(degrees: f32, c: Rgba) -> Rgba {
     )
 }
 
-fn transfer([r, g, b, a]: Rgba, f: impl Fn(f32) -> f32) -> Rgba {
-    [f(r), f(g), f(b), a]
+fn transfer([r, g, b, a]: Rgba, curve: impl Fn(f32) -> f32) -> Rgba {
+    [curve(r), curve(g), curve(b), a]
 }
 
 fn step(filter: Filter, c: Rgba) -> Rgba {

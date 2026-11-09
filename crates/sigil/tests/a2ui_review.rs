@@ -3,6 +3,10 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::unwrap_used, reason = "test fixtures")]
+#![allow(
+    clippy::indexing_slicing,
+    reason = "a test fails loudly on a missing value"
+)]
 
 use std::io::Cursor;
 use std::time::{Duration, Instant};
@@ -56,11 +60,10 @@ fn a_data_path_deeper_than_the_limit_is_rejected() {
         r#"{{"updateComponents":{{"surfaceId":"s","components":[{{"id":"root","component":"TextField","label":"Deep","value":{{"path":"{path}"}}}}]}}}}"#
     );
     let typed = hostile(move || {
-        let mut shown = ui(&field);
-        let input = shown.get(&Query::role(Role::TextInput));
-        shown.click(&input).type_text("x").settle();
-        shown
-            .get(&Query::role(Role::TextInput))
+        let mut form = ui(&field);
+        let input = form.get(&Query::role(Role::TextInput));
+        form.click(&input).type_text("x").settle();
+        form.get(&Query::role(Role::TextInput))
             .value()
             .map(str::to_owned)
     });

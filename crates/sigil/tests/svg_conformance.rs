@@ -8,6 +8,11 @@
     clippy::cast_sign_loss,
     reason = "pixel sizes and counts are small"
 )]
+#![allow(
+    clippy::indexing_slicing,
+    reason = "a test fails loudly on a missing value"
+)]
+#![allow(clippy::print_stdout, reason = "the check prints its pass count")]
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -139,7 +144,7 @@ fn passes(got: &Picture, want: &Picture) -> bool {
     off_fraction(got, want, CHANNEL_TOLERANCE) <= MAX_OFF_FRACTION
 }
 
-fn target(width: u32, height: u32) -> ImageTarget {
+const fn target(width: u32, height: u32) -> ImageTarget {
     ImageTarget {
         size: PhysicalSize::new(width, height),
         viewport: (width as f32, height as f32),

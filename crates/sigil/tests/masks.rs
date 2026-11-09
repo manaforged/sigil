@@ -9,6 +9,11 @@
     clippy::cast_sign_loss,
     reason = "pixel coordinates are small"
 )]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::kernel::{ImageSource, ObjectFit, container};
@@ -46,7 +51,7 @@ fn sized(node: impl IntoNode + 'static, width: f32) -> impl IntoNode {
 }
 
 fn ramp(rect: Rect, from: Rgba8, to: Rgba8) -> DrawGradient {
-    let y = rect.origin.y + rect.height * 0.5;
+    let y = rect.height.mul_add(0.5, rect.origin.y);
     let start = Point::new(rect.origin.x, y);
     let end = Point::new(rect.origin.x + rect.width, y);
     let stops = [GradientStop::new(0.0, from), GradientStop::new(1.0, to)];

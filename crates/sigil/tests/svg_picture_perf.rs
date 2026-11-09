@@ -3,6 +3,11 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(
+    clippy::indexing_slicing,
+    reason = "a test fails loudly on a missing value"
+)]
+#![allow(clippy::print_stdout, reason = "the checks print their measures")]
+#![allow(
     clippy::cast_precision_loss,
     reason = "pixel sizes and sample counts are small"
 )]
@@ -73,7 +78,7 @@ fn transcript() -> NodeBuilder {
 }
 
 enum Painter {
-    Cpu(CpuRenderer),
+    Cpu(Box<CpuRenderer>),
     Gpu(Box<sigil::renderer::WgpuRenderer>),
 }
 
@@ -122,17 +127,17 @@ fn measure(name: &str, mut painter: Painter) {
         let mut steady = Vec::new();
         let mut switch = Vec::new();
         for round in 0..ROUNDS {
-            let start = Instant::now();
+            let steady_start = Instant::now();
             painter.paint(&mut host);
-            steady.push(start.elapsed());
+            steady.push(steady_start.elapsed());
             set_theme(if round % 2 == 0 {
                 Theme::dark()
             } else {
                 Theme::light()
             });
-            let start = Instant::now();
+            let switch_start = Instant::now();
             painter.paint(&mut host);
-            switch.push(start.elapsed());
+            switch.push(switch_start.elapsed());
         }
         println!(
             "bench {name} steady_ms {:.3} theme_switch_ms {:.3}",
@@ -145,7 +150,7 @@ fn measure(name: &str, mut painter: Painter) {
 #[test]
 #[ignore = "manual: release frame and theme-switch timing for a transcript of 20 diagrams"]
 fn a_transcript_of_twenty_diagrams_paints_and_rethemes() {
-    measure("cpu", Painter::Cpu(CpuRenderer::new()));
+    measure("cpu", Painter::Cpu(Box::new(CpuRenderer::new())));
     if let Some(renderer) = headless_renderer().expect("adapter") {
         measure("gpu", Painter::Gpu(Box::new(renderer)));
     }

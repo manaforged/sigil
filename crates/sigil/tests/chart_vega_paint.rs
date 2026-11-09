@@ -8,6 +8,11 @@
     clippy::cast_sign_loss,
     reason = "pixel coordinates are small and positive"
 )]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
 
 use std::time::{Duration, Instant};
 
@@ -65,8 +70,8 @@ fn paint(json: &'static str) -> Chart {
 }
 
 fn inked(picture: &Picture, x: u32, y: u32) -> bool {
-    let [r, g, b, _] = picture.get_pixel(x, y).0;
-    let (high, low) = (r.max(g).max(b), r.min(g).min(b));
+    let [red, green, blue, _] = picture.get_pixel(x, y).0;
+    let (high, low) = (red.max(green).max(blue), red.min(green).min(blue));
     high - low > 40
 }
 

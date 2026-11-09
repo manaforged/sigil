@@ -1,3 +1,9 @@
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::panic,
+    reason = "a test fails loudly, and image sides are small"
+)]
+
 use super::{MAX_SIDE, parse, raster};
 
 #[test]

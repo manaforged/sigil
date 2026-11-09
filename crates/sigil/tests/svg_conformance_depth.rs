@@ -2,7 +2,13 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
+#![allow(
+    clippy::cast_precision_loss,
+    reason = "pixel sizes and step counts are small"
+)]
 #![cfg(feature = "kittest")]
+
+use std::fmt::Write as _;
 
 use sigil::prelude::*;
 use sigil::widgets::icon_svg;
@@ -91,10 +97,12 @@ fn groups_kept_by_usvg_at_the_nesting_limit_lower_without_overflow() {
 fn clip_chain(links: usize) -> String {
     let mut defs = String::from(r#"<clipPath id="c0"><rect width="24" height="24"/></clipPath>"#);
     for link in 1..=links {
-        defs.push_str(&format!(
+        write!(
+            defs,
             r#"<clipPath id="c{link}" clip-path="url(#c{})"><rect width="24" height="24"/></clipPath>"#,
             link - 1
-        ));
+        )
+        .expect("write");
     }
     format!(
         r##"{OPEN}{defs}<rect clip-path="url(#c{links})" width="24" height="24" fill="#fff"/></svg>"##
@@ -106,9 +114,11 @@ fn mask_chain(links: usize) -> String {
         String::from(r##"<mask id="m0"><rect width="24" height="24" fill="#fff"/></mask>"##);
     for link in 1..=links {
         let prior = link - 1;
-        defs.push_str(&format!(
+        write!(
+            defs,
             r##"<mask id="m{link}"><rect mask="url(#m{prior})" width="24" height="24" fill="#fff"/></mask>"##
-        ));
+        )
+        .expect("write");
     }
     format!(
         r##"{OPEN}{defs}<rect mask="url(#m{links})" width="24" height="24" fill="#fff"/></svg>"##
@@ -122,11 +132,13 @@ fn pattern_chain(links: usize) -> String {
     );
     for link in 1..=links {
         let prior = link - 1;
-        defs.push_str(&format!(
-            r##"<pattern id="p{link}" {tile}><rect width="24" height="24" fill="url(#p{prior})"/></pattern>"##
-        ));
+        write!(
+            defs,
+            r#"<pattern id="p{link}" {tile}><rect width="24" height="24" fill="url(#p{prior})"/></pattern>"#
+        )
+        .expect("write");
     }
-    format!(r##"{OPEN}{defs}<rect width="24" height="24" fill="url(#p{links})"/></svg>"##)
+    format!(r#"{OPEN}{defs}<rect width="24" height="24" fill="url(#p{links})"/></svg>"#)
 }
 
 #[test]
@@ -158,9 +170,11 @@ fn a_reference_written_with_a_character_entity_still_counts() {
     let mut defs = String::new();
     for link in 1..=LINKS {
         let prior = link - 1;
-        defs.push_str(&format!(
+        write!(
+            defs,
             r#"<clipPath id="c{link}" clip-path="&#117;rl(&#35;c{prior})"><rect width="24" height="24"/></clipPath>"#
-        ));
+        )
+        .expect("write");
     }
     assert!(!draws(format!(
         r##"{OPEN}<clipPath id="c0"><rect width="24" height="24"/></clipPath>{defs}<rect clip-path="url(#c{LINKS})" width="24" height="24" fill="#fff"/></svg>"##
@@ -171,7 +185,7 @@ fn a_reference_written_with_a_character_entity_still_counts() {
 fn groups_expanded_from_an_entity_return_and_draw_nothing() {
     let depth = 100_000;
     let value = format!("{}{INK}{}", "<g>".repeat(depth), "</g>".repeat(depth));
-    let source = format!(r#"<!DOCTYPE svg [<!ENTITY deep '{value}'>]>{OPEN}&deep;</svg>"#);
+    let source = format!(r"<!DOCTYPE svg [<!ENTITY deep '{value}'>]>{OPEN}&deep;</svg>");
     assert!(!draws(source));
 }
 
@@ -190,9 +204,11 @@ fn deep_mask_chain(links: usize, depth: usize) -> String {
     );
     for link in 1..=links {
         let prior = link - 1;
-        defs.push_str(&format!(
+        write!(
+            defs,
             r##"<mask id="m{link}">{open}<rect mask="url(#m{prior})" width="24" height="24" fill="#fff"/>{close}</mask>"##
-        ));
+        )
+        .expect("write");
     }
     format!(
         r##"{OPEN}{defs}<rect mask="url(#m{links})" width="24" height="24" fill="#fff"/></svg>"##
@@ -224,19 +240,23 @@ fn sibling_clip_paths_that_use_one_shape_draw() {
     let mut defs = format!("<defs>{shape}");
     let mut body = String::new();
     for index in 0..200 {
-        defs.push_str(&format!(
+        write!(
+            defs,
             r##"<clipPath id="b{index}"><use href="#a"/></clipPath>"##
-        ));
-        body.push_str(&format!(
+        )
+        .expect("write");
+        write!(
+            body,
             r##"<rect clip-path="url(#b{index})" width="24" height="24" fill="#fff"/>"##
-        ));
+        )
+        .expect("write");
     }
     assert!(draws(format!("{OPEN}{defs}</defs>{body}</svg>")));
 }
 
 #[test]
 fn a_mask_with_many_gradient_filled_shapes_draws() {
-    let shapes = r##"<rect width="24" height="24" fill="url(#g)"/>"##.repeat(200);
+    let shapes = r#"<rect width="24" height="24" fill="url(#g)"/>"#.repeat(200);
     let source = format!(
         r##"{OPEN}{GRADIENT}<mask id="m">{shapes}</mask><rect mask="url(#m)" width="24" height="24" fill="#fff"/></svg>"##
     );
@@ -245,7 +265,7 @@ fn a_mask_with_many_gradient_filled_shapes_draws() {
 
 #[test]
 fn deep_groups_with_many_references_draw() {
-    let shapes = r##"<rect width="24" height="24" fill="url(#g)"/>"##.repeat(50);
+    let shapes = r#"<rect width="24" height="24" fill="url(#g)"/>"#.repeat(50);
     let source = format!(
         r##"{OPEN}{GRADIENT}<mask id="m">{}{shapes}{}</mask><rect mask="url(#m)" width="24" height="24" fill="#fff"/></svg>"##,
         "<g>".repeat(17),
@@ -317,7 +337,7 @@ fn a_chain_through_css_id_selectors_draws_nothing() {
 #[test]
 fn a_reference_held_in_a_custom_entity_still_counts() {
     let links = linked(LINKS, |at, prior| {
-        format!(r##"<!ENTITY r{at} "url(#m{prior})">"##)
+        format!(r#"<!ENTITY r{at} "url(#m{prior})">"#)
     });
     let masks = linked(LINKS, |at, _| {
         format!(
@@ -335,7 +355,7 @@ fn entity_expansion_returns_in_bounded_time() {
     let mut entities = String::from(r#"<!ENTITY e0 "<g/><g/><g/><g/><g/><g/><g/><g/><g/><g/>">"#);
     for level in 1..=9 {
         let inner = format!("&e{};", level - 1).repeat(10);
-        entities.push_str(&format!(r#"<!ENTITY e{level} "{inner}">"#));
+        write!(entities, r#"<!ENTITY e{level} "{inner}">"#).expect("write");
     }
     let start = std::time::Instant::now();
     assert!(!draws(format!(
@@ -389,7 +409,7 @@ fn use_fan_out(levels: usize, width: usize) -> String {
     let mut defs = String::from(r##"<g id="u0"><rect width="24" height="24" fill="#fff"/></g>"##);
     for level in 1..=levels {
         let uses = format!(r##"<use href="#u{}"/>"##, level - 1).repeat(width);
-        defs.push_str(&format!(r#"<g id="u{level}">{uses}</g>"#));
+        write!(defs, r#"<g id="u{level}">{uses}</g>"#).expect("write");
     }
     format!(r##"{OPEN}<defs>{defs}</defs><use href="#u{levels}"/></svg>"##)
 }
@@ -402,12 +422,10 @@ fn pattern_fan_out(levels: usize, width: usize) -> String {
     for level in 1..=levels {
         let prior = level - 1;
         let shapes =
-            format!(r##"<rect width="24" height="24" fill="url(#p{prior})"/>"##).repeat(width);
-        defs.push_str(&format!(
-            r#"<pattern id="p{level}" {tile}>{shapes}</pattern>"#
-        ));
+            format!(r#"<rect width="24" height="24" fill="url(#p{prior})"/>"#).repeat(width);
+        write!(defs, r#"<pattern id="p{level}" {tile}>{shapes}</pattern>"#).expect("write");
     }
-    format!(r##"{OPEN}{defs}<rect width="24" height="24" fill="url(#p{levels})"/></svg>"##)
+    format!(r#"{OPEN}{defs}<rect width="24" height="24" fill="url(#p{levels})"/></svg>"#)
 }
 
 #[test]

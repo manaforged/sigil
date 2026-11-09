@@ -24,7 +24,10 @@ fn slot(index: u32) -> Rect {
     let (col, row) = (index % COLS, index / COLS);
     let inset = (CELL - CARD) * 0.5;
     Rect::new(
-        Point::new(col as f32 * CELL + inset, row as f32 * CELL + inset),
+        Point::new(
+            (col as f32).mul_add(CELL, inset),
+            (row as f32).mul_add(CELL, inset),
+        ),
         CARD,
         CARD,
     )

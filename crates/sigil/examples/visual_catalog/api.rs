@@ -87,7 +87,7 @@ impl ApiMap {
 }
 
 fn item_row(name: &str, lines: &[&str], at: usize) -> ApiRow {
-    let docs: Vec<&str> = lines
+    let mut docs: Vec<&str> = lines
         .get(..at)
         .unwrap_or_default()
         .iter()
@@ -96,7 +96,8 @@ fn item_row(name: &str, lines: &[&str], at: usize) -> ApiRow {
         .filter_map(|l| l.strip_prefix("///"))
         .map(str::trim)
         .collect();
-    let purpose = docs.into_iter().rev().collect::<Vec<_>>().join(" ");
+    docs.reverse();
+    let purpose = docs.join(" ");
     let tail = lines.get(at..).unwrap_or_default();
     let end = tail
         .iter()

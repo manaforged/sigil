@@ -3,6 +3,10 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::unwrap_used, clippy::panic)]
+#![allow(
+    clippy::indexing_slicing,
+    reason = "a test fails loudly on a missing value"
+)]
 
 use std::collections::BTreeMap;
 
@@ -179,13 +183,13 @@ fn every_nesting_of_two_containers_passes_the_rules() {
     report.assert_at_most(KNOWN_NESTING_BREAKS);
 }
 
-fn next(seed: &mut u32) -> usize {
+const fn next(seed: &mut u32) -> usize {
     *seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
     (*seed >> 16) as usize
 }
 
 fn random_tree(seed: &mut u32, depth: usize, leaves: &[String]) -> String {
-    if depth == 0 || next(seed) % 3 == 0 {
+    if depth == 0 || next(seed).is_multiple_of(3) {
         return leaves[next(seed) % leaves.len()].clone();
     }
     let container = CONTAINERS[next(seed) % CONTAINERS.len()];

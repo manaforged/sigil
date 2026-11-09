@@ -3,6 +3,11 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
 
 use std::collections::HashMap;
 use std::net::TcpListener;
@@ -131,17 +136,17 @@ fn figure_problem(json: &str, name: &str, about: Option<&str>, titles: &[&str]) 
     if got != name {
         return Some(format!("drew a figure named {got:?}, not {name:?}"));
     }
-    let titled = lines
+    let drawn = lines
         .iter()
         .map(String::as_str)
         .skip(usize::from(about.is_some()));
     if about.is_some_and(|about| lines.first().map(String::as_str) != Some(about)) {
         return Some(format!("describes itself as {lines:?}"));
     }
-    let titled: Vec<&str> = titled.collect();
+    let drawn: Vec<&str> = drawn.collect();
     let missing: Vec<&&str> = titles
         .iter()
-        .filter(|title| !titled.contains(title))
+        .filter(|title| !drawn.contains(title))
         .collect();
     (!missing.is_empty()).then(|| format!("hides axis titles {missing:?}: {lines:?}"))
 }

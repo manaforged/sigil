@@ -2,6 +2,10 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
+#![allow(
+    clippy::indexing_slicing,
+    reason = "a test fails loudly on a missing value"
+)]
 #![allow(clippy::cast_precision_loss, reason = "pixel sides are small")]
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
@@ -70,7 +74,7 @@ fn scene(color: Rgba8) -> CommandScene {
     scene.finish()
 }
 
-fn frame(scene: &CommandScene) -> Frame<'_> {
+const fn frame(scene: &CommandScene) -> Frame<'_> {
     Frame {
         scene,
         viewport: (SIDE as f32, SIDE as f32),
@@ -79,7 +83,7 @@ fn frame(scene: &CommandScene) -> Frame<'_> {
     }
 }
 
-fn center(rgba: &[u8]) -> [u8; 3] {
+const fn center(rgba: &[u8]) -> [u8; 3] {
     let side = (SIDE * SCALE) as usize;
     let at = (side / 2 * side + side / 2) * 4;
     [rgba[at], rgba[at + 1], rgba[at + 2]]

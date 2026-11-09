@@ -7,6 +7,7 @@
     reason = "a counting global allocator must implement the unsafe GlobalAlloc trait"
 )]
 #![allow(clippy::unwrap_used)]
+#![allow(clippy::cast_precision_loss, reason = "call counts are small")]
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
@@ -109,7 +110,7 @@ fn keyframes_pinned_by_disposed_scopes_are_released() {
     let bytes = retained(CALLS, |call| {
         let keyframes = fade(0.25 + call as f32 / 8_192.0);
         Owner::scope("pinned-animation", || {
-            drop(container().animate(keyframes.clone()))
+            drop(container().animate(keyframes.clone()));
         });
         keyframes
     });

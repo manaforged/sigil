@@ -3,6 +3,10 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::unwrap_used, clippy::panic)]
+#![allow(
+    clippy::indexing_slicing,
+    reason = "a test fails loudly on a missing value"
+)]
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -91,8 +95,8 @@ fn a_typed_value_survives_a_save() {
     assert!(screen.contains("typed abc"), "{screen}");
     assert!(screen.contains("Two"), "{screen}");
     ui.type_text("d");
-    let screen = ui.text();
-    assert!(screen.contains("typed abcd"), "focus was lost: {screen}");
+    let typed = ui.text();
+    assert!(typed.contains("typed abcd"), "focus was lost: {typed}");
 }
 
 #[test]
@@ -124,10 +128,10 @@ fn a_bad_save_keeps_the_screen_and_names_the_line_then_a_good_save_clears_it() {
     assert!(tree.contains("line 2 column 1"), "{tree}");
     std::fs::write(&path, "text \"Fixed\"\n").unwrap();
     ui.advance(SAVE);
-    let screen = ui.text();
-    assert!(screen.contains("Fixed"), "{screen}");
-    let tree = ui.accessibility_snapshot();
-    assert!(!tree.contains("line 2"), "{tree}");
+    let fixed = ui.text();
+    assert!(fixed.contains("Fixed"), "{fixed}");
+    let fixed_tree = ui.accessibility_snapshot();
+    assert!(!fixed_tree.contains("line 2"), "{fixed_tree}");
 }
 
 #[test]

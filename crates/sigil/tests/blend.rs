@@ -9,6 +9,11 @@
     clippy::cast_sign_loss,
     reason = "pixel coordinates and channels are small"
 )]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::kernel::container;
@@ -122,10 +127,10 @@ fn frames() -> Vec<(&'static str, image::RgbaImage)> {
 }
 
 fn probe(frame: &image::RgbaImage, column: usize, row: usize) -> [u8; 3] {
-    let x = (column as f32 + 0.5) * CELL * SCALE;
-    let y = (row as f32 + 0.5) * CELL * SCALE;
-    let [r, g, b, _] = frame.get_pixel(x as u32, y as u32).0;
-    [r, g, b]
+    let left = (column as f32 + 0.5) * CELL * SCALE;
+    let top = (row as f32 + 0.5) * CELL * SCALE;
+    let [red, green, blue, _] = frame.get_pixel(left as u32, top as u32).0;
+    [red, green, blue]
 }
 
 fn checked(mode: BlendMode, alpha: u8) -> bool {

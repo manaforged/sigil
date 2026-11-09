@@ -2,6 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
+#![allow(clippy::panic, reason = "a test fails loudly on a missing value")]
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
@@ -139,9 +140,9 @@ fn resvg_raster(svg: &str, scale: f32) -> Picture {
     Picture::from_raw(width, height, rgba).expect("image")
 }
 
-fn half_alpha_reference([r, g, b]: [u8; 3]) -> [u8; 3] {
+fn half_alpha_reference([red, green, blue]: [u8; 3]) -> [u8; 3] {
     let svg = format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="#{r:02x}{g:02x}{b:02x}"/><line x1="0" y1="10" x2="20" y2="10" stroke="#000000" stroke-opacity="0.5" stroke-width="10"/></svg>"##
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="#{red:02x}{green:02x}{blue:02x}"/><line x1="0" y1="10" x2="20" y2="10" stroke="#000000" stroke-opacity="0.5" stroke-width="10"/></svg>"##
     );
     let [r, g, b, _] = resvg_raster(&svg, 1.0).get_pixel(10, 10).0;
     [r, g, b]
@@ -191,8 +192,8 @@ fn rule_probe(backend: Backend, scale: f32) -> ([u8; 3], [u8; 3]) {
     let picture = capture(&mut ui, backend, scale);
     let x = ((rect.origin.x + rect.width / 2.0) * scale) as u32;
     let y = ((rect.origin.y + rect.height / 2.0) * scale) as u32;
-    let [r, g, b, _] = picture.get_pixel(x, y).0;
-    ([r, g, b], half_alpha_reference(surface(&mut ui)))
+    let [red, green, blue, _] = picture.get_pixel(x, y).0;
+    ([red, green, blue], half_alpha_reference(surface(&mut ui)))
 }
 
 fn assert_half_alpha(backend: Backend, scale: f32) {

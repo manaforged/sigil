@@ -20,8 +20,10 @@ fn reference(source: &str) -> Vec<u8> {
 
 fn off(got: &[u8], want: &[u8]) -> f32 {
     let wrong = got
-        .chunks_exact(4)
-        .zip(want.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(want.as_chunks::<4>().0)
         .filter(|(a, b)| {
             a.iter()
                 .zip(*b)

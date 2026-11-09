@@ -3,6 +3,17 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::float_cmp)]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "frame counts are small and positive"
+)]
 
 use core::f32::consts::TAU;
 use std::sync::Arc;
@@ -160,16 +171,16 @@ fn keyframe_and_transition_colors_meet_at_the_same_midpoint() {
         run(&mut ui, 0.5);
         let animated = seen(&mut ui).color.r;
 
-        let flag = signal(false);
+        let toggle = signal(false);
         let node = square()
             .transition_colors()
             .duration(Duration::from_secs(1))
             .ease(Easing::Linear)
-            .paint_when(flag, |state| state.bg(WHITE));
-        let mut ui = mount(node);
-        start(&mut ui, flag);
-        run(&mut ui, 0.5);
-        let transitioned = seen(&mut ui).color.r;
+            .paint_when(toggle, |state| state.bg(WHITE));
+        let mut fading = mount(node);
+        start(&mut fading, toggle);
+        run(&mut fading, 0.5);
+        let transitioned = seen(&mut fading).color.r;
 
         assert!(
             animated.abs_diff(transitioned) <= 2,
@@ -236,7 +247,7 @@ fn a_four_hundred_percent_shift_moves_four_widths() {
         run(&mut ui, 0.5);
         let moved = seen(&mut ui).matrix[0][2];
         assert!(
-            (moved - 4.0 * SIDE).abs() < 0.5,
+            4.0f32.mul_add(-SIDE, moved).abs() < 0.5,
             "400% of 40 px: got {moved}, want 160"
         );
     });

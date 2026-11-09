@@ -3,7 +3,14 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
+#![allow(clippy::print_stdout, reason = "the checks print their measures")]
 
+use std::fmt::Write as _;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
@@ -42,7 +49,7 @@ fn json_line(bytes: usize) -> String {
     let mut line = String::from("[");
     let mut index = 0;
     while line.len() < bytes {
-        line.push_str(&format!("{{\"id\":{index},\"name\":\"county {index}\"}},"));
+        let _ = write!(line, "{{\"id\":{index},\"name\":\"county {index}\"}},");
         index += 1;
     }
     line.push_str("{}]");

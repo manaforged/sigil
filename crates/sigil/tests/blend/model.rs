@@ -1,3 +1,8 @@
+#![allow(
+    clippy::suboptimal_flops,
+    reason = "the model spells out the spec formula"
+)]
+
 use sigil::scene::BlendMode;
 
 type Rgb = [f64; 3];

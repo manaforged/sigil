@@ -1,3 +1,9 @@
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
+
 use crate::style::class_parse::parse_classes;
 use crate::style::parse_class_string;
 
@@ -101,7 +107,7 @@ fn tailwind_radial_and_conic_mask_classes_parse() {
     use crate::style::{Conic, Radial, RadialExtent};
     let radial = parse_class_string("mask-circle mask-radial-closest-side mask-radial-at-top-left mask-radial-from-10% mask-alpha")
         .expect("parse");
-    let expected = MaskStyle {
+    let expected_radial = MaskStyle {
         kind: Some(MaskKind::Radial),
         radial: Radial::new()
             .circle(true)
@@ -110,15 +116,15 @@ fn tailwind_radial_and_conic_mask_classes_parse() {
         stops: [10, 100],
         ..MaskStyle::NONE
     };
-    assert_eq!(mask_of(&radial), expected);
+    assert_eq!(mask_of(&radial), expected_radial);
     let conic = parse_class_string("-mask-conic-45 mask-conic-to-75%").expect("parse");
-    let expected = MaskStyle {
+    let expected_conic = MaskStyle {
         kind: Some(MaskKind::Conic),
         conic: Conic::new(-45),
         stops: [0, 75],
         ..MaskStyle::NONE
     };
-    assert_eq!(mask_of(&conic), expected);
+    assert_eq!(mask_of(&conic), expected_conic);
     assert_eq!(
         mask_of(&parse_class_string("mask-linear-45 mask-none").expect("parse")).kind,
         None
@@ -165,7 +171,7 @@ fn tailwind_filter_classes_build_the_list_in_tailwind_order() {
     let found =
         filters_of("drop-shadow-md sepia hue-rotate-90 blur-md brightness-50 -hue-rotate-30")
             .filters();
-    let kinds: Vec<_> = found.iter().map(std::mem::discriminant).collect();
+    let kinds = found.iter().map(std::mem::discriminant).count();
     let expected = [
         Filter::Blur(12.0),
         Filter::Brightness(0.5),
@@ -173,7 +179,7 @@ fn tailwind_filter_classes_build_the_list_in_tailwind_order() {
         Filter::Sepia(1.0),
     ];
     assert_eq!(found[..4], expected);
-    assert_eq!(kinds.len(), 5, "{found:?}");
+    assert_eq!(kinds, 5, "{found:?}");
     let Filter::DropShadow(shadow) = found[4] else {
         panic!("drop-shadow comes last: {found:?}");
     };

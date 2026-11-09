@@ -2,6 +2,11 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
+#![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
 #![allow(clippy::print_stdout, reason = "the checks print their measures")]
 #![allow(
     clippy::cast_precision_loss,

@@ -82,13 +82,7 @@ fn a_turned_card_hits_inside_its_projected_quad_and_reports_its_bounds() {
         1,
         "(C-36, C-52) lies above the flat box but inside the turned card"
     );
-    let quad = css_quad(std::f32::consts::PI / 4.0);
-    let (x0, x1) = quad
-        .iter()
-        .fold((f32::MAX, f32::MIN), |(a, b), p| (a.min(p.x), b.max(p.x)));
-    let (y0, y1) = quad
-        .iter()
-        .fold((f32::MAX, f32::MIN), |(a, b), p| (a.min(p.y), b.max(p.y)));
+    let want = extent(&css_quad(std::f32::consts::PI / 4.0));
     let bounds = ui
         .get_by_role(Role::Button, "card")
         .bounds()
@@ -99,17 +93,23 @@ fn a_turned_card_hits_inside_its_projected_quad_and_reports_its_bounds() {
         bounds.origin.x + bounds.width,
         bounds.origin.y + bounds.height,
     ];
-    println!(
-        "a11y bounds {found:?}, projected quad bounds {:?}",
-        [x0, y0, x1, y1]
-    );
-    for (got, want) in found.iter().zip([x0, y0, x1, y1]) {
+    println!("a11y bounds {found:?}, projected quad bounds {want:?}");
+    for (got, edge) in found.iter().zip(want) {
         assert!(
-            (got - want).abs() <= 1.0,
-            "a11y bounds {found:?} match the quad bounds {:?}",
-            [x0, y0, x1, y1]
+            (got - edge).abs() <= 1.0,
+            "a11y bounds {found:?} match the quad bounds {want:?}"
         );
     }
+}
+
+fn extent(quad: &[Point; 4]) -> [f32; 4] {
+    let (x0, x1) = quad
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), p| (a.min(p.x), b.max(p.x)));
+    let (y0, y1) = quad
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), p| (a.min(p.y), b.max(p.y)));
+    [x0, y0, x1, y1]
 }
 
 fn near_button() -> NodeBuilder {

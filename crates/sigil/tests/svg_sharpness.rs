@@ -3,6 +3,10 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(
+    clippy::indexing_slicing,
+    reason = "a test fails loudly on a missing value"
+)]
+#![allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
@@ -96,10 +100,10 @@ fn capture(ui: &mut Harness, backend: Backend, scale: f32) -> image::RgbaImage {
 }
 
 fn luma(image: &image::RgbaImage, x: u32, y: u32) -> f32 {
-    let [r, g, b, _] = image.get_pixel(x, y).0;
+    let [red, green, blue, _] = image.get_pixel(x, y).0;
     0.2126f32.mul_add(
-        f32::from(r),
-        0.7152f32.mul_add(f32::from(g), 0.0722 * f32::from(b)),
+        f32::from(red),
+        0.7152f32.mul_add(f32::from(green), 0.0722 * f32::from(blue)),
     )
 }
 

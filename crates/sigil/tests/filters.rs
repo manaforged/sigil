@@ -4,6 +4,11 @@
 )]
 #![allow(clippy::print_stdout, reason = "the checks print their measures")]
 #![allow(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a test fails loudly on a missing value"
+)]
+#![allow(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,

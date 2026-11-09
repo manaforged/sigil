@@ -3,6 +3,10 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::indexing_slicing,
+    reason = "a test fails loudly on a missing value"
+)]
 
 use std::cell::Cell;
 use std::rc::Rc;

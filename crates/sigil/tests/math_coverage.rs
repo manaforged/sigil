@@ -2,6 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
+#![allow(clippy::print_stdout, reason = "the check prints its coverage")]
 
 use accesskit::Role as AkRole;
 use sigil::prelude::*;
