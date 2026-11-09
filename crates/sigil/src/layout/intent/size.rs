@@ -103,6 +103,12 @@ impl LayoutStyle {
         self.mark(LayoutFields::SHRINK)
     }
 
+    #[must_use]
+    pub(crate) const fn stretch_width(mut self) -> Self {
+        self.0.stretch_width = true;
+        self.mark(LayoutFields::STRETCH_WIDTH)
+    }
+
     /// Sets the min size.
     #[must_use]
     pub fn min_size(mut self, width: impl Into<Dimension>, height: impl Into<Dimension>) -> Self {

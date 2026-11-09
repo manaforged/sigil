@@ -265,9 +265,10 @@ impl OwnedTextEngine {
         let mut chain_of = |face: &Font, weight: u16| self.chain(&fonts, face, weight, &scripts);
         let (spans, faces) = style_spans(&fonts, text, style, &shaper_style, &mut chain_of);
         let runs = shape_spans(&spans, text, &paragraph_bidi);
+        let breaks = runs.iter().any(|s| s.is_break_opportunity);
         let min_content_hint = runs
             .iter()
-            .filter(|s| !s.is_break_opportunity)
+            .filter(|s| breaks && !s.is_break_opportunity)
             .map(|s| s.advance)
             .fold(0.0_f32, f32::max);
         let (lines, fit) = break_lines(&runs, max_width, strut, &paragraph_bidi);

@@ -12,6 +12,7 @@ pub struct Asymmetric(pub &'static str);
 pub fn row() -> NodeBuilder {
     container().layout(
         LayoutStyle::flex_row()
+            .stretch_width()
             .gap(Space::px(default_gap()))
             .align_items(crate::layout::AlignItems::Center),
     )
@@ -20,7 +21,11 @@ pub fn row() -> NodeBuilder {
 /// A container that places its children top to bottom with the theme gap.
 #[must_use]
 pub fn column() -> NodeBuilder {
-    container().layout(LayoutStyle::flex_column().gap(Space::px(default_gap())))
+    container().layout(
+        LayoutStyle::flex_column()
+            .stretch_width()
+            .gap(Space::px(default_gap())),
+    )
 }
 
 fn default_gap() -> f32 {

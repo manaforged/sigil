@@ -8,7 +8,22 @@ use crate::layout::style_data::{
 
 use super::FlexCtx;
 use super::flexible::resolve_flexible;
+use super::intrinsic::min_content_width;
 use super::sizing::{container_cross_bounds, item_cross_basis};
+
+fn relax_minimums(ctx: &FlexCtx<'_, '_>, line: &mut FlexLine, container_main: f32) {
+    let gaps = line.gap * line.items.len().saturating_sub(1) as f32;
+    let used: f32 = line.items.iter().map(FlexItem::outer_main_basis).sum();
+    if used + gaps <= container_main {
+        return;
+    }
+    let forest = ctx.solver.scope().forest();
+    for item in line.items.iter_mut().filter(|item| item.content_min) {
+        if let Some(node) = forest.refer(item.id) {
+            item.min_main = Some(min_content_width(ctx, node).min(item.flex_basis_resolved));
+        }
+    }
+}
 
 pub(super) fn place_lines(
     ctx: &FlexCtx<'_, '_>,
@@ -20,6 +35,7 @@ pub(super) fn place_lines(
     let line_count = lines.len();
     let cross_definite = ctx.definite_along(style, !ctx.axes.row);
     for line in &mut lines {
+        relax_minimums(ctx, line, container_main);
         resolve_flexible(line, container_main);
         resolve_cross_sizes(ctx, line, container_cross)?;
         line.cross = line_cross_size(line);
@@ -152,13 +168,20 @@ fn place_line_items(
             continue;
         };
         let start_at_end = style.direction.is_rtl() && !ctx.axes.row;
-        let cross_offset = cross_offset_for(item, style.align_items, line_cross, start_at_end);
+        let cross_size = cross_size_for(item, style.align_items, line_cross, ctx.suppress_stretch);
+        let cross_offset = cross_offset_for(
+            item,
+            style.align_items,
+            line_cross,
+            cross_size,
+            start_at_end,
+        );
         let placed = PlacedItem {
             id: item.id,
             main_pos: cursor + item.margin_main_start,
             cross_pos: line_origin_cross + cross_offset + item.margin_cross_start,
             main_size: item.main_size,
-            cross_size: cross_size_for(item, style.align_items, line_cross, ctx.suppress_stretch),
+            cross_size,
         };
         out.push(placed);
         cursor += item.outer_main() + gap + main_gap_extra;
@@ -251,6 +274,7 @@ fn cross_offset_for(
     item: &FlexItem,
     container: Option<AlignItems>,
     line_cross: f32,
+    cross_size: f32,
     start_at_end: bool,
 ) -> f32 {
     let own = item.align_self.map(|align| {
@@ -261,7 +285,8 @@ fn cross_offset_for(
         }
     });
     let align = own.or(container).unwrap_or(AlignItems::Stretch);
-    let extra = (line_cross - item.outer_cross()).max(0.0);
+    let extra =
+        (line_cross - cross_size - item.margin_cross_start - item.margin_cross_end).max(0.0);
     match align {
         AlignItems::Stretch if start_at_end => extra,
         AlignItems::Start | AlignItems::Baseline | AlignItems::Stretch => 0.0,

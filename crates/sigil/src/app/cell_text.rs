@@ -216,6 +216,10 @@ impl CellGeometry {
 impl TextMeasure for CellGeometry {
     fn measure(&self, content: &TextContent, space: Size) -> LogicalSize {
         let text = content.resolve();
+        if matches!(space.width, Dim::MinContent) {
+            let longest = text.split_whitespace().map(cell_width).max().unwrap_or(0);
+            return LogicalSize::new(cells_to_px(longest, self.px), self.px);
+        }
         let width = match space.width {
             Dim::Fixed(width) => Some(width),
             Dim::MinContent | Dim::MaxContent => None,

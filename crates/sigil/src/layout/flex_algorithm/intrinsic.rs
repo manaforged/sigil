@@ -1,10 +1,60 @@
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::NodeRef;
 use crate::layout::resolve::{NodeEdges, clamp, dim_to_border_box};
-use crate::layout::style_data::{Display, FlexWrap, Position, StyleData};
+use crate::layout::style_data::{Dimension, Display, FlexWrap, Overflow, Position, StyleData};
 
 use super::sizing::{container_inner_size, item_min_max_main};
 use super::{Axis2, FlexCtx, item_main_basis, layout_item_subtree, main_gap};
+
+pub(super) fn min_content_width(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>) -> f32 {
+    let style = node.style();
+    if matches!(style.display, Display::None) || matches!(style.position, Position::Absolute) {
+        return 0.0;
+    }
+    let edges = NodeEdges::build(style, ctx.cb.w);
+    let chrome = edges.inline_chrome();
+    let m = edges.margin.or_zero();
+    let (min, max) = (
+        dim_to_border_box(style.min_size.width, ctx.cb.w, chrome, style.box_sizing),
+        dim_to_border_box(style.max_size.width, ctx.cb.w, chrome, style.box_sizing),
+    );
+    let sized = matches!(style.size.width, Dimension::Px(_))
+        .then(|| dim_to_border_box(style.size.width, ctx.cb.w, chrome, style.box_sizing))
+        .flatten();
+    let inner = sized.unwrap_or_else(|| content_min_width(ctx, node, style) + chrome);
+    clamp(inner, min, max).max(0.0) + m.left + m.right
+}
+
+fn content_min_width(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>, style: &StyleData) -> f32 {
+    let scope = ctx.solver.scope();
+    if node.children().is_empty() {
+        return scope.min_content_width(node).unwrap_or(0.0);
+    }
+    if style.overflow.width != Overflow::Visible {
+        return 0.0;
+    }
+    let forest = scope.forest();
+    let widths = node
+        .children()
+        .iter()
+        .filter_map(|child| forest.refer(*child))
+        .filter(|child| {
+            !matches!(child.style().display, Display::None)
+                && !matches!(child.style().position, Position::Absolute)
+        })
+        .map(|child| min_content_width(ctx, child));
+    let in_line = matches!(style.display, Display::Flex)
+        && matches!(style.flex_wrap, FlexWrap::NoWrap)
+        && Axis2::for_direction(style.flex_direction).row;
+    if !in_line {
+        return widths.fold(0.0, f32::max);
+    }
+    let (count, total) = widths.fold((0_usize, 0.0), |(count, total), width| {
+        (count + 1, total + width)
+    });
+    let axes = Axis2::for_direction(style.flex_direction);
+    total + main_gap(&FlexCtx { axes, ..*ctx }, style, count) * count.saturating_sub(1) as f32
+}
 
 pub(super) fn container_intrinsic_cross(
     ctx: &FlexCtx<'_, '_>,
@@ -20,14 +70,12 @@ pub(super) fn container_intrinsic_cross(
         return Some(extent);
     }
     let cb = CbSize::across(axes, cb_main, cb_cross);
-    layout_item_subtree(
-        &ctx.probe(),
-        node.id(),
-        Position2::new(0.0, 0.0),
-        cb.w,
-        cb.h,
-    )
-    .ok()?;
+    let probe = if axes.row {
+        ctx.height_probe()
+    } else {
+        ctx.probe()
+    };
+    layout_item_subtree(&probe, node.id(), Position2::new(0.0, 0.0), cb.w, cb.h).ok()?;
     let extent = probed_content_extent(ctx, node, false, axes);
     ctx.solver
         .intrinsic_put(node.id(), cb_main, cb_cross, false, extent);
@@ -53,14 +101,12 @@ pub(super) fn container_intrinsic_main(
         content_main_from_children(ctx, node, style, axes, cb_main, cb_cross)?
     } else {
         let cb = CbSize::across(axes, cb_main, cb_cross);
-        layout_item_subtree(
-            &ctx.probe(),
-            node.id(),
-            Position2::new(0.0, 0.0),
-            cb.w,
-            cb.h,
-        )
-        .ok()?;
+        let probe = if axes.row {
+            ctx.probe()
+        } else {
+            ctx.height_probe()
+        };
+        layout_item_subtree(&probe, node.id(), Position2::new(0.0, 0.0), cb.w, cb.h).ok()?;
         probed_content_extent(ctx, node, true, axes)
     };
     ctx.solver

@@ -47,6 +47,7 @@ pub(crate) fn layout_item_subtree(
                 axes,
                 cb: CbSize { w, h },
                 suppress_stretch: ctx.suppress_stretch,
+                measures_height: ctx.measures_height,
                 assigned_w,
                 assigned_h,
             };
@@ -158,12 +159,14 @@ fn assigned_size(
 ) -> (Option<f32>, Option<f32>) {
     let style = node.style();
     let probing = ctx.suppress_stretch;
-    let assigned_w = (!probing
-        && (style.size.width != Dimension::Auto
-            || (style.flex_grow > 0.0 && ctx.axes.row)
-            || ctx.solver.fills_width(node)))
-    .then_some(w);
     let in_flow = style.position != Position::Absolute;
+    let sized = style.size.width != Dimension::Auto
+        || (style.flex_grow > 0.0 && ctx.axes.row)
+        || ctx.solver.fills_width(node);
+    let stretched = (style.stretch_width || ctx.solver.fills_width(node))
+        && in_flow
+        && (!probing || ctx.measures_height);
+    let assigned_w = ((!probing && sized) || stretched).then_some(w);
     let assigned_h = (!probing
         && (style.size.height != Dimension::Auto
             || (in_flow && ctx.axes.row)

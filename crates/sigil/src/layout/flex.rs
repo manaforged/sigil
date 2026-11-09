@@ -64,7 +64,11 @@ impl<'a> FlexSolver<'a> {
             w: definite(avail.w),
             h: definite(avail.h),
         };
-        self.solve_with(subtree, cb, Position2::new(0.0, 0.0), (None, None))
+        let style = subtree.style();
+        let stretched = style.stretch_width && style.size.width == Dimension::Auto;
+        let assigned_w =
+            (stretched && matches!(avail.w, SpaceConstraint::Definite(_))).then_some(cb.w);
+        self.solve_with(subtree, cb, Position2::new(0.0, 0.0), (assigned_w, None))
     }
 
     pub(crate) fn solve_at(
@@ -98,6 +102,7 @@ impl<'a> FlexSolver<'a> {
             axes: Axis2::for_direction(subtree.style().flex_direction),
             cb,
             suppress_stretch: false,
+            measures_height: false,
             assigned_w,
             assigned_h,
         };

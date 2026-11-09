@@ -12,6 +12,7 @@ pub(super) static DEFAULT_STYLE: StyleData = StyleData {
     flex_wrap: FlexWrap::NoWrap,
     flex_grow: 0.0,
     flex_shrink: 1.0,
+    stretch_width: false,
     flex_basis: Dimension::Auto,
     justify_content: None,
     align_items: None,

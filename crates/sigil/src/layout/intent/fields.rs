@@ -97,4 +97,5 @@ fields! {
     41 COLUMN_START [] grid_column_start;
     42 ROW_START [] grid_row_start;
     43 DENSE [] grid_auto_flow_dense;
+    44 STRETCH_WIDTH [] stretch_width;
 }

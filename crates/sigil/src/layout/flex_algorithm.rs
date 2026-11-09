@@ -72,6 +72,7 @@ pub(crate) struct FlexCtx<'s, 'a> {
     pub(crate) axes: Axis2,
     pub(crate) cb: CbSize,
     pub(crate) suppress_stretch: bool,
+    pub(crate) measures_height: bool,
     pub(crate) assigned_w: Option<f32>,
     pub(crate) assigned_h: Option<f32>,
 }
@@ -80,9 +81,17 @@ impl FlexCtx<'_, '_> {
     pub(crate) const fn probe(&self) -> Self {
         Self {
             suppress_stretch: true,
+            measures_height: false,
             assigned_w: None,
             assigned_h: None,
             ..*self
+        }
+    }
+
+    pub(crate) const fn height_probe(&self) -> Self {
+        Self {
+            measures_height: true,
+            ..self.probe()
         }
     }
 

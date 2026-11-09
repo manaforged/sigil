@@ -90,6 +90,27 @@ impl<'a> MeasureScope<'a> {
         self.measure_text(node, known, Some((cb_width - inline).max(0.0)))
     }
 
+    pub(crate) fn min_content_width(&self, node: NodeRef<'_>) -> Option<f32> {
+        let text = node.text()?;
+        if text.ellipsis {
+            return None;
+        }
+        let width = if text.wrap {
+            crate::geometry::Dim::MinContent
+        } else {
+            crate::geometry::Dim::MaxContent
+        };
+        let space = crate::geometry::Size {
+            width,
+            height: crate::geometry::Dim::MaxContent,
+        };
+        let measured = text.style.as_ref().map_or_else(
+            || self.text.measure(&text.content, space),
+            |style| self.text.measure_styled(&text.content, style, space),
+        );
+        Some(measured.width)
+    }
+
     fn measure_text(
         &self,
         node: NodeRef<'_>,
