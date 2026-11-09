@@ -12,7 +12,6 @@ use crate::terminal::term::set_focused;
 use crate::{AppConfig, AppResult, Error};
 
 pub(crate) enum Incoming {
-    Quit,
     Idle,
     Events(Vec<Event>),
     Resized(u16, u16, Vec<Event>),
@@ -182,7 +181,6 @@ pub(crate) fn gather_input(
     }
     for read in burst {
         match map_input(read, config, pointer) {
-            Input::Quit => return Ok(Incoming::Quit),
             Input::Suspend => crate::terminal::signals::stop(),
             Input::Event(mapped) => push_key_text(&mut incoming, mapped),
             Input::Resize(mut cols, mut rows) => {
@@ -206,7 +204,6 @@ pub(crate) fn gather_input(
 }
 
 enum Input {
-    Quit,
     Suspend,
     Event(Event),
     Resize(u16, u16),
@@ -215,13 +212,7 @@ enum Input {
 
 fn map_input(event: TermEvent, config: &AppConfig, pointer: &mut crate::geometry::Point) -> Input {
     match event {
-        TermEvent::Key(key) => {
-            if quit(&key, config) {
-                Input::Quit
-            } else {
-                map_key(&key).map_or(Input::None, |mapped| keyed(mapped, config))
-            }
-        }
+        TermEvent::Key(key) => map_key(&key).map_or(Input::None, |mapped| keyed(mapped, config)),
         TermEvent::Resize(cols, rows) => Input::Resize(cols, rows),
         TermEvent::Mouse(mouse) => Input::Event(map_mouse(mouse, CELL, pointer)),
         TermEvent::Paste(pasted) => Input::Event(Event::Paste(pasted)),
@@ -260,13 +251,6 @@ pub(crate) fn limit(config: &AppConfig, cols: &mut u16, rows: &mut u16) {
     if config.size.1 > 0 {
         *rows = (*rows).min(u16::try_from(config.size.1).unwrap_or(*rows));
     }
-}
-
-fn quit(key: &crossterm::event::KeyEvent, config: &AppConfig) -> bool {
-    use crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
-    let ctrl_c = key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c');
-    key.kind != KeyEventKind::Release
-        && ((config.quit.ctrl_c && ctrl_c) || (config.quit.esc && key.code == KeyCode::Esc))
 }
 
 #[cfg(all(test, unix))]

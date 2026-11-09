@@ -49,6 +49,8 @@ fn cell(caps: Caps) -> Option<[u16; 2]> {
 pub(super) struct Pixels {
     #[cfg(feature = "scene")]
     inner: Option<draw::Draw>,
+    #[cfg(feature = "scene")]
+    quit: crate::app::config::QuitKeys,
     on: bool,
 }
 
@@ -68,6 +70,8 @@ impl Pixels {
         Self {
             #[cfg(feature = "scene")]
             inner: None,
+            #[cfg(feature = "scene")]
+            quit: config.quit,
             on: false,
         }
     }
@@ -88,6 +92,7 @@ impl Pixels {
             let caps = crate::terminal::term::current_caps();
             if want {
                 let inner = self.inner.get_or_insert_with(|| draw::Draw::mount(tree));
+                inner.host_mut().set_quit(self.quit);
                 inner.host_mut().attach_theme(cells.theme().clone());
                 inner.enter()?;
             } else if let Some(inner) = &mut self.inner {

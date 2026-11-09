@@ -18,6 +18,8 @@ mod access;
 mod emit;
 #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
 mod hot;
+#[cfg(feature = "terminal")]
+mod quit;
 use super::host_env::{EnvGuard, HostEnv};
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
 use crate::scene::emit::EmitMemo;
@@ -273,14 +275,13 @@ impl Host {
         Some((&mut self.cx, &self.layout, &mut self.router, root))
     }
 
-    /// Sends an input event through the tree.
-    pub fn route(&mut self, event: Event) {
+    /// Sends an input event through the tree and returns whether a key press was consumed.
+    pub fn route(&mut self, event: Event) -> bool {
         let _env = self.enter();
         self.router.set_visual_transforms(self.visual_transforms);
-        if self.root.is_some() {
-            self.router.route(&mut self.cx, &self.layout, event);
-        }
+        let handled = self.root.is_some() && self.router.route(&mut self.cx, &self.layout, event);
         crate::reactive::run_dispatch_deferred();
+        handled
     }
 
     fn on_tree(&mut self, run: impl FnOnce(&mut Cx, &LayoutEngine, &mut EventRouter)) {

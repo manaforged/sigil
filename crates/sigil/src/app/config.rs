@@ -136,14 +136,14 @@ impl AppConfig {
         self
     }
 
-    /// Exit the app on Escape.
+    /// Exits the app on an Escape press the UI did not consume.
     #[must_use]
     pub const fn esc_exits(mut self, yes: bool) -> Self {
         self.quit.esc = yes;
         self
     }
 
-    /// Sets the quit on ctrl c.
+    /// Exits a terminal app on a Ctrl+C press the UI did not consume.
     #[must_use]
     pub const fn quit_on_ctrl_c(mut self, yes: bool) -> Self {
         self.quit.ctrl_c = yes;

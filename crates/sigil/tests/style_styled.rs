@@ -60,7 +60,9 @@ fn rects(build: impl IntoNode, drive: Drive) -> Vec<DrawRect> {
     let mut router = EventRouter::new();
     match drive {
         Drive::Rest => {}
-        Drive::Hover => router.route(&mut cx, &layout, Event::pointer_move(Point::new(8.0, 8.0))),
+        Drive::Hover => {
+            router.route(&mut cx, &layout, Event::pointer_move(Point::new(8.0, 8.0)));
+        }
         Drive::Press => {
             router.route(&mut cx, &layout, Event::pointer_move(Point::new(8.0, 8.0)));
             router.route(&mut cx, &layout, Event::pointer_down(Point::new(8.0, 8.0)));

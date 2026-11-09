@@ -504,7 +504,7 @@ fn main() -> AppResult<()> {
 # fn main() {}
 ```
 
-With `quit_on_ctrl_c(false)`, Ctrl+C reaches the tree as a key event, and the app exits through `request_exit`.
+Ctrl+C always reaches the tree first. With `quit_on_ctrl_c(false)` an unconsumed Ctrl+C no longer exits, and the app exits through `request_exit`.
 
 ## Screen readers
 

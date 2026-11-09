@@ -3,16 +3,21 @@ use crate::kernel::{Cx, NodeId, Role};
 use crate::layout::LayoutEngine;
 use smallvec::SmallVec;
 
-use super::{EventRouter, ShortcutIndex};
+use super::EventRouter;
 use crate::events::focus::FocusManager;
 use crate::events::handlers::{EventHandlers, dispatch};
 use crate::events::hit_test::visible;
 use crate::events::pointer_dispatch::path_to_node;
 
 impl EventRouter {
-    pub(crate) fn route_key(&mut self, cx: &mut Cx, layout: &LayoutEngine, mut event: KeyEvent) {
+    pub(super) fn route_key(
+        &mut self,
+        cx: &mut Cx,
+        layout: &LayoutEngine,
+        mut event: KeyEvent,
+    ) -> bool {
         if event.phase != KeyPhase::Down {
-            return;
+            return false;
         }
         let focused = self.focused_kind(cx);
         if focused != Focused::Text
@@ -20,64 +25,55 @@ impl EventRouter {
                 let mods = event.normalized_modifiers();
                 mods.meta() || (mods.ctrl() && focused != Focused::Terminal)
             }
-            && matches!(&event.key, LogicalKey::Character(text) if text.eq_ignore_ascii_case("c"))
+            && event.is_letter_c()
             && crate::events::selection::copy_selection(cx)
         {
             event.stop_propagation();
-            return;
+            return true;
         }
         self.shortcuts.refresh(cx);
         if self.shortcuts.dispatch(cx, &mut event, focused) || event.propagation_stopped() {
-            return;
+            return true;
         }
-        if matches!(event.key, LogicalKey::Named(Key::Escape))
-            && event.modifiers.is_empty()
-            && crate::events::selection::escape()
-        {
-            return;
+        if event.is_escape() && event.modifiers.is_empty() && crate::events::selection::escape() {
+            return true;
         }
         crate::events::note_focus_source(true);
         if event.is_tab_navigation() && focused != Focused::Terminal {
-            self.route_tab(cx, layout, &mut event);
-            return;
+            return self.route_tab(cx, layout, &mut event);
         }
         self.focus.focus_active_scope(cx, layout);
-        self.dispatch_focused_key(cx, &mut event);
+        self.dispatch_focused_key(cx, &mut event)
     }
 
-    fn dispatch_focused_key(&mut self, cx: &mut Cx, event: &mut KeyEvent) {
+    fn dispatch_focused_key(&mut self, cx: &mut Cx, event: &mut KeyEvent) -> bool {
         let terminal_first =
             self.focused_kind(cx) == Focused::Terminal && !event.normalized_modifiers().meta();
         let Some(focused) = self.focus.focus().filter(|id| visible(cx, *id)) else {
             self.focus.set_focus(cx, None);
-            return;
+            return false;
         };
         let path = path_to_node(cx, focused);
         if terminal_first {
-            if !run_phase(cx, path.iter().rev().copied(), event, false)
-                && !self.shortcuts.dispatch(cx, event, Focused::Other)
-            {
-                run_phase(cx, path.iter().copied(), event, true);
-            }
-        } else if !run_phase(cx, path.iter().copied(), event, true) {
-            run_phase(cx, path.iter().rev().copied(), event, false);
+            run_phase(cx, path.iter().rev().copied(), event, false)
+                || self.shortcuts.dispatch(cx, event, Focused::Other)
+                || run_phase(cx, path.iter().copied(), event, true)
+        } else {
+            run_phase(cx, path.iter().copied(), event, true)
+                || run_phase(cx, path.iter().rev().copied(), event, false)
         }
     }
 
-    fn route_tab(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: &mut KeyEvent) {
+    fn route_tab(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: &mut KeyEvent) -> bool {
         let path = self
             .focus
             .focus()
             .filter(|id| visible(cx, *id))
             .map(|focused| path_to_node(cx, focused))
             .unwrap_or_default();
-        if run_phase(cx, path.iter().copied(), event, true) {
-            return;
-        }
-        if route_tab_key(&mut self.focus, cx, layout, event) {
-            return;
-        }
-        run_phase(cx, path.iter().rev().copied(), event, false);
+        run_phase(cx, path.iter().copied(), event, true)
+            || route_tab_key(&mut self.focus, cx, layout, event)
+            || run_phase(cx, path.iter().rev().copied(), event, false)
     }
 
     fn focused_kind(&self, cx: &Cx) -> Focused {
@@ -125,6 +121,12 @@ fn run_phase(
         }
     }
     false
+}
+
+#[derive(Debug)]
+pub(super) struct ShortcutIndex {
+    generation: u64,
+    entries: SmallVec<[(Shortcut, NodeId); 8]>,
 }
 
 impl Default for ShortcutIndex {
@@ -212,6 +214,14 @@ fn collect_shortcuts(cx: &Cx, id: NodeId, entries: &mut SmallVec<[(Shortcut, Nod
 impl KeyEvent {
     fn is_tab_navigation(&self) -> bool {
         self.key == LogicalKey::Named(Key::Tab) && !self.modifiers.ctrl() && !self.modifiers.alt()
+    }
+
+    pub(super) fn is_escape(&self) -> bool {
+        self.key == LogicalKey::Named(Key::Escape)
+    }
+
+    pub(super) fn is_letter_c(&self) -> bool {
+        matches!(&self.key, LogicalKey::Character(text) if text.eq_ignore_ascii_case("c"))
     }
 }
 

@@ -110,12 +110,13 @@ pub(in crate::widgets) fn submit_text(event: &mut KeyEvent, runtime: &TextEditRu
 }
 
 fn clipboard_copy(event: &mut KeyEvent, runtime: &TextEditRuntime) {
-    event.stop_propagation();
     if runtime.disabled() {
+        event.stop_propagation();
         return;
     }
     let state = runtime.edit_mut();
     if let Some(text) = state.selected_text() {
+        event.stop_propagation();
         runtime
             .clip_fail
             .set(crate::clipboard::write(&*runtime.clipboard, text).is_err());

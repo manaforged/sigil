@@ -1,10 +1,9 @@
-use crate::events::{Event, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
+use crate::events::{Event, PointerEvent, PointerPhase, ScrollEvent};
 use crate::geometry::Point;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
 #[cfg(any(test, feature = "kittest"))]
 use accesskit::TreeUpdate;
-use smallvec::SmallVec;
 
 use crate::events::focus::{FocusIntent, FocusManager};
 use crate::events::hit_test::{HitTestCache, NodePath, visible};
@@ -17,8 +16,10 @@ mod file_drop;
 mod gesture;
 mod keyboard;
 mod paste;
+mod quit;
 
 pub(crate) use gesture::GestureHandlers;
+use keyboard::ShortcutIndex;
 pub(crate) use paste::PasteHandlers;
 
 kittest_pub! {
@@ -32,6 +33,7 @@ kittest_pub! {
         hit_cache: HitTestCache,
         hover_seen: Option<(u64, u64, (u32, u32))>,
         link_press: Option<std::sync::Arc<str>>,
+        quit: Option<crate::app::config::QuitKeys>,
     }
 }
 
@@ -48,11 +50,12 @@ impl EventRouter {
     }
 
     kittest_pub! {
-        pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: Event) {
+        /// Routes an event through the tree and returns whether a key press was consumed.
+        pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: Event) -> bool {
             self.focus.sync_scopes(cx, Some(layout));
             match event {
                 Event::Pointer(event) => self.route_pointer(cx, layout, event),
-                Event::Key(event) => self.route_key(cx, layout, event),
+                Event::Key(event) => return self.route_quit_key(cx, layout, event),
                 Event::Window(crate::events::WindowEvent::Focused(false)) => {
                     self.focus_lost(cx, layout);
                 }
@@ -63,6 +66,7 @@ impl EventRouter {
                 Event::Paste(text) => self.route_paste(cx, layout, &text),
                 Event::Window(_) => {}
             }
+            false
         }
     }
 
@@ -383,12 +387,6 @@ impl EventRouter {
             self.focus.set_focus(cx, target);
         }
     }
-}
-
-#[derive(Debug)]
-struct ShortcutIndex {
-    generation: u64,
-    entries: SmallVec<[(Shortcut, NodeId); 8]>,
 }
 
 fn in_popup(cx: &Cx, path: &NodePath) -> bool {

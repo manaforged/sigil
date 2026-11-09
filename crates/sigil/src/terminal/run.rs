@@ -186,6 +186,7 @@ fn live<N: IntoNode>(
     let tree = std::rc::Rc::new(tree);
     let _follow = crate::terminal::backdrop::Follow::start(term.caps().backdrop);
     let mut host = mount_cell(&tree, &term, (cols, rows))?;
+    host.set_quit(config.quit);
     let mut screen = open_screen(config, (cols, rows), term.caps());
     let mut pixels = Pixels::open(config, term.caps());
     let mut pointer = crate::geometry::Point::new(0.0, 0.0);
@@ -201,7 +202,6 @@ fn live<N: IntoNode>(
         let timing = turn_wait(config.frame_interval, woke, last, deadline);
         let pending = inspect_pending() || due(deadline);
         let input = match gather_input(&mut first, config, &mut pointer, hooks, (&waker, timing))? {
-            Incoming::Quit => break,
             Incoming::Idle if idle(settle, woke, &term, pending) => continue,
             Incoming::Idle => Vec::new(),
             Incoming::Events(events) => events,
