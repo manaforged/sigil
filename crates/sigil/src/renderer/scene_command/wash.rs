@@ -37,33 +37,17 @@ impl SceneWalk<'_> {
         }
         self.flush_shapes();
         let wash = wash.normalized();
-        let view = match self.ctx.wash_cache.find(wash, size) {
-            Some(view) => view,
-            None => {
-                let view = self.bake(wash, size);
-                self.ctx.wash_cache.insert(wash, size, view.clone());
-                view
-            }
-        };
+        let view = self.ctx.wash_cache.find(wash, size).unwrap_or_else(|| {
+            let view = self.bake(wash, size);
+            self.ctx.wash_cache.insert(wash, size, view.clone());
+            view
+        });
         self.composite_wash(draw, &view, size);
         true
     }
 
     fn bake(&mut self, wash: Wash, size: (u32, u32)) -> wgpu::TextureView {
-        let texture = self.ctx.device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("sigil-renderer baked wash"),
-            size: wgpu::Extent3d {
-                width: size.0,
-                height: size.1,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
+        let texture = wash_texture(self.ctx.device, size);
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let scale = self.ctx.scale;
         let viewport = (size.0 as f32 / scale, size.1 as f32 / scale);
@@ -80,7 +64,7 @@ impl SceneWalk<'_> {
         let stops = FrameUploads::upload_stops(ctx.encoder, &stops, &mut *ctx.stats);
         let instances = ctx.encoder.upload(from_ref(&instance));
         let (buffer, offset, _) = ctx.encoder.uniform(&SceneUniforms {
-            viewport: [viewport.0, viewport.1],
+            viewport: viewport.into(),
             _pad: [0.0, 0.0],
         });
         let pipeline = pipeline_for(
@@ -141,4 +125,21 @@ impl SceneWalk<'_> {
             },
         );
     }
+}
+
+fn wash_texture(device: &wgpu::Device, size: (u32, u32)) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("sigil-renderer baked wash"),
+        size: wgpu::Extent3d {
+            width: size.0,
+            height: size.1,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    })
 }

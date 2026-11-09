@@ -113,14 +113,13 @@ impl Pixels {
     pub(super) fn turn(
         &mut self,
         policy: crate::app::PanicPolicy,
-        input: Vec<crate::events::Event>,
+        (input, dt): (Vec<crate::events::Event>, f32),
         size: (u16, u16),
         term: &mut crate::terminal::term::Term,
-        dt: f32,
     ) -> crate::AppResult<bool> {
         #[cfg(feature = "scene")]
         if let (Some(inner), Some(cell)) = (&mut self.inner, cell(term.caps())) {
-            let frame = isolated(policy, || inner.turn(input, size, cell, term, dt))?;
+            let frame = isolated(policy, || inner.turn((input, dt), size, cell, term))?;
             if frame.is_none() {
                 recover(term)?;
                 inner.enter().map_err(crate::Error::io)?;

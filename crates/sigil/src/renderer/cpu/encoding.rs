@@ -10,7 +10,7 @@ use tiny_skia::{Pixmap, Rect as TsRect, Transform as TsTransform};
 use super::bound::{corners, extent};
 
 pub(super) fn to_srgb(pixels: &mut [u8]) {
-    scale(pixels, |coverage| coverage.sqrt());
+    scale(pixels, f32::sqrt);
 }
 
 pub(super) fn to_stored(pixels: &mut [u8]) {
@@ -18,13 +18,12 @@ pub(super) fn to_stored(pixels: &mut [u8]) {
 }
 
 fn scale(pixels: &mut [u8], gain: fn(f32) -> f32) {
-    for pixel in pixels.chunks_exact_mut(4) {
-        let alpha = pixel[3];
-        if alpha == 0 || alpha == u8::MAX {
+    for [red, green, blue, alpha] in pixels.as_chunks_mut::<4>().0 {
+        if *alpha == 0 || *alpha == u8::MAX {
             continue;
         }
-        let factor = gain(f32::from(alpha) / 255.0);
-        for channel in &mut pixel[..3] {
+        let factor = gain(f32::from(*alpha) / 255.0);
+        for channel in [red, green, blue] {
             *channel = (f32::from(*channel) * factor).round().min(255.0) as u8;
         }
     }

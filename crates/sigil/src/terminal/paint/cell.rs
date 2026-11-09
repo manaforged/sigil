@@ -109,6 +109,10 @@ impl Cell {
 }
 
 #[derive(Clone, Copy, Default)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each flag is an independent text attribute that combines freely with the others"
+)]
 pub(in crate::terminal) struct Face {
     pub(in crate::terminal) bold: bool,
     pub(in crate::terminal) italic: bool,

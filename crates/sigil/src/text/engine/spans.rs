@@ -96,7 +96,7 @@ fn overlapping<'s>(
     }
     let rest = spans.get(*first..).unwrap_or_default();
     let count = rest.iter().take_while(|span| span.start < word.end).count();
-    &rest[..count]
+    rest.get(..count).unwrap_or_default()
 }
 
 fn hard_break(start: usize, len: usize) -> ShapedSegment {

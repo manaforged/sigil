@@ -42,10 +42,8 @@ pub(crate) fn level(work_ns: u64) -> u8 {
     let budget = profile::budget_ns();
     if work_ns > budget {
         2
-    } else if work_ns > budget / 2 {
-        1
     } else {
-        0
+        u8::from(work_ns > budget / 2)
     }
 }
 
@@ -73,7 +71,7 @@ pub(crate) fn compact(frame: &Frame) -> String {
             line,
             " {}/{}={:.1}",
             short.get(1).unwrap_or(&""),
-            short[0],
+            short.first().unwrap_or(&""),
             ms(site.self_ns)
         );
     }
@@ -185,7 +183,7 @@ mod overlay {
             DrawRect::new(at(x0, y0, width, height), BACKDROP)
                 .border_radius(CornerRadii::uniform(6.0)),
         ));
-        bars(scene, &works[..count], x0, y0);
+        bars(scene, works.get(..count).unwrap_or(&works), x0, y0);
         scene.commands.push(SceneCommand::GlyphRun(run));
     }
 }

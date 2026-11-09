@@ -63,7 +63,7 @@ const MAX_BOX_RADIUS: f32 = 1_048_576.0;
 const MAX_BOX_TAPS: u32 = 256;
 
 fn pass_flags(pass: u32) -> f32 {
-    let horizontal = u32::from(pass % 2 == 0);
+    let horizontal = u32::from(pass.is_multiple_of(2));
     let encode_in = u32::from(pass == 0) * 2;
     let decode_out = u32::from(pass + 1 == BLUR_PASSES * 2) * 4;
     (horizontal | encode_in | decode_out | (MAX_BOX_TAPS << 3)) as f32

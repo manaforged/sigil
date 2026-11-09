@@ -102,8 +102,7 @@ impl FilterPipeline {
         ctx: &mut PassCtx<'_>,
         pool: &mut LayerPool,
         src: PassSrc<'_>,
-        filters: &LayerFilters,
-        scale: f32,
+        (filters, scale): (&LayerFilters, f32),
     ) -> Result<Option<wgpu::TextureView>, Error> {
         let mut current: Option<wgpu::TextureView> = None;
         for step in filters.steps() {
@@ -114,7 +113,7 @@ impl FilterPipeline {
             let next = match *step {
                 [Filter::Blur(sigma)] => self.blur.apply(ctx, pool, input, sigma * scale)?,
                 [Filter::DropShadow(shadow)] => {
-                    Some(self.drop_shadow(ctx, pool, input, shadow, scale)?)
+                    Some(self.drop_shadow(ctx, pool, input, (shadow, scale))?)
                 }
                 ref colors => self.colors(ctx, pool, input, colors)?,
             };
@@ -135,11 +134,21 @@ impl FilterPipeline {
         let mut current: Option<wgpu::TextureView> = None;
         for run in colors.chunks(MAX_MATRICES) {
             let mut uniforms = uniforms(src);
-            for (index, matrix) in run.iter().filter_map(|f| color_matrix(*f)).enumerate() {
+            let matrices = run.iter().filter_map(|f| color_matrix(*f));
+            for (block, matrix) in uniforms
+                .rows
+                .as_chunks_mut::<5>()
+                .0
+                .iter_mut()
+                .zip(matrices)
+            {
                 uniforms.count[0] += 1;
-                for (row, values) in matrix.iter().enumerate() {
-                    uniforms.rows[index * 5 + row] = [values[0], values[1], values[2], values[3]];
-                    uniforms.rows[index * 5 + 4][row] = values[4];
+                let [rows @ .., offsets] = block;
+                for ((slot, offset), [weights @ .., bias]) in
+                    rows.iter_mut().zip(offsets.iter_mut()).zip(matrix)
+                {
+                    *slot = weights;
+                    *offset = bias;
                 }
             }
             let input = PassSrc {
@@ -151,7 +160,7 @@ impl FilterPipeline {
                 shadow: input.view,
                 uniforms,
             };
-            current = Some(self.run(ctx, pool, &self.matrix, pass)?);
+            current = Some(self.run(ctx, pool, &self.matrix, &pass)?);
         }
         Ok(current)
     }
@@ -161,8 +170,7 @@ impl FilterPipeline {
         ctx: &mut PassCtx<'_>,
         pool: &mut LayerPool,
         src: PassSrc<'_>,
-        shadow: Shadow,
-        scale: f32,
+        (shadow, scale): (Shadow, f32),
     ) -> Result<wgpu::TextureView, Error> {
         let blurred = self.blur.apply(ctx, pool, src, shadow.blur * scale)?;
         let [r, g, b, a] = shadow.color;
@@ -174,7 +182,7 @@ impl FilterPipeline {
             shadow: blurred.as_ref().unwrap_or(src.view),
             uniforms,
         };
-        self.run(ctx, pool, &self.shadow, pass)
+        self.run(ctx, pool, &self.shadow, &pass)
     }
 
     fn run(
@@ -182,11 +190,11 @@ impl FilterPipeline {
         ctx: &mut PassCtx<'_>,
         pool: &mut LayerPool,
         quad: &QuadPipeline,
-        pass: FilterPass<'_>,
+        pass: &FilterPass<'_>,
     ) -> Result<wgpu::TextureView, Error> {
         let (w, h) = (pass.src.w, pass.src.h);
         let out = pool.acquire(ctx.device, w, h, quad.format)?;
-        let groups = self.groups(ctx.device, &pass);
+        let groups = self.groups(ctx.device, pass);
         let instance_buf = ctx
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {

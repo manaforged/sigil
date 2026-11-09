@@ -82,7 +82,9 @@ where
                 if let Some(current) = slot.into_signal().try_peek() {
                     let _site = crate::profile::site(location, crate::profile::SiteKind::Message);
                     crate::reactive::batch(|| {
-                        burst.into_iter().for_each(|value| (current.message)(value))
+                        for value in burst {
+                            (current.message)(value);
+                        }
                     });
                 }
             });

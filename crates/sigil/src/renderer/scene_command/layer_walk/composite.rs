@@ -177,7 +177,7 @@ fn project_blended(
     let behind = copy.as_ref().map(|copy| copy.backdrop(mode));
     draw(ctx, target, flat, (None, behind));
     release(ctx, copy);
-    if let Some(pool) = ctx.layer_pool.as_mut() {
-        pool.release(scratch);
+    if let Some(layers) = ctx.layer_pool.as_mut() {
+        layers.release(scratch);
     }
 }

@@ -2,6 +2,7 @@ use crate::scene::command::Filter;
 
 pub(crate) type ColorMatrix = [[f32; 5]; 4];
 
+const IDENTITY: [[f32; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
 const LUMA: [f32; 3] = [0.2126, 0.7152, 0.0722];
 const SATURATE_LUMA: [f32; 3] = [0.213, 0.715, 0.072];
 const SEPIA: [[f32; 3]; 3] = [
@@ -38,7 +39,7 @@ pub(crate) fn color_matrix(filter: Filter) -> Option<ColorMatrix> {
             transfer(2.0f32.mul_add(-amount, 1.0), amount)
         }
         Filter::Opacity(amount) => {
-            let mut matrix = rgb([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
+            let mut matrix = rgb(IDENTITY);
             matrix[3][3] = unit(amount);
             matrix
         }
@@ -61,44 +62,44 @@ const fn rows(luma: [f32; 3]) -> [[f32; 3]; 3] {
     [luma, luma, luma]
 }
 
-fn identity3(row: usize, column: usize) -> f32 {
-    if row == column { 1.0 } else { 0.0 }
+fn cellwise(
+    left: [[f32; 3]; 3],
+    right: [[f32; 3]; 3],
+    cell: impl Fn(f32, f32) -> f32,
+) -> [[f32; 3]; 3] {
+    let mut out = [[0.0; 3]; 3];
+    for ((out_row, left_row), right_row) in out.iter_mut().zip(left).zip(right) {
+        for ((slot, left_value), right_value) in out_row.iter_mut().zip(left_row).zip(right_row) {
+            *slot = cell(left_value, right_value);
+        }
+    }
+    out
 }
 
 fn toward(target: [[f32; 3]; 3], amount: f32) -> ColorMatrix {
-    rgb(std::array::from_fn(|row| {
-        std::array::from_fn(|column| {
-            (identity3(row, column) - target[row][column])
-                .mul_add(1.0 - amount, target[row][column])
-        })
+    rgb(cellwise(IDENTITY, target, |identity, value| {
+        (identity - value).mul_add(1.0 - amount, value)
     }))
 }
 
 fn saturate(amount: f32) -> ColorMatrix {
-    rgb(std::array::from_fn(|row| {
-        std::array::from_fn(|column| {
-            let luma = SATURATE_LUMA[column];
-            (identity3(row, column) - luma).mul_add(amount, luma)
-        })
+    rgb(cellwise(IDENTITY, rows(SATURATE_LUMA), |identity, luma| {
+        (identity - luma).mul_add(amount, luma)
     }))
 }
 
 fn hue_rotate(radians: f32) -> ColorMatrix {
     let (sin, cos) = radians.sin_cos();
-    rgb(std::array::from_fn(|row| {
-        std::array::from_fn(|column| {
-            HUE_SIN[row][column].mul_add(
-                sin,
-                HUE_COS[row][column].mul_add(cos, SATURATE_LUMA[column]),
-            )
-        })
+    let base = cellwise(HUE_COS, rows(SATURATE_LUMA), |weight, luma| {
+        weight.mul_add(cos, luma)
+    });
+    rgb(cellwise(HUE_SIN, base, |weight, value| {
+        weight.mul_add(sin, value)
     }))
 }
 
 fn transfer(slope: f32, intercept: f32) -> ColorMatrix {
-    let mut matrix = rgb(std::array::from_fn(|row| {
-        std::array::from_fn(|column| identity3(row, column) * slope)
-    }));
+    let mut matrix = rgb(IDENTITY.map(|row| row.map(|value| value * slope)));
     for row in &mut matrix[..3] {
         row[4] = intercept;
     }

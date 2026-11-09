@@ -30,8 +30,8 @@ impl CellWalk<'_> {
 }
 
 fn path_image(draw: &DrawPath) -> Option<ImageSource> {
-    let side = |extent: f32| (extent * RASTER_SCALE).ceil().clamp(1.0, MAX_SIDE) as u16;
-    let size = (side(draw.bounds.width), side(draw.bounds.height));
+    let to_pixels = |extent: f32| (extent * RASTER_SCALE).ceil().clamp(1.0, MAX_SIDE) as u16;
+    let size = (to_pixels(draw.bounds.width), to_pixels(draw.bounds.height));
     let origin = draw.bounds.origin;
     let device = [
         [RASTER_SCALE, 0.0, -origin.x * RASTER_SCALE],
@@ -45,12 +45,12 @@ fn path_image(draw: &DrawPath) -> Option<ImageSource> {
 }
 
 fn unpremultiply(pixels: &mut [u8]) {
-    for pixel in pixels.chunks_exact_mut(4) {
-        let alpha = u16::from(pixel[3]);
+    for [red, green, blue, coverage] in pixels.as_chunks_mut::<4>().0 {
+        let alpha = u16::from(*coverage);
         if alpha == 0 || alpha == 255 {
             continue;
         }
-        for channel in &mut pixel[..3] {
+        for channel in [red, green, blue] {
             *channel = ((u16::from(*channel) * 255 + alpha / 2) / alpha).min(255) as u8;
         }
     }

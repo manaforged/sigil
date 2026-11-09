@@ -151,20 +151,29 @@ const fn meets([ax, ay, aw, ah]: [usize; 4], [bx, by, bw, bh]: [usize; 4]) -> bo
     ax < bx + bw && bx < ax + aw && ay < by + bh && by < ay + ah
 }
 
-fn png(pixmap: &Pixmap, [x, y, w, h]: [usize; 4]) -> io::Result<Vec<u8>> {
+fn png(pixmap: &Pixmap, [x, y, width, height]: [usize; 4]) -> io::Result<Vec<u8>> {
     let stride = pixmap.width() as usize;
     let pixels = pixmap.pixels();
-    let mut rgba = Vec::with_capacity(w * h * 4);
-    for row in y..y + h {
-        for px in &pixels[row * stride + x..row * stride + x + w] {
-            let c = px.demultiply();
-            rgba.extend_from_slice(&[c.red(), c.green(), c.blue(), c.alpha()]);
+    let mut rgba = Vec::with_capacity(width * height * 4);
+    for row in y..y + height {
+        let start = row * stride + x;
+        let line = pixels
+            .get(start..start + width)
+            .ok_or_else(|| io::Error::other("tile lies outside the canvas"))?;
+        for px in line {
+            let color = px.demultiply();
+            rgba.extend_from_slice(&[color.red(), color.green(), color.blue(), color.alpha()]);
         }
     }
     let mut png = Vec::new();
     let size = |n: usize| u32::try_from(n).map_err(io::Error::other);
     PngEncoder::new_with_quality(&mut png, CompressionType::Fast, FilterType::Adaptive)
-        .write_image(&rgba, size(w)?, size(h)?, image::ExtendedColorType::Rgba8)
+        .write_image(
+            &rgba,
+            size(width)?,
+            size(height)?,
+            image::ExtendedColorType::Rgba8,
+        )
         .map_err(io::Error::other)?;
     Ok(png)
 }

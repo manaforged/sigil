@@ -77,11 +77,10 @@ impl Draw {
     /// Runs one frame and draws it when it changed; returns whether the app asked to exit.
     pub(super) fn turn(
         &mut self,
-        input: Vec<Event>,
+        (input, dt): (Vec<Event>, f32),
         (cols, rows): (u16, u16),
         cell: [u16; 2],
-        term: &mut Term,
-        dt: f32,
+        term: &Term,
     ) -> AppResult<bool> {
         let caps = term.caps();
         let frame = Frame::new(cols, rows, cell);
@@ -127,23 +126,10 @@ impl Draw {
         (mux, clear): (Option<Mux>, Color),
     ) -> AppResult {
         let render = profile::span(Phase::RenderCpu);
-        let scale = frame.scale();
-        let area = Rect::new(Point::new(0.0, 0.0), frame.viewport.0, frame.viewport.1);
-        let damage = match (&self.scene, &self.canvas) {
-            (Some(prev), Some(_)) if !force => {
-                scene_damage::<Vec<Rect>>((prev, &scene), (area, scale), GPU_BUDGET)
-            }
-            _ => Damage::Full(crate::scene::damage::FullReason::ViewportResized),
-        };
+        let damage = self.damage(frame, &scene, force);
         let size = frame.size;
-        let fits = self
-            .canvas
-            .as_ref()
-            .is_some_and(|c| c.width() == size.width && c.height() == size.height);
-        if !fits {
-            self.canvas = Pixmap::new(size.width, size.height);
-        }
-        let Some(canvas) = self.canvas.as_mut() else {
+        let fits = self.fit_canvas(size);
+        let Some(target) = self.canvas.as_mut() else {
             return Ok(());
         };
         let rects = match damage {
@@ -154,30 +140,11 @@ impl Draw {
             Damage::Regions(rects) if fits => Some(rects),
             _ => None,
         };
-        let regions: Vec<[usize; 4]> = match &rects {
-            Some(rects) => rects.iter().map(|rect| frame.pixels(*rect)).collect(),
-            None => vec![[0, 0, size.width as usize, size.height as usize]],
-        };
-        let jobs: Vec<[usize; 4]> = regions
-            .iter()
-            .flat_map(|region| frame.strips(*region))
-            .collect();
-        let painted: Vec<([usize; 4], Option<Pixmap>)> = jobs
-            .par_iter()
-            .map(|&job| {
-                let culled = culled(&scene, frame.logical(job));
-                let rect = job.map(|n| u32::try_from(n).unwrap_or(u32::MAX));
-                let pixmap = RENDERER.with_borrow_mut(|renderer| {
-                    renderer.render_region(&culled, (frame.viewport, clear), size, rect)
-                });
-                (job, pixmap)
-            })
-            .collect();
-        for (job, pixmap) in &painted {
-            if let Some(pixmap) = pixmap {
-                place(canvas, pixmap, *job);
-            }
-        }
+        let regions: Vec<[usize; 4]> = rects.as_ref().map_or_else(
+            || vec![[0, 0, size.width as usize, size.height as usize]],
+            |found| found.iter().map(|rect| frame.pixels(*rect)).collect(),
+        );
+        render_regions(target, &scene, frame, clear, &regions);
         let dirty = rects.is_some().then_some(regions);
         drop(render);
         self.scene = Some(scene);
@@ -187,6 +154,57 @@ impl Draw {
         self.tiles
             .send(frame.grid, canvas, dirty.as_deref(), mux)
             .map_err(Error::io)
+    }
+
+    fn damage(&self, frame: Frame, scene: &CommandScene, force: bool) -> Damage<Vec<Rect>> {
+        let area = Rect::new(Point::new(0.0, 0.0), frame.viewport.0, frame.viewport.1);
+        match (&self.scene, &self.canvas) {
+            (Some(prev), Some(_)) if !force => {
+                scene_damage::<Vec<Rect>>((prev, scene), (area, frame.scale()), GPU_BUDGET)
+            }
+            _ => Damage::Full(crate::scene::damage::FullReason::ViewportResized),
+        }
+    }
+
+    fn fit_canvas(&mut self, size: PhysicalSize) -> bool {
+        let fits = self
+            .canvas
+            .as_ref()
+            .is_some_and(|c| c.width() == size.width && c.height() == size.height);
+        if !fits {
+            self.canvas = Pixmap::new(size.width, size.height);
+        }
+        fits
+    }
+}
+
+fn render_regions(
+    canvas: &mut Pixmap,
+    scene: &CommandScene,
+    frame: Frame,
+    clear: Color,
+    regions: &[[usize; 4]],
+) {
+    let size = frame.size;
+    let jobs: Vec<[usize; 4]> = regions
+        .iter()
+        .flat_map(|region| frame.strips(*region))
+        .collect();
+    let painted: Vec<([usize; 4], Option<Pixmap>)> = jobs
+        .par_iter()
+        .map(|&job| {
+            let culled = culled(scene, frame.logical(job));
+            let rect = job.map(|n| u32::try_from(n).unwrap_or(u32::MAX));
+            let pixmap = RENDERER.with_borrow_mut(|renderer| {
+                renderer.render_region(&culled, (frame.viewport, clear), size, rect)
+            });
+            (job, pixmap)
+        })
+        .collect();
+    for (job, pixmap) in &painted {
+        if let Some(pixmap) = pixmap {
+            place(canvas, pixmap, *job);
+        }
     }
 }
 
@@ -274,7 +292,7 @@ impl Frame {
                 strip
             })
         })
-        .filter(|[_, _, w, h]| *w > 0 && *h > 0)
+        .filter(|[_, _, width, height]| *width > 0 && *height > 0)
     }
 
     fn point(&self, at: Point) -> Point {

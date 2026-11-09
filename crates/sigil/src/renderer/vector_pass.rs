@@ -111,7 +111,7 @@ impl VectorPass {
             self.retained.clear();
         }
         let found = self.find(pixels, draws, (device, queue), encoder)?;
-        let target = &self.retained[found];
+        let target = self.retained.get(found)?;
         Some(Rendered {
             view: if linear {
                 target.linear.clone()
@@ -138,16 +138,18 @@ impl VectorPass {
         {
             self.pending = draws;
             self.pending.clear();
-            self.retained[hit].used = self.frame;
+            if let Some(kept) = self.retained.get_mut(hit) {
+                kept.used = self.frame;
+            }
             return Some(hit);
         }
         let mut target = self.slot(device, pixels);
         target.pixels = pixels;
         target.used = self.frame;
-        let drawn = self.draw(&draws, &target, (device, queue), encoder);
-        target.draws = if drawn { draws } else { Vec::new() };
+        let painted = self.draw(&draws, &target, (device, queue), encoder);
+        target.draws = if painted { draws } else { Vec::new() };
         self.retained.push(target);
-        drawn.then(|| self.retained.len() - 1)
+        painted.then(|| self.retained.len() - 1)
     }
 
     fn slot(&mut self, device: &wgpu::Device, pixels: Pixels) -> Retained {
@@ -195,10 +197,10 @@ impl VectorPass {
         scene.reset_and_resize(width, height);
         let (x, y) = target.pixels.origin;
         for queued in draws {
-            let mut device = queued.device;
-            device[0][2] -= f32::from(x);
-            device[1][2] -= f32::from(y);
-            crate::renderer::vector::record(scene, &queued.draw, device, queued.opacity);
+            let mut placed = queued.device;
+            placed[0][2] -= f32::from(x);
+            placed[1][2] -= f32::from(y);
+            crate::renderer::vector::record(scene, &queued.draw, placed, queued.opacity);
         }
         let gpu = gpu(&mut self.gpu, device, target.pixels.size);
         let render_size = vello_gpu::RenderSize { width, height };

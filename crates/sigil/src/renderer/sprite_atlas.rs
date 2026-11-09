@@ -33,10 +33,11 @@ impl MaskShape {
             Self::Disc => x.hypot(y) - 52.0,
             Self::Ring => (x.hypot(y) - 40.0).abs() - 12.0,
             Self::Square => reach - 44.0,
-            Self::Diamond => (x + y) * std::f32::consts::FRAC_1_SQRT_2 - 40.0,
-            Self::Cross => {
-                ((x - y).abs() * std::f32::consts::FRAC_1_SQRT_2 - 8.0).max(reach - 44.0)
-            }
+            Self::Diamond => (x + y).mul_add(std::f32::consts::FRAC_1_SQRT_2, -40.0),
+            Self::Cross => (x - y)
+                .abs()
+                .mul_add(std::f32::consts::FRAC_1_SQRT_2, -8.0)
+                .max(reach - 44.0),
         }
     }
 }

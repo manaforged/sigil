@@ -49,7 +49,7 @@ impl Follow {
                     while !stop.load(Ordering::Relaxed) {
                         if let Some(next) = watcher.try_iter().filter_map(from_mode).last() {
                             dispatch_to_owner(&dispatcher, owner, move || {
-                                backdrop().set(Some(next))
+                                backdrop().set(Some(next));
                             });
                         }
                         std::thread::sleep(POLL);

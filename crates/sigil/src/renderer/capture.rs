@@ -64,7 +64,7 @@ fn cpu_pixels(
 ) -> Result<Vec<u8>, Error> {
     let pixmap = renderer.render(scene, target.clear, target.viewport, target.size)?;
     let mut rgba = pixmap.take();
-    for pixel in rgba.chunks_exact_mut(4) {
+    for pixel in rgba.as_chunks_mut::<4>().0 {
         if pixel[3] == u8::MAX {
             continue;
         }

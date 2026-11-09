@@ -88,7 +88,9 @@ pub(super) fn render_isolated(
     nodes: &[PlanNode<'_>],
     target: LayerTarget,
 ) -> Result<(), Error> {
-    let size = target.view.texture().size();
+    let viewport = target.viewport(ctx.scale);
+    let LayerTarget { view, bounds, .. } = target;
+    let size = view.texture().size();
     let handle = ctx
         .layer_pool
         .get_or_insert_with(Default::default)
@@ -96,15 +98,11 @@ pub(super) fn render_isolated(
     ctx.encoder.clear(&handle.view, Color::TRANSPARENT);
     let inner = LayerTarget {
         view: handle.view.clone(),
-        bounds: target.bounds,
+        bounds,
         state: SceneState::default(),
     };
     let result = render_nodes(ctx, nodes, inner);
-    let whole = Rect::new(
-        Point::new(0.0, 0.0),
-        target.bounds.width,
-        target.bounds.height,
-    );
+    let whole = Rect::new(Point::new(0.0, 0.0), bounds.width, bounds.height);
     let request = CompositeRequest {
         layer_view: &handle.view,
         dest: whole,
@@ -120,8 +118,8 @@ pub(super) fn render_isolated(
         device: ctx.device,
         queue: ctx.queue,
         encoder: &mut *ctx.encoder,
-        view: &target.view,
-        viewport: target.viewport(ctx.scale),
+        view: &view,
+        viewport,
         clip: None,
         scale: ctx.scale,
     };

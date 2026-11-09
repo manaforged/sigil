@@ -133,7 +133,7 @@ fn kurbo_stroke(stroke: &PathStroke) -> Stroke {
     }
 }
 
-fn color(color: Rgba8, opacity: f32) -> AlphaColor<Srgb> {
+const fn color(color: Rgba8, opacity: f32) -> AlphaColor<Srgb> {
     AlphaColor::from_rgba8(color.r, color.g, color.b, color.a).multiply_alpha(opacity)
 }
 

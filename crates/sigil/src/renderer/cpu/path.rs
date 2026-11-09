@@ -57,16 +57,24 @@ impl CpuPainter<'_> {
     }
 
     fn window(&self, visible: Rect) -> Option<Window> {
-        let left = (visible.origin.x * self.scale - self.origin.x)
+        let left = visible
+            .origin
+            .x
+            .mul_add(self.scale, -self.origin.x)
             .floor()
             .max(0.0);
-        let top = (visible.origin.y * self.scale - self.origin.y)
+        let top = visible
+            .origin
+            .y
+            .mul_add(self.scale, -self.origin.y)
             .floor()
             .max(0.0);
-        let right = ((visible.origin.x + visible.width) * self.scale - self.origin.x)
+        let right = (visible.origin.x + visible.width)
+            .mul_add(self.scale, -self.origin.x)
             .ceil()
             .min(self.target.width() as f32);
-        let bottom = ((visible.origin.y + visible.height) * self.scale - self.origin.y)
+        let bottom = (visible.origin.y + visible.height)
+            .mul_add(self.scale, -self.origin.y)
             .ceil()
             .min(self.target.height() as f32);
         let side = |extent: f32| u16::try_from(extent as u32).ok().filter(|side| *side > 0);

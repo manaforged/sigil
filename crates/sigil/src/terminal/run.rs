@@ -185,34 +185,17 @@ fn live<N: IntoNode>(
         setup(config)?;
     let tree = std::rc::Rc::new(tree);
     let _follow = crate::terminal::backdrop::Follow::start(term.caps().backdrop);
-    let mut host = Host::new(crate::kernel::HostMode::Cell);
-    crate::terminal::clipboard::install_clipboard(term.caps());
-    host.set_hyperlinks(term.caps().hyperlinks);
-    let shared = tree.clone();
-    host.mount_app(move || shared());
-    prime(&mut host, cols, rows)?;
+    let mut host = mount_cell(&tree, &term, (cols, rows))?;
     let mut screen = open_screen(config, (cols, rows), term.caps());
     let mut pixels = Pixels::open(config, term.caps());
     let mut pointer = crate::geometry::Point::new(0.0, 0.0);
     let (mut first, mut settle, mut last) = (true, true, Instant::now());
-    loop {
-        if crate::terminal::signals::stopped() {
-            break;
-        }
+    while !crate::terminal::signals::stopped() {
         let woke = pump(pixels.host().unwrap_or(&host), &mut async_rt);
-        if let Some(backdrop) = crate::terminal::backdrop()
-            .peek()
-            .filter(|now| term.caps().backdrop != Some(*now))
-        {
-            term.set_backdrop(backdrop);
-            default_theme(config, backdrop);
-            screen.invalidate();
-            settle = true;
-        }
+        settle |= follow_backdrop(config, &mut term, &mut screen);
         if pixels.sync(&tree, &mut host).map_err(Error::io)? {
             settle = true;
-            screen.invalidate();
-            term.redraw = true;
+            invalidate(&mut term, &mut screen);
         }
         let deadline = pixels.host().map_or_else(|| screen.deadline(), |_| None);
         let timing = turn_wait(config.frame_interval, woke, last, deadline);
@@ -225,17 +208,15 @@ fn live<N: IntoNode>(
             Incoming::Resized(next_cols, next_rows, events) => {
                 (cols, rows) = (next_cols, next_rows);
                 term.mark_cell_stale();
-                screen.invalidate();
-                term.redraw = true;
+                invalidate(&mut term, &mut screen);
                 events
             }
         };
         remeasure(&mut term, &mut screen);
         settle = !input.is_empty();
         if pixels.host().is_some() {
-            let dt = last.elapsed().as_secs_f32();
-            last = Instant::now();
-            if pixels.turn(config.panic_policy, input, (cols, rows), &mut term, dt)? {
+            let dt = tick(&mut last);
+            if pixels.turn(config.panic_policy, (input, dt), (cols, rows), &mut term)? {
                 break;
             }
             continue;
@@ -243,25 +224,56 @@ fn live<N: IntoNode>(
         if !timing.1 {
             pump(&host, &mut async_rt);
         }
-        let mut turn = Turn {
-            last: &mut last,
-            screen: &mut screen,
-            host: &mut host,
-            term: &mut term,
-        };
-        turn.take(config, input, (cols, rows), hooks)?;
-        if turn.screen.exited() {
+        let mut turn = Turn::new(&mut last, &mut screen, &mut host, &mut term);
+        if turn.take(config, input, (cols, rows), hooks)? {
             break;
         }
     }
     pixels.close(term.caps().mux).map_err(Error::io)
 }
 
+fn mount_cell<N: IntoNode>(
+    tree: &std::rc::Rc<impl Fn() -> N + 'static>,
+    term: &Term,
+    (cols, rows): (u16, u16),
+) -> AppResult<Host> {
+    let mut host = Host::new(crate::kernel::HostMode::Cell);
+    crate::terminal::clipboard::install_clipboard(term.caps());
+    host.set_hyperlinks(term.caps().hyperlinks);
+    let shared = tree.clone();
+    host.mount_app(move || shared());
+    prime(&mut host, cols, rows)?;
+    Ok(host)
+}
+
+fn follow_backdrop(config: &AppConfig, term: &mut Term, screen: &mut Screen) -> bool {
+    let Some(backdrop) = crate::terminal::backdrop()
+        .peek()
+        .filter(|now| term.caps().backdrop != Some(*now))
+    else {
+        return false;
+    };
+    term.set_backdrop(backdrop);
+    default_theme(config, backdrop);
+    screen.invalidate();
+    true
+}
+
+const fn invalidate(term: &mut Term, screen: &mut Screen) {
+    screen.invalidate();
+    term.redraw = true;
+}
+
+fn tick(last: &mut Instant) -> f32 {
+    let dt = last.elapsed().as_secs_f32();
+    *last = Instant::now();
+    dt
+}
+
 fn remeasure(term: &mut Term, screen: &mut Screen) {
     if let Some(caps) = term.remeasure() {
         screen.set_caps(caps);
-        screen.invalidate();
-        term.redraw = true;
+        invalidate(term, screen);
     }
 }
 
@@ -316,20 +328,33 @@ struct Turn<'a> {
     term: &'a mut Term,
 }
 
-impl Turn<'_> {
+impl<'a> Turn<'a> {
+    const fn new(
+        last: &'a mut Instant,
+        screen: &'a mut Screen,
+        host: &'a mut Host,
+        term: &'a mut Term,
+    ) -> Self {
+        Self {
+            last,
+            screen,
+            host,
+            term,
+        }
+    }
+
     fn take(
         &mut self,
         config: &AppConfig,
         incoming: Vec<Event>,
         (cols, rows): (u16, u16),
         hooks: &mut Hooks<'_>,
-    ) -> AppResult<()> {
+    ) -> AppResult<bool> {
         let size = match hooks.region_rows.as_mut() {
             Some(hook) if config.inline => (cols, hook().clamp(1, rows.max(1))),
             _ => (cols, rows),
         };
-        self.screen.set_dt(self.last.elapsed().as_secs_f32());
-        *self.last = Instant::now();
+        self.screen.set_dt(tick(self.last));
         profile::begin_frame(profile::BackendStatus::TERMINAL);
         let (screen, host) = (&mut *self.screen, &mut *self.host);
         let frame = isolated(config.panic_policy, || {
@@ -351,7 +376,7 @@ impl Turn<'_> {
             self.term.paint(self.screen).map_err(Error::io)?;
         }
         profile::tick_frame();
-        Ok(())
+        Ok(self.screen.exited())
     }
 }
 

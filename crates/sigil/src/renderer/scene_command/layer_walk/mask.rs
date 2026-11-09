@@ -29,7 +29,7 @@ impl MaskTexture {
         clippy::cast_precision_loss,
         reason = "GPU texture coordinates fit exactly in f32"
     )]
-    pub(super) fn layer_mask(&self) -> LayerMask<'_> {
+    pub(super) const fn layer_mask(&self) -> LayerMask<'_> {
         match self {
             Self::Path(rendered) => LayerMask {
                 view: &rendered.view,

@@ -150,6 +150,7 @@ pub(super) struct PushRunArgs<'a> {
 const WORD_MAX_BYTES: usize = 64;
 const WORD_ENTRIES: usize = 4_096;
 
+#[derive(Clone)]
 struct WordSpan {
     start: u32,
     end: u32,
@@ -168,7 +169,8 @@ struct WordEntry {
 
 impl WordEntry {
     fn matches(&self, args: &PushRunArgs<'_>, chain: &[Font], style: &FaceStyle) -> bool {
-        *self.word == *args.fragment
+        let same_word = self.word.as_ref() == args.fragment;
+        same_word
             && self.level == args.level
             && self.style == *style
             && self.faces.iter().copied().eq(chain.iter().map(Font::id))
@@ -193,31 +195,47 @@ pub(super) fn push_run(
         return;
     }
     let key = word_key(args, chain, style);
-    let replayed = WORDS.with_borrow(|words| {
-        let entry = words
-            .get(&key)
-            .filter(|entry| entry.matches(args, chain, style));
-        for span in entry.iter().flat_map(|entry| &entry.spans) {
-            out.push(segment(
-                args,
-                span.start as usize,
-                span.end as usize,
-                span.face_slot,
-                span.run.clone(),
-                span.advance,
-            ));
-        }
-        entry.is_some()
-    });
-    if replayed {
+    if replay(key, args, chain, style, out) {
         return;
     }
     let first = out.len();
     shape_face_spans(args, chain, style, out);
+    remember(
+        key,
+        args,
+        chain,
+        style,
+        out.get(first..).unwrap_or_default(),
+    );
+}
+
+fn replay(
+    key: u64,
+    args: &PushRunArgs<'_>,
+    chain: &[Font],
+    style: &FaceStyle,
+    out: &mut Vec<ShapedSegment>,
+) -> bool {
+    WORDS.with_borrow(|words| {
+        let entry = words
+            .get(&key)
+            .filter(|entry| entry.matches(args, chain, style));
+        for span in entry.iter().flat_map(|entry| &entry.spans) {
+            out.push(segment(args, span.clone()));
+        }
+        entry.is_some()
+    })
+}
+
+fn remember(
+    key: u64,
+    args: &PushRunArgs<'_>,
+    chain: &[Font],
+    style: &FaceStyle,
+    shaped: &[ShapedSegment],
+) {
     let base = u32_clamp(args.start_byte);
-    let spans = out
-        .get(first..)
-        .unwrap_or_default()
+    let spans = shaped
         .iter()
         .map(|seg| WordSpan {
             start: seg.start - base,
@@ -327,29 +345,30 @@ fn push_face_span(
         shape_validated(chain, span.face_slot, sub_fragment, args.level, style);
     apply_letter_spacing(&mut run, style);
     let advance = run_total_advance(&run);
-    out.push(segment(args, span.start, span.end, face_slot, run, advance));
-}
-
-fn segment(
-    args: &PushRunArgs<'_>,
-    start: usize,
-    end: usize,
-    face_slot: u16,
-    run: ShapedRun,
-    advance: f32,
-) -> ShapedSegment {
-    ShapedSegment {
-        start: u32_clamp(args.start_byte + start),
-        end: u32_clamp(args.start_byte + end),
+    let span = WordSpan {
+        start: u32_clamp(span.start),
+        end: u32_clamp(span.end),
+        face_slot,
         run,
         advance,
+    };
+    out.push(segment(args, span));
+}
+
+fn segment(args: &PushRunArgs<'_>, span: WordSpan) -> ShapedSegment {
+    let base = u32_clamp(args.start_byte);
+    ShapedSegment {
+        start: base.saturating_add(span.start),
+        end: base.saturating_add(span.end),
+        run: span.run,
+        advance: span.advance,
         is_break_opportunity: args.is_break_opportunity,
         breakable_before: false,
         is_hard_break: false,
         level: args.level,
         #[cfg(any(test, feature = "kittest"))]
         script: args.script,
-        face_slot,
+        face_slot: span.face_slot,
     }
 }
 
@@ -392,23 +411,20 @@ fn fit_cells(run: &mut ShapedRun, cell: f32) {
     if cell <= 0.0 {
         return;
     }
-    let mut at = 0;
-    while let Some(cluster) = run.glyphs.get(at).map(|glyph| glyph.cluster) {
-        let count = run.glyphs[at..]
-            .iter()
-            .take_while(|glyph| glyph.cluster == cluster)
-            .count();
-        let last = at + count - 1;
-        let natural: f32 = run.glyphs[at..=last]
-            .iter()
-            .map(|glyph| glyph.advance)
-            .sum();
+    for group in run
+        .glyphs
+        .chunk_by_mut(|left, right| left.cluster == right.cluster)
+    {
+        let natural: f32 = group.iter().map(|glyph| glyph.advance).sum();
         let cells = (natural / cell + WIDE_MARGIN).floor().max(1.0);
         let extra = cells.mul_add(cell, -natural);
-        run.glyphs[last].advance += extra;
-        run.glyphs[at].offset_x += extra / 2.0;
+        if let Some(last) = group.last_mut() {
+            last.advance += extra;
+        }
+        if let Some(first) = group.first_mut() {
+            first.offset_x += extra / 2.0;
+        }
         run.width += extra;
-        at = last + 1;
     }
 }
 

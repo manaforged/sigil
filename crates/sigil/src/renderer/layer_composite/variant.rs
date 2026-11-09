@@ -1,5 +1,6 @@
 use crate::scene::command::BlendMode;
 
+#[derive(Clone, Copy)]
 pub(super) struct Variant {
     pub(super) label: &'static str,
     pub(super) groups: usize,

@@ -210,7 +210,7 @@ pub(crate) fn draw_gradient_instance(
     }
 }
 
-fn pack_gradient(gradient: &Gradient) -> (u32, [f32; 4], [f32; 4]) {
+const fn pack_gradient(gradient: &Gradient) -> (u32, [f32; 4], [f32; 4]) {
     match gradient.kind {
         GradientKind::Linear { start, end } => (
             FILL_KIND_GRADIENT,
@@ -278,6 +278,10 @@ fn fill_base(
 
 type PatternPack = (u32, [f32; 4], [f32; 4], [f32; 4]);
 
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "a wash seed is masked to 24 bits, which f32 holds exactly"
+)]
 fn pack_pattern(kind: PatternKind, space: BlendSpace) -> PatternPack {
     match kind.normalized() {
         PatternKind::Slash {
@@ -321,8 +325,8 @@ pub(crate) fn wash_stops(kind: PatternKind) -> Option<Vec<GradientStop>> {
     };
     Some(
         wash.palette()
-            .enumerate()
-            .map(|(index, color)| GradientStop::new(index as f32, color))
+            .zip(0_u16..)
+            .map(|(color, index)| GradientStop::new(f32::from(index), color))
             .collect(),
     )
 }

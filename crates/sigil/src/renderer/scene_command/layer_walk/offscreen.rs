@@ -170,7 +170,7 @@ pub(super) fn layer_plan<'n>(
             blend: scope.blend,
         });
     }
-    let bounds = target.state.layer_bounds(&scope, target.bounds)?;
+    let bounds = target.state.layer_bounds(scope, target.bounds)?;
     let transform = target.state.current_transform();
     Some(LayerPlan {
         reason: LayerReason::of(scope),
@@ -282,5 +282,5 @@ fn filtered_view(
         w: handle.width,
         h: handle.height,
     };
-    pipeline.apply(&mut pass, pool, src, filters, ctx.scale)
+    pipeline.apply(&mut pass, pool, src, (filters, ctx.scale))
 }

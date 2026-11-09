@@ -45,8 +45,8 @@ impl CpuPainter<'_> {
             let Some(dest) = mask.data_mut().get_mut(start..start + row) else {
                 continue;
             };
-            for (alpha, pixel) in dest.iter_mut().zip(source.chunks_exact(4)) {
-                *alpha = pixel.get(3).copied().unwrap_or(0);
+            for (alpha, pixel) in dest.iter_mut().zip(source.as_chunks::<4>().0) {
+                *alpha = pixel[3];
             }
         }
         Some(mask)

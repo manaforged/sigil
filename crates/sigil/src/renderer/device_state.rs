@@ -130,7 +130,7 @@ impl DeviceState {
         Self::Uninitialized(new_instance())
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "inspect"))]
     pub(crate) fn without_backends() -> Self {
         let mut descriptor = wgpu::InstanceDescriptor::new_without_display_handle_from_env();
         descriptor.backends = wgpu::Backends::empty();

@@ -53,7 +53,7 @@ pub(super) fn centre_controls(window: &Window, bar: f32) {
         };
         let now = button.frame();
         #[allow(clippy::cast_precision_loss, reason = "three buttons")]
-        let x = CONTROLS_LEFT + index as f64 * CONTROLS_GAP;
+        let x = (index as f64).mul_add(CONTROLS_GAP, CONTROLS_LEFT);
         let y = (bar - now.size.height) / 2.0;
         if (now.origin.x - x).abs() > 0.5 || (now.origin.y - y).abs() > 0.5 {
             button.setFrameOrigin(NSPoint::new(x, y));

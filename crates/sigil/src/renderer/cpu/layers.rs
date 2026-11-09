@@ -42,11 +42,11 @@ impl CpuPainter<'_> {
         (children, commands): (&[PlanNode<'_>], &[SceneCommand]),
     ) {
         if let LayerEffect::Transform(transform) = scope.effect {
-            self.transformed_layer(scope, transform, children);
+            self.transformed_layer(&scope, transform, children);
             return;
         }
         if let LayerEffect::Projected { .. } = scope.effect {
-            self.projected_layer(scope, children);
+            self.projected_layer(&scope, children);
             return;
         }
         self.untransformed_layer(scope, mask, (children, commands));
@@ -87,8 +87,10 @@ impl CpuPainter<'_> {
         let Some(bounds) = self.state.layer_bounds(&scope, self.area()) else {
             return;
         };
+        let clip_radii = scope.clip_radii;
+        let ink = Ink::of(&scope);
         let key = LayerKey {
-            scope: scope.clone(),
+            scope,
             bounds,
             region: SceneState::layer_region(bounds, self.area(), self.scale),
             transform: self.state.current_transform(),
@@ -98,17 +100,17 @@ impl CpuPainter<'_> {
             return;
         };
         let region = SceneState::layer_region(bounds, self.area(), self.scale);
-        let rounded = self.rounded_mask(clip_logical, scope.clip_radii);
+        let rounded = self.rounded_mask(clip_logical, clip_radii);
         let keep = match mask {
             Some(MaskSource::Path(draw)) => self.path_mask(draw, bounds).map(Some),
-            Some(MaskSource::Scene(mask)) => self
-                .scene_mask(mask, region, bounds)
+            Some(MaskSource::Scene(source)) => self
+                .scene_mask(source, region, bounds)
                 .map(|keep| Some(multiplied(keep, rounded.as_ref()))),
             None => Some(rounded),
         };
-        if let Some(mask) = keep {
-            let ink = Ink::of(&scope).prepared(&mut layer);
-            self.composite(&layer, at, ink, mask.as_ref());
+        if let Some(kept) = keep {
+            let ink = ink.prepared(&mut layer);
+            self.composite(&layer, at, ink, kept.as_ref());
         }
         self.release_pixmap(layer);
     }
@@ -186,13 +188,13 @@ impl CpuPainter<'_> {
 
     fn transformed_layer(
         &mut self,
-        scope: LayerScope,
+        scope: &LayerScope,
         transform: Transform,
         children: &[PlanNode<'_>],
     ) {
         let Some(frame) = self
             .state
-            .transform_frame(&scope, transform, self.area(), self.scale)
+            .transform_frame(scope, transform, self.area(), self.scale)
         else {
             return;
         };
@@ -208,7 +210,7 @@ impl CpuPainter<'_> {
             SceneState::new(Some(bounds), frame.content, 1.0),
         )
         .walk(children);
-        if let Some(mask) = source_mask(frame.scope, bounds, (width, height), self.scale) {
+        if let Some(mask) = source_mask(&frame.scope, bounds, (width, height), self.scale) {
             layer.apply_mask(&mask);
         }
         let placement = TsTransform::from_scale(1.0 / self.scale, 1.0 / self.scale)
@@ -218,7 +220,7 @@ impl CpuPainter<'_> {
             .state
             .current_clip()
             .and_then(|clip| self.layer_mask(clip, CornerRadii::ZERO));
-        let ink = Ink::of(&scope).prepared(&mut layer);
+        let ink = Ink::of(scope).prepared(&mut layer);
         self.composite(&layer, placement, ink, mask.as_ref());
         self.release_pixmap(layer);
     }
@@ -251,7 +253,7 @@ pub(super) fn take(pool: &mut Vec<Pixmap>, width: u32, height: u32) -> Option<Pi
     Pixmap::new(width, height)
 }
 
-fn source_mask(scope: LayerScope, bounds: Rect, size: (u32, u32), scale: f32) -> Option<Mask> {
+fn source_mask(scope: &LayerScope, bounds: Rect, size: (u32, u32), scale: f32) -> Option<Mask> {
     if scope.clip_radii.0.iter().all(|radius| *radius <= 0.0) {
         return None;
     }

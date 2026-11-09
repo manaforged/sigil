@@ -55,7 +55,7 @@ impl WgpuRenderer {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "inspect"))]
     pub(crate) fn without_adapter() -> Self {
         let mut renderer = Self::new();
         renderer.state = DeviceState::without_backends();
