@@ -98,7 +98,7 @@ impl LoopState {
             .is_some_and(|entry| std::mem::take(&mut entry.view.painted));
         if painted {
             self.windows.mark_others_for_repaint(handle);
-            shell.request_redraws();
+            shell.request_frames();
         }
         result
     }

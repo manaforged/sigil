@@ -64,6 +64,7 @@ pub struct WinitShell {
     deadline_hook: Option<DeadlineHook>,
     exit_requested: bool,
     force_paint: bool,
+    app_redraws: Vec<WinitWindowHandle>,
     a11y_adapters: Vec<a11y::AdapterEntry>,
     #[cfg(target_arch = "wasm32")]
     canvas: Option<String>,
@@ -119,6 +120,7 @@ impl WinitShell {
             deadline_hook: None,
             exit_requested: false,
             force_paint: false,
+            app_redraws: Vec::new(),
             a11y_adapters: Vec::new(),
             #[cfg(target_arch = "wasm32")]
             canvas: None,
@@ -239,12 +241,30 @@ impl WinitShell {
         self.title_bars.retain(|(h, _)| *h != handle);
         self.a11y_adapters.retain(|entry| entry.handle != handle);
         self.events.retain(|(h, _)| *h != handle);
+        self.pending.retain(|spec| spec.handle != handle);
+        self.failed.retain(|(h, _)| *h != handle);
+        self.app_redraws.retain(|h| *h != handle);
     }
 
     pub(crate) fn request_redraws(&self) {
         for (_, window) in &self.windows {
             window.request_redraw();
         }
+    }
+
+    pub(crate) fn request_frames(&mut self) {
+        for (handle, window) in &self.windows {
+            if !self.app_redraws.contains(handle) {
+                self.app_redraws.push(*handle);
+            }
+            window.request_redraw();
+        }
+    }
+
+    pub(crate) fn take_app_redraw(&mut self, handle: Option<WinitWindowHandle>) -> bool {
+        let before = self.app_redraws.len();
+        self.app_redraws.retain(|h| Some(*h) != handle);
+        self.app_redraws.len() != before
     }
 
     pub(crate) const fn set_force_paint(&mut self) {

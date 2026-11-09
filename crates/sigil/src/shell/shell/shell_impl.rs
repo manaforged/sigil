@@ -121,7 +121,6 @@ impl Shell for WinitShell {
         let app = WinitApp {
             shell: self,
             frame,
-            app_redraw_pending: false,
         };
         #[cfg(target_arch = "wasm32")]
         {
