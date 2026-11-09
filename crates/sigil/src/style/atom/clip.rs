@@ -1,6 +1,5 @@
 use std::hash::{Hash, Hasher};
 
-
 use crate::geometry::{Point, Rect};
 use crate::scene::Clip;
 
@@ -113,7 +112,10 @@ fn in_polygon(points: &[(f32, f32)], rect: Rect, point: Point) -> bool {
 impl PartialEq for ClipShape {
     fn eq(&self, other: &Self) -> bool {
         let bits = |points: &[(f32, f32)]| -> Vec<(u32, u32)> {
-            points.iter().map(|(x, y)| (x.to_bits(), y.to_bits())).collect()
+            points
+                .iter()
+                .map(|(x, y)| (x.to_bits(), y.to_bits()))
+                .collect()
         };
         match (self, other) {
             (Self::Inset { inset: a, round: r }, Self::Inset { inset: b, round: q }) => {

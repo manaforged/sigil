@@ -34,7 +34,14 @@ fn a_mouse_click_reports_in_the_encoding_the_program_chose() {
     );
     assert_eq!(report(up, (2, 4), none, Mode::Press, Encoding::Sgr), None);
     assert_eq!(
-        report(super::Mouse::Wheel { up: true }, (0, 0), none, Mode::Press, Encoding::Default).unwrap(),
+        report(
+            super::Mouse::Wheel { up: true },
+            (0, 0),
+            none,
+            Mode::Press,
+            Encoding::Default
+        )
+        .unwrap(),
         [0x1b, b'[', b'M', 96, 33, 33]
     );
 }

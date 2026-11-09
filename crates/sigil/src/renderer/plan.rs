@@ -31,14 +31,11 @@ pub(crate) enum PlanStep {
 }
 
 pub(crate) fn needs_layers(commands: &[SceneCommand]) -> bool {
-    commands
-        .iter()
-        .any(|command| match command {
-            SceneCommand::PushLayer(_) => true,
-            SceneCommand::PushClip(clip) => clip.composites(),
-            _ => false,
-        })
-        || SceneState::has_composited_group(commands)
+    commands.iter().any(|command| match command {
+        SceneCommand::PushLayer(_) => true,
+        SceneCommand::PushClip(clip) => clip.composites(),
+        _ => false,
+    }) || SceneState::has_composited_group(commands)
 }
 
 pub(crate) fn batch_of(command: &SceneCommand) -> Option<Batch> {

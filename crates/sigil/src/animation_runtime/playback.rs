@@ -75,7 +75,10 @@ impl Player {
         if MotionPrefs::reduced() {
             return None;
         }
-        let playing = self.playing.as_ref().filter(|playing| !playing.animator.settled())?;
+        let playing = self
+            .playing
+            .as_ref()
+            .filter(|playing| !playing.animator.settled())?;
         let progress = playing.keyframes.progress(self.time.try_peek()?)?;
         Some((&playing.keyframes, progress))
     }

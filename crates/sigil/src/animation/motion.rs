@@ -121,7 +121,9 @@ impl Motion {
 
 fn timed(from: f32, to: f32, [secs, delay]: [f32; 2], easing: Easing) -> Tween {
     if secs > 0.0 {
-        return Tween::new(from, to, secs).with_easing(easing).with_delay(delay);
+        return Tween::new(from, to, secs)
+            .with_easing(easing)
+            .with_delay(delay);
     }
     Tween::new(from, to, delay).with_easing(Easing::steps(NonZeroU16::MIN, false))
 }

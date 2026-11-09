@@ -9,8 +9,8 @@ use crate::renderer::scene_command::walk::IDENTITY;
 use crate::renderer::scene_command::{
     DrawGradient, DrawPattern, DrawRect, GradientStop, PatternKind, Stroke, StrokeBand, Transform,
 };
-use crate::scene::command::{Gradient, GradientKind};
 use crate::renderer::shadow_paint::Shadow;
+use crate::scene::command::{Gradient, GradientKind};
 use crate::scene::corner_radii::CornerRadii;
 pub(crate) use crate::scene::shadow::{expanded_shadow_rect, srgb_channel_to_linear};
 

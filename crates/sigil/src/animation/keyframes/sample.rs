@@ -8,7 +8,12 @@ use crate::style::{ColorAtom, ColorAtomKind, NumericAtomKind, Rgba8};
 type Stops<V> = SmallVec<[(f32, V); 8]>;
 
 impl Keyframes {
-    pub(crate) fn sample(&self, progress: f32, kind: NumericAtomKind, underlying: f32) -> Option<f32> {
+    pub(crate) fn sample(
+        &self,
+        progress: f32,
+        kind: NumericAtomKind,
+        underlying: f32,
+    ) -> Option<f32> {
         let stops = self.stops(|property| property.numeric(kind), underlying)?;
         let (from, to, eased) = segment(&stops, progress, |offset| self.easing_at(offset));
         Some((to - from).mul_add(eased, from))
@@ -26,7 +31,11 @@ impl Keyframes {
         Some(mix(from, to, eased))
     }
 
-    fn stops<V: Copy>(&self, value: impl Fn(Property) -> Option<V>, underlying: V) -> Option<Stops<V>> {
+    fn stops<V: Copy>(
+        &self,
+        value: impl Fn(Property) -> Option<V>,
+        underlying: V,
+    ) -> Option<Stops<V>> {
         let mut found: Stops<V> = self
             .keyframes
             .iter()
@@ -51,7 +60,11 @@ impl Keyframes {
     }
 }
 
-fn segment<V: Copy>(stops: &[(f32, V)], progress: f32, easing: impl Fn(f32) -> Easing) -> (V, V, f32) {
+fn segment<V: Copy>(
+    stops: &[(f32, V)],
+    progress: f32,
+    easing: impl Fn(f32) -> Easing,
+) -> (V, V, f32) {
     let last = stops.len().saturating_sub(2);
     let index = stops
         .partition_point(|(offset, _)| *offset <= progress)

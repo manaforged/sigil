@@ -23,7 +23,10 @@ pub(super) struct KeptKey {
 
 impl KeptKey {
     pub(super) fn of(scope: &LayerScope, target: &LayerTarget, scale: f32) -> Option<Self> {
-        if matches!(scope.effect, LayerEffect::Transform(_) | LayerEffect::Projected { .. }) {
+        if matches!(
+            scope.effect,
+            LayerEffect::Transform(_) | LayerEffect::Projected { .. }
+        ) {
             return None;
         }
         Some(Self {

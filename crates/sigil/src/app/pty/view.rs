@@ -23,9 +23,17 @@ const BASE: [Token; 16] = [
 
 pub(super) fn rows(screen: &vt100::Screen) -> Vec<Row> {
     let (height, width) = screen.size();
-    let cursor = (!screen.hide_cursor() && screen.scrollback() == 0).then(|| screen.cursor_position());
+    let cursor =
+        (!screen.hide_cursor() && screen.scrollback() == 0).then(|| screen.cursor_position());
     (0..height)
-        .map(|row| line(screen, row, width, cursor.filter(|at| at.0 == row).map(|at| at.1)))
+        .map(|row| {
+            line(
+                screen,
+                row,
+                width,
+                cursor.filter(|at| at.0 == row).map(|at| at.1),
+            )
+        })
         .collect()
 }
 
@@ -40,7 +48,8 @@ fn line(screen: &vt100::Screen, row: u16, width: u16, cursor: Option<u16>) -> Ro
         }
         let start = out.text.len();
         let contents = cell.contents();
-        out.text.push_str(if contents.is_empty() { " " } else { contents });
+        out.text
+            .push_str(if contents.is_empty() { " " } else { contents });
         let mut face = face(cell);
         if cursor == Some(col) {
             face.background = Some(Token::Accent);

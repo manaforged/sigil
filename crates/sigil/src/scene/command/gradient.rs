@@ -82,7 +82,9 @@ impl Gradient {
         let stops = self
             .stops
             .iter()
-            .map(|stop| GradientStop::new(((stop.offset - first) / width).clamp(0.0, 1.0), stop.color))
+            .map(|stop| {
+                GradientStop::new(((stop.offset - first) / width).clamp(0.0, 1.0), stop.color)
+            })
             .collect();
         ([first, last], stops)
     }
@@ -91,14 +93,17 @@ impl Gradient {
         let mix = |hash: u64, value: f32| crate::fnv::mix(hash, u64::from(value.to_bits()));
         let (tag, values) = match self.kind {
             GradientKind::Linear { start, end } => (1, [start.x, start.y, end.x, end.y]),
-            GradientKind::Radial { center, radius } => (2, [center.x, center.y, radius[0], radius[1]]),
+            GradientKind::Radial { center, radius } => {
+                (2, [center.x, center.y, radius[0], radius[1]])
+            }
             GradientKind::Conic { center, angle } => (3, [center.x, center.y, angle, 0.0]),
         };
         let hash = values
             .into_iter()
             .fold(crate::fnv::mix(seed, tag + 4 * u64::from(self.repeat)), mix);
         self.stops.iter().fold(hash, |hash, stop| {
-            let color = u32::from_le_bytes([stop.color.r, stop.color.g, stop.color.b, stop.color.a]);
+            let color =
+                u32::from_le_bytes([stop.color.r, stop.color.g, stop.color.b, stop.color.a]);
             crate::fnv::mix(mix(hash, stop.offset), u64::from(color))
         })
     }

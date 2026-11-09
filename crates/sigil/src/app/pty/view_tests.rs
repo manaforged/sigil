@@ -31,8 +31,24 @@ fn truecolor_paints_the_exact_color_the_program_asked_for() {
     let parser = screen(b"\x1b[38;2;30;200;60;48;2;1;2;3mok");
     let rows = rows(parser.screen());
     let face = &rows[0].runs[0].face;
-    assert_eq!(face.ink, Some(crate::style::Rgba8 { r: 30, g: 200, b: 60, a: 255 }));
-    assert_eq!(face.fill, Some(crate::style::Rgba8 { r: 1, g: 2, b: 3, a: 255 }));
+    assert_eq!(
+        face.ink,
+        Some(crate::style::Rgba8 {
+            r: 30,
+            g: 200,
+            b: 60,
+            a: 255
+        })
+    );
+    assert_eq!(
+        face.fill,
+        Some(crate::style::Rgba8 {
+            r: 1,
+            g: 2,
+            b: 3,
+            a: 255
+        })
+    );
 }
 
 #[test]
@@ -64,5 +80,8 @@ fn rows_fill_the_screen_width_so_backgrounds_reach_the_edge() {
     let rows = rows(parser.screen());
     assert_eq!(rows.len(), 4);
     assert_eq!(rows[0].text.chars().count(), 20);
-    assert_eq!(rows[0].runs.last().unwrap().face.background, Some(Token::Info9));
+    assert_eq!(
+        rows[0].runs.last().unwrap().face.background,
+        Some(Token::Info9)
+    );
 }

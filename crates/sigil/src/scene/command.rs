@@ -16,14 +16,15 @@ pub(crate) mod payloads;
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")
 ))]
 pub(crate) mod stroke_band;
+pub(crate) mod transform3d;
 #[cfg(all(
     feature = "scene",
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")
 ))]
 pub(crate) mod trim;
-pub(crate) mod transform3d;
 mod wash;
 
+pub use clip::Clip;
 #[cfg(any(
     test,
     all(feature = "scene", feature = "terminal"),
@@ -31,11 +32,10 @@ mod wash;
     all(feature = "scene", feature = "kittest")
 ))]
 pub(crate) use decoration::DecorationGeometry;
-pub use clip::Clip;
 pub use effects::{
-    BlendMode, DecorationKind, Filter, LayerEffect, LayerScope, Mask, MaskMode, SpriteKind, SpriteSource, Transform,
+    BlendMode, DecorationKind, Filter, LayerEffect, LayerScope, Mask, MaskMode, SpriteKind,
+    SpriteSource, Transform,
 };
-pub use transform3d::Transform3D;
 #[cfg(any(test, feature = "kittest"))]
 pub use fills::PaintFill;
 pub(crate) use fills::{FillRule, PathPaint};
@@ -44,7 +44,6 @@ pub use fills::{
     StrokeStyle,
 };
 pub use glyph::GlyphRun;
-pub use gradient::{Gradient, GradientKind};
 pub(crate) use glyph::TextFlow;
 #[cfg(all(
     feature = "scene",
@@ -52,6 +51,7 @@ pub(crate) use glyph::TextFlow;
 ))]
 pub use glyph::shape_glyph_run;
 pub(crate) use glyph::{RunInk, shape_run};
+pub use gradient::{Gradient, GradientKind};
 pub(crate) use payloads::{CellBorder, CellRect};
 pub use payloads::{
     DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawRect, DrawSprite,
@@ -62,6 +62,7 @@ pub(crate) use payloads::{MITER_LIMIT, PathCmd, PathStroke, outline_key, rounded
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")
 ))]
 pub(crate) use stroke_band::{StrokeBand, StrokeDash};
+pub use transform3d::Transform3D;
 pub use wash::Wash;
 #[cfg(all(
     feature = "scene",

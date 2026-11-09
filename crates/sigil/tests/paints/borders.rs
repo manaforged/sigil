@@ -17,7 +17,11 @@ pub(crate) fn dashed_card() -> impl IntoNode {
 }
 
 fn rounded_dashed_card() -> impl IntoNode {
-    page(120.0, 60.0, card(120.0, 60.0, 2).rounded(Radius::Full).border_dashed())
+    page(
+        120.0,
+        60.0,
+        card(120.0, 60.0, 2).rounded(Radius::Full).border_dashed(),
+    )
 }
 
 fn dotted_card() -> impl IntoNode {
@@ -53,7 +57,10 @@ fn a_dashed_border_has_dashes_three_widths_long_and_gaps_two_widths_long() {
         let found = runs(&row);
         let inner = &found[2..found.len() - 2];
         println!("{surface:?}: top edge runs {inner:?}");
-        assert!(inner.len() >= 10, "{surface:?}: the top edge breaks into dashes: {found:?}");
+        assert!(
+            inner.len() >= 10,
+            "{surface:?}: the top edge breaks into dashes: {found:?}"
+        );
         for (on, length) in inner {
             let want = if *on { 12 } else { 8 };
             assert!(
@@ -72,7 +79,11 @@ fn a_dashed_border_follows_a_rounded_corner() {
         let arc: Vec<bool> = (0..=180)
             .map(|step| {
                 let angle = (step as f32 * 0.5).to_radians();
-                inked(&shot, 29.0f32.mul_add(angle.sin(), 90.0), 29.0f32.mul_add(-angle.cos(), 30.0))
+                inked(
+                    &shot,
+                    29.0f32.mul_add(angle.sin(), 90.0),
+                    29.0f32.mul_add(-angle.cos(), 30.0),
+                )
             })
             .collect();
         let found = runs(&arc);
@@ -93,8 +104,14 @@ fn a_dashed_border_follows_a_rounded_corner() {
 fn a_dotted_border_draws_round_dots() {
     for surface in SURFACES {
         let shot = shoot(dotted_card, (200, 40), surface);
-        assert!(inked(&shot, 20.0, 4.0), "{surface:?}: a dot centre at 20,4 is inked");
-        assert!(!inked(&shot, 28.0, 4.0), "{surface:?}: the gap between dots is empty");
+        assert!(
+            inked(&shot, 20.0, 4.0),
+            "{surface:?}: a dot centre at 20,4 is inked"
+        );
+        assert!(
+            !inked(&shot, 28.0, 4.0),
+            "{surface:?}: the gap between dots is empty"
+        );
         for (dx, dy) in [(3.3, 3.3), (-3.3, 3.3), (3.3, -3.3), (-3.3, -3.3)] {
             let corner = (20.0 + dx, 4.0 + dy);
             assert!(

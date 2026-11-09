@@ -22,23 +22,38 @@ const TO: Rgba8 = super::rgb(40, 60, 200);
 fn card(index: u32) -> Rect {
     let (w, h) = (VIEW.0 / COLS as f32, VIEW.1 / ROWS as f32);
     let (col, row) = (index % COLS, index / COLS);
-    Rect::new(Point::new(col as f32 * w + 2.0, row as f32 * h + 2.0), w - 4.0, h - 4.0)
+    Rect::new(
+        Point::new(col as f32 * w + 2.0, row as f32 * h + 2.0),
+        w - 4.0,
+        h - 4.0,
+    )
 }
 
 fn label(scene: &mut SceneBuilder, rect: Rect, index: u32) {
     let style = TextStyle::default();
-    scene.draw_glyph_run(shape_glyph_run(rect, format!("card {index}"), super::WHITE, style, 10_000));
+    scene.draw_glyph_run(shape_glyph_run(
+        rect,
+        format!("card {index}"),
+        super::WHITE,
+        style,
+        10_000,
+    ));
 }
 
 fn quads() -> CommandScene {
     let mut scene = SceneBuilder::new();
     for index in 0..COLS * ROWS {
         let rect = card(index);
-        let center = Point::new(rect.origin.x + rect.width / 2.0, rect.origin.y + rect.height / 2.0);
+        let center = Point::new(
+            rect.origin.x + rect.width / 2.0,
+            rect.origin.y + rect.height / 2.0,
+        );
         let radius = [rect.width * 0.7, rect.height * 0.7];
         let stops = vec![GradientStop::new(0.0, FROM), GradientStop::new(1.0, TO)];
         let gradient = Gradient::new(GradientKind::Radial { center, radius }, stops);
-        scene.draw_gradient(DrawGradient::new(rect, gradient).border_radius(CornerRadii::uniform(RADIUS)));
+        scene.draw_gradient(
+            DrawGradient::new(rect, gradient).border_radius(CornerRadii::uniform(RADIUS)),
+        );
         label(&mut scene, rect, index);
     }
     scene.finish()
@@ -110,5 +125,7 @@ fn a_500_card_radial_scene_costs_less_through_the_quad_route() {
     let mut diffs: Vec<f64> = times[1].iter().zip(&times[0]).map(|(p, q)| p - q).collect();
     let [quad, route] = [median(&mut times[0].clone()), median(&mut times[1].clone())];
     let paired = median(&mut diffs);
-    println!("500 radial cards with labels, 2x: quad {quad:.2} ms, path {route:.2} ms, path - quad paired median {paired:+.2} ms over {ROUNDS} rounds");
+    println!(
+        "500 radial cards with labels, 2x: quad {quad:.2} ms, path {route:.2} ms, path - quad paired median {paired:+.2} ms over {ROUNDS} rounds"
+    );
 }

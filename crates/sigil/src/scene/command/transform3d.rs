@@ -39,10 +39,12 @@ impl Transform3D {
     /// Applies `next` after this transform's functions, like the next entry of a CSS `transform` list.
     #[must_use]
     pub fn then(self, next: Self) -> Self {
-        let columns = [0, 1, 2, 3].map(|col| next.0.map(|row| row.get(col).copied().unwrap_or(0.0)));
-        Self(self.0.map(|row| {
-            columns.map(|column| row.iter().zip(column).map(|(x, y)| x * y).sum())
-        }))
+        let columns =
+            [0, 1, 2, 3].map(|col| next.0.map(|row| row.get(col).copied().unwrap_or(0.0)));
+        Self(
+            self.0
+                .map(|row| columns.map(|column| row.iter().zip(column).map(|(x, y)| x * y).sum())),
+        )
     }
 
     /// Adds a CSS `translate3d(x, y, z)`.
@@ -127,11 +129,17 @@ impl Transform3D {
 
     pub(crate) fn polygon(self, corners: &[Point]) -> SmallVec<[Point; 8]> {
         let plane = self.homography();
-        let mapped: SmallVec<[[f32; 3]; 8]> =
-            corners.iter().map(|p| apply(plane, [p.x, p.y, 1.0])).collect();
+        let mapped: SmallVec<[[f32; 3]; 8]> = corners
+            .iter()
+            .map(|p| apply(plane, [p.x, p.y, 1.0]))
+            .collect();
         let mut out = SmallVec::new();
         for (index, &a) in mapped.iter().enumerate() {
-            let b = mapped.get(index + 1).or(mapped.first()).copied().unwrap_or(a);
+            let b = mapped
+                .get(index + 1)
+                .or(mapped.first())
+                .copied()
+                .unwrap_or(a);
             if a[2] >= MIN_W {
                 out.push(Point::new(a[0] / a[2], a[1] / a[2]));
             }
@@ -164,7 +172,9 @@ impl Transform3D {
 
     #[cfg(feature = "terminal")]
     pub(crate) fn affine_fit(self, rect: Rect) -> Transform {
-        let Some(bounds) = self.bounds(rect).filter(|_| rect.width > 0.0 && rect.height > 0.0)
+        let Some(bounds) = self
+            .bounds(rect)
+            .filter(|_| rect.width > 0.0 && rect.height > 0.0)
         else {
             return [[0.0, 0.0, rect.origin.x], [0.0, 0.0, rect.origin.y]];
         };
@@ -183,9 +193,21 @@ pub(crate) fn apply(m: [[f32; 3]; 3], v: [f32; 3]) -> [f32; 3] {
 pub(crate) fn invert(m: [[f32; 3]; 3]) -> Option<[[f32; 3]; 3]> {
     let [[a, b, c], [d, e, f], [g, h, i]] = m;
     let adjugate = [
-        [e.mul_add(i, -f * h), c.mul_add(h, -b * i), b.mul_add(f, -c * e)],
-        [f.mul_add(g, -d * i), a.mul_add(i, -c * g), c.mul_add(d, -a * f)],
-        [d.mul_add(h, -e * g), b.mul_add(g, -a * h), a.mul_add(e, -b * d)],
+        [
+            e.mul_add(i, -f * h),
+            c.mul_add(h, -b * i),
+            b.mul_add(f, -c * e),
+        ],
+        [
+            f.mul_add(g, -d * i),
+            a.mul_add(i, -c * g),
+            c.mul_add(d, -a * f),
+        ],
+        [
+            d.mul_add(h, -e * g),
+            b.mul_add(g, -a * h),
+            a.mul_add(e, -b * d),
+        ],
     ];
     let det = a.mul_add(
         adjugate[0][0],

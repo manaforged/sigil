@@ -3,7 +3,6 @@ use crate::geometry::Rect;
 use crate::Error;
 use crate::renderer::blur_paint::{PassCtx, PassSrc};
 use crate::renderer::filter::{FilterPipeline, LayerFilters};
-use crate::scene::command::Filter;
 use crate::renderer::layer_pool::LayerHandle;
 use crate::renderer::plan::MaskSource;
 use crate::renderer::projected::ProjectedFrame;
@@ -12,6 +11,7 @@ use crate::renderer::scene_command::walk::{IDENTITY, transform_rect};
 use crate::renderer::scene_command::walk::{WalkCtx, pipeline_for};
 use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Transform};
 use crate::renderer::scene_instance::LAYER_FORMAT;
+use crate::scene::command::Filter;
 use crate::scene::command::{BlendMode, Transform3D};
 use crate::scene::corner_radii::CornerRadii;
 use crate::style::Color;
@@ -70,7 +70,9 @@ impl LayerReason {
         match scope.effect {
             LayerEffect::Identity if scope.blend != BlendMode::Normal => Self::Blend,
             LayerEffect::Transform(_) | LayerEffect::Projected { .. } => Self::Transform,
-            LayerEffect::Filter(ref filters) if matches!(**filters, [Filter::Blur(_)]) => Self::Blur,
+            LayerEffect::Filter(ref filters) if matches!(**filters, [Filter::Blur(_)]) => {
+                Self::Blur
+            }
             LayerEffect::Filter(_) => Self::Filter,
             LayerEffect::Mask(_) => Self::Mask,
             LayerEffect::Identity if scope.clip_radii != CornerRadii::ZERO => Self::RoundedClip,
@@ -147,7 +149,7 @@ pub(super) fn layer_plan<'n>(
             filters: None,
             mask: None,
             projection: Some(frame.composite),
-        blend: scope.blend,
+            blend: scope.blend,
         });
     }
     if let LayerEffect::Transform(effect) = scope.effect {
@@ -165,7 +167,7 @@ pub(super) fn layer_plan<'n>(
             filters: None,
             mask: None,
             projection: None,
-        blend: scope.blend,
+            blend: scope.blend,
         });
     }
     let bounds = target.state.layer_bounds(&scope, target.bounds)?;

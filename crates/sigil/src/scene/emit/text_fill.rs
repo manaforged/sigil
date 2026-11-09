@@ -5,7 +5,9 @@ use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::{FontRef, GlyphId, MetadataProvider};
 
 use crate::scene::command::fills::{FillRule, color_at};
-use crate::scene::command::{DrawPath, GlyphRun, Gradient, PathCmd, PathPaint, Transform, outline_key};
+use crate::scene::command::{
+    DrawPath, GlyphRun, Gradient, PathCmd, PathPaint, Transform, outline_key,
+};
 
 const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 const TEXT_FILL_SEED: u64 = 0x7478_7466;
@@ -58,7 +60,8 @@ pub(super) fn glyph_fill(run: &GlyphRun, gradient: &Gradient) -> Option<DrawPath
     let gradient = gradient.normalized();
     let key = outline_key(gradient.key(TEXT_FILL_SEED), &outline);
     let paint = PathPaint::Gradient(gradient);
-    let mut draw = DrawPath::new(Arc::from(outline), IDENTITY, key).with_fill(FillRule::NonZero, paint);
+    let mut draw =
+        DrawPath::new(Arc::from(outline), IDENTITY, key).with_fill(FillRule::NonZero, paint);
     draw.node = run.node;
     draw.opacity = run.opacity;
     Some(draw)
@@ -109,4 +112,3 @@ fn outlines(run: &GlyphRun) -> Vec<PathCmd> {
     });
     out
 }
-

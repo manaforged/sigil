@@ -84,7 +84,10 @@ pub fn builtin_atlas_rgba8() -> Vec<u8> {
 fn mask_pixel(col: usize, row: usize) -> [u8; 4] {
     let side = MASK_SIDE as usize;
     let index = row / side * MASKS_PER_ROW as usize + col / side;
-    let Some(shape) = MASKS.get(index).filter(|_| col / side < MASKS_PER_ROW as usize) else {
+    let Some(shape) = MASKS
+        .get(index)
+        .filter(|_| col / side < MASKS_PER_ROW as usize)
+    else {
         return [255, 255, 255, 0];
     };
     let centre = |at: usize| (at % side) as f32 + 0.5 - MASK_SIDE as f32 / 2.0;

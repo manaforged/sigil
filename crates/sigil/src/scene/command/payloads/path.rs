@@ -4,9 +4,9 @@ use smallvec::SmallVec;
 
 use crate::geometry::{Point, Rect};
 use crate::kernel::NodeId;
+use crate::scene::command::Transform;
 use crate::scene::command::effects::transform_rect;
 use crate::scene::command::fills::{FillRule, PathPaint, StrokeCap, StrokeJoin};
-use crate::scene::command::Transform;
 
 /// One verb of a path outline with its points.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -72,7 +72,9 @@ pub(crate) fn outline_key(seed: u64, outline: &[PathCmd]) -> u64 {
     outline.iter().fold(seed, |hash, cmd| {
         cmd.points()
             .iter()
-            .fold(crate::fnv::mix(hash, 1), |hash, (x, y)| mix(mix(hash, *x), *y))
+            .fold(crate::fnv::mix(hash, 1), |hash, (x, y)| {
+                mix(mix(hash, *x), *y)
+            })
     })
 }
 
@@ -162,15 +164,14 @@ impl DrawPath {
 
     fn measured(mut self) -> Self {
         let reach = self.stroke.as_ref().map_or(0.0, PathStroke::reach);
-        let hull = self
-            .outline
-            .iter()
-            .flat_map(|cmd| cmd.points())
-            .fold(None, |hull: Option<[f32; 4]>, (x, y)| {
+        let hull = self.outline.iter().flat_map(|cmd| cmd.points()).fold(
+            None,
+            |hull: Option<[f32; 4]>, (x, y)| {
                 Some(hull.map_or([x, y, x, y], |[l, t, r, b]| {
                     [l.min(x), t.min(y), r.max(x), b.max(y)]
                 }))
-            });
+            },
+        );
         self.bounds = hull.map_or(self.bounds, |[l, t, r, b]| {
             let local = Rect::new(Point::new(l, t), r - l, b - t).expand(reach);
             transform_rect(self.transform, local)
