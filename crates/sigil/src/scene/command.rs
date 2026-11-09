@@ -83,13 +83,18 @@ impl CommandScene {
         Self { commands }
     }
 
-    #[cfg(any(test, feature = "kittest"))]
-    #[must_use]
-    pub fn find_text(&self, expected: &str) -> Option<&GlyphRun> {
-        self.commands.iter().find_map(|command| match command {
-            SceneCommand::GlyphRun(draw) if draw.text == expected => Some(draw),
+    /// Returns the text runs of this scene in paint order.
+    pub fn glyph_runs(&self) -> impl Iterator<Item = &GlyphRun> {
+        self.commands.iter().filter_map(|command| match command {
+            SceneCommand::GlyphRun(draw) => Some(draw),
             _ => None,
         })
+    }
+
+    /// Returns the first text run whose text equals `expected`.
+    #[must_use]
+    pub fn find_text(&self, expected: &str) -> Option<&GlyphRun> {
+        self.glyph_runs().find(|draw| draw.text == expected)
     }
 }
 

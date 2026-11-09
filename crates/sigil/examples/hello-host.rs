@@ -3,7 +3,6 @@
 use sigil::Host;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
-use sigil::scene::SceneCommand;
 
 fn main() {
     Owner::scope("hello-host", || {
@@ -29,14 +28,12 @@ fn main() {
                 return;
             }
         };
-        for command in &scene.commands {
-            if let SceneCommand::GlyphRun(draw) = command {
-                let rect = draw.rect;
-                println!(
-                    "{} @ ({:.0},{:.0}) {}x{}",
-                    draw.text, rect.origin.x, rect.origin.y, rect.width, rect.height
-                );
-            }
+        for draw in scene.glyph_runs() {
+            let rect = draw.rect;
+            println!(
+                "{} @ ({:.0},{:.0}) {}x{}",
+                draw.text, rect.origin.x, rect.origin.y, rect.width, rect.height
+            );
         }
         for (key, rect) in host.surfaces() {
             println!(

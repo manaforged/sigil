@@ -11,20 +11,15 @@ mod variant;
 use crate::geometry::Rect;
 use crate::profile::{count, span};
 use crate::renderer::fill_paint::setup::{
-    QuadDesc, QuadPipeline, clipped_pass, linear_sampler, texture_group, texture_layout,
+    QuadDesc, QuadPipeline, buffer_group, clipped_pass, linear_sampler, texture_group,
+    texture_layout,
 };
+use crate::renderer::scene_instance::SceneUniforms;
 use crate::renderer::scene_paint::PaintCtx;
 use crate::scene::command::{BlendMode, MaskMode};
 use crate::scene::{CornerRadii, Transform};
 use shader::LAYER_SHADER;
 use variant::{BLENDED, MASKED, Variant, blend_index};
-
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-struct LayerUniforms {
-    viewport: [f32; 2],
-    _pad: [f32; 2],
-}
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -94,7 +89,7 @@ impl LayerCompositePipeline {
     }
 
     pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let uniform_layout = uniform_layout(device);
+        let uniform_layout = uniform_layout(device, "sigil-renderer layer uniforms layout");
         let texture_layout = texture_layout(device, "sigil-renderer layer texture layout");
         let quad = QuadPipeline::new(
             device,
@@ -225,19 +220,12 @@ impl LayerCompositePipeline {
     }
 
     fn uniform(&mut self, ctx: &mut PaintCtx<'_>) -> u32 {
-        let (buffer, offset, _) = ctx.encoder.uniform(&LayerUniforms {
-            viewport: [ctx.viewport.0.max(1.0), ctx.viewport.1.max(1.0)],
-            _pad: [0.0, 0.0],
-        });
-        if self
-            .uniforms
-            .as_ref()
-            .is_none_or(|(cached, _)| *cached != buffer)
-        {
-            let group = uniform_bind_group(ctx.device, &self.uniform_layout, &buffer);
-            self.uniforms = Some((buffer, group));
-        }
-        offset
+        viewport_uniform(
+            ctx,
+            &self.uniform_layout,
+            "sigil-renderer layer uniforms bind group",
+            &mut self.uniforms,
+        )
     }
 
     fn texture(&mut self, device: &wgpu::Device, view: &wgpu::TextureView) -> usize {
@@ -286,10 +274,7 @@ fn instance_of(request: &CompositeRequest<'_>) -> LayerInstance {
         clip_radii: request
             .clip_radii
             .normalized_for(request.round.width, request.round.height),
-        uv_max: [
-            request.source_extent.0 as f32 / request.texture_size.0.max(1) as f32,
-            request.source_extent.1 as f32 / request.texture_size.1.max(1) as f32,
-        ],
+        uv_max: uv_max(request.source_extent, request.texture_size),
         opacity: request.opacity.clamp(0.0, 1.0),
         transform_x: request.transform[0],
         transform_y: request.transform[1],
@@ -318,40 +303,50 @@ pub(crate) struct CompositeRequest<'a> {
     pub(crate) transform: Transform,
 }
 
-fn uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+pub(crate) fn uv_max(source_extent: (u32, u32), texture_size: (u32, u32)) -> [f32; 2] {
+    [
+        source_extent.0 as f32 / texture_size.0.max(1) as f32,
+        source_extent.1 as f32 / texture_size.1.max(1) as f32,
+    ]
+}
+
+pub(crate) fn uniform_layout(device: &wgpu::Device, label: &str) -> wgpu::BindGroupLayout {
     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("sigil-renderer layer uniforms layout"),
+        label: Some(label),
         entries: &[wgpu::BindGroupLayoutEntry {
             binding: 0,
             visibility: wgpu::ShaderStages::VERTEX,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
                 has_dynamic_offset: true,
-                min_binding_size: wgpu::BufferSize::new(size_of::<LayerUniforms>() as u64),
+                min_binding_size: wgpu::BufferSize::new(size_of::<SceneUniforms>() as u64),
             },
             count: None,
         }],
     })
 }
 
-fn uniform_bind_group(
-    device: &wgpu::Device,
+pub(crate) fn viewport_uniform(
+    ctx: &mut PaintCtx<'_>,
     layout: &wgpu::BindGroupLayout,
-    buffer: &wgpu::Buffer,
-) -> wgpu::BindGroup {
-    count(crate::profile::Counter::AllocCompositeUniformBindGroups);
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("sigil-renderer layer uniforms bind group"),
-        layout,
-        entries: &[wgpu::BindGroupEntry {
-            binding: 0,
-            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                buffer,
-                offset: 0,
-                size: wgpu::BufferSize::new(size_of::<LayerUniforms>() as u64),
-            }),
-        }],
-    })
+    label: &str,
+    cache: &mut Option<(wgpu::Buffer, wgpu::BindGroup)>,
+) -> u32 {
+    let (buffer, offset, _) = ctx.encoder.uniform(&SceneUniforms {
+        viewport: [ctx.viewport.0.max(1.0), ctx.viewport.1.max(1.0)],
+        _pad: [0.0, 0.0],
+    });
+    if cache.as_ref().is_none_or(|(cached, _)| *cached != buffer) {
+        count(crate::profile::Counter::AllocCompositeUniformBindGroups);
+        let binding = wgpu::BufferBinding {
+            buffer: &buffer,
+            offset: 0,
+            size: wgpu::BufferSize::new(size_of::<SceneUniforms>() as u64),
+        };
+        let group = buffer_group(ctx.device, label, layout, binding);
+        *cache = Some((buffer, group));
+    }
+    offset
 }
 
 const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
