@@ -81,7 +81,7 @@ impl Drop for AsyncRuntime {
 fn lock(registry: &TaskRegistry) -> std::sync::MutexGuard<'_, HashMap<Owner, Vec<TaskHandle>>> {
     registry
         .lock()
-        .expect("owner_tasks mutex poisoned by a panicking holder")
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 impl AsyncRuntime {

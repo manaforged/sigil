@@ -117,7 +117,7 @@ impl Eq for Error {}
 
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
-        Self::new(err)
+        Self::with_kind(ErrorKind::Io, err)
     }
 }
 
@@ -236,7 +236,7 @@ impl Error {
     pub(crate) fn gpu_device(err: wgpu::RequestDeviceError) -> Self {
         Self {
             kind: ErrorKind::Gpu,
-            detail: Detail::Text(format!("failed to request GPU device: {err}")),
+            detail: Detail::Static("failed to request GPU device"),
             source: Some(Arc::new(err)),
         }
     }
@@ -248,7 +248,7 @@ impl Error {
     pub(crate) fn gpu_surface(err: wgpu::CreateSurfaceError) -> Self {
         Self {
             kind: ErrorKind::Gpu,
-            detail: Detail::Text(format!("failed to create GPU surface: {err}")),
+            detail: Detail::Static("failed to create GPU surface"),
             source: Some(Arc::new(err)),
         }
     }
@@ -257,7 +257,7 @@ impl Error {
     pub(crate) fn event_loop(err: winit::error::EventLoopError) -> Self {
         Self {
             kind: ErrorKind::EventLoop,
-            detail: Detail::Text(format!("winit event loop error: {err}")),
+            detail: Detail::Static("window event loop failed"),
             source: Some(Arc::new(err)),
         }
     }

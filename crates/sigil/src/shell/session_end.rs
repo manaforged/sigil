@@ -50,11 +50,14 @@ unsafe extern "system" fn session_proc(
     id: usize,
     data: usize,
 ) -> LRESULT {
-    match msg {
+    let handled = catch_unwind(AssertUnwindSafe(|| match msg {
         WM_QUERYENDSESSION if super::exit_hook::pending() => block_shutdown(hwnd),
         WM_ENDSESSION => end_session(hwnd, wparam != 0, data),
         WM_NCDESTROY => release(hwnd, id, data),
         _ => {}
+    }));
+    if handled.is_err() {
+        tracing::error!(target: "sigil::shell", "session message handler panicked");
     }
     // SAFETY: Windows calls this procedure with the arguments of a live message for `hwnd`, which go on unchanged to the next procedure in the chain.
     unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
