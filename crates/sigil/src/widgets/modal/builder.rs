@@ -18,6 +18,7 @@ use super::parts::{BODY_GUTTER, CloseControl, dialog_body, dialog_header};
 
 const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
 const DIALOG_PADDING: f32 = space(4);
+const DIALOG_WIDTH: f32 = 420.0;
 const SHEET_WIDTH: f32 = 360.0;
 const SHEET_HEIGHT: f32 = 320.0;
 
@@ -314,7 +315,7 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
         .max_size(Dimension::Percent(1.0), Dimension::Percent(1.0))
         .shrink(1.0);
     match side {
-        None => base.min_size(420.0, 0.0),
+        None => base.width(DIALOG_WIDTH),
         Some(Side::Left | Side::Right) => base.fill_height().width(SHEET_WIDTH),
         Some(Side::Bottom) => base.fill_width().height(SHEET_HEIGHT),
     }
