@@ -76,6 +76,7 @@ impl Gradient {
         (self.repeat && last - first > MIN_SPAN).then_some([first, last])
     }
 
+    #[cfg(any(feature = "scene", feature = "terminal"))]
     pub(crate) fn spread(&self) -> ([f32; 2], SmallVec<[GradientStop; 4]>) {
         let [first, last] = self.repeat_span().unwrap_or([0.0, 1.0]);
         let width = (last - first).max(f32::EPSILON);

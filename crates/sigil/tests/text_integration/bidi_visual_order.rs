@@ -1,6 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
-use sigil::hal::{ParagraphMetrics, TextEngine};
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
 

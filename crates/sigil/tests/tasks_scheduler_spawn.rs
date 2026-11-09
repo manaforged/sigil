@@ -3,7 +3,6 @@
 
 use std::time::Duration;
 
-use sigil::hal::Scheduler;
 use sigil::reactive::{Owner, signal};
 use sigil::tasks::{AsyncRuntime, Status, signal_writer, spawn};
 

@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::rc::Rc;
 
 use crate::geometry::{Dim, LogicalSize, Size};
-use crate::hal::ParagraphMetrics;
 use crate::kernel::TextContent;
 use crate::style::{StyledTextEngine, TextStyle};
+use crate::text::Paragraph;
 
 use crate::layout::TextMeasure;
 
@@ -19,7 +19,7 @@ impl<E: StyledTextEngine> TextEngineMeasure<E> {
     }
 }
 
-impl<E: StyledTextEngine> TextMeasure for TextEngineMeasure<E> {
+impl<E: StyledTextEngine<Paragraph = Paragraph>> TextMeasure for TextEngineMeasure<E> {
     fn measure(&self, source: &TextContent, space: Size) -> LogicalSize {
         self.measure_styled(source, &TextStyle::default(), space)
     }

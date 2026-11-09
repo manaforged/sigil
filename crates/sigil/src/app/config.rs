@@ -91,11 +91,7 @@ pub struct AppConfig {
     pub(crate) double_click_distance: Option<f32>,
     pub(crate) task_workers: crate::tasks::TaskWorkers,
     #[cfg(feature = "scene")]
-    pub(crate) fonts: Option<crate::text::fonts::DefaultFonts>,
-    #[cfg(feature = "scene")]
-    pub(crate) font_fallbacks: Vec<crate::text::fonts::FallbackFace>,
-    #[cfg(feature = "scene")]
-    pub(crate) text_tuning: Option<crate::renderer::slug::TextTuning>,
+    pub(crate) text: text::TextSetup,
     #[cfg(feature = "terminal")]
     pub(crate) terminal_hooks: TerminalHooks,
     #[cfg(feature = "terminal")]
@@ -106,11 +102,7 @@ pub struct AppConfig {
     pub(crate) other_keys: OtherKeys,
     #[cfg(feature = "terminal")]
     pub(crate) suspend: Option<crate::events::Shortcut>,
-    #[cfg(feature = "desktop")]
-    #[cfg_attr(
-        not(target_arch = "wasm32"),
-        allow(dead_code, reason = "only the browser host binds a canvas")
-    )]
+    #[cfg(all(feature = "desktop", target_arch = "wasm32"))]
     pub(crate) canvas: Option<String>,
 }
 
@@ -207,9 +199,19 @@ impl AppConfig {
     /// Sets the canvas.
     #[cfg(feature = "desktop")]
     #[must_use]
-    pub fn canvas(mut self, id: impl Into<String>) -> Self {
-        self.canvas = Some(id.into());
-        self
+    pub fn canvas(self, id: impl Into<String>) -> Self {
+        #[cfg(target_arch = "wasm32")]
+        {
+            Self {
+                canvas: Some(id.into()),
+                ..self
+            }
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            drop(id);
+            self
+        }
     }
 
     /// Applies the terminal option.

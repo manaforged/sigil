@@ -8,10 +8,12 @@ use crate::style::{Rgba8, TextRun};
 use crate::{AppResult, Error};
 
 mod mouse;
+mod pump;
 mod reply;
 mod view;
 
 pub(crate) use mouse::Mouse;
+use pump::{read_rows, steer};
 use reply::{Colors, Replies};
 
 type Parser = vt100::Parser<Replies>;
@@ -109,12 +111,14 @@ impl Session {
     pub(crate) fn modes(&self) -> Option<Modes> {
         let parser = self.parser.lock().ok()?;
         let screen = parser.screen();
-        Some(Modes {
+        let modes = Modes {
             cursor_keys: screen.application_cursor(),
             alternate: screen.alternate_screen(),
             mouse: screen.mouse_protocol_mode(),
             encoding: screen.mouse_protocol_encoding(),
-        })
+        };
+        drop(parser);
+        Some(modes)
     }
 
     pub(crate) fn report(
@@ -352,57 +356,6 @@ pub(crate) fn frame_of<C: vt100::Callbacks>(parser: &vt100::Parser<C>) -> Frame 
 
 fn pty_err(err: impl std::fmt::Display) -> Error {
     Error::io(std::io::Error::other(err.to_string()))
-}
-
-fn steer(
-    orders: &mpsc::Receiver<Control>,
-    master: &dyn portable_pty::MasterPty,
-    publish: &Publish,
-) {
-    while let Ok(order) = orders.recv() {
-        let Ok(mut parser) = publish.parser.lock() else {
-            return;
-        };
-        match order {
-            Control::Resize(cols, rows) => {
-                if parser.screen().size() == (rows, cols) {
-                    continue;
-                }
-                parser.screen_mut().set_size(rows, cols);
-                if let Err(err) = master.resize(size(cols, rows)) {
-                    tracing::warn!(target: "sigil::pty", error = %err, "PTY resize failed");
-                }
-            }
-            Control::Scroll(delta) => {
-                let at = parser.screen().scrollback();
-                let next = at.saturating_add_signed(isize::try_from(delta).unwrap_or(0));
-                parser.screen_mut().set_scrollback(next);
-            }
-        }
-        drop(parser);
-        publish.send();
-    }
-}
-
-fn read_rows(mut reader: Box<dyn std::io::Read + Send>, publish: &Publish) {
-    let mut buf = [0_u8; 4096];
-    loop {
-        let n = match reader.read(&mut buf) {
-            Ok(0) | Err(_) => break,
-            Ok(n) => n,
-        };
-        let (got, _) = buf.split_at(n);
-        let Ok(mut parser) = publish.parser.lock() else {
-            break;
-        };
-        parser.process(got);
-        let synced = parser.callbacks().synced;
-        drop(parser);
-        if !synced {
-            publish.send();
-        }
-    }
-    publish.send();
 }
 
 #[cfg(test)]

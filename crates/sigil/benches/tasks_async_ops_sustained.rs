@@ -7,7 +7,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use criterion::Criterion;
-use sigil::hal::Scheduler;
 use sigil::reactive::{Owner, signal};
 use sigil::tasks::{AsyncRuntime, signal_writer, spawn};
 

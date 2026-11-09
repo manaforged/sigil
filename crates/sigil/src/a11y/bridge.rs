@@ -1,4 +1,3 @@
-use crate::hal::A11yBridge;
 use crate::kernel::NodeId;
 use accesskit::{ActionRequest, TreeUpdate};
 
@@ -17,20 +16,14 @@ impl<F: FnMut(TreeUpdate)> AccessKitBridge<F> {
             action_rx,
         }
     }
-}
 
-impl<F: FnMut(TreeUpdate)> A11yBridge for AccessKitBridge<F> {
-    type Error = crate::Error;
-    type Update = TreeUpdate;
-    type Action = ActionRequest;
-    type NodeId = NodeId;
-
-    fn publish(&mut self, update: Self::Update) -> Result<(), Self::Error> {
+    /// Sends a tree update to the platform accessibility adapter.
+    pub fn publish(&mut self, update: TreeUpdate) {
         (self.publish_sink)(update);
-        Ok(())
     }
 
-    fn take_action(&mut self) -> Option<(Self::NodeId, Self::Action)> {
+    /// Takes the next action request from assistive technology, if one waits.
+    pub fn take_action(&self) -> Option<(NodeId, ActionRequest)> {
         let request = self.action_rx.try_recv().ok()?;
         Some((NodeId::from_accesskit(request.target_node), request))
     }

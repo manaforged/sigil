@@ -7,7 +7,7 @@
 use std::sync::Arc;
 
 use crate::geometry::{Point, Rect};
-use crate::hal::{HitPosition, ParagraphMetrics, TextAffinity};
+use crate::hal::{HitPosition, TextAffinity};
 use smallvec::SmallVec;
 
 use crate::text::Font;
@@ -362,33 +362,5 @@ impl Paragraph {
                 f(face.id, &face.bytes, face.index);
             }
         }
-    }
-}
-
-impl ParagraphMetrics for Paragraph {
-    fn width(&self) -> f32 {
-        self.inner
-            .lines
-            .iter()
-            .map(|l| l.width)
-            .fold(0.0_f32, f32::max)
-    }
-
-    fn height(&self) -> f32 {
-        self.inner.lines.iter().map(|l| l.height).sum()
-    }
-
-    #[cfg(any(test, feature = "kittest"))]
-    fn line_count(&self) -> usize {
-        self.inner.lines.len()
-    }
-
-    fn min_content_width(&self) -> f32 {
-        self.content_widths().min
-    }
-
-    #[cfg(any(test, feature = "kittest"))]
-    fn max_content_width(&self) -> f32 {
-        self.content_widths().max
     }
 }

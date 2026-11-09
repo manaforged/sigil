@@ -4,7 +4,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use crate::hal::Scheduler;
 use crate::reactive::Owner;
 use crate::tasks::AsyncRuntime;
 use crate::tasks::dispatch::dispatch_to_owner;

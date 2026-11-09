@@ -307,7 +307,6 @@ const fn gradient_text(run: GlyphRun, _: &Gradient) -> GlyphRun {
 
 #[cfg(feature = "scene")]
 fn overflows(run: &GlyphRun, rect: Rect) -> bool {
-    use crate::hal::ParagraphMetrics as _;
     run.paragraph().is_some_and(|paragraph| {
         paragraph.width() > rect.width + 0.5 || paragraph.height() > rect.height + 0.5
     })

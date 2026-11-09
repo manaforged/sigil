@@ -84,6 +84,7 @@ pub struct LayerScope {
     pub blend: BlendMode,
 }
 
+#[cfg(feature = "scene")]
 impl LayerScope {
     pub(crate) const fn srgb(clip: Rect) -> Self {
         Self {
@@ -206,6 +207,12 @@ pub enum Filter {
 }
 
 impl Filter {
+    #[cfg(any(
+        test,
+        feature = "terminal",
+        feature = "desktop",
+        all(feature = "scene", feature = "kittest")
+    ))]
     pub(crate) const fn is_color(self) -> bool {
         !matches!(self, Self::Blur(_) | Self::DropShadow(_))
     }

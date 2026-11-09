@@ -1,6 +1,7 @@
 use crate::Error;
 use crate::app::embed::Host;
 use crate::app::exit::take_exit;
+#[cfg(any(feature = "terminal", debug_assertions))]
 use crate::kernel::FrameDelta;
 use crate::reactive::{Runtime, tick_frame};
 
@@ -15,10 +16,7 @@ pub struct FrameInfo {
     pub animating: bool,
     /// Whether layout ok.
     pub layout_ok: bool,
-    #[cfg_attr(
-        not(feature = "terminal"),
-        allow(dead_code, reason = "only the terminal host reads the delta")
-    )]
+    #[cfg(any(feature = "terminal", debug_assertions))]
     pub(crate) delta: FrameDelta,
 }
 
@@ -80,11 +78,16 @@ impl Host {
         let layout_ok = layout.is_ok();
         self.cx().flush_announcements();
         Runtime::begin_paint();
+        let dirty = Runtime::frame_dirty();
+        let delta = self.cx().take_delta();
+        #[cfg(not(any(feature = "terminal", debug_assertions)))]
+        drop(delta);
         let info = FrameInfo {
-            dirty: Runtime::frame_dirty(),
+            dirty,
             animating,
             layout_ok,
-            delta: self.cx().take_delta(),
+            #[cfg(any(feature = "terminal", debug_assertions))]
+            delta,
         };
         if let Some(paint) = hooks.paint {
             paint(self, &info);

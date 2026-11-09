@@ -1,6 +1,3 @@
-#[cfg(any(test, feature = "kittest", feature = "scene"))]
-use crate::hal::TextEngine;
-
 /// Gives line height as a multiple of font size or in pixels.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TextLineHeight {
@@ -178,7 +175,11 @@ impl TextStyle {
 
 kittest_pub! {
     #[cfg(any(test, feature = "kittest", feature = "scene"))]
-    pub trait StyledTextEngine: TextEngine {
+    pub trait StyledTextEngine {
+        type Error: core::error::Error + Send + Sync + 'static;
+
+        type Paragraph;
+
         fn layout_paragraph_styled(
             &self,
             text: &str,

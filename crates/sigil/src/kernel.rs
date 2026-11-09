@@ -42,6 +42,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use node::NodeType;
 }
+#[cfg(feature = "kittest")]
 pub use reactive_children::schedule_keyed_rebuild;
 pub(crate) use reactive_children::schedule_keyed_rebuild_at;
 pub use semantics::{A11yProps, AccessibleName, FocusScopeKind, TextCursor};

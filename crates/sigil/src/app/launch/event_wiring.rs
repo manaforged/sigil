@@ -151,9 +151,7 @@ pub(super) fn publish_a11y(
     let mut bridge = crate::a11y::AccessKitBridge::new(action_rx, |tree_update| {
         shell.publish_a11y_update(handle, tree_update);
     });
-    if let Err(err) = crate::hal::A11yBridge::publish(&mut bridge, update) {
-        tracing::warn!(target: "sigil::a11y", error = ?err, "accessibility update publish failed");
-    }
+    bridge.publish(update);
 }
 
 pub(super) fn drain_a11y_actions(
@@ -162,9 +160,9 @@ pub(super) fn drain_a11y_actions(
     router: &mut EventRouter,
     layout: &LayoutEngine,
 ) {
-    let mut bridge =
+    let bridge =
         crate::a11y::AccessKitBridge::new(action_rx.clone(), |_: accesskit::TreeUpdate| {});
-    while let Some((target, request)) = crate::hal::A11yBridge::take_action(&mut bridge) {
+    while let Some((target, request)) = bridge.take_action() {
         crate::profile::interact(Cause::A11y);
         crate::a11y::actions::apply(cx, router, layout, target, &request);
     }

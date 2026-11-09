@@ -19,6 +19,10 @@ pub use crate::terminal::term::calibrate;
 use crate::terminal::term::paint_frame;
 use crate::terminal::term::{HookGuard, Term, restore};
 
+mod turn;
+
+use turn::Turn;
+
 pub(crate) const CELL: f32 = crate::Host::CELL;
 
 /// Reads the next batch of events for an embedded terminal loop.
@@ -299,8 +303,8 @@ fn due(deadline: Option<Instant>) -> bool {
 
 fn frame_due() -> bool {
     Runtime::frame_dirty()
-        || crate::animation_runtime::active_count() > 0
-        || crate::animation_runtime::running_clocks() > 0
+        || crate::animation::runtime::active_count() > 0
+        || crate::animation::runtime::running_clocks() > 0
         || crate::reactive::next_interval_deadline().is_some_and(|due| due <= Instant::now())
 }
 
@@ -319,65 +323,6 @@ pub(super) fn turn_wait(
     };
     let wait = next.map(|due| due.saturating_duration_since(Instant::now()).min(tick));
     (wait, true)
-}
-
-struct Turn<'a> {
-    last: &'a mut Instant,
-    screen: &'a mut Screen,
-    host: &'a mut Host,
-    term: &'a mut Term,
-}
-
-impl<'a> Turn<'a> {
-    const fn new(
-        last: &'a mut Instant,
-        screen: &'a mut Screen,
-        host: &'a mut Host,
-        term: &'a mut Term,
-    ) -> Self {
-        Self {
-            last,
-            screen,
-            host,
-            term,
-        }
-    }
-
-    fn take(
-        &mut self,
-        config: &AppConfig,
-        incoming: Vec<Event>,
-        (cols, rows): (u16, u16),
-        hooks: &mut Hooks<'_>,
-    ) -> AppResult<bool> {
-        let size = match hooks.region_rows.as_mut() {
-            Some(hook) if config.inline => (cols, hook().clamp(1, rows.max(1))),
-            _ => (cols, rows),
-        };
-        self.screen.set_dt(tick(self.last));
-        profile::begin_frame(profile::BackendStatus::TERMINAL);
-        let (screen, host) = (&mut *self.screen, &mut *self.host);
-        let frame = isolated(config.panic_policy, || {
-            screen.frame(host, incoming, size).map(|_| ())
-        })?;
-        if frame.is_none() {
-            recover(self.term)?;
-        }
-        if let Some(after) = hooks.after_frame.as_mut() {
-            after(self.host, self.screen);
-        }
-        for message in self.screen.take_above() {
-            if let Err(err) = crate::terminal::print_above(&message) {
-                tracing::warn!(target: "sigil::terminal", error = %err, "announcement write failed");
-            }
-        }
-        {
-            let _phase = profile::span(crate::profile::Phase::TuiPresent);
-            self.term.paint(self.screen).map_err(Error::io)?;
-        }
-        profile::tick_frame();
-        Ok(self.screen.exited())
-    }
 }
 
 /// Runs one frame under `policy`; `None` means the frame panicked and was isolated.

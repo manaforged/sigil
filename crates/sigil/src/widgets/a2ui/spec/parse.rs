@@ -1,0 +1,281 @@
+use serde_json::{Map, Value};
+
+use crate::kernel::ObjectFit;
+use crate::layout::{AlignItems, JustifyContent};
+use crate::widgets::a2ui::glyph;
+
+use super::{
+    Axis, ButtonLook, Children, Choice, Clock, Component, Dynamic, Event, FieldKind, Flex,
+    ImageSize, Kind, Picker, TextStyle,
+};
+
+const MAX_CHILDREN: usize = 256;
+const MAX_OPTIONS: usize = 64;
+const MAX_TABS: usize = 16;
+
+const TEXT_STYLES: &[(&str, TextStyle)] = &[
+    ("h1", TextStyle::H1),
+    ("h2", TextStyle::H2),
+    ("h3", TextStyle::H3),
+    ("h4", TextStyle::H4),
+    ("h5", TextStyle::H5),
+    ("body", TextStyle::Body),
+    ("caption", TextStyle::Caption),
+];
+const IMAGE_SIZES: &[(&str, ImageSize)] = &[
+    ("icon", ImageSize::Icon),
+    ("avatar", ImageSize::Avatar),
+    ("smallFeature", ImageSize::Small),
+    ("mediumFeature", ImageSize::Medium),
+    ("largeFeature", ImageSize::Large),
+    ("header", ImageSize::Header),
+];
+const FITS: &[(&str, ObjectFit)] = &[
+    ("contain", ObjectFit::Contain),
+    ("scaleDown", ObjectFit::Contain),
+    ("none", ObjectFit::Contain),
+    ("cover", ObjectFit::Cover),
+    ("fill", ObjectFit::Fill),
+];
+const LOOKS: &[(&str, ButtonLook)] = &[
+    ("default", ButtonLook::Default),
+    ("primary", ButtonLook::Primary),
+    ("borderless", ButtonLook::Borderless),
+];
+const FIELD_KINDS: &[(&str, FieldKind)] = &[
+    ("shortText", FieldKind::Short),
+    ("longText", FieldKind::Long),
+    ("number", FieldKind::Number),
+    ("obscured", FieldKind::Obscured),
+];
+const AXES: &[(&str, Axis)] = &[
+    ("horizontal", Axis::Horizontal),
+    ("vertical", Axis::Vertical),
+];
+const JUSTIFY: &[(&str, JustifyContent)] = &[
+    ("start", JustifyContent::Start),
+    ("center", JustifyContent::Center),
+    ("end", JustifyContent::End),
+    ("spaceBetween", JustifyContent::SpaceBetween),
+    ("spaceAround", JustifyContent::SpaceAround),
+    ("spaceEvenly", JustifyContent::SpaceEvenly),
+    ("stretch", JustifyContent::Stretch),
+];
+const ALIGN: &[(&str, AlignItems)] = &[
+    ("start", AlignItems::Start),
+    ("center", AlignItems::Center),
+    ("end", AlignItems::End),
+    ("stretch", AlignItems::Stretch),
+];
+
+fn pick<T: Copy>(value: Option<&Value>, table: &[(&str, T)], default: T) -> T {
+    value
+        .and_then(Value::as_str)
+        .and_then(|name| table.iter().find(|(known, _)| *known == name))
+        .map_or(default, |(_, picked)| *picked)
+}
+
+impl Dynamic {
+    fn of(props: &Map<String, Value>, key: &str) -> Self {
+        match props.get(key) {
+            Some(Value::Object(map)) => map
+                .get("path")
+                .and_then(Value::as_str)
+                .map_or(Self::Literal(Value::Null), |path| {
+                    Self::Path(path.to_string())
+                }),
+            Some(other) => Self::Literal(other.clone()),
+            None => Self::Literal(Value::Null),
+        }
+    }
+}
+
+fn id(props: &Map<String, Value>, key: &str) -> String {
+    props
+        .get(key)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn number(props: &Map<String, Value>, key: &str, default: f32) -> f32 {
+    #[expect(clippy::cast_possible_truncation, reason = "slider bounds fit f32")]
+    props
+        .get(key)
+        .and_then(Value::as_f64)
+        .map_or(default, |n| n as f32)
+}
+
+fn flag(props: &Map<String, Value>, key: &str) -> bool {
+    props.get(key).and_then(Value::as_bool).unwrap_or(false)
+}
+
+fn children(props: &Map<String, Value>) -> Children {
+    match props.get("children") {
+        Some(Value::Array(ids)) => Children::Ids(
+            ids.iter()
+                .take(MAX_CHILDREN)
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect(),
+        ),
+        Some(Value::Object(template)) => Children::Template {
+            id: id(template, "componentId"),
+            path: id(template, "path"),
+        },
+        _ => Children::Ids(Vec::new()),
+    }
+}
+
+fn flex(props: &Map<String, Value>) -> Flex {
+    Flex {
+        justify: pick(props.get("justify"), JUSTIFY, JustifyContent::Start),
+        align: pick(props.get("align"), ALIGN, AlignItems::Stretch),
+    }
+}
+
+fn event(props: &Map<String, Value>) -> Option<Event> {
+    let event = props.get("action")?.get("event")?;
+    let context = event
+        .get("context")
+        .and_then(Value::as_object)
+        .map(|map| {
+            map.keys()
+                .take(MAX_CHILDREN)
+                .map(|key| (key.clone(), Dynamic::of(map, key)))
+                .collect()
+        })
+        .unwrap_or_default();
+    Some(Event {
+        name: event.get("name")?.as_str()?.to_string(),
+        context,
+    })
+}
+
+fn tabs(props: &Map<String, Value>) -> Kind {
+    let tabs = props
+        .get("tabs")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .take(MAX_TABS)
+        .filter_map(Value::as_object)
+        .map(|tab| (Dynamic::of(tab, "title"), id(tab, "child")))
+        .collect();
+    Kind::Tabs { tabs }
+}
+
+fn picker(props: &Map<String, Value>) -> Kind {
+    let options = props
+        .get("options")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .take(MAX_OPTIONS)
+        .filter_map(Value::as_object)
+        .map(|option| Choice {
+            label: Dynamic::of(option, "label"),
+            value: id(option, "value"),
+        })
+        .collect();
+    Kind::ChoicePicker(Picker {
+        label: Dynamic::of(props, "label"),
+        value: Dynamic::of(props, "value"),
+        options,
+        multiple: props.get("variant").and_then(Value::as_str) == Some("multipleSelection"),
+    })
+}
+
+fn content(name: &str, props: &Map<String, Value>) -> Option<Kind> {
+    Some(match name {
+        "Text" => Kind::Text {
+            text: Dynamic::of(props, "text"),
+            style: pick(props.get("variant"), TEXT_STYLES, TextStyle::Body),
+        },
+        "Image" => Kind::Image {
+            url: Dynamic::of(props, "url"),
+            alt: Dynamic::of(props, "description"),
+            size: pick(props.get("variant"), IMAGE_SIZES, ImageSize::Medium),
+            fit: pick(props.get("fit"), FITS, ObjectFit::Contain),
+        },
+        "Icon" => Kind::Icon {
+            glyph: props
+                .get("name")
+                .and_then(Value::as_str)
+                .and_then(glyph::find),
+        },
+        "Divider" => Kind::Divider {
+            axis: pick(props.get("axis"), AXES, Axis::Horizontal),
+        },
+        "Card" => Kind::Card {
+            child: id(props, "child"),
+        },
+        "Tabs" => tabs(props),
+        "Row" => Kind::Row {
+            children: children(props),
+            flex: flex(props),
+        },
+        "Column" => Kind::Column {
+            children: children(props),
+            flex: flex(props),
+        },
+        "List" => Kind::List {
+            children: children(props),
+            axis: pick(props.get("direction"), AXES, Axis::Vertical),
+            align: pick(props.get("align"), ALIGN, AlignItems::Stretch),
+        },
+        _ => return None,
+    })
+}
+
+fn input(name: &str, props: &Map<String, Value>) -> Option<Kind> {
+    let label = Dynamic::of(props, "label");
+    let value = Dynamic::of(props, "value");
+    Some(match name {
+        "Button" => Kind::Button {
+            child: id(props, "child"),
+            look: pick(props.get("variant"), LOOKS, ButtonLook::Default),
+            event: event(props),
+        },
+        "TextField" => Kind::TextField {
+            label,
+            value,
+            kind: pick(props.get("variant"), FIELD_KINDS, FieldKind::Short),
+        },
+        "CheckBox" => Kind::CheckBox { label, value },
+        "ChoicePicker" => picker(props),
+        "Slider" => Kind::Slider {
+            label,
+            value,
+            min: number(props, "min", 0.0),
+            max: number(props, "max", 100.0),
+        },
+        "DateTimeInput" => Kind::DateTime(Clock {
+            label,
+            value,
+            date: flag(props, "enableDate"),
+            time: flag(props, "enableTime"),
+        }),
+        _ => return None,
+    })
+}
+
+impl Component {
+    pub(in crate::widgets::a2ui) fn parse(props: &Map<String, Value>) -> Self {
+        let name = props
+            .get("component")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let kind = content(name, props)
+            .or_else(|| input(name, props))
+            .unwrap_or_else(|| Kind::Unsupported {
+                name: name.to_string(),
+            });
+        #[expect(clippy::cast_possible_truncation, reason = "flex weights fit f32")]
+        let weight = props
+            .get("weight")
+            .and_then(Value::as_f64)
+            .map(|w| w as f32);
+        Self { kind, weight }
+    }
+}

@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
 use crate::geometry::{Point, Rect};
+#[cfg(all(
+    feature = "scene",
+    any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+))]
 use crate::scene::command::effects::{LayerEffect, LayerScope};
 use crate::scene::command::fills::{FillRule, PathPaint};
 use crate::scene::command::payloads::{DrawPath, PathCmd};
@@ -84,6 +88,12 @@ impl Clip {
         Self::Path(draw)
     }
 
+    #[cfg(any(
+        test,
+        feature = "terminal",
+        feature = "desktop",
+        all(feature = "scene", feature = "kittest")
+    ))]
     pub(crate) const fn bounds(&self) -> Rect {
         match self {
             Self::Rect(rect) | Self::Rounded(rect, _) => *rect,
@@ -91,6 +101,10 @@ impl Clip {
         }
     }
 
+    #[cfg(all(
+        feature = "scene",
+        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+    ))]
     pub(crate) fn composites(&self) -> bool {
         match self {
             Self::Rect(_) => false,
@@ -99,6 +113,10 @@ impl Clip {
         }
     }
 
+    #[cfg(all(
+        feature = "scene",
+        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+    ))]
     pub(crate) const fn mask(&self) -> Option<&DrawPath> {
         match self {
             Self::Path(draw) => Some(draw),
@@ -106,6 +124,10 @@ impl Clip {
         }
     }
 
+    #[cfg(all(
+        feature = "scene",
+        any(test, feature = "kittest", feature = "desktop", feature = "terminal")
+    ))]
     pub(crate) const fn scope(&self) -> LayerScope {
         LayerScope {
             clip: self.bounds(),

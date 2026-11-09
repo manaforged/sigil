@@ -27,9 +27,7 @@ pub(crate) mod shaper;
 #[cfg(feature = "shaping-complex")]
 pub(crate) mod shaping_complex;
 
-pub use crate::hal::text::{
-    HitPosition, ParagraphMetrics, RenderedGlyph, TextAffinity, TextEngine,
-};
+pub use crate::hal::text::{HitPosition, RenderedGlyph, TextAffinity};
 #[cfg(any(test, feature = "kittest"))]
 pub use engine::FontCollection;
 pub use engine::OwnedTextEngine;

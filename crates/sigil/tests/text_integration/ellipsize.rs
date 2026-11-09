@@ -3,7 +3,6 @@
 use sigil::style::StyledTextEngine as _;
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
-use sigil::text::ParagraphMetrics;
 
 fn engine() -> OwnedTextEngine {
     OwnedTextEngine::new(TextStyle {

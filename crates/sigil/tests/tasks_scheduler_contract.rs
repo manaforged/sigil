@@ -9,7 +9,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
-use sigil::hal::Scheduler;
 use sigil::reactive::Owner;
 use sigil::tasks::AsyncRuntime;
 

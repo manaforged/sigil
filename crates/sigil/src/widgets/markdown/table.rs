@@ -21,7 +21,6 @@ const RULE: StyleAtom = StyleAtom::BorderWidth(1);
 
 #[cfg(feature = "scene")]
 fn shaped(text: &str, style: &TextStyle) -> Option<f32> {
-    use crate::hal::ParagraphMetrics as _;
     use crate::style::StyledTextEngine as _;
     let engine = crate::text::OwnedTextEngine::thread();
     let paragraph = engine.layout_paragraph_styled(text, None, style).ok()?;

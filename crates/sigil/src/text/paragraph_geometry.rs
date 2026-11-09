@@ -5,6 +5,42 @@ use crate::style::Color;
 use super::{FaceEntry, LayoutLine, LineGlyph, Paragraph, u32_clamp};
 
 impl Paragraph {
+    /// Returns the width of the widest line.
+    #[must_use]
+    pub fn width(&self) -> f32 {
+        self.inner
+            .lines
+            .iter()
+            .map(|l| l.width)
+            .fold(0.0_f32, f32::max)
+    }
+
+    /// Returns the summed height of all lines.
+    #[must_use]
+    pub fn height(&self) -> f32 {
+        self.inner.lines.iter().map(|l| l.height).sum()
+    }
+
+    /// Returns the number of lines.
+    #[cfg(any(test, feature = "kittest"))]
+    #[must_use]
+    pub fn line_count(&self) -> usize {
+        self.inner.lines.len()
+    }
+
+    /// Returns the narrowest width that fits without overflow.
+    #[must_use]
+    pub fn min_content_width(&self) -> f32 {
+        self.content_widths().min
+    }
+
+    /// Returns the width of the text laid out on one line.
+    #[cfg(any(test, feature = "kittest"))]
+    #[must_use]
+    pub fn max_content_width(&self) -> f32 {
+        self.content_widths().max
+    }
+
     #[must_use]
     pub fn rendered_glyphs(&self) -> Vec<RenderedGlyph> {
         self.rendered_glyphs_in(0, usize::MAX)

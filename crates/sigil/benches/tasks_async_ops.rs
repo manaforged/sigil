@@ -13,7 +13,6 @@ use async_ops_sustained::{
     bench_spawn_smoke_latency, bench_sustained_cross_thread_writes_1k_per_sec,
 };
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use sigil::hal::Scheduler;
 use sigil::reactive::{Owner, effect, signal};
 use sigil::tasks::{AsyncRuntime, signal_writer};
 

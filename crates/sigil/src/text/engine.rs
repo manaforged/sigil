@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use ahash::AHashMap;
 
-use crate::hal::{ParagraphMetrics, TextEngine};
 use crate::style::{StyledTextEngine, TextLineHeight, TextStyle};
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -102,6 +101,17 @@ impl OwnedTextEngine {
     #[cfg(any(test, feature = "kittest"))]
     pub fn clear_cache(&self) {
         self.cache.borrow_mut().clear();
+    }
+
+    /// Lays out text in the engine's own style.
+    #[cfg(any(test, feature = "kittest"))]
+    pub fn layout_paragraph(
+        &self,
+        text: &str,
+        max_width: Option<f32>,
+    ) -> Result<Paragraph, crate::Error> {
+        let style = self.style.clone();
+        self.layout_paragraph_styled(text, max_width, &style)
     }
 
     pub fn layout_paragraph_ellipsized(
@@ -285,27 +295,10 @@ impl OwnedTextEngine {
     }
 }
 
-impl TextEngine for OwnedTextEngine {
+impl StyledTextEngine for OwnedTextEngine {
     type Error = crate::Error;
     type Paragraph = Paragraph;
 
-    #[cfg(any(test, feature = "kittest"))]
-    fn layout_paragraph(
-        &self,
-        text: &str,
-        max_width: Option<f32>,
-    ) -> Result<Paragraph, crate::Error> {
-        let style = self.style.clone();
-        self.layout_paragraph_styled(text, max_width, &style)
-    }
-
-    #[cfg(any(test, feature = "kittest"))]
-    fn clear_cache(&self) {
-        self.cache.borrow_mut().clear();
-    }
-}
-
-impl StyledTextEngine for OwnedTextEngine {
     fn layout_paragraph_styled(
         &self,
         text: &str,

@@ -1,4 +1,5 @@
 use super::*;
+use crate::renderer::capture::ImageTarget;
 use crate::scene::SceneBuilder;
 
 const TARGET: ImageTarget = ImageTarget {

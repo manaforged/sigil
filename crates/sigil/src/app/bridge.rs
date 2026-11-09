@@ -1,6 +1,8 @@
 #[cfg(feature = "menu")]
 use std::cell::Cell;
 use std::cell::RefCell;
+#[cfg(not(any(feature = "menu", feature = "tray", feature = "media")))]
+use std::marker::PhantomData;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
 
@@ -9,14 +11,10 @@ use crate::app::Wake;
 use crate::reactive::EventChannel;
 
 pub(crate) struct Native<Cmd, Handle, Ev: 'static> {
-    #[cfg_attr(
-        not(any(feature = "menu", feature = "tray", feature = "media")),
-        allow(
-            dead_code,
-            reason = "the hotkey shell queues no command, and the field holds the type parameter"
-        )
-    )]
+    #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
     pending: RefCell<Option<Cmd>>,
+    #[cfg(not(any(feature = "menu", feature = "tray", feature = "media")))]
+    _command: PhantomData<Cmd>,
     installed: RefCell<Option<Handle>>,
     #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
     events: EventChannel<Ev>,
@@ -30,7 +28,10 @@ impl<Cmd, Handle, Ev: Clone + Send + 'static> Native<Cmd, Handle, Ev> {
     pub(crate) fn new() -> Self {
         let (tx, rx) = unbounded();
         Self {
+            #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
             pending: RefCell::new(None),
+            #[cfg(not(any(feature = "menu", feature = "tray", feature = "media")))]
+            _command: PhantomData,
             installed: RefCell::new(None),
             #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
             events: EventChannel::new(),

@@ -31,9 +31,9 @@ fn builder_chain_overrides_individual_fields() {
 #[test]
 fn a_fallback_face_keeps_the_primary_font_source() {
     let cfg = AppConfig::new("Fonts").font_fallback(vec![1, 2, 3], 7);
-    assert!(cfg.fonts.is_none());
-    assert_eq!(cfg.font_fallbacks.len(), 1);
-    assert_eq!(cfg.font_fallbacks.first().map(|face| face.1), Some(7));
+    assert!(cfg.text.fonts.is_none());
+    assert_eq!(cfg.text.font_fallbacks.len(), 1);
+    assert_eq!(cfg.text.font_fallbacks.first().map(|face| face.1), Some(7));
 }
 
 const GAP: std::time::Duration = std::time::Duration::from_millis(12);

@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use crate::hal::Scheduler;
 use crate::reactive::Owner;
 use crate::tasks::{AsyncRuntime, TaskWorkers};
 

@@ -187,10 +187,7 @@ fn apply_positional(
 
 /// Rebuilds the keyed children of `parent` from `incoming` before the next layout.
 #[track_caller]
-#[cfg_attr(
-    not(feature = "kittest"),
-    allow(dead_code, reason = "public only under kittest")
-)]
+#[cfg(feature = "kittest")]
 pub fn schedule_keyed_rebuild<K, N>(
     parent: NodeId,
     prior: Rc<RefCell<Vec<(K, NodeId)>>>,

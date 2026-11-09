@@ -16,7 +16,9 @@ mod site;
 mod span;
 mod store;
 
+#[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) use attr::budget_ns;
+#[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) use chrome::site_name;
 pub use key::{BackendKind, BackendStatus, Cause, Counter, FallbackCause, Phase};
 pub(crate) use key::{Hotspot, SiteKind};
@@ -132,6 +134,7 @@ pub(crate) fn dump_if_enabled() {
     }
 }
 
+#[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) use store::with_frames;
 
 /// Returns the recorded frames.

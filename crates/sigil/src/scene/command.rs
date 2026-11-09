@@ -52,11 +52,13 @@ pub(crate) use glyph::TextFlow;
 pub use glyph::shape_glyph_run;
 pub(crate) use glyph::{RunInk, shape_run};
 pub use gradient::{Gradient, GradientKind};
+#[cfg(any(feature = "scene", feature = "terminal"))]
+pub(crate) use payloads::MITER_LIMIT;
 pub(crate) use payloads::{CellBorder, CellRect};
 pub use payloads::{
     DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawRect, DrawSprite,
 };
-pub(crate) use payloads::{MITER_LIMIT, PathCmd, PathStroke, outline_key, rounded_outline};
+pub(crate) use payloads::{PathCmd, PathStroke, outline_key, rounded_outline};
 #[cfg(all(
     feature = "scene",
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")

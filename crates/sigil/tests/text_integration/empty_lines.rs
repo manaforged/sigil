@@ -2,7 +2,7 @@
 
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
-use sigil::text::{HitPosition, ParagraphMetrics, TextAffinity, TextEngine};
+use sigil::text::{HitPosition, TextAffinity};
 
 fn engine() -> OwnedTextEngine {
     OwnedTextEngine::new(TextStyle {

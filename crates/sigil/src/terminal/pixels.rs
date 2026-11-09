@@ -54,6 +54,16 @@ pub(super) struct Pixels {
     on: bool,
 }
 
+#[cfg_attr(
+    not(feature = "scene"),
+    allow(
+        clippy::unused_self,
+        clippy::unnecessary_wraps,
+        clippy::needless_pass_by_ref_mut,
+        clippy::missing_const_for_fn,
+        reason = "pixel mode needs the scene feature; without it these keep the signatures the run loop calls"
+    )
+)]
 impl Pixels {
     pub(super) fn open(config: &AppConfig, caps: Caps) -> Self {
         let available = available(config, caps);
