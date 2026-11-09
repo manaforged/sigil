@@ -4,6 +4,13 @@ use windows_core as _;
 mod appearance;
 #[cfg(feature = "audio")]
 pub(crate) mod audio;
+#[cfg(any(
+    feature = "menu",
+    feature = "tray",
+    all(feature = "hotkey", not(target_arch = "wasm32")),
+    feature = "media"
+))]
+mod bridge;
 mod cell_text;
 pub(crate) mod config;
 /// Native file and message dialogs.
@@ -31,13 +38,6 @@ pub mod menu;
 pub mod notify;
 #[cfg(feature = "desktop")]
 mod open;
-#[cfg(any(
-    feature = "menu",
-    feature = "tray",
-    all(feature = "hotkey", not(target_arch = "wasm32")),
-    feature = "media"
-))]
-pub(crate) mod platform;
 #[cfg(any(
     feature = "menu",
     feature = "tray",
