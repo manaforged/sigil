@@ -120,10 +120,7 @@ sigil-fonts = { path = "crates/sigil-fonts", version = "0.2.0" }
 sigil-sign = { path = "crates/sign", version = "0.2.0" }
 minisign = "0.7"
 base64 = "0.22"
-chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
 serde = { version = "1", features = ["derive"] }
-sha2 = "0.10"
-hex = "0.4"
 unicode-width = "0.2"
 usvg = { version = "0.48", default-features = false }
 resvg = { version = "0.48", default-features = false }

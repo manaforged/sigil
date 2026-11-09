@@ -5734,7 +5734,6 @@ version = "0.2.0"
 dependencies = [
  "minisign",
  "serde",
- "serde_json",
 ]
 
 [[package]]

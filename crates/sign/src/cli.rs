@@ -24,9 +24,8 @@ fn flag(args: &[String], name: &str) -> Result<Option<String>, String> {
     while let Some(arg) = rest.next() {
         if arg == name {
             return match rest.next() {
-                Some(value) if value.starts_with("--") => Err(format!("{name} requires a value")),
-                Some(value) => Ok(Some(value.clone())),
-                None => Ok(None),
+                Some(value) if !value.starts_with("--") => Ok(Some(value.clone())),
+                _ => Err(format!("{name} requires a value")),
             };
         }
     }
@@ -138,9 +137,6 @@ fn pack_macos(argv: &[String]) -> Result<(), String> {
     let version = required(argv, "--version")?;
     let icon = flag(argv, "--icon")?;
     let provisioning_profile = flag(argv, "--provisioning-profile")?;
-    if provisioning_profile.is_none() && argv.iter().any(|arg| arg == "--provisioning-profile") {
-        return Err("--provisioning-profile requires a value".into());
-    }
     let min = flag(argv, "--min")?.unwrap_or_else(|| "10.15".into());
     let exe_name = flag(argv, "--exe-name")?.unwrap_or_else(|| name.clone());
     let copies = resource_pairs(argv)?;
