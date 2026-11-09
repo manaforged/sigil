@@ -6,12 +6,15 @@ use crate::style::scale::{
     ColorScale, ScaleRole, amber_dark, amber_light, blue_dark, blue_light, cyan_dark, cyan_light,
     green_dark, green_light, rgb, ruby_dark, ruby_light, slate_dark, slate_light,
 };
+use crate::style::srgb::{AA_TEXT, contrast};
 use crate::style::strings::Strings;
 #[cfg(test)]
 use crate::style::variant::FontFamilyHint;
 use crate::style::variant::Variant;
 use crate::style::{ControlSize, Rgba8};
 use mix::{alpha_mix, shift};
+
+const HOVER_DARKEN: i16 = -14;
 
 pub(crate) mod ambient;
 mod color;
@@ -203,6 +206,15 @@ impl Theme {
     }
 }
 
+fn readable_hover(accent: ColorScale, on: Rgba8) -> Rgba8 {
+    let lighter = accent.step(10);
+    if contrast(lighter, on) >= AA_TEXT {
+        lighter
+    } else {
+        shift(accent.step(9), HOVER_DARKEN)
+    }
+}
+
 impl Theme {
     /// Returns the light theme.
     #[must_use]
@@ -242,7 +254,7 @@ impl Theme {
             info,
             on_solid,
             accent: accent_scale.step(9),
-            accent_hover: accent_scale.step(10),
+            accent_hover: readable_hover(accent_scale, on_solid),
             on_accent: on_solid,
             surface: gray.step(2),
             surface_hover: gray.step(4),
