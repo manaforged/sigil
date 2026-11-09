@@ -27,7 +27,6 @@
 - [Packing](guide/packing.md)
 - [Troubleshooting](guide/troubleshooting.md)
 - [Errors](guide/errors.md)
-- [API map](api.md)
 
 # Architecture
 

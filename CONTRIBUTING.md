@@ -37,9 +37,9 @@ scripts/gate.sh --gpu
 
 - Keep functions under 50 lines. Clippy enforces this.
 - Do not add `//` comments. A public item may have one doc comment (`///`). `missing_docs` stays off.
-- User docs live in `README.md`, `crates/sigil/README.md`, `docs/api.md`, and `docs/guide/`.
+- User docs live in `README.md`, `crates/sigil/README.md`, `crates/sigil/docs/`, and `docs/guide/`.
 - Put tests beside the code under test. Do not inline tests in production modules.
-- Search [docs/api.md](docs/api.md) before you add a helper. Give each new public item a row in `docs/api.md` in the same change.
+- Search the prelude and `cargo doc -p sigil-ui --open` before you add a helper. Give each new public item a one-line doc comment in the same change.
 - User code imports `sigil::prelude::*` and nothing else from this repository.
 - Visual changes re-bake the goldens. Check the output at native size.
 

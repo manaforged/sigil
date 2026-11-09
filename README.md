@@ -8,7 +8,7 @@ A GUI and TUI framework written in Rust. One widget tree runs in a window, in a 
 - **Widgets**: markdown, tables, trees, charts, mermaid diagrams, a code editor, and the usual controls and fields.
 - **Accessible**: the window host exposes the widget tree to screen readers through AccessKit.
 
-[Book](docs/guide/README.md) | [API map](docs/api.md) | [Examples](crates/sigil/examples)
+[Book](docs/guide/README.md) | [API reference](https://docs.rs/sigil-ui) | [Examples](crates/sigil/examples)
 
 ![The workbench example application](docs/workbench.png)
 
@@ -103,7 +103,7 @@ The [`sigil-ui` README](crates/sigil/README.md#features) lists every feature. `d
 | [Troubleshooting](docs/guide/troubleshooting.md) | No GPU, images in tmux, and terminal color. |
 | [GUI and TUI](docs/guide/hosts.md) | Build for the window, the terminal, or both; host-only APIs; how to split host code. |
 | [Recipes](docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, terminal hooks, and screen readers. |
-| [API map](docs/api.md) | Every exported item with its signature and an example, in one Markdown file. |
+| [API reference](https://docs.rs/sigil-ui) | Every public item, generated from the source by rustdoc. |
 | [Architecture](docs/guide/arch/overview.md) | How it works inside. |
 
 The [changelog](CHANGELOG.md) lists each release.

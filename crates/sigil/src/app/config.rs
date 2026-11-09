@@ -55,7 +55,7 @@ pub(crate) use hooks::TerminalHooks;
 #[cfg(feature = "desktop")]
 pub(crate) use hooks::{CloseHook, ExitHook};
 
-/// Run configuration: title, size, host, theme file, web canvas.
+#[doc = include_str!("../../docs/app-config.md")]
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     #[cfg(any(test, feature = "desktop", feature = "terminal"))]

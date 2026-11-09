@@ -33,7 +33,7 @@ Read these before you write a helper. Most jobs already have a function.
 
 | File | Use it to |
 | --- | --- |
-| [docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md) | Look up every item at the crate root and in the prelude, with its signature, purpose, and an example that compiles. The "Jobs to symbols" section maps a job to the call. |
+| [docs.rs/sigil-ui](https://docs.rs/sigil-ui) | Look up every public item, with its signature and a compiled example on each main type. |
 | `cargo doc -p sigil-ui --open` | Browse every public item, generated from the source. |
 | [Recipes](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, host hooks, and screen readers. |
 | [GUI and TUI](https://raw.githubusercontent.com/manaforged/sigil/main/docs/guide/hosts.md) | Build for the window, the terminal, or both. |

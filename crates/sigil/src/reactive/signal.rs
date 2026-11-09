@@ -9,7 +9,7 @@ use crate::reactive::runtime::{
 };
 use crate::reactive::signal_write::{UpdateGuard, live_slot, take_value};
 
-/// Reactive value.
+#[doc = include_str!("../../docs/signal.md")]
 pub struct Signal<T: 'static> {
     pub(crate) key: SignalKey,
     _not_send: PhantomData<*const T>,

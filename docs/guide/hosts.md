@@ -108,7 +108,7 @@ A TUI-only build then has no menu code and no GPU stack, and a GUI-only build ha
 
 ## Test both hosts
 
-`sigil-kittest` drives the window host and compares PNG goldens; see [Testing](testing.md). The terminal host runs headless through `Host::new(HostMode::Cell)` and `Host::grid`; see the [API map](../api.md). To check that a TUI-only build has no GPU stack:
+`sigil-kittest` drives the window host and compares PNG goldens; see [Testing](testing.md). The terminal host runs headless through `Host::new(HostMode::Cell)` and `Host::grid`; see [`Host`](https://docs.rs/sigil-ui/latest/sigil/struct.Host.html). To check that a TUI-only build has no GPU stack:
 
 ```bash
 cargo tree -p your-app --no-default-features --features tui | grep -E 'wgpu|winit'

@@ -28,7 +28,7 @@ struct Binds {
     slots: HashMap<String, Slot>,
 }
 
-/// A widget tree read from `.sigil` text, reloaded when its watched file changes.
+#[doc = include_str!("../docs/view.md")]
 #[must_use]
 pub struct View {
     source: String,

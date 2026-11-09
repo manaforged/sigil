@@ -148,12 +148,12 @@ Off the scale, say why: `Space::raw(13.0, "matches the embedded video inset")`, 
 - `html()` parses a document subset. No CSS, no JavaScript, no browser.
 - `markdown`, `html`, `mermaid`, and the SVG parser reject sources larger than 1 MiB.
 - A `pty` session opens at 24x80 and does not resize.
-- Public modules not listed in `docs/api.md` are used by tests and macro expansion. They are not API and can change in any 0.1.x release.
+- Items public only under the `kittest` feature are test support, not API, and can change in any release.
 
 Styling is typed: paint through `Paint` methods and state variants, layout through `LayoutStyle`. Typed actions use a plain `impl Action for ...`; there is no derive macro.
 
 ## Docs
 
-The [user guide](https://github.com/manaforged/sigil/tree/main/docs/guide) covers each widget, the terminal host, and troubleshooting. The [API map](https://github.com/manaforged/sigil/blob/main/docs/api.md) maps each job to its symbol.
+The [user guide](https://github.com/manaforged/sigil/tree/main/docs/guide) covers each widget, the terminal host, and troubleshooting. The [API reference](https://docs.rs/sigil-ui) lists every public item.
 
 License: MIT. The default fonts ship in the separate `sigil-fonts` crate, which the `scene` feature pulls in, under the SIL Open Font License 1.1 and, for the symbol font, the Bitstream Vera license.

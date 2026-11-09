@@ -27,7 +27,7 @@ type AccessibilityTree = accesskit::TreeUpdate;
 
 const LAYOUT_PASSES: usize = 4;
 
-/// Embed host: build, route, lay out, and paint one tree.
+#[doc = include_str!("../../docs/host.md")]
 pub struct Host {
     cx: Cx,
     layout: LayoutEngine,

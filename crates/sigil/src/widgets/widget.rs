@@ -21,7 +21,7 @@ mod edit;
 
 pub(crate) use edit::{Edit, LayoutEdit, Sealed, StateTarget};
 
-/// Setters shared by every builder: layout, style, and event handlers.
+#[doc = include_str!("../../docs/widget.md")]
 pub trait Widget: Sealed {
     /// Applies `f` to the root node that this builder produces.
     #[must_use]

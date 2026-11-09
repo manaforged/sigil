@@ -18,7 +18,7 @@ type ReactiveChildrenInstall = Box<dyn FnOnce(NodeId)>;
 
 type AddedHook = Box<dyn FnOnce(&mut Cx, NodeId)>;
 
-/// Builder that `container` and most widgets return.
+#[doc = include_str!("../../docs/node-builder.md")]
 pub struct NodeBuilder {
     pub(super) a11y: A11yProps,
     pub(super) children: SmallVec<[Box<dyn ErasedComponent>; 4]>,

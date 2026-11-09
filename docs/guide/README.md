@@ -25,7 +25,7 @@ The [examples index](../reference/sigil-ui/examples/index.md) lists the runnable
 - [Signing](signing.md): sign an update package
 - [Packing](packing.md): build a macOS or Windows app bundle
 - [Troubleshooting](troubleshooting.md): no GPU, images in tmux, and terminal color
-- [API map](../api.md): each job mapped to its symbol
+- [API reference](https://docs.rs/sigil-ui): every public item
 
 ## Architecture
 

@@ -8,7 +8,7 @@
         reason = "a build without a window uses only the CPU capture path"
     )
 )]
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("../docs/overview.md")]
 #![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
 #![cfg_attr(
     not(feature = "kittest"),
@@ -259,8 +259,8 @@ pub mod prelude {
 mod doc_snippets {
     #[doc = include_str!("../../../README.md")]
     pub struct Readme;
-    #[doc = include_str!("../../../docs/api.md")]
-    pub struct Api;
+    #[doc = include_str!("../README.md")]
+    pub struct PackageReadme;
     #[doc = include_str!("../../../docs/guide/README.md")]
     pub struct GuideReadme;
     #[doc = include_str!("../../../docs/guide/arch/modules.md")]

@@ -10,7 +10,7 @@ description = "GUI and TUI framework in Rust. One widget tree, one entry: sigil:
 readme = "README.md"
 keywords = ["gui", "ui", "widgets", "wgpu", "desktop"]
 categories = ["gui", "command-line-interface"]
-include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "!src/**/*_tests/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "assets/**", "examples/**"]
+include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "!src/**/*_tests/**", "/Cargo.toml", "/README.md", "docs/**", "/LICENSE-MIT", "assets/**", "examples/**"]
 autobenches = false
 
 [lib]

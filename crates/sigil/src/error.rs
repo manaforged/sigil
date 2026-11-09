@@ -89,7 +89,7 @@ impl Detail {
     }
 }
 
-/// Opaque application error.
+#[doc = include_str!("../docs/error.md")]
 #[derive(Debug, Clone)]
 pub struct Error {
     kind: ErrorKind,

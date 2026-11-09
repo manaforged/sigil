@@ -1,6 +1,6 @@
 # Recipes
 
-Each recipe is a complete program or tree function for one job. Every code block on this page compiles as a doctest of the `sigil` crate. The [API map](../api.md) lists the signature of each item used here.
+Each recipe is a complete program or tree function for one job. Every code block on this page compiles as a doctest of the `sigil` crate. The [API reference](https://docs.rs/sigil-ui) lists the signature of each item used here.
 
 ## Keys
 
