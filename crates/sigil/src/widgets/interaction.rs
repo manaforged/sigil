@@ -184,10 +184,10 @@ impl InteractionState {
 }
 
 pub(crate) fn is_primary(event: &PointerEvent) -> bool {
-    match event.button {
-        Some(button) => button == MouseButton::Left,
-        None => event.kind != PointerKind::Mouse,
-    }
+    event.button.map_or_else(
+        || event.kind != PointerKind::Mouse,
+        |button| button == MouseButton::Left,
+    )
 }
 
 pub(crate) fn is_cancel(event: &PointerEvent) -> bool {

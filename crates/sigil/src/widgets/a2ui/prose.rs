@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use crate::kernel::TextBuilder;
 use crate::widgets::markdown::parse::{Inline, parse_inlines};
 use crate::widgets::markdown_inline;
@@ -33,7 +35,7 @@ fn code(out: &mut String, body: &str) {
         longest = longest.max(run);
     }
     let fence = "`".repeat(longest + 1);
-    out.push_str(&format!("{fence} {body} {fence}"));
+    let _ = write!(out, "{fence} {body} {fence}");
 }
 
 fn emit(out: &mut String, spans: &[Inline]) {

@@ -56,9 +56,12 @@ fn deepest(document: &Document<'_>) -> usize {
     for node in document.descendants() {
         let parent = node
             .parent()
-            .map_or(0, |parent| depths[parent.id().get_usize()]);
+            .and_then(|parent| depths.get(parent.id().get_usize()).copied())
+            .unwrap_or(0);
         let depth = parent + usize::from(node.is_element() && node.has_children());
-        depths[node.id().get_usize()] = depth;
+        if let Some(slot) = depths.get_mut(node.id().get_usize()) {
+            *slot = depth;
+        }
         deepest = deepest.max(depth);
     }
     deepest
@@ -158,8 +161,8 @@ impl Links {
                 continue;
             }
             for holder in node.ancestors().filter_map(|node| node.attribute("id")) {
-                if let Some(&holder) = ids.get(holder) {
-                    edges[holder].extend(&found);
+                if let Some(outgoing) = ids.get(holder).and_then(|&holder| edges.get_mut(holder)) {
+                    outgoing.extend(&found);
                 }
             }
         }
@@ -175,47 +178,77 @@ impl Links {
 
     fn reach(&self) -> Reach {
         let count = self.edges.len();
-        let mut seen = vec![Visit::New; count];
-        let (mut chain, mut expansion) = (vec![0_usize; count], vec![0_usize; count]);
+        let mut walk = Walk::new(count);
         let mut cycles = 0_usize;
         for start in 0..count {
-            if seen[start] != Visit::New {
+            if walk.state(start) != Visit::New {
                 continue;
             }
-            seen[start] = Visit::Open;
+            walk.mark(start, Visit::Open);
             let mut stack = vec![(start, 0_usize)];
             while let Some(&mut (node, ref mut next)) = stack.last_mut() {
-                let Some(&target) = self.edges[node].get(*next) else {
-                    seen[node] = Visit::Done;
+                let Some(&target) = self.edges.get(node).and_then(|edges| edges.get(*next)) else {
+                    walk.mark(node, Visit::Done);
                     stack.pop();
                     if let Some(&(parent, _)) = stack.last() {
-                        chain[parent] = chain[parent].max(chain[node] + 1);
-                        expansion[parent] = expansion[parent]
-                            .saturating_add(expansion[node])
-                            .saturating_add(1);
+                        walk.absorb(parent, node);
                     }
                     continue;
                 };
                 *next += 1;
-                match seen[target] {
+                match walk.state(target) {
                     Visit::New => {
-                        seen[target] = Visit::Open;
+                        walk.mark(target, Visit::Open);
                         stack.push((target, 0));
                     }
                     Visit::Open => cycles += 1,
-                    Visit::Done => {
-                        chain[node] = chain[node].max(chain[target] + 1);
-                        expansion[node] = expansion[node]
-                            .saturating_add(expansion[target])
-                            .saturating_add(1);
-                    }
+                    Visit::Done => walk.absorb(node, target),
                 }
             }
         }
-        let longest = chain.into_iter().max().unwrap_or(0);
+        let longest = walk.chain.into_iter().max().unwrap_or(0);
         Reach {
             chain: (cycles + 1).saturating_mul(longest + 1) - 1 + self.unscoped,
-            expansion: expansion.into_iter().max().unwrap_or(0),
+            expansion: walk.expansion.into_iter().max().unwrap_or(0),
+        }
+    }
+}
+
+struct Walk {
+    seen: Vec<Visit>,
+    chain: Vec<usize>,
+    expansion: Vec<usize>,
+}
+
+impl Walk {
+    fn new(count: usize) -> Self {
+        Self {
+            seen: vec![Visit::New; count],
+            chain: vec![0; count],
+            expansion: vec![0; count],
+        }
+    }
+
+    fn state(&self, node: usize) -> Visit {
+        self.seen.get(node).copied().unwrap_or(Visit::Done)
+    }
+
+    fn mark(&mut self, node: usize, visit: Visit) {
+        if let Some(slot) = self.seen.get_mut(node) {
+            *slot = visit;
+        }
+    }
+
+    fn absorb(&mut self, into: usize, from: usize) {
+        let (Some(&chain), Some(&expansion)) = (self.chain.get(from), self.expansion.get(from))
+        else {
+            return;
+        };
+        if let Some(slot) = self.chain.get_mut(into) {
+            *slot = (*slot).max(chain + 1);
+        }
+        if let Some(slot) = self.expansion.get_mut(into) {
+            *slot = slot.saturating_add(expansion).saturating_add(1);
         }
     }
 }

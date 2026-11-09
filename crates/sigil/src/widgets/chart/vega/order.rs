@@ -33,7 +33,7 @@ impl Facts<'_> {
     }
 }
 
-fn flip(ordering: Ordering, descending: bool) -> Ordering {
+const fn flip(ordering: Ordering, descending: bool) -> Ordering {
     if descending {
         ordering.reverse()
     } else {
@@ -51,17 +51,17 @@ pub(super) fn rank(facts: &Facts<'_>, sort: &Sort, own: &str) -> Vec<usize> {
             order.sort_by(|a, b| flip(facts.natural(*a, *b), *descending));
         }
         Sort::Channel(_, descending) => {
-            order.sort_by(|a, b| flip(facts.total(*a).total_cmp(&facts.total(*b)), *descending))
+            order.sort_by(|a, b| flip(facts.total(*a).total_cmp(&facts.total(*b)), *descending));
         }
         Sort::Count(descending) => {
             order.sort_by(|a, b| flip(facts.count(*a).cmp(&facts.count(*b)), *descending));
         }
-        Sort::Order(listed) => return lead(order, facts.names, listed),
+        Sort::Order(listed) => return lead(&order, facts.names, listed),
     }
     order
 }
 
-fn lead(order: Vec<usize>, names: &[String], listed: &[String]) -> Vec<usize> {
+fn lead(order: &[usize], names: &[String], listed: &[String]) -> Vec<usize> {
     let at = |index: &usize| {
         names
             .get(*index)
@@ -87,7 +87,7 @@ pub(super) fn domain(
         Domain::Values(listed) | Domain::Union(listed) => listed.as_slice(),
         Domain::Data | Domain::Span(..) => &[],
     };
-    let led = lead(order.clone(), names, listed);
+    let led = lead(&order, names, listed);
     let fixed = matches!(domain, Domain::Values(_));
     let slot = |index: &usize| {
         let name = names.get(*index);

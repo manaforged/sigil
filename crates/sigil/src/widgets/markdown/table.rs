@@ -183,7 +183,7 @@ impl Grid {
     }
 }
 
-fn next_sort(
+const fn next_sort(
     current: Option<(usize, SortDirection)>,
     column: usize,
 ) -> Option<(usize, SortDirection)> {
@@ -204,7 +204,9 @@ pub(super) fn table(data: Table) -> NodeBuilder {
         .collect();
     let mut measured = cells.clone();
     if let Some(header) = measured.first_mut() {
-        header.iter_mut().for_each(|cell| cell.text.push_str(" ▲"));
+        for cell in header {
+            cell.text.push_str(" ▲");
+        }
     }
     let widths = extents(&measured);
     cells.resize_with(data.rows.len(), Vec::new);

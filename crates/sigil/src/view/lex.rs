@@ -45,11 +45,16 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    fn advance_cols(&mut self, text: &str) {
+        let width = u32::try_from(text.chars().count()).unwrap_or(u32::MAX);
+        self.col = self.col.saturating_add(width);
+    }
+
     fn take_word(&mut self) -> &'a str {
         let end = self.rest.find(|c| !is_word(c)).unwrap_or(self.rest.len());
         let (word, rest) = self.rest.split_at(end);
         self.rest = rest;
-        self.col += word.chars().count() as u32;
+        self.advance_cols(word);
         word
     }
 
@@ -97,8 +102,9 @@ impl<'a> Lexer<'a> {
 
     fn skip_comment(&mut self) {
         let end = self.rest.find('\n').unwrap_or(self.rest.len());
-        self.col += self.rest[..end].chars().count() as u32;
-        self.rest = &self.rest[end..];
+        let (comment, rest) = self.rest.split_at(end);
+        self.advance_cols(comment);
+        self.rest = rest;
     }
 
     fn one(&mut self, c: char, tok: Tok<'a>) -> Tok<'a> {

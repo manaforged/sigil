@@ -148,18 +148,7 @@ pub fn list_row(
         slots.disclosure,
     );
     if let Some(marker) = slots.marker.take() {
-        row = row.child(
-            container()
-                .layout(LayoutStyle::block().width(cols(2.0)).shrink(0.0))
-                .child(
-                    text(marker).class("text-sm").class(
-                        slots
-                            .marker_tone
-                            .map_or(Token::Accent11, Tone::solid)
-                            .text(),
-                    ),
-                ),
-        );
+        row = row.child(marker_slot(marker, slots.marker_tone));
     }
     if let Some(leading) = slots.leading.take() {
         row = row.child(leading_slot(leading));
@@ -237,6 +226,16 @@ fn row_frame(depth: u16, indent_cols: f32, disclosure: Disclosure) -> NodeBuilde
         row = row.child(disclosure_slot(disclosure));
     }
     row
+}
+
+fn marker_slot(marker: TextContent, tone: Option<Tone>) -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::block().width(cols(2.0)).shrink(0.0))
+        .child(
+            text(marker)
+                .class("text-sm")
+                .class(tone.map_or(Token::Accent11, Tone::solid).text()),
+        )
 }
 
 fn leading_slot(content: Box<dyn IntoNode>) -> NodeBuilder {

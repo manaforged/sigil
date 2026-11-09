@@ -28,7 +28,7 @@ pub(super) struct Budget {
 }
 
 impl Budget {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             nodes: Cell::new(MAX_RENDERED),
             bytes: Cell::new(MAX_TEXT_BYTES),

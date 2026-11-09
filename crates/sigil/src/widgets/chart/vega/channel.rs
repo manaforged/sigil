@@ -207,17 +207,19 @@ impl Channel {
             return None;
         }
         let field = optional(map.get("field"), |field| field.as_str().map(str::to_owned))?;
-        let op = optional(map.get("aggregate"), |name| {
-            name.as_str().map(str::to_owned)
+        let op = optional(map.get("aggregate"), |entry| {
+            entry.as_str().map(str::to_owned)
         })?;
-        let aggregate = optional(map.get("aggregate"), |name| {
-            Aggregate::parse(name.as_str()?)
+        let aggregate = optional(map.get("aggregate"), |entry| {
+            Aggregate::parse(entry.as_str()?)
         })?;
-        let declared = optional(map.get("type"), |name| Kind::parse(name.as_str()?))?;
-        let kind = declared.unwrap_or(if aggregate.is_some() {
-            Kind::Quantitative
-        } else {
-            Kind::Nominal
+        let declared = optional(map.get("type"), |entry| Kind::parse(entry.as_str()?))?;
+        let kind = declared.unwrap_or_else(|| {
+            if aggregate.is_some() {
+                Kind::Quantitative
+            } else {
+                Kind::Nominal
+            }
         });
         if field.is_none() && aggregate != Some(Aggregate::Count) {
             return None;

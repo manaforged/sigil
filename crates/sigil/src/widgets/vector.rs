@@ -222,7 +222,7 @@ impl PathNode {
         };
         let mut draw = DrawPath::new(outline, transform, key);
         if let Some(fill) = fill {
-            let fill = baked.map_or_else(|| fill.clone(), |view| paint::map(&fill, view));
+            let fill = baked.map_or_else(|| fill.clone(), |frame| paint::map(&fill, frame));
             draw = draw.with_fill(self.rule, fill);
         }
         if let Some((color, width)) = stroke {

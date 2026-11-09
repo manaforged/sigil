@@ -30,7 +30,7 @@ pub(super) fn separated(commands: Vec<SceneCommand>) -> Vec<SceneCommand> {
     out
 }
 
-fn set_painted(painted: &mut [bool]) {
+const fn set_painted(painted: &mut [bool]) {
     if let Some(top) = painted.last_mut() {
         *top = true;
     }

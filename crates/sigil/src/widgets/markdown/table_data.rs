@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::fmt::Write as _;
 
 use pulldown_cmark::Alignment;
 
@@ -178,21 +179,29 @@ fn markdown_cell(cell: &[Inline]) -> String {
     out.replace('|', "\\|").replace('\n', " ")
 }
 
-fn write_markdown(out: &mut String, body: &[Inline]) {
-    for inline in body {
+fn write_markdown(out: &mut String, spans: &[Inline]) {
+    for inline in spans {
         match inline {
             Inline::Text(text) => out.push_str(text),
-            Inline::Code(code) => out.push_str(&format!("`{code}`")),
-            Inline::Math(expr) => out.push_str(&format!("${expr}$")),
-            Inline::Note(label) => out.push_str(&format!("[^{label}]")),
-            Inline::Image { alt, src } => out.push_str(&format!("![{alt}]({src})")),
+            Inline::Code(code) => {
+                let _ = write!(out, "`{code}`");
+            }
+            Inline::Math(expr) => {
+                let _ = write!(out, "${expr}$");
+            }
+            Inline::Note(label) => {
+                let _ = write!(out, "[^{label}]");
+            }
+            Inline::Image { alt, src } => {
+                let _ = write!(out, "![{alt}]({src})");
+            }
             Inline::Strong(inner) => wrap(out, "**", inner),
             Inline::Em(inner) => wrap(out, "*", inner),
             Inline::Strike(inner) => wrap(out, "~~", inner),
             Inline::Link { href, body, .. } => {
                 out.push('[');
                 write_markdown(out, body);
-                out.push_str(&format!("]({href})"));
+                let _ = write!(out, "]({href})");
             }
         }
     }

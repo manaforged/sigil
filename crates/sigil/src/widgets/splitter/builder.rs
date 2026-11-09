@@ -142,15 +142,9 @@ impl SplitterBuilder {
         let orientation = self.orientation;
         let count = self.panes.len();
         if self.proportional {
-            for pane in &mut self.panes {
-                pane.initial_size = if pane.initial_size > 0.0 {
-                    pane.initial_size
-                } else {
-                    1.0
-                };
-                pane.grow = 0.0;
-            }
+            self.normalize_proportional();
         }
+        let root_layout = self.root_layout();
         let grows: Vec<f32> = self
             .panes
             .iter()
@@ -173,16 +167,6 @@ impl SplitterBuilder {
                 settle: self.settle_bind,
             },
         );
-        let root_layout = match orientation {
-            Orientation::Horizontal => LayoutStyle::flex_row().align_items(AlignItems::Stretch),
-            Orientation::Vertical => LayoutStyle::flex_column().align_items(AlignItems::Stretch),
-        };
-        let root_layout = if self.proportional {
-            root_layout.fill().min_size(0.0, 0.0)
-        } else {
-            root_layout
-        };
-
         let mut root = container().role(Role::GenericContainer).layout(root_layout);
         if self.proportional {
             root = fit_to_bounds(root, state, orientation, count);
@@ -199,6 +183,29 @@ impl SplitterBuilder {
             root = root.style(self.style_accumulator);
         }
         root
+    }
+
+    fn normalize_proportional(&mut self) {
+        for pane in &mut self.panes {
+            pane.initial_size = if pane.initial_size > 0.0 {
+                pane.initial_size
+            } else {
+                1.0
+            };
+            pane.grow = 0.0;
+        }
+    }
+
+    fn root_layout(&self) -> LayoutStyle {
+        let root_layout = match self.orientation {
+            Orientation::Horizontal => LayoutStyle::flex_row().align_items(AlignItems::Stretch),
+            Orientation::Vertical => LayoutStyle::flex_column().align_items(AlignItems::Stretch),
+        };
+        if self.proportional {
+            root_layout.fill().min_size(0.0, 0.0)
+        } else {
+            root_layout
+        }
     }
 }
 

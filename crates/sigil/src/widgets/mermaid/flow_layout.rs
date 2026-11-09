@@ -186,27 +186,7 @@ impl Graph {
         let gap = if vertical {
             GAP_ROWS
         } else {
-            let label_width = self
-                .edges
-                .iter()
-                .map(|edge| {
-                    let width = edge.label.chars().count().min(MAX_LABEL_GAP);
-                    let center = |node: usize| {
-                        positions
-                            .get(node)
-                            .copied()
-                            .unwrap_or(0)
-                            .saturating_add(across(node) / 2)
-                    };
-                    if width > 0 && center(edge.from) != center(edge.to) {
-                        width.saturating_add(1).saturating_mul(2)
-                    } else {
-                        width.saturating_add(2)
-                    }
-                })
-                .max()
-                .unwrap_or(0);
-            GAP_COLS.max(label_width)
+            GAP_COLS.max(self.label_gap(&positions, &across))
         };
         let offsets = offsets(layers, &rank_size, gap, self.dir.forward());
         self.nodes
@@ -227,6 +207,28 @@ impl Graph {
                 GridRect { x, y, w, h }
             })
             .collect()
+    }
+
+    fn label_gap(&self, positions: &[usize], across: &dyn Fn(usize) -> usize) -> usize {
+        let center = |node: usize| {
+            positions
+                .get(node)
+                .copied()
+                .unwrap_or(0)
+                .saturating_add(across(node) / 2)
+        };
+        self.edges
+            .iter()
+            .map(|edge| {
+                let width = edge.label.chars().count().min(MAX_LABEL_GAP);
+                if width > 0 && center(edge.from) != center(edge.to) {
+                    width.saturating_add(1).saturating_mul(2)
+                } else {
+                    width.saturating_add(2)
+                }
+            })
+            .max()
+            .unwrap_or(0)
     }
 
     pub(super) fn spacing(&self) -> Vec<usize> {

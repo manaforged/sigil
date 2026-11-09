@@ -282,7 +282,7 @@ fn left_axis(plot: &Plot<'_>, span: ValueSpan, x_axis_on: bool) -> (NodeBuilder,
 }
 
 fn bottom_axis(plot: &Plot<'_>, spans: Spans, placed: Option<Placed<'_>>) -> NodeBuilder {
-    let (count, stride) = (plot.count, plot.frame.label_stride(plot.count));
+    let (slot_count, stride) = (plot.count, plot.frame.label_stride(plot.count));
     let width = plot.frame.plot_width();
     let whole = plot.frame.whole;
     if plot.horizontal() {
@@ -303,7 +303,7 @@ fn bottom_axis(plot: &Plot<'_>, spans: Spans, placed: Option<Placed<'_>>) -> Nod
             });
             x_axis(&marks, width, PLOT_PAD)
         }
-        _ => slots(plot.labels, count, stride),
+        _ => slots(plot.labels, slot_count, stride),
     }
 }
 

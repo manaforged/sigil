@@ -178,9 +178,9 @@ impl Render {
         let mut column = container().layout(LayoutStyle::flex_column().gap(Space::Xs));
         for option in &picker.options {
             let on = signal(chosen.contains(&option.value));
-            let key = option.value.clone();
+            let wanted = option.value.clone();
             self.mirror(&picker.value, on, move |_, current| {
-                selected(current).contains(&key)
+                selected(current).contains(&wanted)
             });
             let (render, path, key) = (self.clone(), path.clone(), option.value.clone());
             let control = checkbox(on)

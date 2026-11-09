@@ -268,10 +268,11 @@ pub(crate) fn site_exit(
             });
             sites.len() - 1
         });
-        let site = &mut sites[index];
-        site.self_ns = site.self_ns.saturating_add(self_ns);
-        site.total_ns = site.total_ns.saturating_add(total_ns);
-        site.runs = site.runs.saturating_add(1);
+        if let Some(site) = sites.get_mut(index) {
+            site.self_ns = site.self_ns.saturating_add(self_ns);
+            site.total_ns = site.total_ns.saturating_add(total_ns);
+            site.runs = site.runs.saturating_add(1);
+        }
         if total_ns >= SITE_SLICE_NS {
             let start_us = store.since_origin_us(start);
             store.push(TraceEvent::Site {
@@ -303,8 +304,9 @@ pub(crate) fn attribute(hotspot: Hotspot, n: u64, key: u64, subject: impl FnOnce
                     hot.len() - 1
                 })
         });
-        let entry = &mut hot[index];
-        entry.count = entry.count.saturating_add(n);
+        if let Some(entry) = hot.get_mut(index) {
+            entry.count = entry.count.saturating_add(n);
+        }
     });
 }
 

@@ -18,30 +18,9 @@ fn push_spans(out: &mut StyledText, spans: &[Inline], face: &TextFace) {
     for span in spans {
         match span {
             Inline::Text(body) => push_run(out, body, face),
-            Inline::Strong(body) => push_spans(
-                out,
-                body,
-                &TextFace {
-                    bold: true,
-                    ..face.clone()
-                },
-            ),
-            Inline::Em(body) => push_spans(
-                out,
-                body,
-                &TextFace {
-                    italic: true,
-                    ..face.clone()
-                },
-            ),
-            Inline::Strike(body) => push_spans(
-                out,
-                body,
-                &TextFace {
-                    strike: true,
-                    ..face.clone()
-                },
-            ),
+            Inline::Strong(body) => push_marked(out, body, face, |inner| inner.bold = true),
+            Inline::Em(body) => push_marked(out, body, face, |inner| inner.italic = true),
+            Inline::Strike(body) => push_marked(out, body, face, |inner| inner.strike = true),
             Inline::Code(body) => {
                 let code = TextFace {
                     mono: true,
@@ -69,6 +48,17 @@ fn push_spans(out: &mut StyledText, spans: &[Inline], face: &TextFace) {
             }
         }
     }
+}
+
+fn push_marked(
+    out: &mut StyledText,
+    spans: &[Inline],
+    face: &TextFace,
+    mark: impl FnOnce(&mut TextFace),
+) {
+    let mut inner = face.clone();
+    mark(&mut inner);
+    push_spans(out, spans, &inner);
 }
 
 pub(super) fn note_mark(label: &str) -> String {

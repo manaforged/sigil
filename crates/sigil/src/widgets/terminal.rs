@@ -73,7 +73,7 @@ fn alt_prefixed(modifiers: ModifiersState, text: String) -> String {
     }
 }
 
-fn control_byte(key: &str) -> Option<u8> {
+const fn control_byte(key: &str) -> Option<u8> {
     let [byte] = key.as_bytes() else {
         return None;
     };
@@ -114,7 +114,7 @@ fn tilde(number: u8, code: u8) -> String {
 }
 
 fn edit_sequence(key: Key, modifiers: ModifiersState) -> Option<String> {
-    let has = |key: ModifiersState| modifiers.contains(key);
+    let has = |flag: ModifiersState| modifiers.contains(flag);
     Some(match key {
         Key::Enter if has(ModifiersState::SHIFT) || has(ModifiersState::ALT) => {
             "\u{1b}\r".to_string()
@@ -130,7 +130,7 @@ fn edit_sequence(key: Key, modifiers: ModifiersState) -> Option<String> {
     })
 }
 
-fn cursor_end(key: Key) -> Option<(char, bool)> {
+const fn cursor_end(key: Key) -> Option<(char, bool)> {
     Some(match key {
         Key::ArrowUp => ('A', false),
         Key::ArrowDown => ('B', false),

@@ -144,8 +144,11 @@ pub(crate) fn close_light() -> bool {
             .filter(|layer| layer.show.peek())
             .collect()
     });
-    open.iter()
-        .fold(false, |closed, layer| hide(layer.show) || closed)
+    let mut closed = false;
+    for layer in &open {
+        closed |= hide(layer.show);
+    }
+    closed
 }
 
 static NEXT_ESCAPE_LAYER_ID: AtomicU64 = AtomicU64::new(1);

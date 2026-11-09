@@ -84,7 +84,7 @@ pub(super) fn figure(source: &str, fallback: Fallback) -> Option<NodeBuilder> {
         requested: RefCell::default(),
     });
     let jobs = vec![spec.job(&Theme::light()), spec.job(&Theme::dark())];
-    if let Some(outcome) = engine::cached(&jobs[0]) {
+    if let Some(outcome) = jobs.first().and_then(engine::cached) {
         return Some(settled(&spec, outcome));
     }
     let status = spawn(engine::render(jobs));
@@ -101,10 +101,7 @@ fn shown(spec: &Rc<Spec>, status: Status<Arc<Chart>, Failure>) -> NodeBuilder {
 }
 
 fn settled(spec: &Rc<Spec>, outcome: Outcome) -> NodeBuilder {
-    match outcome {
-        Ok(chart) => drawn(spec, &chart),
-        Err(_) => spec.fallback(),
-    }
+    outcome.map_or_else(|_| spec.fallback(), |chart| drawn(spec, &chart))
 }
 
 fn drawn(spec: &Rc<Spec>, chart: &Chart) -> NodeBuilder {
@@ -119,7 +116,7 @@ fn drawn(spec: &Rc<Spec>, chart: &Chart) -> NodeBuilder {
         arrived.track();
         first
             .take()
-            .or_else(|| chart_picture(&again, arrived, owner).map(|(node, _)| node))
+            .or_else(|| chart_picture(&again, arrived, owner).map(|(picture, _)| picture))
     });
     let row = container()
         .layout(LayoutStyle::flex_row().fill_width().min_size(width, 0.0))

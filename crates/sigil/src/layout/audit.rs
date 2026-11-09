@@ -198,30 +198,48 @@ impl fmt::Display for NodeLabel {
     }
 }
 
+impl Flaw {
+    fn fmt_column(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self::Column {
+            parent,
+            column,
+            tops,
+            starts,
+            ends,
+        } = self
+        else {
+            return Ok(());
+        };
+        write!(
+            f,
+            "column {column} of {parent} in rows at y {tops:?} starts at {starts:?} and ends at {ends:?}: give the cells of the column one width, or use a grid"
+        )
+    }
+
+    fn fmt_inset(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self::Inset {
+            node,
+            rect,
+            axis,
+            start,
+            end,
+        } = self
+        else {
+            return Ok(());
+        };
+        write!(
+            f,
+            "{node} at ({}, {}) sized {}x{} is inset {start} at the start and {end} at the end on axis {axis:?}",
+            rect.origin.x, rect.origin.y, rect.width, rect.height
+        )
+    }
+}
+
 impl fmt::Display for Flaw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Column {
-                parent,
-                column,
-                tops,
-                starts,
-                ends,
-            } => write!(
-                f,
-                "column {column} of {parent} in rows at y {tops:?} starts at {starts:?} and ends at {ends:?}: give the cells of the column one width, or use a grid"
-            ),
-            Self::Inset {
-                node,
-                rect,
-                axis,
-                start,
-                end,
-            } => write!(
-                f,
-                "{node} at ({}, {}) sized {}x{} is inset {start} at the start and {end} at the end on axis {axis:?}",
-                rect.origin.x, rect.origin.y, rect.width, rect.height
-            ),
+            Self::Column { .. } => self.fmt_column(f),
+            Self::Inset { .. } => self.fmt_inset(f),
             Self::ClippedText {
                 node,
                 needed,

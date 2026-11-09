@@ -65,9 +65,13 @@ fn scan(segment: &str) -> Scan {
     while let Some(&byte) = bytes.get(at) {
         let step = match byte {
             b'`' => code(segment, at, &mut out),
-            b'*' if bytes.get(at + 1) == Some(&b'*') => toggle(&mut out, segment, at, Mark::Strong),
-            b'*' => toggle(&mut out, segment, at, Mark::Em),
-            b'~' if bytes.get(at + 1) == Some(&b'~') => toggle(&mut out, segment, at, Mark::Strike),
+            b'*' if bytes.get(at + 1) == Some(&b'*') => {
+                Some(toggle(&mut out, segment, at, Mark::Strong))
+            }
+            b'*' => Some(toggle(&mut out, segment, at, Mark::Em)),
+            b'~' if bytes.get(at + 1) == Some(&b'~') => {
+                Some(toggle(&mut out, segment, at, Mark::Strike))
+            }
             b'[' => {
                 out.stack.push(Mark::Bracket);
                 Some(1)
@@ -90,16 +94,14 @@ fn code(segment: &str, at: usize, out: &mut Scan) -> Option<usize> {
         .take_while(|byte| *byte == b'`')
         .count();
     let fence = &segment[at..at + run];
-    match segment[at + run..].find(fence) {
-        Some(end) => Some(run + end + run),
-        None => {
-            out.inner = Some(fence.to_string());
-            None
-        }
-    }
+    let Some(end) = segment[at + run..].find(fence) else {
+        out.inner = Some(fence.to_string());
+        return None;
+    };
+    Some(run + end + run)
 }
 
-fn toggle(out: &mut Scan, segment: &str, at: usize, mark: Mark) -> Option<usize> {
+fn toggle(out: &mut Scan, segment: &str, at: usize, mark: Mark) -> usize {
     let width = mark.closer().len();
     let before = segment[..at].chars().next_back();
     let after = segment[at + width..].chars().next();
@@ -108,7 +110,7 @@ fn toggle(out: &mut Scan, segment: &str, at: usize, mark: Mark) -> Option<usize>
     } else if after.is_some_and(|ch| !ch.is_whitespace()) {
         out.stack.push(mark);
     }
-    Some(width)
+    width
 }
 
 fn bracket_end(segment: &str, at: usize, out: &mut Scan) -> Option<usize> {
@@ -119,11 +121,9 @@ fn bracket_end(segment: &str, at: usize, out: &mut Scan) -> Option<usize> {
     if !segment[at + 1..].starts_with('(') {
         return Some(1);
     }
-    match segment[at + 2..].find(')') {
-        Some(end) => Some(end + 3),
-        None => {
-            out.inner = Some(String::from(")"));
-            None
-        }
-    }
+    let Some(end) = segment[at + 2..].find(')') else {
+        out.inner = Some(String::from(")"));
+        return None;
+    };
+    Some(end + 3)
 }

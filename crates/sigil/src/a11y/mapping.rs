@@ -278,20 +278,7 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
     if let Some(sig) = a11y.selected {
         ak.set_selected(sig.peek());
     }
-    if let (Some(now), Some(min), Some(max)) = (a11y.value_now, a11y.value_min, a11y.value_max) {
-        ak.set_numeric_value(f64::from(now.peek()));
-        ak.set_min_numeric_value(f64::from(min));
-        ak.set_max_numeric_value(f64::from(max));
-    }
-    if let Some(step) = a11y.step {
-        ak.set_numeric_value_step(f64::from(step));
-    }
-    if let Some(sig) = a11y.text_value {
-        ak.set_value(sig.peek());
-    }
-    if let Some(placeholder) = &a11y.placeholder {
-        ak.set_placeholder(placeholder.clone());
-    }
+    apply_value(ak, a11y);
     if let Some(sig) = a11y.expanded {
         ak.set_expanded(sig.peek());
     }
@@ -309,6 +296,23 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
     }
     if let Some(level) = a11y.level {
         ak.set_level(level);
+    }
+}
+
+fn apply_value(ak: &mut AkNode, a11y: &A11yProps) {
+    if let (Some(now), Some(min), Some(max)) = (a11y.value_now, a11y.value_min, a11y.value_max) {
+        ak.set_numeric_value(f64::from(now.peek()));
+        ak.set_min_numeric_value(f64::from(min));
+        ak.set_max_numeric_value(f64::from(max));
+    }
+    if let Some(step) = a11y.step {
+        ak.set_numeric_value_step(f64::from(step));
+    }
+    if let Some(sig) = a11y.text_value {
+        ak.set_value(sig.peek());
+    }
+    if let Some(placeholder) = &a11y.placeholder {
+        ak.set_placeholder(placeholder.clone());
     }
 }
 

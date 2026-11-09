@@ -188,7 +188,7 @@ impl Easing {
     clippy::manual_clamp,
     reason = "max then min maps NaN to 0.0, where clamp keeps NaN"
 )]
-fn unit(t: f32) -> f32 {
+const fn unit(t: f32) -> f32 {
     t.max(0.0).min(1.0)
 }
 

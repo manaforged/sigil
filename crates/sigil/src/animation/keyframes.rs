@@ -21,7 +21,7 @@ pub struct Keyframes {
     iterations: Option<u32>,
     reverse: bool,
     alternate: bool,
-    keyframes: Vec<(f32, Property)>,
+    frames: Vec<(f32, Property)>,
     easings: Vec<(f32, Easing)>,
 }
 
@@ -36,14 +36,14 @@ impl Keyframes {
             iterations: Some(1),
             reverse: false,
             alternate: false,
-            keyframes: Vec::new(),
+            frames: Vec::new(),
             easings: Vec::new(),
         }
     }
 
     /// Sets `property` at `offset`, from 0.0 (start of a pass) to 1.0 (end).
     pub fn keyframe(mut self, offset: f32, property: Property) -> Self {
-        self.keyframes.push((unit(offset), property));
+        self.frames.push((unit(offset), property));
         self
     }
 
@@ -149,7 +149,7 @@ impl Keyframes {
     }
 
     pub(crate) fn colors(&self) -> impl Iterator<Item = ColorAtom> + '_ {
-        self.keyframes.iter().flat_map(|(_, property)| {
+        self.frames.iter().flat_map(|(_, property)| {
             ColorAtomKind::ALL
                 .into_iter()
                 .filter_map(move |kind| property.color(kind))
@@ -174,7 +174,7 @@ fn unit(offset: f32) -> f32 {
 }
 
 impl Keyframes {
-    fn timing(&self) -> (Duration, Easing, Option<u32>, bool, bool) {
+    const fn timing(&self) -> (Duration, Easing, Option<u32>, bool, bool) {
         (
             self.duration,
             self.easing,
@@ -185,7 +185,7 @@ impl Keyframes {
     }
 
     fn stop_keys(&self) -> impl Iterator<Item = (u32, property::Key)> + '_ {
-        self.keyframes
+        self.frames
             .iter()
             .map(|(offset, property)| (offset.to_bits(), property.key()))
     }

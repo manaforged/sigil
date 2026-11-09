@@ -151,11 +151,11 @@ pub(in crate::widgets) fn blink(
 ) -> Signal<bool> {
     let lit = signal(true);
     let held = std::rc::Rc::new(std::cell::Cell::new(false));
-    let hold = held.clone();
+    let mark_held = held.clone();
     effect(move || {
         moved();
         interaction.focused().with(|_| ());
-        hold.set(true);
+        mark_held.set(true);
         lit.set(true);
     });
     if Owner::current().is_some() {
@@ -257,7 +257,6 @@ fn edit_lines(runtime: &TextEditRuntime, placeholder: TextContent) -> NodeBuilde
                     .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0)),
             ]
         })
-        .into()
 }
 
 fn typed_lines(runtime: &TextEditRuntime) -> TextBuilder {

@@ -108,7 +108,7 @@ fn drive(shell: WinitShell, mut state: LoopState, owner: Owner) -> AppResult<()>
     let inspect = crate::app::inspect::install_with_wake(wake_fn(&shell));
     let failure = Rc::new(Cell::new(None));
     let launch_failure = Rc::clone(&failure);
-    let result = shell
+    shell
         .run(move |shell| {
             owner.with(|| {
                 #[cfg(feature = "inspect")]
@@ -125,8 +125,7 @@ fn drive(shell: WinitShell, mut state: LoopState, owner: Owner) -> AppResult<()>
             });
         })
         .map_err(Error::window)
-        .and_then(|()| failure.take().map_or(Ok(()), Err));
-    result
+        .and_then(|()| failure.take().map_or(Ok(()), Err))
 }
 
 fn request_animation_frame(shell: &WinitShell, handle: Option<WinitWindowHandle>) {

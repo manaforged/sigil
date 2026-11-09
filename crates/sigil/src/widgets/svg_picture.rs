@@ -99,7 +99,7 @@ fn drawn(key: &str, render: Render, fit: Option<(f32, f32)>) -> Option<(NodeBuil
     let light = Theme::light();
     let svg = run(&render, &light)?;
     let tree = parse(&svg)?;
-    let size = fit.unwrap_or((tree.size().width(), tree.size().height()));
+    let size = fit.unwrap_or_else(|| (tree.size().width(), tree.size().height()));
     let hash = key
         .bytes()
         .chain(svg.bytes())

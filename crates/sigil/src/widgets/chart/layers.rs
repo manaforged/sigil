@@ -30,13 +30,13 @@ pub(super) fn traces(plot: &Traces<'_>, pad: f32) -> NodeBuilder {
         .map(|item| item.values)
         .collect::<Vec<_>>();
     let tops = stacked.then(|| marks::stack_tops(&raw));
-    let values = tops
+    let heights = tops
         .as_ref()
         .map_or(raw, |tops| tops.iter().map(Vec::as_slice).collect());
     let shown = plot
         .series
         .iter()
-        .zip(values)
+        .zip(heights)
         .filter(|(_, values)| !values.is_empty())
         .collect::<Vec<_>>();
     let trace = |values| marks::Trace {

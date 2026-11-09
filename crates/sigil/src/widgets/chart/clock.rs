@@ -109,17 +109,19 @@ fn month_start(year: i64, month: u32) -> f64 {
 
 fn pick(target: f64, lo: f64, hi: f64, count: f64) -> Every {
     let at = INTERVALS.iter().position(|(_, span)| *span > target);
-    match at {
-        None => Every::Years(year_step(lo, hi, count)),
-        Some(0) => Every::Fixed(step(lo, hi, count).max(1.0)),
-        Some(index) => {
-            let (below, above) = (INTERVALS[index - 1], INTERVALS[index]);
+    let Some(index) = at else {
+        return Every::Years(year_step(lo, hi, count));
+    };
+    let (lower, upper) = INTERVALS.split_at(index);
+    match (lower.last(), upper.first()) {
+        (Some(below), Some(above)) => {
             if target / below.1 < above.1 / target {
                 below.0
             } else {
                 above.0
             }
         }
+        _ => Every::Fixed(step(lo, hi, count).max(1.0)),
     }
 }
 
@@ -148,7 +150,7 @@ fn instants(every: Every, lo: f64, hi: f64) -> Vec<f64> {
             out
         }
         Every::Days(gap) => calendar_days(first_day, lo, hi, |day| {
-            (civil(day).2 - 1) as i64 % gap == 0
+            i64::from(civil(day).2 - 1) % gap == 0
         }),
         Every::Week => calendar_days(first_day, lo, hi, |day| {
             (day + SUNDAY_OFFSET).rem_euclid(7) == 0
@@ -214,7 +216,8 @@ fn share(at: f64, lo: f64, hi: f64) -> f32 {
 
 #[allow(
     clippy::cast_possible_truncation,
-    reason = "a time of day fits the small integer fields"
+    clippy::cast_sign_loss,
+    reason = "a time of day is non-negative and fits the small integer fields"
 )]
 pub(super) fn format(at: f64) -> String {
     let day = (at / DAY_MS).floor() as i64;

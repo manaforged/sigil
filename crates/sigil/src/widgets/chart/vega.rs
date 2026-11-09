@@ -70,13 +70,13 @@ fn hues(names: &[String], slots: &[usize], color: Option<&Channel>) -> Vec<Hue> 
         .zip(slots)
         .map(|(name, slot)| {
             let scale = color.map(|color| &color.scale);
-            let named = scale
+            let by_name = scale
                 .filter(|scale| scale.disabled)
                 .and_then(|_| color::css(name));
             let ranged = scale
                 .filter(|scale| !scale.range.is_empty())
                 .and_then(|scale| color::css(scale.range.get(slot % scale.range.len())?));
-            named.or(ranged).map_or_else(|| Hue::nth(*slot), Hue::rgb)
+            by_name.or(ranged).map_or_else(|| Hue::nth(*slot), Hue::rgb)
         })
         .collect()
 }
@@ -166,7 +166,7 @@ fn axes(spec: &Spec) -> Option<(&Channel, &Channel, Orient)> {
     }
 }
 
-fn chart_mark(mark: Mark) -> ChartMark {
+const fn chart_mark(mark: Mark) -> ChartMark {
     match mark {
         Mark::Line => ChartMark::Line,
         Mark::Area => ChartMark::Area,

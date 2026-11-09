@@ -108,38 +108,7 @@ pub(super) fn write_bottlenecks(out: &mut String, frames: &[Frame], budget: u64)
         slow.sort_by_key(|frame| std::cmp::Reverse(frame.work_ns()));
         let _ = writeln!(out, "\nbottlenecks (over {:.2}ms)", ns_ms(budget));
         for frame in slow.iter().take(TOP_SLOW) {
-            let (hot, hot_ns) = frame
-                .hottest()
-                .map_or(("", 0), |(phase, ns)| (phase.name(), ns));
-            let _ = write!(
-                out,
-                "  #{:<4} {:<10} {:>7.1}ms  {hot}={:.1}  cmds={}",
-                frame.index,
-                frame.cause,
-                ns_ms(frame.work_ns()),
-                ns_ms(hot_ns),
-                frame.counter(Counter::SceneCmds)
-            );
-            if let Some(site) = frame.sites.first() {
-                let _ = write!(
-                    out,
-                    "  {} {}={:.1}",
-                    site.kind.name(),
-                    site_name(site.location),
-                    ns_ms(site.self_ns)
-                );
-            }
-            if let Some(top) = frame.hot.iter().max_by_key(|a| a.count) {
-                let _ = write!(
-                    out,
-                    "  {} {} \u{d7}{}{}",
-                    top.hotspot,
-                    top.subject,
-                    top.count,
-                    top.hotspot.unit()
-                );
-            }
-            out.push('\n');
+            write_slow_frame(out, frame);
         }
     }
     let inp = frames
@@ -153,6 +122,41 @@ pub(super) fn write_bottlenecks(out: &mut String, frames: &[Frame], budget: u64)
             ns_ms(budget)
         );
     }
+}
+
+fn write_slow_frame(out: &mut String, frame: &Frame) {
+    let (hot, hot_ns) = frame
+        .hottest()
+        .map_or(("", 0), |(phase, ns)| (phase.name(), ns));
+    let _ = write!(
+        out,
+        "  #{:<4} {:<10} {:>7.1}ms  {hot}={:.1}  cmds={}",
+        frame.index,
+        frame.cause,
+        ns_ms(frame.work_ns()),
+        ns_ms(hot_ns),
+        frame.counter(Counter::SceneCmds)
+    );
+    if let Some(site) = frame.sites.first() {
+        let _ = write!(
+            out,
+            "  {} {}={:.1}",
+            site.kind.name(),
+            site_name(site.location),
+            ns_ms(site.self_ns)
+        );
+    }
+    if let Some(top) = frame.hot.iter().max_by_key(|a| a.count) {
+        let _ = write!(
+            out,
+            "  {} {} \u{d7}{}{}",
+            top.hotspot,
+            top.subject,
+            top.count,
+            top.hotspot.unit()
+        );
+    }
+    out.push('\n');
 }
 
 pub(super) fn write_sites(out: &mut String, frames: &[Frame]) {

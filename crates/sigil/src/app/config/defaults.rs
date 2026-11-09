@@ -1,6 +1,10 @@
 use super::*;
 
 impl AppConfig {
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one struct literal with a cfg line per feature-gated field"
+    )]
     pub(super) fn defaults() -> Self {
         Self {
             #[cfg(any(test, feature = "desktop", feature = "terminal"))]

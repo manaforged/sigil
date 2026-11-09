@@ -143,10 +143,10 @@ fn take_summary(rest: &str) -> (String, &str) {
     }
     let body_start = trimmed.find('>').map_or(trimmed.len(), |end| end + 1);
     let body = &trimmed[body_start..];
-    match find_ci(body, "</summary>") {
-        Some(end) => (strip_tags(&body[..end]), &body[end + "</summary>".len()..]),
-        None => (strip_tags(body), ""),
-    }
+    find_ci(body, "</summary>").map_or_else(
+        || (strip_tags(body), ""),
+        |end| (strip_tags(&body[..end]), &body[end + "</summary>".len()..]),
+    )
 }
 
 fn strip_tags(html: &str) -> String {

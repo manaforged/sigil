@@ -47,7 +47,7 @@ pub(crate) fn clear() {
     STATE.set(None);
 }
 
-pub(crate) fn drag(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
+pub(crate) fn drag(cx: &Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
     match event.phase {
         PointerPhase::Move | PointerPhase::Up => extend(cx, layout, event),
         PointerPhase::Cancel => end_drag(),
@@ -95,7 +95,7 @@ fn pick_region(cx: &Cx, path: &[NodeId]) -> Option<NodeId> {
     }
 }
 
-pub(crate) fn down(cx: &mut Cx, path: &[NodeId], event: &PointerEvent) {
+pub(crate) fn down(cx: &Cx, path: &[NodeId], event: &PointerEvent) {
     let shift_only = event.modifiers == ModifiersState::SHIFT;
     let plain =
         event.button == Some(MouseButton::Left) && (event.modifiers.is_empty() || shift_only);
@@ -164,7 +164,7 @@ fn note_down(point: Point) -> bool {
         })
 }
 
-fn shift_extend(cx: &mut Cx, region: NodeId, endpoint: Endpoint, point: Point) {
+fn shift_extend(cx: &Cx, region: NodeId, endpoint: Endpoint, point: Point) {
     let existing = STATE
         .with_borrow(|state| *state)
         .filter(|sel| sel.region == region && live(cx, *sel));
@@ -195,7 +195,7 @@ fn shift_extend(cx: &mut Cx, region: NodeId, endpoint: Endpoint, point: Point) {
     }
 }
 
-fn extend(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
+fn extend(cx: &Cx, layout: &LayoutEngine, event: &mut PointerEvent) {
     let Some(mut selection) = STATE.with_borrow(|state| state.filter(|sel| sel.dragging)) else {
         return;
     };

@@ -64,10 +64,10 @@ fn shown(item: &Rc<Item>) -> Box<dyn IntoNode> {
         Kind::TextField => text_field_of(item),
         Kind::Checkbox => checkbox_of(item),
         Kind::Spacer => Box::new(styled(spacer(), attrs)),
-        Kind::Slot => match &item.slot {
-            Some(slot) => Box::new(styled(slot(), attrs)),
-            None => Box::new(fragment()),
-        },
+        Kind::Slot => item.slot.as_ref().map_or_else(
+            || -> Box<dyn IntoNode> { Box::new(fragment()) },
+            |slot| Box::new(styled(slot(), attrs)),
+        ),
     }
 }
 

@@ -49,6 +49,10 @@ pub(super) fn step(lo: f64, hi: f64, count: f64) -> f64 {
     clippy::cast_possible_truncation,
     reason = "chart spans render at f32 precision"
 )]
+#[allow(
+    clippy::float_cmp,
+    reason = "the loop stops when the step reaches an exact fixed point"
+)]
 pub(super) fn nice(lo: f32, hi: f32) -> ValueSpan {
     let (mut lo, mut hi) = (f64::from(lo), f64::from(hi));
     let mut last = f64::NAN;
@@ -118,13 +122,16 @@ fn decimals(unit: f64) -> usize {
 
 fn label(value: f64, decimals: usize) -> String {
     let fixed = format!("{value:.decimals$}");
-    let fixed = fixed.strip_prefix('-').map_or(fixed.clone(), |rest| {
-        if rest.chars().all(|c| c == '0' || c == '.') {
-            rest.to_owned()
-        } else {
-            fixed.clone()
-        }
-    });
+    let fixed = fixed.strip_prefix('-').map_or_else(
+        || fixed.clone(),
+        |rest| {
+            if rest.chars().all(|c| c == '0' || c == '.') {
+                rest.to_owned()
+            } else {
+                fixed.clone()
+            }
+        },
+    );
     if value.abs() < GROUP_FROM {
         return fixed;
     }

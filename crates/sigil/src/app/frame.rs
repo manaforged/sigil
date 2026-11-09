@@ -76,20 +76,8 @@ impl Host {
         let (intervals, animating) = tick_frame(dt.min(MAX_ANIMATION_FRAME_SECS));
         self.publish_viewport(viewport);
         let exit = ExitOnUnwind(take_exit());
-        Runtime::begin_layout();
-        let layout = {
-            let _layout = crate::profile::span(crate::profile::Phase::Layout);
-            self.settle_layout(viewport)
-        };
+        let layout = self.layout_phase(viewport, hooks.after_layout);
         let layout_ok = layout.is_ok();
-        if layout_ok {
-            self.apply_focus_requests();
-            self.repair_focus();
-            self.sync_hover();
-            if let Some(after_layout) = hooks.after_layout {
-                after_layout(self);
-            }
-        }
         self.cx().flush_announcements();
         Runtime::begin_paint();
         let info = FrameInfo {
@@ -102,7 +90,7 @@ impl Host {
             paint(self, &info);
         }
         #[cfg(debug_assertions)]
-        if layout_ok && !animating && !(info.delta.layout.is_empty() && !info.delta.structure) {
+        if layout_ok && !animating && (info.delta.structure || !info.delta.layout.is_empty()) {
             self.report_flaws();
         }
         Runtime::end_frame();
@@ -113,6 +101,27 @@ impl Host {
             animating,
             layout,
         }
+    }
+
+    fn layout_phase(
+        &mut self,
+        viewport: (f32, f32),
+        after_layout: Option<FrameLayoutHook<'_>>,
+    ) -> Result<(), Error> {
+        Runtime::begin_layout();
+        let layout = {
+            let _layout = crate::profile::span(crate::profile::Phase::Layout);
+            self.settle_layout(viewport)
+        };
+        if layout.is_ok() {
+            self.apply_focus_requests();
+            self.repair_focus();
+            self.sync_hover();
+            if let Some(after_layout) = after_layout {
+                after_layout(self);
+            }
+        }
+        layout
     }
 }
 

@@ -59,19 +59,19 @@ impl Hue {
 
     pub(super) fn color(self) -> ColorAtom {
         self.rgb
-            .map_or(ColorAtom::Token(self.token()), ColorAtom::Rgba8)
+            .map_or_else(|| ColorAtom::Token(self.token()), ColorAtom::Rgba8)
     }
 
     pub(super) fn paint(self) -> PathColor {
         self.rgb
-            .map_or(PathColor::Token(self.token()), PathColor::Rgba)
+            .map_or_else(|| PathColor::Token(self.token()), PathColor::Rgba)
     }
 
     pub(super) fn bg(self) -> StyleAtom {
-        match self.rgb {
-            Some(color) => StyleAtom::BackgroundColor(ColorAtom::Rgba8(color)),
-            None => self.tone.token(self.step).bg(),
-        }
+        self.rgb.map_or_else(
+            || self.token().bg(),
+            |color| StyleAtom::BackgroundColor(ColorAtom::Rgba8(color)),
+        )
     }
 
     pub(super) fn soft(self) -> PathColor {

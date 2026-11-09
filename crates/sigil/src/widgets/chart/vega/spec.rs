@@ -152,7 +152,7 @@ impl Spec {
             return None;
         }
         let channel =
-            |name: &'static str| optional(encoding.get(name), |value| Channel::parse(name, value));
+            |name: &'static str| optional(encoding.get(name), |entry| Channel::parse(name, entry));
         Some(Self {
             mark: shape.mark,
             donut: shape.donut,

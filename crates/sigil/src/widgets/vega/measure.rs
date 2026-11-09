@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Write;
 use std::sync::LazyLock;
 
 use resvg::usvg::{self, Node, Tree};
@@ -57,14 +58,15 @@ fn svg(text: &str, font: &Font<'_>, plain: bool) -> String {
     let mut attrs = format!("font-size=\"{}\"", font.size);
     let family = if plain { "sans-serif" } else { font.family };
     if !family.is_empty() {
-        attrs.push_str(&format!(
+        let _ = write!(
+            attrs,
             " font-family=\"{}\"",
             family.replace(['"', '\''], "")
-        ));
+        );
     }
     for (name, value) in [("font-weight", font.weight), ("font-style", font.style)] {
         if !plain && !value.is_empty() {
-            attrs.push_str(&format!(" {name}=\"{}\"", escape(value)));
+            let _ = write!(attrs, " {name}=\"{}\"", escape(value));
         }
     }
     format!(

@@ -15,7 +15,7 @@ impl Keyframes {
         underlying: f32,
     ) -> Option<f32> {
         let stops = self.stops(|property| property.numeric(kind), underlying)?;
-        let (from, to, eased) = segment(&stops, progress, |offset| self.easing_at(offset));
+        let (from, to, eased) = segment(&stops, progress, |offset| self.easing_at(offset))?;
         Some((to - from).mul_add(eased, from))
     }
 
@@ -27,7 +27,7 @@ impl Keyframes {
         resolve: &dyn Fn(ColorAtom) -> Rgba8,
     ) -> Option<Rgba8> {
         let stops = self.stops(|property| property.color(kind).map(resolve), underlying)?;
-        let (from, to, eased) = segment(&stops, progress, |offset| self.easing_at(offset));
+        let (from, to, eased) = segment(&stops, progress, |offset| self.easing_at(offset))?;
         Some(mix(from, to, eased))
     }
 
@@ -37,7 +37,7 @@ impl Keyframes {
         underlying: V,
     ) -> Option<Stops<V>> {
         let mut found: Stops<V> = self
-            .keyframes
+            .frames
             .iter()
             .filter_map(|(offset, property)| value(*property).map(|v| (*offset, v)))
             .collect();
@@ -64,13 +64,13 @@ fn segment<V: Copy>(
     stops: &[(f32, V)],
     progress: f32,
     easing: impl Fn(f32) -> Easing,
-) -> (V, V, f32) {
+) -> Option<(V, V, f32)> {
     let last = stops.len().saturating_sub(2);
     let index = stops
         .partition_point(|(offset, _)| *offset <= progress)
         .saturating_sub(1)
         .min(last);
-    let (start, from) = stops[index];
+    let &(start, from) = stops.get(index)?;
     let (end, to) = stops.get(index + 1).copied().unwrap_or((start, from));
     let span = end - start;
     let local = if span > 0.0 {
@@ -78,5 +78,5 @@ fn segment<V: Copy>(
     } else {
         1.0
     };
-    (from, to, easing(start).apply(local))
+    Some((from, to, easing(start).apply(local)))
 }

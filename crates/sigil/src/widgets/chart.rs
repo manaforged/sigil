@@ -220,7 +220,7 @@ impl ChartBuilder {
 
     /// Lays the bars along rows, with values on the x axis.
     #[must_use]
-    pub fn horizontal(mut self) -> Self {
+    pub const fn horizontal(mut self) -> Self {
         self.scales.orient = scales::Orient::Horizontal;
         self.mark(ChartMark::Bar)
     }

@@ -34,6 +34,7 @@ pub(super) struct PaneLimits {
     pub(super) proportional: bool,
 }
 
+#[derive(Clone, Copy)]
 pub(super) struct Binds {
     pub(super) sizes: Option<Signal<Vec<f32>>>,
     pub(super) settle: Option<Signal<Vec<f32>>>,

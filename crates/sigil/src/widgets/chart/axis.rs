@@ -87,8 +87,11 @@ pub(super) fn crowded(ticks: &[Tick], width_px: f32) -> bool {
 
 fn overlaps(kept: &[&Tick], width_px: f32) -> bool {
     kept.windows(2).any(|pair| {
-        let room = (pair[1].at - pair[0].at).abs() * width_px;
-        room < (text_px(&pair[0].text) + text_px(&pair[1].text)) / 2.0 + LABEL_GAP
+        let [left, right] = pair else {
+            return false;
+        };
+        let room = (right.at - left.at).abs() * width_px;
+        room < f32::midpoint(text_px(&left.text), text_px(&right.text)) + LABEL_GAP
     })
 }
 

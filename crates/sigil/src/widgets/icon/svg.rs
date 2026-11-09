@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::sync::Arc;
 
 use crate::kernel::{NodeBuilder, container};
@@ -20,7 +21,7 @@ fn tinted(svg: &str, color: Rgba8) -> Option<String> {
     let Rgba8 { r, g, b, a } = color;
     let mut extra = String::new();
     if !names(root, "color") {
-        extra.push_str(&format!(" color=\"#{r:02x}{g:02x}{b:02x}{a:02x}\""));
+        let _ = write!(extra, " color=\"#{r:02x}{g:02x}{b:02x}{a:02x}\"");
     }
     if !names(root, "fill") {
         extra.push_str(" fill=\"currentColor\"");

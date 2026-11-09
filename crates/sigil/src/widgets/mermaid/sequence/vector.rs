@@ -5,7 +5,7 @@ use crate::widgets::Widget;
 use crate::widgets::vector::PathNode;
 
 use super::super::flow_vector::{
-    Area, CELL_H, CELL_W, Point, canvas, cells, dashed_line, edge_label, edge_width, layer,
+    Area, CELL_H, CELL_W, Point, barb, canvas, cells, dashed_line, edge_label, edge_width, layer,
     node_label, polyline, rounded,
 };
 use super::super::label::width;
@@ -28,6 +28,60 @@ struct Pens {
     labels: Vec<NodeBuilder>,
 }
 
+impl Pens {
+    fn new(size: (f32, f32)) -> Self {
+        Self {
+            lines: canvas(size),
+            dashes: canvas(size),
+            heads: canvas(size),
+            open_heads: canvas(size),
+            boxes: canvas(size),
+            notes: canvas(size),
+            frames: canvas(size),
+            frame_dashes: canvas(size),
+            labels: Vec::new(),
+        }
+    }
+
+    fn compose(self, size: (f32, f32)) -> NodeBuilder {
+        let thin = f32::from(BORDER_WIDTH);
+        let mut root = container()
+            .layout(
+                LayoutStyle::block()
+                    .position(Position::Relative)
+                    .fixed_size(size.0, size.1)
+                    .shrink(0.0),
+            )
+            .child(layer(self.frames.stroke(Token::Border, thin), size))
+            .child(layer(self.frame_dashes.stroke(Token::Border, thin), size))
+            .child(layer(
+                self.lines.stroke(Token::OnSurfaceMuted, edge_width()),
+                size,
+            ))
+            .child(layer(
+                self.dashes.stroke(Token::OnSurfaceMuted, edge_width()),
+                size,
+            ))
+            .child(layer(self.heads.fill(Token::OnSurfaceMuted), size))
+            .child(layer(
+                self.open_heads.stroke(Token::OnSurfaceMuted, edge_width()),
+                size,
+            ))
+            .child(layer(
+                self.boxes.fill(Token::Surface).stroke(Token::Border, thin),
+                size,
+            ))
+            .child(layer(
+                self.notes.fill(Token::Accent3).stroke(Token::Accent7, thin),
+                size,
+            ));
+        for label in self.labels {
+            root = root.child(label);
+        }
+        root
+    }
+}
+
 fn x_at(col: usize) -> f32 {
     cells(col, CELL_W) + CELL_W / 2.0
 }
@@ -46,28 +100,27 @@ pub(in super::super) fn figure(diagram: &Diagram) -> (NodeBuilder, f32) {
         rows.saturating_add(height(event, same))
     });
     let cols = right.saturating_add(margin);
-    let notes = diagram.events.iter().filter_map(|event| match event {
-        SequenceEvent::Note { from, to, text } if from == to => centres.get(*from).map(|centre| {
-            x_at(*centre) + 2.0 * CELL_W + cells(width(text).saturating_add(5), CELL_W)
-        }),
-        _ => None,
-    });
     let size = (
-        notes.fold(cells(cols, CELL_W), f32::max),
+        note_extent(diagram, &centres).fold(cells(cols, CELL_W), f32::max),
         cells(rows, CELL_H),
     );
-    let mut pens = Pens {
-        lines: canvas(size),
-        dashes: canvas(size),
-        heads: canvas(size),
-        open_heads: canvas(size),
-        boxes: canvas(size),
-        notes: canvas(size),
-        frames: canvas(size),
-        frame_dashes: canvas(size),
-        labels: Vec::new(),
-    };
-    for centre in &centres {
+    let mut pens = Pens::new(size);
+    lifelines(&mut pens, diagram, &centres, rows);
+    events(&mut pens, diagram, &centres, cols);
+    (pens.compose(size), size.0)
+}
+
+fn note_extent<'a>(diagram: &'a Diagram, centres: &'a [usize]) -> impl Iterator<Item = f32> + 'a {
+    diagram.events.iter().filter_map(|event| match event {
+        SequenceEvent::Note { from, to, text } if from == to => centres.get(*from).map(|centre| {
+            2.0f32.mul_add(CELL_W, x_at(*centre)) + cells(width(text).saturating_add(5), CELL_W)
+        }),
+        _ => None,
+    })
+}
+
+fn lifelines(pens: &mut Pens, diagram: &Diagram, centres: &[usize], rows: usize) {
+    for centre in centres {
         let x = x_at(*centre);
         with(&mut pens.frame_dashes, |pen| {
             dashed_line(
@@ -79,7 +132,7 @@ pub(in super::super) fn figure(diagram: &Diagram) -> (NodeBuilder, f32) {
             )
         });
     }
-    for (participant, centre) in diagram.participants.iter().zip(&centres) {
+    for (participant, centre) in diagram.participants.iter().zip(centres) {
         for top in [0, rows.saturating_sub(3)] {
             let area = participant_area(&participant.label, *centre, top);
             with(&mut pens.boxes, |pen| rounded(pen, area, RADIUS));
@@ -87,42 +140,6 @@ pub(in super::super) fn figure(diagram: &Diagram) -> (NodeBuilder, f32) {
                 .push(node_label(std::slice::from_ref(&participant.label), area));
         }
     }
-    events(&mut pens, diagram, &centres, cols);
-    let mut root = container().layout(
-        LayoutStyle::block()
-            .position(Position::Relative)
-            .fixed_size(size.0, size.1)
-            .shrink(0.0),
-    );
-    let thin = f32::from(BORDER_WIDTH);
-    root = root
-        .child(layer(pens.frames.stroke(Token::Border, thin), size))
-        .child(layer(pens.frame_dashes.stroke(Token::Border, thin), size))
-        .child(layer(
-            pens.lines.stroke(Token::OnSurfaceMuted, edge_width()),
-            size,
-        ))
-        .child(layer(
-            pens.dashes.stroke(Token::OnSurfaceMuted, edge_width()),
-            size,
-        ))
-        .child(layer(pens.heads.fill(Token::OnSurfaceMuted), size))
-        .child(layer(
-            pens.open_heads.stroke(Token::OnSurfaceMuted, edge_width()),
-            size,
-        ))
-        .child(layer(
-            pens.boxes.fill(Token::Surface).stroke(Token::Border, thin),
-            size,
-        ))
-        .child(layer(
-            pens.notes.fill(Token::Accent3).stroke(Token::Accent7, thin),
-            size,
-        ));
-    for label in pens.labels {
-        root = root.child(label);
-    }
-    (root, size.0)
 }
 
 fn participant_area(label: &str, centre: usize, top: usize) -> Area {
@@ -131,7 +148,7 @@ fn participant_area(label: &str, centre: usize, top: usize) -> Area {
         x: x_at(centre) - w / 2.0,
         y: cells(top, CELL_H) + BOX_INSET,
         w,
-        h: cells(3, CELL_H) - 2.0 * BOX_INSET,
+        h: (-2.0f32).mul_add(BOX_INSET, cells(3, CELL_H)),
     }
 }
 
@@ -220,7 +237,7 @@ fn message(
             .push(centred_caption(part, middle, y_at(y.saturating_add(row))));
     }
     let direction = (b - a).signum();
-    let base = b - direction * HEAD;
+    let base = (-direction).mul_add(HEAD, b);
     stroke(pens, &[(a, line_y), (base, line_y)], dashed);
     let tip = (b, line_y);
     match head {
@@ -243,18 +260,14 @@ fn filled_head(node: PathNode, base: Point, tip: Point) -> PathNode {
     let (dx, dy) = (tip.0 - base.0, tip.1 - base.1);
     let length = dx.hypot(dy).max(f32::EPSILON);
     let (ux, uy) = (dx / length, dy / length);
-    let half = HEAD * 0.55;
-    node.move_to(tip.0, tip.1)
-        .line_to(base.0 - uy * half, base.1 + ux * half)
-        .line_to(base.0 + uy * half, base.1 - ux * half)
-        .close()
+    barb(node, tip, base, (ux, uy), HEAD * 0.55)
 }
 
 fn open_head(node: PathNode, tip: Point, direction: f32) -> PathNode {
-    let back = tip.0 - direction * HEAD;
-    node.move_to(back, tip.1 - HEAD * 0.6)
+    let back = (-direction).mul_add(HEAD, tip.0);
+    node.move_to(back, HEAD.mul_add(-0.6, tip.1))
         .line_to(tip.0, tip.1)
-        .line_to(back, tip.1 + HEAD * 0.6)
+        .line_to(back, HEAD.mul_add(0.6, tip.1))
         .move_to(back, tip.1)
         .line_to(tip.0, tip.1)
 }
@@ -271,7 +284,7 @@ fn note(pens: &mut Pens, span: (usize, usize), text: &[String], y: usize) -> usi
     let (from, to) = (span.0.min(span.1), span.0.max(span.1));
     let w = cells(width(text).saturating_add(4), CELL_W);
     let x = if from == to {
-        x_at(from) + 2.0 * CELL_W
+        2.0f32.mul_add(CELL_W, x_at(from))
     } else {
         f32::midpoint(x_at(from), x_at(to)) - w / 2.0
     };
@@ -280,7 +293,7 @@ fn note(pens: &mut Pens, span: (usize, usize), text: &[String], y: usize) -> usi
         x,
         y: cells(y, CELL_H) + BOX_INSET,
         w,
-        h: cells(rows, CELL_H) - 2.0 * BOX_INSET,
+        h: (-2.0f32).mul_add(BOX_INSET, cells(rows, CELL_H)),
     };
     with(&mut pens.notes, |pen| rounded(pen, area, RADIUS));
     pens.labels.push(node_label(text, area));
@@ -289,8 +302,7 @@ fn note(pens: &mut Pens, span: (usize, usize), text: &[String], y: usize) -> usi
 
 fn frame(pens: &mut Pens, span: (usize, usize), rows: (usize, usize), label: &str) {
     let (level, cols) = span;
-    let left = cells(level, CELL_W) + CELL_W / 2.0;
-    let right = cells(cols.saturating_sub(level), CELL_W) - CELL_W / 2.0;
+    let (left, right) = frame_edges(level, cols);
     let (top, bottom) = (y_at(rows.0), y_at(rows.1));
     if right - left <= 2.0 * CELL_W {
         return;
@@ -305,9 +317,15 @@ fn frame(pens: &mut Pens, span: (usize, usize), rows: (usize, usize), label: &st
     pens.labels.push(tag(label, left + CELL_W, top));
 }
 
+fn frame_edges(level: usize, cols: usize) -> (f32, f32) {
+    (
+        cells(level, CELL_W) + CELL_W / 2.0,
+        cells(cols.saturating_sub(level), CELL_W) - CELL_W / 2.0,
+    )
+}
+
 fn divider(pens: &mut Pens, level: usize, cols: usize, row: usize, label: &str) {
-    let left = cells(level, CELL_W) + CELL_W / 2.0;
-    let right = cells(cols.saturating_sub(level), CELL_W) - CELL_W / 2.0;
+    let (left, right) = frame_edges(level, cols);
     let y = y_at(row);
     with(&mut pens.frame_dashes, |pen| {
         dashed_line(pen, &[(left, y), (right, y)])
@@ -343,7 +361,7 @@ fn centred_caption(part: &str, centre_x: f32, centre_y: f32) -> NodeBuilder {
 }
 
 fn tag(label: &str, left: f32, centre_y: f32) -> NodeBuilder {
-    let half = (cells(label.chars().count(), CELL_W) + 2.0 * CELL_W) / 2.0;
+    let half = f32::midpoint(cells(label.chars().count(), CELL_W), 2.0 * CELL_W);
     edge_label(label, (left + half, centre_y))
 }
 

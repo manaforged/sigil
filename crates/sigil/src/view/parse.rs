@@ -89,7 +89,7 @@ pub(super) struct Item {
     pub(super) label: Option<Content>,
     pub(super) slot: Option<Slot>,
     pub(super) attrs: Attrs,
-    pub(super) children: Vec<Rc<Item>>,
+    pub(super) children: Vec<Rc<Self>>,
 }
 
 struct Parser<'a> {
@@ -118,9 +118,18 @@ fn step<T: Copy>(table: &[(&'static str, T)], word: &str) -> Option<T> {
         .map(|(_, value)| *value)
 }
 
+static END: Token<'static> = Token {
+    tok: Tok::End,
+    line: 0,
+    col: 0,
+};
+
 impl<'a> Parser<'a> {
     fn peek(&self) -> &Token<'a> {
-        &self.tokens[self.at.min(self.tokens.len() - 1)]
+        self.tokens
+            .get(self.at)
+            .or_else(|| self.tokens.last())
+            .unwrap_or(&END)
     }
 
     fn advance(&mut self) -> Tok<'a> {

@@ -41,13 +41,10 @@ pub(super) fn to_local(
 }
 
 fn clip_shape(binding: &StyleBinding) -> Option<ClipShape> {
-    binding
-        .cascade()
-        .into_iter()
-        .fold(None, |shape, atom| match atom {
-            StyleAtom::ClipPath(value) => Some(value),
-            _ => shape,
-        })
+    binding.cascade().fold(None, |shape, atom| match atom {
+        StyleAtom::ClipPath(value) => Some(value),
+        _ => shape,
+    })
 }
 
 pub(super) fn inside_clip_path(cx: &Cx, id: NodeId, node: &Node, position: Point) -> bool {
