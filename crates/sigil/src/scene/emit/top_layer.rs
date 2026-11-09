@@ -40,7 +40,12 @@ fn collect<'t>(
     found: &mut Vec<(NodeId, Path<'t>)>,
 ) {
     for &id in node.children() {
-        let Some(child) = reach.binary_search(&id).is_ok().then(|| cx.get(id)).flatten() else {
+        let Some(child) = reach
+            .binary_search(&id)
+            .is_ok()
+            .then(|| cx.get(id))
+            .flatten()
+        else {
             continue;
         };
         if is_top_layer(child) {

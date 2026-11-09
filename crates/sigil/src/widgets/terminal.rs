@@ -45,7 +45,8 @@ fn key_payload(event: &KeyEvent, application: bool) -> Option<String> {
     let named = match &event.key {
         LogicalKey::Named(key) => named_sequence(*key, event.modifiers, application),
         LogicalKey::Character(text) if event.modifiers.contains(ModifiersState::CONTROL) => {
-            control_byte(text).map(|byte| alt_prefixed(event.modifiers, char::from(byte).to_string()))
+            control_byte(text)
+                .map(|byte| alt_prefixed(event.modifiers, char::from(byte).to_string()))
         }
         _ => None,
     };
@@ -91,7 +92,9 @@ fn control_byte(key: &str) -> Option<u8> {
 
 fn modifier_code(modifiers: ModifiersState) -> u8 {
     let bit = |key: ModifiersState, value: u8| if modifiers.contains(key) { value } else { 0 };
-    1 + bit(ModifiersState::SHIFT, 1) + bit(ModifiersState::ALT, 2) + bit(ModifiersState::CONTROL, 4)
+    1 + bit(ModifiersState::SHIFT, 1)
+        + bit(ModifiersState::ALT, 2)
+        + bit(ModifiersState::CONTROL, 4)
 }
 
 fn cursor(end: char, code: u8, application: bool) -> String {
@@ -113,7 +116,9 @@ fn tilde(number: u8, code: u8) -> String {
 fn edit_sequence(key: Key, modifiers: ModifiersState) -> Option<String> {
     let has = |key: ModifiersState| modifiers.contains(key);
     Some(match key {
-        Key::Enter if has(ModifiersState::SHIFT) || has(ModifiersState::ALT) => "\u{1b}\r".to_string(),
+        Key::Enter if has(ModifiersState::SHIFT) || has(ModifiersState::ALT) => {
+            "\u{1b}\r".to_string()
+        }
         Key::Enter => "\r".to_string(),
         Key::Backspace if has(ModifiersState::CONTROL) => "\u{8}".to_string(),
         Key::Backspace => alt_prefixed(modifiers, "\u{7f}".to_string()),

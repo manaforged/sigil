@@ -179,7 +179,12 @@ impl CpuPainter<'_> {
                     size: [target.width(), target.height()],
                 };
                 if let Some(shader) = quads.pattern(&place) {
-                    shapes::fill(target, path, &shader_paint(shader, shapes::BLEND_SPACE), brush);
+                    shapes::fill(
+                        target,
+                        path,
+                        &shader_paint(shader, shapes::BLEND_SPACE),
+                        brush,
+                    );
                 }
             },
         ) {

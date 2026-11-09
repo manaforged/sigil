@@ -26,7 +26,9 @@ impl<'t> EmitWalk<'_, 't> {
         };
         let rect = result.rect();
         let reach = filter_reach(&style.filter.filters());
-        let content = content_bounds(self.cx, id).unwrap_or(rect).expand(1.0 + reach);
+        let content = content_bounds(self.cx, id)
+            .unwrap_or(rect)
+            .expand(1.0 + reach);
         let (effect, screen) = layer_effect(self.cx, id, &style, rect, content);
         let flat = style.transform.is_identity() && style.space.is_flat();
         let Some(bounds) = visible_bounds(content, clip, screen, flat) else {

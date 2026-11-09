@@ -30,9 +30,8 @@ mod mask;
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
 mod memo;
 mod subtree;
-mod top_layer;
 mod text_clip;
-use text_clip::TextFill;
+mod top_layer;
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
 pub(crate) use memo::EmitMemo;
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
@@ -40,6 +39,7 @@ pub(crate) use subtree::EmitDiff;
 #[cfg(any(test, feature = "kittest", feature = "terminal"))]
 use subtree::Prior;
 use subtree::SpanTrack;
+use text_clip::TextFill;
 
 const VIEW_OVERSCAN: f32 = 64.0;
 
@@ -298,8 +298,11 @@ impl<'t> EmitWalk<'_, 't> {
 }
 
 fn paint_key(node: &Node, inherited: &Inherited<'_>, paint: &NodePaint<'_>) -> u64 {
-    emit_cache::inherit_key(paint.theme, inherited.text_color, inherited.text_style.as_ref())
-        ^ emit_cache::content_key(node)
+    emit_cache::inherit_key(
+        paint.theme,
+        inherited.text_color,
+        inherited.text_style.as_ref(),
+    ) ^ emit_cache::content_key(node)
         ^ u64::from(paint.leaf)
         ^ node
             .get_extension::<CanvasPaint>()
@@ -363,7 +366,8 @@ fn child_inherited<'t>(
                     std::ptr::from_ref(theme) as u64 ^ u64::from(node.version()).rotate_left(32),
                 )
             });
-    let text_fill = TextFill::of(node, style, theme).map_or_else(|| inherited.text_fill.clone(), Some);
+    let text_fill =
+        TextFill::of(node, style, theme).map_or_else(|| inherited.text_fill.clone(), Some);
     let text_shadows = if style.filter.inherits_text_shadows() {
         inherited.text_shadows.clone()
     } else {

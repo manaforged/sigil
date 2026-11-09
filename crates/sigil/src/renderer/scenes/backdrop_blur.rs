@@ -14,7 +14,9 @@ pub fn backdrop_blur() -> (CommandScene, (f32, f32), Color) {
         scene.push_layer(LayerScope {
             clip,
             clip_radii: CornerRadii::ZERO,
-            effect: LayerEffect::Filter(std::sync::Arc::new([crate::scene::command::Filter::Blur(sigma)])),
+            effect: LayerEffect::Filter(std::sync::Arc::new([
+                crate::scene::command::Filter::Blur(sigma),
+            ])),
             opacity: 1.0,
             blend: crate::scene::BlendMode::Normal,
         });

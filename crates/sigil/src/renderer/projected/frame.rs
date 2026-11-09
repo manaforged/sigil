@@ -28,7 +28,8 @@ impl ProjectedFrame {
         if state.clipped_out() {
             return None;
         }
-        let full = Transform3D::from(state.current_transform()).then(transform.visible(hide_backface)?);
+        let full =
+            Transform3D::from(state.current_transform()).then(transform.visible(hide_backface)?);
         let visible = state
             .current_clip()
             .map_or(Some(area), |clip| intersect_rect(clip, area))?;

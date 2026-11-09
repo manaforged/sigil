@@ -12,7 +12,11 @@ const CLEAR: Color = Color::rgba(0.5, 0.5, 0.5, 1.0);
 
 fn scene_of(node: PathNode, theme: &Theme) -> CommandScene {
     let mut scene = SceneBuilder::new();
-    node.draw(&mut scene, Rect::new(Point::new(0.0, 0.0), SIDE, SIDE), theme);
+    node.draw(
+        &mut scene,
+        Rect::new(Point::new(0.0, 0.0), SIDE, SIDE),
+        theme,
+    );
     scene.finish()
 }
 
@@ -60,12 +64,27 @@ fn a_path_whose_points_change_between_frames_redraws() {
     let again = gpu(&mut renderer, &shallow);
     let moved = gpu(&mut renderer, &deep);
     let back = gpu(&mut renderer, &shallow);
-    assert_eq!(first, again, "an unchanged path draws the same pixels on its second frame");
+    assert_eq!(
+        first, again,
+        "an unchanged path draws the same pixels on its second frame"
+    );
     let ink = probe(&first, (55.0, 30.0));
-    assert!(near(probe(&moved, (55.0, 30.0)), ink), "both wedges cover the right edge");
-    assert!(near(probe(&first, (30.0, 30.0)), ink), "the shallow notch leaves the centre filled");
-    assert!(!near(probe(&moved, (30.0, 30.0)), ink), "the deep notch opens the centre");
-    assert_eq!(first, back, "returning to the first points draws the first pixels");
+    assert!(
+        near(probe(&moved, (55.0, 30.0)), ink),
+        "both wedges cover the right edge"
+    );
+    assert!(
+        near(probe(&first, (30.0, 30.0)), ink),
+        "the shallow notch leaves the centre filled"
+    );
+    assert!(
+        !near(probe(&moved, (30.0, 30.0)), ink),
+        "the deep notch opens the centre"
+    );
+    assert_eq!(
+        first, back,
+        "returning to the first points draws the first pixels"
+    );
 }
 
 #[test]
@@ -87,6 +106,9 @@ fn a_theme_change_recolors_a_themed_path() {
         );
         seen.push(drawn);
     }
-    assert!(!near(seen[0], seen[1]), "dark recolors the light fill: {seen:?}");
+    assert!(
+        !near(seen[0], seen[1]),
+        "dark recolors the light fill: {seen:?}"
+    );
     assert_eq!(seen[0], seen[2], "light again restores the light fill");
 }

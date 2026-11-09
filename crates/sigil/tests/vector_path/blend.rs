@@ -30,7 +30,11 @@ fn half_covered_square() -> impl IntoNode {
 
 fn decode(channel: u8) -> f32 {
     let c = f32::from(channel) / 255.0;
-    if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+    if c <= 0.04045 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
 }
 
 fn encode(linear: f32) -> f32 {
@@ -47,8 +51,14 @@ fn assert_linear_edge(frame: &image::RgbaImage, what: &str) {
     let background = frame.get_pixel(30, 30)[0];
     let edge = frame.get_pixel(10, 15)[0];
     let expected = encode(0.5 + 0.5 * decode(background));
-    println!("{what}: background {background}, half-covered edge {edge}, linear blend {expected:.1}");
-    assert_eq!(frame.get_pixel(15, 15)[0], 255, "{what}: the square's inside is white");
+    println!(
+        "{what}: background {background}, half-covered edge {edge}, linear blend {expected:.1}"
+    );
+    assert_eq!(
+        frame.get_pixel(15, 15)[0],
+        255,
+        "{what}: the square's inside is white"
+    );
     assert!(
         (f32::from(edge) - expected).abs() <= 3.0,
         "{what}: a half-covered white edge over {background} is {edge}; blended in linear light it is {expected:.1}"

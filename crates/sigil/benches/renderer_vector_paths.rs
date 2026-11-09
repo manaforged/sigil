@@ -83,7 +83,8 @@ impl Shape {
                 let x = 100.0 * step as f32 / self.segments as f32;
                 node = node.line_to(x, wave(index, step + phase));
             }
-            node.stroke(INK, 3.0).draw(&mut scene, self.rect(index), &theme);
+            node.stroke(INK, 3.0)
+                .draw(&mut scene, self.rect(index), &theme);
         }
         scene.finish()
     }
@@ -180,18 +181,34 @@ fn interval(diffs: &[f64]) -> (f64, f64) {
 fn report(name: &str, list: &[Sample]) {
     let mut total: Vec<f64> = list.iter().map(|s| s.total).collect();
     let mut cpu: Vec<f64> = list.iter().map(|s| s.cpu).collect();
-    println!("  {name:<8} frame {:7.2} ms  encode {:6.2} ms", median(&mut total), median(&mut cpu));
+    println!(
+        "  {name:<8} frame {:7.2} ms  encode {:6.2} ms",
+        median(&mut total),
+        median(&mut cpu)
+    );
 }
 
 fn run(renderer: &mut WgpuRenderer, shape: Shape) {
     let vector = shape.vector(0);
     let scenes = [
-        ("floor", vec![CommandScene { commands: Vec::new() }]),
+        (
+            "floor",
+            vec![CommandScene {
+                commands: Vec::new(),
+            }],
+        ),
         ("bitmap", vec![shape.bitmap(&vector)]),
         ("vector", vec![vector]),
-        ("changing", (1..=VARIANTS).map(|phase| shape.vector(phase)).collect()),
+        (
+            "changing",
+            (1..=VARIANTS).map(|phase| shape.vector(phase)).collect(),
+        ),
     ];
-    let paths = scenes[2].1[0].commands.iter().filter(|c| matches!(c, SceneCommand::Path(_))).count();
+    let paths = scenes[2].1[0]
+        .commands
+        .iter()
+        .filter(|c| matches!(c, SceneCommand::Path(_)))
+        .count();
     let mut samples: Vec<Vec<Sample>> = scenes.iter().map(|_| Vec::new()).collect();
     for round in 0..WARM + ROUNDS {
         for offset in 0..scenes.len() {
@@ -203,13 +220,23 @@ fn run(renderer: &mut WgpuRenderer, shape: Shape) {
             }
         }
     }
-    println!("{} ({paths} paths, {}x{} at {SCALE}x)", shape.name, VIEW.0, VIEW.1);
+    println!(
+        "{} ({paths} paths, {}x{} at {SCALE}x)",
+        shape.name, VIEW.0, VIEW.1
+    );
     for ((name, _), list) in scenes.iter().zip(&samples) {
         report(name, list);
     }
-    let diffs: Vec<f64> = samples[2].iter().zip(&samples[1]).map(|(v, b)| v.total - b.total).collect();
+    let diffs: Vec<f64> = samples[2]
+        .iter()
+        .zip(&samples[1])
+        .map(|(v, b)| v.total - b.total)
+        .collect();
     let (low, high) = interval(&diffs);
-    println!("  vector - bitmap: median {:+.2} ms, 95% [{low:+.2}, {high:+.2}]", median(&mut diffs.clone()));
+    println!(
+        "  vector - bitmap: median {:+.2} ms, 95% [{low:+.2}, {high:+.2}]",
+        median(&mut diffs.clone())
+    );
 }
 
 fn main() {

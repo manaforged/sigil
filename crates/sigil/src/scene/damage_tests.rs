@@ -195,7 +195,9 @@ fn only_a_layer_that_moves_cells_off_their_grid_repaints_whole() {
     }
     let skewed = LayerEffect::Transform([[1.0, 0.5, 0.0], [0.0, 1.0, 0.0]]);
     let leaning = LayerEffect::Transform([[1.0, 0.0, 0.0], [0.5, 1.0, 0.0]]);
-    let blurred = LayerEffect::Filter(std::sync::Arc::new([crate::scene::command::Filter::Blur(2.0)]));
+    let blurred = LayerEffect::Filter(std::sync::Arc::new([crate::scene::command::Filter::Blur(
+        2.0,
+    )]));
     for effect in [skewed, leaning, blurred] {
         assert_eq!(
             regions(

@@ -118,10 +118,7 @@ impl Shell for WinitShell {
             ErrorKind::AlreadyRun,
             "shell run called twice",
         ))?;
-        let app = WinitApp {
-            shell: self,
-            frame,
-        };
+        let app = WinitApp { shell: self, frame };
         #[cfg(target_arch = "wasm32")]
         {
             use winit::platform::web::EventLoopExtWebSys as _;

@@ -58,7 +58,11 @@ impl vt100::Callbacks for Replies {
         params: &[&[u16]],
         end: char,
     ) {
-        let param = params.first().and_then(|one| one.first()).copied().unwrap_or(0);
+        let param = params
+            .first()
+            .and_then(|one| one.first())
+            .copied()
+            .unwrap_or(0);
         let (row, col) = screen.cursor_position();
         let (row, col) = (row + 1, col + 1);
         match (first, second, end, param) {

@@ -159,10 +159,7 @@ const NEW_KINDS: [(&str, &str); 4] = [
         "wardley-beta\ntitle Tea Shop\nanchor Business [0.95, 0.63]\ncomponent Tea [0.63, 0.81]\nBusiness -> Tea\n",
         "anchor Business",
     ),
-    (
-        "railroad-ebnf-beta\ndigit = \"0\" | \"1\" ;\n",
-        "digit =",
-    ),
+    ("railroad-ebnf-beta\ndigit = \"0\" | \"1\" ;\n", "digit ="),
     (
         "agentflow-beta TB\n  flow reviewer[\"Review Agent\"]\n    changes[\"Gather changes\"]@{ shape: input }\n    lint[\"run_linter\"]@{ shape: tool }\n    changes --> lint\n  end\n",
         "flow reviewer",

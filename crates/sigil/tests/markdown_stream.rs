@@ -36,7 +36,10 @@ fn same_as_full(chunks: &[&str]) -> String {
 #[test]
 fn a_footnote_defined_after_its_reference_resolves_while_streaming() {
     let shown = same_as_full(&["See this[^1].\n\n", "Next para.\n\n", "[^1]: The note.\n"]);
-    assert!(!shown.contains("[^1]"), "literal footnote reference:\n{shown}");
+    assert!(
+        !shown.contains("[^1]"),
+        "literal footnote reference:\n{shown}"
+    );
 }
 
 #[test]
@@ -58,8 +61,14 @@ fn a_list_item_after_a_blank_line_joins_the_list_while_streaming() {
 #[test]
 fn tail_repair_leaves_finished_lines_alone() {
     let shown = full("- a **b\n- c");
-    assert!(!shown.contains("c**"), "repair closed the wrong line:\n{shown}");
-    assert!(shown.contains("a **b"), "open marker must stay literal:\n{shown}");
+    assert!(
+        !shown.contains("c**"),
+        "repair closed the wrong line:\n{shown}"
+    );
+    assert!(
+        shown.contains("a **b"),
+        "open marker must stay literal:\n{shown}"
+    );
 }
 
 #[test]

@@ -1,10 +1,10 @@
 use super::{color_key, scale};
 use crate::layout::{AlignItems, Display, FlexDirection, FlexWrap, JustifyContent};
+use crate::scene::BlendMode;
+use crate::style::atom::{BorderStyle, GradientShape, PaintAtom};
 use crate::style::atom::{
     height_px, max_height_px, max_width_px, min_height_px, min_width_px, width_px,
 };
-use crate::scene::BlendMode;
-use crate::style::atom::{BorderStyle, GradientShape, PaintAtom};
 use crate::style::{
     ColorAtom, Conic, Elevation, FontFamily, GradientAxis, Radial, StyleAtom, TextDecoration,
 };

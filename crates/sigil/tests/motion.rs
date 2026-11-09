@@ -107,7 +107,8 @@ fn seen(ui: &mut Harness) -> Seen {
                 layers.pop();
             }
             SceneCommand::Rect(rect)
-                if (rect.rect.width - SIDE).abs() < 0.5 && (rect.rect.height - SIDE).abs() < 0.5 =>
+                if (rect.rect.width - SIDE).abs() < 0.5
+                    && (rect.rect.height - SIDE).abs() < 0.5 =>
             {
                 return Seen {
                     opacity: opacity * f32::from(rect.opacity) / 10_000.0,
@@ -180,14 +181,28 @@ fn a_keyframe_animation_samples_its_stops_and_easing() {
 
         run(&mut ui, 0.25);
         let late = seen(&mut ui);
-        near(late.opacity, 0.534_663, "an implicit 100% stop takes the base opacity");
+        near(
+            late.opacity,
+            0.534_663,
+            "an implicit 100% stop takes the base opacity",
+        );
         near_px(late.translate_x(), 95.936_8, "translate at 75%");
 
         run(&mut ui, 0.5);
         let done = seen(&mut ui);
-        near(done.opacity, 0.4, "a finished animation shows the base style");
-        assert_eq!(done.matrix, IDENTITY, "a finished animation leaves no transform");
-        assert_eq!(done.color, GREY, "a finished animation shows the base color");
+        near(
+            done.opacity,
+            0.4,
+            "a finished animation shows the base style",
+        );
+        assert_eq!(
+            done.matrix, IDENTITY,
+            "a finished animation leaves no transform"
+        );
+        assert_eq!(
+            done.color, GREY,
+            "a finished animation shows the base color"
+        );
     });
 }
 
@@ -204,9 +219,17 @@ fn a_keyframe_easing_applies_to_the_segment_that_starts_there() {
         start(&mut ui, flag);
 
         run(&mut ui, 0.25);
-        near(seen(&mut ui).opacity, 0.802_403, "the first segment uses the CSS ease curve");
+        near(
+            seen(&mut ui).opacity,
+            0.802_403,
+            "the first segment uses the CSS ease curve",
+        );
         run(&mut ui, 0.5);
-        near(seen(&mut ui).opacity, 1.0 - 0.839_245, "the second segment uses its own easing");
+        near(
+            seen(&mut ui).opacity,
+            1.0 - 0.839_245,
+            "the second segment uses its own easing",
+        );
     });
 }
 
@@ -226,7 +249,11 @@ fn iterations_and_alternate_direction_replay_the_stops() {
         run(&mut ui, 0.25);
         near_px(seen(&mut ui).translate_x(), 25.0, "first pass runs forward");
         run(&mut ui, 1.0);
-        near_px(seen(&mut ui).translate_x(), 75.0, "second pass runs backward");
+        near_px(
+            seen(&mut ui).translate_x(),
+            75.0,
+            "second pass runs backward",
+        );
         run(&mut ui, 1.0);
         near_px(seen(&mut ui).translate_x(), 25.0, "third pass runs forward");
         run(&mut ui, 1.0);
@@ -247,7 +274,11 @@ fn a_reversed_animation_starts_at_its_last_stop() {
         start(&mut ui, flag);
 
         run(&mut ui, 0.25);
-        near_px(seen(&mut ui).translate_x(), 75.0, "reverse plays from 100% to 0%");
+        near_px(
+            seen(&mut ui).translate_x(),
+            75.0,
+            "reverse plays from 100% to 0%",
+        );
     });
 }
 
@@ -272,9 +303,17 @@ fn a_transition_starts_from_the_current_value_when_the_style_changes_mid_flight(
         near(seen(&mut ui).opacity, 0.6, "halfway from 0.2 to 1.0");
 
         start(&mut ui, flags[1]);
-        near(seen(&mut ui).opacity, 0.6, "the new transition starts where the old one was");
+        near(
+            seen(&mut ui).opacity,
+            0.6,
+            "the new transition starts where the old one was",
+        );
         run(&mut ui, 0.25);
-        near(seen(&mut ui).opacity, 0.55, "a quarter of the way from 0.6 to 0.4");
+        near(
+            seen(&mut ui).opacity,
+            0.55,
+            "a quarter of the way from 0.6 to 0.4",
+        );
         run(&mut ui, 1.0);
         near(seen(&mut ui).opacity, 0.4, "the new target");
     });
@@ -297,7 +336,11 @@ fn a_transition_delay_holds_the_start_value() {
         run(&mut ui, 0.125);
         near(seen(&mut ui).opacity, 0.2, "at the end of the delay");
         run(&mut ui, 0.25);
-        near(seen(&mut ui).opacity, 0.6, "half the duration after the delay");
+        near(
+            seen(&mut ui).opacity,
+            0.6,
+            "half the duration after the delay",
+        );
     });
 }
 

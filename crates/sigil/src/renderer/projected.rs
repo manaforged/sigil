@@ -1,4 +1,7 @@
-#![allow(clippy::cast_precision_loss, reason = "GPU texture dimensions fit exactly in f32")]
+#![allow(
+    clippy::cast_precision_loss,
+    reason = "GPU texture dimensions fit exactly in f32"
+)]
 
 use bytemuck::{Pod, Zeroable};
 use std::slice::from_ref;

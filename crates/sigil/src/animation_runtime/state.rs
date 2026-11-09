@@ -16,9 +16,11 @@ pub(crate) fn register_config(signal: Signal<f32>, config: AnimationConfig) -> A
     let initial = signal.try_peek().unwrap_or_default();
     let motion = match config {
         AnimationConfig::Spring { preset } => Motion::spring(initial, preset),
-        AnimationConfig::Tween { ms, easing, delay_ms } => {
-            Motion::tween(initial, ms, easing, delay_ms)
-        }
+        AnimationConfig::Tween {
+            ms,
+            easing,
+            delay_ms,
+        } => Motion::tween(initial, ms, easing, delay_ms),
         AnimationConfig::Playback { end, cycle } => Motion::playback(end, cycle),
     };
     register(signal, motion)

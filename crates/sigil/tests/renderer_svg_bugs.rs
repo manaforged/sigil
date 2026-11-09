@@ -50,7 +50,10 @@ pub(crate) fn frames(scene: &CommandScene, side: u32) -> Vec<(&'static str, Vec<
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame(scene, side)).expect("cpu render");
     let mut out = vec![("cpu", cpu)];
     if let Some(mut renderer) = headless_renderer().expect("adapter") {
-        out.push(("gpu", gpu_rgba(&mut renderer, &frame(scene, side)).expect("gpu render")));
+        out.push((
+            "gpu",
+            gpu_rgba(&mut renderer, &frame(scene, side)).expect("gpu render"),
+        ));
     }
     out
 }
@@ -59,16 +62,24 @@ pub(crate) fn picture(svg: &str, side: u32) -> CommandScene {
     let tree = Arc::new(Tree::from_str(svg, &usvg::Options::default()).expect("svg"));
     let mut builder = SceneBuilder::new();
     let side = side as f32;
-    builder.draw_rect(DrawRect::new(Rect::new(Point::new(0.0, 0.0), side, side), WHITE));
+    builder.draw_rect(DrawRect::new(
+        Rect::new(Point::new(0.0, 0.0), side, side),
+        WHITE,
+    ));
     let mut scene = builder.finish();
     let (lowered, fallbacks) = svg_scene(tree, 11, (side, side), WHITE, SvgMode::Vector);
-    assert!(fallbacks.is_empty(), "lowered with bitmap fallbacks: {fallbacks:?}");
+    assert!(
+        fallbacks.is_empty(),
+        "lowered with bitmap fallbacks: {fallbacks:?}"
+    );
     scene.commands.extend(lowered.commands);
     scene
 }
 
 pub(crate) fn svg(body: &str, side: u32) -> String {
-    format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="{side}" height="{side}">{body}</svg>"#)
+    format!(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="{side}" height="{side}">{body}</svg>"#
+    )
 }
 
 fn pixel(rgba: &[u8], (x, y): (u32, u32)) -> [u8; 3] {
@@ -83,7 +94,11 @@ fn assert_pixels(body: &str, probes: &[((u32, u32), [u8; 3])]) {
     for (name, rgba) in frames(&scene, SIDE) {
         for &(at, want) in probes {
             let found = pixel(&rgba, at);
-            if found.iter().zip(want).any(|(a, b)| a.abs_diff(b) > TOLERANCE) {
+            if found
+                .iter()
+                .zip(want)
+                .any(|(a, b)| a.abs_diff(b) > TOLERANCE)
+            {
                 failures.push(format!("{name} at {at:?}: {found:?}, want {want:?}"));
             }
         }
@@ -119,7 +134,11 @@ fn a_multiply_group_over_a_translucent_backdrop_follows_the_css_formula() {
 fn a_clip_path_on_a_child_of_a_faded_group_clips_it() {
     assert_pixels(
         r##"<clipPath id="c"><circle cx="20" cy="20" r="10"/></clipPath><g opacity="0.5"><rect width="40" height="40" fill="#0000ff" clip-path="url(#c)"/></g>"##,
-        &[((20, 20), [128, 128, 255]), ((4, 4), [255, 255, 255]), ((36, 20), [255, 255, 255])],
+        &[
+            ((20, 20), [128, 128, 255]),
+            ((4, 4), [255, 255, 255]),
+            ((36, 20), [255, 255, 255]),
+        ],
     );
 }
 
@@ -127,6 +146,10 @@ fn a_clip_path_on_a_child_of_a_faded_group_clips_it() {
 fn a_clip_path_on_a_child_of_a_masked_group_clips_it() {
     assert_pixels(
         r##"<clipPath id="c"><circle cx="20" cy="20" r="10"/></clipPath><mask id="m"><rect width="40" height="40" fill="#ffffff"/></mask><g mask="url(#m)"><rect width="40" height="40" fill="#0000ff" clip-path="url(#c)"/></g>"##,
-        &[((20, 20), [0, 0, 255]), ((4, 4), [255, 255, 255]), ((36, 20), [255, 255, 255])],
+        &[
+            ((20, 20), [0, 0, 255]),
+            ((4, 4), [255, 255, 255]),
+            ((36, 20), [255, 255, 255]),
+        ],
     );
 }

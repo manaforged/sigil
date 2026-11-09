@@ -191,12 +191,20 @@ pub(crate) fn inherit_key(theme: &Theme, text_color: Option<Rgba8>, text_style: 
 /// A key that changes when any inherited text shadow changes.
 pub(crate) fn shadow_key(shadows: &[Shadow]) -> u64 {
     shadows.iter().fold(0, |key, shadow| {
-        let Shadow { color, offset, blur, spread, .. } = *shadow;
+        let Shadow {
+            color,
+            offset,
+            blur,
+            spread,
+            ..
+        } = *shadow;
         color
             .into_iter()
             .chain(offset)
             .chain([blur, spread])
-            .fold(key.rotate_left(5), |key, value| mix(key, u64::from(value.to_bits())))
+            .fold(key.rotate_left(5), |key, value| {
+                mix(key, u64::from(value.to_bits()))
+            })
     })
 }
 

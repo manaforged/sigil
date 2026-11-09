@@ -89,21 +89,32 @@ fn equal_finite_keyframes_share_one_entry() {
 #[test]
 fn equal_nan_keyframes_share_one_entry() {
     let bytes = retained(1, |_| fade(f32::NAN));
-    assert!(bytes < BUDGET, "1000 equal NaN keyframes kept {bytes} bytes");
+    assert!(
+        bytes < BUDGET,
+        "1000 equal NaN keyframes kept {bytes} bytes"
+    );
 }
 
 #[test]
 fn keyframes_built_from_changing_values_stay_bounded() {
     let bytes = retained(CALLS, |call| fade(call as f32 / 4_096.0));
-    assert!(bytes < BUDGET, "1000 distinct keyframes kept {bytes} bytes after warm-up");
+    assert!(
+        bytes < BUDGET,
+        "1000 distinct keyframes kept {bytes} bytes after warm-up"
+    );
 }
 
 #[test]
 fn keyframes_pinned_by_disposed_scopes_are_released() {
     let bytes = retained(CALLS, |call| {
         let keyframes = fade(0.25 + call as f32 / 8_192.0);
-        Owner::scope("pinned-animation", || drop(container().animate(keyframes.clone())));
+        Owner::scope("pinned-animation", || {
+            drop(container().animate(keyframes.clone()))
+        });
         keyframes
     });
-    assert!(bytes < BUDGET, "1000 scoped distinct keyframes kept {bytes} bytes after warm-up");
+    assert!(
+        bytes < BUDGET,
+        "1000 scoped distinct keyframes kept {bytes} bytes after warm-up"
+    );
 }

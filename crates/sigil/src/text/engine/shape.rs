@@ -280,7 +280,10 @@ struct FaceSpan {
 
 fn coalesce_face_spans(chain: &[Font], fragment: &str) -> SmallVec<[FaceSpan; 4]> {
     let mut spans = SmallVec::<[FaceSpan; 4]>::new();
-    if chain.first().is_some_and(|primary| primary.covers(fragment)) {
+    if chain
+        .first()
+        .is_some_and(|primary| primary.covers(fragment))
+    {
         spans.push(FaceSpan {
             start: 0,
             end: fragment.len(),
@@ -391,9 +394,15 @@ fn fit_cells(run: &mut ShapedRun, cell: f32) {
     }
     let mut at = 0;
     while let Some(cluster) = run.glyphs.get(at).map(|glyph| glyph.cluster) {
-        let count = run.glyphs[at..].iter().take_while(|glyph| glyph.cluster == cluster).count();
+        let count = run.glyphs[at..]
+            .iter()
+            .take_while(|glyph| glyph.cluster == cluster)
+            .count();
         let last = at + count - 1;
-        let natural: f32 = run.glyphs[at..=last].iter().map(|glyph| glyph.advance).sum();
+        let natural: f32 = run.glyphs[at..=last]
+            .iter()
+            .map(|glyph| glyph.advance)
+            .sum();
         let cells = (natural / cell + WIDE_MARGIN).floor().max(1.0);
         let extra = cells.mul_add(cell, -natural);
         run.glyphs[last].advance += extra;
@@ -460,7 +469,11 @@ fn byte_level(levels: &[u8], byte: usize) -> u8 {
 pub(super) fn char_script(ch: char) -> Script {
     use unicode_script::{Script as UScript, UnicodeScript};
     if ch.is_ascii() {
-        return if ch.is_ascii_alphabetic() { Script::Latin } else { Script::Common };
+        return if ch.is_ascii_alphabetic() {
+            Script::Latin
+        } else {
+            Script::Common
+        };
     }
     match ch.script() {
         UScript::Common | UScript::Inherited | UScript::Unknown => Script::Common,

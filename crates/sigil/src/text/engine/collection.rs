@@ -192,7 +192,11 @@ fn chain_script(ch: char) -> Script {
             | '\u{2b00}'..='\u{2bff}'
             | '\u{1fb00}'..='\u{1fbff}'
     );
-    if symbol { Script::Other } else { super::char_script(ch) }
+    if symbol {
+        Script::Other
+    } else {
+        super::char_script(ch)
+    }
 }
 
 pub(crate) fn chain_scripts(text: &str) -> ChainScripts {

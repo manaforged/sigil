@@ -11,8 +11,8 @@ use crate::geometry::{Point, Rect};
 use crate::renderer::plan::PlanNode;
 use crate::renderer::projected::ProjectedFrame;
 use crate::renderer::scene_command::LayerScope;
-use crate::scene::command::BlendMode;
 use crate::renderer::scene_command::state::SceneState;
+use crate::scene::command::BlendMode;
 use crate::scene::command::transform3d::{apply, invert};
 
 use super::paint::CpuPainter;
@@ -87,7 +87,10 @@ impl CpuPainter<'_> {
     }
 
     fn screen_span(&self, frame: ProjectedFrame) -> Option<[u32; 4]> {
-        let mut visible = frame.composite.bounds(frame.bounds)?.intersection(self.area())?;
+        let mut visible = frame
+            .composite
+            .bounds(frame.bounds)?
+            .intersection(self.area())?;
         if let Some(clip) = self.state.current_clip() {
             visible = visible.intersection(clip)?;
         }
@@ -128,7 +131,8 @@ fn project(
                 continue;
             }
             let texel = source.sample(local);
-            let index = (py - canvas.at.1) as usize * canvas.stride + (px - canvas.at.0) as usize * 4;
+            let index =
+                (py - canvas.at.1) as usize * canvas.stride + (px - canvas.at.0) as usize * 4;
             if let Some(pixel) = canvas.data.get_mut(index..index + 4) {
                 blend(pixel, texel, amount);
             }
@@ -163,8 +167,12 @@ impl Source<'_> {
     }
 
     fn sample(&self, local: Point) -> [f32; 4] {
-        let x = (local.x - self.bounds.origin.x).mul_add(self.scale, -0.5).max(0.0);
-        let y = (local.y - self.bounds.origin.y).mul_add(self.scale, -0.5).max(0.0);
+        let x = (local.x - self.bounds.origin.x)
+            .mul_add(self.scale, -0.5)
+            .max(0.0);
+        let y = (local.y - self.bounds.origin.y)
+            .mul_add(self.scale, -0.5)
+            .max(0.0);
         let (ix, iy) = (x.floor() as usize, y.floor() as usize);
         let (fx, fy) = (x.fract(), y.fract());
         let top = mix(self.texel(ix, iy), self.texel(ix + 1, iy), fx);

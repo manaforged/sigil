@@ -141,7 +141,12 @@ fn to_premultiplied(pixel: [u8; 4]) -> [f32; 4] {
         return [0.0; 4];
     }
     let channel = |stored: u8| encode((decode(stored) / alpha).min(1.0)) * alpha;
-    [channel(pixel[0]), channel(pixel[1]), channel(pixel[2]), alpha]
+    [
+        channel(pixel[0]),
+        channel(pixel[1]),
+        channel(pixel[2]),
+        alpha,
+    ]
 }
 
 fn to_encoded(value: [f32; 4]) -> [u8; 4] {
@@ -150,7 +155,12 @@ fn to_encoded(value: [f32; 4]) -> [u8; 4] {
         return [0; 4];
     }
     let channel = |srgb: f32| encode_byte(decode_unit((srgb / alpha).min(1.0)) * alpha);
-    [channel(value[0]), channel(value[1]), channel(value[2]), (alpha * 255.0).round() as u8]
+    [
+        channel(value[0]),
+        channel(value[1]),
+        channel(value[2]),
+        (alpha * 255.0).round() as u8,
+    ]
 }
 
 #[derive(Clone, Copy)]

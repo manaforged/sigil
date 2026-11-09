@@ -23,7 +23,10 @@ pub(crate) struct ApiMap {
 
 impl ApiMap {
     pub(crate) fn load() -> Self {
-        let mut map = Self { rows: Vec::new(), aliases: Vec::new() };
+        let mut map = Self {
+            rows: Vec::new(),
+            aliases: Vec::new(),
+        };
         map.collect(Path::new(SOURCE_ROOT));
         map
     }
@@ -56,7 +59,9 @@ impl ApiMap {
         let Ok(entries) = std::fs::read_dir(dir) else {
             return;
         };
-        let mut paths: Vec<_> = entries.filter_map(|entry| entry.ok().map(|e| e.path())).collect();
+        let mut paths: Vec<_> = entries
+            .filter_map(|entry| entry.ok().map(|e| e.path()))
+            .collect();
         paths.sort();
         for path in paths {
             if path.is_dir() {
@@ -129,7 +134,8 @@ fn item_name(line: &str) -> Option<&str> {
         .strip_prefix("pub fn ")
         .or_else(|| line.strip_prefix("pub const fn "))
         .or_else(|| line.strip_prefix("pub struct "))?;
-    rest.split(|c: char| !(c.is_alphanumeric() || c == '_')).next()
+    rest.split(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .next()
 }
 
 fn builder_type(signature: &str) -> Option<&str> {

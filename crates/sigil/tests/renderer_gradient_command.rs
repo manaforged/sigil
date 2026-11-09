@@ -13,8 +13,7 @@ use sigil::geometry::Point;
 use sigil::renderer::{WgpuRenderer, WgpuSurface};
 use sigil::scene::{
     CommandScene, CornerRadii, DrawGradient, DrawRect, Gradient, GradientStop, LinearGradient,
-    PaintFill,
-    SceneBuilder, SceneCommand,
+    PaintFill, SceneBuilder, SceneCommand,
 };
 use sigil::style::Color;
 use smallvec::smallvec;

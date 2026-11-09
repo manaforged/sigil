@@ -75,7 +75,10 @@ fn start(ui: &mut Harness, flag: Signal<bool>) {
     frames(ui, 1, 0.0);
 }
 
-fn layer(command: &SceneCommand, (opacity, matrix): (f32, [[f32; 3]; 2])) -> Option<(f32, [[f32; 3]; 2])> {
+fn layer(
+    command: &SceneCommand,
+    (opacity, matrix): (f32, [[f32; 3]; 2]),
+) -> Option<(f32, [[f32; 3]; 2])> {
     match command {
         SceneCommand::PushLayer(scope) => {
             let matrix = match scope.effect {
@@ -104,7 +107,8 @@ fn seen(ui: &mut Harness) -> Seen {
                 layers.pop();
             }
             SceneCommand::Rect(rect)
-                if (rect.rect.width - SIDE).abs() < 0.5 && (rect.rect.height - SIDE).abs() < 0.5 =>
+                if (rect.rect.width - SIDE).abs() < 0.5
+                    && (rect.rect.height - SIDE).abs() < 0.5 =>
             {
                 return Seen {
                     opacity: top.0 * f32::from(rect.opacity) / 10_000.0,
@@ -129,13 +133,17 @@ fn turned(from: f32, to: f32) -> f32 {
 #[test]
 fn a_view_with_a_spinner_settles() {
     Owner::scope("review-spin-settles", || {
-        let mut ui = Harness::new(column().child(square().animate(Keyframes::spin()))).pixels(200, 200);
+        let mut ui =
+            Harness::new(column().child(square().animate(Keyframes::spin()))).pixels(200, 200);
         ui.settle();
         assert!(running_clocks() > 0, "the spinner still runs after settle");
         let before = seen(&mut ui).rotation();
         run(&mut ui, 0.25);
         let quarter = turned(before, seen(&mut ui).rotation());
-        assert!((quarter - 0.25).abs() < 0.01, "the spinner turns after settle: {quarter}");
+        assert!(
+            (quarter - 0.25).abs() < 0.01,
+            "the spinner turns after settle: {quarter}"
+        );
     });
 }
 
@@ -167,7 +175,10 @@ fn keyframe_and_transition_colors_meet_at_the_same_midpoint() {
             animated.abs_diff(transitioned) <= 2,
             "black to white at 50%: animate gives {animated}, transition_colors gives {transitioned}"
         );
-        assert!(animated.abs_diff(128) <= 2, "CSS mixes legacy colors in sRGB: got {animated}");
+        assert!(
+            animated.abs_diff(128) <= 2,
+            "CSS mixes legacy colors in sRGB: got {animated}"
+        );
     });
 }
 
@@ -184,7 +195,10 @@ fn an_infinite_spin_keeps_turning_after_two_to_the_nineteen_seconds() {
             frames(&mut ui, 15, FRAME);
             let now = seen(&mut ui).rotation();
             let turn = turned(last, now);
-            assert!((turn - 0.25).abs() < 0.01, "window {window}: turned {turn}, want 0.25");
+            assert!(
+                (turn - 0.25).abs() < 0.01,
+                "window {window}: turned {turn}, want 0.25"
+            );
             last = now;
         }
     });
@@ -200,7 +214,11 @@ fn a_zero_duration_infinite_animation_stops_its_clock() {
         let mut ui = mount(animated(keyframes, flag));
         start(&mut ui, flag);
         frames(&mut ui, 3, FRAME);
-        assert_eq!(running_clocks(), 0, "a zero-length animation keeps no clock running");
+        assert_eq!(
+            running_clocks(),
+            0,
+            "a zero-length animation keeps no clock running"
+        );
         assert_eq!(seen(&mut ui).opacity, 1.0, "it shows the node's own style");
     });
 }
@@ -217,7 +235,10 @@ fn a_four_hundred_percent_shift_moves_four_widths() {
         start(&mut ui, flag);
         run(&mut ui, 0.5);
         let moved = seen(&mut ui).matrix[0][2];
-        assert!((moved - 4.0 * SIDE).abs() < 0.5, "400% of 40 px: got {moved}, want 160");
+        assert!(
+            (moved - 4.0 * SIDE).abs() < 0.5,
+            "400% of 40 px: got {moved}, want 160"
+        );
     });
 }
 
@@ -231,7 +252,11 @@ fn a_cubic_bezier_with_nan_points_eases_linearly() {
         x2: f32::INFINITY,
         y2: 1.0,
     };
-    assert_eq!(raw.apply(0.5), 0.5, "a hand-built curve with NaN points is linear");
+    assert_eq!(
+        raw.apply(0.5),
+        0.5,
+        "a hand-built curve with NaN points is linear"
+    );
     let at_nan = Easing::IN_OUT.apply(f32::NAN);
     assert_eq!(at_nan, 0.0, "a NaN progress is the start of the curve");
 }
@@ -250,10 +275,16 @@ fn a_zero_duration_transition_waits_for_its_delay() {
         start(&mut ui, flag);
         run(&mut ui, 0.125);
         let held = seen(&mut ui).opacity;
-        assert!((held - 0.2).abs() < 2e-3, "125ms into a 250ms delay: got {held}, want 0.2");
+        assert!(
+            (held - 0.2).abs() < 2e-3,
+            "125ms into a 250ms delay: got {held}, want 0.2"
+        );
         run(&mut ui, 0.25);
         let after = seen(&mut ui).opacity;
-        assert!((after - 1.0).abs() < 2e-3, "after the delay: got {after}, want 1");
+        assert!(
+            (after - 1.0).abs() < 2e-3,
+            "after the delay: got {after}, want 1"
+        );
     });
 }
 
@@ -278,7 +309,10 @@ fn the_first_of_three_hundred_held_animations_still_plays() {
         start(&mut ui, flags[0]);
         run(&mut ui, 0.5);
         let moved = seen(&mut ui).matrix[0][2];
-        assert!((moved - 50.0).abs() < 0.5, "the first held animation: moved {moved}, want 50");
+        assert!(
+            (moved - 50.0).abs() < 0.5,
+            "the first held animation: moved {moved}, want 50"
+        );
     });
 }
 
@@ -327,5 +361,9 @@ fn an_unscoped_animation_that_was_evicted_warns() {
         });
         owner.dispose();
     });
-    assert_eq!(warnings.load(Ordering::Relaxed), 1, "an evicted animation warns once");
+    assert_eq!(
+        warnings.load(Ordering::Relaxed),
+        1,
+        "an evicted animation warns once"
+    );
 }

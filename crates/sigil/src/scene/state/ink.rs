@@ -56,9 +56,7 @@ pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
             LayerEffect::Projected { transform, .. } => {
                 transform.bounds(scope.clip).unwrap_or(scope.clip)
             }
-            LayerEffect::Identity
-            | LayerEffect::Mask(_)
-            | LayerEffect::Filter(_) => scope.clip,
+            LayerEffect::Identity | LayerEffect::Mask(_) | LayerEffect::Filter(_) => scope.clip,
         },
         SceneCommand::PushClip(_)
         | SceneCommand::PopClip

@@ -6,12 +6,12 @@ use crate::scene::command::{DrawPattern, PatternKind, Wash};
 use crate::geometry::Rect;
 use crate::kernel::NodeId;
 
+use crate::scene::command::{BlendMode, Filter, LayerEffect};
 use crate::scene::command::{
     CellRect, Clip, CommandScene, DrawDecoration, DrawGradient, DrawRect, GlyphRun, LayerScope,
     SceneCommand, Transform,
 };
 use crate::scene::corner_radii::CornerRadii;
-use crate::scene::command::{BlendMode, Filter, LayerEffect};
 use crate::scene::shadow::Shadow;
 use crate::style::Rgba8;
 use crate::style::srgb::encode_byte;
@@ -155,15 +155,21 @@ impl SceneBuilder {
             return;
         }
         let scope = LayerScope {
-            clip: copy.rect.expand(shadow.blur.mul_add(3.0, copy.rect.height * 0.5)),
+            clip: copy
+                .rect
+                .expand(shadow.blur.mul_add(3.0, copy.rect.height * 0.5)),
             clip_radii: CornerRadii::ZERO,
             effect: LayerEffect::Filter([Filter::Blur(shadow.blur)].into()),
             opacity: 1.0,
             blend: BlendMode::default(),
         };
-        self.with_scope(SceneCommand::PushLayer(scope), SceneCommand::PopLayer, |scene| {
-            scene.draw_glyph_run(copy);
-        });
+        self.with_scope(
+            SceneCommand::PushLayer(scope),
+            SceneCommand::PopLayer,
+            |scene| {
+                scene.draw_glyph_run(copy);
+            },
+        );
     }
 
     /// Clips the commands that `body` appends to `clip`.

@@ -3,7 +3,9 @@ use std::time::{Duration, Instant};
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::renderer::CpuRenderer;
-use sigil::scene::{CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder, Transform3D};
+use sigil::scene::{
+    CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder, Transform3D,
+};
 use sigil::style::Color;
 use sigil_kittest::gpu::{headless_renderer, render_scene_to_image};
 use sigil_kittest::parity::{Frame, cpu_rgba};
@@ -100,7 +102,8 @@ fn fifty_turned_cards_frame_time() {
     for round in 0..ROUNDS + 3 {
         for (index, scene) in scenes.iter().enumerate() {
             let start = Instant::now();
-            let _ = render_scene_to_image(&mut gpu, scene, VIEW, device_size()).expect("gpu render");
+            let _ =
+                render_scene_to_image(&mut gpu, scene, VIEW, device_size()).expect("gpu render");
             let gpu_time = start.elapsed();
             let cpu_time = cpu_frame(&mut cpu, scene);
             if round >= 3 {

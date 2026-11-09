@@ -66,9 +66,9 @@ fn push_ring(scene: &mut SceneBuilder, rect: Rect, radii: [f32; 4], width: f32, 
     let limit = inset.width.min(inset.height) * 0.5;
     let radii = radii.map(|radius| (radius - half).clamp(0.0, limit));
     let straight = 2.0 * (inset.width + inset.height);
-    let length = radii
-        .iter()
-        .fold(straight, |sum, radius| (FRAC_PI_2 - 2.0).mul_add(*radius, sum));
+    let length = radii.iter().fold(straight, |sum, radius| {
+        (FRAC_PI_2 - 2.0).mul_add(*radius, sum)
+    });
     scene.draw_path(stroked(rounded_outline(inset, radii), width, length, line));
 }
 
@@ -117,8 +117,16 @@ fn pattern(style: BorderStyle, width: f32, length: f32) -> (SmallVec<[f32; 4]>, 
     };
     let period = on + off;
     let count = (length / period).round().max(1.0);
-    let fit = if length > 0.0 { length / (count * period) } else { 1.0 };
-    let cap = if round { StrokeCap::Round } else { StrokeCap::Butt };
+    let fit = if length > 0.0 {
+        length / (count * period)
+    } else {
+        1.0
+    };
+    let cap = if round {
+        StrokeCap::Round
+    } else {
+        StrokeCap::Butt
+    };
     let on = if round { on } else { on * fit };
     (smallvec![on, period.mul_add(fit, -on)], cap)
 }

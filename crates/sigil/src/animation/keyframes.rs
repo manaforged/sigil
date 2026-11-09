@@ -175,7 +175,13 @@ fn unit(offset: f32) -> f32 {
 
 impl Keyframes {
     fn timing(&self) -> (Duration, Easing, Option<u32>, bool, bool) {
-        (self.duration, self.easing, self.iterations, self.reverse, self.alternate)
+        (
+            self.duration,
+            self.easing,
+            self.iterations,
+            self.reverse,
+            self.alternate,
+        )
     }
 
     fn stop_keys(&self) -> impl Iterator<Item = (u32, property::Key)> + '_ {
@@ -185,7 +191,9 @@ impl Keyframes {
     }
 
     fn easing_keys(&self) -> impl Iterator<Item = (u32, Easing)> + '_ {
-        self.easings.iter().map(|(offset, easing)| (offset.to_bits(), *easing))
+        self.easings
+            .iter()
+            .map(|(offset, easing)| (offset.to_bits(), *easing))
     }
 }
 

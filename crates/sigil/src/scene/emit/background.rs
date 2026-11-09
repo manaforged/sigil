@@ -88,8 +88,14 @@ fn center_of(rect: Rect, [x, y]: [u8; 2]) -> Point {
 
 pub(super) fn radial(rect: Rect, radial: Radial) -> GradientKind {
     let center = center_of(rect, radial.at);
-    let dx = [center.x - rect.origin.x, rect.origin.x + rect.width - center.x];
-    let dy = [center.y - rect.origin.y, rect.origin.y + rect.height - center.y];
+    let dx = [
+        center.x - rect.origin.x,
+        rect.origin.x + rect.width - center.x,
+    ];
+    let dy = [
+        center.y - rect.origin.y,
+        rect.origin.y + rect.height - center.y,
+    ];
     let near = [dx[0].min(dx[1]), dy[0].min(dy[1])];
     let far = [dx[0].max(dx[1]), dy[0].max(dy[1])];
     let radius = match (radial.circle, radial.extent) {
@@ -112,7 +118,12 @@ pub(super) fn conic(rect: Rect, conic: Conic) -> GradientKind {
     }
 }
 
-pub(super) fn push_image(scene: &mut SceneBuilder, node: (NodeId, &Node), rect: Rect, style: &RenderStyle) {
+pub(super) fn push_image(
+    scene: &mut SceneBuilder,
+    node: (NodeId, &Node),
+    rect: Rect,
+    style: &RenderStyle,
+) {
     let (id, node) = node;
     let Some(source) = style.paint.image.and_then(|image| lookup(node, image)) else {
         return;

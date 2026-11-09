@@ -247,7 +247,8 @@ impl PaintStyle {
     pub(crate) fn overlay(&mut self, overlay: &dyn AnimatorOverlay) {
         let shown = [0, 1, 2].map(|index| self.drawn(index));
         let slots = self.stops.iter_mut().zip(self.positions.iter_mut());
-        for ((stop, position), ((numeric, color), drawn)) in slots.zip(STOPS.into_iter().zip(shown)) {
+        for ((stop, position), ((numeric, color), drawn)) in slots.zip(STOPS.into_iter().zip(shown))
+        {
             if !drawn {
                 continue;
             }

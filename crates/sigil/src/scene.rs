@@ -48,9 +48,11 @@ kittest_pub! {
     #[doc(hidden)]
     pub use command::shape_glyph_run;
 }
+pub use command::{
+    BlendMode, Clip, CommandScene, DrawRect, GlyphRun, SceneCommand, StrokeCap, StrokeJoin, Wash,
+};
 #[cfg(any(test, feature = "terminal"))]
 pub(crate) use command::{CellBorder, TextFlow};
-pub use command::{BlendMode, Clip, CommandScene, DrawRect, GlyphRun, SceneCommand, StrokeCap, StrokeJoin, Wash};
 kittest_pub! {
     #[doc(hidden)]
     pub use command::Transform;

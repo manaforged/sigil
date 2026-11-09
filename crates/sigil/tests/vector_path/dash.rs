@@ -1,6 +1,6 @@
+use sigil::geometry::Rect;
 use sigil::prelude::*;
 use sigil::scene::SceneBuilder;
-use sigil::geometry::Rect;
 use sigil::widgets::{canvas, path};
 use sigil_kittest::Harness;
 

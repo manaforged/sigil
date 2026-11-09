@@ -37,16 +37,23 @@ impl SceneWalk<'_> {
     pub(super) fn flush_paths(&mut self) {
         let linear = BlendSpace::from_format(self.ctx.format) == BlendSpace::Linear;
         let ctx = &mut self.ctx;
-        let Some(rendered) = ctx.vector.render(ctx.device, ctx.queue, ctx.encoder, linear) else {
+        let Some(rendered) = ctx
+            .vector
+            .render(ctx.device, ctx.queue, ctx.encoder, linear)
+        else {
             return;
         };
         let scale = ctx.scale;
         let dest = Rect::new(
-            Point::new(rendered.origin.0 as f32 / scale, rendered.origin.1 as f32 / scale),
+            Point::new(
+                rendered.origin.0 as f32 / scale,
+                rendered.origin.1 as f32 / scale,
+            ),
             rendered.size.0 as f32 / scale,
             rendered.size.1 as f32 / scale,
         );
-        let pipeline = LayerCompositePipeline::for_format(ctx.layer_pipelines, ctx.device, ctx.format);
+        let pipeline =
+            LayerCompositePipeline::for_format(ctx.layer_pipelines, ctx.device, ctx.format);
         pipeline.composite(
             PaintCtx {
                 device: ctx.device,

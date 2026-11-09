@@ -84,7 +84,9 @@ impl VectorPass {
             device,
             opacity: run.opacity,
         });
-        let bounds = self.run.map_or(run.visible, |(queued, _)| queued.union(run.visible));
+        let bounds = self
+            .run
+            .map_or(run.visible, |(queued, _)| queued.union(run.visible));
         self.run = Some((bounds, run));
     }
 
@@ -111,7 +113,11 @@ impl VectorPass {
         let found = self.find(pixels, draws, (device, queue), encoder)?;
         let target = &self.retained[found];
         Some(Rendered {
-            view: if linear { target.linear.clone() } else { target.unorm.clone() },
+            view: if linear {
+                target.linear.clone()
+            } else {
+                target.unorm.clone()
+            },
             origin: (u32::from(pixels.origin.0), u32::from(pixels.origin.1)),
             size: (u32::from(pixels.size.0), u32::from(pixels.size.1)),
             bounds,
@@ -147,7 +153,11 @@ impl VectorPass {
     fn slot(&mut self, device: &wgpu::Device, pixels: Pixels) -> Retained {
         let budget = CacheLimits::DEFAULT.vector_pixels;
         let area = |size: (u16, u16)| u64::from(size.0) * u64::from(size.1);
-        let mut held: u64 = self.retained.iter().map(|kept| area(kept.pixels.size)).sum();
+        let mut held: u64 = self
+            .retained
+            .iter()
+            .map(|kept| area(kept.pixels.size))
+            .sum();
         let mut reused = None;
         while held + area(pixels.size) > budget {
             let Some(oldest) = self.oldest() else {
@@ -205,7 +215,8 @@ impl VectorPass {
                 &vello_gpu::TextureBindings::new(),
                 vello_gpu::TargetInit::Clear(vello_gpu::ClearSettings::default()),
             )?;
-            gpu.linearize.run(device, raw, &target.unorm, &target.linear);
+            gpu.linearize
+                .run(device, raw, &target.unorm, &target.linear);
             Ok::<(), vello_gpu::RenderError>(())
         });
         result.is_ok()
@@ -256,7 +267,8 @@ fn new_target(device: &wgpu::Device, pixels: Pixels) -> Retained {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
             })
             .create_view(&wgpu::TextureViewDescriptor::default())

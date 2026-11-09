@@ -60,7 +60,11 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
         let rects = run_rects(&paragraph, &run, text_run.start, text_run.end);
         if let Some(background) = ink.background {
             let style = |rect: crate::geometry::Rect| {
-                let (rect, radius) = if face.square { (cell_edges(rect, &run), 0.0) } else { (rect, 3.0) };
+                let (rect, radius) = if face.square {
+                    (cell_edges(rect, &run), 0.0)
+                } else {
+                    (rect, 3.0)
+                };
                 DrawRect::new(rect, background)
                     .border_radius(CornerRadii::uniform(radius))
                     .opacity(run.opacity)

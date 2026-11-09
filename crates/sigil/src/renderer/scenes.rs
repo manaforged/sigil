@@ -237,11 +237,31 @@ pub fn icon() -> (CommandScene, (f32, f32), Color) {
 }
 
 const ICON_DRAWS: [(MaskShape, Rect, Rgba8); 5] = [
-    (MaskShape::Disc, rect(40.0, 80.0, 128.0, 128.0), rgba(220, 80, 80, 255)),
-    (MaskShape::Ring, rect(208.0, 80.0, 128.0, 128.0), rgba(200, 200, 220, 255)),
-    (MaskShape::Square, rect(376.0, 80.0, 128.0, 128.0), rgba(100, 220, 140, 255)),
-    (MaskShape::Diamond, rect(544.0, 80.0, 128.0, 128.0), rgba(230, 200, 100, 255)),
-    (MaskShape::Cross, rect(712.0, 80.0, 128.0, 128.0), rgba(220, 100, 220, 255)),
+    (
+        MaskShape::Disc,
+        rect(40.0, 80.0, 128.0, 128.0),
+        rgba(220, 80, 80, 255),
+    ),
+    (
+        MaskShape::Ring,
+        rect(208.0, 80.0, 128.0, 128.0),
+        rgba(200, 200, 220, 255),
+    ),
+    (
+        MaskShape::Square,
+        rect(376.0, 80.0, 128.0, 128.0),
+        rgba(100, 220, 140, 255),
+    ),
+    (
+        MaskShape::Diamond,
+        rect(544.0, 80.0, 128.0, 128.0),
+        rgba(230, 200, 100, 255),
+    ),
+    (
+        MaskShape::Cross,
+        rect(712.0, 80.0, 128.0, 128.0),
+        rgba(220, 100, 220, 255),
+    ),
 ];
 
 fn icon_source(shape: MaskShape) -> SpriteSource {

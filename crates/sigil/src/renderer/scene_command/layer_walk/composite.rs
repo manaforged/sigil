@@ -1,10 +1,10 @@
+use crate::geometry::{Point, Rect};
 use crate::renderer::layer_composite::{
     Backdrop, CompositeRequest, LayerCompositePipeline, LayerMask,
 };
 use crate::renderer::projected::{ProjectedPipeline, ProjectedRequest};
 use crate::renderer::scene_command::walk::{IDENTITY, WalkCtx, compose, translation};
 use crate::renderer::scene_paint::PaintCtx;
-use crate::geometry::{Point, Rect};
 use crate::scene::command::{BlendMode, Transform3D};
 use crate::scene::corner_radii::CornerRadii;
 use crate::style::Color;

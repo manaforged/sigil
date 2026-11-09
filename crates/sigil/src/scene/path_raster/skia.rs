@@ -4,8 +4,8 @@ use tiny_skia::{
 };
 
 use crate::scene::command::{
-    DrawPath, FillRule, MITER_LIMIT, PathCmd, PathPaint, PathStroke, StrokeCap,
-    StrokeJoin, Transform,
+    DrawPath, FillRule, MITER_LIMIT, PathCmd, PathPaint, PathStroke, StrokeCap, StrokeJoin,
+    Transform,
 };
 use crate::scene::geometry::compose;
 use crate::style::Rgba8;
@@ -76,7 +76,10 @@ fn color(color: Rgba8, opacity: f32) -> TsColor {
 
 fn skia_paint(paint: &PathPaint, opacity: f32) -> Paint<'static> {
     let (shader, colorspace) = match paint {
-        PathPaint::Solid(solid) => (Shader::SolidColor(color(*solid, opacity)), ColorSpace::Linear),
+        PathPaint::Solid(solid) => (
+            Shader::SolidColor(color(*solid, opacity)),
+            ColorSpace::Linear,
+        ),
         PathPaint::Gradient(gradient) => super::gradient::shader(gradient, opacity)
             .unwrap_or((Shader::SolidColor(TsColor::TRANSPARENT), ColorSpace::Linear)),
     };

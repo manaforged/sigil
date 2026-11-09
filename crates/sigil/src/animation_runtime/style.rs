@@ -18,7 +18,12 @@ use crate::style::{
     Theme, Tone, ToneContext,
 };
 
-const CLEAR: Rgba8 = Rgba8 { r: 0, g: 0, b: 0, a: 0 };
+const CLEAR: Rgba8 = Rgba8 {
+    r: 0,
+    g: 0,
+    b: 0,
+    a: 0,
+};
 
 #[derive(Default)]
 struct State {
@@ -47,15 +52,16 @@ impl State {
         if !self.enabled {
             return None;
         }
-        let targeted = self
-            .previous
-            .is_some_and(|target| target.colors.get(kind as usize).is_some_and(Option::is_some));
+        let targeted = self.previous.is_some_and(|target| {
+            target
+                .colors
+                .get(kind as usize)
+                .is_some_and(Option::is_some)
+        });
         self.colors
             .iter()
             .find(|entry| entry.kind == kind)
-            .filter(|entry| {
-                targeted || entry.animators.iter().any(|animator| !animator.settled())
-            })
+            .filter(|entry| targeted || entry.animators.iter().any(|animator| !animator.settled()))
             .map(read_color)
     }
 
@@ -215,7 +221,12 @@ impl AnimatorOverlay for StyleAnimator {
         }
         state.enabled = true;
         update_numeric(&mut state.numeric, &change, config, self.tag);
-        update_colors(&mut state.colors, &change, config, (inherited_text, self.tag));
+        update_colors(
+            &mut state.colors,
+            &change,
+            config,
+            (inherited_text, self.tag),
+        );
     }
 }
 

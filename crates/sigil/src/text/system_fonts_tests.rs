@@ -45,6 +45,9 @@ fn arabic_script_fallback_covers_arabic() {
 fn symbol_fallback_covers_braille_and_media_marks() {
     let faces = script_fallbacks(Script::Other);
     for mark in ["\u{2840}", "\u{23f5}"] {
-        assert!(faces.iter().any(|face| face.covers(mark)), "no system font covers {mark}");
+        assert!(
+            faces.iter().any(|face| face.covers(mark)),
+            "no system font covers {mark}"
+        );
     }
 }

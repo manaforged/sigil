@@ -195,7 +195,12 @@ fn highlight_marks_markdown_headings_and_typescript_keywords() {
 
 #[test]
 fn every_bundled_icon_draws_visible_pixels() {
-    const BLACK: Rgba8 = Rgba8 { r: 0, g: 0, b: 0, a: 255 };
+    const BLACK: Rgba8 = Rgba8 {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 255,
+    };
     for bundled in Icon::ALL {
         let mut ui = Harness::new(|| {
             container()

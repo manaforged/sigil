@@ -17,7 +17,11 @@ const SUBSTEPS: u8 = 8;
 pub(crate) fn shader(gradient: &Gradient, opacity: f32) -> Option<(Shader<'static>, ColorSpace)> {
     let gradient = gradient.normalized();
     let opaque = opacity >= 1.0 && gradient.stops.iter().all(|stop| stop.color.a == u8::MAX);
-    let space = if opaque { ColorSpace::Linear } else { ColorSpace::Gamma2 };
+    let space = if opaque {
+        ColorSpace::Linear
+    } else {
+        ColorSpace::Gamma2
+    };
     if let [only] = gradient.stops.as_slice() {
         return Some((Shader::SolidColor(color(only.color, opacity)), space));
     }
@@ -27,7 +31,11 @@ pub(crate) fn shader(gradient: &Gradient, opacity: f32) -> Option<(Shader<'stati
     } else {
         SpreadMode::Pad
     };
-    let stops = if opaque { stops.to_vec() } else { dense(&stops) };
+    let stops = if opaque {
+        stops.to_vec()
+    } else {
+        dense(&stops)
+    };
     let stops = stops
         .iter()
         .map(|stop| TsStop::new(stop.offset, color(stop.color, opacity)))

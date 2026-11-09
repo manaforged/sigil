@@ -19,9 +19,9 @@ use crate::scene::corner_radii::CornerRadii;
 
 use super::bound::rect_mask;
 use super::clip::multiplied;
-use super::paint::{CpuPainter, fade};
 use super::encoding::to_srgb;
 use super::layer_cache::LayerKey;
+use super::paint::{CpuPainter, fade};
 use super::shapes::{BLEND_SPACE, blit_in, cover, ts_transform};
 
 impl CpuPainter<'_> {
@@ -119,13 +119,7 @@ impl CpuPainter<'_> {
         self.composite(layer, at, ink, None);
     }
 
-    fn composite(
-        &mut self,
-        layer: &Pixmap,
-        transform: TsTransform,
-        ink: Ink,
-        mask: Option<&Mask>,
-    ) {
+    fn composite(&mut self, layer: &Pixmap, transform: TsTransform, ink: Ink, mask: Option<&Mask>) {
         let opacity = ink.opacity * self.state.current_opacity();
         let (width, height) = (self.target.width(), self.target.height());
         let Self {
@@ -141,9 +135,21 @@ impl CpuPainter<'_> {
             let Some(faded) = fade(&mut masks.faded, base, opacity) else {
                 return;
             };
-            blit_in(target, layer, transform, Some(faded), (ink.blend, ink.space, 1.0));
+            blit_in(
+                target,
+                layer,
+                transform,
+                Some(faded),
+                (ink.blend, ink.space, 1.0),
+            );
         } else if opacity > 0.0 {
-            blit_in(target, layer, transform, Some(base), (ink.blend, ink.space, opacity.min(1.0)));
+            blit_in(
+                target,
+                layer,
+                transform,
+                Some(base),
+                (ink.blend, ink.space, opacity.min(1.0)),
+            );
         }
         stats.offscreen_layers += 1;
     }

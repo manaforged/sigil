@@ -6,7 +6,10 @@ use crate::animation_runtime::{AnimationConfig, Animator};
 use super::binding_animate::AttachedColorAnimator;
 
 #[must_use]
-#[cfg_attr(not(feature = "scene"), allow(dead_code, reason = "the renderer is its caller"))]
+#[cfg_attr(
+    not(feature = "scene"),
+    allow(dead_code, reason = "the renderer is its caller")
+)]
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -35,7 +38,12 @@ fn premultiplied(color: Rgba8) -> [f32; 4] {
 
 fn unpremultiplied([r, g, b, alpha]: [f32; 4]) -> Rgba8 {
     if alpha <= 0.0 {
-        return Rgba8 { r: 0, g: 0, b: 0, a: 0 };
+        return Rgba8 {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        };
     }
     let channel = |value: f32| byte(value * 255.0 / alpha);
     Rgba8 {

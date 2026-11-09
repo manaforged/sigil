@@ -37,13 +37,9 @@ pub fn clip_depth(depth: usize) -> GeneratedScene {
     let mut commands = Vec::with_capacity(depth * 2 + 1);
     for i in 0..depth {
         let inset = (i as f32) * 0.05;
-        commands.push(SceneCommand::PushClip(rect(
-            inset,
-            inset,
-            128.0 - inset,
-            128.0 - inset,
-        )
-        .into()));
+        commands.push(SceneCommand::PushClip(
+            rect(inset, inset, 128.0 - inset, 128.0 - inset).into(),
+        ));
         commands.push(SceneCommand::PushTransform([
             [1.0, 0.0, 0.01],
             [0.0, 1.0, 0.0],

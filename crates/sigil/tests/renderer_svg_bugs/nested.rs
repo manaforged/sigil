@@ -22,7 +22,12 @@ fn off(got: &[u8], want: &[u8]) -> f32 {
     let wrong = got
         .chunks_exact(4)
         .zip(want.chunks_exact(4))
-        .filter(|(a, b)| a.iter().zip(*b).take(3).any(|(x, y)| x.abs_diff(*y) > TOLERANCE))
+        .filter(|(a, b)| {
+            a.iter()
+                .zip(*b)
+                .take(3)
+                .any(|(x, y)| x.abs_diff(*y) > TOLERANCE)
+        })
         .count();
     wrong as f32 / (SIDE * SIDE) as f32
 }

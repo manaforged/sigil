@@ -22,7 +22,9 @@ impl SpaceStyle {
 
     fn perspective_at(&self, rect: Rect) -> Option<Transform3D> {
         let distance = self.perspective?;
-        let [ox, oy] = self.perspective_origin.map(|value| f32::from(value) / 10_000.0);
+        let [ox, oy] = self
+            .perspective_origin
+            .map(|value| f32::from(value) / 10_000.0);
         let origin = Point::new(
             ox.mul_add(rect.width, rect.origin.x),
             oy.mul_add(rect.height, rect.origin.y),
@@ -36,7 +38,11 @@ impl Transform2D {
     pub(crate) fn matrix3d(self, rect: Rect, space: &SpaceStyle) -> Transform3D {
         let flat = Transform3D::IDENTITY;
         let [x, y, z] = space.turn;
-        let turn = flat.translate(0.0, 0.0, space.depth).rotate_x(x).rotate_y(y).rotate_z(z);
+        let turn = flat
+            .translate(0.0, 0.0, space.depth)
+            .rotate_x(x)
+            .rotate_y(y)
+            .rotate_z(z);
         Transform3D::from(self.matrix(rect)).then(flat.around(self.pivot(rect), turn))
     }
 }

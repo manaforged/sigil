@@ -123,7 +123,11 @@ fn resvg_raster(svg: &str, scale: f32) -> Picture {
         (size.height() * scale).round() as u32,
     );
     let mut pixmap = Pixmap::new(width, height).expect("pixmap");
-    resvg::render(&tree, Transform::from_scale(scale, scale), &mut pixmap.as_mut());
+    resvg::render(
+        &tree,
+        Transform::from_scale(scale, scale),
+        &mut pixmap.as_mut(),
+    );
     let rgba = pixmap
         .pixels()
         .iter()
@@ -151,17 +155,26 @@ fn stem_reference(backdrop: [u8; 3], scale: f32) -> f32 {
 }
 
 fn coverage(pixel: [u8; 4], backdrop: [u8; 3], straight: bool) -> f32 {
-    let alpha = if straight { f32::from(pixel[3]) / 255.0 } else { 1.0 };
+    let alpha = if straight {
+        f32::from(pixel[3]) / 255.0
+    } else {
+        1.0
+    };
     let shown = f32::from(pixel[1]).mul_add(alpha, f32::from(backdrop[1]) * (1.0 - alpha));
     let paper = f32::from(backdrop[1]).max(1.0);
     ((paper - shown) / paper).clamp(0.0, 1.0)
 }
 
 fn stem_width(picture: &Picture, rect: Rect, scale: f32, backdrop: [u8; 3], straight: bool) -> f32 {
-    let (left, top) = ((rect.origin.x * scale) as u32, (rect.origin.y * scale) as u32);
+    let (left, top) = (
+        (rect.origin.x * scale) as u32,
+        (rect.origin.y * scale) as u32,
+    );
     let right = (((rect.origin.x + rect.width) * scale) as u32).min(picture.width());
     let bottom = (((rect.origin.y + rect.height) * scale) as u32).min(picture.height());
-    let inked = |y: u32| (left..right).any(|x| coverage(picture.get_pixel(x, y).0, backdrop, straight) > 0.5);
+    let inked = |y: u32| {
+        (left..right).any(|x| coverage(picture.get_pixel(x, y).0, backdrop, straight) > 0.5)
+    };
     let rows: Vec<u32> = (top..bottom).filter(|y| inked(*y)).collect();
     let (Some(first), Some(last)) = (rows.first(), rows.last()) else {
         panic!("no glyph inked in {rect:?}");

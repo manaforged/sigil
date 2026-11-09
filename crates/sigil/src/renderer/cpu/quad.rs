@@ -60,7 +60,13 @@ pub(super) fn from_rgba8(width: u32, height: u32, rgba: &[u8]) -> Option<Pixmap>
     Some(pixmap)
 }
 
-pub(super) fn fill_scaled(target: &mut Pixmap, source: &Pixmap, src: Rect, dest: Rect, brush: &Brush<'_>) {
+pub(super) fn fill_scaled(
+    target: &mut Pixmap,
+    source: &Pixmap,
+    src: Rect,
+    dest: Rect,
+    brush: &Brush<'_>,
+) {
     let Some(dest_rect) = CpuBound::of(target, brush.transform).clip_rect(dest) else {
         return;
     };

@@ -124,7 +124,10 @@ fn kurbo_stroke(stroke: &PathStroke) -> Stroke {
         .with_join(join)
         .with_miter_limit(f64::from(MITER_LIMIT));
     if stroke.dash.iter().any(|length| *length > 0.0) {
-        line.with_dashes(0.0, stroke.dash.iter().map(|length| f64::from(length.max(0.0))))
+        line.with_dashes(
+            0.0,
+            stroke.dash.iter().map(|length| f64::from(length.max(0.0))),
+        )
     } else {
         line
     }
@@ -145,7 +148,10 @@ fn set_paint(sink: &mut impl PathSink, paint: &PathPaint, opacity: f32) {
 
 fn gradient_brush(gradient: &Gradient, opacity: f32) -> (PaintType, Affine) {
     if let [only] = gradient.stops.as_slice() {
-        return (PaintType::Solid(color(only.color, opacity)), Affine::IDENTITY);
+        return (
+            PaintType::Solid(color(only.color, opacity)),
+            Affine::IDENTITY,
+        );
     }
     let ([first, last], stops) = gradient.spread();
     let extend = if gradient.repeat_span().is_some() {
@@ -171,14 +177,23 @@ fn shape(kind: GradientKind, first: f32, last: f32) -> (Shape, Affine) {
     match kind {
         GradientKind::Linear { start, end } => {
             let at = |t: f32| {
-                Point::new((end.x - start.x).mul_add(t, start.x), (end.y - start.y).mul_add(t, start.y))
+                Point::new(
+                    (end.x - start.x).mul_add(t, start.x),
+                    (end.y - start.y).mul_add(t, start.y),
+                )
             };
-            (Shape::new_linear(point(at(first)), point(at(last))), Affine::IDENTITY)
+            (
+                Shape::new_linear(point(at(first)), point(at(last))),
+                Affine::IDENTITY,
+            )
         }
         GradientKind::Radial { center, radius } => {
             let [rx, ry] = radius.map(|r| f64::from(r.max(MIN_RADIUS)));
             let place = Affine::translate(point(center)) * Affine::scale_non_uniform(rx, ry);
-            (Shape::new_two_point_radial((0.0, 0.0), first, (0.0, 0.0), last), place)
+            (
+                Shape::new_two_point_radial((0.0, 0.0), first, (0.0, 0.0), last),
+                place,
+            )
         }
         GradientKind::Conic { center, angle } => {
             let turn = f64::from((angle - QUARTER).to_radians());

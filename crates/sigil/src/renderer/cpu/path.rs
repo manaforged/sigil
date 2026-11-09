@@ -57,8 +57,12 @@ impl CpuPainter<'_> {
     }
 
     fn window(&self, visible: Rect) -> Option<Window> {
-        let left = (visible.origin.x * self.scale - self.origin.x).floor().max(0.0);
-        let top = (visible.origin.y * self.scale - self.origin.y).floor().max(0.0);
+        let left = (visible.origin.x * self.scale - self.origin.x)
+            .floor()
+            .max(0.0);
+        let top = (visible.origin.y * self.scale - self.origin.y)
+            .floor()
+            .max(0.0);
         let right = ((visible.origin.x + visible.width) * self.scale - self.origin.x)
             .ceil()
             .min(self.target.width() as f32);

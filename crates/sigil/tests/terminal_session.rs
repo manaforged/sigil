@@ -11,7 +11,11 @@ use sigil::app::Session;
 use sigil::reactive::Owner;
 use sigil::tasks::AsyncRuntime;
 
-fn wait_for(runtime: &mut AsyncRuntime, session: &Session, done: impl Fn(&[String]) -> bool) -> Vec<String> {
+fn wait_for(
+    runtime: &mut AsyncRuntime,
+    session: &Session,
+    done: impl Fn(&[String]) -> bool,
+) -> Vec<String> {
     let deadline = Instant::now() + Duration::from_secs(10);
     while Instant::now() < deadline && !done(&session.lines.get()) {
         runtime.pump();
@@ -35,8 +39,13 @@ fn a_shell_started_in_a_folder_runs_commands_there() {
         let session = Session::spawn_in("/bin/sh", &dir).expect("spawn");
         session.write(b"pwd\r").expect("write");
         let wanted = dir.display().to_string();
-        let screen = wait_for(&mut runtime, &session, |lines| lines.iter().any(|line| line.trim() == wanted));
-        assert!(screen.iter().any(|line| line.trim() == wanted), "{wanted} not in {screen:?}");
+        let screen = wait_for(&mut runtime, &session, |lines| {
+            lines.iter().any(|line| line.trim() == wanted)
+        });
+        assert!(
+            screen.iter().any(|line| line.trim() == wanted),
+            "{wanted} not in {screen:?}"
+        );
     });
 }
 
@@ -48,8 +57,13 @@ fn a_resized_terminal_tells_the_program_its_new_size() {
         session.resize(100, 30).expect("resize");
         std::thread::sleep(Duration::from_millis(200));
         session.write(b"stty size\r").expect("write");
-        let screen = wait_for(&mut runtime, &session, |lines| lines.iter().any(|line| line.trim() == "30 100"));
-        assert!(screen.iter().any(|line| line.trim() == "30 100"), "no 30 100 in {screen:?}");
+        let screen = wait_for(&mut runtime, &session, |lines| {
+            lines.iter().any(|line| line.trim() == "30 100")
+        });
+        assert!(
+            screen.iter().any(|line| line.trim() == "30 100"),
+            "no 30 100 in {screen:?}"
+        );
     });
 }
 
@@ -59,8 +73,13 @@ fn paste_reaches_the_program_as_typed_text() {
         let mut runtime = AsyncRuntime::new().expect("runtime");
         let session = shell(&mut runtime);
         session.paste("echo pasted-$((40+2))\r").expect("paste");
-        let screen = wait_for(&mut runtime, &session, |lines| lines.iter().any(|line| line.trim() == "pasted-42"));
-        assert!(screen.iter().any(|line| line.trim() == "pasted-42"), "{screen:?}");
+        let screen = wait_for(&mut runtime, &session, |lines| {
+            lines.iter().any(|line| line.trim() == "pasted-42")
+        });
+        assert!(
+            screen.iter().any(|line| line.trim() == "pasted-42"),
+            "{screen:?}"
+        );
     });
 }
 
@@ -69,15 +88,32 @@ fn scrolling_up_shows_lines_that_left_the_screen() {
     Owner::scope("terminal_scroll", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
         let session = shell(&mut runtime);
-        session.write(b"i=1; while [ $i -le 60 ]; do echo line-$i; i=$((i+1)); done\r").expect("write");
-        let live = wait_for(&mut runtime, &session, |lines| lines.iter().any(|line| line.trim() == "line-60"));
-        assert!(!live.iter().any(|line| line.trim() == "line-1"), "line-1 is still on screen: {live:?}");
+        session
+            .write(b"i=1; while [ $i -le 60 ]; do echo line-$i; i=$((i+1)); done\r")
+            .expect("write");
+        let live = wait_for(&mut runtime, &session, |lines| {
+            lines.iter().any(|line| line.trim() == "line-60")
+        });
+        assert!(
+            !live.iter().any(|line| line.trim() == "line-1"),
+            "line-1 is still on screen: {live:?}"
+        );
         session.scroll(100).expect("scroll");
-        let back = wait_for(&mut runtime, &session, |lines| lines.iter().any(|line| line.trim() == "line-1"));
-        assert!(back.iter().any(|line| line.trim() == "line-1"), "scrollback lost line-1: {back:?}");
+        let back = wait_for(&mut runtime, &session, |lines| {
+            lines.iter().any(|line| line.trim() == "line-1")
+        });
+        assert!(
+            back.iter().any(|line| line.trim() == "line-1"),
+            "scrollback lost line-1: {back:?}"
+        );
         session.scroll(-100).expect("scroll");
-        let again = wait_for(&mut runtime, &session, |lines| lines.iter().any(|line| line.trim() == "line-60"));
-        assert!(again.iter().any(|line| line.trim() == "line-60"), "{again:?}");
+        let again = wait_for(&mut runtime, &session, |lines| {
+            lines.iter().any(|line| line.trim() == "line-60")
+        });
+        assert!(
+            again.iter().any(|line| line.trim() == "line-60"),
+            "{again:?}"
+        );
     });
 }
 
@@ -95,7 +131,9 @@ fn run(runtime: &mut AsyncRuntime, session: &Session, command: &str, wanted: &st
 const ASK: &str = "stty raw -echo; printf '%b' \"$QUERY\"; r=$(dd bs=1 count=$COUNT 2>/dev/null | od -An -c | tr -d ' \\n'); stty sane; echo got-$r\r";
 
 fn ask(runtime: &mut AsyncRuntime, session: &Session, query: &str, count: usize, wanted: &str) {
-    session.write(format!("QUERY='{query}' COUNT={count}\r").as_bytes()).expect("write");
+    session
+        .write(format!("QUERY='{query}' COUNT={count}\r").as_bytes())
+        .expect("write");
     run(runtime, session, ASK, &format!("got-{wanted}"));
 }
 
@@ -131,7 +169,12 @@ fn the_title_a_program_sets_is_published() {
     Owner::scope("terminal_title", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
         let session = shell(&mut runtime);
-        run(&mut runtime, &session, "printf '\\033]2;my-title\\007'; echo set\r", "set");
+        run(
+            &mut runtime,
+            &session,
+            "printf '\\033]2;my-title\\007'; echo set\r",
+            "set",
+        );
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline && session.title.get() != "my-title" {
             runtime.pump();
@@ -146,7 +189,12 @@ fn a_bell_is_counted() {
     Owner::scope("terminal_bell", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
         let session = shell(&mut runtime);
-        run(&mut runtime, &session, "printf '\\007'; echo rang\r", "rang");
+        run(
+            &mut runtime,
+            &session,
+            "printf '\\007'; echo rang\r",
+            "rang",
+        );
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline && session.bell.get() == 0 {
             runtime.pump();
@@ -176,7 +224,12 @@ fn a_program_is_told_this_terminal_has_full_color() {
     Owner::scope("terminal_color", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
         let session = shell(&mut runtime);
-        run(&mut runtime, &session, "echo color-$COLORTERM\r", "color-truecolor");
+        run(
+            &mut runtime,
+            &session,
+            "echo color-$COLORTERM\r",
+            "color-truecolor",
+        );
     });
 }
 
@@ -187,7 +240,12 @@ fn the_default_shell_is_a_login_shell_in_the_folder() {
         runtime.install_current();
         let dir = std::env::current_dir().expect("cwd");
         let session = Session::shell_in(&dir).expect("spawn");
-        run(&mut runtime, &session, "printf 'zero-%s\\n' \"$0\"\r", "zero--");
+        run(
+            &mut runtime,
+            &session,
+            "printf 'zero-%s\\n' \"$0\"\r",
+            "zero--",
+        );
     });
 }
 
@@ -196,13 +254,21 @@ fn scrolled_back_output_stays_put_until_a_key() {
     Owner::scope("terminal_scroll_hold", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
         let session = shell(&mut runtime);
-        session.write(b"i=1; while [ $i -le 60 ]; do echo line-$i; i=$((i+1)); done\r").expect("write");
+        session
+            .write(b"i=1; while [ $i -le 60 ]; do echo line-$i; i=$((i+1)); done\r")
+            .expect("write");
         wait_for(&mut runtime, &session, |lines| screen_has(lines, "line-60"));
         session.scroll(100).expect("scroll");
-        wait_for(&mut runtime, &session, |lines| lines.iter().any(|line| line.trim() == "line-1"));
+        wait_for(&mut runtime, &session, |lines| {
+            lines.iter().any(|line| line.trim() == "line-1")
+        });
         session.write(b"sleep 0; echo more\r").expect("write");
         std::thread::sleep(Duration::from_millis(300));
         runtime.pump();
-        assert!(!screen_has(&session.lines.get(), "more"), "output pulled the view back: {:?}", session.lines.get());
+        assert!(
+            !screen_has(&session.lines.get(), "more"),
+            "output pulled the view back: {:?}",
+            session.lines.get()
+        );
     });
 }

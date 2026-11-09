@@ -60,7 +60,11 @@ fn screen(lines: Signal<Vec<Row>>) -> NodeBuilder {
     let count = derived(move || lines.with(Vec::len));
     container()
         .layout(LayoutStyle::flex_column().fill_width().min_size(0.0, 0.0))
-        .children_reactive(move || (0..count.get()).map(|at| line(lines, at)).collect::<Vec<NodeBuilder>>())
+        .children_reactive(move || {
+            (0..count.get())
+                .map(|at| line(lines, at))
+                .collect::<Vec<NodeBuilder>>()
+        })
 }
 
 fn trimmed(row: &Row) -> Row {
@@ -79,7 +83,10 @@ fn trimmed(row: &Row) -> Row {
             .runs
             .iter()
             .filter(|run| run.start < keep)
-            .map(|run| TextRun { end: run.end.min(keep), ..run.clone() })
+            .map(|run| TextRun {
+                end: run.end.min(keep),
+                ..run.clone()
+            })
             .collect(),
     }
 }
@@ -87,7 +94,12 @@ fn trimmed(row: &Row) -> Row {
 fn line(lines: Signal<Vec<Row>>, at: usize) -> NodeBuilder {
     let row = derived(move || lines.with(|rows| rows.get(at).map(trimmed).unwrap_or_default()));
     container()
-        .layout(LayoutStyle::block().fill_width().height(rows(1.0)).shrink(0.0))
+        .layout(
+            LayoutStyle::block()
+                .fill_width()
+                .height(rows(1.0))
+                .shrink(0.0),
+        )
         .children_reactive(move || {
             let row = row.get();
             vec![text(row.text).runs(row.runs).nowrap()]
@@ -174,7 +186,11 @@ fn pointer(node: NodeBuilder, session: &Rc<Session>) -> NodeBuilder {
     .pointer_move(move |event| {
         let at = cell_at(event.position.x, event.position.y);
         if last.replace(at) != at {
-            send(&moved, dragged.get().map_or(Mouse::Move, Mouse::Drag), event);
+            send(
+                &moved,
+                dragged.get().map_or(Mouse::Move, Mouse::Drag),
+                event,
+            );
         }
     })
 }

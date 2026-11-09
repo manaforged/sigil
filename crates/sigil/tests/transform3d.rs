@@ -115,7 +115,11 @@ fn edge_probes(quad: &[Point; 4]) -> Vec<(Point, bool)> {
     probes.push((Point::new(CENTRE - 36.0, CENTRE - 52.0), true));
     probes.push((Point::new(CENTRE + 40.0, CENTRE), false));
     for (point, expect) in &probes {
-        assert_eq!(inside(quad, *point), *expect, "probe {point:?} is on the wrong side of the CSS quad");
+        assert_eq!(
+            inside(quad, *point),
+            *expect,
+            "probe {point:?} is on the wrong side of the CSS quad"
+        );
     }
     probes
 }
@@ -139,7 +143,8 @@ fn coverage(frame: &image::RgbaImage, point: Point) -> f32 {
             .sum()
     };
     let background_rgb = [background[0], background[1], background[2]];
-    distance(pixel, background_rgb) / distance(image::Rgba([INK.r, INK.g, INK.b, 255]), background_rgb)
+    distance(pixel, background_rgb)
+        / distance(image::Rgba([INK.r, INK.g, INK.b, 255]), background_rgb)
 }
 
 #[track_caller]
@@ -152,7 +157,11 @@ fn assert_corners(frame: &image::RgbaImage, surface: &str) {
             "{surface}: probe ({:.1}, {:.1}) has ink {found:.2}, expected {}",
             point.x,
             point.y,
-            if expect { "inside the projected card" } else { "outside it" }
+            if expect {
+                "inside the projected card"
+            } else {
+                "outside it"
+            }
         );
     }
 }
@@ -202,12 +211,25 @@ fn a_turned_card_agrees_on_the_cpu_and_the_gpu() {
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     let (mut worst, mut far, mut total) = (0_u8, 0_usize, 0_usize);
     for (a, b) in gpu.as_raw().chunks(4).zip(cpu.chunks(4)) {
-        let delta = a.iter().zip(b).take(3).map(|(x, y)| x.abs_diff(*y)).max().unwrap_or(0);
+        let delta = a
+            .iter()
+            .zip(b)
+            .take(3)
+            .map(|(x, y)| x.abs_diff(*y))
+            .max()
+            .unwrap_or(0);
         worst = worst.max(delta);
         far += usize::from(delta > 8);
         total += 1;
     }
     let share = far as f32 / total as f32;
-    println!("cpu/gpu: worst channel {worst}/255, {:.3}% of pixels differ by more than 8", share * 100.0);
-    assert!(share <= 0.005, "cpu and gpu differ on {:.3}% of pixels", share * 100.0);
+    println!(
+        "cpu/gpu: worst channel {worst}/255, {:.3}% of pixels differ by more than 8",
+        share * 100.0
+    );
+    assert!(
+        share <= 0.005,
+        "cpu and gpu differ on {:.3}% of pixels",
+        share * 100.0
+    );
 }

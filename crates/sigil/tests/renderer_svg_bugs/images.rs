@@ -56,5 +56,10 @@ fn one_renderer_draws_every_new_image_across_many_frames() {
             missing.push((index, found.to_vec(), want));
         }
     }
-    assert!(missing.is_empty(), "{} of {FRAMES} frames drew the wrong image: {:?}", missing.len(), missing.first());
+    assert!(
+        missing.is_empty(),
+        "{} of {FRAMES} frames drew the wrong image: {:?}",
+        missing.len(),
+        missing.first()
+    );
 }

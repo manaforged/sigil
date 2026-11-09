@@ -16,18 +16,18 @@ mod gradient;
 mod mask;
 mod space;
 pub use clip::ClipShape;
+pub use color::{BgGradient, ColorAtom, GradientAxis, GradientStopKey, Rgba8};
 pub use filter::FilterAtom;
 pub(crate) use filter::{
     Amount, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units, hue_units,
     shadow_color,
 };
-pub use mask::{MaskAtom, MaskImage, MaskSize};
-pub(crate) use mask::{MaskKind, MaskPart, MaskStyle};
-pub use space::{Backface, SpaceAtom, SpaceStyle};
-pub use color::{BgGradient, ColorAtom, GradientAxis, GradientStopKey, Rgba8};
 pub use gradient::{
     BorderStyle, Conic, GradientShape, PaintAtom, PaintStyle, Radial, RadialExtent, StopSlot,
 };
+pub use mask::{MaskAtom, MaskImage, MaskSize};
+pub(crate) use mask::{MaskKind, MaskPart, MaskStyle};
+pub use space::{Backface, SpaceAtom, SpaceStyle};
 
 /// Identifies a transition preset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

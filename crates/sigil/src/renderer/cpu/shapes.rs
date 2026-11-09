@@ -10,8 +10,7 @@ use crate::geometry::{Point, Rect};
 use crate::style::Rgba8;
 use tiny_skia::{
     BlendMode, Color as TsColor, ColorSpace, FillRule, FilterQuality, IntSize, Mask, Paint, Path,
-    PathBuilder, Pattern, Pixmap, SpreadMode, Stroke as TsStroke,
-    Transform as TsTransform,
+    PathBuilder, Pattern, Pixmap, SpreadMode, Stroke as TsStroke, Transform as TsTransform,
 };
 
 use crate::renderer::cache_limits::CacheLimits;
@@ -136,7 +135,13 @@ pub(super) fn blit(
         BlendMode::SourceOver => BLEND_SPACE,
         _ => ColorSpace::Linear,
     };
-    blit_in(target, source, transform, Some(mask), (blend_mode, space, 1.0));
+    blit_in(
+        target,
+        source,
+        transform,
+        Some(mask),
+        (blend_mode, space, 1.0),
+    );
 }
 
 pub(super) fn blit_in(

@@ -202,13 +202,17 @@ impl Session {
 fn prepare(command: &mut portable_pty::CommandBuilder) {
     command.env("TERM", "xterm-256color");
     command.env("COLORTERM", "truecolor");
-    if cfg!(target_os = "macos") && command.get_env("LANG").is_none() && command.get_env("LC_ALL").is_none() {
+    if cfg!(target_os = "macos")
+        && command.get_env("LANG").is_none()
+        && command.get_env("LC_ALL").is_none()
+    {
         command.env("LANG", "en_US.UTF-8");
     }
 }
 
 fn default_colors() -> (Rgba8, Rgba8) {
-    crate::style::theme::ambient::ActiveTheme::capture().with(|theme| (theme.on_surface, theme.surface))
+    crate::style::theme::ambient::ActiveTheme::capture()
+        .with(|theme| (theme.on_surface, theme.surface))
 }
 
 fn context() -> AppResult<(crate::reactive::Owner, crate::tasks::runtime::Dispatcher)> {

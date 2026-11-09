@@ -113,7 +113,11 @@ pub(super) fn break_lines(
 )]
 fn line_estimate(segments: &[ShapedSegment], max_width: Option<f32>) -> usize {
     let Some(limit) = max_width.filter(|limit| *limit > 0.0) else {
-        return if max_width.is_some() { segments.len() / 2 + 1 } else { 1 };
+        return if max_width.is_some() {
+            segments.len() / 2 + 1
+        } else {
+            1
+        };
     };
     let total: f32 = segments.iter().map(|seg| seg.advance).sum();
     (total / limit).ceil().clamp(1.0, segments.len() as f32) as usize

@@ -146,7 +146,11 @@ fn the_active_segment_is_marked() {
         40,
         4,
     );
-    assert!(bold_at(&grid, "Week") && !bold_at(&grid, "Day"), "{}", grid.text());
+    assert!(
+        bold_at(&grid, "Week") && !bold_at(&grid, "Day"),
+        "{}",
+        grid.text()
+    );
     assert!(!grid.text().contains('['), "{}", grid.text());
 }
 

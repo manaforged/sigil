@@ -42,7 +42,10 @@ fn bar(ui: &mut Harness, caption: &str) -> Rect {
 }
 
 fn assert_left_to_right(ui: &mut Harness, names: &[&str]) {
-    let xs = names.iter().map(|name| label(ui, name).origin.x).collect::<Vec<_>>();
+    let xs = names
+        .iter()
+        .map(|name| label(ui, name).origin.x)
+        .collect::<Vec<_>>();
     assert!(
         xs.windows(2).all(|pair| pair[0] < pair[1]),
         "{names:?} sit at x {xs:?}"
@@ -64,7 +67,10 @@ fn vega_temporal_months_keep_time_order() {
     ui.settle();
     let (feb, mar) = (x_of(&mut ui, "February"), x_of(&mut ui, "March"));
     assert!(feb < mar, "February at {feb} is right of March at {mar}");
-    assert!(ui.query(&Query::text("Jan 1, 2024")).is_none(), "raw date label");
+    assert!(
+        ui.query(&Query::text("Jan 1, 2024")).is_none(),
+        "raw date label"
+    );
 }
 
 #[test]
@@ -170,12 +176,28 @@ fn a_nominal_y_draws_horizontal_bars() {
     let mut ui = vega(
         r#"{"data":{"values":[{"a":"C","b":2},{"a":"C","b":7},{"a":"C","b":4},{"a":"D","b":1},{"a":"D","b":2},{"a":"D","b":6},{"a":"E","b":8},{"a":"E","b":4},{"a":"E","b":7}]},"mark":"bar","encoding":{"y":{"field":"a","type":"nominal"},"x":{"aggregate":"average","field":"b","type":"quantitative"}}}"#,
     );
-    let (c, d, e) = (label(&mut ui, "C"), label(&mut ui, "D"), label(&mut ui, "E"));
-    assert!(c.origin.y < d.origin.y && d.origin.y < e.origin.y, "C {c:?} D {d:?} E {e:?}");
+    let (c, d, e) = (
+        label(&mut ui, "C"),
+        label(&mut ui, "D"),
+        label(&mut ui, "E"),
+    );
+    assert!(
+        c.origin.y < d.origin.y && d.origin.y < e.origin.y,
+        "C {c:?} D {d:?} E {e:?}"
+    );
     let (low, high) = (bar(&mut ui, "4.33"), bar(&mut ui, "6.33"));
-    assert!(low.width > low.height, "the C bar {low:?} is not horizontal");
-    assert!((low.origin.x - high.origin.x).abs() < 1.0, "bars start apart: {low:?} {high:?}");
-    assert!(high.width > low.width, "6.33 {high:?} is not longer than 4.33 {low:?}");
+    assert!(
+        low.width > low.height,
+        "the C bar {low:?} is not horizontal"
+    );
+    assert!(
+        (low.origin.x - high.origin.x).abs() < 1.0,
+        "bars start apart: {low:?} {high:?}"
+    );
+    assert!(
+        high.width > low.width,
+        "6.33 {high:?} is not longer than 4.33 {low:?}"
+    );
 }
 
 #[test]
@@ -184,8 +206,14 @@ fn a_stacked_horizontal_bar_puts_the_first_color_at_zero() {
         r#"{"data":{"values":[{"v":"P","s":"Waseca","y":40},{"v":"P","s":"Crookston","y":30},{"v":"Q","s":"Waseca","y":20},{"v":"Q","s":"Crookston","y":10}]},"mark":"bar","encoding":{"x":{"aggregate":"sum","field":"y"},"y":{"field":"v"},"color":{"field":"s"}}}"#,
     );
     let (first, last) = (bar(&mut ui, "Crookston 30"), bar(&mut ui, "Waseca 40"));
-    assert!(first.origin.x < last.origin.x, "Crookston {first:?} is right of Waseca {last:?}");
-    assert!((first.origin.y - last.origin.y).abs() < 1.0, "P segments are on two rows");
+    assert!(
+        first.origin.x < last.origin.x,
+        "Crookston {first:?} is right of Waseca {last:?}"
+    );
+    assert!(
+        (first.origin.y - last.origin.y).abs() < 1.0,
+        "P segments are on two rows"
+    );
 }
 
 #[test]
@@ -234,5 +262,8 @@ fn the_first_color_stacks_on_top() {
         r#"{"data":{"values":[{"a":"A1","b":28,"c":"x"},{"a":"A1","b":23,"c":"y"},{"a":"A2","b":18,"c":"x"},{"a":"A2","b":21,"c":"y"}]},"mark":"bar","encoding":{"x":{"field":"a","type":"ordinal"},"y":{"field":"b","type":"quantitative","stack":"zero"},"color":{"field":"c","type":"nominal"}}}"#,
     );
     let (top, bottom) = (bar(&mut ui, "x 28"), bar(&mut ui, "y 23"));
-    assert!(top.origin.y < bottom.origin.y, "x {top:?} is below y {bottom:?}");
+    assert!(
+        top.origin.y < bottom.origin.y,
+        "x {top:?} is below y {bottom:?}"
+    );
 }
