@@ -165,6 +165,14 @@ struct FaceSpan {
 
 fn coalesce_face_spans(chain: &[Font], fragment: &str) -> SmallVec<[FaceSpan; 4]> {
     let mut spans = SmallVec::<[FaceSpan; 4]>::new();
+    if chain.first().is_some_and(|primary| primary.covers(fragment)) {
+        spans.push(FaceSpan {
+            start: 0,
+            end: fragment.len(),
+            face_slot: 0,
+        });
+        return spans;
+    }
     for (offset, cluster) in fragment.grapheme_indices(true) {
         let (face_slot, _) = select_face(chain, cluster);
         let end = offset + cluster.len();
