@@ -327,6 +327,9 @@ fn byte_level(levels: &[u8], byte: usize) -> u8 {
 
 pub(super) fn char_script(ch: char) -> Script {
     use unicode_script::{Script as UScript, UnicodeScript};
+    if ch.is_ascii() {
+        return if ch.is_ascii_alphabetic() { Script::Latin } else { Script::Common };
+    }
     match ch.script() {
         UScript::Common | UScript::Inherited | UScript::Unknown => Script::Common,
         UScript::Latin | UScript::Greek | UScript::Cyrillic => Script::Latin,
