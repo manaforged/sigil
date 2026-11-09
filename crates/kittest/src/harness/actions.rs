@@ -6,9 +6,21 @@ use super::{Harness, Node};
 
 const DRAG_STEPS: u16 = 4;
 
-pub trait Target {
+mod sealed {
+    pub trait Sealed {}
+}
+
+/// A place a pointer step acts on: a point, a node, or the accessible name of a control.
+pub trait Target: sealed::Sealed {
+    /// Returns the point in logical pixels.
     fn point(&self, ui: &mut Harness) -> Point;
 }
+
+impl sealed::Sealed for Point {}
+
+impl sealed::Sealed for Node {}
+
+impl sealed::Sealed for str {}
 
 impl Target for Point {
     fn point(&self, _: &mut Harness) -> Point {

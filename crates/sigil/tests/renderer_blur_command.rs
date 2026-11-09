@@ -17,12 +17,8 @@ use sigil_kittest::gpu::{Capture, render_capture};
 const VIEWPORT: (f32, f32) = (128.0, 64.0);
 const VIEWPORT_WIDTH: u32 = 128;
 const VIEWPORT_HEIGHT: u32 = 64;
-const CAPTURE: Capture = Capture {
-    viewport: VIEWPORT,
-    size_px: [VIEWPORT_WIDTH, VIEWPORT_HEIGHT],
-    scale: 1.0,
-    clear: Color::rgba(0.05, 0.06, 0.09, 1.0),
-};
+const CAPTURE: Capture = Capture::new(VIEWPORT, [VIEWPORT_WIDTH, VIEWPORT_HEIGHT])
+    .clear(Color::rgba(0.05, 0.06, 0.09, 1.0));
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]

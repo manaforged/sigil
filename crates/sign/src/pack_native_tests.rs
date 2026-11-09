@@ -46,10 +46,11 @@ fn standalone_signing_produces_a_valid_executable_and_refuses_links()
     let signed = fs::read(&executable)?;
     let link = directory.join("linked-executable");
     symlink(&executable, &link)?;
-    assert!(matches!(
-        super::CodeSign::default().sign(&link),
-        Err(super::PackError::Symlink(_))
-    ));
+    assert!(
+        super::CodeSign::default()
+            .sign(&link)
+            .is_err_and(|error| error.kind() == super::ErrorKind::Symlink)
+    );
     assert_eq!(fs::read(&executable)?, signed);
     assert!(super::CodeSign::default().sign(&directory).is_err());
     fs::remove_dir_all(directory)?;
@@ -59,8 +60,11 @@ fn standalone_signing_produces_a_valid_executable_and_refuses_links()
 #[cfg(not(target_os = "macos"))]
 #[test]
 fn native_signing_rejects_unsupported_platforms() {
-    assert!(matches!(
-        super::CodeSign::default().sign(std::path::Path::new("app.exe")),
-        Err(super::PackError::Codesign(message)) if message == "native signing of app.exe is supported only on macOS"
-    ));
+    assert!(
+        super::CodeSign::default()
+            .sign(std::path::Path::new("app.exe"))
+            .is_err_and(|error| error.kind() == super::ErrorKind::Codesign
+                && error.to_string()
+                    == "codesign: native signing of app.exe is supported only on macOS")
+    );
 }

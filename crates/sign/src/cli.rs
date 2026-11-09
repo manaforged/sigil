@@ -1,10 +1,18 @@
+use std::io;
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 use serde::de::value::{Error as ValueError, StrDeserializer};
 
 use crate::files::{replace, write_new};
-use crate::{AppBundle, CodeSign, ResourceCopy, macos_app, sign_file, verify_file, windows_dir};
+use crate::{
+    AppBundle, CodeSign, Error, ErrorKind, ResourceCopy, macos_app, sign_file, verify_file,
+    windows_dir,
+};
+
+const USAGE: &str = "usage: sigil-pack <macos|dmg|notarize|windows|codesign|sign|verify|genkey>";
+const PASSWORD_ENV: &str = "SIGIL_PACK_PASSWORD";
+const REFUSE_PASSWORD_FLAG: &str = "set SIGIL_PACK_PASSWORD; do not pass --password";
 
 #[derive(Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -19,24 +27,24 @@ enum PackCommand {
     Genkey,
 }
 
-fn flag(args: &[String], name: &str) -> Result<Option<String>, String> {
+fn flag(args: &[String], name: &str) -> Result<Option<String>, Error> {
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         if arg == name {
             return match rest.next() {
                 Some(value) if !value.starts_with("--") => Ok(Some(value.clone())),
-                _ => Err(format!("{name} requires a value")),
+                _ => Err(Error::usage(format!("{name} requires a value"))),
             };
         }
     }
     Ok(None)
 }
 
-fn required(args: &[String], name: &str) -> Result<String, String> {
-    flag(args, name)?.ok_or_else(|| format!("missing {name}"))
+fn required(args: &[String], name: &str) -> Result<String, Error> {
+    flag(args, name)?.ok_or_else(|| Error::usage(format!("missing {name}")))
 }
 
-fn resource_pairs(args: &[String]) -> Result<Vec<(PathBuf, PathBuf)>, String> {
+fn resource_pairs(args: &[String]) -> Result<Vec<(PathBuf, PathBuf)>, Error> {
     let mut froms = Vec::new();
     let mut tos = Vec::new();
     let mut rest = args.iter();
@@ -46,7 +54,7 @@ fn resource_pairs(args: &[String]) -> Result<Vec<(PathBuf, PathBuf)>, String> {
                 let value = rest
                     .next()
                     .filter(|value| !value.starts_with("--"))
-                    .ok_or_else(|| format!("missing {arg} value"))?;
+                    .ok_or_else(|| Error::usage(format!("missing {arg} value")))?;
                 let list = if arg == "--resource-from" {
                     &mut froms
                 } else {
@@ -55,23 +63,23 @@ fn resource_pairs(args: &[String]) -> Result<Vec<(PathBuf, PathBuf)>, String> {
                 list.push(PathBuf::from(value));
             }
             "--resource" => {
-                return Err(
-                    "use --resource-from PATH --resource-to REL (colon form is not used)".into(),
-                );
-            }
-            "--password" => {
-                return Err("set SIGIL_PACK_PASSWORD; do not pass --password".into());
-            }
-            _ if arg.starts_with("--resource") => {
-                return Err(format!(
-                    "{arg} is not a flag; use separate --resource-from/--resource-to values"
+                return Err(Error::usage(
+                    "use --resource-from PATH --resource-to REL (colon form is not used)",
                 ));
+            }
+            "--password" => return Err(Error::usage(REFUSE_PASSWORD_FLAG)),
+            _ if arg.starts_with("--resource") => {
+                return Err(Error::usage(format!(
+                    "{arg} is not a flag; use separate --resource-from/--resource-to values"
+                )));
             }
             _ => {}
         }
     }
     if froms.len() != tos.len() {
-        return Err("--resource-from and --resource-to counts must match".into());
+        return Err(Error::usage(
+            "--resource-from and --resource-to counts must match",
+        ));
     }
     Ok(froms.into_iter().zip(tos).collect())
 }
@@ -79,23 +87,22 @@ fn resource_pairs(args: &[String]) -> Result<Vec<(PathBuf, PathBuf)>, String> {
 fn resources(pairs: &[(PathBuf, PathBuf)]) -> Vec<ResourceCopy<'_>> {
     pairs
         .iter()
-        .map(|(from, to)| ResourceCopy {
-            from: from.as_path(),
-            to: to.as_path(),
-        })
+        .map(|(from, to)| ResourceCopy::new(from, to))
         .collect()
 }
 
-pub fn pack_cli(argv: &[String]) -> Result<(), String> {
-    let (cmd, rest) = argv
-        .split_first()
-        .ok_or("usage: sigil-pack <macos|dmg|notarize|windows|codesign|sign|verify|genkey>")?;
+/// Runs one `sigil-pack` command from its arguments, without the program name.
+pub fn pack_cli(argv: &[String]) -> Result<(), Error> {
+    let (cmd, rest) = argv.split_first().ok_or_else(|| Error::usage(USAGE))?;
     let command = PackCommand::deserialize(StrDeserializer::<ValueError>::new(cmd))
-        .map_err(|_| format!("unknown command: {cmd}"))?;
+        .ok()
+        .ok_or_else(|| Error::usage(format!("unknown command: {cmd}")))?;
     if !matches!(command, PackCommand::Macos)
         && rest.iter().any(|arg| arg == "--provisioning-profile")
     {
-        return Err("--provisioning-profile is supported only by macos".into());
+        return Err(Error::usage(
+            "--provisioning-profile is supported only by macos",
+        ));
     }
     match command {
         PackCommand::Macos => pack_macos(rest),
@@ -109,27 +116,24 @@ pub fn pack_cli(argv: &[String]) -> Result<(), String> {
     }
 }
 
-fn codesign_flags(argv: &[String]) -> Result<[Option<String>; 2], String> {
+fn codesign_flags(argv: &[String]) -> Result<[Option<String>; 2], Error> {
     let identity =
         flag(argv, "--identity")?.or_else(|| std::env::var("SIGIL_CODESIGN_IDENTITY").ok());
     Ok([identity, flag(argv, "--entitlements")?])
 }
 
 fn code_sign([identity, entitlements]: &[Option<String>; 2]) -> CodeSign<'_> {
-    CodeSign {
-        identity: identity.as_deref().filter(|value| !value.is_empty()),
-        entitlements: entitlements.as_deref().map(Path::new),
-    }
+    CodeSign::default()
+        .identity(identity.as_deref().filter(|value| !value.is_empty()))
+        .entitlements(entitlements.as_deref().map(Path::new))
 }
 
-fn pack_codesign(argv: &[String]) -> Result<(), String> {
+fn pack_codesign(argv: &[String]) -> Result<(), Error> {
     let file = required(argv, "--file")?;
-    code_sign(&codesign_flags(argv)?)
-        .sign(Path::new(&file))
-        .map_err(|error| error.to_string())
+    code_sign(&codesign_flags(argv)?).sign(Path::new(&file))
 }
 
-fn pack_macos(argv: &[String]) -> Result<(), String> {
+fn pack_macos(argv: &[String]) -> Result<(), Error> {
     let exe = required(argv, "--exe")?;
     let out = required(argv, "--out")?;
     let name = required(argv, "--name")?;
@@ -137,31 +141,31 @@ fn pack_macos(argv: &[String]) -> Result<(), String> {
     let version = required(argv, "--version")?;
     let icon = flag(argv, "--icon")?;
     let provisioning_profile = flag(argv, "--provisioning-profile")?;
-    let min = flag(argv, "--min")?.unwrap_or_else(|| "10.15".into());
-    let exe_name = flag(argv, "--exe-name")?.unwrap_or_else(|| name.clone());
+    let min = flag(argv, "--min")?;
+    let exe_name = flag(argv, "--exe-name")?;
     let copies = resource_pairs(argv)?;
     let signing = codesign_flags(argv)?;
-    let app = AppBundle {
-        name: &name,
-        identifier: &ident,
-        version: &version,
-        executable: Path::new(&exe),
-        exe_name: &exe_name,
-        icon: icon.as_deref().map(Path::new),
-        provisioning_profile: provisioning_profile.as_deref().map(Path::new),
-        min_system: &min,
-    };
+    let mut app = AppBundle::new(&name, Path::new(&exe))
+        .identifier(&ident)
+        .version(&version)
+        .icon(icon.as_deref().map(Path::new))
+        .provisioning_profile(provisioning_profile.as_deref().map(Path::new));
+    if let Some(exe_name) = &exe_name {
+        app = app.exe_name(exe_name);
+    }
+    if let Some(min) = &min {
+        app = app.min_system(min);
+    }
     macos_app(
         &app,
         &resources(&copies),
         Path::new(&out),
         &code_sign(&signing),
     )
-    .map_err(|e| e.to_string())
 }
 
 #[cfg(target_os = "macos")]
-fn pack_dmg(argv: &[String]) -> Result<(), String> {
+fn pack_dmg(argv: &[String]) -> Result<(), Error> {
     let app = required(argv, "--app")?;
     let out = required(argv, "--out")?;
     let app_path = Path::new(&app);
@@ -170,123 +174,119 @@ fn pack_dmg(argv: &[String]) -> Result<(), String> {
         None => app_path
             .file_stem()
             .map(|stem| stem.to_string_lossy().into_owned())
-            .ok_or("--app has no file name")?,
+            .ok_or_else(|| Error::usage("--app has no file name"))?,
     };
     let background = flag(argv, "--background")?;
     let icon = flag(argv, "--icon")?;
     let layout = flag(argv, "--layout")?;
     let signing = codesign_flags(argv)?;
-    let dmg = crate::Dmg {
-        app: app_path,
-        volume: &volume,
-        background: background.as_deref().map(Path::new),
-        icon: icon.as_deref().map(Path::new),
-        layout: layout.as_deref().map(Path::new),
-    };
-    crate::macos_dmg(&dmg, Path::new(&out), &code_sign(&signing)).map_err(|e| e.to_string())
+    let dmg = crate::Dmg::new(app_path, &volume)
+        .background(background.as_deref().map(Path::new))
+        .icon(icon.as_deref().map(Path::new))
+        .layout(layout.as_deref().map(Path::new));
+    crate::macos_dmg(&dmg, Path::new(&out), &code_sign(&signing))
 }
 
 #[cfg(target_os = "macos")]
-fn pack_notarize(argv: &[String]) -> Result<(), String> {
+fn pack_notarize(argv: &[String]) -> Result<(), Error> {
     let file = required(argv, "--file")?;
     let profile = flag(argv, "--profile")?
         .or_else(|| std::env::var("SIGIL_NOTARY_PROFILE").ok())
-        .ok_or("missing --profile")?;
-    crate::notarize(Path::new(&file), &profile).map_err(|e| e.to_string())
+        .ok_or_else(|| Error::usage("missing --profile"))?;
+    crate::notarize(Path::new(&file), &profile)
 }
 
 #[cfg(not(target_os = "macos"))]
-fn pack_dmg(_argv: &[String]) -> Result<(), String> {
-    Err("dmg is supported only on macOS".into())
+fn pack_dmg(_argv: &[String]) -> Result<(), Error> {
+    Err(Error::usage("dmg is supported only on macOS"))
 }
 
 #[cfg(not(target_os = "macos"))]
-fn pack_notarize(_argv: &[String]) -> Result<(), String> {
-    Err("notarize is supported only on macOS".into())
+fn pack_notarize(_argv: &[String]) -> Result<(), Error> {
+    Err(Error::usage("notarize is supported only on macOS"))
 }
 
-fn pack_windows(argv: &[String]) -> Result<(), String> {
+fn pack_windows(argv: &[String]) -> Result<(), Error> {
     let exe = required(argv, "--exe")?;
     let out = required(argv, "--out")?;
     let name = required(argv, "--name")?;
     let copies = resource_pairs(argv)?;
-    let app = AppBundle {
-        name: &name,
-        identifier: "",
-        version: "",
-        executable: Path::new(&exe),
-        exe_name: &name,
-        icon: None,
-        provisioning_profile: None,
-        min_system: "",
-    };
-    windows_dir(&app, &resources(&copies), Path::new(&out)).map_err(|e| e.to_string())
+    let app = AppBundle::new(&name, Path::new(&exe));
+    windows_dir(&app, &resources(&copies), Path::new(&out))
 }
 
-fn signing_password() -> Result<String, String> {
-    std::env::var("SIGIL_PACK_PASSWORD").map_err(|_| "set SIGIL_PACK_PASSWORD".to_string())
+fn signing_password() -> Result<String, Error> {
+    std::env::var(PASSWORD_ENV)
+        .ok()
+        .ok_or_else(|| Error::usage("set SIGIL_PACK_PASSWORD"))
 }
 
-fn pack_genkey(argv: &[String]) -> Result<(), String> {
+fn generated_key_error(error: minisign::PError) -> Error {
+    Error::caused(ErrorKind::Key, error)
+}
+
+fn write_error(path: &Path, error: io::Error) -> Error {
+    Error::context(ErrorKind::Io, format!("write {}", path.display()), error)
+}
+
+fn pack_genkey(argv: &[String]) -> Result<(), Error> {
     refuse_password_flag(argv)?;
     let dir = match argv {
         [dir] => Path::new(dir),
-        _ => return Err("usage: sigil-pack genkey DIR".into()),
+        _ => return Err(Error::usage("usage: sigil-pack genkey DIR")),
     };
     let key_path = dir.join("e2e.key");
     let pub_path = dir.join("e2e.pub");
     if key_path.symlink_metadata().is_ok() || pub_path.symlink_metadata().is_ok() {
-        return Err(format!(
+        return Err(Error::usage(format!(
             "{} already holds e2e.key/e2e.pub; refusing to overwrite",
             dir.display()
-        ));
+        )));
     }
     let pair = minisign::KeyPair::generate_encrypted_keypair(Some(signing_password()?))
-        .map_err(|e| e.to_string())?;
-    let secret = pair.sk.to_box(None).map_err(|e| e.to_string())?;
-    let public = pair.pk.to_box().map_err(|e| e.to_string())?;
+        .map_err(generated_key_error)?;
+    let secret = pair.sk.to_box(None).map_err(generated_key_error)?;
+    let public = pair.pk.to_box().map_err(generated_key_error)?;
     write_new(&key_path, secret.into_string().as_bytes(), 0o600)
-        .map_err(|e| format!("write {}: {e}", key_path.display()))?;
+        .map_err(|error| write_error(&key_path, error))?;
     write_new(&pub_path, public.into_string().as_bytes(), 0o644)
-        .map_err(|e| format!("write {}: {e}", pub_path.display()))?;
+        .map_err(|error| write_error(&pub_path, error))?;
     eprintln!("wrote {} and {}", key_path.display(), pub_path.display());
     Ok(())
 }
 
-fn refuse_password_flag(argv: &[String]) -> Result<(), String> {
+fn refuse_password_flag(argv: &[String]) -> Result<(), Error> {
     if argv
         .iter()
         .any(|arg| arg == "--password" || arg.starts_with("--password="))
     {
-        return Err("set SIGIL_PACK_PASSWORD; do not pass --password".into());
+        return Err(Error::usage(REFUSE_PASSWORD_FLAG));
     }
     Ok(())
 }
 
-fn pack_sign(argv: &[String]) -> Result<(), String> {
+fn pack_sign(argv: &[String]) -> Result<(), Error> {
     refuse_password_flag(argv)?;
     let key = required(argv, "--key")?;
     let file = required(argv, "--file")?;
     let version = required(argv, "--version")?;
-    let password = std::env::var("SIGIL_PACK_PASSWORD").ok();
+    let password = std::env::var(PASSWORD_ENV).ok();
     let envelope = sign_file(
         Path::new(&file),
         Path::new(&key),
         password.as_deref(),
         &version,
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
     let sig_path = PathBuf::from(format!("{file}.sig"));
-    replace(&sig_path, envelope.as_bytes()).map_err(|e| e.to_string())
+    replace(&sig_path, envelope.as_bytes()).map_err(Error::io)
 }
 
-fn pack_verify(argv: &[String]) -> Result<(), String> {
+fn pack_verify(argv: &[String]) -> Result<(), Error> {
     let key = required(argv, "--pub")?;
     let file = required(argv, "--file")?;
     let sig = flag(argv, "--sig")?.unwrap_or_else(|| format!("{file}.sig"));
     let version = required(argv, "--version")?;
-    verify_file(Path::new(&key), Path::new(&file), Path::new(&sig), &version)
-        .map_err(|e| e.to_string())?;
+    verify_file(Path::new(&key), Path::new(&file), Path::new(&sig), &version)?;
     eprintln!("verified {file} version {version}");
     Ok(())
 }

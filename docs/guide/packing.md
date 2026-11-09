@@ -34,7 +34,7 @@ sigil-pack codesign \
 
 `macos` and `codesign` use the same signer. `--identity` takes precedence over `SIGIL_CODESIGN_IDENTITY`. Without an identity, the signer creates an ad-hoc signature. With an identity, it enables the hardened runtime and requests a secure timestamp. `--entitlements` applies only when an identity is supplied.
 
-The Rust API is `CodeSign::sign(&self, path: &Path) -> Result<(), PackError>` from `sigil_sign`. It signs the target in place and refuses symlinks. Native signing returns an error on other platforms. The `macos` command can still create an unsigned bundle on those platforms.
+The Rust API is `CodeSign::sign(&self, path: &Path) -> Result<(), Error>` from `sigil_sign`. It signs the target in place and refuses symlinks. Native signing returns an error on other platforms. The `macos` command can still create an unsigned bundle on those platforms.
 
 Signing does not submit the target for notarization or staple a notarization ticket. Use `sigil-pack notarize` before distributing a downloaded macOS app.
 

@@ -2,7 +2,7 @@ use super::{Harness, HarnessSurface};
 use crate::compare::assert_text_matches_golden;
 use crate::gpu::{headless_renderer, render_scene_to_image};
 use crate::render::physical_extent;
-use crate::{Error, Golden, Rendered};
+use crate::{Error, ErrorKind, Golden, Rendered};
 
 impl Harness {
     pub fn image(&mut self) -> Rendered {
@@ -10,21 +10,22 @@ impl Harness {
         if let HarnessSurface::Cells { screen, size } = &mut self.surface {
             let grid = screen
                 .frame(&mut self.host, [], *size)
-                .map_err(|error| Error::Layout(error.to_string()))?;
+                .map_err(|error| Error::caused(ErrorKind::Layout, error))?;
             return grid
                 .image(
                     self.host.theme(),
                     sigil::geometry::PhysicalSize::new(10, 20),
                 )
                 .map(Some)
-                .map_err(|error| Error::Render(error.to_string()));
+                .map_err(|error| Error::caused(ErrorKind::Render, error));
         }
         let (size, scale) = match &self.surface {
             HarnessSurface::Pixels { size, scale, .. } => (*size, *scale),
             HarnessSurface::Gpu(gpu) => return gpu.image().map(Some),
             HarnessSurface::Cells { .. } => {
-                return Err(Error::Render(
-                    "a cell harness has no pixel surface".to_owned(),
+                return Err(Error::text(
+                    ErrorKind::Render,
+                    "a cell harness has no pixel surface",
                 ));
             }
         };
@@ -60,7 +61,7 @@ impl Harness {
         match self.image() {
             Ok(Some(image)) => golden.assert_image(&image),
             Ok(None) => println!("no GPU adapter — skipping snapshot {name}"),
-            Err(err) => super::fail(format!("snapshot {name}: {err}")),
+            Err(err) => super::fail(format!("snapshot {name}: {}", err.chain())),
         }
     }
 }

@@ -6,6 +6,7 @@ use sigil::kernel::Role;
 
 use super::Harness;
 
+/// One node of the accessibility tree, as a harness query returns it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Node {
     id: AkNodeId,
@@ -84,6 +85,8 @@ impl Node {
     }
 }
 
+/// A filter over the accessibility tree by role, name, and text.
+#[must_use]
 #[derive(Clone, Debug, Default)]
 pub struct Query {
     role: Option<Role>,
@@ -92,7 +95,7 @@ pub struct Query {
 }
 
 impl Query {
-    #[must_use]
+    /// Matches nodes with this role.
     pub fn role(role: Role) -> Self {
         Self {
             role: Some(role),
@@ -100,7 +103,7 @@ impl Query {
         }
     }
 
-    #[must_use]
+    /// Matches nodes whose name or value is this text.
     pub fn text(text: impl Into<String>) -> Self {
         Self {
             text: Some(text.into()),
@@ -108,7 +111,7 @@ impl Query {
         }
     }
 
-    #[must_use]
+    /// Keeps only nodes with this accessible name.
     pub fn name(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self

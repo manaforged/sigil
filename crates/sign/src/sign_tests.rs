@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
-use super::{SignError, pack_cli, sign_file, sign_file_with_key};
+use super::{ErrorKind, pack_cli, sign_file, sign_file_with_key};
 
 const PASSWORD: &str = "sigil-sign-test";
 const FIXTURE: &[u8] = b"sigil signing fixture";
@@ -31,7 +31,7 @@ impl Fixture {
         })
     }
 
-    fn sign(&self, password: Option<&str>) -> Result<String, SignError> {
+    fn sign(&self, password: Option<&str>) -> Result<String, super::Error> {
         sign_file(&self.package, &self.key, password, "0.1.0")
     }
 
@@ -77,14 +77,16 @@ fn tampered_package_fails_verification() -> Result<(), Box<dyn Error>> {
 #[test]
 fn a_wrong_or_missing_password_fails_to_load_the_key() -> Result<(), Box<dyn Error>> {
     let fixture = Fixture::new("password")?;
-    assert!(matches!(
-        fixture.sign(Some("not the password")),
-        Err(SignError::Key(_))
-    ));
-    assert!(matches!(
-        fixture.sign(None),
-        Err(SignError::PasswordRequired)
-    ));
+    assert!(
+        fixture
+            .sign(Some("not the password"))
+            .is_err_and(|error| error.kind() == ErrorKind::Key)
+    );
+    assert!(
+        fixture
+            .sign(None)
+            .is_err_and(|error| error.is_password_required())
+    );
     Ok(())
 }
 
@@ -105,6 +107,8 @@ fn verify_refuses_to_run_without_an_expected_version() -> Result<(), Box<dyn Err
         fixture.package.to_str().ok_or("path")?,
     ]
     .map(str::to_owned);
-    assert_eq!(pack_cli(&argv), Err(String::from("missing --version")));
+    assert!(pack_cli(&argv).is_err_and(
+        |error| error.kind() == ErrorKind::Usage && error.to_string() == "missing --version"
+    ));
     Ok(())
 }

@@ -43,16 +43,16 @@ fn cpu_renders_generated_scenes_deterministically() {
         let Some(message) = fails(&scene) else {
             continue;
         };
-        let keep = minimize(scene.commands.len(), |keep| {
+        let keep = minimize(scene.commands().len(), |keep| {
             fails(&scene.keep(keep)).is_some()
         });
         let small = scene.keep(&keep);
         println!(
             "seed {seed}: {message}\n{}viewport {:?} scale {}\n{:#?}",
             fixture_text(seed, &keep),
-            small.viewport,
-            small.scale,
-            small.commands
+            small.viewport(),
+            small.scale(),
+            small.commands()
         );
         failures.push(seed);
     }

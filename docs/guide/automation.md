@@ -29,7 +29,7 @@ sigil_kittest::Golden::new("save").assert_image(&img);
 # }
 ```
 
-It returns `Err(Error::NoAdapter)` when no GPU adapter exists, and `Ok(None)` when `SIGIL_ALLOW_NO_GPU=1` is set. `SIGIL_REGEN_GOLDENS=1` rebakes the goldens. `SIGIL_REGEN_GOLDENS=adapter` bakes `<name>.<adapter>.png` for the current GPU adapter. Every test process shares one wgpu device through `sigil_kittest::gpu::shared_device` and `headless_renderer`. See the `sigil-kittest` README for interaction modes and filmstrips.
+It returns an `Error` whose `kind()` is `ErrorKind::NoAdapter` when no GPU adapter exists, and `Ok(None)` when `SIGIL_ALLOW_NO_GPU=1` is set. `SIGIL_REGEN_GOLDENS=1` rebakes the goldens. `SIGIL_REGEN_GOLDENS=adapter` bakes `<name>.<adapter>.png` for the current GPU adapter. Every test process shares one wgpu device through `sigil_kittest::gpu::shared_device` and `headless_renderer`. See the `sigil-kittest` README for interaction modes and filmstrips.
 
 ## Inspect a running app
 

@@ -86,15 +86,12 @@ fn paths() -> CommandScene {
 
 fn frame(renderer: &mut WgpuRenderer, scene: &CommandScene) -> f64 {
     let (device, queue) = shared_device().expect("sigil-kittest").expect("adapter");
-    let capture = Capture {
-        viewport: VIEW,
-        size_px: [(VIEW.0 * 2.0) as u32, (VIEW.1 * 2.0) as u32],
-        scale: 2.0,
-        clear: Color::rgba(1.0, 1.0, 1.0, 1.0),
-    };
+    let capture = Capture::new(VIEW, [(VIEW.0 * 2.0) as u32, (VIEW.1 * 2.0) as u32])
+        .scale(2.0)
+        .clear(Color::rgba(1.0, 1.0, 1.0, 1.0));
     let start = Instant::now();
     let texture = render_capture(renderer, (device, queue), scene, &capture).expect("render");
-    let [w, h] = capture.size_px;
+    let [w, h] = capture.size_px();
     std::hint::black_box(read_pixels(device, queue, &texture, w, h).expect("readback"));
     start.elapsed().as_secs_f64() * 1e3
 }

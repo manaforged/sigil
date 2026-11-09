@@ -1,6 +1,5 @@
 #[cfg(target_os = "macos")]
 use std::ffi::OsString;
-use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
@@ -8,57 +7,88 @@ use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use crate::files::{copy_checked, write_new};
+use crate::{Error, ErrorKind};
 
+/// One file or directory to copy into the bundle resources.
+#[derive(Debug, Clone, Copy)]
 pub struct ResourceCopy<'a> {
-    pub from: &'a Path,
-    pub to: &'a Path,
+    from: &'a Path,
+    to: &'a Path,
 }
 
-pub struct AppBundle<'a> {
-    pub name: &'a str,
-    pub identifier: &'a str,
-    pub version: &'a str,
-    pub executable: &'a Path,
-    pub exe_name: &'a str,
-    pub icon: Option<&'a Path>,
-    pub provisioning_profile: Option<&'a Path>,
-    pub min_system: &'a str,
-}
-
-#[derive(Debug)]
-#[non_exhaustive]
-pub enum PackError {
-    Missing(PathBuf),
-    Io(io::Error),
-    Codesign(String),
-    Tool(String),
-    Escape(PathBuf),
-    Symlink(PathBuf),
-    Occupied(PathBuf),
-    NotFile(PathBuf),
-}
-
-impl fmt::Display for PackError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Missing(path) => write!(f, "missing {}", path.display()),
-            Self::Io(error) => write!(f, "{error}"),
-            Self::Codesign(error) => write!(f, "codesign: {error}"),
-            Self::Tool(error) => write!(f, "{error}"),
-            Self::Escape(path) => write!(f, "path escapes bundle: {}", path.display()),
-            Self::Symlink(path) => write!(f, "symlink refused: {}", path.display()),
-            Self::Occupied(path) => write!(f, "refusing to delete {}", path.display()),
-            Self::NotFile(path) => write!(f, "not a regular file: {}", path.display()),
-        }
+impl<'a> ResourceCopy<'a> {
+    /// Creates a copy of `from` to the path `to` inside the resources directory.
+    #[must_use]
+    pub const fn new(from: &'a Path, to: &'a Path) -> Self {
+        Self { from, to }
     }
 }
 
-impl std::error::Error for PackError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Io(error) => Some(error),
-            _ => None,
+const MIN_SYSTEM: &str = "10.15";
+
+/// Inputs for a macOS app bundle or a Windows app directory.
+#[must_use]
+#[derive(Debug, Clone, Copy)]
+pub struct AppBundle<'a> {
+    name: &'a str,
+    identifier: &'a str,
+    version: &'a str,
+    executable: &'a Path,
+    exe_name: &'a str,
+    icon: Option<&'a Path>,
+    provisioning_profile: Option<&'a Path>,
+    min_system: &'a str,
+}
+
+impl<'a> AppBundle<'a> {
+    /// Creates a bundle named `name` around `executable`, with the executable file also named `name`.
+    pub const fn new(name: &'a str, executable: &'a Path) -> Self {
+        Self {
+            name,
+            identifier: "",
+            version: "",
+            executable,
+            exe_name: name,
+            icon: None,
+            provisioning_profile: None,
+            min_system: MIN_SYSTEM,
         }
+    }
+
+    /// Sets the bundle identifier.
+    pub const fn identifier(mut self, identifier: &'a str) -> Self {
+        self.identifier = identifier;
+        self
+    }
+
+    /// Sets the version.
+    pub const fn version(mut self, version: &'a str) -> Self {
+        self.version = version;
+        self
+    }
+
+    /// Sets the file name of the executable inside the bundle.
+    pub const fn exe_name(mut self, exe_name: &'a str) -> Self {
+        self.exe_name = exe_name;
+        self
+    }
+
+    /// Sets the icon file, or `None` for no icon.
+    pub fn icon(mut self, icon: impl Into<Option<&'a Path>>) -> Self {
+        self.icon = icon.into();
+        self
+    }
+
+    /// Sets the provisioning profile to embed, or `None` for no profile.
+    pub fn provisioning_profile(mut self, profile: impl Into<Option<&'a Path>>) -> Self {
+        self.provisioning_profile = profile.into();
+        self
+    }
+
+    /// Sets the minimum macOS version.
+    pub const fn min_system(mut self, min_system: &'a str) -> Self {
+        self.min_system = min_system;
+        self
     }
 }
 
@@ -70,16 +100,16 @@ fn xml(value: &str) -> String {
         .replace('"', "&quot;")
 }
 
-pub(crate) fn one_component(name: &str) -> Result<&Path, PackError> {
+pub(crate) fn one_component(name: &str) -> Result<&Path, Error> {
     let path = Path::new(name);
     let mut parts = path.components();
     match (parts.next(), parts.next()) {
         (Some(Component::Normal(_)), None) => Ok(path),
-        _ => Err(PackError::Escape(path.to_path_buf())),
+        _ => Err(Error::at(ErrorKind::Escape, path)),
     }
 }
 
-fn relative_inside(root: &Path, rel: &Path) -> Result<PathBuf, PackError> {
+fn relative_inside(root: &Path, rel: &Path) -> Result<PathBuf, Error> {
     let inside = !rel.is_absolute()
         && rel
             .components()
@@ -87,52 +117,52 @@ fn relative_inside(root: &Path, rel: &Path) -> Result<PathBuf, PackError> {
     if inside {
         Ok(root.join(rel))
     } else {
-        Err(PackError::Escape(rel.to_path_buf()))
+        Err(Error::at(ErrorKind::Escape, rel))
     }
 }
 
-pub(crate) fn refuse_link(path: &Path) -> Result<fs::Metadata, PackError> {
-    let meta = fs::symlink_metadata(path).map_err(PackError::Io)?;
+pub(crate) fn refuse_link(path: &Path) -> Result<fs::Metadata, Error> {
+    let meta = fs::symlink_metadata(path).map_err(Error::io)?;
     if meta.file_type().is_symlink() {
-        return Err(PackError::Symlink(path.to_path_buf()));
+        return Err(Error::at(ErrorKind::Symlink, path));
     }
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt;
         const REPARSE_POINT: u32 = 0x400;
         if meta.file_attributes() & REPARSE_POINT != 0 {
-            return Err(PackError::Symlink(path.to_path_buf()));
+            return Err(Error::at(ErrorKind::Symlink, path));
         }
     }
     Ok(meta)
 }
 
-fn copy_regular_file(from: &Path, to: &Path) -> Result<(), PackError> {
+fn copy_regular_file(from: &Path, to: &Path) -> Result<(), Error> {
     let meta = refuse_link(from)?;
     if !meta.is_file() {
-        return Err(PackError::NotFile(from.to_path_buf()));
+        return Err(Error::at(ErrorKind::NotFile, from));
     }
     if let Some(parent) = to.parent() {
-        fs::create_dir_all(parent).map_err(PackError::Io)?;
+        fs::create_dir_all(parent).map_err(Error::io)?;
     }
-    copy_checked(from, &meta, to).map_err(PackError::Io)
+    copy_checked(from, &meta, to).map_err(Error::io)
 }
 
-fn copy_tree(from: &Path, to: &Path) -> Result<(), PackError> {
+fn copy_tree(from: &Path, to: &Path) -> Result<(), Error> {
     let meta = refuse_link(from)?;
     if meta.is_file() {
         return copy_regular_file(from, to);
     }
     if !meta.is_dir() {
-        return Err(PackError::Missing(from.to_path_buf()));
+        return Err(Error::at(ErrorKind::Missing, from));
     }
-    fs::create_dir_all(to).map_err(PackError::Io)?;
-    for entry in fs::read_dir(from).map_err(PackError::Io)? {
-        let entry = entry.map_err(PackError::Io)?;
+    fs::create_dir_all(to).map_err(Error::io)?;
+    for entry in fs::read_dir(from).map_err(Error::io)? {
+        let entry = entry.map_err(Error::io)?;
         let name = entry.file_name();
         let text = name
             .to_str()
-            .ok_or_else(|| PackError::Escape(PathBuf::from(&name)))?;
+            .ok_or_else(|| Error::at(ErrorKind::Escape, Path::new(&name)))?;
         one_component(text)?;
         copy_tree(&entry.path(), &to.join(name))?;
     }
@@ -147,22 +177,22 @@ fn previous_bundle(dest: &Path) -> bool {
             .is_ok_and(|plist| plist.contains(PLIST_MARKER))
 }
 
-fn prepare_dest(dest: &Path) -> Result<(), PackError> {
+fn prepare_dest(dest: &Path) -> Result<(), Error> {
     let meta = match fs::symlink_metadata(dest) {
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
-        Err(error) => return Err(PackError::Io(error)),
+        Err(error) => return Err(Error::io(error)),
         Ok(meta) => meta,
     };
     if meta.file_type().is_symlink() {
-        return Err(PackError::Occupied(dest.to_path_buf()));
+        return Err(Error::at(ErrorKind::Occupied, dest));
     }
     if meta.is_dir() && previous_bundle(dest) {
-        return fs::remove_dir_all(dest).map_err(PackError::Io);
+        return fs::remove_dir_all(dest).map_err(Error::io);
     }
-    if meta.is_dir() && fs::read_dir(dest).map_err(PackError::Io)?.next().is_none() {
+    if meta.is_dir() && fs::read_dir(dest).map_err(Error::io)?.next().is_none() {
         return Ok(());
     }
-    Err(PackError::Occupied(dest.to_path_buf()))
+    Err(Error::at(ErrorKind::Occupied, dest))
 }
 
 fn info_plist(app: &AppBundle<'_>) -> String {
@@ -197,40 +227,62 @@ fn info_plist(app: &AppBundle<'_>) -> String {
     )
 }
 
+/// Signing identity and entitlements for `codesign`; the default signs ad hoc.
+#[must_use]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct CodeSign<'a> {
-    pub identity: Option<&'a str>,
-    pub entitlements: Option<&'a Path>,
+    identity: Option<&'a str>,
+    entitlements: Option<&'a Path>,
 }
 
-impl CodeSign<'_> {
+impl<'a> CodeSign<'a> {
+    /// Sets the signing identity, or `None` for an ad-hoc signature.
+    pub fn identity(mut self, identity: impl Into<Option<&'a str>>) -> Self {
+        self.identity = identity.into();
+        self
+    }
+
+    /// Sets the entitlements file, or `None` for no entitlements.
+    pub fn entitlements(mut self, entitlements: impl Into<Option<&'a Path>>) -> Self {
+        self.entitlements = entitlements.into();
+        self
+    }
+
+    /// Signs an executable or an `.app` bundle in place.
     #[cfg(target_os = "macos")]
-    pub fn sign(&self, path: &Path) -> Result<(), PackError> {
+    pub fn sign(&self, path: &Path) -> Result<(), Error> {
         let metadata = refuse_link(path)?;
         if !(metadata.is_file()
             || metadata.is_dir() && path.extension().is_some_and(|extension| extension == "app"))
         {
-            return Err(PackError::Codesign(format!(
-                "{} is not a regular executable or an .app bundle",
-                path.display()
-            )));
+            return Err(Error::text(
+                ErrorKind::Codesign,
+                format!(
+                    "{} is not a regular executable or an .app bundle",
+                    path.display()
+                ),
+            ));
         }
         let status = Command::new("/usr/bin/codesign")
             .args(self.args(path))
             .status()
-            .map_err(PackError::Io)?;
+            .map_err(Error::io)?;
         status
             .success()
             .then_some(())
-            .ok_or_else(|| PackError::Codesign(status.to_string()))
+            .ok_or_else(|| Error::text(ErrorKind::Codesign, status.to_string()))
     }
 
+    /// Signs an executable or an `.app` bundle in place.
     #[cfg(not(target_os = "macos"))]
-    pub fn sign(&self, path: &Path) -> Result<(), PackError> {
-        Err(PackError::Codesign(format!(
-            "native signing of {} is supported only on macOS",
-            path.display()
-        )))
+    pub fn sign(&self, path: &Path) -> Result<(), Error> {
+        Err(Error::text(
+            ErrorKind::Codesign,
+            format!(
+                "native signing of {} is supported only on macOS",
+                path.display()
+            ),
+        ))
     }
 
     #[cfg(target_os = "macos")]
@@ -250,26 +302,28 @@ impl CodeSign<'_> {
     }
 }
 
+/// Builds a macOS `.app` bundle at `dest` and signs it.
 pub fn macos_app(
     app: &AppBundle<'_>,
     resources: &[ResourceCopy<'_>],
     dest: &Path,
     sign: &CodeSign<'_>,
-) -> Result<(), PackError> {
+) -> Result<(), Error> {
     if app.provisioning_profile.is_some()
         && !sign
             .identity
             .is_some_and(|identity| !identity.trim().is_empty() && identity.trim() != "-")
     {
-        return Err(PackError::Codesign(
-            "a provisioning profile requires a signing identity".into(),
+        return Err(Error::text(
+            ErrorKind::Codesign,
+            "a provisioning profile requires a signing identity",
         ));
     }
     prepare_dest(dest)?;
     let macos = dest.join("Contents/MacOS");
     let resources_dir = dest.join("Contents/Resources");
-    fs::create_dir_all(&macos).map_err(PackError::Io)?;
-    fs::create_dir_all(&resources_dir).map_err(PackError::Io)?;
+    fs::create_dir_all(&macos).map_err(Error::io)?;
+    fs::create_dir_all(&resources_dir).map_err(Error::io)?;
     copy_regular_file(app.executable, &macos.join(one_component(app.exe_name)?))?;
     if let Some(icon) = app.icon {
         copy_regular_file(icon, &resources_dir.join("icon.icns"))?;
@@ -279,7 +333,7 @@ pub fn macos_app(
         info_plist(app).as_bytes(),
         0o644,
     )
-    .map_err(PackError::Io)?;
+    .map_err(Error::io)?;
     for copy in resources {
         copy_tree(copy.from, &relative_inside(&resources_dir, copy.to)?)?;
     }
@@ -293,21 +347,23 @@ pub fn macos_app(
     Ok(())
 }
 
+/// Builds a Windows app directory at `dest`.
 pub fn windows_dir(
     app: &AppBundle<'_>,
     resources: &[ResourceCopy<'_>],
     dest: &Path,
-) -> Result<(), PackError> {
+) -> Result<(), Error> {
     if app.provisioning_profile.is_some() {
-        return Err(PackError::Codesign(
-            "provisioning profiles are supported only for macOS app bundles".into(),
+        return Err(Error::text(
+            ErrorKind::Codesign,
+            "provisioning profiles are supported only for macOS app bundles",
         ));
     }
     prepare_dest(dest)?;
-    fs::create_dir_all(dest).map_err(PackError::Io)?;
+    fs::create_dir_all(dest).map_err(Error::io)?;
     copy_regular_file(app.executable, &dest.join(one_component(app.exe_name)?))?;
     for copy in resources {
         copy_tree(copy.from, &relative_inside(dest, copy.to)?)?;
     }
-    write_new(&dest.join(".sigil-pack"), b"sigil-pack\n", 0o644).map_err(PackError::Io)
+    write_new(&dest.join(".sigil-pack"), b"sigil-pack\n", 0o644).map_err(Error::io)
 }

@@ -13,10 +13,7 @@ pub(crate) fn settle(
         frame()?;
     }
     if busy() {
-        Err(Error::Unsettled {
-            frames: SETTLE_SAFETY_CAP,
-            active: active_count(),
-        })
+        Err(Error::unsettled(SETTLE_SAFETY_CAP, active_count()))
     } else {
         Ok(())
     }

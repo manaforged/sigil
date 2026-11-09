@@ -9,7 +9,8 @@ use sigil::scene::emit_scene;
 use crate::gpu::{self, render_scene_to_image};
 use crate::interaction::{self, drive_state};
 use crate::{
-    Error, Harness, InteractionMode, Rendered, bounds, real_text_measure, stub_text_measure,
+    Error, ErrorKind, Harness, InteractionMode, Rendered, bounds, real_text_measure,
+    stub_text_measure,
 };
 
 const FILMSTRIP_GAP_PX: u32 = 4;
@@ -33,6 +34,7 @@ impl Harness {
 }
 
 /// An offscreen render of one widget in an interaction state.
+#[must_use]
 pub struct Render<B> {
     build: B,
     mode: InteractionMode,
@@ -43,50 +45,55 @@ pub struct Render<B> {
     focus_first: bool,
 }
 
+impl<B> std::fmt::Debug for Render<B> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Render")
+            .field("mode", &self.mode)
+            .field("size", &self.size)
+            .field("scale", &self.scale)
+            .field("hit", &self.hit)
+            .field("focus_first", &self.focus_first)
+            .finish_non_exhaustive()
+    }
+}
+
 impl<B> Render<B> {
     /// Sets the interaction state.
-    #[must_use]
     pub const fn mode(mut self, mode: InteractionMode) -> Self {
         self.mode = mode;
         self
     }
 
     /// Sets the logical size in pixels.
-    #[must_use]
     pub const fn size(mut self, size: [u32; 2]) -> Self {
         self.size = size;
         self
     }
 
     /// Sets the device scale; the image is the logical size times this.
-    #[must_use]
     pub const fn scale(mut self, scale: f32) -> Self {
         self.scale = Some(scale);
         self
     }
 
     /// Sets the pointer position of the interaction state.
-    #[must_use]
     pub const fn hit(mut self, hit: (f32, f32)) -> Self {
         self.hit = hit;
         self
     }
 
     /// Sets the text measure, called once per render.
-    #[must_use]
     pub fn measure(mut self, measure: impl Fn() -> Box<dyn TextMeasure> + 'static) -> Self {
         self.measure = Rc::new(measure);
         self
     }
 
     /// Measures each text node as a fixed 40x16 box.
-    #[must_use]
     pub fn stub(self) -> Self {
         self.measure(stub_text_measure)
     }
 
     /// Drives the first focusable descendant instead of the root.
-    #[must_use]
     pub const fn focus_first(mut self) -> Self {
         self.focus_first = true;
         self
@@ -212,7 +219,7 @@ fn capture(
         let relayout = |tree: &mut Cx, engine: &mut LayoutEngine| {
             engine
                 .compute(tree, root, viewport)
-                .map_err(|err| Error::Layout(format!("{err:?}")))
+                .map_err(|err| Error::caused(ErrorKind::Layout, err))
         };
         relayout(&mut cx, &mut layout)?;
         while settle() {

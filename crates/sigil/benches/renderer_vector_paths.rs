@@ -141,16 +141,13 @@ fn crop(rgba: &[u8], stride: u32, rect: Rect) -> ImageSource {
 
 fn frame(renderer: &mut WgpuRenderer, scene: &CommandScene) -> Sample {
     let (device, queue) = shared_device().expect("sigil-kittest").expect("adapter");
-    let capture = Capture {
-        viewport: VIEW,
-        size_px: [(VIEW.0 * SCALE) as u32, (VIEW.1 * SCALE) as u32],
-        scale: SCALE,
-        clear: CLEAR,
-    };
+    let capture = Capture::new(VIEW, [(VIEW.0 * SCALE) as u32, (VIEW.1 * SCALE) as u32])
+        .scale(SCALE)
+        .clear(CLEAR);
     let start = Instant::now();
     let texture = render_capture(renderer, (device, queue), scene, &capture).expect("render");
     let cpu = start.elapsed().as_secs_f64() * 1e3;
-    let [w, h] = capture.size_px;
+    let [w, h] = capture.size_px();
     let pixels = read_pixels(device, queue, &texture, w, h).expect("readback");
     std::hint::black_box(pixels);
     Sample {

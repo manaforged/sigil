@@ -1,7 +1,19 @@
 use std::env::args;
+use std::error::Error as _;
 use std::process::ExitCode;
 
-use sigil_sign::pack_cli;
+use sigil_sign::{Error, pack_cli};
+
+fn report(error: &Error) -> String {
+    let mut text = error.to_string();
+    let mut cause = error.source();
+    while let Some(inner) = cause {
+        text.push_str(": ");
+        text.push_str(&inner.to_string());
+        cause = inner.source();
+    }
+    text
+}
 
 fn main() -> ExitCode {
     let argv: Vec<String> = args().skip(1).collect();
@@ -14,7 +26,7 @@ fn main() -> ExitCode {
     match pack_cli(&argv) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("{error}");
+            eprintln!("{}", report(&error));
             ExitCode::FAILURE
         }
     }

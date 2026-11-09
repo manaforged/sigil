@@ -12,9 +12,20 @@ pub const SCALES: [f32; 5] = [1.0, 1.25, 1.5, 2.0, 3.0];
 const SEED_BYTES: usize = 16_384;
 const MAX_DEPTH: u32 = 6;
 
+/// A byte stream that drives scene generation and random walks.
+#[derive(Clone)]
 pub struct Entropy<'a> {
     bytes: Cow<'a, [u8]>,
     at: usize,
+}
+
+impl std::fmt::Debug for Entropy<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Entropy")
+            .field("len", &self.bytes.len())
+            .field("at", &self.at)
+            .finish()
+    }
 }
 
 impl<'a> Entropy<'a> {
@@ -82,15 +93,40 @@ impl<'a> Entropy<'a> {
     }
 }
 
+/// A generated command scene with its viewport, device scale, and clear color.
 #[derive(Clone, Debug)]
 pub struct GeneratedScene {
-    pub commands: Vec<SceneCommand>,
-    pub viewport: (f32, f32),
-    pub scale: f32,
-    pub clear: Color,
+    commands: Vec<SceneCommand>,
+    viewport: (f32, f32),
+    scale: f32,
+    clear: Color,
 }
 
 impl GeneratedScene {
+    /// Returns the drawing commands.
+    #[must_use]
+    pub fn commands(&self) -> &[SceneCommand] {
+        &self.commands
+    }
+
+    /// Returns the logical viewport.
+    #[must_use]
+    pub const fn viewport(&self) -> (f32, f32) {
+        self.viewport
+    }
+
+    /// Returns the device scale.
+    #[must_use]
+    pub const fn scale(&self) -> f32 {
+        self.scale
+    }
+
+    /// Returns the clear color.
+    #[must_use]
+    pub const fn clear(&self) -> Color {
+        self.clear
+    }
+
     #[must_use]
     pub fn from_seed(seed: u64) -> Self {
         generate(&mut Entropy::from_seed(seed))
