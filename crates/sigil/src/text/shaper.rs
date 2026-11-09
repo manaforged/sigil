@@ -177,7 +177,7 @@ impl<'a> TextSegment<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct FaceStyle {
     pub(crate) size_px: f32,
     pub(crate) weight: u16,

@@ -1,3 +1,7 @@
+use std::cell::RefCell;
+use std::hash::{BuildHasher as _, Hash as _, Hasher as _};
+
+use ahash::AHashMap;
 use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -143,6 +147,38 @@ pub(super) struct PushRunArgs<'a> {
     pub(super) is_break_opportunity: bool,
 }
 
+const WORD_MAX_BYTES: usize = 64;
+const WORD_ENTRIES: usize = 4_096;
+
+struct WordSpan {
+    start: u32,
+    end: u32,
+    face_slot: u16,
+    run: ShapedRun,
+    advance: f32,
+}
+
+struct WordEntry {
+    word: Box<str>,
+    level: u8,
+    faces: SmallVec<[u64; 4]>,
+    style: FaceStyle,
+    spans: SmallVec<[WordSpan; 1]>,
+}
+
+impl WordEntry {
+    fn matches(&self, args: &PushRunArgs<'_>, chain: &[Font], style: &FaceStyle) -> bool {
+        *self.word == *args.fragment
+            && self.level == args.level
+            && self.style == *style
+            && self.faces.iter().copied().eq(chain.iter().map(Font::id))
+    }
+}
+
+thread_local! {
+    static WORDS: RefCell<AHashMap<u64, WordEntry>> = RefCell::new(AHashMap::new());
+}
+
 pub(super) fn push_run(
     args: &PushRunArgs<'_>,
     chain: &[Font],
@@ -152,6 +188,85 @@ pub(super) fn push_run(
     if args.fragment.is_empty() {
         return;
     }
+    if args.fragment.len() > WORD_MAX_BYTES {
+        shape_face_spans(args, chain, style, out);
+        return;
+    }
+    let key = word_key(args, chain, style);
+    let replayed = WORDS.with_borrow(|words| {
+        let entry = words
+            .get(&key)
+            .filter(|entry| entry.matches(args, chain, style));
+        for span in entry.iter().flat_map(|entry| &entry.spans) {
+            out.push(segment(
+                args,
+                span.start as usize,
+                span.end as usize,
+                span.face_slot,
+                span.run.clone(),
+                span.advance,
+            ));
+        }
+        entry.is_some()
+    });
+    if replayed {
+        return;
+    }
+    let first = out.len();
+    shape_face_spans(args, chain, style, out);
+    let base = u32_clamp(args.start_byte);
+    let spans = out
+        .get(first..)
+        .unwrap_or_default()
+        .iter()
+        .map(|seg| WordSpan {
+            start: seg.start - base,
+            end: seg.end - base,
+            face_slot: seg.face_slot,
+            run: seg.run.clone(),
+            advance: seg.advance,
+        })
+        .collect();
+    WORDS.with_borrow_mut(|words| {
+        if words.len() >= WORD_ENTRIES {
+            words.clear();
+        }
+        words.insert(
+            key,
+            WordEntry {
+                word: args.fragment.into(),
+                level: args.level,
+                faces: chain.iter().map(Font::id).collect(),
+                style: style.clone(),
+                spans,
+            },
+        );
+    });
+}
+
+fn word_key(args: &PushRunArgs<'_>, chain: &[Font], style: &FaceStyle) -> u64 {
+    let mut hasher = crate::style::text_identity::hasher().build_hasher();
+    args.fragment.hash(&mut hasher);
+    args.level.hash(&mut hasher);
+    for font in chain {
+        font.id().hash(&mut hasher);
+    }
+    style.size_px.to_bits().hash(&mut hasher);
+    style.weight.hash(&mut hasher);
+    style.letter_spacing_em.to_bits().hash(&mut hasher);
+    style.cell_grid.hash(&mut hasher);
+    for feature in &style.features {
+        feature.0.hash(&mut hasher);
+    }
+    hasher.finish()
+}
+
+fn shape_face_spans(
+    args: &PushRunArgs<'_>,
+    chain: &[Font],
+    style: &FaceStyle,
+    out: &mut Vec<ShapedSegment>,
+) {
     for span in coalesce_face_spans(chain, args.fragment) {
         push_face_span(args, chain, style, &span, out);
     }
@@ -205,15 +320,24 @@ fn push_face_span(
     if sub_fragment.is_empty() {
         return;
     }
-    let start_byte = args.start_byte + span.start;
-    let end_byte = args.start_byte + span.end;
     let (face_slot, mut run) =
         shape_validated(chain, span.face_slot, sub_fragment, args.level, style);
     apply_letter_spacing(&mut run, style);
     let advance = run_total_advance(&run);
-    out.push(ShapedSegment {
-        start: u32_clamp(start_byte),
-        end: u32_clamp(end_byte),
+    out.push(segment(args, span.start, span.end, face_slot, run, advance));
+}
+
+fn segment(
+    args: &PushRunArgs<'_>,
+    start: usize,
+    end: usize,
+    face_slot: u16,
+    run: ShapedRun,
+    advance: f32,
+) -> ShapedSegment {
+    ShapedSegment {
+        start: u32_clamp(args.start_byte + start),
+        end: u32_clamp(args.start_byte + end),
         run,
         advance,
         is_break_opportunity: args.is_break_opportunity,
@@ -223,7 +347,7 @@ fn push_face_span(
         #[cfg(any(test, feature = "kittest"))]
         script: args.script,
         face_slot,
-    });
+    }
 }
 
 fn select_face<'a>(chain: &'a [Font], fragment: &str) -> (u16, &'a Font) {
