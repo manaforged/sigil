@@ -3,6 +3,8 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::print_stdout, reason = "the parity check prints its measure")]
+#![allow(clippy::panic, reason = "a test fails loudly on a missing value")]
+#![allow(clippy::cast_precision_loss, reason = "pixel sides are small")]
 
 use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::kernel::ImageSource;

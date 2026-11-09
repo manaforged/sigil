@@ -9,6 +9,10 @@ pub type Step<M> = (&'static str, fn(&mut Harness, &mut M));
 
 impl Harness {
     /// Runs every sequence of `steps` up to `depth`, shortest first, on a fresh app and model, and panics with the shortest sequence that fails `check`.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "the app is taken by value like Harness::new and cloned for each run"
+    )]
     #[track_caller]
     pub fn explore<M: Default>(
         app: impl IntoNode + Clone + 'static,
@@ -38,6 +42,10 @@ impl Harness {
     }
 
     /// Runs one sequence of `length` steps picked from `seed` on a fresh app and model, and panics at the first step that fails `check`.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "the app is taken by value like Harness::new and cloned for each run"
+    )]
     #[track_caller]
     pub fn walk<M: Default>(
         app: impl IntoNode + Clone + 'static,
@@ -66,11 +74,12 @@ fn replay<M: Default>(
     check: &impl Fn(&mut Harness, &M) -> Result<(), String>,
     seed: Option<u64>,
 ) {
+    let picked: Vec<&Step<M>> = order.iter().filter_map(|&step| steps.get(step)).collect();
     let mut harness = Harness::new(app.clone());
     let mut model = M::default();
     harness.settle();
     let broke = |at: usize, why: String| -> ! {
-        let names: Vec<&str> = order[..at].iter().map(|&step| steps[step].0).collect();
+        let names: Vec<&str> = picked.iter().take(at).map(|step| step.0).collect();
         let path = if names.is_empty() {
             "start".to_owned()
         } else {
@@ -82,8 +91,8 @@ fn replay<M: Default>(
     if let Err(why) = check(&mut harness, &model) {
         broke(0, why);
     }
-    for (at, &step) in order.iter().enumerate() {
-        (steps[step].1)(&mut harness, &mut model);
+    for (at, step) in picked.iter().enumerate() {
+        (step.1)(&mut harness, &mut model);
         if let Err(why) = check(&mut harness, &model) {
             broke(at + 1, why);
         }
