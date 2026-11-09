@@ -177,9 +177,15 @@ pub(crate) fn enabled() -> bool {
         ENV_ON => true,
         ENV_OFF => false,
         _ => {
-            let on = dump_path().is_some();
-            STATE.store(if on { ENV_ON } else { ENV_OFF }, Ordering::Relaxed);
-            on
+            let env = if dump_path().is_some() {
+                ENV_ON
+            } else {
+                ENV_OFF
+            };
+            let state = STATE
+                .compare_exchange(ENV_UNSET, env, Ordering::Relaxed, Ordering::Relaxed)
+                .map_or_else(|current| current, |_| env);
+            state == ENV_ON
         }
     }
 }
