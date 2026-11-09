@@ -53,11 +53,19 @@ impl TextContent {
         }
     }
 
-    fn into_live(self) -> Self {
+    pub(crate) fn live(&self) -> Option<Signal<String>> {
         match self {
-            Self::Compute(compute) => Self::Reactive(derived(move || compute())),
-            other => other,
+            Self::Static(_) => None,
+            Self::Reactive(signal) => Some(*signal),
+            Self::Compute(compute) => {
+                let compute = Rc::clone(compute);
+                Some(derived(move || compute()))
+            }
         }
+    }
+
+    fn into_live(self) -> Self {
+        self.live().map_or(self, Self::Reactive)
     }
 }
 

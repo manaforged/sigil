@@ -10,6 +10,7 @@ use crate::widgets::Widget;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{self, PANEL_WIDTH, PopupAnchor, PopupLayer};
+use super::super::shared::caller_style;
 use super::panel::{Row, menu_panel, panel_height, panel_layout};
 
 /// One menu entry.
@@ -170,16 +171,13 @@ impl MenuBuilder {
         let menu_label = self.label.unwrap_or_else(|| String::from("Menu"));
 
         let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
-        let mut panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
+        let panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
             .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Popup))
             .label(menu_label)
             .with(placement)
             .style_reactive(move || popup::shown(open))
             .pointer_down(PointerEvent::stop_propagation);
-        if !self.style_accumulator.is_empty() {
-            panel = panel.style(self.style_accumulator);
-        }
-        let panel = overrides.finish(panel);
+        let panel = overrides.finish(caller_style(panel, self.style_accumulator));
 
         let layer = PopupLayer::new(open, PopupAnchor::Inline);
         layer.register_escape();

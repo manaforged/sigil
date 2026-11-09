@@ -1,11 +1,12 @@
 use crate::layout::Space;
-use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
 
 use super::layout_ext::LayoutOverrides;
+use super::shared::{accessible_name_or, caller_style};
 use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
+use crate::style::intern::{KEYED_CAP, Keyed, keyed};
+use crate::style::strings::StringKey;
 use crate::style::{Radius, Style, StyleAtom, Token, space};
 use crate::widgets::Widget;
 
@@ -14,8 +15,6 @@ const TRACK_HEIGHT: f32 = 8.0;
 const GAUGE_GAP: f32 = space(2);
 
 static TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
-
-type GaugeAtoms = HashMap<(i16, bool), &'static [StyleAtom]>;
 
 /// Builder of a gauge.
 pub struct GaugeBuilder {
@@ -74,10 +73,9 @@ impl GaugeBuilder {
 
     fn root(self) -> NodeBuilder {
         let (value, max, warn) = (self.value, self.max, self.warn_threshold);
-        let name = self.label.as_ref().and_then(TextContent::as_static_str);
         let mut node = container()
             .role(Role::ProgressIndicator)
-            .label(name.map_or_else(|| String::from("Gauge"), ToOwned::to_owned))
+            .label(accessible_name_or(self.label.as_ref(), StringKey::Gauge))
             .value(value, 0.0, max)
             .layout(
                 LayoutStyle::flex_row()
@@ -104,17 +102,14 @@ impl GaugeBuilder {
                         .style_reactive(move || fill_atoms(value, max, warn)),
                 ),
         );
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
-        node
+        caller_style(node, self.style_accumulator)
     }
 }
 
 builder_impls!([] GaugeBuilder: paint(style_accumulator), widget, node);
 
 fn fill_atoms(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> &'static [StyleAtom] {
-    static CACHE: LazyLock<Mutex<GaugeAtoms>> = LazyLock::new(Mutex::default);
+    static CACHE: Keyed<(i16, bool)> = Keyed::new();
     let ratio = (value.get() / max).clamp(0.0, 1.0);
     #[allow(
         clippy::cast_possible_truncation,
@@ -128,14 +123,7 @@ fn fill_atoms(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> &'st
     } else {
         Token::Accent8
     };
-    let build = || -> &'static [StyleAtom] {
-        Box::leak(Box::new([
-            StyleAtom::Width(crate::style::atom::ATOM_PX, px),
-            tone.bg(),
-        ]))
-    };
-    let Ok(mut map) = CACHE.lock() else {
-        return build();
-    };
-    map.entry((px, is_warn)).or_insert_with(build)
+    keyed(&CACHE, KEYED_CAP, (px, is_warn), || {
+        vec![StyleAtom::Width(crate::style::atom::ATOM_PX, px), tone.bg()]
+    })
 }

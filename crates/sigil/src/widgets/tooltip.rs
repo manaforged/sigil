@@ -17,6 +17,7 @@ use crate::widgets::Widget;
 
 use super::layout_ext::LayoutOverrides;
 use super::popup::{POPUP_GAP, PopupAnchor, PopupLayer, hide, surface};
+use super::shared::caller_style;
 
 const BUBBLE_MAX_WIDTH: f32 = space(60);
 
@@ -112,10 +113,7 @@ impl TooltipBuilder {
             root = root.child(TooltipTarget { inner, reveal });
         }
         root = root.child(bubble);
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
-        root
+        caller_style(root, self.style_accumulator)
     }
 }
 

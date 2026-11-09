@@ -13,6 +13,38 @@ pub(crate) fn oversize_message() -> String {
     )
 }
 
+const MAX_SOURCE_LINES: usize = 256;
+const MAX_SOURCE_CHARS: usize = 512;
+
+pub(crate) fn bound_source(source: &str) -> String {
+    let mut out = String::new();
+    for (index, line) in source.lines().enumerate() {
+        if index >= MAX_SOURCE_LINES {
+            out.push_str("source truncated");
+            break;
+        }
+        out.extend(line.chars().take(MAX_SOURCE_CHARS));
+        out.push('\n');
+    }
+    out
+}
+
+pub(crate) fn frame_source(source: &str) -> Vec<String> {
+    let mut lines: Vec<String> = source.trim_end().lines().map(ToString::to_string).collect();
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    let width = lines.iter().map(|l| l.chars().count()).max().unwrap_or(0);
+    let bar = "─".repeat(width.saturating_add(2));
+    let mut out = vec![format!("┌{bar}┐")];
+    for line in lines {
+        let pad = width.saturating_sub(line.chars().count());
+        out.push(format!("│ {line}{} │", " ".repeat(pad)));
+    }
+    out.push(format!("└{bar}┘"));
+    out
+}
+
 pub(crate) fn oversize_block() -> markdown::parse::Block {
     markdown::parse::Block::Paragraph(vec![markdown::parse::Inline::Text(oversize_message())])
 }

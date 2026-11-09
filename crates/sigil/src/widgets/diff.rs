@@ -9,6 +9,7 @@ use crate::widgets::Widget;
 
 use super::highlight::language_for_path;
 use super::layout_ext::LayoutOverrides;
+use super::shared::caller_style;
 use super::virtual_list::virtual_list;
 
 mod header;
@@ -202,10 +203,7 @@ impl DiffBuilder {
         if let Some(status) = shape.status {
             root = root.child(status_row(status));
         }
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
-        root
+        caller_style(root, self.style_accumulator)
     }
 }
 

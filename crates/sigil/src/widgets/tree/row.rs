@@ -1,9 +1,10 @@
 use crate::events::MouseButton;
-use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent};
+use crate::kernel::{NodeBuilder, Role};
 use crate::reactive::signal;
 use crate::widgets::Widget;
 
 use super::super::patterns::{ListRowSlots, list_row};
+use super::super::shared::accessible_name;
 use super::keys::{activate, select, toggle};
 use core::hash::Hash;
 
@@ -50,12 +51,4 @@ pub(super) fn render<K: Clone + Eq + Hash + 'static>(
                 activate(&click_state, &click_row);
             }
         })
-}
-
-pub(super) fn accessible_name(text: &TextContent) -> AccessibleName {
-    match text {
-        TextContent::Static(value) => AccessibleName::from(value.clone()),
-        TextContent::Reactive(value) => AccessibleName::from(*value),
-        TextContent::Compute(_) => AccessibleName::from(text.resolve()),
-    }
 }

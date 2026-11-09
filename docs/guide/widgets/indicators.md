@@ -69,7 +69,7 @@ Indicators have one visual state each: the visual catalog captures only the defa
 | --- | --- | --- | --- |
 | `chip` | Enter with `.activate()`, else none | `Label`, or `Button` with `.activate()` | The label |
 | `dot` | none | `GenericContainer` | None. Put the meaning in a nearby label. |
-| `gauge` | none | `ProgressIndicator` | A static `.label()`, else "Gauge" |
+| `gauge` | none | `ProgressIndicator` | The `.label()`, else "Gauge" |
 | `progress` | none | `ProgressIndicator` | `.label()`, else "Progress" |
 | `spinner` | none | `ProgressIndicator` | `.label()` on the returned `NodeBuilder`, else "Loading" |
 

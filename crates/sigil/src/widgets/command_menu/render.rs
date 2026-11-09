@@ -13,7 +13,7 @@ use crate::style::{ControlSize, Metrics, space};
 use super::super::layout_ext::LayoutOverrides;
 use super::super::listbox::{ListModel, listbox};
 use super::super::popup::{self, ItemSlots, item_row};
-use super::super::shared::Activate;
+use super::super::shared::{Activate, caller_style};
 use super::super::text_field::{TextFieldBuilder, text_field};
 use super::builder::CommandMenuBuilder;
 use super::nav::{CommandPalette, MenuLevel, PaletteEntry, SubmitObserver};
@@ -106,7 +106,7 @@ impl CommandMenuBuilder {
                     .map(|(depth, level)| build_level_panel(level, depth, depth == top, &chrome))
                     .collect::<Vec<_>>()
             });
-        let mut root = listbox(
+        let root = listbox(
             root,
             CommandModel {
                 palette,
@@ -114,10 +114,7 @@ impl CommandMenuBuilder {
                 on_cancel: parts.on_cancel,
             },
         );
-        if !parts.style_accumulator.is_empty() {
-            root = root.style(parts.style_accumulator);
-        }
-        root
+        caller_style(root, parts.style_accumulator)
     }
 }
 

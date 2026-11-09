@@ -8,6 +8,7 @@ use crate::style::{StyleAtom, Token, Tone};
 use crate::widgets::Widget;
 
 use super::patterns::card;
+use super::shared::accessible_name;
 use super::sparkline::sparkline;
 
 /// Builds a stat.
@@ -70,7 +71,7 @@ impl StatBuilder {
 
     #[must_use]
     fn root(self) -> NodeBuilder {
-        let name = self.label.as_static_str().unwrap_or("Statistic").to_owned();
+        let name = accessible_name(&self.label);
         let value = text(self.value)
             .nowrap()
             .ellipsize()

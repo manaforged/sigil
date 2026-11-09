@@ -13,6 +13,7 @@ use crate::widgets::Widget;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::menu::MenuItem;
 use super::super::scroll::{WheelAxis, wheel};
+use super::super::shared::caller_style;
 use super::super::virtual_list::virtual_list;
 use super::chrome::{RowActivate, RowMenu, TableChrome, context_overlay};
 use super::density::Density;
@@ -295,11 +296,7 @@ fn finish(
         Some(disabled) => root.style_reactive(move || if disabled.get() { DIMMED } else { &[] }),
         None => root,
     };
-    let root = if style.is_empty() {
-        root
-    } else {
-        root.style(style)
-    };
+    let root = caller_style(root, style);
     let root = match hs.probe {
         Some(probe) => root.child(hscroll::probe(probe)),
         None => root,

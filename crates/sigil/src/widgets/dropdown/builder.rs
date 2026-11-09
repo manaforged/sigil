@@ -19,7 +19,9 @@ use super::super::layout_ext::LayoutOverrides;
 
 use super::super::listbox::listbox;
 use super::super::popup::{ChevronDirection, chevron};
-use super::super::shared::{Activate, DIMMED, Press, RELEASE, press, reactive_style_state};
+use super::super::shared::{
+    Activate, DIMMED, Press, RELEASE, caller_style, press, reactive_style_state,
+};
 use super::popup::{DropdownModel, OptionCtx, SURFACE_HOVER, build_popup, trigger_height};
 
 #[cfg(test)]
@@ -194,13 +196,10 @@ fn build_trigger(
             reactive_style_state(interaction, disabled)
         })
         .seal_style();
-    let mut node = press(node, interaction, disabled, Press::Activate(cb), RELEASE)
+    let node = press(node, interaction, disabled, Press::Activate(cb), RELEASE)
         .child(trigger_label(selected, Rc::clone(options)))
         .child(chevron(ChevronDirection::Down, 16.0));
-    if !styled.is_empty() {
-        node = node.style(styled);
-    }
-    node
+    caller_style(node, styled)
 }
 
 fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl IntoNode {

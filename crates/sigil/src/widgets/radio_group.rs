@@ -11,7 +11,7 @@ use crate::widgets::Widget;
 
 use super::layout_ext::LayoutOverrides;
 use super::listbox::{Move, RADIO_GROUP};
-use super::shared::{control_surface, disabled_a11y, disabled_now};
+use super::shared::{caller_style, control_surface, disabled_a11y, disabled_now};
 use crate::widgets::interaction::InteractionState;
 
 /// Builder of a radio group.
@@ -110,10 +110,7 @@ impl RadioGroupBuilder {
                 group_focus,
             ));
         }
-        if !self.style_accumulator.is_empty() {
-            group = group.style(self.style_accumulator);
-        }
-        let mut group = disabled_a11y(group, disabled);
+        let mut group = disabled_a11y(caller_style(group, self.style_accumulator), disabled);
         for (key, step) in RADIO_GROUP.bindings() {
             let keys = Rc::clone(&keys);
             group = group.key(key, move |event| {

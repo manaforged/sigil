@@ -18,8 +18,8 @@ use crate::widgets::interaction::InteractionState;
 
 use super::layout_ext::LayoutOverrides;
 use super::shared::{
-    BoolChange, Press, RELEASE_ENTER_SPACE, accessible_name_or, binary_style_state, control_row,
-    control_surface, noop_bool_change, press, static_label,
+    BoolChange, Press, RELEASE_ENTER_SPACE, accessible_name_or, binary_style_state, control_root,
+    control_row, control_surface, noop_bool_change, press,
 };
 
 const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
@@ -127,18 +127,14 @@ impl CheckboxBuilder {
     }
 
     fn root(mut self) -> NodeBuilder {
-        let interaction = InteractionState::new(true).disabled(self.disabled);
         let on_change = self
             .on_change
             .as_ref()
             .map_or_else(noop_bool_change, Rc::clone);
-        let has_label = self.label.is_some();
-        let user_overlay = self.style_accumulator.take_state_overlay();
-        let mut node = self.base_node(interaction, Rc::clone(&on_change), user_overlay);
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
-        node.with(checkbox_layout(has_label))
+        let style = std::mem::take(&mut self.style_accumulator);
+        control_root(self.disabled, style, |interaction, overlay| {
+            self.base_node(interaction, on_change, overlay)
+        })
     }
 
     fn base_node(
@@ -153,12 +149,7 @@ impl CheckboxBuilder {
         let tone = self.tone;
         let root = container()
             .role(Role::CheckBox)
-            .label(accessible_name_or(
-                static_label(self.label.as_ref())
-                    .map(TextContent::Static)
-                    .as_ref(),
-                StringKey::Checkbox,
-            ))
+            .label(accessible_name_or(self.label.as_ref(), StringKey::Checkbox))
             .checked(checked)
             .mixed(partial)
             .layout(checkbox_layout(self.label.is_some()));

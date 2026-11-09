@@ -11,8 +11,8 @@ use crate::widgets::interaction::InteractionState;
 
 use super::layout_ext::LayoutOverrides;
 use super::shared::{
-    Activate, Press, RELEASE_ENTER_SPACE, accessible_name, noop_activate, or_disabled, press,
-    reactive_style_state,
+    Activate, Press, RELEASE_ENTER_SPACE, accessible_name, control_root, noop_activate,
+    or_disabled, press, reactive_style_state,
 };
 
 /// Builder of a button.
@@ -228,14 +228,11 @@ impl ButtonBuilder {
             self.width = ButtonWidth::Fixed(self.height);
             self.padding_x = 0.0;
         }
-        let interaction = InteractionState::new(true).disabled(self.disabled);
         let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
-        let user_overlay = self.style_accumulator.take_state_overlay();
-        let mut node = self.base_node(interaction, activate, user_overlay, look_disabled);
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
-        node.with(button_layout(self.width, self.height, self.padding_x))
+        let style = std::mem::take(&mut self.style_accumulator);
+        control_root(self.disabled, style, |interaction, overlay| {
+            self.base_node(interaction, activate, overlay, look_disabled)
+        })
     }
 
     fn base_node(

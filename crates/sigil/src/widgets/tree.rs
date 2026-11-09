@@ -13,6 +13,7 @@ use crate::style::{Tone, space};
 use super::icon::{IconSource, IntoIconSource};
 use super::layout_ext::LayoutOverrides;
 use super::patterns::RowTone;
+use super::shared::accessible_name;
 use super::virtual_list::{SelectionMode, virtual_list};
 
 pub(crate) use flatten::TreeRow;
@@ -186,7 +187,7 @@ impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
             .map_node(move |node| {
                 let node = keys::attach(node.role(Role::Tree), &state);
                 match label {
-                    Some(label) => node.label(row::accessible_name(&label)),
+                    Some(label) => node.label(accessible_name(&label)),
                     None => node,
                 }
             })

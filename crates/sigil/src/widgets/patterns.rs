@@ -2,12 +2,13 @@ use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::style::strings::StringKey;
-use crate::style::theme::ambient::{theme_label, theme_string};
+use crate::style::theme::ambient::theme_label;
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
 use crate::widgets::Widget;
 
 use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
 pub use super::notice::notice_band;
+use super::shared::accessible_name;
 
 const TOP_BAR_HEIGHT: f32 = space(12);
 const AVATAR_PX: f32 = space(7);
@@ -192,9 +193,7 @@ pub fn spacer() -> NodeBuilder {
 #[must_use]
 pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) -> NodeBuilder {
     let title: TextContent = title.into();
-    let name = title
-        .as_static_str()
-        .map_or_else(|| theme_string(StringKey::Empty), str::to_owned);
+    let name = accessible_name(&title);
     container()
         .role(Role::Status)
         .label(name)
@@ -246,10 +245,7 @@ pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> 
 #[must_use]
 pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
     let content: TextContent = initials.into();
-    let name = match &content {
-        TextContent::Static(value) => value.clone(),
-        _ => theme_string(StringKey::Avatar),
-    };
+    let name = accessible_name(&content);
     container()
         .role(Role::Image)
         .label(name)

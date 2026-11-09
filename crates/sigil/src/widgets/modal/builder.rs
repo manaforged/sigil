@@ -13,7 +13,7 @@ use crate::widgets::Widget;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{self, PopupAnchor, PopupLayer, close_on_escape, footer};
 use super::super::scroll::contain_scroll;
-use super::super::shared::accessible_name_or;
+use super::super::shared::{accessible_name_or, caller_style};
 use super::parts::{BODY_GUTTER, CloseControl, dialog_body, dialog_header};
 
 const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
@@ -296,10 +296,7 @@ fn build_dialog(spec: ModalBuilder, body_scroll: Signal<f32>) -> NodeBuilder {
         dialog = dialog.child(footer(actions, BODY_GUTTER));
     }
 
-    if !style_accumulator.is_empty() {
-        dialog = dialog.style(style_accumulator);
-    }
-    layout_overrides.finish(dialog)
+    layout_overrides.finish(caller_style(dialog, style_accumulator))
 }
 
 fn dialog_layout(side: Option<Side>) -> LayoutStyle {

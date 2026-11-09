@@ -15,6 +15,7 @@ use super::render::{build_base_node, content_padding, edit_layout};
 use crate::clipboard::{Clipboard, clipboard};
 
 pub(super) use crate::widgets::shared::TextChange;
+use crate::widgets::shared::caller_style;
 
 /// The key that runs `TextEditBuilder::submit`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -186,11 +187,8 @@ impl TextEditBuilder {
             self.chrome,
         );
         let node = interaction.install(attach_key_handlers(node, runtime.clone(), self.submit_key));
-        let mut node = attach_ime_handlers(node, &runtime);
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
-        node.with(edit_layout())
+        let node = attach_ime_handlers(node, &runtime);
+        caller_style(node, self.style_accumulator).with(edit_layout())
     }
 }
 

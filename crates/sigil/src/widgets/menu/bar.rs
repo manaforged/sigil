@@ -16,6 +16,7 @@ use crate::widgets::Widget;
 use super::super::interactive::interactive;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{PANEL_WIDTH, POPUP_GAP};
+use super::super::shared::caller_style;
 use super::builder::MenuItem;
 use super::panel::{Row, menu_panel, panel_height, panel_layout};
 
@@ -92,9 +93,7 @@ impl MenuBarBuilder {
             })
             .class(BAR_SURFACE);
 
-        if !self.style_accumulator.is_empty() {
-            bar = bar.style(self.style_accumulator);
-        }
+        bar = caller_style(bar, self.style_accumulator);
 
         for (index, slot) in self.slots.into_iter().enumerate() {
             bar = bar.child(slot_node(index, slot, open_idx, host));

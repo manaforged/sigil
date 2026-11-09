@@ -19,7 +19,7 @@ use crate::widgets::interaction::InteractionState;
 use super::layout_ext::LayoutOverrides;
 use super::shared::{
     BoolChange, CONTROL_INSET, Press, RELEASE_ENTER_SPACE, accessible_name_or, binary_style_state,
-    control_row, control_surface, noop_bool_change, press, static_label,
+    control_root, control_row, control_surface, noop_bool_change, press,
 };
 
 /// Builder of a switch.
@@ -126,15 +126,11 @@ impl ToggleBuilder {
     }
 
     fn root(mut self) -> NodeBuilder {
-        let interaction = InteractionState::new(true).disabled(self.disabled);
         let on_change = self.on_change.clone().unwrap_or_else(noop_bool_change);
-        let has_label = self.label.is_some();
-        let user_overlay = self.style.take_state_overlay();
-        let mut node = self.base_node(interaction, on_change, user_overlay);
-        if !self.style.is_empty() {
-            node = node.style(self.style);
-        }
-        node.with(toggle_layout(has_label))
+        let style = std::mem::take(&mut self.style);
+        control_root(self.disabled, style, |interaction, overlay| {
+            self.base_node(interaction, on_change, overlay)
+        })
     }
 
     fn base_node(
@@ -145,14 +141,11 @@ impl ToggleBuilder {
     ) -> NodeBuilder {
         let on = self.on;
         let disabled = self.disabled;
+        let accessible = self.accessible.clone().map(TextContent::Static);
         let node = container()
             .role(Role::Switch)
             .label(accessible_name_or(
-                self.accessible
-                    .clone()
-                    .or_else(|| static_label(self.label.as_ref()))
-                    .map(TextContent::Static)
-                    .as_ref(),
+                accessible.as_ref().or(self.label.as_ref()),
                 StringKey::Toggle,
             ))
             .checked(on)

@@ -16,6 +16,7 @@ use super::render::{FieldInputs, build_base_node, field_layout};
 use crate::clipboard::{Clipboard, clipboard};
 
 pub(super) use crate::widgets::shared::TextChange;
+use crate::widgets::shared::caller_style;
 
 /// Builder of a text input.
 pub struct TextFieldBuilder {
@@ -216,9 +217,7 @@ impl TextFieldBuilder {
         if let Some(blur) = self.blur {
             node = node.focus_out(move || blur());
         }
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
+        let node = caller_style(node, self.style_accumulator);
         let overrides = std::mem::take(&mut self.layout_overrides);
         (overrides.finish(node.with(field_layout(width))), runtime)
     }

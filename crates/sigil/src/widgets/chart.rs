@@ -351,13 +351,10 @@ impl ChartBuilder {
             derived(move || series.with(|series| summary::summary(series, &label_names, theme)));
         let interact = interact::Interact::new(self.x_range, self.crosshair, self.tooltip);
         let paint = std::mem::replace(&mut self.style_accumulator, Style::new());
-        let mut root = figure::frame(look.frame).mutate(move |target| {
+        let root = figure::frame(look.frame).mutate(move |target| {
             target.a11y.description = Some(AccessibleName::Derived(description));
         });
-        if !paint.is_empty() {
-            root = root.style(paint);
-        }
-        root.children_reactive(move || {
+        super::shared::caller_style(root, paint).children_reactive(move || {
             series.with(|series| {
                 figure::content(series, &labels, positions.as_deref(), &look, &interact)
             })

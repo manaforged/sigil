@@ -4,17 +4,18 @@ use std::rc::Rc;
 use crate::kernel::Action;
 
 use crate::events::PointerEvent;
-use crate::kernel::{NodeBuilder, Role, container};
+use crate::kernel::{NodeBuilder, Role, TextContent, container};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, Dimension, LayoutStyle, cols, rows};
 use crate::reactive::{Reactive, Signal};
+use crate::style::strings::StringKey;
 use crate::style::{Style, StyleOverlay};
 use crate::widgets::Widget;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::orientation::Orientation;
 
 use super::super::layout_ext::LayoutOverrides;
-use super::super::shared::{control_surface, disabled_now};
+use super::super::shared::{accessible_name_or, control_root, control_surface, disabled_now};
 use super::handlers::{attach_key_handlers, attach_pointer_drag};
 use super::track::{slider_thumb, track};
 
@@ -142,20 +143,18 @@ impl SliderBuilder {
 
     fn root(mut self) -> NodeBuilder {
         let runtime = self.runtime;
-        let interaction = InteractionState::new(true).disabled(runtime.disabled);
         let on_change: ValueChange = self.on_change.take().unwrap_or_else(|| Rc::new(|_| {}));
-        let user_overlay = self.style_accumulator.take_state_overlay();
-        let root = slider_root(&self, interaction, user_overlay);
-        let keyed = attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change));
-        let mut node = interaction.install(attach_pointer_drag(
-            keyed,
-            interaction,
-            runtime,
-            Rc::clone(&on_change),
-        ));
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
+        let style = std::mem::take(&mut self.style_accumulator);
+        let mut node = control_root(runtime.disabled, style, |interaction, overlay| {
+            let root = slider_root(&self, interaction, overlay);
+            let keyed = attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change));
+            interaction.install(attach_pointer_drag(
+                keyed,
+                interaction,
+                runtime,
+                Rc::clone(&on_change),
+            ))
+        });
         if let Some(caption) = self.label {
             node = super::caption::with_caption(node, caption, runtime.orientation, runtime.length);
         }
@@ -225,9 +224,10 @@ fn slider_root(
 ) -> NodeBuilder {
     let runtime = builder.runtime;
     let layout = slider_layout(runtime.orientation, runtime.length, builder.label.is_some());
+    let label = builder.label.clone().map(TextContent::Static);
     let root = container()
         .role(Role::Slider)
-        .label(builder.label.clone().unwrap_or_else(|| "Slider".to_owned()))
+        .label(accessible_name_or(label.as_ref(), StringKey::Slider))
         .action(Action::Increment)
         .action(Action::Decrement)
         .value(runtime.value, runtime.range.min, runtime.range.max)

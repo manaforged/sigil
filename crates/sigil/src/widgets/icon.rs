@@ -6,6 +6,7 @@ use crate::style::{ControlSize, Style, StyleAtom, Tone};
 use crate::widgets::Widget;
 
 use super::layout_ext::LayoutOverrides;
+use super::shared::caller_style;
 
 #[cfg(feature = "scene")]
 mod svg;
@@ -178,10 +179,7 @@ impl IconBuilder {
         if let Some(label) = self.label {
             container_node = container_node.label(label);
         }
-        if !self.style_accumulator.is_empty() {
-            container_node = container_node.style(self.style_accumulator);
-        }
-        container_node
+        caller_style(container_node, self.style_accumulator)
     }
 }
 

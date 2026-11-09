@@ -1,12 +1,14 @@
 use crate::layout::Space;
-use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock, PoisonError};
 
 use super::layout_ext::LayoutOverrides;
+use super::shared::caller_style;
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, derived};
+use crate::style::intern::{KEYED_CAP, Keyed, keyed};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_label;
 use crate::style::{ControlSize, Metrics, Radius, Style, StyleAtom, Token, Tone};
 use crate::widgets::Widget;
 
@@ -25,7 +27,7 @@ pub struct ProgressBuilder {
     /// Whether indeterminate.
     pub indeterminate: bool,
     tone: Tone,
-    name: AccessibleName,
+    name: Option<AccessibleName>,
     caption: Option<TextContent>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
@@ -46,7 +48,7 @@ impl ProgressBuilder {
             max: max.max(f32::EPSILON),
             indeterminate: false,
             tone: Tone::Primary,
-            name: AccessibleName::from("Progress"),
+            name: None,
             caption: None,
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
@@ -70,12 +72,13 @@ impl ProgressBuilder {
     /// Sets the label.
     #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
-        self.name = name.into();
-        self.caption = match &self.name {
+        let name = name.into();
+        self.caption = match &name {
             AccessibleName::None => None,
             AccessibleName::Static(value) => Some(TextContent::from(value.clone())),
             AccessibleName::Derived(value) => Some(TextContent::from(*value)),
         };
+        self.name = Some(name);
         self
     }
 
@@ -88,9 +91,12 @@ impl ProgressBuilder {
             determinate_fill(value, max, track_h, self.tone)
         };
 
-        let mut node = container()
+        let name = self
+            .name
+            .unwrap_or_else(|| AccessibleName::Derived(theme_label(StringKey::Progress)));
+        let node = container()
             .role(Role::ProgressIndicator)
-            .label(self.name)
+            .label(name)
             .value(value, 0.0, max)
             .layout(if self.caption.is_some() {
                 LayoutStyle::flex_row()
@@ -106,9 +112,7 @@ impl ProgressBuilder {
             })
             .class(TRACK)
             .child(fill);
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
+        let node = caller_style(node, self.style_accumulator);
         match self.caption {
             Some(caption) => captioned_row(caption, node),
             None => node,
@@ -162,20 +166,14 @@ fn fill_atoms(tone: Tone) -> [StyleAtom; 2] {
 }
 
 fn fill_style(units: u16, tone: Tone) -> &'static [StyleAtom] {
-    type FillAtoms = HashMap<(u16, Tone), &'static [StyleAtom]>;
-    static CACHE: OnceLock<Mutex<FillAtoms>> = OnceLock::new();
+    static CACHE: Keyed<(u16, Tone)> = Keyed::new();
     if units == 0 {
         return grow_atoms(0);
     }
-    let mut map = CACHE
-        .get_or_init(Mutex::default)
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner);
-    map.entry((units, tone))
-        .or_insert_with(|| -> &'static [StyleAtom] {
-            let [radius, paint] = fill_atoms(tone);
-            Box::leak(Box::new([StyleAtom::FlexGrow(units), radius, paint]))
-        })
+    keyed(&CACHE, KEYED_CAP, (units, tone), || {
+        let [radius, paint] = fill_atoms(tone);
+        vec![StyleAtom::FlexGrow(units), radius, paint]
+    })
 }
 
 const GROW_SCALE: u16 = 1_000;
@@ -190,13 +188,9 @@ fn grow_units(ratio: f32) -> u16 {
 }
 
 fn grow_atoms(units: u16) -> &'static [StyleAtom] {
-    static CACHE: OnceLock<Mutex<HashMap<u16, &'static [StyleAtom]>>> = OnceLock::new();
-    let mut map = CACHE
-        .get_or_init(Mutex::default)
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner);
-    map.entry(units).or_insert_with(|| -> &'static [StyleAtom] {
-        Box::leak(Box::new([StyleAtom::FlexGrow(units)]))
+    static CACHE: Keyed<u16> = Keyed::new();
+    keyed(&CACHE, KEYED_CAP, units, || {
+        vec![StyleAtom::FlexGrow(units)]
     })
 }
 

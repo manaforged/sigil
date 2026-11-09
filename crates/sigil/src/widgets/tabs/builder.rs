@@ -9,6 +9,7 @@ use crate::style::{Radius, Style, Token, space};
 use crate::widgets::Widget;
 
 use super::super::layout_ext::LayoutOverrides;
+use super::super::shared::caller_style;
 use super::content::wrap_with_content;
 use super::drag::TabDrag;
 use super::list::{StripSpec, build_tab_list};
@@ -185,15 +186,12 @@ impl TabsBuilder {
             self.list_justify,
             build_tab_list(labels, &self.aria_label, spec),
         );
-        let mut root = if self.contents.is_empty() {
+        let root = if self.contents.is_empty() {
             tab_list
         } else {
             wrap_with_content(tab_list, active, self.contents)
         };
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
-        root
+        caller_style(root, self.style_accumulator)
     }
 }
 

@@ -7,6 +7,7 @@ use crate::style::{Style, StyleAtom, Token, space};
 use crate::widgets::Widget;
 
 use super::layout_ext::LayoutOverrides;
+use super::shared::caller_style;
 
 mod bar;
 pub(crate) mod geometry;
@@ -156,10 +157,7 @@ impl ScrollBuilder {
         if sizing != ScrollSizing::Fixed {
             root = root.size_reactive(viewport);
         }
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
-        root
+        caller_style(root, self.style_accumulator)
     }
 }
 

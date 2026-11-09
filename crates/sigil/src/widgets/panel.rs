@@ -1,4 +1,5 @@
 use super::layout_ext::LayoutOverrides;
+use super::shared::caller_style;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::LayoutStyle;
 use crate::layout::Space;
@@ -94,11 +95,7 @@ impl PanelBuilder {
             root = root.child(child);
         }
 
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
-
-        root
+        caller_style(root, self.style_accumulator)
     }
 }
 

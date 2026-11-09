@@ -13,6 +13,7 @@ use super::super::drag::axis_drag;
 use super::super::interactive::interactive;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::orientation::Orientation;
+use super::super::shared::caller_style;
 use super::super::splitter::{HANDLE_PX, KEY_STEP, cached_width_atom, resize_keys, to_i16};
 
 const SIDEBAR_DEFAULT: f32 = space(55);
@@ -64,13 +65,11 @@ impl SidebarBuilder {
                     .min_size(0.0, 0.0),
             )
             .child(self.child);
-        let mut root = container()
+        let root = container()
             .role(Role::Navigation)
             .class(SIDEBAR_CHROME)
             .child(column);
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
+        let root = caller_style(root, self.style_accumulator);
         match self.resizable {
             None => root.layout(root_layout().width(start)),
             Some((min, max)) => {

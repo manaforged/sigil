@@ -4,6 +4,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{BORDER_WIDTH, Paint, PaintTarget, Style, StyleAtom, StyleSlot, Token};
 
 use super::super::layout_ext::LayoutOverrides;
+use super::super::shared::caller_style;
 use super::drag::{Binds, PaneLimits, SplitterState, install_handle_hooks};
 use super::keys::install_handle_keys;
 use super::pane::{build_pane, shares_free_space};
@@ -179,10 +180,7 @@ impl SplitterBuilder {
             }
         }
 
-        if !self.style_accumulator.is_empty() {
-            root = root.style(self.style_accumulator);
-        }
-        root
+        caller_style(root, self.style_accumulator)
     }
 
     fn normalize_proportional(&mut self) {

@@ -9,7 +9,7 @@ use crate::reactive::{Signal, derived};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{
-    BORDER_WIDTH, DISABLED_OPACITY, ICON_SIZE, Radius, StateStyle, StyleAtom, StyleOverlay,
+    BORDER_WIDTH, DISABLED_OPACITY, ICON_SIZE, Radius, StateStyle, Style, StyleAtom, StyleOverlay,
     StyleState, StyleVariant, Token, space,
 };
 
@@ -149,15 +149,26 @@ pub(crate) fn accessible_name_or(
 }
 
 pub(crate) fn accessible_name(label: &TextContent) -> AccessibleName {
-    match label {
-        TextContent::Static(value) => AccessibleName::Static(value.clone()),
-        TextContent::Reactive(value) => AccessibleName::Derived(*value),
-        TextContent::Compute(_) => AccessibleName::Static(label.resolve()),
+    label.live().map_or_else(
+        || AccessibleName::Static(label.resolve()),
+        AccessibleName::Derived,
+    )
+}
+
+pub(crate) fn caller_style(node: NodeBuilder, style: Style) -> NodeBuilder {
+    if style.is_empty() {
+        node
+    } else {
+        node.style(style)
     }
 }
 
-pub(crate) fn static_label(label: Option<&TextContent>) -> Option<String> {
-    label
-        .and_then(TextContent::as_static_str)
-        .map(ToOwned::to_owned)
+pub(crate) fn control_root(
+    disabled: Option<Signal<bool>>,
+    mut style: Style,
+    base: impl FnOnce(InteractionState, StyleOverlay) -> NodeBuilder,
+) -> NodeBuilder {
+    let interaction = InteractionState::new(true).disabled(disabled);
+    let overlay = style.take_state_overlay();
+    caller_style(base(interaction, overlay), style)
 }

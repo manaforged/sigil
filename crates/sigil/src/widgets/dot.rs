@@ -6,6 +6,7 @@ use crate::style::{StyleAtom, Tone};
 use crate::widgets::Widget;
 
 use super::layout_ext::LayoutOverrides;
+use super::shared::caller_style;
 
 /// Builder of a status dot.
 pub struct DotBuilder {
@@ -47,10 +48,7 @@ impl DotBuilder {
             )
             .pick()(self.tone, self.size);
         node = node.role(Role::GenericContainer).with(layout);
-        if !self.style_accumulator.is_empty() {
-            node = node.style(self.style_accumulator);
-        }
-        node
+        caller_style(node, self.style_accumulator)
     }
 }
 
