@@ -219,7 +219,7 @@ fn status_row(status: String) -> TextBuilder {
                 .min_size(0.0, 0.0),
         )
         .class("text-xs")
-        .class(Token::Gray10.text())
+        .class(Token::Gray11.text())
 }
 
 builder_impls!([] DiffBuilder: paint(style_accumulator), widget, node);

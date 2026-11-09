@@ -22,8 +22,8 @@ pub(super) const ROW_INSET: f32 = space(2);
 
 const fn look(kind: LineKind) -> (Option<Token>, Token, &'static str, char) {
     match kind {
-        LineKind::Removed => (Some(Token::Error3), Token::Error11, "removed", '-'),
-        LineKind::Added => (Some(Token::Success3), Token::Success11, "added", '+'),
+        LineKind::Removed => (Some(Token::Error3), Token::Error12, "removed", '-'),
+        LineKind::Added => (Some(Token::Success3), Token::Success12, "added", '+'),
         LineKind::Context | LineKind::Note => (None, Token::Gray11, "unchanged", ' '),
     }
 }
@@ -31,9 +31,9 @@ const fn look(kind: LineKind) -> (Option<Token>, Token, &'static str, char) {
 pub(super) fn render(row: &DiffRow, draw: Draw) -> NodeBuilder {
     let picker = draw.picker;
     match row {
-        DiffRow::Meta(body) => text_row(body.clone(), "text-xs font-mono", Token::Gray10),
+        DiffRow::Meta(body) => text_row(body.clone(), "text-xs font-mono", Token::Gray11),
         DiffRow::Hunk { hunk, header } => {
-            let line = text_row(header.clone(), "text-xs font-mono", Token::Info11);
+            let line = text_row(header.clone(), "text-xs font-mono", Token::Info12);
             match picker {
                 Some(picker) => picker.hunk(line, *hunk),
                 None => line,
@@ -44,7 +44,7 @@ pub(super) fn render(row: &DiffRow, draw: Draw) -> NodeBuilder {
         DiffRow::Overflow => text_row(
             "… expand tool output to see the remaining changes".to_string(),
             "text-xs",
-            Token::Gray10,
+            Token::Gray11,
         ),
     }
 }
@@ -133,7 +133,7 @@ pub(super) fn source_row(cell: &DiffCell, draw: Draw) -> NodeBuilder {
             .nowrap()
             .layout(LayoutStyle::block().width(GUTTER_W).shrink(0.0))
             .class("text-xs font-mono")
-            .class(Token::Gray9.text()),
+            .class(Token::Gray11.text()),
     );
     let row = segments(cell, fg, draw.wrap)
         .into_iter()
