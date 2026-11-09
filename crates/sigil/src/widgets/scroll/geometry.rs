@@ -1,6 +1,7 @@
 use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Mutex, OnceLock, PoisonError};
 
+use crate::style::intern::intern;
 use crate::style::{Metrics, StyleAtom};
 
 use super::{SCROLLBAR_WIDTH, THUMB_MIN_HEIGHT, THUMB_REST_WIDTH, to_i16};
@@ -73,18 +74,18 @@ pub(crate) fn atoms(
     key: (i16, i16),
     build: impl FnOnce() -> Vec<StyleAtom>,
 ) -> &'static [StyleAtom] {
-    let cache = cache.get_or_init(|| Mutex::new(HashMap::new()));
-    let Ok(mut map) = cache.lock() else {
-        return Box::leak(build().into_boxed_slice());
-    };
+    let mut map = cache
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
     if let Some(atoms) = map.get(&key).copied() {
         return atoms;
     }
-    let leaked = Box::leak(build().into_boxed_slice());
+    let atoms = intern(build());
     if map.len() < cap {
-        map.insert(key, leaked);
+        map.insert(key, atoms);
     }
-    leaked
+    atoms
 }
 
 #[cfg(test)]

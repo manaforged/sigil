@@ -211,9 +211,8 @@ fn push_blur_surface(scene: &mut SceneBuilder, x: f32, y: f32, w: f32, h: f32, s
     scene.pop_layer();
 }
 
-#[allow(clippy::missing_const_for_fn, reason = "bench harness; deliberate")]
-fn blur_effect(_sigma: f32) -> LayerEffect {
-    LayerEffect::Identity
+fn blur_effect(sigma: f32) -> LayerEffect {
+    LayerEffect::Filter(std::sync::Arc::from([sigil::scene::Filter::Blur(sigma)]))
 }
 
 fn make_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
