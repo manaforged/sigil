@@ -220,7 +220,7 @@ impl TextFieldBuilder {
             node = node.style(self.style_accumulator);
         }
         let overrides = std::mem::take(&mut self.layout_overrides);
-        (overrides.finish(node.with(field_layout())), runtime)
+        (overrides.finish(node.with(field_layout(width))), runtime)
     }
 }
 

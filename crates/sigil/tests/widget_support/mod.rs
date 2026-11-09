@@ -3,7 +3,7 @@
 use sigil::a11y::node as access_node;
 use sigil::events::{Event, EventRouter, Key, KeyPhase, PhysicalKey};
 use sigil::geometry::Size;
-use sigil::kernel::{Cx, NodeId, NodeType};
+use sigil::kernel::{Cx, NodeId, NodeType, TextContent};
 use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::reactive::Signal;
 use sigil::scene::{SceneCommand, emit_scene};
@@ -34,7 +34,15 @@ pub(crate) fn rect_colors(cx: &Cx, root: NodeId) -> Vec<Rgba8> {
 pub(crate) fn find_text_node(cx: &Cx, root: NodeId) -> Option<NodeId> {
     let mut found = None;
     cx.visit_preorder(root, |id, node| {
-        if found.is_none() && matches!(node.kind, NodeType::Text { .. }) {
+        if found.is_none()
+            && matches!(
+                node.kind,
+                NodeType::Text {
+                    content: TextContent::Reactive(_),
+                    ..
+                }
+            )
+        {
             found = Some(id);
         }
     });

@@ -74,7 +74,7 @@ pub(super) fn build_base_node(
         ));
     let node = node
         .placeholder(placeholder_str)
-        .layout(field_layout())
+        .layout(field_layout(inputs.width))
         .class(FIELD_VARIANT.base())
         .class(TEXT_FIELD_ANIM_BASE)
         .style_reactive(channel)
@@ -103,11 +103,16 @@ fn field_style_channel(
     }
 }
 
-pub(super) fn field_layout() -> LayoutStyle {
+const MIN_WIDTH: f32 = 96.0;
+
+pub(super) fn field_layout(width: Option<f32>) -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill_width()
-        .min_size(0.0, Metrics::current().control_height(ControlSize::Default))
-        .align_items(AlignItems::Center)
+        .min_size(
+            width.map_or(MIN_WIDTH, |_| 0.0),
+            Metrics::current().control_height(ControlSize::Default),
+        )
+        .align_items(AlignItems::Stretch)
 }
 
 fn field_inner_layout(inputs: &FieldInputs, adorn: &Adornments) -> LayoutStyle {
