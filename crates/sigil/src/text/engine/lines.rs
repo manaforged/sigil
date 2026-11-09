@@ -76,7 +76,7 @@ pub(super) fn break_lines(
         line.set_baseline_to(strut.line_height, strut.ascent, strut.descent);
         return (vec![line], LineFit::default());
     }
-    let mut lines: Vec<LayoutLine> = Vec::new();
+    let mut lines: Vec<LayoutLine> = Vec::with_capacity(line_estimate(segments, max_width));
     let mut pending = PendingLine::new();
     let mut cursor: u32 = 0;
     let mut fit = LineFit::default();
@@ -103,6 +103,20 @@ pub(super) fn break_lines(
     fit.width = fit.width.max(pending.peak);
     push_visual_line(&mut lines, &pending, strut, paragraph_bidi, cursor);
     (lines, fit)
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "the estimate is clamped to the segment count before the cast"
+)]
+fn line_estimate(segments: &[ShapedSegment], max_width: Option<f32>) -> usize {
+    let Some(limit) = max_width.filter(|limit| *limit > 0.0) else {
+        return if max_width.is_some() { segments.len() / 2 + 1 } else { 1 };
+    };
+    let total: f32 = segments.iter().map(|seg| seg.advance).sum();
+    (total / limit).ceil().clamp(1.0, segments.len() as f32) as usize
 }
 
 fn should_wrap(pending: &PendingLine<'_>, seg: &ShapedSegment, max_width: Option<f32>) -> bool {
