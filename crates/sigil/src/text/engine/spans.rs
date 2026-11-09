@@ -51,7 +51,7 @@ pub(super) fn shape_spans(
         return Vec::new();
     }
     let levels = paragraph_bidi.levels();
-    let mut out: Vec<ShapedSegment> = Vec::with_capacity(text.len().min(32));
+    let mut out: Vec<ShapedSegment> = Vec::with_capacity(text.len() / 2 + 1);
     let mut first_span = 0;
     for (word_start, fragment) in text.split_word_bound_indices() {
         if fragment.is_empty() {
