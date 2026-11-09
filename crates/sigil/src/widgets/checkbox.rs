@@ -243,12 +243,16 @@ pub(crate) fn checkbox_indicator(
 fn box_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .fixed_size(CHECKBOX_BOX_SIZE, CHECKBOX_BOX_SIZE)
+        .shrink(0.0)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center)
 }
 
 fn cell_layout() -> LayoutStyle {
-    LayoutStyle::block().width(cols(4.0)).height(rows(1.0))
+    LayoutStyle::block()
+        .width(cols(4.0))
+        .height(rows(1.0))
+        .shrink(0.0)
 }
 
 const fn cell_variant(_tone: Tone, _checked: bool) -> StyleVariant {

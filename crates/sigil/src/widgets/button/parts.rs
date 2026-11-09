@@ -3,8 +3,8 @@ use crate::kernel::{TextBuilder, TextContent, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{
-    BORDER_WIDTH, Elevation, GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, StyleAtom, StyleVariant,
-    Tone, TransitionId,
+    BORDER_WIDTH, ColorAtom, Elevation, GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, StyleAtom,
+    StyleVariant, Tone, TransitionId,
 };
 use crate::widgets::Widget;
 
@@ -38,7 +38,16 @@ pub(super) static BUTTON_FRAME: &[StyleAtom] = &[
     StyleAtom::BorderToneStep(6),
 ];
 
-pub(super) static SOLID_FRAME: &[StyleAtom] = &[StyleAtom::Shadow(Elevation::Sm)];
+const CLEAR_BORDER: StyleAtom =
+    StyleAtom::BorderColor(ColorAtom::Rgba8(crate::scene::command::fills::TRANSPARENT));
+
+pub(super) static GHOST_FRAME: &[StyleAtom] = &[StyleAtom::BorderWidth(BORDER_WIDTH), CLEAR_BORDER];
+
+pub(super) static SOLID_FRAME: &[StyleAtom] = &[
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    CLEAR_BORDER,
+    StyleAtom::Shadow(Elevation::Sm),
+];
 
 pub(super) static LABEL_TEXT_SOLID: &[StyleAtom] = &[
     StyleAtom::FgOnSolid,

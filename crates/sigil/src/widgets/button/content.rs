@@ -9,7 +9,7 @@ use crate::widgets::icon::icon_svg;
 use crate::widgets::spinner::spinner;
 
 use super::ButtonBuilder;
-use super::parts::{BUTTON_FRAME, ButtonFill, SOLID_FRAME, label_node};
+use super::parts::{BUTTON_FRAME, ButtonFill, GHOST_FRAME, SOLID_FRAME, label_node};
 use crate::widgets::shared::ICON_GLYPH;
 
 const COMPACT_LABEL_HEIGHT: f32 = 32.0;
@@ -19,7 +19,7 @@ impl ButtonBuilder {
     fn leading_icon(&self, svg: std::sync::Arc<str>) -> crate::widgets::icon::IconBuilder {
         icon_svg(svg)
             .tone(self.resolved_tone())
-            .px(if self.height < 30.0 { 14.0 } else { 16.0 })
+            .px(if self.height < 30.0 { 14.0_f32 } else { 16.0 }.min(self.height))
             .on_solid(self.resolved_fill() == ButtonFill::Solid)
     }
 
@@ -76,7 +76,7 @@ impl ButtonBuilder {
 
     pub(super) fn framed(&self, node: NodeBuilder) -> NodeBuilder {
         match self.resolved_fill() {
-            ButtonFill::Ghost => node,
+            ButtonFill::Ghost => node.class(GHOST_FRAME),
             ButtonFill::Solid => node.class(SOLID_FRAME),
             ButtonFill::Soft | ButtonFill::Outline => node.class(BUTTON_FRAME),
         }
