@@ -56,7 +56,7 @@ impl SpaceStyle {
         backface: Backface::Visible,
     };
 
-    pub(crate) fn apply(&mut self, atom: SpaceAtom) {
+    pub(crate) const fn apply(&mut self, atom: SpaceAtom) {
         match atom {
             SpaceAtom::RotateX(radians) => self.turn[0] = radians,
             SpaceAtom::RotateY(radians) => self.turn[1] = radians,
@@ -71,7 +71,7 @@ impl SpaceStyle {
     /// Whether the node itself has no 3D turn or depth.
     #[must_use]
     pub fn is_flat(&self) -> bool {
-        self.turn == [0.0; 3] && self.depth == 0.0
+        self.turn.iter().all(|turn| *turn == 0.0) && self.depth == 0.0
     }
 
     pub(crate) const fn value(&self, kind: NumericAtomKind) -> Option<f32> {

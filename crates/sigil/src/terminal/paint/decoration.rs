@@ -39,17 +39,7 @@ fn blend(ink: Ink, over: Rgba8, foreground: bool, theme: &Theme) -> Ink {
         Ink::Bare if foreground => theme.on_surface,
         Ink::Bare => theme.surface,
     };
-    let alpha = u16::from(over.a);
-    let channel = |top: u8, bottom: u8| {
-        u8::try_from((u16::from(top) * alpha + u16::from(bottom) * (255 - alpha) + 127) / 255)
-            .unwrap_or(u8::MAX)
-    };
-    Ink::Exact(Rgba8 {
-        r: channel(over.r, under.r),
-        g: channel(over.g, under.g),
-        b: channel(over.b, under.b),
-        a: 255,
-    })
+    Ink::Exact(over.over(under))
 }
 
 pub(super) struct BorderEdge<'a> {

@@ -135,9 +135,9 @@ impl Transform2D {
     }
 
     pub(crate) fn matrix(self, rect: Rect) -> [[f32; 3]; 2] {
-        let [sx_shift, sy_shift] = self.shift.map(|units| f32::from(units) / SHIFT_UNITS);
-        let tx = sx_shift.mul_add(rect.width, self.translation[0]);
-        let ty = sy_shift.mul_add(rect.height, self.translation[1]);
+        let [width_share, height_share] = self.shift.map(|units| f32::from(units) / SHIFT_UNITS);
+        let tx = width_share.mul_add(rect.width, self.translation[0]);
+        let ty = height_share.mul_add(rect.height, self.translation[1]);
         let [sx, sy] = self.scale;
         let Point {
             x: pivot_x,

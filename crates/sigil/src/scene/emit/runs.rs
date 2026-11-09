@@ -30,7 +30,7 @@ pub(super) fn inks(runs: Option<&TextRuns>, theme: &Theme) -> Vec<RunInk> {
     })
 }
 
-fn faint(color: crate::style::Rgba8) -> crate::style::Rgba8 {
+const fn faint(color: crate::style::Rgba8) -> crate::style::Rgba8 {
     crate::style::Rgba8 {
         a: color.a / 5 * 3,
         ..color
@@ -44,7 +44,7 @@ pub(super) const fn split(_: &mut SceneBuilder, _: NodeId, run: GlyphRun) -> Gly
 
 #[cfg(feature = "scene")]
 pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> GlyphRun {
-    use crate::scene::command::{CellRect, DecorationKind, DrawRect};
+    use crate::scene::command::{CellRect, DrawRect};
     use crate::scene::corner_radii::CornerRadii;
     let Some(runs) = run.style.runs.clone() else {
         return run;
@@ -73,19 +73,7 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
                 scene.draw_rect_for_node(id, style(*rect), CellRect::default());
             }
         }
-        let ink_color = ink.color.unwrap_or(run.color);
-        if face.link.is_some() || face.underline {
-            line(scene, &rects, ink_color, &run, DecorationKind::Underline);
-        }
-        if face.strike {
-            line(
-                scene,
-                &rects,
-                ink_color,
-                &run,
-                DecorationKind::Strikethrough,
-            );
-        }
+        decorate(scene, &rects, ink.color.unwrap_or(run.color), &run, face);
         let Some(color) = ink.color else {
             continue;
         };
@@ -97,6 +85,23 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
     base.extend(paragraph.rendered_glyphs_in(at, usize::MAX));
     let color = run.color;
     run.with_glyphs(color, base)
+}
+
+#[cfg(feature = "scene")]
+fn decorate(
+    scene: &mut SceneBuilder,
+    rects: &[crate::geometry::Rect],
+    color: crate::style::Rgba8,
+    run: &GlyphRun,
+    face: &crate::style::TextFace,
+) {
+    use crate::scene::command::DecorationKind;
+    if face.link.is_some() || face.underline {
+        line(scene, rects, color, run, DecorationKind::Underline);
+    }
+    if face.strike {
+        line(scene, rects, color, run, DecorationKind::Strikethrough);
+    }
 }
 
 #[cfg(feature = "scene")]

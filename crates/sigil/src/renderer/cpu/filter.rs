@@ -52,8 +52,8 @@ fn drop_shadow(layer: &mut Pixmap, shadow: Shadow, scale: f32) {
     shade.data_mut().copy_from_slice(layer.data());
     blur(&mut shade, shadow.blur * scale);
     let [dx, dy] = shadow.offset.map(|value| (value * scale).round() as i64);
-    let [r, g, b, a] = shadow.color;
-    let tint = [r * a, g * a, b * a, a];
+    let [red, green, blue, alpha] = shadow.color;
+    let tint = [red * alpha, green * alpha, blue * alpha, alpha];
     let (width, height) = (i64::from(layer.width()), i64::from(layer.height()));
     let source = shade.data();
     let (pixels, _) = layer.data_mut().as_chunks_mut::<4>();
@@ -61,7 +61,9 @@ fn drop_shadow(layer: &mut Pixmap, shadow: Shadow, scale: f32) {
         let (x, y) = (index as i64 % width - dx, index as i64 / width - dy);
         let inside = (0..width).contains(&x) && (0..height).contains(&y);
         let coverage = if inside {
-            f32::from(source[((y * width + x) * 4 + 3) as usize]) / 255.0
+            source
+                .get(((y * width + x) * 4 + 3) as usize)
+                .map_or(0.0, |value| f32::from(*value) / 255.0)
         } else {
             0.0
         };
@@ -72,10 +74,12 @@ fn drop_shadow(layer: &mut Pixmap, shadow: Shadow, scale: f32) {
 fn under(top: [u8; 4], tint: [f32; 4], coverage: f32) -> [u8; 4] {
     let alpha = f32::from(top[3]) / 255.0;
     let below = 1.0 - alpha;
-    let [r, g, b] = [0, 1, 2].map(|i| {
-        let shade = tint[i] * coverage * below;
-        encode_byte(decode(top[i]) + shade)
-    });
-    let a = tint[3].mul_add(coverage * below, alpha);
-    [r, g, b, (a * 255.0).round().clamp(0.0, 255.0) as u8]
+    let mut out = [0_u8; 4];
+    for ((slot, channel), tone) in out.iter_mut().zip(top).zip(tint).take(3) {
+        let shade = tone * coverage * below;
+        *slot = encode_byte(decode(channel) + shade);
+    }
+    let covered = tint[3].mul_add(coverage * below, alpha);
+    out[3] = crate::style::srgb::byte(covered * 255.0);
+    out
 }

@@ -1,5 +1,6 @@
 use std::f32::consts::{FRAC_1_SQRT_2, TAU};
 
+use crate::geometry::smoothstep;
 use crate::renderer::shadow_paint::ShadowKind;
 
 const SHARP_SIGMA: f32 = 0.01;
@@ -46,11 +47,6 @@ impl ShadowField {
         }
         blurred(p, self.sigma, self.radii, half, spread)
     }
-}
-
-fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
-    let t = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
-    t * t * 2.0f32.mul_add(-t, 3.0)
 }
 
 fn erf(x: f32) -> f32 {

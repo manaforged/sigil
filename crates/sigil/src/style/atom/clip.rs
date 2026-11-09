@@ -40,8 +40,8 @@ impl ClipShape {
                 }
             }
             Self::Circle(radius) => {
-                let reach = radius.map_or(w.min(h) * 0.5, f32::from);
-                Clip::circle(Point::new(x + w * 0.5, y + h * 0.5), reach)
+                let reach = radius.map_or_else(|| w.min(h) * 0.5, f32::from);
+                Clip::circle(Point::new(w.mul_add(0.5, x), h.mul_add(0.5, y)), reach)
             }
             Self::Ellipse => Clip::ellipse(rect),
             Self::Polygon(points) => {
@@ -64,8 +64,10 @@ impl ClipShape {
                 in_rounded(inner, f32::from(round.max(0)), point)
             }
             Self::Circle(radius) => {
-                let reach = radius.map_or(w.min(h) * 0.5, f32::from);
-                (point.x - x - w * 0.5).hypot(point.y - y - h * 0.5) <= reach
+                let reach = radius.map_or_else(|| w.min(h) * 0.5, f32::from);
+                w.mul_add(-0.5, point.x - x)
+                    .hypot(h.mul_add(-0.5, point.y - y))
+                    <= reach
             }
             Self::Ellipse => {
                 let (rx, ry) = ((w * 0.5).max(f32::EPSILON), (h * 0.5).max(f32::EPSILON));

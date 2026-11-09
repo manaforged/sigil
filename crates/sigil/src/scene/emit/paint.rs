@@ -149,8 +149,8 @@ fn push_container(
         }
         scene.draw_gradient_for_node(id, draw, cell);
     } else if style.background_color.is_some() || stroke.is_some() || paint.tone.is_some() {
-        let fill = style.background_color.unwrap_or(TRANSPARENT);
-        let mut draw = DrawRect::new(rect, fill)
+        let background = style.background_color.unwrap_or(TRANSPARENT);
+        let mut draw = DrawRect::new(rect, background)
             .border_radius(radii)
             .opacity(style.opacity);
         if let Some(stroke) = stroke {
@@ -207,11 +207,7 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
     let Some(color) = style.text_color else {
         return;
     };
-    let flow = match (*wrap, *ellipsis) {
-        (true, _) => TextFlow::Wrap,
-        (false, true) => TextFlow::Ellipsis,
-        (false, false) => TextFlow::Line,
-    };
+    let flow = text_flow(*wrap, *ellipsis);
     let mut text_style = text_style_for(node, paint.theme, paint.text_base);
     text_style.runs = node.get_extension::<crate::style::TextRuns>().cloned();
     let text = content.resolve();
@@ -242,7 +238,27 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
         None => run,
     };
     let run = super::runs::split(scene, id, run);
-    let overflows = *ellipsis && overflows(&run, rect);
+    let clip_rect = (*ellipsis && overflows(&run, rect)).then_some(rect);
+    emit_run(scene, id, run, clip_rect, paint);
+    push_text_decoration(scene, rect, color, style.opacity, &text_style);
+}
+
+const fn text_flow(wrap: bool, ellipsis: bool) -> TextFlow {
+    match (wrap, ellipsis) {
+        (true, _) => TextFlow::Wrap,
+        (false, true) => TextFlow::Ellipsis,
+        (false, false) => TextFlow::Line,
+    }
+}
+
+fn emit_run(
+    scene: &mut SceneBuilder,
+    id: NodeId,
+    run: GlyphRun,
+    clip_rect: Option<Rect>,
+    paint: &NodePaint<'_>,
+) {
+    let style = paint.style;
     let shadows = text_shadows(style, paint.text_shadows);
     let emit = |target: &mut SceneBuilder| {
         for shadow in shadows.iter().rev() {
@@ -251,12 +267,11 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
         push_color_glyphs(target, id, &run, style.opacity);
         target.draw_glyph_run_for_node(id, run);
     };
-    if overflows {
+    if let Some(rect) = clip_rect {
         scene.with_clip(rect, emit);
     } else {
         emit(scene);
     }
-    push_text_decoration(scene, rect, color, style.opacity, &text_style);
 }
 
 fn text_shadows(style: &RenderStyle, inherited: &[Shadow]) -> SmallVec<[Shadow; 3]> {

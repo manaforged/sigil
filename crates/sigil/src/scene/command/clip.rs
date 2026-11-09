@@ -17,6 +17,10 @@ const OPAQUE: Rgba8 = Rgba8 {
 };
 
 /// The region a clip keeps.
+#[allow(
+    clippy::large_enum_variant,
+    reason = "SceneCommand already holds DrawPath inline, so boxing it here saves no space and adds an allocation"
+)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Clip {
     /// A rectangle, applied with the scissor.
@@ -138,8 +142,8 @@ fn outline_key(outline: &[PathCmd], rule: FillRule) -> u64 {
         let (verb, points, len) = match *cmd {
             PathCmd::MoveTo(x, y) => (1, [x, y, 0.0, 0.0, 0.0, 0.0], 2),
             PathCmd::LineTo(x, y) => (2, [x, y, 0.0, 0.0, 0.0, 0.0], 2),
-            PathCmd::QuadTo(a, b, x, y) => (3, [a, b, x, y, 0.0, 0.0], 4),
-            PathCmd::CubicTo(a, b, c, d, x, y) => (4, [a, b, c, d, x, y], 6),
+            PathCmd::QuadTo(cx, cy, x, y) => (3, [cx, cy, x, y, 0.0, 0.0], 4),
+            PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y) => (4, [c1x, c1y, c2x, c2y, x, y], 6),
             PathCmd::Close => (5, [0.0; 6], 0),
         };
         points

@@ -107,7 +107,7 @@ impl Transform3D {
         (finite && !(hide_backface && self.back_facing())).then_some(self)
     }
 
-    pub(crate) fn homography(self) -> [[f32; 3]; 3] {
+    pub(crate) const fn homography(self) -> [[f32; 3]; 3] {
         let m = self.0;
         [
             [m[0][0], m[0][1], m[0][3]],
@@ -137,16 +137,19 @@ impl Transform3D {
         for (index, &a) in mapped.iter().enumerate() {
             let b = mapped
                 .get(index + 1)
-                .or(mapped.first())
+                .or_else(|| mapped.first())
                 .copied()
                 .unwrap_or(a);
-            if a[2] >= MIN_W {
-                out.push(Point::new(a[0] / a[2], a[1] / a[2]));
+            let ([ax, ay, aw], [bx, by, bw]) = (a, b);
+            if aw >= MIN_W {
+                out.push(Point::new(ax / aw, ay / aw));
             }
-            if (a[2] >= MIN_W) != (b[2] >= MIN_W) {
-                let t = (MIN_W - a[2]) / (b[2] - a[2]);
-                let at = |k: usize| (b[k] - a[k]).mul_add(t, a[k]);
-                out.push(Point::new(at(0) / MIN_W, at(1) / MIN_W));
+            if (aw >= MIN_W) != (bw >= MIN_W) {
+                let t = (MIN_W - aw) / (bw - aw);
+                out.push(Point::new(
+                    (bx - ax).mul_add(t, ax) / MIN_W,
+                    (by - ay).mul_add(t, ay) / MIN_W,
+                ));
             }
         }
         out
@@ -190,6 +193,10 @@ pub(crate) fn apply(m: [[f32; 3]; 3], v: [f32; 3]) -> [f32; 3] {
     m.map(|row| row[0].mul_add(v[0], row[1].mul_add(v[1], row[2] * v[2])))
 }
 
+#[allow(
+    clippy::many_single_char_names,
+    reason = "a to i are the matrix entries in the cofactor notation of a 3x3 inverse"
+)]
 pub(crate) fn invert(m: [[f32; 3]; 3]) -> Option<[[f32; 3]; 3]> {
     let [[a, b, c], [d, e, f], [g, h, i]] = m;
     let adjugate = [

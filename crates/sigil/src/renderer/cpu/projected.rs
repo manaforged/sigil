@@ -16,6 +16,7 @@ use crate::scene::command::BlendMode;
 use crate::scene::command::transform3d::{apply, invert};
 
 use super::paint::CpuPainter;
+use crate::geometry::smoothstep;
 
 type Plane = [[f32; 3]; 3];
 
@@ -28,8 +29,8 @@ struct Source<'a> {
 }
 
 impl CpuPainter<'_> {
-    pub(super) fn projected_layer(&mut self, scope: LayerScope, children: &[PlanNode<'_>]) {
-        let Some(frame) = ProjectedFrame::new(&self.state, &scope, self.area(), self.scale) else {
+    pub(super) fn projected_layer(&mut self, scope: &LayerScope, children: &[PlanNode<'_>]) {
+        let Some(frame) = ProjectedFrame::new(&self.state, scope, self.area(), self.scale) else {
             return;
         };
         let bounds = frame.bounds;
@@ -54,7 +55,7 @@ impl CpuPainter<'_> {
                 bounds,
                 scale: self.scale,
             };
-            self.place(&source, inverse, screen, &scope);
+            self.place(&source, inverse, screen, scope);
             self.stats.offscreen_layers += 1;
         }
         self.release_pixmap(layer);
@@ -63,25 +64,25 @@ impl CpuPainter<'_> {
     fn place(&mut self, source: &Source<'_>, inverse: Plane, span: [u32; 4], scope: &LayerScope) {
         let view = (self.scale, self.origin);
         if scope.blend == BlendMode::Normal {
-            let canvas = Canvas {
+            let mut canvas = Canvas {
                 stride: self.target.width() as usize * 4,
                 data: self.target.data_mut(),
                 at: (0, 0),
             };
             let opacity = scope.opacity * self.state.current_opacity();
-            project(canvas, source, (inverse, opacity), span, view);
+            project(&mut canvas, source, (inverse, opacity), span, view);
             return;
         }
         let [x0, y0, x1, y1] = span;
         let Some(mut scratch) = self.take_pixmap(x1 - x0, y1 - y0) else {
             return;
         };
-        let canvas = Canvas {
+        let mut canvas = Canvas {
             stride: scratch.width() as usize * 4,
             data: scratch.data_mut(),
             at: (x0, y0),
         };
-        project(canvas, source, (inverse, 1.0), span, view);
+        project(&mut canvas, source, (inverse, 1.0), span, view);
         self.blended(&mut scratch, (x0, y0), scope);
         self.release_pixmap(scratch);
     }
@@ -111,7 +112,7 @@ struct Canvas<'a> {
 }
 
 fn project(
-    canvas: Canvas<'_>,
+    canvas: &mut Canvas<'_>,
     source: &Source<'_>,
     (inverse, opacity): (Plane, f32),
     [x0, y0, x1, y1]: [u32; 4],
@@ -194,15 +195,10 @@ fn mix(a: [f32; 4], b: [f32; 4], t: f32) -> [f32; 4] {
     out
 }
 
-fn smoothstep(low: f32, high: f32, value: f32) -> f32 {
-    let t = ((value - low) / (high - low)).clamp(0.0, 1.0);
-    t * t * 2.0f32.mul_add(-t, 3.0)
-}
-
 fn blend(pixel: &mut [u8], texel: [f32; 4], amount: f32) {
     let keep = 1.0 - texel[3] * amount / 255.0;
     for (channel, source) in pixel.iter_mut().zip(texel) {
         let value = source.mul_add(amount, f32::from(*channel) * keep);
-        *channel = value.round().clamp(0.0, 255.0) as u8;
+        *channel = crate::style::srgb::byte(value);
     }
 }

@@ -19,17 +19,6 @@ struct Inherited<'a> {
     behind: Rgba8,
 }
 
-fn over(top: Rgba8, under: Rgba8) -> Rgba8 {
-    let alpha = u32::from(top.a);
-    let mix = |t: u8, u: u8| ((u32::from(t) * alpha + u32::from(u) * (255 - alpha)) / 255) as u8;
-    Rgba8 {
-        r: mix(top.r, under.r),
-        g: mix(top.g, under.g),
-        b: mix(top.b, under.b),
-        a: 255,
-    }
-}
-
 fn needed(style: &TextStyle) -> f32 {
     let large = style.font_size >= LARGE_PX
         || (style.font_size >= LARGE_BOLD_PX && style.font_weight >= BOLD);
@@ -88,12 +77,12 @@ fn walk(cx: &Cx, layout: &LayoutEngine, id: NodeId, above: &Inherited<'_>, out: 
     }
     let behind = render
         .background_color
-        .map_or(above.behind, |color| over(color, above.behind));
+        .map_or(above.behind, |color| color.over(above.behind));
     let style = text_style_for(node, theme, &above.style);
     if let Some(ink) = render.text_color
         && has_words(cx, id, layout)
     {
-        let (found, floor) = (ratio(over(ink, behind), behind), needed(&style));
+        let (found, floor) = (ratio(ink.over(behind), behind), needed(&style));
         if found < floor {
             out.push(Flaw::Contrast {
                 node: label(id, node),

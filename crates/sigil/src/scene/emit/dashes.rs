@@ -77,10 +77,18 @@ fn push_sides(scene: &mut SceneBuilder, rect: Rect, edges: [f32; 4], line: &Line
     let (r, b) = (l + rect.width, t + rect.height);
     let [top, right, bottom, left] = edges;
     let sides = [
-        (top, (l, t + top * 0.5), (r, t + top * 0.5)),
-        (right, (r - right * 0.5, t), (r - right * 0.5, b)),
-        (bottom, (r, b - bottom * 0.5), (l, b - bottom * 0.5)),
-        (left, (l + left * 0.5, b), (l + left * 0.5, t)),
+        (top, (l, top.mul_add(0.5, t)), (r, top.mul_add(0.5, t))),
+        (
+            right,
+            (right.mul_add(-0.5, r), t),
+            (right.mul_add(-0.5, r), b),
+        ),
+        (
+            bottom,
+            (r, bottom.mul_add(-0.5, b)),
+            (l, bottom.mul_add(-0.5, b)),
+        ),
+        (left, (left.mul_add(0.5, l), b), (left.mul_add(0.5, l), t)),
     ];
     for (width, from, to) in sides {
         if width > 0.0 {

@@ -1,4 +1,5 @@
 use crate::reactive::signal;
+use crate::style::srgb::byte;
 use crate::style::{ColorAtomKind, Rgba8};
 
 use crate::animation_runtime::{AnimationConfig, Animator};
@@ -10,24 +11,8 @@ use super::binding_animate::AttachedColorAnimator;
     not(feature = "scene"),
     allow(dead_code, reason = "the renderer is its caller")
 )]
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "value is clamped to 0..=255 before the cast — bounded"
-)]
 pub fn linear_channel_to_srgb(v: f32) -> u8 {
-    (crate::style::srgb::encode(v) * 255.0)
-        .round()
-        .clamp(0.0, 255.0) as u8
-}
-
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "clamped to 0..=255 before cast"
-)]
-fn byte(value: f32) -> u8 {
-    value.round().clamp(0.0, 255.0) as u8
+    byte(crate::style::srgb::encode(v) * 255.0)
 }
 
 fn premultiplied(color: Rgba8) -> [f32; 4] {

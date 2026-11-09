@@ -84,7 +84,7 @@ impl MaskStyle {
         repeat: true,
     };
 
-    pub(crate) fn apply(&mut self, part: MaskPart) {
+    pub(crate) const fn apply(&mut self, part: MaskPart) {
         match part {
             MaskPart::None => self.kind = None,
             MaskPart::Linear(degrees) => {
@@ -114,7 +114,7 @@ impl MaskStyle {
         }
     }
 
-    fn stop(&mut self, kind: Option<MaskKind>, slot: StopSlot, percent: u8) {
+    const fn stop(&mut self, kind: Option<MaskKind>, slot: StopSlot, percent: u8) {
         if kind.is_some() {
             self.kind = kind;
         }

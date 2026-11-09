@@ -51,15 +51,20 @@ fn legacy(rect: Rect, spec: BgGradient, theme: &Theme) -> Gradient {
 }
 
 fn tailwind_stops(paint: &PaintStyle) -> Vec<GradientStop> {
-    let stop = |index: usize| {
-        let at = paint.positions[index].unwrap_or(DEFAULT_POSITIONS[index]);
-        let color = paint.stops[index].unwrap_or(TRANSPARENT);
-        GradientStop::new(f32::from(at) / 100.0, color)
-    };
-    if paint.stops[1].is_some() {
-        vec![stop(0), stop(1), stop(2)]
+    let [first, middle, last] = std::array::from_fn(|index| {
+        let at = paint.positions.get(index).copied().flatten();
+        let fallback = DEFAULT_POSITIONS.get(index).copied().unwrap_or_default();
+        let color = paint.stops.get(index).copied().flatten();
+        GradientStop::new(
+            f32::from(at.unwrap_or(fallback)) / 100.0,
+            color.unwrap_or(TRANSPARENT),
+        )
+    });
+    let [_, via, _] = paint.stops;
+    if via.is_some() {
+        vec![first, middle, last]
     } else {
-        vec![stop(0), stop(2)]
+        vec![first, last]
     }
 }
 

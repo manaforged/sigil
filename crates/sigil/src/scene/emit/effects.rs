@@ -73,21 +73,22 @@ fn layer_effect(
     rect: Rect,
     content: Rect,
 ) -> (LayerEffect, Option<Rect>) {
-    match projection(cx, id, (style.transform, &style.space), rect) {
-        Some((transform, hide_backface)) => (
+    if let Some((transform, hide_backface)) =
+        projection(cx, id, (style.transform, &style.space), rect)
+    {
+        (
             LayerEffect::Projected {
                 transform,
                 hide_backface,
             },
             transform.bounds(content),
-        ),
-        None => {
-            let transform = style.transform.matrix(rect);
-            (
-                LayerEffect::Transform(transform),
-                Some(transform_rect(transform, content)),
-            )
-        }
+        )
+    } else {
+        let transform = style.transform.matrix(rect);
+        (
+            LayerEffect::Transform(transform),
+            Some(transform_rect(transform, content)),
+        )
     }
 }
 

@@ -137,6 +137,8 @@ pub(crate) enum Amount {
     Sepia,
 }
 
+type AmountFilter = (Amount, fn(f32) -> Filter);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct FilterStyle {
     blur: Option<u16>,
@@ -165,10 +167,14 @@ impl FilterStyle {
         text_color: None,
     };
 
-    pub(crate) const fn apply(&mut self, part: FilterPart) {
+    pub(crate) fn apply(&mut self, part: FilterPart) {
         match part {
             FilterPart::Blur(sixteenths) => self.blur = Some(sixteenths),
-            FilterPart::Amount(amount, percent) => self.amounts[amount as usize] = Some(percent),
+            FilterPart::Amount(amount, percent) => {
+                if let Some(slot) = self.amounts.get_mut(amount as usize) {
+                    *slot = Some(percent);
+                }
+            }
             FilterPart::HueRotate(degrees) => self.hue = Some(degrees),
             FilterPart::DropShadow(shadow) => self.drop = shadow,
             FilterPart::TextShadow(shadows) => self.text = shadows,
@@ -180,8 +186,14 @@ impl FilterStyle {
         if let Some(blur) = self.blur.filter(|blur| *blur > 0) {
             list.push(Filter::Blur(f32::from(blur) / SUB));
         }
-        let amount = |index: Amount| self.amounts[index as usize].map(|n| f32::from(n) / 100.0);
-        let colors: [(Amount, fn(f32) -> Filter); 3] = [
+        let amount = |index: Amount| {
+            self.amounts
+                .get(index as usize)
+                .copied()
+                .flatten()
+                .map(|n| f32::from(n) / 100.0)
+        };
+        let colors: [AmountFilter; 3] = [
             (Amount::Brightness, Filter::Brightness),
             (Amount::Contrast, Filter::Contrast),
             (Amount::Grayscale, Filter::Grayscale),
@@ -195,13 +207,13 @@ impl FilterStyle {
             self.hue
                 .map(|degrees| Filter::HueRotate(f32::from(degrees))),
         );
-        let colors: [(Amount, fn(f32) -> Filter); 3] = [
+        let tones: [AmountFilter; 3] = [
             (Amount::Invert, Filter::Invert),
             (Amount::Saturate, Filter::Saturate),
             (Amount::Sepia, Filter::Sepia),
         ];
         list.extend(
-            colors
+            tones
                 .iter()
                 .filter_map(|(kind, make)| amount(*kind).map(make)),
         );

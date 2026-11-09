@@ -190,7 +190,7 @@ fn full(color: Rgba8) -> [u8; 4] {
 
 fn wash_pixel(wash: &crate::scene::Wash, centre: (f32, f32), x: f64, y: f64) -> [u8; 4] {
     let alpha = f32::from(wash.paper.a) / 255.0;
-    let [r, g, b] = wash.shade(x as f32, y as f32, centre);
-    let byte = |channel: f32| (channel * alpha * 255.0).round().clamp(0.0, 255.0) as u8;
-    [byte(r), byte(g), byte(b), wash.paper.a]
+    let [red, green, blue] = wash.shade(x as f32, y as f32, centre);
+    let byte = |channel: f32| crate::style::srgb::byte(channel * alpha * 255.0);
+    [byte(red), byte(green), byte(blue), wash.paper.a]
 }

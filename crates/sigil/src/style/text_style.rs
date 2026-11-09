@@ -41,6 +41,10 @@ pub struct TextStyle {
 
 /// The overrides of one styled run of text.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each flag is an independent text attribute that combines freely with the others"
+)]
 pub struct TextFace {
     /// Whether bold.
     pub bold: bool,

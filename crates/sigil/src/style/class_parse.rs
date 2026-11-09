@@ -6,9 +6,10 @@ use smallvec::SmallVec;
 use crate::style::intern::intern;
 use crate::style::{StyleAtom, parse_class_string, parser::ParseError};
 
+type ClassCache = Mutex<HashMap<(u32, &'static str), &'static [StyleAtom]>>;
+
 pub(crate) fn parse_classes(input: &'static str) -> &'static [StyleAtom] {
-    static CACHE: OnceLock<Mutex<HashMap<(u32, &'static str), &'static [StyleAtom]>>> =
-        OnceLock::new();
+    static CACHE: OnceLock<ClassCache> = OnceLock::new();
 
     let mut cache = CACHE
         .get_or_init(|| Mutex::new(HashMap::new()))

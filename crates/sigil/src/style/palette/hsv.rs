@@ -70,13 +70,8 @@ fn sextant_index(scaled_hue: f32) -> u8 {
     }
 }
 
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "Value clamped to 0.0..=255.0 before cast — bounded."
-)]
 fn to_byte(channel: f32) -> u8 {
-    (channel * 255.0).round().clamp(0.0, 255.0) as u8
+    crate::style::srgb::byte(channel * 255.0)
 }
 
 #[allow(

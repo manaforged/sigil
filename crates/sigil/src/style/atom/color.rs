@@ -13,6 +13,24 @@ pub struct Rgba8 {
     pub a: u8,
 }
 
+impl Rgba8 {
+    /// Returns this color drawn over the opaque `under` with straight alpha, as an opaque color.
+    #[must_use]
+    pub(crate) fn over(self, under: Self) -> Self {
+        let alpha = u16::from(self.a);
+        let mix = |top: u8, bottom: u8| {
+            u8::try_from((u16::from(top) * alpha + u16::from(bottom) * (255 - alpha) + 127) / 255)
+                .unwrap_or(u8::MAX)
+        };
+        Self {
+            r: mix(self.r, under.r),
+            g: mix(self.g, under.g),
+            b: mix(self.b, under.b),
+            a: 255,
+        }
+    }
+}
+
 impl std::str::FromStr for Rgba8 {
     type Err = crate::Error;
 

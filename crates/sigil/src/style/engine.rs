@@ -183,9 +183,15 @@ impl<'theme> StyleEngine<'theme> {
         match atom {
             PaintAtom::Gradient(shape) => paint.gradient = Some(shape),
             PaintAtom::Stop(slot, color) => {
-                paint.stops[slot.index()] = Some(self.resolve_color(color));
+                if let Some(stop) = paint.stops.get_mut(slot.index()) {
+                    *stop = Some(self.resolve_color(color));
+                }
             }
-            PaintAtom::StopAt(slot, percent) => paint.positions[slot.index()] = Some(percent),
+            PaintAtom::StopAt(slot, percent) => {
+                if let Some(position) = paint.positions.get_mut(slot.index()) {
+                    *position = Some(percent);
+                }
+            }
             PaintAtom::ClipText => paint.clip_text = true,
             PaintAtom::Image(id) => paint.image = Some(id),
             PaintAtom::Border(style) => paint.border = style,
