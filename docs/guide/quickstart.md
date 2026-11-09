@@ -97,7 +97,7 @@ container()
 
 | Method | Sets |
 | --- | --- |
-| `bg` | Background color |
+| `bg` | Background: a color, or a `Background::linear`, `radial`, or `conic` gradient; a later `bg` replaces the earlier one |
 | `text_color` | Text color |
 | `border_color`, `border_w`, `border_top`, `border_right`, `border_bottom`, `border_left` | Border color and width in px |
 | `rounded(Radius)` | Corner radius |
@@ -106,8 +106,10 @@ container()
 | `font_size`, `font_weight`, `font_italic`, `font_family(FontFamily)` | Font |
 | `line_height_px`, `letter_spacing_em`, `tabular_nums` | Text metrics; each name carries its unit |
 | `underline`, `line_through` | Text decoration |
-| `transition`, `transition_colors`, `transition_opacity`, `transition_transform`, `duration`, `ease`, `delay` | Style transitions, as in Tailwind |
+| `transition(Transition)` | Style transitions, as in Tailwind; `Transition::new()`, `all()`, `colors()`, `opacity()`, and `transform()` choose the properties, and `duration`, `ease`, and `delay` set the timing |
 | `animate(Keyframes)` | Keyframe animation; `Keyframes::spin()`, `ping()`, `pulse()`, `bounce()` are the Tailwind ones |
+
+`class("...")` on any builder sets the same styles from Tailwind classes, such as `class("bg-linear-to-r from-accent to-surface")`.
 
 Spacing and size numbers are pixels. `LayoutStyle` sets padding, margin, gap, size, flex, and grid. `row()` and `column()` are flex containers with the default gap. Put all layout for one node in one `LayoutStyle` chain.
 
@@ -139,7 +141,7 @@ Shared metrics:
 | Disabled | opacity | 50 % |
 | Icon glyph | `Metrics::icon_size` | 20 px font size; one cell on a character grid |
 | Control hover | `SurfaceHover` fill, `SurfacePressed` while pressed | checkbox, toggle, radio row, slider, `interactive` |
-| Controls | `Metrics::current()` | `control_height`, `padding`, `gap` per `Size` |
+| Controls | `Metrics::current()` | `control_height`, `control_padding`, `control_gap` per `Size` |
 
 A radius reads the theme at paint time. `Metrics::current()` returns the host metrics. On a character grid, control heights, padding, and gaps are one cell.
 

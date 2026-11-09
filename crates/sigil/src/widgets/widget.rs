@@ -27,6 +27,12 @@ pub trait Widget: Sealed {
     #[must_use]
     fn map_node(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self;
 
+    /// Adds the styles that the Tailwind classes in `classes` name.
+    #[must_use]
+    fn class(self, classes: &'static str) -> Self {
+        self.map_target(move |node| node.class(classes))
+    }
+
     /// Sets the theme for the node and its children.
     #[must_use]
     fn theme(self, theme: Theme) -> Self {
@@ -92,88 +98,10 @@ pub trait Widget: Sealed {
         })
     }
 
-    /// Drives the opacity from `value`.
+    /// Drives one numeric style property from `value`, in the unit that the `kind` variant documents.
     #[must_use]
-    fn animate_opacity(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::Opacity, value))
-    }
-
-    /// Drives the corner radius from `value`.
-    #[must_use]
-    fn animate_radius(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::BorderRadius, value))
-    }
-
-    /// Drives the font size from `value`.
-    #[must_use]
-    fn animate_font_size(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::FontSize, value))
-    }
-
-    /// Drives the line height from `value`.
-    #[must_use]
-    fn animate_line_height(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::LineHeight, value))
-    }
-
-    /// Drives the gap from `value`.
-    #[must_use]
-    fn animate_gap(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::Gap, value))
-    }
-
-    /// Drives the horizontal padding from `value`.
-    #[must_use]
-    fn animate_padding_x(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::PaddingX, value))
-    }
-
-    /// Drives the vertical padding from `value`.
-    #[must_use]
-    fn animate_padding_y(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::PaddingY, value))
-    }
-
-    /// Drives the width from `value`.
-    #[must_use]
-    fn animate_width(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::Width, value))
-    }
-
-    /// Drives the height from `value`.
-    #[must_use]
-    fn animate_height(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::Height, value))
-    }
-
-    /// Drives the horizontal offset from `value`.
-    #[must_use]
-    fn animate_translate_x(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::TranslateX, value))
-    }
-
-    /// Drives the vertical offset from `value`.
-    #[must_use]
-    fn animate_translate_y(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::TranslateY, value))
-    }
-
-    /// Drives the horizontal scale from `value`.
-    #[must_use]
-    fn animate_scale_x(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::ScaleX, value))
-    }
-
-    /// Drives the vertical scale from `value`.
-    #[must_use]
-    fn animate_scale_y(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::ScaleY, value))
-    }
-
-    /// Drives the rotation from `value`.
-    #[must_use]
-    fn animate_rotation(self, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::animate(node, NumericAtomKind::Rotation, value))
+    fn drive(self, kind: NumericAtomKind, value: Signal<f32>) -> Self {
+        self.map_target(move |node| look::drive(node, kind, value))
     }
 
     /// Hides the node while `shown` is false.

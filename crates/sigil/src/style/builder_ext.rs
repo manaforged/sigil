@@ -21,16 +21,10 @@ use crate::style::{
 
 static EMPTY_ATOMS: &[StyleAtom] = &[];
 
-kittest_pub! {
-    /// The Tailwind classes or atoms given to `class`.
-    pub enum ClassSource {
-        /// Interned atoms.
-        Static(&'static [StyleAtom]),
-        /// Owned atoms.
-        Owned(Box<SmallVec<[StyleAtom; 16]>>),
-        /// A class string.
-        RawString(&'static str),
-    }
+pub(crate) enum ClassSource {
+    Static(&'static [StyleAtom]),
+    Owned(Box<SmallVec<[StyleAtom; 16]>>),
+    RawString(&'static str),
 }
 
 impl From<&'static [StyleAtom]> for ClassSource {
@@ -70,14 +64,11 @@ impl From<Style> for ClassSource {
 }
 
 impl NodeBuilder {
-    kittest_pub! {
-        /// Adds Tailwind classes.
-        #[must_use]
-        pub fn class(self, source: impl Into<ClassSource>) -> Self {
-            let source = source.into();
-            self.flush_paint()
-                .mutate(move |node| install_class(node, source))
-        }
+    #[must_use]
+    pub(crate) fn class(self, source: impl Into<ClassSource>) -> Self {
+        let source = source.into();
+        self.flush_paint()
+            .mutate(move |node| install_class(node, source))
     }
 
     #[must_use]
@@ -106,13 +97,10 @@ impl NodeBuilder {
 }
 
 impl TextBuilder {
-    kittest_pub! {
-        /// Adds Tailwind classes.
-        #[must_use]
-        pub fn class(self, source: impl Into<ClassSource>) -> Self {
-            let source = source.into();
-            self.map_node(move |node| node.class(source))
-        }
+    #[must_use]
+    pub(crate) fn class(self, source: impl Into<ClassSource>) -> Self {
+        let source = source.into();
+        self.map_node(move |node| node.class(source))
     }
 
     #[must_use]
@@ -148,8 +136,8 @@ pub(crate) fn presence(
         .mutate(move |node| install_presence(node, shown, config))
 }
 
-pub(crate) fn animate(node: NodeBuilder, kind: NumericAtomKind, value: Signal<f32>) -> NodeBuilder {
-    node.mutate(move |node| install_animation(node, kind, value))
+pub(crate) fn drive(node: NodeBuilder, kind: NumericAtomKind, value: Signal<f32>) -> NodeBuilder {
+    node.mutate(move |node| install_animation(node, kind, value, kind.units()))
 }
 
 pub(crate) fn paint_when(

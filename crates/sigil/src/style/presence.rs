@@ -5,6 +5,7 @@ use crate::animation_runtime::{AnimationConfig, Animator};
 use crate::kernel::Node;
 use crate::reactive::{Signal, batch, effect_named, signal};
 
+use super::atom::OPACITY_UNITS;
 use super::install::{install_animation, install_reactive};
 use super::{NumericAtomKind, StyleAtom};
 use crate::layout::Display;
@@ -27,10 +28,10 @@ pub(super) fn install_presence(node: &mut Node, shown: Signal<bool>, config: Ani
         batch(|| {
             target
                 .borrow_mut()
-                .target(if shown.get() { 10_000.0 } else { 0.0 });
+                .target(if shown.get() { OPACITY_UNITS } else { 0.0 });
         });
     });
-    install_animation(node, NumericAtomKind::Opacity, opacity);
+    install_animation(node, NumericAtomKind::Opacity, opacity, 1.0);
     install_reactive(node, move || {
         let _value = opacity.get();
         if shown.get() || !animator.borrow().settled() {

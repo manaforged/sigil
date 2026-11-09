@@ -1,48 +1,91 @@
+use crate::style::atom::OPACITY_UNITS;
 use crate::style::{Rgba8, StyleAtom};
 use ahash::AHasher;
 use std::hash::{Hash, Hasher};
 
+/// A numeric style property that `Widget::drive` binds to a signal, with the unit on each variant.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum NumericAtomKind {
+#[non_exhaustive]
+pub enum NumericAtomKind {
+    /// Opacity from 0.0, clear, to 1.0, opaque.
     Opacity,
+    /// Corner radius in logical pixels, 0 or more, rounded to a whole pixel.
     BorderRadius,
+    /// Font size in logical pixels, 1 or more.
     FontSize,
+    /// Line height in logical pixels, 1 or more.
     LineHeight,
+    /// Space between children in logical pixels.
     Gap,
+    /// Left and right padding in logical pixels.
     PaddingX,
+    /// Top and bottom padding in logical pixels.
     PaddingY,
+    /// Width in logical pixels.
     Width,
+    /// Height in logical pixels.
     Height,
+    /// Horizontal offset in logical pixels, positive to the right.
     TranslateX,
+    /// Vertical offset in logical pixels, positive down.
     TranslateY,
+    /// Horizontal scale as a factor, 1.0 unchanged.
     ScaleX,
+    /// Vertical scale as a factor, 1.0 unchanged.
     ScaleY,
+    /// Rotation in the plane of the screen in radians, 0.0 unturned.
     Rotation,
+    /// Horizontal offset as a fraction of the node's width, from -16.0 to 16.0.
     TranslateXFraction,
+    /// Vertical offset as a fraction of the node's height, from -16.0 to 16.0.
     TranslateYFraction,
+    /// Rotation around the x axis in radians, 0.0 unturned.
     RotationX,
+    /// Rotation around the y axis in radians, 0.0 unturned.
     RotationY,
+    /// Rotation around the z axis in radians, after the x and y turns.
     RotationZ,
+    /// Offset toward the viewer in logical pixels.
     TranslateZ,
+    /// Perspective distance in logical pixels, 1 or more; the node must already set a perspective.
     Perspective,
+    /// The `blur()` filter's standard deviation in logical pixels, 0 or more.
     Blur,
+    /// The `brightness()` filter amount, 0 or more, 1.0 unchanged.
     Brightness,
+    /// The `contrast()` filter amount, 0 or more, 1.0 unchanged.
     Contrast,
+    /// The `grayscale()` filter amount, 0 or more, 0.0 unchanged.
     Grayscale,
+    /// The `hue-rotate()` filter angle in degrees, rounded to a whole degree.
     HueRotate,
+    /// The `invert()` filter amount, 0 or more, 0.0 unchanged.
     Invert,
+    /// The `saturate()` filter amount, 0 or more, 1.0 unchanged.
     Saturate,
+    /// The `sepia()` filter amount, 0 or more, 0.0 unchanged.
     Sepia,
+    /// The `drop-shadow()` filter horizontal offset in logical pixels.
     DropShadowX,
+    /// The `drop-shadow()` filter vertical offset in logical pixels.
     DropShadowY,
+    /// The `drop-shadow()` filter blur in logical pixels, 0 or more.
     DropShadowBlur,
+    /// The text shadow horizontal offset in logical pixels; the node must have at most one text shadow.
     TextShadowX,
+    /// The text shadow vertical offset in logical pixels; the node must have at most one text shadow.
     TextShadowY,
+    /// The text shadow blur in logical pixels, 0 or more; the node must have at most one text shadow.
     TextShadowBlur,
+    /// Where the first gradient color sits, in percent from 0 to 100; the node must paint a gradient.
     StopFrom,
+    /// Where the middle gradient color sits, in percent from 0 to 100; the gradient must have a middle color.
     StopVia,
+    /// Where the last gradient color sits, in percent from 0 to 100; the node must paint a gradient.
     StopTo,
+    /// Where a gradient mask starts to clear, in percent from 0 to 100; the node must have a gradient mask.
     MaskFrom,
+    /// Where a gradient mask is fully clear, in percent from 0 to 100; the node must have a gradient mask.
     MaskTo,
 }
 
@@ -126,9 +169,16 @@ impl NumericAtomKind {
         )
     }
 
+    pub(crate) const fn units(self) -> f32 {
+        match self {
+            Self::Opacity => OPACITY_UNITS,
+            _ => 1.0,
+        }
+    }
+
     pub(crate) const fn initial(self) -> f32 {
         match self {
-            Self::Opacity => 10_000.0,
+            Self::Opacity => OPACITY_UNITS,
             Self::ScaleX | Self::ScaleY | Self::Brightness | Self::Contrast | Self::Saturate => 1.0,
             Self::StopVia => 50.0,
             Self::StopTo | Self::MaskTo => 100.0,

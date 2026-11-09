@@ -28,7 +28,7 @@ use sigil::app::FrameHooks;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::scene::{Filter, LayerEffect, SceneCommand, Shadow};
-use sigil::style::GradientAxis;
+use sigil::style::{Background, GradientAxis};
 use sigil_kittest::Harness;
 
 #[path = "motion_props/alloc.rs"]
@@ -88,9 +88,9 @@ pub(crate) fn square() -> NodeBuilder {
 
 pub(crate) fn gradient_square() -> NodeBuilder {
     container()
-        .bg_linear(GradientAxis::LeftToRight)
-        .gradient_from(BLACK)
-        .gradient_to(BLUE)
+        .bg(Background::linear(GradientAxis::LeftToRight)
+            .start(BLACK)
+            .end(BLUE))
         .layout(LayoutStyle::block().fixed_size(SIDE, SIDE))
 }
 

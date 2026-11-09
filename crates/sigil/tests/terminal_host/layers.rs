@@ -6,7 +6,7 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::Widget;
 use sigil::prelude::{Paint, Signal};
 use sigil::reactive::{Owner, signal};
-use sigil::style::{Theme, Token, Transform2D};
+use sigil::style::{NumericAtomKind, Theme, Token, Transform2D};
 use sigil::terminal::Access;
 use sigil::widgets::{modal, scroll};
 
@@ -90,7 +90,7 @@ fn tree(knobs: Knobs) -> NodeBuilder {
                 .child(
                     container()
                         .transform(Transform2D::IDENTITY.origin(0.0, 0.0))
-                        .animate_translate_x(knobs.shift)
+                        .drive(NumericAtomKind::TranslateX, knobs.shift)
                         .child(text(knobs.label)),
                 ),
         )

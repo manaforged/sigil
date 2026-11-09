@@ -57,7 +57,7 @@ pub(crate) fn separator() -> NodeBuilder {
                 .fill_width()
                 .height(separator_height())
                 .shrink(0.0)
-                .padding_x(Space::px(metrics.padding(ControlSize::Default)))
+                .padding_x(Space::px(metrics.control_padding(ControlSize::Default)))
                 .padding_y(Space::px(metrics.overlay_padding())),
         )
         .child(

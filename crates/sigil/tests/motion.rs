@@ -13,7 +13,7 @@
 
 use std::time::Duration;
 
-use sigil::animation::{Easing, Keyframes, Property};
+use sigil::animation::{Easing, Keyframes, Property, Transition};
 use sigil::app::FrameHooks;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
@@ -299,11 +299,11 @@ fn transitioned(flags: [Signal<bool>; 2], node: NodeBuilder) -> NodeBuilder {
 fn a_transition_starts_from_the_current_value_when_the_style_changes_mid_flight() {
     Owner::scope("motion-retarget", || {
         let flags = [signal(false), signal(false)];
-        let node = square()
-            .opacity(0.2)
-            .transition_opacity()
-            .duration(Duration::from_secs(1))
-            .ease(Easing::Linear);
+        let node = square().opacity(0.2).transition(
+            Transition::opacity()
+                .duration(Duration::from_secs(1))
+                .ease(Easing::Linear),
+        );
         let mut ui = mount(transitioned(flags, node));
         start(&mut ui, flags[0]);
         run(&mut ui, 0.5);
@@ -330,12 +330,12 @@ fn a_transition_starts_from_the_current_value_when_the_style_changes_mid_flight(
 fn a_transition_delay_holds_the_start_value() {
     Owner::scope("motion-delay", || {
         let flags = [signal(false), signal(false)];
-        let node = square()
-            .opacity(0.2)
-            .transition_opacity()
-            .duration(Duration::from_millis(500))
-            .delay(Duration::from_millis(250))
-            .ease(Easing::Linear);
+        let node = square().opacity(0.2).transition(
+            Transition::opacity()
+                .duration(Duration::from_millis(500))
+                .delay(Duration::from_millis(250))
+                .ease(Easing::Linear),
+        );
         let mut ui = mount(transitioned(flags, node));
         start(&mut ui, flags[0]);
         run(&mut ui, 0.125);

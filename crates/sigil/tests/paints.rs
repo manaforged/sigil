@@ -18,7 +18,7 @@
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
-use sigil::style::{Color, GradientAxis, Radial, RadialExtent};
+use sigil::style::{Background, Color, GradientAxis, Radial, RadialExtent};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
 
@@ -134,9 +134,7 @@ fn radial_box() -> impl IntoNode {
         60.0,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 60.0))
-            .bg_radial(Radial::new())
-            .gradient_from(RED)
-            .gradient_to(BLUE),
+            .bg(Background::radial(Radial::new()).start(RED).end(BLUE)),
     )
 }
 
@@ -166,14 +164,14 @@ fn closest_side_circle() -> impl IntoNode {
         60.0,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 60.0))
-            .bg_radial(
+            .bg(Background::radial(
                 Radial::new()
                     .circle(true)
                     .extent(RadialExtent::ClosestSide)
                     .at(25, 50),
             )
-            .gradient_from(RED)
-            .gradient_to(BLUE),
+            .start(RED)
+            .end(BLUE)),
     )
 }
 
@@ -199,10 +197,7 @@ fn conic_box(from: i16) -> impl IntoNode {
         80.0,
         container()
             .layout(LayoutStyle::block().fixed_size(80.0, 80.0))
-            .bg_conic(from)
-            .gradient_from(RED)
-            .gradient_via(GREEN)
-            .gradient_to(BLUE),
+            .bg(Background::conic(from).start(RED).middle(GREEN).end(BLUE)),
     )
 }
 
@@ -264,9 +259,9 @@ fn gradient_word() -> impl IntoNode {
             .font_size(40.0, "test fixture")
             .font_weight(900)
             .text_color(INK)
-            .bg_linear(GradientAxis::LeftToRight)
-            .gradient_from(RED)
-            .gradient_to(BLUE)
+            .bg(Background::linear(GradientAxis::LeftToRight)
+                .start(RED)
+                .end(BLUE))
             .bg_clip_text(),
     )
 }

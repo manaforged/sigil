@@ -6,15 +6,21 @@ pub(crate) const SPACING_STEP: f32 = 4.0;
 
 pub(crate) const FACTOR_SCALE: f32 = 1000.0;
 
+pub(crate) const OPACITY_UNITS: f32 = 10_000.0;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Px(pub i16);
 
+mod background;
+#[cfg(test)]
+pub(crate) use background::NO_GRADIENT;
 mod clip;
 mod color;
 mod filter;
 mod gradient;
 mod mask;
 mod space;
+pub use background::{Background, Gradient};
 pub use clip::ClipShape;
 pub use color::{BgGradient, ColorAtom, GradientAxis, GradientStopKey, Rgba8};
 pub use filter::FilterAtom;

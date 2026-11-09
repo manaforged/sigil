@@ -20,7 +20,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-use sigil::animation::{Easing, Keyframes, Property};
+use sigil::animation::{Easing, Keyframes, Property, Transition};
 use sigil::animation_runtime::{running_clocks, tick};
 use sigil::app::FrameHooks;
 use sigil::prelude::*;
@@ -173,9 +173,11 @@ fn keyframe_and_transition_colors_meet_at_the_same_midpoint() {
 
         let toggle = signal(false);
         let node = square()
-            .transition_colors()
-            .duration(Duration::from_secs(1))
-            .ease(Easing::Linear)
+            .transition(
+                Transition::colors()
+                    .duration(Duration::from_secs(1))
+                    .ease(Easing::Linear),
+            )
             .paint_when(toggle, |state| state.bg(WHITE));
         let mut fading = mount(node);
         start(&mut fading, toggle);
@@ -278,9 +280,11 @@ fn a_zero_duration_transition_waits_for_its_delay() {
         let flag = signal(false);
         let node = square()
             .opacity(0.2)
-            .transition_opacity()
-            .duration(Duration::ZERO)
-            .delay(Duration::from_millis(250))
+            .transition(
+                Transition::opacity()
+                    .duration(Duration::ZERO)
+                    .delay(Duration::from_millis(250)),
+            )
             .paint_when(flag, |state| state.opacity(1.0));
         let mut ui = mount(node);
         start(&mut ui, flag);

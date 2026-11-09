@@ -19,7 +19,6 @@ use crate::style::{
 };
 
 const MAX_TILES: usize = 4096;
-const DEFAULT_POSITIONS: [u8; 3] = [0, 50, 100];
 
 pub(super) fn fill(rect: Rect, style: &RenderStyle, theme: &Theme) -> Option<Gradient> {
     if let Some(spec) = style.background_gradient {
@@ -52,11 +51,9 @@ fn legacy(rect: Rect, spec: BgGradient, theme: &Theme) -> Gradient {
 
 fn tailwind_stops(paint: &PaintStyle) -> Vec<GradientStop> {
     let [first, middle, last] = std::array::from_fn(|index| {
-        let at = paint.positions.get(index).copied().flatten();
-        let fallback = DEFAULT_POSITIONS.get(index).copied().unwrap_or_default();
         let color = paint.stops.get(index).copied().flatten();
         GradientStop::new(
-            f32::from(at.unwrap_or(fallback)) / 100.0,
+            f32::from(paint.at(index)) / 100.0,
             color.unwrap_or(TRANSPARENT),
         )
     });

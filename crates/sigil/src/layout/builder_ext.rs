@@ -29,7 +29,7 @@ pub fn column() -> NodeBuilder {
 }
 
 fn default_gap() -> f32 {
-    Metrics::current().gap(crate::style::ControlSize::Default)
+    Metrics::current().control_gap(crate::style::ControlSize::Default)
 }
 
 pub(crate) fn asymmetric(node: NodeBuilder, reason: &'static str) -> NodeBuilder {

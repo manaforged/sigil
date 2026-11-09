@@ -22,7 +22,7 @@ pub(super) fn with_caption(
     };
     container()
         .layout(
-            base.gap(Space::px(metrics.gap(ControlSize::Default)))
+            base.gap(Space::px(metrics.control_gap(ControlSize::Default)))
                 .align_items(AlignItems::Center),
         )
         .child(text(caption).nowrap())

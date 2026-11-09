@@ -6,7 +6,7 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 use std::time::Duration;
 
-use sigil::animation::{Easing, Keyframes};
+use sigil::animation::{Easing, Keyframes, Transition};
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::style::Transform2D;
@@ -27,21 +27,21 @@ fn tailwind_transition_is_150ms_on_the_default_curve() {
     Owner::scope("motion-tailwind-transition", || {
         let curve = 0.2 + 0.8 * 0.775_561;
         near(
-            opacity_at(square().transition(), 0.075),
+            opacity_at(square().transition(Transition::new()), 0.075),
             curve,
             "transition at 75ms",
         );
         near(
-            opacity_at(square().transition(), 0.15),
+            opacity_at(square().transition(Transition::new()), 0.15),
             1.0,
             "transition at 150ms",
         );
         near(
-            opacity_at(square().transition_opacity(), 0.075),
+            opacity_at(square().transition(Transition::opacity()), 0.075),
             curve,
             "transition-opacity",
         );
-        let slow = square().transition().duration(Duration::from_millis(300));
+        let slow = square().transition(Transition::new().duration(Duration::from_millis(300)));
         near(opacity_at(slow, 0.15), curve, "duration-300 at 150ms");
     });
 }
@@ -49,7 +49,8 @@ fn tailwind_transition_is_150ms_on_the_default_curve() {
 #[test]
 fn tailwind_ease_classes_follow_their_curves() {
     Owner::scope("motion-tailwind-ease", || {
-        let at = |easing: Easing| opacity_at(square().transition().ease(easing), 0.075);
+        let at =
+            |easing: Easing| opacity_at(square().transition(Transition::new().ease(easing)), 0.075);
         near(at(Easing::Linear), 0.6, "ease-linear");
         near(at(Easing::IN), 0.2 + 0.8 * 0.324_815, "ease-in");
         near(at(Easing::OUT), 0.2 + 0.8 * 0.839_245, "ease-out");
@@ -61,7 +62,7 @@ fn colors_transition_animates_the_background() {
     let flag = signal(false);
     let colors = square()
         .bg(BLACK)
-        .transition_colors()
+        .transition(Transition::colors())
         .paint_when(flag, |state| state.bg(WHITE));
     let mut ui = mount(colors);
     start(&mut ui, flag);
@@ -77,8 +78,7 @@ fn transform_transition_animates_translate() {
     let flag = signal(false);
     let moved = Transform2D::IDENTITY.translate(100.0, 0.0);
     let transform = square()
-        .transition_transform()
-        .ease(Easing::Linear)
+        .transition(Transition::transform().ease(Easing::Linear))
         .paint_when(flag, move |state| state.transform(moved));
     let mut ui = mount(transform);
     start(&mut ui, flag);
@@ -94,7 +94,7 @@ fn opacity_transition_skips_colors() {
     let flag = signal(false);
     let opacity_only = square()
         .bg(BLACK)
-        .transition_opacity()
+        .transition(Transition::opacity())
         .paint_when(flag, |state| state.bg(WHITE));
     let mut ui = mount(opacity_only);
     start(&mut ui, flag);
@@ -109,12 +109,12 @@ fn opacity_transition_skips_colors() {
 fn tailwind_transition_groups_animate_only_their_properties() {
     Owner::scope("motion-tailwind-groups", || {
         near(
-            opacity_at(square().transition_colors(), 0.075),
+            opacity_at(square().transition(Transition::colors()), 0.075),
             1.0,
             "transition-colors skips opacity",
         );
         near(
-            opacity_at(square().transition_transform(), 0.075),
+            opacity_at(square().transition(Transition::transform()), 0.075),
             1.0,
             "transition-transform skips opacity",
         );

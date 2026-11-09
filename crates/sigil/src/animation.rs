@@ -2,6 +2,7 @@ mod easing;
 mod keyframes;
 mod motion;
 mod spring;
+mod transition;
 mod tween;
 
 pub use crate::animation_runtime::clock::clock;
@@ -18,4 +19,5 @@ kittest_pub! {
     #[doc(hidden)]
     pub use spring::SpringPreset;
 }
+pub use transition::Transition;
 pub(crate) use tween::Tween;

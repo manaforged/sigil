@@ -1,8 +1,5 @@
-use std::time::Duration;
+use crate::style::atom::OPACITY_UNITS;
 
-use crate::style::MillisU16;
-
-const OPACITY_SCALE: f32 = 10_000.0;
 const LETTER_SPACING_SCALE: f32 = 1_000.0;
 const LETTER_SPACING_LIMIT: f32 = 2_000.0;
 
@@ -17,12 +14,8 @@ pub(super) fn opacity_units(value: f32) -> u16 {
         clippy::cast_sign_loss,
         reason = "values are bounded to the target range before the cast"
     )]
-    let encoded = (value.clamp(0.0, 1.0) * OPACITY_SCALE).round() as u16;
+    let encoded = (value.clamp(0.0, 1.0) * OPACITY_UNITS).round() as u16;
     encoded
-}
-
-pub(super) fn millis(duration: Duration) -> MillisU16 {
-    MillisU16(u16::try_from(duration.as_millis()).unwrap_or(u16::MAX))
 }
 
 pub(super) fn letter_spacing_units(em: f32) -> i16 {

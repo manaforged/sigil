@@ -1,5 +1,5 @@
 use crate::scene::Shadow;
-use crate::style::atom::shadow_color;
+use crate::style::atom::{OPACITY_UNITS, shadow_color};
 use crate::style::{ColorAtom, ColorAtomKind, Family, NumericAtomKind};
 
 /// One property value that a keyframe sets.
@@ -73,8 +73,6 @@ pub enum Property {
     /// Where a gradient mask is fully clear, in percent.
     MaskTo(f32),
 }
-
-const OPACITY_UNITS: f32 = 10_000.0;
 
 pub(super) type Key = (u8, [u32; 3], Option<ColorAtom>);
 

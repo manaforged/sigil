@@ -324,19 +324,19 @@ impl Theme {
 
     /// Returns the padding of a control of this size.
     #[must_use]
-    pub fn padding(&self, size: ControlSize) -> Length {
+    pub fn control_padding(&self, size: ControlSize) -> Length {
         match size {
             ControlSize::Grow => Length::Percent(1.0),
-            _ => Length::Px(self.metrics.padding(size)),
+            _ => Length::Px(self.metrics.control_padding(size)),
         }
     }
 
     /// Returns the gap of a control of this size.
     #[must_use]
-    pub fn gap(&self, size: ControlSize) -> Length {
+    pub fn control_gap(&self, size: ControlSize) -> Length {
         match size {
             ControlSize::Grow => Length::Percent(1.0),
-            _ => Length::Px(self.metrics.gap(size)),
+            _ => Length::Px(self.metrics.control_gap(size)),
         }
     }
 

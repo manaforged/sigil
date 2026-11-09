@@ -12,7 +12,7 @@
 use sigil::geometry::{Point, Rect};
 use sigil::prelude::*;
 use sigil::scene::DrawRect;
-use sigil::style::Transform2D;
+use sigil::style::{NumericAtomKind, Transform2D};
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 
@@ -31,8 +31,8 @@ fn zoomed(scale: f32) -> NodeBuilder {
             container()
                 .layout(LayoutStyle::block().width(100.0).height(50.0))
                 .transform(Transform2D::IDENTITY.origin(0.0, 0.0))
-                .animate_scale_x(signal(scale))
-                .animate_scale_y(signal(scale))
+                .drive(NumericAtomKind::ScaleX, signal(scale))
+                .drive(NumericAtomKind::ScaleY, signal(scale))
                 .child(
                     container().bg(Token::Accent9).layout(
                         LayoutStyle::block()

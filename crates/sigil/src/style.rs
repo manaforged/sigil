@@ -55,13 +55,14 @@ pub(crate) mod variant;
 pub(crate) mod variant_kit;
 
 pub(crate) use animator_overlay::AnimatorOverlay;
-pub(crate) use animator_overlay::{ColorAtomKind, Family, NumericAtomKind};
+pub use animator_overlay::NumericAtomKind;
+pub(crate) use animator_overlay::{ColorAtomKind, Family};
 pub(crate) use atom::Px;
 pub(crate) use atom::SPACING_STEP;
 pub(crate) use atom::TextDecoration;
 pub use atom::{
-    ClipShape, ColorAtom, Conic, Elevation, GradientAxis, MaskImage, MaskSize, Radial,
-    RadialExtent, Rgba8,
+    Background, ClipShape, ColorAtom, Conic, Elevation, Gradient, GradientAxis, MaskImage,
+    MaskSize, Radial, RadialExtent, Rgba8,
 };
 kittest_pub! {
     #[doc(hidden)]
@@ -73,10 +74,7 @@ pub(crate) use binding::{ReactiveStyleAtoms, StyleBinding};
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use binding::{ReactiveStyleAtoms, StyleBinding};
-kittest_pub! {
-    #[doc(hidden)]
-    pub use builder_ext::ClassSource;
-}
+pub(crate) use builder_ext::ClassSource;
 pub(crate) use class_parse::parse_classes;
 kittest_pub! {
     #[doc(hidden)]

@@ -111,7 +111,7 @@ impl From<i16> for Conic {
     }
 }
 
-const fn percent(value: u8) -> u8 {
+pub(super) const fn percent(value: u8) -> u8 {
     if value > 100 { 100 } else { value }
 }
 
@@ -154,10 +154,16 @@ pub enum BorderStyle {
 pub enum PaintAtom {
     /// The background gradient geometry.
     Gradient(GradientShape),
+    /// No background gradient.
+    NoGradient,
     /// A gradient stop color.
     Stop(StopSlot, ColorAtom),
+    /// No color at a gradient stop.
+    NoStop(StopSlot),
     /// A gradient stop position in percent.
     StopAt(StopSlot, u8),
+    /// No background color and no stop-list gradient.
+    NoColor,
     /// Paints the background only inside the text glyphs.
     ClipText,
     /// A tiled background image, by image id.
@@ -190,6 +196,10 @@ impl StopSlot {
             Self::Via => 1,
             Self::To => 2,
         }
+    }
+
+    pub(crate) fn default_at(self) -> u8 {
+        PaintStyle::default().at(self.index())
     }
 }
 
@@ -235,6 +245,14 @@ impl PaintStyle {
         let index = STOPS.iter().position(|(_, owner)| *owner == kind)?;
         let stop = self.stops.get(index).copied().flatten();
         self.drawn(index).then(|| stop.unwrap_or(CLEAR))
+    }
+
+    pub(crate) fn at(&self, index: usize) -> u8 {
+        let set = self.positions.get(index).copied().flatten();
+        let default = STOPS
+            .get(index)
+            .map(|(kind, _)| percent_units(kind.initial()));
+        set.or(default).unwrap_or_default()
     }
 
     pub(crate) const fn shape(&self) -> Option<(GradientShape, bool)> {

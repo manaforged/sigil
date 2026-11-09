@@ -4,7 +4,7 @@ use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, effect, signal, untrack};
-use crate::style::{ControlSize, Token};
+use crate::style::{ControlSize, NumericAtomKind, Token};
 use crate::widgets::interaction::{DragEnd, pointer_drag};
 use crate::widgets::{ModalBuilder, Widget, button, icon_button, modal};
 
@@ -93,10 +93,10 @@ fn stage(source: &str, camera: Camera) -> NodeBuilder {
     let drawn_width = derived(move || width * fit.get() * zoom.get());
     let drawn_height = derived(move || height * fit.get() * zoom.get());
     let picture = picture
-        .animate_width(drawn_width)
-        .animate_height(drawn_height)
-        .animate_translate_x(camera.x)
-        .animate_translate_y(camera.y);
+        .drive(NumericAtomKind::Width, drawn_width)
+        .drive(NumericAtomKind::Height, drawn_height)
+        .drive(NumericAtomKind::TranslateX, camera.x)
+        .drive(NumericAtomKind::TranslateY, camera.y);
     let area = container()
         .layout(
             LayoutStyle::flex_row()
@@ -104,8 +104,8 @@ fn stage(source: &str, camera: Camera) -> NodeBuilder {
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )
-        .animate_width(area_width)
-        .animate_height(area_height)
+        .drive(NumericAtomKind::Width, area_width)
+        .drive(NumericAtomKind::Height, area_height)
         .hittable(true)
         .on_scroll(move |event| camera.wheel(event))
         .child(picture);

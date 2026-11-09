@@ -14,7 +14,7 @@
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
-use sigil::style::{ClipShape, Color, GradientAxis, Radial, Transform2D};
+use sigil::style::{Background, ClipShape, Color, GradientAxis, Radial, Transform2D};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, cpu_rgba};
 
@@ -109,9 +109,9 @@ fn black_to_white() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 20.0))
-            .bg_radial(Radial::new().at(0, 50))
-            .gradient_from(BLACK)
-            .gradient_to(WHITE),
+            .bg(Background::radial(Radial::new().at(0, 50))
+                .start(BLACK)
+                .end(WHITE)),
     )
 }
 
@@ -138,8 +138,7 @@ fn red_to_default() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 20.0))
-            .bg_linear(GradientAxis::LeftToRight)
-            .gradient_from(RED),
+            .bg(Background::linear(GradientAxis::LeftToRight).start(RED)),
     )
 }
 
@@ -193,9 +192,7 @@ fn gradient_over_bg_color() -> NodeBuilder {
         BLACK,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 60.0))
-            .bg(WHITE)
-            .bg_radial(Radial::new())
-            .gradient_from(RED),
+            .bg(Background::radial(Radial::new()).start(RED).over(WHITE)),
     )
 }
 
@@ -243,9 +240,9 @@ fn container_clip_text() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(240.0, 60.0))
-            .bg_linear(GradientAxis::LeftToRight)
-            .gradient_from(RED)
-            .gradient_to(BLUE)
+            .bg(Background::linear(GradientAxis::LeftToRight)
+                .start(RED)
+                .end(BLUE))
             .bg_clip_text()
             .child(word()),
     )
@@ -270,10 +267,7 @@ fn conic_word() -> NodeBuilder {
         60.0,
         WHITE,
         word()
-            .bg_conic(0)
-            .gradient_from(RED)
-            .gradient_via(GREEN)
-            .gradient_to(BLUE)
+            .bg(Background::conic(0).start(RED).middle(GREEN).end(BLUE))
             .bg_clip_text(),
     )
 }
@@ -368,11 +362,11 @@ fn reversed_positions() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 20.0))
-            .bg_linear(GradientAxis::LeftToRight)
-            .gradient_from(RED)
-            .gradient_from_position(80)
-            .gradient_to(BLUE)
-            .gradient_to_position(20),
+            .bg(Background::linear(GradientAxis::LeftToRight)
+                .start(RED)
+                .start_at(80)
+                .end(BLUE)
+                .end_at(20)),
     )
 }
 

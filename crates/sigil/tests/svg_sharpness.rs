@@ -18,7 +18,7 @@ use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};
 use sigil::scene::paint_backdrop;
-use sigil::style::{Color, Transform2D};
+use sigil::style::{Color, NumericAtomKind, Transform2D};
 use sigil_kittest::Harness;
 
 const VIEW: (u32, u32) = (480, 360);
@@ -74,8 +74,8 @@ fn zoomed(diagram: Diagram, zoom: f32) -> NodeBuilder {
             container()
                 .layout(LayoutStyle::block().width(VIEW.0 as f32))
                 .transform(Transform2D::IDENTITY.origin(0.5, 0.0))
-                .animate_scale_x(signal(zoom))
-                .animate_scale_y(signal(zoom))
+                .drive(NumericAtomKind::ScaleX, signal(zoom))
+                .drive(NumericAtomKind::ScaleY, signal(zoom))
                 .child(diagram.node()),
         )
 }

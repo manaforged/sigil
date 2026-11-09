@@ -2,6 +2,7 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::Position;
 use crate::layout::{Dimension, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, signal};
+use crate::style::NumericAtomKind;
 use crate::widgets::Widget;
 
 use std::ops::Deref;
@@ -258,7 +259,7 @@ fn shrink_bound(root: NodeBuilder, axes: BuildAxes, shrinks: bool) -> NodeBuilde
             axes.viewport_height
         }
     });
-    root.animate_height(height)
+    root.drive(NumericAtomKind::Height, height)
 }
 
 builder_impls!([T: 'static, R: RowRender<T>] VirtualListBuilder<T, R>: node(pub(crate)));

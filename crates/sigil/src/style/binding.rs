@@ -14,6 +14,13 @@ use crate::style::{
 
 pub(crate) type ReactiveStateSlot = Rc<Cell<StateSlot>>;
 
+#[derive(Clone, Copy, Debug)]
+struct Driven {
+    kind: NumericAtomKind,
+    value: Signal<f32>,
+    scale: f32,
+}
+
 kittest_pub! {
     pub type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>;
 }
@@ -26,7 +33,7 @@ kittest_pub! {
         reactive_channels: SmallVec<[ReactiveStyleAtoms; 2]>,
         attached_animators: OnceCell<Box<dyn AnimatorOverlay>>,
         state_overlay: Option<Box<StyleOverlay>>,
-        animated_values: SmallVec<[(NumericAtomKind, Signal<f32>); 2]>,
+        animated_values: SmallVec<[Driven; 2]>,
         state_overlay_slot: Option<ReactiveStateSlot>,
         widget_channels: Option<usize>,
         user_slots: SlotSet,
@@ -192,15 +199,16 @@ impl StyleBinding {
         }
     }
 
-    pub(crate) fn bind_animation(&mut self, kind: NumericAtomKind, value: Signal<f32>) {
+    pub(crate) fn bind_animation(&mut self, kind: NumericAtomKind, value: Signal<f32>, scale: f32) {
+        let driven = Driven { kind, value, scale };
         if let Some(entry) = self
             .animated_values
             .iter_mut()
-            .find(|entry| entry.0 == kind)
+            .find(|entry| entry.kind == kind)
         {
-            entry.1 = value;
+            *entry = driven;
         } else {
-            self.animated_values.push((kind, value));
+            self.animated_values.push(driven);
         }
     }
 
@@ -292,8 +300,8 @@ impl AnimatorOverlay for StyleBinding {
     fn value_for(&self, kind: NumericAtomKind) -> Option<f32> {
         self.animated_values
             .iter()
-            .find(|entry| entry.0 == kind)
-            .map(|entry| entry.1.peek())
+            .find(|entry| entry.kind == kind)
+            .map(|entry| entry.value.peek() * entry.scale)
             .or_else(|| {
                 self.attached_animators
                     .get()

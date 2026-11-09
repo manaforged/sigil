@@ -18,10 +18,13 @@ use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
-use sigil::style::{ColorAtom, Paint, StyleAtom, StyleBinding, Token};
+use sigil::style::{ColorAtom, Paint, PaintAtom, StyleAtom, StyleBinding, Token};
 
 static HOVER_OFF: &[StyleAtom] = &[];
-static HOVER_ON: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent))];
+static HOVER_ON: &[StyleAtom] = &[
+    StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
+    StyleAtom::Paint(PaintAtom::NoGradient),
+];
 
 #[test]
 fn pointer_move_drives_style_reactive_without_allocating() {

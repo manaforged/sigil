@@ -7,12 +7,17 @@ use crate::style::{
     StyleOverlay, StyleReactiveEffect, Theme, Tone, ToneContext, merge_classes, parse_classes,
 };
 
-pub(super) fn install_animation(node: &mut Node, kind: NumericAtomKind, value: Signal<f32>) {
+pub(super) fn install_animation(
+    node: &mut Node,
+    kind: NumericAtomKind,
+    value: Signal<f32>,
+    scale: f32,
+) {
     if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
-        binding.bind_animation(kind, value);
+        binding.bind_animation(kind, value, scale);
     } else {
         let mut binding = StyleBinding::default();
-        binding.bind_animation(kind, value);
+        binding.bind_animation(kind, value, scale);
         let _previous = node.attach(binding);
     }
     let tag = node.tag();

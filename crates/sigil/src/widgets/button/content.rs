@@ -40,7 +40,9 @@ impl ButtonBuilder {
         let mut row = container().hittable(false).layout(
             LayoutStyle::flex_row()
                 .align_items(AlignItems::Center)
-                .gap(Space::px(Metrics::current().gap(ControlSize::Compact))),
+                .gap(Space::px(
+                    Metrics::current().control_gap(ControlSize::Compact),
+                )),
         );
         if let Some(svg) = self.leading.clone() {
             row = row.child(self.leading_icon(svg));
@@ -94,7 +96,9 @@ impl ButtonBuilder {
             .layout(
                 LayoutStyle::flex_row()
                     .align_items(AlignItems::Center)
-                    .gap(Space::px(Metrics::current().gap(ControlSize::Compact))),
+                    .gap(Space::px(
+                        Metrics::current().control_gap(ControlSize::Compact),
+                    )),
             )
             .class(atoms)
             .children_reactive(move || {

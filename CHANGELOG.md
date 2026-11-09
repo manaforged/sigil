@@ -30,7 +30,7 @@ First public release.
 | `ColorOrToken`, `ColorKey`, `ColorAtom::ThemeRef(ColorKey)` | `ColorAtom::{Rgba8, Token, Custom}`. `ColorOrToken::Token(ColorKey::Custom(name))` is `ColorAtom::Custom(name)` |
 | `StyleAtom::BackgroundThemeRef`, `TextThemeRef`, `BorderThemeRef` | `StyleAtom::BackgroundColor`, `TextColor`, `BorderColor` |
 | `Theme::resolve_color(ColorKey)`, `TokenLayer::color(ColorKey)` | take `ColorAtom` |
-| `.animate(NumericAtomKind::Height, value)` | `.animate_height(value)`, with one `animate_*` setter per property. `NumericAtomKind` and `ColorAtomKind` are private |
+| `.animate(NumericAtomKind::Height, value)` | `.drive(NumericAtomKind::Height, value)`. `ColorAtomKind` is private |
 | `Rgba8: FromStr` accepted `#` plus 3 or 6 digits | also accepts 8 digits and a `0x` or missing prefix. Theme files use it, so they also accept 3 digits |
 | `SceneRectStyle`, `SceneGradientStyle`, `ScenePatternStyle`, `SceneSpriteStyle`, `SceneDecorationStyle` | setters on `DrawRect`, `DrawGradient`, `DrawPattern`, `DrawSprite`, `DrawDecoration` |
 | `scene.draw_rect(rect, SceneRectStyle::solid(color))` | `scene.draw_rect(DrawRect::new(rect, color))`. `draw_gradient`, `draw_pattern`, `draw_decoration`, and `draw_sprite` take the draw command too |
@@ -189,6 +189,30 @@ First public release.
 | exhaustive `match` on `LayerEffect` | add arms for `Projected`, `Mask` and `Filter` |
 | `LayerEffect::LayerBlur { sigma }` | `LayerEffect::Filter(Arc::new([Filter::Blur(sigma)]))` |
 | exhaustive `match` on `BlendMode` or `Filter` | add a `_` arm; both are `#[non_exhaustive]` |
+| `NodeBuilder::class`, `TextBuilder::class` (feature `kittest`) | `Widget::class("...")`, public on every builder; it takes a `&'static str` of Tailwind classes |
+| `style::ClassSource` | crate-private; `class` takes the class string |
+| `.transition()`, `.transition_all()`, `.transition_colors()`, `.transition_opacity()`, `.transition_transform()` | `.transition(Transition::new())`, `Transition::all()`, `Transition::colors()`, `Transition::opacity()`, `Transition::transform()`, from `sigil::animation` |
+| `.duration(d)`, `.ease(e)`, `.delay(d)` on `Paint` | setters on the value: `.transition(Transition::new().duration(d).ease(e).delay(d))` |
+| `Paint::transition_preset(id)` (feature `kittest`) | `.transition(id)`; a `TransitionId` converts with `From` |
+| `Widget::animate_opacity`, `animate_radius`, `animate_font_size`, `animate_line_height`, `animate_gap`, `animate_padding_x`, `animate_padding_y`, `animate_width`, `animate_height`, `animate_translate_x`, `animate_translate_y`, `animate_scale_x`, `animate_scale_y`, `animate_rotation` | `Widget::drive(NumericAtomKind, Signal<f32>)`, for example `.drive(NumericAtomKind::Height, value)`; each variant documents its unit, and `Opacity` now takes 0.0 to 1.0 where `animate_opacity` took 0 to 10,000 |
+| `.bg_linear(axis)`, `.bg_radial(radial)`, `.bg_conic(conic)` | `.bg(Background::linear(axis))`, `.bg(Background::radial(radial))`, `.bg(Background::conic(conic))`, from `sigil::style` |
+| `.gradient_from(c)`, `.gradient_via(c)`, `.gradient_to(c)` | `start(c)`, `middle(c)`, `end(c)` on the `Gradient` that `Background::linear`, `radial`, or `conic` returns; a state closure passes the whole gradient again |
+| `.gradient_from_position(p)`, `.gradient_via_position(p)`, `.gradient_to_position(p)` | `start_at(p)`, `middle_at(p)`, `end_at(p)` on the same `Gradient` |
+| `.bg(color)` with `.bg_linear(axis)` to paint a color under a gradient | `.bg(Background::linear(axis).over(color))`; each `bg` call replaces the whole background, color and gradient |
+| a `.duration(d)`, `.ease(e)`, or `.delay(d)` that outlived a later `.transition()` | each `transition` call replaces the whole transition; a value without a setter uses the timing of its preset |
+| exhaustive `match` on `PaintAtom` (feature `kittest`) | add arms for `NoGradient`, `NoStop` and `NoColor` |
+| `Paint::background_gradient(BgGradient)` (feature `kittest`) | `.bg(gradient)`; a `BgGradient` converts with `From` |
+| `Paint::bg(impl Into<ColorAtom>)` | `Paint::bg(impl Into<Background>)`; `Token`, `Rgba8`, and `ColorAtom` convert with `From` |
+| `sigil_sign::SignError`, `sigil_sign::PackError` | `sigil_sign::Error`; branch on `error.kind()`, `error.is_password_required()`, `error.path()` |
+| `sigil_sign::pack_cli` returning `Result<(), String>` | `Result<(), sigil_sign::Error>` |
+| `AppBundle { .. }`, `ResourceCopy { .. }`, `CodeSign { .. }`, `Dmg { .. }` struct literals | `AppBundle::new(name, executable)`, `ResourceCopy::new(from, to)`, `CodeSign::default()`, `Dmg::new(app, volume)` plus setters named for the fields |
+| `sigil_kittest::Error::{NoAdapter, Device, Layout, Render, Readback, Unsettled}` | `error.kind() == ErrorKind::..`, `error.is_no_adapter()`, `error.is_unsettled()` |
+| `Harness::present` error type `sigil::Error` | `sigil_kittest::Error` |
+| `gpu::Capture { .. }` | `Capture::new(viewport, size_px).scale(..).clear(..)` |
+| `GeneratedScene` fields | getters of the same names |
+| `Host::route(event)` returning `()` | returns `bool`: whether a key press was consumed |
+| `esc_exits(true)`: Escape exited before the UI saw it | exits only when nothing consumed the press |
+| terminal `quit_on_ctrl_c(true)`: Ctrl+C exited before routing | copies a selection or reaches a focused `terminal()` first |
 
 ### Changed
 
@@ -221,12 +245,12 @@ First public release.
 - `Space`, `TextRole`, and `Layer`: named steps for spacing, type, and depth. `gap`, `padding`, and `margin` setters no longer take a bare number, and `font_size` takes a reason.
 - A `Harness` runs the design rules when it is dropped. See `FlawKind`, `Harness::assert_no_flaws`, `Harness::unaudited`, and `Widget::allow_flaw`.
 - Keyframe animations: `Paint::animate(Keyframes)`, with `Keyframes` stops, per-stop easing, iterations, `reverse` and `alternate`, and the Tailwind `spin`, `ping`, `pulse` and `bounce` presets. `Property` names the animated value.
-- CSS-style transitions on `Paint`: `transition`, `transition_all`, `transition_colors`, `transition_opacity`, `transition_transform`, `duration`, `ease` and `delay`.
+- CSS-style transitions: `Paint::transition(Transition)`, with `Transition::new`, `all`, `colors`, `opacity` and `transform`, and the `duration`, `ease` and `delay` setters.
 - Vector paths draw on the GPU through `vello_gpu` and on the CPU through `vello_cpu` instead of a tiny-skia bitmap. `PathNode` gains `even_odd`, `cap(StrokeCap)`, `join(StrokeJoin)` and `dash`; `scene::StrokeCap` and `scene::StrokeJoin` are new.
 - Vega-Lite fences in a window render through the official vega 6.4.0 and vega-lite 6.5.0 running in an embedded QuickJS, with a 2 s deadline, a 256 MB heap cap and no network; the native mapping is the fallback and the terminal path. The figure is named by the spec title and described by its axis titles.
 - `ChartBuilder::horizontal()` lays bars along rows.
 - `Easing::CubicBezier`, `Easing::cubic_bezier` and the `Easing::IN`, `OUT` and `IN_OUT` curves.
-- Radial and conic background gradients: `Paint::bg_radial(Radial)` with `RadialExtent`, `Paint::bg_conic(Conic)`, `Paint::bg_linear(GradientAxis)`, the `from`, `via` and `to` stops with positions, and repeating gradients. `scene::Gradient` and `scene::GradientKind` carry linear, radial and conic paints.
+- Radial and conic background gradients: `Paint::bg(Background::radial(Radial))` with `RadialExtent`, `Paint::bg(Background::conic(Conic))`, `Paint::bg(Background::linear(GradientAxis))`, the `start`, `middle` and `end` stops with positions, and repeating gradients. `scene::Gradient` and `scene::GradientKind` carry linear, radial and conic paints.
 - `Paint::bg_clip_text` paints the background gradient through the glyphs; `Paint::bg_image` tiles an image behind the content.
 - `Paint::border_dashed`, `border_dotted` and `border_solid`; dashes follow rounded corners.
 - `Paint::clip_path(ClipShape)` clips a node, its background and its children to an inset, circle, ellipse or polygon, and pointer hits outside the shape miss.

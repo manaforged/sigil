@@ -4,6 +4,7 @@
 )]
 #![allow(clippy::panic)]
 
+use sigil::animation::Transition;
 use sigil::layout::Space;
 use std::hint::black_box;
 use std::time::Duration;
@@ -60,8 +61,7 @@ fn paint_node() -> NodeBuilder {
         .font_weight(400)
         .font_family(FontFamily::Sans)
         .line_height_px(16.0)
-        .transition_preset(TransitionId(1))
-        .duration(Duration::from_millis(150))
+        .transition(Transition::from(TransitionId(1)).duration(Duration::from_millis(150)))
 }
 
 fn paint_resolve_atoms(c: &mut Criterion) {
@@ -103,8 +103,7 @@ fn paint_override_last_wins(c: &mut Criterion) {
                 .font_size(18.0, "benchmark fixture")
                 .font_weight(700)
                 .line_height_px(24.0)
-                .transition_preset(TransitionId(2))
-                .duration(Duration::from_millis(300));
+                .transition(Transition::from(TransitionId(2)).duration(Duration::from_millis(300)));
             let id = cx.add(black_box(node));
             black_box(binding_len(&cx, id));
         });
