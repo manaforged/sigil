@@ -65,7 +65,7 @@ ratex-layout = { workspace = true, optional = true }
 ratex-types = { workspace = true, optional = true }
 ratex-svg = { workspace = true, optional = true }
 layout-rs = { workspace = true, optional = true }
-harfrust = { version = "0.13", optional = true }
+harfrust = { version = "0.12", optional = true }
 rfd = { version = "0.17", optional = true }
 muda = { version = "0.19", optional = true }
 tray-icon = { version = "0.24", optional = true }
