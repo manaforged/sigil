@@ -42,3 +42,16 @@ pub(crate) fn decode(channel: u8) -> f32 {
 pub(crate) fn encode_byte(linear: f32) -> u8 {
     ENCODED[(linear.clamp(0.0, 1.0) * STEPS as f32 + 0.5) as usize]
 }
+
+/// The WCAG 2.2 AA contrast ratio for body text.
+pub(crate) const AA_TEXT: f32 = 4.5;
+
+/// Returns the WCAG contrast ratio of two opaque colors.
+#[must_use]
+pub(crate) fn contrast(a: crate::style::Rgba8, b: crate::style::Rgba8) -> f32 {
+    let luminance = |color: crate::style::Rgba8| {
+        0.2126 * decode(color.r) + 0.7152 * decode(color.g) + 0.0722 * decode(color.b)
+    };
+    let (a, b) = (luminance(a), luminance(b));
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
+}

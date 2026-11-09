@@ -94,9 +94,10 @@ pub(super) fn uneven_controls(
     cx: &Cx,
     layout: &LayoutEngine,
     (id, node): (NodeId, &Node),
+    tolerance: super::Tolerance,
     out: &mut Vec<Flaw>,
 ) {
-    if !is_row(node) {
+    if !tolerance.boxed_controls || !is_row(node) {
         return;
     }
     let heights: Vec<f32> = node

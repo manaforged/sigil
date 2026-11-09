@@ -1,11 +1,10 @@
 use crate::kernel::{Cx, NodeId, NodeType};
 use crate::layout::LayoutEngine;
-use crate::style::srgb::decode;
+use crate::style::srgb::{AA_TEXT, contrast as ratio};
 use crate::style::{Rgba8, TextStyle, Theme, render_style_for, text_style_for};
 
 use super::{Flaw, label};
 
-const BODY: f32 = 4.5;
 const LARGE: f32 = 3.0;
 const LARGE_PX: f32 = 24.0;
 const LARGE_BOLD_PX: f32 = 18.5;
@@ -31,19 +30,10 @@ fn over(top: Rgba8, under: Rgba8) -> Rgba8 {
     }
 }
 
-fn luminance(color: Rgba8) -> f32 {
-    0.2126 * decode(color.r) + 0.7152 * decode(color.g) + 0.0722 * decode(color.b)
-}
-
-fn ratio(a: Rgba8, b: Rgba8) -> f32 {
-    let (a, b) = (luminance(a), luminance(b));
-    (a.max(b) + 0.05) / (a.min(b) + 0.05)
-}
-
 fn needed(style: &TextStyle) -> f32 {
     let large = style.font_size >= LARGE_PX
         || (style.font_size >= LARGE_BOLD_PX && style.font_weight >= BOLD);
-    if large { LARGE } else { BODY }
+    if large { LARGE } else { AA_TEXT }
 }
 
 fn has_words(cx: &Cx, id: NodeId, layout: &LayoutEngine) -> bool {
