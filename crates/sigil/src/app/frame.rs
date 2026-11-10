@@ -120,21 +120,24 @@ impl Host {
         after_layout: Option<FrameLayoutHook<'_>>,
     ) -> Result<(), Error> {
         Runtime::begin_layout();
-        let mut layout = {
+        let layout = {
             let _layout = crate::profile::span(crate::profile::Phase::Layout);
-            self.settle_layout(viewport)
+            self.settle_layout(viewport).and_then(|()| {
+                let focus = self.focus();
+                self.apply_focus_requests();
+                self.repair_focus();
+                let hover = self.sync_hover();
+                if hover || self.focus() != focus {
+                    self.settle_layout(viewport)
+                } else {
+                    Ok(())
+                }
+            })
         };
-        if layout.is_ok() {
-            let focus = self.focus();
-            self.apply_focus_requests();
-            self.repair_focus();
-            if self.focus() != focus {
-                layout = self.settle_layout(viewport);
-            }
-            self.sync_hover();
-            if let Some(after_layout) = after_layout {
-                after_layout(self);
-            }
+        if layout.is_ok()
+            && let Some(after_layout) = after_layout
+        {
+            after_layout(self);
         }
         layout
     }

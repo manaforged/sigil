@@ -19,9 +19,7 @@ mod keyboard;
 mod paste;
 mod quit;
 
-pub(crate) use gesture::GestureHandlers;
 use keyboard::ShortcutIndex;
-pub(crate) use paste::PasteHandlers;
 
 kittest_pub! {
     #[derive(Debug, Default)]

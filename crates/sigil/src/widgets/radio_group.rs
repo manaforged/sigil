@@ -150,8 +150,7 @@ fn option_row(
             .gap(Space::Sm)
             .align_items(AlignItems::Center),
     );
-    let activate_key = key;
-    control(row, disabled)
+    let mut row = control(row, disabled)
         .role(Role::RadioButton)
         .label(label.to_owned())
         .checked(checked)
@@ -162,8 +161,13 @@ fn option_row(
             cell_mark,
         )
         .pick()(checked, tone))
-        .child(text(label).class(Token::OnSurface.text()))
-        .pointer_up(move |_event| selected.set(activate_key.clone()))
+        .child(text(label).class(Token::OnSurface.text()));
+    let interaction = row.interaction();
+    row.pointer_up(move |event| {
+        if interaction.release_pointer(event) {
+            selected.set(key.clone());
+        }
+    })
 }
 
 fn centered_square(size: f32) -> LayoutStyle {
