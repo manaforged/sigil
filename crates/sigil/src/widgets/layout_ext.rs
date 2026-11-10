@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::kernel::NodeBuilder;
-use crate::layout::{LayoutStyle, Length};
+use crate::layout::LayoutStyle;
 use crate::widgets::LayoutEdit;
 
 type NodeHook = Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>;
@@ -163,12 +163,16 @@ impl LayoutOverrides {
 
     #[must_use]
     pub(crate) fn fills_height(&self) -> bool {
-        fills(self.apply(LayoutStyle::default()).data().size.height)
+        self.apply(LayoutStyle::default())
+            .data()
+            .size
+            .height
+            .fills()
     }
 
     #[must_use]
     pub(crate) fn fills_width(&self) -> bool {
-        fills(self.apply(LayoutStyle::default()).data().size.width)
+        self.apply(LayoutStyle::default()).data().size.width.fills()
     }
 
     #[must_use]
@@ -184,7 +188,3 @@ impl LayoutOverrides {
 #[cfg(test)]
 #[path = "layout_ext_tests.rs"]
 mod tests;
-
-const fn fills(length: Length) -> bool {
-    matches!(length, Length::Fill | Length::Percent(_))
-}

@@ -78,6 +78,48 @@ fn adopt<T: Default>(field: &mut T, swap: Swap<T>, merge: fn(&mut T, T)) {
     merge(field, swap(T::default()));
 }
 
+/// Lists each per-host queue once, so a swap on entry and an adopt on exit cover the same fields.
+macro_rules! queues {
+    ($scoped:ident, $op:ident) => {
+        queue!(
+            $op,
+            $scoped.focus_requests,
+            crate::events::focus::swap_focus_requests,
+            Extend::extend
+        );
+        queue!(
+            $op,
+            $scoped.announcements,
+            crate::kernel::Cx::swap_announcements,
+            Extend::extend
+        );
+        queue!(
+            $op,
+            $scoped.pending_theme,
+            super::appearance::swap_pending,
+            |field, outer| {
+                *field = outer.or_else(|| field.take());
+            }
+        );
+        #[cfg(feature = "dialog")]
+        queue!(
+            $op,
+            $scoped.dialogs,
+            super::dialog::layer::swap_queue,
+            Extend::extend
+        );
+    };
+}
+
+macro_rules! queue {
+    (swap, $field:expr, $swap:path, $merge:expr) => {
+        swap(&mut $field, $swap)
+    };
+    (adopt, $field:expr, $swap:path, $merge:expr) => {
+        adopt(&mut $field, $swap, $merge)
+    };
+}
+
 #[derive(Default)]
 struct Scoped {
     cell: f32,
@@ -112,43 +154,11 @@ impl Scoped {
             crate::style::theme::ambient::swap_active_theme,
         );
         swap(&mut self.layers, crate::widgets::popup_swap_layers);
-        swap(
-            &mut self.focus_requests,
-            crate::events::focus::swap_focus_requests,
-        );
-        swap(
-            &mut self.announcements,
-            crate::kernel::Cx::swap_announcements,
-        );
-        swap(&mut self.pending_theme, super::appearance::swap_pending);
-        #[cfg(feature = "dialog")]
-        swap(&mut self.dialogs, super::dialog::layer::swap_queue);
+        queues!(self, swap);
     }
 
     fn adopt_outer(&mut self) {
-        adopt(
-            &mut self.focus_requests,
-            crate::events::focus::swap_focus_requests,
-            Extend::extend,
-        );
-        adopt(
-            &mut self.announcements,
-            crate::kernel::Cx::swap_announcements,
-            Extend::extend,
-        );
-        adopt(
-            &mut self.pending_theme,
-            super::appearance::swap_pending,
-            |field, outer| {
-                *field = outer.or_else(|| field.take());
-            },
-        );
-        #[cfg(feature = "dialog")]
-        adopt(
-            &mut self.dialogs,
-            super::dialog::layer::swap_queue,
-            Extend::extend,
-        );
+        queues!(self, adopt);
     }
 }
 

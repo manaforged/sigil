@@ -34,34 +34,31 @@ impl TextContent {
         }
     }
 
-    /// Returns the resolve.
+    /// Returns the current text without subscribing.
     #[must_use]
     pub fn resolve(&self) -> String {
+        self.with_str(str::to_owned)
+    }
+
+    /// Calls `f` with the current text without subscribing; a disposed signal reads as empty.
+    pub(crate) fn with_str<R>(&self, mut f: impl FnMut(&str) -> R) -> R {
         match self {
-            Self::Static(value) => value.clone(),
-            Self::Reactive(signal) => signal.try_peek().unwrap_or_default(),
-            Self::Compute(compute) => compute(),
+            Self::Static(value) => f(value),
+            Self::Reactive(signal) => signal
+                .try_peek_with(|value| f(value))
+                .unwrap_or_else(|| f("")),
+            Self::Compute(compute) => f(&compute()),
         }
     }
 
     pub(crate) fn hash_into(&self, hasher: &mut impl std::hash::Hasher) {
         use std::hash::Hash as _;
-        match self {
-            Self::Static(value) => value.hash(hasher),
-            Self::Reactive(signal) => signal
-                .try_peek_with(|value| value.hash(hasher))
-                .unwrap_or_else(|| "".hash(hasher)),
-            Self::Compute(compute) => compute().hash(hasher),
-        }
+        self.with_str(|value| value.hash(hasher));
     }
 
     /// Writes the current text to `out` and returns whether it changed.
     pub fn refresh(&self, out: &mut String) -> bool {
-        match self {
-            Self::Static(value) => replace(out, value),
-            Self::Reactive(signal) => replace(out, &signal.try_peek().unwrap_or_default()),
-            Self::Compute(compute) => replace(out, &compute()),
-        }
+        self.with_str(|value| replace(out, value))
     }
 
     pub(crate) fn live(&self) -> Option<Signal<String>> {

@@ -184,7 +184,7 @@ impl CellGeometry {
         ranges: &[(usize, usize)],
         position: HitPosition,
     ) -> CaretGeometry {
-        let byte = floor_boundary(text, position.byte_index);
+        let byte = text.floor_char_boundary(position.byte_index);
         let line = Self::line_for_byte(ranges, byte, position.affinity);
         let range = ranges.get(line).copied().unwrap_or((0, 0));
         let end = byte.clamp(range.0, range.1);
@@ -259,8 +259,8 @@ impl TextMeasure for CellGeometry {
         (anchor, focus): (HitPosition, HitPosition),
     ) -> Vec<Rect> {
         let ranges = self.ranges(text, width);
-        let lo = floor_boundary(text, anchor.byte_index.min(focus.byte_index));
-        let hi = floor_boundary(text, anchor.byte_index.max(focus.byte_index));
+        let lo = text.floor_char_boundary(anchor.byte_index.min(focus.byte_index));
+        let hi = text.floor_char_boundary(anchor.byte_index.max(focus.byte_index));
         let mut rects = Vec::new();
         for (line, &(start, end)) in ranges.iter().enumerate() {
             let text_selected = lo < end && hi > start;
@@ -348,14 +348,6 @@ fn cells_to_px(cells: usize, px: f32) -> f32 {
     )]
     let cells = cells as f32;
     cells * px
-}
-
-pub(crate) fn floor_boundary(text: &str, byte: usize) -> usize {
-    let mut byte = byte.min(text.len());
-    while byte > 0 && !text.is_char_boundary(byte) {
-        byte -= 1;
-    }
-    byte
 }
 
 #[cfg(test)]

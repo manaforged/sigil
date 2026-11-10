@@ -13,7 +13,6 @@ pub(crate) mod audio;
 mod bridge;
 mod cell_text;
 #[cfg(feature = "scene")]
-pub(crate) use cell_text::floor_boundary;
 pub(crate) mod config;
 /// Native file and message dialogs.
 #[cfg(feature = "dialog")]
