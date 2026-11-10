@@ -53,4 +53,4 @@ Default: `desktop` (the window host). `terminal` adds the terminal host; a termi
 - The API can break between 0.x releases. Each break has a row in `CHANGELOG.md`.
 - Public event, command, error, and config enums are `#[non_exhaustive]`. Match them with a `_` arm.
 - Items outside the prelude, the crate root, and the public modules' documented items are not API. Items public only under the `kittest` feature are test support and not API.
-- MSRV is Rust 1.90.
+- MSRV is Rust 1.95.

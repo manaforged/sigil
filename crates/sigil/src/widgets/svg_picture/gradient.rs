@@ -91,7 +91,7 @@ pub(super) fn radial(gradient: &usvg::RadialGradient, opacity: f32) -> Result<Fi
     }
 }
 
-fn map(t: Transform, x: f32, y: f32) -> Point {
+const fn map(t: Transform, x: f32, y: f32) -> Point {
     Point::new(
         t.sx.mul_add(x, t.kx.mul_add(y, t.tx)),
         t.ky.mul_add(x, t.sy.mul_add(y, t.ty)),

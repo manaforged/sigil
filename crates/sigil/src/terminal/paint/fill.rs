@@ -164,7 +164,7 @@ fn rows(start: f32, end: f32) -> FillRows {
     clippy::cast_precision_loss,
     reason = "the eighth count is a small constant"
 )]
-fn eighth(value: f32) -> usize {
+const fn eighth(value: f32) -> usize {
     floor_cell(value.mul_add(EIGHTHS as f32, 0.5))
 }
 

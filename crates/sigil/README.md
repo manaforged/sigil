@@ -12,7 +12,7 @@ The package is `sigil-ui` because `sigil` is taken on crates.io. The library nam
 
 Follow [Install](https://github.com/manaforged/sigil#install). It also gives the terminal-only line without the GPU stack.
 
-Rust 1.90 or newer. The window host uses wgpu by default; `SIGIL_BACKEND=cpu` selects the CPU renderer.
+Rust 1.95 or newer. The window host uses wgpu by default; `SIGIL_BACKEND=cpu` selects the CPU renderer.
 
 ## Usage
 

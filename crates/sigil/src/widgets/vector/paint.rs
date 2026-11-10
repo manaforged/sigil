@@ -90,7 +90,7 @@ pub(super) fn theme_key(node: &PathNode, theme: &Theme) -> u64 {
     hash
 }
 
-fn apply([[sx, kx, tx], [ky, sy, ty]]: Transform, (x, y): (f32, f32)) -> (f32, f32) {
+const fn apply([[sx, kx, tx], [ky, sy, ty]]: Transform, (x, y): (f32, f32)) -> (f32, f32) {
     (
         sx.mul_add(x, kx.mul_add(y, tx)),
         ky.mul_add(x, sy.mul_add(y, ty)),
