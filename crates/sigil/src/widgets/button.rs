@@ -272,7 +272,7 @@ mod content;
 mod glyph;
 mod parts;
 
-pub(crate) use glyph::ButtonGlyph;
+pub use glyph::ButtonGlyph;
 
 use parts::{BUTTON_TRANSITION_ATOMS, ButtonFill, ButtonWidth, button_layout};
 

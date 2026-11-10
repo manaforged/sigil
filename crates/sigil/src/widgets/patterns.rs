@@ -271,12 +271,12 @@ mod disclosure;
 mod list_row;
 mod sidebar;
 
-pub use card::card;
+pub use card::{CardBuilder, card};
 pub use disclosure::disclosure;
 use list_row::row_height;
 pub use list_row::{Disclosure, ListColumn, ListRowSlots, RowTone, list_row};
 pub(crate) use list_row::{ROW_SELECTED, ROW_SELECTED_HOVER, row_states};
-pub use sidebar::sidebar;
+pub use sidebar::{SidebarBuilder, sidebar};
 
 #[cfg(test)]
 #[path = "patterns_tests.rs"]

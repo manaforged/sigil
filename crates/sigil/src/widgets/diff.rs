@@ -20,7 +20,7 @@ mod patch;
 mod rows;
 mod selection;
 
-pub use patch::{Hunk, Line, Patch};
+pub use patch::{Hunk, Line, LineId, LineKind, Patch};
 pub use selection::Selection;
 
 use model::{DiffRow, model};
