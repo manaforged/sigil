@@ -4,12 +4,20 @@ use std::hash::{BuildHasher as _, Hash as _, Hasher as _};
 use ahash::AHashMap;
 use smallvec::SmallVec;
 
+use super::{PushRunArgs, ShapedSegment, segment, u32_clamp};
+use crate::text::glyph::ShapedRun;
 use crate::text::shaper::{FaceStyle, Font};
 
-use super::{PushRunArgs, ShapedSegment, WordSpan, segment, shape_face_spans, u32_clamp};
-
-const WORD_MAX_BYTES: usize = 64;
 const WORD_ENTRIES: usize = 4_096;
+
+#[derive(Clone)]
+pub(super) struct WordSpan {
+    pub(super) start: u32,
+    pub(super) end: u32,
+    pub(super) face_slot: u16,
+    pub(super) run: ShapedRun,
+    pub(super) advance: f32,
+}
 
 struct WordEntry {
     word: Box<str>,
@@ -33,35 +41,7 @@ thread_local! {
     static WORDS: RefCell<AHashMap<u64, WordEntry>> = RefCell::new(AHashMap::new());
 }
 
-pub(in crate::text::engine) fn push_run(
-    args: &PushRunArgs<'_>,
-    chain: &[Font],
-    style: &FaceStyle,
-    out: &mut Vec<ShapedSegment>,
-) {
-    if args.fragment.is_empty() {
-        return;
-    }
-    if args.fragment.len() > WORD_MAX_BYTES {
-        shape_face_spans(args, chain, style, out);
-        return;
-    }
-    let key = word_key(args, chain, style);
-    if replay(key, args, chain, style, out) {
-        return;
-    }
-    let first = out.len();
-    shape_face_spans(args, chain, style, out);
-    remember(
-        key,
-        args,
-        chain,
-        style,
-        out.get(first..).unwrap_or_default(),
-    );
-}
-
-fn replay(
+pub(super) fn replay(
     key: u64,
     args: &PushRunArgs<'_>,
     chain: &[Font],
@@ -79,7 +59,7 @@ fn replay(
     })
 }
 
-fn remember(
+pub(super) fn remember(
     key: u64,
     args: &PushRunArgs<'_>,
     chain: &[Font],
@@ -114,7 +94,7 @@ fn remember(
     });
 }
 
-fn word_key(args: &PushRunArgs<'_>, chain: &[Font], style: &FaceStyle) -> u64 {
+pub(super) fn word_key(args: &PushRunArgs<'_>, chain: &[Font], style: &FaceStyle) -> u64 {
     let mut hasher = crate::style::text_identity::hasher().build_hasher();
     args.fragment.hash(&mut hasher);
     args.level.hash(&mut hasher);

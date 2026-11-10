@@ -1,8 +1,4 @@
 #![cfg(unix)]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use std::time::{Duration, Instant};
@@ -24,19 +20,25 @@ fn wait_for(
     session.lines.get()
 }
 
-fn shell(runtime: &AsyncRuntime) -> Session {
+fn shell(runtime: &mut AsyncRuntime) -> Session {
+    shell_in(runtime, &std::env::current_dir().expect("cwd"))
+}
+
+fn shell_in(runtime: &mut AsyncRuntime, dir: &std::path::Path) -> Session {
     runtime.install_current();
-    let dir = std::env::current_dir().expect("cwd");
-    Session::spawn_in("/bin/sh", &dir).expect("spawn")
+    let session = Session::spawn_in("/bin/sh", dir).expect("spawn");
+    let prompt = |line: &String| line.trim_end().ends_with(['$', '#']);
+    let screen = wait_for(runtime, &session, |lines| lines.iter().any(prompt));
+    assert!(screen.iter().any(prompt), "no prompt in {screen:?}");
+    session
 }
 
 #[test]
 fn a_shell_started_in_a_folder_runs_commands_there() {
     Owner::scope("terminal_session", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        runtime.install_current();
         let dir = std::env::current_dir().expect("cwd").join("src");
-        let session = Session::spawn_in("/bin/sh", &dir).expect("spawn");
+        let session = shell_in(&mut runtime, &dir);
         session.write(b"pwd\r").expect("write");
         let wanted = dir.display().to_string();
         let screen = wait_for(&mut runtime, &session, |lines| {
@@ -53,7 +55,7 @@ fn a_shell_started_in_a_folder_runs_commands_there() {
 fn a_resized_terminal_tells_the_program_its_new_size() {
     Owner::scope("terminal_resize", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        let session = shell(&runtime);
+        let session = shell(&mut runtime);
         session.resize(100, 30).expect("resize");
         std::thread::sleep(Duration::from_millis(200));
         session.write(b"stty size\r").expect("write");
@@ -71,7 +73,7 @@ fn a_resized_terminal_tells_the_program_its_new_size() {
 fn paste_reaches_the_program_as_typed_text() {
     Owner::scope("terminal_paste", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        let session = shell(&runtime);
+        let session = shell(&mut runtime);
         session.paste("echo pasted-$((40+2))\r").expect("paste");
         let screen = wait_for(&mut runtime, &session, |lines| {
             lines.iter().any(|line| line.trim() == "pasted-42")
@@ -87,7 +89,7 @@ fn paste_reaches_the_program_as_typed_text() {
 fn scrolling_up_shows_lines_that_left_the_screen() {
     Owner::scope("terminal_scroll", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        let session = shell(&runtime);
+        let session = shell(&mut runtime);
         session
             .write(b"i=1; while [ $i -le 60 ]; do echo line-$i; i=$((i+1)); done\r")
             .expect("write");
@@ -141,7 +143,7 @@ fn ask(runtime: &mut AsyncRuntime, session: &Session, query: &str, count: usize,
 fn a_program_that_asks_where_the_cursor_is_gets_an_answer() {
     Owner::scope("terminal_cursor_query", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        let session = shell(&runtime);
+        let session = shell(&mut runtime);
         ask(&mut runtime, &session, "\\033[1;1H\\033[6n", 6, "033[1;1R");
     });
 }
@@ -150,7 +152,7 @@ fn a_program_that_asks_where_the_cursor_is_gets_an_answer() {
 fn a_program_that_asks_what_terminal_this_is_gets_an_answer() {
     Owner::scope("terminal_identity", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        let session = shell(&runtime);
+        let session = shell(&mut runtime);
         ask(&mut runtime, &session, "\\033[c", 9, "033[?62;22c");
     });
 }
@@ -159,7 +161,7 @@ fn a_program_that_asks_what_terminal_this_is_gets_an_answer() {
 fn a_program_that_asks_for_the_background_color_gets_one() {
     Owner::scope("terminal_background", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        let session = shell(&runtime);
+        let session = shell(&mut runtime);
         ask(&mut runtime, &session, "\\033]11;?\\033\\\\", 5, "033]11");
     });
 }
@@ -168,7 +170,7 @@ fn a_program_that_asks_for_the_background_color_gets_one() {
 fn the_title_a_program_sets_is_published() {
     Owner::scope("terminal_title", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        let session = shell(&runtime);
+        let session = shell(&mut runtime);
         run(
             &mut runtime,
             &session,
@@ -188,7 +190,7 @@ fn the_title_a_program_sets_is_published() {
 fn a_bell_is_counted() {
     Owner::scope("terminal_bell", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        let session = shell(&runtime);
+        let session = shell(&mut runtime);
         run(
             &mut runtime,
             &session,
@@ -208,7 +210,7 @@ fn a_bell_is_counted() {
 fn a_program_that_exits_reports_its_code() {
     Owner::scope("terminal_exit", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        let session = shell(&runtime);
+        let session = shell(&mut runtime);
         session.write(b"exit 7\r").expect("write");
         let deadline = Instant::now() + Duration::from_secs(5);
         while Instant::now() < deadline && session.exited.get().is_none() {
@@ -223,7 +225,7 @@ fn a_program_that_exits_reports_its_code() {
 fn a_program_is_told_this_terminal_has_full_color() {
     Owner::scope("terminal_color", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        let session = shell(&runtime);
+        let session = shell(&mut runtime);
         run(
             &mut runtime,
             &session,
@@ -253,7 +255,7 @@ fn the_default_shell_is_a_login_shell_in_the_folder() {
 fn scrolled_back_output_stays_put_until_a_key() {
     Owner::scope("terminal_scroll_hold", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        let session = shell(&runtime);
+        let session = shell(&mut runtime);
         session
             .write(b"i=1; while [ $i -le 60 ]; do echo line-$i; i=$((i+1)); done\r")
             .expect("write");

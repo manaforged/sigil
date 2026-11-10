@@ -1,12 +1,7 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::shadow_unrelated)]
 
-#[path = "widget_support/mod.rs"]
-mod widget_support;
+use crate::widget_support;
 
 use sigil::events::Event;
 use sigil::events::EventRouter;

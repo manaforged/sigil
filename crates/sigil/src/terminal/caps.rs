@@ -21,19 +21,28 @@ pub(in crate::terminal) use known::{Known, known_env};
 #[cfg(unix)]
 pub(crate) use probe::exchange;
 
+/// The terminal had input waiting, so a question was not sent.
+#[derive(Debug)]
+pub(crate) struct Busy;
+
+/// Asks the cell size in pixels; `Ok(None)` when the terminal does not answer.
 #[cfg(unix)]
-pub(crate) fn ask_cell() -> Option<[u16; 2]> {
+pub(crate) fn ask_cell() -> Result<Option<[u16; 2]>, Busy> {
     use std::io::Write;
-    let reply = probe::exchange(
+    let input = probe::quiet_terminal().ok_or(Busy)?;
+    let reply = probe::converse(
+        &input,
+        std::io::stdout().lock(),
         |out| out.write_all(b"\x1b[16t"),
         |text| probe::cell(text).is_some(),
-    )?;
-    probe::cell(&reply)
+    );
+    Ok(reply.and_then(|reply| probe::cell(&reply)))
 }
 
+/// Asks the cell size in pixels; the answer is always empty off Unix.
 #[cfg(not(unix))]
-pub(crate) const fn ask_cell() -> Option<[u16; 2]> {
-    None
+pub(crate) const fn ask_cell() -> Result<Option<[u16; 2]>, Busy> {
+    Ok(None)
 }
 
 /// How many colors a terminal shows.

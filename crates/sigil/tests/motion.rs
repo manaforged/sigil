@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::panic, reason = "a test fails loudly on a missing value")]
 #![allow(
     clippy::cast_possible_truncation,
@@ -161,6 +157,7 @@ fn animated(keyframes: Keyframes, flag: Signal<bool>) -> NodeBuilder {
 
 #[test]
 fn a_keyframe_animation_samples_its_stops_and_easing() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-keyframes", || {
         let flag = signal(false);
         let keyframes = Keyframes::new(Duration::from_secs(1))
@@ -215,6 +212,7 @@ fn a_keyframe_animation_samples_its_stops_and_easing() {
 
 #[test]
 fn a_keyframe_easing_applies_to_the_segment_that_starts_there() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-keyframe-easing", || {
         let flag = signal(false);
         let keyframes = Keyframes::new(Duration::from_secs(1))
@@ -242,6 +240,7 @@ fn a_keyframe_easing_applies_to_the_segment_that_starts_there() {
 
 #[test]
 fn iterations_and_alternate_direction_replay_the_stops() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-iterations", || {
         let flag = signal(false);
         let keyframes = Keyframes::new(Duration::from_secs(1))
@@ -270,6 +269,7 @@ fn iterations_and_alternate_direction_replay_the_stops() {
 
 #[test]
 fn a_reversed_animation_starts_at_its_last_stop() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-reverse", || {
         let flag = signal(false);
         let keyframes = Keyframes::new(Duration::from_secs(1))
@@ -297,6 +297,7 @@ fn transitioned(flags: [Signal<bool>; 2], node: NodeBuilder) -> NodeBuilder {
 
 #[test]
 fn a_transition_starts_from_the_current_value_when_the_style_changes_mid_flight() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-retarget", || {
         let flags = [signal(false), signal(false)];
         let node = square().opacity(0.2).transition(
@@ -328,6 +329,7 @@ fn a_transition_starts_from_the_current_value_when_the_style_changes_mid_flight(
 
 #[test]
 fn a_transition_delay_holds_the_start_value() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-delay", || {
         let flags = [signal(false), signal(false)];
         let node = square().opacity(0.2).transition(

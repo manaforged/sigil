@@ -1,11 +1,30 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::print_stdout, clippy::unwrap_used, clippy::expect_used)]
+
+use std::cell::Cell;
+use std::sync::Once;
 
 use sigil_kittest::parity::{check_cpu, minimize};
 use sigil_kittest::scene_gen::{GeneratedScene, fixture_text};
+
+thread_local! {
+    static QUIET: Cell<bool> = const { Cell::new(false) };
+}
+
+fn quiet<R>(run: impl FnOnce() -> R) -> R {
+    static HOOK: Once = Once::new();
+    HOOK.call_once(|| {
+        let shown = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            if !QUIET.with(Cell::get) {
+                shown(info);
+            }
+        }));
+    });
+    QUIET.with(|quiet| quiet.set(true));
+    let result = run();
+    QUIET.with(|quiet| quiet.set(false));
+    result
+}
 
 fn seeds() -> std::ops::Range<u64> {
     let start = std::env::var("SIGIL_SWEEP_START")
@@ -20,7 +39,7 @@ fn seeds() -> std::ops::Range<u64> {
 }
 
 fn fails(scene: &GeneratedScene) -> Option<String> {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| check_cpu(scene))) {
+    match quiet(|| std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| check_cpu(scene)))) {
         Ok(Ok(())) => None,
         Ok(Err(message)) => Some(message),
         Err(payload) => Some(format!(
@@ -36,7 +55,6 @@ fn fails(scene: &GeneratedScene) -> Option<String> {
 
 #[test]
 fn cpu_renders_generated_scenes_deterministically() {
-    std::panic::set_hook(Box::new(|_| {}));
     let mut failures = Vec::new();
     for seed in seeds() {
         let scene = GeneratedScene::from_seed(seed);

@@ -206,6 +206,7 @@ pub enum Filter {
     Sepia(f32),
 }
 
+#[cfg(any(test, feature = "scene", feature = "terminal"))]
 impl Filter {
     #[cfg(any(
         test,
@@ -279,11 +280,7 @@ pub(crate) fn transform_rect(transform: Transform, rect: Rect) -> Rect {
     Rect::new(Point::new(min_x, min_y), max_x - min_x, max_y - min_y)
 }
 
-#[allow(
-    clippy::missing_const_for_fn,
-    reason = "const f32::mul_add requires Rust 1.94; Sigil supports 1.90"
-)]
-pub(crate) fn transform_point(transform: Transform, point: Point) -> Point {
+pub(crate) const fn transform_point(transform: Transform, point: Point) -> Point {
     Point::new(
         transform[0][0].mul_add(point.x, transform[0][1].mul_add(point.y, transform[0][2])),
         transform[1][0].mul_add(point.x, transform[1][1].mul_add(point.y, transform[1][2])),

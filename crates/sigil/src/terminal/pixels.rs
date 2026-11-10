@@ -5,10 +5,12 @@ use crate::AppConfig;
 use crate::kernel::IntoNode;
 use crate::terminal::caps::Capabilities;
 use crate::terminal::graphics::Mux;
-#[cfg(feature = "scene")]
 use crate::terminal::run::{isolated, recover};
 
 #[cfg(feature = "scene")]
+mod draw;
+#[cfg(not(feature = "scene"))]
+#[path = "pixels/inert.rs"]
 mod draw;
 #[cfg(feature = "scene")]
 mod tiles;
@@ -47,7 +49,6 @@ fn cell(caps: Capabilities) -> Option<[u16; 2]> {
 
 /// The pixel host of a terminal run, mounted the first time pixel mode turns on.
 pub(super) struct Pixels {
-    #[cfg(feature = "scene")]
     inner: Option<draw::Draw>,
     #[cfg(feature = "scene")]
     quit: crate::app::config::QuitKeys,
@@ -78,7 +79,6 @@ impl Pixels {
             }
         }
         Self {
-            #[cfg(feature = "scene")]
             inner: None,
             #[cfg(feature = "scene")]
             quit: config.quit,
@@ -97,31 +97,30 @@ impl Pixels {
             return Ok(false);
         }
         self.on = want;
-        #[cfg(feature = "scene")]
-        {
-            let caps = crate::terminal::term::current_caps();
-            if want {
+        let caps = crate::terminal::term::current_caps();
+        if want {
+            #[cfg(feature = "scene")]
+            {
                 let inner = self.inner.get_or_insert_with(|| draw::Draw::mount(tree));
                 inner.host_mut().set_quit(self.quit);
                 inner.host_mut().attach_theme(cells.theme().clone());
                 inner.enter()?;
-            } else if let Some(inner) = &mut self.inner {
-                cells.attach_theme(inner.host().theme().clone());
-                inner.leave(caps.mux)?;
             }
+        } else if let Some(inner) = &mut self.inner {
+            cells.attach_theme(inner.host().theme().clone());
+            inner.leave(caps.mux)?;
         }
         #[cfg(not(feature = "scene"))]
-        let _ = (tree, cells);
+        let _ = tree;
         Ok(true)
     }
 
     /// Returns the pixel host while pixel mode is on.
     pub(super) fn host(&self) -> Option<&crate::Host> {
-        #[cfg(feature = "scene")]
-        if self.on {
-            return self.inner.as_ref().map(draw::Draw::host);
-        }
-        None
+        self.inner
+            .as_ref()
+            .filter(|_| self.on)
+            .map(draw::Draw::host)
     }
 
     /// Runs one pixel frame under `policy` and returns whether the app asked to exit.
@@ -132,7 +131,6 @@ impl Pixels {
         size: (u16, u16),
         term: &mut crate::terminal::term::Term,
     ) -> crate::AppResult<bool> {
-        #[cfg(feature = "scene")]
         if let (Some(inner), Some(cell)) = (&mut self.inner, cell(term.caps())) {
             let frame = isolated(policy, || inner.turn((input, dt), size, cell, term))?;
             if frame.is_none() {
@@ -141,7 +139,6 @@ impl Pixels {
             }
             return Ok(frame.unwrap_or(false));
         }
-        let _ = (policy, input, size, term, dt);
         Ok(false)
     }
 
@@ -151,11 +148,9 @@ impl Pixels {
     }
 
     fn leave(&mut self, mux: Option<Mux>) -> io::Result<()> {
-        #[cfg(feature = "scene")]
         if let (true, Some(inner)) = (core::mem::take(&mut self.on), &mut self.inner) {
             return inner.leave(mux);
         }
-        let _ = mux;
         Ok(())
     }
 }

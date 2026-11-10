@@ -92,18 +92,20 @@ impl View {
                 if fresh {
                     self.last.replace(Some(bounded.clone()));
                 }
-                #[cfg(feature = "scene")]
-                return self.chrome.wrap(drawn, &bounded, !fresh);
-                #[cfg(not(feature = "scene"))]
-                return plain_frame(drawn, &bounded);
+                return frame(self, drawn, &bounded, !fresh);
             }
         }
         text_figure(source)
     }
 }
 
+#[cfg(feature = "scene")]
+fn frame(view: &View, drawn: Drawn, source: &str, stale: bool) -> NodeBuilder {
+    view.chrome.wrap(drawn, source, stale)
+}
+
 #[cfg(not(feature = "scene"))]
-fn plain_frame(drawn: Drawn, source: &str) -> NodeBuilder {
+fn frame(_: &View, drawn: Drawn, source: &str, _stale: bool) -> NodeBuilder {
     scrolled(drawn.node, drawn.width)
         .role(Role::Figure)
         .label(diagram_name(source))

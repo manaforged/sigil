@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_crate_dependencies, clippy::panic)]
+#![allow(dead_code, clippy::panic)]
 
 use std::fs;
 use std::path::{Path, PathBuf};

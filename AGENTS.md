@@ -25,7 +25,7 @@ For tests:
 sigil-kittest = "0.2"
 ```
 
-Rust 1.90 or newer. The window host on Linux needs the GTK3, udev, ALSA, xkbcommon, and xdo development packages.
+Rust 1.95 or newer. The window host on Linux needs the GTK3, udev, ALSA, xkbcommon, and xdo development packages.
 
 ## Find the API
 

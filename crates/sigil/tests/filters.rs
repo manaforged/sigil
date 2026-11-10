@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::print_stdout, reason = "the checks print their measures")]
 #![allow(
     clippy::indexing_slicing,

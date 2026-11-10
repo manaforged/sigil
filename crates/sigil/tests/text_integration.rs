@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 #[path = "text_integration/bidi_visual_order.rs"]
 mod bidi_visual_order;
 #[path = "text_integration/cache_lifecycle.rs"]

@@ -171,9 +171,18 @@ impl Tray {
 
     fn native_icon(&self) -> Result<Option<Icon>, String> {
         match &self.icon {
-            Change::Set((rgba, width, height)) => Icon::from_rgba(rgba.clone(), *width, *height)
-                .map(Some)
-                .map_err(|error| error.to_string()),
+            Change::Set((rgba, width, height)) => {
+                let needed = u64::from(*width) * u64::from(*height) * 4;
+                if u64::try_from(rgba.len()).ok() != Some(needed) {
+                    return Err(format!(
+                        "a {width}x{height} RGBA icon needs {needed} bytes, got {}",
+                        rgba.len()
+                    ));
+                }
+                Icon::from_rgba(rgba.clone(), *width, *height)
+                    .map(Some)
+                    .map_err(|error| error.to_string())
+            }
             Change::Keep | Change::Clear => Ok(None),
         }
     }

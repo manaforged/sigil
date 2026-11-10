@@ -1,13 +1,8 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::float_cmp)]
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::indexing_slicing)]
 
-#[path = "layout_stub/mod.rs"]
-mod stub;
+use crate::layout_stub as stub;
 use sigil::layout::Space;
 use sigil::widgets::{Layout, Widget};
 use stub::{layout_rect, stub_engine};
@@ -117,6 +112,7 @@ fn reposition_translates_the_subtree_without_a_resolve() {
         engine
             .compute(&mut cx, root, Size::fixed(800.0, 600.0))
             .expect("initial compute");
+        let _profile = crate::serial::profile();
         sigil::profile::enable();
         sigil::profile::reset();
         sigil::profile::begin_frame(sigil::profile::BackendStatus {
@@ -168,6 +164,7 @@ fn reposition_with_a_dirty_descendant_still_translates() {
         engine
             .compute(&mut cx, root, Size::fixed(800.0, 600.0))
             .expect("initial compute");
+        let _profile = crate::serial::profile();
         sigil::profile::enable();
         sigil::profile::reset();
         sigil::profile::begin_frame(sigil::profile::BackendStatus {

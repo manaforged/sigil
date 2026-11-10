@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use sigil::text::{WebFont, WebFontScript, set_web_fallbacks, web_fallbacks};
 
 #[test]

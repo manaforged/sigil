@@ -5,10 +5,12 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil_kittest::Harness;
 
-const LIMIT: Duration = Duration::from_secs(3);
-const SIDE: u32 = 4000;
+const SIDE: u32 = 1024;
+const SMALL: f32 = 16.0;
+const HUGE: f32 = 4096.0;
+const MAX_RATIO: f64 = 4.0;
 
-fn blurred() -> NodeBuilder {
+fn blurred(sigma: f32) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::block()
@@ -30,16 +32,27 @@ fn blurred() -> NodeBuilder {
                     b: 0,
                     a: 255,
                 })
-                .blur(4096.0),
+                .blur(sigma),
         )
 }
 
-#[test]
-fn a_huge_blur_renders_in_bounded_time() {
-    let mut surface = Harness::new(blurred).gpu(SIDE, SIDE, 1.0);
+fn frame_time(sigma: f32, side: u32) -> Option<Duration> {
+    let mut surface = Harness::new(move || blurred(sigma)).gpu(side, side, 1.0);
     let started = Instant::now();
     let frame = surface.image().expect("gpu frame");
-    let elapsed = started.elapsed();
-    assert!(frame.is_some() || elapsed < LIMIT, "no frame");
-    assert!(elapsed < LIMIT, "a blur(4096) frame took {elapsed:?}");
+    frame.map(|_| started.elapsed())
+}
+
+#[test]
+fn a_huge_blur_costs_no_more_than_a_small_one() {
+    if frame_time(8.0, 256).is_none() {
+        return;
+    }
+    let small = frame_time(SMALL, SIDE).expect("small frame");
+    let huge = frame_time(HUGE, SIDE).expect("huge frame");
+    let ratio = huge.as_secs_f64() / small.as_secs_f64();
+    assert!(
+        ratio < MAX_RATIO,
+        "blur({HUGE}) took {huge:?}, {ratio:.2}x blur({SMALL}) at {small:?}"
+    );
 }

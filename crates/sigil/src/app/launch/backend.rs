@@ -1,6 +1,8 @@
 use crate::geometry::PhysicalSize;
 use crate::hal::Renderer as _;
 use crate::profile::{self, BackendStatus, FallbackCause};
+#[cfg(feature = "inspect")]
+use crate::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::{CpuRenderer, CpuSurface, WgpuRenderer, WgpuSurface, into_window_handle};
 use crate::scene::CommandScene;
@@ -9,10 +11,10 @@ use crate::{Error, ErrorKind};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 #[cfg(feature = "inspect")]
-mod inspect;
+mod shot;
 
 #[cfg(feature = "inspect")]
-pub(super) use inspect::inspect_shot;
+pub(super) use shot::inspect_shot;
 
 const ENV: &str = "SIGIL_BACKEND";
 use crate::renderer::SURFACE_CLEAR;
@@ -291,6 +293,39 @@ const fn mismatch() -> Error {
         ErrorKind::Software,
         "software renderer failed: surface was created by a different backend",
     )
+}
+
+#[cfg(feature = "inspect")]
+impl Backend {
+    pub(in crate::app) fn render_image(
+        &mut self,
+        scene: &CommandScene,
+        target: ImageTarget,
+    ) -> Result<image::RgbaImage, Error> {
+        let (attempt, had_device) = match &mut self.inner {
+            BackendInner::Cpu(r) => return render_to_image(ImageRenderer::Cpu(r), scene, target),
+            BackendInner::Wgpu(r) => {
+                let had_device = r.device().is_some();
+                (
+                    render_to_image(ImageRenderer::Gpu(r), scene, target),
+                    had_device,
+                )
+            }
+        };
+        match attempt {
+            Ok(image) => {
+                self.adopt_gpu_status();
+                Ok(image)
+            }
+            Err(err) if self.fallback && !had_device => {
+                let mut cpu = self.fall_back_to_cpu(&err);
+                let image = render_to_image(ImageRenderer::Cpu(&mut cpu), scene, target);
+                self.use_cpu(cpu);
+                image
+            }
+            Err(err) => Err(err),
+        }
+    }
 }
 
 #[cfg(target_arch = "wasm32")]

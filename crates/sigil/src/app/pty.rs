@@ -1,4 +1,3 @@
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 
@@ -8,12 +7,12 @@ use crate::style::{Color, TextRun};
 use crate::{AppResult, Error};
 
 mod mouse;
-mod pump;
+mod publish;
 mod reply;
 mod view;
 
 pub(crate) use mouse::Mouse;
-use pump::{read_rows, steer};
+use publish::{Publish, Published, read_rows, steer};
 use reply::{Colors, Replies};
 
 type Parser = vt100::Parser<Replies>;
@@ -251,93 +250,6 @@ fn input(mut writer: Box<dyn std::io::Write + Send>) -> Sender<Vec<u8>> {
         }
     });
     tx
-}
-
-#[derive(Clone, Copy)]
-struct Published {
-    lines: Signal<Vec<String>>,
-    rows: Signal<Vec<Row>>,
-    title: Signal<String>,
-    bell: Signal<u64>,
-}
-
-impl Published {
-    fn new() -> Self {
-        Self {
-            lines: signal(Vec::new()),
-            rows: signal(Vec::new()),
-            title: signal(String::new()),
-            bell: signal(0),
-        }
-    }
-}
-
-#[derive(Clone)]
-struct Publish {
-    dispatcher: crate::tasks::runtime::Dispatcher,
-    owner: crate::reactive::Owner,
-    parser: Arc<Mutex<Parser>>,
-    lines: crate::reactive::SendableSignal<Vec<String>>,
-    rows: crate::reactive::SendableSignal<Vec<Row>>,
-    title: crate::reactive::SendableSignal<String>,
-    bell: crate::reactive::SendableSignal<u64>,
-    queued: Arc<AtomicBool>,
-}
-
-impl Publish {
-    fn new(
-        dispatcher: crate::tasks::runtime::Dispatcher,
-        owner: crate::reactive::Owner,
-        parser: Arc<Mutex<Parser>>,
-        published: Published,
-    ) -> Self {
-        Self {
-            dispatcher,
-            owner,
-            parser,
-            lines: published.lines.into_sendable(),
-            rows: published.rows.into_sendable(),
-            title: published.title.into_sendable(),
-            bell: published.bell.into_sendable(),
-            queued: Arc::default(),
-        }
-    }
-
-    fn send(&self) {
-        if self.queued.swap(true, Ordering::AcqRel) {
-            return;
-        }
-        let publish = self.clone();
-        crate::tasks::dispatch::dispatch_to_owner(&self.dispatcher, self.owner, move || {
-            publish.paint();
-        });
-    }
-
-    fn paint(&self) {
-        self.queued.store(false, Ordering::Release);
-        let Ok(mut parser) = self.parser.lock() else {
-            return;
-        };
-        let frame = frame_of(&parser);
-        let replies = parser.callbacks_mut();
-        let (title, bell) = (replies.title.take(), replies.bell);
-        drop(parser);
-        self.lines.into_signal().set(frame.lines);
-        self.rows.into_signal().set(frame.rows);
-        if let Some(title) = title {
-            self.title.into_signal().set(title);
-        }
-        let rung = self.bell.into_signal();
-        if rung.peek() != bell {
-            rung.set(bell);
-        }
-    }
-
-    fn finish(&self, exited: crate::reactive::SendableSignal<Option<u32>>, code: u32) {
-        crate::tasks::dispatch::dispatch_to_owner(&self.dispatcher, self.owner, move || {
-            exited.into_signal().set(Some(code));
-        });
-    }
 }
 
 const fn size(cols: u16, rows: u16) -> portable_pty::PtySize {

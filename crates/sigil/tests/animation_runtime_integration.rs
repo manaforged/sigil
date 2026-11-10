@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use sigil::animation::{Animator, MotionPrefs, tick};
 use sigil::animation::{Easing, SpringPreset};
 use sigil::reactive::{Owner, signal};

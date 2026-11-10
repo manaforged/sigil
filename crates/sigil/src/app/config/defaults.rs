@@ -40,16 +40,8 @@ impl AppConfig {
             #[cfg(feature = "scene")]
             text: TextSetup::default(),
             #[cfg(feature = "terminal")]
-            terminal_hooks: TerminalHooks::default(),
-            #[cfg(feature = "terminal")]
-            terminal_access: crate::terminal::Access::default(),
-            #[cfg(feature = "terminal")]
-            mouse_tracking: None,
-            #[cfg(feature = "terminal")]
-            other_keys: OtherKeys::Plain,
-            #[cfg(feature = "terminal")]
-            suspend: Some(suspend_key()),
-            #[cfg(all(feature = "desktop", target_arch = "wasm32"))]
+            terminal: TerminalOptions::default(),
+            #[cfg(feature = "desktop")]
             canvas: None,
         }
     }

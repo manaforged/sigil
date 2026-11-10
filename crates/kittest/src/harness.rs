@@ -197,7 +197,10 @@ impl Harness {
         let layout = match &mut self.surface {
             HarnessSurface::Cells { screen, size } => {
                 screen.set_dt(dt);
-                screen.frame(&mut self.host, events, *size).map(|_| ())
+                screen
+                    .frame(&mut self.host, events, *size)
+                    .map(|_| ())
+                    .and_then(|()| screen.flush(&mut std::io::sink()))
             }
             HarnessSurface::Pixels { size, .. } => {
                 let viewport = (crate::extent_f32(size.0), crate::extent_f32(size.1));

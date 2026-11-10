@@ -1,8 +1,4 @@
 #![cfg(feature = "kittest")]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::print_stdout, clippy::unwrap_used, clippy::expect_used)]
 
 use sigil::renderer::{CpuRenderer, WgpuRenderer};

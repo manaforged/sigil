@@ -61,7 +61,7 @@ fn median(values: &mut [f64]) -> f64 {
 }
 
 #[test]
-#[ignore = "manual: cargo test --release -p sigil-ui --test blend -- --ignored --nocapture"]
+#[ignore = "manual: cargo test --release -p sigil-ui --test integration blend::perf -- --ignored --nocapture"]
 fn two_hundred_blended_layers_frame_time() {
     let Some(mut renderer) = headless_renderer().expect("sigil-kittest") else {
         println!("no adapter: skipping");

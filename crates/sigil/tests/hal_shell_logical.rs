@@ -1,11 +1,6 @@
 #![cfg(feature = "kittest")]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 
-#[path = "events_support/mock_shell.rs"]
-mod mock_shell;
+use crate::events_support::mock_shell;
 
 use mock_shell::MockShell;
 use sigil::geometry::{LogicalSize, PhysicalSize};

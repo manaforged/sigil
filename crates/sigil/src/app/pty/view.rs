@@ -126,14 +126,13 @@ fn indexed(index: u8) -> Ink {
     if let Some(token) = BASE.get(usize::from(index)) {
         return Ink::Token(*token);
     }
-    if index <= 231 {
+    if index < 232 {
         let level = |step: u8| if step == 0 { 0 } else { 55 + step * 40 };
-        let cube = index.saturating_sub(16);
-        exact(level(cube / 36), level(cube / 6 % 6), level(cube % 6))
-    } else {
-        let gray = 8 + (index - 232) * 10;
-        exact(gray, gray, gray)
+        let cube = index - 16;
+        return exact(level(cube / 36), level(cube / 6 % 6), level(cube % 6));
     }
+    let gray = 8 + (index - 232) * 10;
+    exact(gray, gray, gray)
 }
 
 #[cfg(test)]

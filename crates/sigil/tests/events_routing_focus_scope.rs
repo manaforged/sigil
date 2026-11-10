@@ -1,16 +1,7 @@
 #![cfg(feature = "kittest")]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
-#[path = "events_support/input.rs"]
-mod input;
-#[path = "events_support/mock_shell.rs"]
-mod mock_shell;
-#[path = "events_support/routing_helpers.rs"]
-mod routing_helpers;
+use crate::events_support::routing_helpers;
 
 use sigil::events::*;
 use sigil::geometry::Size;

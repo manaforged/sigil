@@ -69,7 +69,7 @@ impl Term {
     pub(crate) fn enter(config: &crate::AppConfig) -> io::Result<Self> {
         let inline = config.inline;
         MODIFY_KEYS_WANTED.store(
-            config.other_keys == crate::app::config::OtherKeys::Modified,
+            config.terminal.other_keys == crate::app::config::OtherKeys::Modified,
             Ordering::Relaxed,
         );
         TITLE.with(|slot| *slot.borrow_mut() = Some(config.title.clone()));
@@ -136,8 +136,9 @@ impl Term {
         if !self.cell_stale {
             return None;
         }
+        let answer = crate::terminal::caps::ask_cell().ok()?;
         self.cell_stale = false;
-        let cell = crate::terminal::caps::ask_cell()?;
+        let cell = answer?;
         if Some(cell) == self.caps.cell {
             return None;
         }

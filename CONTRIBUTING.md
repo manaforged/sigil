@@ -4,7 +4,7 @@ Issues are welcome. Pull requests are by invitation: open an issue first, and se
 
 ## Build
 
-Use the Rust 1.98.1 toolchain pinned in `rust-toolchain.toml`. The declared minimum supported Rust version is 1.90. On Linux, install the libraries that the window host links against:
+Use the Rust 1.98.1 toolchain pinned in `rust-toolchain.toml`. The declared minimum supported Rust version is 1.95. On Linux, install the libraries that the window host links against:
 
 ```bash
 sudo apt-get install libgtk-3-dev libudev-dev libasound2-dev \
@@ -23,6 +23,8 @@ Run the same gate that CI runs before you push:
 scripts/gate.sh
 ```
 
+CI runs each gate job on its own runner. `scripts/gate.sh --list` names the jobs, and `scripts/gate.sh test` runs one.
+
 The gate needs `node`, `cargo-hack`, `cargo-deny`, `cargo-fuzz`, `mdbook`, and `wasm-bindgen-test-runner`. It names the install command for a missing tool. It installs the MSRV and nightly toolchains through `rustup`.
 
 `node tools/profile.mjs report TRACE` summarizes a `SIGIL_PROFILE` trace, and `crates/sigil/perf_budgets.toml` holds the budgets the perf gate test reads.
@@ -32,6 +34,8 @@ On a machine with a GPU adapter, run the hardware tier too:
 ```bash
 scripts/gate.sh --gpu
 ```
+
+The `sigil-ui` integration tests build as one binary. Run one file's tests with `cargo test -p sigil-ui --all-features --test integration design_sweep::`.
 
 ## Code shape
 

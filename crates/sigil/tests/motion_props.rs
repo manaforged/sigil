@@ -1,11 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-#![allow(
-    unsafe_code,
-    reason = "a counting global allocator must implement the unsafe GlobalAlloc trait"
-)]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::float_cmp)]
 #![allow(
     clippy::indexing_slicing,
@@ -277,6 +269,7 @@ fn played(node: NodeBuilder, keyframes: Keyframes) -> (Harness, Signal<bool>) {
 
 #[test]
 fn filter_keyframes_sample_their_stops() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("props-filter-keyframes", || {
         let keyframes = Keyframes::new(Duration::from_secs(1))
             .ease(Easing::Linear)
@@ -314,6 +307,7 @@ fn filter_keyframes_sample_their_stops() {
 
 #[test]
 fn a_brightness_keyframe_follows_its_easing() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("props-brightness-easing", || {
         let keyframes = Keyframes::new(Duration::from_secs(1))
             .ease(Easing::IN_OUT)
@@ -331,6 +325,7 @@ fn a_brightness_keyframe_follows_its_easing() {
 
 #[test]
 fn a_gradient_stop_color_keyframe_mixes_in_srgb() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("props-stop-keyframes", || {
         let keyframes = Keyframes::new(Duration::from_secs(1))
             .ease(Easing::Linear)
@@ -348,6 +343,7 @@ fn a_gradient_stop_color_keyframe_mixes_in_srgb() {
 
 #[test]
 fn a_rotate_y_keyframe_turns_the_node() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("props-rotate-y-keyframes", || {
         let keyframes = Keyframes::new(Duration::from_secs(1))
             .ease(Easing::Linear)
@@ -366,6 +362,7 @@ fn a_rotate_y_keyframe_turns_the_node() {
 
 #[test]
 fn a_translate_z_keyframe_moves_the_node_toward_the_viewer() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("props-translate-z-keyframes", || {
         let flag = signal(false);
         let keyframes = Keyframes::new(Duration::from_secs(1))

@@ -7,6 +7,7 @@ kittest_pub! {
     pub use crate::hal::size::Scale;
 }
 
+#[cfg(feature = "scene")]
 /// Returns the Hermite smoothstep of `value` between the `low` and `high` edges, from 0.0 to 1.0.
 #[cfg(all(
     feature = "scene",

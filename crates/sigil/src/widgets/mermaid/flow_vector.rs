@@ -7,10 +7,11 @@ use crate::widgets::vector::{PathNode, path};
 use super::flow::{Graph, GridRect, NodeShape, arrange};
 use super::flow_parse::parse;
 
-mod route;
+mod lanes;
+mod shapes;
 
-use route::{arrow_head, middle, route};
-pub(in crate::widgets::mermaid) use route::{barb, dashed_line, polyline};
+use lanes::route;
+use shapes::{dots, shapes};
 
 pub(super) const CELL_W: f32 = 7.0;
 pub(super) const CELL_H: f32 = space(4);
@@ -185,44 +186,6 @@ pub(super) fn layer(node: PathNode, size: (f32, f32)) -> PathNode {
     )
 }
 
-fn shapes(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathNode {
-    let mut node = canvas(size);
-    for (entry, area) in graph.nodes.iter().zip(areas) {
-        if !entry.dummy && entry.shape != NodeShape::Terminal {
-            node = shape(node, entry.shape, *area);
-        }
-    }
-    node.fill(Token::Surface)
-        .stroke(Token::Border, f32::from(BORDER_WIDTH))
-}
-
-fn dots(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathNode {
-    let mut node = canvas(size);
-    for (entry, area) in graph.nodes.iter().zip(areas) {
-        if entry.shape == NodeShape::Terminal {
-            let end = entry.label.first().is_some_and(|glyph| glyph == "◉");
-            node = ellipse(node, area.cx(), area.cy(), DOT, DOT);
-            if end {
-                node = ellipse(node, area.cx(), area.cy(), DOT * 0.55, DOT * 0.55);
-            }
-        }
-    }
-    node.fill(Token::OnSurface)
-}
-
-fn shape(node: PathNode, shape: NodeShape, area: Area) -> PathNode {
-    match shape {
-        NodeShape::Round => rounded(node, area, CORNER * 1.5),
-        NodeShape::Stadium | NodeShape::Terminal => rounded(node, area, area.h / 2.0),
-        NodeShape::Circle => ellipse(node, area.cx(), area.cy(), area.w / 2.0, area.h / 2.0),
-        NodeShape::Diamond | NodeShape::Hexagon => hexagon(node, area),
-        NodeShape::Cylinder => cylinder(node, area),
-        NodeShape::Subroutine => subroutine(node, area),
-        NodeShape::Flag => flag(node, area),
-        NodeShape::Box => rounded(node, area, CORNER / 2.0),
-    }
-}
-
 pub(super) fn rounded(node: PathNode, area: Area, radius: f32) -> PathNode {
     let r = radius.min(area.w / 2.0).min(area.h / 2.0);
     let (x0, y0, x1, y1) = (area.x, area.y, area.right(), area.bottom());
@@ -235,69 +198,6 @@ pub(super) fn rounded(node: PathNode, area: Area, radius: f32) -> PathNode {
         .quad_to(x0, y1, x0, y1 - r)
         .line_to(x0, y0 + r)
         .quad_to(x0, y0, x0 + r, y0)
-        .close()
-}
-
-fn ellipse(node: PathNode, cx: f32, cy: f32, rx: f32, ry: f32) -> PathNode {
-    let (kx, ky) = (rx * CIRCLE_K, ry * CIRCLE_K);
-    node.move_to(cx + rx, cy)
-        .cubic_to(cx + rx, cy + ky, cx + kx, cy + ry, cx, cy + ry)
-        .cubic_to(cx - kx, cy + ry, cx - rx, cy + ky, cx - rx, cy)
-        .cubic_to(cx - rx, cy - ky, cx - kx, cy - ry, cx, cy - ry)
-        .cubic_to(cx + kx, cy - ry, cx + rx, cy - ky, cx + rx, cy)
-        .close()
-}
-
-fn hexagon(node: PathNode, area: Area) -> PathNode {
-    let inset = (area.h / 2.0).min(area.w / 4.0);
-    node.move_to(area.x + inset, area.y)
-        .line_to(area.right() - inset, area.y)
-        .line_to(area.right(), area.cy())
-        .line_to(area.right() - inset, area.bottom())
-        .line_to(area.x + inset, area.bottom())
-        .line_to(area.x, area.cy())
-        .close()
-}
-
-fn cylinder(node: PathNode, area: Area) -> PathNode {
-    let lip = (area.h / 6.0).min(6.0);
-    let (x0, x1, top, bottom) = (area.x, area.right(), area.y + lip, area.bottom() - lip);
-    let k = CIRCLE_K * area.w / 2.0;
-    let belly = 2.0f32.mul_add(lip, top);
-    node.move_to(x0, top)
-        .cubic_to(x0, top - lip, area.cx() - k, area.y, area.cx(), area.y)
-        .cubic_to(area.cx() + k, area.y, x1, top - lip, x1, top)
-        .line_to(x1, bottom)
-        .cubic_to(
-            x1,
-            bottom + lip,
-            area.cx() + k,
-            area.bottom(),
-            area.cx(),
-            area.bottom(),
-        )
-        .cubic_to(area.cx() - k, area.bottom(), x0, bottom + lip, x0, bottom)
-        .close()
-        .move_to(x0, top)
-        .cubic_to(x0, top + lip, area.cx() - k, belly, area.cx(), belly)
-        .cubic_to(area.cx() + k, belly, x1, top + lip, x1, top)
-}
-
-fn subroutine(node: PathNode, area: Area) -> PathNode {
-    let side = CELL_W;
-    rounded(node, area, CORNER / 2.0)
-        .move_to(area.x + side, area.y)
-        .line_to(area.x + side, area.bottom())
-        .move_to(area.right() - side, area.y)
-        .line_to(area.right() - side, area.bottom())
-}
-
-fn flag(node: PathNode, area: Area) -> PathNode {
-    node.move_to(area.x, area.y)
-        .line_to(area.right(), area.y)
-        .line_to(area.right(), area.bottom())
-        .line_to(area.x, area.bottom())
-        .line_to(area.x + CELL_W, area.cy())
         .close()
 }
 
@@ -351,6 +251,114 @@ fn edges(graph: &Graph, areas: &[Area], size: (f32, f32)) -> Edges {
         }
     }
     (lines, dashes, heads, labels)
+}
+
+fn distinct(points: &[Point]) -> Vec<Point> {
+    let mut out: Vec<Point> = Vec::with_capacity(points.len());
+    for point in points {
+        let same = out
+            .last()
+            .is_some_and(|last| (last.0 - point.0).abs() < 0.5 && (last.1 - point.1).abs() < 0.5);
+        if !same {
+            out.push(*point);
+        }
+    }
+    out
+}
+
+fn unit(from: Point, to: Point) -> (Point, f32) {
+    let (dx, dy) = (to.0 - from.0, to.1 - from.1);
+    let length = dx.hypot(dy);
+    if length < f32::EPSILON {
+        return ((0.0, 0.0), 0.0);
+    }
+    ((dx / length, dy / length), length)
+}
+
+pub(super) fn polyline(mut node: PathNode, points: &[Point]) -> PathNode {
+    let points = distinct(points);
+    let Some(first) = points.first() else {
+        return node;
+    };
+    node = node.move_to(first.0, first.1);
+    for window in points.windows(3) {
+        let &[before, corner, after] = window else {
+            continue;
+        };
+        let ((ux, uy), into) = unit(before, corner);
+        let ((vx, vy), out) = unit(corner, after);
+        let r = CORNER.min(into / 2.0).min(out / 2.0);
+        node = node
+            .line_to((-ux).mul_add(r, corner.0), (-uy).mul_add(r, corner.1))
+            .quad_to(
+                corner.0,
+                corner.1,
+                vx.mul_add(r, corner.0),
+                vy.mul_add(r, corner.1),
+            );
+    }
+    match points.last() {
+        Some(last) if points.len() > 1 => node.line_to(last.0, last.1),
+        _ => node,
+    }
+}
+
+pub(super) fn dashed_line(mut node: PathNode, points: &[Point]) -> PathNode {
+    for pair in distinct(points).windows(2) {
+        let &[start, finish] = pair else {
+            continue;
+        };
+        let ((ux, uy), length) = unit(start, finish);
+        let steps = std::iter::successors(Some(0.0_f32), |at| Some(at + DASH + DASH_GAP));
+        for at in steps.take_while(|at| *at < length) {
+            let end = (at + DASH).min(length);
+            node = node
+                .move_to(ux.mul_add(at, start.0), uy.mul_add(at, start.1))
+                .line_to(ux.mul_add(end, start.0), uy.mul_add(end, start.1));
+        }
+    }
+    node
+}
+
+fn arrow_head(node: PathNode, points: &mut [Point]) -> PathNode {
+    let count = points.len();
+    let (Some(tip), Some(before)) = (
+        points.last().copied(),
+        distinct(points).iter().rev().nth(1).copied(),
+    ) else {
+        return node;
+    };
+    let ((ux, uy), length) = unit(before, tip);
+    let head = HEAD.min(length);
+    let base = ((-ux).mul_add(head, tip.0), (-uy).mul_add(head, tip.1));
+    if let Some(last) = points.get_mut(count.saturating_sub(1)) {
+        *last = base;
+    }
+    barb(node, tip, base, (ux, uy), head * 0.55)
+}
+
+pub(super) fn barb(node: PathNode, tip: Point, base: Point, dir: Point, half: f32) -> PathNode {
+    let (ux, uy) = dir;
+    node.move_to(tip.0, tip.1)
+        .line_to((-uy).mul_add(half, base.0), ux.mul_add(half, base.1))
+        .line_to(uy.mul_add(half, base.0), (-ux).mul_add(half, base.1))
+        .close()
+}
+
+fn middle(points: &[Point]) -> Point {
+    let points = distinct(points);
+    let count = points.len();
+    let (Some(a), Some(b)) = (
+        points.get(count.saturating_sub(1) / 2),
+        points.get(count / 2),
+    ) else {
+        return (0.0, 0.0);
+    };
+    if count.is_multiple_of(2) {
+        (f32::midpoint(a.0, b.0), f32::midpoint(a.1, b.1))
+    } else {
+        *a
+    }
 }
 
 pub(super) fn edge_label(label: &str, at: Point) -> NodeBuilder {

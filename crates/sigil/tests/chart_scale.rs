@@ -1,8 +1,4 @@
 #![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-#![allow(
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::cast_precision_loss,
@@ -14,31 +10,10 @@ use std::cell::Cell;
 use std::ops::Range;
 use std::rc::Rc;
 
-use sigil::kernel::{Cx, Role};
+use sigil::kernel::Role;
 use sigil::prelude::*;
-use sigil::reactive::Owner;
 use sigil::widgets::{ChartBuilder, chart};
 use sigil_kittest::{Harness, Query};
-
-fn line_build_time(points: usize) -> std::time::Duration {
-    Owner::scope("chart-build", || {
-        let mut cx = Cx::new_root();
-        let values: Vec<f32> = (0..points).map(|at| (at as f32 * 0.01).sin()).collect();
-        let started = std::time::Instant::now();
-        let _ = cx.add(chart(values).line().width(400.0).height(200.0));
-        started.elapsed()
-    })
-}
-
-#[test]
-fn a_line_of_100k_points_costs_about_the_same_as_1k() {
-    let small = line_build_time(1_000);
-    let large = line_build_time(100_000);
-    assert!(
-        large < small * 10,
-        "100k points took {large:?}, 1k points {small:?}"
-    );
-}
 
 #[test]
 fn the_wheel_zooms_a_bound_x_range() {

@@ -1,12 +1,13 @@
 use std::time::Instant;
 
+use super::{Hooks, tick};
+use crate::app::PanicPolicy;
 use crate::events::Event;
 use crate::profile;
+use crate::reactive::Runtime;
 use crate::terminal::screen::Screen;
-use crate::terminal::term::Term;
+use crate::terminal::term::{Term, restore};
 use crate::{AppConfig, AppResult, Error, Host};
-
-use super::{Hooks, isolated, recover, tick};
 
 pub(super) struct Turn<'a> {
     last: &'a mut Instant,
@@ -65,4 +66,30 @@ impl<'a> Turn<'a> {
         profile::tick_frame();
         Ok(self.screen.exited())
     }
+}
+
+/// Runs one frame under `policy`; `None` means the frame panicked and was isolated.
+pub(in crate::terminal) fn isolated<T>(
+    policy: PanicPolicy,
+    frame: impl FnOnce() -> Result<T, Error>,
+) -> Result<Option<T>, Error> {
+    match policy {
+        PanicPolicy::Abort => frame().map(Some),
+        PanicPolicy::Isolate => std::panic::catch_unwind(std::panic::AssertUnwindSafe(frame))
+            .map_or_else(
+                |payload| {
+                    let detail = crate::tasks::panic_message(&*payload);
+                    eprintln!("sigil-terminal: frame isolated after panic: {detail}");
+                    Runtime::recover_from_panic();
+                    Ok(None)
+                },
+                |result| result.map(Some),
+            ),
+    }
+}
+
+/// Re-applies the terminal modes the panic hook restored during an isolated frame.
+pub(in crate::terminal) fn recover(term: &mut Term) -> AppResult<()> {
+    restore();
+    term.reenter().map_err(Error::io)
 }

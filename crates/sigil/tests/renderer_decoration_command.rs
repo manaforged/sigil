@@ -1,11 +1,6 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
-#[path = "scene_support/mod.rs"]
-mod scene_support;
+use crate::scene_support;
 
 use scene_support::{color, rect};
 use sigil::geometry::Rect;

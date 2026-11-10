@@ -1,12 +1,7 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::float_cmp)]
 #![allow(clippy::unwrap_used)]
 
-#[path = "layout_stub/mod.rs"]
-mod stub;
+use crate::layout_stub as stub;
 use sigil::widgets::Layout;
 use stub::stub_engine;
 

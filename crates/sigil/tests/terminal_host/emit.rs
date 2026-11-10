@@ -10,7 +10,7 @@ use sigil::widgets::Layout;
 const VIEW: (f32, f32) = (320.0, 160.0);
 
 fn counted(work: impl FnOnce()) -> (u64, u64) {
-    let _profiled = crate::profiled();
+    let _profiled = crate::serial::profile();
     profile::enable();
     profile::reset();
     profile::begin_frame(BackendStatus::TERMINAL);

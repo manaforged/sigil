@@ -1,4 +1,4 @@
-#![allow(unused_crate_dependencies, clippy::unwrap_used)]
+#![allow(clippy::unwrap_used)]
 
 use sigil::geometry::{Point, Rect, Size};
 use sigil::kernel::*;

@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used, unused_crate_dependencies)]
+#![allow(clippy::unwrap_used)]
 
 use sigil::Host;
 use sigil::kernel::HostMode;

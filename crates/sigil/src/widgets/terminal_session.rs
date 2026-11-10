@@ -118,6 +118,11 @@ fn cells(span: f32, cell: f32) -> u16 {
     u16::try_from(whole((span / cell.max(1.0)).floor().clamp(1.0, 999.0))).unwrap_or(1)
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
+)]
 fn cell_at(x: f32, y: f32) -> (u16, u16) {
     let (width, height) = mono_cell();
     let cell = |at: f32, size: f32| {
@@ -138,6 +143,10 @@ fn wheel(node: NodeBuilder, session: &Rc<Session>) -> NodeBuilder {
     })
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "the value is already whole and a float cast saturates"
+)]
 fn whole_rows(event: &ScrollEvent, left: &Cell<f32>) -> i32 {
     let delta = match event.delta {
         ScrollDelta::Lines(point) => point.y,

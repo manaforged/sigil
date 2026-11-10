@@ -1,18 +1,10 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::float_cmp)]
 
-#[path = "events_support/input.rs"]
-mod input;
-#[path = "scene_support/mod.rs"]
-mod scene_support;
-#[path = "widget_support/mod.rs"]
-mod widget_support;
+use crate::scene_support;
+use crate::widget_support;
 
 use scene_support::color;
 use sigil::events::Event;

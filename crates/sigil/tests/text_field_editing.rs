@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::expect_used)]
 #![allow(
     clippy::cast_possible_truncation,
@@ -9,10 +5,7 @@
     clippy::cast_precision_loss
 )]
 
-#[path = "events_support/input.rs"]
-mod input;
-#[path = "widget_support/mod.rs"]
-mod widget_support;
+use crate::widget_support;
 
 use sigil::events::Event;
 use sigil::events::EventRouter;

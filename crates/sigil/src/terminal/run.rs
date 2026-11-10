@@ -1,7 +1,6 @@
 use crate::reactive::Owner;
 use std::time::{Duration, Instant};
 
-use crate::app::PanicPolicy;
 use crate::events::Event;
 use crate::kernel::IntoNode;
 use crate::reactive::Runtime;
@@ -17,11 +16,14 @@ use crate::terminal::signals::SignalGuard;
 pub use crate::terminal::term::calibrate;
 #[cfg(test)]
 use crate::terminal::term::paint_frame;
-use crate::terminal::term::{HookGuard, Term, restore};
+use crate::terminal::term::{HookGuard, Term};
 
 mod turn;
 
 use turn::Turn;
+pub(super) use turn::{isolated, recover};
+
+
 
 pub(crate) const CELL: f32 = crate::Host::CELL;
 
@@ -49,7 +51,7 @@ impl core::fmt::Debug for Hooks<'_> {
 }
 
 pub(crate) fn run<N: IntoNode>(config: &AppConfig, tree: impl Fn() -> N + 'static) -> AppResult {
-    let hooks = &mut config.terminal_hooks.take();
+    let hooks = &mut config.terminal.hooks.take();
     #[cfg(feature = "inspect")]
     let inspect = crate::app::inspect::install();
     #[cfg(feature = "inspect")]
@@ -289,7 +291,7 @@ fn remeasure(term: &mut Term, screen: &mut Screen) {
 
 fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Capabilities) -> Screen {
     let mut screen = Screen::with_caps(cols, rows, caps);
-    screen.set_access(config.terminal_access);
+    screen.set_access(config.terminal.access);
     screen.speak_above(config.inline);
     screen
 }
@@ -331,38 +333,12 @@ pub(super) fn turn_wait(
     (wait, true)
 }
 
-/// Runs one frame under `policy`; `None` means the frame panicked and was isolated.
-pub(super) fn isolated<T>(
-    policy: PanicPolicy,
-    frame: impl FnOnce() -> Result<T, Error>,
-) -> Result<Option<T>, Error> {
-    match policy {
-        PanicPolicy::Abort => frame().map(Some),
-        PanicPolicy::Isolate => std::panic::catch_unwind(std::panic::AssertUnwindSafe(frame))
-            .map_or_else(
-                |payload| {
-                    let detail = crate::tasks::panic_message(&*payload);
-                    eprintln!("sigil-terminal: frame isolated after panic: {detail}");
-                    Runtime::recover_from_panic();
-                    Ok(None)
-                },
-                |result| result.map(Some),
-            ),
-    }
-}
-
-/// Re-applies the terminal modes the panic hook restored during an isolated frame.
-pub(super) fn recover(term: &mut Term) -> AppResult<()> {
-    restore();
-    term.reenter().map_err(Error::io)
-}
-
 #[cfg(test)]
 #[path = "run_tests.rs"]
 mod tests;
 
 fn enter(config: &AppConfig) -> AppResult<Term> {
-    if let Some(tracking) = config.mouse_tracking {
+    if let Some(tracking) = config.terminal.mouse_tracking {
         crate::terminal::set_mouse_tracking(tracking).map_err(Error::io)?;
     }
     let term = Term::enter(config).map_err(Error::io)?;

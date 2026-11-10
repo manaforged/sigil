@@ -17,4 +17,4 @@ fn toolbar() -> impl IntoNode {
 
 `Widget` is sealed: implement a widget as a function that returns a builder.
 
-See also: [`NodeBuilder`](crate::prelude::NodeBuilder), [Recipes](https://github.com/manaforged/sigil/blob/main/docs/guide/recipes.md).
+See also: [`NodeBuilder`](crate::kernel::NodeBuilder), [Recipes](https://github.com/manaforged/sigil/blob/main/docs/guide/recipes.md).

@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use sigil::layout::{
     AlignItems, Axes, BoxSizing, Display, Edges, FlexDirection, JustifyContent, Length, Position,
     StyleData,

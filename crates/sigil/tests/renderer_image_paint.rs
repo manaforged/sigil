@@ -1,12 +1,6 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::cast_precision_loss)]
 
-#[path = "renderer_child_paint_repro/support.rs"]
-#[allow(dead_code)]
-mod support;
+use crate::paint_support as support;
 
 use sigil::kernel::{ImageSource, ObjectFit, container, image};
 use sigil::layout::Space;

@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::panic, clippy::unwrap_used, clippy::indexing_slicing)]
 
 use std::cell::Cell;
@@ -353,6 +349,7 @@ fn a_keyed_survivor_keeps_its_node_untouched() {
         }));
         cx.flush_reactive_children();
         let before = child_ids(&cx, parent);
+        let _profile = crate::serial::profile();
         profile::enable();
         profile::reset();
         profile::begin_frame(BackendStatus::TERMINAL);

@@ -222,7 +222,7 @@ fn map_input(event: TermEvent, config: &AppConfig, pointer: &mut crate::geometry
 }
 
 fn keyed(mapped: Event, config: &AppConfig) -> Input {
-    if let (Event::Key(key), Some(shortcut)) = (&mapped, &config.suspend)
+    if let (Event::Key(key), Some(shortcut)) = (&mapped, &config.terminal.suspend)
         && key.phase == crate::events::KeyPhase::Down
         && shortcut.matches(key)
     {

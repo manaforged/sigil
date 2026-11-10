@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 #![allow(
     clippy::indexing_slicing,
@@ -11,7 +7,6 @@
 
 use std::collections::HashMap;
 use std::net::TcpListener;
-use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 use accesskit::{Node, NodeId, Role as AkRole};
@@ -36,12 +31,6 @@ enum Shown {
     NativeChart,
     Code,
     Nothing,
-}
-
-static ENGINE: Mutex<()> = Mutex::new(());
-
-fn serial() -> MutexGuard<'static, ()> {
-    ENGINE.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 fn memory_bomb() -> String {
@@ -159,7 +148,7 @@ fn assert_figure(json: &str, name: &str, about: Option<&str>, titles: &[&str]) {
 
 #[test]
 fn gallery_layer_concat_facet_boxplot_time_unit_and_filter_specs_draw_a_figure() {
-    let _serial = serial();
+    let _serial = crate::serial::vega_alone();
     let cases: [(&str, &[&str]); 6] = [
         ("layer_bar_labels", &["a", "b"]),
         ("concat_bar_scales_discretize", &[]),
@@ -181,7 +170,7 @@ fn gallery_layer_concat_facet_boxplot_time_unit_and_filter_specs_draw_a_figure()
 
 #[test]
 fn a_drawn_chart_is_a_figure_named_by_its_title_and_described_by_its_axes() {
-    let _serial = serial();
+    let _serial = crate::serial::vega_alone();
     assert_figure(
         TITLED,
         "Yield by site",
@@ -193,7 +182,7 @@ fn a_drawn_chart_is_a_figure_named_by_its_title_and_described_by_its_axes() {
 
 #[test]
 fn a_cpu_bomb_stops_within_the_deadline_and_the_next_chart_still_draws() {
-    let _serial = serial();
+    let _serial = crate::serial::vega_alone();
     let (shown, took) = mount(CPU_BOMB);
     assert!(
         !matches!(shown, Shown::Figure { .. }),
@@ -205,7 +194,7 @@ fn a_cpu_bomb_stops_within_the_deadline_and_the_next_chart_still_draws() {
 
 #[test]
 fn a_memory_bomb_falls_back_and_the_next_chart_still_draws() {
-    let _serial = serial();
+    let _serial = crate::serial::vega_alone();
     let (shown, took) = mount(&memory_bomb());
     assert!(
         !matches!(shown, Shown::Figure { .. }),
@@ -217,7 +206,7 @@ fn a_memory_bomb_falls_back_and_the_next_chart_still_draws() {
 
 #[test]
 fn a_data_url_falls_back_to_code_without_touching_the_network() {
-    let _serial = serial();
+    let _serial = crate::serial::vega_alone();
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
     listener.set_nonblocking(true).expect("nonblocking");
     let port = listener.local_addr().expect("addr").port();
@@ -235,7 +224,7 @@ fn a_data_url_falls_back_to_code_without_touching_the_network() {
 #[test]
 #[ignore = "needs a wgpu adapter"]
 fn two_renders_of_a_random_transform_paint_the_same_pixels() {
-    let _serial = serial();
+    let _serial = crate::serial::vega_alone();
     let (mut first, _) = drawn(RANDOM);
     let (mut second, _) = drawn(&format!("{RANDOM} "));
     assert!(
@@ -280,7 +269,7 @@ fn wait_for_paths(ui: &mut Harness, unlike: &[String]) -> Vec<String> {
 
 #[test]
 fn a_custom_theme_renders_off_the_ui_thread_and_keeps_the_last_image() {
-    let _serial = serial();
+    let _serial = crate::serial::vega_alone();
     let chart = fence(&bar("Custom", "Theme"));
     let held = std::rc::Rc::new(std::cell::Cell::new(None));
     let slot = std::rc::Rc::clone(&held);

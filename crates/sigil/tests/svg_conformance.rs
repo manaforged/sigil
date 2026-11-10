@@ -1,8 +1,4 @@
 #![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-#![allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,

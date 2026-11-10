@@ -1,10 +1,6 @@
 #![cfg(feature = "kittest")]
 #![allow(clippy::unwrap_used, clippy::panic)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 
 use sigil::renderer::LayerPool;
 use sigil_kittest::gpu::shared_device;

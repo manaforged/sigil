@@ -4,13 +4,21 @@ set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
 
+jobs=(lint features wasm test perf msrv fuzz)
+usage="usage: scripts/gate.sh [--gpu] [--list] [JOB...] (jobs: ${jobs[*]})"
+
 gpu=0
+picked=()
 for arg in "$@"; do
   case "$arg" in
     --gpu) gpu=1 ;;
-    *) echo "gate: unknown argument $arg (usage: scripts/gate.sh [--gpu])" >&2; exit 2 ;;
+    --list) printf '["%s"]\n' "$(IFS=,; echo "${jobs[*]}" | sed 's/,/","/g')"; exit 0 ;;
+    -*) echo "gate: unknown argument $arg ($usage)" >&2; exit 2 ;;
+    *) [[ " ${jobs[*]} " == *" $arg "* ]] || { echo "gate: unknown job $arg ($usage)" >&2; exit 2; }
+       picked+=("$arg") ;;
   esac
 done
+[ ${#picked[@]} -gt 0 ] || picked=("${jobs[@]}")
 
 msrv=$(sed -n 's/^rust-version = "\(.*\)"/\1/p' Cargo.toml)
 started=$SECONDS
@@ -42,36 +50,59 @@ refuse_env() {
   return "$bad"
 }
 
+job_lint() {
+  need mdbook "cargo install --locked mdbook@0.4.40"
+  need cargo-deny "cargo install --locked cargo-deny@0.20.2"
+  step source node scripts/check-source.mjs
+  step fmt cargo fmt --all --check
+  step deny cargo deny check
+  step clippy cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+  step rustdoc cargo doc --workspace --all-features --no-deps --locked --config 'build.rustdocflags=["-D","warnings"]'
+  step book mdbook build docs --dest-dir "$root/target/book"
+}
+
+job_features() {
+  need cargo-hack "cargo install --locked cargo-hack"
+  step features cargo hack clippy -p sigil-ui --lib --each-feature --keep-going --locked -- -D warnings
+}
+
+job_wasm() {
+  need wasm-bindgen-test-runner "cargo install --locked wasm-bindgen-cli@0.2.127"
+  step wasm-clippy cargo clippy -p sigil-ui --lib --target wasm32-unknown-unknown --locked -- -D warnings
+  step wasm-test cargo test -p sigil-ui --target wasm32-unknown-unknown --locked --test tasks_wasm \
+    --config 'target.wasm32-unknown-unknown.runner="wasm-bindgen-test-runner"'
+}
+
+job_test() {
+  step test cargo test --workspace --all-features --locked --no-fail-fast
+  if [ "$gpu" = 1 ]; then
+    local skips=() name
+    while read -r name; do skips+=(--skip "$name"); done < <(node scripts/check-source.mjs --manual-tests)
+    step gpu cargo test --workspace --all-features --locked --no-fail-fast --lib --tests -- --ignored --test-threads=1 "${skips[@]}"
+  fi
+}
+
+job_perf() {
+  step perf cargo test -p sigil-ui --release --features terminal --locked --test perf_gate
+}
+
+job_msrv() {
+  step msrv-toolchain rustup toolchain install "$msrv" --profile minimal --no-self-update
+  step msrv cargo "+$msrv" check --workspace --all-targets --all-features --locked
+}
+
+job_fuzz() {
+  need cargo-fuzz "cargo install --locked cargo-fuzz@0.13.2"
+  step fuzz-toolchain rustup toolchain install nightly --profile minimal --no-self-update
+  local fuzz_target
+  fuzz_target=$(rustc +nightly -vV | sed -n 's/^host: //p')
+  step fuzz cargo +nightly fuzz build --dev --target "$fuzz_target"
+}
+
 need node "https://nodejs.org"
-need cargo-hack "cargo install --locked cargo-hack"
-need cargo-deny "cargo install --locked cargo-deny@0.20.2"
-need cargo-fuzz "cargo install --locked cargo-fuzz@0.13.2"
-need mdbook "cargo install --locked mdbook@0.4.40"
-need wasm-bindgen-test-runner "cargo install --locked wasm-bindgen-cli@0.2.127"
-
 step env refuse_env
-step source node scripts/check-source.mjs
-step fmt cargo fmt --all --check
-step clippy cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
-step features cargo hack clippy -p sigil-ui --lib --each-feature --keep-going --locked -- -D warnings
-step wasm-clippy cargo clippy -p sigil-ui --lib --target wasm32-unknown-unknown --locked -- -D warnings
-step wasm-test cargo test -p sigil-ui --target wasm32-unknown-unknown --locked --test tasks_wasm \
-  --config 'target.wasm32-unknown-unknown.runner="wasm-bindgen-test-runner"'
-step test cargo test --workspace --all-features --locked --no-fail-fast
-step perf cargo test -p sigil-ui --release --features terminal --locked --test perf_gate
-step rustdoc cargo doc --workspace --all-features --no-deps --locked --config 'build.rustdocflags=["-D","warnings"]'
-step msrv-toolchain rustup toolchain install "$msrv" --profile minimal --no-self-update
-step msrv cargo "+$msrv" check --workspace --all-targets --all-features --locked
-step deny cargo deny check
-step fuzz-toolchain rustup toolchain install nightly --profile minimal --no-self-update
-fuzz_target=$(rustc +nightly -vV | sed -n 's/^host: //p')
-step fuzz cargo +nightly fuzz build --target "$fuzz_target"
-step book mdbook build docs --dest-dir "$root/target/book"
+for job in "${picked[@]}"; do
+  "job_$job"
+done
 
-if [ "$gpu" = 1 ]; then
-  skips=()
-  while read -r name; do skips+=(--skip "$name"); done < <(node scripts/check-source.mjs --manual-tests)
-  step gpu cargo test --workspace --all-features --locked --no-fail-fast --lib --tests -- --ignored --test-threads=1 "${skips[@]}"
-fi
-
-echo "gate: passed ($((SECONDS - started))s)" >&2
+echo "gate: passed ${picked[*]} ($((SECONDS - started))s)" >&2

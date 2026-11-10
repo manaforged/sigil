@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::print_stdout)]
 
 const APPROX_GPU_SKIP_SITES: u32 = 34;

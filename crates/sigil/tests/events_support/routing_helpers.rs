@@ -1,4 +1,4 @@
-#![allow(clippy::redundant_pub_crate, dead_code)]
+#![allow(clippy::redundant_pub_crate, clippy::unwrap_used, dead_code)]
 
 use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;

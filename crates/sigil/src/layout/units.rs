@@ -109,11 +109,11 @@ fn row() -> f32 {
 fn col() -> f32 {
     cell().unwrap_or_else(|| {
         let style = TextStyle::default();
-        sample_advance(&style).unwrap_or(style.font_size * 0.5)
+        advance(&style).unwrap_or(style.font_size * 0.5)
     })
 }
 
-fn sample_advance(style: &TextStyle) -> Option<f32> {
+fn advance(style: &TextStyle) -> Option<f32> {
     let count = f32::from(u16::try_from(ADVANCE_SAMPLE.len()).ok()?);
     let end = downstream(ADVANCE_SAMPLE.len());
     with_text_geometry(|geometry| geometry.caret(ADVANCE_SAMPLE, style, None, end).x)
@@ -127,7 +127,7 @@ pub(crate) fn mono_cell() -> (f32, f32) {
         font_family: "mono".to_string(),
         ..TextStyle::default()
     };
-    (sample_advance(&style).unwrap_or_else(col), row())
+    (advance(&style).unwrap_or_else(col), row())
 }
 
 const fn downstream(byte_index: usize) -> HitPosition {

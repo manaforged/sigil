@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use sigil::layout::Position;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
