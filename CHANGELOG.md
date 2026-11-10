@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `a2ui` is behind the `a2ui` feature, which is on by default. Migration: a build with `default-features = false` adds `features = ["a2ui"]` to keep `a2ui()`.
 - A style change that arrives before a node is first painted takes effect at once, with no transition. On the first frame, the control that gets focus shows its focused style at once. Before, it ran the rest-to-focus transition for about 60 frames.
 - `for_each` calls `render` only for a key that is new to the list. Before, it called `render` for every item on each write and dropped the result for the keys that stayed.
+- `sigil-ui` no longer depends on `crossbeam-channel`, and `notify` builds only with the `desktop` or `terminal` feature.
 
 ### Added
 

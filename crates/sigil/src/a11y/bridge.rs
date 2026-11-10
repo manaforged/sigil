@@ -1,9 +1,12 @@
+use std::rc::Rc;
+use std::sync::mpsc::Receiver;
+
 use crate::kernel::NodeId;
 use accesskit::{ActionRequest, TreeUpdate};
 
 pub struct AccessKitBridge<F: FnMut(TreeUpdate)> {
     publish_sink: F,
-    action_rx: crossbeam_channel::Receiver<ActionRequest>,
+    action_rx: Rc<Receiver<ActionRequest>>,
 }
 
 impl<F: FnMut(TreeUpdate)> core::fmt::Debug for AccessKitBridge<F> {
@@ -15,10 +18,7 @@ impl<F: FnMut(TreeUpdate)> core::fmt::Debug for AccessKitBridge<F> {
 }
 
 impl<F: FnMut(TreeUpdate)> AccessKitBridge<F> {
-    pub const fn new(
-        action_rx: crossbeam_channel::Receiver<ActionRequest>,
-        publish_sink: F,
-    ) -> Self {
+    pub const fn new(action_rx: Rc<Receiver<ActionRequest>>, publish_sink: F) -> Self {
         Self {
             publish_sink,
             action_rx,

@@ -62,12 +62,7 @@ impl Drop for ThemeWatcher {
     clippy::needless_pass_by_value,
     reason = "the API takes ownership by contract at this boundary"
 )]
-fn reload(
-    path: PathBuf,
-    rx: crossbeam_channel::Receiver<()>,
-    dispatcher: Dispatcher,
-    owner: Owner,
-) {
+fn reload(path: PathBuf, rx: std::sync::mpsc::Receiver<()>, dispatcher: Dispatcher, owner: Owner) {
     while rx.recv().is_ok() {
         let window = Instant::now();
         while window.elapsed() < MAX_DEBOUNCE && rx.recv_timeout(DEBOUNCE).is_ok() {}

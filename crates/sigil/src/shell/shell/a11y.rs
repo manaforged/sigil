@@ -1,5 +1,7 @@
+use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{Receiver, Sender, channel};
 
 use crate::hal::Shell as _;
 use accesskit::{ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, TreeUpdate};
@@ -10,7 +12,7 @@ use crate::shell::WinitWaker;
 use crate::shell::WinitWindowHandle;
 
 pub(crate) struct ActionSender {
-    tx: crossbeam_channel::Sender<ActionRequest>,
+    tx: Sender<ActionRequest>,
     waker: WinitWaker,
 }
 
@@ -70,7 +72,7 @@ pub(crate) struct AdapterEntry {
     pub(crate) handle: WinitWindowHandle,
     adapter: accesskit_winit::Adapter,
     activation: Arc<Activation>,
-    actions: crossbeam_channel::Receiver<ActionRequest>,
+    actions: Rc<Receiver<ActionRequest>>,
 }
 
 impl WinitShell {
@@ -80,7 +82,7 @@ impl WinitShell {
         handle: WinitWindowHandle,
         window: &Window,
     ) {
-        let (tx, actions) = crossbeam_channel::unbounded();
+        let (tx, actions) = channel();
         let action_sender = ActionSender {
             tx,
             waker: self.waker(),
@@ -102,7 +104,7 @@ impl WinitShell {
             handle,
             adapter,
             activation,
-            actions,
+            actions: Rc::new(actions),
         });
     }
 
@@ -148,8 +150,8 @@ impl WinitShell {
     pub(crate) fn a11y_action_receiver(
         &self,
         handle: WinitWindowHandle,
-    ) -> Option<crossbeam_channel::Receiver<ActionRequest>> {
-        self.adapter(handle).map(|e| e.actions.clone())
+    ) -> Option<Rc<Receiver<ActionRequest>>> {
+        self.adapter(handle).map(|e| Rc::clone(&e.actions))
     }
 }
 

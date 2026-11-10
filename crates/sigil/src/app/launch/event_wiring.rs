@@ -155,13 +155,15 @@ pub(super) fn publish_a11y(
 }
 
 pub(super) fn drain_a11y_actions(
-    action_rx: &crossbeam_channel::Receiver<accesskit::ActionRequest>,
+    action_rx: &std::rc::Rc<std::sync::mpsc::Receiver<accesskit::ActionRequest>>,
     cx: &mut Cx,
     router: &mut EventRouter,
     layout: &LayoutEngine,
 ) {
-    let bridge =
-        crate::a11y::AccessKitBridge::new(action_rx.clone(), |_: accesskit::TreeUpdate| {});
+    let bridge = crate::a11y::AccessKitBridge::new(
+        std::rc::Rc::clone(action_rx),
+        |_: accesskit::TreeUpdate| {},
+    );
     while let Some((target, request)) = bridge.take_action() {
         crate::profile::interact(Cause::A11y);
         crate::a11y::actions::apply(cx, router, layout, target, &request);
