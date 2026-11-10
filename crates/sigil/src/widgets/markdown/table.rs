@@ -9,8 +9,6 @@ use crate::reactive::{Signal, derived, signal};
 use crate::style::{StyleAtom, TextRun, TextRuns, TextStyle, Token};
 use crate::widgets::Layout;
 use crate::widgets::button::button;
-use crate::widgets::interaction::InteractionState;
-use crate::widgets::shared::{Press, RELEASE_ENTER_SPACE, press};
 
 use super::inline::{StyledText, styled};
 use super::table_data::{Align, Table};
@@ -169,15 +167,11 @@ impl Grid {
             };
             (!mark.is_empty()).then(|| text(mark).nowrap())
         });
-        let interaction = InteractionState::new(true);
-        let node = press(
-            self.cell(0, column).role(Role::ColumnHeader).child(arrow),
-            interaction,
-            None,
-            Press::Activate(Rc::new(move || sort.set(next_sort(sort.peek(), column)))),
-            RELEASE_ENTER_SPACE,
-        );
-        interaction.install(node.sort_direction(current))
+        self.cell(0, column)
+            .role(Role::ColumnHeader)
+            .child(arrow)
+            .sort_direction(current)
+            .activate(move || sort.set(next_sort(sort.peek(), column)))
     }
 }
 
