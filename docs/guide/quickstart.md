@@ -98,10 +98,10 @@ container()
 
 | Method | Sets |
 | --- | --- |
-| `bg` | Background: a color, or a `Background::linear`, `radial`, or `conic` gradient; a later `bg` replaces the earlier one |
+| `background` | Background: a color, or a `Background::linear`, `radial`, or `conic` gradient; a later `background` replaces the earlier one |
 | `text_color` | Text color |
-| `border_color`, `border_w`, `border_top`, `border_right`, `border_bottom`, `border_left` | Border color and width in px |
-| `rounded(Radius)` | Corner radius |
+| `border_color`, `border_width`, `border_top`, `border_right`, `border_bottom`, `border_left` | Border color and width in px |
+| `radius(Radius)` | Corner radius |
 | `shadow(Elevation)` | Drop shadow |
 | `opacity(f32)` | Opacity, 0.0 to 1.0 |
 | `font_size`, `font_weight`, `font_italic`, `font_family(FontFamily)` | Font |
@@ -116,7 +116,7 @@ Spacing and size numbers are pixels. The layout setters set padding, margin, gap
 
 ### Typed theme tokens
 
-`Token` names every theme color. `bg`, `text_color`, and `border_color` take a `Token` or an `Rgba8`. Theme tokens come from the active theme. Dark mode is a theme swap, not a restyle.
+`Token` names every theme color. `background`, `text_color`, and `border_color` take a `Token` or an `Rgba8`. Theme tokens come from the active theme. Dark mode is a theme swap, not a restyle.
 
 | Group | Tokens |
 | --- | --- |

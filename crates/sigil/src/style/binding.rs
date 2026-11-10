@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use smallvec::SmallVec;
 
+use crate::animation::Property;
 use crate::animation::runtime::style::StyleAnimator;
 use crate::kernel::NodeTag;
 use crate::reactive::Signal;
@@ -16,9 +17,8 @@ pub(crate) type ReactiveStateSlot = Rc<Cell<StateSlot>>;
 
 #[derive(Clone, Copy, Debug)]
 struct Driven {
-    kind: NumericAtomKind,
+    property: fn(f32) -> Property,
     value: Signal<f32>,
-    scale: f32,
 }
 
 kittest_pub! {
@@ -205,12 +205,13 @@ impl StyleBinding {
         }
     }
 
-    pub(crate) fn bind_animation(&mut self, kind: NumericAtomKind, value: Signal<f32>, scale: f32) {
-        let driven = Driven { kind, value, scale };
+    pub(crate) fn bind_animation(&mut self, property: fn(f32) -> Property, value: Signal<f32>) {
+        let driven = Driven { property, value };
+        let same = core::mem::discriminant(&property(0.0));
         if let Some(entry) = self
             .animated_values
             .iter_mut()
-            .find(|entry| entry.kind == kind)
+            .find(|entry| core::mem::discriminant(&(entry.property)(0.0)) == same)
         {
             *entry = driven;
         } else {
@@ -306,8 +307,8 @@ impl AnimatorOverlay for StyleBinding {
     fn value_for(&self, kind: NumericAtomKind) -> Option<f32> {
         self.animated_values
             .iter()
-            .find(|entry| entry.kind == kind)
-            .map(|entry| entry.value.peek() * entry.scale)
+            .rev()
+            .find_map(|entry| (entry.property)(entry.value.peek()).numeric(kind))
             .or_else(|| {
                 self.attached_animators
                     .get()

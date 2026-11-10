@@ -9,10 +9,11 @@
     clippy::cast_sign_loss
 )]
 
+use sigil::animation::Property;
 use sigil::geometry::{Point, Rect};
 use sigil::prelude::*;
 use sigil::scene::DrawRect;
-use sigil::style::{NumericAtomKind, Transform2D};
+use sigil::style::Transform2D;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 
@@ -31,8 +32,8 @@ fn zoomed(scale: f32) -> NodeBuilder {
             container()
                 .layout(LayoutStyle::block().width(100.0).height(50.0))
                 .transform(Transform2D::IDENTITY.origin(0.0, 0.0))
-                .drive(NumericAtomKind::ScaleX, signal(scale))
-                .drive(NumericAtomKind::ScaleY, signal(scale))
+                .drive(Property::ScaleX, signal(scale))
+                .drive(Property::ScaleY, signal(scale))
                 .child(
                     container().background(Token::Accent9).layout(
                         LayoutStyle::block()

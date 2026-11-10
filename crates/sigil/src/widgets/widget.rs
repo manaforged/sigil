@@ -1,5 +1,6 @@
 use smallvec::SmallVec;
 
+use crate::animation::Property;
 use crate::events::builder_ext as on;
 use crate::events::{
     FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut,
@@ -12,9 +13,7 @@ use crate::layout::reactive_position;
 use crate::layout::{LayoutStyle, Length};
 use crate::reactive::{Reactive, Signal};
 use crate::style::builder_ext as look;
-use crate::style::{
-    ColorAtom, NumericAtomKind, StateSlot, StateStyleBuilder, StyleAtom, Theme, Tone,
-};
+use crate::style::{ColorAtom, StateSlot, StateStyleBuilder, StyleAtom, Theme, Tone};
 use crate::widgets::drag_drop::{self, DragState};
 
 mod edit;
@@ -98,10 +97,10 @@ pub trait Widget: Sealed {
         })
     }
 
-    /// Drives one numeric style property from `value`, in the unit that the `kind` variant documents.
+    /// Drives `property`, such as `Property::Width`, from `value` in the unit its variant documents.
     #[must_use]
-    fn drive(self, kind: NumericAtomKind, value: Signal<f32>) -> Self {
-        self.map_target(move |node| look::drive(node, kind, value))
+    fn drive(self, property: fn(f32) -> Property, value: Signal<f32>) -> Self {
+        self.map_target(move |node| look::drive(node, property, value))
     }
 
     /// Hides the node while `shown` is false.

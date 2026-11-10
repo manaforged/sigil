@@ -1,12 +1,13 @@
 use proptest::prelude::*;
 use sigil::Host;
+use sigil::animation::Property;
 use sigil::kernel::HostMode;
 use sigil::kernel::{NodeBuilder, container, text};
 use sigil::layout::LayoutStyle;
 use sigil::prelude::Widget;
 use sigil::prelude::{Paint, Signal};
 use sigil::reactive::{Owner, signal};
-use sigil::style::{NumericAtomKind, Theme, Token, Transform2D};
+use sigil::style::{Theme, Token, Transform2D};
 use sigil::terminal::Access;
 use sigil::widgets::{modal, scroll};
 
@@ -90,7 +91,7 @@ fn tree(knobs: Knobs) -> NodeBuilder {
                 .child(
                     container()
                         .transform(Transform2D::IDENTITY.origin(0.0, 0.0))
-                        .drive(NumericAtomKind::TranslateX, knobs.shift)
+                        .drive(Property::TranslateX, knobs.shift)
                         .child(text(knobs.label)),
                 ),
         )

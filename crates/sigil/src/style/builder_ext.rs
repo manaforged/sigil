@@ -3,6 +3,7 @@ use super::install::{
     install_theme, install_tone,
 };
 use super::presence::install_presence;
+use crate::animation::Property;
 use crate::animation::runtime::AnimationConfig;
 use crate::kernel::{NodeBuilder, TextBuilder};
 use crate::reactive::{Reactive, Signal};
@@ -15,8 +16,8 @@ use std::rc::Rc;
 use crate::style::class_parse::intern_atoms;
 use crate::style::styled::StateStyleBuilder;
 use crate::style::{
-    FocusRing, NumericAtomKind, ReactiveStateSlot, StateSlot, Style, StyleAtom, StyleBinding,
-    StyleOverlay, StyleState, StyleVariant, Theme, Tone, parse_classes,
+    FocusRing, ReactiveStateSlot, StateSlot, Style, StyleAtom, StyleBinding, StyleOverlay,
+    StyleState, StyleVariant, Theme, Tone, parse_classes,
 };
 
 static EMPTY_ATOMS: &[StyleAtom] = &[];
@@ -136,8 +137,12 @@ pub(crate) fn presence(
         .mutate(move |node| install_presence(node, shown, config))
 }
 
-pub(crate) fn drive(node: NodeBuilder, kind: NumericAtomKind, value: Signal<f32>) -> NodeBuilder {
-    node.mutate(move |node| install_animation(node, kind, value, kind.units()))
+pub(crate) fn drive(
+    node: NodeBuilder,
+    property: fn(f32) -> Property,
+    value: Signal<f32>,
+) -> NodeBuilder {
+    node.mutate(move |node| install_animation(node, property, value))
 }
 
 pub(crate) fn paint_when(

@@ -1,3 +1,4 @@
+use crate::animation::Property;
 use crate::animation::runtime::presets;
 use crate::events::{ModifiersState, PointerEvent};
 use crate::geometry::Point;
@@ -12,8 +13,8 @@ use crate::layout::{
 use crate::reactive::{Owner, Signal, derived, effect, interval, signal};
 use crate::style::TransitionId;
 use crate::style::{
-    BORDER_WIDTH, DISABLED_OPACITY, NumericAtomKind, Radius, StateStyle, StyleAtom, StyleOverlay,
-    StyleVariant, Token, space,
+    BORDER_WIDTH, DISABLED_OPACITY, Radius, StateStyle, StyleAtom, StyleOverlay, StyleVariant,
+    Token, space,
 };
 use crate::widgets::Widget;
 
@@ -115,7 +116,7 @@ fn edit_inner(
                 .min_size(0.0, 0.0)
                 .padding_x(Space::px(padding_x)),
         )
-        .drive(NumericAtomKind::Height, extent)
+        .drive(Property::Height, extent)
         .child(text_box);
     let viewport = container()
         .layout(

@@ -186,7 +186,7 @@ fn main() -> AppResult<()> {
 }
 ```
 
-`Token` names each theme color. The `Paint` methods `bg`, `text_color`, and `border_color` take a token, so a misspelled token does not compile.
+`Token` names each theme color. The `Paint` methods `background`, `text_color`, and `border_color` take a token, so a misspelled token does not compile.
 
 ```rust,no_run
 use sigil::prelude::*;

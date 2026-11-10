@@ -1,5 +1,6 @@
+use sigil::animation::Property;
 use sigil::prelude::*;
-use sigil::style::{NumericAtomKind, Transform2D};
+use sigil::style::Transform2D;
 
 use super::present;
 
@@ -19,7 +20,7 @@ fn a_translated_subtree_paints_at_its_moved_place() {
                     .child(
                         container()
                             .transform(Transform2D::IDENTITY.origin(0.0, 0.0))
-                            .drive(NumericAtomKind::TranslateX, signal(shift))
+                            .drive(Property::TranslateX, signal(shift))
                             .child(text("moved")),
                     )
             },

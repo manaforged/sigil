@@ -3,10 +3,8 @@ use crate::style::{Rgba8, StyleAtom};
 use ahash::AHasher;
 use std::hash::{Hash, Hasher};
 
-/// A numeric style property that `Widget::drive` binds to a signal, with the unit on each variant.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum NumericAtomKind {
+pub(crate) enum NumericAtomKind {
     /// Opacity from 0.0, clear, to 1.0, opaque.
     Opacity,
     /// Corner radius in logical pixels, 0 or more, rounded to a whole pixel.
@@ -167,13 +165,6 @@ impl NumericAtomKind {
                 | Self::Width
                 | Self::Height
         )
-    }
-
-    pub(crate) const fn units(self) -> f32 {
-        match self {
-            Self::Opacity => OPACITY_UNITS,
-            _ => 1.0,
-        }
     }
 
     pub(crate) const fn initial(self) -> f32 {
