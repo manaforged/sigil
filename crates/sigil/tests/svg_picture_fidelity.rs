@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::panic, reason = "a test fails loudly on a missing value")]
 #![allow(
     clippy::cast_possible_truncation,
@@ -225,12 +221,14 @@ fn assert_bold_stem(backend: Backend, scale: f32) {
 
 #[test]
 fn a_half_alpha_stroke_composites_like_resvg_on_cpu() {
+    let _vega = crate::serial::vega();
     assert_half_alpha(Backend::Cpu, 1.0);
     assert_half_alpha(Backend::Cpu, 2.0);
 }
 
 #[test]
 fn a_bold_stem_keeps_its_width_on_cpu() {
+    let _vega = crate::serial::vega();
     assert_bold_stem(Backend::Cpu, 1.0);
     assert_bold_stem(Backend::Cpu, 2.0);
 }
@@ -238,6 +236,7 @@ fn a_bold_stem_keeps_its_width_on_cpu() {
 #[test]
 #[ignore = "needs a wgpu adapter"]
 fn a_half_alpha_stroke_composites_like_resvg_on_gpu() {
+    let _vega = crate::serial::vega();
     assert_half_alpha(Backend::Gpu, 1.0);
     assert_half_alpha(Backend::Gpu, 2.0);
 }
@@ -245,6 +244,7 @@ fn a_half_alpha_stroke_composites_like_resvg_on_gpu() {
 #[test]
 #[ignore = "needs a wgpu adapter"]
 fn a_bold_stem_keeps_its_width_on_gpu() {
+    let _vega = crate::serial::vega();
     assert_bold_stem(Backend::Gpu, 1.0);
     assert_bold_stem(Backend::Gpu, 2.0);
 }

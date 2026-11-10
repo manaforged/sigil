@@ -1,8 +1,4 @@
 #![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-#![allow(
     clippy::cast_precision_loss,
     reason = "pixel sizes and step counts are small"
 )]
@@ -98,6 +94,7 @@ fn drawn(producer: Producer) -> Drawn {
 
 #[test]
 fn every_vector_producer_draws_paths_and_no_bitmap() {
+    let _vega = crate::serial::vega();
     let rastered: Vec<String> = Producer::ALL
         .into_iter()
         .filter_map(|producer| {

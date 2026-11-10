@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used)]
 
 use sigil::kernel::{Cx, NodeId};
@@ -13,14 +9,6 @@ use sigil_kittest::FakeMeasure;
 
 const VIEW: (f32, f32) = (400.0, 300.0);
 const ROWS: usize = 60;
-
-static RECORDER: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-fn alone() -> std::sync::MutexGuard<'static, ()> {
-    RECORDER
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
 
 fn engine() -> LayoutEngine {
     LayoutEngine::with_text_measure(Box::new(FakeMeasure::fixed(8.0, 16.0)))
@@ -44,7 +32,7 @@ fn measured(run: impl FnOnce()) -> Frame {
 
 #[test]
 fn a_wheel_step_moves_scroll_content_without_a_layout_solve() {
-    let _recorder = alone();
+    let _recorder = crate::serial::profile();
     Owner::scope("sigil-scroll-translate", || {
         let offset = signal(0.0_f32);
         let mut rows = container().layout(LayoutStyle::flex_column().gap(Space::Xs));
@@ -79,7 +67,7 @@ fn a_wheel_step_moves_scroll_content_without_a_layout_solve() {
 
 #[test]
 fn changing_one_label_reuses_the_measurements_of_its_siblings() {
-    let _recorder = alone();
+    let _recorder = crate::serial::profile();
     Owner::scope("sigil-intrinsic-reuse", || {
         let label = signal(String::from("short"));
         let mut list = container().layout(LayoutStyle::flex_column().gap(Space::Xxs));

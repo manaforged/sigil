@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use sigil::prelude::ImageSource;
 
 const JPEG: &[u8] = include_bytes!("fixtures/images/red-4x4.jpg");

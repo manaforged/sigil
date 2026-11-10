@@ -1,11 +1,6 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used)]
 
-#[path = "widget_support/mod.rs"]
-mod widget_support;
+use crate::widget_support;
 
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;

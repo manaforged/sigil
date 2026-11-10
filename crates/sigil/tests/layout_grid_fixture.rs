@@ -1,13 +1,8 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::float_cmp, clippy::unwrap_used, clippy::indexing_slicing)]
 
 #[path = "layout_grid_fixture/span.rs"]
 mod span;
-#[path = "layout_stub/mod.rs"]
-mod stub;
+use crate::layout_stub as stub;
 
 use sigil::geometry::Size;
 use sigil::kernel::*;

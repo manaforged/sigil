@@ -1,11 +1,4 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
-
-#[path = "events_support/input.rs"]
-mod input;
 
 use sigil::events::{PhysicalKey, ScrollDelta, ScrollPhase};
 use sigil::kernel::{Cx, NodeId};

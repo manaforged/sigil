@@ -1,4 +1,4 @@
-#![allow(unused_crate_dependencies, clippy::unwrap_used, clippy::panic)]
+#![allow(clippy::unwrap_used, clippy::panic)]
 
 #[cfg(feature = "image-decode")]
 mod decode {

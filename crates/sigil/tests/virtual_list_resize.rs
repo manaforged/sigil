@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::expect_used, clippy::indexing_slicing)]
 
 use sigil::kernel::HostMode;

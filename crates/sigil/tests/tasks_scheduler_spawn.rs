@@ -1,5 +1,5 @@
 #![cfg(feature = "kittest")]
-#![allow(clippy::panic, unused_crate_dependencies)]
+#![allow(clippy::panic)]
 
 use std::time::Duration;
 

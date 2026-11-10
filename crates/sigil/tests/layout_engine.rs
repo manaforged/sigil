@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
 
 use sigil::layout::{Axes, Dimension, Display, LayoutDrive, NodeHandle, ResolvedBox, StyleData};

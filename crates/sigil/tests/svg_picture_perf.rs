@@ -1,8 +1,4 @@
 #![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-#![allow(
     clippy::indexing_slicing,
     reason = "a test fails loudly on a missing value"
 )]

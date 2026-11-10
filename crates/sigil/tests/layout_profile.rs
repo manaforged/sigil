@@ -1,11 +1,6 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used)]
 
-#[path = "layout_stub/mod.rs"]
-mod stub;
+use crate::layout_stub as stub;
 use sigil::layout::Space;
 use stub::stub_engine;
 
@@ -17,17 +12,9 @@ use sigil::profile::{disable, enable, frames, reset, tick_frame};
 use sigil::reactive::{Owner, derived, signal};
 use sigil::style::Paint;
 
-static RECORDER: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-fn alone() -> std::sync::MutexGuard<'static, ()> {
-    RECORDER
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
 #[test]
 fn compute_records_layout_miss() {
-    let _recorder = alone();
+    let _recorder = crate::serial::profile();
     enable();
     reset();
     let mut cx = Cx::new_root();
@@ -51,7 +38,7 @@ fn compute_records_layout_miss() {
 
 #[test]
 fn second_compute_is_a_cache_hit() {
-    let _recorder = alone();
+    let _recorder = crate::serial::profile();
     enable();
     reset();
     let mut cx = Cx::new_root();
@@ -257,7 +244,7 @@ fn nowrap_fixed_reactive_text_is_layout_hit() {
 
 #[test]
 fn derived_text_increment_records_layout_path() {
-    let _recorder = alone();
+    let _recorder = crate::serial::profile();
     Owner::scope("hello-counter-increment", || {
         enable();
         reset();

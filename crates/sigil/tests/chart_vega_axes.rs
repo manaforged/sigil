@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::panic, reason = "a test fails loudly on a missing value")]
 
 use sigil::geometry::Rect;
@@ -50,6 +46,7 @@ fn bars(ui: &mut Harness) -> Vec<Rect> {
 
 #[test]
 fn a_y_scale_domain_sets_the_y_ticks() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(r#"{"data":{"values":[{"x":1,"v":1},{"x":2,"v":3},{"x":3,"v":2}]},"mark":"line","encoding":{"x":{"field":"x","type":"quantitative"},"y":{"field":"v","type":"quantitative","scale":{"domain":[0,5]}}}}"#.to_owned());
     for tick in ["0.0", "2.5", "4.5", "5.0"] {
         assert!(has(&mut ui, tick), "no y tick {tick}: {}", ui.text());
@@ -58,6 +55,7 @@ fn a_y_scale_domain_sets_the_y_ticks() {
 
 #[test]
 fn an_x_scale_domain_sets_the_x_ticks() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(r#"{"data":{"values":[{"w":250,"p":1},{"w":300,"p":2},{"w":350,"p":3},{"w":400,"p":2},{"w":500,"p":1}]},"mark":"line","encoding":{"x":{"field":"w","type":"quantitative","scale":{"domain":[300,450]}},"y":{"field":"p","type":"quantitative"}}}"#.to_owned());
     assert!(
         has(&mut ui, "300") && has(&mut ui, "440"),
@@ -73,6 +71,7 @@ fn an_x_scale_domain_sets_the_x_ticks() {
 
 #[test]
 fn a_temporal_x_reads_as_time_ticks() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(r#"{"width":800,"height":300,"data":{"values":[{"ts":1500400000000,"v":1},{"ts":1500500000000,"v":2},{"ts":1500600000000,"v":3},{"ts":1500700000000,"v":2}]},"mark":"line","encoding":{"x":{"field":"ts","type":"temporal","scale":{"domain":[1500000000000,1500900000000]}},"y":{"field":"v","type":"quantitative"}}}"#.to_owned());
     assert!(
         !has(&mut ui, "1500400000000"),
@@ -89,6 +88,7 @@ fn a_temporal_x_reads_as_time_ticks() {
 
 #[test]
 fn the_y_axis_ends_near_the_data_maximum() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(r#"{"data":{"values":[{"c":"A","g":"x","v":0.1},{"c":"A","g":"y","v":0.6},{"c":"B","g":"x","v":0.7},{"c":"B","g":"y","v":1.1}]},"mark":"bar","encoding":{"x":{"field":"c"},"y":{"field":"v","type":"quantitative"},"xOffset":{"field":"g"},"color":{"field":"g"}}}"#.to_owned());
     assert!(has(&mut ui, "1.1"), "no 1.1 tick: {}", ui.text());
     assert!(
@@ -111,6 +111,7 @@ fn the_y_axis_ends_near_the_data_maximum() {
 
 #[test]
 fn a_negative_domain_ticks_through_zero() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(r#"{"data":{"values":[{"a":"A","b":-28},{"a":"B","b":55},{"a":"C","b":-33},{"a":"D","b":91}]},"mark":"bar","encoding":{"x":{"field":"a","type":"nominal"},"y":{"field":"b","type":"quantitative"}}}"#.to_owned());
     for tick in ["-40", "-20", "0", "20", "100"] {
         assert!(has(&mut ui, tick), "no tick {tick}: {}", ui.text());
@@ -124,6 +125,7 @@ fn a_negative_domain_ticks_through_zero() {
 
 #[test]
 fn both_axes_show_their_titles() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(r#"{"data":{"values":[{"variety":"P","yield":3},{"variety":"Q","yield":4}]},"mark":"bar","encoding":{"x":{"field":"variety"},"y":{"aggregate":"sum","field":"yield"}}}"#.to_owned());
     assert!(
         has(&mut ui, "variety") && has(&mut ui, "Sum of yield"),
@@ -151,6 +153,7 @@ fn both_axes_show_their_titles() {
 
 #[test]
 fn a_chart_without_height_has_a_300_px_plot() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(r#"{"data":{"values":[{"k":"a","v":100},{"k":"b","v":40}]},"mark":"bar","encoding":{"x":{"field":"k"},"y":{"field":"v","type":"quantitative"}}}"#.to_owned());
     let (zero, top) = (label(&mut ui, "0"), label(&mut ui, "100"));
     let span = zero.origin.y - top.origin.y;
@@ -159,6 +162,7 @@ fn a_chart_without_height_has_a_300_px_plot() {
 
 #[test]
 fn bars_on_a_temporal_x_have_width() {
+    let _vega = crate::serial::vega();
     let rows = (1970..1982)
         .map(|year| format!(r#"{{"Year":"{year}-01-01","m":{}}}"#, year - 1950))
         .collect::<Vec<_>>()
@@ -183,6 +187,7 @@ fn bars_on_a_temporal_x_have_width() {
 
 #[test]
 fn three_hundred_categories_in_120_px_still_draw() {
+    let _vega = crate::serial::vega();
     let rows = (0..300)
         .map(|at| format!(r#"{{"Name":"car {at}"}}"#))
         .collect::<Vec<_>>()

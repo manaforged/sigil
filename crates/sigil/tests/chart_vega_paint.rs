@@ -1,8 +1,4 @@
 #![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-#![allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
@@ -135,6 +131,7 @@ fn assert_gap(json: &'static str, mark: &str) {
 #[test]
 #[ignore = "needs a wgpu adapter"]
 fn a_negative_bar_chart_draws_a_zero_rule() {
+    let _vega = crate::serial::vega();
     let chart = paint(
         r#"{"data":{"values":[{"a":"A","b":-28},{"a":"B","b":55},{"a":"C","b":-33},{"a":"D","b":91}]},"mark":"bar","encoding":{"x":{"field":"a","type":"nominal"},"y":{"field":"b","type":"quantitative"}}}"#,
     );
@@ -166,6 +163,7 @@ fn a_negative_bar_chart_draws_a_zero_rule() {
 #[test]
 #[ignore = "needs a wgpu adapter"]
 fn a_null_breaks_the_line() {
+    let _vega = crate::serial::vega();
     assert_gap(
         r#"{"data":{"values":[{"x":1,"y":10},{"x":2,"y":30},{"x":3,"y":null},{"x":4,"y":15},{"x":5,"y":30},{"x":6,"y":40},{"x":7,"y":20}]},"mark":"line","encoding":{"x":{"field":"x","type":"quantitative"},"y":{"field":"y","type":"quantitative"}}}"#,
         "line",
@@ -175,6 +173,7 @@ fn a_null_breaks_the_line() {
 #[test]
 #[ignore = "needs a wgpu adapter"]
 fn a_null_breaks_the_area() {
+    let _vega = crate::serial::vega();
     assert_gap(
         r#"{"data":{"values":[{"x":1,"y":10},{"x":2,"y":30},{"x":3,"y":null},{"x":4,"y":15},{"x":5,"y":30},{"x":6,"y":40},{"x":7,"y":20}]},"mark":"area","encoding":{"x":{"field":"x","type":"quantitative"},"y":{"field":"y","type":"quantitative"}}}"#,
         "area",
@@ -184,6 +183,7 @@ fn a_null_breaks_the_area() {
 #[test]
 #[ignore = "needs a wgpu adapter"]
 fn a_point_mark_is_an_open_circle() {
+    let _vega = crate::serial::vega();
     let chart = paint(
         r#"{"data":{"values":[{"x":5,"y":5}]},"mark":"point","encoding":{"x":{"field":"x","type":"quantitative"},"y":{"field":"y","type":"quantitative"}}}"#,
     );
@@ -199,6 +199,7 @@ fn a_point_mark_is_an_open_circle() {
 #[test]
 #[ignore = "needs a wgpu adapter"]
 fn a_square_mark_fills_its_corners() {
+    let _vega = crate::serial::vega();
     let chart = paint(
         r#"{"data":{"values":[{"x":5,"y":5}]},"mark":"square","encoding":{"x":{"field":"x","type":"quantitative"},"y":{"field":"y","type":"quantitative"}}}"#,
     );
@@ -218,6 +219,7 @@ fn a_square_mark_fills_its_corners() {
 #[test]
 #[ignore = "needs a wgpu adapter"]
 fn a_color_range_paints_the_slices() {
+    let _vega = crate::serial::vega();
     let chart = paint(
         r##"{"data":{"values":[{"c":1,"v":4},{"c":2,"v":6}]},"mark":"arc","encoding":{"theta":{"field":"v","type":"quantitative"},"color":{"field":"c","type":"nominal","scale":{"range":["#ff0000","#00ff00"]}}}}"##,
     );

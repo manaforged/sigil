@@ -1,8 +1,4 @@
 #![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-#![allow(
     clippy::indexing_slicing,
     clippy::panic,
     reason = "a test fails loudly on a missing value"
@@ -67,6 +63,7 @@ fn x_of(ui: &mut Harness, label: &str) -> f32 {
 
 #[test]
 fn vega_temporal_months_keep_time_order() {
+    let _vega = crate::serial::vega();
     let json = r#"{"data":{"values":[{"t":"Jan 1, 2024","v":1},{"t":"Feb 1, 2024","v":2},{"t":"Mar 1, 2024","v":3}]},"mark":"line","encoding":{"x":{"field":"t","type":"temporal"},"y":{"field":"v","type":"quantitative"}}}"#;
     let mut ui = Harness::new(move || markdown(signal(fence(json)))).size(160, 60);
     ui.settle();
@@ -80,6 +77,7 @@ fn vega_temporal_months_keep_time_order() {
 
 #[test]
 fn vega_area_with_color_stacks() {
+    let _vega = crate::serial::vega();
     let json = r#"{"data":{"values":[{"x":"p","g":"A","y":6},{"x":"q","g":"A","y":6},{"x":"p","g":"B","y":6},{"x":"q","g":"B","y":6}]},"mark":"area","encoding":{"x":{"field":"x","type":"nominal"},"y":{"field":"y","type":"quantitative"},"color":{"field":"g","type":"nominal"}}}"#;
     let mut ui = Harness::new(move || markdown(signal(fence(json)))).size(160, 60);
     ui.settle();
@@ -92,6 +90,7 @@ fn vega_area_with_color_stacks() {
 
 #[test]
 fn vega_quantitative_x_line_is_spaced_by_value() {
+    let _vega = crate::serial::vega();
     let json = r#"{"data":{"values":[{"x":1,"y":1},{"x":2,"y":2},{"x":10,"y":3}]},"mark":"line","encoding":{"x":{"field":"x","type":"quantitative"},"y":{"field":"y","type":"quantitative"}}}"#;
     let mut ui = Harness::new(move || markdown(signal(fence(json)))).size(160, 60);
     ui.settle();
@@ -104,6 +103,7 @@ fn vega_quantitative_x_line_is_spaced_by_value() {
 
 #[test]
 fn scatter_of_one_large_point_has_distinct_ticks() {
+    let _vega = crate::serial::vega();
     Owner::scope("scatter-big", || {
         let mut ui = Harness::new(|| {
             ChartBuilder::scatter(vec![(1e8_f32, 1e8_f32)])
@@ -123,6 +123,7 @@ fn scatter_of_one_large_point_has_distinct_ticks() {
 
 #[test]
 fn small_fractional_bars_keep_their_values() {
+    let _vega = crate::serial::vega();
     let json = r#"{"data":{"values":[{"k":"a","v":0.4},{"k":"b","v":0.2}]},"mark":"bar","encoding":{"x":{"field":"k","type":"nominal"},"y":{"field":"v","type":"quantitative"}}}"#;
     let mut ui = Harness::new(move || markdown(signal(fence(json)))).size(160, 60);
     ui.settle();
@@ -135,6 +136,7 @@ fn small_fractional_bars_keep_their_values() {
 
 #[test]
 fn tiny_pie_values_are_not_zero() {
+    let _vega = crate::serial::vega();
     Owner::scope("pie-tiny", || {
         let mut ui = Harness::new(|| {
             chart(vec![0.001_f32, 0.003])
@@ -152,6 +154,7 @@ fn tiny_pie_values_are_not_zero() {
 
 #[test]
 fn pie_of_huge_values_reads_fifty_percent() {
+    let _vega = crate::serial::vega();
     Owner::scope("pie-huge", || {
         let mut ui = Harness::new(|| {
             chart(vec![3e38_f32, 3e38])
@@ -169,6 +172,7 @@ fn pie_of_huge_values_reads_fifty_percent() {
 
 #[test]
 fn vega_sum_overflow_keeps_the_bar() {
+    let _vega = crate::serial::vega();
     let json = r#"{"data":{"values":[{"k":"a","v":2e38},{"k":"a","v":2e38},{"k":"b","v":1}]},"mark":"bar","encoding":{"x":{"field":"k","type":"nominal"},"y":{"field":"v","type":"quantitative","aggregate":"sum"}}}"#;
     let mut ui = Harness::new(move || markdown(signal(fence(json)))).size(160, 60);
     ui.settle();
@@ -178,6 +182,7 @@ fn vega_sum_overflow_keeps_the_bar() {
 
 #[test]
 fn a_nominal_y_draws_horizontal_bars() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(
         r#"{"data":{"values":[{"a":"C","b":2},{"a":"C","b":7},{"a":"C","b":4},{"a":"D","b":1},{"a":"D","b":2},{"a":"D","b":6},{"a":"E","b":8},{"a":"E","b":4},{"a":"E","b":7}]},"mark":"bar","encoding":{"y":{"field":"a","type":"nominal"},"x":{"aggregate":"average","field":"b","type":"quantitative"}}}"#,
     );
@@ -207,6 +212,7 @@ fn a_nominal_y_draws_horizontal_bars() {
 
 #[test]
 fn a_stacked_horizontal_bar_puts_the_first_color_at_zero() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(
         r#"{"data":{"values":[{"v":"P","s":"Waseca","y":40},{"v":"P","s":"Crookston","y":30},{"v":"Q","s":"Waseca","y":20},{"v":"Q","s":"Crookston","y":10}]},"mark":"bar","encoding":{"x":{"aggregate":"sum","field":"y"},"y":{"field":"v"},"color":{"field":"s"}}}"#,
     );
@@ -223,6 +229,7 @@ fn a_stacked_horizontal_bar_puts_the_first_color_at_zero() {
 
 #[test]
 fn nominal_categories_sort_ascending() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(
         r#"{"data":{"values":[{"k":"Manchuria","v":3},{"k":"Glabron","v":4},{"k":"Svansota","v":5}]},"mark":"bar","encoding":{"x":{"field":"k","type":"nominal"},"y":{"field":"v","type":"quantitative"}}}"#,
     );
@@ -231,6 +238,7 @@ fn nominal_categories_sort_ascending() {
 
 #[test]
 fn a_sort_array_orders_the_categories() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(
         r#"{"data":{"values":[{"a":"A","b":28},{"a":"B","b":55},{"a":"C","b":43}]},"mark":"bar","encoding":{"x":{"field":"a","type":"ordinal","sort":["B","A","C"]},"y":{"field":"b","type":"quantitative"}}}"#,
     );
@@ -239,6 +247,7 @@ fn a_sort_array_orders_the_categories() {
 
 #[test]
 fn a_descending_count_sort_puts_the_biggest_bar_first() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(
         r#"{"data":{"values":[{"cyl":"a"},{"cyl":"b"},{"cyl":"b"},{"cyl":"b"},{"cyl":"c"},{"cyl":"c"},{"cyl":"d"},{"cyl":"d"},{"cyl":"d"},{"cyl":"d"},{"cyl":"e"},{"cyl":"e"},{"cyl":"e"},{"cyl":"e"},{"cyl":"e"}]},"mark":"bar","encoding":{"x":{"field":"cyl","sort":{"op":"count","order":"descending"}},"y":{"aggregate":"count"}}}"#,
     );
@@ -247,6 +256,7 @@ fn a_descending_count_sort_puts_the_biggest_bar_first() {
 
 #[test]
 fn a_minus_y_sort_orders_by_value_descending() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(
         r#"{"data":{"values":[{"k":"p","v":1},{"k":"q","v":9},{"k":"r","v":5}]},"mark":"bar","encoding":{"x":{"field":"k","type":"nominal","sort":"-y"},"y":{"field":"v","type":"quantitative"}}}"#,
     );
@@ -255,6 +265,7 @@ fn a_minus_y_sort_orders_by_value_descending() {
 
 #[test]
 fn a_color_legend_sorts_ascending() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(
         r#"{"data":{"values":[{"x":1,"y":2,"o":"USA"},{"x":2,"y":3,"o":"Japan"},{"x":3,"y":1,"o":"Europe"}]},"mark":"point","encoding":{"x":{"field":"x","type":"quantitative"},"y":{"field":"y","type":"quantitative"},"color":{"field":"o","type":"nominal"}}}"#,
     );
@@ -263,6 +274,7 @@ fn a_color_legend_sorts_ascending() {
 
 #[test]
 fn the_first_color_stacks_on_top() {
+    let _vega = crate::serial::vega();
     let mut ui = vega(
         r#"{"data":{"values":[{"a":"A1","b":28,"c":"x"},{"a":"A1","b":23,"c":"y"},{"a":"A2","b":18,"c":"x"},{"a":"A2","b":21,"c":"y"}]},"mark":"bar","encoding":{"x":{"field":"a","type":"ordinal"},"y":{"field":"b","type":"quantitative","stack":"zero"},"color":{"field":"c","type":"nominal"}}}"#,
     );

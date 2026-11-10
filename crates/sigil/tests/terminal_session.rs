@@ -1,8 +1,4 @@
 #![cfg(unix)]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use std::time::{Duration, Instant};

@@ -1,13 +1,8 @@
 #![cfg(feature = "kittest")]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::panic)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 
-#[path = "scene_support/mod.rs"]
-mod scene_support;
+use crate::scene_support;
 
 use scene_support::color;
 use sigil::geometry::{Point, Rect};

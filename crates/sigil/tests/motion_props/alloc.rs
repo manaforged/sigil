@@ -1,5 +1,3 @@
-use std::alloc::{GlobalAlloc, Layout, System};
-use std::cell::Cell;
 use std::f32::consts::FRAC_PI_2;
 use std::time::Duration;
 
@@ -11,39 +9,6 @@ use sigil::reactive::Owner;
 use super::{BLACK, BLUE, VIEW, WHITE, gradient_square, mount, shadow, start};
 
 const FRAMES: u32 = 32;
-
-thread_local! {
-    static CALLS: Cell<u64> = const { Cell::new(0) };
-}
-
-struct Counting;
-
-fn count() {
-    let _ = CALLS.try_with(|calls| calls.set(calls.get() + 1));
-}
-
-// SAFETY: every call forwards to the system allocator with the same arguments.
-unsafe impl GlobalAlloc for Counting {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        count();
-        // SAFETY: the caller upholds the GlobalAlloc contract for `layout`.
-        unsafe { System.alloc(layout) }
-    }
-
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // SAFETY: `ptr` came from `alloc` with this `layout`.
-        unsafe { System.dealloc(ptr, layout) }
-    }
-
-    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        count();
-        // SAFETY: the caller upholds the GlobalAlloc realloc contract.
-        unsafe { System.realloc(ptr, layout, new_size) }
-    }
-}
-
-#[global_allocator]
-static ALLOCATOR: Counting = Counting;
 
 fn styled() -> NodeBuilder {
     gradient_square()
@@ -90,16 +55,18 @@ fn frame_calls(keyframes: Keyframes) -> u64 {
         for _ in 0..8 {
             step();
         }
-        let before = CALLS.with(Cell::get);
-        for _ in 0..FRAMES {
-            step();
-        }
-        CALLS.with(Cell::get) - before
+        allocation_counter::measure(|| {
+            for _ in 0..FRAMES {
+                step();
+            }
+        })
+        .count_total
     })
 }
 
 #[test]
 fn animating_every_paint_property_allocates_no_more_per_frame_than_opacity() {
+    let _keyframes = crate::serial::keyframes();
     let baseline = frame_calls(opacity_only());
     let animated = frame_calls(every_property());
     println!("{FRAMES} frames: opacity {baseline} allocations, every property {animated}");

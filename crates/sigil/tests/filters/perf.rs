@@ -91,7 +91,7 @@ fn median(values: &mut [f64]) -> f64 {
 }
 
 #[test]
-#[ignore = "manual: cargo test --release -p sigil-ui --test filters -- --ignored --nocapture"]
+#[ignore = "manual: cargo test --release -p sigil-ui --test integration filters::perf -- --ignored --nocapture"]
 fn a_hundred_filtered_cards_frame_time() {
     let Some(mut renderer) = headless_renderer().expect("sigil-kittest") else {
         println!("no adapter: skipping");

@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use sigil::reactive::Owner;
 use std::cell::Cell;
 use std::panic::{AssertUnwindSafe, catch_unwind};

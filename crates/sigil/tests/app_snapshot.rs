@@ -1,8 +1,4 @@
 #![cfg(all(feature = "desktop", not(target_arch = "wasm32")))]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::expect_used)]
 
 use sigil::prelude::*;

@@ -35,6 +35,8 @@ On a machine with a GPU adapter, run the hardware tier too:
 scripts/gate.sh --gpu
 ```
 
+The `sigil-ui` integration tests build as one binary. Run one file's tests with `cargo test -p sigil-ui --all-features --test integration design_sweep::`.
+
 ## Code shape
 
 - Keep functions under 50 lines. Clippy enforces this.
