@@ -2,15 +2,15 @@
 
 The low-level pieces the widgets are built from: drag mechanics, clipboard, and terminal wiring. Use them when a stock widget does not fit. Most app code never needs them directly.
 
-## interactive
+## Interactive nodes
 
-`interactive(inner: NodeBuilder)` turns any node into a state-tracking widget: it installs internal `hovered`, `pressed`, and `focused` signals and resolves the state paint against them, so `.hover()`, `.pressed()`, `.focus()`, and `.disabled_style()` style closures work on a plain container.
+Any `NodeBuilder` is an interactive element. `.hover()`, `.pressed()`, `.focus()`, and `.disabled_style()` style it per state, and the node tracks its own hover, press, and focus.
 
-- `.focusable(bool)`: participate in keyboard focus.
-- `.disabled(value, signal, or closure)`: drive the disabled slot.
-- `Paint` methods set the base paint; `.into_node_builder()` finishes.
+- `.activate(f)`: run `f` on a primary click, Enter, or Space. The node takes focus and shows the focus ring.
+- `.disabled(value, signal, or closure)`: dim the node, ignore its pointer and keys, and report it as disabled.
+- `.focusable(true)`: take keyboard focus without an action.
 
-This is the primitive `button`, `icon_button`, and the menu-bar triggers are made of. If you only need event handlers, use the `Widget` event methods (`pointer_down`, `key`, …) directly. `interactive` is for full state styling.
+`button`, `card`, `list_row`, and the menu-bar triggers are built this way. If you only need event handlers, use the `Widget` event methods (`pointer_down`, `key`, …) directly.
 
 ## axis_drag
 
@@ -57,11 +57,11 @@ For a full-screen program, use `session.view()` on an `Rc<Session>` instead of `
 
 ## States, keys, and accessibility
 
-The visual catalog captures `interactive` in default, hover, pressed, focused, and disabled, and `terminal` in default, hover, pressed, and focused.
+The visual catalog captures an interactive node in default, hover, pressed, focused, and disabled, and `terminal` in default, hover, pressed, and focused.
 
 | Piece | Keys | Role | Name source |
 | --- | --- | --- | --- |
-| `interactive` | None of its own. Add `.key()` handlers on the inner node. | The inner node's role | The inner node |
+| Interactive node | Enter and Space with `.activate` | The node's role | The node |
 | `axis_drag` | Pointer only | The node's role | The node |
 | `drag_source`, `drop_target` | Pointer only | The node's role | The node |
 | `terminal` | Every key-down is sent to `on_input` | `TextInput` | None |

@@ -11,16 +11,15 @@ fn main() -> sigil::AppResult<()> {
 }
 
 pub(crate) fn interactive_demo(disabled: Signal<bool>) -> NodeBuilder {
-    interactive(
-        column()
-            .fill_width()
-            .gap(Space::None)
-            .child(text("Interactive row").nowrap().text_role(TextRole::Body)),
-    )
-    .focusable(true)
-    .radius(Radius::Md)
-    .disabled(disabled)
-    .into_node_builder()
+    column()
+        .fill_width()
+        .gap(Space::None)
+        .child(text("Interactive row").nowrap().text_role(TextRole::Body))
+        .focusable(true)
+        .radius(Radius::Md)
+        .hover(|s| s.background(Token::SurfaceHover))
+        .pressed(|s| s.background(Token::SurfacePressed))
+        .disabled(disabled)
 }
 
 pub(crate) fn axis_drag_demo() -> NodeBuilder {

@@ -9,7 +9,6 @@ use crate::widgets::Layout;
 
 use super::super::shared::Activate;
 use super::ROW_SELECTED;
-use super::activatable::activatable;
 
 static CARD: &[StyleAtom] = Layer::Raised.atoms();
 
@@ -82,7 +81,7 @@ impl CardBuilder {
             None => self.node.class(CARD),
         };
         match self.activate {
-            Some(activate) => activatable(node, Role::Button, &activate),
+            Some(activate) => node.role(Role::Button).activate_with(activate),
             None => node,
         }
     }

@@ -304,10 +304,7 @@ fn layout_override_sizes_every_widget_root() {
                 "tooltip",
                 width(tooltip("tip").child(button("X")).layout(wide())),
             ),
-            (
-                "interactive",
-                width(interactive(container()).layout(wide())),
-            ),
+            ("interactive", width(container().layout(wide()))),
             ("diff", width(diff("").width(210.0))),
         ];
         for (name, laid) in widths {

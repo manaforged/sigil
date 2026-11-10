@@ -229,12 +229,11 @@ pub mod prelude {
         avatar, axis_drag, button, card, chart, checkbox, chip, code_edit, color_field, combobox,
         command_menu, context_menu, date_field, diff, divider, dot, drag_ghost, dropdown,
         empty_state, field, fuzzy_score, gauge, graphviz, heatmap, highlight, hint_bar,
-        hint_overlay, html, icon, icon_button, interactive, kv_grid, kv_row, list_row, markdown,
-        markdown_edit, markdown_inline, math, menu, menu_bar, mermaid, modal, notice_band,
-        number_field, panel, path, progress, radio_group, scroll, section_label, segmented, sheet,
-        sidebar, slider, spacer, sparkline, spinner, splitter, stat, status_bar, surface, table,
-        tabs, terminal, text_edit, text_field, toast, toast_queue, toggle, tooltip, tree,
-        virtual_list,
+        hint_overlay, html, icon, icon_button, kv_grid, kv_row, list_row, markdown, markdown_edit,
+        markdown_inline, math, menu, menu_bar, mermaid, modal, notice_band, number_field, panel,
+        path, progress, radio_group, scroll, section_label, segmented, sheet, sidebar, slider,
+        spacer, sparkline, spinner, splitter, stat, status_bar, surface, table, tabs, terminal,
+        text_edit, text_field, toast, toast_queue, toggle, tooltip, tree, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error};
 }

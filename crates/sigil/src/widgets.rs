@@ -283,7 +283,7 @@ pub use html::html;
 #[cfg(feature = "scene")]
 pub use icon::icon_svg;
 pub use icon::{IconBuilder, icon};
-pub use interactive::interactive;
+pub(crate) use interactive::{Wiring, wire};
 pub use listbox::{CursorEdge, ListState};
 pub(crate) use markdown::MarkdownEditBuilder;
 pub use markdown::{markdown, markdown_edit, markdown_inline};

@@ -8,6 +8,7 @@ use crate::kernel::{
     A11yProps, AccessibleName, Cx, Node, NodeId, NodeType, TextCursor, reactive_children,
 };
 use crate::style::{PaintTarget, Style, StyleSlot};
+use crate::widgets::Wiring;
 
 mod keyed;
 mod patch;
@@ -29,6 +30,7 @@ pub struct NodeBuilder {
     pub(super) on_added: Vec<AddedHook>,
     style: Style,
     pub(super) wraps: Option<Box<dyn ErasedComponent>>,
+    wiring: Wiring,
 }
 
 impl core::fmt::Debug for NodeBuilder {
@@ -76,6 +78,7 @@ impl NodeBuilder {
             on_added: Vec::new(),
             style: Style::new(),
             wraps: None,
+            wiring: Wiring::default(),
         }
     }
 
@@ -343,6 +346,14 @@ impl NodeBuilder {
 
     pub(crate) const fn pending_style(&mut self) -> &mut Style {
         &mut self.style
+    }
+
+    pub(crate) const fn wiring_mut(&mut self) -> &mut Wiring {
+        &mut self.wiring
+    }
+
+    pub(crate) const fn is_focusable(&self) -> bool {
+        self.a11y.focusable
     }
 
     pub(crate) fn map_keeping_kind(mut self, f: impl FnOnce(Self) -> Self) -> Self {

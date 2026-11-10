@@ -46,7 +46,7 @@ fn rest_pane() -> NodeBuilder {
 fn interactive_hover_overlay_paints_on_pointer_enter() {
     Owner::scope("interactive-hover-paints", || {
         let mut cx = Cx::new_root();
-        let root = cx.add(interactive(rest_pane()).hover(|s| s.background(HOVER_BG)));
+        let root = cx.add(rest_pane().hover(|s| s.background(HOVER_BG)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
@@ -84,7 +84,7 @@ fn interactive_class_hover_prefix_paints_on_pointer_enter() {
         let root = cx.add(
             container()
                 .theme(Theme::dark())
-                .child(interactive(rest_pane()).hover(|s| s.background(Token::Accent9))),
+                .child(rest_pane().hover(|s| s.background(Token::Accent9))),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
@@ -125,7 +125,7 @@ fn interactive_pressed_overlay_paints_on_pointer_down() {
     Owner::scope("interactive-pressed-paints", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
-            interactive(rest_pane())
+            rest_pane()
                 .hover(|s| s.background(HOVER_BG))
                 .pressed(|s| s.background(PRESSED_BG)),
         );
@@ -156,15 +156,13 @@ fn interactive_pressed_overlay_paints_on_pointer_down() {
 fn interactive_hover_does_not_stop_ancestor_hover() {
     Owner::scope("interactive-non-propagating", || {
         let mut cx = Cx::new_root();
-        let inner = interactive(rest_pane()).hover(|s| s.background(HOVER_BG));
+        let inner = rest_pane().hover(|s| s.background(HOVER_BG));
         let root = cx.add(
-            interactive(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(200.0, 200.0))
-                    .background(REST_BG)
-                    .child(inner),
-            )
-            .hover(|s| s.background(HOVER_BG)),
+            container()
+                .layout(LayoutStyle::block().fixed_size(200.0, 200.0))
+                .background(REST_BG)
+                .child(inner)
+                .hover(|s| s.background(HOVER_BG)),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
@@ -187,7 +185,7 @@ fn interactive_disabled_signal_suppresses_hover() {
         let mut cx = Cx::new_root();
         let disabled = signal(true);
         let root = cx.add(
-            interactive(rest_pane())
+            rest_pane()
                 .disabled(disabled)
                 .hover(|s| s.background(HOVER_BG)),
         );

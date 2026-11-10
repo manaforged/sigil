@@ -10,7 +10,6 @@ use crate::style::{BORDER_WIDTH, Paint, Style, StyleAtom, Token, space};
 use crate::widgets::Layout;
 
 use super::super::drag::axis_drag;
-use super::super::interactive::interactive;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::orientation::Orientation;
 use super::super::shared::caller_style;
@@ -113,10 +112,9 @@ fn resize_handle(width: Signal<f32>, min: f32, max: f32) -> NodeBuilder {
                 .fill_height()
                 .shrink(0.0),
         );
-    let node = interactive(node)
+    let node = node
         .hover(|s| s.background(Token::SurfaceHover))
-        .pressed(|s| s.background(Token::SurfacePressed))
-        .into_node_builder();
+        .pressed(|s| s.background(Token::SurfacePressed));
     let node = axis_drag(
         node,
         Orientation::Horizontal,

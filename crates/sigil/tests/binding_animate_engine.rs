@@ -49,14 +49,12 @@ fn a_style_transition_paints_values_between_base_and_hover_then_settles() {
         MotionPrefs::set(false);
         let mut cx = Cx::new_root();
         let root = cx.add(
-            interactive(
-                container()
-                    .background(Token::Surface)
-                    .layout(LayoutStyle::block().fixed_size(100.0, 100.0)),
-            )
-            .opacity(0.5)
-            .transition(presets::DEFAULT)
-            .hover(|state| state.opacity(1.0)),
+            container()
+                .background(Token::Surface)
+                .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+                .opacity(0.5)
+                .transition(presets::DEFAULT)
+                .hover(|state| state.opacity(1.0)),
         );
         let mut layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();

@@ -141,7 +141,7 @@ Shared metrics:
 | Overlay | `Token::Overlay`, `Token::OverlayBorder`, `Metrics::overlay_padding` | fill, border, `Elevation::Md`, 4 px |
 | Disabled | opacity | 50 % |
 | Icon glyph | `Metrics::icon_size` | 20 px font size; one cell on a character grid |
-| Control hover | `SurfaceHover` fill, `SurfacePressed` while pressed | checkbox, toggle, radio row, slider, `interactive` |
+| Control hover | `SurfaceHover` fill, `SurfacePressed` while pressed | checkbox, toggle, radio row, slider |
 | Controls | `Metrics::current()` | `control_height`, `control_padding`, `control_gap` per `Size` |
 
 A radius reads the theme at paint time. `Metrics::current()` returns the host metrics. On a character grid, control heights, padding, and gaps are one cell.
@@ -150,24 +150,22 @@ A theme can also live in a TOML file: `base = "dark"` (or `"light"`, `"console_d
 
 ## Interaction
 
-Static styling works on any node. Interaction styling goes through `interactive()`, the opt-in wrapper that gives plain containers hover, press, focus, and disabled semantics:
+Every node takes interaction styling. `.hover()`, `.pressed()`, `.focus()`, `.disabled()`, and `.activate()` work on a plain container:
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
-interactive(
-    container()
-        .width(328.0)
-        .height(304.0)
-        .padding(Space::Xxl)
-        .background(Token::Accent)
-        .radius(Radius::Md),
-)
-.hover(|s| s.background(Token::AccentHover))
+container()
+    .width(328.0)
+    .height(304.0)
+    .padding(Space::Xxl)
+    .background(Token::Accent)
+    .radius(Radius::Md)
+    .hover(|s| s.background(Token::AccentHover))
 # };
 ```
 
-`interactive()` owns the hit testing and the state, so a hover background needs no signal of your own. `button` already defines `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`.
+The node owns the hit testing and the state, so a hover background needs no signal of your own. `button` already defines `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`.
 
 ## Where to go next
 
