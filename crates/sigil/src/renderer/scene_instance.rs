@@ -42,11 +42,8 @@ impl BlendSpace {
         }
     }
 
-    const fn flag(self) -> u32 {
-        match self {
-            Self::Linear => 1,
-            Self::Gamma => 0,
-        }
+    fn flag(self) -> u32 {
+        u32::from(self == Self::Linear)
     }
 
     pub(crate) fn rgba(self, color: Rgba8) -> [f32; 4] {
