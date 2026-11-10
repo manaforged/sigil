@@ -25,13 +25,7 @@ pub(crate) mod trim;
 mod wash;
 
 pub use clip::Clip;
-#[cfg(any(
-    test,
-    all(feature = "scene", feature = "terminal"),
-    feature = "desktop",
-    all(feature = "scene", feature = "kittest")
-))]
-pub(crate) use decoration::DecorationGeometry;
+pub use decoration::DecorationGeometry;
 pub use effects::{
     BlendMode, DecorationKind, Filter, LayerEffect, LayerScope, Mask, MaskMode, SpriteKind,
     SpriteSource, Transform,
@@ -43,18 +37,19 @@ pub use fills::{
     GradientStop, LinearGradient, PatternKind, Stroke, StrokeAlign, StrokeCap, StrokeJoin,
     StrokeStyle,
 };
-pub use glyph::GlyphRun;
-pub(crate) use glyph::TextFlow;
+pub use glyph::TextFlow;
 #[cfg(all(
     feature = "scene",
     any(test, feature = "kittest", feature = "desktop", feature = "terminal")
 ))]
 pub use glyph::shape_glyph_run;
+pub use glyph::{GlyphRun, SharedGlyph};
 pub(crate) use glyph::{RunInk, shape_run};
 pub use gradient::{Gradient, GradientKind};
+pub(crate) use payloads::CellRect;
 #[cfg(any(feature = "scene", feature = "terminal"))]
 pub(crate) use payloads::MITER_LIMIT;
-pub(crate) use payloads::{CellBorder, CellRect, DrawPath};
+pub use payloads::{CellBorder, DrawPath};
 pub use payloads::{DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite};
 pub(crate) use payloads::{PathCmd, PathStroke, outline_key, rounded_outline};
 #[cfg(all(

@@ -117,7 +117,7 @@ pub use crate::app::config::AppConfig;
 pub use crate::app::embed::Host;
 pub use crate::app::exit::request_exit;
 pub use crate::error::{AppResult, Error, ErrorKind};
-pub use crate::kernel::{Cx, Live, Node, NodeId, Surface, TopLayer, announce};
+pub use crate::kernel::{AccessibleName, Cx, Live, Node, NodeId, Surface, TopLayer, announce};
 pub use crate::view::View;
 
 /// Run the app component on the host that `config` selects.
@@ -197,8 +197,8 @@ pub mod prelude {
     pub use crate::icons::Icon;
     pub use crate::kernel::{
         Action, HostMode, ImageBuilder, ImageSource, IntoNode, NodeBuilder, ObjectFit, Role,
-        TextBuilder, TextContent, TextCursor, container, for_each, fragment, image, node, show,
-        switch, text,
+        SwitchBuilder, TextBuilder, TextContent, TextCursor, container, for_each, fragment, image,
+        node, show, switch, text,
     };
     pub use crate::layout::audit::Flaw;
     kittest_pub! {
@@ -210,8 +210,8 @@ pub mod prelude {
         pub use crate::widgets::Layout;
     }
     pub use crate::layout::{
-        AlignItems, FlexWrap, JustifyContent, Length, Overflow, Position, Space, TrackSize, cols,
-        column, em, grid, row, rows,
+        AlignItems, Display, FlexDirection, FlexWrap, IntoPx, JustifyContent, Length, Overflow,
+        Position, Space, TrackSize, cols, column, em, grid, row, rows,
     };
     pub use crate::reactive::{IntervalId, Reactive, Signal, derived, effect, interval, signal};
     #[cfg(any(feature = "desktop", feature = "terminal"))]

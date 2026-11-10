@@ -100,7 +100,7 @@ pub(crate) use config::FRAME_INTERVAL;
 pub use config::PanicPolicy;
 #[cfg(feature = "terminal")]
 pub(crate) use exit::{clear_exit, take_exit};
-pub use frame::{FrameHooks, FrameInfo};
+pub use frame::{FrameHooks, FrameInfo, FrameOutput};
 kittest_pub! {
     #[doc(hidden)]
     pub use frame::{FrameInputHook, FramePaintHook};

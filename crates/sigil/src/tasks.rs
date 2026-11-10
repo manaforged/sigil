@@ -25,7 +25,7 @@ pub use blocking::blocking;
 pub use current::installed;
 pub use current::{signal_writer, spawn};
 pub use dispatch::SignalWriter;
-pub use message::on_message;
+pub use message::{MessageReceiver, on_message};
 pub(crate) use panic::panic_message;
 pub use run::{Task, task};
 pub use runtime::AsyncRuntime;

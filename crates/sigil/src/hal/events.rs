@@ -10,7 +10,9 @@ pub use gesture::{Gesture, GestureEvent};
 pub use keys::{Key, ModifiersState, PhysicalKey};
 
 pub(crate) use pointer::ClickConfig;
-pub use pointer::{MouseButton, MouseButtons, PointerEvent, PointerPhase, PointerType};
+pub use pointer::{
+    MouseButton, MouseButtons, PointerEvent, PointerPhase, PointerTilt, PointerType,
+};
 
 /// An input event from the host.
 #[derive(Clone, Debug, PartialEq)]

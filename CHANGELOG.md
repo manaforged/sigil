@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Every type that a public signature uses outside a sealed trait can be named. `sigil::scene` has the command payloads (`DrawImage`, `DrawGradient`, `Stroke`, `LayerScope`, `CornerRadii`, `ImageRaster`, and the rest). `sigil::style` has `StateStyleBuilder`, `ColorScale`, `ScaleRole`, `TokenTable`, `Locale`, `Strings`, and the `TextStyle` field types. `sigil::profile` has `Frame`, `Span`, `Site`, and `Attribution`. `sigil::events` has `FileDropEvent` and `PointerTilt`. `sigil::geometry` has `Scale`, `sigil::app` has `FrameOutput`, and `sigil::tasks` has `MessageReceiver`. The crate root has `AccessibleName`, and the prelude has `SwitchBuilder`, `Display`, `FlexDirection`, and `IntoPx`.
 - Every widget function's return type can be named from `sigil::widgets`, for example `CheckboxBuilder`, `SliderBuilder`, and `TableBuilder`, so a helper can return one or a struct can store one. The input traits `IntoIconSource`, `IntoScrollExtent`, `IntoList`, `DiffSource`, `FieldControl`, and `NumericKind` and the values `FuzzyMatch`, `IconSource`, `LineId`, and `LineKind` are there too.
 - `benches/sparse_edit.rs` measures one edit in a list of 1,000, 3,000, and 10,000 live rows, split into the frame, the scene, and the accessibility tree.
 - The recipes have a Lists section on per-row signals.

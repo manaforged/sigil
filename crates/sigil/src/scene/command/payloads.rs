@@ -4,7 +4,7 @@ mod marks;
 mod path;
 
 pub use marks::{DrawDecoration, DrawSprite};
-pub(crate) use path::DrawPath;
+pub use path::DrawPath;
 #[cfg(any(feature = "scene", feature = "terminal"))]
 pub(crate) use path::MITER_LIMIT;
 pub(crate) use path::{PathCmd, PathStroke, outline_key, rounded_outline};

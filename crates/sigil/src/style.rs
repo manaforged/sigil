@@ -41,6 +41,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub mod scale;
 }
+pub use scale::{ColorScale, ScaleRole};
 pub(crate) mod size;
 pub(crate) mod state;
 pub(crate) mod strings;
@@ -59,7 +60,7 @@ pub(crate) use animator_overlay::NumericAtomKind;
 pub(crate) use animator_overlay::{ColorAtomKind, Family};
 pub(crate) use atom::Px;
 pub(crate) use atom::SPACING_STEP;
-pub(crate) use atom::TextDecoration;
+pub use atom::TextDecoration;
 pub use atom::{
     Background, ClipShape, Color, ColorAtom, Conic, Elevation, Gradient, GradientAxis, MaskImage,
     MaskSize, Radial, RadialExtent,
@@ -91,11 +92,7 @@ pub use font_family::FontFamily;
 pub use grid::cell;
 pub(crate) use grid::{cell_size, swap_cell};
 pub use locale::Direction;
-pub use text_scale::text_scale;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use locale::{DateOrder, Locale};
-}
+pub use locale::{DateOrder, Locale};
 pub(crate) use merge::merge_classes;
 #[cfg(test)]
 pub(crate) use merge::merge_warning_count_for_component;
@@ -114,6 +111,7 @@ pub(crate) use reactive::StyleReactiveEffect;
 #[cfg(any(test, feature = "kittest"))]
 pub use resolve::unsupported_style_warning_count_for;
 pub use text_scale::TextRole;
+pub use text_scale::text_scale;
 kittest_pub! {
     #[doc(hidden)]
     pub use resolve::render_style_for;
@@ -126,25 +124,16 @@ kittest_pub! {
     pub use state::{StateSlot, StateStyle, StyleState};
 }
 pub use strings::StringKey;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use strings::Strings;
-}
+pub use strings::Strings;
 pub(crate) use struct_api::Style;
+pub use styled::StateStyleBuilder;
 pub use styled::States;
 pub(crate) use styled::node::attach_style;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use styled::StateStyleBuilder;
-}
+pub use text_style::TextLineHeight;
 pub use text_style::TextStyle;
 pub(crate) use text_style::is_typography_atom;
-pub(crate) use text_style::{TextFace, TextRun, TextRuns};
-kittest_pub! {
-    #[doc(hidden)]
-    pub use text_style::TextLineHeight;
-}
-pub use theme::{Theme, ThemeValue};
+pub use text_style::{TextFace, TextRun, TextRuns};
+pub use theme::{Theme, ThemeValue, TokenLayer, TokenTable};
 pub use token::Token;
 pub use tone::Tone;
 kittest_pub! {
