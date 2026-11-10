@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
 
 use sigil::style::StyledTextEngine as _;

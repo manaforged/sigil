@@ -1,14 +1,9 @@
 #![cfg(feature = "kittest")]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 #![allow(clippy::cast_precision_loss)]
 
-#[path = "scene_support/mod.rs"]
-mod scene_support;
+use crate::scene_support;
 
 use scene_support::{color, rect};
 use sigil::renderer::{OffscreenTarget, ScreenSubmission, WgpuRenderer};

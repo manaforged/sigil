@@ -1,8 +1,4 @@
 #![cfg(feature = "kittest")]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(deprecated)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]

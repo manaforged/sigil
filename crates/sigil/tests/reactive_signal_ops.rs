@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use std::cell::Cell;
 use std::rc::Rc;
 

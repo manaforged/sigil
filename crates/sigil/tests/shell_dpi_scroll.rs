@@ -1,15 +1,9 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 #[allow(dead_code)]
 #[path = "../src/shell/event_map.rs"]
 mod event_map;
 
 use sigil::events::ScrollDelta;
 use sigil::geometry::{Point, Scale};
-use sigil::{events, geometry};
 use winit::dpi::PhysicalPosition;
 use winit::event::MouseScrollDelta;
 

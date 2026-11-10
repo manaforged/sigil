@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used)]
 
 use sigil::Host;
@@ -17,14 +13,6 @@ use sigil::reactive::Owner;
 use sigil_kittest::FakeMeasure;
 
 const VIEW: (f32, f32) = (800.0, 600.0);
-
-static RECORDER: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-fn alone() -> std::sync::MutexGuard<'static, ()> {
-    RECORDER
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
 
 fn engine() -> LayoutEngine {
     LayoutEngine::with_text_measure(Box::new(FakeMeasure::fixed(60.0, 16.0)))
@@ -121,7 +109,7 @@ fn frame(host: &mut Host, event: Option<Event>) {
 
 #[test]
 fn scrolling_a_list_in_an_open_modal_does_not_lay_the_modal_out_again() {
-    let _recorder = alone();
+    let _recorder = crate::serial::profile();
     Owner::scope("sigil-modal-layout-scroll", || {
         let offset = signal(0.0_f32);
         let rows: Vec<String> = (0..200).map(|index| format!("row {index}")).collect();
@@ -160,7 +148,7 @@ fn scrolling_a_list_in_an_open_modal_does_not_lay_the_modal_out_again() {
 
 #[test]
 fn a_change_above_a_modal_keeps_it_pinned_to_the_viewport() {
-    let _recorder = alone();
+    let _recorder = crate::serial::profile();
     Owner::scope("sigil-modal-layout-above", || {
         let (passes, rect) = overlay_passes(12, 2);
         assert!(

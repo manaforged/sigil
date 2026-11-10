@@ -57,7 +57,7 @@ fn rebuilt(from: Row, to: Row) -> (u64, u64) {
     Owner::scope("patching-counts", || {
         let rows = signal((0..5).map(|at| (from, format!("row {at}"))).collect());
         let (mut host, mut screen) = mounted(rows);
-        let _profiled = crate::profiled();
+        let _profiled = crate::serial::profile();
         profile::enable();
         profile::reset();
         profile::begin_frame(BackendStatus::TERMINAL);

@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 
 use sigil::style::scale::{

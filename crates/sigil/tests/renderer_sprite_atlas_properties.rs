@@ -4,7 +4,7 @@
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 #![allow(clippy::doc_markdown, clippy::identity_op)]
 #![allow(clippy::missing_const_for_fn, clippy::shadow_unrelated)]
-#![allow(dead_code, unused_crate_dependencies)]
+#![allow(dead_code)]
 
 use proptest::prelude::*;
 use sigil_kittest::gpu::shared_device;

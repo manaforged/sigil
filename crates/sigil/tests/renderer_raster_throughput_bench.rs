@@ -3,23 +3,6 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss, clippy::print_stdout)]
 
-use ahash as _;
-use bytemuck as _;
-use criterion as _;
-use half as _;
-use image as _;
-use pollster as _;
-use proptest as _;
-use raw_window_handle as _;
-use skrifa as _;
-use smallvec as _;
-use softbuffer as _;
-use tiny_skia as _;
-use tracing as _;
-#[cfg(windows)]
-use windows_core as _;
-use zeno as _;
-
 use std::time::Instant;
 
 use sigil::app::{TextTuning, set_text_tuning};
@@ -39,12 +22,13 @@ const PARAGRAPH_UNIT: &str = "The quick brown fox jumps over the lazy dog. ";
 
 #[test]
 #[ignore = "manual: throughput bench; run with `cargo test -p sigil-ui \
-            --test renderer_raster_throughput_bench -- --ignored --nocapture`"]
+            --test integration renderer_raster_throughput_bench -- --ignored --nocapture`"]
 fn raster_vs_vector_throughput() {
     let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         println!("no adapter — skipping raster_vs_vector_throughput");
         return;
     };
+    let _text = sigil::renderer::lock_global_text_state();
 
     let content = build_paragraph(TARGET_GLYPHS);
     let (scene, glyph_count) = build_scene(&content);

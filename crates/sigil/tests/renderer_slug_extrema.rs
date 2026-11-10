@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used, clippy::cast_precision_loss)]
 
 use std::sync::Arc;
@@ -30,6 +26,14 @@ fn lines() -> NodeBuilder {
         }
     }
     column
+}
+
+struct BundledFonts;
+
+impl Drop for BundledFonts {
+    fn drop(&mut self) {
+        set_default_fonts(DefaultFonts::default());
+    }
 }
 
 struct Ink {
@@ -129,6 +133,8 @@ fn outline_glyph_counters_stay_open_at_curve_joins() {
     let Some(mut renderer) = headless_renderer().unwrap() else {
         return;
     };
+    let _text = sigil::renderer::lock_global_text_state();
+    let _fonts = BundledFonts;
     set_default_fonts(DefaultFonts {
         sans: Some((Arc::new(FONT.to_vec()), 0)),
         ..DefaultFonts::default()

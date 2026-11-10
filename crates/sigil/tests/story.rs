@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 #[path = "../examples/story-07-component.rs"]
 #[allow(dead_code)]
 mod component;

@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use sigil::a11y::{snapshot, tree};
 use sigil::kernel::Role;
 use sigil::kernel::{Cx, container, fragment};

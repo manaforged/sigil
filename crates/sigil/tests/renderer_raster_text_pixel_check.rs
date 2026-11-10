@@ -4,23 +4,6 @@
 #![allow(clippy::cast_sign_loss)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
-use ahash as _;
-use bytemuck as _;
-use criterion as _;
-use half as _;
-use image as _;
-use pollster as _;
-use proptest as _;
-use raw_window_handle as _;
-use skrifa as _;
-use smallvec as _;
-use softbuffer as _;
-use tiny_skia as _;
-use tracing as _;
-#[cfg(windows)]
-use windows_core as _;
-use zeno as _;
-
 use sigil::app::{TextTuning, set_text_tuning};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};

@@ -1,8 +1,4 @@
 #![cfg(unix)]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
 
 use std::io::{Read, Write};
@@ -99,7 +95,7 @@ fn spawn_child(env: &[(&str, &str)]) -> Spawned {
         })
         .expect("pty");
     let mut command = CommandBuilder::new(std::env::current_exe().expect("test binary"));
-    command.args(["image_child", "--exact", "--nocapture", "--test-threads=1"]);
+    command.args(crate::child_args(module_path!(), "image_child"));
     command.env_clear();
     for (key, value) in [
         ("PATH", "/usr/bin:/bin"),

@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::panic, clippy::unwrap_used)]
 
 use sigil::kernel::*;

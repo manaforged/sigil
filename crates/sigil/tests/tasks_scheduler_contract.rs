@@ -1,13 +1,8 @@
 #![cfg(feature = "kittest")]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::panic)]
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::time::Duration;
 
 use sigil::hal::Scheduler;
 use sigil::reactive::Owner;
@@ -15,22 +10,10 @@ use sigil::tasks::AsyncRuntime;
 
 #[must_use]
 #[allow(clippy::missing_panics_doc)]
-pub fn setup() -> (AsyncRuntime, Owner) {
+fn setup() -> (AsyncRuntime, Owner) {
     let rt = AsyncRuntime::new().expect("build tokio runtime");
     let handle = Owner::current().expect("inside a reactive scope");
     (rt, handle)
-}
-
-#[must_use]
-pub fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
-    let start = std::time::Instant::now();
-    while start.elapsed() < deadline {
-        if cond() {
-            return true;
-        }
-        std::thread::sleep(Duration::from_millis(1));
-    }
-    cond()
 }
 
 #[test]

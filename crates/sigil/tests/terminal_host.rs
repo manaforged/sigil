@@ -1,8 +1,4 @@
 #![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-#![allow(
     clippy::expect_used,
     clippy::unwrap_used,
     clippy::panic,
@@ -10,14 +6,6 @@
     clippy::indexing_slicing,
     clippy::cast_precision_loss
 )]
-
-static PROFILED: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-fn profiled() -> std::sync::MutexGuard<'static, ()> {
-    PROFILED
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
 
 use sigil::events::{Event, Key};
 use sigil::kernel::IntoNode;

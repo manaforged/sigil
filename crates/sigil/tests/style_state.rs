@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use sigil::style::{StateSlot, StateStyle, StyleAtom, StyleState};
 
 static REST: &[StyleAtom] = &[StyleAtom::Opacity(10_000)];

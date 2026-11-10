@@ -12,6 +12,7 @@ keywords = ["gui", "ui", "widgets", "wgpu", "desktop"]
 categories = ["gui", "command-line-interface"]
 include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "!src/**/*_tests/**", "/Cargo.toml", "/README.md", "docs/**", "/LICENSE-MIT", "assets/**", "examples/**"]
 autobenches = false
+autotests = false
 
 [lib]
 name = "sigil"
@@ -191,55 +192,24 @@ name = "catalog_live"
 required-features = ["desktop"]
 
 [[test]]
+name = "integration"
+path = "tests/main.rs"
+
+[[test]]
 name = "perf_gate"
 harness = false
 test = false
 required-features = ["terminal"]
 
 [[test]]
-name = "terminal_host"
-required-features = ["terminal"]
-
-[[test]]
-name = "terminal_images"
-required-features = ["terminal", "pty"]
-
-[[test]]
-name = "terminal_probe"
-required-features = ["terminal", "pty"]
-
-[[test]]
-name = "terminal_keys"
-required-features = ["terminal"]
-
-[[test]]
-name = "terminal_session"
-required-features = ["pty"]
-
-[[test]]
-name = "image_jpeg"
-required-features = ["image-decode"]
-
-[[test]]
-name = "virtual_list_resize"
-required-features = ["terminal"]
-
-[[test]]
-name = "markdown_terminal"
-required-features = ["terminal"]
-
-[[test]]
-name = "terminal_marks"
-required-features = ["terminal"]
-
-[[test]]
-name = "text_integration"
-path = "tests/text_integration.rs"
+name = "exit_requests"
 
 [[test]]
 name = "shell_display_gate"
-path = "tests/shell_display_gate.rs"
 harness = false
+
+[[test]]
+name = "tasks_wasm"
 
 [[bench]]
 name = "terminal_frame"

@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use sigil::app::DefaultTextMeasure;
 use sigil::geometry::Size;
 use sigil::kernel::TextContent;

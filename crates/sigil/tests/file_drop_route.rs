@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use sigil::events::{Event, FileDropEvent, FileDropPhase};
 use sigil::geometry::Point;
 use sigil::prelude::*;

@@ -24,6 +24,7 @@ fn opacity_at(node: NodeBuilder, seconds: f32) -> f32 {
 
 #[test]
 fn tailwind_transition_is_150ms_on_the_default_curve() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-tailwind-transition", || {
         let curve = 0.2 + 0.8 * 0.775_561;
         near(
@@ -48,6 +49,7 @@ fn tailwind_transition_is_150ms_on_the_default_curve() {
 
 #[test]
 fn tailwind_ease_classes_follow_their_curves() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-tailwind-ease", || {
         let at = |easing: Easing| opacity_at(square().transition().ease(easing), 0.075);
         near(at(Easing::Linear), 0.6, "ease-linear");
@@ -107,6 +109,7 @@ fn opacity_transition_skips_colors() {
 
 #[test]
 fn tailwind_transition_groups_animate_only_their_properties() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-tailwind-groups", || {
         near(
             opacity_at(square().transition_colors(), 0.075),
@@ -133,6 +136,7 @@ fn preset(keyframes: Keyframes) -> Harness {
 
 #[test]
 fn animate_spin_turns_once_a_second_forever() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-spin", || {
         let mut ui = preset(Keyframes::spin());
         run(&mut ui, 0.25);
@@ -158,6 +162,7 @@ fn animate_spin_turns_once_a_second_forever() {
 
 #[test]
 fn animate_ping_scales_to_double_and_fades_by_75_percent() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-ping", || {
         let mut ui = preset(Keyframes::ping());
         run(&mut ui, 0.375);
@@ -175,6 +180,7 @@ fn animate_ping_scales_to_double_and_fades_by_75_percent() {
 
 #[test]
 fn animate_pulse_dips_to_half_opacity_every_two_seconds() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-pulse", || {
         let mut ui = preset(Keyframes::pulse());
         run(&mut ui, 0.25);
@@ -202,6 +208,7 @@ fn animate_pulse_dips_to_half_opacity_every_two_seconds() {
 
 #[test]
 fn animate_bounce_drops_a_quarter_of_its_height() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("motion-bounce", || {
         let mut ui = preset(Keyframes::bounce());
         run(&mut ui, 0.125);

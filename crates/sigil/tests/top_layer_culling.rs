@@ -1,8 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-
 use sigil::geometry::{Point, Rect, Size};
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutStyle};

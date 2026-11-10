@@ -1,8 +1,4 @@
 #![cfg(feature = "kittest")]
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 
 use sigil::shell::{WinitShell, WinitWaker};
 

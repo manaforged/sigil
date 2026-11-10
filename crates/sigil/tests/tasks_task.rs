@@ -1,4 +1,4 @@
-#![allow(clippy::panic, unused_crate_dependencies)]
+#![allow(clippy::panic)]
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

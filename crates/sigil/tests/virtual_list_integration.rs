@@ -1,11 +1,4 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::panic, clippy::trivially_copy_pass_by_ref, clippy::unwrap_used)]
-
-#[path = "events_support/input.rs"]
-mod input;
 
 use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};

@@ -1,7 +1,3 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::float_cmp)]
 #![allow(
     clippy::indexing_slicing,
@@ -143,6 +139,7 @@ fn turned(from: f32, to: f32) -> f32 {
 
 #[test]
 fn a_view_with_a_spinner_settles() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("review-spin-settles", || {
         let mut ui =
             Harness::new(column().child(square().animate(Keyframes::spin()))).pixels(200, 200);
@@ -160,6 +157,7 @@ fn a_view_with_a_spinner_settles() {
 
 #[test]
 fn keyframe_and_transition_colors_meet_at_the_same_midpoint() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("review-color-space", || {
         let flag = signal(false);
         let keyframes = Keyframes::new(Duration::from_secs(1))
@@ -195,6 +193,7 @@ fn keyframe_and_transition_colors_meet_at_the_same_midpoint() {
 
 #[test]
 fn an_infinite_spin_keeps_turning_after_two_to_the_nineteen_seconds() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("review-long-spin", || {
         let flag = signal(false);
         let mut ui = mount(animated(Keyframes::spin(), flag));
@@ -217,6 +216,7 @@ fn an_infinite_spin_keeps_turning_after_two_to_the_nineteen_seconds() {
 
 #[test]
 fn a_zero_duration_infinite_animation_stops_its_clock() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("review-zero-duration", || {
         let flag = signal(false);
         let keyframes = Keyframes::new(Duration::ZERO)
@@ -236,6 +236,7 @@ fn a_zero_duration_infinite_animation_stops_its_clock() {
 
 #[test]
 fn a_four_hundred_percent_shift_moves_four_widths() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("review-percent-range", || {
         let flag = signal(false);
         let keyframes = Keyframes::new(Duration::from_secs(1))
@@ -255,6 +256,7 @@ fn a_four_hundred_percent_shift_moves_four_widths() {
 
 #[test]
 fn a_cubic_bezier_with_nan_points_eases_linearly() {
+    let _keyframes = crate::serial::keyframes();
     let built = Easing::cubic_bezier(0.5, f32::NAN, 0.5, 1.0).apply(0.5);
     assert_eq!(built, 0.5, "NaN control points fall back to linear");
     let raw = Easing::CubicBezier {
@@ -274,6 +276,7 @@ fn a_cubic_bezier_with_nan_points_eases_linearly() {
 
 #[test]
 fn a_zero_duration_transition_waits_for_its_delay() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("review-zero-delay", || {
         let flag = signal(false);
         let node = square()
@@ -308,6 +311,7 @@ fn slide(index: u16) -> Keyframes {
 
 #[test]
 fn the_first_of_three_hundred_held_animations_still_plays() {
+    let _keyframes = crate::serial::keyframes();
     Owner::scope("review-held-animations", || {
         let flags: Vec<Signal<bool>> = (0..300).map(|_| signal(false)).collect();
         let mut list = column();
@@ -356,6 +360,7 @@ impl tracing::Subscriber for Warnings {
 
 #[test]
 fn an_unscoped_animation_that_was_evicted_warns() {
+    let _keyframes = crate::serial::keyframes();
     let warnings = Arc::new(AtomicUsize::new(0));
     tracing::subscriber::with_default(Warnings(Arc::clone(&warnings)), || {
         let owner = Owner::new("review-unscoped", None);
