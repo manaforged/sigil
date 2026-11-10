@@ -99,9 +99,9 @@ jobs:
       - name: minimum Rust
         run: |
           rust=$(sed -n '/^\[workspace.package\]/,/^\[/s/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
-          test "$rust" = "1.90"
-          rustup toolchain install 1.90.0 --profile minimal
-          cargo +1.90.0 check -p sigil-ui --all-features --locked
+          test -n "$rust"
+          rustup toolchain install "$rust" --profile minimal
+          cargo +"$rust" check -p sigil-ui --all-features --locked
 
   required:
     if: always()
