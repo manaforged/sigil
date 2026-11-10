@@ -83,8 +83,39 @@ fn fs_box(in: BlurVertexOut) -> @location(0) vec4<f32> {
         let texel = textureLoad(src, center + step * i, 0);
         sum = sum + select(texel, encoded(texel), encode_in);
     }
-    let mean = sum / f32(2 * radius + 1);
+    let mean = sum / f32(2 * reach + 1);
     return select(mean, decoded(mean), (flags & 4u) != 0u);
+}
+
+fn tap(at: vec2<i32>) -> vec4<f32> {
+    let size = vec2<i32>(textureDimensions(src, 0));
+    if any(at < vec2<i32>(0)) || any(at >= size) {
+        return vec4<f32>(0.0);
+    }
+    return textureLoad(src, at, 0);
+}
+
+@fragment
+fn fs_down(in: BlurVertexOut) -> @location(0) vec4<f32> {
+    let origin = vec2<i32>(floor(in.clip.xy)) * 2;
+    let encode_in = (u32(u.params.y) & 2u) != 0u;
+    var sum = vec4<f32>(0.0);
+    for (var i = 0; i < 4; i = i + 1) {
+        let texel = tap(origin + vec2<i32>(i & 1, i >> 1u));
+        sum = sum + select(texel, encoded(texel), encode_in);
+    }
+    return sum * 0.25;
+}
+
+@fragment
+fn fs_up(in: BlurVertexOut) -> @location(0) vec4<f32> {
+    let pos = in.clip.xy / u.params.x - 0.5;
+    let base = vec2<i32>(floor(pos));
+    let t = pos - floor(pos);
+    let top = mix(tap(base), tap(base + vec2<i32>(1, 0)), t.x);
+    let bottom = mix(tap(base + vec2<i32>(0, 1)), tap(base + vec2<i32>(1, 1)), t.x);
+    let value = mix(top, bottom, t.y);
+    return select(value, decoded(value), (u32(u.params.y) & 4u) != 0u);
 }
 ",
 );
