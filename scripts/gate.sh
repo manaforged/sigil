@@ -96,7 +96,7 @@ job_fuzz() {
   step fuzz-toolchain rustup toolchain install nightly --profile minimal --no-self-update
   local fuzz_target
   fuzz_target=$(rustc +nightly -vV | sed -n 's/^host: //p')
-  step fuzz cargo +nightly fuzz build --target "$fuzz_target"
+  step fuzz cargo +nightly fuzz build --dev --target "$fuzz_target"
 }
 
 need node "https://nodejs.org"
