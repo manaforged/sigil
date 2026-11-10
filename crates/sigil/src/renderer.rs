@@ -148,8 +148,9 @@ pub use renderer::WgpuRenderer;
 pub use slug::{DrawParams, SlugTextPipeline};
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 pub use surface::WgpuSurface;
-#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
 #[cfg(any(test, feature = "kittest"))]
 pub use test_state::{GlobalTextState, lock_global_text_state};
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
-pub use window_handle::{WindowHandle, into_window_handle};
+pub use window_handle::WindowHandle;
+#[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
+pub(crate) use window_handle::into_window_handle;

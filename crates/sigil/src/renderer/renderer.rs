@@ -112,12 +112,12 @@ impl WgpuRenderer {
         self.state.ready().ok().map(ReadyState::backend_status)
     }
 
-    pub const fn set_transparent(&mut self, transparent: bool) {
+    pub(crate) const fn set_transparent(&mut self, transparent: bool) {
         self.transparent = transparent;
     }
 
     #[must_use]
-    pub const fn is_transparent(&self) -> bool {
+    pub(crate) const fn is_transparent(&self) -> bool {
         self.transparent
     }
 
@@ -198,7 +198,7 @@ impl WgpuRenderer {
             .adopt_headless(adapter.clone(), device.clone(), queue.clone());
     }
 
-    pub fn prepare_compositing(&mut self, format: wgpu::TextureFormat) -> Result<(), Error> {
+    pub(crate) fn prepare_compositing(&mut self, format: wgpu::TextureFormat) -> Result<(), Error> {
         let ready = self.state.ready_mut()?;
         LayerCompositePipeline::for_format(
             &mut ready.pipelines.layer_pipelines,

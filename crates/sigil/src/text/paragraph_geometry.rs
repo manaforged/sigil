@@ -30,7 +30,7 @@ impl Paragraph {
 
     /// Returns the narrowest width that fits without overflow.
     #[must_use]
-    pub fn min_content_width(&self) -> f32 {
+    pub(crate) fn min_content_width(&self) -> f32 {
         self.content_widths().min
     }
 
@@ -47,7 +47,7 @@ impl Paragraph {
     }
 
     #[must_use]
-    pub fn rendered_glyphs_in(&self, start: usize, end: usize) -> Vec<RenderedGlyph> {
+    pub(crate) fn rendered_glyphs_in(&self, start: usize, end: usize) -> Vec<RenderedGlyph> {
         let mut out = Vec::new();
         for line in &self.inner.lines {
             for g in &line.glyphs {

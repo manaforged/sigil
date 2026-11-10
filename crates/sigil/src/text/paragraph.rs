@@ -316,7 +316,7 @@ impl Paragraph {
         )
     }
 
-    pub fn selection_rects_with(
+    pub(crate) fn selection_rects_with(
         &self,
         anchor: HitPosition,
         focus: HitPosition,

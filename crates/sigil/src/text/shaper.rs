@@ -84,12 +84,12 @@ impl Font {
     }
 
     #[must_use]
-    pub fn bytes_arc(&self) -> Arc<Vec<u8>> {
+    pub(crate) fn bytes_arc(&self) -> Arc<Vec<u8>> {
         Arc::clone(&self.data)
     }
 
     #[must_use]
-    pub const fn face_index(&self) -> u32 {
+    pub(crate) const fn face_index(&self) -> u32 {
         self.index
     }
 

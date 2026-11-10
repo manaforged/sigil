@@ -83,7 +83,7 @@ impl LayoutDrive {
         self.forest.attach(parent.0, child.0)
     }
 
-    pub fn set_children(
+    pub(crate) fn set_children(
         &mut self,
         parent: NodeHandle,
         children: &[NodeHandle],
@@ -225,7 +225,7 @@ impl LayoutDrive {
     }
 
     #[must_use]
-    pub fn clips_content(&self, node: NodeHandle) -> bool {
+    pub(crate) fn clips_content(&self, node: NodeHandle) -> bool {
         self.forest.style_for(node.0).is_some_and(|style| {
             style.overflow.width != Overflow::Visible || style.overflow.height != Overflow::Visible
         })
