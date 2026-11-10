@@ -86,7 +86,8 @@ fn measure(name: &str, side: &str, warm: usize, units: usize, mut step: impl FnM
     let bytes = BYTES.load(Ordering::Relaxed) - bytes;
     samples.sort_by(f64::total_cmp);
     let count = units as f64;
-    println!("RAW {name} {side} us_unit {:.2}", samples[units / 2]);
+    let median = samples.get(units / 2).copied().unwrap_or_default();
+    println!("RAW {name} {side} us_unit {median:.2}");
     println!("RAW {name} {side} allocs_unit {:.1}", allocs as f64 / count);
     println!("RAW {name} {side} bytes_unit {:.0}", bytes as f64 / count);
 }
@@ -103,14 +104,17 @@ fn chat(stream: Signal<String>) -> impl IntoNode {
 }
 
 fn rows(cells: Vec<Signal<u64>>) -> NodeBuilder {
-    cells.into_iter().enumerate().fold(column(), |page, (index, cell)| {
-        page.child(
-            row()
-                .child(text(format!("Row {index}")).nowrap())
-                .child(text(move || format!("Value {}", cell.get())).nowrap())
-                .child(button(format!("Open {index}"))),
-        )
-    })
+    cells
+        .into_iter()
+        .enumerate()
+        .fold(column(), |page, (index, cell)| {
+            page.child(
+                row()
+                    .child(text(format!("Row {index}")).nowrap())
+                    .child(text(move || format!("Value {}", cell.get())).nowrap())
+                    .child(button(format!("Open {index}"))),
+            )
+        })
 }
 
 fn extend(stream: Signal<String>) {
@@ -183,7 +187,7 @@ fn hover(side: &str) {
     host.mount(scroll(rows(cells)).fill());
     frame(&mut host, VIEW);
     measure("hover", side, WARM, UNITS, |unit| {
-        let y = (unit % 30) as f32 * 24.0 + 12.0;
+        let y = ((unit % 30) as f32).mul_add(24.0, 12.0);
         host.route(Event::pointer_move(Point::new(600.0, y)));
         frame(&mut host, VIEW);
     });
@@ -247,7 +251,9 @@ fn grid(side: &str) {
 }
 
 fn main() {
-    let mut args = std::env::args().skip(1).filter(|arg| !arg.starts_with("--"));
+    let mut args = std::env::args()
+        .skip(1)
+        .filter(|arg| !arg.starts_with("--"));
     let side = args.next().unwrap_or_else(|| "base".to_owned());
     let only = args.next();
     for (name, run) in CELLS {

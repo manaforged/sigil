@@ -42,7 +42,11 @@ impl Render {
                 labels,
                 series,
             } => self.chart(*plot, labels, series),
-            Piece::Stat { label, value, tone: mood } => {
+            Piece::Stat {
+                label,
+                value,
+                tone: mood,
+            } => {
                 let tile = stat(self.live(label), self.live(value));
                 match tone(*mood) {
                     Some(shade) => tile.tone(shade).into(),
@@ -68,7 +72,10 @@ impl Render {
         let values = |row: &Value| numbers(row.get("values").unwrap_or(&Value::Null));
         let mut drawn = chart(values(first)).labels(labels).tooltip();
         for (index, row) in rows.enumerate() {
-            let shade = SERIES_TONES[(index + 1) % SERIES_TONES.len()];
+            let shade = SERIES_TONES
+                .get((index + 1) % SERIES_TONES.len())
+                .copied()
+                .unwrap_or(Tone::Primary);
             drawn = drawn.series(name(row), values(row), shade);
         }
         let drawn = match plot {
@@ -132,6 +139,5 @@ impl Render {
                 ..ListRowSlots::default()
             },
         )
-        .into()
     }
 }

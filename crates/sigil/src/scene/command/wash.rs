@@ -1,3 +1,11 @@
+#![allow(
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    reason = "noise lattice coordinates are floored floats that fit in i32"
+)]
+
 use crate::style::Color;
 
 #[cfg(feature = "scene")]

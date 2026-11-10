@@ -89,14 +89,16 @@ impl Inbox {
             .expect("layout");
     }
 
+    fn middle(&self) -> &Thread {
+        self.all.get(self.all.len() / 2).expect("a row")
+    }
+
     fn label(&self, turn: u64) {
-        self.all[self.all.len() / 2]
-            .title
-            .set(format!("thread edit {turn}"));
+        self.middle().title.set(format!("thread edit {turn}"));
     }
 
     fn equal(&self, _turn: u64) {
-        let title = self.all[self.all.len() / 2].title;
+        let title = self.middle().title;
         title.set(title.peek());
     }
 
@@ -124,15 +126,15 @@ impl Inbox {
         edit(self, turn);
         self.settle();
         let apply = apply.elapsed();
-        let emit = Instant::now();
+        let emit_start = Instant::now();
         black_box(self.host.emit(VIEW));
-        let emit = emit.elapsed();
-        let access = Instant::now();
+        let drawn = emit_start.elapsed();
+        let access_start = Instant::now();
         black_box(self.host.accessibility_tree());
-        let access = access.elapsed();
+        let access = access_start.elapsed();
         match phase {
             Phase::Apply => apply,
-            Phase::Emit => emit,
+            Phase::Emit => drawn,
             Phase::Access => access,
         }
     }

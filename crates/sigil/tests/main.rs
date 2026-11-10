@@ -311,6 +311,8 @@ mod tabs_routing;
 mod tasks_scheduler_contract;
 mod tasks_scheduler_spawn;
 mod tasks_task;
+#[cfg(feature = "pty")]
+mod terminal_command;
 #[cfg(feature = "terminal")]
 mod terminal_host;
 #[cfg(all(feature = "terminal", feature = "pty"))]
@@ -321,8 +323,6 @@ mod terminal_keys;
 mod terminal_marks;
 #[cfg(all(feature = "terminal", feature = "pty"))]
 mod terminal_probe;
-#[cfg(feature = "pty")]
-mod terminal_command;
 #[cfg(feature = "pty")]
 mod terminal_session;
 mod text_clip;

@@ -23,8 +23,6 @@ mod turn;
 use turn::Turn;
 pub(super) use turn::{isolated, recover};
 
-
-
 pub(crate) const CELL: f32 = crate::Host::CELL;
 
 /// Reads the next batch of events for an embedded terminal loop.

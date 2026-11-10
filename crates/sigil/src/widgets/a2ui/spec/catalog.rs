@@ -103,7 +103,11 @@ pub(super) fn parse(name: &str, props: &Map<String, Value>) -> Option<Kind> {
 }
 
 fn item(props: &Map<String, Value>, tone: Mood) -> Item {
-    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "depth is clamped to u16")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "depth is clamped to u16"
+    )]
     let depth = number(props, "depth", 0.0).clamp(0.0, f32::from(u16::MAX)) as u16;
     Item {
         title: Dynamic::of(props, "title"),

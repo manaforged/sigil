@@ -16,7 +16,6 @@ pub(super) use script::char_script;
 #[cfg(any(test, feature = "kittest"))]
 pub(super) use script::script_name;
 
-
 pub(super) struct ShapedSegment {
     pub(super) start: u32,
     pub(super) end: u32,
