@@ -10,7 +10,7 @@ use crate::reactive::{Signal, batch, effect, signal};
 use crate::widgets::Widget;
 
 use super::handlers::TextEditRuntime;
-use super::render::{floor_char_boundary, splice_preedit};
+use super::render::splice_preedit;
 
 type CaretRectSlot = Rc<Cell<Option<Signal<Option<Rect>>>>>;
 
@@ -38,14 +38,14 @@ impl ImeState {
 
     pub(in crate::widgets) fn composing_caret(&self, value: &str, caret: usize) -> (String, usize) {
         let preedit = self.preedit.get();
-        let base = floor_char_boundary(value, caret);
+        let base = value.floor_char_boundary(caret);
         if preedit.is_empty() {
             return (value.to_owned(), base);
         }
         let offset = self
             .preedit_cursor
             .get()
-            .map_or(preedit.len(), |(_, end)| floor_char_boundary(&preedit, end));
+            .map_or(preedit.len(), |(_, end)| preedit.floor_char_boundary(end));
         (splice_preedit(value, base, &preedit), base + offset)
     }
 }

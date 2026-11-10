@@ -32,10 +32,7 @@ fn streamed(source: &str, step: usize) -> Vec<Block> {
     let mut stream = Stream::default();
     let mut end = 0;
     while end < source.len() {
-        end = (end + step).min(source.len());
-        while !source.is_char_boundary(end) {
-            end += 1;
-        }
+        end = source.ceil_char_boundary((end + step).min(source.len()));
         blocks(&mut stream, &source[..end]);
     }
     blocks(&mut stream, source)

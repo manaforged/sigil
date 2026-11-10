@@ -8,7 +8,19 @@ pub(crate) fn dispatch<T>(
     id: NodeId,
     invoke: impl FnOnce(&EventHandlers) -> T,
 ) -> Option<T> {
+    dispatch_gated(cx, id, true, invoke)
+}
+
+fn dispatch_gated<T>(
+    cx: &Cx,
+    id: NodeId,
+    gated: bool,
+    invoke: impl FnOnce(&EventHandlers) -> T,
+) -> Option<T> {
     let node = cx.get(id)?;
+    if gated && node.a11y.is_disabled() {
+        return None;
+    }
     let handlers = node.get_extension::<EventHandlers>()?;
     let mut result = None;
     owner_by_id(node.owner, || result = Some(invoke(handlers)));
@@ -45,6 +57,13 @@ pub(crate) enum EventKind {
 }
 
 impl EventKind {
+    const fn tracks_state(self) -> bool {
+        matches!(
+            self,
+            Self::PointerEnter | Self::PointerLeave | Self::FocusOut
+        )
+    }
+
     pub(crate) const fn pointer(phase: PointerPhase) -> Self {
         match phase {
             PointerPhase::Down => Self::PointerDown,
@@ -251,5 +270,8 @@ pub(crate) fn fire(
     phase: Phase,
     mut arg: EventArg<'_>,
 ) -> Option<bool> {
-    dispatch(cx, id, |handlers| handlers.dispatch(kind, phase, &mut arg))
+    let gated = !kind.tracks_state();
+    dispatch_gated(cx, id, gated, |handlers| {
+        handlers.dispatch(kind, phase, &mut arg)
+    })
 }

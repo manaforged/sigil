@@ -2,7 +2,6 @@ use serde_json::Value;
 
 use crate::kernel::{NodeBuilder, TextContent, container, text};
 use crate::layout::{AlignItems, LayoutStyle, Space};
-use crate::reactive::signal;
 use crate::style::{Token, Tone};
 use crate::widgets::{Layout, ListRowSlots, chart, diff, list_row, markdown, mermaid, stat};
 
@@ -41,7 +40,13 @@ impl Render {
                 plot,
                 labels,
                 series,
-            } => self.chart(*plot, labels, series),
+            } => {
+                let (render, plot, names, data) =
+                    (self.clone(), *plot, labels.clone(), series.clone());
+                self.reactive(&[labels, series], move || {
+                    Self::chart(plot, &render.tracked(&names), &render.tracked(&data))
+                })
+            }
             Piece::Stat {
                 label,
                 value,
@@ -53,21 +58,38 @@ impl Render {
                     None => tile.into(),
                 }
             }
-            Piece::Table { columns, rows } => self.table(columns, rows),
-            Piece::Markdown { text: body } => markdown(signal(self.shown(body))),
-            Piece::Mermaid { source } => mermaid(signal(self.shown(source))),
-            Piece::Diff { patch } => diff(signal(self.shown(patch))).into(),
+            Piece::Table { columns, rows } => {
+                let (render, heads, cells) = (self.clone(), columns.clone(), rows.clone());
+                self.reactive(&[columns, rows], move || {
+                    render.table(&render.tracked(&heads), &render.tracked(&cells))
+                })
+            }
+            Piece::Markdown { text: body } => markdown(self.source(body)),
+            Piece::Mermaid { source } => mermaid(self.source(source)),
+            Piece::Diff { patch } => diff(self.source(patch)).into(),
             Piece::Item(item) => self.item(item),
         }
     }
 
-    fn chart(&self, plot: Plot, labels: &Dynamic, series: &Dynamic) -> NodeBuilder {
-        let series = self.value(series);
-        let mut rows = items(&series).iter();
+    fn reactive(
+        &self,
+        values: &[&Dynamic],
+        build: impl Fn() -> NodeBuilder + 'static,
+    ) -> NodeBuilder {
+        if values.iter().all(|value| self.bound(value).is_none()) {
+            return build();
+        }
+        container()
+            .layout(LayoutStyle::flex_column().fill_width())
+            .children_reactive(move || [build()])
+    }
+
+    fn chart(plot: Plot, labels: &Value, series: &Value) -> NodeBuilder {
+        let mut rows = items(series).iter();
         let Some(first) = rows.next() else {
             return super::render::note("No data");
         };
-        let labels: Vec<String> = items(&self.value(labels)).iter().map(display).collect();
+        let labels: Vec<String> = items(labels).iter().map(display).collect();
         let name = |row: &Value| row.get("name").map(display).unwrap_or_default();
         let values = |row: &Value| numbers(row.get("values").unwrap_or(&Value::Null));
         let mut drawn = chart(values(first)).labels(labels).tooltip();
@@ -87,7 +109,7 @@ impl Render {
         drawn.into()
     }
 
-    fn table(&self, columns: &Dynamic, rows: &Dynamic) -> NodeBuilder {
+    fn table(&self, columns: &Value, rows: &Value) -> NodeBuilder {
         let line = |cells: &[Value], header: bool| {
             let (size, shade) = if header {
                 ("text-xs", Token::OnSurfaceMuted)
@@ -112,11 +134,10 @@ impl Render {
                 },
             )
         };
-        let rows = self.value(rows);
-        items(&rows).iter().fold(
+        items(rows).iter().fold(
             container()
                 .layout(LayoutStyle::flex_column().fill_width().gap(Space::Sm))
-                .child(line(items(&self.value(columns)), true)),
+                .child(line(items(columns), true)),
             |table, cells| table.child(line(items(cells), false)),
         )
     }
