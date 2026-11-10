@@ -121,6 +121,8 @@ Off the scale, say why: `Space::raw(13.0, "matches the embedded video inset")`, 
 | `desktop` | yes | The window host for `run`, `open`, and the OS clipboard. Turns on `scene`, `clipboard`, and winit with AccessKit. |
 | `terminal` | no | The terminal host: `run` with `.terminal()`, and `sigil::terminal`. Uses crossterm and enables `image-decode`. |
 | `scene` | via `desktop` | The wgpu renderer, the CPU renderer, offscreen capture with the `kittest` feature, text shaping, SVG icons, and `sigil::text`. No window. |
+| `vega` | yes | Full Vega-Lite figures in `markdown`, run in an embedded QuickJS engine. Turns on `scene`. Without it, a figure falls back to the native chart for the marks it supports, then to its source. |
+| `a2ui` | yes | `a2ui()`, the A2UI renderer. |
 | `shell` | via `desktop` | The winit window shell with AccessKit. |
 | `cpu` | via `scene` | The CPU renderer that `SIGIL_BACKEND=cpu` selects. |
 | `shaping-complex` | via `scene` | Complex-script text shaping through `HarfRust`. |

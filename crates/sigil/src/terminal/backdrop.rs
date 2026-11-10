@@ -52,7 +52,7 @@ impl Follow {
                                 backdrop().set(Some(next));
                             });
                         }
-                        std::thread::sleep(POLL);
+                        std::thread::park_timeout(POLL);
                     }
                 }))
             });
@@ -68,6 +68,7 @@ impl Drop for Follow {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Relaxed);
         if let Some(thread) = self.thread.take() {
+            thread.thread().unpark();
             drop(thread.join());
         }
         self.owner.dispose();
