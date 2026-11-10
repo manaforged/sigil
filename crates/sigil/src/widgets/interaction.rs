@@ -75,14 +75,24 @@ impl InteractionState {
             Some(flag) => node.mutate(move |node| node.a11y.disabled = Some(flag)),
             None => node,
         };
-        node.focusable(true)
+        let node = node
+            .focusable(true)
             .hittable(true)
             .focus_ring(self.focus_ring())
             .focus_in(move || self.on_focus_in())
             .focus_out(move || self.on_focus_out())
             .pointer_enter(move |event| self.pointer_enter(event))
             .pointer_leave(move |event| self.pointer_leave(event))
-            .pointer_down(move |event| self.pointer_down(event))
+            .pointer_down(move |event| self.pointer_down(event));
+        self.track_release(node)
+    }
+
+    fn track_release(self, node: NodeBuilder) -> NodeBuilder {
+        crate::events::builder_ext::track_release(node, move |event| {
+            if is_primary(event) || is_cancel(event) {
+                set_if_changed(self.pressed, false);
+            }
+        })
     }
 
     /// Returns the signal that shows the focus ring.
@@ -102,11 +112,7 @@ impl InteractionState {
                     set_if_changed(self.pressed, true);
                 }
             });
-        crate::events::builder_ext::pointer_release(node, move |event| {
-            if is_primary(event) || is_cancel(event) {
-                set_if_changed(self.pressed, false);
-            }
-        })
+        self.track_release(node)
     }
 
     /// Handles a pointer release and returns whether it activates.

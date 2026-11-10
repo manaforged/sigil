@@ -1,35 +1,27 @@
 use crate::events::ImeEvent;
+use crate::events::handlers::{EventArg, EventHandlers, EventKind, Phase, fire};
 #[cfg(any(test, feature = "kittest", feature = "desktop"))]
 use crate::geometry::{Point, Rect};
-use crate::kernel::{Cx, NodeId};
+use crate::kernel::{Cx, Node, NodeId};
 use crate::layout::CaretGeometry;
 use crate::layout::LayoutEngine;
 
 use crate::events::EventRouter;
 
-type ImeHandler = Box<dyn Fn(&ImeEvent) + 'static>;
-type ImeEligible = Box<dyn Fn() -> bool>;
+pub(crate) struct ImeEligible(pub(crate) Box<dyn Fn() -> bool>);
 
-#[derive(Default)]
-pub(crate) struct ImeHandlers {
-    pub(crate) handlers: Vec<ImeHandler>,
-    pub(crate) eligible: Option<ImeEligible>,
-}
-
-impl ImeHandlers {
-    pub(crate) fn is_eligible(&self) -> bool {
-        self.eligible.as_ref().is_none_or(|f| f())
-    }
-
-    pub(crate) fn invoke(&self, event: &ImeEvent) {
-        self.handlers.iter().for_each(|handler| handler(event));
-    }
-}
-
-impl core::fmt::Debug for ImeHandlers {
+impl core::fmt::Debug for ImeEligible {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("ImeHandlers").finish_non_exhaustive()
+        f.debug_struct("ImeEligible").finish_non_exhaustive()
     }
+}
+
+fn wants_ime(node: &Node) -> bool {
+    node.get_extension::<EventHandlers>()
+        .is_some_and(|handlers| handlers.handles(EventKind::Ime))
+        && node
+            .get_extension::<ImeEligible>()
+            .is_none_or(|eligible| (eligible.0)())
 }
 
 #[derive(Clone, Debug)]
@@ -98,8 +90,7 @@ impl EventRouter {
         pub fn focus_wants_ime(&self, cx: &Cx) -> bool {
             self.focus()
                 .and_then(|id| cx.get(id))
-                .and_then(|node| node.get_extension::<ImeHandlers>())
-                .is_some_and(ImeHandlers::is_eligible)
+                .is_some_and(wants_ime)
         }
     }
 
@@ -122,12 +113,7 @@ impl EventRouter {
 }
 
 fn dispatch_to_owner(cx: &Cx, id: NodeId, event: &ImeEvent) {
-    if let Some(handlers) = cx
-        .get(id)
-        .and_then(|node| node.get_extension::<ImeHandlers>())
-    {
-        handlers.invoke(event);
-    }
+    let _ = fire(cx, id, EventKind::Ime, Phase::Bubble, EventArg::Ime(event));
 }
 
 fn valid_ime_target(router: &EventRouter, cx: &Cx, layout: &LayoutEngine, id: NodeId) -> bool {
@@ -137,7 +123,5 @@ fn valid_ime_target(router: &EventRouter, cx: &Cx, layout: &LayoutEngine, id: No
     node.a11y.hittable
         && layout.result(id).is_some()
         && router.ime_target_in_scope(cx, id)
-        && node
-            .get_extension::<ImeHandlers>()
-            .is_some_and(ImeHandlers::is_eligible)
+        && wants_ime(node)
 }

@@ -11,8 +11,7 @@ use crate::reactive::Signal;
 
 use crate::events::EventHandlers;
 use crate::events::handlers::{EventKind, Handler, Phase};
-use crate::events::ime_handlers::{CaretAnchorExt, ImeHandlers};
-use crate::events::router::{GestureHandlers, PasteHandlers};
+use crate::events::ime_handlers::{CaretAnchorExt, ImeEligible};
 use crate::events::selection::SelectableText;
 
 macro_rules! handler_methods {
@@ -46,15 +45,12 @@ macro_rules! handler_methods {
             focus_in => FocusIn, Bubble, Focus: [Fn()],
             /// Runs `h` when focus leaves the node or one of its children.
             focus_out => FocusOut, Bubble, Focus: [Fn()],
-        }
-        $m! {
-            @ext
             /// Runs `h` for each input method event sent to the node.
-            ime => ImeHandlers.handlers: [Fn(&ImeEvent)],
+            ime => Ime, Bubble, Ime: [Fn(&ImeEvent)],
             /// Runs `h` with pasted text; returning true stops the paste from reaching ancestors.
-            paste => PasteHandlers.handlers: [Fn(&str) -> bool],
+            paste => Paste, Bubble, Paste: [Fn(&str) -> bool],
             /// Runs `h` for each touchpad gesture over the node.
-            gesture => GestureHandlers.handlers: [Fn(&mut GestureEvent)],
+            gesture => Gesture, Bubble, Gesture: [Fn(&mut GestureEvent)],
         }
         $m! {
             @keyed
@@ -85,11 +81,6 @@ macro_rules! implement {
             })
         })*
     };
-    (@ext $($(#[$doc:meta])* $name:ident => $ext:ident.$field:ident: [$($bound:tt)*],)*) => {
-        $(pub(crate) fn $name<H>(node: NodeBuilder, h: H) -> NodeBuilder where H: $($bound)* + 'static {
-            with_ext(node, move |ext: &mut $ext| ext.$field.push(Box::new(h)))
-        })*
-    };
     (@keyed $($(#[$doc:meta])* $name:ident => $kind:ident, $phase:ident,)*) => {
         $(pub(crate) fn $name<H>(node: NodeBuilder, shortcut: Shortcut, h: H) -> NodeBuilder
         where H: Fn(&mut KeyEvent) + 'static {
@@ -109,11 +100,6 @@ macro_rules! implement {
 
 macro_rules! event_methods {
     (@table $($(#[$doc:meta])* $name:ident => $kind:ident, $phase:ident, $variant:ident: [$($bound:tt)*],)*) => {
-        $($(#[$doc])* #[must_use] fn $name<H>(self, h: H) -> Self where H: $($bound)* + 'static {
-            self.map_node(move |node| $crate::events::builder_ext::$name(node, h))
-        })*
-    };
-    (@ext $($(#[$doc:meta])* $name:ident => $ext:ident.$field:ident: [$($bound:tt)*],)*) => {
         $($(#[$doc])* #[must_use] fn $name<H>(self, h: H) -> Self where H: $($bound)* + 'static {
             self.map_node(move |node| $crate::events::builder_ext::$name(node, h))
         })*
@@ -140,18 +126,26 @@ pub(crate) fn pointer_up<H>(node: NodeBuilder, h: H) -> NodeBuilder
 where
     H: Fn(&mut PointerEvent) + 'static,
 {
-    pointer_release(node.action(Action::Click), h)
+    release(node.action(Action::Click), h, false)
 }
 
-pub(crate) fn pointer_release<H>(node: NodeBuilder, h: H) -> NodeBuilder
+pub(crate) fn track_release<H>(node: NodeBuilder, h: H) -> NodeBuilder
+where
+    H: Fn(&mut PointerEvent) + 'static,
+{
+    release(node, h, true)
+}
+
+fn release<H>(node: NodeBuilder, h: H, tracks: bool) -> NodeBuilder
 where
     H: Fn(&mut PointerEvent) + 'static,
 {
     with_handlers(node, move |handlers| {
-        handlers.push(
+        handlers.push_entry(
             EventKind::PointerUp,
             Phase::Bubble,
             Handler::Pointer(Box::new(h)),
+            tracks,
         );
     })
 }
@@ -166,8 +160,8 @@ pub(crate) fn ime_eligible<F>(node: NodeBuilder, f: F) -> NodeBuilder
 where
     F: Fn() -> bool + 'static,
 {
-    with_ext(node, move |ime: &mut ImeHandlers| {
-        ime.eligible = Some(Box::new(f));
+    node.mutate(move |node| {
+        node.attach(ImeEligible(Box::new(f)));
     })
 }
 

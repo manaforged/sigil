@@ -102,9 +102,15 @@ pub(crate) fn wire(mut node: NodeBuilder, overlay: StyleOverlay) -> NodeBuilder 
     let node = disabled_a11y(node, disabled).stateful_style(
         variant.unwrap_or(NODE_VARIANT),
         overlay,
-        move || StyleState {
-            disabled: look.is_some_and(Signal::get),
-            ..interaction.style_state()
+        move || {
+            let now = interaction.style_state();
+            let live = !disabled.is_some_and(Signal::get);
+            StyleState {
+                disabled: look.is_some_and(Signal::get),
+                hovered: now.hovered && live,
+                pressed: now.pressed && live,
+                ..now
+            }
         },
     );
     let node = node.seal_style();

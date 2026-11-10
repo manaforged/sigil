@@ -284,10 +284,15 @@ impl Host {
         handled
     }
 
-    fn on_tree(&mut self, run: impl FnOnce(&mut Cx, &LayoutEngine, &mut EventRouter)) {
+    fn on_tree<R: Default>(
+        &mut self,
+        run: impl FnOnce(&mut Cx, &LayoutEngine, &mut EventRouter) -> R,
+    ) -> R {
         let _env = self.enter();
         if self.root.is_some() {
-            run(&mut self.cx, &self.layout, &mut self.router);
+            run(&mut self.cx, &self.layout, &mut self.router)
+        } else {
+            R::default()
         }
     }
 
@@ -303,8 +308,8 @@ impl Host {
         });
     }
 
-    pub(crate) fn sync_hover(&mut self) {
-        self.on_tree(|cx, layout, router| router.reconcile_hover(cx, layout));
+    pub(crate) fn sync_hover(&mut self) -> bool {
+        self.on_tree(|cx, layout, router| router.reconcile_hover(cx, layout))
     }
 
     /// Runs an accessibility action on `target`.

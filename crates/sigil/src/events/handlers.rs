@@ -1,5 +1,8 @@
 use crate::clipboard::Delivery;
-use crate::events::{FileDropEvent, KeyEvent, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
+use crate::events::{
+    FileDropEvent, GestureEvent, ImeEvent, KeyEvent, PointerEvent, PointerPhase, ScrollEvent,
+    Shortcut,
+};
 use crate::kernel::{Cx, NodeId};
 use crate::reactive::owner_by_id;
 
@@ -54,6 +57,9 @@ pub(crate) enum EventKind {
     FileDrop,
     Link,
     SelectionCopy,
+    Paste,
+    Gesture,
+    Ime,
 }
 
 impl EventKind {
@@ -95,8 +101,13 @@ pub(crate) enum Handler {
     FileDrop(FileDropCallback),
     Link(LinkCallback),
     SelectionCopy(CopyCallback),
+    Paste(PasteCallback),
+    Gesture(Callback<GestureEvent>),
+    Ime(ImeCallback),
 }
 
+type PasteCallback = Box<dyn Fn(&str) -> bool + 'static>;
+type ImeCallback = Box<dyn Fn(&ImeEvent) + 'static>;
 type FileDropCallback = Box<dyn Fn(&FileDropEvent) + 'static>;
 type LinkCallback = Box<dyn Fn(&str) + 'static>;
 type CopyCallback = Box<dyn Fn(&str, &crate::AppResult<Delivery>) + 'static>;
@@ -109,6 +120,9 @@ pub(crate) enum EventArg<'a> {
     FileDrop(&'a FileDropEvent),
     Link(&'a str),
     SelectionCopy(&'a str, &'a crate::AppResult<Delivery>),
+    Paste(&'a str, &'a mut bool),
+    Gesture(&'a mut GestureEvent),
+    Ime(&'a ImeEvent),
 }
 
 impl EventArg<'_> {
@@ -117,8 +131,18 @@ impl EventArg<'_> {
             Self::Pointer(event) => event.propagation_stopped(),
             Self::Key(event) => event.propagation_stopped(),
             Self::Scroll(event) => event.propagation_stopped(),
-            Self::Focus | Self::FileDrop(_) | Self::Link(_) | Self::SelectionCopy(..) => false,
+            Self::Gesture(event) => event.propagation_stopped(),
+            Self::Paste(_, handled) => **handled,
+            Self::Focus
+            | Self::FileDrop(_)
+            | Self::Link(_)
+            | Self::SelectionCopy(..)
+            | Self::Ime(_) => false,
         }
+    }
+
+    const fn ends_session(&self) -> bool {
+        matches!(self, Self::Ime(ImeEvent::Disabled))
     }
 }
 
@@ -144,6 +168,9 @@ impl Handler {
             (Self::FileDrop(h), EventArg::FileDrop(event)) => h(event),
             (Self::Link(h), EventArg::Link(href)) => h(href),
             (Self::SelectionCopy(h), EventArg::SelectionCopy(text, result)) => h(text, result),
+            (Self::Paste(h), EventArg::Paste(text, handled)) => **handled |= h(text),
+            (Self::Gesture(h), EventArg::Gesture(event)) => h(event),
+            (Self::Ime(h), EventArg::Ime(event)) => h(event),
             _ => return false,
         }
         true
@@ -154,6 +181,7 @@ struct HandlerEntry {
     kind: EventKind,
     phase: Phase,
     handler: Handler,
+    tracks: bool,
 }
 
 #[derive(Default)]
@@ -165,19 +193,41 @@ pub(crate) struct EventHandlers {
 
 impl EventHandlers {
     pub(crate) fn push(&mut self, kind: EventKind, phase: Phase, handler: Handler) {
+        self.push_entry(kind, phase, handler, false);
+    }
+
+    pub(crate) fn push_entry(
+        &mut self,
+        kind: EventKind,
+        phase: Phase,
+        handler: Handler,
+        tracks: bool,
+    ) {
         self.entries.push(HandlerEntry {
             kind,
             phase,
             handler,
+            tracks,
         });
     }
 
     pub(crate) fn dispatch(&self, kind: EventKind, phase: Phase, arg: &mut EventArg<'_>) -> bool {
+        self.dispatch_to(kind, phase, arg, false)
+    }
+
+    fn dispatch_to(
+        &self,
+        kind: EventKind,
+        phase: Phase,
+        arg: &mut EventArg<'_>,
+        blocked: bool,
+    ) -> bool {
         let selected = |keyed: bool| {
             self.entries.iter().filter(move |entry| {
                 entry.kind == kind
                     && entry.phase == phase
                     && entry.handler.shortcut().is_some() == keyed
+                    && (entry.tracks || !blocked)
             })
         };
         let mut invoked = false;
@@ -188,6 +238,10 @@ impl EventHandlers {
             }
         }
         invoked
+    }
+
+    pub(crate) fn handles(&self, kind: EventKind) -> bool {
+        self.entries.iter().any(|entry| entry.kind == kind)
     }
 
     pub(crate) fn owns_pointer_drag(&self) -> bool {
@@ -243,20 +297,6 @@ impl EventHandlers {
     }
 }
 
-pub(crate) fn until_stopped<E>(
-    handlers: &[Callback<E>],
-    event: &mut E,
-    stopped: impl Fn(&E) -> bool,
-) -> bool {
-    for handler in handlers {
-        handler(event);
-        if stopped(event) {
-            break;
-        }
-    }
-    !handlers.is_empty()
-}
-
 impl core::fmt::Debug for EventHandlers {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("EventHandlers").finish_non_exhaustive()
@@ -270,8 +310,8 @@ pub(crate) fn fire(
     phase: Phase,
     mut arg: EventArg<'_>,
 ) -> Option<bool> {
-    let gated = !kind.tracks_state();
-    dispatch_gated(cx, id, gated, |handlers| {
-        handlers.dispatch(kind, phase, &mut arg)
+    let blocked = !kind.tracks_state() && !arg.ends_session() && cx.get(id)?.a11y.is_disabled();
+    dispatch_gated(cx, id, false, |handlers| {
+        handlers.dispatch_to(kind, phase, &mut arg, blocked)
     })
 }
