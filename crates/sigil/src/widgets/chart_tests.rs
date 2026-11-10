@@ -7,6 +7,7 @@ use crate::kernel::HostMode;
 use crate::kernel::{IntoNode, container, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::Owner;
+use crate::scene::SceneCommand;
 use crate::widgets::Widget;
 
 #[test]
@@ -92,4 +93,30 @@ fn a_whole_number_chart_never_labels_a_fraction() {
         !labelled(true),
         "a whole-number chart skips a fractional tick"
     );
+}
+
+#[test]
+fn a_line_of_100k_points_draws_two_points_per_column() {
+    Owner::scope("chart-decimate", || {
+        let values: Vec<f32> = std::iter::successors(Some(0.0_f32), |at| Some(at + 0.01))
+            .take(100_000)
+            .map(f32::sin)
+            .collect();
+        let mut host = Host::new(HostMode::Pixel);
+        host.mount(move || container().child(chart(values).line().width(400.0).height(200.0)));
+        let scene = host.scene((480.0, 240.0)).unwrap();
+        let drawn = scene
+            .commands
+            .iter()
+            .filter_map(|command| match command {
+                SceneCommand::Path(path) => Some(path.outline.len()),
+                _ => None,
+            })
+            .max()
+            .unwrap();
+        assert!(
+            (100..=2_000).contains(&drawn),
+            "a 400 px line drew {drawn} path commands for 100k points"
+        );
+    });
 }
