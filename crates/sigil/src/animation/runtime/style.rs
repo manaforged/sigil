@@ -11,7 +11,7 @@ use crate::animation::runtime::registry::{Transitioned, transition_config};
 use crate::animation::runtime::targets::{Change, Targets, targets};
 use crate::animation::runtime::{AnimationConfig, Animator};
 use crate::kernel::{Cx, DeltaKind, NodeId, NodeTag};
-use crate::reactive::{Signal, effect_named, owner_by_id, signal};
+use crate::reactive::{Runtime, Signal, effect_named, owner_by_id, signal};
 use crate::style::{
     AnimatorOverlay, Color, ColorAtomKind, NumericAtomKind, StyleAtom, StyleBinding, StyleEngine,
     Theme, Tone, ToneContext,
@@ -28,6 +28,7 @@ const CLEAR: Color = Color {
 struct State {
     enabled: bool,
     previous: Option<Targets>,
+    seed: Option<u64>,
     numeric: Vec<AttachedAnimator>,
     colors: Vec<AttachedColorAnimator>,
     player: Option<Player>,
@@ -207,8 +208,14 @@ impl AnimatorOverlay for StyleAnimator {
         self.update_player(&mut state, atoms, &StyleEngine::with_tone(theme, tone));
         let Some(previous) = state.previous else {
             state.previous = Some(target);
+            state.seed = Runtime::layout_paints();
             return;
         };
+        if state.seed.is_some() && state.seed == Runtime::layout_paints() {
+            state.previous = Some(target);
+            return;
+        }
+        state.seed = None;
         let change = Change::new(&previous, &target);
         state.previous = Some(change.to);
         let Some(config) = transition_config(atoms) else {

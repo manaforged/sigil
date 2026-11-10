@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A node with only state styles (`.hover`, `.pressed`, `.disabled`) no longer reports a click action to screen readers.
 - A2UI `Markdown`, `Mermaid`, `Diff`, `Chart`, and `Table` pieces bound to a data path update when the data model changes. Before, they showed the value at mount.
 - `a2ui` is behind the `a2ui` feature, which is on by default. Migration: a build with `default-features = false` adds `features = ["a2ui"]` to keep `a2ui()`.
+- A style change that arrives before a node is first painted takes effect at once, with no transition. On the first frame, the control that gets focus shows its focused style at once. Before, it ran the rest-to-focus transition for about 60 frames.
 - `for_each` calls `render` only for a key that is new to the list. Before, it called `render` for every item on each write and dropped the result for the keys that stayed.
 
 ### Added

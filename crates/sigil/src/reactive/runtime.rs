@@ -33,6 +33,7 @@ pub(crate) struct RuntimeState {
     pub(crate) panic_origin: Option<(EffectKey, &'static str, &'static Location<'static>)>,
     pub(crate) phase: DrawPhase,
     pub(crate) frame_dirty: bool,
+    pub(crate) paints: u64,
     pub(crate) runtime_id: u64,
 }
 
@@ -56,6 +57,7 @@ impl RuntimeState {
             panic_origin: None,
             phase: DrawPhase::Idle,
             frame_dirty: true,
+            paints: 0,
             runtime_id: 0,
         }
     }
