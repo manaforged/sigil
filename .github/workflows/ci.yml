@@ -61,13 +61,20 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/apt-archives
+          key: apt-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: apt-
       - name: linux system libs and software Vulkan adapter
         run: |
+          mkdir -p ~/apt-archives/partial
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgtk-3-dev libudev-dev libasound2-dev libxkbcommon-dev libxkbcommon-x11-dev libxdo-dev mesa-vulkan-drivers
+          sudo apt-get install -y --no-install-recommends -o Dir::Cache::archives="$HOME/apt-archives" -o APT::Keep-Downloaded-Packages=true libgtk-3-dev libudev-dev libasound2-dev libxkbcommon-dev libxkbcommon-x11-dev libxdo-dev mesa-vulkan-drivers
           driver=$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)
           test -n "$driver"
           echo "VK_DRIVER_FILES=$driver" >> "$GITHUB_ENV"
+          sudo chown -R "$USER" ~/apt-archives
       - name: Rust toolchain
         run: rustup show active-toolchain
       - uses: swatinem/rust-cache@aa7c1c80a07a27a84c0aa76d0cef0aad3830e330 # v2.7.8
