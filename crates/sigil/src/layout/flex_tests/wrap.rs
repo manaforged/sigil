@@ -62,7 +62,7 @@ fn align_content_places_lines_on_cross_axis() {
 #[test]
 fn gap_inserts_main_axis_gutter_between_items() {
     let parent = StyleData {
-        gap: StyleSize::new(Dimension::Px(8.0), Dimension::Px(0.0)),
+        gap: StyleSize::new(Length::Px(8.0), Length::Px(0.0)),
         ..flex_box(300.0, 100.0)
     };
     let b = kids(parent, &[fixed(40.0, 20.0), fixed(40.0, 20.0)]);

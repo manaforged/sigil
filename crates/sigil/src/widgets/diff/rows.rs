@@ -2,7 +2,7 @@ use crate::layout::Space;
 use std::ops::Range;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
-use crate::layout::{AlignItems, Dimension, LayoutStyle, Overflow};
+use crate::layout::{AlignItems, LayoutStyle, Length, Overflow};
 use crate::style::{BORDER_WIDTH, Paint, Token, space};
 use crate::widgets::Widget;
 use crate::widgets::highlight::{byte_marks, text_runs};
@@ -148,7 +148,7 @@ fn half(cell: Option<&DiffCell>, draw: Draw, ruled: bool) -> NodeBuilder {
     let column = container().layout(
         LayoutStyle::flex_column()
             .grow(1.0)
-            .flex_basis(Dimension::Px(0.0))
+            .flex_basis(Length::Px(0.0))
             .min_size(0.0, 0.0)
             .overflow_x(Overflow::Hidden),
     );

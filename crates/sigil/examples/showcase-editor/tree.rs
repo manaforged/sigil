@@ -13,13 +13,11 @@ const ACTIVITIES: &[(Activity, Icon, &str)] = &[
 
 pub(crate) fn activity_strip(ws: Workspace) -> NodeBuilder {
     ACTIVITIES.iter().fold(
-        container().layout(
-            LayoutStyle::flex_column()
-                .fill_height()
-                .shrink(0.0)
-                .gap(Space::Xs)
-                .align_items(AlignItems::Center),
-        ),
+        column()
+            .fill_height()
+            .shrink(0.0)
+            .gap(Space::Xs)
+            .align_items(AlignItems::Center),
         |strip, (activity, glyph, name)| {
             let activity = *activity;
             strip.child(container().children_reactive(move || {
@@ -38,8 +36,11 @@ pub(crate) fn activity_strip(ws: Workspace) -> NodeBuilder {
 }
 
 pub(crate) fn side_bar(ws: Workspace) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0))
+    column()
+        .fill()
+        .min_width(0.0)
+        .min_height(0.0)
+        .gap(Space::None)
         .bg(Token::SurfaceSubtle)
         .rounded(Radius::Md)
         .child(
@@ -62,13 +63,12 @@ fn header(title: &'static str) -> NodeBuilder {
 fn explorer(ws: Workspace) -> NodeBuilder {
     let selected = signal(None);
     effect(move || selected.set(ws.active().map(TreeItem::File)));
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill()
-                .min_size(0.0, 0.0)
-                .padding_y(Space::Xs),
-        )
+    column()
+        .fill()
+        .min_width(0.0)
+        .min_height(0.0)
+        .padding_y(Space::Xs)
+        .gap(Space::None)
         .child(header("EXPLORER"))
         .child(list_row(
             false,
@@ -143,17 +143,15 @@ fn file_node(file: FileId, dirty: &[FileId]) -> TreeNode<TreeItem> {
 }
 
 fn source_control(ws: Workspace) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .padding_y(Space::Xs)
-                .gap(Space::Xs),
-        )
+    column()
+        .fill_width()
+        .padding_y(Space::Xs)
+        .gap(Space::Xs)
         .child(header("SOURCE CONTROL"))
         .child(
-            container()
-                .layout(LayoutStyle::flex_column().fill_width())
+            column()
+                .fill_width()
+                .gap(Space::None)
                 .children_reactive(move || {
                     let staged = ws.staged.get();
                     FileId::ALL
@@ -166,18 +164,19 @@ fn source_control(ws: Workspace) -> NodeBuilder {
 }
 
 fn change_row(ws: Workspace, file: FileId, git: GitStatus, staged: bool) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .padding_x(Space::Sm)
-                .gap(Space::Sm)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .fill_width()
+        .padding_x(Space::Sm)
+        .gap(Space::Sm)
+        .align_items(AlignItems::Center)
         .child(chip(git.letter(), git.tone()))
         .child(
-            container()
-                .layout(LayoutStyle::flex_row().grow(1.0).min_size(0.0, 0.0))
+            row()
+                .grow(1.0)
+                .min_width(0.0)
+                .min_height(0.0)
+                .gap(Space::None)
+                .align_items(AlignItems::Stretch)
                 .pointer_down(move |_| ws.open_file(file))
                 .child(
                     text(file.path())

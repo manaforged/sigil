@@ -12,7 +12,7 @@ use stub::stub_engine;
 
 use sigil::geometry::Size;
 use sigil::kernel::*;
-use sigil::layout::{Dimension as StyleDimension, Display, LayoutDrive, Position, StyleData, *};
+use sigil::layout::{Display, LayoutDrive, Length as StyleDimension, Position, StyleData, *};
 
 const EPSILON: f32 = 0.5;
 

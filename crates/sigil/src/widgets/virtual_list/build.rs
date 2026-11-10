@@ -1,6 +1,6 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::Position;
-use crate::layout::{Dimension, LayoutStyle, Overflow};
+use crate::layout::{LayoutStyle, Length, Overflow};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::NumericAtomKind;
 use crate::widgets::Widget;
@@ -232,10 +232,10 @@ fn with_scrollbar(show: bool, root: NodeBuilder, axes: BuildAxes) -> NodeBuilder
 fn viewport_layout(root: NodeBuilder, height: f32, width: Option<f32>, fill: bool) -> NodeBuilder {
     let base = LayoutStyle::block().overflow_y(Overflow::Hidden);
     let base = if fill {
-        base.width(Dimension::Fill)
-            .height(Dimension::Fill)
+        base.width(Length::Fill)
+            .height(Length::Fill)
             .grow(1.0)
-            .flex_basis(Dimension::Px(0.0))
+            .flex_basis(Length::Px(0.0))
             .min_size(0.0, 0.0)
     } else {
         let base = base.height(height);

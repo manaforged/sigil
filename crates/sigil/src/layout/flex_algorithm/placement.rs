@@ -3,7 +3,7 @@ use crate::layout::flex::CbSize;
 use crate::layout::flex_lines::{FlexItem, FlexLine};
 use crate::layout::resolve::{NodeEdges, clamp, resolve_lp};
 use crate::layout::style_data::{
-    AlignContent, AlignItems, Dimension, FlexWrap, JustifyContent, StyleData,
+    AlignContent, AlignItems, FlexWrap, JustifyContent, Length, StyleData,
 };
 
 use super::FlexCtx;
@@ -109,7 +109,7 @@ fn resolve_cross_sizes(
         let node = forest
             .refer(item.id)
             .ok_or_else(|| Error::layout(format!("stale flex item id {:?}", item.id)))?;
-        if node.style().size.width != Dimension::Auto {
+        if node.style().size.width != Length::Auto {
             continue;
         }
         let sized = FlexCtx {

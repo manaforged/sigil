@@ -52,15 +52,13 @@ fn breadcrumb(file: FileId) -> NodeBuilder {
     let parts = crumbs(file);
     let last = parts.len().saturating_sub(1);
     parts.into_iter().enumerate().fold(
-        container().layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .shrink(0.0)
-                .padding_x(Space::Md)
-                .padding_y(Space::Xs)
-                .gap(Space::Sm)
-                .align_items(AlignItems::Center),
-        ),
+        row()
+            .fill_width()
+            .shrink(0.0)
+            .padding_x(Space::Md)
+            .padding_y(Space::Xs)
+            .gap(Space::Sm)
+            .align_items(AlignItems::Center),
         |row, (index, part)| {
             let row = if index > 0 {
                 row.child(
@@ -85,8 +83,11 @@ fn breadcrumb(file: FileId) -> NodeBuilder {
 }
 
 fn source(buffer: Buffer) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0))
+    column()
+        .fill()
+        .min_width(0.0)
+        .min_height(0.0)
+        .gap(Space::None)
         .child(
             code_edit(buffer.lines, buffer.caret)
                 .highlights(buffer.highlights)
@@ -96,13 +97,12 @@ fn source(buffer: Buffer) -> NodeBuilder {
 }
 
 fn preview(buffer: Buffer) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill()
-                .min_size(0.0, 0.0)
-                .padding(Space::Lg),
-        )
+    column()
+        .fill()
+        .min_width(0.0)
+        .min_height(0.0)
+        .padding(Space::Lg)
+        .gap(Space::None)
         .bg(Token::SurfaceSubtle)
         .rounded(Radius::Md)
         .child(scroll(markdown(buffer.text)).fill())
@@ -121,17 +121,19 @@ fn body(ws: Workspace, file: FileId) -> NodeBuilder {
             .into(),
         FileKind::Rust | FileKind::Toml => source(buffer),
     };
-    container()
-        .layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0))
+    column()
+        .fill()
+        .min_width(0.0)
+        .min_height(0.0)
+        .gap(Space::None)
         .child(breadcrumb(file))
         .child(
-            container()
-                .layout(
-                    LayoutStyle::flex_column()
-                        .grow(1.0)
-                        .fill_width()
-                        .min_size(0.0, 0.0),
-                )
+            column()
+                .grow(1.0)
+                .fill_width()
+                .min_width(0.0)
+                .min_height(0.0)
+                .gap(Space::None)
                 .child(content),
         )
 }
@@ -146,18 +148,20 @@ fn no_editor() -> NodeBuilder {
 
 pub(crate) fn editor(ws: Workspace) -> NodeBuilder {
     let active = derived(move || ws.active());
-    container()
-        .layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0))
+    column()
+        .fill()
+        .min_width(0.0)
+        .min_height(0.0)
+        .gap(Space::None)
         .bg(Token::Surface)
         .child(tab_strip(ws))
         .child(
-            container()
-                .layout(
-                    LayoutStyle::flex_column()
-                        .grow(1.0)
-                        .fill_width()
-                        .min_size(0.0, 0.0),
-                )
+            column()
+                .grow(1.0)
+                .fill_width()
+                .min_width(0.0)
+                .min_height(0.0)
+                .gap(Space::None)
                 .children_reactive(move || {
                     [active.get().map_or_else(no_editor, |file| body(ws, file))]
                 }),

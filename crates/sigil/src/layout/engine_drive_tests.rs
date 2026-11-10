@@ -1,5 +1,5 @@
 use super::*;
-use crate::layout::style_data::{Axes as StyleSize, Dimension, StyleData};
+use crate::layout::style_data::{Axes as StyleSize, Length, StyleData};
 
 fn drive() -> LayoutDrive {
     LayoutDrive::new(Box::new(crate::layout::FakeMeasure::fixed(0.0, 0.0)))
@@ -7,7 +7,7 @@ fn drive() -> LayoutDrive {
 
 fn fixed(w: f32, h: f32) -> StyleData {
     StyleData {
-        size: StyleSize::new(Dimension::Px(w), Dimension::Px(h)),
+        size: StyleSize::new(Length::Px(w), Length::Px(h)),
         ..StyleData::default()
     }
 }

@@ -1,6 +1,6 @@
 # Widgets
 
-The catalog ships in `sigil`. Every widget constructs from a lowercase function and chains a builder. Widgets take typed styling: the `Paint` methods for color, border, radius, shadow, and font, and the `Widget` state methods for hover, focus, press, and disabled paint. Every builder takes the `Widget` sizing methods; `virtual_list`, `table`, `slider`, and `code_edit` size via `.viewport_height()`/`.row_height()` or `.layout()` instead. Focusable widgets publish accessibility roles and accept IME input. The rustdoc lists every builder method.
+The catalog ships in `sigil`. Every widget constructs from a lowercase function and chains a builder. Widgets take typed styling: the `Paint` methods for color, border, radius, shadow, and font, and the `Widget` state methods for hover, focus, press, and disabled paint. Every builder takes the `Widget` layout setters, such as `.width()`, `.height()`, `.grow()`, and `.padding()`; `virtual_list` and `table` also take `.viewport_height()` and `.row_height()`. Focusable widgets publish accessibility roles and accept IME input. The rustdoc lists every builder method.
 
 The family pages carry signatures, options, and behavior notes:
 
@@ -54,7 +54,7 @@ The family pages carry signatures, options, and behavior notes:
 - **avatar(initials)**: an initials disc.
 - **sidebar(child)**: a fixed-width nav column. Chain `.width(len)` and `.resizable(min, max)`.
 - **panel()**: chain `.title()`, `.padding()`, and `.elevation()`.
-- **splitter(Orientation)**: an `IntoNode`. Chain `.pane(node).initial(px).min(px).grow(1.0)`. A grow pane takes the leftover space; the sash moves the fixed neighbour. `.width()` and `.height()` size the splitter. Type a helper as `impl IntoNode`; `.into()` yields a `NodeBuilder`.
+- **splitter(Orientation)**: an `IntoNode`. Chain `.pane(node).initial(px).min(px).grow(1.0)`. A grow pane takes the leftover space; the sash moves the fixed neighbour. The layout setters on a pane set that pane; call `.commit()` first to set the splitter. Type a helper as `impl IntoNode`; `.into()` yields a `NodeBuilder`.
 - **modal(open)**: a GPU dialog. `open` is a `Signal<bool>`. `.title()`, `.width()`, and `.height()` size the frame. Escape and the focus trap are on. A backdrop click is off unless `.dismiss_on_backdrop()`. The alert is `sigil::app::dialog::message` / `confirm` (feature `dialog`). File and message dialogs return a `Signal<Status<..>>` and never block the frame loop. Feature `dialog` shows an in-app picker on every host; add `native-dialog` for the OS dialog on the window host. Read the result like any spawned task:
 
   ```rust,ignore

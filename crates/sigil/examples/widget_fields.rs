@@ -82,9 +82,10 @@ pub(crate) fn validated_field_demo(error: Option<String>) -> impl IntoNode {
 
 fn build() -> impl IntoNode {
     scroll(
-        container()
+        column()
             .role(Role::Main)
-            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .gap(rows(1.0))
+            .padding(cols(2.0))
             .child(text_field_demo())
             .child(text_edit_demo())
             .child(number_field_demo(signal(false), signal(false)))

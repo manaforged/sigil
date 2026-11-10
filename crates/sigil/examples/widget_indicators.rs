@@ -14,8 +14,9 @@ pub(crate) fn chip_demo() -> impl IntoNode {
 }
 
 pub(crate) fn dot_demo() -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_row().gap(Space::Sm))
+    row()
+        .gap(Space::Sm)
+        .align_items(AlignItems::Stretch)
         .child(dot(Tone::Success))
         .child(dot(Tone::Warn))
         .child(dot(Tone::Error))
@@ -34,12 +35,14 @@ pub(crate) fn spinner_demo() -> NodeBuilder {
 }
 
 fn build() -> impl IntoNode {
-    container()
+    column()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+        .gap(rows(1.0))
+        .padding(cols(2.0))
         .child(
-            container()
-                .layout(LayoutStyle::flex_row().gap(cols(1.0)))
+            row()
+                .gap(cols(1.0))
+                .align_items(AlignItems::Stretch)
                 .child(chip_demo())
                 .child(dot_demo())
                 .child(spinner_demo()),

@@ -3,7 +3,7 @@ use super::shared::disabled_look;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
 use crate::layout::Space;
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, Dimension, LayoutStyle, cols};
+use crate::layout::{AlignItems, LayoutStyle, Length, cols};
 use crate::reactive::Reactive;
 use crate::reactive::Signal;
 use crate::style::locale::Locale;
@@ -55,7 +55,7 @@ impl ColorFieldBuilder {
         let field = self.field.text_field().layout(
             LayoutStyle::flex_row()
                 .grow(1.0)
-                .min_size(0.0, Dimension::Auto)
+                .min_size(0.0, Length::Auto)
                 .align_items(AlignItems::Center),
         );
         container()
@@ -125,11 +125,8 @@ impl FieldParser for HexParser {
 
 fn swatch(value: Signal<Rgba8>) -> NodeBuilder {
     let extent = Metrics::current().control_height(ControlSize::Default);
-    let (width, chrome) = CellForm::new(
-        (Dimension::Px(extent), SWATCH_CHROME),
-        (cols(2.0), NO_CHROME),
-    )
-    .pick();
+    let (width, chrome) =
+        CellForm::new((Length::Px(extent), SWATCH_CHROME), (cols(2.0), NO_CHROME)).pick();
     container().children_reactive(move || {
         vec![
             container()

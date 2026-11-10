@@ -2,7 +2,7 @@ use crate::layout::Space;
 use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::{Dimension, LayoutStyle, Position};
+use crate::layout::{LayoutStyle, Length, Position};
 use crate::style::{Radius, StyleAtom};
 use crate::widgets::Widget;
 
@@ -92,8 +92,8 @@ fn markers(layer: NodeBuilder, item: &ChartView<'_>, spans: Spans, dot: Dot) -> 
                 .layout(
                     LayoutStyle::block()
                         .position(Position::Absolute)
-                        .inset_left(Dimension::Percent(x / VIEW_W_F))
-                        .inset_top(Dimension::Percent(y / VIEW_H_F))
+                        .inset_left(Length::Percent(x / VIEW_W_F))
+                        .inset_top(Length::Percent(y / VIEW_H_F))
                         .margin_left(Space::px(-MARKER / 2.0))
                         .margin_top(Space::px(-MARKER / 2.0))
                         .fixed_size(MARKER, MARKER),

@@ -6,7 +6,7 @@
 
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeId, container};
-use sigil::layout::{Dimension, LayoutEngine, LayoutStyle};
+use sigil::layout::{LayoutEngine, LayoutStyle, Length};
 use sigil::prelude::Widget;
 use sigil_kittest::FakeMeasure;
 
@@ -33,7 +33,7 @@ fn grow_max_clamp_redistributes_to_sibling() {
     let a = LayoutStyle::flex_column()
         .grow(1.0)
         .width(0.0)
-        .max_size(50.0, Dimension::Auto);
+        .max_size(50.0, Length::Auto);
     let b = LayoutStyle::flex_column().grow(1.0).width(0.0);
     assert_eq!(
         widths(400.0, a, b),
@@ -48,7 +48,7 @@ fn shrink_min_clamp_redistributes_to_sibling() {
     let a = LayoutStyle::flex_column()
         .width(200.0)
         .shrink(1.0)
-        .min_size(150.0, Dimension::Auto);
+        .min_size(150.0, Length::Auto);
     let b = LayoutStyle::flex_column().width(200.0).shrink(1.0);
     let got = widths(100.0, a, b);
     assert_eq!(

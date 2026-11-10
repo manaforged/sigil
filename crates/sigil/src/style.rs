@@ -88,7 +88,7 @@ kittest_pub! {
     pub use focus_ring::FocusRing;
 }
 pub use font_family::FontFamily;
-pub use grid::grid;
+pub use grid::cell;
 pub(crate) use grid::{cell_size, swap_cell};
 pub use locale::Direction;
 pub use text_scale::text_scale;

@@ -13,7 +13,7 @@
 use sigil::events::{Event, EventRouter, MouseButton, MouseButtons, PointerPhase};
 use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::{Dimension, LayoutEngine};
+use sigil::layout::{LayoutEngine, Length};
 use sigil::prelude::*;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::emit_scene;
@@ -42,7 +42,7 @@ fn editor_view(name: &str, body: &str) -> NodeBuilder {
         .child(mono);
     let column = LayoutStyle::flex_column()
         .grow(1.0)
-        .width(Dimension::Percent(1.0));
+        .width(Length::Percent(1.0));
     container()
         .layout(column)
         .child(

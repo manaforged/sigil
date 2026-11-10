@@ -68,32 +68,34 @@ pub(crate) fn virtual_list_demo(selected: bool) -> impl IntoNode + 'static {
 
 pub(crate) fn virtual_list_fill_demo() -> NodeBuilder {
     let items: Vec<String> = (1..=20).map(|i| format!("Item {i}")).collect();
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().height(152.0))
+    column()
+        .fill_width()
+        .height(152.0)
+        .gap(Space::None)
         .child(text("Header above the list").nowrap())
         .child(
-            container()
-                .layout(LayoutStyle::flex_column().fill_width().grow(1.0))
-                .child(
-                    virtual_list(items, |index, item| {
-                        list_row(
-                            false,
-                            item.clone(),
-                            ListRowSlots {
-                                status: Some(format!("{index}").into()),
-                                ..ListRowSlots::default()
-                            },
-                        )
-                    })
-                    .viewport_fill(),
-                ),
+            column().fill_width().grow(1.0).gap(Space::None).child(
+                virtual_list(items, |index, item| {
+                    list_row(
+                        false,
+                        item.clone(),
+                        ListRowSlots {
+                            status: Some(format!("{index}").into()),
+                            ..ListRowSlots::default()
+                        },
+                    )
+                })
+                .viewport_fill(),
+            ),
         )
         .child(text("Footer below the list").nowrap())
 }
 
 pub(crate) fn heatmap_demo() -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().width(240.0).height(120.0))
+    column()
+        .width(240.0)
+        .height(120.0)
+        .gap(Space::None)
         .child(heatmap(12, 6, |x, y| Rgba8 {
             r: 40,
             g: u8::try_from(40 + x * 16).unwrap_or(u8::MAX),
@@ -125,8 +127,9 @@ pub(crate) fn list_row_tree_demo(selected: bool) -> NodeBuilder {
             },
         )
     };
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xxs))
+    column()
+        .fill_width()
+        .gap(Space::Xxs)
         .child(entry(0, Disclosure::Expanded, "src", false))
         .child(entry(1, Disclosure::Collapsed, "widgets", selected))
         .child(entry(1, Disclosure::Leaf, "lib.rs", false))
@@ -143,9 +146,10 @@ pub(crate) fn kv_row_demo() -> NodeBuilder {
 
 fn build() -> impl IntoNode {
     scroll(
-        container()
+        column()
             .role(Role::Main)
-            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .gap(rows(1.0))
+            .padding(cols(2.0))
             .child(table_demo(false, signal(false)))
             .child(virtual_list_demo(false))
             .child(virtual_list_fill_demo())

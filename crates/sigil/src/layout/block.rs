@@ -8,7 +8,7 @@ use crate::layout::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
 use crate::layout::grid::GridSolver;
 use crate::layout::grid_tracks::definite;
 use crate::layout::resolve::NodeEdges;
-use crate::layout::style_data::{Axes, Dimension, Display, Position, StyleData};
+use crate::layout::style_data::{Axes, Display, Length, Position, StyleData};
 
 #[path = "block_absolute.rs"]
 mod absolute;
@@ -217,7 +217,7 @@ impl BlockSolver<'_> {
         let y = border_origin.y - edges.margin_top();
         let kind = if matches!(style.display, Display::Grid) {
             let border_w = match style.size.width {
-                Dimension::Px(px) => px,
+                Length::Px(px) => px,
                 _ => inner_cb.width,
             };
             GridSolver::new(nested).solve_at(child, border_w, Position2 { x, y })?;

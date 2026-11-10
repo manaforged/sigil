@@ -13,14 +13,11 @@ fn build() -> impl IntoNode {
     let h_val = signal(50.0_f32);
     let g_val = signal(65.0_f32);
     let v_val = signal(25.0_f32);
-    container()
+    column()
         .role(Role::Main)
-        .layout(
-            LayoutStyle::flex_column()
-                .fill()
-                .gap(Space::Xl)
-                .padding(Space::Xxl),
-        )
+        .fill()
+        .gap(Space::Xl)
+        .padding(Space::Xxl)
         .bg(Token::Surface)
         .child(slider(h_val, 0.0..=100.0).change(move |v| h_val.set(v)))
         .child(

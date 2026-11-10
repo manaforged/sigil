@@ -1,8 +1,7 @@
-use sigil::layout::Space;
 use sigil::prelude::Widget;
 use sigil::prelude::{
-    AlignItems, Icon, LayoutStyle, NodeBuilder, Paint, TableState, Token, Tone, button, chip,
-    container, derived, icon, spacer, stat, text, text_field,
+    AlignItems, Icon, NodeBuilder, Paint, Space, TableState, Token, Tone, button, chip, column,
+    container, derived, icon, row, spacer, stat, text, text_field,
 };
 
 use super::data::{
@@ -17,26 +16,23 @@ use super::seed::{
 
 pub(crate) fn main_panel(console: Console, state: &TableState<JobRow>) -> NodeBuilder {
     pane()
-        .layout(
-            LayoutStyle::flex_column()
-                .grow(1.0)
-                .flex_basis(0.0)
-                .fill_height()
-                .min_size(0.0, 0.0)
-                .padding(Space::Sm)
-                .gap(Space::Md),
-        )
+        .grow(1.0)
+        .flex_basis(0.0)
+        .fill_height()
+        .min_width(0.0)
+        .min_height(0.0)
+        .padding(Space::Sm)
+        .gap(Space::Md)
         .child(toolbar(console, state))
         .child(metrics(console))
         .child(search_row(state))
         .child(
-            container()
-                .layout(
-                    LayoutStyle::flex_column()
-                        .fill_width()
-                        .grow(1.0)
-                        .min_size(0.0, 0.0),
-                )
+            column()
+                .fill_width()
+                .grow(1.0)
+                .min_width(0.0)
+                .min_height(0.0)
+                .gap(Space::None)
                 .child(job_table(console, state.clone())),
         )
 }
@@ -44,13 +40,10 @@ pub(crate) fn main_panel(console: Console, state: &TableState<JobRow>) -> NodeBu
 fn toolbar(console: Console, state: &TableState<JobRow>) -> NodeBuilder {
     let selection = state.selection();
     let picked = derived(move || selection.get().len());
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .gap(Space::Sm)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .fill_width()
+        .gap(Space::Sm)
+        .align_items(AlignItems::Center)
         .child(
             button("Deploy")
                 .primary()
@@ -70,12 +63,10 @@ fn toolbar(console: Console, state: &TableState<JobRow>) -> NodeBuilder {
 }
 
 fn heading(console: Console) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .min_width(0.0)
-                .padding_x(Space::Sm),
-        )
+    column()
+        .min_width(0.0)
+        .padding_x(Space::Sm)
+        .gap(Space::None)
         .child(
             text(move || console.service.get().name().to_owned())
                 .nowrap()
@@ -95,8 +86,9 @@ fn heading(console: Console) -> NodeBuilder {
 }
 
 fn pause_controls(console: Console) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_row().gap(Space::Sm))
+    row()
+        .gap(Space::Sm)
+        .align_items(AlignItems::Stretch)
         .child(
             button("Pause all")
                 .outline()
@@ -112,13 +104,11 @@ fn pause_controls(console: Console) -> NodeBuilder {
 }
 
 fn tile(stat: impl sigil::prelude::IntoNode + 'static) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .grow(1.0)
-                .flex_basis(0.0)
-                .min_width(0.0),
-        )
+    column()
+        .grow(1.0)
+        .flex_basis(0.0)
+        .min_width(0.0)
+        .gap(Space::None)
         .child(stat)
 }
 
@@ -127,13 +117,10 @@ fn metrics(console: Console) -> NodeBuilder {
         let landed = console.tally(None, Bucket::Succeeded);
         (DEPLOYS_BEFORE_OPEN + landed).to_string()
     };
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .gap(Space::Sm)
-                .align_items(AlignItems::Stretch),
-        )
+    row()
+        .fill_width()
+        .gap(Space::Sm)
+        .align_items(AlignItems::Stretch)
         .child(tile(
             stat("Success rate", SUCCESS_RATE)
                 .trend(SUCCESS_TREND.to_vec())
@@ -170,13 +157,10 @@ fn mean_secs(minutes: &[f32]) -> u32 {
 
 fn search_row(state: &TableState<JobRow>) -> NodeBuilder {
     let visible = state.visible();
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .gap(Space::Sm)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .fill_width()
+        .gap(Space::Sm)
+        .align_items(AlignItems::Center)
         .child(
             text_field(state.quick_filter())
                 .leading(icon(Icon::Search))

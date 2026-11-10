@@ -50,10 +50,7 @@ impl FlexItem {
         let (min_cross, max_cross) = item_min_max_main(style, ctx.axes.cross(), cb_cross, &edges);
         let content_min = ctx.axes.row
             && min_main.is_none()
-            && !matches!(
-                style.size.width,
-                crate::layout::style_data::Dimension::Px(_)
-            )
+            && !matches!(style.size.width, crate::layout::style_data::Length::Px(_))
             && style.overflow.width == crate::layout::style_data::Overflow::Visible;
         let min_main = min_main.or_else(|| {
             let ellipsizes = node.text().is_some_and(|text| text.ellipsis);

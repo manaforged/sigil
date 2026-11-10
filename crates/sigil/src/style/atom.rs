@@ -363,12 +363,12 @@ pub(crate) const ATOM_FULL: u8 = 1;
 pub(crate) const ATOM_FRACTION: u8 = 2;
 pub(crate) const ATOM_AUTO: u8 = 3;
 
-pub(crate) const fn decode_atom(kind: u8, value: i16) -> crate::layout::Dimension {
+pub(crate) const fn decode_atom(kind: u8, value: i16) -> crate::layout::Length {
     match kind {
-        ATOM_FULL => crate::layout::Dimension::Percent(1.0),
-        ATOM_FRACTION => crate::layout::Dimension::Percent(value as f32 / 10_000.0),
-        ATOM_AUTO => crate::layout::Dimension::Auto,
-        _ => crate::layout::Dimension::Px(value as f32),
+        ATOM_FULL => crate::layout::Length::Percent(1.0),
+        ATOM_FRACTION => crate::layout::Length::Percent(value as f32 / 10_000.0),
+        ATOM_AUTO => crate::layout::Length::Auto,
+        _ => crate::layout::Length::Px(value as f32),
     }
 }
 

@@ -44,12 +44,10 @@ fn main() {
         let label_text = derived(move || format!("Count: {}", count.get()));
         let mut host = Host::new(HostMode::Pixel);
         host.mount(move || {
-            container()
-                .layout(
-                    LayoutStyle::flex_column()
-                        .fixed_size(480.0, 240.0)
-                        .gap(Space::Lg),
-                )
+            column()
+                .width(480.0)
+                .height(240.0)
+                .gap(Space::Lg)
                 .child(text(label_text))
                 .child(button("Increment").activate(move || {
                     count.set(count.peek() + 1);

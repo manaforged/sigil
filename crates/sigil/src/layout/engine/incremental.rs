@@ -5,7 +5,7 @@ use ahash::AHashSet;
 use smallvec::SmallVec;
 
 use crate::Error;
-use crate::layout::style_data::{Dimension, Display, StyleData};
+use crate::layout::style_data::{Display, Length, StyleData};
 use crate::layout::{LayoutResult, LayoutStyle};
 
 use super::measure::to_available_space;
@@ -284,15 +284,15 @@ impl LayoutEngine {
     }
 
     fn has_definite_size(cx: &Cx, id: NodeId) -> bool {
-        let definite = |dim: Dimension| {
+        let definite = |dim: Length| {
             matches!(
                 dim,
-                Dimension::Px(_)
-                    | Dimension::Percent(_)
-                    | Dimension::Fill
-                    | Dimension::Rows(_)
-                    | Dimension::Cols(_)
-                    | Dimension::Em(_)
+                Length::Px(_)
+                    | Length::Percent(_)
+                    | Length::Fill
+                    | Length::Rows(_)
+                    | Length::Cols(_)
+                    | Length::Em(_)
             )
         };
         cx.get(id)
@@ -304,10 +304,10 @@ impl LayoutEngine {
 }
 
 fn width_is_own(style: &StyleData) -> bool {
-    let fixed = |edge: Dimension| !matches!(edge, Dimension::Percent(_));
+    let fixed = |edge: Length| !matches!(edge, Length::Percent(_));
     [style.size.width, style.min_size.width, style.max_size.width]
         .into_iter()
-        .all(|dim| !matches!(dim, Dimension::Percent(_)))
+        .all(|dim| !matches!(dim, Length::Percent(_)))
         && [
             style.padding.left,
             style.padding.right,

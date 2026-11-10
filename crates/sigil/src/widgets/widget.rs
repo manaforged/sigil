@@ -9,7 +9,7 @@ use crate::kernel::NodeBuilder;
 use crate::layout::audit::{AllowedFlaws, FlawKind};
 use crate::layout::builder_ext::{asymmetric, layout_methods};
 use crate::layout::reactive_position;
-use crate::layout::{IntoPx, LayoutStyle, Space};
+use crate::layout::{LayoutStyle, Length};
 use crate::reactive::{Reactive, Signal};
 use crate::style::builder_ext as look;
 use crate::style::{
@@ -121,21 +121,10 @@ pub trait Widget: Sealed {
     }
 
     /// Merges `style` into the node's layout.
+    #[doc(hidden)]
     #[must_use]
     fn layout(self, style: LayoutStyle) -> Self {
         self.edit(Edit::Layout(LayoutEdit::Merge(style)))
-    }
-
-    /// Sets the space between the node's children.
-    #[must_use]
-    fn gap(self, gap: impl Into<Space>) -> Self {
-        self.layout(LayoutStyle::default().gap(gap))
-    }
-
-    /// Sets the space inside the node's edges.
-    #[must_use]
-    fn padding(self, padding: impl Into<Space>) -> Self {
-        self.layout(LayoutStyle::default().padding(padding))
     }
 
     /// Marks the node as intentionally asymmetric, with the reason.
@@ -160,14 +149,14 @@ pub trait Widget: Sealed {
 
     /// Sets the node's width.
     #[must_use]
-    fn width(self, width: impl IntoPx) -> Self {
-        self.edit(Edit::Layout(LayoutEdit::Width(width.into_px())))
+    fn width(self, width: impl Into<Length>) -> Self {
+        self.edit(Edit::Layout(LayoutEdit::Width(width.into())))
     }
 
     /// Sets the node's height.
     #[must_use]
-    fn height(self, height: impl IntoPx) -> Self {
-        self.edit(Edit::Layout(LayoutEdit::Height(height.into_px())))
+    fn height(self, height: impl Into<Length>) -> Self {
+        self.edit(Edit::Layout(LayoutEdit::Height(height.into())))
     }
 
     /// Sets the node's flex grow factor.

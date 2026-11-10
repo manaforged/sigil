@@ -238,13 +238,14 @@ fn controls_of_two_heights_in_a_row_are_a_flaw() {
 
 #[test]
 fn siblings_on_top_of_each_other_are_a_flaw() {
-    let mut ui = Harness::new(|| {
-        page(column().gap(Space::None).child(button("First")).child(
-            button("Second").layout(LayoutStyle::flex_row().margin_top(Dimension::Px(-20.0))),
-        ))
-    })
-    .pixels(360, 160)
-    .unaudited();
+    let mut ui =
+        Harness::new(|| {
+            page(column().gap(Space::None).child(button("First")).child(
+                button("Second").layout(LayoutStyle::flex_row().margin_top(Length::Px(-20.0))),
+            ))
+        })
+        .pixels(360, 160)
+        .unaudited();
     assert!(kinds(&mut ui).contains(&FlawKind::Overlap));
 }
 

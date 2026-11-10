@@ -1,4 +1,4 @@
-use crate::layout::Dimension as Length;
+use crate::layout::Length;
 use crate::style::locale::{Direction, Locale};
 use crate::style::metrics::{Metrics, Radius};
 use crate::style::palette::{Palette, is_dark, pick_higher_contrast};

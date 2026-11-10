@@ -14,7 +14,7 @@ fn box_sizing_decides_whether_padding_adds() {
         (BoxSizing::ContentBox, 120.0, 70.0),
     ] {
         let style = StyleData {
-            padding: Edges::splat(Dimension::Px(10.0)),
+            padding: Edges::splat(Length::Px(10.0)),
             box_sizing: sizing,
             ..px(100.0, 50.0)
         };
@@ -26,12 +26,12 @@ fn box_sizing_decides_whether_padding_adds() {
 #[test]
 fn min_width_floors_and_max_height_caps() {
     let floored = StyleData {
-        min_size: StyleSize::new(Dimension::Px(100.0), Dimension::Auto),
+        min_size: StyleSize::new(Length::Px(100.0), Length::Auto),
         ..px(50.0, 50.0)
     };
     assert!(near(root_box(floored, 400.0, 300.0).0, 100.0));
     let capped = StyleData {
-        max_size: StyleSize::new(Dimension::Auto, Dimension::Px(120.0)),
+        max_size: StyleSize::new(Length::Auto, Length::Px(120.0)),
         ..px(50.0, 500.0)
     };
     assert!(near(root_box(capped, 400.0, 300.0).1, 120.0));
@@ -44,7 +44,7 @@ fn percent_width_resolves_against_containing_block() {
     let child = kid(
         &mut f,
         parent,
-        sized(Dimension::Percent(0.5), Dimension::Px(30.0)),
+        sized(Length::Percent(0.5), Length::Px(30.0)),
     );
     assert!(near(
         run(&f, parent, 1000.0, 800.0).boxed(child).unwrap().w,

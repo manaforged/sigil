@@ -1,7 +1,7 @@
 #![allow(clippy::missing_const_for_fn)]
 
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::layout::{Dimension, LayoutStyle, Overflow};
+use crate::layout::{LayoutStyle, Length, Overflow, StyleData};
 use crate::reactive::{Signal, derived, effect_named, signal};
 use crate::style::{Style, StyleAtom, Token, space};
 use crate::widgets::Widget;
@@ -27,6 +27,21 @@ enum ScrollSizing {
     Fit,
 }
 
+impl ScrollSizing {
+    const fn of(fit: bool, set: &StyleData) -> Self {
+        match set.size.height {
+            _ if fit => Self::Fit,
+            Length::Fill | Length::Percent(_) => Self::Fill,
+            _ => Self::Fixed,
+        }
+    }
+
+    fn measured(self, set: &StyleData) -> bool {
+        let bounded = set.min_size.height != Length::Auto || set.max_size.height != Length::Auto;
+        self != Self::Fixed || bounded
+    }
+}
+
 pub(crate) const THUMB_REST_WIDTH: f32 = space(1);
 pub(crate) const THUMB_MIN_HEIGHT: f32 = space(6);
 const SCROLL_LINE: f32 = space(10);
@@ -38,7 +53,7 @@ static VIEWPORT_ATOMS: &[StyleAtom] = &[Token::Surface.bg()];
 pub struct ScrollBuilder {
     content: NodeBuilder,
     extent: Option<Signal<f32>>,
-    sizing: ScrollSizing,
+    fit: bool,
     scroll_y: Option<Signal<f32>>,
     follow_end: bool,
     style_accumulator: Style,
@@ -69,7 +84,7 @@ pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
     ScrollBuilder {
         content,
         extent: None,
-        sizing: ScrollSizing::Fixed,
+        fit: false,
         scroll_y: None,
         follow_end: false,
         style_accumulator: Style::new(),
@@ -85,17 +100,10 @@ impl ScrollBuilder {
         self
     }
 
-    /// Applies the fill option.
-    #[must_use]
-    pub const fn fill(mut self) -> Self {
-        self.sizing = ScrollSizing::Fill;
-        self
-    }
-
-    /// Applies the fit option.
+    /// Makes the scroll area as high as its content, up to the height of its parent.
     #[must_use]
     pub const fn fit(mut self) -> Self {
-        self.sizing = ScrollSizing::Fit;
+        self.fit = true;
         self
     }
 
@@ -116,14 +124,15 @@ impl ScrollBuilder {
     fn root(self) -> NodeBuilder {
         let scroll_y = self.scroll_y.unwrap_or_else(|| signal(0.0_f32));
         let (content, extent) = resolve_extent(self.content, self.extent);
-        let sizing = self.sizing;
+        let set = self.layout_overrides.apply(LayoutStyle::default());
+        let sizing = ScrollSizing::of(self.fit, set.data());
+        let measured = sizing.measured(set.data());
         let width = self.layout_overrides.width_hint();
         let height = self.layout_overrides.height_hint().unwrap_or(match sizing {
             ScrollSizing::Fit => 0.0,
             ScrollSizing::Fill | ScrollSizing::Fixed => VIEWPORT_HEIGHT,
         });
-        let (viewport, viewport_height) =
-            viewport_signals(width, height, sizing != ScrollSizing::Fixed);
+        let (viewport, viewport_height) = viewport_signals(width, height, measured);
 
         let max_scroll = derived(move || (extent.get() - viewport_height.get()).max(0.0));
         if self.follow_end {
@@ -155,7 +164,7 @@ impl ScrollBuilder {
                 max: max_scroll,
             },
         );
-        if sizing != ScrollSizing::Fixed {
+        if measured {
             root = root.size_reactive(viewport);
         }
         caller_style(root, self.style_accumulator)
@@ -227,9 +236,7 @@ impl From<ScrollBuilder> for NodeBuilder {
 fn viewport_container(height: f32, sizing: ScrollSizing) -> NodeBuilder {
     let base = match sizing {
         ScrollSizing::Fill => LayoutStyle::flex_row().fill_height(),
-        ScrollSizing::Fit => {
-            LayoutStyle::flex_row().max_size(Dimension::Auto, Dimension::Percent(1.0))
-        }
+        ScrollSizing::Fit => LayoutStyle::flex_row().max_size(Length::Auto, Length::Percent(1.0)),
         ScrollSizing::Fixed => LayoutStyle::flex_row().height(height),
     };
     container()
@@ -248,7 +255,7 @@ fn wrap_content(
     let height = derived(move || to_i16(extent.get().max(viewport_height.get())));
     let position = derived(move || (0.0, -scroll_y.get().clamp(0.0, max_scroll.get()).round()));
     let layer = container()
-        .layout(LayoutStyle::block().width(Dimension::Percent(1.0)))
+        .layout(LayoutStyle::block().width(Length::Percent(1.0)))
         .position_reactive(position)
         .child(content);
     container()

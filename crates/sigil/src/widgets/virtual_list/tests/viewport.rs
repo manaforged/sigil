@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn viewport_fill_sets_root_dimensions_to_fill() {
-    use crate::layout::Dimension;
+    use crate::layout::Length;
     Owner::scope("sigil-virtual-list-viewport-fill", || {
         let mut cx = Cx::new_root();
         let items: Vec<usize> = (0..10).collect();
@@ -13,8 +13,8 @@ fn viewport_fill_sets_root_dimensions_to_fill() {
             .get_extension::<crate::layout::LayoutStyle>()
             .expect("root has LayoutStyle")
             .clone();
-        assert_eq!(style.data().size.width, Dimension::Fill);
-        assert_eq!(style.data().size.height, Dimension::Fill);
+        assert_eq!(style.data().size.width, Length::Fill);
+        assert_eq!(style.data().size.height, Length::Fill);
     });
 }
 

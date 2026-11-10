@@ -113,9 +113,9 @@ impl SparklineBuilder {
         self
     }
 
-    /// Sets the fill.
+    /// Sets how the area under the line is drawn.
     #[must_use]
-    pub const fn fill(mut self, fill: SparkFill) -> Self {
+    pub const fn area(mut self, fill: SparkFill) -> Self {
         self.shape.fill = fill;
         self
     }

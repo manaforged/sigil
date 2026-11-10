@@ -1,6 +1,6 @@
 use crate::hal::{HitPosition, TextAffinity};
 use crate::layout::snap::cell;
-use crate::layout::style_data::{Dimension, LengthPercentage, StyleData, TrackSize};
+use crate::layout::style_data::{Length, LengthPercentage, StyleData, TrackSize};
 use crate::layout::text_geometry::with_text_geometry;
 use crate::style::{TextLineHeight, TextStyle};
 
@@ -15,23 +15,30 @@ pub(crate) enum TextLength {
 
 /// Height of `count` text lines.
 #[must_use]
-pub const fn rows(count: f32) -> Dimension {
-    Dimension::Rows(count)
+pub const fn rows(count: f32) -> Length {
+    Length::Rows(count)
 }
 
 /// Width of `count` character cells.
 #[must_use]
-pub const fn cols(count: f32) -> Dimension {
-    Dimension::Cols(count)
+pub const fn cols(count: f32) -> Length {
+    Length::Cols(count)
 }
 
 /// `count` times the font size.
 #[must_use]
-pub const fn em(count: f32) -> Dimension {
-    Dimension::Em(count)
+pub const fn em(count: f32) -> Length {
+    Length::Em(count)
 }
 
-impl Dimension {
+impl Length {
+    pub(crate) fn px(self) -> Option<f32> {
+        match self {
+            Self::Px(px) => Some(px),
+            other => other.text_px(),
+        }
+    }
+
     pub(crate) fn text_px(self) -> Option<f32> {
         match self {
             Self::Rows(count) => Some(TextLength::Rows(count).px()),
@@ -59,7 +66,7 @@ impl TextLength {
     }
 }
 
-/// A pixel count or a `Dimension`, for widget sizes such as `width` and `row_height`.
+/// A pixel count or a `Length`, for widget sizes such as `width` and `row_height`.
 pub trait IntoPx {
     /// Converts this into px to px.
     fn into_px(self) -> f32;
@@ -77,7 +84,7 @@ impl IntoPx for TextLength {
     }
 }
 
-impl IntoPx for Dimension {
+impl IntoPx for Length {
     fn into_px(self) -> f32 {
         match self {
             Self::Px(value) => value,
@@ -136,37 +143,37 @@ const fn downstream(byte_index: usize) -> HitPosition {
     }
 }
 
-fn dimension(value: Dimension) -> Dimension {
+fn dimension(value: Length) -> Length {
     match value {
-        Dimension::Rows(_) | Dimension::Cols(_) | Dimension::Em(_) => {
+        Length::Rows(_) | Length::Cols(_) | Length::Em(_) => {
             finite_dimension(value.text_px().unwrap_or(0.0))
         }
-        Dimension::Px(px) => finite_dimension(px),
-        Dimension::Percent(pct) if !pct.is_finite() => Dimension::Auto,
+        Length::Px(px) => finite_dimension(px),
+        Length::Percent(pct) if !pct.is_finite() => Length::Auto,
         other => other,
     }
 }
 
-const fn finite_dimension(px: f32) -> Dimension {
+const fn finite_dimension(px: f32) -> Length {
     if px.is_finite() {
-        Dimension::Px(px)
+        Length::Px(px)
     } else {
-        Dimension::Auto
+        Length::Auto
     }
 }
 
-const fn finite_edge(value: Dimension) -> Dimension {
-    finite_edge_or(value, Dimension::Px(0.0))
+const fn finite_edge(value: Length) -> Length {
+    finite_edge_or(value, Length::Px(0.0))
 }
 
-const fn finite_edge_or(value: Dimension, fallback: Dimension) -> Dimension {
+const fn finite_edge_or(value: Length, fallback: Length) -> Length {
     let finite = match value {
-        Dimension::Px(px)
-        | Dimension::Percent(px)
-        | Dimension::Rows(px)
-        | Dimension::Cols(px)
-        | Dimension::Em(px) => px.is_finite(),
-        Dimension::Auto | Dimension::Fill => true,
+        Length::Px(px)
+        | Length::Percent(px)
+        | Length::Rows(px)
+        | Length::Cols(px)
+        | Length::Em(px) => px.is_finite(),
+        Length::Auto | Length::Fill => true,
     };
     if finite { value } else { fallback }
 }
@@ -202,10 +209,8 @@ pub(crate) fn resolve_style(mut style: StyleData) -> StyleData {
     style.border = style.border.map(finite_edge);
     style.margin = style
         .margin
-        .map(|value| finite_edge_or(value, Dimension::Px(0.0)));
-    style.inset = style
-        .inset
-        .map(|value| finite_edge_or(value, Dimension::Auto));
+        .map(|value| finite_edge_or(value, Length::Px(0.0)));
+    style.inset = style.inset.map(|value| finite_edge_or(value, Length::Auto));
     for list in [
         &mut style.grid_template_columns,
         &mut style.grid_template_rows,

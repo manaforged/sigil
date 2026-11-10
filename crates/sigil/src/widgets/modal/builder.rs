@@ -5,7 +5,7 @@ use crate::style::theme::ambient::ActiveTheme;
 use crate::animation::runtime::presets;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container};
 use crate::layout::snap;
-use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle, Overflow, Position};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Overflow, Position};
 use crate::reactive::{Signal, signal};
 use crate::style::{Style, StyleAtom, Token, TransitionId, space};
 use crate::widgets::Widget;
@@ -326,7 +326,7 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
         .gap(Space::Sm)
         .align_items(AlignItems::Start)
         .justify_content(JustifyContent::Start)
-        .max_size(Dimension::Percent(1.0), Dimension::Percent(1.0))
+        .max_size(Length::Percent(1.0), Length::Percent(1.0))
         .shrink(1.0);
     match side {
         None => base.width(DIALOG_WIDTH),

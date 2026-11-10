@@ -11,7 +11,7 @@ use slotmap::DefaultKey;
 use smallvec::SmallVec;
 
 use crate::layout::LayoutStyle;
-use crate::layout::style_data::Dimension;
+use crate::layout::style_data::Length;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum CacheDecision {
@@ -195,12 +195,12 @@ impl Node {
         self.get_extension::<LayoutStyle>().is_some_and(|style| {
             matches!(
                 style.data().size.width,
-                Dimension::Px(_)
-                    | Dimension::Percent(_)
-                    | Dimension::Fill
-                    | Dimension::Rows(_)
-                    | Dimension::Cols(_)
-                    | Dimension::Em(_)
+                Length::Px(_)
+                    | Length::Percent(_)
+                    | Length::Fill
+                    | Length::Rows(_)
+                    | Length::Cols(_)
+                    | Length::Em(_)
             )
         })
     }

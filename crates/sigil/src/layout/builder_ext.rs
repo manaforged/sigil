@@ -1,7 +1,7 @@
 use crate::kernel::{Node, NodeBuilder, container};
 use crate::widgets::Widget;
 
-use crate::layout::{LayoutStyle, Space};
+use crate::layout::{LayoutStyle, Space, TrackSize};
 use crate::style::{Metrics, StyleBinding};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -28,6 +28,12 @@ pub fn column() -> NodeBuilder {
     )
 }
 
+/// A container that places its children in a grid with these column tracks.
+#[must_use]
+pub fn grid(columns: impl Into<Vec<TrackSize>>) -> NodeBuilder {
+    container().layout(LayoutStyle::grid(columns.into()))
+}
+
 macro_rules! layout_setters {
     ($($(#[$doc:meta])* $name:ident($($arg:ident: $ty:ty),*);)*) => {
         $($(#[$doc])* #[must_use] fn $name(self $(, $arg: $ty)*) -> Self {
@@ -39,14 +45,18 @@ macro_rules! layout_setters {
 macro_rules! layout_methods {
     () => {
         $crate::layout::builder_ext::layout_setters! {
+            /// Sets the space between the node's children.
+            gap(gap: impl Into<$crate::layout::Space>);
+            /// Sets the space inside the node's edges.
+            padding(padding: impl Into<$crate::layout::Space>);
             /// Sets the node's smallest width.
-            min_width(width: impl Into<$crate::layout::Dimension>);
+            min_width(width: impl Into<$crate::layout::Length>);
             /// Sets the node's smallest height.
-            min_height(height: impl Into<$crate::layout::Dimension>);
+            min_height(height: impl Into<$crate::layout::Length>);
             /// Sets the node's largest width.
-            max_width(width: impl Into<$crate::layout::Dimension>);
+            max_width(width: impl Into<$crate::layout::Length>);
             /// Sets the node's largest height.
-            max_height(height: impl Into<$crate::layout::Dimension>);
+            max_height(height: impl Into<$crate::layout::Length>);
             /// Makes the node as wide as its parent.
             fill_width();
             /// Makes the node as high as its parent.
@@ -56,7 +66,7 @@ macro_rules! layout_methods {
             /// Sets the node's flex shrink factor.
             shrink(factor: f32);
             /// Sets the node's size along the main axis before it grows or shrinks.
-            flex_basis(basis: impl Into<$crate::layout::Dimension>);
+            flex_basis(basis: impl Into<$crate::layout::Length>);
             /// Sets the space inside the node's left and right edges.
             padding_x(padding: impl Into<$crate::layout::Space>);
             /// Sets the space inside the node's top and bottom edges.
@@ -94,15 +104,15 @@ macro_rules! layout_methods {
             /// Sets what happens to content that is higher than the node.
             overflow_y(overflow: $crate::layout::Overflow);
             /// Sets the distance from each edge of the parent for an absolute node.
-            inset(inset: impl Into<$crate::layout::Dimension>);
+            inset(inset: impl Into<$crate::layout::Length>);
             /// Sets the distance from the parent's top edge for an absolute node.
-            inset_top(top: impl Into<$crate::layout::Dimension>);
+            inset_top(top: impl Into<$crate::layout::Length>);
             /// Sets the distance from the parent's right edge for an absolute node.
-            inset_right(right: impl Into<$crate::layout::Dimension>);
+            inset_right(right: impl Into<$crate::layout::Length>);
             /// Sets the distance from the parent's bottom edge for an absolute node.
-            inset_bottom(bottom: impl Into<$crate::layout::Dimension>);
+            inset_bottom(bottom: impl Into<$crate::layout::Length>);
             /// Sets the distance from the parent's left edge for an absolute node.
-            inset_left(left: impl Into<$crate::layout::Dimension>);
+            inset_left(left: impl Into<$crate::layout::Length>);
             /// Sets whether the node is placed in the flow or at its insets.
             position(position: $crate::layout::Position);
             /// Sets how the node lays out its children.

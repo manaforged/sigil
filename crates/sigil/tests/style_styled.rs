@@ -22,7 +22,7 @@ use sigil::geometry::Size;
 use sigil::kernel::{Cx, IntoNode, NodeBuilder, container, text};
 use sigil::layout::Space;
 use sigil::layout::{
-    AlignItems, Dimension, Display, FlexDirection, JustifyContent, LayoutStyle, Overflow,
+    AlignItems, Display, FlexDirection, JustifyContent, LayoutStyle, Length, Overflow,
 };
 use sigil::prelude::Widget;
 use sigil::scene::{DrawRect, SceneCommand, emit_scene};
@@ -213,10 +213,10 @@ fn padding_methods_sweep_order_preserved() {
         .padding_bottom(Space::Xxxl)
         .padding_left(Space::raw(56.0, "test fixture"));
     let padding = sigil::testing::style_data(&style).padding;
-    assert_eq!(padding.top, Dimension::Px(32.0));
-    assert_eq!(padding.right, Dimension::Px(40.0));
-    assert_eq!(padding.bottom, Dimension::Px(48.0));
-    assert_eq!(padding.left, Dimension::Px(56.0));
+    assert_eq!(padding.top, Length::Px(32.0));
+    assert_eq!(padding.right, Length::Px(40.0));
+    assert_eq!(padding.bottom, Length::Px(48.0));
+    assert_eq!(padding.left, Length::Px(56.0));
 }
 
 #[test]
@@ -224,14 +224,14 @@ fn sizing_methods_emit_correct_atoms() {
     let style = LayoutStyle::default()
         .width(100.0)
         .height(50.0)
-        .width(Dimension::Percent(1.0));
+        .width(Length::Percent(1.0));
     assert_eq!(
         sigil::testing::style_data(&style).size.width,
-        Dimension::Percent(1.0)
+        Length::Percent(1.0)
     );
     assert_eq!(
         sigil::testing::style_data(&style).size.height,
-        Dimension::Px(50.0)
+        Length::Px(50.0)
     );
 }
 
@@ -335,8 +335,8 @@ fn flex_layout_methods_emit_correct_atoms() {
     assert_eq!(data.flex_direction, FlexDirection::Row);
     assert_eq!(data.align_items, Some(AlignItems::Center));
     assert_eq!(data.justify_content, Some(JustifyContent::SpaceBetween));
-    assert_eq!(data.gap.width, Dimension::Px(8.0));
-    assert_eq!(data.gap.height, Dimension::Px(8.0));
+    assert_eq!(data.gap.width, Length::Px(8.0));
+    assert_eq!(data.gap.height, Length::Px(8.0));
     assert_eq!(data.flex_grow, 1.0);
     assert_eq!(data.flex_shrink, 0.5);
 }

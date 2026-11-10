@@ -23,14 +23,11 @@ fn build() -> impl IntoNode {
 }
 
 fn root(det: Signal<f32>, phase: Signal<f32>) -> NodeBuilder {
-    container()
+    column()
         .role(Role::Main)
-        .layout(
-            LayoutStyle::flex_column()
-                .fill()
-                .gap(Space::Xl)
-                .padding(Space::Xxl),
-        )
+        .fill()
+        .gap(Space::Xl)
+        .padding(Space::Xxl)
         .bg(Token::Surface)
         .child(
             panel()

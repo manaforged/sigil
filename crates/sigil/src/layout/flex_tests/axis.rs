@@ -9,10 +9,10 @@ fn direction(dir: FlexDirection, w: f32, h: f32) -> StyleData {
 
 fn basis(px: f32, grow: f32, shrink: f32) -> StyleData {
     StyleData {
-        flex_basis: Dimension::Px(px),
+        flex_basis: Length::Px(px),
         flex_grow: grow,
         flex_shrink: shrink,
-        ..sized(Dimension::Auto, Dimension::Px(20.0))
+        ..sized(Length::Auto, Length::Px(20.0))
     }
 }
 
@@ -67,7 +67,7 @@ fn column_reverse_reverses_block_order() {
 #[test]
 fn flex_basis_overrides_size_for_main_axis() {
     let item = StyleData {
-        flex_basis: Dimension::Px(80.0),
+        flex_basis: Length::Px(80.0),
         ..fixed(10.0, 20.0)
     };
     let b = kids(flex_box(300.0, 100.0), &[item])[0];

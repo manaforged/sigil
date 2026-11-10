@@ -157,7 +157,9 @@ Static styling works on any node. Interaction styling goes through `interactive(
 # let _ = {
 interactive(
     container()
-        .layout(LayoutStyle::block().fixed_size(328.0, 304.0).padding(Space::Xxl))
+        .width(328.0)
+        .height(304.0)
+        .padding(Space::Xxl)
         .bg(Token::Accent)
         .rounded(Radius::Md),
 )

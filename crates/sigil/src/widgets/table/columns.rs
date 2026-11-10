@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::rc::Rc;
 
 use crate::kernel::IntoNode;
-use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle, Overflow};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Overflow};
 
 kittest_pub! {
     /// Smallest width a table column can be resized to.
@@ -237,7 +237,7 @@ impl<Row> TableColumn<Row> {
             ColumnWidth::Fixed(px) => style.fixed_size(px.max(0.0), height).shrink(0.0),
             ColumnWidth::Fraction(fraction) => style
                 .height(height)
-                .flex_basis(Dimension::Px(0.0))
+                .flex_basis(Length::Px(0.0))
                 .grow(fraction.max(0.0))
                 .min_size(floor, height)
                 .shrink(1.0),

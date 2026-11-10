@@ -52,8 +52,8 @@ A `Node` is a snapshot. Read `value()`, `is_checked()`, `is_focused()` and the o
 fn form() -> impl IntoNode {
     let name = signal(String::new());
     let agree = signal(false);
-    container()
-        .layout(LayoutStyle::flex_column())
+    column()
+        .gap(Space::None)
         .child(field("Name", text_field(name)))
         .child(checkbox(agree).label("Agree"))
 }

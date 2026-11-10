@@ -8,12 +8,12 @@ fn clamp_lets_min_win_and_passes_through_unbounded() {
 
 #[test]
 fn resolve_lp_percent_resolves_against_basis() {
-    assert!(near(resolve_lp(Dimension::Percent(0.25), 200.0), 50.0));
+    assert!(near(resolve_lp(Length::Percent(0.25), 200.0), 50.0));
 }
 
 #[test]
 fn dim_to_border_box_honors_box_sizing_and_auto() {
-    let px = Dimension::Px(100.0);
+    let px = Length::Px(100.0);
     assert_eq!(
         dim_to_border_box(px, 0.0, 20.0, BoxSizing::ContentBox),
         Some(120.0)
@@ -22,7 +22,7 @@ fn dim_to_border_box_honors_box_sizing_and_auto() {
         dim_to_border_box(px, 0.0, 20.0, BoxSizing::BorderBox),
         Some(100.0)
     );
-    assert!(dim_to_border_box(Dimension::Auto, 100.0, 0.0, BoxSizing::ContentBox).is_none());
+    assert!(dim_to_border_box(Length::Auto, 100.0, 0.0, BoxSizing::ContentBox).is_none());
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn algo_edges_inline_and_block_sum_match_struct_fields() {
 
 #[test]
 fn percent_dimension_resolves_against_container() {
-    let item = sized(Dimension::Percent(0.25), Dimension::Px(20.0));
+    let item = sized(Length::Percent(0.25), Length::Px(20.0));
     assert!(near(kids(flex_box(400.0, 100.0), &[item])[0].w, 100.0));
 }
 
@@ -49,12 +49,12 @@ fn nested_auto_height_columns_probe_once_per_node() {
     let column = StyleData {
         display: Display::Flex,
         flex_direction: FlexDirection::Column,
-        ..sized(Dimension::Px(200.0), Dimension::Auto)
+        ..sized(Length::Px(200.0), Length::Auto)
     };
     let root = f.insert(
         None,
         StyleData {
-            size: StyleSize::new(Dimension::Px(200.0), Dimension::Px(400.0)),
+            size: StyleSize::new(Length::Px(200.0), Length::Px(400.0)),
             ..column.clone()
         },
     );
@@ -91,7 +91,7 @@ fn fill_child_inside_grow_item_does_not_shrink_siblings() {
             display: Display::Flex,
             box_sizing: BoxSizing::BorderBox,
             flex_grow: 1.0,
-            min_size: StyleSize::new(Dimension::Px(0.0), Dimension::Px(0.0)),
+            min_size: StyleSize::new(Length::Px(0.0), Length::Px(0.0)),
             ..StyleData::default()
         },
     );
@@ -101,7 +101,7 @@ fn fill_child_inside_grow_item_does_not_shrink_siblings() {
         StyleData {
             display: Display::Block,
             box_sizing: BoxSizing::BorderBox,
-            ..sized(Dimension::Fill, Dimension::Px(1.0))
+            ..sized(Length::Fill, Length::Px(1.0))
         },
     );
     let s = run(&f, parent, 400.0, 400.0);

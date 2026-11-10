@@ -47,8 +47,9 @@ pub(super) fn picker_modal(chat: Chat, picker: Picker) -> ModalBuilder {
                 pick(chat, picker, channel);
             }
         });
-    let results = container()
-        .layout(LayoutStyle::flex_column().fill_width())
+    let results = column()
+        .fill_width()
+        .gap(Space::None)
         .children_reactive(move || {
             let cursor = picker.cursor.get();
             let names = chat.names.get();
@@ -66,8 +67,9 @@ pub(super) fn picker_modal(chat: Chat, picker: Picker) -> ModalBuilder {
         .title("Switch channel")
         .dismiss_on_backdrop(true)
         .child(
-            container()
-                .layout(LayoutStyle::flex_column().fill_width().gap(rows(0.5)))
+            column()
+                .fill_width()
+                .gap(rows(0.5))
                 .key_capture(Key::ArrowDown, move |_| step(true))
                 .key_capture(Key::ArrowUp, move |_| step(false))
                 .child(search)

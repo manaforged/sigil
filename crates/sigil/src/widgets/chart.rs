@@ -317,9 +317,10 @@ impl ChartBuilder {
             .unwrap_or_else(|| self.natural_height())
             .max(MIN_HEIGHT);
         if let Some(px) = width {
-            self.layout_overrides.edit(LayoutEdit::Width(px));
+            self.layout_overrides.edit(LayoutEdit::Width(px.into()));
         }
-        self.layout_overrides.edit(LayoutEdit::Height(height));
+        self.layout_overrides
+            .edit(LayoutEdit::Height(height.into()));
         plot::PlotFrame {
             width,
             height,

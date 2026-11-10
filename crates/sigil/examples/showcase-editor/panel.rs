@@ -37,7 +37,7 @@ fn echo(lines: &mut Vec<String>, input: &str) {
 
 fn problems(ws: Workspace) -> NodeBuilder {
     let list = DIAGNOSTICS.iter().fold(
-        container().layout(LayoutStyle::flex_column().fill_width().padding_y(Space::Xs)),
+        column().fill_width().padding_y(Space::Xs).gap(Space::None),
         |list, diag| list.child(problem_row(ws, *diag)),
     );
     fill_scroll(list)
@@ -45,13 +45,11 @@ fn problems(ws: Workspace) -> NodeBuilder {
 
 fn output() -> NodeBuilder {
     let list = OUTPUT.iter().fold(
-        container().layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .padding_x(Space::Md)
-                .padding_y(Space::Sm)
-                .gap(Space::Xs),
-        ),
+        column()
+            .fill_width()
+            .padding_x(Space::Md)
+            .padding_y(Space::Sm)
+            .gap(Space::Xs),
         |list, line| {
             list.child(
                 text(*line)
@@ -65,14 +63,13 @@ fn output() -> NodeBuilder {
 }
 
 fn terminal_view(ws: Workspace) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill()
-                .min_size(0.0, 0.0)
-                .padding_x(Space::Md)
-                .padding_y(Space::Xs),
-        )
+    column()
+        .fill()
+        .min_width(0.0)
+        .min_height(0.0)
+        .padding_x(Space::Md)
+        .padding_y(Space::Xs)
+        .gap(Space::None)
         .child(terminal(ws.terminal, move |input| {
             ws.terminal.update(|lines| echo(lines, &input));
         }))
@@ -82,8 +79,11 @@ pub(crate) fn bottom_panel(ws: Workspace) -> NodeBuilder {
     let panel = BottomTab::ALL.into_iter().fold(tabs(), |panel, tab| {
         panel.tab(tab.label(), move || view(ws, tab))
     });
-    container()
-        .layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0))
+    column()
+        .fill()
+        .min_width(0.0)
+        .min_height(0.0)
+        .gap(Space::None)
         .bg(Token::SurfaceSubtle)
         .rounded(Radius::Md)
         .child(

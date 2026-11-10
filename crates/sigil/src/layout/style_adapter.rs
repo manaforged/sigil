@@ -112,6 +112,6 @@ fn apply_style_atom(atom: StyleAtom, layout: &mut LayoutStyle) {
     }
 }
 
-fn edge_px(px: i16) -> crate::layout::Dimension {
-    crate::layout::Dimension::Px(f32::from(px))
+fn edge_px(px: i16) -> crate::layout::Length {
+    crate::layout::Length::Px(f32::from(px))
 }

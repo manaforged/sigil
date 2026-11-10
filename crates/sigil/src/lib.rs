@@ -202,9 +202,13 @@ pub mod prelude {
         switch, text,
     };
     pub use crate::layout::audit::FlawKind;
+    kittest_pub! {
+        #[doc(hidden)]
+        pub use crate::layout::LayoutStyle;
+    }
     pub use crate::layout::{
-        AlignItems, Dimension, Display, FlexWrap, JustifyContent, LayoutStyle, Overflow, Position,
-        Space, TrackSize, cols, column, em, row, rows,
+        AlignItems, Display, FlexWrap, JustifyContent, Length, Overflow, Position, Space,
+        TrackSize, cols, column, em, grid, row, rows,
     };
     pub use crate::reactive::{IntervalId, Reactive, Signal, derived, effect, interval, signal};
     #[cfg(any(feature = "desktop", feature = "terminal"))]

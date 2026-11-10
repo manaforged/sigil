@@ -1,6 +1,6 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::Space;
-use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length};
 use crate::style::{Radius, Token};
 use crate::widgets::Widget;
 
@@ -48,7 +48,7 @@ impl Bars<'_> {
             LayoutStyle::flex_column().fill_width()
         };
         slot.grow(1.0)
-            .flex_basis(Dimension::Px(0.0))
+            .flex_basis(Length::Px(0.0))
             .min_size(0.0, 0.0)
             .justify_content(JustifyContent::Center)
             .align_items(AlignItems::Stretch)
@@ -57,13 +57,13 @@ impl Bars<'_> {
     fn group(&self) -> LayoutStyle {
         if self.vertical() {
             LayoutStyle::flex_row()
-                .width(Dimension::Percent(BAND))
+                .width(Length::Percent(BAND))
                 .min_width(MIN_BAR)
                 .fill_height()
                 .shrink(0.0)
         } else {
             LayoutStyle::flex_column()
-                .height(Dimension::Percent(BAND))
+                .height(Length::Percent(BAND))
                 .min_height(MIN_BAR)
                 .fill_width()
                 .shrink(0.0)
@@ -77,7 +77,7 @@ impl Bars<'_> {
             LayoutStyle::flex_row().fill_width()
         };
         lane.grow(1.0)
-            .flex_basis(Dimension::Px(0.0))
+            .flex_basis(Length::Px(0.0))
             .min_size(0.0, 0.0)
     }
 }
@@ -161,7 +161,7 @@ impl Cell<'_> {
         };
         container()
             .label(caption)
-            .layout(layout.grow(grow).flex_basis(Dimension::Px(0.0)))
+            .layout(layout.grow(grow).flex_basis(Length::Px(0.0)))
             .class([Radius::Sm.atom(), self.hue.bg()])
             .tone_scope(self.hue.tone)
     }
@@ -225,7 +225,7 @@ fn spacer(grow: f32) -> NodeBuilder {
     container().layout(
         LayoutStyle::block()
             .grow(grow.max(MIN_GROW))
-            .flex_basis(Dimension::Px(0.0))
+            .flex_basis(Length::Px(0.0))
             .min_size(0.0, 0.0),
     )
 }

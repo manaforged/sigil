@@ -10,7 +10,7 @@ use super::keys::install_handle_keys;
 use super::pane::{build_pane, shares_free_space};
 use crate::style::StateVariants;
 use crate::widgets::orientation::Orientation;
-use crate::widgets::{Edit, Sealed, Widget};
+use crate::widgets::{Edit, LayoutEdit, Sealed, Widget};
 
 pub(in crate::widgets) const HANDLE_PX: f32 = 6.0;
 
@@ -22,6 +22,7 @@ struct PaneEntry {
     min: f32,
     max: f32,
     grow: f32,
+    layout: LayoutOverrides,
 }
 
 /// Builder of a splitter.
@@ -95,6 +96,7 @@ impl SplitterBuilder {
                 min: 0.0,
                 max: f32::INFINITY,
                 grow: 0.0,
+                layout: LayoutOverrides::new(),
             },
         }
     }
@@ -187,7 +189,8 @@ impl SplitterBuilder {
         }
 
         for (pane_idx, (entry, grow)) in self.panes.into_iter().zip(grows).enumerate() {
-            root = root.child(build_pane(entry.content, pane_idx, state, grow));
+            let pane = build_pane(entry.content, pane_idx, state, grow);
+            root = root.child(entry.layout.finish(pane));
             if pane_idx + 1 < count {
                 root = root.child(build_handle(pane_idx, orientation, state));
             }
@@ -283,12 +286,16 @@ impl PaneBuilder {
 
 impl Sealed for PaneBuilder {
     fn edit(mut self, edit: Edit) -> Self {
-        match edit {
-            Edit::Layout(edit) => self.splitter.layout_overrides.edit(edit),
-            other => self
-                .splitter
-                .layout_overrides
-                .node_hook(move |node| other.apply(node)),
+        let main = match (&edit, self.splitter.orientation) {
+            (Edit::Layout(LayoutEdit::Width(size)), Orientation::Horizontal)
+            | (Edit::Layout(LayoutEdit::Height(size)), Orientation::Vertical) => size.px(),
+            _ => None,
+        };
+        match (edit, main) {
+            (_, Some(px)) => return self.initial(px),
+            (Edit::Layout(LayoutEdit::Grow(factor)), _) => return self.grow(factor),
+            (Edit::Layout(edit), _) => self.entry.layout.edit(edit),
+            (other, _) => return self.map_target(move |node| other.apply(node)),
         }
         self
     }
@@ -300,9 +307,8 @@ impl Sealed for PaneBuilder {
 }
 
 impl Widget for PaneBuilder {
-    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.splitter.layout_overrides.node_hook(f);
-        self
+    fn map_node(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
+        self.map_target(f)
     }
 }
 

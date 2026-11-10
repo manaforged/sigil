@@ -2,7 +2,7 @@ use crate::Error;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::{ComputedBox, NodeRef};
 use crate::layout::resolve::{NodeEdges, dim_to_border_box, resolve_absolute_xy, stretched};
-use crate::layout::style_data::{Axes, Dimension, Display, Position, StyleData};
+use crate::layout::style_data::{Axes, Display, Length, Position, StyleData};
 
 use super::intrinsic::{probed_content_extent, text_intrinsic};
 use super::{FlexCtx, layout_item_subtree};
@@ -124,15 +124,15 @@ fn absolute_size(
     (w, h)
 }
 
-fn trailing_anchored(leading: Dimension, trailing: Dimension) -> bool {
-    matches!(leading, Dimension::Auto | Dimension::Fill)
-        && !matches!(trailing, Dimension::Auto | Dimension::Fill)
+fn trailing_anchored(leading: Length, trailing: Length) -> bool {
+    matches!(leading, Length::Auto | Length::Fill)
+        && !matches!(trailing, Length::Auto | Length::Fill)
 }
 
 fn axis_size(
     explicit: Option<f32>,
-    leading: Dimension,
-    trailing: Dimension,
+    leading: Length,
+    trailing: Length,
     fill: f32,
     fit: Option<f32>,
 ) -> f32 {

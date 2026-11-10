@@ -2,8 +2,8 @@ thread_local! {
     static CELL: core::cell::Cell<f32> = const { core::cell::Cell::new(0.0) };
 }
 
-/// Sets the layout grid cell for spacing values.
-pub fn grid(cell: f32) {
+/// Sets the size of the cell that spacing values snap to.
+pub fn cell(cell: f32) {
     CELL.with(|active| active.set(if cell > 0.0 { cell } else { 0.0 }));
 }
 

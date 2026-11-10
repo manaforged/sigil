@@ -100,13 +100,10 @@ fn menus(ws: Workspace) -> impl IntoNode {
 }
 
 pub(crate) fn top_bar(ws: Workspace) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .gap(Space::Sm)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .fill_width()
+        .gap(Space::Sm)
+        .align_items(AlignItems::Center)
         .child(menus(ws))
         .child(spacer())
         .child(
@@ -133,12 +130,9 @@ pub(crate) fn top_bar(ws: Workspace) -> NodeBuilder {
 }
 
 fn severity_item(severity: Severity) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .gap(Space::Xs)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .gap(Space::Xs)
+        .align_items(AlignItems::Center)
         .child(
             icon(severity_icon(severity))
                 .tone(severity_tone(severity))
@@ -168,12 +162,9 @@ fn language_text(ws: Workspace) -> TextContent {
 }
 
 fn right_group(ws: Workspace) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .gap(Space::Lg)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .gap(Space::Lg)
+        .align_items(AlignItems::Center)
         .child(
             text(caret_text(ws))
                 .nowrap()
@@ -215,12 +206,9 @@ fn right_group(ws: Workspace) -> NodeBuilder {
 
 pub(crate) fn status(ws: Workspace) -> NodeBuilder {
     status_bar([
-        container()
-            .layout(
-                LayoutStyle::flex_row()
-                    .gap(Space::Xs)
-                    .align_items(AlignItems::Center),
-            )
+        row()
+            .gap(Space::Xs)
+            .align_items(AlignItems::Center)
             .child(dot(Tone::Success))
             .child(
                 text(BRANCH)
@@ -232,12 +220,9 @@ pub(crate) fn status(ws: Workspace) -> NodeBuilder {
                 .nowrap()
                 .font_size(super::TEXT_XS, "example layout"),
         ),
-        container()
-            .layout(
-                LayoutStyle::flex_row()
-                    .gap(Space::Sm)
-                    .align_items(AlignItems::Center),
-            )
+        row()
+            .gap(Space::Sm)
+            .align_items(AlignItems::Center)
             .pointer_down(move |_| run(ws, Command::Problems))
             .child(severity_item(Severity::Error))
             .child(severity_item(Severity::Warning))

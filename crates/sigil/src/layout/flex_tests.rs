@@ -13,8 +13,8 @@ use super::*;
 use crate::layout::forest::{AvailableSpace, LayoutForest, MeasureScope};
 use crate::layout::resolve::{ResolvedEdges as AlgoEdges, clamp, dim_to_border_box, resolve_lp};
 use crate::layout::style_data::{
-    AlignContent, AlignItems, Axes as StyleSize, BoxSizing, Dimension, Display, Edges,
-    FlexDirection, FlexWrap, JustifyContent, Position, StyleData,
+    AlignContent, AlignItems, Axes as StyleSize, BoxSizing, Display, Edges, FlexDirection,
+    FlexWrap, JustifyContent, Length, Position, StyleData,
 };
 
 impl FlexSolver<'_> {
@@ -49,7 +49,7 @@ fn run(
 }
 
 fn fixed(w: f32, h: f32) -> StyleData {
-    sized(Dimension::Px(w), Dimension::Px(h))
+    sized(Length::Px(w), Length::Px(h))
 }
 
 fn flex_box(w: f32, h: f32) -> StyleData {
@@ -59,7 +59,7 @@ fn flex_box(w: f32, h: f32) -> StyleData {
     }
 }
 
-fn sized(w: Dimension, h: Dimension) -> StyleData {
+fn sized(w: Length, h: Length) -> StyleData {
     StyleData {
         size: StyleSize::new(w, h),
         ..StyleData::default()

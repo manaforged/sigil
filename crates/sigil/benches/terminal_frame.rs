@@ -16,7 +16,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::Host;
 use sigil::kernel::{container, text};
 use sigil::reactive::Owner;
-use sigil::style::{Tone, grid};
+use sigil::style::{Tone, cell};
 use sigil::terminal::{ColorDepth, Grid};
 use sigil::widgets::{ColumnWidth, TableColumn, TableState, chip, table};
 
@@ -149,7 +149,7 @@ fn frame(c: &mut Criterion) {
 
     group.bench_function("phase/layout", |b| {
         Owner::scope("bench-layout", || {
-            grid(CELL);
+            cell(CELL);
             let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
             drop(step(&mut host, [], COLS, ROWS));
@@ -162,7 +162,7 @@ fn frame(c: &mut Criterion) {
 
     group.bench_function("phase/focus", |b| {
         Owner::scope("bench-focus", || {
-            grid(CELL);
+            cell(CELL);
             let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
             drop(step(&mut host, [], COLS, ROWS));
@@ -172,7 +172,7 @@ fn frame(c: &mut Criterion) {
 
     group.bench_function("phase/scene", |b| {
         Owner::scope("bench-scene", || {
-            grid(CELL);
+            cell(CELL);
             let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
             drop(step(&mut host, [], COLS, ROWS));
@@ -182,7 +182,7 @@ fn frame(c: &mut Criterion) {
 
     group.bench_function("phase/raster", |b| {
         Owner::scope("bench-raster", || {
-            grid(CELL);
+            cell(CELL);
             let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
             drop(step(&mut host, [], COLS, ROWS));
@@ -200,7 +200,7 @@ fn frame(c: &mut Criterion) {
 
 fn allocations(_c: &mut Criterion) {
     Owner::scope("bench-allocs", || {
-        grid(CELL);
+        cell(CELL);
         let mut host = Host::new(HostMode::Cell);
         let mut screen = sigil::terminal::Screen::new(COLS, ROWS);
         mount(&mut host, 200);
@@ -251,7 +251,7 @@ fn write(c: &mut Criterion) {
     let mut group = c.benchmark_group("tui-write");
     group.bench_function("diff-unchanged", |b| {
         Owner::scope("bench-write", || {
-            grid(CELL);
+            cell(CELL);
             let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
             let frame = step(&mut host, [], COLS, ROWS);
@@ -265,7 +265,7 @@ fn write(c: &mut Criterion) {
     });
     group.bench_function("full-redraw", |b| {
         Owner::scope("bench-write-full", || {
-            grid(CELL);
+            cell(CELL);
             let mut host = Host::new(HostMode::Cell);
             mount(&mut host, 200);
             let frame = step(&mut host, [], COLS, ROWS);

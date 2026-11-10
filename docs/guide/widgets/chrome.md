@@ -20,7 +20,7 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 
 ## panel and card
 
-`panel()`: a titled surface: `.title(str)` adds a medium-weight title 8 px above the body, `.padding(Space)` (default `Space::Lg`), `.elevation(tier)` picks the surface tier, `.child(node)`, `.width(px)`. Tier 0 is a flat `surface` fill. Tier 1 and above add a 1 px `border` and a shadow that deepens with each tier.
+`panel()`: a titled surface: `.title(str)` adds a medium-weight title 8 px above the body, `.padding(Space)` (default `Space::Lg`, with `.padding_x(..)` and `.padding_y(..)` applied in call order), `.elevation(tier)` picks the surface tier, `.child(node)`, `.width(px)`. Tier 0 is a flat `surface` fill. Tier 1 and above add a 1 px `border` and a shadow that deepens with each tier.
 
 `card(child) -> NodeBuilder`: the lighter variant: a `rounded-md` `surface` column with the same 1 px `border`, 12 px padding, and 8 px gaps. A panel at tier 1 and a card share one fill and one border.
 
@@ -57,7 +57,7 @@ splitter(Orientation::Horizontal)
 ```
 
 - `.child(node, initial_px)`: simple pane.
-- `.pane(node)`: returns a pane builder with `.initial(px)`, `.min(px)`, `.max(px)`, `.grow(factor)`; finish with `.commit()`, another `.pane(...)`, or return it from a component.
+- `.pane(node)`: returns a pane builder with `.initial(px)`, `.min(px)`, `.max(px)`, `.grow(factor)`. The layout setters, such as `.min_width(..)` and `.padding(..)`, set the pane. Finish with `.commit()`, another `.pane(...)`, or return it from a component.
 - `.min_size(index, px)` / `.max_size(index, px)`: clamp by index.
 - `.sizes_bind(Signal<Vec<f32>>)`: observe or persist pane sizes.
 - `.snap_points(handle_index, &[px])`: snap a handle to offsets within an 8 px threshold.
@@ -66,7 +66,7 @@ splitter(Orientation::Horizontal)
 
 `scroll(content: NodeBuilder)` measures the content itself (`size_reactive`). `.extent(f32 or Signal<f32>)` sets the total content height instead, for content whose height you already know.
 
-- `.height(px)` (default 240) / `.width(px)` / `.fill()`: size the viewport.
+- `.height(px)` (default 240) / `.width(px)` / `.fill()`: size the viewport. `.fill()` and `.fill_height()` take the height of the parent.
 - `.scroll_bind(Signal<f32>)`: expose the scroll offset.
 - `.follow_end(bool)`: start at the end and stay pinned there while content grows, until the user scrolls up (logs, chat).
 

@@ -5,8 +5,8 @@
 #![allow(clippy::doc_markdown)]
 
 use sigil::layout::{
-    AlignItems, Axes, BoxSizing, Dimension, Display, Edges, FlexDirection, JustifyContent,
-    Position, StyleData,
+    AlignItems, Axes, BoxSizing, Display, Edges, FlexDirection, JustifyContent, Length, Position,
+    StyleData,
 };
 
 #[test]
@@ -40,20 +40,20 @@ fn public_style_data_constructs_with_flex_subset() {
         flex_direction: FlexDirection::Row,
         flex_grow: 1.0,
         flex_shrink: 1.0,
-        flex_basis: Dimension::Px(80.0),
+        flex_basis: Length::Px(80.0),
         justify_content: Some(JustifyContent::SpaceBetween),
         align_items: Some(AlignItems::Center),
         align_self: Some(AlignItems::End),
-        size: Axes::new(Dimension::Px(200.0), Dimension::Px(100.0)),
-        padding: Edges::splat(Dimension::Px(4.0)),
-        margin: Edges::splat(Dimension::Px(2.0)),
+        size: Axes::new(Length::Px(200.0), Length::Px(100.0)),
+        padding: Edges::splat(Length::Px(4.0)),
+        margin: Edges::splat(Length::Px(2.0)),
         box_sizing: BoxSizing::BorderBox,
         ..StyleData::default()
     };
     assert_eq!(style.display, Display::Flex);
     assert_eq!(style.flex_direction, FlexDirection::Row);
     assert!((style.flex_grow - 1.0).abs() < f32::EPSILON);
-    assert_eq!(style.flex_basis, Dimension::Px(80.0));
+    assert_eq!(style.flex_basis, Length::Px(80.0));
 }
 
 #[test]

@@ -4,7 +4,7 @@
 )]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
 
-use sigil::layout::{Axes, Dimension, Display, LayoutDrive, NodeHandle, ResolvedBox, StyleData};
+use sigil::layout::{Axes, Display, LayoutDrive, Length, NodeHandle, ResolvedBox, StyleData};
 use sigil_kittest::FakeMeasure;
 
 fn drive() -> LayoutDrive {
@@ -13,7 +13,7 @@ fn drive() -> LayoutDrive {
 
 fn fixed(w: f32, h: f32) -> StyleData {
     StyleData {
-        size: Axes::new(Dimension::Px(w), Dimension::Px(h)),
+        size: Axes::new(Length::Px(w), Length::Px(h)),
         ..StyleData::default()
     }
 }

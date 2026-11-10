@@ -16,14 +16,11 @@ fn main() -> sigil::AppResult<()> {
 fn build() -> impl IntoNode {
     let name = signal(String::new());
     let url = signal(String::from("https://example.com"));
-    container()
+    column()
         .role(Role::Main)
-        .layout(
-            LayoutStyle::flex_column()
-                .fill()
-                .gap(Space::Lg)
-                .padding(Space::Xxl),
-        )
+        .fill()
+        .gap(Space::Lg)
+        .padding(Space::Xxl)
         .bg(Token::Surface)
         .child(text_field(name).placeholder("Enter your name"))
         .child(text_field(url).submit(|v| println!("submit: {v}")))

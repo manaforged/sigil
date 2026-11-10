@@ -1,9 +1,7 @@
-use sigil::layout::Space;
 use sigil::prelude::{
-    AlignItems, ControlSize, FontFamily, Icon, LayoutStyle, NodeBuilder, Paint, Radius,
-    TextContent, Token, Tone, button, container, derived, divider_horizontal, dropdown, field,
-    kv_grid, number_field, progress, scroll, section_label, slider, spacer, text, text_field,
-    toggle,
+    AlignItems, ControlSize, FontFamily, Icon, NodeBuilder, Paint, Radius, Space, TextContent,
+    Token, Tone, button, column, container, derived, divider_horizontal, dropdown, field, kv_grid,
+    number_field, progress, row, scroll, section_label, slider, spacer, text, text_field, toggle,
 };
 use sigil::prelude::{IntoNode, Widget};
 
@@ -17,24 +15,19 @@ use super::pane;
 
 pub(crate) fn panel(console: Console) -> NodeBuilder {
     pane()
-        .layout(
-            LayoutStyle::flex_column()
-                .width(INSPECTOR_WIDTH)
-                .shrink(0.0)
-                .fill_height()
-                .min_size(0.0, 0.0),
-        )
+        .width(INSPECTOR_WIDTH)
+        .shrink(0.0)
+        .fill_height()
+        .min_width(0.0)
+        .min_height(0.0)
         .child(header(console))
         .child(divider_horizontal())
         .child(
             scroll(
-                container()
-                    .layout(
-                        LayoutStyle::flex_column()
-                            .fill_width()
-                            .padding(Space::Md)
-                            .gap(Space::Md),
-                    )
+                column()
+                    .fill_width()
+                    .padding(Space::Md)
+                    .gap(Space::Md)
                     .child(section_label("Live log"))
                     .child(log_view(console))
                     .child(section_label("Rollout"))
@@ -52,13 +45,10 @@ fn read(console: Console, pick: fn(&Job) -> String) -> impl Fn() -> String + 'st
 
 fn header(console: Console) -> NodeBuilder {
     let progress_value = derived(move || console.status_of(console.focus.get()).progress());
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .padding(Space::Md)
-                .gap(Space::Sm),
-        )
+    column()
+        .fill_width()
+        .padding(Space::Md)
+        .gap(Space::Sm)
         .child(title_row(console))
         .child(
             text(read(console, |job| job.message.to_owned()))
@@ -73,16 +63,12 @@ fn header(console: Console) -> NodeBuilder {
         .child(actions(console))
 }
 
-fn inline_row() -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .fill_width()
-        .gap(Space::Sm)
-        .align_items(AlignItems::Center)
+fn inline_row() -> NodeBuilder {
+    row().fill_width().gap(Space::Sm)
 }
 
 fn title_row(console: Console) -> NodeBuilder {
-    container()
-        .layout(inline_row())
+    inline_row()
         .child(
             text(read(console, |job| job.sha.to_owned()))
                 .nowrap()
@@ -95,8 +81,7 @@ fn title_row(console: Console) -> NodeBuilder {
 }
 
 fn actions(console: Console) -> NodeBuilder {
-    container()
-        .layout(inline_row())
+    inline_row()
         .child(
             button("Retry")
                 .icon(Icon::RefreshCw)
@@ -115,13 +100,10 @@ fn actions(console: Console) -> NodeBuilder {
 
 fn log_view(console: Console) -> impl IntoNode {
     scroll(
-        container()
-            .layout(
-                LayoutStyle::flex_column()
-                    .fill_width()
-                    .padding(Space::Sm)
-                    .gap(Space::Xs),
-            )
+        column()
+            .fill_width()
+            .padding(Space::Sm)
+            .gap(Space::Xs)
             .children_reactive(move || {
                 let slot = console.focus.get();
                 let lines = console.log.with(|all| {
@@ -153,20 +135,17 @@ fn quiet(body: &'static str) -> NodeBuilder {
 }
 
 fn log_line(line: LogLine) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .gap(Space::Md)
-                .align_items(AlignItems::Start),
-        )
+    row()
+        .fill_width()
+        .gap(Space::Md)
+        .align_items(AlignItems::Start)
         .child(
             text(line.time)
                 .nowrap()
                 .font_size(TEXT_SMALL, "example layout")
                 .font_family(FontFamily::Mono)
                 .text_color(Token::OnSurfaceMuted)
-                .layout(LayoutStyle::block().shrink(0.0)),
+                .shrink(0.0),
         )
         .child(
             text(line.text)
@@ -174,7 +153,8 @@ fn log_line(line: LogLine) -> NodeBuilder {
                 .font_size(TEXT_SMALL, "example layout")
                 .font_family(FontFamily::Mono)
                 .text_color(line.tone.solid())
-                .layout(LayoutStyle::block().grow(1.0).min_width(0.0)),
+                .grow(1.0)
+                .min_width(0.0),
         )
 }
 
@@ -184,21 +164,19 @@ fn form(rollout: Rollout) -> NodeBuilder {
         .map(|region| region.label().to_owned())
         .collect();
     let canary = rollout.canary;
-    container()
-        .layout(LayoutStyle::flex_column().fill_width().gap(Space::Md))
+    column()
+        .fill_width()
+        .gap(Space::Md)
         .child(field(
             "Target region",
             dropdown(rollout.region, regions).label("Target region"),
         ))
         .child(field(
             "Canary percent",
-            container()
-                .layout(
-                    LayoutStyle::flex_row()
-                        .fill_width()
-                        .gap(Space::Md)
-                        .align_items(AlignItems::Center),
-                )
+            row()
+                .fill_width()
+                .gap(Space::Md)
+                .align_items(AlignItems::Center)
                 .child(
                     slider(canary, 0.0..=100.0)
                         .step(CANARY_STEP)

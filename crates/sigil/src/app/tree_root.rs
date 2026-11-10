@@ -1,5 +1,5 @@
 use crate::kernel::{Cx, NodeId};
-use crate::layout::{Dimension, LayoutStyle};
+use crate::layout::{LayoutStyle, Length};
 
 pub(crate) fn fill_root(cx: &mut Cx, root: NodeId) {
     if let Some(node) = cx.get_mut(root) {
@@ -8,11 +8,11 @@ pub(crate) fn fill_root(cx: &mut Cx, root: NodeId) {
             .cloned()
             .unwrap_or_default();
         let size = &mut style.data_mut().size;
-        if size.width == Dimension::Auto {
-            size.width = Dimension::Fill;
+        if size.width == Length::Auto {
+            size.width = Length::Fill;
         }
-        if size.height == Dimension::Auto {
-            size.height = Dimension::Fill;
+        if size.height == Length::Auto {
+            size.height = Length::Fill;
         }
         let _ = node.attach(style);
     }

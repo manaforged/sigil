@@ -1,7 +1,7 @@
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::NodeRef;
 use crate::layout::resolve::{NodeEdges, clamp, dim_to_border_box};
-use crate::layout::style_data::{Dimension, Display, FlexWrap, Overflow, Position, StyleData};
+use crate::layout::style_data::{Display, FlexWrap, Length, Overflow, Position, StyleData};
 
 use super::sizing::{container_inner_size, item_min_max_main};
 use super::{Axis2, FlexCtx, item_main_basis, layout_item_subtree, main_gap};
@@ -18,7 +18,7 @@ pub(super) fn min_content_width(ctx: &FlexCtx<'_, '_>, node: NodeRef<'_>) -> f32
         dim_to_border_box(style.min_size.width, ctx.cb.w, chrome, style.box_sizing),
         dim_to_border_box(style.max_size.width, ctx.cb.w, chrome, style.box_sizing),
     );
-    let sized = matches!(style.size.width, Dimension::Px(_))
+    let sized = matches!(style.size.width, Length::Px(_))
         .then(|| dim_to_border_box(style.size.width, ctx.cb.w, chrome, style.box_sizing))
         .flatten();
     let inner = sized.unwrap_or_else(|| content_min_width(ctx, node, style) + chrome);

@@ -11,7 +11,7 @@ The public modules are `animation`, `app`, `clipboard`, `events`, `geometry`, `i
 | `hal` | Traits for the renderer, shell, text engine, accessibility, and scheduler. Layout constraint types (`Dim`, `Size`). |
 | `reactive` | Signal graph, owner tree, `EventChannel`, phases. |
 | `kernel` | `Cx`, `NodeId`, builders, semantics, reactive children. |
-| `layout` | `LayoutEngine`, `LayoutStyle`, the incremental drive. |
+| `layout` | `LayoutEngine`, the container functions, the incremental drive. |
 | `style` | `Paint`, `Token`, theme, metrics. |
 | `events` | Hit testing, focus walk, pointer capture, handler builders. |
 | `text` | Shaping, measurement, paragraph cache, fonts. |

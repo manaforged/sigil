@@ -125,7 +125,7 @@ fn field_inner_layout(inputs: &FieldInputs, adorn: &Adornments) -> LayoutStyle {
         _ if adorned => LayoutStyle::flex_row()
             .grow(1.0)
             .shrink(1.0)
-            .min_size(0.0, crate::layout::Dimension::Auto),
+            .min_size(0.0, crate::layout::Length::Auto),
         Some(w) => LayoutStyle::flex_row().width(2.0f32.mul_add(-inset, w).max(0.0)),
         None => LayoutStyle::flex_row().fill_width().grow(1.0),
     };

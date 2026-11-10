@@ -54,7 +54,7 @@ impl From<f32> for LengthPercentageAuto {
 /// The length of a size, padding, margin, gap, or inset.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[non_exhaustive]
-pub enum Dimension {
+pub enum Length {
     /// The px dimension.
     Px(f32),
     /// The percent dimension.
@@ -72,7 +72,7 @@ pub enum Dimension {
     Em(f32),
 }
 
-impl Dimension {
+impl Length {
     pub(crate) const fn definite(self) -> Option<LengthPercentage> {
         match self {
             Self::Px(px) => Some(LengthPercentage::Px(px)),
@@ -85,20 +85,20 @@ impl Dimension {
     }
 }
 
-impl From<Dimension> for LengthPercentageAuto {
-    fn from(value: Dimension) -> Self {
+impl From<Length> for LengthPercentageAuto {
+    fn from(value: Length) -> Self {
         match value {
-            Dimension::Auto | Dimension::Fill => Self::Auto,
-            Dimension::Px(px) => Self::Px(px),
-            Dimension::Percent(pct) => Self::Percent(pct),
-            Dimension::Rows(count) => Self::Px(TextLength::Rows(count).px()),
-            Dimension::Cols(count) => Self::Px(TextLength::Cols(count).px()),
-            Dimension::Em(count) => Self::Px(TextLength::Em(count).px()),
+            Length::Auto | Length::Fill => Self::Auto,
+            Length::Px(px) => Self::Px(px),
+            Length::Percent(pct) => Self::Percent(pct),
+            Length::Rows(count) => Self::Px(TextLength::Rows(count).px()),
+            Length::Cols(count) => Self::Px(TextLength::Cols(count).px()),
+            Length::Em(count) => Self::Px(TextLength::Em(count).px()),
         }
     }
 }
 
-impl From<f32> for Dimension {
+impl From<f32> for Length {
     fn from(value: f32) -> Self {
         Self::Px(value)
     }
@@ -325,19 +325,19 @@ pub struct StyleData {
     pub flex_grow: f32,
     pub flex_shrink: f32,
     pub stretch_width: bool,
-    pub flex_basis: Dimension,
+    pub flex_basis: Length,
     pub justify_content: Option<JustifyContent>,
     pub align_items: Option<AlignItems>,
     pub align_content: Option<AlignContent>,
     pub align_self: Option<AlignItems>,
-    pub gap: Axes<Dimension>,
-    pub margin: Edges<Dimension>,
-    pub inset: Edges<Dimension>,
-    pub padding: Edges<Dimension>,
-    pub border: Edges<Dimension>,
-    pub size: Axes<Dimension>,
-    pub min_size: Axes<Dimension>,
-    pub max_size: Axes<Dimension>,
+    pub gap: Axes<Length>,
+    pub margin: Edges<Length>,
+    pub inset: Edges<Length>,
+    pub padding: Edges<Length>,
+    pub border: Edges<Length>,
+    pub size: Axes<Length>,
+    pub min_size: Axes<Length>,
+    pub max_size: Axes<Length>,
     pub order: i32,
     pub box_sizing: BoxSizing,
     pub grid_template_columns: Vec<TrackSize>,
@@ -361,19 +361,19 @@ impl Default for StyleData {
             flex_grow: 0.0,
             flex_shrink: 1.0,
             stretch_width: false,
-            flex_basis: Dimension::Auto,
+            flex_basis: Length::Auto,
             justify_content: None,
             align_items: None,
             align_content: None,
             align_self: None,
-            gap: Axes::splat(Dimension::Px(0.0)),
-            margin: Edges::splat(Dimension::Px(0.0)),
-            inset: Edges::splat(Dimension::Auto),
-            padding: Edges::splat(Dimension::Px(0.0)),
-            border: Edges::splat(Dimension::Px(0.0)),
-            size: Axes::splat(Dimension::Auto),
-            min_size: Axes::splat(Dimension::Auto),
-            max_size: Axes::splat(Dimension::Auto),
+            gap: Axes::splat(Length::Px(0.0)),
+            margin: Edges::splat(Length::Px(0.0)),
+            inset: Edges::splat(Length::Auto),
+            padding: Edges::splat(Length::Px(0.0)),
+            border: Edges::splat(Length::Px(0.0)),
+            size: Axes::splat(Length::Auto),
+            min_size: Axes::splat(Length::Auto),
+            max_size: Axes::splat(Length::Auto),
             order: 0,
             box_sizing: BoxSizing::ContentBox,
             grid_template_columns: Vec::new(),

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use crate::kernel::NodeBuilder;
-use crate::layout::{Dimension, LayoutStyle};
+use crate::layout::LayoutStyle;
 use crate::widgets::LayoutEdit;
 
 type NodeHook = Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>;
@@ -153,18 +153,12 @@ impl LayoutOverrides {
 
     #[must_use]
     pub(crate) fn width_hint(&self) -> Option<f32> {
-        match self.apply(LayoutStyle::default()).0.size.width {
-            Dimension::Px(px) => Some(px),
-            _ => None,
-        }
+        self.apply(LayoutStyle::default()).0.size.width.px()
     }
 
     #[must_use]
     pub(crate) fn height_hint(&self) -> Option<f32> {
-        match self.apply(LayoutStyle::default()).0.size.height {
-            Dimension::Px(px) => Some(px),
-            _ => None,
-        }
+        self.apply(LayoutStyle::default()).0.size.height.px()
     }
 
     #[must_use]

@@ -1,6 +1,6 @@
 use crate::layout::forest::NodeRef;
 use crate::layout::resolve::{NodeEdges, clamp, dim_to_border_box};
-use crate::layout::style_data::{Dimension, Overflow, StyleData};
+use crate::layout::style_data::{Length, Overflow, StyleData};
 
 use super::intrinsic::{container_intrinsic_cross, container_intrinsic_main, text_intrinsic};
 use super::{Axis2, FlexCtx};
@@ -63,7 +63,7 @@ pub(crate) fn item_cross_basis(
 ) -> (Option<f32>, bool) {
     let (_, chrome_cross) = axes.chrome(edges);
     let dim = axes.pick(style.size.height, style.size.width);
-    let was_auto = matches!(dim, Dimension::Auto);
+    let was_auto = matches!(dim, Length::Auto);
     let resolved = dim_to_border_box(dim, cb_cross, chrome_cross, style.box_sizing);
     let resolved = resolved.or_else(|| {
         if node.children().is_empty() {
@@ -90,7 +90,7 @@ pub(crate) fn item_main_basis(
         return v.max(0.0);
     }
     let dim = axes.pick(style.size.width, style.size.height);
-    let sized = !(intrinsic && matches!(dim, Dimension::Fill | Dimension::Percent(_)));
+    let sized = !(intrinsic && matches!(dim, Length::Fill | Length::Percent(_)));
     if sized && let Some(size) = dim_to_border_box(dim, cb_main, chrome_main, style.box_sizing) {
         return size.max(0.0);
     }
@@ -134,8 +134,8 @@ pub(crate) fn automatic_min_main(
         (style.overflow.height, style.size.height),
     );
     if overflow_main == Overflow::Visible
-        && style.flex_basis == Dimension::Auto
-        && size_main == Dimension::Auto
+        && style.flex_basis == Length::Auto
+        && size_main == Length::Auto
     {
         Some(content_basis.max(0.0))
     } else {

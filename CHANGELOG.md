@@ -116,7 +116,7 @@ First public release.
 | `kernel::announce(text)`, `announce_assertive(text)` | `kernel::announce(text, Live::Polite)`, `announce(text, Live::Assertive)` |
 | `scene::emit_scene(cx, root)`, `emit_scene_clipped(cx, root, clip)` | `scene::emit_scene(cx, root, clip)`; pass `None` for no clip |
 | `list_row(selected, title, detail)`, `list_row_with(selected, title, slots)`, `ListRowSlots::row` | `list_row(selected, title, slots)`; `detail` is `ListRowSlots::status` |
-| `image_rgba(w, h, rgba)`, `image_bytes(encoded)` | `ImageSource::from_rgba8(w, h, rgba).map(image)`, `ImageSource::decode(encoded).map(image)`; add `.layout(LayoutStyle::block())` for the old layout |
+| `image_rgba(w, h, rgba)`, `image_bytes(encoded)` | `ImageSource::from_rgba8(w, h, rgba).map(image)`, `ImageSource::decode(encoded).map(image)` |
 | `app::open_window(config, view)` | `WindowId::open(config, view)` |
 | `Host::new()`, `Host::cells()`, `Host::default()` | `Host::new(HostMode::Pixel)`, `Host::new(HostMode::Cell)` |
 | `tasks::TaskWorkers`, `AsyncRuntime::with_workers`, `AppConfig::task_workers(TaskWorkers)` | `AppConfig::task_workers(NonZeroUsize)` |
@@ -140,12 +140,13 @@ First public release.
 | `NodeBuilder::tone(Tone)`, `TextBuilder::tone(Tone)` (from `NodeStyleExt`) | `Widget::tone_scope(Tone)`; `tone` stays the widget tone on button, chart, chip, checkbox, icon, progress, radio group, sparkline, and stat |
 | `TooltipBuilder::shortcut(Option<impl Into<String>>)` | `TooltipBuilder::hint(Option<impl Into<String>>)` |
 | `CodeEditBuilder::key(f)` | `CodeEditBuilder::key_handler(f)` |
-| `ChipBuilder::layout(LayoutStyle) -> NodeBuilder` | `Widget::layout(LayoutStyle) -> ChipBuilder` |
-| `CanvasBuilder::layout`, `PaneBuilder::grow`, `TextFieldBuilder::autofocus`, `TextFieldBuilder::focus_when`, `TextEditBuilder::autofocus`, `TextEditBuilder::focus_when` | the `Widget` methods of the same name, with the same effect |
+| `ChipBuilder::layout(LayoutStyle) -> NodeBuilder` | the `Widget` layout setters, which return the `ChipBuilder` |
+| `CanvasBuilder::layout` | the `Widget` layout setters |
+| `PaneBuilder::grow`, `TextFieldBuilder::autofocus`, `TextFieldBuilder::focus_when`, `TextEditBuilder::autofocus`, `TextEditBuilder::focus_when` | the `Widget` methods of the same name, with the same effect |
 | `VerticalDivider`, `divider_vertical() -> VerticalDivider` | `divider_vertical() -> NodeBuilder` |
-| `PathNode::layout(LayoutStyle)`, which replaced the `fit` box | `Widget::layout`, which merges into it |
+| `PathNode::layout(LayoutStyle)`, which replaced the `fit` box | the `Widget` layout setters, which merge into it |
 | `widgets::layout_ext::LayoutOverrides` | `Widget::layout`, `width`, `height`, and `grow` |
-| A second `.layout(..)` on a widget builder replaced the first | Each `.layout(..)` merges, in call order, as on `NodeBuilder` |
+| A second `.layout(..)` on a widget builder replaced the first | Each layout setter merges, in call order, as on `NodeBuilder` |
 | `const fn color_field` | `fn color_field` |
 | `const fn divider_vertical` | `fn divider_vertical` |
 | `widgets::layout_ext` | private; its methods are `Widget` |
@@ -221,22 +222,26 @@ First public release.
 | `Theme::padding(size)`, `Theme::gap(size)` | `Theme::control_padding(size)`, `Theme::control_gap(size)` |
 | exhaustive `match` on `Easing`, `HostMode`, `ObjectFit`, `Dimension`, `Display`, `Position`, `TrackSize`, `SceneCommand`, `Clip`, `Elevation`, `Radius`, `ControlSize`, `ClipShape`, `ColorAtom`, `MaskImage`, `FontFamily`, `WebFontScript`, `ChangeKind`, `Side`, `RowTone`, `SparkMark`, `SparkFill`, `ColWidth`, `ColAlign`, `Density`, `SubmitKey`, `ScrollAnchor`, `SelectionMode`, or terminal `ColorDepth`, `Keyboard`, `Borders`, `Cursor`, `Notify`, `MouseTracking`, `Activity`, `Underline` | add a `_` arm; all are `#[non_exhaustive]` |
 | under feature `kittest`: crate-root `NodeType`, `AccessibleName`, `FocusScopeKind`, `ImageCrop`, `NodeExtensions`, `CaretGeometry`, `TextMeasure`, `HitPosition`, `TextAffinity` (use `sigil::kernel`, `sigil::layout`, `sigil::text`); `animation::{KeyframesId, linear_channel_to_srgb}`, `profile::Span`, `scene::DrawPath`, `style::{BorderStyle, GradientShape, FilterAtom, MaskAtom, MillisU16, PaintStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, TextRun, text_style_for}`, `terminal::{base64, detect}`, `widgets::interaction`, `widgets::RadioGroupBuilder`, `TextBuilder::runs`, `Date::parse_in`, `Date::render_in` | crate-private |
+| `Dimension` | `Length` |
 | `FocusIntent`, `ColAlign`, `ColWidth`, `DiagSeverity`, `PointerKind`, `terminal::Caps` | `FocusDirection`, `ColumnAlign`, `ColumnWidth`, `Severity`, `PointerType`, `terminal::Capabilities` |
-| `.layout(LayoutStyle::default().fixed_size(w, h))` | `.width(w).height(h)` |
-| `.layout(LayoutStyle::default().fill_width())` | `.fill_width()` |
-| `.layout(LayoutStyle::default().gap(space))` | `.gap(space)` |
-| `.layout(LayoutStyle::default().height(px))` | `.height(px)` |
+| `container().layout(LayoutStyle::flex_column())` | `column().gap(Space::None)`. `column()` alone adds the theme gap and takes the width its parent gives it |
+| `container().layout(LayoutStyle::flex_row())` | `row().gap(Space::None).align_items(AlignItems::Stretch)`. `row()` alone adds the theme gap, centres its children, and takes the width its parent gives it |
+| `container().layout(LayoutStyle::grid(columns))` | `grid(columns)` |
+| `container().layout(LayoutStyle::block())` | `container()` |
+| `container().layout(LayoutStyle::pane(w, h))` | `column().width(w).height(h).gap(Space::Xs)` |
+| `.layout(LayoutStyle::default().gap(space))`, and the same for `padding`, `padding_x`, `margin`, `fill`, `fill_width`, `height`, `min_width`, `max_width`, `shrink`, `flex_basis`, `align_items`, `align_self`, `justify_content`, `flex_wrap`, `display`, `position`, `inset_top`, `overflow`, `grid_columns`, and each other `LayoutStyle` setter | the `Widget` setter of the same name: `.gap(space)` |
+| `.layout(LayoutStyle::default().fixed_size(w, h))`, `.min_size(w, h)`, `.max_size(w, h)` | `.width(w).height(h)`, `.min_width(w).min_height(h)`, `.max_width(w).max_height(h)` |
 | `.layout(LayoutStyle::default().width(px))` | `.width(px)`, which also lowers a larger minimum width |
-| `.layout(LayoutStyle::default().align_items(align))` | `.align_items(align)` |
-| `.layout(LayoutStyle::default().padding(space))` | `.padding(space)` |
-| `.layout(LayoutStyle::default().shrink(factor))` | `.shrink(factor)` |
 | `.layout(LayoutStyle::default().grow(factor))` | `.grow(factor)`, which keeps a minimum size that the node already has |
-| `.layout(LayoutStyle::default().min_size(w, h))` | `.min_width(w).min_height(h)` |
-| `.layout(LayoutStyle::default().fill())` | `.fill()` |
-| `.layout(LayoutStyle::default().position(position))` | `.position(position)` |
-| `.layout(LayoutStyle::default().padding_x(space))` | `.padding_x(space)` |
-| `.layout(LayoutStyle::default().justify_content(justify))` | `.justify_content(justify)` |
-| `.layout(LayoutStyle::default().inset_top(top))` | `.inset_top(top)` |
+| `LayoutStyle`, `Widget::layout` | public only under feature `kittest`. Use the container functions and the `Widget` setters |
+| `Widget::width(impl IntoPx)`, `Widget::height(impl IntoPx)` | `Widget::width(impl Into<Length>)`, `Widget::height(impl Into<Length>)`. `Length::Percent`, `Length::Fill`, and `Length::Auto` keep their meaning, where each was 0 px; `rows`, `cols`, and `em` resolve at layout |
+| a node with no `LayoutStyle` constructor added padding and border to its size: `container().padding(Space::Lg).width(300.0)` was 332 px wide | a size includes padding and border on every node: the same chain is 300 px wide |
+| `style::grid(cell)` | `style::cell(cell)` |
+| `ScrollBuilder::fill` | `Widget::fill`, with the same effect. `.fill_height()`, `.height(Length::Percent(..))`, `.min_height(..)`, and `.max_height(..)` on a scroll area now also set the height that the scroll range uses |
+| `menu_bar().fill()` | `menu_bar().fill_width()` |
+| `PanelBuilder::padding`, both the method and the field | `Widget::padding`. `padding`, `padding_x`, and `padding_y` on a panel apply in call order |
+| `sparkline(..).fill(SparkFill)` | `sparkline(..).area(SparkFill)` |
+| a layout setter on a splitter pane, such as `.pane(node).width(180.0)`, set the splitter | it sets the pane. `.width(px)` on a pane of a horizontal splitter and `.height(px)` on a pane of a vertical splitter set its initial size. Call `.commit()` first to set the splitter |
 
 ### Changed
 
@@ -256,7 +261,7 @@ First public release.
 - A gradient stop placed before an earlier stop moves up to the earlier stop's position, as in CSS Images 4 §3.5.3, instead of the stops being sorted.
 - Gradient text draws conic, elliptical radial and repeating gradients.
 - A 3D-transformed layer with part of its plane behind the viewer draws the part in front of the viewer, instead of nothing.
-- Layout setters on widgets (`.gap(..)`, `.padding_x(..)`, `.fill()`, `.min_width(..)`, `.align_items(..)`, and the rest of `Widget`) are the supported way to set layout; `LayoutStyle` and `Widget::layout` will become private, and the migration table maps the 15 most used `LayoutStyle` methods.
+- Layout is set with the container functions `row`, `column`, `grid`, and `container` and with the layout setters on `Widget` (`.gap(..)`, `.padding_x(..)`, `.fill()`, `.min_width(..)`, `.align_items(..)`, and the rest). `LayoutStyle` and `Widget::layout` are public only under feature `kittest`; the migration table maps each constructor and method.
 
 ### Fixed
 
@@ -298,7 +303,7 @@ First public release.
 - Keyed collections through `for_each`, preserving each item's node and state while its key remains.
 - Async work through `task`, `task_with`, and `spawn`, with reactive status and cancellation for tasks. `match_status` renders loading, result, and error views.
 - `tasks::blocking` runs blocking work inside async tasks. `signal_writer` and `tasks::on_message` deliver results from other threads to the UI thread.
-- Flexbox and grid layout through `LayoutStyle`, `row`, and `column`, with pixel sizes and text units `rows`, `cols`, and `em`.
+- Flexbox and grid layout through `row`, `column`, `grid`, and the `Widget` layout setters, with pixel sizes and text units `rows`, `cols`, and `em`.
 - Keyboard, pointer, scroll, paste, and gesture handlers through `Widget`. `Shortcut` parses and displays key combinations, with `Shortcut::primary` selecting Command or Control for the platform.
 
 #### Widgets

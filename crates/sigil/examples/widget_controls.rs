@@ -60,12 +60,14 @@ pub(crate) fn slider_demo(disabled: Signal<bool>) -> impl IntoNode {
 }
 
 fn build() -> impl IntoNode {
-    container()
+    column()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+        .gap(rows(1.0))
+        .padding(cols(2.0))
         .child(
-            container()
-                .layout(LayoutStyle::flex_row().gap(cols(1.0)))
+            row()
+                .gap(cols(1.0))
+                .align_items(AlignItems::Stretch)
                 .child(button_demo())
                 .child(button_secondary_demo())
                 .child(button_ghost_demo())

@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextBuilder, TextContent, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutStyle, cols, rows};
+use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, cols, rows};
 use crate::reactive::{Signal, signal};
 use crate::style::StateVariants;
 use crate::style::{Paint, Radius, Token, Tone, space};
@@ -314,7 +314,7 @@ fn title_text(title: TextContent, slots: &ListRowSlots) -> TextBuilder {
             .grow(1.0)
             .min_size(0.0, 0.0)
             .shrink(0.0)
-            .max_size(Dimension::Percent(1.0), Dimension::Auto),
+            .max_size(Length::Percent(1.0), Length::Auto),
         None => LayoutStyle::block().grow(1.0).min_size(0.0, 0.0),
     };
     text(title)

@@ -46,7 +46,7 @@ pub(crate) fn app() -> impl IntoNode {
     chrome::Command::BOUND
         .into_iter()
         .fold(
-            container().layout(LayoutStyle::flex_column().fill()),
+            column().fill().gap(Space::None),
             |root, command| match command.shortcut() {
                 Some(shortcut) => root.key_capture(shortcut, move |_| chrome::run(ws, command)),
                 None => root,
@@ -64,22 +64,20 @@ pub(crate) fn app() -> impl IntoNode {
 }
 
 fn workbench(ws: Workspace) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill()
-                .min_size(0.0, 0.0)
-                .gap(Space::Sm),
-        )
+    row()
+        .fill()
+        .min_width(0.0)
+        .min_height(0.0)
+        .gap(Space::Sm)
+        .align_items(AlignItems::Stretch)
         .child(tree::activity_strip(ws))
         .child(
-            container()
-                .layout(
-                    LayoutStyle::flex_column()
-                        .grow(1.0)
-                        .fill_height()
-                        .min_size(0.0, 0.0),
-                )
+            column()
+                .grow(1.0)
+                .fill_height()
+                .min_width(0.0)
+                .min_height(0.0)
+                .gap(Space::None)
                 .children_reactive(move || [main_split(ws, ws.outline_open.get())]),
         )
 }
@@ -110,8 +108,11 @@ fn main_split(ws: Workspace, with_outline: bool) -> NodeBuilder {
 }
 
 fn center(ws: Workspace) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0))
+    column()
+        .fill()
+        .min_width(0.0)
+        .min_height(0.0)
+        .gap(Space::None)
         .child(
             splitter(Orientation::Vertical)
                 .pane(editor::editor(ws))

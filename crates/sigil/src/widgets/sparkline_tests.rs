@@ -48,7 +48,7 @@ fn a_shaded_graph_inks_only_the_top_cell_of_each_column_solid() {
     let line = sparkline([0.0, 1.0, 0.5])
         .range(0.0, 1.0)
         .rows(2)
-        .fill(SparkFill::Shade);
+        .area(SparkFill::Shade);
     assert_eq!(
         line.runs(),
         vec![

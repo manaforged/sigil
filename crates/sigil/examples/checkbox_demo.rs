@@ -15,14 +15,11 @@ fn main() -> sigil::AppResult<()> {
 fn build() -> impl IntoNode {
     let checked = signal(false);
     let disabled = signal(true);
-    container()
+    column()
         .role(Role::Main)
-        .layout(
-            LayoutStyle::flex_column()
-                .fill()
-                .gap(Space::Lg)
-                .padding(Space::Xxl),
-        )
+        .fill()
+        .gap(Space::Lg)
+        .padding(Space::Xxl)
         .bg(Token::Surface)
         .child(checkbox(checked).change(move |v| checked.set(v)))
         .child(checkbox(signal(true)).tone(Tone::Neutral))

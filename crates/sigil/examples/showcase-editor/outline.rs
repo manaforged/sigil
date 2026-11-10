@@ -24,8 +24,9 @@ fn current_symbol(symbols: &[Symbol], line: usize) -> Option<usize> {
 }
 
 pub(crate) fn outline(ws: Workspace) -> NodeBuilder {
-    let list = container()
-        .layout(LayoutStyle::flex_column().fill_width())
+    let list = column()
+        .fill_width()
+        .gap(Space::None)
         .children_reactive(move || {
             let Some(file) = ws.active() else {
                 return vec![empty_state("No symbols", "Open a source file.")];
@@ -46,19 +47,21 @@ pub(crate) fn outline(ws: Workspace) -> NodeBuilder {
                 .map(|(index, symbol)| symbol_row(ws, symbol, Some(index) == here))
                 .collect()
         });
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .fill()
-                .min_size(0.0, 0.0)
-                .padding_y(Space::Xs),
-        )
+    column()
+        .fill()
+        .min_width(0.0)
+        .min_height(0.0)
+        .padding_y(Space::Xs)
+        .gap(Space::None)
         .bg(Token::SurfaceSubtle)
         .rounded(Radius::Md)
         .child(section_label("OUTLINE"))
         .child(
-            container()
-                .layout(LayoutStyle::flex_column().grow(1.0).min_size(0.0, 0.0))
+            column()
+                .grow(1.0)
+                .min_width(0.0)
+                .min_height(0.0)
+                .gap(Space::None)
                 .child(scroll(list).fill()),
         )
 }

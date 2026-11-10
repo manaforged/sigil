@@ -1,7 +1,6 @@
-use sigil::layout::Space;
 use sigil::prelude::{
-    AlignItems, ColumnWidth, FontFamily, Identifiable, LayoutStyle, MenuItem, NodeBuilder, Paint,
-    TableColumn, TableState, Token, Tone, chip, container, effect, table, text,
+    AlignItems, ColumnWidth, FontFamily, Identifiable, MenuItem, NodeBuilder, Paint, Space,
+    TableColumn, TableState, Token, Tone, chip, effect, row, table, text,
 };
 use sigil::prelude::{IntoNode, Widget};
 use sigil::reactive::untrack;
@@ -114,26 +113,25 @@ fn plain(value: &'static str) -> sigil::prelude::TextBuilder {
 }
 
 fn commit_cell(job: &'static Job) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .min_width(0.0)
-                .gap(Space::Sm)
-                .align_items(AlignItems::Center),
-        )
+    row()
+        .fill_width()
+        .min_width(0.0)
+        .gap(Space::Sm)
+        .align_items(AlignItems::Center)
         .child(
             text(job.sha)
                 .nowrap()
                 .font_family(FontFamily::Mono)
                 .text_color(Token::Accent11)
-                .layout(LayoutStyle::block().width(SHA_WIDTH).shrink(0.0)),
+                .width(SHA_WIDTH)
+                .shrink(0.0),
         )
         .child(
             text(job.message)
                 .nowrap()
                 .ellipsize()
-                .layout(LayoutStyle::block().grow(1.0).min_width(0.0)),
+                .grow(1.0)
+                .min_width(0.0),
         )
 }
 

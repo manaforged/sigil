@@ -1,4 +1,4 @@
-use crate::layout::style_data::Dimension;
+use crate::layout::style_data::Length;
 
 /// A step of the spacing scale, for `gap`, `padding`, and `margin`.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -24,23 +24,23 @@ pub enum Space {
     /// 48 px.
     Xxxl,
     #[doc(hidden)]
-    Raw(Dimension),
+    Raw(Length),
 }
 
 impl Space {
     /// A size off the scale, with the reason it cannot be a step.
     #[must_use]
     pub const fn raw(px: f32, _reason: &'static str) -> Self {
-        Self::Raw(Dimension::Px(px))
+        Self::Raw(Length::Px(px))
     }
 
     #[must_use]
     pub(crate) const fn px(px: f32) -> Self {
-        Self::Raw(Dimension::Px(px))
+        Self::Raw(Length::Px(px))
     }
 }
 
-impl From<Space> for Dimension {
+impl From<Space> for Length {
     fn from(space: Space) -> Self {
         match space {
             Space::None => Self::Px(0.0),
@@ -57,8 +57,8 @@ impl From<Space> for Dimension {
     }
 }
 
-impl From<Dimension> for Space {
-    fn from(dimension: Dimension) -> Self {
+impl From<Length> for Space {
+    fn from(dimension: Length) -> Self {
         Self::Raw(dimension)
     }
 }

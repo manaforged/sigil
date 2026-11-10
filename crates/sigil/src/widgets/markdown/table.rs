@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::app::cell_width;
 use crate::kernel::{NodeBuilder, Role, SortDirection, container, text};
 use crate::layout::snap::CellForm;
-use crate::layout::{Dimension, IntoPx, JustifyContent, LayoutStyle, cols};
+use crate::layout::{IntoPx, JustifyContent, LayoutStyle, Length, cols};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{StyleAtom, TextRun, TextRuns, TextStyle, Token};
 use crate::widgets::Widget;
@@ -229,7 +229,7 @@ pub(super) fn table(data: Table) -> NodeBuilder {
     let mut frame = container().layout(
         LayoutStyle::flex_column()
             .width(total)
-            .max_width(Dimension::Percent(1.0))
+            .max_width(Length::Percent(1.0))
             .gap(Space::Xs),
     );
     if CellForm::new(true, false).pick() && grid.data.rows.len() > 1 {

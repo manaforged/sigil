@@ -29,8 +29,8 @@ fn p_4_applies_sixteen_px_padding() {
             .child(
                 container().layout(
                     LayoutStyle::default()
-                        .width(Dimension::Percent(1.0))
-                        .height(Dimension::Percent(1.0)),
+                        .width(Length::Percent(1.0))
+                        .height(Length::Percent(1.0)),
                 ),
             ),
     );
@@ -53,8 +53,8 @@ fn padded_child_origin(root: NodeBuilder) -> f32 {
         root.child(
             container().layout(
                 LayoutStyle::default()
-                    .width(Dimension::Percent(1.0))
-                    .height(Dimension::Percent(1.0)),
+                    .width(Length::Percent(1.0))
+                    .height(Length::Percent(1.0)),
             ),
         ),
     );
@@ -103,7 +103,7 @@ fn w_full_is_percent_100() {
                 container().layout(
                     LayoutStyle::default()
                         .height(10.0)
-                        .width(Dimension::Percent(1.0)),
+                        .width(Length::Percent(1.0)),
                 ),
             ),
     );

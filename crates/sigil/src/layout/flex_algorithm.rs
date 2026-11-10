@@ -14,7 +14,7 @@ use crate::layout::flex::{CbSize, FlexSolver, Position2};
 use crate::layout::flex_lines::{FlexItem, collect_lines};
 use crate::layout::forest::NodeRef;
 use crate::layout::resolve::{NodeEdges, clamp};
-use crate::layout::style_data::{Dimension, Display, FlexDirection, FlexWrap, Position, StyleData};
+use crate::layout::style_data::{Display, FlexDirection, FlexWrap, Length, Position, StyleData};
 
 mod absolute;
 mod flexible;
@@ -101,7 +101,7 @@ impl FlexCtx<'_, '_> {
         } else {
             (self.assigned_h, style.size.height)
         };
-        assigned.is_some() || !matches!(dim, Dimension::Auto)
+        assigned.is_some() || !matches!(dim, Length::Auto)
     }
 }
 
