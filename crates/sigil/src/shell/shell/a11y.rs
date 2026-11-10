@@ -127,25 +127,25 @@ impl WinitShell {
     }
 
     #[must_use]
-    pub fn a11y_active(&self, handle: WinitWindowHandle) -> bool {
+    pub(crate) fn a11y_active(&self, handle: WinitWindowHandle) -> bool {
         self.adapter(handle)
             .is_some_and(|e| e.activation.is_active())
     }
 
     #[must_use]
-    pub fn take_a11y_activation(&self, handle: WinitWindowHandle) -> bool {
+    pub(crate) fn take_a11y_activation(&self, handle: WinitWindowHandle) -> bool {
         self.adapter(handle)
             .is_some_and(|e| e.activation.take_pending())
     }
 
-    pub fn publish_a11y_update(&mut self, handle: WinitWindowHandle, update: TreeUpdate) {
+    pub(crate) fn publish_a11y_update(&mut self, handle: WinitWindowHandle, update: TreeUpdate) {
         if let Some(entry) = self.a11y_adapters.iter_mut().find(|e| e.handle == handle) {
             entry.adapter.update_if_active(|| update);
         }
     }
 
     #[must_use]
-    pub fn a11y_action_receiver(
+    pub(crate) fn a11y_action_receiver(
         &self,
         handle: WinitWindowHandle,
     ) -> Option<crossbeam_channel::Receiver<ActionRequest>> {

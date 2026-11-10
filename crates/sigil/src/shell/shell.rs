@@ -100,7 +100,7 @@ impl WinitShell {
         Ok(Self::from_event_loop(event_loop))
     }
 
-    pub fn new_accessory() -> Result<Self, crate::Error> {
+    pub(crate) fn new_accessory() -> Result<Self, crate::Error> {
         let mut builder = EventLoop::<WakeEvent>::with_user_event();
         #[cfg(target_os = "macos")]
         {
@@ -143,7 +143,7 @@ impl WinitShell {
         }
     }
 
-    pub fn on_idle_deadline<F: Fn() -> Option<Instant> + Send + Sync + 'static>(
+    pub(crate) fn on_idle_deadline<F: Fn() -> Option<Instant> + Send + Sync + 'static>(
         &mut self,
         hook: F,
     ) {
@@ -159,7 +159,7 @@ impl WinitShell {
     }
 
     #[must_use]
-    pub const fn exit_requested(&self) -> bool {
+    pub(crate) const fn exit_requested(&self) -> bool {
         self.exit_requested
     }
 
@@ -218,7 +218,7 @@ impl WinitShell {
     }
 
     #[must_use]
-    pub const fn redraw_target(&self) -> Option<WinitWindowHandle> {
+    pub(crate) const fn redraw_target(&self) -> Option<WinitWindowHandle> {
         self.redraw_target
     }
 
@@ -248,7 +248,7 @@ impl WinitShell {
             .any(|(_, window)| window.is_visible().unwrap_or(true))
     }
 
-    pub fn remove_window(&mut self, handle: WinitWindowHandle) {
+    pub(crate) fn remove_window(&mut self, handle: WinitWindowHandle) {
         self.windows.retain(|(h, _)| *h != handle);
         self.window_scales.retain(|(h, _)| *h != handle);
         self.window_zooms.retain(|(h, _)| *h != handle);
@@ -285,7 +285,7 @@ impl WinitShell {
         self.force_paint = true;
     }
 
-    pub fn take_force_paint(&mut self) -> bool {
+    pub(crate) fn take_force_paint(&mut self) -> bool {
         std::mem::take(&mut self.force_paint)
     }
 

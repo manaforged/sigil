@@ -15,7 +15,7 @@ pub struct MotionPrefs;
 
 impl MotionPrefs {
     #[must_use]
-    pub fn reduced() -> bool {
+    pub(crate) fn reduced() -> bool {
         REDUCED_MOTION.with(Cell::get)
     }
 

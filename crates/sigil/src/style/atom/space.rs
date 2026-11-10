@@ -48,7 +48,7 @@ pub struct SpaceStyle {
 
 impl SpaceStyle {
     /// No 3D transform, perspective, or hidden backface.
-    pub const FLAT: Self = Self {
+    pub(crate) const FLAT: Self = Self {
         turn: [0.0; 3],
         depth: 0.0,
         perspective: None,
@@ -70,7 +70,7 @@ impl SpaceStyle {
 
     /// Whether the node itself has no 3D turn or depth.
     #[must_use]
-    pub fn is_flat(&self) -> bool {
+    pub(crate) fn is_flat(&self) -> bool {
         self.turn.iter().all(|turn| *turn == 0.0) && self.depth == 0.0
     }
 

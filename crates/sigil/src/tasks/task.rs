@@ -32,7 +32,7 @@ impl TaskHandle {
     }
 
     /// Cancels the task.
-    pub fn abort(&self) {
+    pub(crate) fn abort(&self) {
         self.state.aborted.store(true, Ordering::SeqCst);
         let waker = self.waker().take();
         if let Some(waker) = waker {

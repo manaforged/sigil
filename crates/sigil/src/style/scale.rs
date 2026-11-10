@@ -254,7 +254,7 @@ pub const fn blue_dark() -> ColorScale {
 
 /// The dark green scale.
 #[must_use]
-pub const fn green_dark() -> ColorScale {
+pub(crate) const fn green_dark() -> ColorScale {
     ColorScale::from_steps([
         rgb(0x0D, 0x14, 0x10),
         rgb(0x0F, 0x1B, 0x16),
@@ -274,7 +274,7 @@ pub const fn green_dark() -> ColorScale {
 
 /// The dark amber scale.
 #[must_use]
-pub const fn amber_dark() -> ColorScale {
+pub(crate) const fn amber_dark() -> ColorScale {
     ColorScale::from_steps([
         rgb(0x16, 0x11, 0x0A),
         rgb(0x1D, 0x18, 0x0E),
@@ -294,7 +294,7 @@ pub const fn amber_dark() -> ColorScale {
 
 /// The dark ruby scale.
 #[must_use]
-pub const fn ruby_dark() -> ColorScale {
+pub(crate) const fn ruby_dark() -> ColorScale {
     ColorScale::from_steps([
         rgb(0x19, 0x0E, 0x10),
         rgb(0x21, 0x12, 0x16),
@@ -314,7 +314,7 @@ pub const fn ruby_dark() -> ColorScale {
 
 /// The dark cyan scale.
 #[must_use]
-pub const fn cyan_dark() -> ColorScale {
+pub(crate) const fn cyan_dark() -> ColorScale {
     ColorScale::from_steps([
         rgb(0x07, 0x12, 0x18),
         rgb(0x07, 0x18, 0x21),

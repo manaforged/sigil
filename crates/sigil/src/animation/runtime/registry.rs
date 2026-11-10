@@ -6,18 +6,18 @@ use crate::animation::runtime::config::AnimationConfig;
 pub mod presets {
     use crate::style::TransitionId;
 
-    pub const SMOOTH: TransitionId = TransitionId(0);
-    pub const GENTLE: TransitionId = TransitionId(1);
-    pub const SNAPPY: TransitionId = TransitionId(2);
-    pub const BOUNCY: TransitionId = TransitionId(3);
-    pub const STIFF: TransitionId = TransitionId(4);
-    pub const FAST: TransitionId = TransitionId(16);
+    pub(crate) const SMOOTH: TransitionId = TransitionId(0);
+    pub(crate) const GENTLE: TransitionId = TransitionId(1);
+    pub(crate) const SNAPPY: TransitionId = TransitionId(2);
+    pub(crate) const BOUNCY: TransitionId = TransitionId(3);
+    pub(crate) const STIFF: TransitionId = TransitionId(4);
+    pub(crate) const FAST: TransitionId = TransitionId(16);
     pub const DEFAULT: TransitionId = TransitionId(17);
-    pub const SLOW: TransitionId = TransitionId(18);
-    pub const TRANSITION: TransitionId = TransitionId(19);
-    pub const COLORS: TransitionId = TransitionId(20);
-    pub const OPACITY: TransitionId = TransitionId(21);
-    pub const TRANSFORM: TransitionId = TransitionId(22);
+    pub(crate) const SLOW: TransitionId = TransitionId(18);
+    pub(crate) const TRANSITION: TransitionId = TransitionId(19);
+    pub(crate) const COLORS: TransitionId = TransitionId(20);
+    pub(crate) const OPACITY: TransitionId = TransitionId(21);
+    pub(crate) const TRANSFORM: TransitionId = TransitionId(22);
     pub const ALL: TransitionId = TransitionId(23);
 }
 

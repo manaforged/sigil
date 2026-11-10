@@ -74,7 +74,7 @@ impl LayoutEngine {
         }
     }
 
-    pub const fn take_republished(&mut self) -> bool {
+    pub(crate) const fn take_republished(&mut self) -> bool {
         std::mem::replace(&mut self.republished, false)
     }
 

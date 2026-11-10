@@ -121,7 +121,7 @@ impl Default for Rgba {
 
 impl Rgba {
     /// Fully transparent black.
-    pub const TRANSPARENT: Self = Self {
+    pub(crate) const TRANSPARENT: Self = Self {
         r: 0.0,
         g: 0.0,
         b: 0.0,

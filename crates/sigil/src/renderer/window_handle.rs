@@ -16,7 +16,7 @@ impl WindowHandle {
     }
 }
 
-pub fn into_window_handle<W>(window: W) -> WindowHandle
+pub(crate) fn into_window_handle<W>(window: W) -> WindowHandle
 where
     W: HasWindowHandle + HasDisplayHandle + Send + Sync + 'static,
 {

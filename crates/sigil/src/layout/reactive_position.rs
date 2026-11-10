@@ -38,7 +38,7 @@ pub struct BoundsReactive {
 }
 
 impl BoundsReactive {
-    pub fn publish(self, bounds: (f32, f32, f32, f32)) -> bool {
+    pub(crate) fn publish(self, bounds: (f32, f32, f32, f32)) -> bool {
         publish_changed(self.bounds, bounds)
     }
 }

@@ -1,4 +1,4 @@
-#[cfg(any(test, feature = "kittest", feature = "desktop"))]
+#[cfg(any(test, feature = "desktop"))]
 use core::panic::Location;
 
 #[cfg(any(test, feature = "kittest", feature = "desktop", feature = "terminal"))]
@@ -48,9 +48,9 @@ impl Runtime {
     }
 
     /// Returns the name and location of the effect that panicked.
-    #[cfg(any(test, feature = "kittest", feature = "desktop"))]
+    #[cfg(any(test, feature = "desktop"))]
     #[must_use]
-    pub fn panic_origin_info() -> Option<(&'static str, &'static Location<'static>)> {
+    pub(crate) fn panic_origin_info() -> Option<(&'static str, &'static Location<'static>)> {
         with_rt(|rt| rt.panic_origin.map(|(_, name, location)| (name, location)))
     }
 

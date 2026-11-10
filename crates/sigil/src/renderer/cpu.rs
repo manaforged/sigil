@@ -84,12 +84,12 @@ impl CpuRenderer {
         Self::default()
     }
 
-    pub const fn set_transparent(&mut self, transparent: bool) {
+    pub(crate) const fn set_transparent(&mut self, transparent: bool) {
         self.transparent = transparent;
     }
 
     #[must_use]
-    pub const fn is_transparent(&self) -> bool {
+    pub(crate) const fn is_transparent(&self) -> bool {
         self.transparent
     }
 

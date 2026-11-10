@@ -20,7 +20,7 @@ pub enum DeltaKind {
 
 impl DeltaKind {
     #[must_use]
-    pub const fn layout_if(affects_layout: bool) -> Self {
+    pub(crate) const fn layout_if(affects_layout: bool) -> Self {
         if affects_layout {
             Self::Layout
         } else {

@@ -20,7 +20,7 @@ impl<'theme> StyleEngine<'theme> {
 
     /// Creates an engine that resolves colors in `tone`.
     #[must_use]
-    pub const fn with_tone(theme: &'theme Theme, tone: Tone) -> Self {
+    pub(crate) const fn with_tone(theme: &'theme Theme, tone: Tone) -> Self {
         Self { theme, tone }
     }
 
@@ -65,7 +65,7 @@ impl<'theme> StyleEngine<'theme> {
 
     /// Applies `atoms` to a text style.
     #[allow(clippy::unused_self, reason = "intentional, reviewed trade-off")]
-    pub fn apply_text(&self, atoms: &[StyleAtom], text: &mut TextStyle) {
+    pub(crate) fn apply_text(&self, atoms: &[StyleAtom], text: &mut TextStyle) {
         apply_text_atoms(atoms, text);
     }
 
@@ -80,7 +80,7 @@ impl<'theme> StyleEngine<'theme> {
 
     /// Resolves a color atom against the theme.
     #[must_use]
-    pub fn resolve_color(&self, color: ColorAtom) -> Color {
+    pub(crate) fn resolve_color(&self, color: ColorAtom) -> Color {
         self.theme.resolve_color(color)
     }
 

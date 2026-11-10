@@ -97,7 +97,7 @@ impl FontCollection {
     }
 
     #[must_use]
-    pub fn select_weight(&self, family: &str, weight: u16) -> &Font {
+    pub(crate) fn select_weight(&self, family: &str, weight: u16) -> &Font {
         let name = family.trim();
         if name.eq_ignore_ascii_case("mono") || name.eq_ignore_ascii_case("monospace") {
             self.mono.select(weight)
