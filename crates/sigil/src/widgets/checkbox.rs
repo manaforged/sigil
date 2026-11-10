@@ -9,8 +9,8 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
-    BORDER_WIDTH, ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant,
-    Token, Tone, TransitionId,
+    BORDER_WIDTH, ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleVariant, Token, Tone,
+    TransitionId,
 };
 use crate::widgets::Layout;
 
@@ -18,8 +18,8 @@ use crate::widgets::interaction::InteractionState;
 
 use super::layout_ext::LayoutOverrides;
 use super::shared::{
-    BoolChange, Press, RELEASE_ENTER_SPACE, accessible_name_or, binary_style_state, control_root,
-    control_row, control_surface, noop_bool_change, press,
+    BoolChange, accessible_name_or, binary_style_state, caller_style, control, control_row, flip,
+    noop_bool_change,
 };
 
 const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
@@ -146,48 +146,35 @@ impl CheckboxBuilder {
             .as_ref()
             .map_or_else(noop_bool_change, Rc::clone);
         let style = std::mem::take(&mut self.style_accumulator);
-        control_root(self.disabled, style, |interaction, overlay| {
-            self.base_node(interaction, on_change, overlay)
-        })
-    }
-
-    fn base_node(
-        &self,
-        interaction: InteractionState,
-        on_change: BoolChange,
-        user_overlay: StyleOverlay,
-    ) -> NodeBuilder {
         let checked = self.checked;
         let partial = self.partial.unwrap_or_else(|| signal(false));
         let disabled = self.disabled;
-        let tone = self.tone;
-        let root = container()
-            .role(Role::CheckBox)
-            .label(accessible_name_or(self.label.as_ref(), StringKey::Checkbox))
-            .checked(checked)
-            .mixed(partial)
-            .layout(checkbox_layout(self.label.is_some()));
-        let mut node = press(
-            control_surface(root, interaction, disabled, user_overlay),
-            interaction,
+        let mut node = control(
+            container()
+                .role(Role::CheckBox)
+                .label(accessible_name_or(self.label.as_ref(), StringKey::Checkbox))
+                .checked(checked)
+                .mixed(partial)
+                .layout(checkbox_layout(self.label.is_some())),
             disabled,
-            Press::Flip(checked, on_change),
-            RELEASE_ENTER_SPACE,
-        )
-        .child(checkbox_indicator(
-            CheckMark { checked, partial },
-            disabled,
-            tone,
-            interaction,
-        ));
-        if let Some(label) = self.label.clone() {
+        );
+        let interaction = node.interaction();
+        node = node
+            .activate_with(flip(checked, on_change))
+            .child(checkbox_indicator(
+                CheckMark { checked, partial },
+                disabled,
+                self.tone,
+                interaction,
+            ));
+        if let Some(label) = self.label {
             node = node.child(
                 text(label)
                     .nowrap()
                     .layout(LayoutStyle::block().fill_width()),
             );
         }
-        interaction.install(node)
+        caller_style(node, style)
     }
 }
 

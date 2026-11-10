@@ -30,43 +30,32 @@ impl Trigger {
     }
 }
 
-pub(crate) enum Press {
-    Activate(Activate),
-    Flip(Signal<bool>, BoolChange),
-}
-
-impl Press {
-    fn fire(&self) {
-        match self {
-            Self::Activate(activate) => activate(),
-            Self::Flip(value, on_change) => {
-                let next = !value.peek();
-                value.set(next);
-                on_change(next);
-            }
-        }
-    }
+pub(crate) fn flip(value: Signal<bool>, on_change: BoolChange) -> Activate {
+    Rc::new(move || {
+        let next = !value.peek();
+        value.set(next);
+        on_change(next);
+    })
 }
 
 pub(crate) fn press(
     node: NodeBuilder,
     interaction: InteractionState,
     disabled: Option<Signal<bool>>,
-    press: Press,
+    activate: &Activate,
     triggers: &[Trigger],
 ) -> NodeBuilder {
-    let press = Rc::new(press);
     triggers.iter().fold(node, |node, trigger| {
-        let press = Rc::clone(&press);
+        let activate = Rc::clone(activate);
         match trigger.shortcut() {
             None => node.pointer_up(move |event| {
                 if interaction.release_pointer(event) && !disabled_now(disabled) {
-                    press.fire();
+                    activate();
                 }
             }),
             Some(shortcut) => node.key(shortcut, move |event| {
                 if interaction.activate_key(event) && !disabled_now(disabled) {
-                    press.fire();
+                    activate();
                 }
             }),
         }

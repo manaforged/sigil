@@ -11,8 +11,8 @@ use crate::widgets::interaction::InteractionState;
 
 use super::layout_ext::LayoutOverrides;
 use super::shared::{
-    Activate, Press, RELEASE_ENTER_SPACE, accessible_name, control_root, noop_activate,
-    or_disabled, press, reactive_style_state,
+    Activate, RELEASE_ENTER_SPACE, accessible_name, control_root, noop_activate, or_disabled,
+    press, reactive_style_state,
 };
 
 /// Builder of a button.
@@ -246,14 +246,14 @@ impl ButtonBuilder {
         let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
         let style = std::mem::take(&mut self.style_accumulator);
         control_root(self.disabled, style, |interaction, overlay| {
-            self.base_node(interaction, activate, overlay, look_disabled)
+            self.base_node(interaction, &activate, overlay, look_disabled)
         })
     }
 
     fn base_node(
         &self,
         interaction: InteractionState,
-        activate: Activate,
+        activate: &Activate,
         user_overlay: crate::style::StyleOverlay,
         look_disabled: Option<Signal<bool>>,
     ) -> NodeBuilder {
@@ -278,13 +278,7 @@ impl ButtonBuilder {
                 reactive_style_state(interaction.disabled(look_disabled), look_disabled)
             })
             .seal_style();
-        let node = press(
-            node,
-            interaction,
-            disabled,
-            Press::Activate(activate),
-            RELEASE_ENTER_SPACE,
-        );
+        let node = press(node, interaction, disabled, activate, RELEASE_ENTER_SPACE);
         let node = match self.pending {
             Some(pending) => node.child(self.pending_content(pending)),
             None if self.square => node.child(self.square_content()),
