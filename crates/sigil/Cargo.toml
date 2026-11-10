@@ -242,12 +242,21 @@ path = "tests/shell_display_gate.rs"
 harness = false
 
 [[bench]]
+name = "frame_cells"
+harness = false
+required-features = ["terminal"]
+
+[[bench]]
 name = "terminal_frame"
 harness = false
 required-features = ["terminal"]
 
 [[bench]]
 name = "frame_phases"
+harness = false
+
+[[bench]]
+name = "sparse_edit"
 harness = false
 
 [[bench]]
@@ -272,6 +281,10 @@ harness = false
 
 [[bench]]
 name = "events_events_ops"
+harness = false
+
+[[bench]]
+name = "kernel_list_append"
 harness = false
 
 [[bench]]
