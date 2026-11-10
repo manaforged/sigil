@@ -5,7 +5,7 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil_kittest::Harness;
 
-const SIDE: u32 = 4000;
+const SIDE: u32 = 1024;
 const CAPPED: f32 = 300.0;
 const HUGE: f32 = 4096.0;
 const MAX_RATIO: f64 = 2.0;
