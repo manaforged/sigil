@@ -52,7 +52,7 @@ fn enqueue_main_runs_callback_on_drain() {
             !ran.load(Ordering::SeqCst),
             "callback must not run until drain"
         );
-        let drained = scheduler.drain();
+        let drained = scheduler.pump();
         assert_eq!(drained, 1, "one callback should have been drained");
         assert!(
             ran.load(Ordering::SeqCst),
@@ -79,7 +79,7 @@ fn enqueue_main_drops_callback_for_disposed_owner() {
         .expect("enqueue");
     owner.dispose();
 
-    let drained = scheduler.drain();
+    let drained = scheduler.pump();
     assert_eq!(drained, 0, "disposed-owner callback must be dropped");
     assert!(
         !ran.load(Ordering::SeqCst),
@@ -112,6 +112,6 @@ fn wake_proxy_is_called_on_enqueue() {
             "waker fires once per successful enqueue"
         );
 
-        scheduler.drain();
+        scheduler.pump();
     });
 }

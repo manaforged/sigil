@@ -4,7 +4,7 @@ use crate::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};
 use crate::scene::{
     CommandScene, DecorationKind, DrawDecoration, DrawRect, GlyphRun, SceneCommand,
 };
-use crate::style::{Color, Rgba8, StyledTextEngine as _, TextLineHeight, TextStyle, Theme};
+use crate::style::{Color, Rgba8, TextLineHeight, TextStyle, Theme};
 use crate::terminal::colour;
 use crate::terminal::paint::{Cell, Grid, Underline};
 use crate::text::OwnedTextEngine;

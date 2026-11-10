@@ -1,12 +1,16 @@
-use std::cell::RefCell;
-use std::hash::{BuildHasher as _, Hash as _, Hasher as _};
-
-use ahash::AHashMap;
 use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::text::glyph::ShapedRun;
 use crate::text::shaper::{FaceStyle, Font, Script, Shaper, TextSegment};
+
+mod script;
+mod words;
+
+pub(super) use script::char_script;
+#[cfg(any(test, feature = "kittest"))]
+pub(super) use script::script_name;
+pub(super) use words::push_run;
 
 pub(super) struct ShapedSegment {
     pub(super) start: u32,
@@ -147,9 +151,6 @@ pub(super) struct PushRunArgs<'a> {
     pub(super) is_break_opportunity: bool,
 }
 
-const WORD_MAX_BYTES: usize = 64;
-const WORD_ENTRIES: usize = 4_096;
-
 #[derive(Clone)]
 struct WordSpan {
     start: u32,
@@ -157,126 +158,6 @@ struct WordSpan {
     face_slot: u16,
     run: ShapedRun,
     advance: f32,
-}
-
-struct WordEntry {
-    word: Box<str>,
-    level: u8,
-    faces: SmallVec<[u64; 4]>,
-    style: FaceStyle,
-    spans: SmallVec<[WordSpan; 1]>,
-}
-
-impl WordEntry {
-    fn matches(&self, args: &PushRunArgs<'_>, chain: &[Font], style: &FaceStyle) -> bool {
-        let same_word = self.word.as_ref() == args.fragment;
-        same_word
-            && self.level == args.level
-            && self.style == *style
-            && self.faces.iter().copied().eq(chain.iter().map(Font::id))
-    }
-}
-
-thread_local! {
-    static WORDS: RefCell<AHashMap<u64, WordEntry>> = RefCell::new(AHashMap::new());
-}
-
-pub(super) fn push_run(
-    args: &PushRunArgs<'_>,
-    chain: &[Font],
-    style: &FaceStyle,
-    out: &mut Vec<ShapedSegment>,
-) {
-    if args.fragment.is_empty() {
-        return;
-    }
-    if args.fragment.len() > WORD_MAX_BYTES {
-        shape_face_spans(args, chain, style, out);
-        return;
-    }
-    let key = word_key(args, chain, style);
-    if replay(key, args, chain, style, out) {
-        return;
-    }
-    let first = out.len();
-    shape_face_spans(args, chain, style, out);
-    remember(
-        key,
-        args,
-        chain,
-        style,
-        out.get(first..).unwrap_or_default(),
-    );
-}
-
-fn replay(
-    key: u64,
-    args: &PushRunArgs<'_>,
-    chain: &[Font],
-    style: &FaceStyle,
-    out: &mut Vec<ShapedSegment>,
-) -> bool {
-    WORDS.with_borrow(|words| {
-        let entry = words
-            .get(&key)
-            .filter(|entry| entry.matches(args, chain, style));
-        for span in entry.iter().flat_map(|entry| &entry.spans) {
-            out.push(segment(args, span.clone()));
-        }
-        entry.is_some()
-    })
-}
-
-fn remember(
-    key: u64,
-    args: &PushRunArgs<'_>,
-    chain: &[Font],
-    style: &FaceStyle,
-    shaped: &[ShapedSegment],
-) {
-    let base = u32_clamp(args.start_byte);
-    let spans = shaped
-        .iter()
-        .map(|seg| WordSpan {
-            start: seg.start - base,
-            end: seg.end - base,
-            face_slot: seg.face_slot,
-            run: seg.run.clone(),
-            advance: seg.advance,
-        })
-        .collect();
-    WORDS.with_borrow_mut(|words| {
-        if words.len() >= WORD_ENTRIES {
-            words.clear();
-        }
-        words.insert(
-            key,
-            WordEntry {
-                word: args.fragment.into(),
-                level: args.level,
-                faces: chain.iter().map(Font::id).collect(),
-                style: style.clone(),
-                spans,
-            },
-        );
-    });
-}
-
-fn word_key(args: &PushRunArgs<'_>, chain: &[Font], style: &FaceStyle) -> u64 {
-    let mut hasher = crate::style::text_identity::hasher().build_hasher();
-    args.fragment.hash(&mut hasher);
-    args.level.hash(&mut hasher);
-    for font in chain {
-        font.id().hash(&mut hasher);
-    }
-    style.size_px.to_bits().hash(&mut hasher);
-    style.weight.hash(&mut hasher);
-    style.letter_spacing_em.to_bits().hash(&mut hasher);
-    style.cell_grid.hash(&mut hasher);
-    for feature in &style.features {
-        feature.0.hash(&mut hasher);
-    }
-    hasher.finish()
 }
 
 fn shape_face_spans(
@@ -480,49 +361,6 @@ pub(super) fn run_has_disallowed_notdef(run: &ShapedRun, fragment: &str) -> bool
 
 fn byte_level(levels: &[u8], byte: usize) -> u8 {
     levels.get(byte).copied().unwrap_or(0)
-}
-
-pub(super) fn char_script(ch: char) -> Script {
-    use unicode_script::{Script as UScript, UnicodeScript};
-    if ch.is_ascii() {
-        return if ch.is_ascii_alphabetic() {
-            Script::Latin
-        } else {
-            Script::Common
-        };
-    }
-    match ch.script() {
-        UScript::Common | UScript::Inherited | UScript::Unknown => Script::Common,
-        UScript::Latin | UScript::Greek | UScript::Cyrillic => Script::Latin,
-        UScript::Han
-        | UScript::Hiragana
-        | UScript::Katakana
-        | UScript::Hangul
-        | UScript::Bopomofo => Script::Cjk,
-        UScript::Arabic => Script::Arabic,
-        UScript::Hebrew => Script::Hebrew,
-        UScript::Devanagari => Script::Devanagari,
-        UScript::Khmer => Script::Khmer,
-        UScript::Thai => Script::Thai,
-        UScript::Lao => Script::Lao,
-        _ => Script::Other,
-    }
-}
-
-#[cfg(any(test, feature = "kittest"))]
-pub(super) const fn script_name(script: Script) -> &'static str {
-    match script {
-        Script::Latin => "Latin",
-        Script::Cjk => "Cjk",
-        Script::Common => "Common",
-        Script::Arabic => "Arabic",
-        Script::Hebrew => "Hebrew",
-        Script::Devanagari => "Devanagari",
-        Script::Khmer => "Khmer",
-        Script::Thai => "Thai",
-        Script::Lao => "Lao",
-        Script::Other => "Other",
-    }
 }
 
 fn apply_letter_spacing(run: &mut ShapedRun, style: &FaceStyle) {

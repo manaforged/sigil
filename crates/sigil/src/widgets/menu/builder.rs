@@ -6,6 +6,8 @@ use crate::layout::PopupSide;
 use crate::layout::{LayoutStyle, Position};
 use crate::reactive::{Owner, Signal};
 use crate::style::Style;
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string_once;
 use crate::widgets::Widget;
 
 use super::super::layout_ext::LayoutOverrides;
@@ -168,7 +170,9 @@ impl MenuBuilder {
             ),
         };
         let overrides = std::mem::take(&mut self.layout_overrides);
-        let menu_label = self.label.unwrap_or_else(|| String::from("Menu"));
+        let menu_label = self
+            .label
+            .unwrap_or_else(|| theme_string_once(StringKey::Menu));
 
         let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
         let panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)

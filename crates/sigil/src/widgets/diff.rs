@@ -4,6 +4,8 @@ use std::rc::Rc;
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::{LayoutStyle, Overflow};
 use crate::reactive::{Reactive, Signal, derived, signal};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string_once;
 use crate::style::{BORDER_WIDTH, Paint, Style, Token};
 use crate::widgets::Widget;
 
@@ -185,7 +187,12 @@ impl DiffBuilder {
         let top = shape.clone();
         let mut root = container()
             .role(Role::List)
-            .label(shape.path.clone().unwrap_or_else(|| String::from("Diff")))
+            .label(
+                shape
+                    .path
+                    .clone()
+                    .unwrap_or_else(|| theme_string_once(StringKey::Diff)),
+            )
             .mutate(move |target| target.a11y.description = Some(AccessibleName::Derived(summary)))
             .layout(root_layout())
             .class("rounded")

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use ahash::AHashMap;
 
-use crate::style::{StyledTextEngine, TextLineHeight, TextStyle};
+use crate::style::{TextLineHeight, TextStyle};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::bidi;
@@ -112,6 +112,32 @@ impl OwnedTextEngine {
     ) -> Result<Paragraph, crate::Error> {
         let style = self.style.clone();
         self.layout_paragraph_styled(text, max_width, &style)
+    }
+
+    /// Lays out text in the given style, wrapped at `max_width` when it is set.
+    #[cfg_attr(
+        not(feature = "kittest"),
+        allow(
+            clippy::unnecessary_wraps,
+            reason = "the signature is public under kittest and callers propagate the result"
+        )
+    )]
+    pub fn layout_paragraph_styled(
+        &self,
+        text: &str,
+        max_width: Option<f32>,
+        style: &TextStyle,
+    ) -> Result<Paragraph, crate::Error> {
+        self.refresh_fonts();
+        if let Some(cached) = self.cached_paragraph(text, max_width, style) {
+            return Ok(cached);
+        }
+        let (para, fit) = self.build_paragraph(text, max_width, style);
+        let key = if fit.wrapped { max_width } else { None };
+        self.cache
+            .borrow_mut()
+            .insert(text, key, style, (para.clone(), fit.width));
+        Ok(para)
     }
 
     pub fn layout_paragraph_ellipsized(
@@ -292,33 +318,6 @@ impl OwnedTextEngine {
             min_content_hint,
         );
         (paragraph, fit)
-    }
-}
-
-impl StyledTextEngine for OwnedTextEngine {
-    type Error = crate::Error;
-    type Paragraph = Paragraph;
-
-    fn layout_paragraph_styled(
-        &self,
-        text: &str,
-        max_width: Option<f32>,
-        style: &TextStyle,
-    ) -> Result<Paragraph, crate::Error> {
-        self.refresh_fonts();
-        if let Some(cached) = self.cached_paragraph(text, max_width, style) {
-            return Ok(cached);
-        }
-        let (para, fit) = self.build_paragraph(text, max_width, style);
-        let key = if fit.wrapped { max_width } else { None };
-        self.cache
-            .borrow_mut()
-            .insert(text, key, style, (para.clone(), fit.width));
-        Ok(para)
-    }
-
-    fn font_generation(&self) -> u64 {
-        Self::font_generation(self)
     }
 }
 

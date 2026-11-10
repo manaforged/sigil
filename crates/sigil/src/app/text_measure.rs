@@ -4,14 +4,14 @@ use crate::geometry::{Point, Rect};
 use crate::hal::{HitPosition, TextAffinity};
 use crate::layout::text_adapter::TextEngineMeasure;
 use crate::layout::{CaretGeometry, TextMeasure};
-use crate::style::{StyledTextEngine as _, TextStyle};
+use crate::style::TextStyle;
 use crate::text::OwnedTextEngine;
 
 use super::cell_text::floor_boundary;
 
 /// `TextMeasure` implementation backed by the thread text engine.
 pub struct DefaultTextMeasure {
-    inner: TextEngineMeasure<OwnedTextEngine>,
+    inner: TextEngineMeasure,
     engine: Rc<OwnedTextEngine>,
 }
 

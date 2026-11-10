@@ -2,11 +2,13 @@ use crate::layout::Space;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::animation_runtime::presets;
+use crate::animation::runtime::presets;
 use crate::kernel::{AccessibleName, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::prelude::PointerEvent;
 use crate::reactive::{Signal, derived};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string_once;
 use crate::style::{
     ClassSource, ColorAtom, DISABLED_OPACITY, Radius, Rgba8, StateSlot, StateStyle, StyleAtom,
     StyleOverlay, StyleVariant, Token, space,
@@ -123,7 +125,9 @@ fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
     let node = interaction.install(
         container()
             .role(Role::Button)
-            .label(AccessibleName::Static(String::from("Close tab")))
+            .label(AccessibleName::Static(theme_string_once(
+                StringKey::CloseTab,
+            )))
             .layout(LayoutStyle::block().fixed_size(CLOSE_AFFORDANCE_WIDTH, CLOSE_AFFORDANCE_WIDTH))
             .class(Radius::Sm.atom())
             .child(

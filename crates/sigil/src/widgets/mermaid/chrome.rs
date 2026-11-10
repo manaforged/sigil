@@ -5,6 +5,8 @@ use crate::icons::Icon;
 use crate::kernel::{AccessibleName, NodeBuilder, Role, container, text};
 use crate::layout::{AlignItems, LayoutStyle, Position};
 use crate::reactive::{Signal, derived, signal, timeout};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::{ActiveTheme, theme_string_once};
 use crate::style::{ControlSize, Paint, Radius, Token, space};
 use crate::widgets::Widget;
 use crate::widgets::{ButtonBuilder, icon_button};
@@ -95,21 +97,23 @@ impl Chrome {
             .child(self.copy(source));
         if expandable {
             let open = self.open;
-            bar = bar
-                .child(tool(Icon::Maximize2, move || open.set(true)).accessible("Expand diagram"));
+            bar = bar.child(
+                tool(Icon::Maximize2, move || open.set(true))
+                    .accessible(theme_string_once(StringKey::ExpandDiagram)),
+            );
         }
         bar
     }
 
     fn toggle(self) -> ButtonBuilder {
         let code = self.code;
+        let theme = ActiveTheme::capture();
         let name = derived(move || {
-            if code.get() {
-                "Show diagram"
+            theme.string(if code.get() {
+                StringKey::ShowDiagram
             } else {
-                "Show code"
-            }
-            .to_string()
+                StringKey::ShowCode
+            })
         });
         tool(Icon::Code, move || code.update(|on| *on = !*on))
             .accessible(AccessibleName::Derived(name))
@@ -119,13 +123,13 @@ impl Chrome {
     fn copy(self, source: &str) -> ButtonBuilder {
         let copied = self.copied;
         let body = source.trim_end().to_string();
+        let theme = ActiveTheme::capture();
         let name = derived(move || {
-            if copied.get() {
-                "Copied"
+            theme.string(if copied.get() {
+                StringKey::Copied
             } else {
-                "Copy source"
-            }
-            .to_string()
+                StringKey::CopySource
+            })
         });
         tool(Icon::Copy, move || {
             if crate::clipboard::copy(&body).is_ok() {

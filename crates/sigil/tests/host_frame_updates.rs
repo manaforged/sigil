@@ -112,3 +112,25 @@ fn automatic_window_focus_shows_no_focus_ring() {
         assert_eq!(ring, Some(false));
     });
 }
+
+#[test]
+fn theme_switch_does_not_typeset_a_formula_again() {
+    Owner::scope("host_frame_updates::math_theme", || {
+        let runs = std::rc::Rc::new(std::cell::Cell::new(0_u32));
+        let seen = std::rc::Rc::clone(&runs);
+        let mut host = Host::new(HostMode::Pixel);
+        host.mount(column().child(math(move || {
+            seen.set(seen.get() + 1);
+            String::from("x^2")
+        })));
+        frame(&mut host, None);
+        frame(&mut host, None);
+        let before = runs.get();
+
+        set_theme(Theme::dark());
+        frame(&mut host, None);
+        frame(&mut host, None);
+
+        assert_eq!(runs.get(), before);
+    });
+}

@@ -1,5 +1,4 @@
 use super::*;
-use sigil::style::StyledTextEngine as _;
 
 pub(super) fn assert_sharp(label: &str, pixels: &[u8], w: u32, h: u32) {
     let measurement = measure(pixels, w, h);

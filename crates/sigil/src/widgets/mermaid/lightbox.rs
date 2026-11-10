@@ -4,6 +4,8 @@ use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, effect, signal, untrack};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string_once;
 use crate::style::{ControlSize, NumericAtomKind, Token};
 use crate::widgets::interaction::{DragEnd, pointer_drag};
 use crate::widgets::{ModalBuilder, Widget, button, icon_button, modal};
@@ -140,7 +142,7 @@ fn controls(camera: Camera) -> NodeBuilder {
         )
         .child(
             icon_button(Icon::ZoomOut, move || camera.scale(-1.0))
-                .accessible("Zoom out")
+                .accessible(theme_string_once(StringKey::ZoomOut))
                 .size(ControlSize::Compact),
         )
         .child(
@@ -150,7 +152,7 @@ fn controls(camera: Camera) -> NodeBuilder {
         )
         .child(
             icon_button(Icon::ZoomIn, move || camera.scale(1.0))
-                .accessible("Zoom in")
+                .accessible(theme_string_once(StringKey::ZoomIn))
                 .size(ControlSize::Compact),
         )
         .child(

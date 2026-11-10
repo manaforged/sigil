@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::fmt::Display;
 use std::sync::OnceLock;
 
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, derived, untrack};
 use crate::style::locale::Locale;
 use crate::style::strings::StringKey;
 
@@ -63,6 +63,14 @@ fn fallback() -> &'static Theme {
 
 pub(crate) fn theme_string(key: StringKey) -> String {
     ActiveTheme::capture().string(key)
+}
+
+pub(crate) fn theme_string_once(key: StringKey) -> String {
+    untrack(|| theme_string(key))
+}
+
+pub(crate) fn theme_fill_once(key: StringKey, args: &[&dyn Display]) -> String {
+    untrack(|| ActiveTheme::capture().fill(key, args))
 }
 
 pub(crate) fn theme_label(key: StringKey) -> Signal<String> {

@@ -3,23 +3,23 @@ use std::rc::Rc;
 
 use crate::geometry::{Dim, LogicalSize, Size};
 use crate::kernel::TextContent;
-use crate::style::{StyledTextEngine, TextStyle};
-use crate::text::Paragraph;
+use crate::style::TextStyle;
+use crate::text::OwnedTextEngine;
 
 use crate::layout::TextMeasure;
 
-pub struct TextEngineMeasure<E: StyledTextEngine> {
-    engine: Rc<E>,
+pub struct TextEngineMeasure {
+    engine: Rc<OwnedTextEngine>,
 }
 
-impl<E: StyledTextEngine> TextEngineMeasure<E> {
+impl TextEngineMeasure {
     #[must_use]
-    pub const fn new(engine: Rc<E>) -> Self {
+    pub const fn new(engine: Rc<OwnedTextEngine>) -> Self {
         Self { engine }
     }
 }
 
-impl<E: StyledTextEngine<Paragraph = Paragraph>> TextMeasure for TextEngineMeasure<E> {
+impl TextMeasure for TextEngineMeasure {
     fn measure(&self, source: &TextContent, space: Size) -> LogicalSize {
         self.measure_styled(source, &TextStyle::default(), space)
     }

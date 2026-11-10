@@ -8,6 +8,8 @@ use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Signal, derived, effect, untrack};
 use crate::style::StyleOverlay;
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_string_once;
 use crate::widgets::Widget;
 
 use super::super::listbox::{Move, RowSource, TAB_LIST};
@@ -90,13 +92,13 @@ pub(super) fn build_tab_list(
         }
     });
     let name = if aria_label.is_empty() {
-        "Tabs"
+        theme_string_once(StringKey::Tabs)
     } else {
-        aria_label
+        aria_label.to_owned()
     };
     container()
         .role(Role::TabList)
-        .label(AccessibleName::Static(name.to_owned()))
+        .label(AccessibleName::Static(name))
         .layout(
             LayoutStyle::flex_row()
                 .height(tab_height(spec.chrome))

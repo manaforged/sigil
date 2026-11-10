@@ -6,6 +6,8 @@ use crate::events::{Key, LogicalKey, MouseButton, PointerEvent, Shortcut};
 use crate::kernel::{NodeBuilder, Role, SortDirection, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position, snap};
 use crate::reactive::{Signal, derived};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_fill_once;
 use crate::style::{StyleAtom, Token, space};
 use crate::widgets::Widget;
 
@@ -124,7 +126,7 @@ fn resize_handle<Row: 'static>(
 ) -> NodeBuilder {
     let handle = container()
         .role(Role::Splitter)
-        .label(format!("Resize {column}"))
+        .label(theme_fill_once(StringKey::ResizeColumn, &[&column]))
         .hittable(true)
         .layout(
             LayoutStyle::block()

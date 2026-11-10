@@ -6,7 +6,6 @@
 )]
 
 use super::*;
-use crate::style::StyledTextEngine as _;
 
 #[test]
 fn subpixel_wrap_carries_into_anchor() {

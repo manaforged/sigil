@@ -26,7 +26,7 @@ fn spawn_writes_ok_on_drain() {
         assert!(sig.peek().is_pending());
         assert!(
             spin_until(Duration::from_secs(2), || {
-                let _ = runtime.drain();
+                let _ = runtime.pump();
                 sig.peek().is_ok()
             }),
             "spawn completion should write Status::Ok"
@@ -44,7 +44,7 @@ fn a_panicked_task_reports_panicked_instead_of_pending_forever() {
         assert!(sig.peek().is_pending());
         assert!(
             spin_until(Duration::from_secs(2), || {
-                let _ = runtime.drain();
+                let _ = runtime.pump();
                 sig.peek().is_panicked()
             }),
             "a panicked task must resolve the signal instead of pending forever"
@@ -77,7 +77,7 @@ fn signal_writer_streams_updates_through_drain() {
             values.peek().is_empty(),
             "writes wait for main-thread drain"
         );
-        assert_eq!(runtime.drain(), 2);
+        assert_eq!(runtime.pump(), 2);
         assert_eq!(values.peek(), vec![5, 8]);
     });
 }
@@ -96,7 +96,7 @@ fn ui_tasks_share_the_host_runtime_and_leave_it_running() {
         drop(AsyncRuntime::new().expect("uninstalled UI runtime"));
         let result = spawn::<_, String, _>(async { Ok(tokio::runtime::Handle::current().id()) });
         assert!(spin_until(Duration::from_secs(2), || {
-            runtime.drain();
+            runtime.pump();
             result.peek().is_ok()
         }));
         assert!(matches!(result.peek(), Status::Ok(id) if id == host.handle().id()));
@@ -132,7 +132,7 @@ fn a_current_thread_host_does_not_stall_ui_tasks() {
         runtime.install_current();
         let result = spawn::<_, String, _>(async { Ok(tokio::runtime::Handle::current().id()) });
         assert!(spin_until(Duration::from_secs(2), || {
-            runtime.drain();
+            runtime.pump();
             result.peek().is_ok()
         }));
         assert!(matches!(result.peek(), Status::Ok(id) if id != host.handle().id()));

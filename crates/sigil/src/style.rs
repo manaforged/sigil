@@ -133,12 +133,6 @@ kittest_pub! {
     #[doc(hidden)]
     pub use styled::StateStyleBuilder;
 }
-#[cfg(all(feature = "scene", not(feature = "kittest")))]
-#[allow(unused_imports, reason = "public only under kittest")]
-pub(crate) use text_style::StyledTextEngine;
-#[cfg(feature = "kittest")]
-#[doc(hidden)]
-pub use text_style::StyledTextEngine;
 pub use text_style::TextStyle;
 pub(crate) use text_style::is_typography_atom;
 pub(crate) use text_style::{TextFace, TextRuns};

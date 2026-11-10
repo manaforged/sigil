@@ -4,7 +4,6 @@
 )]
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
 
-use sigil::style::StyledTextEngine as _;
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
 

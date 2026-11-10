@@ -15,7 +15,7 @@ First public release.
 | Before | After |
 | --- | --- |
 | `Host::misalignments`, `Host::emit_since`, `Cx::take_delta`, `LayoutStyle::data` | `sigil::testing::misalignments`, `emit_since`, `take_delta`, `style_data` (feature `kittest`) |
-| `LayoutStyle::with_layout`, `events::EventRouter`, `style::StyleBinding`, `style::ReactiveStateSlot`, `style::ReactiveStyleAtoms`, `style::StyledTextEngine` | public only under feature `kittest` |
+| `LayoutStyle::with_layout`, `events::EventRouter`, `style::StyleBinding`, `style::ReactiveStateSlot`, `style::ReactiveStyleAtoms` | public only under feature `kittest` |
 | `GlyphRun::positioned_glyphs` | `GlyphRun::glyph_count` for the count; the glyphs are crate-private |
 | `Node::tag`, `TextStyle::layered_over_binding`, `FrameInfo::delta` | crate-private |
 | `sigil::kernel::*`, `sigil::layout::*` | prelude (`text`, `HostMode`, `TextBuilder`, `ImageBuilder`, `ObjectFit`, `TextCursor`, `Dimension`, `Position`, `Overflow`, `TrackSize`) or crate root (`Cx`, `NodeId`, `Node`, `NodeType`, `NodeExtensions`, `AccessibleName`, `TopLayer`, `Surface`, `ImageCrop`, `ImageRaster`, `Live`, `FocusScopeKind`, `announce`) |
@@ -23,7 +23,7 @@ First public release.
 | `sigil::text::{HitPosition, TextAffinity}`, `TextMeasure`, `CaretGeometry`, `app::DefaultTextMeasure`, `profile::{note_input, FRAME_BUDGET_NS}`, `widgets::MIN_COL_WIDTH`, `DrawRect::border_radius`, `DrawRect::border` | public only under `kittest`, `#[doc(hidden)]`; the crate-root paths are `sigil::TextMeasure`, `sigil::CaretGeometry`, `sigil::HitPosition`, and `sigil::TextAffinity` |
 | `sigil::text::{WebFont, WebFontScript, add_fallback_font, load_font_url, set_web_fallbacks, web_fallbacks}` | `sigil::app::*` |
 | `sigil::a11y::snapshot(&host.accessibility_tree())` | `host.accessibility_text()` |
-| `sigil::a11y`, `sigil::kernel`, `sigil::layout`, `sigil::animation_runtime`, `sigil::text`, other items in them | public only under `kittest`, `#[doc(hidden)]` |
+| `sigil::a11y`, `sigil::kernel`, `sigil::layout`, `sigil::text`, other items in them | public only under `kittest`, `#[doc(hidden)]` |
 | `layout::Rect<T>` (edges), `layout::Size<T>` (per axis) | `Edges<T>`, `Axes<T>`, under `kittest`. `geometry::Rect` stays the box |
 | `style::DisplayKind`, `FlexWrapKind`, `OverflowKind`, `AlignKind`, `JustifyKind` | `Display`, `FlexWrap`, `Overflow`, `AlignItems`, `JustifyContent`. `JustifyKind::Between`, `Around`, `Evenly` are `JustifyContent::SpaceBetween`, `SpaceAround`, `SpaceEvenly`. `AlignKind::Between` and `Around` are gone; the class grammar never produced them |
 | `AlignItems::FlexStart`, `AlignItems::FlexEnd` | `AlignItems::Start`, `AlignItems::End` |
@@ -102,7 +102,11 @@ First public release.
 | `input::press`, `type_char(text, physical)`, `type_text`, `tab`, `scroll_lines(x, y, dy)`, `window_blur`, `ime_event(event)` | `Event::press`, `Event::typed(text).physical(physical)`, `Event::type_text`, `Event::tab`, `Event::wheel(Point::new(x, y), dy)`, `Event::blur`, `Event::Ime(event)` |
 | `app::TextTuning`, `set_text_tuning`, `text_tuning` | `AppConfig::text_enhance`, `text_snap`, `text_raster`, `text_dilation`, `text_sharpen`, `text_gamma` |
 | `app::DefaultFonts`, `set_default_fonts` | `AppConfig::font_sans`, `font_sans_weight`, `font_mono`, `font_icon`, `font_display`, `font_fallback` |
-| `animation_runtime::MotionPrefs::reduced()`, `MotionPrefs::set` | `animation_runtime::reduced_motion()`, `AppConfig::reduced_motion` |
+| `animation_runtime::MotionPrefs::reduced()`, `MotionPrefs::set` | `animation::reduced_motion()`, `AppConfig::reduced_motion` |
+| `sigil::animation_runtime::{MotionPrefs, active_count, linear_channel_to_srgb, presets, running_clocks, tick}` (feature `kittest`) | `sigil::animation::*`, under `kittest`, `#[doc(hidden)]`. The `sigil::animation_runtime` module is removed |
+| `style::StyledTextEngine` (feature `kittest`) | removed; call `OwnedTextEngine::layout_paragraph_styled`, no trait import |
+| `layout::TextEngineMeasure<OwnedTextEngine>` (feature `kittest`) | `layout::TextEngineMeasure` |
+| `AsyncRuntime::drain` (feature `kittest`) | `AsyncRuntime::pump` |
 | `app::HostCaps`, `Host::set_caps(HostCaps { hyperlinks })`, `Caps::host()` | `Host::set_hyperlinks(hyperlinks)` |
 | `app::WindowOpts` | `AppConfig::overlay`, `frameless`, `anchor`, `user_zoom`, `min_size`, `resizable` |
 | `reactive::effect_named` | `reactive::effect`. Named effects are crate-private |
@@ -335,8 +339,8 @@ First public release.
 
 - Spring and tween style transitions, chosen by `Easing`.
 - Style transitions and animated appearance or disappearance through `transition` and `presence`.
-- Continuous motion through `animation_runtime::clock`, a reactive elapsed-time clock that advances on painted frames.
-- Reduced-motion preferences through `animation_runtime::reduced_motion`, with OS defaults and an `AppConfig::reduced_motion` override.
+- Continuous motion through `animation::clock`, a reactive elapsed-time clock that advances on painted frames.
+- Reduced-motion preferences through `animation::reduced_motion`, with OS defaults and an `AppConfig::reduced_motion` override.
 
 #### Window host
 

@@ -1,7 +1,7 @@
 use crate::layout::Space;
 
 use super::layout_ext::LayoutOverrides;
-use super::shared::caller_style;
+use super::shared::{METER_TRACK, METER_TRACK_HEIGHT, caller_style};
 use crate::kernel::{AccessibleName, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle};
@@ -12,11 +12,9 @@ use crate::style::theme::ambient::theme_label;
 use crate::style::{ControlSize, Metrics, Radius, Style, StyleAtom, Token, Tone};
 use crate::widgets::Widget;
 
-const TRACK_HEIGHT: f32 = 8.0;
 const INDETERMINATE_RATIO: f32 = 0.30;
 const CELL_RULE_THICKNESS: f32 = 1.0;
 
-static TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
 static FILL: &[StyleAtom] = &[Radius::Md.atom(), Token::Accent.bg()];
 static EMPTY: &[StyleAtom] = &[];
 
@@ -84,7 +82,10 @@ impl ProgressBuilder {
 
     fn root(self) -> NodeBuilder {
         let (value, max) = (self.value, self.max);
-        let track_h = self.layout_overrides.height_hint().unwrap_or(TRACK_HEIGHT);
+        let track_h = self
+            .layout_overrides
+            .height_hint()
+            .unwrap_or(METER_TRACK_HEIGHT);
         let fill = if self.indeterminate {
             indeterminate_fill(value, track_h)
         } else {
@@ -110,7 +111,7 @@ impl ProgressBuilder {
                     .fill_width()
                     .align_items(AlignItems::Center)
             })
-            .class(TRACK)
+            .class(METER_TRACK)
             .child(fill);
         let node = caller_style(node, self.style_accumulator);
         match self.caption {
@@ -150,7 +151,8 @@ fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> N
 }
 
 fn empty_segment(units: Signal<u16>, track_h: f32) -> NodeBuilder {
-    let (height, paint) = CellForm::new((track_h, EMPTY), (CELL_RULE_THICKNESS, TRACK)).pick();
+    let (height, paint) =
+        CellForm::new((track_h, EMPTY), (CELL_RULE_THICKNESS, METER_TRACK)).pick();
     container()
         .layout(LayoutStyle::block().height(height).width(0.0))
         .class(paint)

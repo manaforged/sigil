@@ -45,6 +45,8 @@ pub(crate) fn reactive_style_state(
 pub(crate) static DIMMED: &[StyleAtom] = &[StyleAtom::Opacity(DISABLED_OPACITY)];
 static UNDIMMED: &[StyleAtom] = &[];
 pub(crate) static ICON_GLYPH: &[StyleAtom] = &[StyleAtom::FontSize(ICON_SIZE)];
+pub(crate) static METER_TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
+pub(crate) const METER_TRACK_HEIGHT: f32 = 8.0;
 
 static CONTROL_BASE: &[StyleAtom] = &[Radius::Md.atom()];
 static CONTROL_HOVER: &[StyleAtom] = &[Token::SurfaceHover.bg()];

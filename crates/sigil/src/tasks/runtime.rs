@@ -115,7 +115,20 @@ impl AsyncRuntime {
 
     /// Runs waiting UI-thread work and returns how many items ran.
     pub fn pump(&mut self) -> usize {
-        self.drain()
+        sweep_owner_tasks(&self.parts.owner_tasks);
+
+        let budget = self.rx.len();
+        let mut ran = 0_usize;
+        for _ in 0..budget {
+            let Ok(msg) = self.rx.try_recv() else {
+                break;
+            };
+            if msg.owner.is_alive() && crate::reactive::owner_by_id(msg.owner, msg.callback) {
+                ran += 1;
+            }
+        }
+        crate::reactive::run_dispatch_deferred();
+        ran
     }
 
     pub(crate) fn spawn_parts(&self) -> SpawnParts {
@@ -191,26 +204,6 @@ impl AsyncRuntime {
         let task = self.parts.backend.spawn(owner, future, drop);
         attach_task(&self.parts, owner, task.clone());
         task
-    }
-
-    kittest_pub! {
-        /// Runs waiting UI-thread work and returns how many items ran.
-        pub fn drain(&mut self) -> usize {
-            sweep_owner_tasks(&self.parts.owner_tasks);
-
-            let budget = self.rx.len();
-            let mut ran = 0_usize;
-            for _ in 0..budget {
-                let Ok(msg) = self.rx.try_recv() else {
-                    break;
-                };
-                if msg.owner.is_alive() && crate::reactive::owner_by_id(msg.owner, msg.callback) {
-                    ran += 1;
-                }
-            }
-            crate::reactive::run_dispatch_deferred();
-            ran
-        }
     }
 }
 

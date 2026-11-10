@@ -1,7 +1,7 @@
 use crate::layout::Space;
 
 use super::layout_ext::LayoutOverrides;
-use super::shared::{accessible_name_or, caller_style};
+use super::shared::{METER_TRACK, METER_TRACK_HEIGHT, accessible_name_or, caller_style};
 use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
@@ -11,10 +11,7 @@ use crate::style::{Radius, Style, StyleAtom, Token, space};
 use crate::widgets::Widget;
 
 const TRACK_WIDTH: f32 = 160.0;
-const TRACK_HEIGHT: f32 = 8.0;
 const GAUGE_GAP: f32 = space(2);
-
-static TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
 
 /// Builder of a gauge.
 pub struct GaugeBuilder {
@@ -90,14 +87,14 @@ impl GaugeBuilder {
                 .role(Role::GenericContainer)
                 .layout(
                     LayoutStyle::flex_row()
-                        .fixed_size(TRACK_WIDTH, TRACK_HEIGHT)
+                        .fixed_size(TRACK_WIDTH, METER_TRACK_HEIGHT)
                         .align_items(AlignItems::Center),
                 )
-                .class(TRACK)
+                .class(METER_TRACK)
                 .child(
                     container()
                         .role(Role::GenericContainer)
-                        .layout(LayoutStyle::block().height(TRACK_HEIGHT))
+                        .layout(LayoutStyle::block().height(METER_TRACK_HEIGHT))
                         .class(Radius::Md.atom())
                         .style_reactive(move || fill_atoms(value, max, warn)),
                 ),

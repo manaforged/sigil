@@ -11,7 +11,6 @@ use sigil::kernel::{Cx, container, text};
 use sigil::layout::{LayoutEngine, LayoutStyle};
 use sigil::prelude::Widget;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil::style::StyledTextEngine as _;
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
 use sigil_kittest::FakeMeasure;

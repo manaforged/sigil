@@ -172,23 +172,3 @@ impl TextStyle {
         Some(layered)
     }
 }
-
-kittest_pub! {
-    #[cfg(any(test, feature = "kittest", feature = "scene"))]
-    pub trait StyledTextEngine {
-        type Error: core::error::Error + Send + Sync + 'static;
-
-        type Paragraph;
-
-        fn layout_paragraph_styled(
-            &self,
-            text: &str,
-            max_width: Option<f32>,
-            style: &TextStyle,
-        ) -> Result<Self::Paragraph, Self::Error>;
-
-        fn font_generation(&self) -> u64 {
-            0
-        }
-    }
-}

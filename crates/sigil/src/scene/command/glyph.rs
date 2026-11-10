@@ -287,7 +287,6 @@ const fn shape_paragraph(run: GlyphRun) -> GlyphRun {
 
 #[cfg(feature = "scene")]
 fn shape_paragraph(run: GlyphRun) -> GlyphRun {
-    use crate::style::StyledTextEngine as _;
     let max_width = run.rect.width.max(1.0);
     let engine = crate::text::OwnedTextEngine::thread();
     let paragraph = match run.flow {

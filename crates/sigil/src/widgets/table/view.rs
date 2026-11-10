@@ -6,14 +6,13 @@ use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{LayoutStyle, snap};
 use crate::layout::{Overflow, Position};
 use crate::reactive::{Signal, derived};
-use crate::style::DISABLED_OPACITY;
 use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, space};
 use crate::widgets::Widget;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::menu::MenuItem;
 use super::super::scroll::{WheelAxis, wheel};
-use super::super::shared::caller_style;
+use super::super::shared::{DIMMED, caller_style};
 use super::super::virtual_list::virtual_list;
 use super::chrome::{RowActivate, RowMenu, TableChrome, context_overlay};
 use super::density::Density;
@@ -23,7 +22,6 @@ use super::row::{RowSpec, body_row};
 use super::select;
 use super::state::TableState;
 
-static DIMMED: &[StyleAtom] = &[StyleAtom::Opacity(DISABLED_OPACITY)];
 static FRAMED: &[StyleAtom] = &[
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::BorderStrong.border(),

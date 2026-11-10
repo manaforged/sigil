@@ -5,6 +5,8 @@ use crate::events::{Key, MouseButton, PointerEvent};
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived};
+use crate::style::strings::StringKey;
+use crate::style::theme::ambient::theme_fill_once;
 use crate::style::{StateStyle, StyleAtom, StyleVariant, Token};
 use crate::widgets::Widget;
 
@@ -117,7 +119,7 @@ fn build_row<Row: 'static>(
         .children_reactive(move || row_cells(&state_cells, spec, row_index, &row_value.get()));
     let cells = container()
         .role(Role::Row)
-        .label(format!("row {}", visible_pos + 1))
+        .label(theme_fill_once(StringKey::Row, &[&(visible_pos + 1)]))
         .row_index(visible_pos + 2)
         .selected(is_selected)
         .layout(row_layout(row_height, spec.pad_x))

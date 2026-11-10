@@ -1,6 +1,5 @@
 #![allow(clippy::unwrap_used)]
 
-use sigil::style::StyledTextEngine as _;
 use sigil::style::TextStyle;
 use sigil::text::OwnedTextEngine;
 
