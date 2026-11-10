@@ -21,8 +21,7 @@ name = "sigil"
 serde_json = { workspace = true }
 accesskit = { workspace = true }
 ahash = { workspace = true }
-crossbeam-channel = { workspace = true }
-notify = { workspace = true }
+notify = { workspace = true, optional = true }
 phf = { workspace = true }
 slotmap = { workspace = true }
 smallvec = { workspace = true }
@@ -107,7 +106,7 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 
 [features]
 default = ["desktop", "a2ui"]
-desktop = ["scene", "shell", "clipboard"]
+desktop = ["scene", "shell", "clipboard", "dep:notify"]
 scene = [
     "cpu",
     "shaping-complex",
@@ -154,7 +153,7 @@ media = ["desktop", "dep:playwire", "dep:raw-window-handle"]
 hotkey = ["desktop", "dep:global-hotkey"]
 pty = ["dep:portable-pty", "dep:vt100"]
 hot = ["dep:subsecond", "dep:dioxus-devtools"]
-terminal = ["dep:crossterm", "dep:dark-light", "dep:rustix", "dep:signal-hook", "dep:rayon", "dep:vello_cpu", "image-decode"]
+terminal = ["dep:notify", "dep:crossterm", "dep:dark-light", "dep:rustix", "dep:signal-hook", "dep:rayon", "dep:vello_cpu", "image-decode"]
 
 [dev-dependencies]
 image = { workspace = true, features = ["webp"] }

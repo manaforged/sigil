@@ -21,7 +21,8 @@ fn act(
     actions: &[accesskit::Action],
     target: NodeId,
 ) {
-    let (tx, rx) = crossbeam_channel::unbounded();
+    let (tx, rx) = std::sync::mpsc::channel();
+    let rx = std::rc::Rc::new(rx);
     for &action in actions {
         tx.send(accesskit::ActionRequest {
             action,

@@ -82,8 +82,8 @@ fn single_char(value: &toml::Value) -> Option<char> {
 
 pub(super) fn watcher(
     path: &std::path::Path,
-) -> Result<(notify::RecommendedWatcher, crossbeam_channel::Receiver<()>), notify::Error> {
-    let (tx, rx) = crossbeam_channel::unbounded();
+) -> Result<(notify::RecommendedWatcher, std::sync::mpsc::Receiver<()>), notify::Error> {
+    let (tx, rx) = std::sync::mpsc::channel();
     let file = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
     let parent = file
         .parent()

@@ -4,7 +4,7 @@ use std::cell::RefCell;
 #[cfg(not(any(feature = "menu", feature = "tray", feature = "media")))]
 use std::marker::PhantomData;
 
-use crossbeam_channel::{Receiver, Sender, unbounded};
+use std::sync::mpsc::{Receiver, Sender, channel};
 
 use crate::app::Wake;
 #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
@@ -26,7 +26,7 @@ pub(crate) struct Native<Cmd, Handle, Ev: 'static> {
 
 impl<Cmd, Handle, Ev: Clone + Send + 'static> Native<Cmd, Handle, Ev> {
     pub(crate) fn new() -> Self {
-        let (tx, rx) = unbounded();
+        let (tx, rx) = channel();
         Self {
             #[cfg(any(feature = "menu", feature = "tray", feature = "media"))]
             pending: RefCell::new(None),

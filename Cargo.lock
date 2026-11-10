@@ -5726,7 +5726,6 @@ dependencies = [
  "bytemuck",
  "core-text",
  "criterion",
- "crossbeam-channel",
  "crossterm",
  "dark-light",
  "dioxus-devtools",
