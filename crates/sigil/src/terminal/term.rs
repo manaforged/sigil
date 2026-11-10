@@ -136,8 +136,9 @@ impl Term {
         if !self.cell_stale {
             return None;
         }
+        let answer = crate::terminal::caps::ask_cell().ok()?;
         self.cell_stale = false;
-        let cell = crate::terminal::caps::ask_cell()?;
+        let cell = answer?;
         if Some(cell) == self.caps.cell {
             return None;
         }
