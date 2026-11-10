@@ -274,20 +274,12 @@ fn typed_lines(runtime: &TextEditRuntime) -> TextBuilder {
 }
 
 pub(crate) fn splice_preedit(value: &str, caret: usize, preedit: &str) -> String {
-    let caret = floor_char_boundary(value, caret);
+    let caret = value.floor_char_boundary(caret);
     let mut out = String::with_capacity(value.len() + preedit.len());
     out.push_str(&value[..caret]);
     out.push_str(preedit);
     out.push_str(&value[caret..]);
     out
-}
-
-pub(crate) fn floor_char_boundary(text: &str, byte: usize) -> usize {
-    let mut byte = byte.min(text.len());
-    while byte > 0 && !text.is_char_boundary(byte) {
-        byte -= 1;
-    }
-    byte
 }
 
 fn accessible_label(placeholder: &str) -> String {

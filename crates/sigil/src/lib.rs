@@ -222,11 +222,13 @@ pub mod prelude {
     };
     pub use crate::tasks::{SignalWriter, Status, Task, signal_writer, spawn, task};
     pub use crate::view::View;
+    #[cfg(feature = "a2ui")]
+    pub use crate::widgets::a2ui;
     pub use crate::widgets::{
         ColumnWidth, Combobox, Date, Density, DiffView, Disclosure, DragState, Identifiable,
         ListRowSlots, MenuItem, ModalBuilder, Orientation, PathNode, SelectionMode, Side,
-        SortDirection, SortKey, TableColumn, TableState, ToastQueue, Widget, a2ui, app_shell,
-        avatar, axis_drag, button, card, chart, checkbox, chip, code_edit, color_field, combobox,
+        SortDirection, SortKey, TableColumn, TableState, ToastQueue, Widget, app_shell, avatar,
+        axis_drag, button, card, chart, checkbox, chip, code_edit, color_field, combobox,
         command_menu, context_menu, date_field, diff, divider, dot, drag_ghost, dropdown,
         empty_state, field, fuzzy_score, gauge, graphviz, heatmap, highlight, hint_bar,
         hint_overlay, html, icon, icon_button, kv_grid, kv_row, list_row, markdown, markdown_edit,

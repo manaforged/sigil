@@ -53,10 +53,7 @@ pub fn a2ui(json: impl Reactive<String>) -> A2uiBuilder {
 
 fn fence(source: &str) -> String {
     let shown = if source.len() > MAX_SHOWN_SOURCE {
-        let end = (0..=MAX_SHOWN_SOURCE)
-            .rev()
-            .find(|index| source.is_char_boundary(*index))
-            .unwrap_or(0);
+        let end = source.floor_char_boundary(MAX_SHOWN_SOURCE);
         format!("{}\n…", &source[..end])
     } else {
         source.to_string()
