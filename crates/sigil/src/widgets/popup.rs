@@ -6,7 +6,7 @@ use crate::layout::LayoutStyle;
 use crate::layout::Space;
 use crate::layout::{Popup, PopupSide};
 use crate::style::{BORDER_WIDTH, ControlSize, Layer, Metrics, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 pub(crate) use item::{ChevronDirection, ItemSlots, chevron, footer, item_row};
 pub use layer::close_top_escape;

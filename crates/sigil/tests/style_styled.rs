@@ -24,12 +24,12 @@ use sigil::layout::Space;
 use sigil::layout::{
     AlignItems, Display, FlexDirection, JustifyContent, LayoutStyle, Length, Overflow,
 };
-use sigil::prelude::Widget;
 use sigil::scene::{DrawRect, SceneCommand, emit_scene};
 use sigil::style::{
     Color, ColorAtom, FontFamily, Paint, Radius, StateStyleBuilder, States, TextLineHeight, Theme,
     Token,
 };
+use sigil::widgets::Layout;
 use widget_support::compute;
 
 const VIEWPORT: Size = Size::fixed(200.0, 100.0);

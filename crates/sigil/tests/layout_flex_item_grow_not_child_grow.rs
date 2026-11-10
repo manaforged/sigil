@@ -7,7 +7,7 @@
 use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeId, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::prelude::Widget;
+use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 
 fn row_widths() -> Vec<f32> {

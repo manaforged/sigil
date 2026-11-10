@@ -22,7 +22,7 @@ use crate::layout::snap::CellForm;
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived};
 use crate::style::{Radius, Token, Tone as ChartTone, space};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 use std::rc::Rc;
 
 use parse::Block;

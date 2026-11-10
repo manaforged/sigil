@@ -163,10 +163,12 @@ impl LayoutOverrides {
 
     #[must_use]
     pub(crate) fn fills_height(&self) -> bool {
-        matches!(
-            self.apply(LayoutStyle::default()).data().size.height,
-            Length::Fill | Length::Percent(_)
-        )
+        fills(self.apply(LayoutStyle::default()).data().size.height)
+    }
+
+    #[must_use]
+    pub(crate) fn fills_width(&self) -> bool {
+        fills(self.apply(LayoutStyle::default()).data().size.width)
     }
 
     #[must_use]
@@ -182,3 +184,7 @@ impl LayoutOverrides {
 #[cfg(test)]
 #[path = "layout_ext_tests.rs"]
 mod tests;
+
+const fn fills(length: Length) -> bool {
+    matches!(length, Length::Fill | Length::Percent(_))
+}

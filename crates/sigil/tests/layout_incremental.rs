@@ -12,6 +12,7 @@ use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
+use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 use stub::{layout_rect, stub_engine};
 

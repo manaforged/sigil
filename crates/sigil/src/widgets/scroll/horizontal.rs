@@ -2,7 +2,7 @@ use crate::events::{Key, KeyEvent, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, signal};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::{
     SCROLL_LINE, SCROLLBAR_WIDTH, THUMB_ATOMS, THUMB_MIN_HEIGHT, TRACK_ATOMS, WheelAxis, geometry,

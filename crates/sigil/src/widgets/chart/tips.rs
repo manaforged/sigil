@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::kernel::{NodeBuilder, Role, text};
 use crate::layout::{LayoutStyle, Position};
 use crate::style::{Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::popup::surface;
 

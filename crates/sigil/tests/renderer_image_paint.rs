@@ -11,10 +11,10 @@ mod support;
 use sigil::kernel::{ImageSource, ObjectFit, container, image};
 use sigil::layout::Space;
 use sigil::layout::{LayoutStyle, Overflow};
-use sigil::prelude::Widget;
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::Paint;
 
+use sigil::widgets::Layout;
 use support::{capture, close};
 
 const SIZE: u32 = 32;

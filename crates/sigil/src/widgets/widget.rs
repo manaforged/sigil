@@ -20,6 +20,20 @@ mod edit;
 
 pub(crate) use edit::{Edit, LayoutEdit, Sealed, StateTarget};
 
+kittest_pub! {
+    /// Merges a raw layout style into a builder.
+    #[doc(hidden)]
+    pub trait Layout: Sealed {
+        /// Merges `style` into the node's layout.
+        #[must_use]
+        fn layout(self, style: LayoutStyle) -> Self {
+            self.edit(Edit::Layout(LayoutEdit::Merge(style)))
+        }
+    }
+}
+
+impl<T: Sealed> Layout for T {}
+
 #[doc = include_str!("../../docs/widget.md")]
 pub trait Widget: Sealed {
     /// Applies `f` to the root node that this builder produces.
@@ -117,13 +131,6 @@ pub trait Widget: Sealed {
     {
         let built = paint(StateStyleBuilder::new());
         self.map_target(move |node| look::paint_when(node, active, built))
-    }
-
-    /// Merges `style` into the node's layout.
-    #[doc(hidden)]
-    #[must_use]
-    fn layout(self, style: LayoutStyle) -> Self {
-        self.edit(Edit::Layout(LayoutEdit::Merge(style)))
     }
 
     /// Marks the node as intentionally asymmetric, with the reason.

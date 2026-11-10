@@ -6,9 +6,9 @@
 use sigil::geometry::{Point, Rect, Size};
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
 use sigil::scene::emit_scene;
+use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 
 fn layout(cx: &mut Cx, root: NodeId) {

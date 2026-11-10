@@ -6,7 +6,7 @@ use std::rc::Rc;
 use crate::kernel::{IntoNode, NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Signal, derived, effect, signal};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::render::WidthSpec;
 use super::{RowKey, bound_slice};

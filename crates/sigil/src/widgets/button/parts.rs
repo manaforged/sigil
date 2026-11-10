@@ -13,6 +13,7 @@ const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
 #[derive(Clone, Copy)]
 pub(super) enum ButtonWidth {
     Hug,
+    Fill,
     Fixed(f32),
 }
 
@@ -24,6 +25,7 @@ pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> 
         .justify_content(JustifyContent::Center);
     match width {
         ButtonWidth::Hug => layout.shrink(0.0),
+        ButtonWidth::Fill => layout,
         ButtonWidth::Fixed(px) => layout.width(px).shrink(0.0),
     }
 }

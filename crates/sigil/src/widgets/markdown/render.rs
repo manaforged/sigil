@@ -5,7 +5,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::signal;
 use crate::style::{Radius, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::highlight::{Highlight, byte_marks, text_runs};
 use crate::widgets::interaction::InteractionState;
 

@@ -206,6 +206,10 @@ pub mod prelude {
         #[doc(hidden)]
         pub use crate::layout::LayoutStyle;
     }
+    kittest_pub! {
+        #[doc(hidden)]
+        pub use crate::widgets::Layout;
+    }
     pub use crate::layout::{
         AlignItems, FlexWrap, JustifyContent, Length, Overflow, Position, Space, TrackSize, cols,
         column, em, grid, row, rows,

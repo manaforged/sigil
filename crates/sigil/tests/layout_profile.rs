@@ -16,6 +16,7 @@ use sigil::prelude::Widget;
 use sigil::profile::{disable, enable, frames, reset, tick_frame};
 use sigil::reactive::{Owner, derived, signal};
 use sigil::style::Paint;
+use sigil::widgets::Layout;
 
 static RECORDER: std::sync::Mutex<()> = std::sync::Mutex::new(());
 

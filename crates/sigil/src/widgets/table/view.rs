@@ -7,7 +7,7 @@ use crate::layout::{LayoutStyle, snap};
 use crate::layout::{Overflow, Position};
 use crate::reactive::{Signal, derived};
 use crate::style::{BORDER_WIDTH, Radius, Style, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::menu::MenuItem;

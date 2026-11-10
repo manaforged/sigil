@@ -9,7 +9,7 @@ use crate::kernel::{Cx, IntoNode, NodeId, container, text};
 use crate::layout::LayoutStyle;
 use crate::layout::rows;
 use crate::reactive::{Signal, effect_named, signal};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 use crate::widgets::{ListRowSlots, button, list_row, modal, text_field, virtual_list};
 
 use super::entries::{EntryKind, FileEntry, list, start_dir};

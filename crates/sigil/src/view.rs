@@ -9,7 +9,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container, fragment, show
 use crate::layout::{LayoutStyle, Space, column};
 use crate::reactive::{Signal, derived, interval, signal};
 use crate::style::Tone;
-use crate::widgets::{Widget, notice_band};
+use crate::widgets::{Layout, Widget, notice_band};
 
 mod build;
 mod lex;

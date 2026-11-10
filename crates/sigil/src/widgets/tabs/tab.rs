@@ -13,9 +13,9 @@ use crate::style::{
     ClassSource, Color, ColorAtom, DISABLED_OPACITY, Radius, StateSlot, StateStyle, StyleAtom,
     StyleOverlay, StyleVariant, Token, space,
 };
-use crate::widgets::Widget;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::shared::{Activate, Press, RELEASE, RELEASE_ENTER, press};
+use crate::widgets::{Layout, Widget};
 
 use super::builder::{CloseHandler, STRIP_HEIGHT, StripChrome, TAB_HEIGHT};
 use super::drag::{TabDrag, install_label_drag_hooks};

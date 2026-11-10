@@ -3,7 +3,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::style::ControlSize;
 use crate::style::{StyleAtom, Tone};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::layout_ext::LayoutOverrides;
 use super::shared::caller_style;

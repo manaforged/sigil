@@ -16,7 +16,7 @@ use sigil::events::*;
 use sigil::geometry::Size;
 use sigil::kernel::{FocusScopeKind, *};
 use sigil::layout::*;
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 
 use routing_helpers::{compute_layout, route_event};
 

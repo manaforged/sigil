@@ -11,7 +11,7 @@ use crate::scene::command::{
 };
 use crate::style::{Color, ColorAtom, Theme};
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{CanvasPaint, Widget};
+use crate::widgets::{CanvasPaint, Layout};
 
 mod key;
 mod paint;

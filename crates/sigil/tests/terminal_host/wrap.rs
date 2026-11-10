@@ -1,5 +1,6 @@
 use super::*;
 use sigil::layout::Space;
+use sigil::widgets::Layout;
 
 #[test]
 fn wrapped_label_fills_the_container_width() {

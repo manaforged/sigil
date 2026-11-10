@@ -7,7 +7,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{IntoPx, JustifyContent, LayoutStyle, Length, cols};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{StyleAtom, TextRun, TextRuns, TextStyle, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::button::button;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::shared::{Press, RELEASE_ENTER_SPACE, press};

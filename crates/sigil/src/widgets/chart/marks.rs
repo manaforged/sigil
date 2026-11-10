@@ -1,6 +1,6 @@
 use crate::layout::{LayoutStyle, Position};
 use crate::style::{ColorAtom, Tone};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::vector::{PathNode, path};
 use super::decimate::{self, Candle};

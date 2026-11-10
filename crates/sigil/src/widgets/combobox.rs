@@ -5,7 +5,7 @@ use crate::layout::{LayoutStyle, Position};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{ControlSize, Metrics, space};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::listbox::{ListModel, Matcher, listbox, scrolled};
 use super::popup::{self, ItemSlots, POPUP_GAP, item_row};

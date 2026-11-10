@@ -10,8 +10,8 @@ use super::keys::install_handle_keys;
 use super::pane::{build_pane, shares_free_space};
 use super::pane_builder::PaneBuilder;
 use crate::style::States;
-use crate::widgets::Widget;
 use crate::widgets::orientation::Orientation;
+use crate::widgets::{Layout, Widget};
 
 pub(in crate::widgets) const HANDLE_PX: f32 = 6.0;
 

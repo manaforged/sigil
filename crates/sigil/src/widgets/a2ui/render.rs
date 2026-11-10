@@ -8,7 +8,7 @@ use crate::kernel::{NodeBuilder, TextContent, container, fragment, text};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::untrack;
 use crate::style::{Token, space};
-use crate::widgets::{Widget, button, card, divider_horizontal, divider_vertical, tabs};
+use crate::widgets::{Layout, Widget, button, card, divider_horizontal, divider_vertical, tabs};
 
 use super::document::{MAX_BYTES, Surface};
 use super::model::{Model, display};

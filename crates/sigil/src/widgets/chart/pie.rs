@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{Radius, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::vector::{PathNode, path};
 use super::axis::format_tick;

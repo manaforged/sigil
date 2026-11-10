@@ -10,7 +10,7 @@ use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{ControlSize, Metrics, Radius, Style, StyleAtom, Token, Tone};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 const INDETERMINATE_RATIO: f32 = 0.30;
 const CELL_RULE_THICKNESS: f32 = 1.0;

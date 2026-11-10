@@ -8,7 +8,7 @@ use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeId, container};
 use sigil::layout::Space;
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::prelude::Widget;
+use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 
 fn two_cells(with_child: bool) -> Vec<f32> {

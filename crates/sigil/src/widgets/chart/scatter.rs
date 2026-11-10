@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutStyle, Length, Position};
 use crate::style::{Radius, StyleAtom};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::vector::path;
 use super::ChartView;

@@ -7,7 +7,7 @@ use crate::kernel::HostMode;
 use crate::kernel::{IntoNode, container, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::Owner;
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 #[test]
 fn nice_max_steps_are_1_2_5() {

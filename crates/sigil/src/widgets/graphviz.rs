@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, Role, container, fragment, text};
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, signal};
 use crate::style::space;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::scroll::Horizontal;
 use crate::widgets::{bound_source, frame_source};
 

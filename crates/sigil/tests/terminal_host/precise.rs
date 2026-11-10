@@ -3,11 +3,11 @@ use sigil::kernel::HostMode;
 use sigil::kernel::{container, text};
 use sigil::layout::LayoutStyle;
 use sigil::prelude::Paint;
-use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
 use sigil::terminal::{Capabilities, Glyphs, Screen};
 
 use super::oracle::{COLS, Model, ROWS, tree};
+use sigil::widgets::Layout;
 
 #[test]
 fn an_unchanged_frame_writes_nothing() {

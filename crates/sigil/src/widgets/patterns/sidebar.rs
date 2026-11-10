@@ -7,7 +7,7 @@ use crate::style::States;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{BORDER_WIDTH, Paint, Style, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::drag::axis_drag;
 use super::super::interactive::interactive;

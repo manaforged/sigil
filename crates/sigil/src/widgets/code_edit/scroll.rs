@@ -2,7 +2,7 @@ use crate::events::ScrollEvent;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::render::{EditRowCtx, GutterCtx, gutter_width, order, rows};
 use super::{EditSurface, LineWindow, ROW_BUFFER};

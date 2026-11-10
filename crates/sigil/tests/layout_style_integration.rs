@@ -12,7 +12,7 @@ use sigil::kernel::{TextContent, *};
 use sigil::layout::Space;
 use sigil::layout::*;
 use sigil::style::{Paint, TextLineHeight, TextStyle};
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 
 use stub::{first_child, layout_rect, stub_engine};
 

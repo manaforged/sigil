@@ -6,6 +6,7 @@ use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::layout::Space;
+use sigil::widgets::Layout;
 
 fn wide_state() -> TableState<Item> {
     TableState::new(

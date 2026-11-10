@@ -1,4 +1,5 @@
 use super::*;
+use sigil::widgets::Layout;
 
 #[test]
 fn panel_default() {

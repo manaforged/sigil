@@ -6,7 +6,7 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 use stub::{layout_rect, stub_engine};
 
 use sigil::geometry::Size;

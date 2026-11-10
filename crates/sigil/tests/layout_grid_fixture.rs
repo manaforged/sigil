@@ -11,7 +11,7 @@ use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::Space;
 use sigil::layout::{LayoutResult, TrackSize, *};
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 
 use stub::stub_engine;
 

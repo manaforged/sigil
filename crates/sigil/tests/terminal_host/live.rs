@@ -14,7 +14,7 @@ use std::fmt::Write as _;
 use std::time::Duration;
 
 use sigil::terminal::{Access, ColorDepth, Grid, Screen};
-use sigil::widgets::{button, modal, text_edit, virtual_list};
+use sigil::widgets::{Layout, button, modal, text_edit, virtual_list};
 
 const CELL: f32 = Host::CELL;
 

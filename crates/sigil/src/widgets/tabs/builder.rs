@@ -6,7 +6,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::reactive::{Reactive, Signal, derived, signal};
 use crate::style::{Radius, Style, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::caller_style;

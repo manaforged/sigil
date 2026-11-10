@@ -8,7 +8,7 @@ use crate::reactive::{Owner, Signal};
 use crate::style::Style;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{self, PANEL_WIDTH, PopupAnchor, PopupLayer};

@@ -1,4 +1,5 @@
 use super::*;
+use sigil::widgets::Layout;
 
 fn grid_2d_rects(cells: &[(f32, u16, u16)]) -> Vec<(f32, f32, f32, f32)> {
     let mut cx = Cx::new_root();

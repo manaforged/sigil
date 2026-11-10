@@ -8,7 +8,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle, cols};
 use crate::reactive::signal;
 use crate::style::{Radius, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::inline::note_mark;
 use super::parse::{Block, Inline, Note};

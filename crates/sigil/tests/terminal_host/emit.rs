@@ -2,10 +2,10 @@ use sigil::Host;
 use sigil::kernel::HostMode;
 use sigil::kernel::{container, text};
 use sigil::layout::LayoutStyle;
-use sigil::prelude::Widget;
 use sigil::profile::{self, BackendStatus, Counter};
 use sigil::reactive::{Owner, signal};
 use sigil::scene::CommandScene;
+use sigil::widgets::Layout;
 
 const VIEW: (f32, f32) = (320.0, 160.0);
 

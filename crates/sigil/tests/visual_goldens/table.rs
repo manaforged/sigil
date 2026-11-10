@@ -1,4 +1,5 @@
 use super::*;
+use sigil::widgets::Layout;
 
 #[derive(Clone)]
 struct TableRow {

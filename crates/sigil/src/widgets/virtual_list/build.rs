@@ -3,7 +3,7 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::Position;
 use crate::layout::{LayoutStyle, Length, Overflow};
 use crate::reactive::{Signal, derived, signal};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use std::ops::Deref;
 

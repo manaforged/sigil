@@ -6,7 +6,7 @@ use crate::reactive::{Owner, effect, signal};
 use crate::style::StyleAtom;
 
 use crate::layout::{LayoutStyle, TextMeasure};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::LayoutEngine;
 

@@ -13,7 +13,7 @@ mod mock_shell;
 mod routing_helpers;
 
 use sigil::geometry::Point;
-use sigil::widgets::Widget;
+use sigil::widgets::{Layout, Widget};
 use std::cell::RefCell;
 use std::rc::Rc;
 

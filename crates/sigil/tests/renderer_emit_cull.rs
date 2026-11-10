@@ -3,9 +3,9 @@
 use sigil::geometry::{Point, Rect, Size};
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutStyle, Overflow};
-use sigil::prelude::Widget;
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::{Paint, Token};
+use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 
 const TEXT_MEASURE: FakeMeasure = FakeMeasure::chars(8.0, 20.0);

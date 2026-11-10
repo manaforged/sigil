@@ -8,7 +8,7 @@
 mod input;
 
 use sigil::geometry::Point;
-use sigil::widgets::Widget;
+use sigil::widgets::{Layout, Widget};
 use sigil_kittest::FakeMeasure;
 use std::cell::Cell;
 use std::rc::Rc;

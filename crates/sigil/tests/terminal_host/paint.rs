@@ -1,5 +1,6 @@
 use super::*;
 use sigil::kernel::HostMode;
+use sigil::widgets::Layout;
 use sigil_kittest::Harness;
 
 #[test]

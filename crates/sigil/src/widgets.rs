@@ -345,4 +345,8 @@ pub use virtual_list::{
     RowRender, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder, virtual_list,
 };
 pub use widget::Widget;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use widget::Layout;
+}
 pub(crate) use widget::{Edit, LayoutEdit, Sealed, StateTarget};

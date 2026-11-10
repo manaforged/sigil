@@ -7,7 +7,7 @@ use crate::reactive::{Reactive, Signal, derived, signal};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
 use crate::style::{BORDER_WIDTH, Paint, Style, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::highlight::language_for_path;
 use super::layout_ext::LayoutOverrides;

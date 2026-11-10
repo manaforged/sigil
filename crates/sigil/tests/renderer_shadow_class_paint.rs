@@ -11,9 +11,9 @@ mod support;
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::prelude::Widget;
 use sigil::scene::{SceneCommand, ShadowKind, emit_scene};
 use sigil::style::{Elevation, Paint, Token};
+use sigil::widgets::Layout;
 use support::TEXT_MEASURE;
 
 const SIZE: u32 = 64;

@@ -2,7 +2,7 @@ use crate::kernel::{IntoNode, NodeBuilder, container, text};
 use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Position};
 use crate::style::{Radius, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::ChartView;
 use super::plot::{AXIS, ROW, X_AXIS};

@@ -11,7 +11,7 @@ use crate::style::{
     BORDER_WIDTH, Color, ControlSize, Metrics, Paint, Radius, StateSlot, StyleAtom, Token,
 };
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{Edit, Sealed, StateTarget, Widget};
+use crate::widgets::{Edit, Layout, Sealed, StateTarget, Widget};
 use smallvec::SmallVec;
 
 /// A hex color input with a swatch; layout and `map_node` change the row, and style, state, and focus setters change the text field.

@@ -12,7 +12,7 @@ mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
 mod routing_helpers;
 
-use sigil::widgets::Widget;
+use sigil::widgets::{Layout, Widget};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 

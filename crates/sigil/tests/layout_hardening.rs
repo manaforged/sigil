@@ -5,7 +5,7 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::layout::Space;
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 use std::cell::Cell;
 use std::rc::Rc;
 

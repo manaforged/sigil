@@ -8,7 +8,7 @@ use crate::layout::snap;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Overflow, Position};
 use crate::reactive::{Signal, signal};
 use crate::style::{Style, StyleAtom, Token, TransitionId, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{self, PopupAnchor, PopupLayer, close_on_escape, footer};

@@ -12,7 +12,7 @@ use crate::style::{
     BORDER_WIDTH, ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant,
     Token, Tone, TransitionId,
 };
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use crate::widgets::interaction::InteractionState;
 

@@ -1,5 +1,6 @@
 use super::*;
 use sigil::layout::Space;
+use sigil::widgets::Layout;
 
 #[test]
 fn hint_overlay_default() {

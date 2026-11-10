@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::style::{StyleAtom, Token};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 const HAIRLINE_PX: f32 = 1.0;
 

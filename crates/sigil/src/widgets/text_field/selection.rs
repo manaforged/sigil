@@ -6,7 +6,7 @@ use crate::layout::with_text_geometry;
 use crate::layout::{LayoutStyle, Overflow, Position};
 use crate::reactive::{Signal, derived};
 use crate::style::{ColorAtom, SELECTION_FILL, StyleAtom, Token};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use crate::widgets::interaction::{InteractionState, is_primary};
 

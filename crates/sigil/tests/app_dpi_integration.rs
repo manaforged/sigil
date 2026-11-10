@@ -8,8 +8,8 @@ use sigil::app::DefaultTextMeasure;
 use sigil::geometry::{LogicalSize, PhysicalSize, Scale, Size};
 use sigil::kernel::{Cx, container};
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::prelude::Widget;
 use sigil::reactive::Owner;
+use sigil::widgets::Layout;
 
 #[test]
 fn scale_change_keeps_launch_viewport_logical() {

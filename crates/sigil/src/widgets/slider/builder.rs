@@ -10,7 +10,7 @@ use crate::layout::{AlignItems, LayoutStyle, Length, cols, rows};
 use crate::reactive::{Reactive, Signal};
 use crate::style::strings::StringKey;
 use crate::style::{Style, StyleOverlay};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::orientation::Orientation;
 

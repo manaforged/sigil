@@ -7,7 +7,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, cols, rows}
 use crate::reactive::{Signal, signal};
 use crate::style::States;
 use crate::style::{Paint, Radius, Token, Tone, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::super::chip::chip;
 use super::super::interactive::interactive;

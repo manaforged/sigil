@@ -4,7 +4,7 @@ use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{LayoutStyle, Length, Overflow, StyleData};
 use crate::reactive::{Signal, derived, effect_named, signal};
 use crate::style::{Style, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::layout_ext::LayoutOverrides;
 use super::shared::caller_style;

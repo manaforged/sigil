@@ -14,7 +14,7 @@ mod mock_shell;
 mod routing_helpers;
 
 use sigil::events::Event;
-use sigil::widgets::Widget;
+use sigil::widgets::{Layout, Widget};
 use std::cell::Cell;
 use std::rc::Rc;
 

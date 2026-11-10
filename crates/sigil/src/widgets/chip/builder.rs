@@ -6,7 +6,7 @@ use crate::layout::snap::line;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Reactive, Signal};
 use crate::style::{Radius, Tone, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use crate::widgets::interaction::InteractionState;
 

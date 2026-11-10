@@ -4,7 +4,7 @@ use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::LayoutStyle;
 use crate::layout::Space;
 use crate::style::{BORDER_WIDTH, Elevation, Layer, Radius, Style, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 const PANEL_MIN_HEIGHT: f32 = space(12);
 const TITLE_GAP: f32 = space(2);

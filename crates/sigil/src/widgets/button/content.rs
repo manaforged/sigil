@@ -3,7 +3,7 @@ use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 #[cfg(feature = "scene")]
 use crate::widgets::icon::icon_svg;
 use crate::widgets::spinner::spinner;

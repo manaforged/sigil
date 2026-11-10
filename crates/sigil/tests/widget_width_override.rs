@@ -254,3 +254,32 @@ fn toggle_honours_its_width() {
         "toggle.width(160) should measure 160, got {sized}",
     );
 }
+
+#[test]
+fn a_filling_button_shares_a_narrow_row_with_its_sibling() {
+    sigil::reactive::Owner::scope("button-fill-shrinks", || {
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            row()
+                .width(200.0)
+                .height(40.0)
+                .child(container().width(120.0).height(20.0))
+                .child(button("Go").fill_width()),
+        );
+        let children = cx.get(root).expect("root").children().to_vec();
+        let first = children.first().copied().expect("sibling");
+        let second = children.last().copied().expect("button");
+        let mut layout = LayoutEngine::with_text_measure(Box::new(CHAR_MEASURE));
+        layout
+            .compute(&mut cx, root, Size::fixed(200.0, 40.0))
+            .expect("layout");
+        let sibling = layout.result(first).expect("sibling").rect();
+        let button = layout.result(second).expect("button").rect();
+
+        assert!(sibling.width > 0.5, "sibling collapsed: {sibling:?}");
+        assert!(
+            button.origin.x + button.width <= 200.5,
+            "button overflows the row: {button:?}"
+        );
+    });
+}

@@ -1,5 +1,6 @@
 use super::*;
 use sigil::layout::Space;
+use sigil::widgets::Layout;
 
 #[test]
 fn vector_path_shapes() {

@@ -11,7 +11,7 @@ use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::reactive::{Owner, signal};
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 use stub::stub_engine;
 
 const AVAILABLE: Size = Size::fixed(200.0, 1000.0);

@@ -6,7 +6,7 @@ use crate::reactive::derived;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Tone};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 static NOTICE_BAND: &[StyleAtom] = &[
     Radius::Md.atom(),

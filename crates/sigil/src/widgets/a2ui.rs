@@ -6,7 +6,7 @@ use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, Signal, signal, untrack};
 use crate::style::Tone;
 use crate::widgets::layout_ext::LayoutOverrides;
-use crate::widgets::{Widget, markdown, notice_band};
+use crate::widgets::{Layout, markdown, notice_band};
 
 mod document;
 mod glyph;

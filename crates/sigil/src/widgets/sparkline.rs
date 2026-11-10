@@ -6,7 +6,7 @@ use crate::kernel::{AccessibleName, NodeBuilder, Role, TextBuilder, container, t
 use crate::layout::LayoutStyle;
 use crate::reactive::{Reactive, derived};
 use crate::style::Tone;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 mod glyphs;
 

@@ -12,7 +12,7 @@ use crate::style::{
     Color, ColorAtom, ControlSize, Metrics, ReactiveStateSlot, StateSlot, StyleAtom, StyleOverlay,
     space,
 };
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use crate::widgets::interaction::InteractionState;
 

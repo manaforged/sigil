@@ -4,7 +4,7 @@ use crate::layout::Space;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::StyleAtom;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 pub(super) fn wrap_with_content(
     tab_list: NodeBuilder,

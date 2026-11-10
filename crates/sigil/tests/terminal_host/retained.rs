@@ -2,11 +2,11 @@ use sigil::Host;
 use sigil::kernel::HostMode;
 use sigil::kernel::{container, text};
 use sigil::layout::{LayoutStyle, Position};
-use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
 use sigil::terminal::Screen;
 
 use super::oracle::{COLS, Model, ROWS, Spot, ansi, tree, truth};
+use sigil::widgets::Layout;
 
 #[test]
 fn a_moved_spot_rasters_only_its_window() {

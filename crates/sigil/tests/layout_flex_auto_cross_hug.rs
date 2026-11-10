@@ -2,7 +2,7 @@
 
 use sigil::geometry::Size;
 use sigil::layout::{AlignItems, LayoutEngine, LayoutStyle};
-use sigil::prelude::Widget;
+use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 
 fn row_height(align: AlignItems) -> f32 {

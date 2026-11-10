@@ -5,7 +5,7 @@ use crate::kernel::{AccessibleName, TextContent};
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics, Radius, Style, Tone};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use crate::widgets::interaction::InteractionState;
 
@@ -240,6 +240,8 @@ impl ButtonBuilder {
         if self.square {
             self.width = ButtonWidth::Fixed(self.height);
             self.padding_x = 0.0;
+        } else if self.layout_overrides.fills_width() {
+            self.width = ButtonWidth::Fill;
         }
         let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
         let style = std::mem::take(&mut self.style_accumulator);

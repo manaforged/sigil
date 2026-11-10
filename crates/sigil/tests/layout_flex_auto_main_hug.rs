@@ -2,7 +2,7 @@
 
 use sigil::geometry::Size;
 use sigil::layout::{LayoutEngine, LayoutStyle};
-use sigil::prelude::Widget;
+use sigil::widgets::Layout;
 use sigil_kittest::FakeMeasure;
 
 fn column_height(parent_h: f32) -> f32 {

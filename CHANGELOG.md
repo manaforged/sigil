@@ -146,7 +146,7 @@ First public release.
 | `PaneBuilder::grow`, `TextFieldBuilder::autofocus`, `TextFieldBuilder::focus_when`, `TextEditBuilder::autofocus`, `TextEditBuilder::focus_when` | the `Widget` methods of the same name, with the same effect |
 | `VerticalDivider`, `divider_vertical() -> VerticalDivider` | `divider_vertical() -> NodeBuilder` |
 | `PathNode::layout(LayoutStyle)`, which replaced the `fit` box | the `Widget` layout setters, which merge into it |
-| `widgets::layout_ext::LayoutOverrides` | `Widget::layout`, `width`, `height`, and `grow` |
+| `widgets::layout_ext::LayoutOverrides` | The `Widget` layout setters, such as `width`, `height`, and `grow` |
 | A second `.layout(..)` on a widget builder replaced the first | Each layout setter merges, in call order, as on `NodeBuilder` |
 | `const fn color_field` | `fn color_field` |
 | `const fn divider_vertical` | `fn divider_vertical` |
@@ -249,7 +249,7 @@ First public release.
 | `.layout(LayoutStyle::default().fixed_size(w, h))`, `.min_size(w, h)`, `.max_size(w, h)` | `.width(w).height(h)`, `.min_width(w).min_height(h)`, `.max_width(w).max_height(h)` |
 | `.layout(LayoutStyle::default().width(px))` | `.width(px)`, which also lowers a larger minimum width |
 | `.layout(LayoutStyle::default().grow(factor))` | `.grow(factor)`, which keeps a minimum size that the node already has |
-| `LayoutStyle`, `Widget::layout` | `LayoutStyle` is public only under feature `kittest` and `Widget::layout` is hidden from the docs. Use the container functions and the `Widget` setters |
+| `LayoutStyle`, `Widget::layout` | `LayoutStyle` and the raw `.layout(LayoutStyle)` setter are public only under feature `kittest`; `Widget` no longer has a `layout` method. Use the container functions and the `Widget` setters |
 | `Widget::width(impl IntoPx)`, `Widget::height(impl IntoPx)` | `Widget::width(impl Into<Length>)`, `Widget::height(impl Into<Length>)`. `Length::Percent`, `Length::Fill`, and `Length::Auto` keep their meaning, where each was 0 px; `rows`, `cols`, and `em` resolve at layout |
 | a node with no `LayoutStyle` constructor added padding and border to its size: `container().padding(Space::Lg).width(300.0)` was 332 px wide | a size includes padding and border on every node: the same chain is 300 px wide |
 | `style::grid(cell)` | `style::cell(cell)` |
@@ -285,7 +285,7 @@ First public release.
 - A gradient stop placed before an earlier stop moves up to the earlier stop's position, as in CSS Images 4 §3.5.3, instead of the stops being sorted.
 - Gradient text draws conic, elliptical radial and repeating gradients.
 - A 3D-transformed layer with part of its plane behind the viewer draws the part in front of the viewer, instead of nothing.
-- Layout is set with the container functions `row`, `column`, `grid`, and `container` and with the layout setters on `Widget` (`.gap(..)`, `.padding_x(..)`, `.fill()`, `.min_width(..)`, `.align_items(..)`, and the rest). `LayoutStyle` is public only under feature `kittest` and `Widget::layout` is hidden from the docs; the migration table maps each constructor and method.
+- Layout is set with the container functions `row`, `column`, `grid`, and `container` and with the layout setters on `Widget` (`.gap(..)`, `.padding_x(..)`, `.fill()`, `.min_width(..)`, `.align_items(..)`, and the rest). `LayoutStyle` and the raw `.layout(LayoutStyle)` setter are public only under feature `kittest`, and `Widget` no longer has a `layout` method; the migration table maps each constructor and method.
 
 ### Fixed
 

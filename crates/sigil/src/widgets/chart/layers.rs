@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutStyle;
 use crate::layout::Space;
 use crate::style::Token;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::decimate::Candle;
 use super::marks::{self, Placed};

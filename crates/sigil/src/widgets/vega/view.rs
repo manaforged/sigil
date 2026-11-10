@@ -13,7 +13,7 @@ use crate::style::{Metrics, Radius, Theme, Token};
 use crate::tasks::current::host_parts;
 use crate::tasks::dispatch::spawn_into;
 use crate::tasks::{Status, spawn};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 use crate::widgets::scroll::Horizontal;
 use crate::widgets::source_too_large;
 use crate::widgets::svg_picture::picture;

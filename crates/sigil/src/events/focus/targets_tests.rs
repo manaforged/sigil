@@ -2,7 +2,7 @@ use crate::geometry::Point;
 use crate::geometry::{Rect, Size};
 use crate::kernel::container;
 use crate::layout::*;
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::*;
 use crate::events::EventRouter;

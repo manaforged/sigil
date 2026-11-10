@@ -13,7 +13,7 @@ mod routing_helpers;
 use sigil::events::*;
 use sigil::kernel::*;
 use sigil::layout::*;
-use sigil::widgets::Widget;
+use sigil::widgets::Layout;
 
 use routing_helpers::{abs_rect, compute_layout};
 

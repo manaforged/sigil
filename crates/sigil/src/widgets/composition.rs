@@ -4,7 +4,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_label;
 use crate::style::{BORDER_WIDTH, ControlSize, Metrics, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 pub(crate) const STATUS_BAR_HEIGHT: f32 = space(7);
 const STATUS_BAR_GAP: f32 = space(3);

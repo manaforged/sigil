@@ -13,7 +13,7 @@ use crate::layout::{Popup, PopupSide};
 use crate::reactive::{IntervalId, Signal, interval, signal};
 use crate::style::TransitionId;
 use crate::style::{ControlSize, Metrics, Style, StyleAtom, Token, space};
-use crate::widgets::Widget;
+use crate::widgets::{Layout, Widget};
 
 use super::layout_ext::LayoutOverrides;
 use super::popup::{POPUP_GAP, PopupAnchor, PopupLayer, hide, surface};

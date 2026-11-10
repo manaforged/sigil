@@ -3,7 +3,7 @@ use crate::layout::Space;
 use crate::layout::{JustifyContent, LayoutStyle, Position};
 use crate::reactive::{Signal, derived};
 use crate::style::{Token, space};
-use crate::widgets::Widget;
+use crate::widgets::Layout;
 
 use super::popup::{SURFACE, shown_when};
 

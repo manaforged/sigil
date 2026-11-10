@@ -8,6 +8,7 @@ use crate::layout::LayoutEngine;
 use crate::reactive::{Owner, signal};
 use crate::style::Theme;
 use crate::style::render_style_for;
+use crate::widgets::Layout;
 
 fn find(cx: &Cx, root: NodeId, role: Role, label: &str) -> NodeId {
     let mut found = None;

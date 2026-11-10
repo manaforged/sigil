@@ -23,7 +23,7 @@ pub(super) fn sort_mark<Row: 'static>(
 ) -> NodeBuilder {
     use crate::icons::builtin::{ARROW_DOWN_SVG, ARROW_UP_SVG, CHEVRONS_UP_DOWN_SVG};
     use crate::layout::{LayoutStyle, Space};
-    use crate::widgets::Widget;
+    use crate::widgets::Layout;
     use crate::widgets::icon_svg;
     let mark = state.sort_state(column, sortable);
     if crate::style::cell_size().is_some() {

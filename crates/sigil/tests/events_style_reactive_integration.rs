@@ -19,6 +19,7 @@ use sigil::layout::*;
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
 use sigil::style::{ColorAtom, Paint, PaintAtom, StyleAtom, StyleBinding, Token};
+use sigil::widgets::Layout;
 
 static HOVER_OFF: &[StyleAtom] = &[];
 static HOVER_ON: &[StyleAtom] = &[

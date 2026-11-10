@@ -8,11 +8,11 @@
 use sigil::kernel::*;
 use sigil::layout::Space;
 use sigil::layout::{LayoutStyle, Overflow, Position};
-use sigil::prelude::Widget;
 use sigil::style::{Paint, Radius, Theme, Token};
 
 #[path = "renderer_child_paint_repro/support.rs"]
 mod support;
+use sigil::widgets::Layout;
 use support::{InkWindow, capture, close, count_ink};
 
 #[test]
