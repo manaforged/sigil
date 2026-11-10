@@ -172,8 +172,8 @@ impl FontCollection {
             .flatten()
             .chain(&self.fallbacks)
             .chain(self.symbols.as_ref())
-            .chain(&system)
-            .chain(std::iter::once(&self.emoji));
+            .chain(std::iter::once(&self.emoji))
+            .chain(&system);
         for candidate in candidates {
             if chain.iter().all(|f| f.id() != candidate.id()) {
                 chain.push(candidate.clone());
