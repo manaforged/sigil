@@ -64,7 +64,7 @@ impl Diagram {
 
 fn zoomed(diagram: Diagram, zoom: f32) -> NodeBuilder {
     container()
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .layout(
             LayoutStyle::block()
                 .width(VIEW.0 as f32)

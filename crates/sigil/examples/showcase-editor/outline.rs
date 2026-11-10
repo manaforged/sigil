@@ -53,8 +53,8 @@ pub(crate) fn outline(ws: Workspace) -> NodeBuilder {
         .min_height(0.0)
         .padding_y(Space::Xs)
         .gap(Space::None)
-        .bg(Token::SurfaceSubtle)
-        .rounded(Radius::Md)
+        .background(Token::SurfaceSubtle)
+        .radius(Radius::Md)
         .child(section_label("OUTLINE"))
         .child(
             column()

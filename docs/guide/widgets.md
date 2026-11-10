@@ -69,7 +69,7 @@ The family pages carry signatures, options, and behavior notes:
 - **toast(message)**: a `Signal<Option<String>>`. `Some` shows a status line; `None` hides it.
 - **tabs()**: chain `.tab(label, component)` per tab, and `.close(Fn(usize))`.
 - **scroll(inner)**: measures its content; `.extent(px)` sets a known height. Chain `.width()` and `.height()`.
-- **menu_bar()**: a GPU app bar. `Paint` methods such as `.bg(Token::SurfaceHover)` style the strip. `.menu("File", [MenuItem::new("Open").activate(|| {})])` builds a dropdown. This is the bar you design. The native OS bar is opt-in: `sigil::app::menu::Menu::install` (feature `menu`, next frame).
+- **menu_bar()**: a GPU app bar. `Paint` methods such as `.background(Token::SurfaceHover)` style the strip. `.menu("File", [MenuItem::new("Open").activate(|| {})])` builds a dropdown. This is the bar you design. The native OS bar is opt-in: `sigil::app::menu::Menu::install` (feature `menu`, next frame).
 - **menu(Signal\<bool\>)**: a GPU popup panel (`.item`, `.separator()`). Use it for context menus, not the app bar.
 - **tooltip(label)**: chain `.hint()`; it wraps a target child.
 

@@ -82,7 +82,7 @@ fn host_paint_skips_surface_children() {
                 container()
                     .layout(LayoutStyle::block().fixed_size(40.0, 24.0))
                     .with(Surface { key: 1 })
-                    .bg(Token::Accent)
+                    .background(Token::Accent)
                     .child(text("secret")),
             )
     });

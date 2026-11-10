@@ -277,7 +277,7 @@ named!(
 
 named!(
     /// A renderer backend.
-    pub BackendKind {
+    pub Backend {
     Gpu => "gpu",
     GpuSoftware => "gpu-software",
     Cpu => "cpu",
@@ -298,7 +298,7 @@ named!(
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BackendStatus {
     /// The backend in use.
-    pub kind: BackendKind,
+    pub kind: Backend,
     /// The reason for a fallback, if any.
     pub fallback: FallbackCause,
 }
@@ -306,7 +306,7 @@ pub struct BackendStatus {
 impl BackendStatus {
     /// The status of the terminal host.
     pub const TERMINAL: Self = Self {
-        kind: BackendKind::Terminal,
+        kind: Backend::Terminal,
         fallback: FallbackCause::None,
     };
 }

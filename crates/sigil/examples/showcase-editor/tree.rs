@@ -41,8 +41,8 @@ pub(crate) fn side_bar(ws: Workspace) -> NodeBuilder {
         .min_width(0.0)
         .min_height(0.0)
         .gap(Space::None)
-        .bg(Token::SurfaceSubtle)
-        .rounded(Radius::Md)
+        .background(Token::SurfaceSubtle)
+        .radius(Radius::Md)
         .child(
             switch(ws.activity)
                 .case(Activity::Explorer, move || explorer(ws))

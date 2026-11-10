@@ -25,7 +25,7 @@ const RED: Rgba8 = Rgba8 {
 
 fn zoomed(scale: f32) -> NodeBuilder {
     container()
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .layout(LayoutStyle::block().width(400.0).height(200.0))
         .child(
             container()
@@ -34,7 +34,7 @@ fn zoomed(scale: f32) -> NodeBuilder {
                 .drive(NumericAtomKind::ScaleX, signal(scale))
                 .drive(NumericAtomKind::ScaleY, signal(scale))
                 .child(
-                    container().bg(Token::Accent9).layout(
+                    container().background(Token::Accent9).layout(
                         LayoutStyle::block()
                             .width(20.0)
                             .height(20.0)

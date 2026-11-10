@@ -28,7 +28,7 @@ fn root(det: Signal<f32>, phase: Signal<f32>) -> NodeBuilder {
         .fill()
         .gap(Space::Xl)
         .padding(Space::Xxl)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(
             panel()
                 .title("Determinate (60 / 100)")

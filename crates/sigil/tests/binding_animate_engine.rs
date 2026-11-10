@@ -56,7 +56,7 @@ fn a_style_transition_paints_values_between_base_and_hover_then_settles() {
         let root = cx.add(
             interactive(
                 container()
-                    .bg(Token::Surface)
+                    .background(Token::Surface)
                     .layout(LayoutStyle::block().fixed_size(100.0, 100.0)),
             )
             .opacity(0.5)

@@ -27,7 +27,7 @@ fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
         .padding(Space::Xxl)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
 }
@@ -84,10 +84,10 @@ Styling is typed Rust. Paint goes through the `Paint` methods. Layout goes throu
 container()
     .padding(Space::Lg)
     .gap(Space::Sm)
-    .bg(Token::Overlay)
-    .border_w(1)
+    .background(Token::Overlay)
+    .border_width(1)
     .border_color(Token::OverlayBorder)
-    .rounded(Radius::Md)
+    .radius(Radius::Md)
     .shadow(Elevation::Md)
     .child(text("Title").text_role(TextRole::Title).text_color(Token::OnSurface))
     .child(text("12:30").font_family(FontFamily::Mono).text_color(Token::OnSurfaceMuted))
@@ -126,7 +126,7 @@ Spacing and size numbers are pixels. The layout setters set padding, margin, gap
 | Borders | `Border`, `BorderStrong` |
 | Focus ring | `Ring` |
 | Overlays | `Overlay`, `OverlayBorder`, `Scrim` |
-| Scales | `Gray1`..`Gray12`, `Accent1`..`Accent12`, `Success1`.., `Warn1`.., `Error1`.., `Info1`.. |
+| Scales | `Gray1`..`Gray12`, `Accent1`..`Accent12`, `Success1`.., `Warning1`.., `Error1`.., `Info1`.. |
 
 `Token::color` returns a `ColorAtom`. `Theme::color(token)` resolves a token to a color. Widgets resolve tokens when they paint, so a theme swap recolours a built tree.
 
@@ -160,10 +160,10 @@ interactive(
         .width(328.0)
         .height(304.0)
         .padding(Space::Xxl)
-        .bg(Token::Accent)
-        .rounded(Radius::Md),
+        .background(Token::Accent)
+        .radius(Radius::Md),
 )
-.hover(|s| s.bg(Token::AccentHover))
+.hover(|s| s.background(Token::AccentHover))
 # };
 ```
 

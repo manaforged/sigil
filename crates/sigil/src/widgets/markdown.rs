@@ -179,7 +179,7 @@ fn chart_node(data: chart_parse::ChartData) -> NodeBuilder {
                 .padding(Space::Sm)
                 .gap(Space::Xs),
         )
-        .class([Token::Field.bg(), Radius::Md.atom()]);
+        .class([Token::Field.background(), Radius::Md.atom()]);
     if let Some(title) = data.title {
         column = column.child(text(title).class("text-xs").class(Token::Gray11.text()));
     }

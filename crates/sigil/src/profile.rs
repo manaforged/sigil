@@ -20,7 +20,7 @@ mod store;
 pub(crate) use attr::budget_ns;
 #[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) use chrome::site_name;
-pub use key::{BackendKind, BackendStatus, Cause, Counter, FallbackCause, Phase};
+pub use key::{Backend, BackendStatus, Cause, Counter, FallbackCause, Phase};
 pub(crate) use key::{Hotspot, SiteKind};
 pub(crate) use site::site;
 use span::Span;

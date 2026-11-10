@@ -155,7 +155,7 @@ fn placeholder(height: f32) -> NodeBuilder {
                 .justify_content(JustifyContent::Center)
                 .align_items(AlignItems::Center),
         )
-        .class([Token::Field.bg(), Radius::Md.atom()])
+        .class([Token::Field.background(), Radius::Md.atom()])
         .child(
             text(RENDERING)
                 .class("text-xs")

@@ -79,7 +79,7 @@ fn avatar() -> impl IntoNode {
                 .overflow_x(Overflow::Hidden)
                 .overflow_y(Overflow::Hidden),
         )
-        .rounded(Radius::Full)
+        .radius(Radius::Full)
         .child(child);
     container()
         .layout(
@@ -330,7 +330,7 @@ fn clipped_scenes_agree_on_the_cpu_and_the_gpu() {
 fn clip_path_disc() -> impl IntoNode {
     container()
         .layout(LayoutStyle::block().fixed_size(SIDE as f32, SIDE as f32))
-        .bg(RED)
+        .background(RED)
         .clip_path(sigil::style::ClipShape::Circle(Some(20)))
 }
 

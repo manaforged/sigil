@@ -95,10 +95,10 @@ fn a_change_hidden_behind_a_cover_writes_nothing() {
                 .child(
                     container()
                         .layout(place())
-                        .paint_when(warm, move |style| style.bg(tone(200)))
-                        .bg(tone(20)),
+                        .paint_when(warm, move |style| style.background(tone(200)))
+                        .background(tone(20)),
                 )
-                .child(container().layout(place()).bg(tone(90)))
+                .child(container().layout(place()).background(tone(90)))
         });
         let mut screen = Screen::new(COLS, ROWS);
         for _ in 0..3 {

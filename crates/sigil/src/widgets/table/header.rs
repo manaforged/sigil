@@ -75,7 +75,7 @@ pub(super) fn header_row<Row: 'static>(
                 .padding_x(Space::px(spec.pad_x)),
         )
         .class("border-b")
-        .class([Token::TableHeader.bg(), Token::Border.border()])
+        .class([Token::TableHeader.background(), Token::Border.border()])
         .child(hscroll.shifted(track))
 }
 

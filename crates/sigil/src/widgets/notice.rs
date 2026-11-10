@@ -22,7 +22,7 @@ static NOTICE_TEXT: &[StyleAtom] = &[StyleAtom::FgToneStep(12)];
 pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
     let (role, name) = match tone {
         Tone::Error => (Role::Alert, StringKey::NoticeError),
-        Tone::Warn => (Role::Alert, StringKey::NoticeWarning),
+        Tone::Warning => (Role::Alert, StringKey::NoticeWarning),
         Tone::Success => (Role::Status, StringKey::NoticeSuccess),
         Tone::Info | Tone::Primary | Tone::Neutral => (Role::Status, StringKey::Notice),
     };
@@ -68,7 +68,7 @@ fn announced(key: StringKey, body: &TextContent) -> AccessibleName {
 fn cell_band(band: NodeBuilder, tone: Tone) -> NodeBuilder {
     let marker = match tone {
         Tone::Error => "✗",
-        Tone::Warn => "!",
+        Tone::Warning => "!",
         Tone::Success => "✓",
         Tone::Info | Tone::Primary | Tone::Neutral => "▌",
     };

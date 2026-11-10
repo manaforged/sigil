@@ -3,7 +3,7 @@ use crate::layout::LayoutEngine;
 use crate::style::srgb::{AA_TEXT, contrast as ratio};
 use crate::style::{Rgba8, TextStyle, Theme, render_style_for, text_style_for};
 
-use super::{Flaw, label};
+use super::{Issue, label};
 
 const LARGE: f32 = 3.0;
 const LARGE_PX: f32 = 24.0;
@@ -44,7 +44,7 @@ pub(super) fn contrast(
     layout: &LayoutEngine,
     root: NodeId,
     theme: &Theme,
-    out: &mut Vec<Flaw>,
+    out: &mut Vec<Issue>,
 ) {
     let start = Inherited {
         theme,
@@ -55,7 +55,7 @@ pub(super) fn contrast(
     walk(cx, layout, root, &start, out);
 }
 
-fn walk(cx: &Cx, layout: &LayoutEngine, id: NodeId, above: &Inherited<'_>, out: &mut Vec<Flaw>) {
+fn walk(cx: &Cx, layout: &LayoutEngine, id: NodeId, above: &Inherited<'_>, out: &mut Vec<Issue>) {
     let Some(node) = cx.get(id) else {
         return;
     };
@@ -84,7 +84,7 @@ fn walk(cx: &Cx, layout: &LayoutEngine, id: NodeId, above: &Inherited<'_>, out: 
     {
         let (found, floor) = (ratio(ink.over(behind), behind), needed(&style));
         if found < floor {
-            out.push(Flaw::Contrast {
+            out.push(Issue::Contrast {
                 node: label(id, node),
                 ratio: found,
                 needed: floor,

@@ -70,13 +70,13 @@ fn round_dot(tone: Tone, size: ControlSize) -> (LayoutStyle, NodeBuilder) {
     };
     let (outer, inner) = (f32::from(extent), f32::from(extent - 2));
     let node = container()
-        .style(crate::style::Style::new().radius(extent / 2))
+        .style(crate::style::Style::new().radius_px(extent / 2))
         .tone_scope(tone)
         .class(DOT_RING_ATOMS)
         .child(
             container()
                 .layout(LayoutStyle::flex_row().fixed_size(inner, inner))
-                .style(crate::style::Style::new().radius((extent - 2) / 2))
+                .style(crate::style::Style::new().radius_px((extent - 2) / 2))
                 .tone_scope(tone)
                 .class(DOT_FILL_ATOMS),
         );

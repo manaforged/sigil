@@ -70,7 +70,7 @@ impl ToastQueue {
 
     /// Shows a warning toast.
     pub fn warning(self, message: impl Into<String>) {
-        self.push(Tone::Warn, message);
+        self.push(Tone::Warning, message);
     }
 
     /// Shows an error toast.

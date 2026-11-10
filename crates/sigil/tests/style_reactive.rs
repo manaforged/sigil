@@ -14,7 +14,7 @@ fn paint_when_toggles_on_signal_change() {
     Owner::scope("sigil_style_paint_when_toggle", || {
         let highlighted = signal(false);
         let mut cx = Cx::new_root();
-        let id = cx.add(container().paint_when(highlighted, |s| s.bg(Token::Accent)));
+        let id = cx.add(container().paint_when(highlighted, |s| s.background(Token::Accent)));
 
         let initial = reactive_slice(&cx, id);
         assert!(

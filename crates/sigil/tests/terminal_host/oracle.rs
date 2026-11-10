@@ -139,7 +139,7 @@ pub(super) fn tree(model: Signal<Model>) -> impl IntoNode {
     let accent = derived(move || model.with(|model| model.accent));
     container()
         .layout(LayoutStyle::block().fill_width().fill_height())
-        .paint_when(accent, |style| style.bg(Token::Accent))
+        .paint_when(accent, |style| style.background(Token::Accent))
         .child(
             container()
                 .layout(LayoutStyle::flex_column().fill_width())

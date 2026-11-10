@@ -23,7 +23,7 @@ fn vector_path_shapes() {
                     .gap(Space::Md)
                     .padding(Space::Sm),
             )
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(
                 path(60, 60)
                     .move_to(30.0, 4.0)
@@ -85,7 +85,7 @@ fn vector_gradient_fill() {
                     .gap(Space::Md)
                     .padding(Space::Sm),
             )
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(square(gold, rose, true))
             .child(square(gold, rose, false));
         on_black(row, 162.0, 88.0)
@@ -109,7 +109,7 @@ fn emoji_text_line() {
                     .fixed_size(300.0, 60.0)
                     .padding(Space::Lg),
             )
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(text("OK \u{2705} go \u{1F680}").text_color(Token::OnSurface));
         on_black(panel, 312.0, 72.0)
     })

@@ -42,7 +42,7 @@ pub(crate) fn paint(ink: Ink, depth: ColorDepth) -> Color {
         Ink::Of(Tone::Primary) => Color::Blue,
         Ink::Of(Tone::Info) => Color::Cyan,
         Ink::Of(Tone::Success) => Color::Green,
-        Ink::Of(Tone::Warn) => Color::Yellow,
+        Ink::Of(Tone::Warning) => Color::Yellow,
         Ink::Of(Tone::Error) => Color::Red,
         Ink::Exact(colour) => match depth {
             ColorDepth::Truecolor => Color::Rgb {

@@ -10,7 +10,7 @@ mod contrast;
 mod flaw;
 mod rules;
 
-pub use flaw::{Flaw, FlawKind, NodeLabel};
+pub use flaw::{Flaw, Issue, NodeLabel};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Tolerance {
@@ -57,7 +57,7 @@ pub fn flaws(
     layout: &LayoutEngine,
     (root, theme): (NodeId, &Theme),
     tolerance: Tolerance,
-) -> Vec<Flaw> {
+) -> Vec<Issue> {
     let mut out = Vec::new();
     cx.visit_preorder(root, |id, node| {
         if node.get_extension::<Asymmetric>().is_none() {
@@ -75,7 +75,7 @@ pub fn flaws(
     out
 }
 
-fn allowed(cx: &Cx, flaw: &Flaw) -> bool {
+fn allowed(cx: &Cx, flaw: &Issue) -> bool {
     let mut at = Some(flaw.node().id);
     while let Some(id) = at {
         let Some(node) = cx.get(id) else {
@@ -94,7 +94,7 @@ fn allowed(cx: &Cx, flaw: &Flaw) -> bool {
 
 /// The rules that a node and its children opt out of.
 #[derive(Clone, Debug, Default)]
-pub(crate) struct AllowedFlaws(pub(crate) smallvec::SmallVec<[FlawKind; 2]>);
+pub(crate) struct AllowedFlaws(pub(crate) smallvec::SmallVec<[Flaw; 2]>);
 
 fn label(id: NodeId, node: &Node) -> NodeLabel {
     let kind = match &node.kind {
@@ -190,7 +190,7 @@ fn columns(
     layout: &LayoutEngine,
     (id, node): (NodeId, &Node),
     tolerance: Tolerance,
-    out: &mut Vec<Flaw>,
+    out: &mut Vec<Issue>,
 ) {
     if !is_stack(node) {
         return;
@@ -205,7 +205,7 @@ fn run_columns(
     (id, node): (NodeId, &Node),
     rows: &[&Node],
     tolerance: Tolerance,
-    out: &mut Vec<Flaw>,
+    out: &mut Vec<Issue>,
 ) {
     let width = rows.first().map_or(0, |row| row.children().len());
     for column in 0..width {
@@ -232,7 +232,7 @@ fn run_columns(
         .iter()
         .any(|gap| *gap <= tolerance.exact);
         if !aligned {
-            out.push(Flaw::Column {
+            out.push(Issue::Column {
                 parent: label(id, node),
                 column,
                 tops: rects.iter().map(|r| r.origin.y).collect(),
@@ -248,7 +248,7 @@ fn insets(
     layout: &LayoutEngine,
     (id, node): (NodeId, &Node),
     tolerance: Tolerance,
-    out: &mut Vec<Flaw>,
+    out: &mut Vec<Issue>,
 ) {
     if matches!(node.kind, NodeType::Text { .. }) {
         return;
@@ -279,7 +279,7 @@ fn insets(
     for (axis, start, end) in spans {
         let gap = (start - end).abs();
         if start > 0.0 && end > 0.0 && gap > tolerance.exact && gap <= tolerance.near_miss {
-            out.push(Flaw::Inset {
+            out.push(Issue::Inset {
                 node: label(id, node),
                 rect: inner,
                 axis,

@@ -30,14 +30,14 @@ fn a_one_row_braille_graph_sets_the_right_column_for_a_full_value() {
 #[test]
 fn adjacent_cells_of_one_tone_share_a_run() {
     let line = sparkline([1.0, 1.0, 1.0]).range(0.0, 1.0).tones([
-        Some(Tone::Warn),
-        Some(Tone::Warn),
+        Some(Tone::Warning),
+        Some(Tone::Warning),
         None,
     ]);
     assert_eq!(
         line.runs(),
         vec![vec![
-            (Tone::Warn, SparkLayer::Edge, "██".to_owned()),
+            (Tone::Warning, SparkLayer::Edge, "██".to_owned()),
             (Tone::Primary, SparkLayer::Edge, "█".to_owned()),
         ]]
     );

@@ -111,17 +111,17 @@ fn concrete_color_applies() {
 fn paint_for_atom(atom: StyleAtom) -> Style {
     let style = Style::new();
     match atom {
-        StyleAtom::BackgroundColor(color) => style.bg(color),
-        StyleAtom::BackgroundGradient(gradient) => style.bg(gradient),
+        StyleAtom::BackgroundColor(color) => style.background(color),
+        StyleAtom::BackgroundGradient(gradient) => style.background(gradient),
         StyleAtom::TextColor(color) => style.text_color(color),
         StyleAtom::BorderColor(color) => style.border_color(color),
-        StyleAtom::BorderWidth(px) => style.border_w(px),
+        StyleAtom::BorderWidth(px) => style.border_width(px),
         StyleAtom::BorderTop(px) => style.border_top(px),
         StyleAtom::BorderRight(px) => style.border_right(px),
         StyleAtom::BorderBottom(px) => style.border_bottom(px),
         StyleAtom::BorderLeft(px) => style.border_left(px),
-        StyleAtom::BorderRadius(px) => style.radius(px),
-        StyleAtom::Radius(radius) => style.rounded(radius),
+        StyleAtom::BorderRadius(px) => style.radius_px(px),
+        StyleAtom::Radius(radius) => style.radius(radius),
         StyleAtom::Shadow(elevation) => style.shadow(elevation),
         StyleAtom::Opacity(units) => style.opacity(f32::from(units) / 10_000.0),
         StyleAtom::Transform(transform) => style.transform(transform),
@@ -229,9 +229,12 @@ fn gradient() -> Gradient {
 #[test]
 fn a_later_background_replaces_the_earlier_one() {
     let theme = Theme::default();
-    let base = Style::new().bg(gradient()).into_atoms();
-    let hover = Style::new().bg(Token::Surface).into_atoms();
-    let chained = Style::new().bg(gradient()).bg(Token::Surface).into_atoms();
+    let base = Style::new().background(gradient()).into_atoms();
+    let hover = Style::new().background(Token::Surface).into_atoms();
+    let chained = Style::new()
+        .background(gradient())
+        .background(Token::Surface)
+        .into_atoms();
     let cascade: Vec<StyleAtom> = base.iter().chain(&hover).copied().collect();
     let merged = merge_classes(&base, &hover, 0);
 
@@ -251,9 +254,9 @@ fn a_later_gradient_keeps_nothing_of_the_earlier_background() {
     let theme = Theme::default();
     let radial = Radial::new();
     let chained = Style::new()
-        .bg(Token::Surface)
-        .bg(gradient())
-        .bg(Background::radial(radial).start(Token::Accent))
+        .background(Token::Surface)
+        .background(gradient())
+        .background(Background::radial(radial).start(Token::Accent))
         .into_atoms();
     let merged = merge_classes(&[], &chained, 0);
 
@@ -287,7 +290,7 @@ fn a_later_transition_replaces_the_earlier_one() {
 
 #[test]
 fn struct_api_produces_same_atoms_as_raw_parse() {
-    let style = Style::new().bg(Token::Accent).radius(6);
+    let style = Style::new().background(Token::Accent).radius_px(6);
     let mut classes = crate::style::parse_class_string("bg-accent rounded-md").unwrap();
     classes.insert(1, NO_GRADIENT);
 
@@ -327,7 +330,7 @@ fn class_string_attaches_to_text_binding() {
 #[test]
 fn style_struct_attaches_binding() {
     let mut cx = Cx::new_root();
-    let id = cx.add(container().style(Style::new().radius(8)));
+    let id = cx.add(container().style(Style::new().radius_px(8)));
     let binding = binding(&cx, id);
 
     assert_eq!(binding.static_slice(), &[]);

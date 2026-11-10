@@ -14,8 +14,8 @@ pub enum Tone {
     Info,
     /// The success tone.
     Success,
-    /// The warn tone.
-    Warn,
+    /// The warning tone.
+    Warning,
     /// The error tone.
     Error,
 }
@@ -53,7 +53,7 @@ impl Tone {
             Self::Primary => ScaleRole::Accent,
             Self::Info => ScaleRole::Info,
             Self::Success => ScaleRole::Success,
-            Self::Warn => ScaleRole::Warn,
+            Self::Warning => ScaleRole::Warn,
             Self::Error => ScaleRole::Error,
         }
     }

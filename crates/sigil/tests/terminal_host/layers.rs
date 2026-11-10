@@ -80,7 +80,7 @@ fn tree(knobs: Knobs) -> NodeBuilder {
             vec![
                 container()
                     .theme(theme)
-                    .bg(Token::Surface)
+                    .background(Token::Surface)
                     .child(container().child(text("themed"))),
             ]
         })

@@ -59,7 +59,7 @@ impl Style {
     }
 
     #[must_use]
-    pub(crate) fn radius(mut self, px: i16) -> Self {
+    pub(crate) fn radius_px(mut self, px: i16) -> Self {
         self.push_atom(StyleAtom::BorderRadius(px));
         self
     }

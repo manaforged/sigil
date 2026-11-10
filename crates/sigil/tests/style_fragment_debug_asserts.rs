@@ -12,7 +12,7 @@ use sigil::style::{Paint, Theme, Token};
 #[test]
 fn paint_on_container_is_allowed() {
     let mut cx = Cx::new_root();
-    let _ = cx.add(container().bg(Token::Accent));
+    let _ = cx.add(container().background(Token::Accent));
 }
 
 #[cfg(debug_assertions)]
@@ -20,7 +20,7 @@ fn paint_on_container_is_allowed() {
 #[should_panic(expected = "class() on a Fragment")]
 fn paint_on_fragment_panics_in_debug() {
     let mut cx = Cx::new_root();
-    let _ = cx.add(fragment().bg(Token::Accent));
+    let _ = cx.add(fragment().background(Token::Accent));
 }
 
 #[cfg(debug_assertions)]

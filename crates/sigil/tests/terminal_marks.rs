@@ -61,7 +61,7 @@ fn first_ink(tone: Option<Tone>) -> Option<sigil::terminal::Ink> {
 #[test]
 fn a_progress_tone_changes_the_fill_ink() {
     let plain = first_ink(None);
-    let warn = first_ink(Some(Tone::Warn));
+    let warn = first_ink(Some(Tone::Warning));
     assert!(plain.is_some() && warn.is_some());
     assert_ne!(plain, warn);
 }

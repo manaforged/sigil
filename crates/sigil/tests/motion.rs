@@ -69,7 +69,7 @@ impl Seen {
 
 fn square() -> NodeBuilder {
     container()
-        .bg(GREY)
+        .background(GREY)
         .layout(LayoutStyle::block().fixed_size(SIDE, SIDE))
 }
 

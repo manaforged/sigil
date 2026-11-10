@@ -162,7 +162,7 @@ impl GitStatus {
 
     pub(crate) const fn tone(self) -> Tone {
         match self {
-            Self::Modified => Tone::Warn,
+            Self::Modified => Tone::Warning,
             Self::Added => Tone::Success,
         }
     }

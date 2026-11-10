@@ -7,10 +7,10 @@ fn boxed(rounded: bool) -> String {
         move || {
             let frame = container()
                 .layout(sigil::layout::LayoutStyle::block().padding_x(Space::Sm))
-                .border_w(1)
+                .border_width(1)
                 .child(text("inside"));
             if rounded {
-                frame.rounded(Radius::Md)
+                frame.radius(Radius::Md)
             } else {
                 frame
             }
@@ -44,7 +44,7 @@ fn backed_rows(parent: sigil::layout::LayoutStyle) -> usize {
                                 .position(sigil::layout::Position::Absolute)
                                 .inset(0.0),
                         )
-                        .bg(sigil::prelude::Token::Accent),
+                        .background(sigil::prelude::Token::Accent),
                 )
                 .child(text("one"))
                 .child(text("two"))
@@ -130,8 +130,8 @@ fn a_thick_rounded_border_stays_heavy() {
         || {
             container()
                 .layout(sigil::layout::LayoutStyle::block().padding_x(Space::Sm))
-                .border_w(8)
-                .rounded(Radius::Md)
+                .border_width(8)
+                .radius(Radius::Md)
                 .child(text("inside"))
         },
         30,
@@ -149,7 +149,7 @@ fn padded_backdrop(backdrop: sigil::layout::LayoutStyle) -> usize {
                 .child(
                     container()
                         .layout(backdrop.clone())
-                        .bg(sigil::prelude::Token::Accent),
+                        .background(sigil::prelude::Token::Accent),
                 )
                 .child(text("one"))
                 .child(text("two"))

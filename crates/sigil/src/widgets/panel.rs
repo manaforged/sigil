@@ -110,7 +110,7 @@ builder_impls!([] PanelBuilder: paint(style_accumulator), widget, node);
 
 const fn raised(shadow: Elevation) -> [StyleAtom; 4] {
     [
-        Token::SurfaceHover.bg(),
+        Token::SurfaceHover.background(),
         StyleAtom::BorderWidth(BORDER_WIDTH),
         Token::Border.border(),
         StyleAtom::Shadow(shadow),

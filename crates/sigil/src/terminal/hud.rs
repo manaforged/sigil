@@ -6,7 +6,7 @@ use crate::terminal::paint::{Grid, Ink};
 fn tone(work_ns: u64) -> Tone {
     match hud::level(work_ns) {
         2 => Tone::Error,
-        1 => Tone::Warn,
+        1 => Tone::Warning,
         _ => Tone::Success,
     }
 }

@@ -61,12 +61,12 @@ const STRIPE: Token = Token::SurfaceInset;
 const NUMERIC_CLASS: &str = "tabular-nums";
 
 static REST: &[StyleAtom] = &[];
-static HOVER: &[StyleAtom] = &[Token::SurfaceHover.bg()];
-static PRESSED: &[StyleAtom] = &[Token::SurfacePressed.bg()];
-static SELECTED: &[StyleAtom] = &[ROW_SELECTED.bg()];
-static SELECTED_HOVER: &[StyleAtom] = &[ROW_SELECTED_HOVER.bg()];
+static HOVER: &[StyleAtom] = &[Token::SurfaceHover.background()];
+static PRESSED: &[StyleAtom] = &[Token::SurfacePressed.background()];
+static SELECTED: &[StyleAtom] = &[ROW_SELECTED.background()];
+static SELECTED_HOVER: &[StyleAtom] = &[ROW_SELECTED_HOVER.background()];
 static SELECTED_DISABLED: &[StyleAtom] = &[
-    ROW_SELECTED.bg(),
+    ROW_SELECTED.background(),
     StyleAtom::Opacity(crate::style::DISABLED_OPACITY),
 ];
 static PLAIN_ROW: StyleVariant =
@@ -129,7 +129,7 @@ fn build_row<Row: 'static>(
         .class("border-b")
         .class(Token::BorderSubtle.border());
     if spec.striped && visible_pos % 2 == 1 {
-        frame = frame.class(STRIPE.bg());
+        frame = frame.class(STRIPE.background());
     }
     let target = (row_index, spec.disabled);
     let cells = row_states(cells, is_selected, spec.disabled).pointer_down(select_pointer(

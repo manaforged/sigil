@@ -205,7 +205,7 @@ pub(super) fn legend(series: &[ChartView<'_>]) -> NodeBuilder {
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(8.0, 8.0))
-                        .class([Radius::Sm.atom(), item.hue.bg()]),
+                        .class([Radius::Sm.atom(), item.hue.background()]),
                 )
                 .child(
                     text(item.legend.clone())

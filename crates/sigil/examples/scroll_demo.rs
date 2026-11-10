@@ -20,7 +20,7 @@ fn root() -> NodeBuilder {
         .fill()
         .padding(Space::Xl)
         .gap(Space::None)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(scroll(items).extent(600.0).height(300.0))
 }
 

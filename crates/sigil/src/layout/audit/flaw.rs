@@ -4,10 +4,10 @@ use crate::geometry::Rect;
 use crate::kernel::NodeId;
 use crate::widgets::Orientation;
 
-/// The rule that a `Flaw` breaks.
+/// The rule that an `Issue` breaks.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub enum FlawKind {
+pub enum Flaw {
     /// Rows of a table whose columns do not line up.
     Column,
     /// A lone child with nearly, but not exactly, even space around it.
@@ -29,7 +29,7 @@ pub enum FlawKind {
 /// A design rule that the laid-out tree breaks.
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
-pub enum Flaw {
+pub enum Issue {
     /// Rows of a table whose columns do not line up.
     Column {
         /// The stack that holds the rows.
@@ -110,19 +110,19 @@ pub enum Flaw {
     },
 }
 
-impl Flaw {
-    /// Returns the rule that this flaw breaks.
+impl Issue {
+    /// Returns the rule that this issue breaks.
     #[must_use]
-    pub const fn kind(&self) -> FlawKind {
+    pub const fn kind(&self) -> Flaw {
         match self {
-            Self::Column { .. } => FlawKind::Column,
-            Self::Inset { .. } => FlawKind::Inset,
-            Self::ClippedText { .. } => FlawKind::ClippedText,
-            Self::UnevenControls { .. } => FlawKind::UnevenControls,
-            Self::Overlap { .. } => FlawKind::Overlap,
-            Self::Overflow { .. } => FlawKind::Overflow,
-            Self::Contrast { .. } => FlawKind::Contrast,
-            Self::SmallTarget { .. } => FlawKind::SmallTarget,
+            Self::Column { .. } => Flaw::Column,
+            Self::Inset { .. } => Flaw::Inset,
+            Self::ClippedText { .. } => Flaw::ClippedText,
+            Self::UnevenControls { .. } => Flaw::UnevenControls,
+            Self::Overlap { .. } => Flaw::Overlap,
+            Self::Overflow { .. } => Flaw::Overflow,
+            Self::Contrast { .. } => Flaw::Contrast,
+            Self::SmallTarget { .. } => Flaw::SmallTarget,
         }
     }
 
@@ -153,7 +153,7 @@ impl fmt::Display for NodeLabel {
     }
 }
 
-impl Flaw {
+impl Issue {
     fn fmt_column(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self::Column {
             parent,
@@ -190,7 +190,7 @@ impl Flaw {
     }
 }
 
-impl fmt::Display for Flaw {
+impl fmt::Display for Issue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Column { .. } => self.fmt_column(f),

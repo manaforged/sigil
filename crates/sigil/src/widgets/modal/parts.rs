@@ -62,5 +62,10 @@ pub(super) fn dialog_body(children: Vec<Box<dyn IntoNode>>, offset: Signal<f32>)
                 .shrink(1.0)
                 .min_size(0.0, 0.0),
         )
-        .child(scroll(content).fit().scroll_bind(offset).bg(Token::Overlay))
+        .child(
+            scroll(content)
+                .fit()
+                .scroll_bind(offset)
+                .background(Token::Overlay),
+        )
 }

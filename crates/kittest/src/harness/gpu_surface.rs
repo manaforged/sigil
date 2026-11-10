@@ -1,5 +1,5 @@
 use sigil::Host;
-use sigil::profile::{self, BackendKind, BackendStatus, FallbackCause, Phase};
+use sigil::profile::{self, Backend, BackendStatus, FallbackCause, Phase};
 use sigil::renderer::{ScreenSubmission, WgpuRenderer};
 
 use crate::gpu::{
@@ -8,7 +8,7 @@ use crate::gpu::{
 use crate::{Error, ErrorKind};
 
 pub(super) const GPU_STATUS: BackendStatus = BackendStatus {
-    kind: BackendKind::Gpu,
+    kind: Backend::Gpu,
     fallback: FallbackCause::None,
 };
 

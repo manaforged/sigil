@@ -26,7 +26,7 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 
 ## sidebar
 
-`sidebar(child)`: a fixed `Role::Navigation` column in the `surface-subtle` chrome fill with a 1 px right border, 220 px wide, full height, no shrink. Content sits inside an 8 px inset with 4 px gaps. `.width(len)` sets the width and `.resizable(min, max)` adds a drag and keyboard resize handle. `Paint` methods such as `.bg(..)` paint the whole column. Put navigation content inside; it does not scroll or collapse on its own.
+`sidebar(child)`: a fixed `Role::Navigation` column in the `surface-subtle` chrome fill with a 1 px right border, 220 px wide, full height, no shrink. Content sits inside an 8 px inset with 4 px gaps. `.width(len)` sets the width and `.resizable(min, max)` adds a drag and keyboard resize handle. `Paint` methods such as `.background(..)` paint the whole column. Put navigation content inside; it does not scroll or collapse on its own.
 
 ## tabs
 

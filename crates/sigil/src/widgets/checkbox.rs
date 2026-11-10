@@ -53,22 +53,22 @@ impl core::fmt::Debug for CheckboxBuilder {
 }
 
 static EMPTY_BASE: &[StyleAtom] = &[];
-static PRIMARY_CHECKED: &[StyleAtom] = &[Token::Accent.bg(), Token::Accent.border()];
+static PRIMARY_CHECKED: &[StyleAtom] = &[Token::Accent.background(), Token::Accent.border()];
 static PRIMARY_CHECKED_HOVER: &[StyleAtom] =
-    &[Token::AccentHover.bg(), Token::AccentHover.border()];
-static NEUTRAL_CHECKED: &[StyleAtom] = &[Token::Gray9.bg(), Token::Gray9.border()];
-static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[Token::Gray10.bg(), Token::Gray10.border()];
-static UNCHECKED: &[StyleAtom] = &[Token::Field.bg()];
-static UNCHECKED_HOVER: &[StyleAtom] = &[Token::SurfacePressed.bg()];
-static UNCHECKED_DOWN: &[StyleAtom] = &[Token::SurfacePressedStrong.bg()];
-static CHECKBOX_DISABLED: &[StyleAtom] = &[Token::SurfaceHover.bg()];
+    &[Token::AccentHover.background(), Token::AccentHover.border()];
+static NEUTRAL_CHECKED: &[StyleAtom] = &[Token::Gray9.background(), Token::Gray9.border()];
+static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[Token::Gray10.background(), Token::Gray10.border()];
+static UNCHECKED: &[StyleAtom] = &[Token::Field.background()];
+static UNCHECKED_HOVER: &[StyleAtom] = &[Token::SurfacePressed.background()];
+static UNCHECKED_DOWN: &[StyleAtom] = &[Token::SurfacePressedStrong.background()];
+static CHECKBOX_DISABLED: &[StyleAtom] = &[Token::SurfaceHover.background()];
 static BOX_BASE: &[StyleAtom] = &[
     StyleAtom::BorderRadius(4),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::Border.border(),
     StyleAtom::Transition(CHECKBOX_TRANSITION),
 ];
-static CELL_FOCUS: &[StyleAtom] = &[Token::Accent.bg(), Token::OnAccent.text()];
+static CELL_FOCUS: &[StyleAtom] = &[Token::Accent.background(), Token::OnAccent.text()];
 static CELL_DISABLED: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
 static CELL_VARIANT: StyleVariant = StyleVariant::new(
     EMPTY_BASE,

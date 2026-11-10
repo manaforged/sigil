@@ -27,8 +27,8 @@ use sigil::layout::{
 use sigil::prelude::Widget;
 use sigil::scene::{DrawRect, SceneCommand, emit_scene};
 use sigil::style::{
-    ColorAtom, FontFamily, Paint, Radius, Rgba8, StateStyleBuilder, StateVariants, TextLineHeight,
-    Theme, Token,
+    ColorAtom, FontFamily, Paint, Radius, Rgba8, StateStyleBuilder, States, TextLineHeight, Theme,
+    Token,
 };
 use widget_support::compute;
 
@@ -121,7 +121,7 @@ fn painted_opacity(build: impl IntoNode) -> Option<u16> {
 #[test]
 fn default_impl_chains_correctly() {
     let node = container()
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(80.0, 20.0)
@@ -129,7 +129,7 @@ fn default_impl_chains_correctly() {
         )
         .child(
             container()
-                .bg(A)
+                .background(A)
                 .layout(LayoutStyle::block().fixed_size(10.0, 10.0)),
         );
     let all = rects(node, Drive::Rest);
@@ -141,7 +141,10 @@ fn default_impl_chains_correctly() {
 #[test]
 fn hover_state_record_overwrites_on_second_call() {
     let hovered = colors(
-        pane().bg(REST).hover(|s| s.bg(A)).hover(|s| s.bg(B)),
+        pane()
+            .background(REST)
+            .hover(|s| s.background(A))
+            .hover(|s| s.background(B)),
         Drive::Hover,
     );
     assert!(
@@ -156,7 +159,9 @@ fn hover_state_record_overwrites_on_second_call() {
 
 #[test]
 fn hover_atoms_accumulate_within_closure() {
-    let node = pane().bg(REST).hover(|s| s.bg(A).rounded(Radius::Md));
+    let node = pane()
+        .background(REST)
+        .hover(|s| s.background(A).radius(Radius::Md));
     let hovered = rects(node, Drive::Hover);
     let rect = hovered
         .iter()
@@ -167,39 +172,45 @@ fn hover_atoms_accumulate_within_closure() {
 
 #[test]
 fn focus_slot_records_atoms() {
-    let focused = colors(pane().bg(REST).focus(|s| s.bg(A)), Drive::Focus);
+    let focused = colors(
+        pane().background(REST).focus(|s| s.background(A)),
+        Drive::Focus,
+    );
     assert!(focused.contains(&A), "focus slot must paint: {focused:?}");
 }
 
 #[test]
 fn pressed_slot_records_atoms() {
-    let pressed = colors(pane().bg(REST).pressed(|s| s.bg(A)), Drive::Press);
+    let pressed = colors(
+        pane().background(REST).pressed(|s| s.background(A)),
+        Drive::Press,
+    );
     assert!(pressed.contains(&A), "pressed slot must paint: {pressed:?}");
 }
 
 #[test]
 fn disabled_state_atoms_emit() {
-    let node = || pane().bg(REST).disabled_style(|s| s.bg(A));
+    let node = || pane().background(REST).disabled_style(|s| s.background(A));
     assert_eq!(colors(node(), Drive::Rest), [REST]);
     assert!(!colors(node(), Drive::Hover).contains(&A));
 }
 
 #[test]
 fn bg_accepts_rgba8() {
-    assert_eq!(rest_rect(pane().bg(A)).color, A);
+    assert_eq!(rest_rect(pane().background(A)).color, A);
 }
 
 #[test]
 fn bg_accepts_theme_token() {
     assert_eq!(
-        rest_rect(pane().bg(Token::Surface)).color,
+        rest_rect(pane().background(Token::Surface)).color,
         Theme::default().surface
     );
 }
 
 #[test]
 fn bg_accepts_color_atom() {
-    assert_eq!(rest_rect(pane().bg(ColorAtom::Rgba8(C))).color, C);
+    assert_eq!(rest_rect(pane().background(ColorAtom::Rgba8(C))).color, C);
 }
 
 #[test]
@@ -251,7 +262,7 @@ fn overflow_hidden_emits_both_axes() {
 #[test]
 fn rounded_presets_emit_distinct_radii() {
     for (radius, px) in [(Radius::Sm, 2.0), (Radius::Md, 6.0), (Radius::Lg, 8.0)] {
-        let rect = rest_rect(pane().bg(A).rounded(radius));
+        let rect = rest_rect(pane().background(A).radius(radius));
         assert_eq!(rect.border_radius.0[0], px, "{radius:?}");
     }
 }
@@ -260,11 +271,11 @@ fn rounded_presets_emit_distinct_radii() {
 fn all_four_state_slots_populate_independently() {
     let node = || {
         pane()
-            .bg(REST)
-            .hover(|s| s.bg(A))
-            .focus(|s| s.bg(B))
-            .pressed(|s| s.bg(C))
-            .disabled_style(|s| s.bg(D))
+            .background(REST)
+            .hover(|s| s.background(A))
+            .focus(|s| s.background(B))
+            .pressed(|s| s.background(C))
+            .disabled_style(|s| s.background(D))
     };
     assert_eq!(colors(node(), Drive::Rest), [REST]);
     assert!(colors(node(), Drive::Hover).contains(&A));
@@ -274,9 +285,11 @@ fn all_four_state_slots_populate_independently() {
 
 #[test]
 fn state_builder_implements_styled_within_closure() {
-    let node = pane()
-        .bg(REST)
-        .hover(|s| s.bg(Token::SurfaceHover).rounded(Radius::Lg).opacity(1.0));
+    let node = pane().background(REST).hover(|s| {
+        s.background(Token::SurfaceHover)
+            .radius(Radius::Lg)
+            .opacity(1.0)
+    });
     let hovered = rects(node, Drive::Hover);
     let color = Theme::default().surface_hover;
     let rect = hovered
@@ -297,7 +310,9 @@ fn color_atom_from_impls_route_correctly() {
 
 #[test]
 fn state_style_builder_can_be_built_standalone() {
-    let node = pane().bg(REST).hover(|s: StateStyleBuilder| s.bg(A));
+    let node = pane()
+        .background(REST)
+        .hover(|s: StateStyleBuilder| s.background(A));
     assert!(colors(node, Drive::Hover).contains(&A));
 }
 
@@ -361,11 +376,20 @@ fn flex_grow_takes_a_factor_like_every_other_grow() {
 
 #[test]
 fn trap2_opacity_f32_scales_to_atom() {
-    assert_eq!(painted_opacity(pane().bg(A).opacity(0.5)), Some(5_000));
+    assert_eq!(
+        painted_opacity(pane().background(A).opacity(0.5)),
+        Some(5_000)
+    );
 }
 
 #[test]
 fn trap2_opacity_clamps_at_boundaries() {
-    assert_eq!(painted_opacity(pane().bg(A).opacity(0.0)).unwrap_or(0), 0);
-    assert_eq!(painted_opacity(pane().bg(A).opacity(1.0)), Some(10_000));
+    assert_eq!(
+        painted_opacity(pane().background(A).opacity(0.0)).unwrap_or(0),
+        0
+    );
+    assert_eq!(
+        painted_opacity(pane().background(A).opacity(1.0)),
+        Some(10_000)
+    );
 }

@@ -3,7 +3,7 @@ use crate::style::StateSlot;
 use crate::widgets::{StateTarget, Widget};
 
 /// Paint per interaction state, on builders that track hover, focus, press, and disabled.
-pub trait StateVariants: Widget + StateTarget {
+pub trait States: Widget + StateTarget {
     /// Sets the style for the rest state.
     #[must_use]
     fn rest<F>(self, configure: F) -> Self
@@ -65,4 +65,4 @@ pub trait StateVariants: Widget + StateTarget {
     }
 }
 
-impl<T: Widget + StateTarget> StateVariants for T {}
+impl<T: Widget + StateTarget> States for T {}

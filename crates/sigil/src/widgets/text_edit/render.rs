@@ -31,7 +31,7 @@ const DEFAULT_ROWS: f32 = 5.0;
 static TEXT_EDIT_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_EDIT_TRANSITION)];
 
 static EDIT_BASE: &[StyleAtom] = &[
-    Token::SurfaceInset.bg(),
+    Token::SurfaceInset.background(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
 ];
 static EDIT_REST: &[StyleAtom] = &[StyleAtom::BorderToneStep(9)];
@@ -128,7 +128,7 @@ fn edit_inner(
         .size_reactive(runtime.viewport_size)
         .class(Radius::Sm.atom());
     if chrome {
-        viewport.class(Token::Surface.bg())
+        viewport.class(Token::Surface.background())
     } else {
         viewport
     }
@@ -140,7 +140,7 @@ fn edit_inner(
     .child(body)
 }
 
-static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.bg()];
+static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.background()];
 const CARET_W: f32 = 1.5;
 const BLINK: core::time::Duration = core::time::Duration::from_millis(530);
 
@@ -298,7 +298,7 @@ fn accessible_label(placeholder: &str) -> String {
 }
 
 fn edit_variant(chrome: bool) -> StyleVariant {
-    const CELL_BASE: &[StyleAtom] = &[Token::SurfaceInset.bg(), StyleAtom::BorderWidth(0)];
+    const CELL_BASE: &[StyleAtom] = &[Token::SurfaceInset.background(), StyleAtom::BorderWidth(0)];
     if !chrome {
         return StyleVariant::new(&[], StateStyle::EMPTY);
     }

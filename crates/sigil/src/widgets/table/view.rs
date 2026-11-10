@@ -26,9 +26,9 @@ static FRAMED: &[StyleAtom] = &[
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::BorderStrong.border(),
     Radius::Md.atom(),
-    Token::Surface.bg(),
+    Token::Surface.background(),
 ];
-static UNFRAMED: &[StyleAtom] = &[Token::Surface.bg()];
+static UNFRAMED: &[StyleAtom] = &[Token::Surface.background()];
 const DEFAULT_HEADER_HEIGHT: f32 = space(9);
 
 /// Builder of a table.
@@ -313,7 +313,7 @@ fn finish(
         Some(probe) => root.child(hscroll::probe(probe)),
         None => root,
     };
-    root.on_scroll(move |ev| {
+    root.scroll(move |ev| {
         let x = WheelAxis {
             offset: hs.scroll_x,
             viewport: hs.viewport.peek(),

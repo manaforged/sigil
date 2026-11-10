@@ -15,7 +15,7 @@ fn blurred() -> NodeBuilder {
                 .fixed_size(SIDE as f32, SIDE as f32)
                 .padding(Space::raw(50.0, "test fixture")),
         )
-        .bg(Rgba8 {
+        .background(Rgba8 {
             r: 255,
             g: 255,
             b: 255,
@@ -24,7 +24,7 @@ fn blurred() -> NodeBuilder {
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(SIDE as f32 - 100.0, SIDE as f32 - 100.0))
-                .bg(Rgba8 {
+                .background(Rgba8 {
                     r: 0,
                     g: 0,
                     b: 0,

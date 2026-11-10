@@ -29,7 +29,7 @@ pub fn tree_size(name: &'static str, root: impl crate::kernel::IntoNode) -> usiz
 pub fn flaws(
     host: &crate::Host,
     tolerance: crate::layout::audit::Tolerance,
-) -> Vec<crate::layout::audit::Flaw> {
+) -> Vec<crate::layout::audit::Issue> {
     host.flaws(tolerance)
 }
 

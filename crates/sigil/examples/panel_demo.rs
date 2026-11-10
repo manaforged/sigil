@@ -19,7 +19,7 @@ fn root() -> NodeBuilder {
         .fill()
         .gap(Space::Lg)
         .padding(Space::Xl)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(panel().elevation(0).title("Elevation 0 — flat"))
         .child(panel().elevation(1).title("Elevation 1 — subtle"))
         .child(

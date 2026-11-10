@@ -9,7 +9,7 @@ const TONES: [Tone; 6] = [
     Tone::Primary,
     Tone::Info,
     Tone::Success,
-    Tone::Warn,
+    Tone::Warning,
     Tone::Error,
 ];
 
@@ -77,7 +77,7 @@ fn every_tone_clears_wcag_aa_contrast() {
         (Tone::Primary, ScaleRole::Accent, 12),
         (Tone::Info, ScaleRole::Info, 12),
         (Tone::Success, ScaleRole::Success, 12),
-        (Tone::Warn, ScaleRole::Warn, 12),
+        (Tone::Warning, ScaleRole::Warn, 12),
         (Tone::Error, ScaleRole::Error, 12),
     ];
     for (tone, role, text_step) in cases {

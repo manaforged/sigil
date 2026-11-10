@@ -51,7 +51,7 @@ pub(crate) fn build() -> impl IntoNode {
         .fill()
         .gap(Space::None)
         .align_items(AlignItems::Stretch)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(sidebar(nav(page)))
         .child(
             column()
@@ -195,7 +195,7 @@ fn footer(prefs: Prefs, queue: ToastQueue) -> NodeBuilder {
         .padding(em(0.75))
         .gap(cols(1.0))
         .align_items(AlignItems::Center)
-        .bg(Token::SurfaceHover)
+        .background(Token::SurfaceHover)
         .child(spacer())
         .child(
             button("Save")

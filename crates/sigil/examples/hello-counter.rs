@@ -11,7 +11,7 @@ pub(crate) fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
         .padding(Space::Xxl)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(
             button("Increment")

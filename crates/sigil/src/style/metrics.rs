@@ -157,12 +157,12 @@ impl Layer {
     #[must_use]
     pub(crate) const fn atoms(self) -> &'static [StyleAtom] {
         match self {
-            Self::Page => const { &[Token::Surface.bg()] },
-            Self::Sunken => const { &[Token::SurfaceSubtle.bg(), Radius::Md.atom()] },
+            Self::Page => const { &[Token::Surface.background()] },
+            Self::Sunken => const { &[Token::SurfaceSubtle.background(), Radius::Md.atom()] },
             Self::Raised => {
                 const {
                     &[
-                        Token::Surface.bg(),
+                        Token::Surface.background(),
                         StyleAtom::BorderWidth(BORDER_WIDTH),
                         Token::Border.border(),
                         StyleAtom::Shadow(Elevation::Sm),
@@ -173,7 +173,7 @@ impl Layer {
             Self::Overlay => {
                 const {
                     &[
-                        Token::Overlay.bg(),
+                        Token::Overlay.background(),
                         StyleAtom::BorderWidth(BORDER_WIDTH),
                         Token::OverlayBorder.border(),
                         StyleAtom::Shadow(OVERLAY_SHADOW),

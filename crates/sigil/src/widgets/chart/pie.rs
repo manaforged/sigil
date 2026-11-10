@@ -199,7 +199,7 @@ fn legend_row(name: &str, value: &str, hue: Hue) -> NodeBuilder {
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(SWATCH, SWATCH).shrink(0.0))
-                .class([Radius::Sm.atom(), hue.bg()]),
+                .class([Radius::Sm.atom(), hue.background()]),
         )
         .child(
             text(name.to_owned())

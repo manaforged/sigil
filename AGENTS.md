@@ -52,7 +52,7 @@ fn main() -> sigil::AppResult<()> {
 fn app() -> impl IntoNode {
     let count = signal(0_i32);
     column()
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
 }
@@ -78,7 +78,7 @@ Sigil holds the design rules in its types and in its test harness. Use the named
 - Controls: a field and a button in one `row()` are the same height and are centred. Use `ControlSize` to change the height of both.
 - A `Harness` checks the laid-out tree when it is dropped. A flaw fails the test, and the message names the node and the fix: clipped text, uneven controls, overlap, overflow, contrast, a small target, a broken column, or an uneven inset. Debug builds also log each flaw through `tracing` target `sigil::design`.
 
-Fix the flaw. When a design needs the exception, say why with `.allow_flaw(FlawKind::Overflow, "reason")` on the node. Call `.unaudited()` only on a test fixture that breaks a rule on purpose. With the `inspect` feature, the query `layout::audit` lists the flaws of a running app.
+Fix the flaw. When a design needs the exception, say why with `.allow_flaw(Flaw::Overflow, "reason")` on the node. Call `.unaudited()` only on a test fixture that breaks a rule on purpose. With the `inspect` feature, the query `layout::audit` lists the flaws of a running app.
 
 ## Iterate on a screen without a rebuild
 

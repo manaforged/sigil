@@ -14,7 +14,7 @@ const TOP_BAR_HEIGHT: f32 = space(12);
 const AVATAR_PX: f32 = space(7);
 
 static TOP_CHROME: &[StyleAtom] = &[
-    Token::SurfaceSubtle.bg(),
+    Token::SurfaceSubtle.background(),
     StyleAtom::BorderBottom(BORDER_WIDTH),
     Token::Border.border(),
 ];
@@ -41,7 +41,7 @@ pub fn app_shell(
                         .min_size(0.0, 0.0)
                         .padding(Space::Sm),
                 )
-                .class(Token::Surface.bg())
+                .class(Token::Surface.background())
                 .child(work),
         )
         .child(chrome_section(
@@ -257,7 +257,7 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
                 .justify_content(JustifyContent::Center)
                 .shrink(0.0),
         )
-        .class([Radius::Full.atom(), Token::Accent9.bg()])
+        .class([Radius::Full.atom(), Token::Accent9.background()])
         .child(
             text(content)
                 .class("text-xs font-medium")

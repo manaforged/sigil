@@ -7,7 +7,7 @@ use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::PopupSide;
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::{Owner, Signal, signal};
-use crate::style::StateVariants;
+use crate::style::States;
 use crate::style::{
     BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Style, StyleAtom, Token, space,
 };
@@ -23,12 +23,12 @@ use super::panel::{Row, menu_panel, panel_height, panel_layout};
 const TRIGGER_H: f32 = space(8);
 
 static BAR_SURFACE: &[StyleAtom] = &[
-    Token::SurfaceSubtle.bg(),
+    Token::SurfaceSubtle.background(),
     StyleAtom::BorderBottom(BORDER_WIDTH),
     Token::Border.border(),
 ];
 static TRIGGER_REST: &[StyleAtom] = &[Radius::Md.atom()];
-static TRIGGER_OPEN: &[StyleAtom] = &[Radius::Md.atom(), Token::SurfacePressed.bg()];
+static TRIGGER_OPEN: &[StyleAtom] = &[Radius::Md.atom(), Token::SurfacePressed.background()];
 
 #[derive(Debug)]
 struct MenuSlot {
@@ -176,8 +176,8 @@ fn interactive_trigger(
         })
         .child(text(label).class("text-sm").class(Token::OnSurface.text()));
     interactive(inner)
-        .hover(|s| s.bg(Token::SurfaceHover))
-        .pressed(|s| s.bg(Token::SurfacePressed))
+        .hover(|s| s.background(Token::SurfaceHover))
+        .pressed(|s| s.background(Token::SurfacePressed))
 }
 
 #[cfg(test)]

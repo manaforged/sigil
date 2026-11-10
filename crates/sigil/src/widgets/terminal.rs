@@ -30,7 +30,7 @@ fn shell(on_key: impl Fn(&KeyEvent) -> bool + 'static) -> NodeBuilder {
         .focusable(true)
         .layout(LayoutStyle::flex_column().fill())
         .class("font-mono")
-        .class(Token::Surface.bg())
+        .class(Token::Surface.background())
         .key_any(move |event: &mut KeyEvent| {
             if on_key(event) {
                 event.stop_propagation();

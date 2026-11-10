@@ -18,7 +18,7 @@ const DELTA_PCT: f32 = 0.5;
 fn icon_default() {
     let img = Harness::render(|| {
         container()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
             .child(icon("i"))
     })
@@ -34,7 +34,7 @@ fn icon_default() {
 fn icon_primary_tone() {
     let img = Harness::render(|| {
         container()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
             .child(icon("+").tone(Tone::Primary))
     })
@@ -52,7 +52,7 @@ fn icon_primary_tone() {
 fn icon_error_tone() {
     let img = Harness::render(|| {
         container()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
             .child(icon("x").tone(Tone::Error))
     })
@@ -68,7 +68,7 @@ fn icon_error_tone() {
 fn dot_success() {
     let img = Harness::render(|| {
         container()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
             .child(dot(Tone::Success))
     })
@@ -84,9 +84,9 @@ fn dot_success() {
 fn dot_warn_default_size() {
     let img = Harness::render(|| {
         container()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
-            .child(dot(Tone::Warn).size(ControlSize::Default))
+            .child(dot(Tone::Warning).size(ControlSize::Default))
     })
     .stub()
     .mode(InteractionMode::Default)
@@ -102,7 +102,7 @@ fn dot_warn_default_size() {
 fn dot_error_wide() {
     let img = Harness::render(|| {
         container()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
             .child(dot(Tone::Error).size(ControlSize::Wide))
     })
@@ -119,7 +119,7 @@ fn radio_group_three_options_first_selected() {
     let img = Harness::render(|| {
         let selected = signal(String::from("light"));
         container()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
             .child(
                 radio_group(selected)
@@ -143,7 +143,7 @@ fn radio_group_middle_selected() {
     let img = Harness::render(|| {
         let selected = signal(String::from("dark"));
         container()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
             .child(
                 radio_group(selected)
@@ -167,7 +167,7 @@ fn validated_field_no_error() {
     let img = Harness::render(|| {
         let error: Signal<Option<String>> = signal(None);
         container()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
             .child(sigil::widgets::field("Email", text_field(signal(String::new()))).error(error))
     })
@@ -186,7 +186,7 @@ fn validated_field_with_error() {
     let img = Harness::render(|| {
         let error: Signal<Option<String>> = signal(Some(String::from("Email must contain @")));
         container()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .layout(LayoutStyle::flex_row().fill())
             .child(sigil::widgets::field("Email", text_field(signal(String::new()))).error(error))
     })

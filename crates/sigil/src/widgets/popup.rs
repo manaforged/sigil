@@ -20,7 +20,7 @@ pub(crate) const POPUP_GAP: f32 = space(1);
 
 pub(crate) static SURFACE: &[StyleAtom] = Layer::Overlay.atoms();
 
-static SEPARATOR_LINE: &[StyleAtom] = &[Token::OverlayBorder.bg()];
+static SEPARATOR_LINE: &[StyleAtom] = &[Token::OverlayBorder.background()];
 
 #[must_use]
 pub(crate) fn surface(role: Role) -> NodeBuilder {

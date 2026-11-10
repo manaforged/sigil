@@ -60,7 +60,7 @@ impl Seen {
 
 fn square() -> NodeBuilder {
     container()
-        .bg(BLACK)
+        .background(BLACK)
         .layout(LayoutStyle::block().fixed_size(SIDE, SIDE))
 }
 
@@ -178,7 +178,7 @@ fn keyframe_and_transition_colors_meet_at_the_same_midpoint() {
                     .duration(Duration::from_secs(1))
                     .ease(Easing::Linear),
             )
-            .paint_when(toggle, |state| state.bg(WHITE));
+            .paint_when(toggle, |state| state.background(WHITE));
         let mut fading = mount(node);
         start(&mut fading, toggle);
         run(&mut fading, 0.5);

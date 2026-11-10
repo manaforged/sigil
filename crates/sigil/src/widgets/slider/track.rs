@@ -37,21 +37,25 @@ const fn vertical_gradient(stops: &'static [GradientStopKey]) -> StyleAtom {
 const THUMB_BORDER: StyleAtom = StyleAtom::BorderWidth(BORDER_WIDTH);
 
 static TRACK_REST: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
-static TRACK_FILL: &[StyleAtom] = &[Token::Accent.bg()];
+static TRACK_FILL: &[StyleAtom] = &[Token::Accent.background()];
 static CELL_THUMB_ATOMS: &[StyleAtom] = &[Token::Accent.text()];
 static THUMB_REST: &[StyleAtom] = &[
-    Token::OnAccent.bg(),
+    Token::OnAccent.background(),
     THUMB_BORDER,
     Token::Accent.border(),
     StyleAtom::Shadow(Elevation::Sm),
 ];
 static THUMB_HOVER: &[StyleAtom] = &[
-    Token::OnAccent.bg(),
+    Token::OnAccent.background(),
     THUMB_BORDER,
     Token::AccentHover.border(),
     StyleAtom::Shadow(Elevation::Sm),
 ];
-static THUMB_DISABLED: &[StyleAtom] = &[Token::OnAccent.bg(), THUMB_BORDER, Token::Gray8.border()];
+static THUMB_DISABLED: &[StyleAtom] = &[
+    Token::OnAccent.background(),
+    THUMB_BORDER,
+    Token::Gray8.border(),
+];
 
 static GLASS_TRACK_STOPS: &[GradientStopKey] = &[
     GradientStopKey::new(0, rgba(148, 163, 184, 66)),
@@ -112,7 +116,7 @@ pub(super) fn track(runtime: SliderRuntime, filled: bool) -> NodeBuilder {
     let node = container()
         .hittable(false)
         .layout(layout)
-        .style(Style::new().radius(3))
+        .style(Style::new().radius_px(3))
         .class(class);
     if filled {
         node.style_reactive(move || {
@@ -174,7 +178,7 @@ fn window_thumb(
     container()
         .hittable(false)
         .layout(LayoutStyle::block().fixed_size(THUMB_SIZE, THUMB_SIZE))
-        .style(Style::new().radius(8))
+        .style(Style::new().radius_px(8))
         .class(SLIDER_THUMB_ANIM_BASE)
         .style_reactive(move || {
             slider_thumb_variant(glass).state(binary_style_state(interaction, disabled))

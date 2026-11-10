@@ -62,7 +62,7 @@ impl Shot {
 pub(crate) fn page(width: f32, height: f32, child: impl IntoNode + 'static) -> impl IntoNode {
     container()
         .layout(LayoutStyle::block().fixed_size(width, height))
-        .bg(WHITE)
+        .background(WHITE)
         .child(child)
 }
 
@@ -134,7 +134,7 @@ fn radial_box() -> impl IntoNode {
         60.0,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 60.0))
-            .bg(Background::radial(Radial::new()).start(RED).end(BLUE)),
+            .background(Background::radial(Radial::new()).start(RED).end(BLUE)),
     )
 }
 
@@ -164,14 +164,16 @@ fn closest_side_circle() -> impl IntoNode {
         60.0,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 60.0))
-            .bg(Background::radial(
-                Radial::new()
-                    .circle(true)
-                    .extent(RadialExtent::ClosestSide)
-                    .at(25, 50),
-            )
-            .start(RED)
-            .end(BLUE)),
+            .background(
+                Background::radial(
+                    Radial::new()
+                        .circle(true)
+                        .extent(RadialExtent::ClosestSide)
+                        .at(25, 50),
+                )
+                .start(RED)
+                .end(BLUE),
+            ),
     )
 }
 
@@ -197,7 +199,7 @@ fn conic_box(from: i16) -> impl IntoNode {
         80.0,
         container()
             .layout(LayoutStyle::block().fixed_size(80.0, 80.0))
-            .bg(Background::conic(from).start(RED).middle(GREEN).end(BLUE)),
+            .background(Background::conic(from).start(RED).middle(GREEN).end(BLUE)),
     )
 }
 
@@ -259,9 +261,11 @@ fn gradient_word() -> impl IntoNode {
             .font_size(40.0, "test fixture")
             .font_weight(900)
             .text_color(INK)
-            .bg(Background::linear(GradientAxis::LeftToRight)
-                .start(RED)
-                .end(BLUE))
+            .background(
+                Background::linear(GradientAxis::LeftToRight)
+                    .start(RED)
+                    .end(BLUE),
+            )
             .bg_clip_text(),
     )
 }
@@ -350,7 +354,7 @@ fn an_image_paint_tiles_at_its_natural_size() {
 fn parity_scene() -> impl IntoNode {
     container()
         .layout(LayoutStyle::flex_row().fixed_size(400.0, 80.0))
-        .bg(WHITE)
+        .background(WHITE)
         .child(radial_box())
         .child(conic_box(45))
         .child(borders::dashed_card())

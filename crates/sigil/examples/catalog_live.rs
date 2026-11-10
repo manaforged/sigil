@@ -128,7 +128,7 @@ fn sandbox(first: Pick) -> impl IntoNode {
         .fill_width()
         .fill_height()
         .padding(Space::Xl)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(for_each(
             picks,
             |pick| (pick.build.clone(), pick.state, pick.nonce),

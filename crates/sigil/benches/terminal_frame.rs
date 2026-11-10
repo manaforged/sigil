@@ -76,7 +76,7 @@ fn columns() -> Vec<TableColumn<Row>> {
             .cell(|row: &Row| text(row.port.to_string()).nowrap()),
         TableColumn::new("state", "STATE")
             .width(ColumnWidth::Fixed(72.0))
-            .cell(|_: &Row| chip("STRAY", Tone::Warn)),
+            .cell(|_: &Row| chip("STRAY", Tone::Warning)),
         TableColumn::new("where", "WHERE")
             .width(ColumnWidth::Fixed(176.0))
             .cell(|row: &Row| text(row.place.clone()).nowrap()),

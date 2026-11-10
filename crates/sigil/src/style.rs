@@ -131,7 +131,7 @@ kittest_pub! {
     pub use strings::Strings;
 }
 pub(crate) use struct_api::Style;
-pub use styled::StateVariants;
+pub use styled::States;
 pub(crate) use styled::node::attach_style;
 kittest_pub! {
     #[doc(hidden)]

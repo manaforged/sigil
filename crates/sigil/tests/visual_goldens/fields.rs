@@ -148,10 +148,10 @@ fn dropdown_disabled() {
 fn scroll_default() {
     let img = Harness::render(|| {
         let body = container()
-            .bg(Token::Accent)
-            .rounded(Radius::Sm)
+            .background(Token::Accent)
+            .radius(Radius::Sm)
             .layout(LayoutStyle::block().fixed_size(312.0, 400.0));
-        scroll(body).extent(400.0).rounded(Radius::Sm)
+        scroll(body).extent(400.0).radius(Radius::Sm)
     })
     .stub()
     .mode(InteractionMode::Default)

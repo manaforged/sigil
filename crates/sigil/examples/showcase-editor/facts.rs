@@ -1,10 +1,10 @@
 use sigil::prelude::*;
-use sigil::widgets::{ChangeKind, Severity};
+use sigil::widgets::{Change, Severity};
 
 use super::project::FileId;
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Diagnostic {
+pub(crate) struct Problem {
     pub(crate) file: FileId,
     pub(crate) line: usize,
     pub(crate) start: usize,
@@ -14,8 +14,8 @@ pub(crate) struct Diagnostic {
     pub(crate) message: &'static str,
 }
 
-pub(crate) const DIAGNOSTICS: &[Diagnostic] = &[
-    Diagnostic {
+pub(crate) const DIAGNOSTICS: &[Problem] = &[
+    Problem {
         file: FileId::Integrator,
         line: 36,
         start: 12,
@@ -24,7 +24,7 @@ pub(crate) const DIAGNOSTICS: &[Diagnostic] = &[
         code: "unused_variables",
         message: "unused variable: `half_dt`",
     },
-    Diagnostic {
+    Problem {
         file: FileId::Main,
         line: 15,
         start: 10,
@@ -33,7 +33,7 @@ pub(crate) const DIAGNOSTICS: &[Diagnostic] = &[
         code: "cast_precision_loss",
         message: "casting `u64` to `f64` may lose precision",
     },
-    Diagnostic {
+    Problem {
         file: FileId::Integrator,
         line: 102,
         start: 53,
@@ -55,7 +55,7 @@ pub(crate) const fn severity_icon(severity: Severity) -> Icon {
 pub(crate) const fn severity_tone(severity: Severity) -> Tone {
     match severity {
         Severity::Error => Tone::Error,
-        Severity::Warning => Tone::Warn,
+        Severity::Warning => Tone::Warning,
         Severity::Info | Severity::Hint => Tone::Info,
     }
 }
@@ -68,49 +68,49 @@ pub(crate) fn count(severity: Severity) -> usize {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Change {
+pub(crate) struct Mark {
     pub(crate) file: FileId,
     pub(crate) first: usize,
     pub(crate) last: usize,
-    pub(crate) kind: ChangeKind,
+    pub(crate) kind: Change,
 }
 
-pub(crate) const CHANGES: &[Change] = &[
-    Change {
+pub(crate) const CHANGES: &[Mark] = &[
+    Mark {
         file: FileId::Integrator,
         first: 6,
         last: 9,
-        kind: ChangeKind::Added,
+        kind: Change::Added,
     },
-    Change {
+    Mark {
         file: FileId::Integrator,
         first: 27,
         last: 30,
-        kind: ChangeKind::Modified,
+        kind: Change::Modified,
     },
-    Change {
+    Mark {
         file: FileId::Integrator,
         first: 47,
         last: 61,
-        kind: ChangeKind::Added,
+        kind: Change::Added,
     },
-    Change {
+    Mark {
         file: FileId::Integrator,
         first: 85,
         last: 85,
-        kind: ChangeKind::Deleted,
+        kind: Change::Deleted,
     },
-    Change {
+    Mark {
         file: FileId::PhysicsMod,
         first: 3,
         last: 3,
-        kind: ChangeKind::Modified,
+        kind: Change::Modified,
     },
-    Change {
+    Mark {
         file: FileId::Readme,
         first: 4,
         last: 8,
-        kind: ChangeKind::Added,
+        kind: Change::Added,
     },
 ];
 

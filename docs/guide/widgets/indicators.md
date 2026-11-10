@@ -18,7 +18,7 @@ chip("3", Tone::Error);
 - `.activate(Fn())` turns the chip into a button: `Role::Button`, pointer release and Enter fire the closure. Without it the chip is `Role::Label` and inert.
 - The layout setters, such as `.width(..)` and `.margin(..)`, size and place the chip.
 
-The tone palette is fixed: `Neutral`, `Primary`, `Info`, `Success`, `Warn`, `Error`.
+The tone palette is fixed: `Neutral`, `Primary`, `Info`, `Success`, `Warning`, `Error`.
 
 ## dot
 

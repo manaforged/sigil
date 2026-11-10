@@ -40,7 +40,7 @@ fn route_ime_delivers_preedit_to_focused_target() {
         container()
             .focusable(true)
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_ime({
+            .ime({
                 let seen = Rc::clone(&seen);
                 move |event| {
                     if let ImeEvent::Preedit(text, _) = event {
@@ -71,7 +71,7 @@ fn route_ime_delivers_commit_to_focused_target() {
         container()
             .focusable(true)
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_ime({
+            .ime({
                 let committed = Rc::clone(&committed);
                 move |event| {
                     if let ImeEvent::Commit(text) = event {
@@ -103,7 +103,7 @@ fn route_ime_dropped_when_no_focus() {
         container()
             .focusable(true)
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_ime({
+            .ime({
                 let hits = Rc::clone(&hits);
                 move |_| hits.set(hits.get() + 1)
             }),
@@ -150,7 +150,7 @@ fn focus_wants_ime_reflects_on_ime_registration() {
         container()
             .focusable(true)
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_ime(|_| {}),
+            .ime(|_| {}),
     );
     let _layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
@@ -174,7 +174,7 @@ fn two_logging_ime_fields(cx: &mut Cx) -> (NodeId, NodeId, ImeLog, ImeLog) {
                 container()
                     .focusable(true)
                     .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-                    .on_ime({
+                    .ime({
                         let log = Rc::clone(&a_log);
                         move |event| log.borrow_mut().push(ime_label(event))
                     }),
@@ -183,7 +183,7 @@ fn two_logging_ime_fields(cx: &mut Cx) -> (NodeId, NodeId, ImeLog, ImeLog) {
                 container()
                     .focusable(true)
                     .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-                    .on_ime({
+                    .ime({
                         let log = Rc::clone(&b_log);
                         move |event| log.borrow_mut().push(ime_label(event))
                     }),
@@ -293,7 +293,7 @@ fn route_ime_scope_change_cancels_owner_without_focus_move() {
                 container()
                     .focusable(true)
                     .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-                    .on_ime({
+                    .ime({
                         let log = Rc::clone(&field_log);
                         move |event| log.borrow_mut().push(ime_label(event))
                     }),

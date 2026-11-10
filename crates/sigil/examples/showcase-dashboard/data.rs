@@ -98,7 +98,7 @@ impl Env {
     pub(crate) const fn tone(self) -> Tone {
         match self {
             Self::Production => Tone::Primary,
-            Self::Staging => Tone::Warn,
+            Self::Staging => Tone::Warning,
             Self::Preview => Tone::Info,
         }
     }
@@ -221,7 +221,7 @@ impl JobStatus {
             Self::Deploying => Tone::Primary,
             Self::Live => Tone::Success,
             Self::Failed => Tone::Error,
-            Self::RolledBack => Tone::Warn,
+            Self::RolledBack => Tone::Warning,
         }
     }
 

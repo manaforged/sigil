@@ -5,7 +5,7 @@ use crate::kernel::{IntoNode, NodeBuilder, Role, TextBuilder, TextContent, conta
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, cols, rows};
 use crate::reactive::{Signal, signal};
-use crate::style::StateVariants;
+use crate::style::States;
 use crate::style::{Paint, Radius, Token, Tone, space};
 use crate::widgets::Widget;
 
@@ -198,7 +198,7 @@ pub fn list_row(
     }
     let row = if selected {
         row.selected(signal(true))
-            .class([Radius::Md.atom(), ROW_SELECTED.bg()])
+            .class([Radius::Md.atom(), ROW_SELECTED.background()])
     } else {
         row_states(row, None)
     };
@@ -213,8 +213,8 @@ pub(crate) const ROW_SELECTED_HOVER: Token = Token::Accent6;
 
 pub(crate) fn row_states(row: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {
     let row = interactive(row.class(Radius::Md.atom()))
-        .hover(|s| s.bg(Token::SurfaceHover))
-        .pressed(|s| s.bg(Token::SurfacePressed));
+        .hover(|s| s.background(Token::SurfaceHover))
+        .pressed(|s| s.background(Token::SurfacePressed));
     match disabled {
         Some(disabled) => row.disabled(disabled),
         None => row,

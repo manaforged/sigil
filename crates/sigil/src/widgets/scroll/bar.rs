@@ -10,10 +10,12 @@ use crate::widgets::interaction::pointer_drag;
 
 use super::{SCROLLBAR_WIDTH, THUMB_MIN_HEIGHT, THUMB_REST_WIDTH, geometry, overflows, to_i16};
 
-pub(crate) static THUMB_ATOMS: &[StyleAtom] =
-    &[Token::SurfacePressedStrong.bg(), Radius::Full.atom()];
+pub(crate) static THUMB_ATOMS: &[StyleAtom] = &[
+    Token::SurfacePressedStrong.background(),
+    Radius::Full.atom(),
+];
 pub(crate) static TRACK_ATOMS: &[StyleAtom] = &[Radius::Full.atom()];
-static TRACK_HOVER: &[StyleAtom] = &[Radius::Full.atom(), Token::SurfaceSubtle.bg()];
+static TRACK_HOVER: &[StyleAtom] = &[Radius::Full.atom(), Token::SurfaceSubtle.background()];
 static HIDDEN: &[StyleAtom] = &[StyleAtom::Display(Display::None)];
 
 pub(crate) fn scrollbar(

@@ -57,7 +57,7 @@ fn chip_success() {
 
 #[test]
 fn chip_warn() {
-    let img = Harness::render(|| chip_in("WARN", Tone::Warn))
+    let img = Harness::render(|| chip_in("WARN", Tone::Warning))
         .stub()
         .mode(InteractionMode::Default)
         .size([50, 35])
@@ -84,13 +84,13 @@ fn divider_horizontal_default() {
             .layout(LayoutStyle::flex_column().fixed_size(180.0, 60.0))
             .child(
                 container()
-                    .bg(Token::Accent)
+                    .background(Token::Accent)
                     .layout(LayoutStyle::flex_row().fill_width().height(20.0)),
             )
             .child(divider_horizontal())
             .child(
                 container()
-                    .bg(Token::SurfaceHover)
+                    .background(Token::SurfaceHover)
                     .layout(LayoutStyle::flex_row().fill_width().height(20.0)),
             )
     })
@@ -111,13 +111,13 @@ fn divider_vertical_default() {
             .layout(LayoutStyle::flex_row().fixed_size(120.0, 60.0))
             .child(
                 container()
-                    .bg(Token::Accent)
+                    .background(Token::Accent)
                     .layout(LayoutStyle::flex_column().fill_height().width(40.0)),
             )
             .child(divider_vertical())
             .child(
                 container()
-                    .bg(Token::SurfaceHover)
+                    .background(Token::SurfaceHover)
                     .layout(LayoutStyle::flex_column().fill_height().width(40.0)),
             )
     })
@@ -136,7 +136,7 @@ fn kv_row_default() {
     let img = Harness::render(|| {
         let row = container()
             .layout(LayoutStyle::flex_column().fixed_size(220.0, 40.0))
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(kv_row(
                 "Status",
                 text("200 OK").font_family(FontFamily::Mono),
@@ -156,7 +156,7 @@ fn status_bar_default() {
     let img = Harness::render(|| {
         let bar = container()
             .layout(LayoutStyle::flex_column().fixed_size(280.0, 48.0))
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(status_bar([
                 chip("READY", Tone::Success),
                 chip("3 ITEMS", Tone::Neutral),

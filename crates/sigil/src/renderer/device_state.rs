@@ -1,5 +1,5 @@
 #[cfg(feature = "desktop")]
-use crate::profile::{BackendKind, BackendStatus, FallbackCause};
+use crate::profile::{Backend, BackendStatus, FallbackCause};
 use crate::renderer::decoration_paint::DecorationPipeline;
 use crate::renderer::fill_paint::FillPipeline;
 use crate::renderer::filter::FilterPipeline;
@@ -108,9 +108,9 @@ impl ReadyState {
         let software = self.adapter.get_info().device_type == wgpu::DeviceType::Cpu;
         BackendStatus {
             kind: if software || self.forced_fallback {
-                BackendKind::GpuSoftware
+                Backend::GpuSoftware
             } else {
-                BackendKind::Gpu
+                Backend::Gpu
             },
             fallback: if self.forced_fallback {
                 FallbackCause::NoAdapter

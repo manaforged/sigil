@@ -64,11 +64,11 @@ fn scroll_dispatches_via_fresh_hit_test() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_scroll(move |_| outer.borrow_mut().push("outer"))
+            .scroll(move |_| outer.borrow_mut().push("outer"))
             .child(
                 container()
                     .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-                    .on_scroll(move |_| inner.borrow_mut().push("inner")),
+                    .scroll(move |_| inner.borrow_mut().push("inner")),
             ),
     );
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
@@ -93,11 +93,11 @@ fn scroll_stop_propagation_halts_bubble() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_scroll(move |_| outer.borrow_mut().push("outer"))
+            .scroll(move |_| outer.borrow_mut().push("outer"))
             .child(
                 container()
                     .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-                    .on_scroll(move |ev| {
+                    .scroll(move |ev| {
                         inner.borrow_mut().push("inner");
                         ev.stop_propagation();
                     }),

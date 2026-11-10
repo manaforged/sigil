@@ -21,7 +21,7 @@ fn build() -> impl IntoNode {
         .fill()
         .gap(Space::Lg)
         .padding(Space::Xxl)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(text_field(name).placeholder("Enter your name"))
         .child(text_field(url).submit(|v| println!("submit: {v}")))
 }

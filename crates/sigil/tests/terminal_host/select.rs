@@ -76,7 +76,7 @@ fn a_drag_copy_reports_what_it_copied() {
         let seen = Rc::clone(&seen);
         container()
             .selectable_text(true)
-            .on_selection_copy(move |text, result| {
+            .selection_copy(move |text, result| {
                 seen.borrow_mut().push((text.to_owned(), result.is_ok()));
             })
             .child(text("The quick brown fox"))

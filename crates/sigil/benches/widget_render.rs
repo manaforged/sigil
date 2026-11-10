@@ -195,7 +195,9 @@ fn build_button() -> impl IntoNode {
 
 fn build_checkbox() -> impl IntoNode {
     let checked = signal(false);
-    checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
+    checkbox(checked)
+        .background(Token::Surface)
+        .radius(Radius::Sm)
 }
 
 fn build_slider() -> impl IntoNode {

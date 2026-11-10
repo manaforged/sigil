@@ -18,7 +18,7 @@ fn build() -> impl IntoNode {
         .gap(Space::Xl)
         .padding(Space::Xxl)
         .align_items(AlignItems::Stretch)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(toggle(on).change(move |v| on.set(v)))
         .child(toggle(signal(true)))
         .child(toggle(signal(false)).disabled(disabled))

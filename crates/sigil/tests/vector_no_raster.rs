@@ -76,7 +76,7 @@ struct Drawn {
 }
 
 fn drawn(producer: Producer) -> Drawn {
-    let mut ui = Harness::new(move || column().bg(Token::Surface).child(producer.node()))
+    let mut ui = Harness::new(move || column().background(Token::Surface).child(producer.node()))
         .pixels(VIEW.0, VIEW.1);
     let start = Instant::now();
     ui.settle();

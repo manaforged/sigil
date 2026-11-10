@@ -77,7 +77,7 @@ impl Horizontal {
         }
         root.key(Key::ArrowLeft, move |event| step(hs, event, -SCROLL_LINE))
             .key(Key::ArrowRight, move |event| step(hs, event, SCROLL_LINE))
-            .on_scroll(move |event| {
+            .scroll(move |event| {
                 wheel(
                     event,
                     None,

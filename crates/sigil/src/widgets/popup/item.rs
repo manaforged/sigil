@@ -10,7 +10,7 @@ use super::super::vector::path;
 const GLYPH: f32 = space(4);
 
 static ROW_REST: &[StyleAtom] = &[Radius::Md.atom()];
-static ROW_HIGHLIGHT: &[StyleAtom] = &[Radius::Md.atom(), Token::SurfaceHover.bg()];
+static ROW_HIGHLIGHT: &[StyleAtom] = &[Radius::Md.atom(), Token::SurfaceHover.background()];
 
 pub(crate) struct ItemSlots {
     pub(crate) label: String,

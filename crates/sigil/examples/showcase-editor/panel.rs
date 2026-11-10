@@ -1,9 +1,9 @@
 use sigil::prelude::*;
 
-use super::facts::{DIAGNOSTICS, Diagnostic, OUTPUT, PROMPT, severity_icon, severity_tone};
+use super::facts::{DIAGNOSTICS, OUTPUT, PROMPT, Problem, severity_icon, severity_tone};
 use super::state::{BottomTab, Workspace};
 
-fn problem_row(ws: Workspace, diag: Diagnostic) -> NodeBuilder {
+fn problem_row(ws: Workspace, diag: Problem) -> NodeBuilder {
     let location = format!("{}:{}:{}", diag.file.path(), diag.line + 1, diag.start + 1);
     list_row(
         false,
@@ -84,8 +84,8 @@ pub(crate) fn bottom_panel(ws: Workspace) -> NodeBuilder {
         .min_width(0.0)
         .min_height(0.0)
         .gap(Space::None)
-        .bg(Token::SurfaceSubtle)
-        .rounded(Radius::Md)
+        .background(Token::SurfaceSubtle)
+        .radius(Radius::Md)
         .child(
             panel
                 .active(ws.bottom)

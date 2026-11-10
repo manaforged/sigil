@@ -50,11 +50,11 @@ static STATE_DISABLED: &[StyleAtom] = &[
 fn paint_node() -> NodeBuilder {
     container()
         .layout(LayoutStyle::default().padding(Space::Lg).gap(Space::Lg))
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .text_color(Token::OnSurface)
         .border_color(Token::Border)
-        .border_w(1)
-        .rounded(Radius::Md)
+        .border_width(1)
+        .radius(Radius::Md)
         .shadow(Elevation::Sm)
         .opacity(0.8)
         .font_size(14.0, "benchmark fixture")
@@ -95,9 +95,9 @@ fn paint_override_last_wins(c: &mut Criterion) {
         b.iter(|| {
             let mut cx = Cx::new_root();
             let node = paint_node()
-                .bg(Token::Accent)
+                .background(Token::Accent)
                 .text_color(Token::OnAccent)
-                .rounded(Radius::Lg)
+                .radius(Radius::Lg)
                 .shadow(Elevation::Lg)
                 .opacity(1.0)
                 .font_size(18.0, "benchmark fixture")

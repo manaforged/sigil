@@ -15,7 +15,7 @@ use crate::widgets::Widget;
 const INDETERMINATE_RATIO: f32 = 0.30;
 const CELL_RULE_THICKNESS: f32 = 1.0;
 
-static FILL: &[StyleAtom] = &[Radius::Md.atom(), Token::Accent.bg()];
+static FILL: &[StyleAtom] = &[Radius::Md.atom(), Token::Accent.background()];
 static EMPTY: &[StyleAtom] = &[];
 
 /// Builder of a progress bar.
@@ -162,8 +162,8 @@ fn empty_segment(units: Signal<u16>, track_h: f32) -> NodeBuilder {
 
 fn fill_atoms(tone: Tone) -> [StyleAtom; 2] {
     let paint = match tone {
-        Tone::Primary => Token::Accent.bg(),
-        _ => tone.fill().bg(),
+        Tone::Primary => Token::Accent.background(),
+        _ => tone.fill().background(),
     };
     [Radius::Md.atom(), paint]
 }

@@ -166,7 +166,7 @@ fn list(todos: Todos, list_id: Signal<Option<NodeId>>) -> NodeBuilder {
                             .gap(Space::None)
                             .align_items(AlignItems::Stretch);
                         let row = if index == at {
-                            row.bg(Token::Accent5)
+                            row.background(Token::Accent5)
                         } else {
                             row
                         };

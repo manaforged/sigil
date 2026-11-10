@@ -29,7 +29,7 @@ fn render_image_falls_back_to_cpu_when_no_adapter_exists() {
     assert_eq!(
         backend.status(),
         BackendStatus {
-            kind: BackendKind::Cpu,
+            kind: profile::Backend::Cpu,
             fallback: FallbackCause::NoAdapter,
         }
     );

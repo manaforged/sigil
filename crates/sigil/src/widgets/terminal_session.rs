@@ -25,7 +25,7 @@ impl Session {
             .child(list)
             .selectable_text(true)
             .size_reactive(size)
-            .on_paste(move |text| pasted.paste(text).is_ok());
+            .paste(move |text| pasted.paste(text).is_ok());
         pointer(wheel(node, self), self)
     }
 
@@ -129,7 +129,7 @@ fn cell_at(x: f32, y: f32) -> (u16, u16) {
 fn wheel(node: NodeBuilder, session: &Rc<Session>) -> NodeBuilder {
     let session = Rc::clone(session);
     let left = Cell::new(0.0_f32);
-    node.on_scroll(move |event| {
+    node.scroll(move |event| {
         let count = whole_rows(event, &left);
         if count != 0 {
             scroll(&session, event, count);

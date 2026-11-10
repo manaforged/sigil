@@ -24,7 +24,7 @@ pub(super) fn frame(frame: plot::PlotFrame) -> NodeBuilder {
             Radius::Md.atom(),
             StyleAtom::BorderWidth(BORDER_WIDTH),
             Token::Gray6.border(),
-            Token::Surface.bg(),
+            Token::Surface.background(),
         ])
         .with(
             LayoutStyle::flex_column()

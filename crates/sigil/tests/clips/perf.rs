@@ -75,7 +75,7 @@ fn avatars() -> impl IntoNode {
                     .overflow_x(Overflow::Hidden)
                     .overflow_y(Overflow::Hidden),
             )
-            .rounded(Radius::Full)
+            .radius(Radius::Full)
             .child(child);
         grid = grid.child(avatar);
     }

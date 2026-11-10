@@ -16,7 +16,7 @@ pub(in crate::widgets) fn clipboard_keys(
     runtime: &TextEditRuntime,
 ) -> NodeBuilder {
     let pasted = runtime.clone();
-    let node = node.on_paste(move |text| shell_paste(text, &pasted));
+    let node = node.paste(move |text| shell_paste(text, &pasted));
     let commands: [(&str, ModifiersState, KeyCommand); 4] = [
         ("c", ModifiersState::empty(), clipboard_copy),
         ("x", ModifiersState::empty(), clipboard_cut),

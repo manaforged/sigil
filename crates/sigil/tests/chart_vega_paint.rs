@@ -37,7 +37,7 @@ struct Chart {
 fn paint(json: &'static str) -> Chart {
     let mut ui = Harness::new(move || {
         column()
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .child(markdown(signal(format!("```vega-lite\n{json}\n```"))))
     })
     .pixels(800, 700);

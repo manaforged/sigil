@@ -15,12 +15,12 @@ pub(super) struct Hue {
 const PALETTE: [Hue; 10] = [
     Hue::new(Tone::Primary, 9),
     Hue::new(Tone::Success, 9),
-    Hue::new(Tone::Warn, 9),
+    Hue::new(Tone::Warning, 9),
     Hue::new(Tone::Error, 9),
     Hue::new(Tone::Info, 9),
     Hue::new(Tone::Primary, 7),
     Hue::new(Tone::Success, 7),
-    Hue::new(Tone::Warn, 7),
+    Hue::new(Tone::Warning, 7),
     Hue::new(Tone::Error, 7),
     Hue::new(Tone::Info, 7),
 ];
@@ -67,9 +67,9 @@ impl Hue {
             .map_or_else(|| PathColor::Token(self.token()), PathColor::Rgba)
     }
 
-    pub(super) fn bg(self) -> StyleAtom {
+    pub(super) fn background(self) -> StyleAtom {
         self.rgb.map_or_else(
-            || self.token().bg(),
+            || self.token().background(),
             |color| StyleAtom::BackgroundColor(ColorAtom::Rgba8(color)),
         )
     }

@@ -18,7 +18,7 @@ const CARET_W: f32 = 2.0;
 static SELECTION_ATOMS: &[StyleAtom] =
     &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(SELECTION_FILL))];
 
-static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.bg()];
+static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.background()];
 static FIELD_TEXT_ATOMS: &[StyleAtom] = &[Token::OnSurface.text()];
 static PLACEHOLDER_TEXT_ATOMS: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
 

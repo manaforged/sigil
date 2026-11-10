@@ -15,7 +15,7 @@ static CARD: &[StyleAtom] = Layer::Raised.atoms();
 
 static CARD_SELECTED: &[StyleAtom] = &[
     Radius::Md.atom(),
-    ROW_SELECTED.bg(),
+    ROW_SELECTED.background(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::Accent8.border(),
     StyleAtom::Shadow(Elevation::Sm),

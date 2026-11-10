@@ -34,7 +34,7 @@ fn build() -> impl IntoNode {
         .fill()
         .gap(Space::None)
         .align_items(AlignItems::Stretch)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(sidebar(nav(page)))
         .child(content(page, dialog, drawer, queue))
         .child(
@@ -74,8 +74,8 @@ fn nav_row(page: Signal<usize>, index: usize, name: &'static str) -> NodeBuilder
         .padding_x(Space::Sm)
         .align_items(AlignItems::Center)
         .gap(Space::None)
-        .rounded(Radius::Md)
-        .paint_when(active, |s| s.bg(Token::Accent4))
+        .radius(Radius::Md)
+        .paint_when(active, |s| s.background(Token::Accent4))
         .child(text(name).nowrap().text_role(TextRole::Body))
         .pointer_up(move |_| page.set(index))
 }
@@ -256,11 +256,15 @@ fn content_page() -> NodeBuilder {
         .child(text("Labels and text share TextContent.").nowrap())
         .child(section_label("Icons and indicators"))
         .child(row3(
-            icon("★").tone(Tone::Warn).label("Star"),
+            icon("★").tone(Tone::Warning).label("Star"),
             chip("stable", Tone::Success),
             chip("4", Tone::Error),
         ))
-        .child(row3(dot(Tone::Success), dot(Tone::Warn), dot(Tone::Error)))
+        .child(row3(
+            dot(Tone::Success),
+            dot(Tone::Warning),
+            dot(Tone::Error),
+        ))
         .child(section_label("Chart"))
         .child(
             chart([12.0, 28.0, 18.0, 34.0])

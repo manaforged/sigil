@@ -17,7 +17,7 @@ fn role_step_tokens_resolve_to_scale_steps() {
     assert_eq!(theme.color(Token::Gray12), slate_light().step(12));
     assert_eq!(theme.color(Token::Accent9), blue_light().step(9));
     assert_eq!(theme.color(Token::Success3), green_light().step(3));
-    assert_eq!(theme.color(Token::Warn9), amber_light().step(9));
+    assert_eq!(theme.color(Token::Warning9), amber_light().step(9));
     assert_eq!(theme.color(Token::Error9), ruby_light().step(9));
     assert_eq!(theme.color(Token::Info3), cyan_light().step(3));
 

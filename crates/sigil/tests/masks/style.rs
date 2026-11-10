@@ -18,7 +18,7 @@ fn below_gap(node: NodeBuilder) -> impl IntoNode {
 fn red_box() -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(SIDE as f32, SIDE as f32 - GAP))
-        .bg(RED)
+        .background(RED)
 }
 
 fn styled_ramp() -> impl IntoNode {

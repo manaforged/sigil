@@ -20,7 +20,7 @@ fn bar_builds_one_child_per_menu() {
     Owner::scope("menu-bar-slots", || {
         let mut cx = Cx::new_root();
         let root = menu_bar()
-            .bg(Token::SurfaceHover)
+            .background(Token::SurfaceHover)
             .menu("File", [MenuItem::new("New")])
             .menu("Edit", [MenuItem::new("Clear")])
             .build(&mut cx);

@@ -37,12 +37,12 @@ type KeyHandler = Rc<dyn Fn(&mut KeyEvent) + 'static>;
 type SelectionAnchor = Signal<Option<(usize, usize)>>;
 type SelRange = ((usize, usize), (usize, usize));
 
-type GutterMarks = Signal<Vec<Option<ChangeKind>>>;
+type GutterMarks = Signal<Vec<Option<Change>>>;
 
 /// Line change mark in the `code_edit` gutter.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum ChangeKind {
+pub enum Change {
     /// The added change kind.
     Added,
     /// The modified change kind.
@@ -51,7 +51,7 @@ pub enum ChangeKind {
     Deleted,
 }
 
-impl ChangeKind {
+impl Change {
     const fn bar_token(self) -> Token {
         match self {
             Self::Added => Token::Success9,
@@ -78,7 +78,7 @@ impl Severity {
     const fn tint_token(self) -> Token {
         match self {
             Self::Error => Token::Error3,
-            Self::Warning => Token::Warn3,
+            Self::Warning => Token::Warning3,
             Self::Info | Self::Hint => Token::Info3,
         }
     }
@@ -86,7 +86,7 @@ impl Severity {
 
 /// A code diagnostic on a byte range.
 #[derive(Clone, Copy, Debug)]
-pub struct DiagSpan {
+pub struct Diagnostic {
     /// The line.
     pub line: usize,
     /// The start.
@@ -97,7 +97,7 @@ pub struct DiagSpan {
     pub severity: Severity,
 }
 
-type DiagSpans = Signal<Vec<DiagSpan>>;
+type Diagnostics = Signal<Vec<Diagnostic>>;
 
 /// Builder of a code editor.
 pub struct CodeEditBuilder {
@@ -106,7 +106,7 @@ pub struct CodeEditBuilder {
     highlights: Option<Signal<Vec<Vec<Highlight>>>>,
     selection: Option<SelectionAnchor>,
     gutter: Option<GutterMarks>,
-    diagnostics: Option<DiagSpans>,
+    diagnostics: Option<Diagnostics>,
     on_key: Option<KeyHandler>,
     disabled: Option<Signal<bool>>,
     row_h: Option<f32>,
@@ -191,7 +191,7 @@ impl CodeEditBuilder {
 
     /// Sets the diagnostics.
     #[must_use]
-    pub const fn diagnostics(mut self, spans: DiagSpans) -> Self {
+    pub const fn diagnostics(mut self, spans: Diagnostics) -> Self {
         self.diagnostics = Some(spans);
         self
     }
@@ -227,7 +227,7 @@ impl CodeEditBuilder {
                     .overflow_y(Overflow::Hidden),
             )
             .size_reactive(viewport)
-            .on_scroll(move |ev| wheel(ev, scroll_y, lines, viewport, row_h))
+            .scroll(move |ev| wheel(ev, scroll_y, lines, viewport, row_h))
             .key_capture_any(gated(on_key, self.disabled))
             .child(scroll_body(
                 EditSurface {
@@ -280,7 +280,7 @@ struct EditSurface {
     highlights: Option<Signal<Vec<Vec<Highlight>>>>,
     selection: Option<SelectionAnchor>,
     gutter: Option<GutterMarks>,
-    diagnostics: Option<DiagSpans>,
+    diagnostics: Option<Diagnostics>,
     start: Signal<usize>,
     viewport: Signal<(f32, f32)>,
     caret_shown: Signal<bool>,

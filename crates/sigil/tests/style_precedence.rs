@@ -72,8 +72,8 @@ fn a_hover_state_in_style_paints_on_hover() {
         let (rest, hovered) = rest_and_hover_colors(
             container()
                 .layout(LayoutStyle::block().fixed_size(32.0, 32.0))
-                .bg(Token::Surface)
-                .hover(|s| s.bg(Token::Accent)),
+                .background(Token::Surface)
+                .hover(|s| s.background(Token::Accent)),
         );
         assert_ne!(rest, hovered, "the hover state never painted");
     });
@@ -83,7 +83,7 @@ fn a_hover_state_in_style_paints_on_hover() {
 fn a_background_set_on_a_button_holds_under_hover() {
     Owner::scope("precedence-button-hover", || {
         let ruby = ruby_light().step(9);
-        let (rest, hovered) = rest_and_hover_colors(button("Save").bg(ruby));
+        let (rest, hovered) = rest_and_hover_colors(button("Save").background(ruby));
         assert!(rest.contains(&ruby), "rest colors: {rest:?}");
         assert!(
             hovered.contains(&ruby),

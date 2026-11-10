@@ -18,7 +18,7 @@ fn build() -> impl IntoNode {
         .fill()
         .gap(Space::Xl)
         .padding(Space::Xxl)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(slider(h_val, 0.0..=100.0).change(move |v| h_val.set(v)))
         .child(
             slider(g_val, 0.0..=100.0)

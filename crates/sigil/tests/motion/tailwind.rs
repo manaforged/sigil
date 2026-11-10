@@ -61,9 +61,9 @@ fn tailwind_ease_classes_follow_their_curves() {
 fn colors_transition_animates_the_background() {
     let flag = signal(false);
     let colors = square()
-        .bg(BLACK)
+        .background(BLACK)
         .transition(Transition::colors())
-        .paint_when(flag, |state| state.bg(WHITE));
+        .paint_when(flag, |state| state.background(WHITE));
     let mut ui = mount(colors);
     start(&mut ui, flag);
     run(&mut ui, 0.075);
@@ -93,9 +93,9 @@ fn transform_transition_animates_translate() {
 fn opacity_transition_skips_colors() {
     let flag = signal(false);
     let opacity_only = square()
-        .bg(BLACK)
+        .background(BLACK)
         .transition(Transition::opacity())
-        .paint_when(flag, |state| state.bg(WHITE));
+        .paint_when(flag, |state| state.background(WHITE));
     let mut ui = mount(opacity_only);
     start(&mut ui, flag);
     assert_eq!(

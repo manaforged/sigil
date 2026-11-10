@@ -282,7 +282,7 @@ fn wrap_pill(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
                         .padding(Space::Xs)
                         .align_items(AlignItems::Center),
                 )
-                .class([Radius::Md.atom(), Token::SurfacePressed.bg()])
+                .class([Radius::Md.atom(), Token::SurfacePressed.background()])
                 .child(strip),
         )
 }

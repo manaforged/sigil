@@ -12,7 +12,7 @@ const KV_ROW_GAP: f32 = space(3);
 const KV_KEY_COLS: f32 = 16.0;
 
 pub(crate) static STATUS_CHROME: &[StyleAtom] = &[
-    Token::SurfaceSubtle.bg(),
+    Token::SurfaceSubtle.background(),
     StyleAtom::BorderTop(BORDER_WIDTH),
     Token::Border.border(),
 ];

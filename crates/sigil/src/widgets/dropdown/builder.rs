@@ -36,11 +36,11 @@ const LABEL_HEIGHT: f32 = 24.0;
 static DROPDOWN_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(DROPDOWN_TRANSITION)];
 
 static TRIGGER_BASE: &[StyleAtom] = &[
-    Token::Field.bg(),
+    Token::Field.background(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     StyleAtom::BorderToneStep(7),
 ];
-static TRIGGER_DOWN: &[StyleAtom] = &[Token::SurfacePressed.bg()];
+static TRIGGER_DOWN: &[StyleAtom] = &[Token::SurfacePressed.background()];
 
 static TRIGGER_VARIANT: StyleVariant = StyleVariant::new(
     TRIGGER_BASE,

@@ -237,7 +237,7 @@ fn image_alpha_blends_color_and_coverage() {
         || {
             let mut row = container()
                 .layout(LayoutStyle::flex_row().fixed_size(40.0, 8.0))
-                .bg(sigil::style::Rgba8 {
+                .background(sigil::style::Rgba8 {
                     r: 0,
                     g: 0,
                     b: 255,

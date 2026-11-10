@@ -49,7 +49,7 @@ fn ctrl_c_copies_a_selection_before_it_exits() {
             let seen = Rc::clone(&seen);
             container()
                 .selectable_text(true)
-                .on_selection_copy(move |text, _| seen.borrow_mut().push(text.to_owned()))
+                .selection_copy(move |text, _| seen.borrow_mut().push(text.to_owned()))
                 .child(text("The quick brown fox"))
         });
         host.set_quit(AppConfig::new("quit").quit);

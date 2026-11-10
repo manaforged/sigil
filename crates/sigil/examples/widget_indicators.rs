@@ -18,7 +18,7 @@ pub(crate) fn dot_demo() -> NodeBuilder {
         .gap(Space::Sm)
         .align_items(AlignItems::Stretch)
         .child(dot(Tone::Success))
-        .child(dot(Tone::Warn))
+        .child(dot(Tone::Warning))
         .child(dot(Tone::Error))
 }
 

@@ -121,7 +121,7 @@ impl Interact {
             return plot;
         };
         let width = Rc::clone(&self.width);
-        plot.on_scroll(move |event: &mut ScrollEvent| {
+        plot.scroll(move |event: &mut ScrollEvent| {
             let steps = match event.delta {
                 ScrollDelta::Pixels(delta) => delta.y * ZOOM_PER_PIXEL,
                 ScrollDelta::Lines(delta) => delta.y * ZOOM_PER_LINE,
@@ -211,5 +211,5 @@ fn marks(at: Probe, tips: &Tips, pad: f32, crosshair: bool) -> Vec<NodeBuilder> 
 fn rule(layout: LayoutStyle) -> NodeBuilder {
     container()
         .layout(layout.position(Position::Absolute))
-        .class([Token::Gray8.bg()])
+        .class([Token::Gray8.background()])
 }

@@ -133,7 +133,7 @@ ui.snapshot("save_button");
 
 A harness that mounted a tree checks it when the harness is dropped. The test fails if the laid-out tree breaks a design rule, and the message names the node and the fix.
 
-| `FlawKind` | The rule |
+| `Flaw` | The rule |
 | --- | --- |
 | `ClippedText` | Text fits inside the box that clips it. |
 | `UnevenControls` | Controls in one row have one height. |
@@ -144,7 +144,7 @@ A harness that mounted a tree checks it when the harness is dropped. The test fa
 | `Column` | The cells of table rows line up. |
 | `Inset` | A lone child has even space around it, not nearly even space. |
 
-Call `ui.assert_no_flaws()` to check one state in the middle of a test, or `ui.flaws()` to read the list. Call `.unaudited()` on a fixture that breaks a rule on purpose. In app code, `.allow_flaw(FlawKind::Overflow, "reason")` opts a node and its children out of one rule.
+Call `ui.assert_no_flaws()` to check one state in the middle of a test, or `ui.flaws()` to read the list. Call `.unaudited()` on a fixture that breaks a rule on purpose. In app code, `.allow_flaw(Flaw::Overflow, "reason")` opts a node and its children out of one rule.
 
 ```rust,no_run
 # use sigil::prelude::*;

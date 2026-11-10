@@ -9,7 +9,7 @@ use sigil::layout::Space;
 use sigil::prelude::Widget;
 use sigil::prelude::{Paint, Signal};
 use sigil::reactive::{Owner, signal};
-use sigil::style::{StateVariants, Token};
+use sigil::style::{States, Token};
 use std::fmt::Write as _;
 use std::time::Duration;
 
@@ -69,7 +69,7 @@ fn tree(state: State) -> impl IntoNode {
                 .child(button("second"))
                 .child(
                     sigil::widgets::interactive(container().child(text("hover me")))
-                        .hover(|style| style.bg(Token::Accent)),
+                        .hover(|style| style.background(Token::Accent)),
                 ),
         )
         .child(text_edit(signal(String::from("edit"))))

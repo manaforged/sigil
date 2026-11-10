@@ -248,7 +248,7 @@ pub(crate) use checkbox::CheckboxBuilder;
 pub use checkbox::checkbox;
 pub use chip::chip;
 pub(crate) use code_edit::CodeEditBuilder;
-pub use code_edit::{ChangeKind, DiagSpan, Severity, code_edit};
+pub use code_edit::{Change, Diagnostic, Severity, code_edit};
 pub use color_field::color_field;
 pub(crate) use color_field::{ColorFieldBuilder, parse_hex as parse_color_hex};
 #[cfg(all(feature = "scene", feature = "kittest"))]

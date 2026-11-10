@@ -36,7 +36,7 @@ pub(crate) fn top_bar(console: Console) -> NodeBuilder {
             )
             .tone(move || {
                 if console.paused.get() {
-                    Tone::Warn
+                    Tone::Warning
                 } else {
                     Tone::Success
                 }

@@ -88,10 +88,10 @@ impl Chrome {
                     .padding(Space::Xs)
                     .align_items(AlignItems::Center),
             )
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .border_color(Token::Border)
-            .border_w(1)
-            .rounded(Radius::Md)
+            .border_width(1)
+            .radius(Radius::Md)
             .paint_when(hidden, |s| s.opacity(0.0))
             .child(self.toggle())
             .child(self.copy(source));
@@ -117,7 +117,9 @@ impl Chrome {
         });
         tool(Icon::Code, move || code.update(|on| *on = !*on))
             .accessible(AccessibleName::Derived(name))
-            .paint_when(code, |s| s.bg(Token::Accent3).text_color(Token::Accent11))
+            .paint_when(code, |s| {
+                s.background(Token::Accent3).text_color(Token::Accent11)
+            })
     }
 
     fn copy(self, source: &str) -> ButtonBuilder {
@@ -151,8 +153,8 @@ fn code_view(source: &str) -> NodeBuilder {
         .role(Role::Code)
         .class("font-mono text-sm")
         .layout(LayoutStyle::flex_column().fill_width().padding(Space::Md))
-        .bg(Token::Field)
-        .rounded(Radius::Md)
+        .background(Token::Field)
+        .radius(Radius::Md)
         .selectable_text(true);
     for line in source.trim_end().lines() {
         let line = if line.is_empty() { " " } else { line };
@@ -171,8 +173,8 @@ fn updating() -> NodeBuilder {
                 .padding_x(Space::Sm)
                 .padding_y(Space::Xs),
         )
-        .bg(Token::SurfaceSubtle)
-        .rounded(Radius::Md)
+        .background(Token::SurfaceSubtle)
+        .radius(Radius::Md)
         .child(
             text("Updating…")
                 .class("text-xs")

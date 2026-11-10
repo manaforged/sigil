@@ -40,13 +40,14 @@ pub(super) fn tab_height(chrome: StripChrome) -> f32 {
 }
 
 static TAB_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
-static TAB_REST: &[StyleAtom] = &[Token::Surface.bg()];
-static TAB_HOVER: &[StyleAtom] = &[Token::SurfaceHover.bg()];
-static TAB_DOWN: &[StyleAtom] = &[Token::SurfacePressed.bg()];
+static TAB_REST: &[StyleAtom] = &[Token::Surface.background()];
+static TAB_HOVER: &[StyleAtom] = &[Token::SurfaceHover.background()];
+static TAB_DOWN: &[StyleAtom] = &[Token::SurfacePressed.background()];
 static TAB_DISABLED: &[StyleAtom] = &[StyleAtom::Opacity(DISABLED_OPACITY)];
-static TAB_ACTIVE_LIT: &[StyleAtom] = &[Token::SurfacePressedStrong.bg()];
+static TAB_ACTIVE_LIT: &[StyleAtom] = &[Token::SurfacePressedStrong.background()];
 static LINE_ACTIVE: &[StyleAtom] = &[Token::Accent.border()];
-static LINE_ACTIVE_HOVER: &[StyleAtom] = &[Token::Accent.border(), Token::SurfaceHover.bg()];
+static LINE_ACTIVE_HOVER: &[StyleAtom] =
+    &[Token::Accent.border(), Token::SurfaceHover.background()];
 static LABEL_MUTED: &[StyleAtom] = &[Token::Gray11.text(), StyleAtom::FontWeight(500)];
 static LABEL_ACTIVE: &[StyleAtom] = &[Token::OnSurface.text(), StyleAtom::FontWeight(600)];
 static LABEL_ACTIVE_CELL: &[StyleAtom] = &[Token::OnSurface.text(), StyleAtom::FontWeight(700)];

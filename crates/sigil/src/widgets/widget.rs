@@ -6,7 +6,7 @@ use crate::events::{
     event_methods, handler_methods,
 };
 use crate::kernel::NodeBuilder;
-use crate::layout::audit::{AllowedFlaws, FlawKind};
+use crate::layout::audit::{AllowedFlaws, Flaw};
 use crate::layout::builder_ext::{asymmetric, layout_methods};
 use crate::layout::reactive_position;
 use crate::layout::{LayoutStyle, Length};
@@ -135,7 +135,7 @@ pub trait Widget: Sealed {
 
     /// Opts the node and its children out of a design rule, with the reason.
     #[must_use]
-    fn allow_flaw(self, kind: FlawKind, _reason: &'static str) -> Self {
+    fn allow_flaw(self, kind: Flaw, _reason: &'static str) -> Self {
         self.map_node(move |node| {
             node.mutate(move |node| {
                 if let Some(allowed) = node.get_extension_mut::<AllowedFlaws>() {

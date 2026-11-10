@@ -125,7 +125,7 @@ pub(super) fn source_row(cell: &DiffCell, draw: Draw) -> NodeBuilder {
             .gap(Space::None),
     );
     let row = match bg {
-        Some(bg) => row.class(bg.bg()),
+        Some(bg) => row.class(bg.background()),
         None => row,
     };
     let row = row.role(Role::ListItem).description(state).child(

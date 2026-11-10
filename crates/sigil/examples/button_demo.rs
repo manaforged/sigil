@@ -17,7 +17,7 @@ fn build() -> impl IntoNode {
         .gap(Space::Lg)
         .padding(Space::Xxl)
         .align_items(AlignItems::Stretch)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(button("Neutral").activate(move || count.set(count.peek() + 1)))
         .child(button("Primary").primary().activate(|| {}))
 }

@@ -46,7 +46,7 @@ pub(crate) const THUMB_REST_WIDTH: f32 = space(1);
 pub(crate) const THUMB_MIN_HEIGHT: f32 = space(6);
 const SCROLL_LINE: f32 = space(10);
 const MIN_SCROLL_RANGE: f32 = 1.0;
-static VIEWPORT_ATOMS: &[StyleAtom] = &[Token::Surface.bg()];
+static VIEWPORT_ATOMS: &[StyleAtom] = &[Token::Surface.background()];
 
 /// Builder of a scroll area.
 #[derive(Debug)]

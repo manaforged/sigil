@@ -47,7 +47,7 @@ fn a_reactive_class_change_repaints() {
             let mut host = Host::new(HostMode::Cell);
             host.mount(move || {
                 container()
-                    .paint_when(active, |s| s.bg(Token::Accent))
+                    .paint_when(active, |s| s.background(Token::Accent))
                     .child(text("cell"))
             });
             host.layout((320.0, 64.0)).expect("layout");
@@ -66,7 +66,7 @@ fn a_reactive_class_change_repaints() {
         let mut host = Host::new(HostMode::Cell);
         host.mount(move || {
             container()
-                .paint_when(active, |s| s.bg(Token::Accent))
+                .paint_when(active, |s| s.background(Token::Accent))
                 .child(text("cell"))
         });
         host.layout((320.0, 64.0)).expect("layout");

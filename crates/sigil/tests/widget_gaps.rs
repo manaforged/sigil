@@ -205,7 +205,7 @@ fn every_bundled_icon_draws_visible_pixels() {
         let mut ui = Harness::new(|| {
             container()
                 .layout(LayoutStyle::block().fixed_size(32.0, 32.0))
-                .bg(BLACK)
+                .background(BLACK)
                 .child(icon(*bundled).px(24.0))
         })
         .pixels(32, 32);

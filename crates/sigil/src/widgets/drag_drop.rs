@@ -240,7 +240,7 @@ where
             .class("px-8 py-4")
             .class([
                 Radius::Md.atom(),
-                Token::Accent3.bg(),
+                Token::Accent3.background(),
                 Token::Accent12.text(),
                 StyleAtom::BorderWidth(BORDER_WIDTH),
                 Token::Accent6.border(),

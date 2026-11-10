@@ -49,7 +49,7 @@ fn has_warn_tone(atoms: &[StyleAtom]) -> bool {
     atoms.iter().any(|atom| {
         matches!(
             atom,
-            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Warn9))
+            StyleAtom::BackgroundColor(ColorAtom::Token(Token::Warning9))
         )
     })
 }

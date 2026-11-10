@@ -1,7 +1,7 @@
 use super::{
-    Event, GestureEvent, GestureKind, Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState,
-    MouseButton, MouseButtons, PhysicalKey, PointerEvent, PointerPhase, PointerType, ScrollDelta,
-    ScrollEvent, ScrollPhase, WindowEvent,
+    Event, Gesture, GestureEvent, Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, MouseButton,
+    MouseButtons, PhysicalKey, PointerEvent, PointerPhase, PointerType, ScrollDelta, ScrollEvent,
+    ScrollPhase, WindowEvent,
 };
 use crate::geometry::Point;
 
@@ -119,7 +119,7 @@ impl Event {
 
     /// Builds a touchpad gesture with no modifiers.
     #[must_use]
-    pub const fn gesture(kind: GestureKind, phase: ScrollPhase, position: Point) -> Self {
+    pub const fn gesture(kind: Gesture, phase: ScrollPhase, position: Point) -> Self {
         Self::Gesture(GestureEvent::new(kind, phase, position))
     }
 

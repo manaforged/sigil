@@ -262,7 +262,7 @@ impl Host {
     pub(crate) fn flaws(
         &self,
         tolerance: crate::layout::audit::Tolerance,
-    ) -> Vec<crate::layout::audit::Flaw> {
+    ) -> Vec<crate::layout::audit::Issue> {
         let _env = self.enter();
         self.root.map_or_else(Vec::new, |root| {
             crate::layout::audit::flaws(&self.cx, &self.layout, (root, self.theme()), tolerance)

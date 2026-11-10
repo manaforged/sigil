@@ -6,7 +6,7 @@ mod keys;
 mod pointer;
 mod shortcut_parse;
 
-pub use gesture::{GestureEvent, GestureKind};
+pub use gesture::{Gesture, GestureEvent};
 pub use keys::{Key, ModifiersState, PhysicalKey};
 
 pub(crate) use pointer::ClickConfig;

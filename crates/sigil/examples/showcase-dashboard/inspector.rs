@@ -121,8 +121,8 @@ fn log_view(console: Console) -> impl IntoNode {
     )
     .follow_end(true)
     .height(LOG_HEIGHT)
-    .bg(Token::SurfaceInset)
-    .rounded(Radius::Md)
+    .background(Token::SurfaceInset)
+    .radius(Radius::Md)
 }
 
 fn quiet(body: &'static str) -> NodeBuilder {

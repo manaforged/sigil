@@ -5,7 +5,7 @@ use sigil::Host;
 use sigil::app::{FrameHooks, FrameInfo, FramePaintHook};
 use sigil::events::Event;
 use sigil::prelude::*;
-use sigil::profile::{self, BackendKind, BackendStatus, FallbackCause};
+use sigil::profile::{self, Backend, BackendStatus, FallbackCause};
 use sigil::reactive::Runtime;
 use sigil::reactive::{__test_clear_clock, __test_set_clock, Owner, next_interval_deadline};
 use sigil::tasks::AsyncRuntime;
@@ -56,7 +56,7 @@ impl HarnessSurface {
         match self {
             Self::Cells { .. } => BackendStatus::TERMINAL,
             Self::Pixels { fallback, .. } => BackendStatus {
-                kind: BackendKind::Cpu,
+                kind: Backend::Cpu,
                 fallback: *fallback,
             },
             Self::Gpu(_) => GPU_STATUS,
@@ -302,7 +302,7 @@ impl Harness {
 
     /// Lists the design rules that the current frame breaks.
     #[must_use]
-    pub fn flaws(&mut self) -> Vec<sigil::layout::audit::Flaw> {
+    pub fn flaws(&mut self) -> Vec<sigil::layout::audit::Issue> {
         self.live();
         let tolerance = sigil::layout::audit::Tolerance::for_mode(self.host.host_mode());
         sigil::testing::flaws(&self.host, tolerance)

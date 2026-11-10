@@ -70,7 +70,7 @@ fn fence(source: &str) -> String {
 fn invalid(message: &str, source: &str) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().fill_width().gap(Space::Xs))
-        .child(notice_band(message.to_string(), Tone::Warn))
+        .child(notice_band(message.to_string(), Tone::Warning))
         .child(markdown(signal(fence(source))))
 }
 

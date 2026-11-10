@@ -70,7 +70,7 @@ pub(crate) fn paint<N: IntoNode + 'static>(
     let frame = move || {
         column()
             .theme(theme)
-            .bg(Token::Surface)
+            .background(Token::Surface)
             .fill()
             .padding(Space::raw(pad, "example layout"))
             .gap(Space::None)

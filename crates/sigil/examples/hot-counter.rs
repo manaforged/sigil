@@ -16,7 +16,7 @@ fn counter(count: Signal<i32>) -> NodeBuilder {
     column()
         .gap(Space::Lg)
         .padding(Space::Xxl)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(text(label).text_color(Token::OnSurface))
         .child(button("Increment").primary().activate(move || {
             count.set(count.peek() + 1);

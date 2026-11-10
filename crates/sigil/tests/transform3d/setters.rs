@@ -25,7 +25,7 @@ fn painted(degrees: f32, hidden: bool) -> impl Fn() -> NodeBuilder {
     move || {
         let card = container()
             .layout(LayoutStyle::block().fixed_size(SIDE, SIDE))
-            .bg(INK)
+            .background(INK)
             .rotate_y(degrees);
         stage(if hidden { card.backface_hidden() } else { card })
     }
@@ -120,7 +120,7 @@ fn near_button() -> NodeBuilder {
                 .padding_x(Space::raw(50.0, "test fixture"))
                 .padding_y(Space::raw(100.0, "test fixture")),
         )
-        .bg(Rgba8 {
+        .background(Rgba8 {
             r: 255,
             g: 255,
             b: 255,
@@ -130,7 +130,7 @@ fn near_button() -> NodeBuilder {
         .child(
             button("near")
                 .layout(LayoutStyle::block().fixed_size(200.0, 100.0))
-                .bg(Rgba8 {
+                .background(Rgba8 {
                     r: 255,
                     g: 0,
                     b: 0,

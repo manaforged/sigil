@@ -169,11 +169,11 @@ fn bytes(grid: &Grid, row: usize) -> String {
 
 #[test]
 fn a_toned_glyph_uses_the_warning_colour() {
-    let grid = draw(vec![plain("STRAY", Some(Tone::Warn))], 20, 3);
+    let grid = draw(vec![plain("STRAY", Some(Tone::Warning))], 20, 3);
     let out = bytes(&grid, 0);
     assert!(out.contains("STRAY"), "expected the text in {out:?}");
     assert_eq!(
-        paint(Ink::Of(Tone::Warn), ColorDepth::Truecolor),
+        paint(Ink::Of(Tone::Warning), ColorDepth::Truecolor),
         crossterm::style::Color::Yellow
     );
     if crossterm::style::Colored::ansi_color_disabled_memoized() {
@@ -187,7 +187,7 @@ fn a_toned_glyph_uses_the_warning_colour() {
     assert!(out.contains("\u{1b}[0m"), "expected a reset in {out:?}");
     let cell = grid.get(0, 0).expect("first cell");
     assert_eq!(cell.text, "S");
-    assert_eq!(cell.fg, Ink::Of(Tone::Warn));
+    assert_eq!(cell.fg, Ink::Of(Tone::Warning));
     assert_eq!(cell.bg, Ink::Bare, "the glyph must not sit on its own tone");
 }
 

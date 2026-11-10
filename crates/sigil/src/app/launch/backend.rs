@@ -1,6 +1,6 @@
 use crate::geometry::PhysicalSize;
 use crate::hal::Renderer as _;
-use crate::profile::{BackendKind, BackendStatus, FallbackCause};
+use crate::profile::{self, BackendStatus, FallbackCause};
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::{CpuRenderer, CpuSurface, WgpuRenderer, WgpuSurface, into_window_handle};
 use crate::scene::CommandScene;
@@ -49,9 +49,9 @@ impl Backend {
             }
         };
         let (inner, kind) = if cause == FallbackCause::ForcedByEnv {
-            (BackendInner::Cpu(Box::default()), BackendKind::Cpu)
+            (BackendInner::Cpu(Box::default()), profile::Backend::Cpu)
         } else {
-            (BackendInner::Wgpu(Box::default()), BackendKind::Gpu)
+            (BackendInner::Wgpu(Box::default()), profile::Backend::Gpu)
         };
         Self {
             inner,
@@ -107,7 +107,7 @@ impl Backend {
             FallbackCause::DeviceError
         };
         self.settle(BackendStatus {
-            kind: BackendKind::Cpu,
+            kind: profile::Backend::Cpu,
             fallback,
         });
         let mut cpu = CpuRenderer::new();

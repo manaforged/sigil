@@ -81,7 +81,7 @@ fn markers(layer: NodeBuilder, item: &ChartView<'_>, spans: Spans, dot: Dot) -> 
         ],
         Dot::Square | Dot::Disc => [
             Radius::None.atom(),
-            item.hue.bg(),
+            item.hue.background(),
             StyleAtom::BorderWidth(0),
         ],
     };

@@ -180,30 +180,42 @@ fn every_layout_builder_takes_paint() {
     Owner::scope("run_defects::paint", || {
         assert!(painted(|paint| {
             let side = sidebar(text("Files"));
-            container().child(if paint { side.bg(Token::Accent) } else { side })
+            container().child(if paint {
+                side.background(Token::Accent)
+            } else {
+                side
+            })
         }));
         assert!(painted(|paint| {
             let list = virtual_list(vec![String::from("Row")], |_, row: &String| {
                 text(row.clone())
             });
-            container().child(if paint { list.bg(Token::Accent) } else { list })
+            container().child(if paint {
+                list.background(Token::Accent)
+            } else {
+                list
+            })
         }));
         assert!(painted(|paint| {
             let split = splitter(Orientation::Horizontal).pane(text("Left"));
             container().child(if paint {
-                split.bg(Token::Accent)
+                split.background(Token::Accent)
             } else {
                 split
             })
         }));
         assert!(painted(|paint| {
             let plot = chart([1.0, 2.0, 3.0]);
-            container().child(if paint { plot.bg(Token::Accent) } else { plot })
+            container().child(if paint {
+                plot.background(Token::Accent)
+            } else {
+                plot
+            })
         }));
         assert!(painted(|paint| {
             let options = segmented(signal(0), vec![String::from("One")]);
             container().child(if paint {
-                options.bg(Token::Accent)
+                options.background(Token::Accent)
             } else {
                 options
             })
@@ -211,7 +223,7 @@ fn every_layout_builder_takes_paint() {
         let pixels = ImageSource::from_rgba8(1, 1, vec![255, 0, 0, 255]).expect("pixels");
         let _: NodeId = {
             let mut cx = sigil::kernel::Cx::new_root();
-            cx.add(image(pixels).rounded(Radius::Md))
+            cx.add(image(pixels).radius(Radius::Md))
         };
     });
 }

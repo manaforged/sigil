@@ -205,8 +205,8 @@ impl DiffBuilder {
             .mutate(move |target| target.a11y.description = Some(AccessibleName::Derived(summary)))
             .layout(root_layout())
             .class("rounded")
-            .class(Token::Field.bg())
-            .border_w(BORDER_WIDTH)
+            .class(Token::Field.background())
+            .border_width(BORDER_WIDTH)
             .border_color(Token::Border)
             .child(
                 container()

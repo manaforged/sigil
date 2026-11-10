@@ -162,7 +162,7 @@ impl Cell<'_> {
         container()
             .label(caption)
             .layout(layout.grow(grow).flex_basis(Length::Px(0.0)))
-            .class([Radius::Sm.atom(), self.hue.bg()])
+            .class([Radius::Sm.atom(), self.hue.background()])
             .tone_scope(self.hue.tone)
     }
 }

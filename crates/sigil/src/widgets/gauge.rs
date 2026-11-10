@@ -117,11 +117,14 @@ fn fill_atoms(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> &'st
     let px = (ratio * TRACK_WIDTH).round() as i16;
     let is_warn = warn_threshold.is_some_and(|threshold| ratio < threshold);
     let tone = if is_warn {
-        Token::Warn9
+        Token::Warning9
     } else {
         Token::Accent8
     };
     keyed(&CACHE, KEYED_CAP, (px, is_warn), || {
-        vec![StyleAtom::Width(crate::style::atom::ATOM_PX, px), tone.bg()]
+        vec![
+            StyleAtom::Width(crate::style::atom::ATOM_PX, px),
+            tone.background(),
+        ]
     })
 }

@@ -21,7 +21,7 @@ use units::{fraction_units, letter_spacing_units, opacity_units};
 pub trait Paint: PaintTarget {
     /// Fills the background with a color or a gradient.
     #[must_use]
-    fn bg(self, background: impl Into<Background>) -> Self {
+    fn background(self, background: impl Into<Background>) -> Self {
         background.into().atoms().into_iter().fold(self, push)
     }
 
@@ -67,9 +67,9 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::BorderColor(color.into()))
     }
 
-    /// Sets the border w.
+    /// Sets the border width.
     #[must_use]
-    fn border_w(self, px: i16) -> Self {
+    fn border_width(self, px: i16) -> Self {
         push(self, StyleAtom::BorderWidth(px))
     }
 
@@ -97,9 +97,9 @@ pub trait Paint: PaintTarget {
         push(self, StyleAtom::BorderLeft(px))
     }
 
-    /// Sets the rounded.
+    /// Sets the corner radius.
     #[must_use]
-    fn rounded(self, radius: Radius) -> Self {
+    fn radius(self, radius: Radius) -> Self {
         push(self, StyleAtom::Radius(radius))
     }
 

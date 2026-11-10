@@ -27,7 +27,7 @@ pub(crate) fn label_demo() -> TextBuilder {
 }
 
 pub(crate) fn icon_demo() -> IconBuilder {
-    icon("▲").tone(Tone::Warn).label("Alert")
+    icon("▲").tone(Tone::Warning).label("Alert")
 }
 
 pub(crate) fn image_rgba_demo() -> NodeBuilder {

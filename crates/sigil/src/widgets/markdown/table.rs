@@ -223,7 +223,7 @@ pub(super) fn table(data: Table) -> NodeBuilder {
     let table = container()
         .role(Role::Table)
         .layout(LayoutStyle::flex_column().fill_width())
-        .class([RULE, Token::Border.border(), Token::Field.bg()])
+        .class([RULE, Token::Border.border(), Token::Field.background()])
         .child(header(&grid, sortable))
         .child(body(&grid));
     let mut frame = container().layout(

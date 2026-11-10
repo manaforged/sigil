@@ -129,7 +129,7 @@ fn themed(dark: Signal<bool>) -> Host {
                 vec![
                     container()
                         .theme(theme)
-                        .bg(Token::Surface)
+                        .background(Token::Surface)
                         .child(text("inside")),
                 ]
             })

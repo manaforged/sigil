@@ -49,8 +49,8 @@ pub(crate) static METER_TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::Bg
 pub(crate) const METER_TRACK_HEIGHT: f32 = 8.0;
 
 static CONTROL_BASE: &[StyleAtom] = &[Radius::Md.atom()];
-static CONTROL_HOVER: &[StyleAtom] = &[Token::SurfaceHover.bg()];
-static CONTROL_PRESSED: &[StyleAtom] = &[Token::SurfacePressed.bg()];
+static CONTROL_HOVER: &[StyleAtom] = &[Token::SurfaceHover.background()];
+static CONTROL_PRESSED: &[StyleAtom] = &[Token::SurfacePressed.background()];
 static CONTROL_VARIANT: StyleVariant = StyleVariant::new(
     UNDIMMED,
     StateStyle::new(UNDIMMED, UNDIMMED, CONTROL_HOVER, CONTROL_PRESSED, DIMMED),
@@ -58,7 +58,7 @@ static CONTROL_VARIANT: StyleVariant = StyleVariant::new(
 
 static FIELD_BASE: &[StyleAtom] = &[
     Radius::Md.atom(),
-    Token::Field.bg(),
+    Token::Field.background(),
     StyleAtom::BorderWidth(BORDER_WIDTH),
 ];
 static FIELD_REST: &[StyleAtom] = &[StyleAtom::BorderToneStep(7)];

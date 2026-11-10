@@ -98,7 +98,7 @@ fn off(found: [u8; 3], want: Rgba8) -> u32 {
 fn page(w: f32, h: f32, bg: Rgba8, child: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(w, h))
-        .bg(bg)
+        .background(bg)
         .child(child)
 }
 
@@ -109,9 +109,11 @@ fn black_to_white() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 20.0))
-            .bg(Background::radial(Radial::new().at(0, 50))
-                .start(BLACK)
-                .end(WHITE)),
+            .background(
+                Background::radial(Radial::new().at(0, 50))
+                    .start(BLACK)
+                    .end(WHITE),
+            ),
     )
 }
 
@@ -138,7 +140,7 @@ fn red_to_default() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 20.0))
-            .bg(Background::linear(GradientAxis::LeftToRight).start(RED)),
+            .background(Background::linear(GradientAxis::LeftToRight).start(RED)),
     )
 }
 
@@ -149,7 +151,7 @@ fn half_red() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 20.0))
-            .bg(Rgba8 {
+            .background(Rgba8 {
                 r: 255,
                 g: 0,
                 b: 0,
@@ -192,7 +194,7 @@ fn gradient_over_bg_color() -> NodeBuilder {
         BLACK,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 60.0))
-            .bg(Background::radial(Radial::new()).start(RED).over(WHITE)),
+            .background(Background::radial(Radial::new()).start(RED).over(WHITE)),
     )
 }
 
@@ -240,9 +242,11 @@ fn container_clip_text() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(240.0, 60.0))
-            .bg(Background::linear(GradientAxis::LeftToRight)
-                .start(RED)
-                .end(BLUE))
+            .background(
+                Background::linear(GradientAxis::LeftToRight)
+                    .start(RED)
+                    .end(BLUE),
+            )
             .bg_clip_text()
             .child(word()),
     )
@@ -267,7 +271,7 @@ fn conic_word() -> NodeBuilder {
         60.0,
         WHITE,
         word()
-            .bg(Background::conic(0).start(RED).middle(GREEN).end(BLUE))
+            .background(Background::conic(0).start(RED).middle(GREEN).end(BLUE))
             .bg_clip_text(),
     )
 }
@@ -290,7 +294,7 @@ fn conic_gradient_text_changes_color_across_the_word() {
 fn shifted(clip: bool) -> NodeBuilder {
     let node = container()
         .layout(LayoutStyle::block().fixed_size(60.0, 60.0))
-        .bg(RED)
+        .background(RED)
         .transform(Transform2D::IDENTITY.translate(-30.0, 0.0));
     let node = if clip {
         node.clip_path(ClipShape::Inset {
@@ -328,12 +332,12 @@ fn near_card(degrees: f32) -> NodeBuilder {
                 .padding_x(Space::raw(50.0, "test fixture"))
                 .padding_y(Space::raw(100.0, "test fixture")),
         )
-        .bg(WHITE)
+        .background(WHITE)
         .perspective(80.0)
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(200.0, 100.0))
-                .bg(RED)
+                .background(RED)
                 .rotate_y(degrees),
         )
 }
@@ -362,11 +366,13 @@ fn reversed_positions() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 20.0))
-            .bg(Background::linear(GradientAxis::LeftToRight)
-                .start(RED)
-                .start_at(80)
-                .end(BLUE)
-                .end_at(20)),
+            .background(
+                Background::linear(GradientAxis::LeftToRight)
+                    .start(RED)
+                    .start_at(80)
+                    .end(BLUE)
+                    .end_at(20),
+            ),
     )
 }
 

@@ -48,8 +48,8 @@ fn pointer_move_drives_style_reactive_without_allocating() {
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(50.0, 50.0))
-                        .bg(Token::Surface)
-                        .paint_when(hover, |s| s.bg(Token::Accent)),
+                        .background(Token::Surface)
+                        .paint_when(hover, |s| s.background(Token::Accent)),
                 ),
         );
         let child = first_child(&cx, root);

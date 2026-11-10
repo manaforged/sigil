@@ -1,4 +1,4 @@
-use crate::layout::audit::FlawKind;
+use crate::layout::audit::Flaw;
 use crate::style::theme::ambient::ActiveTheme;
 use crate::widgets::widget::Widget as _;
 use std::ops::Range;
@@ -332,10 +332,10 @@ impl ChartBuilder {
     fn root(self) -> NodeBuilder {
         const REASON: &str = "marks and axis labels sit where the data puts them";
         self.plot()
-            .allow_flaw(FlawKind::Inset, REASON)
-            .allow_flaw(FlawKind::Column, REASON)
-            .allow_flaw(FlawKind::Overflow, REASON)
-            .allow_flaw(FlawKind::Overlap, REASON)
+            .allow_flaw(Flaw::Inset, REASON)
+            .allow_flaw(Flaw::Column, REASON)
+            .allow_flaw(Flaw::Overflow, REASON)
+            .allow_flaw(Flaw::Overlap, REASON)
     }
 
     fn plot(mut self) -> NodeBuilder {

@@ -55,37 +55,37 @@ const CELL_TRACK_ON: &str = "[ ■]";
 const CELL_TRACK_OFF: &str = "[■ ]";
 static TOGGLE_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOGGLE_TRANSITION)];
 static TOGGLE_ON: &[StyleAtom] = &[
-    Token::Accent.bg(),
+    Token::Accent.background(),
     StyleAtom::JustifyContent(JustifyContent::End),
 ];
 static TOGGLE_ON_HOVER: &[StyleAtom] = &[
-    Token::AccentHover.bg(),
+    Token::AccentHover.background(),
     StyleAtom::JustifyContent(JustifyContent::End),
 ];
 static TOGGLE_ON_DOWN: &[StyleAtom] = &[
-    Token::AccentHover.bg(),
+    Token::AccentHover.background(),
     StyleAtom::JustifyContent(JustifyContent::End),
     StyleAtom::Opacity(8_800),
 ];
 static TOGGLE_OFF: &[StyleAtom] = &[
-    Token::Gray6.bg(),
+    Token::Gray6.background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
 ];
 static TOGGLE_OFF_HOVER: &[StyleAtom] = &[
-    Token::Gray7.bg(),
+    Token::Gray7.background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
 ];
 static TOGGLE_OFF_DOWN: &[StyleAtom] = &[
-    Token::Gray7.bg(),
+    Token::Gray7.background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
     StyleAtom::Opacity(8_800),
 ];
 static TOGGLE_OFF_DISABLED: &[StyleAtom] = &[
-    Token::Gray4.bg(),
+    Token::Gray4.background(),
     StyleAtom::JustifyContent(JustifyContent::Start),
 ];
-static THUMB_ON: &[StyleAtom] = &[Token::OnAccent.bg()];
-static THUMB_OFF: &[StyleAtom] = &[Token::Gray11.bg()];
+static THUMB_ON: &[StyleAtom] = &[Token::OnAccent.background()];
+static THUMB_OFF: &[StyleAtom] = &[Token::Gray11.background()];
 static CELL_ON: &[StyleAtom] = &[Token::Accent.text()];
 static CELL_OFF: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
 
@@ -229,7 +229,7 @@ fn toggle_track(
                 .padding(Space::px(3.0))
                 .align_items(AlignItems::Center),
         )
-        .style(Style::new().radius(10))
+        .style(Style::new().radius_px(10))
         .class(TOGGLE_ANIM_BASE)
         .style_reactive(move || {
             toggle_variant(on.get()).state(binary_style_state(interaction, disabled))
@@ -237,7 +237,7 @@ fn toggle_track(
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(14.0, 14.0))
-                .style(Style::new().radius(7))
+                .style(Style::new().radius_px(7))
                 .class(TOGGLE_ANIM_BASE)
                 .style_reactive(move || if on.get() { THUMB_ON } else { THUMB_OFF }),
         )

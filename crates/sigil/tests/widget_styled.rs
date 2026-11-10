@@ -79,7 +79,7 @@ fn assert_paints(colors: &[Rgba8], expected: Rgba8, what: &str) {
 #[test]
 fn button_styled_bg_emits_atom() {
     Owner::scope("widget-styled-button-bg", || {
-        let colors = painted(button("Run").bg(A).rounded(Radius::Lg), Drive::Rest);
+        let colors = painted(button("Run").background(A).radius(Radius::Lg), Drive::Rest);
         assert_paints(&colors, A, "button bg");
     });
 }
@@ -87,7 +87,10 @@ fn button_styled_bg_emits_atom() {
 #[test]
 fn button_styled_hover_populates_state_slot() {
     Owner::scope("widget-styled-button-hover", || {
-        let colors = painted(button("Run").hover(|s| s.bg(A).opacity(1.0)), Drive::Hover);
+        let colors = painted(
+            button("Run").hover(|s| s.background(A).opacity(1.0)),
+            Drive::Hover,
+        );
         assert_paints(&colors, A, "button hover");
     });
 }
@@ -97,13 +100,13 @@ fn button_styled_accepts_full_compile_surface() {
     Owner::scope("widget-styled-button-compile", || {
         let build = || {
             button("X")
-                .bg(B)
+                .background(B)
                 .layout(
                     LayoutStyle::default()
                         .padding_x(Space::Xxxl)
                         .padding_y(Space::Sm),
                 )
-                .hover(|s| s.bg(A))
+                .hover(|s| s.background(A))
         };
         assert_paints(&painted(build(), Drive::Rest), B, "button bg");
         assert_paints(&painted(build(), Drive::Hover), A, "button hover");
@@ -115,7 +118,7 @@ fn button_styled_accepts_full_compile_surface() {
 fn checkbox_styled_bg_emits_atom() {
     Owner::scope("widget-styled-checkbox-bg", || {
         let colors = painted(
-            checkbox(signal(false)).bg(A).rounded(Radius::Md),
+            checkbox(signal(false)).background(A).radius(Radius::Md),
             Drive::Rest,
         );
         assert_paints(&colors, A, "checkbox bg");
@@ -125,7 +128,10 @@ fn checkbox_styled_bg_emits_atom() {
 #[test]
 fn checkbox_styled_hover_populates_state_slot() {
     Owner::scope("widget-styled-checkbox-hover", || {
-        let colors = painted(checkbox(signal(false)).hover(|s| s.bg(A)), Drive::Hover);
+        let colors = painted(
+            checkbox(signal(false)).hover(|s| s.background(A)),
+            Drive::Hover,
+        );
         assert_paints(&colors, A, "checkbox hover");
     });
 }
@@ -135,7 +141,7 @@ fn dropdown_styled_emits_on_trigger_accumulator() {
     Owner::scope("widget-styled-dropdown-bg", || {
         let build = |px: f32| {
             dropdown(signal(0_usize), vec!["a".into(), "b".into()])
-                .bg(A)
+                .background(A)
                 .layout(LayoutStyle::default().width(px))
         };
         assert_paints(
@@ -151,7 +157,7 @@ fn dropdown_styled_emits_on_trigger_accumulator() {
 #[test]
 fn dropdown_styled_pressed_populates_state_slot() {
     Owner::scope("widget-styled-dropdown-pressed", || {
-        let build = dropdown(signal(0_usize), vec!["a".into()]).pressed(|s| s.bg(A));
+        let build = dropdown(signal(0_usize), vec!["a".into()]).pressed(|s| s.background(A));
         assert_paints(&painted(build, Drive::Press), A, "dropdown pressed");
     });
 }
@@ -162,7 +168,7 @@ fn panel_accepts_styled_surface() {
         let build = |padding: f32| {
             panel()
                 .title("Settings")
-                .bg(A)
+                .background(A)
                 .layout(LayoutStyle::default().padding_x(Space::raw(padding, "test fixture")))
         };
         assert_paints(&painted(build(20.0), Drive::Rest), A, "panel bg");
@@ -176,12 +182,12 @@ fn text_field_styled_composes_with_state_variant() {
         let build = || {
             let field = text_field(signal(String::new()))
                 .placeholder("Search…")
-                .bg(A)
+                .background(A)
                 .layout(LayoutStyle::default().padding_x(Space::raw(10.0, "test fixture")))
-                .hover(|s| s.bg(B))
-                .focus(|s| s.bg(C))
-                .pressed(|s| s.bg(D));
-            StateVariants::disabled_style(field, |s| s.bg(E))
+                .hover(|s| s.background(B))
+                .focus(|s| s.background(C))
+                .pressed(|s| s.background(D));
+            States::disabled_style(field, |s| s.background(E))
         };
         assert_paints(&painted(build(), Drive::Rest), A, "text_field bg");
         assert_paints(&painted(build(), Drive::Hover), B, "text_field hover");
@@ -195,7 +201,7 @@ fn text_field_styled_composes_with_state_variant() {
 fn slider_accepts_styled_surface() {
     Owner::scope("widget-styled-slider", || {
         let build = slider(signal(0.5_f32), 0.0..=1.0)
-            .bg(A)
+            .background(A)
             .layout(LayoutStyle::default().padding(Space::Sm));
         assert_paints(&painted(build, Drive::Rest), A, "slider bg");
     });
@@ -204,7 +210,7 @@ fn slider_accepts_styled_surface() {
 #[test]
 fn progress_accepts_styled_surface() {
     Owner::scope("widget-styled-progress", || {
-        let build = progress(signal(0.75_f32), 1.0).bg(A);
+        let build = progress(signal(0.75_f32), 1.0).background(A);
         assert_paints(&painted(build, Drive::Rest), A, "progress bg");
     });
 }
@@ -233,7 +239,7 @@ fn modal_accepts_styled_surface() {
     Owner::scope("widget-styled-modal-surface", || {
         let build = modal(signal(true))
             .title("Confirm action")
-            .bg(A)
+            .background(A)
             .layout(LayoutStyle::default().padding_x(Space::raw(20.0, "test fixture")));
         assert_paints(&painted(build, Drive::Rest), A, "modal bg");
     });
@@ -247,8 +253,8 @@ fn tabs_accepts_styled_surface() {
                 .active(signal(0_usize))
                 .labels(["A", "B"])
                 .label("Settings sections")
-                .bg(A)
-                .hover(|s| s.bg(B))
+                .background(A)
+                .hover(|s| s.background(B))
         };
         assert_paints(&painted(build(), Drive::Rest), A, "tabs bg");
         assert_paints(&painted(build(), Drive::Hover), B, "tabs hover");
@@ -259,7 +265,7 @@ fn tabs_accepts_styled_surface() {
 fn scroll_accepts_styled_surface() {
     Owner::scope("widget-styled-scroll", || {
         let inner: NodeBuilder = container();
-        let build = scroll(inner).extent(400.0_f32).bg(A);
+        let build = scroll(inner).extent(400.0_f32).background(A);
         assert_paints(&painted(build, Drive::Rest), A, "scroll bg");
     });
 }
@@ -273,7 +279,7 @@ fn menu_accepts_styled_surface() {
             .item(MenuItem::new("Save").shortcut("Ctrl+S"))
             .separator()
             .item(MenuItem::new("Quit"))
-            .bg(A)
+            .background(A)
             .layout(LayoutStyle::default().padding_x(Space::raw(20.0, "test fixture")));
         assert_paints(&painted(build, Drive::Rest), A, "menu bg");
     });

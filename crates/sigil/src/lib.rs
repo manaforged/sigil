@@ -201,20 +201,20 @@ pub mod prelude {
         TextBuilder, TextContent, TextCursor, container, for_each, fragment, image, node, show,
         switch, text,
     };
-    pub use crate::layout::audit::FlawKind;
+    pub use crate::layout::audit::Flaw;
     kittest_pub! {
         #[doc(hidden)]
         pub use crate::layout::LayoutStyle;
     }
     pub use crate::layout::{
-        AlignItems, Display, FlexWrap, JustifyContent, Length, Overflow, Position, Space,
-        TrackSize, cols, column, em, grid, row, rows,
+        AlignItems, FlexWrap, JustifyContent, Length, Overflow, Position, Space, TrackSize, cols,
+        column, em, grid, row, rows,
     };
     pub use crate::reactive::{IntervalId, Reactive, Signal, derived, effect, interval, signal};
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::run;
     pub use crate::style::{
-        ColorAtom, ControlSize, Elevation, FontFamily, Layer, Paint, Radius, Rgba8, StateVariants,
+        ColorAtom, ControlSize, Elevation, FontFamily, Layer, Paint, Radius, Rgba8, States,
         TextRole, Theme, Token, Tone,
     };
     pub use crate::tasks::{SignalWriter, Status, Task, signal_writer, spawn, task};

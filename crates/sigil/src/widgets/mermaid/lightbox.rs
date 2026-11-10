@@ -109,7 +109,7 @@ fn stage(source: &str, camera: Camera) -> NodeBuilder {
         .drive(NumericAtomKind::Width, area_width)
         .drive(NumericAtomKind::Height, area_height)
         .hittable(true)
-        .on_scroll(move |event| camera.wheel(event))
+        .scroll(move |event| camera.wheel(event))
         .child(picture);
     pan(area, camera)
 }

@@ -137,7 +137,7 @@ fn a_mismatched_filter_list_changes_discretely() {
 fn a_gradient_stop_color_transition_mixes_in_srgb() {
     Owner::scope("props-stop-transition", || {
         let (mut ui, flag) = switched(gradient_square(), |state| {
-            state.bg(Background::linear(GradientAxis::LeftToRight).start(WHITE))
+            state.background(Background::linear(GradientAxis::LeftToRight).start(WHITE))
         });
         start(&mut ui, flag);
         run(&mut ui, 0.25);
@@ -153,9 +153,11 @@ fn a_gradient_stop_color_transition_mixes_in_srgb() {
 fn a_gradient_that_gains_a_stop_changes_discretely() {
     Owner::scope("props-stop-count", || {
         let (mut ui, flag) = switched(gradient_square(), |state| {
-            state.bg(Background::linear(GradientAxis::LeftToRight)
-                .start(WHITE)
-                .middle(BLACK))
+            state.background(
+                Background::linear(GradientAxis::LeftToRight)
+                    .start(WHITE)
+                    .middle(BLACK),
+            )
         });
         start(&mut ui, flag);
         run(&mut ui, 0.25);
@@ -233,8 +235,8 @@ fn radius_at_half(transition: Transition) -> f32 {
                 .duration(Duration::from_secs(1))
                 .ease(Easing::Linear),
         )
-        .rounded(Radius::None)
-        .paint_when(flag, |state| state.rounded(Radius::Lg));
+        .radius(Radius::None)
+        .paint_when(flag, |state| state.radius(Radius::Lg));
     let mut ui = mount(eased);
     start(&mut ui, flag);
     run(&mut ui, 0.5);

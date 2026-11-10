@@ -17,7 +17,7 @@ const GREYS: [Color; 5] = [
 fn tones_map_to_their_ansi_hue() {
     let table = [
         (Tone::Success, Color::Green),
-        (Tone::Warn, Color::Yellow),
+        (Tone::Warning, Color::Yellow),
         (Tone::Error, Color::Red),
         (Tone::Info, Color::Cyan),
         (Tone::Primary, Color::Blue),

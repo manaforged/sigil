@@ -193,8 +193,8 @@ use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
     container()
-        .bg(Token::SurfaceSubtle)
-        .border_w(1)
+        .background(Token::SurfaceSubtle)
+        .border_width(1)
         .border_color(Token::Border)
         .child(text("Panel").text_color(Token::OnSurfaceMuted))
 }

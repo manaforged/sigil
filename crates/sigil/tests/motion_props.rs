@@ -82,15 +82,17 @@ pub(crate) fn srgb_byte(linear: f32) -> u8 {
 
 pub(crate) fn square() -> NodeBuilder {
     container()
-        .bg(GREY)
+        .background(GREY)
         .layout(LayoutStyle::block().fixed_size(SIDE, SIDE))
 }
 
 pub(crate) fn gradient_square() -> NodeBuilder {
     container()
-        .bg(Background::linear(GradientAxis::LeftToRight)
-            .start(BLACK)
-            .end(BLUE))
+        .background(
+            Background::linear(GradientAxis::LeftToRight)
+                .start(BLACK)
+                .end(BLUE),
+        )
         .layout(LayoutStyle::block().fixed_size(SIDE, SIDE))
 }
 

@@ -22,9 +22,9 @@ pub(crate) fn rail(console: Console) -> impl IntoNode {
             .child(footer(console)),
     )
     .width(RAIL_WIDTH)
-    .border_w(1)
+    .border_width(1)
     .border_color(Token::Border)
-    .rounded(Radius::Md)
+    .radius(Radius::Md)
 }
 
 fn wordmark() -> NodeBuilder {

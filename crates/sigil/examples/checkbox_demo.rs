@@ -20,7 +20,7 @@ fn build() -> impl IntoNode {
         .fill()
         .gap(Space::Lg)
         .padding(Space::Xxl)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(checkbox(checked).change(move |v| checked.set(v)))
         .child(checkbox(signal(true)).tone(Tone::Neutral))
         .child(checkbox(signal(false)).disabled(disabled))

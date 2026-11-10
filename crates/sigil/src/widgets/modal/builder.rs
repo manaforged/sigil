@@ -22,7 +22,10 @@ const DIALOG_WIDTH: f32 = 420.0;
 const SHEET_WIDTH: f32 = 360.0;
 const SHEET_HEIGHT: f32 = 320.0;
 
-static BACKDROP_BASE: &[StyleAtom] = &[Token::Scrim.bg(), StyleAtom::Transition(MODAL_TRANSITION)];
+static BACKDROP_BASE: &[StyleAtom] = &[
+    Token::Scrim.background(),
+    StyleAtom::Transition(MODAL_TRANSITION),
+];
 
 static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(MODAL_TRANSITION)];
 

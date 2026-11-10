@@ -103,8 +103,8 @@ fn preview(buffer: Buffer) -> NodeBuilder {
         .min_height(0.0)
         .padding(Space::Lg)
         .gap(Space::None)
-        .bg(Token::SurfaceSubtle)
-        .rounded(Radius::Md)
+        .background(Token::SurfaceSubtle)
+        .radius(Radius::Md)
         .child(scroll(markdown(buffer.text)).fill())
 }
 
@@ -153,7 +153,7 @@ pub(crate) fn editor(ws: Workspace) -> NodeBuilder {
         .min_width(0.0)
         .min_height(0.0)
         .gap(Space::None)
-        .bg(Token::Surface)
+        .background(Token::Surface)
         .child(tab_strip(ws))
         .child(
             column()

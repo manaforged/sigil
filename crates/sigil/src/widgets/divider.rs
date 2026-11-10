@@ -5,7 +5,7 @@ use crate::widgets::Widget;
 
 const HAIRLINE_PX: f32 = 1.0;
 
-static RULE_FILL: &[StyleAtom] = &[Token::Border.bg()];
+static RULE_FILL: &[StyleAtom] = &[Token::Border.background()];
 
 #[must_use]
 /// A horizontal divider.

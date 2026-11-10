@@ -8,13 +8,13 @@ use super::super::shared::caller_style;
 use super::drag::{Binds, PaneLimits, SplitterState, install_handle_hooks};
 use super::keys::install_handle_keys;
 use super::pane::{build_pane, shares_free_space};
-use crate::style::StateVariants;
+use crate::style::States;
 use crate::widgets::orientation::Orientation;
 use crate::widgets::{Edit, LayoutEdit, Sealed, Widget};
 
 pub(in crate::widgets) const HANDLE_PX: f32 = 6.0;
 
-static RULE: &[StyleAtom] = &[Token::Border.bg()];
+static RULE: &[StyleAtom] = &[Token::Border.background()];
 
 struct PaneEntry {
     content: Box<dyn IntoNode>,
@@ -360,8 +360,8 @@ fn build_handle(handle_idx: usize, orientation: Orientation, state: SplitterStat
         .layout(handle_layout(orientation))
         .child(rule(orientation));
     let node = interactive(node)
-        .hover(|s| s.bg(Token::SurfaceHover))
-        .pressed(|s| s.bg(Token::SurfacePressed))
+        .hover(|s| s.background(Token::SurfaceHover))
+        .pressed(|s| s.background(Token::SurfacePressed))
         .into_node_builder();
     install_handle_keys(
         install_handle_hooks(node, state, handle_idx),

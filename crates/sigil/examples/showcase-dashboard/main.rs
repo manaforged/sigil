@@ -27,10 +27,10 @@ fn main() -> sigil::AppResult<()> {
 fn pane() -> NodeBuilder {
     column()
         .gap(Space::None)
-        .bg(Token::SurfaceSubtle)
-        .border_w(1)
+        .background(Token::SurfaceSubtle)
+        .border_width(1)
         .border_color(Token::Border)
-        .rounded(Radius::Md)
+        .radius(Radius::Md)
 }
 
 fn work(console: live::Console) -> NodeBuilder {

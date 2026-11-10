@@ -132,7 +132,7 @@ fn swatch(value: Signal<Rgba8>) -> NodeBuilder {
             container()
                 .layout(LayoutStyle::block().width(width).height(extent))
                 .class(chrome)
-                .bg(value.get()),
+                .background(value.get()),
         ]
     })
 }

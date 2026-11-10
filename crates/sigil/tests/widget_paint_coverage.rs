@@ -124,7 +124,7 @@ fn pickers() -> Vec<Case> {
 
 fn data() -> Vec<Case> {
     vec![
-        ("dot", Box::new(|| dot(Tone::Warn))),
+        ("dot", Box::new(|| dot(Tone::Warning))),
         ("divider", Box::new(divider_horizontal)),
         ("label", Box::new(|| text("Field").nowrap())),
         ("text", Box::new(|| text("Body copy"))),

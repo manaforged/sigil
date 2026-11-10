@@ -57,7 +57,7 @@ const SURFACES: [Surface; 3] = [
 ];
 const ROOMY: [Surface; 2] = [Surface::Pixels(1920, 1200), Surface::Cells(240, 120)];
 
-fn flaws_of(source: &str, surface: Surface) -> Vec<(FlawKind, String)> {
+fn flaws_of(source: &str, surface: Surface) -> Vec<(Flaw, String)> {
     let text = source.to_owned();
     let app = move || {
         View::new(text.clone())
@@ -264,7 +264,7 @@ fn every_theme_keeps_its_text_tokens_readable_on_their_surfaces() {
                     container()
                         .layout(LayoutStyle::block().fill_width())
                         .theme(theme())
-                        .bg(surface)
+                        .background(surface)
                         .child(text("Words").text_color(ink))
                 })
                 .pixels(200, 80)
@@ -272,7 +272,7 @@ fn every_theme_keeps_its_text_tokens_readable_on_their_surfaces() {
                 failed.extend(
                     ui.flaws()
                         .iter()
-                        .filter(|flaw| flaw.kind() == FlawKind::Contrast)
+                        .filter(|flaw| flaw.kind() == Flaw::Contrast)
                         .map(|flaw| format!("{name} {ink:?} on {surface:?}: {flaw}")),
                 );
             }

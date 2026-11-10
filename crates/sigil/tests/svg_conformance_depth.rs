@@ -42,7 +42,7 @@ fn draws(svg: String) -> bool {
         .spawn(move || {
             let app = move || {
                 column()
-                    .bg(BLACK)
+                    .background(BLACK)
                     .child(icon_svg(svg.clone()).px(SIDE as f32))
             };
             let mut ui = Harness::new(app).pixels(SIDE, SIDE);

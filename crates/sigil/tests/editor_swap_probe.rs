@@ -223,7 +223,11 @@ fn explorer_row(selected: Signal<usize>, idx: usize, name: &str, active: bool) -
         .label(name.to_owned())
         .focusable(true)
         .layout(LayoutStyle::flex_row().height(22.0).padding_x(Space::Sm));
-    let row = if active { row.bg(Token::Accent) } else { row };
+    let row = if active {
+        row.background(Token::Accent)
+    } else {
+        row
+    };
     row.pointer_down(move |ev| {
         selected.set(idx);
         ev.stop_propagation();

@@ -18,7 +18,7 @@ pub(crate) fn interactive_demo(disabled: Signal<bool>) -> NodeBuilder {
             .child(text("Interactive row").nowrap().text_role(TextRole::Body)),
     )
     .focusable(true)
-    .rounded(Radius::Md)
+    .radius(Radius::Md)
     .disabled(disabled)
     .into_node_builder()
 }

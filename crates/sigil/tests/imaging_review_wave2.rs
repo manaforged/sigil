@@ -144,7 +144,7 @@ fn halves() -> NodeBuilder {
     let half = |color: Rgba8| {
         container()
             .layout(LayoutStyle::block().fixed_size(40.0, 40.0))
-            .bg(color)
+            .background(color)
     };
     container()
         .layout(
@@ -152,7 +152,7 @@ fn halves() -> NodeBuilder {
                 .fixed_size(120.0, 80.0)
                 .padding(Space::raw(20.0, "test fixture")),
         )
-        .bg(WHITE)
+        .background(WHITE)
         .child(
             container()
                 .layout(LayoutStyle::flex_row().fixed_size(80.0, 40.0))
@@ -208,12 +208,12 @@ fn turned_multiply() -> NodeBuilder {
                 .fixed_size(100.0, 100.0)
                 .padding(Space::raw(30.0, "test fixture")),
         )
-        .bg(BACKDROP)
+        .background(BACKDROP)
         .perspective(400.0)
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(40.0, 40.0))
-                .bg(SOURCE)
+                .background(SOURCE)
                 .rotate_x(5.0)
                 .mix_blend(BlendMode::Multiply),
         )
@@ -291,7 +291,7 @@ fn shadowed_text(on_parent: bool) -> impl Fn() -> NodeBuilder {
         };
         let parent = container()
             .layout(LayoutStyle::block().fixed_size(200.0, 60.0))
-            .bg(WHITE);
+            .background(WHITE);
         let parent = if on_parent {
             parent.text_shadow(shadow)
         } else {
