@@ -105,7 +105,7 @@ objc2-app-kit = { version = "0.3", default-features = false, features = ["std", 
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSGeometry", "objc2-core-foundation"] }
 
 [features]
-default = ["desktop", "a2ui"]
+default = ["desktop", "a2ui", "vega"]
 desktop = ["scene", "shell", "clipboard", "dep:notify"]
 scene = [
     "cpu",
@@ -113,7 +113,6 @@ scene = [
     "dep:wgpu",
     "dep:vello_gpu",
     "dep:vello_cpu",
-    "dep:rquickjs",
     "dep:pollster",
     "dep:bytemuck",
     "dep:skrifa",
@@ -146,6 +145,7 @@ image-decode = ["dep:image", "dep:base64"]
 inspect = ["dep:base64"]
 kittest = []
 a2ui = []
+vega = ["scene", "dep:rquickjs"]
 test-clock = []
 audio = ["dep:rodio"]
 notify = ["dep:notify-rust"]
