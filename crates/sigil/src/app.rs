@@ -12,7 +12,6 @@ pub(crate) mod audio;
 ))]
 mod bridge;
 mod cell_text;
-#[cfg(feature = "scene")]
 pub(crate) mod config;
 /// Native file and message dialogs.
 #[cfg(feature = "dialog")]
