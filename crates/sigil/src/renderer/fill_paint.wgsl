@@ -405,6 +405,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let d = rounded_rect_sdf(in.local, in.half_size, in.corner_radii);
     let aa = max(fwidth(d) * 0.5, 0.0001);
     let coverage = edge_coverage(d, aa);
+    let linear = in.stops_meta.w == 1u;
 
     var color: vec4<f32>;
     if in.fill_kind == FILL_KIND_SLASH {
@@ -415,13 +416,15 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         color = checker_color(in.local + in.half_size + in.start + in.axis, in.start, in.pattern_a, in.pattern_b);
     } else {
         let t = gradient_t(in.fill_kind, in.pos_px, in.start, in.axis, in.pattern_a);
-        color = sample_gradient(in.stops_meta.x, in.stops_meta.y, repeat_t(t, in.pattern_b), in.stops_meta.w == 1u);
+        color = sample_gradient(in.stops_meta.x, in.stops_meta.y, repeat_t(t, in.pattern_b), linear);
     }
 
     let alpha = color.a * in.opacity * coverage;
     let scale = in.opacity * coverage;
     let dither = hash_xy(in.clip.xy) * (2.0 / 255.0) - (1.0 / 255.0);
-    let rgb = clamp(color.rgb * scale + vec3<f32>(dither * alpha), vec3<f32>(0.0), vec3<f32>(1.0));
+    let shaded = color.rgb * scale;
+    let stored = select(shaded, srgb_encode(shaded), linear) + vec3<f32>(dither * alpha);
+    let rgb = clamp(select(stored, srgb_decode(stored), linear), vec3<f32>(0.0), vec3<f32>(1.0));
     let fill = vec4<f32>(rgb, alpha);
     let amount = stroke_mask(d, in.local + in.dash_origin, in.stroke_meta, aa);
     let stroke = vec4<f32>(in.stroke_params.rgb, in.stroke_params.a * in.opacity);

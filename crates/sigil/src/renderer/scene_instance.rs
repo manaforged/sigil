@@ -42,6 +42,13 @@ impl BlendSpace {
         }
     }
 
+    const fn flag(self) -> u32 {
+        match self {
+            Self::Linear => 1,
+            Self::Gamma => 0,
+        }
+    }
+
     pub(crate) fn rgba(self, color: Rgba8) -> [f32; 4] {
         [
             self.channel(color.r),
@@ -202,7 +209,7 @@ pub(crate) fn draw_gradient_instance(
             stop_offset,
             stop_count.min(MAX_GRADIENT_STOPS_U32),
             fill_kind,
-            u32::from(space == BlendSpace::Linear),
+            space.flag(),
         ],
         pattern_a,
         pattern_b: [first, last, f32::from(u8::from(span.is_some())), 0.0],
@@ -244,7 +251,7 @@ pub(crate) fn draw_pattern_instance(
     }
     FillInstance {
         line,
-        stop_range: [stop_offset, stop_count, fill_kind, 0],
+        stop_range: [stop_offset, stop_count, fill_kind, space.flag()],
         pattern_a,
         pattern_b,
         ..base
@@ -266,7 +273,7 @@ fn fill_base(
         line: [0.0; 4],
         corner_radii: radii.normalized_for(rect.width, rect.height),
         params: [opacity.clamp(0.0, 1.0), outset, 0.0, 0.0],
-        stop_range: [0; 4],
+        stop_range: [0, 0, 0, space.flag()],
         stroke_params,
         stroke_meta,
         pattern_a: [0.0; 4],
