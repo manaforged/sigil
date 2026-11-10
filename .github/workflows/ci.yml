@@ -80,6 +80,7 @@ jobs:
       - uses: swatinem/rust-cache@aa7c1c80a07a27a84c0aa76d0cef0aad3830e330 # v2.7.8
         with:
           shared-key: gate-${{ matrix.job }}
+          workspaces: ${{ matrix.job == 'fuzz' && 'fuzz -> target' || '. -> target' }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: taiki-e/install-action@37f7c5781271959fb65b6b35224e28652ff2b63d # v2
         with:
