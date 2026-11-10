@@ -6,9 +6,9 @@ use sigil::prelude::*;
 use sigil_kittest::Harness;
 
 const SIDE: u32 = 1024;
-const CAPPED: f32 = 300.0;
+const SMALL: f32 = 16.0;
 const HUGE: f32 = 4096.0;
-const MAX_RATIO: f64 = 2.0;
+const MAX_RATIO: f64 = 4.0;
 
 fn blurred(sigma: f32) -> NodeBuilder {
     container()
@@ -44,15 +44,15 @@ fn frame_time(sigma: f32, side: u32) -> Option<Duration> {
 }
 
 #[test]
-fn a_huge_blur_costs_no_more_than_a_capped_one() {
+fn a_huge_blur_costs_no_more_than_a_small_one() {
     if frame_time(8.0, 256).is_none() {
         return;
     }
-    let capped = frame_time(CAPPED, SIDE).expect("capped frame");
+    let small = frame_time(SMALL, SIDE).expect("small frame");
     let huge = frame_time(HUGE, SIDE).expect("huge frame");
-    let ratio = huge.as_secs_f64() / capped.as_secs_f64();
+    let ratio = huge.as_secs_f64() / small.as_secs_f64();
     assert!(
         ratio < MAX_RATIO,
-        "blur({HUGE}) took {huge:?}, {ratio:.2}x blur({CAPPED}) at {capped:?}"
+        "blur({HUGE}) took {huge:?}, {ratio:.2}x blur({SMALL}) at {small:?}"
     );
 }
