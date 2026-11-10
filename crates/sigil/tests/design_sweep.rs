@@ -57,7 +57,7 @@ const SURFACES: [Surface; 3] = [
 ];
 const ROOMY: [Surface; 2] = [Surface::Pixels(1920, 1200), Surface::Cells(240, 120)];
 
-fn flaws_of(source: &str, surface: Surface) -> Vec<(FlawKind, String)> {
+fn flaws_of(source: &str, surface: Surface) -> Flaws {
     let text = source.to_owned();
     let app = move || {
         View::new(text.clone())
@@ -84,16 +84,36 @@ struct Report {
     smallest: BTreeMap<String, (usize, String)>,
 }
 
+type Flaws = Vec<(FlawKind, String)>;
+
 impl Report {
-    fn sweep(&mut self, source: &str) {
-        self.sweep_on(source, &SURFACES);
+    fn sweep(trees: &[String], surfaces: &[Surface]) -> Self {
+        let workers = std::thread::available_parallelism().map_or(1, usize::from);
+        let part = trees.len().div_ceil(workers).max(1);
+        let found: Vec<Vec<Flaws>> = std::thread::scope(|scope| {
+            #[allow(
+                clippy::needless_collect,
+                reason = "every worker starts before the first join"
+            )]
+            let handles: Vec<_> = trees
+                .chunks(part)
+                .map(|chunk| scope.spawn(move || audit(chunk, surfaces)))
+                .collect();
+            handles
+                .into_iter()
+                .flat_map(|handle| handle.join().unwrap())
+                .collect()
+        });
+        let mut report = Self::default();
+        for (source, runs) in trees.iter().zip(found) {
+            report.record(source, surfaces, runs);
+        }
+        report
     }
 
-    fn sweep_on(&mut self, source: &str, surfaces: &[Surface]) {
+    fn record(&mut self, source: &str, surfaces: &[Surface], runs: Vec<Flaws>) {
         self.trees += 1;
-        for surface in surfaces {
-            let surface = *surface;
-            let flaws = flaws_of(source, surface);
+        for (surface, flaws) in surfaces.iter().zip(runs) {
             self.broken += usize::from(!flaws.is_empty());
             for (kind, flaw) in flaws {
                 let rule = format!("{kind:?} on {surface:?}");
@@ -129,45 +149,57 @@ impl Report {
     }
 }
 
+fn audit(trees: &[String], surfaces: &[Surface]) -> Vec<Vec<Flaws>> {
+    trees
+        .iter()
+        .map(|source| {
+            surfaces
+                .iter()
+                .map(|surface| flaws_of(source, *surface))
+                .collect()
+        })
+        .collect()
+}
+
 fn tree(container: &str, attrs: &str, children: &[&str]) -> String {
     format!("{container} {attrs} {{\n{}\n}}\n", children.join("\n"))
 }
 
 #[test]
 fn every_step_and_layer_of_every_container_passes_the_rules() {
-    let mut report = Report::default();
+    let mut trees = Vec::new();
     for container in CONTAINERS {
         for gap in STEPS {
             for padding in STEPS {
                 for layer in LAYERS {
                     let attrs = format!("gap={gap} padding={padding} {layer}");
                     let children = ["button \"Go\" activate=@go", "text_field value=$value"];
-                    report.sweep(&tree(container, &attrs, &children));
+                    trees.push(tree(container, &attrs, &children));
                 }
             }
         }
     }
-    report.assert_clean();
+    Report::sweep(&trees, &SURFACES).assert_clean();
 }
 
 #[test]
 fn every_pair_of_widgets_in_every_container_passes_the_rules() {
     let leaves = leaves();
-    let mut report = Report::default();
+    let mut trees = Vec::new();
     for container in CONTAINERS {
         for first in &leaves {
             for second in &leaves {
-                report.sweep(&tree(container, "gap=md", &[first, second]));
+                trees.push(tree(container, "gap=md", &[first, second]));
             }
         }
     }
-    report.assert_clean();
+    Report::sweep(&trees, &SURFACES).assert_clean();
 }
 
 #[test]
 fn every_nesting_of_two_containers_passes_the_rules() {
     let leaves = leaves();
-    let mut report = Report::default();
+    let mut trees = Vec::new();
     for outer in CONTAINERS {
         for inner in CONTAINERS {
             for leaf in &leaves {
@@ -176,11 +208,11 @@ fn every_nesting_of_two_containers_passes_the_rules() {
                     "gap=sm padding=md",
                     &[leaf, "button \"Go\" activate=@go"],
                 );
-                report.sweep(&tree(outer, "gap=md padding=lg", &[&nested, leaf]));
+                trees.push(tree(outer, "gap=md padding=lg", &[&nested, leaf]));
             }
         }
     }
-    report.assert_at_most(KNOWN_NESTING_BREAKS);
+    Report::sweep(&trees, &SURFACES).assert_at_most(KNOWN_NESTING_BREAKS);
 }
 
 const fn next(seed: &mut u32) -> usize {
@@ -210,12 +242,11 @@ fn random_tree(seed: &mut u32, depth: usize, leaves: &[String]) -> String {
 #[test]
 fn deeper_random_trees_pass_the_rules() {
     let leaves = leaves();
-    let mut report = Report::default();
     let mut seed = 0x5eed_u32;
-    for _ in 0..400 {
-        report.sweep_on(&random_tree(&mut seed, 3, &leaves), &ROOMY);
-    }
-    report.assert_at_most(KNOWN_DEEP_BREAKS);
+    let trees: Vec<String> = (0..400)
+        .map(|_| random_tree(&mut seed, 3, &leaves))
+        .collect();
+    Report::sweep(&trees, &ROOMY).assert_at_most(KNOWN_DEEP_BREAKS);
 }
 
 const PAIRS: &[(Token, &[Token])] = &[
