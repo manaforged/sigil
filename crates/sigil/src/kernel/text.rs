@@ -44,6 +44,17 @@ impl TextContent {
         }
     }
 
+    pub(crate) fn hash_into(&self, hasher: &mut impl std::hash::Hasher) {
+        use std::hash::Hash as _;
+        match self {
+            Self::Static(value) => value.hash(hasher),
+            Self::Reactive(signal) => signal
+                .try_peek_with(|value| value.hash(hasher))
+                .unwrap_or_else(|| "".hash(hasher)),
+            Self::Compute(compute) => compute().hash(hasher),
+        }
+    }
+
     /// Writes the current text to `out` and returns whether it changed.
     pub fn refresh(&self, out: &mut String) -> bool {
         match self {

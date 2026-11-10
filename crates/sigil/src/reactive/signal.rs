@@ -176,9 +176,14 @@ impl<T: Clone + 'static> Signal<T> {
     #[inline]
     #[must_use]
     pub fn try_peek(self) -> Option<T> {
+        self.try_peek_with(T::clone)
+    }
+
+    #[must_use]
+    pub(crate) fn try_peek_with<R>(self, f: impl FnOnce(&T) -> R) -> Option<R> {
         with_rt(|rt| {
             let value = &rt.signals.get(self.key)?.value;
-            value.downcast_ref::<T>().cloned()
+            value.downcast_ref::<T>().map(f)
         })
     }
 }

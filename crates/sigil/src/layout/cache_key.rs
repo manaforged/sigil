@@ -186,7 +186,7 @@ impl Node {
             && !matches!(content, TextContent::Static(_))
             && (*wrap || !self.definite_width())
         {
-            content.resolve().hash(hasher);
+            content.hash_into(hasher);
         }
         hidden
     }

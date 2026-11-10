@@ -153,7 +153,7 @@ pub(crate) fn content_key(node: &Node) -> u64 {
     if let NodeType::Text { content, .. } = &node.kind
         && !matches!(content, TextContent::Static(_))
     {
-        content.resolve().hash(&mut hasher);
+        content.hash_into(&mut hasher);
         wrote = true;
     }
     if let Some(binding) = node.get_extension::<StyleBinding>() {

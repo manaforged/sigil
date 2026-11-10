@@ -2,7 +2,7 @@ use crate::Error;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::{ComputedBox, NodeRef};
 use crate::layout::resolve::{NodeEdges, dim_to_border_box, resolve_absolute_xy, stretched};
-use crate::layout::style_data::{Axes, Display, Length, Position, StyleData};
+use crate::layout::style_data::{Axes, Display, Length, Position};
 
 use super::intrinsic::{probed_content_extent, text_intrinsic};
 use super::{FlexCtx, layout_item_subtree};
@@ -52,7 +52,7 @@ fn place_absolute(
     let style = child.style();
     let CbSize { w: cb_w, h: cb_h } = CbSize::across(ctx.axes, cb_main, cb_cross);
     let edges = NodeEdges::build(style, cb_w);
-    let (w, h) = absolute_size(ctx, child, style, (cb_w, cb_h), padding_box);
+    let (w, h) = absolute_size(ctx, child, &edges, (cb_w, cb_h), padding_box);
     let (x, y) = resolve_absolute_xy(
         style,
         &edges,
@@ -68,11 +68,11 @@ fn place_absolute(
 fn absolute_size(
     ctx: &FlexCtx<'_, '_>,
     child: NodeRef<'_>,
-    style: &StyleData,
+    edges: &NodeEdges,
     (cb_w, cb_h): (f32, f32),
     padding_box: Axes<f32>,
 ) -> (f32, f32) {
-    let edges = NodeEdges::build(style, cb_w);
+    let style = child.style();
     let margins = edges.margin.or_zero();
     let explicit_w = dim_to_border_box(
         style.size.width,
@@ -89,7 +89,7 @@ fn absolute_size(
     let probing = (explicit_w.is_none() && trailing_anchored(style.inset.left, style.inset.right))
         || (explicit_h.is_none() && trailing_anchored(style.inset.top, style.inset.bottom));
     let fit = if probing {
-        shrink_fit(ctx, child, style, cb_w, cb_h)
+        shrink_fit(ctx, child, edges, cb_w, cb_h)
     } else {
         None
     };
@@ -149,11 +149,11 @@ fn axis_size(
 fn shrink_fit(
     ctx: &FlexCtx<'_, '_>,
     child: NodeRef<'_>,
-    style: &StyleData,
+    edges: &NodeEdges,
     cb_w: f32,
     cb_h: f32,
 ) -> Option<(f32, f32)> {
-    let edges = NodeEdges::build(style, cb_w);
+    let style = child.style();
     if child.children().is_empty() {
         let measured = text_intrinsic(ctx, child, style);
         return Some((

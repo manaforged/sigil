@@ -191,7 +191,7 @@ impl BlockSolver<'_> {
             let child_origin = Position2::new(x, origin.y + cursor_y);
             let resolved = match style.display {
                 Display::Flex | Display::Grid => {
-                    self.solve_nested(child, inner_cb, child_origin)?
+                    self.solve_nested(child, inner_cb, child_origin, child_edges)?
                 }
                 Display::Block | Display::None => {
                     self.solve_box(child, inner_cb, child_origin, Axes::default())?
@@ -208,9 +208,9 @@ impl BlockSolver<'_> {
         child: NodeRef<'_>,
         inner_cb: Axes<f32>,
         border_origin: Position2,
+        edges: NodeEdges,
     ) -> Result<BlockBox, Error> {
         let style = child.style();
-        let edges = NodeEdges::build(style, inner_cb.width);
         let scope = &self.scope;
         let nested = MeasureScope::new(scope.forest(), scope.text(), scope.available());
         let x = border_origin.x - edges.margin.left.unwrap_or(0.0);

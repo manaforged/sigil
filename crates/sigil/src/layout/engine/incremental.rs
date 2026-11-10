@@ -198,12 +198,14 @@ impl LayoutEngine {
         dirty: &mut Vec<NodeId>,
     ) -> Result<Vec<NodeId>, Error> {
         let _translate = crate::profile::span(crate::profile::Phase::LayoutTranslate);
-        let moved: Vec<NodeId> = dirty
-            .iter()
-            .copied()
-            .filter(|id| self.moved_only(cx, *id))
-            .collect();
-        dirty.retain(|id| !moved.contains(id));
+        let mut moved = Vec::new();
+        dirty.retain(|id| {
+            let only = self.moved_only(cx, *id);
+            if only {
+                moved.push(*id);
+            }
+            !only
+        });
         for id in moved.iter().copied() {
             crate::profile::count(Counter::LayoutTranslate);
             self.translate(cx, id)?;
