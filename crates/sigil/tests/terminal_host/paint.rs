@@ -233,7 +233,7 @@ fn a_filled_table_keeps_its_header_off_row_one() {
             table(state)
                 .row_height(8.0)
                 .header_height(8.0)
-                .viewport_fill()
+                .fill_height()
         },
         40,
         12,

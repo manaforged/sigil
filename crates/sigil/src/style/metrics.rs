@@ -74,7 +74,7 @@ impl Metrics {
         self.cell.unwrap_or(match size {
             ControlSize::Compact => space(6),
             ControlSize::Default => space(7),
-            ControlSize::Wide | ControlSize::Grow => space(9),
+            ControlSize::Wide => space(9),
         })
     }
 
@@ -84,7 +84,7 @@ impl Metrics {
         match size {
             ControlSize::Compact => space(6),
             ControlSize::Default => space(8),
-            ControlSize::Wide | ControlSize::Grow => space(37),
+            ControlSize::Wide => space(37),
         }
     }
 
@@ -94,7 +94,7 @@ impl Metrics {
         self.cell.unwrap_or(match size {
             ControlSize::Compact => space(1) + 2.0,
             ControlSize::Default => space(2) + 2.0,
-            ControlSize::Wide | ControlSize::Grow => space(3) + 2.0,
+            ControlSize::Wide => space(3) + 2.0,
         })
     }
 
@@ -104,7 +104,7 @@ impl Metrics {
         self.cell.unwrap_or(match size {
             ControlSize::Compact => space(1),
             ControlSize::Default => space(2),
-            ControlSize::Wide | ControlSize::Grow => space(3),
+            ControlSize::Wide => space(3),
         })
     }
 

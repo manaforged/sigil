@@ -113,7 +113,7 @@ fn a_drag_in_a_following_list_copies_the_row_it_started_on() {
                         virtual_list(lines, |_, line: &String| text(line.clone()).nowrap())
                             .row_height(8.0)
                             .follow_end(true)
-                            .viewport_fill(),
+                            .fill(),
                     )
             });
             step(&mut host, [], 40, 6);

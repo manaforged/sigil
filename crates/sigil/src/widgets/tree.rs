@@ -195,7 +195,7 @@ impl<K: Clone + Eq + Hash + 'static> TreeBuilder<K> {
             .cursor(state.cursor)
             .measured()
             .estimate(ROW_ESTIMATE)
-            .viewport_fill()
+            .fill()
             .map_node(move |node| {
                 let node = keys::attach(node.role(Role::Tree), &state);
                 match label {

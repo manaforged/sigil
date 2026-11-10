@@ -2,6 +2,7 @@ mod builder;
 mod drag;
 mod keys;
 mod pane;
+mod pane_builder;
 
 pub(in crate::widgets) use crate::widgets::scroll::to_i16;
 pub(in crate::widgets) use builder::HANDLE_PX;

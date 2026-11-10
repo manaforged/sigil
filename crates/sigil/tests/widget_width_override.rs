@@ -150,7 +150,11 @@ fn grow_size_fills_button_without_collapsing_its_height() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::flex_column().fixed_size(300.0, 100.0))
-                .child(button("Save").size(sigil::style::ControlSize::Grow)),
+                .child(
+                    button("Save")
+                        .size(sigil::style::ControlSize::Default)
+                        .fill_width(),
+                ),
         );
         let button = cx
             .get(root)

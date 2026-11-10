@@ -197,7 +197,9 @@ fn every_layout_builder_takes_paint() {
             })
         }));
         assert!(painted(|paint| {
-            let split = splitter(Orientation::Horizontal).pane(text("Left"));
+            let split = splitter(Orientation::Horizontal)
+                .pane(text("Left"))
+                .commit();
             container().child(if paint {
                 split.background(Token::Accent)
             } else {
@@ -220,6 +222,12 @@ fn every_layout_builder_takes_paint() {
                 options
             })
         }));
+    });
+}
+
+#[test]
+fn an_image_takes_a_radius() {
+    Owner::scope("run_defects::image_radius", || {
         let pixels = ImageSource::from_rgba8(1, 1, vec![255, 0, 0, 255]).expect("pixels");
         let _: NodeId = {
             let mut cx = sigil::kernel::Cx::new_root();

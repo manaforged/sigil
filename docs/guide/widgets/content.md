@@ -21,7 +21,7 @@ text(move || format!("Count: {}", count.get())).nowrap();
 `icon(glyph) -> IconBuilder`. A glyph centered in a fixed box; `Role::Image` when labeled, `Role::GenericContainer` otherwise.
 
 - `.tone(Tone)`: glyph color.
-- `.size(Size)`: Compact 16 px, Default 20 px, Wide/Grow 24 px, with matching text size.
+- `.size(Size)`: Compact 16 px, Default 20 px, Wide 24 px, with matching text size.
 - `.label(name)`: assistive name; always set it when the icon stands alone.
 
 `icon_svg(svg) -> IconBuilder` draws an SVG path instead of a glyph. The icon takes its color from `.tone(Tone)` at paint time, so a theme switch recolours it. Dark themes draw it light.

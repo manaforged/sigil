@@ -85,7 +85,7 @@ pub(crate) fn virtual_list_fill_demo() -> NodeBuilder {
                         },
                     )
                 })
-                .viewport_fill(),
+                .fill(),
             ),
         )
         .child(text("Footer below the list").nowrap())

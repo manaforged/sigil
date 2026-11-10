@@ -54,7 +54,7 @@ The family pages carry signatures, options, and behavior notes:
 - **avatar(initials)**: an initials disc.
 - **sidebar(child)**: a fixed-width nav column. Chain `.width(len)` and `.resizable(min, max)`.
 - **panel()**: chain `.title()`, `.padding()`, and `.elevation()`.
-- **splitter(Orientation)**: an `IntoNode`. Chain `.pane(node).initial(px).min(px).grow(1.0)`. A grow pane takes the leftover space; the sash moves the fixed neighbour. The layout setters on a pane set that pane; call `.commit()` first to set the splitter. Type a helper as `impl IntoNode`; `.into()` yields a `NodeBuilder`.
+- **splitter(Orientation)**: an `IntoNode`. Chain `.pane(node).width(px).min_width(px)` on a horizontal splitter, or `.height(px).min_height(px)` on a vertical one, and `.grow(1.0)` for the pane that takes the leftover space; the sash moves the fixed neighbour. Every setter after `.pane(node)` sets that pane; call `.commit()` first to set the splitter. Type a helper as `impl IntoNode`; `.into()` yields a `NodeBuilder`.
 - **modal(open)**: a GPU dialog. `open` is a `Signal<bool>`. `.title()`, `.width()`, and `.height()` size the frame. Escape and the focus trap are on. A backdrop click is off unless `.dismiss_on_backdrop()`. The alert is `sigil::app::dialog::message` / `confirm` (feature `dialog`). File and message dialogs return a `Signal<Status<..>>` and never block the frame loop. Feature `dialog` shows an in-app picker on every host; add `native-dialog` for the OS dialog on the window host. Read the result like any spawned task:
 
   ```rust,ignore

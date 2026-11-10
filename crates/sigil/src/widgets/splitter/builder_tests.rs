@@ -74,12 +74,12 @@ fn fixed_pane_and_handle_keep_their_width_with_filling_content() {
         let root = cx.add(
             splitter(Orientation::Horizontal)
                 .pane(container().layout(LayoutStyle::flex_column().fill()))
-                .initial(224.0)
-                .min(180.0)
-                .max(500.0)
+                .width(224.0)
+                .min_width(180.0)
+                .max_width(500.0)
                 .pane(container().layout(LayoutStyle::flex_column().fill().min_size(0.0, 0.0)))
                 .grow(1.0)
-                .min(320.0)
+                .min_width(320.0)
                 .commit()
                 .layout(LayoutStyle::flex_row().fill()),
         );
@@ -112,7 +112,7 @@ fn splitter_and_pane_builders_convert_to_nodes() {
         };
         let pane: NodeBuilder = splitter(Orientation::Horizontal)
             .pane(container())
-            .initial(120.0)
+            .width(120.0)
             .pane(container())
             .grow(1.0)
             .into();

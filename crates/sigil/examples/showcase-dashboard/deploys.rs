@@ -61,7 +61,7 @@ pub(crate) fn job_state(console: Console) -> TableState<JobRow> {
 pub(crate) fn job_table(console: Console, state: TableState<JobRow>) -> impl IntoNode {
     table(state)
         .selectable_checkboxes()
-        .viewport_fill()
+        .fill_height()
         .row_menu(move |row: &JobRow| {
             let slot = row.slot;
             vec![

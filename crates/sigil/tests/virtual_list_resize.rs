@@ -50,7 +50,7 @@ fn measured_rows_keep_the_view_still_when_a_row_grows() {
                     })
                     .key_by(|_, key| *key)
                     .measured()
-                    .viewport_fill()
+                    .fill()
                     .scroll_bind(scroll_y)
                     .follow_end(true),
                 )

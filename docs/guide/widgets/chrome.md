@@ -51,13 +51,13 @@ app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBui
 # let _ = {
 splitter(Orientation::Horizontal)
     .child(nav_pane, 240.0)
-    .pane(content_pane).min(200.0).grow(1.0)
+    .pane(content_pane).min_width(200.0).grow(1.0)
     .commit();
 # };
 ```
 
 - `.child(node, initial_px)`: simple pane.
-- `.pane(node)`: returns a pane builder with `.initial(px)`, `.min(px)`, `.max(px)`, `.grow(factor)`. The layout setters, such as `.min_width(..)` and `.padding(..)`, set the pane. Finish with `.commit()`, another `.pane(...)`, or return it from a component.
+- `.pane(node)`: returns a pane builder. Every setter after it sets the pane: on the main axis, `.width(px)` or `.height(px)` is the initial size, `.min_width(px)` and `.max_width(px)` (or `.min_height`, `.max_height`) clamp the drag, and `.grow(factor)` shares the leftover space. Paint and event setters, such as `.background(..)`, also set the pane. Finish with `.commit()`, another `.pane(...)`, or return it from a component; call splitter setters before the first `.pane(..)` or after `.commit()`.
 - `.min_size(index, px)` / `.max_size(index, px)`: clamp by index.
 - `.sizes_bind(Signal<Vec<f32>>)`: observe or persist pane sizes.
 - `.snap_points(handle_index, &[px])`: snap a handle to offsets within an 8 px threshold.

@@ -124,13 +124,13 @@ fn pane_builder_carries_initial_min_max_into_layout() {
     let root = cx.add(
         splitter(Orientation::Horizontal)
             .pane(container().label("a"))
-            .initial(150.0)
-            .min(50.0)
-            .max(300.0)
+            .width(150.0)
+            .min_width(50.0)
+            .max_width(300.0)
             .pane(container().label("b"))
-            .initial(250.0)
-            .min(100.0)
-            .max(400.0),
+            .width(250.0)
+            .min_width(100.0)
+            .max_width(400.0),
     );
 
     let layout = compute(
@@ -163,7 +163,7 @@ fn grow_pane_takes_leftover_width() {
         let root = cx.add(
             splitter(Orientation::Horizontal)
                 .pane(container().label("side"))
-                .initial(120.0)
+                .width(120.0)
                 .pane(container().label("main"))
                 .grow(1.0)
                 .commit()
@@ -262,11 +262,11 @@ fn shared(width: u32) -> sigil_kittest::Harness {
         splitter(Orientation::Horizontal)
             .proportional()
             .pane(pane("left"))
-            .initial(1.0)
-            .min(100.0)
+            .width(1.0)
+            .min_width(100.0)
             .pane(pane("right"))
-            .initial(3.0)
-            .min(100.0)
+            .width(3.0)
+            .min_width(100.0)
             .commit(),
     )
     .pixels(width, 200)

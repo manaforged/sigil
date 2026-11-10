@@ -87,7 +87,7 @@ fn empty_message_stays_below_header_and_disappears_when_rows_return() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             table(state.clone())
-                .viewport_fill()
+                .fill_height()
                 .selectable_checkboxes()
                 .empty(move || {
                     let capture = capture.clone();

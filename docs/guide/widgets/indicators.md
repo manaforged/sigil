@@ -22,7 +22,7 @@ The tone palette is fixed: `Neutral`, `Primary`, `Info`, `Success`, `Warning`, `
 
 ## dot
 
-`dot(Tone)`. A status dot: an outer ring at scale step 11 with an inner fill at step 9. `.size(Size)` picks the extent: Compact 8 px, Default 12 px, Wide/Grow 16 px. Not hittable, not focusable.
+`dot(Tone)`. A status dot: an outer ring at scale step 11 with an inner fill at step 9. `.size(Size)` picks the extent: Compact 8 px, Default 12 px, Wide 16 px. Not hittable, not focusable.
 
 ## gauge
 

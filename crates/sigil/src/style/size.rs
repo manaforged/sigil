@@ -8,6 +8,4 @@ pub enum ControlSize {
     Default,
     /// The wide control size.
     Wide,
-    /// The grow control size.
-    Grow,
 }

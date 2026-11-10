@@ -20,7 +20,7 @@ Key options:
 
 - `.primary()`: solid fill in the primary tone. `.neutral()` (the default) is a soft neutral with a frame. `.destructive()` is solid in the error tone. `.ghost()` drops the frame entirely.
 - `.tone(Tone)`, `.solid()`, `.soft()`: set tone and variant directly.
-- `.size(Size)`: Compact, Default, Wide change height and padding; `Size::Grow` makes the button fill its width at default height.
+- `.size(Size)`: Compact, Default, Wide change height and padding. Add `.fill_width()` to make the button fill its width.
 - `.width(px)`: pin the width; the default hugs the label.
 - `.activate(Fn())`: the click/activation handler.
 - `.enabled(bool)`: static disable; the node is not focusable.

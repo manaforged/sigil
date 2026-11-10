@@ -143,7 +143,7 @@ impl IconBuilder {
         let (base, glyph_class) = match self.size {
             ControlSize::Compact => (16.0, "text-xs"),
             ControlSize::Default => (20.0, "text-base"),
-            ControlSize::Wide | ControlSize::Grow => (24.0, "text-lg"),
+            ControlSize::Wide => (24.0, "text-lg"),
         };
         let extent = self.px.unwrap_or(base);
         #[cfg(feature = "scene")]

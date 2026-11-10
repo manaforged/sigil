@@ -15,6 +15,7 @@ mod strip;
 mod window;
 
 use crate::kernel::{IntoNode, NodeBuilder};
+use crate::layout::{LayoutStyle, Length};
 use crate::reactive::{Signal, effect};
 
 use std::ops::Deref;
@@ -108,6 +109,13 @@ enum ListSizing {
     Fixed,
     Fill,
     ShrinkToContent,
+}
+
+pub(super) fn fills_height(overrides: &LayoutOverrides) -> bool {
+    matches!(
+        overrides.apply(LayoutStyle::default()).data().size.height,
+        Length::Fill | Length::Percent(_)
+    )
 }
 
 /// Where a virtual list stays scrolled.
@@ -271,13 +279,6 @@ where
     #[must_use]
     pub const fn viewport_width(mut self, px: f32) -> Self {
         self.viewport_width = Some(px);
-        self
-    }
-
-    /// Applies the viewport fill option.
-    #[must_use]
-    pub const fn viewport_fill(mut self) -> Self {
-        self.sizing = ListSizing::Fill;
         self
     }
 

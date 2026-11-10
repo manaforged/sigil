@@ -380,7 +380,7 @@ fn tree() -> impl IntoNode {
     virtual_list(messages, |_, text: &String| markdown(signal(text.clone())))
         .measured()
         .estimate(rows(2.0))
-        .viewport_fill()
+        .fill()
         .follow_end(true)
 }
 
@@ -402,7 +402,7 @@ fn tree() -> impl IntoNode {
     let page = 400.0;
     let list = virtual_list(messages, |_, text: &String| markdown(signal(text.clone())))
         .measured()
-        .viewport_fill()
+        .fill()
         .scroll_bind(scroll)
         .max_scroll_bind(max)
         .follow_row(tail);

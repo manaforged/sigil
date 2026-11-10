@@ -16,7 +16,7 @@ use super::strip::{BoundStrip, bound_strip};
 use super::window::{self, strip_height};
 use super::{
     BoundItems, BoundVisibleThunk, BuildAxes, DEFAULT_ROW_HEIGHT, DEFAULT_VIEWPORT_HEIGHT,
-    ListSizing, RowRender, VirtualListBuilder, bound_slice,
+    ListSizing, RowRender, VirtualListBuilder, bound_slice, fills_height,
 };
 
 impl<T, R> VirtualListBuilder<T, R>
@@ -134,6 +134,7 @@ where
             .bound
             .take()
             .expect("build_bound called without a bound list");
+        let sizing = self.effective_sizing();
         let content = (bound.thunk)(
             BoundStrip {
                 render: std::rc::Rc::new(self.render),
@@ -159,14 +160,21 @@ where
             root,
             axes.viewport_height,
             self.viewport_width,
-            self.sizing == ListSizing::Fill,
+            sizing == ListSizing::Fill,
         );
-        let root = shrink_bound(root, axes, self.sizing == ListSizing::ShrinkToContent);
+        let root = shrink_bound(root, axes, sizing == ListSizing::ShrinkToContent);
         let root = attach_wheel(root, axes);
         if self.keyboard_enabled {
             attach_key_handlers(root, KeyboardRuntime::new(axes, bound.live_rows))
         } else {
             root
+        }
+    }
+
+    fn effective_sizing(&self) -> ListSizing {
+        match self.sizing {
+            ListSizing::Fixed if fills_height(&self.layout_overrides) => ListSizing::Fill,
+            sizing => sizing,
         }
     }
 
@@ -232,17 +240,15 @@ fn with_scrollbar(show: bool, root: NodeBuilder, axes: BuildAxes) -> NodeBuilder
 fn viewport_layout(root: NodeBuilder, height: f32, width: Option<f32>, fill: bool) -> NodeBuilder {
     let base = LayoutStyle::block().overflow_y(Overflow::Hidden);
     let base = if fill {
-        base.width(Length::Fill)
-            .height(Length::Fill)
-            .grow(1.0)
+        base.grow(1.0)
             .flex_basis(Length::Px(0.0))
             .min_size(0.0, 0.0)
     } else {
-        let base = base.height(height);
-        match width {
-            Some(w) => base.width(w),
-            None => base,
-        }
+        base.height(height)
+    };
+    let base = match width {
+        Some(w) => base.width(w),
+        None => base,
     };
     root.with(base)
 }

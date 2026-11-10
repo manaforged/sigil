@@ -66,7 +66,7 @@ fn round_dot(tone: Tone, size: ControlSize) -> (LayoutStyle, NodeBuilder) {
     let extent: i16 = match size {
         ControlSize::Compact => 8,
         ControlSize::Default => 12,
-        ControlSize::Wide | ControlSize::Grow => 16,
+        ControlSize::Wide => 16,
     };
     let (outer, inner) = (f32::from(extent), f32::from(extent - 2));
     let node = container()

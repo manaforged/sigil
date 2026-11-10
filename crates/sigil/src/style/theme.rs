@@ -307,37 +307,25 @@ impl Theme {
     /// Returns the width of a control of this size.
     #[must_use]
     pub const fn control_width(&self, size: ControlSize) -> Length {
-        match size {
-            ControlSize::Grow => Length::Percent(1.0),
-            _ => Length::Px(self.metrics.control_width(size)),
-        }
+        Length::Px(self.metrics.control_width(size))
     }
 
     /// Returns the height of a control of this size.
     #[must_use]
     pub fn control_height(&self, size: ControlSize) -> Length {
-        match size {
-            ControlSize::Grow => Length::Auto,
-            _ => Length::Px(self.metrics.control_height(size)),
-        }
+        Length::Px(self.metrics.control_height(size))
     }
 
     /// Returns the padding of a control of this size.
     #[must_use]
     pub fn control_padding(&self, size: ControlSize) -> Length {
-        match size {
-            ControlSize::Grow => Length::Percent(1.0),
-            _ => Length::Px(self.metrics.control_padding(size)),
-        }
+        Length::Px(self.metrics.control_padding(size))
     }
 
     /// Returns the gap of a control of this size.
     #[must_use]
     pub fn control_gap(&self, size: ControlSize) -> Length {
-        match size {
-            ControlSize::Grow => Length::Percent(1.0),
-            _ => Length::Px(self.metrics.control_gap(size)),
-        }
+        Length::Px(self.metrics.control_gap(size))
     }
 
     /// Returns the corner radius of a control of this size.
@@ -347,7 +335,6 @@ impl Theme {
             ControlSize::Compact => Radius::Sm,
             ControlSize::Default => Radius::Md,
             ControlSize::Wide => Radius::Lg,
-            ControlSize::Grow => Radius::Full,
         }))
     }
 

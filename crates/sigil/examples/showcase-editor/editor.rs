@@ -113,7 +113,7 @@ fn body(ws: Workspace, file: FileId) -> NodeBuilder {
     let content: NodeBuilder = match file.spec().kind {
         FileKind::Markdown => splitter(Orientation::Horizontal)
             .pane(source(buffer))
-            .min(SOURCE_MIN)
+            .min_width(SOURCE_MIN)
             .grow(1.0)
             .commit()
             .child_constrained(preview(buffer), PREVIEW_W, PREVIEW_MIN, PREVIEW_W * 2.0)

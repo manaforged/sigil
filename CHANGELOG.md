@@ -166,7 +166,7 @@ First public release.
 | `style::scale`, `style::{Locale, Strings, StyleAtom, StateStyle, StyleState, StyleVariant, StyleEngine, RenderStyle, Transform2D, TransitionId, MillisU16, BgGradient}` and the other style value types | public only under `kittest` or crate-private; `Token::scale` and `Tone::scale_role` still work without naming `ScaleRole` |
 | `scene::{DrawGradient, DrawImage, DrawPattern, DrawSprite, DrawDecoration, LayerEffect, LayerScope, LinearGradient, GradientStop, CornerRadii, StrokeAlign, StrokeStyle}` and the other command payloads | public only under `kittest` or crate-private; `SceneCommand` fields keep these types |
 | `AccessibleName`, `FocusScopeKind`, `NodeExtensions`, `ImageCrop`, `icons::{IconBaker, BakedIcon}` (now `icons::bake`), `events::FileDropEvent`, `reactive::DrawPhase` | public only under `kittest`; `.label("text")` and `.file_drop(\|event\| ...)` work without the names |
-| `app::{FrameOutput, FrameLayoutHook, Ambiguous, CellWidth}`, `terminal::{AfterFrame, EventPump, ClipRoute, Erase, Glyphs, Notices, Placement}`, `profile::{Attribution, PhaseTime, CounterValue}`, `tasks::TaskHandle`, `widgets::{ButtonGlyph, LineId, LineKind, PathCmd, PathColor, PathFill, TreeRow, IconSource}`, `events::PointerTilt` | no public path; functions return them and fields keep them |
+| `app::{FrameOutput, FrameLayoutHook, Ambiguous, CellWidth}`, `terminal::{AfterFrame, EventPump, ClipRoute, Erase, Glyphs, Notices, Placement}`, `profile::{Attribution, PhaseTime, CounterValue}`, `tasks::TaskHandle`, `widgets::{ButtonGlyph, LineId, LineKind, PathCmd, PathFill, TreeRow, IconSource}`, `events::PointerTilt` | no public path; functions return them and fields keep them |
 | `style::palette::Palette` | crate-private. Use `Theme` |
 | `geometry::Scale`, `Cx::scale() -> Scale`, `Cx::set_scale(Scale)` | `Cx::scale() -> f32`, `Cx::set_scale(f32)`. `Scale` is public only under `kittest` |
 | `widgets::ColumnLayout`, `TableState::column_layout` | `TableState::hide_column`, `show_column`, `visible_columns`, `column_width`; the layout is crate-private |
@@ -224,6 +224,8 @@ First public release.
 | exhaustive `match` on `Easing`, `HostMode`, `ObjectFit`, `Dimension`, `Display`, `Position`, `TrackSize`, `SceneCommand`, `Clip`, `Elevation`, `Radius`, `ControlSize`, `ClipShape`, `ColorAtom`, `MaskImage`, `FontFamily`, `WebFontScript`, `Change`, `Side`, `RowTone`, `SparkMark`, `SparkFill`, `ColWidth`, `ColAlign`, `Density`, `SubmitKey`, `ScrollAnchor`, `SelectionMode`, or terminal `ColorDepth`, `Keyboard`, `Borders`, `Cursor`, `Notify`, `MouseTracking`, `Activity`, `Underline` | add a `_` arm; all are `#[non_exhaustive]` |
 | under feature `kittest`: crate-root `NodeType`, `AccessibleName`, `FocusScopeKind`, `ImageCrop`, `NodeExtensions`, `CaretGeometry`, `TextMeasure`, `HitPosition`, `TextAffinity` (use `sigil::kernel`, `sigil::layout`, `sigil::text`); `animation::{KeyframesId, linear_channel_to_srgb}`, `profile::Span`, `scene::DrawPath`, `style::{BorderStyle, GradientShape, FilterAtom, MaskAtom, MillisU16, PaintStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, TextRun, text_style_for}`, `terminal::{base64, detect}`, `widgets::interaction`, `widgets::RadioGroupBuilder`, `TextBuilder::runs`, `Date::parse_in`, `Date::render_in` | crate-private |
 | `Dimension` | `Length` |
+| `PathNode::fill` and `stroke` took an unnameable `PathColor` | they take `impl Into<ColorAtom>`: pass an `Rgba8`, a `Token` or a `ColorAtom` |
+| `sigil::style::Color` (f32 RGBA) | no public path; use `Rgba8` or `ColorAtom` |
 | `StateVariants` | `States` |
 | `FlawKind` (the rule passed to `allow_flaw`) | `Flaw` |
 | `Flaw` (the reported record from `flaws()`) | `Issue` |
@@ -254,6 +256,12 @@ First public release.
 | `PanelBuilder::padding`, both the method and the field | `Widget::padding`. `padding`, `padding_x`, and `padding_y` on a panel apply in call order |
 | `sparkline(..).fill(SparkFill)` | `sparkline(..).area(SparkFill)` |
 | a layout setter on a splitter pane, such as `.pane(node).width(180.0)`, set the splitter | it sets the pane. `.width(px)` on a pane of a horizontal splitter and `.height(px)` on a pane of a vertical splitter set its initial size. Call `.commit()` first to set the splitter |
+| `ControlSize::Grow` | `ControlSize::Wide` with `.fill_width()` on the control. On `button`, `Grow` used the `Default` height, so write `.size(ControlSize::Default).fill_width()` there |
+| `VirtualListBuilder::viewport_fill()` | `.fill()`. `.fill_height()` or a percent height on a virtual list also makes it take the height of its parent, grow, and measure its viewport |
+| `TableBuilder::viewport_fill()` | `.fill_height()`. A percent height on a table does the same |
+| `PaneBuilder::initial(px)` | `.width(px)` on a pane of a horizontal splitter, `.height(px)` on a pane of a vertical splitter |
+| `PaneBuilder::min(px)`, `PaneBuilder::max(px)` | `.min_width(px)` and `.max_width(px)` on a pane of a horizontal splitter, `.min_height(px)` and `.max_height(px)` on a pane of a vertical splitter. They clamp the drag and also set the pane's own limits |
+| a paint, event, or `map_node` setter after `.pane(node)`, such as `.pane(node).background(..)`, set the splitter | it sets the pane. Call it before the first `.pane(..)` or after `.commit()` to set the splitter |
 
 ### Changed
 
@@ -283,6 +291,8 @@ First public release.
 
 ### Added
 
+- `CommandScene::glyph_runs()` returns the text runs of a scene in paint order.
+- `CommandScene::find_text` is public without feature `kittest`.
 - `View` and `view!`: a widget tree in a `.sigil` file that the running app reloads on save, with no rebuild. A mistake keeps the previous screen and shows the line and column.
 - `Space`, `TextRole`, and `Layer`: named steps for spacing, type, and depth. `gap`, `padding`, and `margin` setters no longer take a bare number, and `font_size` takes a reason.
 - A `Harness` runs the design rules when it is dropped. See `Flaw`, `Issue`, `Harness::assert_no_flaws`, `Harness::unaudited`, and `Widget::allow_flaw`.

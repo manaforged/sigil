@@ -221,13 +221,7 @@ impl ButtonBuilder {
     #[must_use]
     pub fn size(mut self, size: ControlSize) -> Self {
         let metrics = Metrics::current();
-        let size = if size == ControlSize::Grow {
-            self.width = ButtonWidth::Fill;
-            ControlSize::Default
-        } else {
-            self.width = ButtonWidth::Hug;
-            size
-        };
+        self.width = ButtonWidth::Hug;
         self.height = metrics.control_height(size);
         self.padding_x = metrics.control_padding(size);
         self

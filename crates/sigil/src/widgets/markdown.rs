@@ -128,7 +128,7 @@ impl MarkdownEditBuilder {
                 splitter(Orientation::Horizontal)
                     .child(editor, 360.0)
                     .pane(markdown(self.source))
-                    .initial(360.0)
+                    .width(360.0)
                     .grow(fit)
                     .commit()
                     .grow(fit),

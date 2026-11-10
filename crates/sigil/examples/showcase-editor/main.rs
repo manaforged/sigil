@@ -91,7 +91,7 @@ fn main_split(ws: Workspace, with_outline: bool) -> NodeBuilder {
             EXPLORER_W * 2.0,
         )
         .pane(center(ws))
-        .min(CENTER_MIN)
+        .min_width(CENTER_MIN)
         .grow(1.0)
         .commit();
     let split = if with_outline {
@@ -116,7 +116,7 @@ fn center(ws: Workspace) -> NodeBuilder {
         .child(
             splitter(Orientation::Vertical)
                 .pane(editor::editor(ws))
-                .min(EDITOR_MIN)
+                .min_height(EDITOR_MIN)
                 .grow(1.0)
                 .commit()
                 .child_constrained(

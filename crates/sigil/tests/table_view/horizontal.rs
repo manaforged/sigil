@@ -231,7 +231,7 @@ fn fraction_columns_stretch_in_a_measured_viewport() {
                     table(state)
                         .row_height(ROW_H)
                         .header_height(HEADER_H)
-                        .viewport_fill(),
+                        .fill_height(),
                 ),
         );
         let mut layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
