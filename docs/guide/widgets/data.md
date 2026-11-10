@@ -63,8 +63,8 @@ table(state).striped().viewport_fill();
 
 `TableColumn::new(id: &'static str, title)`:
 
-- `.width(ColWidth::Fixed(px) | ColWidth::Fraction(n))`: columns are `Fraction(1.0)` by default; `.min_width(px)` floors at 48 px.
-- `.align(ColAlign::End)` / `.numeric()`: `numeric` right-aligns and flags the column.
+- `.width(ColumnWidth::Fixed(px) | ColumnWidth::Fraction(n))`: columns are `Fraction(1.0)` by default; `.min_width(px)` floors at 48 px.
+- `.align(ColumnAlign::End)` / `.numeric()`: `numeric` right-aligns and flags the column.
 - `.sortable(Fn(&Row, &Row) -> Ordering)` / `.sort_by(key)`: clicking the header cycles ascending/descending/off via `toggle_sort`.
 - `.filterable(Fn(&Row, &str) -> bool)`: participates in the quick filter.
 - `.cell(Fn(&Row) -> impl IntoNode)`: the cell content; a column without it renders an empty `Role::GridCell`.

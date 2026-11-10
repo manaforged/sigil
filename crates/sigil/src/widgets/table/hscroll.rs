@@ -1,6 +1,6 @@
 use crate::reactive::derived;
 
-use super::columns::ColWidth;
+use super::columns::ColumnWidth;
 use super::state::TableState;
 
 pub(super) use crate::widgets::scroll::Horizontal as HScroll;
@@ -25,8 +25,8 @@ impl<Row: 'static> TableState<Row> {
                 total
                     + match (layout.widths.get(column.id()), column.col_width()) {
                         (Some(&px), _) => px.max(column.min_px()),
-                        (None, ColWidth::Fixed(px)) => px.max(0.0),
-                        (None, ColWidth::Fraction(_)) => column.min_px().max(0.0),
+                        (None, ColumnWidth::Fixed(px)) => px.max(0.0),
+                        (None, ColumnWidth::Fraction(_)) => column.min_px().max(0.0),
                     }
             })
     }

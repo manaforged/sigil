@@ -122,7 +122,7 @@ const DEFAULT_CELL_ASPECT: f32 = 0.5;
 
 /// Terminal capabilities.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Caps {
+pub struct Capabilities {
     /// The color.
     pub color: ColorDepth,
     /// The graphics, if any.
@@ -161,7 +161,7 @@ pub struct Caps {
     pub cell: Option<[u16; 2]>,
 }
 
-impl Default for Caps {
+impl Default for Capabilities {
     fn default() -> Self {
         Self {
             color: ColorDepth::Truecolor,
@@ -209,12 +209,12 @@ struct Answers {
 }
 
 struct Draft {
-    caps: Caps,
+    caps: Capabilities,
     #[cfg(unix)]
     ask: Questions,
 }
 
-impl Caps {
+impl Capabilities {
     /// One cell's width over its height, or 0.5 when the terminal did not report its cell size.
     #[must_use]
     pub fn cell_aspect(&self) -> f32 {
@@ -245,7 +245,7 @@ impl Caps {
 }
 
 #[cfg(unix)]
-fn ask_terminal(mut draft: Draft, widths: Option<ProbeRow>) -> (Caps, Calibration) {
+fn ask_terminal(mut draft: Draft, widths: Option<ProbeRow>) -> (Capabilities, Calibration) {
     let backdrop = draft.caps.backdrop.is_none();
     draft.ask = draft.ask.with(Question::Keys, true);
     let Some(input) = probe::quiet_terminal() else {
@@ -264,13 +264,13 @@ fn ask_terminal(mut draft: Draft, widths: Option<ProbeRow>) -> (Caps, Calibratio
 }
 
 #[cfg(not(unix))]
-const fn ask_terminal(Draft { caps }: Draft, _: Option<ProbeRow>) -> (Caps, Calibration) {
+const fn ask_terminal(Draft { caps }: Draft, _: Option<ProbeRow>) -> (Capabilities, Calibration) {
     (caps, Calibration::Unmeasured)
 }
 
 #[cfg(unix)]
 impl Draft {
-    fn settle(mut self, answers: &Answers) -> Caps {
+    fn settle(mut self, answers: &Answers) -> Capabilities {
         self.caps.notices.activity = answers.activity;
         self.caps.cell = answers.cell.or(self.caps.cell);
         if self.ask.has(Question::Sync) {

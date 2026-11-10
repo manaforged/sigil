@@ -199,7 +199,7 @@ fn hundred_thousand_rows_window_and_sort_without_rebuild() {
             vec![
                 TableColumn::new("name", "Name")
                     .sort_by(|row: &Item| row.name.clone())
-                    .width(ColWidth::Fixed(WIDTH))
+                    .width(ColumnWidth::Fixed(WIDTH))
                     .cell(|row: &Item| container().child(text(row.name.clone()))),
             ],
         );

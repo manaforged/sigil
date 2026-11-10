@@ -63,7 +63,7 @@ impl ChangeKind {
 
 /// The severity of a code diagnostic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum DiagSeverity {
+pub enum Severity {
     /// The hint diag severity.
     Hint,
     /// The info diag severity.
@@ -74,7 +74,7 @@ pub enum DiagSeverity {
     Error,
 }
 
-impl DiagSeverity {
+impl Severity {
     const fn tint_token(self) -> Token {
         match self {
             Self::Error => Token::Error3,
@@ -94,7 +94,7 @@ pub struct DiagSpan {
     /// The end.
     pub end: usize,
     /// The severity.
-    pub severity: DiagSeverity,
+    pub severity: Severity,
 }
 
 type DiagSpans = Signal<Vec<DiagSpan>>;

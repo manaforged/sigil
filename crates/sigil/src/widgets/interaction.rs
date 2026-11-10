@@ -1,7 +1,7 @@
 mod drag;
 mod steps;
 
-use crate::events::{KeyEvent, MouseButton, PointerEvent, PointerKind, PointerPhase};
+use crate::events::{KeyEvent, MouseButton, PointerEvent, PointerPhase, PointerType};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 use crate::style::StyleState;
@@ -171,7 +171,7 @@ impl InteractionState {
 
 pub(crate) fn is_primary(event: &PointerEvent) -> bool {
     event.button.map_or_else(
-        || event.kind != PointerKind::Mouse,
+        || event.kind != PointerType::Mouse,
         |button| button == MouseButton::Left,
     )
 }

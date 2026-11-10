@@ -130,7 +130,7 @@ impl ImagePainter {
     pub(crate) fn emit(
         &mut self,
         out: &mut impl Write,
-        caps: crate::terminal::caps::Caps,
+        caps: crate::terminal::caps::Capabilities,
         frame: ImageFrame<'_>,
     ) -> io::Result<()> {
         let Some(protocol) = caps.graphics else {

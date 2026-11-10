@@ -191,7 +191,7 @@ pub mod prelude {
     pub use crate::events::request_focus;
     pub use crate::events::{
         Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
-        PointerEvent, PointerKind, PointerPhase, Shortcut,
+        PointerEvent, PointerPhase, PointerType, Shortcut,
     };
     pub use crate::geometry::{Point, Size};
     #[cfg(feature = "scene")]
@@ -216,7 +216,7 @@ pub mod prelude {
     pub use crate::tasks::{SignalWriter, Status, Task, signal_writer, spawn, task};
     pub use crate::view::View;
     pub use crate::widgets::{
-        ColWidth, Combobox, Date, Density, DiffView, Disclosure, DragState, Identifiable,
+        ColumnWidth, Combobox, Date, Density, DiffView, Disclosure, DragState, Identifiable,
         ListRowSlots, MenuItem, ModalBuilder, Orientation, PathNode, SelectionMode, Side,
         SortDirection, SortKey, TableColumn, TableState, ToastQueue, Widget, a2ui, app_shell,
         avatar, axis_drag, button, card, chart, checkbox, chip, code_edit, color_field, combobox,

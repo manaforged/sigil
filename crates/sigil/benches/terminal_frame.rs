@@ -18,7 +18,7 @@ use sigil::kernel::{container, text};
 use sigil::reactive::Owner;
 use sigil::style::{Tone, grid};
 use sigil::terminal::{ColorDepth, Grid};
-use sigil::widgets::{ColWidth, TableColumn, TableState, chip, table};
+use sigil::widgets::{ColumnWidth, TableColumn, TableState, chip, table};
 
 const COLS: u16 = 120;
 const ROWS: u16 = 40;
@@ -68,20 +68,20 @@ fn rows(n: u32) -> Vec<Row> {
 fn columns() -> Vec<TableColumn<Row>> {
     vec![
         TableColumn::new("pid", "PID")
-            .width(ColWidth::Fixed(56.0))
+            .width(ColumnWidth::Fixed(56.0))
             .sort_by(|row: &Row| row.pid)
             .cell(|row: &Row| text(row.pid.to_string()).nowrap()),
         TableColumn::new("port", "PORT")
-            .width(ColWidth::Fixed(72.0))
+            .width(ColumnWidth::Fixed(72.0))
             .cell(|row: &Row| text(row.port.to_string()).nowrap()),
         TableColumn::new("state", "STATE")
-            .width(ColWidth::Fixed(72.0))
+            .width(ColumnWidth::Fixed(72.0))
             .cell(|_: &Row| chip("STRAY", Tone::Warn)),
         TableColumn::new("where", "WHERE")
-            .width(ColWidth::Fixed(176.0))
+            .width(ColumnWidth::Fixed(176.0))
             .cell(|row: &Row| text(row.place.clone()).nowrap()),
         TableColumn::new("cmd", "COMMAND")
-            .width(ColWidth::Fraction(1.0))
+            .width(ColumnWidth::Fraction(1.0))
             .cell(|row: &Row| text(row.cmd.clone()).nowrap()),
     ]
 }

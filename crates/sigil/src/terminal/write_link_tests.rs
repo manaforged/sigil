@@ -1,11 +1,11 @@
 use super::super::{AnsiPen, Cell, Grid, row_bytes};
-use crate::terminal::caps::Caps;
+use crate::terminal::caps::Capabilities;
 
 #[test]
 fn a_link_with_a_control_character_never_reaches_the_terminal() {
-    let caps = Caps {
+    let caps = Capabilities {
         hyperlinks: true,
-        ..Caps::default()
+        ..Capabilities::default()
     };
     let mut grid = Grid::new(4, 1);
     let cell = |url: &str| Cell {

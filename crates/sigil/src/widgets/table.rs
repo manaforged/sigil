@@ -16,7 +16,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use columns::MIN_COL_WIDTH;
 }
-pub use columns::{ColAlign, ColWidth, TableColumn};
+pub use columns::{ColumnAlign, ColumnWidth, TableColumn};
 pub use density::Density;
 pub use identity::Identifiable;
 pub use state::{SortKey, TableState};

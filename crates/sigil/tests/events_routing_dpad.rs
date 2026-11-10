@@ -37,7 +37,7 @@ fn dpad_right_moves_to_nearest_in_row() {
     let mut router = EventRouter::new();
 
     router.set_focus(&mut cx, Some(left));
-    router.focus_intent(&mut cx, &layout, FocusIntent::Right);
+    router.focus_intent(&mut cx, &layout, FocusDirection::Right);
 
     assert_eq!(router.focus(), Some(middle));
 }
@@ -59,7 +59,7 @@ fn dpad_up_from_bottom_grid_row() {
     let mut router = EventRouter::new();
 
     router.set_focus(&mut cx, Some(bottom_right));
-    router.focus_intent(&mut cx, &layout, FocusIntent::Up);
+    router.focus_intent(&mut cx, &layout, FocusDirection::Up);
 
     assert_eq!(router.focus(), Some(top_right));
 }
@@ -80,7 +80,7 @@ fn dpad_no_candidate_falls_back_tab() {
     let mut router = EventRouter::new();
 
     router.set_focus(&mut cx, Some(right));
-    router.focus_intent(&mut cx, &layout, FocusIntent::Right);
+    router.focus_intent(&mut cx, &layout, FocusDirection::Right);
 
     assert_eq!(router.focus(), Some(left));
 }

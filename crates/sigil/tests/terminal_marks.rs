@@ -68,11 +68,11 @@ fn a_progress_tone_changes_the_fill_ink() {
 
 #[test]
 fn colorfgbg_names_a_dark_or_light_backdrop() {
-    use sigil::terminal::{Backdrop, Caps};
+    use sigil::terminal::{Backdrop, Capabilities};
     let caps = |pair: &'static str| {
-        Caps::detect(move |key| (key == "COLORFGBG").then(|| pair.to_string())).backdrop
+        Capabilities::detect(move |key| (key == "COLORFGBG").then(|| pair.to_string())).backdrop
     };
     assert_eq!(caps("15;0"), Some(Backdrop::Dark));
     assert_eq!(caps("0;15"), Some(Backdrop::Light));
-    assert_eq!(Caps::detect(|_| None).backdrop, None);
+    assert_eq!(Capabilities::detect(|_| None).backdrop, None);
 }

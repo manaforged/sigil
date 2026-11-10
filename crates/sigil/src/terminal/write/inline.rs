@@ -5,7 +5,7 @@ use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
 
 use super::{AnsiPen, AnsiStyle, clip, same_row};
-use crate::terminal::caps::{Caps, Cursor};
+use crate::terminal::caps::{Capabilities, Cursor};
 use crate::terminal::paint::Grid;
 
 pub(crate) fn inline(
@@ -13,7 +13,7 @@ pub(crate) fn inline(
     prev: Option<&Grid>,
     next: &Grid,
     (last_rows, caret): (usize, bool),
-    caps: &Caps,
+    caps: &Capabilities,
 ) -> io::Result<()> {
     let rows = next.rows();
     let painted = last_rows.max(rows);
@@ -55,7 +55,7 @@ fn inline_cursor(
     at: Option<(usize, usize)>,
     rows: usize,
     painted: usize,
-    caps: &Caps,
+    caps: &Capabilities,
 ) -> io::Result<()> {
     let Some((col, row)) = at.filter(|(_, row)| *row < rows) else {
         return queue!(out, cursor::Hide);

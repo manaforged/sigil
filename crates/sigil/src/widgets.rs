@@ -248,7 +248,7 @@ pub(crate) use checkbox::CheckboxBuilder;
 pub use checkbox::checkbox;
 pub use chip::chip;
 pub(crate) use code_edit::CodeEditBuilder;
-pub use code_edit::{ChangeKind, DiagSeverity, DiagSpan, code_edit};
+pub use code_edit::{ChangeKind, DiagSpan, Severity, code_edit};
 pub use color_field::color_field;
 pub(crate) use color_field::{ColorFieldBuilder, parse_hex as parse_color_hex};
 #[cfg(all(feature = "scene", feature = "kittest"))]
@@ -320,8 +320,8 @@ pub use splitter::splitter;
 pub use stat::stat;
 pub use surface::surface;
 pub use table::{
-    ColAlign, ColWidth, Density, Identifiable, SortDirection, SortKey, TableColumn, TableState,
-    table,
+    ColumnAlign, ColumnWidth, Density, Identifiable, SortDirection, SortKey, TableColumn,
+    TableState, table,
 };
 kittest_pub! {
     #[doc(hidden)]

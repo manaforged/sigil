@@ -6,7 +6,7 @@ use crate::kernel::SortDirection;
 use crate::reactive::{Signal, effect, signal};
 
 use super::super::listbox::{only, span, toggle};
-use super::columns::{ColWidth, MIN_COL_WIDTH, TableColumn};
+use super::columns::{ColumnWidth, MIN_COL_WIDTH, TableColumn};
 use super::derive::{compute_visible, retain_visible, reuse_identity};
 use super::identity::{self, Identifiable};
 
@@ -355,8 +355,8 @@ impl<Row: 'static> TableState<Row> {
             .iter()
             .find(|col| col.id() == id)
             .and_then(|col| match col.col_width() {
-                ColWidth::Fixed(px) => Some(px),
-                ColWidth::Fraction(_) => None,
+                ColumnWidth::Fixed(px) => Some(px),
+                ColumnWidth::Fraction(_) => None,
             })
     }
 

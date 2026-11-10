@@ -1,6 +1,6 @@
 use super::{
     Event, GestureEvent, GestureKind, Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState,
-    MouseButton, MouseButtons, PhysicalKey, PointerEvent, PointerKind, PointerPhase, ScrollDelta,
+    MouseButton, MouseButtons, PhysicalKey, PointerEvent, PointerPhase, PointerType, ScrollDelta,
     ScrollEvent, ScrollPhase, WindowEvent,
 };
 use crate::geometry::Point;
@@ -186,7 +186,7 @@ impl Event {
 
     /// Sets the device of a pointer event; other events stay unchanged.
     #[must_use]
-    pub const fn kind(mut self, kind: PointerKind) -> Self {
+    pub const fn kind(mut self, kind: PointerType) -> Self {
         if let Self::Pointer(event) = &mut self {
             event.kind = kind;
         }

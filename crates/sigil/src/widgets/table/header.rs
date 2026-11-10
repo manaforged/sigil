@@ -16,7 +16,7 @@ use super::super::interaction::InteractionState;
 use super::super::orientation::Orientation;
 use super::super::patterns::row_states;
 use super::chrome::{ContextKind, TableChrome};
-use super::columns::{ColAlign, TableColumn};
+use super::columns::{ColumnAlign, TableColumn};
 use super::hscroll::HScroll;
 use super::select;
 use super::sort_mark::sort_mark;
@@ -150,7 +150,7 @@ fn header_title<Row: 'static>(
     pad_x: f32,
     mark: NodeBuilder,
 ) -> NodeBuilder {
-    let justify = if column.alignment() == ColAlign::End {
+    let justify = if column.alignment() == ColumnAlign::End {
         JustifyContent::End
     } else {
         JustifyContent::Start

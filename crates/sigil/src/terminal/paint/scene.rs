@@ -9,7 +9,7 @@ use crate::scene::{
     Gradient, LayerEffect, SceneCommand,
 };
 use crate::style::{Rgba8, Theme};
-use crate::terminal::caps::{Caps, Fills};
+use crate::terminal::caps::{Capabilities, Fills};
 
 use super::decoration::{self, BorderEdge};
 use super::fill::{self, FillSurface};
@@ -23,7 +23,7 @@ mod path;
 pub(crate) struct CellPaint<'a> {
     pub theme: &'a Theme,
     pub cell: f32,
-    pub caps: Caps,
+    pub caps: Capabilities,
     pub marks: &'a Marks,
 }
 
@@ -40,7 +40,7 @@ pub(crate) fn raster_into(grid: &mut Grid, scene: &CommandScene, theme: &Theme, 
     let paint = CellPaint {
         theme,
         cell,
-        caps: Caps::default(),
+        caps: Capabilities::default(),
         marks: &marks,
     };
     raster_with(grid, scene, &paint);

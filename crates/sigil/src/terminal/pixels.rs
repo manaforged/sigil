@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::AppConfig;
 use crate::kernel::IntoNode;
-use crate::terminal::caps::Caps;
+use crate::terminal::caps::Capabilities;
 use crate::terminal::graphics::Mux;
 #[cfg(feature = "scene")]
 use crate::terminal::run::{isolated, recover};
@@ -33,12 +33,12 @@ pub fn pixels() -> bool {
     REQUESTED.load(Ordering::Relaxed) && AVAILABLE.load(Ordering::Relaxed)
 }
 
-fn available(config: &AppConfig, caps: Caps) -> bool {
+fn available(config: &AppConfig, caps: Capabilities) -> bool {
     cfg!(feature = "scene") && !config.inline && cell(caps).is_some()
 }
 
 /// The cell size pixel mode draws at: the reported one, else a guess on a Kitty terminal.
-fn cell(caps: Caps) -> Option<[u16; 2]> {
+fn cell(caps: Capabilities) -> Option<[u16; 2]> {
     if caps.graphics != Some(crate::terminal::Protocol::Kitty) {
         return None;
     }
@@ -65,7 +65,7 @@ pub(super) struct Pixels {
     )
 )]
 impl Pixels {
-    pub(super) fn open(config: &AppConfig, caps: Caps) -> Self {
+    pub(super) fn open(config: &AppConfig, caps: Capabilities) -> Self {
         let available = available(config, caps);
         AVAILABLE.store(available, Ordering::Relaxed);
         if std::env::var(ENV).as_deref() == Ok("pixels") {

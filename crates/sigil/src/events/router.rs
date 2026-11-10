@@ -5,7 +5,7 @@ use crate::layout::LayoutEngine;
 #[cfg(any(test, feature = "kittest"))]
 use accesskit::TreeUpdate;
 
-use crate::events::focus::{FocusIntent, FocusManager};
+use crate::events::focus::{FocusDirection, FocusManager};
 use crate::events::hit_test::{HitTestCache, NodePath, visible};
 use crate::events::pointer_dispatch::{
     PointerTargets, dispatch_pointer_path, dispatch_pointer_target, dispatch_synthetic_target,
@@ -173,7 +173,7 @@ impl EventRouter {
 
     kittest_pub! {
         #[doc(hidden)]
-        pub fn focus_intent(&mut self, cx: &mut Cx, layout: &LayoutEngine, intent: FocusIntent) {
+        pub fn focus_intent(&mut self, cx: &mut Cx, layout: &LayoutEngine, intent: FocusDirection) {
             crate::events::note_focus_source(true);
             self.focus.focus_intent(cx, layout, intent);
         }

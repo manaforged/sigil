@@ -36,14 +36,14 @@ fn table_golden_state() -> sigil::widgets::TableState<TableRow> {
         vec![
             TableColumn::new("name", "Name")
                 .sort_by(|row: &TableRow| row.name)
-                .width(ColWidth::Fixed(120.0))
+                .width(ColumnWidth::Fixed(120.0))
                 .cell(move |row: &TableRow| text_cell(row.name)),
             TableColumn::new("role", "Role")
                 .sort_by(|row: &TableRow| row.role)
-                .width(ColWidth::Fixed(96.0))
+                .width(ColumnWidth::Fixed(96.0))
                 .cell(move |row: &TableRow| text_cell(row.role)),
             TableColumn::new("city", "City")
-                .width(ColWidth::Fixed(104.0))
+                .width(ColumnWidth::Fixed(104.0))
                 .cell(move |row: &TableRow| text_cell(row.city)),
         ],
     )

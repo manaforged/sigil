@@ -1,5 +1,5 @@
 use sigil::prelude::*;
-use sigil::widgets::DiagSeverity;
+use sigil::widgets::Severity;
 
 use super::facts::{count, severity_icon, severity_tone};
 use super::project::{AHEAD, BEHIND, BRANCH, PROJECT_NAME};
@@ -132,7 +132,7 @@ pub(crate) fn top_bar(ws: Workspace) -> NodeBuilder {
         )
 }
 
-fn severity_item(severity: DiagSeverity) -> NodeBuilder {
+fn severity_item(severity: Severity) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
@@ -239,9 +239,9 @@ pub(crate) fn status(ws: Workspace) -> NodeBuilder {
                     .align_items(AlignItems::Center),
             )
             .pointer_down(move |_| run(ws, Command::Problems))
-            .child(severity_item(DiagSeverity::Error))
-            .child(severity_item(DiagSeverity::Warning))
-            .child(severity_item(DiagSeverity::Info)),
+            .child(severity_item(Severity::Error))
+            .child(severity_item(Severity::Warning))
+            .child(severity_item(Severity::Info)),
         right_group(ws),
     ])
 }

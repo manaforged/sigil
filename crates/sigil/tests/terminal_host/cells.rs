@@ -1,5 +1,5 @@
 use sigil::prelude::*;
-use sigil::widgets::{ColWidth, Orientation, TableColumn, TableState, TreeNode};
+use sigil::widgets::{ColumnWidth, Orientation, TableColumn, TableState, TreeNode};
 
 use super::{painted, present, step};
 
@@ -44,7 +44,7 @@ fn job_table() -> TableState<(usize, String)> {
         rows(2000, 0),
         vec![
             TableColumn::new("id", "Id")
-                .width(ColWidth::Fixed(64.0))
+                .width(ColumnWidth::Fixed(64.0))
                 .sort_by(|row: &(usize, String)| row.0),
             TableColumn::new("name", "Name")
                 .sort_by(|row: &(usize, String)| row.1.clone())
@@ -216,10 +216,10 @@ fn fixed_width_table_headers_show_their_whole_title() {
                 vec![
                     TableColumn::new("pid", "PID")
                         .numeric()
-                        .width(ColWidth::Fixed(64.0))
+                        .width(ColumnWidth::Fixed(64.0))
                         .sort_by(|row: &(u32, String)| row.0),
                     TableColumn::new("cpu", "CPU%")
-                        .width(ColWidth::Fixed(64.0))
+                        .width(ColumnWidth::Fixed(64.0))
                         .sort_by(|row: &(u32, String)| row.1.clone()),
                 ],
             ))

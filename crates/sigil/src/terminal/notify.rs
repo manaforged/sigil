@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use std::sync::{Mutex, PoisonError};
 
-use crate::terminal::caps::{Caps, Notify};
+use crate::terminal::caps::{Capabilities, Notify};
 use crate::terminal::graphics::write_mux;
 use crate::terminal::term::{applied, current_caps, live};
 
@@ -110,7 +110,7 @@ pub fn bell(note: Option<&str>) -> Result<(), crate::Error> {
     out.flush().map_err(Into::into)
 }
 
-fn notice(caps: Caps, title: &str, body: &str) -> Option<String> {
+fn notice(caps: Capabilities, title: &str, body: &str) -> Option<String> {
     let (title, body) = (clean(title), clean(body));
     Some(match caps.notices.notify? {
         Notify::Osc777 => format!(
@@ -127,7 +127,7 @@ fn clean(text: &str) -> String {
     text.chars().filter(|ch| !ch.is_control()).collect()
 }
 
-fn send(caps: Caps, seq: &str) -> Result<(), crate::Error> {
+fn send(caps: Capabilities, seq: &str) -> Result<(), crate::Error> {
     let mut out = io::stdout().lock();
     write_mux(&mut out, seq, caps.mux)?;
     out.flush().map_err(Into::into)

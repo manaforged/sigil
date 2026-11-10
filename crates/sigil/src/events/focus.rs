@@ -24,7 +24,7 @@ pub(crate) use reveal::{ScrollReveal, reveal_focus};
 /// Directional focus move.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[non_exhaustive]
-pub enum FocusIntent {
+pub enum FocusDirection {
     /// The up focus intent.
     Up,
     /// The down focus intent.
@@ -152,15 +152,20 @@ impl FocusManager {
         self.set_focus(cx, next);
     }
 
-    pub(crate) fn focus_intent(&mut self, cx: &mut Cx, layout: &LayoutEngine, intent: FocusIntent) {
+    pub(crate) fn focus_intent(
+        &mut self,
+        cx: &mut Cx,
+        layout: &LayoutEngine,
+        intent: FocusDirection,
+    ) {
         self.ensure_ring(cx, Some(layout));
         if let Some(target) = self.nearest_in_intent(cx, layout, intent) {
             self.set_focus(cx, Some(target));
             return;
         }
         match intent {
-            FocusIntent::Down | FocusIntent::Right => self.focus_next(cx, Some(layout)),
-            FocusIntent::Up | FocusIntent::Left => self.focus_prev(cx, Some(layout)),
+            FocusDirection::Down | FocusDirection::Right => self.focus_next(cx, Some(layout)),
+            FocusDirection::Up | FocusDirection::Left => self.focus_prev(cx, Some(layout)),
         }
     }
 
@@ -168,7 +173,7 @@ impl FocusManager {
         &self,
         cx: &Cx,
         layout: &LayoutEngine,
-        intent: FocusIntent,
+        intent: FocusDirection,
     ) -> Option<NodeId> {
         let focused = self.focused?;
         let origin = node_center(cx, layout, focused)?;
@@ -274,12 +279,12 @@ fn node_center(cx: &Cx, layout: &LayoutEngine, id: NodeId) -> Option<Point> {
     ))
 }
 
-fn intent_cost(intent: FocusIntent, origin: Point, candidate: Point) -> Option<f32> {
+fn intent_cost(intent: FocusDirection, origin: Point, candidate: Point) -> Option<f32> {
     let (travel, cross) = match intent {
-        FocusIntent::Right => (candidate.x - origin.x, candidate.y - origin.y),
-        FocusIntent::Left => (origin.x - candidate.x, candidate.y - origin.y),
-        FocusIntent::Down => (candidate.y - origin.y, candidate.x - origin.x),
-        FocusIntent::Up => (origin.y - candidate.y, candidate.x - origin.x),
+        FocusDirection::Right => (candidate.x - origin.x, candidate.y - origin.y),
+        FocusDirection::Left => (origin.x - candidate.x, candidate.y - origin.y),
+        FocusDirection::Down => (candidate.y - origin.y, candidate.x - origin.x),
+        FocusDirection::Up => (origin.y - candidate.y, candidate.x - origin.x),
     };
     (travel > 0.0).then(|| 2.0_f32.mul_add(cross.abs(), travel))
 }

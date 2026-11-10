@@ -25,7 +25,7 @@ Images resolve `src` only as a `data:` base64 URI (SVG excluded). The widget nev
 - `.highlights(Signal<Vec<Vec<Highlight>>>)`: per-line syntax spans; `Highlight { start, end, token }` maps a column range to a token class.
 - `.selection(Signal<Option<(usize, usize)>>)`: selection anchor; the range from anchor to caret paints selected.
 - `.gutter(Signal<Vec<Option<ChangeKind>>>)`: per-line `Added` / `Modified` / `Deleted` bars in the line-number gutter (sized to the line count: `18 + digits × 7` px).
-- `.diagnostics(Signal<Vec<DiagSpan>>)`: `DiagSpan { line, start, end, severity }` tints a line range by `DiagSeverity` (Hint/Info → info, Warning → warn, Error → error).
+- `.diagnostics(Signal<Vec<DiagSpan>>)`: `DiagSpan { line, start, end, severity }` tints a line range by `Severity` (Hint/Info → info, Warning → warn, Error → error).
 - `.key_handler(Fn(&mut KeyEvent))`: a key handler that runs before the built-in editing keys. Call `event.stop_propagation()` to replace a built-in binding. Installing one traps Tab for the handler instead of moving focus.
 - `.row_height(px)`: defaults to 18 px, or one cell on a terminal.
 - `.disabled(Signal<bool>)`: ignores keys, removes the editor from the focus order, and paints it at the disabled opacity.

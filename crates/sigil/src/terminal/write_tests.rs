@@ -7,7 +7,7 @@ use crate::app::{CellWidth, set_cell_width};
 use crate::scene::command::CellRect;
 use crate::scene::{CommandScene, DrawRect, GlyphRun, SceneCommand, TextFlow};
 use crate::style::{Rgba8, TextStyle, Theme, Tone};
-use crate::terminal::caps::{Caps, ColorDepth};
+use crate::terminal::caps::{Capabilities, ColorDepth};
 use crate::terminal::paint::raster;
 
 const UNSET: Rgba8 = rgba(0, 0, 0, 0);
@@ -91,7 +91,7 @@ fn a_colour_without_truecolor_lands_in_the_cube() {
 #[test]
 fn apple_terminal_honors_an_explicit_truecolor_capability() {
     let depth = |program: &str, colorterm: Option<&str>| {
-        Caps::detect(|key| match key {
+        Capabilities::detect(|key| match key {
             "TERM_PROGRAM" => Some(program.to_owned()),
             "COLORTERM" => colorterm.map(str::to_owned),
             _ => None,
@@ -161,7 +161,7 @@ fn bytes(grid: &Grid, row: usize) -> String {
         grid,
         row,
         &mut AnsiPen::default(),
-        &Caps::default(),
+        &Capabilities::default(),
     )
     .expect("write");
     String::from_utf8(out).expect("utf8")
@@ -213,9 +213,9 @@ fn explicit_tab_colours_survive_ansi16_tones() {
         &CellPaint {
             theme: &theme,
             cell: 8.0,
-            caps: Caps {
+            caps: Capabilities {
                 color: ColorDepth::Ansi16,
-                ..Caps::default()
+                ..Capabilities::default()
             },
             marks: &marks,
         },
@@ -260,7 +260,7 @@ fn a_blank_tail_is_cleared_rather_than_spaced() {
 
 #[test]
 fn inline_proof_paints_relative_and_clears_tail() {
-    let caps = Caps::default();
+    let caps = Capabilities::default();
     let grid6 = draw(vec![plain("alpha", None)], 8, 6);
 
     let mut out = Vec::new();
@@ -296,7 +296,7 @@ fn inline_proof_paints_relative_and_clears_tail() {
 
 #[test]
 fn the_cursor_shows_only_at_a_text_caret() -> std::io::Result<()> {
-    let caps = Caps::default();
+    let caps = Capabilities::default();
     let mut focus = Vec::new();
     super::cursor(&mut focus, Some((0, 0)), false, &caps)?;
     let mut caret = Vec::new();

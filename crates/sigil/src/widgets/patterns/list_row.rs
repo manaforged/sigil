@@ -12,7 +12,7 @@ use crate::widgets::Widget;
 use super::super::chip::chip;
 use super::super::interactive::interactive;
 use super::super::popup::{ChevronDirection, chevron};
-use super::super::table::ColAlign;
+use super::super::table::ColumnAlign;
 use super::activatable::activatable;
 
 const INDENT_COLS: f32 = 2.0;
@@ -74,7 +74,7 @@ pub struct ListColumn {
     /// The width.
     pub width: f32,
     /// The align.
-    pub align: ColAlign,
+    pub align: ColumnAlign,
 }
 
 impl ListColumn {
@@ -84,14 +84,14 @@ impl ListColumn {
         Self {
             text: text.into(),
             width,
-            align: ColAlign::End,
+            align: ColumnAlign::End,
         }
     }
 
     /// Aligns the column to the start.
     #[must_use]
     pub const fn start(mut self) -> Self {
-        self.align = ColAlign::Start;
+        self.align = ColumnAlign::Start;
         self
     }
 }
@@ -367,8 +367,8 @@ fn column(entry: ListColumn, shrink: bool, tone: RowTone) -> NodeBuilder {
                 .shrink(if shrink { 1.0 } else { 0.0 })
                 .min_size(0.0, 0.0)
                 .justify_content(match entry.align {
-                    ColAlign::Start => JustifyContent::Start,
-                    ColAlign::End => JustifyContent::End,
+                    ColumnAlign::Start => JustifyContent::Start,
+                    ColumnAlign::End => JustifyContent::End,
                 }),
         )
         .child(

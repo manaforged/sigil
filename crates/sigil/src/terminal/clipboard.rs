@@ -3,10 +3,10 @@ use std::process::{Command, Stdio};
 
 use crate::Error;
 use crate::clipboard::{Clipboard, Delivery};
-use crate::terminal::caps::{Caps, ClipRoute};
+use crate::terminal::caps::{Capabilities, ClipRoute};
 use crate::terminal::graphics::{Mux, base64, write_mux};
 
-struct Osc52(Caps, std::cell::Cell<bool>);
+struct Osc52(Capabilities, std::cell::Cell<bool>);
 
 impl Clipboard for Osc52 {
     fn set(&self, text: &str) -> Result<Delivery, Error> {
@@ -101,6 +101,6 @@ fn pbcopy(text: &str) -> bool {
 }
 
 /// Install the process clipboard for the terminal host, routed by `caps.clipboard`.
-pub(crate) fn install_clipboard(caps: Caps) {
+pub(crate) fn install_clipboard(caps: Capabilities) {
     crate::clipboard::install(Osc52(caps, std::cell::Cell::new(true)));
 }

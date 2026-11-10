@@ -7,7 +7,7 @@ use crossterm::style::{
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
 
-use crate::terminal::caps::{Caps, ColorDepth, Cursor, Erase};
+use crate::terminal::caps::{Capabilities, ColorDepth, Cursor, Erase};
 use crate::terminal::colour::paint;
 use crate::terminal::paint::{CONTINUES, Cell, Grid, Ink, Underline};
 use smol_str::SmolStr;
@@ -54,9 +54,9 @@ pub(crate) fn render(
     next: &Grid,
     depth: ColorDepth,
 ) -> Result<(), crate::Error> {
-    let caps = Caps {
+    let caps = Capabilities {
         color: depth,
-        ..Caps::default()
+        ..Capabilities::default()
     };
     if prev.cols() == next.cols() && prev.rows() == next.rows() {
         dirty(out, prev, next, &caps, None).map_err(Into::into)
@@ -65,7 +65,7 @@ pub(crate) fn render(
     }
 }
 
-pub(crate) fn all(out: &mut impl Write, grid: &Grid, caps: &Caps) -> io::Result<()> {
+pub(crate) fn all(out: &mut impl Write, grid: &Grid, caps: &Capabilities) -> io::Result<()> {
     let mut pen = AnsiPen::default();
     for row in 0..grid.rows() {
         row_bytes(out, grid, row, &mut pen, caps)?;
@@ -73,7 +73,7 @@ pub(crate) fn all(out: &mut impl Write, grid: &Grid, caps: &Caps) -> io::Result<
     pen.rest(out)
 }
 
-pub(crate) fn same_row(prev: &[Cell], next: &[Cell], caps: &Caps) -> bool {
+pub(crate) fn same_row(prev: &[Cell], next: &[Cell], caps: &Capabilities) -> bool {
     prev.len() == next.len()
         && prev
             .iter()
@@ -81,7 +81,7 @@ pub(crate) fn same_row(prev: &[Cell], next: &[Cell], caps: &Caps) -> bool {
             .all(|(old, new)| same_cell(old, new, caps))
 }
 
-fn same_cell(old: &Cell, new: &Cell, caps: &Caps) -> bool {
+fn same_cell(old: &Cell, new: &Cell, caps: &Capabilities) -> bool {
     old == new || (old.text == new.text && AnsiStyle::of(old, caps) == AnsiStyle::of(new, caps))
 }
 
@@ -89,7 +89,7 @@ pub(crate) fn cursor(
     out: &mut impl Write,
     at: Option<(usize, usize)>,
     caret: bool,
-    caps: &Caps,
+    caps: &Capabilities,
 ) -> io::Result<()> {
     let Some((col, row)) = at else {
         return queue!(out, cursor::Hide);
@@ -116,7 +116,7 @@ struct AnsiStyle {
 }
 
 impl AnsiStyle {
-    fn of(cell: &Cell, caps: &Caps) -> Self {
+    fn of(cell: &Cell, caps: &Capabilities) -> Self {
         let (foreground, background) = terminal_inks(cell);
         let underline = match cell.lines.underline {
             Underline::Curly if !caps.underline_styles => Underline::Straight,
@@ -201,7 +201,7 @@ fn row_bytes(
     grid: &Grid,
     row: usize,
     pen: &mut AnsiPen,
-    caps: &Caps,
+    caps: &Capabilities,
 ) -> io::Result<()> {
     let end = grid.painted_width(row);
     cells(out, grid.row(row), (row, 0, end, true), pen, caps)
@@ -212,7 +212,7 @@ fn cells(
     row_cells: &[Cell],
     (row, start, end, tail): (usize, usize, usize, bool),
     pen: &mut AnsiPen,
-    caps: &Caps,
+    caps: &Capabilities,
 ) -> io::Result<()> {
     queue!(out, cursor::MoveTo(clip(start), clip(row)))?;
     let fill = if tail {
@@ -242,7 +242,7 @@ fn cells(
 fn filled(
     row_cells: &[Cell],
     (start, end): (usize, usize),
-    caps: &Caps,
+    caps: &Capabilities,
 ) -> Option<(usize, AnsiStyle)> {
     let span = row_cells.get(start..end)?;
     let paint = AnsiStyle::of(span.last()?, caps);

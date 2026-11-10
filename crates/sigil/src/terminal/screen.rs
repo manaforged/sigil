@@ -5,7 +5,7 @@ use crate::profile;
 use crate::scene::CommandScene;
 
 use crate::terminal::access::{Access, Announcer, Place, Speech};
-use crate::terminal::caps::Caps;
+use crate::terminal::caps::Capabilities;
 use crate::terminal::paint::{Grid, Marks};
 use crate::terminal::run::view;
 use crate::terminal::transcript::Transcript;
@@ -27,7 +27,7 @@ pub struct Screen {
     dt: f32,
     painter: crate::terminal::graphics::ImagePainter,
     transcript: Transcript,
-    caps: Caps,
+    caps: Capabilities,
     live_rows: usize,
     announcer: Announcer,
     damage: Option<RowDamage>,
@@ -76,7 +76,7 @@ impl Screen {
             dt: crate::app::FRAME_INTERVAL.as_secs_f32(),
             painter: crate::terminal::graphics::ImagePainter::default(),
             transcript: Transcript::from_env(),
-            caps: Caps::default(),
+            caps: Capabilities::default(),
             live_rows: 0,
             announcer: Announcer::default(),
             damage: None,
@@ -88,14 +88,14 @@ impl Screen {
 
     /// Creates a screen with these capabilities.
     #[must_use]
-    pub fn with_caps(cols: u16, rows: u16, caps: Caps) -> Self {
+    pub fn with_caps(cols: u16, rows: u16, caps: Capabilities) -> Self {
         let mut screen = Self::new(cols, rows);
         screen.set_caps(caps);
         screen
     }
 
     /// Sets the caps.
-    pub const fn set_caps(&mut self, caps: Caps) {
+    pub const fn set_caps(&mut self, caps: Capabilities) {
         self.caps = caps;
         self.grid.set_graphics(caps.graphics.is_some());
         self.prev.set_graphics(caps.graphics.is_some());
@@ -134,7 +134,7 @@ impl Screen {
 
     /// Returns the caps.
     #[must_use]
-    pub const fn caps(&self) -> &Caps {
+    pub const fn caps(&self) -> &Capabilities {
         &self.caps
     }
 

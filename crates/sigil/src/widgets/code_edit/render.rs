@@ -7,11 +7,11 @@ use crate::widgets::grapheme::{col_bytes, col_count};
 
 use super::super::highlight::Highlight;
 use super::{
-    CHANGE_BAR_W, ChangeKind, DIGIT_W, DiagSeverity, DiagSpan, GUTTER_PAD, LineWindow, RUN_CLASS,
-    SELECTION, SelRange,
+    CHANGE_BAR_W, ChangeKind, DIGIT_W, DiagSpan, GUTTER_PAD, LineWindow, RUN_CLASS, SELECTION,
+    SelRange, Severity,
 };
 
-type DiagRange = (usize, usize, DiagSeverity);
+type DiagRange = (usize, usize, Severity);
 
 #[derive(Clone, Copy)]
 pub(super) struct EditRowCtx<'a> {
@@ -183,7 +183,7 @@ fn styled_row(
                 .filter(|(start, end, _)| *start <= a && a < *end)
                 .map(|(_, _, severity)| *severity)
                 .max()
-                .map(DiagSeverity::tint_token)
+                .map(Severity::tint_token)
         };
         row = match tint {
             Some(tint) => row.child(

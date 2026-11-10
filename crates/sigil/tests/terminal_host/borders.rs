@@ -102,9 +102,9 @@ fn inset_plate(fills: sigil::terminal::Fills) -> String {
                     .height(96.0),
             )
         });
-        let caps = sigil::terminal::Caps {
+        let caps = sigil::terminal::Capabilities {
             fills,
-            ..sigil::terminal::Caps::default()
+            ..sigil::terminal::Capabilities::default()
         };
         let mut screen = sigil::terminal::Screen::with_caps(30, 12, caps);
         screen.frame(&mut host, [], (30, 12)).expect("frame");

@@ -87,9 +87,9 @@ fn app_tree() -> impl IntoNode {
 
 ## Capabilities
 
-`run` detects one `sigil::terminal::Caps` when it starts. It reads the environment first. For what the environment leaves open, `run` sends a DEC 2026 mode query, a Kitty keyboard query, an OSC 11 background query, and DA1, and waits up to 1 s for the reply. Graphics come from the environment alone.
+`run` detects one `sigil::terminal::Capabilities` when it starts. It reads the environment first. For what the environment leaves open, `run` sends a DEC 2026 mode query, a Kitty keyboard query, an OSC 11 background query, and DA1, and waits up to 1 s for the reply. Graphics come from the environment alone.
 
-On a dark backdrop, `run` starts with `Theme::dark()` unless `AppConfig::theme_file` is set. `set_theme` from the app still wins. `Caps::detect` runs the environment step alone.
+On a dark backdrop, `run` starts with `Theme::dark()` unless `AppConfig::theme_file` is set. `set_theme` from the app still wins. `Capabilities::detect` runs the environment step alone.
 
 | Capability | Environment | Query | Fallback |
 | --- | --- | --- | --- |
@@ -154,7 +154,7 @@ The writer compares cells after it maps their colors to the detected color depth
 - Focus in and out become `WindowEvent::Focused`, and a resize becomes `WindowEvent::Resized` in cell-pixel units. Both reach `EventRouter` like the window host events. File drops from the desktop are window-only.
 - `run` installs an OSC 52 clipboard: copy and cut emit `ESC ] 52 ; c ; <base64> BEL`, wrapped in DCS passthrough under tmux or screen. A clipboard read sends the OSC 52 query and waits up to one second for the reply; a terminal that does not answer is not asked again in the session. A bracketed paste arrives as one `Event::Paste`, which the router delivers to the `on_paste` handlers of the focused node and its ancestors; text fields insert it as one edit. The `clipboard` feature of `sigil-ui` and an OS clipboard are not needed.
 - Ctrl+Z suspends the app like any job-control program: the host restores the terminal and stops, and `fg` resumes it and redraws. `AppConfig::suspend_on` changes the key; `None` hands Ctrl+Z to the app.
-- `terminal::notify`, `terminal::progress`, `terminal::set_title`, and `terminal::bell` write the terminal's notification (OSC 9 or OSC 777), tab progress (OSC 9;4), and title sequences. The host sends only the sequences `Caps::notices` lists for the terminal it identified.
+- `terminal::notify`, `terminal::progress`, `terminal::set_title`, and `terminal::bell` write the terminal's notification (OSC 9 or OSC 777), tab progress (OSC 9;4), and title sequences. The host sends only the sequences `Capabilities::notices` lists for the terminal it identified.
 - `SIGIL_TUI_TRANSCRIPT=1` turns on a transcript stream on stderr: each flushed frame writes the `Host::accessibility_text` of the accessibility tree when the tree changed, else the text rows that changed. This is the screen-reader and automation transcript surface.
 - The cell grid changes the paint, not the tree. The widgets, events, and signals are the same as on the window host.
 - Transforms move and scale what they hold, as in a window: a panned or zoomed subtree paints at its transformed place and size, snapped to cells. Text keeps one cell per character at its transformed position.

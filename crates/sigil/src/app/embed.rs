@@ -2,7 +2,7 @@ use accesskit::ActionRequest;
 
 use crate::events::Event;
 use crate::events::hit_test::HitTestCache;
-use crate::events::{EventRouter, FocusIntent};
+use crate::events::{EventRouter, FocusDirection};
 use crate::geometry::{Point, Rect, Size};
 use crate::reactive::Runtime;
 use std::rc::Rc;
@@ -315,7 +315,7 @@ impl Host {
     }
 
     /// Applies a focus request.
-    pub fn focus_intent(&mut self, intent: FocusIntent) {
+    pub fn focus_intent(&mut self, intent: FocusDirection) {
         self.on_tree(|cx, layout, router| router.focus_intent(cx, layout, intent));
     }
 

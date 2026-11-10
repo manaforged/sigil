@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn a_row_with_changes_far_apart_rewrites_only_the_changed_cells() {
-    let caps = Caps::default();
+    let caps = Capabilities::default();
     let row: Vec<Cell> = (0..40)
         .map(|index| Cell {
             text: if index % 2 == 0 { "x" } else { "y" }.into(),
@@ -40,7 +40,7 @@ fn a_row_with_changes_far_apart_rewrites_only_the_changed_cells() {
 
 #[test]
 fn a_row_limited_write_matches_the_full_write() {
-    let caps = Caps::default();
+    let caps = Capabilities::default();
     let base: Vec<Cell> = (0..20)
         .map(|index| Cell {
             text: if index % 2 == 0 {

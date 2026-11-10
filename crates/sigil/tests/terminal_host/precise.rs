@@ -5,7 +5,7 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::Paint;
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
-use sigil::terminal::{Caps, Glyphs, Screen};
+use sigil::terminal::{Capabilities, Glyphs, Screen};
 
 use super::oracle::{COLS, Model, ROWS, tree};
 
@@ -42,9 +42,9 @@ fn ascii_glyphs_hold_on_full_and_region_frames() {
                 .child(text(bullet).nowrap())
                 .child(text("steady … line").nowrap())
         });
-        let caps = Caps {
+        let caps = Capabilities {
             glyphs: Glyphs::Ascii,
-            ..Caps::default()
+            ..Capabilities::default()
         };
         let mut screen = Screen::with_caps(COLS, ROWS, caps);
         let shown = |view: &mut Screen, embed: &mut Host| {
@@ -133,9 +133,9 @@ fn a_changed_link_target_reaches_the_terminal() {
         Owner::scope("precise-link", || {
             let (url, tick) = (signal(String::from("https://a.test")), signal(0_u32));
             let mut host = linked(url, tick);
-            let caps = Caps {
+            let caps = Capabilities {
                 hyperlinks: true,
-                ..Caps::default()
+                ..Capabilities::default()
             };
             let mut screen = Screen::with_caps(COLS, ROWS, caps);
             for _ in 0..3 {

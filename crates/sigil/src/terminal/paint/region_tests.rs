@@ -2,7 +2,7 @@ use crate::geometry::{Point, Rect};
 use crate::scene::command::{CommandScene, DrawRect, SceneCommand};
 use crate::style::{Rgba8, Theme};
 use crate::terminal::ColorDepth;
-use crate::terminal::caps::Caps;
+use crate::terminal::caps::Capabilities;
 use crate::terminal::paint::{CellPaint, Grid, Marks, raster_regions, raster_with};
 use crate::terminal::write::render;
 
@@ -32,7 +32,7 @@ fn region_raster_matches_a_full_raster() {
     let paint = CellPaint {
         theme: &theme,
         cell: CELL,
-        caps: Caps::default(),
+        caps: Capabilities::default(),
         marks: &marks,
     };
     let red = Rgba8 {

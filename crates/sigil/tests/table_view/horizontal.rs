@@ -12,13 +12,13 @@ fn wide_state() -> TableState<Item> {
         demo_rows(),
         vec![
             TableColumn::new("name", "Name")
-                .width(ColWidth::Fixed(150.0))
+                .width(ColumnWidth::Fixed(150.0))
                 .cell(|row: &Item| container().child(text(row.name.clone()))),
             TableColumn::new("count", "Count")
-                .width(ColWidth::Fixed(150.0))
+                .width(ColumnWidth::Fixed(150.0))
                 .cell(|row: &Item| container().child(text(row.count.to_string()))),
             TableColumn::new("tag", "Tag")
-                .width(ColWidth::Fixed(150.0))
+                .width(ColumnWidth::Fixed(150.0))
                 .cell(|row: &Item| container().child(text(format!("tag-{}", row.name)))),
         ],
     )
@@ -209,13 +209,13 @@ fn fraction_columns_stretch_in_a_measured_viewport() {
             demo_rows(),
             vec![
                 TableColumn::new("name", "Name")
-                    .width(ColWidth::Fraction(1.4))
+                    .width(ColumnWidth::Fraction(1.4))
                     .cell(|row: &Item| container().child(text(row.name.clone()))),
                 TableColumn::new("count", "Count")
-                    .width(ColWidth::Fraction(0.8))
+                    .width(ColumnWidth::Fraction(0.8))
                     .cell(|row: &Item| container().child(text(row.count.to_string()))),
                 TableColumn::new("tag", "Tag")
-                    .width(ColWidth::Fixed(96.0))
+                    .width(ColumnWidth::Fixed(96.0))
                     .cell(|row: &Item| container().child(text(format!("tag-{}", row.name)))),
             ],
         );

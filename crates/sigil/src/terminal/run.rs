@@ -8,7 +8,7 @@ use crate::reactive::Runtime;
 use crate::{AppConfig, AppResult, Error, Host};
 
 use crate::profile;
-use crate::terminal::caps::Caps;
+use crate::terminal::caps::Capabilities;
 use crate::terminal::input::{Incoming, InputWake, gather_input, limit};
 use crate::terminal::paint::Grid;
 use crate::terminal::pixels::Pixels;
@@ -287,7 +287,7 @@ fn remeasure(term: &mut Term, screen: &mut Screen) {
     }
 }
 
-fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Caps) -> Screen {
+fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Capabilities) -> Screen {
     let mut screen = Screen::with_caps(cols, rows, caps);
     screen.set_access(config.terminal_access);
     screen.speak_above(config.inline);

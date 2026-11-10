@@ -7,7 +7,7 @@ use crate::widgets::table::columns::TableColumn;
 fn fixed(ids: &[&'static str], px: f32) -> TableState<u32> {
     let columns = ids
         .iter()
-        .map(|&id| TableColumn::new(id, id).width(ColWidth::Fixed(px)))
+        .map(|&id| TableColumn::new(id, id).width(ColumnWidth::Fixed(px)))
         .collect();
     TableState::new(vec![1_u32, 2, 3], columns)
 }
@@ -33,9 +33,9 @@ fn fraction_columns_count_their_floor() {
         let state = TableState::new(
             vec![1_u32, 2, 3],
             vec![
-                TableColumn::new("a", "a").width(ColWidth::Fixed(300.0)),
+                TableColumn::new("a", "a").width(ColumnWidth::Fixed(300.0)),
                 TableColumn::new("b", "b")
-                    .width(ColWidth::Fraction(1.0))
+                    .width(ColumnWidth::Fraction(1.0))
                     .min_width(192.0),
             ],
         );

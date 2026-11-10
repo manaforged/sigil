@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::events::{
     Event, FileDropEvent, FileDropPhase, GestureKind, ImeEvent, KeyPhase, MouseButton,
-    PointerEvent, PointerKind, PointerPhase, WindowEvent as SigilWindowEvent,
+    PointerEvent, PointerPhase, PointerType, WindowEvent as SigilWindowEvent,
 };
 use crate::geometry::{PhysicalSize, Point, Scale};
 use winit::{
@@ -194,11 +194,11 @@ impl WinitShell {
         scale: Scale,
     ) -> bool {
         let delta = self.move_pointer(logical_point_from_f64(position.x, position.y, scale));
-        self.push_pointer(PointerPhase::Move, delta, None, PointerKind::Mouse)
+        self.push_pointer(PointerPhase::Move, delta, None, PointerType::Mouse)
     }
 
     pub(super) fn push_pointer_phase(&mut self, phase: PointerPhase) -> bool {
-        self.push_pointer(phase, Point::new(0.0, 0.0), None, PointerKind::Mouse)
+        self.push_pointer(phase, Point::new(0.0, 0.0), None, PointerType::Mouse)
     }
 
     pub(super) fn push_mouse_input(
@@ -221,7 +221,7 @@ impl WinitShell {
             phase,
             Point::new(0.0, 0.0),
             Some(button),
-            PointerKind::Mouse,
+            PointerType::Mouse,
         )
     }
 
@@ -241,7 +241,7 @@ impl WinitShell {
                 map_touch_pointer_phase(touch.phase),
                 delta,
                 None,
-                PointerKind::Touch,
+                PointerType::Touch,
             )
             .with_contact(touch.id, pressure, None);
         self.push(Event::Pointer(event));
@@ -266,7 +266,7 @@ impl WinitShell {
         phase: PointerPhase,
         delta: Point,
         button: Option<MouseButton>,
-        kind: PointerKind,
+        kind: PointerType,
     ) -> bool {
         let event = self.pointer_event(phase, delta, button, kind);
         self.push(Event::Pointer(event))
@@ -277,7 +277,7 @@ impl WinitShell {
         phase: PointerPhase,
         delta: Point,
         button: Option<MouseButton>,
-        kind: PointerKind,
+        kind: PointerType,
     ) -> PointerEvent {
         let mut event = PointerEvent::new(phase, self.pointer_position);
         event.delta = delta;
