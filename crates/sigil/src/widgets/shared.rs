@@ -17,7 +17,7 @@ use crate::widgets::interaction::InteractionState;
 
 pub(crate) use press::{Press, RELEASE, RELEASE_ENTER, RELEASE_ENTER_SPACE, press};
 
-pub(super) type Activate = Rc<dyn Fn() + 'static>;
+pub(crate) type Activate = Rc<dyn Fn() + 'static>;
 pub(super) type BoolChange = Rc<dyn Fn(bool) + 'static>;
 pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
 

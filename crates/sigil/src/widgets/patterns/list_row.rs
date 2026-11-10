@@ -10,10 +10,8 @@ use crate::style::{Paint, Radius, Token, Tone, space};
 use crate::widgets::Layout;
 
 use super::super::chip::chip;
-use super::super::interactive::interactive;
 use super::super::popup::{ChevronDirection, chevron};
 use super::super::table::ColumnAlign;
-use super::activatable::activatable;
 
 const INDENT_COLS: f32 = 2.0;
 const CELL_COLLAPSED: &str = "▸";
@@ -203,7 +201,7 @@ pub fn list_row(
         row_states(row, None)
     };
     match slots.activate {
-        Some(activate) => activatable(row, Role::ListItem, &activate),
+        Some(activate) => row.role(Role::ListItem).activate_with(activate),
         None => row,
     }
 }
@@ -212,14 +210,14 @@ pub(crate) const ROW_SELECTED: Token = Token::Accent5;
 pub(crate) const ROW_SELECTED_HOVER: Token = Token::Accent6;
 
 pub(crate) fn row_states(row: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {
-    let row = interactive(row.class(Radius::Md.atom()))
+    let row = row
+        .class(Radius::Md.atom())
         .hover(|s| s.background(Token::SurfaceHover))
         .pressed(|s| s.background(Token::SurfacePressed));
     match disabled {
         Some(disabled) => row.disabled(disabled),
         None => row,
     }
-    .into_node_builder()
 }
 
 fn row_frame(depth: u16, indent_cols: f32, disclosure: Disclosure) -> NodeBuilder {

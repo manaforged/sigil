@@ -107,6 +107,7 @@ modal(open).title("Command").child(
 |---|---|
 | button, icon_button | yes (all four slots) |
 | checkbox, dropdown, slider, tabs, text_field, text_edit | yes |
-| Plain containers, card, avatar, sidebar | via `interactive()` only |
+| Plain containers, avatar | yes |
+| card, sidebar | on `.into_node_builder()` |
 | chip | no style slots; `.activate` is a clickable button |
 | gauge, progress, dot, icon, divider, panel, scroll, modal, menu, command_menu, tooltip | compile error by design (display-only) |

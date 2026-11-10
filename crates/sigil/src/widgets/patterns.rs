@@ -266,7 +266,6 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
         )
 }
 
-mod activatable;
 mod card;
 mod disclosure;
 mod list_row;

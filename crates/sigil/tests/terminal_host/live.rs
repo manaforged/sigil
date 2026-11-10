@@ -68,7 +68,8 @@ fn tree(state: State) -> impl IntoNode {
                 .child(button("first"))
                 .child(button("second"))
                 .child(
-                    sigil::widgets::interactive(container().child(text("hover me")))
+                    container()
+                        .child(text("hover me"))
                         .hover(|style| style.background(Token::Accent)),
                 ),
         )

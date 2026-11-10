@@ -13,7 +13,6 @@ use crate::style::{
 };
 use crate::widgets::{Layout, Widget};
 
-use super::super::interactive::interactive;
 use super::super::layout_ext::LayoutOverrides;
 use super::super::popup::{PANEL_WIDTH, POPUP_GAP};
 use super::super::shared::caller_style;
@@ -175,7 +174,7 @@ fn interactive_trigger(
             }
         })
         .child(text(label).class("text-sm").class(Token::OnSurface.text()));
-    interactive(inner)
+    inner
         .hover(|s| s.background(Token::SurfaceHover))
         .pressed(|s| s.background(Token::SurfacePressed))
 }

@@ -5,7 +5,6 @@ use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
 use crate::widgets::Layout;
 
-use super::activatable::activatable;
 use super::list_row::{Disclosure, disclosure_slot};
 
 /// An expand and collapse section.
@@ -21,24 +20,22 @@ where
 {
     let header = Rc::new(header);
     let shown = Rc::clone(&header);
-    let head = activatable(
-        container()
-            .layout(
-                LayoutStyle::flex_row()
-                    .fill_width()
-                    .min_size(0.0, 0.0)
-                    .align_items(AlignItems::Center),
-            )
-            .expanded(open)
-            .child(show(
-                open,
-                || disclosure_slot(Disclosure::Expanded),
-                || disclosure_slot(Disclosure::Collapsed),
-            ))
-            .child(show(open, move || shown(true), move || header(false))),
-        Role::Button,
-        &(Rc::new(move || open.set(!open.peek())) as Rc<dyn Fn()>),
-    );
+    let head = container()
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .min_size(0.0, 0.0)
+                .align_items(AlignItems::Center),
+        )
+        .expanded(open)
+        .child(show(
+            open,
+            || disclosure_slot(Disclosure::Expanded),
+            || disclosure_slot(Disclosure::Collapsed),
+        ))
+        .child(show(open, move || shown(true), move || header(false)))
+        .role(Role::Button)
+        .activate(move || open.set(!open.peek()));
     container()
         .layout(LayoutStyle::flex_column().fill_width().min_size(0.0, 0.0))
         .child(head)

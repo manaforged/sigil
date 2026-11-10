@@ -1,4 +1,3 @@
-use super::super::interactive::interactive;
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{BORDER_WIDTH, Paint, Style, StyleAtom, Token};
@@ -274,10 +273,9 @@ fn build_handle(handle_idx: usize, orientation: Orientation, state: SplitterStat
         .hittable(true)
         .layout(handle_layout(orientation))
         .child(rule(orientation));
-    let node = interactive(node)
+    let node = node
         .hover(|s| s.background(Token::SurfaceHover))
-        .pressed(|s| s.background(Token::SurfacePressed))
-        .into_node_builder();
+        .pressed(|s| s.background(Token::SurfacePressed));
     install_handle_keys(
         install_handle_hooks(node, state, handle_idx),
         state,
