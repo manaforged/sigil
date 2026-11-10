@@ -3,8 +3,8 @@ use core::panic::Location;
 
 use smallvec::SmallVec;
 
+use crate::reactive::batch::settle;
 use crate::reactive::diagnostic::disposed_signal;
-use crate::reactive::effect::schedule_effects;
 use crate::reactive::phase::assert_paint_safe;
 use crate::reactive::runtime::{EffectKey, RuntimeState, SignalKey, SignalSlot, with_rt};
 use crate::reactive::signal::Signal;
@@ -51,25 +51,29 @@ fn is_stale_running_subscription(
             .is_some_and(|slot| slot.prev_deps.contains(&signal) && !slot.deps.contains(&signal))
 }
 
-fn notify(rt: &mut RuntimeState, signal: SignalKey) -> Option<SmallVec<[EffectKey; 4]>> {
-    let subscribers = &rt.signals.get(signal)?.subscribers;
-    if subscribers.is_empty() {
-        return None;
+fn notify(rt: &mut RuntimeState, signal: SignalKey) -> bool {
+    let written = rt.writer_level(signal);
+    let Some(slot) = rt.signals.get_mut(signal) else {
+        return false;
+    };
+    slot.level = slot.level.max(written);
+    let level = slot.level;
+    if slot.subscribers.is_empty() {
+        return false;
     }
     rt.frame_dirty = true;
     let (effects, running) = (&rt.effects, &rt.running);
-    let live: SmallVec<[EffectKey; 4]> = subscribers
+    let live: SmallVec<[EffectKey; 4]> = slot
+        .subscribers
         .iter()
         .copied()
         .filter(|&e| !is_stale_running_subscription(effects, running, e, signal))
         .collect();
-    if rt.batch_depth == 0 {
-        return (!live.is_empty()).then_some(live);
-    }
+    let queued = !live.is_empty();
     for effect in live {
-        rt.enqueue(effect);
+        rt.enqueue(effect, level);
     }
-    None
+    queued
 }
 
 impl<T: PartialEq + 'static> Signal<T> {
@@ -100,7 +104,7 @@ impl<T: 'static> Signal<T> {
         value: T,
         unchanged: fn(&T, &T) -> bool,
     ) {
-        let (old, subscribers) = with_rt(|rt| {
+        let (old, queued) = with_rt(|rt| {
             assert_paint_safe(rt, op);
             let slot = live_slot(rt, self.key, op, caller);
             let current = slot
@@ -108,14 +112,14 @@ impl<T: 'static> Signal<T> {
                 .downcast_mut::<T>()
                 .expect("signal type mismatch");
             if unchanged(current, &value) {
-                return (None, None);
+                return (None, false);
             }
             let old = core::mem::replace(current, value);
             (Some(old), notify(rt, self.key))
         });
         drop(old);
-        if let Some(subs) = subscribers {
-            schedule_effects(subs);
+        if queued {
+            settle();
         }
     }
 
@@ -157,12 +161,15 @@ impl<T: 'static> Signal<T> {
             .and_then(|value| value.downcast_mut::<T>())
             .expect("signal type mismatch"));
         let restored = guard.value.take();
-        let subscribers = with_rt(|rt| {
-            rt.signals.get_mut(self.key)?.value = restored?;
+        let queued = with_rt(|rt| {
+            let (Some(slot), Some(value)) = (rt.signals.get_mut(self.key), restored) else {
+                return false;
+            };
+            slot.value = value;
             notify(rt, self.key)
         });
-        if let Some(subs) = subscribers {
-            schedule_effects(subs);
+        if queued {
+            settle();
         }
     }
 }

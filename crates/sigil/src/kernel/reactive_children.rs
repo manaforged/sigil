@@ -132,8 +132,8 @@ pub(crate) fn install_keyed<F, I, K, N>(
     location: &'static Location<'static>,
     mut f: F,
 ) where
-    F: FnMut() -> I + 'static,
-    I: IntoIterator<Item = (K, N)>,
+    F: FnMut(&dyn Fn(&K) -> bool) -> I + 'static,
+    I: IntoIterator<Item = (K, Option<N>)>,
     K: Clone + Eq + Hash + 'static,
     N: IntoNode + 'static,
 {
@@ -141,8 +141,14 @@ pub(crate) fn install_keyed<F, I, K, N>(
     crate::reactive::effect_at("sigil-kernel::children_keyed", location, move || {
         let generation = generation_owner();
         let incoming: KeyedIncoming<K> = generation.with(|| {
-            f().into_iter()
-                .map(|(key, child)| (key, Some(Box::new(child) as Box<dyn ErasedComponent>)))
+            let mounted = prior.borrow();
+            let keys: AHashSet<&K> = mounted.iter().map(|(key, _)| key).collect();
+            f(&|key| keys.contains(key))
+                .into_iter()
+                .map(|(key, child)| {
+                    let child = child.map(|child| Box::new(child) as Box<dyn ErasedComponent>);
+                    (key, child)
+                })
                 .collect()
         });
         enqueue_keyed(

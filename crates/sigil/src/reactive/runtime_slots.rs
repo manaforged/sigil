@@ -25,6 +25,7 @@ pub(crate) struct OwnerSlot {
 pub(crate) struct SignalSlot {
     pub(crate) value: Box<dyn Any>,
     pub(crate) subscribers: SmallVec<[EffectKey; 4]>,
+    pub(crate) level: u32,
 }
 
 pub(crate) struct EffectSlot {
@@ -36,4 +37,6 @@ pub(crate) struct EffectSlot {
     pub(crate) prev_dep_cursor: usize,
     pub(crate) location: &'static Location<'static>,
     pub(crate) name: &'static str,
+    pub(crate) level: u32,
+    pub(crate) queued: Option<u64>,
 }

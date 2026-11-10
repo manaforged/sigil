@@ -282,6 +282,41 @@ fn main() -> AppResult<()> {
 }
 ```
 
+## Lists
+
+`for_each(items, key, render)` calls `render` one time for each new key. A write to `items` adds, removes, and reorders rows. It does not call `render` again for a key that stays in the list.
+
+Put each field that changes in a signal inside the item, and read that signal in the row. A field that is a plain value is read one time, when the row is built.
+
+```rust,no_run
+use sigil::prelude::*;
+
+#[derive(Clone)]
+struct Thread {
+    id: u32,
+    title: Signal<String>,
+    unread: Signal<bool>,
+}
+
+fn inbox(threads: Signal<Vec<Thread>>) -> impl IntoNode {
+    let unread = derived(move || {
+        threads.with(|all| all.iter().filter(|thread| thread.unread.get()).count())
+    });
+    column()
+        .child(text(move || format!("{} unread", unread.get())))
+        .child(scroll(for_each(threads, |thread: &Thread| thread.id, thread_row)))
+}
+
+fn thread_row(thread: &Thread) -> NodeBuilder {
+    let unread = thread.unread;
+    row()
+        .child(text(thread.title))
+        .child(button("Read").activate(move || unread.set(false)))
+}
+```
+
+`unread.set(false)` runs the count again, then the label that reads the count. It builds no row.
+
 ## Streaming from a backend
 
 Signals belong to the UI thread. A backend task writes through a `SignalWriter`. The host runs each write on the UI thread at the start of the next turn. `SignalWriter::update` appends in place, so a long transcript is not copied on each chunk. Read it with `Signal::with` to avoid a clone.

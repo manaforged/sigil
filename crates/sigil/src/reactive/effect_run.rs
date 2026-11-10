@@ -139,6 +139,7 @@ fn go_setup(rt: &mut RuntimeState, key: EffectKey) -> Option<(RunGuard, Option<O
     debug_assert!(effect.prev_deps.is_empty());
     effect.prev_deps = core::mem::take(&mut effect.deps);
     effect.prev_dep_cursor = 0;
+    effect.level = 0;
     let prev_run_owner = effect.run_owner.take();
     let (parent, location) = (effect.owner, effect.location);
     if !rt.owners.contains(parent) {
@@ -198,7 +199,7 @@ fn trace_effect_run(key: EffectKey) {
     let trace_inputs = with_rt(|rt| {
         rt.effects
             .get(key)
-            .map(|slot| (slot.name, slot.location, slot.deps.len(), rt.pending.len()))
+            .map(|slot| (slot.name, slot.location, slot.deps.len(), rt.pending_len))
     });
     if let Some((name, location, reads, writes_pending)) = trace_inputs {
         crate::reactive::trace::trace_effect_fire(name, location, reads, writes_pending);

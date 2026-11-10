@@ -29,7 +29,7 @@ where
     })
 }
 
-/// One child per item, reconciled by key.
+/// One child per item, reconciled by key; `render` runs once for each new key.
 #[must_use]
 pub fn for_each<T, K, N>(
     items: Signal<Vec<T>>,
@@ -41,10 +41,14 @@ where
     K: Clone + Eq + Hash + 'static,
     N: IntoNode + 'static,
 {
-    fragment().children_keyed(move || {
+    fragment().keyed_children_unmounted(move |mounted| {
         items.with(|all| {
             all.iter()
-                .map(|item| (key(item), render(item)))
+                .map(|item| {
+                    let key = key(item);
+                    let row = (!mounted(&key)).then(|| render(item));
+                    (key, row)
+                })
                 .collect::<Vec<_>>()
         })
     })

@@ -3,10 +3,10 @@
     reason = "target does not use every package dependency"
 )]
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use sigil::reactive::{Owner, batch, effect, on_cleanup, signal};
+use sigil::reactive::{Owner, batch, derived, effect, on_cleanup, signal};
 
 #[path = "reactive_edge_cases/batch_update.rs"]
 mod batch_update;

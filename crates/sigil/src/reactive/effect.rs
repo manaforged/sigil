@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use crate::reactive::diagnostic::{Cycle, no_scope, reactive_cycle};
 use crate::reactive::effect_run::run_effect;
-use crate::reactive::runtime::{EffectKey, EffectSlot, OwnerKey, with_rt};
+use crate::reactive::runtime::{EffectKey, EffectSlot, OwnerKey, RuntimeState, with_rt};
 
 const DRAIN_BUDGET: usize = 10_000;
 
@@ -45,6 +45,8 @@ pub(crate) fn effect_at<F: FnMut() + 'static>(
             prev_dep_cursor: 0,
             location,
             name,
+            level: 0,
+            queued: None,
         });
         rt.owners
             .get_mut(owner)
@@ -129,39 +131,14 @@ pub(crate) fn current_effect_owner() -> Option<OwnerKey> {
     })
 }
 
-pub(crate) fn schedule_effects(effects: SmallVec<[EffectKey; 4]>) {
-    let to_run = with_rt(|rt| {
-        if rt.batch_depth > 0 {
-            for e in effects {
-                rt.enqueue(e);
-            }
-            None
-        } else {
-            Some(effects)
-        }
-    });
-    if let Some(ready) = to_run {
-        for e in ready {
-            run_effect(e);
-        }
-    }
-}
-
 pub(crate) fn drain_pending() {
     for _ in 0..DRAIN_BUDGET {
-        let next = with_rt(|rt| {
-            let next = rt.pending.pop_front();
-            if let Some(key) = next {
-                rt.pending_set.remove(&key);
-            }
-            next
-        });
-        let Some(key) = next else {
+        let Some(key) = with_rt(RuntimeState::dequeue) else {
             return;
         };
         run_effect(key);
     }
-    if with_rt(|rt| !rt.pending.is_empty()) {
+    if with_rt(|rt| rt.pending_len > 0) {
         reactive_cycle(Cycle::Budget(DRAIN_BUDGET));
     }
 }

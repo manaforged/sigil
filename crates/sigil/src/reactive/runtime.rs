@@ -13,6 +13,8 @@ pub(crate) type AfterRun = (Option<EffectKey>, Box<dyn FnOnce()>);
 
 static RUNTIME_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+const MAX_LEVEL: u32 = 1023;
+
 pub(crate) struct RuntimeState {
     pub(crate) owners: Arena<OwnerSlot>,
     pub(crate) signals: Arena<SignalSlot>,
@@ -20,8 +22,10 @@ pub(crate) struct RuntimeState {
     pub(crate) current_owner: Option<OwnerKey>,
     pub(crate) current_effect: Option<EffectKey>,
     pub(crate) batch_depth: u32,
-    pub(crate) pending: VecDeque<EffectKey>,
-    pub(crate) pending_set: BTreeSet<EffectKey>,
+    pending: Vec<VecDeque<(u64, EffectKey)>>,
+    pending_floor: usize,
+    pending_seq: u64,
+    pub(crate) pending_len: usize,
     pub(crate) running: BTreeSet<EffectKey>,
     pub(crate) dispose_after_run: Vec<EffectKey>,
     pub(crate) deferred_cleanups: Vec<Box<dyn FnOnce()>>,
@@ -41,8 +45,10 @@ impl RuntimeState {
             current_owner: None,
             current_effect: None,
             batch_depth: 0,
-            pending: VecDeque::new(),
-            pending_set: BTreeSet::new(),
+            pending: Vec::new(),
+            pending_floor: 0,
+            pending_seq: 0,
+            pending_len: 0,
             running: BTreeSet::new(),
             dispose_after_run: Vec::new(),
             deferred_cleanups: Vec::new(),
@@ -54,10 +60,55 @@ impl RuntimeState {
         }
     }
 
-    pub(crate) fn enqueue(&mut self, effect: EffectKey) {
-        if self.pending_set.insert(effect) {
-            self.pending.push_back(effect);
+    pub(crate) fn enqueue(&mut self, effect: EffectKey, floor: u32) {
+        let Some(slot) = self.effects.get_mut(effect) else {
+            return;
+        };
+        if slot.queued.is_some() {
+            return;
         }
+        let level = slot.level.max(floor) as usize;
+        slot.queued = Some(self.pending_seq);
+        if self.pending.len() <= level {
+            self.pending.resize_with(level + 1, VecDeque::new);
+        }
+        if let Some(queue) = self.pending.get_mut(level) {
+            queue.push_back((self.pending_seq, effect));
+        }
+        self.pending_seq += 1;
+        self.pending_len += 1;
+        self.pending_floor = self.pending_floor.min(level);
+    }
+
+    pub(crate) fn dequeue(&mut self) -> Option<EffectKey> {
+        while let Some(queue) = self.pending.get_mut(self.pending_floor) {
+            let Some((seq, effect)) = queue.pop_front() else {
+                self.pending_floor += 1;
+                continue;
+            };
+            let Some(slot) = self.effects.get_mut(effect) else {
+                continue;
+            };
+            if slot.queued == Some(seq) {
+                slot.queued = None;
+                self.pending_len -= 1;
+                return Some(effect);
+            }
+        }
+        None
+    }
+
+    pub(crate) fn writer_level(&self, written: SignalKey) -> u32 {
+        self.current_effect
+            .and_then(|effect| self.effects.get(effect))
+            .filter(|slot| !slot.deps.contains(&written) && !slot.prev_deps.contains(&written))
+            .map_or(0, |slot| (slot.level + 1).min(MAX_LEVEL))
+    }
+
+    pub(crate) fn creator_level(&self) -> u32 {
+        self.current_effect
+            .and_then(|effect| self.effects.get(effect))
+            .map_or(0, |slot| (slot.level + 1).min(MAX_LEVEL))
     }
 }
 
