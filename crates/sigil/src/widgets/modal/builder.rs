@@ -7,7 +7,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, contai
 use crate::layout::snap;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Length, Overflow, Position};
 use crate::reactive::{Signal, signal};
-use crate::style::{Style, StyleAtom, Token, TransitionId, space};
+use crate::style::{Style, StyleAtom, Token, space};
 use crate::widgets::Layout;
 
 use super::super::layout_ext::LayoutOverrides;
@@ -16,7 +16,6 @@ use super::super::scroll::contain_scroll;
 use super::super::shared::{accessible_name_or, caller_style};
 use super::parts::{BODY_GUTTER, CloseControl, dialog_body, dialog_header};
 
-const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
 const DIALOG_PADDING: f32 = space(4);
 const DIALOG_WIDTH: f32 = 420.0;
 const SHEET_WIDTH: f32 = 360.0;
@@ -24,10 +23,10 @@ const SHEET_HEIGHT: f32 = 320.0;
 
 static BACKDROP_BASE: &[StyleAtom] = &[
     Token::Scrim.background(),
-    StyleAtom::Transition(MODAL_TRANSITION),
+    StyleAtom::Transition(presets::SMOOTH),
 ];
 
-static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(MODAL_TRANSITION)];
+static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 
 /// Edge of a sheet.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

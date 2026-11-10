@@ -9,8 +9,8 @@ use crate::reactive::{Signal, derived};
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::theme_string_once;
 use crate::style::{
-    ClassSource, Color, ColorAtom, DISABLED_OPACITY, Radius, StateSlot, StateStyle, StyleAtom,
-    StyleOverlay, StyleVariant, Token, space,
+    ClassSource, Color, ColorAtom, DIMMED, Radius, StateSlot, StateStyle, StyleAtom, StyleOverlay,
+    StyleVariant, Token, space,
 };
 use crate::widgets::Layout;
 use crate::widgets::interaction::InteractionState;
@@ -42,7 +42,6 @@ static TAB_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 static TAB_REST: &[StyleAtom] = &[Token::Surface.background()];
 static TAB_HOVER: &[StyleAtom] = &[Token::SurfaceHover.background()];
 static TAB_DOWN: &[StyleAtom] = &[Token::SurfacePressed.background()];
-static TAB_DISABLED: &[StyleAtom] = &[StyleAtom::Opacity(DISABLED_OPACITY)];
 static TAB_ACTIVE_LIT: &[StyleAtom] = &[Token::SurfacePressedStrong.background()];
 static LINE_ACTIVE: &[StyleAtom] = &[Token::Accent.border()];
 static LINE_ACTIVE_HOVER: &[StyleAtom] =
@@ -63,7 +62,7 @@ static LINE_BASE: &[StyleAtom] = &[
 
 static TAB_VARIANT: StyleVariant = StyleVariant::new(
     TAB_BASE,
-    StateStyle::new(TAB_REST, TAB_HOVER, TAB_HOVER, TAB_DOWN, TAB_DISABLED),
+    StateStyle::new(TAB_REST, TAB_HOVER, TAB_HOVER, TAB_DOWN, DIMMED),
 );
 static TAB_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
     TAB_BASE,
@@ -72,20 +71,20 @@ static TAB_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
         TAB_ACTIVE_LIT,
         TAB_ACTIVE_LIT,
         TAB_ACTIVE_LIT,
-        TAB_DISABLED,
+        DIMMED,
     ),
 );
 static PILL_VARIANT: StyleVariant = StyleVariant::new(
     TAB_BASE,
-    StateStyle::new(&[], TAB_HOVER, TAB_HOVER, TAB_DOWN, TAB_DISABLED),
+    StateStyle::new(&[], TAB_HOVER, TAB_HOVER, TAB_DOWN, DIMMED),
 );
 static PILL_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
     TAB_BASE,
-    StateStyle::new(TAB_REST, TAB_REST, TAB_REST, TAB_REST, TAB_DISABLED),
+    StateStyle::new(TAB_REST, TAB_REST, TAB_REST, TAB_REST, DIMMED),
 );
 static LINE_VARIANT: StyleVariant = StyleVariant::new(
     LINE_BASE,
-    StateStyle::new(&[], TAB_HOVER, TAB_HOVER, TAB_DOWN, TAB_DISABLED),
+    StateStyle::new(&[], TAB_HOVER, TAB_HOVER, TAB_DOWN, DIMMED),
 );
 static LINE_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
     LINE_BASE,
@@ -94,7 +93,7 @@ static LINE_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
         LINE_ACTIVE_HOVER,
         LINE_ACTIVE_HOVER,
         LINE_ACTIVE_HOVER,
-        TAB_DISABLED,
+        DIMMED,
     ),
 );
 

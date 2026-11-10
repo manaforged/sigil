@@ -4,11 +4,9 @@ use crate::layout::Space;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 use crate::style::{
     BORDER_WIDTH, ColorAtom, Elevation, GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, StyleAtom,
-    StyleVariant, Tone, TransitionId,
+    StyleVariant, Tone,
 };
 use crate::widgets::Widget;
-
-const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
 
 #[derive(Clone, Copy)]
 pub(super) enum ButtonWidth {
@@ -30,8 +28,7 @@ pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> 
     }
 }
 
-pub(super) static BUTTON_TRANSITION_ATOMS: &[StyleAtom] =
-    &[StyleAtom::Transition(BUTTON_TRANSITION)];
+pub(super) static BUTTON_TRANSITION_ATOMS: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 
 pub(super) static BUTTON_FRAME: &[StyleAtom] = &[
     StyleAtom::BorderWidth(BORDER_WIDTH),

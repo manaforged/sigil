@@ -8,8 +8,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, IntoPx, JustifyContent, LayoutStyle, Overflow, rows};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
-    BORDER_WIDTH, Radius, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant, Token,
-    TransitionId, space,
+    BORDER_WIDTH, Radius, StateStyle, Style, StyleAtom, StyleOverlay, StyleVariant, Token, space,
 };
 use crate::widgets::Layout;
 
@@ -28,10 +27,9 @@ mod tests;
 
 pub(super) type IndexChange = Rc<dyn Fn(usize) + 'static>;
 
-const DROPDOWN_TRANSITION: TransitionId = presets::SMOOTH;
 const MIN_TRIGGER_WIDTH: f32 = space(24);
 const LABEL_HEIGHT: f32 = 24.0;
-static DROPDOWN_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(DROPDOWN_TRANSITION)];
+static DROPDOWN_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 
 static TRIGGER_BASE: &[StyleAtom] = &[
     Token::Field.background(),

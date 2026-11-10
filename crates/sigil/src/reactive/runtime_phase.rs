@@ -68,6 +68,11 @@ impl Runtime {
     /// Enters the paint phase.
     pub fn begin_paint() {
         advance("begin_paint", DrawPhase::Layout, DrawPhase::Paint);
+        with_rt(|rt| rt.paints += 1);
+    }
+
+    pub(crate) fn layout_paints() -> Option<u64> {
+        with_rt(|rt| (rt.phase == DrawPhase::Layout).then_some(rt.paints))
     }
 
     /// Ends the current frame.

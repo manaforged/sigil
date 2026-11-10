@@ -103,7 +103,7 @@ pub(crate) use merge::merge_warning_count_for_component;
 #[doc(hidden)]
 pub use merge::unknown_class_warning_count;
 pub use metrics::{BORDER_WIDTH, Layer, Metrics, Radius, space};
-pub(crate) use metrics::{DISABLED_OPACITY, ICON_SIZE};
+pub(crate) use metrics::{DIMMED, DISABLED_OPACITY, ICON_SIZE};
 pub(crate) use overlay::StyleOverlay;
 pub use paint::Paint;
 pub(crate) use paint::{PaintTarget, StyleSlot};

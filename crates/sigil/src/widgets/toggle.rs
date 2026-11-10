@@ -8,7 +8,6 @@ use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived};
-use crate::style::TransitionId;
 use crate::style::{
     ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleVariant, Token, space,
 };
@@ -49,11 +48,10 @@ impl core::fmt::Debug for ToggleBuilder {
 builder_impls!([] ToggleBuilder: paint(style), widget, states(style), node);
 
 static EMPTY_BASE: &[StyleAtom] = &[];
-const TOGGLE_TRANSITION: TransitionId = presets::SMOOTH;
 const CELL_TRACK_COLS: f32 = 4.0;
 const CELL_TRACK_ON: &str = "[ ■]";
 const CELL_TRACK_OFF: &str = "[■ ]";
-static TOGGLE_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOGGLE_TRANSITION)];
+static TOGGLE_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 static TOGGLE_ON: &[StyleAtom] = &[
     Token::Accent.background(),
     StyleAtom::JustifyContent(JustifyContent::End),

@@ -11,7 +11,6 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutStyle, Position};
 use crate::layout::{Popup, PopupSide};
 use crate::reactive::{IntervalId, Signal, interval, signal};
-use crate::style::TransitionId;
 use crate::style::{ControlSize, Metrics, Style, StyleAtom, Token, space};
 use crate::widgets::{Layout, Widget};
 
@@ -21,8 +20,7 @@ use super::shared::caller_style;
 
 const BUBBLE_MAX_WIDTH: f32 = space(60);
 
-const TOOLTIP_TRANSITION: TransitionId = presets::SMOOTH;
-static BUBBLE_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOOLTIP_TRANSITION)];
+static BUBBLE_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 
 /// Builder of a tooltip.
 pub struct TooltipBuilder {
