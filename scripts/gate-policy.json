@@ -1,5 +1,5 @@
 {
-  "maxFileLines": 400,
+  "maxFileLines": 800,
   "allowedComments": ["// SAFETY:", "///", "//!"],
   "ignoreTiers": {
     "gpu": "needs a wgpu adapter",

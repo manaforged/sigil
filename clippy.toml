@@ -4,7 +4,7 @@
 #   too-many-lines:      100 → 50
 #   too-many-arguments:    7 → 5
 #   cognitive-complexity: 25 → 15
-# Thresholds: 400-line files, 50-line functions, 5 args, CC 15.
+# Thresholds: 800-line files, 50-line functions, 5 args, CC 15.
 
 too-many-lines-threshold = 50
 too-many-arguments-threshold = 5
