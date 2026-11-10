@@ -68,7 +68,7 @@ impl TextLength {
 
 /// A pixel count or a `Length`, for widget sizes such as `width` and `row_height`.
 pub trait IntoPx {
-    /// Converts this into px to px.
+    /// Converts this into pixels.
     fn into_px(self) -> f32;
 }
 
@@ -86,13 +86,7 @@ impl IntoPx for TextLength {
 
 impl IntoPx for Length {
     fn into_px(self) -> f32 {
-        match self {
-            Self::Px(value) => value,
-            Self::Rows(count) => TextLength::Rows(count).px(),
-            Self::Cols(count) => TextLength::Cols(count).px(),
-            Self::Em(count) => TextLength::Em(count).px(),
-            Self::Percent(_) | Self::Auto | Self::Fill => 0.0,
-        }
+        self.px().unwrap_or(0.0)
     }
 }
 

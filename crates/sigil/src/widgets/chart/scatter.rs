@@ -66,7 +66,7 @@ pub(super) fn dots(
     });
     layer.child(
         shape
-            .stroke(item.hue.paint(), DOT)
+            .stroke(item.hue.color(), DOT)
             .non_scaling_stroke()
             .layout(layer_layout()),
     )

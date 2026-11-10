@@ -1,5 +1,5 @@
 use crate::geometry::{Point, Rect};
-use crate::style::{Color, Rgba8};
+use crate::style::{Color, Rgba};
 use smallvec::smallvec;
 
 use crate::scene::{
@@ -21,7 +21,7 @@ pub(super) fn draw_fill(scene: &mut SceneBuilder, rect: Rect, fill: PaintFill) {
     }
 }
 
-pub(super) const fn slash_kind(color: Rgba8, period: f32, line_width: f32) -> PatternKind {
+pub(super) const fn slash_kind(color: Color, period: f32, line_width: f32) -> PatternKind {
     PatternKind::Slash {
         color,
         period,
@@ -29,12 +29,12 @@ pub(super) const fn slash_kind(color: Rgba8, period: f32, line_width: f32) -> Pa
     }
 }
 
-pub(super) const DARK: Color = Color::rgba(0.05, 0.06, 0.09, 1.0);
+pub(super) const DARK: Rgba = Rgba::new(0.05, 0.06, 0.09, 1.0);
 
 pub(super) fn linear_gradient(
     (x0, y0): (f32, f32),
     (x1, y1): (f32, f32),
-    stops: &[(f32, Rgba8)],
+    stops: &[(f32, Color)],
 ) -> PaintFill {
     let stops: Vec<GradientStop> = stops
         .iter()
@@ -132,6 +132,6 @@ pub(super) const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
     Rect::new(Point::new(x, y), width, height)
 }
 
-pub(super) const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
+pub(super) const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
+    Color { r, g, b, a }
 }

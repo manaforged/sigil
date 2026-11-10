@@ -24,11 +24,11 @@ use sigil::reactive::Owner;
 use widget_support::{compute, rect_colors};
 
 const VIEWPORT: Size = Size::fixed(640.0, 480.0);
-const A: Rgba8 = color(200, 20, 20, 255);
-const B: Rgba8 = color(20, 200, 20, 255);
-const C: Rgba8 = color(20, 20, 200, 255);
-const D: Rgba8 = color(200, 200, 20, 255);
-const E: Rgba8 = color(20, 200, 200, 255);
+const A: Color = color(200, 20, 20, 255);
+const B: Color = color(20, 200, 20, 255);
+const C: Color = color(20, 20, 200, 255);
+const D: Color = color(200, 200, 20, 255);
+const E: Color = color(20, 200, 200, 255);
 
 #[derive(Clone, Copy)]
 enum Drive {
@@ -57,7 +57,7 @@ fn laid_out(build: impl IntoNode, drive: Drive) -> (Cx, NodeId) {
     (cx, root)
 }
 
-fn painted(build: impl IntoNode, drive: Drive) -> Vec<Rgba8> {
+fn painted(build: impl IntoNode, drive: Drive) -> Vec<Color> {
     let (cx, root) = laid_out(build, drive);
     rect_colors(&cx, root)
 }
@@ -69,7 +69,7 @@ fn width(build: impl IntoNode) -> f32 {
         .map_or(0.0, |result| result.rect().width)
 }
 
-fn assert_paints(colors: &[Rgba8], expected: Rgba8, what: &str) {
+fn assert_paints(colors: &[Color], expected: Color, what: &str) {
     assert!(
         colors.contains(&expected),
         "{what} must paint {expected:?}, got {colors:?}"

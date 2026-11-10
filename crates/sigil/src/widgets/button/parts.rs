@@ -37,7 +37,7 @@ pub(super) static BUTTON_FRAME: &[StyleAtom] = &[
 ];
 
 const CLEAR_BORDER: StyleAtom =
-    StyleAtom::BorderColor(ColorAtom::Rgba8(crate::scene::command::fills::TRANSPARENT));
+    StyleAtom::BorderColor(ColorAtom::Color(crate::scene::command::fills::TRANSPARENT));
 
 pub(super) static GHOST_FRAME: &[StyleAtom] = &[StyleAtom::BorderWidth(BORDER_WIDTH), CLEAR_BORDER];
 

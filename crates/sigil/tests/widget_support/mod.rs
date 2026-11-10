@@ -7,7 +7,7 @@ use sigil::kernel::{Cx, NodeId, NodeType, TextContent};
 use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::reactive::Signal;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil::style::Rgba8;
+use sigil::style::Color;
 
 pub(crate) fn compute(
     cx: &mut Cx,
@@ -20,7 +20,7 @@ pub(crate) fn compute(
     layout
 }
 
-pub(crate) fn rect_colors(cx: &Cx, root: NodeId) -> Vec<Rgba8> {
+pub(crate) fn rect_colors(cx: &Cx, root: NodeId) -> Vec<Color> {
     emit_scene(cx, root, None)
         .commands
         .iter()

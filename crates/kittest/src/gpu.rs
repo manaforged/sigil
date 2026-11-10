@@ -7,12 +7,12 @@ use sigil::renderer::capture::{
 };
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::CommandScene;
-use sigil::style::Color;
+use sigil::style::Rgba;
 
 use crate::{Error, ErrorKind};
 
 const BYTES_PER_PIXEL: u32 = 4;
-pub(crate) const CLEAR: Color = Color::rgba(0.0, 0.0, 0.0, 1.0);
+pub(crate) const CLEAR: Rgba = Rgba::new(0.0, 0.0, 0.0, 1.0);
 
 pub type Gpu = (wgpu::Device, wgpu::Queue);
 
@@ -99,7 +99,7 @@ pub struct Capture {
     viewport: (f32, f32),
     size_px: [u32; 2],
     scale: f32,
-    clear: Color,
+    clear: Rgba,
 }
 
 impl Capture {
@@ -120,7 +120,7 @@ impl Capture {
     }
 
     /// Sets the clear color.
-    pub const fn clear(mut self, clear: Color) -> Self {
+    pub const fn clear(mut self, clear: Rgba) -> Self {
         self.clear = clear;
         self
     }

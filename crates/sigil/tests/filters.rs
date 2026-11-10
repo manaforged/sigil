@@ -24,7 +24,7 @@ use sigil::scene::{
     BlendMode, CommandScene, CornerRadii, DrawRect, Filter, LayerEffect, LayerScope, SceneBuilder,
     Shadow,
 };
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
@@ -42,13 +42,13 @@ use model::{expected_bytes, gaussian_cdf, linear};
 
 pub(crate) const SIDE: u32 = 60;
 pub(crate) const SCALE: f32 = 2.0;
-const INPUT: Rgba8 = rgba(200, 80, 40, 255);
-const BLACK: Rgba8 = rgba(0, 0, 0, 255);
-const WHITE: Rgba8 = rgba(255, 255, 255, 255);
-const RED: Rgba8 = rgba(255, 0, 0, 255);
+const INPUT: Color = rgba(200, 80, 40, 255);
+const BLACK: Color = rgba(0, 0, 0, 255);
+const WHITE: Color = rgba(255, 255, 255, 255);
+const RED: Color = rgba(255, 0, 0, 255);
 
-pub(crate) const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
+pub(crate) const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
+    Color { r, g, b, a }
 }
 
 pub(crate) type Content = fn(&mut SceneBuilder, Rect);
@@ -105,7 +105,7 @@ pub(crate) fn cpu_frame(scene: &CommandScene, width: u32) -> image::RgbaImage {
         scene,
         viewport: (width as f32, SIDE as f32),
         size: PhysicalSize::new(device_w, device_h),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame")

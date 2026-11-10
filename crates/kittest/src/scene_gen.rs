@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use sigil::geometry::PhysicalSize;
 use sigil::scene::{CommandScene, SceneCommand};
-use sigil::style::Color;
+use sigil::style::Rgba;
 
 mod draws;
 mod shapes;
@@ -99,7 +99,7 @@ pub struct GeneratedScene {
     commands: Vec<SceneCommand>,
     viewport: (f32, f32),
     scale: f32,
-    clear: Color,
+    clear: Rgba,
 }
 
 impl GeneratedScene {
@@ -123,7 +123,7 @@ impl GeneratedScene {
 
     /// Returns the clear color.
     #[must_use]
-    pub const fn clear(&self) -> Color {
+    pub const fn clear(&self) -> Rgba {
         self.clear
     }
 
@@ -203,7 +203,7 @@ pub fn generate(entropy: &mut Entropy<'_>) -> GeneratedScene {
     let width = f32::from(u16::try_from(entropy.below(64) + 1).unwrap_or(1)) * 4.0;
     let height = f32::from(u16::try_from(entropy.below(64) + 1).unwrap_or(1)) * 4.0;
     let scale = entropy.pick(&SCALES);
-    let clear = Color::rgba(entropy.unit(), entropy.unit(), entropy.unit(), 1.0);
+    let clear = Rgba::new(entropy.unit(), entropy.unit(), entropy.unit(), 1.0);
     let mut out = Vec::new();
     let budget = entropy.below(48) + 1;
     let mut builder = Gen {

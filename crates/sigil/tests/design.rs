@@ -265,14 +265,14 @@ fn a_child_wider_than_its_parent_is_a_flaw() {
 
 #[test]
 fn faint_text_is_a_flaw_and_theme_text_is_not() {
-    let faint = Rgba8 {
+    let faint = Color {
         r: 200,
         g: 200,
         b: 200,
         a: 255,
     };
     let mut bad = Harness::new(move || {
-        page(text("Faint").text_color(faint)).background(Rgba8 {
+        page(text("Faint").text_color(faint)).background(Color {
             r: 255,
             g: 255,
             b: 255,

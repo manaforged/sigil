@@ -7,25 +7,24 @@ use super::{PathCmd, PathFill, PathNode};
 use crate::fnv::OFFSET;
 use crate::geometry::Point;
 use crate::scene::command::{Gradient, GradientKind, GradientStop, PathPaint, Transform};
-use crate::style::{Rgba8, Theme};
+use crate::style::{Color, ColorAtom, Theme};
 
-type Resolved = (Option<PathPaint>, Option<(Rgba8, f32)>);
+type Resolved = (Option<PathPaint>, Option<(Color, f32)>);
 
 pub(super) fn resolve(
     fill: Option<&PathFill>,
-    stroke: Option<(super::PathColor, f32)>,
+    stroke: Option<(ColorAtom, f32)>,
     theme: &Theme,
 ) -> Resolved {
     let point = |(x, y): (f32, f32)| Point::new(x, y);
-    let stops = |stops: &[(f32, Rgba8)]| -> SmallVec<[GradientStop; 4]> {
+    let stops = |stops: &[(f32, Color)]| -> SmallVec<[GradientStop; 4]> {
         stops
             .iter()
             .map(|&(offset, color)| GradientStop::new(offset, color))
             .collect()
     };
     let fill = fill.map(|fill| match fill {
-        PathFill::Solid(color) => PathPaint::Solid(*color),
-        PathFill::Theme(token) => PathPaint::Solid(theme.color(*token)),
+        PathFill::Solid(color) => PathPaint::Solid(theme.resolve_color(*color)),
         PathFill::Linear {
             start,
             end,
@@ -49,14 +48,14 @@ pub(super) fn resolve(
             PathPaint::Gradient(Gradient::new(kind, stops(list)))
         }
     });
-    let stroke = stroke.map(|(color, width)| (color.resolve(theme), width));
+    let stroke = stroke.map(|(color, width)| (theme.resolve_color(color), width));
     (fill, stroke)
 }
 
 pub(super) fn path_key(
     node: &PathNode,
     fill: Option<&PathPaint>,
-    stroke: Option<(Rgba8, f32)>,
+    stroke: Option<(Color, f32)>,
 ) -> u64 {
     let mut hash = OFFSET;
     for byte in node

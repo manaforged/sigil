@@ -8,7 +8,7 @@ use crate::scene::command::{
     Transform,
 };
 use crate::scene::geometry::compose;
-use crate::style::Rgba8;
+use crate::style::Color;
 
 pub(super) fn raster(
     draw: &DrawPath,
@@ -68,7 +68,7 @@ fn skia_stroke(stroke: &PathStroke) -> Stroke {
     }
 }
 
-fn color(color: Rgba8, opacity: f32) -> TsColor {
+fn color(color: Color, opacity: f32) -> TsColor {
     let mut out = TsColor::from_rgba8(color.r, color.g, color.b, color.a);
     out.apply_opacity(opacity);
     out

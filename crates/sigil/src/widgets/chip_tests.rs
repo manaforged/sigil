@@ -54,12 +54,12 @@ fn tone_class_strings_are_distinct() {
 
 #[test]
 fn every_tone_clears_wcag_aa_contrast() {
-    use crate::style::Rgba8;
+    use crate::style::Color;
     use crate::style::scale::ScaleRole;
     use crate::style::theme::Theme;
 
     #[allow(clippy::suboptimal_flops, reason = "intentional, reviewed trade-off")]
-    fn luminance(c: Rgba8) -> f64 {
+    fn luminance(c: Color) -> f64 {
         let ch = |v: u8| {
             let v = f64::from(v) / 255.0;
             if v <= 0.039_28 {
@@ -77,7 +77,7 @@ fn every_tone_clears_wcag_aa_contrast() {
         (Tone::Primary, ScaleRole::Accent, 12),
         (Tone::Info, ScaleRole::Info, 12),
         (Tone::Success, ScaleRole::Success, 12),
-        (Tone::Warning, ScaleRole::Warn, 12),
+        (Tone::Warning, ScaleRole::Warning, 12),
         (Tone::Error, ScaleRole::Error, 12),
     ];
     for (tone, role, text_step) in cases {

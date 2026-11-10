@@ -1,4 +1,4 @@
-use crate::style::Rgba8;
+use crate::style::Color;
 
 #[cfg(all(
     feature = "scene",
@@ -19,8 +19,8 @@ const SEED_MASK: u32 = 0x00ff_ffff;
 /// A watercolour wash: pigment pooled over paper, or light over a night sky when the paper is dark.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Wash {
-    pub(crate) paper: Rgba8,
-    pub(crate) pigments: [Rgba8; MAX_PIGMENTS],
+    pub(crate) paper: Color,
+    pub(crate) pigments: [Color; MAX_PIGMENTS],
     pub(crate) count: u8,
     pub(crate) seed: u32,
     pub(crate) scale: f32,
@@ -36,7 +36,7 @@ pub struct Wash {
 impl Wash {
     /// A wash on `paper` with no pigment yet; the paper's alpha sets the opacity of the whole wash.
     #[must_use]
-    pub const fn new(paper: Rgba8) -> Self {
+    pub const fn new(paper: Color) -> Self {
         Self {
             paper,
             pigments: [paper; MAX_PIGMENTS],
@@ -55,7 +55,7 @@ impl Wash {
 
     /// Adds a pigment, as it looks at full strength; past four it replaces the last.
     #[must_use]
-    pub const fn pigment(mut self, color: Rgba8) -> Self {
+    pub const fn pigment(mut self, color: Color) -> Self {
         let at = if (self.count as usize) < MAX_PIGMENTS {
             self.count += 1;
             self.count as usize - 1

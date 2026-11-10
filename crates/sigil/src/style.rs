@@ -61,8 +61,8 @@ pub(crate) use atom::Px;
 pub(crate) use atom::SPACING_STEP;
 pub(crate) use atom::TextDecoration;
 pub use atom::{
-    Background, ClipShape, ColorAtom, Conic, Elevation, Gradient, GradientAxis, MaskImage,
-    MaskSize, Radial, RadialExtent, Rgba8,
+    Background, ClipShape, Color, ColorAtom, Conic, Elevation, Gradient, GradientAxis, MaskImage,
+    MaskSize, Radial, RadialExtent,
 };
 kittest_pub! {
     #[doc(hidden)]
@@ -154,14 +154,17 @@ kittest_pub! {
 pub(crate) use variant_kit::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT};
 
 /// Gives the fill color for selected text.
-pub(crate) const SELECTION_FILL: Rgba8 = Rgba8 {
+pub(crate) const SELECTION_FILL: Color = Color {
     r: 56,
     g: 118,
     b: 224,
     a: 130,
 };
 
-pub use crate::hal::geometry::Color;
+kittest_pub! {
+    #[doc(hidden)]
+    pub use crate::hal::geometry::Rgba;
+}
 
 #[cfg(test)]
 #[path = "style/resolution_tests.rs"]

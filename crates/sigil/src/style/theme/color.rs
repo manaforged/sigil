@@ -2,9 +2,9 @@ use super::mix::{alpha_mix, ramp_accent};
 use super::{Theme, ThemeValue};
 use crate::style::palette::is_dark;
 use crate::style::scale::rgb;
-use crate::style::{ColorAtom, Rgba8, Token};
+use crate::style::{Color, ColorAtom, Token};
 
-const SCRIM: Rgba8 = Rgba8 {
+const SCRIM: Color = Color {
     r: 0,
     g: 0,
     b: 0,
@@ -14,15 +14,15 @@ const SCRIM: Rgba8 = Rgba8 {
 impl Theme {
     /// `resolve_color` for a built-in token.
     #[must_use]
-    pub fn color(&self, token: Token) -> Rgba8 {
+    pub fn color(&self, token: Token) -> Color {
         self.resolve_color(ColorAtom::Token(token))
     }
 
     /// Resolve a color.
     #[must_use]
-    pub fn resolve_color(&self, color: ColorAtom) -> Rgba8 {
+    pub fn resolve_color(&self, color: ColorAtom) -> Color {
         let name = match color {
-            ColorAtom::Rgba8(rgba) => return rgba,
+            ColorAtom::Color(rgba) => return rgba,
             ColorAtom::Token(token) => token.name(),
             ColorAtom::Custom(name) => name,
         };
@@ -58,7 +58,7 @@ impl Theme {
         self
     }
 
-    fn sync_runtime_color(&mut self, token: Token, color: Rgba8) {
+    fn sync_runtime_color(&mut self, token: Token, color: Color) {
         match token {
             Token::Accent => {
                 self.accent = color;
@@ -82,7 +82,7 @@ impl Theme {
         }
     }
 
-    const fn field(&self) -> Rgba8 {
+    const fn field(&self) -> Color {
         if is_dark(self.surface) {
             self.gray.step(3)
         } else {
@@ -90,7 +90,7 @@ impl Theme {
         }
     }
 
-    fn built_in_color(&self, key: ColorAtom) -> Option<Rgba8> {
+    fn built_in_color(&self, key: ColorAtom) -> Option<Color> {
         let ColorAtom::Token(token) = key else {
             return None;
         };
@@ -119,7 +119,7 @@ impl Theme {
         })
     }
 
-    pub(crate) fn legible(color: Rgba8, background: Rgba8) -> Rgba8 {
+    pub(crate) fn legible(color: Color, background: Color) -> Color {
         let target = if luminance(background) < 0.18 {
             WHITE
         } else {
@@ -136,13 +136,13 @@ impl Theme {
     }
 
     #[cfg(debug_assertions)]
-    fn missing_color(&self, token: &str) -> Rgba8 {
+    fn missing_color(&self, token: &str) -> Color {
         let message = self.unknown_token_message(token);
         diagnostic::unknown_theme_token(&message);
     }
 
     #[cfg(not(debug_assertions))]
-    fn missing_color(&self, token: &'static str) -> Rgba8 {
+    fn missing_color(&self, token: &'static str) -> Color {
         diagnostic::warn_unknown_once(token);
         self.missing_token_fallback
     }
@@ -170,10 +170,10 @@ impl Theme {
 }
 
 const LEGIBLE: f32 = 4.5;
-const WHITE: Rgba8 = rgb(255, 255, 255);
-const BLACK: Rgba8 = rgb(0, 0, 0);
+const WHITE: Color = rgb(255, 255, 255);
+const BLACK: Color = rgb(0, 0, 0);
 
-fn luminance(color: Rgba8) -> f32 {
+fn luminance(color: Color) -> f32 {
     let channel = |value: u8| {
         let c = f32::from(value) / 255.0;
         if c <= 0.039_28 {
@@ -188,7 +188,7 @@ fn luminance(color: Rgba8) -> f32 {
     )
 }
 
-fn contrast(a: Rgba8, b: Rgba8) -> f32 {
+fn contrast(a: Color, b: Color) -> f32 {
     let (x, y) = (luminance(a), luminance(b));
     (x.max(y) + 0.05) / (x.min(y) + 0.05)
 }

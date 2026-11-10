@@ -6,12 +6,12 @@
 
 use crate::geometry::{PhysicalSize, Point, Rect};
 use crate::style::Color;
-use crate::style::Rgba8;
+use crate::style::Rgba;
 
 use super::*;
 use crate::scene::{DrawRect, SceneCommand};
 
-const RED: Rgba8 = Rgba8 {
+const RED: Color = Color {
     r: 255,
     g: 0,
     b: 0,
@@ -27,11 +27,11 @@ fn rect(x: f32, y: f32, w: f32, h: f32) -> Rect {
     Rect::new(Point::new(x, y), w, h)
 }
 
-const WHITE: Color = Color::rgba(1.0, 1.0, 1.0, 1.0);
+const WHITE: Rgba = Rgba::new(1.0, 1.0, 1.0, 1.0);
 
 fn draw(
     commands: Vec<SceneCommand>,
-    clear: Color,
+    clear: Rgba,
     viewport: (f32, f32),
     size: (u32, u32),
 ) -> (Pixmap, CpuRenderer) {
@@ -49,7 +49,7 @@ fn solid(rect: Rect) -> SceneCommand {
 
 #[test]
 fn clear_color_fills_the_target() {
-    let (out, _) = draw(vec![], Color::rgba(0.0, 0.0, 1.0, 1.0), (4.0, 4.0), (4, 4));
+    let (out, _) = draw(vec![], Rgba::new(0.0, 0.0, 1.0, 1.0), (4.0, 4.0), (4, 4));
     assert_eq!(pixel(&out, 0, 0), [0, 0, 255, 255]);
 }
 

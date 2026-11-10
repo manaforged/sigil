@@ -7,7 +7,7 @@
 use std::collections::HashSet;
 
 use sigil::prelude::*;
-use sigil::style::Rgba8;
+use sigil::style::Color;
 use sigil::widgets::{
     Combobox, Date, TableColumn, TableState, chart, checkbox, chip, code_edit, color_field,
     combobox, date_field, divider_horizontal, dot, dropdown, gauge, icon_button, markdown,
@@ -88,7 +88,7 @@ fn inputs() -> Vec<Case> {
         (
             "color_field",
             Box::new(|| {
-                color_field(signal(Rgba8 {
+                color_field(signal(Color {
                     r: 128,
                     g: 64,
                     b: 200,

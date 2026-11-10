@@ -2,7 +2,7 @@ use smallvec::{SmallVec, smallvec};
 
 use super::gradient::percent as percent_of;
 use super::{
-    BgGradient, ColorAtom, Conic, GradientAxis, GradientShape, PaintAtom, Radial, Rgba8, StopSlot,
+    BgGradient, Color, ColorAtom, Conic, GradientAxis, GradientShape, PaintAtom, Radial, StopSlot,
 };
 use crate::style::{StyleAtom, Token};
 
@@ -154,8 +154,8 @@ impl From<ColorAtom> for Background {
     }
 }
 
-impl From<Rgba8> for Background {
-    fn from(color: Rgba8) -> Self {
+impl From<Color> for Background {
+    fn from(color: Color) -> Self {
         Self(Fill::Color(color.into()))
     }
 }

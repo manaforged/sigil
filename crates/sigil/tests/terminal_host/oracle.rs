@@ -6,31 +6,31 @@ use sigil::layout::{LayoutStyle, Position};
 use sigil::prelude::Widget;
 use sigil::prelude::{Paint, Signal};
 use sigil::reactive::{Owner, derived, signal};
-use sigil::style::{Rgba8, Token};
+use sigil::style::{Color, Token};
 use sigil::terminal::{ColorDepth, Grid, Screen};
 
 pub(super) const COLS: u16 = 40;
 pub(super) const ROWS: u16 = 12;
-const INKS: [Rgba8; 4] = [
-    Rgba8 {
+const INKS: [Color; 4] = [
+    Color {
         r: 250,
         g: 250,
         b: 250,
         a: 255,
     },
-    Rgba8 {
+    Color {
         r: 120,
         g: 160,
         b: 250,
         a: 255,
     },
-    Rgba8 {
+    Color {
         r: 250,
         g: 120,
         b: 90,
         a: 255,
     },
-    Rgba8 {
+    Color {
         r: 90,
         g: 220,
         b: 140,

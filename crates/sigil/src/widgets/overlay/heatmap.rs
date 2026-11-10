@@ -1,6 +1,6 @@
 use crate::kernel::{NodeBuilder, ObjectFit, Role, container, image};
 use crate::layout::LayoutStyle;
-use crate::style::Rgba8;
+use crate::style::Color;
 use crate::style::strings::StringKey;
 use crate::style::theme::ambient::{ActiveTheme, theme_label};
 use crate::widgets::Widget;
@@ -9,7 +9,7 @@ mod raster;
 
 /// A grid of colored cells, drawn as one image that fills its box.
 #[must_use]
-pub fn heatmap<F: Fn(usize, usize) -> Rgba8>(
+pub fn heatmap<F: Fn(usize, usize) -> Color>(
     grid_w: usize,
     grid_h: usize,
     color: F,

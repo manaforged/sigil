@@ -13,7 +13,7 @@ use sigil::renderer::{WgpuRenderer, WgpuSurface};
 use sigil::scene::{
     CommandScene, CornerRadii, DrawRect, SceneBuilder, SceneCommand, Shadow, ShadowKind,
 };
-use sigil::style::Color;
+use sigil::style::Rgba;
 
 #[test]
 fn inner_shadow_command_keeps_shadow_kind() {
@@ -54,7 +54,7 @@ type RenderCommandScene = fn(
     &mut WgpuRenderer,
     &mut WgpuSurface,
     &CommandScene,
-    Color,
+    Rgba,
     (f32, f32),
 ) -> Result<(), sigil::Error>;
 

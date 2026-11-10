@@ -1,5 +1,5 @@
 use crate::geometry::Point;
-use crate::style::Color;
+use crate::style::Rgba;
 
 use super::helpers::{DARK, rect, rgba};
 use crate::renderer::scene_command::{GradientStop, LinearGradient};
@@ -9,7 +9,7 @@ use crate::scene::{
 };
 
 #[must_use]
-pub fn glow() -> (CommandScene, (f32, f32), Color) {
+pub fn glow() -> (CommandScene, (f32, f32), Rgba) {
     let fill = |rect: crate::geometry::Rect| {
         DrawRect::new(rect, rgba(245, 245, 250, 255)).border_radius(CornerRadii::uniform(24.0))
     };
@@ -31,7 +31,7 @@ pub fn glow() -> (CommandScene, (f32, f32), Color) {
 }
 
 #[must_use]
-pub fn layer_pool() -> (CommandScene, (f32, f32), Color) {
+pub fn layer_pool() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     scene.draw_gradient(DrawGradient::new(
         rect(0.0, 0.0, 960.0, 320.0),

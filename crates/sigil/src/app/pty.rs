@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::events::ModifiersState;
 use crate::reactive::{Signal, signal};
-use crate::style::{Rgba8, TextRun};
+use crate::style::{Color, TextRun};
 use crate::{AppResult, Error};
 
 mod mouse;
@@ -143,7 +143,7 @@ impl Session {
             .is_some_and(|bytes| self.write(&bytes).is_ok())
     }
 
-    pub(crate) fn set_colors(&self, ink: Rgba8, background: Rgba8) {
+    pub(crate) fn set_colors(&self, ink: Color, background: Color) {
         if let Ok(mut colors) = self.colors.lock() {
             *colors = (ink, background);
         }
@@ -225,7 +225,7 @@ fn prepare(command: &mut portable_pty::CommandBuilder) {
     }
 }
 
-fn default_colors() -> (Rgba8, Rgba8) {
+fn default_colors() -> (Color, Color) {
     crate::style::theme::ambient::ActiveTheme::capture()
         .with(|theme| (theme.on_surface, theme.surface))
 }

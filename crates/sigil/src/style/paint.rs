@@ -27,13 +27,13 @@ pub trait Paint: PaintTarget {
 
     /// Paints the background gradient inside the glyphs of a text node, like Tailwind `bg-clip-text`.
     #[must_use]
-    fn bg_clip_text(self) -> Self {
+    fn background_clip_text(self) -> Self {
         paint(self, PaintAtom::ClipText)
     }
 
     /// Tiles `image` over the background at its natural size, like CSS `background-image: url(..)`.
     #[must_use]
-    fn bg_image(self, image: ImageSource) -> Self {
+    fn background_image(self, image: ImageSource) -> Self {
         slot::image(self, image, |id| StyleAtom::Paint(PaintAtom::Image(id)))
     }
 

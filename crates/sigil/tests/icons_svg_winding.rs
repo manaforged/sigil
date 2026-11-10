@@ -14,7 +14,7 @@ use sigil::widgets::icon_svg;
 use sigil_kittest::Harness;
 
 const SIDE: u32 = 32;
-const BLACK: Rgba8 = Rgba8 {
+const BLACK: Color = Color {
     r: 0,
     g: 0,
     b: 0,
@@ -67,7 +67,7 @@ fn stroked_polyline_leaves_rows_outside_its_outline_empty() {
 
 #[test]
 fn a_translucent_token_tints_an_icon_at_its_own_alpha() {
-    let glow = Rgba8 {
+    let glow = Color {
         r: 255,
         g: 255,
         b: 255,

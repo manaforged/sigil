@@ -1,6 +1,6 @@
 use crate::kernel::{AccessibleName, Cx, FrameDelta, NodeId};
 use crate::scene::{CommandScene, DecorationKind, DrawDecoration, DrawRect, SceneCommand};
-use crate::style::Rgba8;
+use crate::style::Color;
 use smol_str::SmolStr;
 
 use super::{Grid, Ink, Underline, cell_edge, floor_cell};
@@ -122,7 +122,7 @@ pub(super) fn decorate(
     });
     let row = floor_cell(middle / size);
     let ink = if line.color.a > 0 {
-        Ink::Exact(Rgba8 {
+        Ink::Exact(Color {
             a: 255,
             ..line.color
         })

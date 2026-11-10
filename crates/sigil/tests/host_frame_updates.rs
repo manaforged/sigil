@@ -21,7 +21,7 @@ fn frame(host: &mut Host, input: Option<FrameInputHook<'_>>) {
     let _ = host.frame(VIEW, 1.0 / 60.0, hooks);
 }
 
-fn text_color(host: &mut Host, label: &str) -> Rgba8 {
+fn text_color(host: &mut Host, label: &str) -> Color {
     host.emit(VIEW)
         .find_text(label)
         .expect("label is drawn")

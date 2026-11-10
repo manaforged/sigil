@@ -1,5 +1,5 @@
 use crate::hal::RenderedGlyph;
-use crate::style::Color;
+use crate::style::Rgba;
 
 use crate::renderer::glyph_place::GlyphMode;
 use crate::renderer::quad_paint::MaskParams;
@@ -88,7 +88,7 @@ impl SceneWalk<'_> {
             },
             kind: SpriteKind::Poly,
             destination,
-            color: crate::style::Rgba8 {
+            color: crate::style::Color {
                 r: 255,
                 g: 255,
                 b: 255,
@@ -143,7 +143,7 @@ impl SceneWalk<'_> {
         glyphs: &[RenderedGlyph],
         paragraph: &Paragraph,
         (origin, transform): ((f32, f32), crate::renderer::scene_command::Transform),
-        color: Color,
+        color: Rgba,
     ) -> Vec<GlyphInstance> {
         let ctx = &mut self.ctx;
         let pipeline = pipeline_for(
@@ -181,7 +181,7 @@ impl SceneWalk<'_> {
         run: &GlyphRun,
         paragraph: &Paragraph,
         origin: (f32, f32),
-        color: Color,
+        color: Rgba,
     ) -> (Vec<QuadInstance>, Option<Vec<RenderedGlyph>>) {
         let ctx = &mut self.ctx;
         let pipeline = pipeline_for(
@@ -287,10 +287,10 @@ impl SceneWalk<'_> {
     }
 }
 
-fn glyph_run_color(run: &GlyphRun, opacity_scale: f32, space: BlendSpace) -> Color {
+fn glyph_run_color(run: &GlyphRun, opacity_scale: f32, space: BlendSpace) -> Rgba {
     let opacity = (f32::from(run.opacity) / 10_000.0) * opacity_scale;
     let [r, g, b, a] = space.rgba(run.color);
-    Color::rgba(r, g, b, a * opacity.clamp(0.0, 1.0))
+    Rgba::new(r, g, b, a * opacity.clamp(0.0, 1.0))
 }
 
 #[cfg(test)]

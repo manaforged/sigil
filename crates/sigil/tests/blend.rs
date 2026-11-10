@@ -23,7 +23,7 @@ use sigil::renderer::CpuRenderer;
 use sigil::scene::{
     BlendMode, CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder,
 };
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
@@ -45,11 +45,11 @@ const SOURCE: [u8; 3] = [50, 150, 250];
 const HALF: u8 = 128;
 const TOLERANCE: u8 = 2;
 
-const fn rgba([r, g, b]: [u8; 3], a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
+const fn rgba([r, g, b]: [u8; 3], a: u8) -> Color {
+    Color { r, g, b, a }
 }
 
-fn blended(scene: &mut SceneBuilder, rect: Rect, mode: BlendMode, color: Rgba8) {
+fn blended(scene: &mut SceneBuilder, rect: Rect, mode: BlendMode, color: Color) {
     let scope = LayerScope {
         clip: rect,
         clip_radii: CornerRadii::ZERO,
@@ -109,7 +109,7 @@ fn cpu_frame(scene: &CommandScene) -> image::RgbaImage {
         scene,
         viewport: (WIDTH as f32, HEIGHT as f32),
         size: PhysicalSize::new(device_w, device_h),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame")

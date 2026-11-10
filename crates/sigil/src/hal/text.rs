@@ -2,7 +2,7 @@ extern crate alloc;
 
 use alloc::boxed::Box;
 
-use crate::hal::geometry::Color;
+use crate::hal::geometry::Rgba;
 
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
@@ -13,7 +13,7 @@ pub struct RenderedGlyph {
     pub x: f32,
     pub y: f32,
     pub size: f32,
-    pub color: Color,
+    pub color: Rgba,
     pub variation_coords: Box<[i16]>,
     pub skew: f32,
 }

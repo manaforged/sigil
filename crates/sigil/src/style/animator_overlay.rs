@@ -1,5 +1,5 @@
 use crate::style::atom::OPACITY_UNITS;
-use crate::style::{Rgba8, StyleAtom};
+use crate::style::{Color, StyleAtom};
 use ahash::AHasher;
 use std::hash::{Hash, Hasher};
 
@@ -225,7 +225,7 @@ impl ColorAtomKind {
 pub(crate) trait AnimatorOverlay {
     fn value_for(&self, kind: NumericAtomKind) -> Option<f32>;
 
-    fn value_for_color(&self, kind: ColorAtomKind) -> Option<Rgba8>;
+    fn value_for_color(&self, kind: ColorAtomKind) -> Option<Color>;
 
     fn visit_layout_values(&self, visit: &mut dyn FnMut(NumericAtomKind, f32)) {
         for kind in NumericAtomKind::ALL
@@ -243,7 +243,7 @@ pub(crate) trait AnimatorOverlay {
         _atoms: &[StyleAtom],
         _theme: &crate::style::Theme,
         _tone: crate::style::Tone,
-        _inherited_text: Rgba8,
+        _inherited_text: Color,
     ) {
     }
 

@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use crate::kernel::{Cx, NodeId, container};
 use crate::reactive::{Owner, signal};
-use crate::style::{ColorAtom, Rgba8, StyleAtom, StyleBinding, Token};
+use crate::style::{Color, ColorAtom, StyleAtom, StyleBinding, Token};
 
 static INACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Surface))];
 static ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent))];
@@ -87,7 +87,7 @@ fn pillar_call_site_compiles() {
         let mut cx = Cx::new_root();
         let id = cx.add(container().style_reactive(move || {
             if danger.get() {
-                &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(Rgba8 {
+                &[StyleAtom::BackgroundColor(ColorAtom::Color(Color {
                     r: 255,
                     g: 0,
                     b: 0,

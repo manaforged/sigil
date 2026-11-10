@@ -14,7 +14,7 @@ use crate::renderer::scene_instance::LAYER_FORMAT;
 use crate::scene::command::Filter;
 use crate::scene::command::{BlendMode, Transform3D};
 use crate::scene::corner_radii::CornerRadii;
-use crate::style::Color;
+use crate::style::Rgba;
 
 use super::kept::KeptKey;
 use super::{LayerTarget, physical_extent};
@@ -220,7 +220,7 @@ pub(super) fn open_layer<'n>(
         .acquire(ctx.device, extent.0, extent.1, LAYER_FORMAT)?;
     ctx.stats.record_offscreen(extent.0, extent.1);
     plan.reason.note(extent);
-    ctx.encoder.clear(&handle.view, Color::TRANSPARENT);
+    ctx.encoder.clear(&handle.view, Rgba::TRANSPARENT);
     let parent_format = std::mem::replace(&mut ctx.format, LAYER_FORMAT);
     let target = LayerTarget {
         view: handle.view.clone(),

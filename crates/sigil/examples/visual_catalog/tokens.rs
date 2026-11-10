@@ -1,7 +1,7 @@
 use std::fmt::{self, Write as _};
 use std::path::Path;
 
-use sigil::style::{ControlSize, Metrics, Radius, Rgba8, Theme, Token, space};
+use sigil::style::{Color, ControlSize, Metrics, Radius, Theme, Token, space};
 use skrifa::instance::{LocationRef, Size as FontSize};
 use skrifa::string::StringId;
 use skrifa::{FontRef, MetadataProvider};
@@ -99,7 +99,7 @@ fn colors(out: &mut String, theme: &Theme, indent: &str) -> fmt::Result {
     Ok(())
 }
 
-pub(crate) fn hex(color: Rgba8) -> String {
+pub(crate) fn hex(color: Color) -> String {
     let rgb = format!("#{:02x}{:02x}{:02x}", color.r, color.g, color.b);
     if color.a == u8::MAX {
         rgb

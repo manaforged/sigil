@@ -6,7 +6,7 @@ use crate::geometry::Rect;
 use crate::kernel::FrameDelta;
 use crate::kernel::{Cx, Node, NodeId, Surface, TopLayer};
 use crate::layout::LayoutResult;
-use crate::style::{RenderStyle, Rgba8, StyleBinding, TextStyle, Theme, ToneContext};
+use crate::style::{Color, RenderStyle, StyleBinding, TextStyle, Theme, ToneContext};
 use crate::widgets::CanvasPaint;
 
 use crate::scene::builder::SceneBuilder;
@@ -141,7 +141,7 @@ struct EmitWalk<'a, 't> {
 struct Inherited<'t> {
     theme: &'t Theme,
     theme_stamp: u64,
-    text_color: Option<Rgba8>,
+    text_color: Option<Color>,
     text_style: Rc<TextStyle>,
     text_fill: Option<Rc<TextFill>>,
     text_shadows: Option<Rc<[Shadow]>>,

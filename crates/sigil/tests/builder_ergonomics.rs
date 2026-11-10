@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use sigil::icons::Icon;
 use sigil::kernel::Role;
 use sigil::prelude::*;
-use sigil::style::{BgGradient, ColorAtom, GradientAxis, GradientStopKey, Rgba8};
+use sigil::style::{BgGradient, Color, ColorAtom, GradientAxis, GradientStopKey};
 use sigil_kittest::{Harness, Query};
 
 #[test]
@@ -56,7 +56,7 @@ fn equal_owned_gradient_stops_share_one_copy() {
         vec![
             GradientStopKey::new(
                 0,
-                ColorAtom::Rgba8(Rgba8 {
+                ColorAtom::Color(Color {
                     r: 255,
                     g: 0,
                     b: 0,
@@ -65,7 +65,7 @@ fn equal_owned_gradient_stops_share_one_copy() {
             ),
             GradientStopKey::new(
                 1000,
-                ColorAtom::Rgba8(Rgba8 {
+                ColorAtom::Color(Color {
                     r: 0,
                     g: 0,
                     b: 255,

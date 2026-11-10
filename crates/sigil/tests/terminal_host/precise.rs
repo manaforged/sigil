@@ -69,7 +69,7 @@ fn ascii_glyphs_hold_on_full_and_region_frames() {
 fn a_change_hidden_behind_a_cover_writes_nothing() {
     use sigil::layout::Position;
     use sigil::prelude::Widget;
-    use sigil::style::Rgba8;
+    use sigil::style::Color;
 
     let cell = Host::CELL;
     let place = || {
@@ -80,7 +80,7 @@ fn a_change_hidden_behind_a_cover_writes_nothing() {
             .width(6.0 * cell)
             .height(2.0 * cell)
     };
-    let tone = |r: u8| Rgba8 {
+    let tone = |r: u8| Color {
         r,
         g: 60,
         b: 60,

@@ -1,4 +1,4 @@
-use crate::style::{Rgba8, TextFace, TextRun, Token};
+use crate::style::{Color, TextFace, TextRun, Token};
 
 use super::Row;
 
@@ -99,10 +99,10 @@ fn face(cell: &vt100::Cell) -> TextFace {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Ink {
     Token(Token),
-    Exact(Rgba8),
+    Exact(Color),
 }
 
-const fn split(ink: Option<Ink>) -> (Option<Token>, Option<Rgba8>) {
+const fn split(ink: Option<Ink>) -> (Option<Token>, Option<Color>) {
     match ink {
         None => (None, None),
         Some(Ink::Token(token)) => (Some(token), None),
@@ -111,7 +111,7 @@ const fn split(ink: Option<Ink>) -> (Option<Token>, Option<Rgba8>) {
 }
 
 const fn exact(r: u8, g: u8, b: u8) -> Ink {
-    Ink::Exact(Rgba8 { r, g, b, a: 255 })
+    Ink::Exact(Color { r, g, b, a: 255 })
 }
 
 fn ink(color: vt100::Color) -> Option<Ink> {

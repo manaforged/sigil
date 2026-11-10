@@ -15,7 +15,7 @@ use sigil::renderer::BUILTIN_SPRITE_ATLAS_ID;
 use sigil::scene::{
     CommandScene, DrawSprite, SceneBuilder, SceneCommand, SpriteKind, SpriteSource,
 };
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::gpu::{Capture, render_capture};
 
 const VIEWPORT: (f32, f32) = (360.0, 80.0);
@@ -29,7 +29,7 @@ const MASKS: [(f32, f32); 5] = [
     (0.0, 332.0),
 ];
 const CAPTURE: Capture = Capture::new(VIEWPORT, [VIEWPORT_WIDTH, VIEWPORT_HEIGHT])
-    .clear(Color::rgba(0.05, 0.06, 0.09, 1.0));
+    .clear(Rgba::new(0.05, 0.06, 0.09, 1.0));
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]

@@ -76,8 +76,8 @@ pub(crate) const AA_TEXT: f32 = 4.5;
 
 /// Returns the WCAG contrast ratio of two opaque colors.
 #[must_use]
-pub(crate) fn contrast(a: crate::style::Rgba8, b: crate::style::Rgba8) -> f32 {
-    let luminance = |color: crate::style::Rgba8| {
+pub(crate) fn contrast(a: crate::style::Color, b: crate::style::Color) -> f32 {
+    let luminance = |color: crate::style::Color| {
         0.0722_f32.mul_add(
             decode(color.b),
             0.7152_f32.mul_add(decode(color.g), 0.2126 * decode(color.r)),

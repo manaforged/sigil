@@ -53,7 +53,7 @@ pub(super) fn traces(plot: &Traces<'_>, pad: f32) -> NodeBuilder {
         }
     }
     for (item, values) in shown {
-        layer = layer.child(marks::line(&trace(values), item.hue.paint()));
+        layer = layer.child(marks::line(&trace(values), item.hue.color()));
     }
     plot_area(layer, pad)
 }

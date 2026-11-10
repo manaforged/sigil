@@ -1,5 +1,5 @@
 use crate::profile::count;
-use crate::style::Color;
+use crate::style::Rgba;
 
 use crate::geometry::Rect;
 use crate::renderer::device_state::ReadyState;
@@ -40,7 +40,7 @@ pub(super) fn acquire_frame(
 pub(crate) fn record_clear(
     encoder: &mut wgpu::CommandEncoder,
     view: &wgpu::TextureView,
-    color: Color,
+    color: Rgba,
 ) {
     count(crate::profile::Counter::GpuRenderPasses);
     let _p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

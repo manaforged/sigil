@@ -96,7 +96,7 @@ pub(crate) fn heatmap_demo() -> NodeBuilder {
         .width(240.0)
         .height(120.0)
         .gap(Space::None)
-        .child(heatmap(12, 6, |x, y| Rgba8 {
+        .child(heatmap(12, 6, |x, y| Color {
             r: 40,
             g: u8::try_from(40 + x * 16).unwrap_or(u8::MAX),
             b: u8::try_from(80 + y * 28).unwrap_or(u8::MAX),

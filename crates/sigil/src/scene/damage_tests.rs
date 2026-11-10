@@ -1,16 +1,16 @@
 use super::{Damage, cell_damage};
 use crate::geometry::{Point, Rect};
 use crate::scene::command::{CommandScene, DrawRect, SceneCommand};
-use crate::style::Rgba8;
+use crate::style::Color;
 
 const CELL: (f32, f32) = (8.0, 8.0);
-const RED: Rgba8 = Rgba8 {
+const RED: Color = Color {
     r: 220,
     g: 40,
     b: 40,
     a: 255,
 };
-const BLUE: Rgba8 = Rgba8 {
+const BLUE: Color = Color {
     r: 40,
     g: 40,
     b: 220,
@@ -21,7 +21,7 @@ fn area() -> Rect {
     Rect::new(Point::new(0.0, 0.0), 320.0, 96.0)
 }
 
-fn scene(rects: &[(f32, f32, Rgba8)]) -> CommandScene {
+fn scene(rects: &[(f32, f32, Color)]) -> CommandScene {
     let mut scene = CommandScene::default();
     for (x, y, color) in rects {
         let rect = Rect::new(Point::new(*x, *y), 16.0, 8.0);
@@ -68,8 +68,8 @@ fn an_unchanged_scene_has_no_damage() {
 
 #[test]
 fn scattered_changes_fall_back_to_a_full_raster() {
-    let steady: Vec<(f32, f32, Rgba8)> = (0..600).map(|_| (1000.0, 0.0, RED)).collect();
-    let spots = |color: Rgba8| {
+    let steady: Vec<(f32, f32, Color)> = (0..600).map(|_| (1000.0, 0.0, RED)).collect();
+    let spots = |color: Color| {
         (0..13_u8)
             .flat_map(|col| {
                 (0..6_u8).map(move |row| (f32::from(col) * 24.0, f32::from(row) * 16.0, color))
@@ -86,7 +86,7 @@ fn spot(index: usize) -> (f32, f32) {
     (f32::from(index % 10) * 32.0, f32::from(index / 10) * 8.0)
 }
 
-fn spots(count: usize, paint: impl Fn(usize) -> Rgba8) -> Vec<(f32, f32, Rgba8)> {
+fn spots(count: usize, paint: impl Fn(usize) -> Color) -> Vec<(f32, f32, Color)> {
     (0..count)
         .map(|index| {
             let (x, y) = spot(index);
@@ -160,7 +160,7 @@ fn changing_more_than_half_a_large_scene_repaints_whole() {
     );
 }
 
-fn layered(effect: crate::scene::command::LayerEffect, color: Rgba8) -> CommandScene {
+fn layered(effect: crate::scene::command::LayerEffect, color: Color) -> CommandScene {
     let mut layer = CommandScene::default();
     layer
         .commands
@@ -210,7 +210,7 @@ fn only_a_layer_that_moves_cells_off_their_grid_repaints_whole() {
     }
 }
 
-fn clipped(clip: Rect, inside: Rgba8) -> CommandScene {
+fn clipped(clip: Rect, inside: Color) -> CommandScene {
     let mut clipped = CommandScene::default();
     clipped.commands.push(SceneCommand::PushClip(clip.into()));
     clipped

@@ -6,7 +6,7 @@ use tiny_skia::{
 use crate::animation::runtime::binding_animate_color::mix;
 use crate::geometry::Point;
 use crate::scene::command::{Gradient, GradientKind, GradientStop};
-use crate::style::Rgba8;
+use crate::style::Color;
 
 const TURN: f32 = 360.0;
 const QUARTER: f32 = 90.0;
@@ -83,7 +83,7 @@ fn dense(stops: &[GradientStop]) -> Vec<GradientStop> {
     out
 }
 
-fn color(color: Rgba8, opacity: f32) -> TsColor {
+fn color(color: Color, opacity: f32) -> TsColor {
     let alpha = (f32::from(color.a) / 255.0 * opacity).clamp(0.0, 1.0);
     let channel = |value: u8| f32::from(value) / 255.0;
     TsColor::from_rgba(channel(color.r), channel(color.g), channel(color.b), alpha)

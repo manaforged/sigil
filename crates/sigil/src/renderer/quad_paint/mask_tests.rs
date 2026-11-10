@@ -112,7 +112,7 @@ fn one_placement_caches_every_glyph_including_fallback_faces() {
         paragraph: &paragraph,
         glyphs: &glyphs,
         origin: (0.0, 0.0),
-        color: Color::WHITE,
+        color: Rgba::WHITE,
     });
     assert!(
         !leftover

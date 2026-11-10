@@ -7,7 +7,7 @@ use sigil::prelude::TextBuilder;
 use sigil::prelude::*;
 use sigil::widgets::{ChartBuilder, IconBuilder};
 
-const BLUE: Rgba8 = Rgba8 {
+const BLUE: Color = Color {
     r: 90,
     g: 140,
     b: 255,

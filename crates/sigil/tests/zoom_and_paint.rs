@@ -17,7 +17,7 @@ use sigil::style::Transform2D;
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 
-const RED: Rgba8 = Rgba8 {
+const RED: Color = Color {
     r: 220,
     g: 30,
     b: 30,

@@ -12,7 +12,7 @@ use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 
-const SEL: sigil::style::Rgba8 = sigil::style::Rgba8 {
+const SEL: sigil::style::Color = sigil::style::Color {
     r: 56,
     g: 118,
     b: 224,

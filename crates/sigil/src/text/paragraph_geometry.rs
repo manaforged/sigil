@@ -1,6 +1,6 @@
 use crate::geometry::{Point, Rect};
 use crate::hal::{HitPosition, RenderedGlyph, TextAffinity};
-use crate::style::Color;
+use crate::style::Rgba;
 
 use super::{FaceEntry, LayoutLine, LineGlyph, Paragraph, u32_clamp};
 
@@ -63,7 +63,7 @@ impl Paragraph {
                     x: g.x,
                     y: line.baseline_y + g.offset_y,
                     size: self.inner.font_size,
-                    color: Color::WHITE,
+                    color: Rgba::WHITE,
                     variation_coords: face.variation_coords.clone(),
                     skew: face.skew,
                 });

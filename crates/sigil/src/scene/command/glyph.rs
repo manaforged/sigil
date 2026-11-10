@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::geometry::Rect;
 use crate::hal::RenderedGlyph;
 use crate::kernel::NodeId;
-use crate::style::{Rgba8, TextStyle, Tone};
+use crate::style::{Color, TextStyle, Tone};
 #[cfg(feature = "scene")]
 use crate::text::Paragraph;
 
@@ -23,14 +23,14 @@ pub enum TextFlow {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct RunInk {
-    pub(crate) color: Option<Rgba8>,
-    pub(crate) background: Option<Rgba8>,
+    pub(crate) color: Option<Color>,
+    pub(crate) background: Option<Color>,
 }
 
 #[derive(Clone)]
 pub struct SharedGlyph {
     pub text: String,
-    pub color: Rgba8,
+    pub color: Color,
     pub style: TextStyle,
     pub opacity: u16,
     pub flow: TextFlow,
@@ -72,7 +72,7 @@ impl GlyphRun {
     pub fn new(
         rect: Rect,
         text: impl Into<String>,
-        color: Rgba8,
+        color: Color,
         style: TextStyle,
         opacity: u16,
     ) -> Self {
@@ -148,7 +148,7 @@ impl GlyphRun {
     }
 
     #[cfg(feature = "scene")]
-    pub(crate) fn with_glyphs(mut self, color: Rgba8, glyphs: Vec<RenderedGlyph>) -> Self {
+    pub(crate) fn with_glyphs(mut self, color: Color, glyphs: Vec<RenderedGlyph>) -> Self {
         let shared = Arc::make_mut(&mut self.shared);
         shared.color = color;
         shared.positioned_glyphs = glyphs;
@@ -188,7 +188,7 @@ impl GlyphRun {
         self.shared.fill.as_ref()
     }
 
-    pub(crate) fn tinted(&self, color: Rgba8) -> Self {
+    pub(crate) fn tinted(&self, color: Color) -> Self {
         let mut run = self.clone();
         run.node = None;
         let shared = Arc::make_mut(&mut run.shared);
@@ -279,7 +279,7 @@ fn same_shared(this: &SharedGlyph, other: &SharedGlyph) -> bool {
 pub fn shape_glyph_run(
     rect: Rect,
     text: String,
-    color: Rgba8,
+    color: Color,
     style: TextStyle,
     opacity: u16,
 ) -> GlyphRun {

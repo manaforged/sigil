@@ -27,7 +27,7 @@ use sigil::prelude::*;
 use sigil::reactive::{Owner, signal};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{CommandScene, emit_scene};
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::FakeMeasure;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -156,7 +156,7 @@ fn render_one(
             .expect("layout-after-state");
 
         let scene: CommandScene = emit_scene(&cx, root, None);
-        let clear = Color {
+        let clear = Rgba {
             r: 0.0,
             g: 0.0,
             b: 0.0,

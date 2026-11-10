@@ -1,7 +1,7 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use crate::geometry::Rect;
-use crate::style::Rgba8;
+use crate::style::Color;
 use bytemuck::{Pod, Zeroable};
 use half::f16;
 
@@ -42,7 +42,7 @@ impl BlendSpace {
         }
     }
 
-    pub(crate) fn rgba(self, color: Rgba8) -> [f32; 4] {
+    pub(crate) fn rgba(self, color: Color) -> [f32; 4] {
         [
             self.channel(color.r),
             self.channel(color.g),
@@ -331,7 +331,7 @@ pub(crate) fn wash_stops(kind: PatternKind) -> Option<Vec<GradientStop>> {
     )
 }
 
-fn premultiplied(space: BlendSpace, color: Rgba8) -> [f32; 4] {
+fn premultiplied(space: BlendSpace, color: Color) -> [f32; 4] {
     let [r, g, b, a] = space.rgba(color);
     [r * a, g * a, b * a, a]
 }
@@ -357,7 +357,7 @@ pub(crate) fn draw_shadow_instance(
 pub(crate) fn gradient_stop_records(stops: &[GradientStop], space: BlendSpace) -> Vec<GpuStop> {
     let transparent = [GradientStop::new(
         0.0,
-        Rgba8 {
+        Color {
             r: 0,
             g: 0,
             b: 0,

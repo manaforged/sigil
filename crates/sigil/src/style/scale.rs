@@ -1,29 +1,29 @@
-use crate::style::Rgba8;
+use crate::style::Color;
 
-pub(super) const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a: 255 }
+pub(super) const fn rgb(r: u8, g: u8, b: u8) -> Color {
+    Color { r, g, b, a: 255 }
 }
 
 /// A 12-step color scale.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ColorScale {
     /// The steps.
-    pub steps: [Rgba8; 12],
+    pub steps: [Color; 12],
     /// The on solid.
-    pub on_solid: Rgba8,
+    pub on_solid: Color,
 }
 
 impl ColorScale {
     /// Creates a color scale from steps.
     #[must_use]
-    pub const fn from_steps(steps: [Rgba8; 12]) -> Self {
+    pub const fn from_steps(steps: [Color; 12]) -> Self {
         let on_solid = heuristic_on_solid(steps[8]);
         Self { steps, on_solid }
     }
 
     /// Sets the on solid.
     #[must_use]
-    pub const fn with_on_solid(mut self, on_solid: Rgba8) -> Self {
+    pub const fn with_on_solid(mut self, on_solid: Color) -> Self {
         self.on_solid = on_solid;
         self
     }
@@ -34,14 +34,14 @@ impl ColorScale {
         clippy::indexing_slicing,
         reason = "indices are computed from the same lengths that sized the buffer"
     )]
-    pub const fn step(&self, n: u8) -> Rgba8 {
+    pub const fn step(&self, n: u8) -> Color {
         let idx = if n == 0 { 0 } else { (n - 1) as usize };
         let clamped = if idx > 11 { 11 } else { idx };
         self.steps[clamped]
     }
 }
 
-const fn heuristic_on_solid(step9: Rgba8) -> Rgba8 {
+const fn heuristic_on_solid(step9: Color) -> Color {
     let sum = step9.r as u16 + step9.g as u16 + step9.b as u16;
     if sum > 420 {
         rgb(0x1C, 0x20, 0x24)
@@ -341,8 +341,8 @@ pub enum ScaleRole {
     Accent,
     /// The success scale role.
     Success,
-    /// The warn scale role.
-    Warn,
+    /// The warning scale role.
+    Warning,
     /// The error scale role.
     Error,
     /// The info scale role.

@@ -46,12 +46,12 @@ Builder options: `.alt(text)` (accessibility name), `.fit(ObjectFit::Fill|Contai
 path(16, 16)
     .move_to(2.0, 8.0)
     .line_to(14.0, 8.0)
-    .stroke(Rgba8 { r: 255, g: 255, b: 255, a: 255 }, 2.0)
+    .stroke(Color { r: 255, g: 255, b: 255, a: 255 }, 2.0)
     .fit();
 # };
 ```
 
-Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`. Paint with `.fill(color)`, `.fill_linear(start, end, stops)`, `.fill_radial(center, radius, stops)`, and `.stroke(color, width)`. `fill` and `stroke` take an `Rgba8` or a theme `Token`. A `Token` resolves against the active theme at paint time. The layout setters, such as `.width(..)`, override the layout; `.fit()` / `.fit_size(px)` fix the node to a logical size. The `width` and `height` given to `path` are the viewbox: the renderer maps it onto the laid-out box and rasterizes at the physical pixel size, so paths stay sharp at any device scale. Stroke widths scale with the viewbox; call `.non_scaling_stroke()` to keep them in logical px with round joins and caps, as data lines in a stretched plot need. Rasters are interned in a thread-local cache (256 entries), keyed by path, paint, and pixel size.
+Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`. Paint with `.fill(color)`, `.fill_linear(start, end, stops)`, `.fill_radial(center, radius, stops)`, and `.stroke(color, width)`. `fill` and `stroke` take a `Color` or a theme `Token`. A `Token` resolves against the active theme at paint time. The layout setters, such as `.width(..)`, override the layout; `.fit()` / `.fit_size(px)` fix the node to a logical size. The `width` and `height` given to `path` are the viewbox: the renderer maps it onto the laid-out box and rasterizes at the physical pixel size, so paths stay sharp at any device scale. Stroke widths scale with the viewbox; call `.non_scaling_stroke()` to keep them in logical px with round joins and caps, as data lines in a stretched plot need. Rasters are interned in a thread-local cache (256 entries), keyed by path, paint, and pixel size.
 
 ## chart
 

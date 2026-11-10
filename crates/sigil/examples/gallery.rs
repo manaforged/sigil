@@ -278,7 +278,7 @@ fn content_page() -> NodeBuilder {
                 .line_to(12.0, 4.0)
                 .line_to(20.0, 20.0)
                 .close()
-                .fill(Rgba8 {
+                .fill(Color {
                     r: 90,
                     g: 140,
                     b: 255,

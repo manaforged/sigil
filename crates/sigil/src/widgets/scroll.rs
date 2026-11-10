@@ -28,11 +28,13 @@ enum ScrollSizing {
 }
 
 impl ScrollSizing {
-    const fn of(fit: bool, set: &StyleData) -> Self {
-        match set.size.height {
-            _ if fit => Self::Fit,
-            Length::Fill | Length::Percent(_) => Self::Fill,
-            _ => Self::Fixed,
+    const fn of(fit: bool, fills: bool) -> Self {
+        if fit {
+            Self::Fit
+        } else if fills {
+            Self::Fill
+        } else {
+            Self::Fixed
         }
     }
 
@@ -125,7 +127,7 @@ impl ScrollBuilder {
         let scroll_y = self.scroll_y.unwrap_or_else(|| signal(0.0_f32));
         let (content, extent) = resolve_extent(self.content, self.extent);
         let set = self.layout_overrides.apply(LayoutStyle::default());
-        let sizing = ScrollSizing::of(self.fit, set.data());
+        let sizing = ScrollSizing::of(self.fit, self.layout_overrides.fills_height());
         let measured = sizing.measured(set.data());
         let width = self.layout_overrides.width_hint();
         let height = self.layout_overrides.height_hint().unwrap_or(match sizing {

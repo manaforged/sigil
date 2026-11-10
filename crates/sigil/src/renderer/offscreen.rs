@@ -1,4 +1,4 @@
-use crate::style::Color;
+use crate::style::Rgba;
 
 use crate::Error;
 use crate::renderer::device_state::PipelineCache;
@@ -43,7 +43,7 @@ impl WgpuRenderer {
         &mut self,
         target: OffscreenTarget<'_>,
         scene: &CommandScene,
-        clear_color: Color,
+        clear_color: Rgba,
     ) -> Result<(), Error> {
         self.last_frame_stats = FrameStats::default();
         let mut encoder = target

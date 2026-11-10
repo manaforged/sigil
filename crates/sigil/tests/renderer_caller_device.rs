@@ -13,7 +13,7 @@ mod scene_support;
 use scene_support::{color, rect};
 use sigil::renderer::{OffscreenTarget, ScreenSubmission, WgpuRenderer};
 use sigil::scene::{CommandScene, DrawRect, SceneBuilder};
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::gpu::read_pixels;
 
 const W: u32 = 64;
@@ -78,7 +78,7 @@ fn offscreen_capture_uses_the_callers_device_and_preserves_draw_order() {
         .render_command_scene_offscreen(
             OffscreenTarget::from(&target),
             &ordering_scene(),
-            Color::BLACK,
+            Rgba::BLACK,
         )
         .expect("offscreen capture");
 
@@ -103,7 +103,7 @@ const fn submission<'a>(
         format: FORMAT,
         viewport: VIEWPORT,
         scale: 1.0,
-        clear: Some(Color::BLACK),
+        clear: Some(Rgba::BLACK),
     }
 }
 

@@ -195,7 +195,7 @@ fn highlight_marks_markdown_headings_and_typescript_keywords() {
 
 #[test]
 fn every_bundled_icon_draws_visible_pixels() {
-    const BLACK: Rgba8 = Rgba8 {
+    const BLACK: Color = Color {
         r: 0,
         g: 0,
         b: 0,

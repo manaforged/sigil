@@ -14,7 +14,7 @@ use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{
     CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder, SceneCommand,
 };
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::gpu::{Capture, read_pixels, render_capture};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -22,7 +22,7 @@ const VIEWPORT: (f32, f32) = (220.0, 120.0);
 const VIEWPORT_WIDTH: u32 = 220;
 const VIEWPORT_HEIGHT: u32 = 120;
 const CAPTURE: Capture = Capture::new(VIEWPORT, [VIEWPORT_WIDTH, VIEWPORT_HEIGHT])
-    .clear(Color::rgba(0.05, 0.06, 0.09, 1.0));
+    .clear(Rgba::new(0.05, 0.06, 0.09, 1.0));
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
@@ -207,7 +207,7 @@ fn render_scene_pixels(
                 scale: 1.0,
             },
             scene,
-            Color::rgba(0.0, 0.0, 0.0, 1.0),
+            Rgba::new(0.0, 0.0, 0.0, 1.0),
         )
         .expect("render rounded clip");
     read_pixels(device, queue, &texture, VIEWPORT_WIDTH, VIEWPORT_HEIGHT).expect("sigil-kittest")
@@ -246,7 +246,7 @@ fn render_scene_at_scale(
                 scale: f32::from(scale),
             },
             scene,
-            Color::rgba(0.0, 0.0, 0.0, 1.0),
+            Rgba::new(0.0, 0.0, 0.0, 1.0),
         )
         .expect("render scaled layer");
 }

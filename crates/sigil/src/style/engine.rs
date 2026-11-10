@@ -1,6 +1,6 @@
 use crate::style::atom::{BgGradient, PaintAtom, StopSlot};
 use crate::style::{
-    AnimatorOverlay, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, Rgba8, StyleAtom,
+    AnimatorOverlay, Color, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, StyleAtom,
     TextLineHeight, TextStyle, Theme, Token, Tone,
 };
 
@@ -70,7 +70,7 @@ impl<'theme> StyleEngine<'theme> {
     }
 
     #[must_use]
-    fn tone_step(&self, step: u8) -> Rgba8 {
+    fn tone_step(&self, step: u8) -> Color {
         let role = self.tone.scale_role();
         Token::scale(role, step).map_or_else(
             || self.theme.scale(role).step(step),
@@ -80,7 +80,7 @@ impl<'theme> StyleEngine<'theme> {
 
     /// Resolves a color atom against the theme.
     #[must_use]
-    pub fn resolve_color(&self, color: ColorAtom) -> Rgba8 {
+    pub fn resolve_color(&self, color: ColorAtom) -> Color {
         self.theme.resolve_color(color)
     }
 
@@ -200,7 +200,7 @@ impl<'theme> StyleEngine<'theme> {
     }
 }
 
-const fn fill(render: &mut RenderStyle, color: Option<Rgba8>, gradient: Option<BgGradient>) {
+const fn fill(render: &mut RenderStyle, color: Option<Color>, gradient: Option<BgGradient>) {
     render.background_color = color;
     render.background_gradient = gradient;
 }

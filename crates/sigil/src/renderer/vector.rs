@@ -9,7 +9,7 @@ use crate::scene::command::{
     DrawPath, FillRule, Gradient, GradientKind, MITER_LIMIT, PathCmd, PathPaint, PathStroke,
     StrokeCap, StrokeJoin, Transform,
 };
-use crate::style::Rgba8;
+use crate::style::Color;
 
 pub(crate) trait PathSink {
     fn transform(&mut self, transform: Affine);
@@ -133,7 +133,7 @@ fn kurbo_stroke(stroke: &PathStroke) -> Stroke {
     }
 }
 
-const fn color(color: Rgba8, opacity: f32) -> AlphaColor<Srgb> {
+const fn color(color: Color, opacity: f32) -> AlphaColor<Srgb> {
     AlphaColor::from_rgba8(color.r, color.g, color.b, color.a).multiply_alpha(opacity)
 }
 

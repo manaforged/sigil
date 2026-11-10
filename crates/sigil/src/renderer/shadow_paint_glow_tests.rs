@@ -47,9 +47,9 @@ fn glow_kind_as_f32_is_two() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn shadow_glow_constructor_sets_kind_and_zero_offset() {
-    use crate::style::Rgba8;
+    use crate::style::Color;
     let g = super::Shadow::glow(
-        Rgba8 {
+        Color {
             r: 80,
             g: 200,
             b: 255,

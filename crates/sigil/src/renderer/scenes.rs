@@ -4,7 +4,7 @@
 
 use crate::geometry::Rect;
 use crate::style::Color;
-use crate::style::Rgba8;
+use crate::style::Rgba;
 
 mod backdrop_blur;
 mod effects;
@@ -31,7 +31,7 @@ use crate::scene::{
 };
 
 #[must_use]
-pub fn gradient() -> (CommandScene, (f32, f32), Color) {
+pub fn gradient() -> (CommandScene, (f32, f32), Rgba) {
     let viewport = (760.0, 320.0);
     let mut scene = SceneBuilder::new();
     scene.draw_rect(DrawRect::new(
@@ -72,24 +72,20 @@ pub fn gradient() -> (CommandScene, (f32, f32), Color) {
     for (x, fill) in [48.0, 216.0, 384.0, 552.0].into_iter().zip(fills) {
         draw_fill(&mut scene, rect(x, 72.0, 144.0, 128.0), fill);
     }
-    (
-        scene.finish(),
-        viewport,
-        Color::rgba(0.025, 0.03, 0.04, 1.0),
-    )
+    (scene.finish(), viewport, Rgba::new(0.025, 0.03, 0.04, 1.0))
 }
 
 #[must_use]
-pub fn stroke() -> (CommandScene, (f32, f32), Color) {
+pub fn stroke() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     draw_solid_strokes(&mut scene);
     draw_gradient_strokes(&mut scene);
-    let clear = Color::rgba(0.025, 0.03, 0.04, 1.0);
+    let clear = Rgba::new(0.025, 0.03, 0.04, 1.0);
     (scene.finish(), (328.0, 192.0), clear)
 }
 
 #[must_use]
-pub fn corner_radius() -> (CommandScene, (f32, f32), Color) {
+pub fn corner_radius() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     for (index, (radii, color)) in [
         (CornerRadii::uniform(24.0), rgba(38, 92, 180, 255)),
@@ -114,12 +110,12 @@ pub fn corner_radius() -> (CommandScene, (f32, f32), Color) {
             .stroke(solid_stroke(4.0)),
         );
     }
-    let clear = Color::rgba(0.11, 0.16, 0.22, 1.0);
+    let clear = Rgba::new(0.11, 0.16, 0.22, 1.0);
     (scene.finish(), (1200.0, 400.0), clear)
 }
 
 #[must_use]
-pub fn shadow() -> (CommandScene, (f32, f32), Color) {
+pub fn shadow() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     let radii = CornerRadii::uniform(18.0);
     for (index, (elevation, color)) in [
@@ -140,12 +136,12 @@ pub fn shadow() -> (CommandScene, (f32, f32), Color) {
         }
         scene.draw_rect(DrawRect::new(card, color).border_radius(radii));
     }
-    let clear = Color::rgba(0.90, 0.92, 0.94, 1.0);
+    let clear = Rgba::new(0.90, 0.92, 0.94, 1.0);
     (scene.finish(), (1200.0, 400.0), clear)
 }
 
 #[must_use]
-pub fn inner_shadow() -> (CommandScene, (f32, f32), Color) {
+pub fn inner_shadow() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     let radii = CornerRadii::uniform(18.0);
     for index in 0..5_u8 {
@@ -155,12 +151,12 @@ pub fn inner_shadow() -> (CommandScene, (f32, f32), Color) {
         scene.draw_rect(DrawRect::new(field, rgba(245, 247, 250, 255)).border_radius(radii));
         scene.draw_shadow(field, radii, press.with_kind(ShadowKind::Inner));
     }
-    let clear = Color::rgba(0.88, 0.91, 0.94, 1.0);
+    let clear = Rgba::new(0.88, 0.91, 0.94, 1.0);
     (scene.finish(), (1200.0, 400.0), clear)
 }
 
 #[must_use]
-pub fn pattern() -> (CommandScene, (f32, f32), Color) {
+pub fn pattern() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     let slash_rect = rect(60.0, 50.0, 540.0, 280.0);
     scene.draw_rect(
@@ -191,7 +187,7 @@ pub fn pattern() -> (CommandScene, (f32, f32), Color) {
 }
 
 #[must_use]
-pub fn sprite() -> (CommandScene, (f32, f32), Color) {
+pub fn sprite() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     scene.draw_rect(DrawRect::new(
         rect(0.0, 0.0, 900.0, 360.0),
@@ -223,7 +219,7 @@ pub fn sprite() -> (CommandScene, (f32, f32), Color) {
 }
 
 #[must_use]
-pub fn icon() -> (CommandScene, (f32, f32), Color) {
+pub fn icon() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     for (shape, dest, tint) in ICON_DRAWS {
         scene.draw_sprite(DrawSprite::new(
@@ -236,7 +232,7 @@ pub fn icon() -> (CommandScene, (f32, f32), Color) {
     (scene.finish(), (1024.0, 320.0), DARK)
 }
 
-const ICON_DRAWS: [(MaskShape, Rect, Rgba8); 5] = [
+const ICON_DRAWS: [(MaskShape, Rect, Color); 5] = [
     (
         MaskShape::Disc,
         rect(40.0, 80.0, 128.0, 128.0),
@@ -274,7 +270,7 @@ fn icon_source(shape: MaskShape) -> SpriteSource {
 }
 
 #[must_use]
-pub fn decoration() -> (CommandScene, (f32, f32), Color) {
+pub fn decoration() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     for (kind, band, color, line_width, period) in [
         (

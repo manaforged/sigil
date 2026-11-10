@@ -6,21 +6,21 @@ use super::{AnsiPen, Cell, Grid, Ink, paint, row_bytes, terminal_inks};
 use crate::app::{CellWidth, set_cell_width};
 use crate::scene::command::CellRect;
 use crate::scene::{CommandScene, DrawRect, GlyphRun, SceneCommand, TextFlow};
-use crate::style::{Rgba8, TextStyle, Theme, Tone};
+use crate::style::{Color, TextStyle, Theme, Tone};
 use crate::terminal::caps::{Capabilities, ColorDepth};
 use crate::terminal::paint::raster;
 
-const UNSET: Rgba8 = rgba(0, 0, 0, 0);
+const UNSET: Color = rgba(0, 0, 0, 0);
 
-const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
+const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Color {
+    Color { r, g, b, a }
 }
 
 fn area() -> Rect {
     Rect::new(Point::new(0.0, 0.0), 8.0 * 8.0, 8.0)
 }
 
-fn label(text: &str, ink: Rgba8, style: TextStyle, tone: Option<Tone>) -> SceneCommand {
+fn label(text: &str, ink: Color, style: TextStyle, tone: Option<Tone>) -> SceneCommand {
     let run = GlyphRun::new(area(), text, ink, style, 10_000).with_cell(TextFlow::Wrap, tone);
     SceneCommand::GlyphRun(run)
 }
@@ -29,7 +29,7 @@ fn plain(text: &str, tone: Option<Tone>) -> SceneCommand {
     label(text, UNSET, TextStyle::default(), tone)
 }
 
-fn fill(color: Rgba8, leaf: bool) -> SceneCommand {
+fn fill(color: Color, leaf: bool) -> SceneCommand {
     SceneCommand::Rect(DrawRect::new(area(), color).with_cell(CellRect {
         leaf,
         ..CellRect::default()

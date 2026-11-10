@@ -1,7 +1,7 @@
 #![allow(clippy::shadow_unrelated)]
 
 use crate::geometry::{Point, Rect};
-use crate::style::Rgba8;
+use crate::style::Color;
 
 use super::*;
 use crate::renderer::scene_command::{GradientStop, LinearGradient};
@@ -10,7 +10,7 @@ use crate::scene::{DrawGradient, DrawRect};
 #[test]
 fn capacity_sees_primitive_payloads() {
     let rect = Rect::new(Point::new(0.0, 0.0), 10.0, 10.0);
-    let color = Rgba8 {
+    let color = Color {
         r: 1,
         g: 2,
         b: 3,

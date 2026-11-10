@@ -3,7 +3,7 @@ use crate::renderer::cpu::CpuRenderer;
 #[cfg(any(test, feature = "inspect", feature = "kittest"))]
 use crate::renderer::renderer::WgpuRenderer;
 use crate::renderer::scene_command::CommandScene;
-use crate::style::Color;
+use crate::style::Rgba;
 use crate::{Error, ErrorKind};
 
 #[cfg(any(test, feature = "inspect", feature = "kittest"))]
@@ -22,7 +22,7 @@ pub enum ImageRenderer<'a> {
 pub struct ImageTarget {
     pub size: PhysicalSize,
     pub viewport: (f32, f32),
-    pub clear: Color,
+    pub clear: Rgba,
 }
 
 impl ImageTarget {

@@ -18,19 +18,19 @@ use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{BlendMode, CommandScene, DrawRect, SceneBuilder};
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil::widgets::{SvgMode, svg_scene};
 use sigil_kittest::Harness;
 use sigil_kittest::gpu::headless_renderer;
 use sigil_kittest::parity::{Frame, cpu_rgba, gpu_rgba};
 
-const BLACK: Rgba8 = Rgba8 {
+const BLACK: Color = Color {
     r: 0,
     g: 0,
     b: 0,
     a: 255,
 };
-const WHITE: Rgba8 = Rgba8 {
+const WHITE: Color = Color {
     r: 255,
     g: 255,
     b: 255,
@@ -42,7 +42,7 @@ fn cpu_frame(scene: &CommandScene, side: (u32, u32)) -> image::RgbaImage {
         scene,
         viewport: (side.0 as f32, side.1 as f32),
         size: PhysicalSize::new(side.0, side.1),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     image::RgbaImage::from_raw(side.0, side.1, rgba).expect("cpu frame")
@@ -54,7 +54,7 @@ fn gpu_frame(scene: &CommandScene, side: (u32, u32)) -> Option<image::RgbaImage>
         scene,
         viewport: (side.0 as f32, side.1 as f32),
         size: PhysicalSize::new(side.0, side.1),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     let rgba = gpu_rgba(&mut renderer, &frame).expect("gpu render");
     image::RgbaImage::from_raw(side.0, side.1, rgba)
@@ -72,7 +72,7 @@ fn tree(svg: &str) -> Arc<Tree> {
     Arc::new(Tree::from_str(svg, &usvg::Options::default()).expect("svg"))
 }
 
-fn on_surface(surface: Rgba8, svg: &str, mode: SvgMode) -> CommandScene {
+fn on_surface(surface: Color, svg: &str, mode: SvgMode) -> CommandScene {
     let mut builder = SceneBuilder::new();
     builder.draw_rect(DrawRect::new(
         Rect::new(Point::new(0.0, 0.0), 40.0, 40.0),
@@ -90,7 +90,7 @@ fn svg_rect(fill: &str) -> String {
     )
 }
 
-fn assert_ink(surface: Rgba8, fill: &str, want: [u8; 3]) {
+fn assert_ink(surface: Color, fill: &str, want: [u8; 3]) {
     let svg = svg_rect(fill);
     let mut failures = Vec::new();
     for mode in [SvgMode::Raster, SvgMode::Vector] {
@@ -115,7 +115,7 @@ fn assert_ink(surface: Rgba8, fill: &str, want: [u8; 3]) {
 #[test]
 fn an_opaque_white_svg_rect_stays_white_on_a_light_gray_surface() {
     assert_ink(
-        Rgba8 {
+        Color {
             r: 200,
             g: 200,
             b: 200,
@@ -129,7 +129,7 @@ fn an_opaque_white_svg_rect_stays_white_on_a_light_gray_surface() {
 #[test]
 fn an_opaque_black_svg_rect_stays_black_on_a_dark_surface() {
     assert_ink(
-        Rgba8 {
+        Color {
             r: 40,
             g: 40,
             b: 40,
@@ -141,7 +141,7 @@ fn an_opaque_black_svg_rect_stays_black_on_a_dark_surface() {
 }
 
 fn halves() -> NodeBuilder {
-    let half = |color: Rgba8| {
+    let half = |color: Color| {
         container()
             .layout(LayoutStyle::block().fixed_size(40.0, 40.0))
             .background(color)
@@ -187,13 +187,13 @@ fn blur_mixes_a_black_white_edge_in_srgb_as_filter_effects_requires() {
     assert!(failures.is_empty(), "{failures:#?}");
 }
 
-const BACKDROP: Rgba8 = Rgba8 {
+const BACKDROP: Color = Color {
     r: 200,
     g: 100,
     b: 50,
     a: 255,
 };
-const SOURCE: Rgba8 = Rgba8 {
+const SOURCE: Color = Color {
     r: 50,
     g: 150,
     b: 250,

@@ -6,7 +6,7 @@ use crate::reactive::Signal;
 use crate::style::TransitionId;
 use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::{
-    BORDER_WIDTH, BgGradient, ColorAtom, Elevation, GradientAxis, GradientStopKey, Rgba8,
+    BORDER_WIDTH, BgGradient, Color, ColorAtom, Elevation, GradientAxis, GradientStopKey,
     StateStyle, Style, StyleAtom, StyleVariant, Token,
 };
 use crate::widgets::Widget;
@@ -27,7 +27,7 @@ const CELL_THUMB: &str = "●";
 type ThumbForm = fn(InteractionState, Option<Signal<bool>>, bool) -> NodeBuilder;
 
 const fn rgba(r: u8, g: u8, b: u8, a: u8) -> ColorAtom {
-    ColorAtom::Rgba8(Rgba8 { r, g, b, a })
+    ColorAtom::Color(Color { r, g, b, a })
 }
 
 const fn vertical_gradient(stops: &'static [GradientStopKey]) -> StyleAtom {

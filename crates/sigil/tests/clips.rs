@@ -21,7 +21,7 @@ use sigil::layout::{LayoutStyle, Overflow};
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{Clip, CommandScene, DrawRect, SceneBuilder, SceneCommand};
-use sigil::style::{Color, Paint, Radius};
+use sigil::style::{Paint, Radius, Rgba};
 use sigil::widgets::canvas;
 use sigil_kittest::Harness;
 use sigil_kittest::gpu::{headless_renderer, render_scene_to_image};
@@ -32,7 +32,7 @@ mod perf;
 
 const SIDE: u32 = 60;
 const SCALE: f32 = 2.0;
-const RED: Rgba8 = Rgba8 {
+const RED: Color = Color {
     r: 255,
     g: 0,
     b: 0,
@@ -105,7 +105,7 @@ fn cpu_frame(scene: &CommandScene) -> image::RgbaImage {
         scene,
         viewport: (SIDE as f32, SIDE as f32),
         size: PhysicalSize::new(device, device),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     image::RgbaImage::from_raw(device, device, rgba).expect("cpu frame")
@@ -256,7 +256,7 @@ fn layers(clip: Clip) -> (usize, usize, usize) {
         scene: &scene,
         viewport,
         size: PhysicalSize::new(device, device),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     cpu_rgba(&mut cpu, &frame).expect("cpu render");
     let mut gpu = headless_renderer().expect("renderer").expect("GPU adapter");
@@ -312,7 +312,7 @@ fn clipped_scenes_agree_on_the_cpu_and_the_gpu() {
         scene: &scene,
         viewport,
         size: PhysicalSize::new(gpu.width(), gpu.height()),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     let measured = diff(gpu.as_raw(), &cpu);

@@ -15,7 +15,7 @@ use sigil::scene::{
     CommandScene, CornerRadii, DrawGradient, DrawRect, Gradient, GradientStop, LinearGradient,
     PaintFill, SceneBuilder, SceneCommand,
 };
-use sigil::style::Color;
+use sigil::style::Rgba;
 use smallvec::smallvec;
 
 #[test]
@@ -56,7 +56,7 @@ type RenderCommandScene = fn(
     &mut WgpuRenderer,
     &mut WgpuSurface,
     &CommandScene,
-    Color,
+    Rgba,
     (f32, f32),
 ) -> Result<(), sigil::Error>;
 

@@ -116,7 +116,7 @@ Spacing and size numbers are pixels. The layout setters set padding, margin, gap
 
 ### Typed theme tokens
 
-`Token` names every theme color. `background`, `text_color`, and `border_color` take a `Token` or an `Rgba8`. Theme tokens come from the active theme. Dark mode is a theme swap, not a restyle.
+`Token` names every theme color. `background`, `text_color`, and `border_color` take a `Token` or a `Color`. Theme tokens come from the active theme. Dark mode is a theme swap, not a restyle.
 
 | Group | Tokens |
 | --- | --- |

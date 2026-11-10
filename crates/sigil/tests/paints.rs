@@ -18,7 +18,7 @@
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
-use sigil::style::{Background, Color, GradientAxis, Radial, RadialExtent};
+use sigil::style::{Background, GradientAxis, Radial, RadialExtent, Rgba};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
 
@@ -28,14 +28,14 @@ mod borders;
 mod route;
 
 pub(crate) const SCALE: f32 = 2.0;
-const RED: Rgba8 = rgb(255, 0, 0);
-const GREEN: Rgba8 = rgb(0, 255, 0);
-const BLUE: Rgba8 = rgb(0, 0, 255);
-pub(crate) const WHITE: Rgba8 = rgb(255, 255, 255);
-pub(crate) const INK: Rgba8 = rgb(0, 0, 0);
+const RED: Color = rgb(255, 0, 0);
+const GREEN: Color = rgb(0, 255, 0);
+const BLUE: Color = rgb(0, 0, 255);
+pub(crate) const WHITE: Color = rgb(255, 255, 255);
+pub(crate) const INK: Color = rgb(0, 0, 0);
 
-pub(crate) const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a: 255 }
+pub(crate) const fn rgb(r: u8, g: u8, b: u8) -> Color {
+    Color { r, g, b, a: 255 }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -103,13 +103,13 @@ fn cpu_frame(ui: &mut Harness, (width, height): (u32, u32)) -> image::RgbaImage 
         scene: &scene,
         viewport,
         size,
-        clear: Color::rgba(1.0, 1.0, 1.0, 1.0),
+        clear: Rgba::new(1.0, 1.0, 1.0, 1.0),
     };
     let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     image::RgbaImage::from_raw(size.width, size.height, rgba).expect("cpu frame size")
 }
 
-pub(crate) fn distance(a: [u8; 3], b: Rgba8) -> u32 {
+pub(crate) fn distance(a: [u8; 3], b: Color) -> u32 {
     [b.r, b.g, b.b]
         .iter()
         .zip(a)
@@ -118,7 +118,7 @@ pub(crate) fn distance(a: [u8; 3], b: Rgba8) -> u32 {
 }
 
 #[track_caller]
-fn assert_near(shot: &Shot, point: (f32, f32), want: Rgba8, limit: u32, what: &str) {
+fn assert_near(shot: &Shot, point: (f32, f32), want: Color, limit: u32, what: &str) {
     let found = shot.at(point.0, point.1);
     let off = distance(found, want);
     assert!(
@@ -266,7 +266,7 @@ fn gradient_word() -> impl IntoNode {
                     .start(RED)
                     .end(BLUE),
             )
-            .bg_clip_text(),
+            .background_clip_text(),
     )
 }
 
@@ -329,7 +329,7 @@ fn tiled() -> impl IntoNode {
         20.0,
         container()
             .layout(LayoutStyle::block().fixed_size(35.0, 20.0))
-            .bg_image(quarters()),
+            .background_image(quarters()),
     )
 }
 

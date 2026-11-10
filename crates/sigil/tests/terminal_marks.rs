@@ -22,7 +22,7 @@ fn a_thin_stroke_survives_the_sextant_fallback() {
                 .move_to(0.0, 100.0)
                 .line_to(400.0, 100.0)
                 .stroke(
-                    Rgba8 {
+                    Color {
                         r: 200,
                         g: 60,
                         b: 60,

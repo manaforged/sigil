@@ -23,19 +23,19 @@ use sigil_kittest::Harness;
 const VIEW: (f32, f32) = (200.0, 200.0);
 const SIDE: f32 = 40.0;
 const STEPS_PER_SECOND: f32 = 16.0;
-const GREY: Rgba8 = Rgba8 {
+const GREY: Color = Color {
     r: 128,
     g: 128,
     b: 128,
     a: 255,
 };
-const BLACK: Rgba8 = Rgba8 {
+const BLACK: Color = Color {
     r: 0,
     g: 0,
     b: 0,
     a: 255,
 };
-const WHITE: Rgba8 = Rgba8 {
+const WHITE: Color = Color {
     r: 255,
     g: 255,
     b: 255,
@@ -45,7 +45,7 @@ const WHITE: Rgba8 = Rgba8 {
 #[derive(Clone, Copy, Debug)]
 struct Seen {
     opacity: f32,
-    color: Rgba8,
+    color: Color,
     matrix: [[f32; 3]; 2],
 }
 

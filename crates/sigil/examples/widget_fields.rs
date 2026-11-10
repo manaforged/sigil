@@ -35,7 +35,7 @@ pub(crate) fn date_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -> 
 }
 
 pub(crate) fn color_field_demo(disabled: Signal<bool>, invalid: Signal<bool>) -> impl IntoNode {
-    color_field(signal(Rgba8 {
+    color_field(signal(Color {
         r: 90,
         g: 140,
         b: 255,

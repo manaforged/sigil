@@ -1,7 +1,7 @@
 use crate::kernel::{Cx, NodeId, NodeType};
 use crate::layout::LayoutEngine;
 use crate::style::srgb::{AA_TEXT, contrast as ratio};
-use crate::style::{Rgba8, TextStyle, Theme, render_style_for, text_style_for};
+use crate::style::{Color, TextStyle, Theme, render_style_for, text_style_for};
 
 use super::{Issue, label};
 
@@ -14,9 +14,9 @@ const OPAQUE: u16 = 10_000;
 #[derive(Clone)]
 struct Inherited<'a> {
     theme: &'a Theme,
-    text: Option<Rgba8>,
+    text: Option<Color>,
     style: TextStyle,
-    behind: Rgba8,
+    behind: Color,
 }
 
 fn needed(style: &TextStyle) -> f32 {

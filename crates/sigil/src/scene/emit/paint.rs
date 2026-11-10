@@ -12,7 +12,7 @@ use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
 use crate::scene::style_adapter::{corner_radii_for, focus_ring_for, text_style_for};
 use crate::style::atom::BorderStyle;
-use crate::style::{Elevation, RenderStyle, Rgba8, TextDecoration, TextStyle, Theme, Tone};
+use crate::style::{Color, Elevation, RenderStyle, TextDecoration, TextStyle, Theme, Tone};
 
 pub(super) fn push_focus_ring(
     scene: &mut SceneBuilder,
@@ -91,7 +91,7 @@ impl NodePaint<'_> {
 fn push_text_decoration(
     scene: &mut SceneBuilder,
     rect: Rect,
-    color: Rgba8,
+    color: Color,
     opacity: u16,
     text_style: &TextStyle,
 ) {
@@ -283,7 +283,7 @@ fn text_shadows(style: &RenderStyle, inherited: &[Shadow]) -> SmallVec<[Shadow; 
 }
 
 #[cfg(feature = "scene")]
-fn text_color(gradient: &Gradient) -> Rgba8 {
+fn text_color(gradient: &Gradient) -> Color {
     super::text_fill::flat_color(gradient)
 }
 
@@ -296,7 +296,7 @@ fn gradient_text(run: GlyphRun, gradient: &Gradient) -> GlyphRun {
 }
 
 #[cfg(not(feature = "scene"))]
-fn text_color(gradient: &Gradient) -> Rgba8 {
+fn text_color(gradient: &Gradient) -> Color {
     crate::scene::command::fills::color_at(&gradient.normalized().stops, 0.5)
 }
 

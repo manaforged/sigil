@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use crate::kernel::{ImageRaster, ImageSource, ThemedImage, cached_image};
-use crate::style::Rgba8;
+use crate::style::Color;
 
 const MAX_SIDE: usize = 4096;
 
@@ -14,7 +14,7 @@ pub(super) struct HeatGrid {
 }
 
 impl HeatGrid {
-    pub(super) fn new<F: Fn(usize, usize) -> Rgba8>(
+    pub(super) fn new<F: Fn(usize, usize) -> Color>(
         grid_w: usize,
         grid_h: usize,
         color: &F,

@@ -9,13 +9,13 @@
 use sigil::geometry::{Point, Rect};
 use sigil::renderer::{ScreenSubmission, WgpuRenderer};
 use sigil::scene::{CommandScene, DrawRect, SceneBuilder};
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 use sigil_kittest::gpu::read_pixels;
 
 const W: u32 = 128;
 const H: u32 = 128;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-const CLEAR: Color = Color {
+const CLEAR: Rgba = Rgba {
     r: 0.02,
     g: 0.03,
     b: 0.05,
@@ -40,7 +40,7 @@ fn square(at: (f32, f32), color: (u8, u8, u8)) -> CommandScene {
 }
 
 const fn style(rect: sigil::geometry::Rect, r: u8, g: u8, b: u8) -> DrawRect {
-    DrawRect::new(rect, Rgba8 { r, g, b, a: 255 })
+    DrawRect::new(rect, Color { r, g, b, a: 255 })
 }
 
 fn render(renderer: &mut WgpuRenderer, texture: &wgpu::Texture, scenes: &[CommandScene]) -> u64 {

@@ -15,7 +15,7 @@ use sigil::layout::LayoutStyle;
 use sigil::prelude::Widget;
 use sigil::reactive::{Owner, signal};
 use sigil::style::{
-    ColorAtom, Elevation, FontFamily, Paint, Radius, RenderStyle, Rgba8, StateStyle, StyleAtom,
+    Color, ColorAtom, Elevation, FontFamily, Paint, Radius, RenderStyle, StateStyle, StyleAtom,
     StyleBinding, StyleEngine, StyleState, Theme, Token, TransitionId,
 };
 
@@ -166,19 +166,19 @@ fn state_style_resolve_1000_widgets(c: &mut Criterion) {
 fn theme_swap_10_000_bound_nodes(c: &mut Criterion) {
     let default_theme = Theme::default();
     let accent_theme = Theme {
-        accent: Rgba8 {
+        accent: Color {
             r: 220,
             g: 38,
             b: 38,
             a: 255,
         },
-        accent_hover: Rgba8 {
+        accent_hover: Color {
             r: 185,
             g: 28,
             b: 28,
             a: 255,
         },
-        on_accent: Rgba8 {
+        on_accent: Color {
             r: 255,
             g: 255,
             b: 255,

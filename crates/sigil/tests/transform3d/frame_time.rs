@@ -6,7 +6,7 @@ use sigil::renderer::CpuRenderer;
 use sigil::scene::{
     CommandScene, CornerRadii, DrawRect, LayerEffect, LayerScope, SceneBuilder, Transform3D,
 };
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::gpu::{headless_renderer, render_scene_to_image};
 use sigil_kittest::parity::{Frame, cpu_rgba};
 
@@ -91,7 +91,7 @@ fn cpu_frame(renderer: &mut CpuRenderer, scene: &CommandScene) -> Duration {
         scene,
         viewport: VIEW,
         size: PhysicalSize::new(width, height),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     let start = Instant::now();
     let _ = cpu_rgba(renderer, &frame).expect("cpu render");

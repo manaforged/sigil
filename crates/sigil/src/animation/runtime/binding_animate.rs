@@ -1,6 +1,6 @@
 use crate::animation::runtime::Animator;
 use crate::reactive::Signal;
-use crate::style::{ColorAtomKind, NumericAtomKind, Rgba8, StyleAtom};
+use crate::style::{Color, ColorAtomKind, NumericAtomKind, StyleAtom};
 
 pub(crate) struct AttachedAnimator {
     pub(crate) kind: NumericAtomKind,
@@ -12,7 +12,7 @@ pub(crate) struct AttachedColorAnimator {
     pub(crate) kind: ColorAtomKind,
     pub(crate) channels: [Signal<f32>; 4],
     pub(crate) animators: [Animator; 4],
-    pub(crate) last_target: Rgba8,
+    pub(crate) last_target: Color,
 }
 
 pub(crate) fn find_numeric(kind: NumericAtomKind, atoms: &[StyleAtom]) -> Option<f32> {

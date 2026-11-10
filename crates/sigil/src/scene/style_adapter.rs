@@ -1,7 +1,7 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use crate::kernel::Node;
-use crate::style::{FocusRing, Rgba8, StyleEngine, Theme};
+use crate::style::{Color, FocusRing, StyleEngine, Theme};
 
 pub(crate) use crate::style::{render_style_for, text_style_for};
 
@@ -9,7 +9,7 @@ use crate::scene::corner_radii::CornerRadii;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct ResolvedFocusRing {
-    pub(crate) color: Rgba8,
+    pub(crate) color: Color,
     pub(crate) width: f32,
     pub(crate) offset: f32,
     pub(crate) opacity: u16,

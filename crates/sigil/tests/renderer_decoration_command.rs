@@ -10,14 +10,14 @@ mod scene_support;
 use scene_support::{color, rect};
 use sigil::geometry::Rect;
 use sigil::scene::{CommandScene, DecorationKind, DrawDecoration, SceneBuilder, SceneCommand};
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 use sigil_kittest::gpu::{Capture, render_capture};
 
 const VIEWPORT: (f32, f32) = (220.0, 120.0);
 const VIEWPORT_WIDTH: u32 = 220;
 const VIEWPORT_HEIGHT: u32 = 120;
 const CAPTURE: Capture = Capture::new(VIEWPORT, [VIEWPORT_WIDTH, VIEWPORT_HEIGHT])
-    .clear(Color::rgba(0.05, 0.06, 0.09, 1.0));
+    .clear(Rgba::new(0.05, 0.06, 0.09, 1.0));
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
@@ -104,7 +104,7 @@ fn decoration_scene() -> CommandScene {
 const fn decoration_style(
     kind: DecorationKind,
     band: Rect,
-    color: Rgba8,
+    color: Color,
     line_width: f32,
     period: f32,
 ) -> DrawDecoration {

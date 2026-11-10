@@ -6,9 +6,9 @@ use sigil_kittest::Harness;
 
 use super::{SCALE, SIDE, frames_of, gpu_frame, model, probe, rgba};
 
-const INPUT: Rgba8 = rgba(200, 80, 40, 255);
-const BLACK: Rgba8 = rgba(0, 0, 0, 255);
-const WHITE: Rgba8 = rgba(255, 255, 255, 255);
+const INPUT: Color = rgba(200, 80, 40, 255);
+const BLACK: Color = rgba(0, 0, 0, 255);
+const WHITE: Color = rgba(255, 255, 255, 255);
 
 fn page(child: impl IntoNode + 'static, pad: f32) -> NodeBuilder {
     container()

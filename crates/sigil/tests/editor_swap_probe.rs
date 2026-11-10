@@ -17,7 +17,7 @@ use sigil::layout::{LayoutEngine, Length};
 use sigil::prelude::*;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::emit_scene;
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::{FakeMeasure, gpu::read_pixels};
 use std::env::temp_dir;
 use std::process;
@@ -108,7 +108,7 @@ fn render(
                 scale: 1.0,
             },
             &scene,
-            Color {
+            Rgba {
                 r: 0.0,
                 g: 0.0,
                 b: 0.0,

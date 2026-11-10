@@ -7,7 +7,7 @@
 )]
 
 use crate::geometry::smoothstep;
-use crate::style::Rgba8;
+use crate::style::Color;
 
 use super::Wash;
 
@@ -19,7 +19,7 @@ pub(crate) fn centre_bits(width: f32, height: f32) -> f32 {
 
 impl Wash {
     /// The colors the renderer reads: the paper, then each pigment.
-    pub(crate) fn palette(&self) -> impl Iterator<Item = Rgba8> + '_ {
+    pub(crate) fn palette(&self) -> impl Iterator<Item = Color> + '_ {
         std::iter::once(self.paper).chain(
             self.pigments
                 .iter()
@@ -110,7 +110,7 @@ impl Wash {
     }
 }
 
-fn rgb(color: Rgba8) -> [f32; 3] {
+fn rgb(color: Color) -> [f32; 3] {
     [color.r, color.g, color.b].map(|channel| f32::from(channel) / 255.0)
 }
 

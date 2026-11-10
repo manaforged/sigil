@@ -1,4 +1,4 @@
-use super::{Amount, FilterStyle, Rgba8, ShadowSpec, TextShadows, blur_units, hue_units, length};
+use super::{Amount, Color, FilterStyle, ShadowSpec, TextShadows, blur_units, hue_units, length};
 use crate::style::{AnimatorOverlay, ColorAtomKind, NumericAtomKind as K};
 
 const AMOUNTS: [(Amount, K); 6] = [
@@ -67,7 +67,7 @@ impl FilterStyle {
         }
     }
 
-    pub(crate) fn color(&self, kind: ColorAtomKind) -> Option<Rgba8> {
+    pub(crate) fn color(&self, kind: ColorAtomKind) -> Option<Color> {
         match kind {
             ColorAtomKind::DropShadow => {
                 self.drop.map(|spec| self.drop_color.unwrap_or(spec.color))

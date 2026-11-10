@@ -15,7 +15,7 @@ use crate::renderer::scene_instance::{
 };
 use crate::renderer::slug::SLUG_INSTANCE_BYTES;
 use crate::scene::command::{MAX_PIGMENTS, PatternKind};
-use crate::style::Color;
+use crate::style::Rgba;
 
 pub(crate) use timing::GpuTimer;
 
@@ -26,7 +26,7 @@ pub(crate) struct SplitEncoder {
     queue: wgpu::Queue,
     pass: Option<wgpu::RenderPass<'static>>,
     target: Option<wgpu::TextureView>,
-    pending_clear: Option<(wgpu::TextureView, Color)>,
+    pending_clear: Option<(wgpu::TextureView, Rgba)>,
     encoder: wgpu::CommandEncoder,
     passes: u32,
     uploads: UploadBuffers,
@@ -161,7 +161,7 @@ impl SplitEncoder {
         self.target = None;
     }
 
-    pub(crate) fn clear(&mut self, view: &wgpu::TextureView, color: Color) {
+    pub(crate) fn clear(&mut self, view: &wgpu::TextureView, color: Rgba) {
         self.end_pass();
         self.pending_clear = Some((view.clone(), color));
     }
@@ -175,7 +175,7 @@ impl SplitEncoder {
         }
     }
 
-    fn take_fold(&mut self, desc: &wgpu::RenderPassDescriptor<'_>) -> Option<Color> {
+    fn take_fold(&mut self, desc: &wgpu::RenderPassDescriptor<'_>) -> Option<Rgba> {
         let first = desc.color_attachments.first().and_then(Option::as_ref);
         let folds = matches!(
             (&self.pending_clear, first),
@@ -352,7 +352,7 @@ fn timed_desc<'a>(
 fn open_pass(
     encoder: &mut wgpu::CommandEncoder,
     desc: &wgpu::RenderPassDescriptor<'_>,
-    fold: Option<Color>,
+    fold: Option<Rgba>,
 ) -> wgpu::RenderPass<'static> {
     let Some(color) = fold else {
         return encoder.begin_render_pass(desc).forget_lifetime();
@@ -368,7 +368,7 @@ fn open_pass(
     encoder.begin_render_pass(&cleared).forget_lifetime()
 }
 
-pub(crate) fn clear_value(color: Color) -> wgpu::Color {
+pub(crate) fn clear_value(color: Rgba) -> wgpu::Color {
     wgpu::Color {
         r: f64::from(color.r),
         g: f64::from(color.g),

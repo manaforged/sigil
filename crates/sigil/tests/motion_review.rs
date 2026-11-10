@@ -32,13 +32,13 @@ const VIEW: (f32, f32) = (200.0, 200.0);
 const SIDE: f32 = 40.0;
 const FRAME: f32 = 1.0 / 60.0;
 const IDENTITY: [[f32; 3]; 2] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
-const BLACK: Rgba8 = Rgba8 {
+const BLACK: Color = Color {
     r: 0,
     g: 0,
     b: 0,
     a: 255,
 };
-const WHITE: Rgba8 = Rgba8 {
+const WHITE: Color = Color {
     r: 255,
     g: 255,
     b: 255,
@@ -48,7 +48,7 @@ const WHITE: Rgba8 = Rgba8 {
 #[derive(Clone, Copy, Debug)]
 struct Seen {
     opacity: f32,
-    color: Rgba8,
+    color: Color,
     matrix: [[f32; 3]; 2],
 }
 

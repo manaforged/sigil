@@ -22,7 +22,7 @@ mod mask;
 mod space;
 pub use background::{Background, Gradient};
 pub use clip::ClipShape;
-pub use color::{BgGradient, ColorAtom, GradientAxis, GradientStopKey, Rgba8};
+pub use color::{BgGradient, Color, ColorAtom, GradientAxis, GradientStopKey};
 pub(crate) use filter::{
     Amount, FilterAtom, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units,
     hue_units, shadow_color,
@@ -67,11 +67,11 @@ pub enum Elevation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RenderStyle {
     /// The background color, if any.
-    pub background_color: Option<Rgba8>,
+    pub background_color: Option<Color>,
     /// The background gradient, if any.
     pub background_gradient: Option<BgGradient>,
     /// The text color, if any.
-    pub text_color: Option<Rgba8>,
+    pub text_color: Option<Color>,
     /// The border radius, if any.
     pub border_radius: Option<i16>,
     /// The border width, if any.
@@ -85,7 +85,7 @@ pub struct RenderStyle {
     /// The border left, if any.
     pub border_left: Option<i16>,
     /// The border color, if any.
-    pub border_color: Option<Rgba8>,
+    pub border_color: Option<Color>,
     /// The shadow, if any.
     pub shadow: Option<Elevation>,
     /// The opacity.

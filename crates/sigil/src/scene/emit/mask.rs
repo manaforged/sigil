@@ -17,12 +17,12 @@ use crate::scene::command::{
 use crate::scene::corner_radii::CornerRadii;
 use crate::style::atom::{MaskKind, MaskStyle};
 use crate::style::image_paint::lookup;
-use crate::style::{MaskSize, RenderStyle, Rgba8};
+use crate::style::{Color, MaskSize, RenderStyle};
 
 use super::{EmitWalk, Inherited};
 
 const MAX_TILES: i32 = 4096;
-const BLACK: Rgba8 = Rgba8 {
+const BLACK: Color = Color {
     r: 0,
     g: 0,
     b: 0,

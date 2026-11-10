@@ -11,7 +11,7 @@ use crate::hal::RenderedGlyph;
 use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::quad_paint::QuadKind;
 use crate::renderer::raster::{GlyphMask, Hinters, RasterKey, subpixel_quantize};
-use crate::style::Rgba8;
+use crate::style::Color;
 use ahash::AHashMap;
 use tiny_skia::{FilterQuality, Paint, Pattern, Pixmap, SpreadMode, Transform};
 
@@ -31,7 +31,7 @@ struct SpriteKey {
     atlas: u32,
     region: [u32; 4],
     size: u32,
-    color: Rgba8,
+    color: Color,
     kind: QuadKind,
 }
 

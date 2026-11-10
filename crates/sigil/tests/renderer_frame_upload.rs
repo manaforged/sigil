@@ -8,7 +8,7 @@
 use sigil::geometry::{Point, Rect};
 use sigil::renderer::OffscreenTarget;
 use sigil::scene::{DrawRect, SceneBuilder};
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
@@ -47,7 +47,7 @@ fn ordered_batches_share_one_rect_upload_buffer() {
                 scale: 1.0,
             },
             &two_batch_scene(),
-            Color::BLACK,
+            Rgba::BLACK,
         )
         .expect("render");
 
@@ -78,6 +78,6 @@ const fn rect(x: f32, y: f32) -> Rect {
     Rect::new(Point::new(x, y), 40.0, 40.0)
 }
 
-const fn color(r: u8, g: u8, b: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a: 255 }
+const fn color(r: u8, g: u8, b: u8) -> Color {
+    Color { r, g, b, a: 255 }
 }

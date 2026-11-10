@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::geometry::{PhysicalSize, Point};
 use crate::hal::Renderer;
-use crate::style::Color;
+use crate::style::Rgba;
 use tiny_skia::Pixmap;
 
 use crate::renderer::frame_stats::FrameStats;
@@ -102,7 +102,7 @@ impl CpuRenderer {
     pub fn render(
         &mut self,
         scene: &CommandScene,
-        clear: Color,
+        clear: Rgba,
         viewport: (f32, f32),
         size: PhysicalSize,
     ) -> Result<Pixmap, Error> {
@@ -136,7 +136,7 @@ impl CpuRenderer {
     pub(crate) fn render_region(
         &mut self,
         scene: &CommandScene,
-        (viewport, clear): ((f32, f32), Color),
+        (viewport, clear): ((f32, f32), Rgba),
         size: PhysicalSize,
         [x, y, w, h]: [u32; 4],
     ) -> Option<Pixmap> {
@@ -167,7 +167,7 @@ impl CpuRenderer {
         &mut self,
         surface: &mut CpuSurface,
         scene: &CommandScene,
-        clear: Color,
+        clear: Rgba,
         viewport: (f32, f32),
     ) -> Result<(), Error> {
         let pixmap = self.render(scene, clear, viewport, surface.size)?;

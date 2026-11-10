@@ -11,7 +11,7 @@ use crate::style::strings::Strings;
 #[cfg(test)]
 use crate::style::variant::FontFamilyHint;
 use crate::style::variant::Variant;
-use crate::style::{ControlSize, Rgba8};
+use crate::style::{Color, ControlSize};
 use mix::{alpha_mix, shift};
 
 const HOVER_DARKEN: i16 = -14;
@@ -29,7 +29,7 @@ pub(crate) use table::TokenTable;
 #[non_exhaustive]
 pub enum ThemeValue {
     /// The color theme value.
-    Color(Rgba8),
+    Color(Color),
     /// The px theme value.
     Px(f32),
     /// The ms theme value.
@@ -52,28 +52,28 @@ pub struct Theme {
     /// The info.
     pub info: ColorScale,
     /// The on solid.
-    pub on_solid: Rgba8,
+    pub on_solid: Color,
 
     /// The accent.
-    pub accent: Rgba8,
+    pub accent: Color,
     /// The accent hover.
-    pub accent_hover: Rgba8,
+    pub accent_hover: Color,
     /// The on accent.
-    pub on_accent: Rgba8,
+    pub on_accent: Color,
     /// The surface.
-    pub surface: Rgba8,
+    pub surface: Color,
     /// The surface hover.
-    pub surface_hover: Rgba8,
+    pub surface_hover: Color,
     /// The surface pressed.
-    pub surface_pressed: Rgba8,
+    pub surface_pressed: Color,
     /// The surface pressed strong.
-    pub surface_pressed_strong: Rgba8,
+    pub surface_pressed_strong: Color,
     /// The on surface.
-    pub on_surface: Rgba8,
+    pub on_surface: Color,
     /// The border.
-    pub border: Rgba8,
+    pub border: Color,
     /// The missing token fallback.
-    pub missing_token_fallback: Rgba8,
+    pub missing_token_fallback: Color,
     /// The tokens.
     pub tokens: TokenTable,
     /// The metrics.
@@ -94,7 +94,7 @@ impl Theme {
             ScaleRole::Gray => &self.gray,
             ScaleRole::Accent => &self.accent_scale,
             ScaleRole::Success => &self.success,
-            ScaleRole::Warn => &self.warn,
+            ScaleRole::Warning => &self.warn,
             ScaleRole::Error => &self.error,
             ScaleRole::Info => &self.info,
         }
@@ -189,24 +189,24 @@ impl Theme {
 
     /// Returns the text muted.
     #[must_use]
-    pub const fn text_muted(&self) -> Rgba8 {
+    pub const fn text_muted(&self) -> Color {
         self.gray.step(11)
     }
 
     /// Returns the surface subtle.
     #[must_use]
-    pub const fn surface_subtle(&self) -> Rgba8 {
+    pub const fn surface_subtle(&self) -> Color {
         self.gray.step(3)
     }
 
     /// Returns the border strong.
     #[must_use]
-    pub const fn border_strong(&self) -> Rgba8 {
+    pub const fn border_strong(&self) -> Color {
         self.gray.step(8)
     }
 }
 
-fn readable_hover(accent: ColorScale, on: Rgba8) -> Rgba8 {
+fn readable_hover(accent: ColorScale, on: Color) -> Color {
     let lighter = accent.step(10);
     if contrast(lighter, on) >= AA_TEXT {
         lighter

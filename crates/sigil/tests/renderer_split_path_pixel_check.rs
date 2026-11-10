@@ -14,7 +14,7 @@
 
 use sigil::renderer::{OffscreenTarget, ScreenSubmission, WgpuRenderer};
 use sigil::scene::{CommandScene, DrawRect, SceneBuilder};
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 
 #[path = "renderer_split_path_pixel_check/support.rs"]
 mod support;
@@ -51,7 +51,7 @@ fn assert_submit_screen_renders_into_offscreen() {
                 format: FORMAT,
                 viewport: VIEWPORT,
                 scale: 1.0,
-                clear: Some(Color::rgba(0.0, 0.0, 0.0, 1.0)),
+                clear: Some(Rgba::new(0.0, 0.0, 0.0, 1.0)),
             },
             &scene,
         )
@@ -131,7 +131,7 @@ fn assert_deprecated_offscreen_forwards() {
     };
 
     let scene = build_red_rect_scene();
-    let clear = Color::rgba(0.0, 0.0, 0.0, 1.0);
+    let clear = Rgba::new(0.0, 0.0, 0.0, 1.0);
 
     let tex_dep = create_capture_texture(&device, PHYS_W, PHYS_H);
     let view_dep = tex_dep.create_view(&wgpu::TextureViewDescriptor::default());
@@ -178,7 +178,7 @@ fn build_red_rect_scene() -> CommandScene {
     let mut scene = SceneBuilder::new();
     scene.draw_rect(DrawRect::new(
         Rect::new(Point::new(RED_RECT_X, RED_RECT_Y), RED_RECT_W, RED_RECT_H),
-        Rgba8 {
+        Color {
             r: 220,
             g: 20,
             b: 20,

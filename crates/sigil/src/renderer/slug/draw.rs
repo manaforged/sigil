@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use crate::geometry::{Point, Rect};
 use crate::hal::RenderedGlyph;
 use crate::scene::command::effects::transform_point;
-use crate::style::Color;
+use crate::style::Rgba;
 use crate::text::Paragraph;
 use wgpu::util::DeviceExt as _;
 
@@ -39,7 +39,7 @@ pub struct DrawParams<'a> {
     pub glyphs: Option<&'a [RenderedGlyph]>,
     pub origin: (f32, f32),
     pub transform: [[f32; 3]; 2],
-    pub color: Option<Color>,
+    pub color: Option<Rgba>,
     #[cfg(any(test, feature = "kittest"))]
     pub clip: Option<Rect>,
 }

@@ -33,7 +33,7 @@ fn truecolor_paints_the_exact_color_the_program_asked_for() {
     let face = &rows[0].runs[0].face;
     assert_eq!(
         face.ink,
-        Some(crate::style::Rgba8 {
+        Some(crate::style::Color {
             r: 30,
             g: 200,
             b: 60,
@@ -42,7 +42,7 @@ fn truecolor_paints_the_exact_color_the_program_asked_for() {
     );
     assert_eq!(
         face.fill,
-        Some(crate::style::Rgba8 {
+        Some(crate::style::Color {
             r: 1,
             g: 2,
             b: 3,

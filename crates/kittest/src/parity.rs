@@ -1,7 +1,7 @@
 use sigil::geometry::PhysicalSize;
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
 use sigil::scene::CommandScene;
-use sigil::style::Color;
+use sigil::style::Rgba;
 
 use crate::gpu::{Capture, read_pixels, render_capture};
 use crate::{Error, ErrorKind};
@@ -16,7 +16,7 @@ pub struct Frame<'a> {
     pub scene: &'a CommandScene,
     pub viewport: (f32, f32),
     pub size: PhysicalSize,
-    pub clear: Color,
+    pub clear: Rgba,
 }
 
 impl Frame<'_> {

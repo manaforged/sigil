@@ -163,11 +163,11 @@ fn an_idle_frame_keeps_the_copies_for_the_next_change() {
 
 #[test]
 fn a_reactive_atoms_write_reaches_the_next_emit() {
-    use sigil::style::{ColorAtom, ReactiveStyleAtoms, Rgba8, StyleAtom, StyleBinding};
+    use sigil::style::{Color, ColorAtom, ReactiveStyleAtoms, StyleAtom, StyleBinding};
     use std::cell::Cell;
     use std::rc::Rc;
     const fn fill(r: u8) -> [StyleAtom; 1] {
-        [StyleAtom::BackgroundColor(ColorAtom::Rgba8(Rgba8 {
+        [StyleAtom::BackgroundColor(ColorAtom::Color(Color {
             r,
             g: 40,
             b: 40,

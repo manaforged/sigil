@@ -1,4 +1,4 @@
-use super::{ColorAtom, GradientAxis, Rgba8};
+use super::{Color, ColorAtom, GradientAxis};
 use crate::style::{AnimatorOverlay, ColorAtomKind, NumericAtomKind};
 
 /// How far a radial gradient reaches, as in CSS `radial-gradient(<extent>)`.
@@ -178,7 +178,7 @@ pub struct PaintStyle {
     /// The background gradient geometry, if any.
     pub gradient: Option<GradientShape>,
     /// The from, via, and to colors.
-    pub stops: [Option<Rgba8>; 3],
+    pub stops: [Option<Color>; 3],
     /// The from, via, and to positions in percent.
     pub positions: [Option<u8>; 3],
     /// Whether the background shows only inside text.
@@ -209,7 +209,7 @@ const STOPS: [(NumericAtomKind, ColorAtomKind); 3] = [
     (NumericAtomKind::StopTo, ColorAtomKind::StopTo),
 ];
 
-const CLEAR: Rgba8 = Rgba8 {
+const CLEAR: Color = Color {
     r: 0,
     g: 0,
     b: 0,
@@ -241,7 +241,7 @@ impl PaintStyle {
             .then(|| position.map_or_else(|| kind.initial(), f32::from))
     }
 
-    pub(crate) fn color(&self, kind: ColorAtomKind) -> Option<Rgba8> {
+    pub(crate) fn color(&self, kind: ColorAtomKind) -> Option<Color> {
         let index = STOPS.iter().position(|(_, owner)| *owner == kind)?;
         let stop = self.stops.get(index).copied().flatten();
         self.drawn(index).then(|| stop.unwrap_or(CLEAR))

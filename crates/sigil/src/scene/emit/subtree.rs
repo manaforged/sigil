@@ -9,7 +9,7 @@ use crate::kernel::NodeId;
 use crate::profile::{Counter, count_add};
 use crate::scene::command::SceneCommand;
 use crate::scene::emit_cache;
-use crate::style::{Rgba8, TextStyle};
+use crate::style::{Color, TextStyle};
 
 use super::{EmitWalk, Inherited};
 
@@ -24,7 +24,7 @@ pub(crate) struct SubtreeSpan {
 #[derive(Clone)]
 struct SpanKey {
     theme: u64,
-    text_color: Option<Rgba8>,
+    text_color: Option<Color>,
     text_style: Rc<TextStyle>,
     clip: Option<[u32; 4]>,
     fill: u64,

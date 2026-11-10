@@ -16,7 +16,7 @@ use sigil::kernel::{Cx, NodeId};
 use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil::style::Rgba8;
+use sigil::style::Color;
 use sigil::style::scale::ruby_light;
 use widget_support::{compute, rect_colors};
 
@@ -28,7 +28,7 @@ fn assert_hover_overlay_paints(
     root: NodeId,
     layout: &LayoutEngine,
     hover_xy: (f32, f32),
-    overlay: Rgba8,
+    overlay: Color,
 ) {
     assert!(
         !rect_colors(cx, root).contains(&overlay),

@@ -8,7 +8,7 @@ use resvg::usvg::{self, Tree, fontdb};
 
 use crate::fnv::{OFFSET, mix};
 use crate::kernel::{ImageSource, NodeBuilder, cached_image};
-use crate::style::{Rgba8, Theme, Token};
+use crate::style::{Color, Theme, Token};
 
 mod budget;
 mod clip;
@@ -114,7 +114,7 @@ fn drawn(key: &str, render: Render, fit: Option<(f32, f32)>) -> Option<(NodeBuil
 
 /// The `#rrggbb` form of a theme color.
 pub(crate) fn hex(theme: &Theme, token: Token) -> String {
-    let Rgba8 { r, g, b, .. } = theme.color(token);
+    let Color { r, g, b, .. } = theme.color(token);
     format!("#{r:02x}{g:02x}{b:02x}")
 }
 
@@ -211,7 +211,7 @@ fn run(render: &impl Fn(&Theme) -> Option<String>, theme: &Theme) -> Option<Stri
 
 fn theme_key(key: u64, theme: &Theme) -> u64 {
     Token::ALL.iter().fold(key, |key, token| {
-        let Rgba8 { r, g, b, a } = theme.color(*token);
+        let Color { r, g, b, a } = theme.color(*token);
         mix(key, u64::from(u32::from_le_bytes([r, g, b, a])))
     })
 }

@@ -1,6 +1,6 @@
 use crate::reactive::signal;
 use crate::style::srgb::byte;
-use crate::style::{ColorAtomKind, Rgba8};
+use crate::style::{Color, ColorAtomKind};
 
 use crate::animation::runtime::{AnimationConfig, Animator};
 
@@ -15,15 +15,15 @@ pub(crate) fn linear_channel_to_srgb(v: f32) -> u8 {
     byte(crate::style::srgb::encode(v) * 255.0)
 }
 
-fn premultiplied(color: Rgba8) -> [f32; 4] {
+fn premultiplied(color: Color) -> [f32; 4] {
     let alpha = f32::from(color.a);
     let channel = |value: u8| f32::from(value) * alpha / 255.0;
     [channel(color.r), channel(color.g), channel(color.b), alpha]
 }
 
-fn unpremultiplied([r, g, b, alpha]: [f32; 4]) -> Rgba8 {
+fn unpremultiplied([r, g, b, alpha]: [f32; 4]) -> Color {
     if alpha <= 0.0 {
-        return Rgba8 {
+        return Color {
             r: 0,
             g: 0,
             b: 0,
@@ -31,7 +31,7 @@ fn unpremultiplied([r, g, b, alpha]: [f32; 4]) -> Rgba8 {
         };
     }
     let channel = |value: f32| byte(value * 255.0 / alpha);
-    Rgba8 {
+    Color {
         r: channel(r),
         g: channel(g),
         b: channel(b),
@@ -40,7 +40,7 @@ fn unpremultiplied([r, g, b, alpha]: [f32; 4]) -> Rgba8 {
 }
 
 /// Interpolates two colors in gamma-encoded sRGB with premultiplied alpha, as CSS Color 4 does for legacy colors.
-pub(crate) fn mix(from: Rgba8, to: Rgba8, t: f32) -> Rgba8 {
+pub(crate) fn mix(from: Color, to: Color, t: f32) -> Color {
     let (start, end) = (premultiplied(from), premultiplied(to));
     let mut channels = start;
     for (channel, (a, b)) in channels.iter_mut().zip(start.into_iter().zip(end)) {
@@ -50,13 +50,13 @@ pub(crate) fn mix(from: Rgba8, to: Rgba8, t: f32) -> Rgba8 {
 }
 
 #[must_use]
-pub(crate) fn read_color(entry: &AttachedColorAnimator) -> Rgba8 {
+pub(crate) fn read_color(entry: &AttachedColorAnimator) -> Color {
     unpremultiplied(entry.channels.map(|channel| channel.peek()))
 }
 
 pub(crate) fn build_color_entry(
     kind: ColorAtomKind,
-    initial: Rgba8,
+    initial: Color,
     config: AnimationConfig,
 ) -> AttachedColorAnimator {
     let channels = premultiplied(initial).map(signal);
@@ -68,7 +68,7 @@ pub(crate) fn build_color_entry(
     }
 }
 
-pub(crate) fn retarget_color_entry(entry: &mut AttachedColorAnimator, target: Rgba8) {
+pub(crate) fn retarget_color_entry(entry: &mut AttachedColorAnimator, target: Color) {
     if entry.last_target == target {
         return;
     }

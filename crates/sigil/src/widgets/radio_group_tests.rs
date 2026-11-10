@@ -32,12 +32,12 @@ fn defaults_to_primary_tone() {
 
 #[test]
 fn mark_ring_clears_non_text_contrast() {
-    use crate::style::Rgba8;
+    use crate::style::Color;
     use crate::style::scale::ScaleRole;
     use crate::style::theme::Theme;
 
     #[allow(clippy::suboptimal_flops, reason = "intentional, reviewed trade-off")]
-    fn luminance(c: Rgba8) -> f64 {
+    fn luminance(c: Color) -> f64 {
         let ch = |v: u8| {
             let v = f64::from(v) / 255.0;
             if v <= 0.039_28 {

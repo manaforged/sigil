@@ -1,4 +1,4 @@
-use crate::style::{Rgba8, Tone};
+use crate::style::{Color, Tone};
 use smol_str::SmolStr;
 
 /// The color source of a cell.
@@ -11,11 +11,11 @@ pub enum Ink {
     /// The of ink.
     Of(Tone),
     /// The exact ink.
-    Exact(Rgba8),
+    Exact(Color),
 }
 
 impl Ink {
-    pub(super) const fn pick(colour: Rgba8, tone: Option<Tone>) -> Self {
+    pub(super) const fn pick(colour: Color, tone: Option<Tone>) -> Self {
         match (colour, tone) {
             (colour, _) if colour.a > 0 => Self::Exact(colour),
             (_, Some(tone)) => Self::Of(tone),

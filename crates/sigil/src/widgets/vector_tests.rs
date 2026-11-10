@@ -3,8 +3,8 @@
 use super::*;
 use crate::geometry::Point;
 
-const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a: 255 }
+const fn rgb(r: u8, g: u8, b: u8) -> Color {
+    Color { r, g, b, a: 255 }
 }
 
 fn diagonal() -> PathNode {

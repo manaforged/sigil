@@ -53,7 +53,7 @@ impl Tone {
             Self::Primary => ScaleRole::Accent,
             Self::Info => ScaleRole::Info,
             Self::Success => ScaleRole::Success,
-            Self::Warning => ScaleRole::Warn,
+            Self::Warning => ScaleRole::Warning,
             Self::Error => ScaleRole::Error,
         }
     }

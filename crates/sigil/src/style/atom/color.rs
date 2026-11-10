@@ -2,7 +2,7 @@ use crate::style::Token;
 
 /// An 8-bit RGBA color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Rgba8 {
+pub struct Color {
     /// The r.
     pub r: u8,
     /// The g.
@@ -13,7 +13,7 @@ pub struct Rgba8 {
     pub a: u8,
 }
 
-impl Rgba8 {
+impl Color {
     /// Returns this color drawn over the opaque `under` with straight alpha, as an opaque color.
     #[must_use]
     pub(crate) fn over(self, under: Self) -> Self {
@@ -31,7 +31,7 @@ impl Rgba8 {
     }
 }
 
-impl std::str::FromStr for Rgba8 {
+impl std::str::FromStr for Color {
     type Err = crate::Error;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
@@ -48,8 +48,8 @@ impl std::str::FromStr for Rgba8 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ColorAtom {
-    /// The rgba8 color atom.
-    Rgba8(Rgba8),
+    /// A concrete color.
+    Color(Color),
     /// The token color atom.
     Token(Token),
     /// The custom color atom.
@@ -62,9 +62,9 @@ impl ColorAtom {
     }
 }
 
-impl From<Rgba8> for ColorAtom {
-    fn from(value: Rgba8) -> Self {
-        Self::Rgba8(value)
+impl From<Color> for ColorAtom {
+    fn from(value: Color) -> Self {
+        Self::Color(value)
     }
 }
 

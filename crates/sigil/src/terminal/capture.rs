@@ -4,7 +4,7 @@ use crate::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};
 use crate::scene::{
     CommandScene, DecorationKind, DrawDecoration, DrawRect, GlyphRun, SceneCommand,
 };
-use crate::style::{Color, Rgba8, TextLineHeight, TextStyle, Theme};
+use crate::style::{Color, Rgba, TextLineHeight, TextStyle, Theme};
 use crate::terminal::colour;
 use crate::terminal::paint::{Cell, Grid, Underline};
 use crate::text::OwnedTextEngine;
@@ -68,7 +68,7 @@ impl Grid {
             ImageTarget {
                 size,
                 viewport: (size.width as f32, size.height as f32),
-                clear: Color::rgba(0.0, 0.0, 0.0, 0.0),
+                clear: Rgba::new(0.0, 0.0, 0.0, 0.0),
             },
         )
     }
@@ -86,7 +86,7 @@ fn area(x: usize, y: usize, cell: PhysicalSize) -> Rect {
     )
 }
 
-fn inks(cell: &Cell, theme: &Theme, cursor: bool) -> (Rgba8, Rgba8) {
+fn inks(cell: &Cell, theme: &Theme, cursor: bool) -> (Color, Color) {
     let fg = colour::rgba(cell.fg, theme.on_surface);
     let bg = colour::rgba(cell.bg, theme.surface);
     if cursor { (bg, fg) } else { (fg, bg) }
@@ -96,7 +96,7 @@ fn inks(cell: &Cell, theme: &Theme, cursor: bool) -> (Rgba8, Rgba8) {
     clippy::cast_precision_loss,
     reason = "grapheme widths are small cell counts"
 )]
-fn paint(scene: &mut CommandScene, cell: &Cell, mut rect: Rect, fg: Rgba8) -> Result<(), Error> {
+fn paint(scene: &mut CommandScene, cell: &Cell, mut rect: Rect, fg: Color) -> Result<(), Error> {
     let width = crate::app::cell_width(&cell.text);
     if width == 0 {
         return Ok(());
@@ -130,7 +130,7 @@ fn paint(scene: &mut CommandScene, cell: &Cell, mut rect: Rect, fg: Rgba8) -> Re
     Ok(())
 }
 
-fn decorations(scene: &mut CommandScene, cell: &Cell, rect: Rect, fg: Rgba8) {
+fn decorations(scene: &mut CommandScene, cell: &Cell, rect: Rect, fg: Color) {
     let underline = match cell.lines.underline {
         Underline::None => None,
         Underline::Straight => Some(DecorationKind::Underline),

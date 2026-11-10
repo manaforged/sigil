@@ -88,7 +88,7 @@ fn inset_plate(fills: sigil::terminal::Fills) -> String {
                 );
                 scene.draw_rect(sigil::scene::DrawRect::new(
                     rect,
-                    sigil::prelude::Rgba8 {
+                    sigil::prelude::Color {
                         r: 105,
                         g: 140,
                         b: 210,

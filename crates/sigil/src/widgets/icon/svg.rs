@@ -2,7 +2,7 @@ use std::fmt::Write as _;
 use std::sync::Arc;
 
 use crate::kernel::{NodeBuilder, container};
-use crate::style::{Rgba8, Token};
+use crate::style::{Color, Token};
 use crate::widgets::svg_picture::square;
 
 const ROOT: &str = "<svg";
@@ -15,10 +15,10 @@ pub(super) fn glyph(svg: Arc<str>, token: Token, extent: f32) -> NodeBuilder {
     .unwrap_or_else(container)
 }
 
-fn tinted(svg: &str, color: Rgba8) -> Option<String> {
+fn tinted(svg: &str, color: Color) -> Option<String> {
     let start = svg.find(ROOT)? + ROOT.len();
     let root = &svg[start..start + svg[start..].find('>')?];
-    let Rgba8 { r, g, b, a } = color;
+    let Color { r, g, b, a } = color;
     let mut extra = String::new();
     if !names(root, "color") {
         let _ = write!(extra, " color=\"#{r:02x}{g:02x}{b:02x}{a:02x}\"");

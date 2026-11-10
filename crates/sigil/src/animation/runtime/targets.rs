@@ -1,7 +1,7 @@
 use crate::animation::runtime::binding_animate::find_numeric;
 use crate::style::atom::{GradientShape, MaskKind, aligned};
 use crate::style::{
-    ColorAtomKind, Family, NumericAtomKind, RenderStyle, Rgba8, StyleAtom, StyleEngine, Theme, Tone,
+    Color, ColorAtomKind, Family, NumericAtomKind, RenderStyle, StyleAtom, StyleEngine, Theme, Tone,
 };
 
 const FAMILIES: usize = 5;
@@ -17,7 +17,7 @@ struct Shape {
 #[derive(Clone, Copy)]
 pub(crate) struct Targets {
     pub(crate) numeric: [Option<f32>; NumericAtomKind::COUNT],
-    pub(crate) colors: [Option<Rgba8>; ColorAtomKind::COUNT],
+    pub(crate) colors: [Option<Color>; ColorAtomKind::COUNT],
     shape: Shape,
 }
 
@@ -51,7 +51,7 @@ fn numeric_of(render: &RenderStyle, atoms: &[StyleAtom], kind: NumericAtomKind) 
     }
 }
 
-fn color_of(render: &RenderStyle, kind: ColorAtomKind) -> Option<Rgba8> {
+fn color_of(render: &RenderStyle, kind: ColorAtomKind) -> Option<Color> {
     match kind {
         ColorAtomKind::Background => render.background_color,
         ColorAtomKind::Text => render.text_color,
@@ -118,7 +118,7 @@ impl Change {
         (from, at(&self.to))
     }
 
-    pub(crate) fn color(&self, kind: ColorAtomKind) -> (Option<Rgba8>, Option<Rgba8>) {
+    pub(crate) fn color(&self, kind: ColorAtomKind) -> (Option<Color>, Option<Color>) {
         let at = |targets: &Targets| targets.colors.get(kind as usize).copied().flatten();
         (at(&self.from), at(&self.to))
     }

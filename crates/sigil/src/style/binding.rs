@@ -9,7 +9,7 @@ use crate::kernel::NodeTag;
 use crate::reactive::Signal;
 use crate::style::merge::SlotSet;
 use crate::style::{
-    AnimatorOverlay, ColorAtomKind, NumericAtomKind, Rgba8, StateSlot, StyleAtom, StyleOverlay,
+    AnimatorOverlay, Color, ColorAtomKind, NumericAtomKind, StateSlot, StyleAtom, StyleOverlay,
     Theme, Tone, merge_classes,
 };
 
@@ -223,7 +223,7 @@ impl StyleBinding {
         &self,
         theme: &Theme,
         tone: Tone,
-        inherited_text: Rgba8,
+        inherited_text: Color,
         tag: Option<NodeTag>,
     ) {
         let atoms: SmallVec<[StyleAtom; 32]> = self.cascade().collect();
@@ -316,7 +316,7 @@ impl AnimatorOverlay for StyleBinding {
             })
     }
 
-    fn value_for_color(&self, kind: ColorAtomKind) -> Option<Rgba8> {
+    fn value_for_color(&self, kind: ColorAtomKind) -> Option<Color> {
         self.attached_animators
             .get()
             .and_then(|overlay| overlay.value_for_color(kind))

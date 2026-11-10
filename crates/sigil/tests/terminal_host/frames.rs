@@ -30,7 +30,7 @@ fn a_reactive_class_change_repaints() {
     use sigil::reactive::signal;
     use sigil::style::{Paint, Token};
 
-    fn fills(scene: &sigil::scene::CommandScene) -> Vec<sigil::style::Rgba8> {
+    fn fills(scene: &sigil::scene::CommandScene) -> Vec<sigil::style::Color> {
         scene
             .commands
             .iter()
@@ -41,7 +41,7 @@ fn a_reactive_class_change_repaints() {
             .collect()
     }
 
-    fn truth(start: bool) -> Vec<sigil::style::Rgba8> {
+    fn truth(start: bool) -> Vec<sigil::style::Color> {
         sigil::reactive::Owner::scope("reactive-truth", || {
             let active = signal(start);
             let mut host = Host::new(HostMode::Cell);

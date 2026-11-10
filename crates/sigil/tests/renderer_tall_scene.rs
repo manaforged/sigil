@@ -16,7 +16,7 @@ use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{
     CommandScene, DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder,
 };
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::gpu::read_pixels;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -106,7 +106,7 @@ fn render_offscreen(
                 scale: 1.0,
             },
             scene,
-            Color::BLACK,
+            Rgba::BLACK,
         )
         .expect("offscreen render");
     read_pixels(

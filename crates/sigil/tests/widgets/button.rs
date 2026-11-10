@@ -3,7 +3,7 @@ use sigil::events::EventRouter;
 use sigil::kernel::Cx;
 use sigil::kernel::NodeType;
 use sigil::layout::LayoutEngine;
-use sigil::style::{FocusRing, Rgba8};
+use sigil::style::{Color, FocusRing};
 use sigil::widgets::ButtonBuilder;
 
 #[test]
@@ -122,7 +122,7 @@ fn label_accepts_reactive_text() {
     });
 }
 
-fn resting_look(build: impl FnOnce() -> ButtonBuilder) -> Vec<Rgba8> {
+fn resting_look(build: impl FnOnce() -> ButtonBuilder) -> Vec<Color> {
     let mut cx = Cx::new_root();
     let root = cx.add(build().primary());
     let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));

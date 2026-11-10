@@ -84,7 +84,7 @@ The header uses `surface-inset`, a strong bottom border, and extra-small medium-
 
 ## heatmap
 
-`heatmap(grid_w, grid_h, color) -> NodeBuilder` where `color` is `Fn(usize, usize) -> Rgba8`. Eagerly builds `grid_w × grid_h` fixed 8 px cells in nested flex rows; the color closure runs once at build time. Not virtualized and not reactive. Keep grids small, or rebuild the node when the data changes.
+`heatmap(grid_w, grid_h, color) -> NodeBuilder` where `color` is `Fn(usize, usize) -> Color`. Eagerly builds `grid_w × grid_h` fixed 8 px cells in nested flex rows; the color closure runs once at build time. Not virtualized and not reactive. Keep grids small, or rebuild the node when the data changes.
 
 ## Rows and key-value pairs
 

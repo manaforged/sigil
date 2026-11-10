@@ -11,7 +11,7 @@ mod scene_support;
 use scene_support::{color, rect};
 use sigil::renderer::{ScreenSubmission, WgpuRenderer};
 use sigil::scene::{CommandScene, CornerRadii, DrawRect, SceneBuilder, SceneCommand};
-use sigil::style::Color;
+use sigil::style::Rgba;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const VIEWPORT: (f32, f32) = (220.0, 80.0);
@@ -85,7 +85,7 @@ fn render_scene(
                 format: FORMAT,
                 viewport: VIEWPORT,
                 scale: 1.0,
-                clear: Some(Color::rgba(0.05, 0.06, 0.09, 1.0)),
+                clear: Some(Rgba::new(0.05, 0.06, 0.09, 1.0)),
             },
             scene,
         )

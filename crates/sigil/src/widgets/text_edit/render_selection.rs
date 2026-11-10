@@ -9,7 +9,7 @@ use crate::widgets::Widget;
 use super::TextEditRuntime;
 
 static SELECTION_ATOMS: &[StyleAtom] =
-    &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(SELECTION_FILL))];
+    &[StyleAtom::BackgroundColor(ColorAtom::Color(SELECTION_FILL))];
 
 pub(super) fn selection_layer(runtime: &TextEditRuntime) -> NodeBuilder {
     let runtime = runtime.clone();

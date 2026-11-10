@@ -3,11 +3,11 @@ use sigil::kernel::{ImageSource, ObjectFit};
 use sigil::scene::{
     CornerRadii, DrawImage, DrawRect, LayerEffect, LayerScope, SceneCommand, shape_glyph_run,
 };
-use sigil::style::{Color, Rgba8, TextStyle};
+use sigil::style::{Color, Rgba, TextStyle};
 
 use super::GeneratedScene;
 
-const INK: Rgba8 = Rgba8 {
+const INK: Color = Color {
     r: 230,
     g: 120,
     b: 40,
@@ -19,7 +19,7 @@ const fn scene(commands: Vec<SceneCommand>, viewport: (f32, f32), scale: f32) ->
         commands,
         viewport,
         scale,
-        clear: Color::rgba(0.05, 0.06, 0.09, 1.0),
+        clear: Rgba::new(0.05, 0.06, 0.09, 1.0),
     }
 }
 

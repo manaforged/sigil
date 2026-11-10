@@ -1,6 +1,6 @@
 use super::PathCmd;
 use crate::scene::command::PathPaint;
-use crate::style::Rgba8;
+use crate::style::Color;
 
 pub(super) fn mix(hash: &mut u64, byte: u8) {
     *hash = crate::fnv::mix(*hash, u64::from(byte));
@@ -12,7 +12,7 @@ pub(super) fn mix_f32(hash: &mut u64, value: f32) {
     }
 }
 
-fn mix_rgba(hash: &mut u64, color: Rgba8) {
+fn mix_rgba(hash: &mut u64, color: Color) {
     for byte in [color.r, color.g, color.b, color.a] {
         mix(hash, byte);
     }
@@ -37,7 +37,7 @@ pub(super) fn hash_cmd(hash: &mut u64, cmd: PathCmd) {
     }
 }
 
-pub(super) fn mix_stroke(hash: &mut u64, stroke: Option<(Rgba8, f32)>) {
+pub(super) fn mix_stroke(hash: &mut u64, stroke: Option<(Color, f32)>) {
     match stroke {
         Some((color, width)) => {
             mix(hash, 1);

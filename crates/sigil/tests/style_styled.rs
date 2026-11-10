@@ -27,17 +27,17 @@ use sigil::layout::{
 use sigil::prelude::Widget;
 use sigil::scene::{DrawRect, SceneCommand, emit_scene};
 use sigil::style::{
-    ColorAtom, FontFamily, Paint, Radius, Rgba8, StateStyleBuilder, States, TextLineHeight, Theme,
+    Color, ColorAtom, FontFamily, Paint, Radius, StateStyleBuilder, States, TextLineHeight, Theme,
     Token,
 };
 use widget_support::compute;
 
 const VIEWPORT: Size = Size::fixed(200.0, 100.0);
-const REST: Rgba8 = color(240, 240, 240, 255);
-const A: Rgba8 = color(200, 20, 20, 255);
-const B: Rgba8 = color(20, 200, 20, 255);
-const C: Rgba8 = color(20, 20, 200, 255);
-const D: Rgba8 = color(90, 90, 90, 255);
+const REST: Color = color(240, 240, 240, 255);
+const A: Color = color(200, 20, 20, 255);
+const B: Color = color(20, 200, 20, 255);
+const C: Color = color(20, 20, 200, 255);
+const D: Color = color(90, 90, 90, 255);
 
 #[derive(Clone, Copy)]
 enum Drive {
@@ -79,7 +79,7 @@ fn rects(build: impl IntoNode, drive: Drive) -> Vec<DrawRect> {
         .collect()
 }
 
-fn colors(build: impl IntoNode, drive: Drive) -> Vec<Rgba8> {
+fn colors(build: impl IntoNode, drive: Drive) -> Vec<Color> {
     rects(build, drive).iter().map(|rect| rect.color).collect()
 }
 
@@ -210,7 +210,7 @@ fn bg_accepts_theme_token() {
 
 #[test]
 fn bg_accepts_color_atom() {
-    assert_eq!(rest_rect(pane().background(ColorAtom::Rgba8(C))).color, C);
+    assert_eq!(rest_rect(pane().background(ColorAtom::Color(C))).color, C);
 }
 
 #[test]
@@ -304,7 +304,7 @@ fn color_atom_from_impls_route_correctly() {
     let from_rgba: ColorAtom = color(1, 2, 3, 4).into();
     let from_token: ColorAtom = Token::Surface.into();
 
-    assert!(matches!(from_rgba, ColorAtom::Rgba8(_)));
+    assert!(matches!(from_rgba, ColorAtom::Color(_)));
     assert!(matches!(from_token, ColorAtom::Token(Token::Surface)));
 }
 

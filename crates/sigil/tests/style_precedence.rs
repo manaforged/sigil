@@ -35,7 +35,7 @@ fn width(build: impl IntoNode) -> f32 {
         .map_or(0.0, |result| result.rect().width)
 }
 
-fn rest_and_hover_colors(build: impl IntoNode) -> (Vec<Rgba8>, Vec<Rgba8>) {
+fn rest_and_hover_colors(build: impl IntoNode) -> (Vec<Color>, Vec<Color>) {
     let (mut cx, root, layout) = laid_out(build);
     let rest = rect_colors(&cx, root);
     EventRouter::new().route(&mut cx, &layout, Event::pointer_move(Point::new(8.0, 8.0)));

@@ -7,7 +7,7 @@
 use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::reactive::{Owner, signal};
-use sigil::style::{ColorAtom, Rgba8, StyleAtom, StyleBinding};
+use sigil::style::{Color, ColorAtom, StyleAtom, StyleBinding};
 
 fn reactive_slice(cx: &Cx, id: sigil::kernel::NodeId) -> &'static [StyleAtom] {
     let binding = cx
@@ -32,7 +32,7 @@ fn button_disabled_initial_true_blocks_focus() {
     });
 }
 
-const FIELD_INVALID_RED: Rgba8 = Rgba8 {
+const FIELD_INVALID_RED: Color = Color {
     r: 211,
     g: 47,
     b: 47,
@@ -49,7 +49,7 @@ fn text_field_invalid_when_paints_red_border_on_flip() {
 
         let before = reactive_slice(&cx, id);
         assert!(
-            !before.contains(&StyleAtom::BorderColor(ColorAtom::Rgba8(FIELD_INVALID_RED))),
+            !before.contains(&StyleAtom::BorderColor(ColorAtom::Color(FIELD_INVALID_RED))),
             "field starts without the red-invalid overlay; got {before:?}",
         );
 
@@ -57,14 +57,14 @@ fn text_field_invalid_when_paints_red_border_on_flip() {
         let painted = reactive_slice(&cx, id);
         assert_eq!(
             painted,
-            &[StyleAtom::BorderColor(ColorAtom::Rgba8(FIELD_INVALID_RED))],
+            &[StyleAtom::BorderColor(ColorAtom::Color(FIELD_INVALID_RED))],
             "invalid_when(true) must install the red border overlay, got {painted:?}",
         );
 
         invalid.set(false);
         let cleared = reactive_slice(&cx, id);
         assert!(
-            !cleared.contains(&StyleAtom::BorderColor(ColorAtom::Rgba8(FIELD_INVALID_RED))),
+            !cleared.contains(&StyleAtom::BorderColor(ColorAtom::Color(FIELD_INVALID_RED))),
             "invalid_when(false) must remove the red border overlay; got {cleared:?}",
         );
     });

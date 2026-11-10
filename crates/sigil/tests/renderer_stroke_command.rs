@@ -12,7 +12,7 @@ use sigil::scene::{
     CornerRadii, DrawGradient, DrawRect, GradientStop, LinearGradient, SceneBuilder, SceneCommand,
     Stroke, StrokeAlign, StrokeStyle,
 };
-use sigil::style::Rgba8;
+use sigil::style::Color;
 use smallvec::smallvec;
 
 #[test]
@@ -21,7 +21,7 @@ fn stroke_constructs_with_public_fields() {
 
     assert_eq!(
         stroke.color,
-        Rgba8 {
+        Color {
             r: 26,
             g: 51,
             b: 77,
@@ -94,7 +94,7 @@ const fn rect_style(rect: sigil::geometry::Rect) -> DrawRect {
 
 const fn solid_stroke(align: StrokeAlign, width: f32) -> Stroke {
     Stroke {
-        color: Rgba8 {
+        color: Color {
             r: 26,
             g: 51,
             b: 77,
@@ -108,7 +108,7 @@ const fn solid_stroke(align: StrokeAlign, width: f32) -> Stroke {
 
 const fn dashed_stroke(align: StrokeAlign, width: f32, gap: f32) -> Stroke {
     Stroke {
-        color: Rgba8 {
+        color: Color {
             r: 179,
             g: 153,
             b: 51,

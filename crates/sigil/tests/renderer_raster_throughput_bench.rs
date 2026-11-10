@@ -25,7 +25,7 @@ use std::time::Instant;
 use sigil::app::{TextTuning, set_text_tuning};
 use sigil::renderer::{ScreenSubmission, WgpuRenderer};
 use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
-use sigil::style::{Rgba8, TextLineHeight, TextStyle};
+use sigil::style::{Color, TextLineHeight, TextStyle};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
@@ -94,7 +94,7 @@ fn bench_path(
                     format: FORMAT,
                     viewport: (LOGICAL_W, LOGICAL_H),
                     scale: 1.0,
-                    clear: Some(sigil::style::Color::BLACK),
+                    clear: Some(sigil::style::Rgba::BLACK),
                 },
                 scene,
             )
@@ -132,7 +132,7 @@ fn build_scene(content: &str) -> (CommandScene, usize) {
     let run = shape_glyph_run(
         rect,
         content.to_string(),
-        Rgba8 {
+        Color {
             r: 255,
             g: 255,
             b: 255,

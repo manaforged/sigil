@@ -16,7 +16,7 @@ fn many_images(count: u32) -> NodeBuilder {
         grid = grid.child(
             container()
                 .layout(LayoutStyle::block().fixed_size(4.0, 4.0))
-                .bg_image(source),
+                .background_image(source),
         );
     }
     page(240.0, 40.0, WHITE, grid)

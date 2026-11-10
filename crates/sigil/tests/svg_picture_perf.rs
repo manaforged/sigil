@@ -22,7 +22,7 @@ use sigil::reactive::Owner;
 use sigil::renderer::CpuRenderer;
 use sigil::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};
 use sigil::scene::paint_backdrop;
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil_kittest::gpu::headless_renderer;
 use sigil_kittest::parity::{Frame, gpu_rgba};
 
@@ -87,7 +87,7 @@ impl Painter {
         let _ = host.frame(VIEW, 1.0 / 60.0, FrameHooks::default());
         let mut scene = host.emit(VIEW);
         paint_backdrop(&mut scene, host.theme(), VIEW);
-        let clear = Color::rgba(0.0, 0.0, 0.0, 1.0);
+        let clear = Rgba::new(0.0, 0.0, 0.0, 1.0);
         let size = PhysicalSize::new(DEVICE.0, DEVICE.1);
         match self {
             Self::Cpu(renderer) => {

@@ -13,7 +13,7 @@ use super::super::layout_ext::LayoutOverrides;
 use super::super::menu::MenuItem;
 use super::super::scroll::{WheelAxis, wheel};
 use super::super::shared::{DIMMED, caller_style};
-use super::super::virtual_list::{fills_height, virtual_list};
+use super::super::virtual_list::virtual_list;
 use super::chrome::{RowActivate, RowMenu, TableChrome, context_overlay};
 use super::density::Density;
 use super::header::{HeaderSpec, header_row};
@@ -195,7 +195,7 @@ impl<Row: 'static> TableBuilder<Row> {
             striped: self.striped,
             disabled: self.disabled,
         };
-        let fill = fills_height(&self.layout_overrides);
+        let fill = self.layout_overrides.fills_height();
         let viewport = (!fill).then_some(self.viewport_height);
         let body = body_view(
             state.clone(),

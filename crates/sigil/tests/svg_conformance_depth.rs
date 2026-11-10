@@ -19,7 +19,7 @@ const STACK: usize = 2 << 20;
 const LINKS: usize = 20_000;
 const LIMIT: usize = 32;
 const FAN_OUT_SECONDS: u64 = 30;
-const BLACK: Rgba8 = Rgba8 {
+const BLACK: Color = Color {
     r: 0,
     g: 0,
     b: 0,

@@ -4,7 +4,7 @@ use crate::profile::{self, BackendStatus, FallbackCause};
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::{CpuRenderer, CpuSurface, WgpuRenderer, WgpuSurface, into_window_handle};
 use crate::scene::CommandScene;
-use crate::style::Color;
+use crate::style::Rgba;
 use crate::{Error, ErrorKind};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
@@ -16,7 +16,7 @@ pub(super) use inspect::inspect_shot;
 
 const ENV: &str = "SIGIL_BACKEND";
 use crate::renderer::SURFACE_CLEAR;
-const TRANSPARENT_CLEAR: Color = Color::rgba(0.0, 0.0, 0.0, 0.0);
+const TRANSPARENT_CLEAR: Rgba = Rgba::new(0.0, 0.0, 0.0, 0.0);
 
 pub(in crate::app) struct Backend {
     inner: BackendInner,
@@ -69,7 +69,7 @@ impl Backend {
         self.status
     }
 
-    pub(in crate::app) const fn clear_color(&self) -> Color {
+    pub(in crate::app) const fn clear_color(&self) -> Rgba {
         if self.is_transparent() {
             TRANSPARENT_CLEAR
         } else {
@@ -266,7 +266,7 @@ impl Backend {
         &mut self,
         surface: &mut RenderSurface,
         scene: &CommandScene,
-        clear: Color,
+        clear: Rgba,
         viewport: (f32, f32),
     ) -> Result<(), Error> {
         match (&mut self.inner, surface) {

@@ -15,7 +15,7 @@ use crate::renderer::{CpuRenderer, SURFACE_CLEAR};
 use crate::scene::CommandScene;
 use crate::scene::damage::{Damage, scene_damage};
 use crate::style::srgb::decode;
-use crate::style::{Color, Rgba8};
+use crate::style::{Color, Rgba};
 use crate::terminal::graphics::Mux;
 use crate::terminal::pixels::tiles::{Grid, Tiles};
 use crate::terminal::run::CELL;
@@ -123,7 +123,7 @@ impl Draw {
         frame: Frame,
         scene: CommandScene,
         force: bool,
-        (mux, clear): (Option<Mux>, Color),
+        (mux, clear): (Option<Mux>, Rgba),
     ) -> AppResult {
         let render = profile::span(Phase::RenderCpu);
         let damage = self.damage(frame, &scene, force);
@@ -182,7 +182,7 @@ fn render_regions(
     canvas: &mut Pixmap,
     scene: &CommandScene,
     frame: Frame,
-    clear: Color,
+    clear: Rgba,
     regions: &[[usize; 4]],
 ) {
     let size = frame.size;
@@ -209,8 +209,8 @@ fn render_regions(
 }
 
 /// The opaque linear color of an sRGB byte color.
-fn opaque(color: Rgba8) -> Color {
-    Color::rgba(decode(color.r), decode(color.g), decode(color.b), 1.0)
+fn opaque(color: Color) -> Rgba {
+    Rgba::new(decode(color.r), decode(color.g), decode(color.b), 1.0)
 }
 
 #[derive(Clone, Copy, PartialEq)]

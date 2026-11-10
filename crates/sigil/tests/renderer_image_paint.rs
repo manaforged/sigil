@@ -99,7 +99,7 @@ fn contain_letterboxes_a_wide_image_in_a_square_box() {
             center[0],
             center[1],
             center[2],
-            sigil::style::Rgba8 {
+            sigil::style::Color {
                 r: 255,
                 g: 0,
                 b: 0,
@@ -137,7 +137,7 @@ fn image_samples_its_texture_with_correct_orientation() {
                 px[0],
                 px[1],
                 px[2],
-                sigil::style::Rgba8 { r, g, b, a: 255 },
+                sigil::style::Color { r, g, b, a: 255 },
                 12
             ),
             "{label} quadrant at ({x},{y}) must sample ({r},{g},{b}), got ({},{},{})",
@@ -237,7 +237,7 @@ fn image_alpha_blends_color_and_coverage() {
         || {
             let mut row = container()
                 .layout(LayoutStyle::flex_row().fixed_size(40.0, 8.0))
-                .background(sigil::style::Rgba8 {
+                .background(sigil::style::Color {
                     r: 0,
                     g: 0,
                     b: 255,

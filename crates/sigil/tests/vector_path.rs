@@ -19,7 +19,7 @@ use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{CommandScene, SceneBuilder, SceneCommand, StrokeCap, StrokeJoin};
-use sigil::style::Color;
+use sigil::style::Rgba;
 use sigil::widgets::{PathNode, canvas, path};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, cpu_rgba, diff};
@@ -36,7 +36,7 @@ mod retained;
 const SIDE: u32 = 60;
 const SCALE: f32 = 2.0;
 const MAX_EDGE_PX: usize = 2;
-const INK: Rgba8 = Rgba8 {
+const INK: Color = Color {
     r: 255,
     g: 40,
     b: 40,
@@ -280,7 +280,7 @@ fn a_path_scene_agrees_on_the_cpu_and_the_gpu() {
         scene: &scene,
         viewport,
         size: PhysicalSize::new(240, 160),
-        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+        clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
     };
     let cpu = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
     assert_lit(coverage(&gpu, 60, 60), "the gpu frame's star centre");

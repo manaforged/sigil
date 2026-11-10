@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 use super::ThemeValue;
-use crate::style::{ColorAtom, Rgba8, Token};
+use crate::style::{Color, ColorAtom, Token};
 
 /// One layer: a fixed array per `Token` plus a map for custom names.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TokenLayer {
-    tokens: [Option<Rgba8>; Token::COUNT],
+    tokens: [Option<Color>; Token::COUNT],
     custom: HashMap<String, ThemeValue>,
 }
 
@@ -20,15 +20,15 @@ impl Default for TokenLayer {
 }
 
 impl TokenLayer {
-    fn token(&self, token: Token) -> Option<Rgba8> {
+    fn token(&self, token: Token) -> Option<Color> {
         self.tokens.get(token.index()).copied().flatten()
     }
 
     /// Returns the color of `key`, if set.
     #[must_use]
-    pub fn color(&self, key: ColorAtom) -> Option<Rgba8> {
+    pub fn color(&self, key: ColorAtom) -> Option<Color> {
         match key {
-            ColorAtom::Rgba8(color) => Some(color),
+            ColorAtom::Color(color) => Some(color),
             ColorAtom::Token(token) => self.token(token),
             ColorAtom::Custom(name) => match self.custom.get(name) {
                 Some(ThemeValue::Color(color)) => Some(*color),

@@ -102,7 +102,7 @@ impl Rect {
 
 /// A color with `f32` red, green, blue, and alpha channels.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Color {
+pub struct Rgba {
     /// The r.
     pub r: f32,
     /// The g.
@@ -113,13 +113,13 @@ pub struct Color {
     pub a: f32,
 }
 
-impl Default for Color {
+impl Default for Rgba {
     fn default() -> Self {
         Self::TRANSPARENT
     }
 }
 
-impl Color {
+impl Rgba {
     /// Fully transparent black.
     pub const TRANSPARENT: Self = Self {
         r: 0.0,
@@ -128,6 +128,7 @@ impl Color {
         a: 0.0,
     };
     /// Opaque black.
+    #[cfg(any(test, feature = "kittest"))]
     pub const BLACK: Self = Self {
         r: 0.0,
         g: 0.0,
@@ -135,6 +136,7 @@ impl Color {
         a: 1.0,
     };
     /// Opaque white.
+    #[cfg(any(test, feature = "kittest", feature = "scene"))]
     pub const WHITE: Self = Self {
         r: 1.0,
         g: 1.0,
@@ -144,7 +146,8 @@ impl Color {
 
     /// Creates a color from its four channels.
     #[must_use]
-    pub const fn rgba(r: f32, g: f32, b: f32, a: f32) -> Self {
+    #[cfg(any(test, feature = "kittest", feature = "scene"))]
+    pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
 }

@@ -1,12 +1,12 @@
 use crate::kernel::ImageSource;
-use crate::style::Rgba8;
+use crate::style::Color;
 
 const STORED: usize = 65_535;
 
 /// Converts an image to half-block rows.
 #[cfg(any(test, feature = "kittest"))]
 #[must_use]
-pub fn blocks(source: &ImageSource, cols: usize, rows: usize) -> Vec<Vec<(Rgba8, Rgba8)>> {
+pub fn blocks(source: &ImageSource, cols: usize, rows: usize) -> Vec<Vec<(Color, Color)>> {
     blocks_window(source, (0, source.height()), cols, rows)
 }
 
@@ -18,7 +18,7 @@ pub(crate) fn blocks_window(
     window: (u32, u32),
     cols: usize,
     rows: usize,
-) -> Vec<Vec<(Rgba8, Rgba8)>> {
+) -> Vec<Vec<(Color, Color)>> {
     cells(source, window, (cols, rows), |sample, col, row| {
         let x = col * sample.width / cols;
         let y = |half: usize| (row * 2 + half) * sample.height / (rows * 2);
@@ -29,7 +29,7 @@ pub(crate) fn blocks_window(
 /// Converts an image to sextant rows.
 #[cfg(any(test, feature = "kittest"))]
 #[must_use]
-pub fn sextants(source: &ImageSource, cols: usize, rows: usize) -> Vec<Vec<(char, Rgba8, Rgba8)>> {
+pub fn sextants(source: &ImageSource, cols: usize, rows: usize) -> Vec<Vec<(char, Color, Color)>> {
     sextants_window(source, (0, source.height()), cols, rows)
 }
 
@@ -40,7 +40,7 @@ pub(crate) fn sextants_window(
     window: (u32, u32),
     cols: usize,
     rows: usize,
-) -> Vec<Vec<(char, Rgba8, Rgba8)>> {
+) -> Vec<Vec<(char, Color, Color)>> {
     cells(source, window, (cols, rows), |sample, col, row| {
         cell_glyph(std::array::from_fn(|index| {
             let x = (col * 2 + index % 2) * sample.width / (cols * 2);
@@ -95,15 +95,15 @@ impl<'a> Sample<'a> {
             .unwrap_or_default()
     }
 
-    fn pixel(&self, x: usize, y: usize) -> Rgba8 {
+    fn pixel(&self, x: usize, y: usize) -> Color {
         premultiplied(self.texel(x, y))
     }
 }
 
-pub(super) fn premultiplied([r, g, b, a]: [u8; 4]) -> Rgba8 {
+pub(super) fn premultiplied([r, g, b, a]: [u8; 4]) -> Color {
     let alpha = u32::from(a);
     let over = |channel: u8| u8::try_from(u32::from(channel) * alpha / 255).unwrap_or(u8::MAX);
-    Rgba8 {
+    Color {
         r: over(r),
         g: over(g),
         b: over(b),
@@ -111,8 +111,8 @@ pub(super) fn premultiplied([r, g, b, a]: [u8; 4]) -> Rgba8 {
     }
 }
 
-fn cell_glyph(px: [Rgba8; 6]) -> (char, Rgba8, Rgba8) {
-    let lum = |c: &Rgba8| u32::from(c.r) * 299 + u32::from(c.g) * 587 + u32::from(c.b) * 114;
+fn cell_glyph(px: [Color; 6]) -> (char, Color, Color) {
+    let lum = |c: &Color| u32::from(c.r) * 299 + u32::from(c.g) * 587 + u32::from(c.b) * 114;
     let mean = px.iter().map(lum).sum::<u32>() / 6;
     let mask = px.iter().enumerate().fold(0u32, |bits, (index, c)| {
         bits | u32::from(lum(c) >= mean) << index
@@ -126,7 +126,7 @@ fn cell_glyph(px: [Rgba8; 6]) -> (char, Rgba8, Rgba8) {
         let (r, g, b) = picked.fold((0u32, 0u32, 0u32), |(r, g, b), (_, c)| {
             (r + u32::from(c.r), g + u32::from(c.g), b + u32::from(c.b))
         });
-        Rgba8 {
+        Color {
             r: u8::try_from(r / count).unwrap_or(u8::MAX),
             g: u8::try_from(g / count).unwrap_or(u8::MAX),
             b: u8::try_from(b / count).unwrap_or(u8::MAX),

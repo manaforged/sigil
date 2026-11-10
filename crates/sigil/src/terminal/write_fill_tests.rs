@@ -69,7 +69,7 @@ fn control_characters_in_text_never_reach_the_terminal() {
     assert!(shown.starts_with('a'), "{shown:?}");
 }
 
-fn band(top: f32, bottom: f32, ink: Rgba8) -> SceneCommand {
+fn band(top: f32, bottom: f32, ink: Color) -> SceneCommand {
     SceneCommand::Rect(
         DrawRect::new(Rect::new(Point::new(0.0, top), 16.0, bottom - top), ink).with_cell(
             CellRect {

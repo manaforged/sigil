@@ -7,8 +7,8 @@ use crate::animation::{Easing, Transition};
 use crate::kernel::{Cx, container, text};
 use crate::style::atom::NO_GRADIENT;
 use crate::style::{
-    Background, ColorAtom, Elevation, FontFamily, Gradient, GradientAxis, GradientShape, MillisU16,
-    Paint, Radial, Radius, RenderStyle, Rgba8, Style, StyleAtom, StyleBinding, StyleEngine,
+    Background, Color, ColorAtom, Elevation, FontFamily, Gradient, GradientAxis, GradientShape,
+    MillisU16, Paint, Radial, Radius, RenderStyle, Style, StyleAtom, StyleBinding, StyleEngine,
     TextDecoration, Theme, Token, Transform2D, TransitionId, merge_classes,
 };
 use crate::widgets::Widget;
@@ -94,7 +94,7 @@ fn apply_is_alloc_free() {
 
 #[test]
 fn concrete_color_applies() {
-    let color = Rgba8 {
+    let color = Color {
         r: 1,
         g: 2,
         b: 3,
@@ -102,7 +102,7 @@ fn concrete_color_applies() {
     };
     let render = applied(
         &Theme::default(),
-        &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(color))],
+        &[StyleAtom::BackgroundColor(ColorAtom::Color(color))],
     );
 
     assert_eq!(render.background_color, Some(color));
@@ -159,14 +159,14 @@ fn lowered(atom: StyleAtom) -> Vec<StyleAtom> {
 
 #[test]
 fn struct_api_covers_every_atom() {
-    let color = Rgba8 {
+    let color = Color {
         r: 10,
         g: 20,
         b: 30,
         a: 255,
     };
     let atoms = [
-        StyleAtom::BackgroundColor(ColorAtom::Rgba8(color)),
+        StyleAtom::BackgroundColor(ColorAtom::Color(color)),
         StyleAtom::BackgroundColor(ColorAtom::Token(Token::Accent)),
         StyleAtom::TextColor(ColorAtom::Token(Token::OnAccent)),
         StyleAtom::TextColor(ColorAtom::Token(Token::OnSurface)),

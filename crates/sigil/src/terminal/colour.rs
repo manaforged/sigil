@@ -1,10 +1,10 @@
-use crossterm::style::Color;
+use crossterm::style::Color as TermColor;
 
-use crate::style::{Rgba8, Tone};
+use crate::style::{Color, Tone};
 use crate::terminal::caps::ColorDepth;
 use crate::terminal::paint::Ink;
 
-pub(crate) fn cube(colour: Rgba8) -> u8 {
+pub(crate) fn cube(colour: Color) -> u8 {
     let (red, r) = nearest_level(colour.r);
     let (green, g) = nearest_level(colour.g);
     let (blue, b) = nearest_level(colour.b);
@@ -28,88 +28,88 @@ fn nearest_level(channel: u8) -> (u8, u8) {
         .map_or((0, 0), |(index, level)| (level, index))
 }
 
-fn distance(colour: Rgba8, red: u8, green: u8, blue: u8) -> u32 {
+fn distance(colour: Color, red: u8, green: u8, blue: u8) -> u32 {
     let square = |value: u8, target: u8| u32::from(value.abs_diff(target)).pow(2);
     square(colour.r, red) + square(colour.g, green) + square(colour.b, blue)
 }
 
-pub(crate) fn paint(ink: Ink, depth: ColorDepth) -> Color {
+pub(crate) fn paint(ink: Ink, depth: ColorDepth) -> TermColor {
     if depth == ColorDepth::Monochrome {
-        return Color::Reset;
+        return TermColor::Reset;
     }
     match ink {
-        Ink::Bare | Ink::Of(Tone::Neutral) => Color::Reset,
-        Ink::Of(Tone::Primary) => Color::Blue,
-        Ink::Of(Tone::Info) => Color::Cyan,
-        Ink::Of(Tone::Success) => Color::Green,
-        Ink::Of(Tone::Warning) => Color::Yellow,
-        Ink::Of(Tone::Error) => Color::Red,
+        Ink::Bare | Ink::Of(Tone::Neutral) => TermColor::Reset,
+        Ink::Of(Tone::Primary) => TermColor::Blue,
+        Ink::Of(Tone::Info) => TermColor::Cyan,
+        Ink::Of(Tone::Success) => TermColor::Green,
+        Ink::Of(Tone::Warning) => TermColor::Yellow,
+        Ink::Of(Tone::Error) => TermColor::Red,
         Ink::Exact(colour) => match depth {
-            ColorDepth::Truecolor => Color::Rgb {
+            ColorDepth::Truecolor => TermColor::Rgb {
                 r: colour.r,
                 g: colour.g,
                 b: colour.b,
             },
-            ColorDepth::Ansi256 => Color::AnsiValue(cube(colour)),
+            ColorDepth::Ansi256 => TermColor::AnsiValue(cube(colour)),
             ColorDepth::Ansi16 | ColorDepth::Monochrome => basic(colour),
         },
     }
 }
 
 #[cfg(feature = "scene")]
-pub(super) fn rgba(ink: Ink, fallback: Rgba8) -> Rgba8 {
+pub(super) fn rgba(ink: Ink, fallback: Color) -> Color {
     let [r, g, b] = match paint(ink, ColorDepth::Truecolor) {
-        Color::Reset => return fallback,
-        Color::Rgb { r, g, b } => [r, g, b],
+        TermColor::Reset => return fallback,
+        TermColor::Rgb { r, g, b } => [r, g, b],
         color => BASIC
             .iter()
             .find(|(value, _)| *value == color)
             .map_or([fallback.r, fallback.g, fallback.b], |(_, rgb)| *rgb),
     };
-    Rgba8 { r, g, b, a: 255 }
+    Color { r, g, b, a: 255 }
 }
 
-const BASIC: [(Color, [u8; 3]); 16] = [
-    (Color::Black, [0, 0, 0]),
-    (Color::DarkRed, [205, 0, 0]),
-    (Color::DarkGreen, [0, 205, 0]),
-    (Color::DarkYellow, [205, 205, 0]),
-    (Color::DarkBlue, [0, 0, 238]),
-    (Color::DarkMagenta, [205, 0, 205]),
-    (Color::DarkCyan, [0, 205, 205]),
-    (Color::Grey, [229, 229, 229]),
-    (Color::DarkGrey, [127, 127, 127]),
-    (Color::Red, [255, 0, 0]),
-    (Color::Green, [0, 255, 0]),
-    (Color::Yellow, [255, 255, 0]),
-    (Color::Blue, [92, 92, 255]),
-    (Color::Magenta, [255, 0, 255]),
-    (Color::Cyan, [0, 255, 255]),
-    (Color::White, [255, 255, 255]),
+const BASIC: [(TermColor, [u8; 3]); 16] = [
+    (TermColor::Black, [0, 0, 0]),
+    (TermColor::DarkRed, [205, 0, 0]),
+    (TermColor::DarkGreen, [0, 205, 0]),
+    (TermColor::DarkYellow, [205, 205, 0]),
+    (TermColor::DarkBlue, [0, 0, 238]),
+    (TermColor::DarkMagenta, [205, 0, 205]),
+    (TermColor::DarkCyan, [0, 205, 205]),
+    (TermColor::Grey, [229, 229, 229]),
+    (TermColor::DarkGrey, [127, 127, 127]),
+    (TermColor::Red, [255, 0, 0]),
+    (TermColor::Green, [0, 255, 0]),
+    (TermColor::Yellow, [255, 255, 0]),
+    (TermColor::Blue, [92, 92, 255]),
+    (TermColor::Magenta, [255, 0, 255]),
+    (TermColor::Cyan, [0, 255, 255]),
+    (TermColor::White, [255, 255, 255]),
 ];
 
 const CHROMA: u8 = 40;
 
-fn chromatic(colour: Rgba8) -> bool {
+fn chromatic(colour: Color) -> bool {
     let high = colour.r.max(colour.g).max(colour.b);
     let low = colour.r.min(colour.g).min(colour.b);
     high.saturating_sub(low) >= CHROMA
 }
 
-const fn grey(color: Color) -> bool {
+const fn grey(color: TermColor) -> bool {
     matches!(
         color,
-        Color::Black | Color::Grey | Color::DarkGrey | Color::White
+        TermColor::Black | TermColor::Grey | TermColor::DarkGrey | TermColor::White
     )
 }
 
-fn basic(colour: Rgba8) -> Color {
+fn basic(colour: Color) -> TermColor {
     let hue = chromatic(colour);
     BASIC
         .iter()
         .filter(|(color, _)| !(hue && grey(*color)))
         .min_by_key(|(_, [red, green, blue])| distance(colour, *red, *green, *blue))
-        .map_or(Color::Reset, |(color, _)| *color)
+        .map_or(TermColor::Reset, |(color, _)| *color)
 }
 
 #[cfg(test)]

@@ -30,8 +30,8 @@ pub(super) fn inks(runs: Option<&TextRuns>, theme: &Theme) -> Vec<RunInk> {
     })
 }
 
-const fn faint(color: crate::style::Rgba8) -> crate::style::Rgba8 {
-    crate::style::Rgba8 {
+const fn faint(color: crate::style::Color) -> crate::style::Color {
+    crate::style::Color {
         a: color.a / 5 * 3,
         ..color
     }
@@ -91,7 +91,7 @@ pub(super) fn split(scene: &mut SceneBuilder, id: NodeId, run: GlyphRun) -> Glyp
 fn decorate(
     scene: &mut SceneBuilder,
     rects: &[crate::geometry::Rect],
-    color: crate::style::Rgba8,
+    color: crate::style::Color,
     run: &GlyphRun,
     face: &crate::style::TextFace,
 ) {
@@ -149,7 +149,7 @@ fn run_rects(
 fn line(
     scene: &mut SceneBuilder,
     rects: &[crate::geometry::Rect],
-    color: crate::style::Rgba8,
+    color: crate::style::Color,
     run: &GlyphRun,
     kind: crate::scene::command::DecorationKind,
 ) {

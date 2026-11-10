@@ -8,7 +8,7 @@ use crate::reactive::Reactive;
 use crate::reactive::Signal;
 use crate::style::locale::Locale;
 use crate::style::{
-    BORDER_WIDTH, ControlSize, Metrics, Paint, Radius, Rgba8, StateSlot, StyleAtom, Token,
+    BORDER_WIDTH, Color, ControlSize, Metrics, Paint, Radius, StateSlot, StyleAtom, Token,
 };
 use crate::widgets::layout_ext::LayoutOverrides;
 use crate::widgets::{Edit, Sealed, StateTarget, Widget};
@@ -17,7 +17,7 @@ use smallvec::SmallVec;
 /// A hex color input with a swatch; layout and `map_node` change the row, and style, state, and focus setters change the text field.
 #[derive(Debug)]
 pub struct ColorFieldBuilder {
-    value: Signal<Rgba8>,
+    value: Signal<Color>,
     field: ParsedField<HexParser>,
     disabled: Option<Signal<bool>>,
     layout_overrides: LayoutOverrides,
@@ -25,7 +25,7 @@ pub struct ColorFieldBuilder {
 
 /// A color input.
 #[must_use]
-pub fn color_field(value: Signal<Rgba8>) -> ColorFieldBuilder {
+pub fn color_field(value: Signal<Color>) -> ColorFieldBuilder {
     ColorFieldBuilder {
         value,
         field: ParsedField::new(value, HexParser),
@@ -109,21 +109,21 @@ impl IntoNode for ColorFieldBuilder {
 struct HexParser;
 
 impl FieldParser for HexParser {
-    type Value = Rgba8;
+    type Value = Color;
 
-    fn parse(&self, raw: &str, _locale: &Locale) -> Option<Rgba8> {
+    fn parse(&self, raw: &str, _locale: &Locale) -> Option<Color> {
         let raw = raw.trim();
         (raw.starts_with('#') && raw.len() <= 7)
             .then(|| raw.parse().ok())
             .flatten()
     }
 
-    fn render(&self, value: &Rgba8, _locale: &Locale) -> String {
+    fn render(&self, value: &Color, _locale: &Locale) -> String {
         value.to_hex()
     }
 }
 
-fn swatch(value: Signal<Rgba8>) -> NodeBuilder {
+fn swatch(value: Signal<Color>) -> NodeBuilder {
     let extent = Metrics::current().control_height(ControlSize::Default);
     let (width, chrome) =
         CellForm::new((Length::Px(extent), SWATCH_CHROME), (cols(2.0), NO_CHROME)).pick();
@@ -144,7 +144,7 @@ static SWATCH_CHROME: &[StyleAtom] = &[
 ];
 static NO_CHROME: &[StyleAtom] = &[];
 
-impl Rgba8 {
+impl Color {
     /// Formats the color as `#rrggbb` hex text.
     #[must_use]
     pub fn to_hex(self) -> String {
@@ -152,7 +152,7 @@ impl Rgba8 {
     }
 }
 
-pub(crate) fn parse_hex(input: &str) -> Option<Rgba8> {
+pub(crate) fn parse_hex(input: &str) -> Option<Color> {
     let trimmed = input.trim();
     let hex = trimmed
         .strip_prefix('#')
@@ -168,7 +168,7 @@ pub(crate) fn parse_hex(input: &str) -> Option<Rgba8> {
         }
         _ => return None,
     };
-    Some(Rgba8 { r, g, b, a })
+    Some(Color { r, g, b, a })
 }
 
 const fn nibble(b: u8) -> Option<u8> {

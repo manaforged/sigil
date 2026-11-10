@@ -14,19 +14,19 @@
 use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::renderer::CpuRenderer;
-use sigil::style::{Background, ClipShape, Color, GradientAxis, Radial, Transform2D};
+use sigil::style::{Background, ClipShape, GradientAxis, Radial, Rgba, Transform2D};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, cpu_rgba};
 
 const SCALE: f32 = 2.0;
-const RED: Rgba8 = rgb(255, 0, 0);
-const GREEN: Rgba8 = rgb(0, 255, 0);
-const BLUE: Rgba8 = rgb(0, 0, 255);
-const WHITE: Rgba8 = rgb(255, 255, 255);
-const BLACK: Rgba8 = rgb(0, 0, 0);
+const RED: Color = rgb(255, 0, 0);
+const GREEN: Color = rgb(0, 255, 0);
+const BLUE: Color = rgb(0, 0, 255);
+const WHITE: Color = rgb(255, 255, 255);
+const BLACK: Color = rgb(0, 0, 0);
 
-const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a: 255 }
+const fn rgb(r: u8, g: u8, b: u8) -> Color {
+    Color { r, g, b, a: 255 }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -56,7 +56,7 @@ fn shoot<A: IntoNode + 'static>(
                 scene: &scene,
                 viewport,
                 size,
-                clear: Color::rgba(1.0, 1.0, 1.0, 1.0),
+                clear: Rgba::new(1.0, 1.0, 1.0, 1.0),
             };
             let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
             return image::RgbaImage::from_raw(size.width, size.height, rgba)
@@ -87,7 +87,7 @@ fn at(frame: &image::RgbaImage, x: f32, y: f32) -> [u8; 3] {
     [p[0], p[1], p[2]]
 }
 
-fn off(found: [u8; 3], want: Rgba8) -> u32 {
+fn off(found: [u8; 3], want: Color) -> u32 {
     [want.r, want.g, want.b]
         .iter()
         .zip(found)
@@ -95,7 +95,7 @@ fn off(found: [u8; 3], want: Rgba8) -> u32 {
         .sum()
 }
 
-fn page(w: f32, h: f32, bg: Rgba8, child: impl IntoNode + 'static) -> NodeBuilder {
+fn page(w: f32, h: f32, bg: Color, child: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(w, h))
         .background(bg)
@@ -151,7 +151,7 @@ fn half_red() -> NodeBuilder {
         WHITE,
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 20.0))
-            .background(Rgba8 {
+            .background(Color {
                 r: 255,
                 g: 0,
                 b: 0,
@@ -171,7 +171,7 @@ fn a_from_stop_fading_to_the_default_transparent_stop_keeps_its_hue() {
         );
         if off(
             mid,
-            Rgba8 {
+            Color {
                 r: solid[0],
                 g: solid[1],
                 b: solid[2],
@@ -247,7 +247,7 @@ fn container_clip_text() -> NodeBuilder {
                     .start(RED)
                     .end(BLUE),
             )
-            .bg_clip_text()
+            .background_clip_text()
             .child(word()),
     )
 }
@@ -272,7 +272,7 @@ fn conic_word() -> NodeBuilder {
         WHITE,
         word()
             .background(Background::conic(0).start(RED).middle(GREEN).end(BLUE))
-            .bg_clip_text(),
+            .background_clip_text(),
     )
 }
 

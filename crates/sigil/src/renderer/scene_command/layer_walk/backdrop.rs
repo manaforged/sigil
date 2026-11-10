@@ -16,7 +16,7 @@ use crate::renderer::scene_command::walk::{IDENTITY, WalkCtx, transform_rect};
 use crate::renderer::scene_paint::PaintCtx;
 use crate::scene::command::BlendMode;
 use crate::scene::corner_radii::CornerRadii;
-use crate::style::Color;
+use crate::style::Rgba;
 
 use super::{LayerTarget, local_rect, render_nodes};
 
@@ -95,7 +95,7 @@ pub(super) fn render_isolated(
         .layer_pool
         .get_or_insert_with(Default::default)
         .acquire(ctx.device, size.width, size.height, ctx.format)?;
-    ctx.encoder.clear(&handle.view, Color::TRANSPARENT);
+    ctx.encoder.clear(&handle.view, Rgba::TRANSPARENT);
     let inner = LayerTarget {
         view: handle.view.clone(),
         bounds,

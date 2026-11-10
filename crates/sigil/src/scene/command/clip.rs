@@ -9,11 +9,11 @@ use crate::scene::command::effects::{LayerEffect, LayerScope};
 use crate::scene::command::fills::{FillRule, PathPaint};
 use crate::scene::command::payloads::{DrawPath, PathCmd};
 use crate::scene::corner_radii::CornerRadii;
-use crate::style::Rgba8;
+use crate::style::Color;
 
 const IDENTITY: crate::scene::command::Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 const KAPPA: f32 = 0.552_284_8;
-const OPAQUE: Rgba8 = Rgba8 {
+const OPAQUE: Color = Color {
     r: 255,
     g: 255,
     b: 255,

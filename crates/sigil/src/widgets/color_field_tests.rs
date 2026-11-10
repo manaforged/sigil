@@ -1,11 +1,11 @@
-use crate::style::Rgba8;
+use crate::style::Color;
 
 #[test]
 fn hex_roundtrip() {
-    let c: Rgba8 = "#0af".parse().expect("#0af is valid hex");
+    let c: Color = "#0af".parse().expect("#0af is valid hex");
     assert_eq!(
         c,
-        Rgba8 {
+        Color {
             r: 0,
             g: 170,
             b: 255,
@@ -13,5 +13,5 @@ fn hex_roundtrip() {
         }
     );
     assert_eq!(c.to_hex(), "#00aaff");
-    assert!("red".parse::<Rgba8>().is_err());
+    assert!("red".parse::<Color>().is_err());
 }

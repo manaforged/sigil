@@ -8,7 +8,7 @@ const TARGET: ImageTarget = ImageTarget {
         height: 4,
     },
     viewport: (8.0, 4.0),
-    clear: Color::BLACK,
+    clear: Rgba::BLACK,
 };
 
 fn backend_without_adapter(fallback: bool) -> Backend {

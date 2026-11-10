@@ -1,8 +1,8 @@
 use crate::layout::{LayoutStyle, Position};
-use crate::style::Tone;
+use crate::style::{ColorAtom, Tone};
 use crate::widgets::Widget;
 
-use super::super::vector::{PathColor, PathNode, path};
+use super::super::vector::{PathNode, path};
 use super::decimate::{self, Candle};
 use super::span::ValueSpan;
 
@@ -101,7 +101,7 @@ pub(super) fn stack_tops(series: &[&[f32]]) -> Vec<Vec<f32>> {
     tops
 }
 
-pub(super) fn line(trace: &Trace<'_>, color: PathColor) -> PathNode {
+pub(super) fn line(trace: &Trace<'_>, color: ColorAtom) -> PathNode {
     let mut stroke = path(VIEW_W, VIEW_H);
     let mut pen_down = false;
     for (x, value) in trace.points() {
@@ -123,7 +123,7 @@ pub(super) fn line(trace: &Trace<'_>, color: PathColor) -> PathNode {
         .layout(layer_layout())
 }
 
-pub(super) fn area(trace: &Trace<'_>, color: PathColor) -> PathNode {
+pub(super) fn area(trace: &Trace<'_>, color: ColorAtom) -> PathNode {
     let base = y_of(trace.span, 0.0_f32.clamp(trace.span.lo, trace.span.hi));
     let points = trace.points();
     let runs = points

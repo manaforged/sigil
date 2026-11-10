@@ -16,7 +16,7 @@ use super::strip::{BoundStrip, bound_strip};
 use super::window::{self, strip_height};
 use super::{
     BoundItems, BoundVisibleThunk, BuildAxes, DEFAULT_ROW_HEIGHT, DEFAULT_VIEWPORT_HEIGHT,
-    ListSizing, RowRender, VirtualListBuilder, bound_slice, fills_height,
+    ListSizing, RowRender, VirtualListBuilder, bound_slice,
 };
 
 impl<T, R> VirtualListBuilder<T, R>
@@ -173,7 +173,7 @@ where
 
     fn effective_sizing(&self) -> ListSizing {
         match self.sizing {
-            ListSizing::Fixed if fills_height(&self.layout_overrides) => ListSizing::Fill,
+            ListSizing::Fixed if self.layout_overrides.fills_height() => ListSizing::Fill,
             sizing => sizing,
         }
     }

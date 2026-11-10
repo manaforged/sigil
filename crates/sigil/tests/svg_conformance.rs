@@ -26,7 +26,7 @@ use sigil::geometry::PhysicalSize;
 use sigil::renderer::capture::{ImageRenderer, ImageTarget, render_to_image};
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
 use sigil::scene::CommandScene;
-use sigil::style::{Color, Rgba8};
+use sigil::style::{Color, Rgba};
 use sigil::widgets::{SvgMode, svg_scene};
 use sigil_kittest::gpu::headless_renderer;
 use sigil_kittest::parity::{Frame, gpu_rgba};
@@ -38,7 +38,7 @@ mod report;
 
 type Picture = image::RgbaImage;
 
-const WHITE: Rgba8 = Rgba8 {
+const WHITE: Color = Color {
     r: 255,
     g: 255,
     b: 255,
@@ -75,7 +75,7 @@ fn over_white(picture: &Picture) -> Picture {
     over(picture, WHITE)
 }
 
-fn over(picture: &Picture, surface: Rgba8) -> Picture {
+fn over(picture: &Picture, surface: Color) -> Picture {
     let mut out = picture.clone();
     for pixel in out.pixels_mut() {
         let [r, g, b, a] = pixel.0;
@@ -148,7 +148,7 @@ const fn target(width: u32, height: u32) -> ImageTarget {
     ImageTarget {
         size: PhysicalSize::new(width, height),
         viewport: (width as f32, height as f32),
-        clear: Color::rgba(1.0, 1.0, 1.0, 1.0),
+        clear: Rgba::new(1.0, 1.0, 1.0, 1.0),
     }
 }
 
@@ -169,7 +169,7 @@ fn gpu(
         scene,
         viewport: (width as f32, height as f32),
         size: PhysicalSize::new(width, height),
-        clear: Color::rgba(1.0, 1.0, 1.0, 1.0),
+        clear: Rgba::new(1.0, 1.0, 1.0, 1.0),
     };
     let rgba = gpu_rgba(renderer, &frame).ok()?;
     Picture::from_raw(width, height, rgba)

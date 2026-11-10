@@ -20,7 +20,7 @@ use sigil::geometry::{Point, Rect};
 use sigil::kernel::{ImageSource, ObjectFit};
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
 use sigil::scene::{CommandScene, DrawImage, SceneBuilder, SceneCommand};
-use sigil::style::{Color, Rgba8, Theme};
+use sigil::style::{Color, Rgba, Theme};
 use sigil::widgets::path;
 use sigil_kittest::gpu::{Capture, headless_renderer, read_pixels, render_capture, shared_device};
 use sigil_kittest::parity::{Frame, cpu_rgba};
@@ -30,9 +30,9 @@ const SCALE: f32 = 2.0;
 const WARM: usize = 5;
 const ROUNDS: usize = 30;
 const VARIANTS: u32 = 9;
-const CLEAR: Color = Color::rgba(0.06, 0.07, 0.09, 1.0);
-const NONE: Color = Color::rgba(0.0, 0.0, 0.0, 0.0);
-const INK: Rgba8 = Rgba8 {
+const CLEAR: Rgba = Rgba::new(0.06, 0.07, 0.09, 1.0);
+const NONE: Rgba = Rgba::new(0.0, 0.0, 0.0, 0.0);
+const INK: Color = Color {
     r: 90,
     g: 200,
     b: 255,

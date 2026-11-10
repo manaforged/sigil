@@ -1,5 +1,5 @@
 use super::{Theme, ThemeValue};
-use crate::style::Rgba8;
+use crate::style::Color;
 use crate::style::scale::rgb;
 
 static TOKENS: phf::Map<&str, ThemeValue> = phf::phf_map! {
@@ -19,8 +19,8 @@ static TOKENS: phf::Map<&str, ThemeValue> = phf::phf_map! {
     "accent-foreground" => ThemeValue::Color(rgb(250, 250, 250)),
     "destructive" => ThemeValue::Color(rgb(255, 100, 103)),
     "destructive-foreground" => ThemeValue::Color(rgb(250, 250, 250)),
-    "border" => ThemeValue::Color(Rgba8 { r: 245, g: 255, b: 255, a: 26 }),
-    "input" => ThemeValue::Color(Rgba8 { r: 255, g: 255, b: 255, a: 38 }),
+    "border" => ThemeValue::Color(Color { r: 245, g: 255, b: 255, a: 26 }),
+    "input" => ThemeValue::Color(Color { r: 255, g: 255, b: 255, a: 38 }),
     "ring" => ThemeValue::Color(rgb(115, 115, 115)),
     "sidebar" => ThemeValue::Color(rgb(23, 23, 23)),
     "sidebar-foreground" => ThemeValue::Color(rgb(250, 250, 250)),
@@ -28,7 +28,7 @@ static TOKENS: phf::Map<&str, ThemeValue> = phf::phf_map! {
     "sidebar-primary-foreground" => ThemeValue::Color(rgb(250, 250, 250)),
     "sidebar-accent" => ThemeValue::Color(rgb(38, 38, 38)),
     "sidebar-accent-foreground" => ThemeValue::Color(rgb(250, 250, 250)),
-    "sidebar-border" => ThemeValue::Color(Rgba8 { r: 245, g: 255, b: 255, a: 26 }),
+    "sidebar-border" => ThemeValue::Color(Color { r: 245, g: 255, b: 255, a: 26 }),
     "sidebar-ring" => ThemeValue::Color(rgb(115, 115, 115)),
     "syntax-keyword" => ThemeValue::Color(rgb(198, 120, 221)),
     "syntax-string" => ThemeValue::Color(rgb(152, 195, 121)),

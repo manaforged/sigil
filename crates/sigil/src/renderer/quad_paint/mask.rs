@@ -1,7 +1,7 @@
 use crate::hal::RenderedGlyph;
 use crate::profile::count;
 use crate::scene::geometry::IDENTITY;
-use crate::style::Color;
+use crate::style::Rgba;
 use crate::text::Paragraph;
 
 use crate::renderer::fill_paint::setup::texture_group;
@@ -19,7 +19,7 @@ pub(crate) struct MaskParams<'a> {
     pub(crate) paragraph: &'a Paragraph,
     pub(crate) glyphs: &'a [RenderedGlyph],
     pub(crate) origin: (f32, f32),
-    pub(crate) color: Color,
+    pub(crate) color: Rgba,
 }
 
 enum GlyphOutcome {

@@ -136,7 +136,7 @@ const ROLES: [ScaleRole; 6] = [
     ScaleRole::Gray,
     ScaleRole::Accent,
     ScaleRole::Success,
-    ScaleRole::Warn,
+    ScaleRole::Warning,
     ScaleRole::Error,
     ScaleRole::Info,
 ];

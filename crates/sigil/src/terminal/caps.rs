@@ -1,5 +1,5 @@
 use crate::app::Ambiguous;
-use crate::style::Rgba8;
+use crate::style::Color;
 use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
 use crate::terminal::term::{Calibration, ProbeRow};
@@ -152,7 +152,7 @@ pub struct Capabilities {
     /// The backdrop, if any.
     pub backdrop: Option<Backdrop>,
     /// The background color the terminal reported, if it answered.
-    pub background: Option<Rgba8>,
+    pub background: Option<Color>,
     /// The notices.
     pub notices: Notices,
     /// The fills.
@@ -200,7 +200,7 @@ struct Answers {
     sync: bool,
     kitty_keys: bool,
     backdrop: Option<Backdrop>,
-    background: Option<Rgba8>,
+    background: Option<Color>,
     truecolor: bool,
     version: Version,
     measured: Calibration,

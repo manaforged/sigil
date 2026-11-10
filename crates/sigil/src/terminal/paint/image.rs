@@ -1,5 +1,5 @@
 use crate::kernel::ImageSource;
-use crate::style::Rgba8;
+use crate::style::Color;
 use crate::terminal::graphics::{Placement, sextant, sextants_window};
 use smol_str::SmolStr;
 
@@ -53,7 +53,7 @@ impl Grid {
             }
             let id = crate::terminal::graphics::kitty_id(&place.source);
             let [extra, r, g, b] = id.to_be_bytes();
-            let fg = Ink::Exact(Rgba8 { r, g, b, a: 255 });
+            let fg = Ink::Exact(Color { r, g, b, a: 255 });
             let origin_col = usize::from(place.col);
             let origin_row = usize::from(place.row);
             for y in 0..place.rows {
@@ -128,7 +128,7 @@ impl Grid {
         }
     }
 
-    fn ink(&mut self, col: usize, row: usize, glyph: char, fg: Rgba8) {
+    fn ink(&mut self, col: usize, row: usize, glyph: char, fg: Color) {
         if let Some(cell) = self.cell_mut(col, row) {
             cell.text = SmolStr::from(glyph.to_string());
             cell.fg = Ink::Exact(fg);
@@ -191,7 +191,7 @@ impl Sums {
         Self { cols, slots }
     }
 
-    fn cell(&self, col: usize, row: usize) -> Option<(u32, Rgba8)> {
+    fn cell(&self, col: usize, row: usize) -> Option<(u32, Color)> {
         let mut mask = 0;
         let mut total = [0_u32; 4];
         for bit in 0..6 {
@@ -218,9 +218,9 @@ fn add([sr, sg, sb, sa, sn, peak]: &mut [u32; 6], [r, g, b, a]: [u8; 4]) {
     *sn += 255;
 }
 
-fn colour([r, g, b, a]: [u32; 4]) -> Rgba8 {
+fn colour([r, g, b, a]: [u32; 4]) -> Color {
     let channel = |sum: u32| u8::try_from(sum / a.max(1)).unwrap_or(u8::MAX);
-    Rgba8 {
+    Color {
         r: channel(r),
         g: channel(g),
         b: channel(b),
@@ -228,7 +228,7 @@ fn colour([r, g, b, a]: [u32; 4]) -> Rgba8 {
     }
 }
 
-type Icon = (char, Rgba8, (usize, usize));
+type Icon = (char, Color, (usize, usize));
 
 fn icon(source: &ImageSource, (width, top, height): ImageWindow) -> Option<Icon> {
     let inked: Vec<(usize, usize, [u8; 4])> = (0..height)

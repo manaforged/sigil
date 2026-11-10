@@ -1,7 +1,7 @@
 use crate::geometry::{Point, Rect};
 use crate::scene::shape_glyph_run;
 use crate::scene::{CommandScene, SceneBuilder};
-use crate::style::Color;
+use crate::style::Rgba;
 use crate::style::{TextLineHeight, TextStyle};
 
 use super::helpers::{DARK, rgba};
@@ -13,7 +13,7 @@ const LINES: [(&str, f32); 3] = [
 ];
 
 #[must_use]
-pub fn text() -> (CommandScene, (f32, f32), Color) {
+pub fn text() -> (CommandScene, (f32, f32), Rgba) {
     let mut scene = SceneBuilder::new();
     let mut y = 16.0;
     for (line, size) in LINES {

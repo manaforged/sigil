@@ -8,7 +8,7 @@ use crate::renderer::scene_command::walk::{IDENTITY, WalkCtx, compose, translati
 use crate::renderer::scene_paint::PaintCtx;
 use crate::scene::command::{BlendMode, Transform3D};
 use crate::scene::corner_radii::CornerRadii;
-use crate::style::Color;
+use crate::style::Rgba;
 
 use super::super::backdrop::{self, BackdropCopy};
 use super::super::{LayerTarget, local_rect, mask};
@@ -161,7 +161,7 @@ fn project_blended(
     let Ok(scratch) = pool.acquire(ctx.device, width, height, texture.format()) else {
         return;
     };
-    ctx.encoder.clear(&scratch.view, Color::TRANSPARENT);
+    ctx.encoder.clear(&scratch.view, Rgba::TRANSPARENT);
     project(ctx, target, &scratch.view, request);
     let (w, h) = target.viewport(ctx.scale);
     let whole = Rect::new(Point::new(0.0, 0.0), w, h);

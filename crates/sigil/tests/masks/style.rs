@@ -2,7 +2,7 @@ use sigil::geometry::PhysicalSize;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
 use sigil::renderer::CpuRenderer;
-use sigil::style::{Color, MaskImage, MaskSize};
+use sigil::style::{MaskImage, MaskSize, Rgba};
 use sigil_kittest::Harness;
 use sigil_kittest::parity::{Frame, cpu_rgba};
 
@@ -135,7 +135,7 @@ fn moved_frames() -> Vec<(&'static str, image::RgbaImage)> {
             scene: &scene,
             viewport: (width as f32, SIDE as f32),
             size: PhysicalSize::new(device_w, device_h),
-            clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
+            clear: Rgba::new(0.0, 0.0, 0.0, 1.0),
         };
         let rgba = cpu_rgba(&mut CpuRenderer::new(), &frame).expect("cpu render");
         let cpu = image::RgbaImage::from_raw(device_w, device_h, rgba).expect("cpu frame");

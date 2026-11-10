@@ -2,7 +2,7 @@ use crate::geometry::{Point, Rect};
 use crate::kernel::NodeId;
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{CellRect, DrawRect, Stroke, StrokeAlign, StrokeStyle};
-use crate::style::{RenderStyle, Rgba8, Theme};
+use crate::style::{Color, RenderStyle, Theme};
 
 use super::paint::NodePaint;
 
@@ -17,7 +17,7 @@ pub(super) fn border_edges(style: &RenderStyle) -> [f32; 4] {
     .map(|side| side.map_or(uniform, f32::from))
 }
 
-pub(super) fn border_color(style: &RenderStyle, theme: &Theme) -> Rgba8 {
+pub(super) fn border_color(style: &RenderStyle, theme: &Theme) -> Color {
     style
         .border_color
         .or(style.text_color)

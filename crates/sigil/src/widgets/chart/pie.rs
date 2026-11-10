@@ -162,7 +162,7 @@ fn wedge(start: f32, end: f32, hole: f32, hue: Hue) -> PathNode {
     };
     shape
         .close()
-        .fill(hue.paint())
+        .fill(hue.color())
         .stroke(Token::Surface, EDGE)
         .non_scaling_stroke()
         .layout(layer_layout())

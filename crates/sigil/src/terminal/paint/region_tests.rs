@@ -1,6 +1,6 @@
 use crate::geometry::{Point, Rect};
 use crate::scene::command::{CommandScene, DrawRect, SceneCommand};
-use crate::style::{Rgba8, Theme};
+use crate::style::{Color, Theme};
 use crate::terminal::ColorDepth;
 use crate::terminal::caps::Capabilities;
 use crate::terminal::paint::{CellPaint, Grid, Marks, raster_regions, raster_with};
@@ -8,7 +8,7 @@ use crate::terminal::write::render;
 
 const CELL: f32 = 8.0;
 
-fn scene(rects: &[(f32, f32, f32, f32, Rgba8)]) -> CommandScene {
+fn scene(rects: &[(f32, f32, f32, f32, Color)]) -> CommandScene {
     let mut scene = CommandScene::default();
     for (x, y, w, h, color) in rects {
         let rect = Rect::new(Point::new(*x, *y), *w, *h);
@@ -35,19 +35,19 @@ fn region_raster_matches_a_full_raster() {
         caps: Capabilities::default(),
         marks: &marks,
     };
-    let red = Rgba8 {
+    let red = Color {
         r: 220,
         g: 40,
         b: 40,
         a: 255,
     };
-    let blue = Rgba8 {
+    let blue = Color {
         r: 40,
         g: 40,
         b: 220,
         a: 255,
     };
-    let green = Rgba8 {
+    let green = Color {
         r: 40,
         g: 200,
         b: 90,

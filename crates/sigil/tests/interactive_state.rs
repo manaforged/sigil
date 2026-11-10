@@ -15,22 +15,22 @@ use sigil::geometry::Point;
 use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::reactive::Owner;
-use sigil::style::{Rgba8, Theme};
+use sigil::style::{Color, Theme};
 use widget_support::{compute, rect_colors};
 
-const HOVER_BG: Rgba8 = Rgba8 {
+const HOVER_BG: Color = Color {
     r: 10,
     g: 200,
     b: 30,
     a: 255,
 };
-const PRESSED_BG: Rgba8 = Rgba8 {
+const PRESSED_BG: Color = Color {
     r: 200,
     g: 20,
     b: 200,
     a: 255,
 };
-const REST_BG: Rgba8 = Rgba8 {
+const REST_BG: Color = Color {
     r: 240,
     g: 240,
     b: 240,
