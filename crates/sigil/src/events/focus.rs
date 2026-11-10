@@ -18,7 +18,7 @@ mod request;
 mod reveal;
 
 pub use request::request_focus;
-pub(crate) use request::{Autofocus, focus_on_trigger, take_focus_requests};
+pub(crate) use request::{Autofocus, focus_on_trigger, swap_focus_requests, take_focus_requests};
 pub(crate) use reveal::{ScrollReveal, reveal_focus};
 
 /// Directional focus move.
@@ -57,7 +57,7 @@ pub(crate) fn focus_from_keyboard() -> bool {
 }
 
 pub(crate) fn swap_focus_source(target: Option<Rc<Cell<bool>>>) -> Option<Rc<Cell<bool>>> {
-    FOCUS_FROM_KEYBOARD.with(|slot| core::mem::replace(&mut *slot.borrow_mut(), target))
+    FOCUS_FROM_KEYBOARD.replace(target)
 }
 
 #[derive(Clone, Copy, Debug)]

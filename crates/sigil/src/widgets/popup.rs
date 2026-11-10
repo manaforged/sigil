@@ -13,6 +13,7 @@ pub use layer::close_top_escape;
 pub(crate) use layer::{
     PopupAnchor, PopupLayer, close_light, close_on_escape, hide, shown, shown_when,
 };
+pub(crate) use layer::{Stacks as PopupStacks, swap_layers};
 
 pub(crate) const PANEL_INSET: f32 = space(1) + 1.0;
 pub(crate) const PANEL_WIDTH: f32 = space(48);

@@ -43,7 +43,7 @@ pub(crate) fn clear_exit() {
 }
 
 pub(crate) fn swap_target(target: Option<Rc<Cell<bool>>>) -> Option<Rc<Cell<bool>>> {
-    TARGET.with(|slot| core::mem::replace(&mut *slot.borrow_mut(), target))
+    TARGET.replace(target)
 }
 
 #[cfg(test)]

@@ -292,6 +292,7 @@ First public release.
 - Dragging a splitter handle or pressing its arrow keys resizes the panes; before, the panes did not move.
 - A splitter drag on panes below their minimum sizes no longer panics.
 - Drag-selecting text repaints only the frame instead of laying out the whole tree, so each pointer move costs about 0.42 times as much.
+- Two hosts on one thread, such as two windows or an app and a test harness, no longer take each other's focus requests, announcements, dialogs, pending theme or open popups when these are made while a host runs.
 
 ### Added
 

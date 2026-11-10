@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::geometry::LogicalSize;
@@ -9,6 +9,7 @@ thread_local! {
     static VIEWPORT: Cell<Option<Signal<LogicalSize>>> = const { Cell::new(None) };
     static DETACHED: Cell<Option<Signal<LogicalSize>>> = const { Cell::new(None) };
     static CAPS: Cell<HostCaps> = const { Cell::new(HostCaps::window()) };
+    static ENTERED: Cell<bool> = const { Cell::new(false) };
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -67,35 +68,117 @@ pub fn is_grid() -> bool {
     crate::style::cell_size().is_some()
 }
 
-pub(super) struct HostEnv {
-    cell: f32,
-    geometry: Rc<dyn TextMeasure>,
-    pub(super) exit: Rc<Cell<bool>>,
-    focus_source: Rc<Cell<bool>>,
-    viewport: Signal<LogicalSize>,
-    pub(super) caps: HostCaps,
-    pub(super) theme: Signal<crate::style::Theme>,
+type Swap<T> = fn(T) -> T;
+
+fn swap<T: Default>(field: &mut T, swap: Swap<T>) {
+    *field = swap(core::mem::take(field));
 }
 
-pub(crate) struct EnvGuard {
+fn adopt<T: Default>(field: &mut T, swap: Swap<T>, merge: fn(&mut T, T)) {
+    merge(field, swap(T::default()));
+}
+
+#[derive(Default)]
+struct Scoped {
     cell: f32,
     geometry: Option<Rc<dyn TextMeasure>>,
     exit: Option<Rc<Cell<bool>>>,
     focus_source: Option<Rc<Cell<bool>>>,
     viewport: Option<Signal<LogicalSize>>,
-    caps: HostCaps,
     theme: Option<Signal<crate::style::Theme>>,
+    layers: crate::widgets::PopupStacks,
+    focus_requests: Vec<crate::kernel::NodeId>,
+    announcements: std::collections::VecDeque<(String, crate::kernel::Live)>,
+    pending_theme: Option<crate::style::Theme>,
+    #[cfg(feature = "dialog")]
+    dialogs: Vec<super::dialog::layer::Request>,
+}
+
+impl Scoped {
+    fn exchange(&mut self) {
+        swap(&mut self.cell, crate::style::swap_cell);
+        swap(
+            &mut self.geometry,
+            crate::layout::text_geometry::swap_geometry,
+        );
+        swap(&mut self.exit, crate::app::exit::swap_target);
+        swap(
+            &mut self.focus_source,
+            crate::events::focus::swap_focus_source,
+        );
+        swap(&mut self.viewport, |value| VIEWPORT.replace(value));
+        swap(
+            &mut self.theme,
+            crate::style::theme::ambient::swap_active_theme,
+        );
+        swap(&mut self.layers, crate::widgets::popup_swap_layers);
+        swap(
+            &mut self.focus_requests,
+            crate::events::focus::swap_focus_requests,
+        );
+        swap(
+            &mut self.announcements,
+            crate::kernel::Cx::swap_announcements,
+        );
+        swap(&mut self.pending_theme, super::appearance::swap_pending);
+        #[cfg(feature = "dialog")]
+        swap(&mut self.dialogs, super::dialog::layer::swap_queue);
+    }
+
+    fn adopt_outer(&mut self) {
+        adopt(
+            &mut self.focus_requests,
+            crate::events::focus::swap_focus_requests,
+            Extend::extend,
+        );
+        adopt(
+            &mut self.announcements,
+            crate::kernel::Cx::swap_announcements,
+            Extend::extend,
+        );
+        adopt(
+            &mut self.pending_theme,
+            super::appearance::swap_pending,
+            |field, outer| {
+                *field = outer.or_else(|| field.take());
+            },
+        );
+        #[cfg(feature = "dialog")]
+        adopt(
+            &mut self.dialogs,
+            super::dialog::layer::swap_queue,
+            Extend::extend,
+        );
+    }
+}
+
+pub(super) struct HostEnv {
+    pub(super) exit: Rc<Cell<bool>>,
+    viewport: Signal<LogicalSize>,
+    pub(super) caps: HostCaps,
+    pub(super) theme: Signal<crate::style::Theme>,
+    scoped: Rc<RefCell<Option<Scoped>>>,
+}
+
+pub(crate) struct EnvGuard {
+    home: Option<Home>,
+}
+
+struct Home {
+    slot: Rc<RefCell<Option<Scoped>>>,
+    scoped: Scoped,
+    caps: HostCaps,
+    nested: bool,
 }
 
 impl Drop for EnvGuard {
     fn drop(&mut self) {
-        crate::style::swap_cell(self.cell);
-        let _ = crate::layout::text_geometry::swap_geometry(self.geometry.take());
-        let _ = crate::app::exit::swap_target(self.exit.take());
-        let _ = crate::events::focus::swap_focus_source(self.focus_source.take());
-        VIEWPORT.with(|slot| slot.set(self.viewport.take()));
-        CAPS.with(|slot| slot.set(self.caps));
-        let _ = crate::style::theme::ambient::swap_active_theme(self.theme.take());
+        if let Some(mut home) = self.home.take() {
+            home.scoped.exchange();
+            swap(&mut home.caps, |value| CAPS.replace(value));
+            ENTERED.set(home.nested);
+            *home.slot.borrow_mut() = Some(home.scoped);
+        }
     }
 }
 
@@ -109,28 +192,43 @@ impl HostEnv {
             ));
         });
         let (viewport, theme) = signals.expect("host root owner is live");
-        Self {
+        let exit = Rc::new(Cell::new(false));
+        let scoped = Scoped {
             cell,
-            geometry,
-            exit: Rc::new(Cell::new(false)),
-            focus_source: Rc::new(Cell::new(true)),
+            geometry: Some(geometry),
+            exit: Some(Rc::clone(&exit)),
+            focus_source: Some(Rc::new(Cell::new(true))),
+            viewport: Some(viewport),
+            theme: Some(theme),
+            ..Scoped::default()
+        };
+        Self {
+            exit,
             viewport,
             caps: HostCaps::window(),
             theme,
+            scoped: Rc::new(RefCell::new(Some(scoped))),
         }
     }
 
     pub(super) fn enter(&self) -> EnvGuard {
+        let Some(mut scoped) = self.scoped.borrow_mut().take() else {
+            return EnvGuard { home: None };
+        };
+        let nested = ENTERED.replace(true);
+        if !nested {
+            scoped.adopt_outer();
+        }
+        scoped.exchange();
+        let mut caps = self.caps;
+        swap(&mut caps, |value| CAPS.replace(value));
         EnvGuard {
-            cell: crate::style::swap_cell(self.cell),
-            geometry: crate::layout::text_geometry::swap_geometry(Some(Rc::clone(&self.geometry))),
-            exit: crate::app::exit::swap_target(Some(Rc::clone(&self.exit))),
-            focus_source: crate::events::focus::swap_focus_source(Some(Rc::clone(
-                &self.focus_source,
-            ))),
-            viewport: VIEWPORT.with(|slot| slot.replace(Some(self.viewport))),
-            caps: CAPS.with(|slot| slot.replace(self.caps)),
-            theme: crate::style::theme::ambient::swap_active_theme(Some(self.theme)),
+            home: Some(Home {
+                slot: Rc::clone(&self.scoped),
+                scoped,
+                caps,
+                nested,
+            }),
         }
     }
 

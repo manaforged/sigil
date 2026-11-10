@@ -14,5 +14,9 @@ pub fn set_theme(theme: Theme) {
 }
 
 pub(super) fn take() -> Option<Theme> {
-    PENDING.with(|pending| pending.borrow_mut().take())
+    PENDING.take()
+}
+
+pub(super) fn swap_pending(theme: Option<Theme>) -> Option<Theme> {
+    PENDING.replace(theme)
 }

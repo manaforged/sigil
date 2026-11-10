@@ -210,6 +210,7 @@ pub(crate) mod patterns;
 mod popup;
 pub(crate) use popup::close_light as popup_close_light;
 pub use popup::close_top_escape;
+pub(crate) use popup::{PopupStacks, swap_layers as popup_swap_layers};
 mod a2ui;
 mod progress;
 mod radio_group;

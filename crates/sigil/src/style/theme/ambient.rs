@@ -13,7 +13,7 @@ thread_local! {
 }
 
 pub(crate) fn swap_active_theme(theme: Option<Signal<Theme>>) -> Option<Signal<Theme>> {
-    ACTIVE.with(|slot| slot.replace(theme))
+    ACTIVE.replace(theme)
 }
 
 #[derive(Clone, Copy, Debug, Default)]

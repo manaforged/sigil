@@ -46,7 +46,7 @@ impl Finish {
     }
 }
 
-struct Request {
+pub(crate) struct Request {
     prompt: Prompt,
     resolve: Resolve,
 }
@@ -58,6 +58,10 @@ pub(crate) struct Mounted {
 
 thread_local! {
     static QUEUE: RefCell<Vec<Request>> = const { RefCell::new(Vec::new()) };
+}
+
+pub(crate) fn swap_queue(queue: Vec<Request>) -> Vec<Request> {
+    QUEUE.replace(queue)
 }
 
 #[cfg(feature = "native-dialog")]
