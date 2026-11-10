@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `NodeBuilder` has `.disabled(..)` and `.activate(..)`. Any node is an interactive element: it dims and ignores input when disabled, and runs the action on a primary click, Enter, or Space. `interactive()` and `InteractiveBuilder` are removed. Migration: `interactive(node).hover(..)` becomes `node.hover(..)`; `interactive(node).disabled(d)` becomes `node.disabled(d)`. The control hover fill is no longer implied: add `.hover(|s| s.background(Token::SurfaceHover))`.
 - A disabled node runs no pointer press, key, shortcut, or accessibility action handlers. Pointer enter and leave and focus out still run so hover and focus state stay correct. Before, only `.activate` checked the disabled flag.
 - A node with only state styles (`.hover`, `.pressed`, `.disabled`) no longer reports a click action to screen readers.
+- A2UI `Markdown`, `Mermaid`, `Diff`, `Chart`, and `Table` pieces bound to a data path update when the data model changes. Before, they showed the value at mount.
+- `a2ui` is behind the `a2ui` feature, which is on by default. Migration: a build with `default-features = false` adds `features = ["a2ui"]` to keep `a2ui()`.
 - `for_each` calls `render` only for a key that is new to the list. Before, it called `render` for every item on each write and dropped the result for the keys that stayed.
 
 ### Added

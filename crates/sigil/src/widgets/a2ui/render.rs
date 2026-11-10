@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::kernel::{NodeBuilder, TextContent, container, fragment, text};
 use crate::layout::{AlignItems, LayoutStyle};
-use crate::reactive::untrack;
+use crate::reactive::{Signal, derived, signal, untrack};
 use crate::style::{Token, space};
 use crate::widgets::{Layout, Orientation, Widget, button, card, divider, tabs};
 
@@ -162,6 +162,22 @@ impl Render {
             Dynamic::Literal(literal) => literal.clone(),
             Dynamic::Path(raw) => self.model.peek(&self.path(raw)),
         }
+    }
+
+    pub(super) fn tracked(&self, value: &Dynamic) -> Value {
+        match value {
+            Dynamic::Literal(literal) => literal.clone(),
+            Dynamic::Path(raw) => self.model.get(&self.path(raw)),
+        }
+    }
+
+    pub(super) fn source(&self, value: &Dynamic) -> Signal<String> {
+        let model = self.model;
+        let first = self.shown(value);
+        self.bound(value).map_or_else(
+            || signal(first),
+            |path| derived(move || display(&model.get(&path))),
+        )
     }
 
     pub(super) fn shown(&self, value: &Dynamic) -> String {
