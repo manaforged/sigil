@@ -11,7 +11,6 @@ use crate::layout::{
     with_text_geometry,
 };
 use crate::reactive::{Owner, Signal, derived, effect, interval, signal};
-use crate::style::TransitionId;
 use crate::style::{
     BORDER_WIDTH, DISABLED_OPACITY, Radius, StateStyle, StyleAtom, StyleOverlay, StyleVariant,
     Token, space,
@@ -27,9 +26,8 @@ use super::handlers::TextEditRuntime;
 mod selection;
 use selection::selection_layer;
 
-const TEXT_EDIT_TRANSITION: TransitionId = presets::SMOOTH;
 const DEFAULT_ROWS: f32 = 5.0;
-static TEXT_EDIT_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_EDIT_TRANSITION)];
+static TEXT_EDIT_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 
 static EDIT_BASE: &[StyleAtom] = &[
     Token::SurfaceInset.background(),

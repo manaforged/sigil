@@ -10,7 +10,6 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
     BORDER_WIDTH, ControlSize, Metrics, StateStyle, Style, StyleAtom, StyleVariant, Token, Tone,
-    TransitionId,
 };
 use crate::widgets::Layout;
 
@@ -22,7 +21,6 @@ use super::shared::{
     noop_bool_change,
 };
 
-const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
 const CHECKBOX_BOX_SIZE: f32 = 16.0;
 const CHECKBOX_MARK_SIZE: f32 = 12.0;
 
@@ -66,7 +64,7 @@ static BOX_BASE: &[StyleAtom] = &[
     StyleAtom::BorderRadius(4),
     StyleAtom::BorderWidth(BORDER_WIDTH),
     Token::Border.border(),
-    StyleAtom::Transition(CHECKBOX_TRANSITION),
+    StyleAtom::Transition(presets::SMOOTH),
 ];
 static CELL_FOCUS: &[StyleAtom] = &[Token::Accent.background(), Token::OnAccent.text()];
 static CELL_DISABLED: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];

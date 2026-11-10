@@ -3,7 +3,6 @@ use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::snap::{self, CellForm};
 use crate::layout::{LayoutStyle, cols, rows};
 use crate::reactive::Signal;
-use crate::style::TransitionId;
 use crate::style::intern::{KEYED_CAP, Keyed, keyed};
 use crate::style::{
     BORDER_WIDTH, BgGradient, Color, ColorAtom, Elevation, GradientAxis, GradientStopKey,
@@ -17,8 +16,7 @@ use super::super::shared::binary_style_state;
 use super::builder::SliderRuntime;
 use crate::widgets::orientation::Orientation;
 
-const SLIDER_TRANSITION: TransitionId = presets::SMOOTH;
-static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(SLIDER_TRANSITION)];
+static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(presets::SMOOTH)];
 
 const THUMB_SIZE: f32 = 16.0;
 const TRACK_THICKNESS: f32 = 6.0;

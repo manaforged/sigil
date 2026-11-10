@@ -1,11 +1,14 @@
-use crate::style::{StateStyle, StyleAtom, StyleVariant};
+use crate::style::{DIMMED, DISABLED_OPACITY, StateStyle, StyleAtom, StyleVariant};
 
 static SOLID_BASE: &[StyleAtom] = &[StyleAtom::BgToneStep(9), StyleAtom::FgOnSolid];
 static SOLID_REST: &[StyleAtom] = &[];
 static SOLID_FOCUS: &[StyleAtom] = &[StyleAtom::BgToneStep(10)];
 static SOLID_HOVER: &[StyleAtom] = &[StyleAtom::BgToneStep(10)];
 static SOLID_PRESSED: &[StyleAtom] = &[StyleAtom::BgToneStep(11)];
-static SOLID_DISABLED: &[StyleAtom] = &[StyleAtom::BgToneStep(8), StyleAtom::Opacity(5_000)];
+static SOLID_DISABLED: &[StyleAtom] = &[
+    StyleAtom::BgToneStep(8),
+    StyleAtom::Opacity(DISABLED_OPACITY),
+];
 
 const SOLID_STATES: StateStyle = StateStyle::new(
     SOLID_REST,
@@ -23,7 +26,10 @@ static SOFT_REST: &[StyleAtom] = &[];
 static SOFT_FOCUS: &[StyleAtom] = &[StyleAtom::BgToneStep(5)];
 static SOFT_HOVER: &[StyleAtom] = &[StyleAtom::BgToneStep(5)];
 static SOFT_PRESSED: &[StyleAtom] = &[StyleAtom::BgToneStep(6)];
-static SOFT_DISABLED: &[StyleAtom] = &[StyleAtom::BgToneStep(2), StyleAtom::Opacity(5_000)];
+static SOFT_DISABLED: &[StyleAtom] = &[
+    StyleAtom::BgToneStep(2),
+    StyleAtom::Opacity(DISABLED_OPACITY),
+];
 
 const SOFT_STATES: StateStyle = StateStyle::new(
     SOFT_REST,
@@ -41,15 +47,9 @@ static GHOST_REST: &[StyleAtom] = &[];
 static GHOST_FOCUS: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
 static GHOST_HOVER: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
 static GHOST_PRESSED: &[StyleAtom] = &[StyleAtom::BgToneStep(5)];
-static GHOST_DISABLED: &[StyleAtom] = &[StyleAtom::Opacity(5_000)];
 
-const GHOST_STATES: StateStyle = StateStyle::new(
-    GHOST_REST,
-    GHOST_FOCUS,
-    GHOST_HOVER,
-    GHOST_PRESSED,
-    GHOST_DISABLED,
-);
+const GHOST_STATES: StateStyle =
+    StateStyle::new(GHOST_REST, GHOST_FOCUS, GHOST_HOVER, GHOST_PRESSED, DIMMED);
 
 /// The ghost control look.
 pub(crate) const GHOST_VARIANT: StyleVariant = StyleVariant::new(GHOST_BASE, GHOST_STATES);

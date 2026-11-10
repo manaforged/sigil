@@ -3,6 +3,7 @@ use crate::style::{ControlSize, Elevation, SPACING_STEP, StyleAtom, Token};
 /// The default border width.
 pub const BORDER_WIDTH: i16 = 1;
 pub(crate) const DISABLED_OPACITY: u16 = 5_000;
+pub(crate) static DIMMED: &[StyleAtom] = &[StyleAtom::Opacity(DISABLED_OPACITY)];
 pub(crate) const ICON_SIZE: i16 = 20;
 pub(crate) const OVERLAY_SHADOW: Elevation = Elevation::Md;
 

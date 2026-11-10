@@ -42,7 +42,7 @@ pub(crate) fn reactive_style_state(
     binary_style_state(interaction, disabled)
 }
 
-pub(crate) static DIMMED: &[StyleAtom] = &[StyleAtom::Opacity(DISABLED_OPACITY)];
+pub(crate) use crate::style::DIMMED;
 static UNDIMMED: &[StyleAtom] = &[];
 pub(crate) static ICON_GLYPH: &[StyleAtom] = &[StyleAtom::FontSize(ICON_SIZE)];
 pub(crate) static METER_TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
