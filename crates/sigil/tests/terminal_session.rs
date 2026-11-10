@@ -25,9 +25,12 @@ fn wait_for(
 }
 
 fn shell(runtime: &mut AsyncRuntime) -> Session {
+    shell_in(runtime, &std::env::current_dir().expect("cwd"))
+}
+
+fn shell_in(runtime: &mut AsyncRuntime, dir: &std::path::Path) -> Session {
     runtime.install_current();
-    let dir = std::env::current_dir().expect("cwd");
-    let session = Session::spawn_in("/bin/sh", &dir).expect("spawn");
+    let session = Session::spawn_in("/bin/sh", dir).expect("spawn");
     let prompt = |line: &String| line.trim_end().ends_with(['$', '#']);
     let screen = wait_for(runtime, &session, |lines| lines.iter().any(prompt));
     assert!(screen.iter().any(prompt), "no prompt in {screen:?}");
@@ -38,9 +41,8 @@ fn shell(runtime: &mut AsyncRuntime) -> Session {
 fn a_shell_started_in_a_folder_runs_commands_there() {
     Owner::scope("terminal_session", || {
         let mut runtime = AsyncRuntime::new().expect("runtime");
-        runtime.install_current();
         let dir = std::env::current_dir().expect("cwd").join("src");
-        let session = Session::spawn_in("/bin/sh", &dir).expect("spawn");
+        let session = shell_in(&mut runtime, &dir);
         session.write(b"pwd\r").expect("write");
         let wanted = dir.display().to_string();
         let screen = wait_for(&mut runtime, &session, |lines| {
