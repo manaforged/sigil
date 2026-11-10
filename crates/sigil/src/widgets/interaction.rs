@@ -50,7 +50,7 @@ impl InteractionState {
     #[must_use]
     pub(crate) fn style_state(self) -> StyleState {
         StyleState {
-            disabled: self.disabled.get().is_some_and(Signal::get),
+            disabled: self.disabled.peek().is_some_and(Signal::get),
             hovered: self.hovered.get(),
             pressed: self.pressed.get() || self.dragging.get(),
             focused: self.focused.get(),
