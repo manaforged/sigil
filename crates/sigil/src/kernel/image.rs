@@ -1,9 +1,8 @@
 use crate::kernel::Role;
 
+use crate::kernel::hooks::NodeHooks;
 use crate::kernel::{A11yProps, AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, NodeType};
 use crate::style::{PaintTarget, StyleSlot};
-use crate::widgets::layout_ext::NodeHooks;
-use crate::widgets::{Edit, Sealed, Widget};
 
 /// Decoded RGBA pixels.
 #[derive(Clone)]
@@ -212,8 +211,8 @@ pub enum ObjectFit {
 /// The one image builder.
 #[derive(Debug)]
 pub struct ImageBuilder {
-    node: NodeBuilder,
-    hooks: NodeHooks,
+    pub(crate) node: NodeBuilder,
+    pub(crate) hooks: NodeHooks,
 }
 
 /// An image node from an `ImageSource`.
@@ -273,25 +272,6 @@ impl ImageBuilder {
 impl PaintTarget for ImageBuilder {
     fn style_slot(&mut self) -> StyleSlot<'_> {
         self.node.style_slot()
-    }
-}
-
-impl Sealed for ImageBuilder {
-    fn edit(mut self, edit: Edit) -> Self {
-        self.node = edit.apply(self.node);
-        self
-    }
-
-    fn map_target(self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.map_node(f)
-    }
-}
-
-impl Widget for ImageBuilder {
-    fn map_node(mut self, f: impl FnOnce(NodeBuilder) -> NodeBuilder + 'static) -> Self {
-        self.hooks
-            .push(Box::new(move |node| node.map_keeping_kind(f)));
-        self
     }
 }
 

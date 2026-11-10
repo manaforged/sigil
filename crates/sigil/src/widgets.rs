@@ -194,6 +194,7 @@ mod highlight;
 mod html;
 mod icon;
 mod interactive;
+mod kernel_builders;
 pub(crate) mod layout_ext;
 mod listbox;
 mod markdown;

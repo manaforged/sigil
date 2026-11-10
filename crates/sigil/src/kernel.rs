@@ -12,6 +12,7 @@ mod control_flow;
 mod cx;
 mod delta;
 mod describe;
+pub(crate) mod hooks;
 mod id;
 mod image;
 mod image_cache;
