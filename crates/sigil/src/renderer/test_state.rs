@@ -8,6 +8,7 @@ fn lock() -> &'static Mutex<()> {
     LOCK.get_or_init(|| Mutex::new(()))
 }
 
+#[derive(Debug)]
 pub struct GlobalTextState {
     _guard: MutexGuard<'static, ()>,
     tuning: TextTuning,

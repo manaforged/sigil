@@ -12,6 +12,7 @@ use crate::kernel::{A11yProps, Node, NodeId, NodeType};
 
 /// Tells widgets whether the host lays out in pixels (window) or in terminal cells.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum HostMode {
     /// The pixel host mode.
     #[default]

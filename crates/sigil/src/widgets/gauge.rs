@@ -14,6 +14,7 @@ const TRACK_WIDTH: f32 = 160.0;
 const GAUGE_GAP: f32 = space(2);
 
 /// Builder of a gauge.
+#[derive(Debug)]
 pub struct GaugeBuilder {
     value: Signal<f32>,
     max: f32,

@@ -42,6 +42,20 @@ pub struct SharedGlyph {
     fill: Option<super::DrawPath>,
 }
 
+impl core::fmt::Debug for SharedGlyph {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SharedGlyph")
+            .field("text", &self.text)
+            .field("color", &self.color)
+            .field("style", &self.style)
+            .field("opacity", &self.opacity)
+            .field("flow", &self.flow)
+            .field("tone", &self.tone)
+            .field("positioned_glyphs", &self.positioned_glyphs)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Shaped glyphs with one style and origin.
 #[derive(Clone)]
 pub struct GlyphRun {

@@ -18,6 +18,7 @@ static SEGMENTED_FRAME: &[StyleAtom] = &[
 const SEGMENTED_HEIGHT: f32 = 32.0;
 
 /// Builder of a segmented control.
+#[derive(Debug)]
 pub struct SegmentedBuilder {
     active: Signal<usize>,
     labels: Vec<String>,

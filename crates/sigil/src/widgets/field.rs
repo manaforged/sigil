@@ -26,6 +26,7 @@ fn shown(visible: bool) -> &'static [StyleAtom] {
 }
 
 /// A labelled control; layout and `map_node` change the field root, and style, state, and focus setters change the control.
+#[derive(Debug)]
 pub struct FieldBuilder<C> {
     label: TextContent,
     control: C,

@@ -34,6 +34,7 @@ const MIN_SCROLL_RANGE: f32 = 1.0;
 static VIEWPORT_ATOMS: &[StyleAtom] = &[Token::Surface.bg()];
 
 /// Builder of a scroll area.
+#[derive(Debug)]
 pub struct ScrollBuilder {
     content: NodeBuilder,
     extent: Option<Signal<f32>>,

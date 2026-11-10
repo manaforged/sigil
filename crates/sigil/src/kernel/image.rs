@@ -198,6 +198,7 @@ impl ThemedImage {
 
 /// How an image fills its box.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ObjectFit {
     /// The fill object fit.
     #[default]
@@ -209,6 +210,7 @@ pub enum ObjectFit {
 }
 
 /// The one image builder.
+#[derive(Debug)]
 pub struct ImageBuilder {
     node: NodeBuilder,
     hooks: NodeHooks,

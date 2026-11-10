@@ -8,6 +8,7 @@ use crate::text::OwnedTextEngine;
 
 use crate::layout::TextMeasure;
 
+#[derive(Debug)]
 pub struct TextEngineMeasure {
     engine: Rc<OwnedTextEngine>,
 }

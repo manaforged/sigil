@@ -4,6 +4,7 @@ use crate::style::image_paint::ImagePaints;
 use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot};
 
 /// Builds the paint for one interaction state.
+#[derive(Debug)]
 pub struct StateStyleBuilder {
     style: Style,
 }

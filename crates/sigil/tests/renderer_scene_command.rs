@@ -159,6 +159,7 @@ fn command_kinds(commands: &[SceneCommand]) -> Vec<&'static str> {
             SceneCommand::DrawShadow { .. } => "DrawShadow",
             SceneCommand::GlyphRun(_) => "GlyphRun",
             SceneCommand::Path(_) => "Path",
+            _ => "Other",
         })
         .collect()
 }

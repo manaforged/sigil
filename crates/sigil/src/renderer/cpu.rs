@@ -47,10 +47,27 @@ pub struct CpuRenderer {
     pub(crate) stats: FrameStats,
 }
 
+impl core::fmt::Debug for CpuRenderer {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CpuRenderer")
+            .field("transparent", &self.transparent)
+            .field("stats", &self.stats)
+            .finish_non_exhaustive()
+    }
+}
+
 pub struct CpuSurface {
     _context: softbuffer::Context<Shared>,
     surface: softbuffer::Surface<Shared, Shared>,
     size: PhysicalSize,
+}
+
+impl core::fmt::Debug for CpuSurface {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CpuSurface")
+            .field("size", &self.size)
+            .finish_non_exhaustive()
+    }
 }
 
 impl CpuSurface {

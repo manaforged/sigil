@@ -22,11 +22,13 @@ struct Driven {
 }
 
 kittest_pub! {
+    #[doc(hidden)]
     pub type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>;
 }
 
 kittest_pub! {
     #[derive(Default)]
+    #[doc(hidden)]
     pub struct StyleBinding {
         static_atoms: &'static [StyleAtom],
         dynamic_atoms: SmallVec<[StyleAtom; 16]>,
@@ -70,6 +72,7 @@ impl StyleBinding {
 
     kittest_pub! {
         #[must_use]
+        #[doc(hidden)]
         pub fn owned_atoms(dynamic_atoms: SmallVec<[StyleAtom; 16]>) -> Self {
             Self {
                 dynamic_atoms,
@@ -80,6 +83,7 @@ impl StyleBinding {
 
     kittest_pub! {
         #[must_use]
+        #[doc(hidden)]
         pub fn reactive_atoms(reactive_atoms: ReactiveStyleAtoms) -> Self {
             let mut binding = Self::default();
             binding.add_reactive(reactive_atoms);
@@ -100,6 +104,7 @@ impl StyleBinding {
     }
 
     kittest_pub! {
+        #[doc(hidden)]
         pub fn reactive_channels(&self) -> impl Iterator<Item = &'static [StyleAtom]> + '_ {
             self.reactive_channels.iter().map(|atoms| atoms.get())
         }
@@ -113,6 +118,7 @@ impl StyleBinding {
 
     kittest_pub! {
         #[must_use]
+        #[doc(hidden)]
         pub fn has_reactive(&self) -> bool {
             !self.reactive_channels.is_empty()
                 || self.state_overlay_slot.is_some()

@@ -166,11 +166,7 @@ pub(crate) use builder_impls;
 #[path = "widgets/lib_tests.rs"]
 mod tests;
 
-kittest_pub! {
-    /// Hover, press, and drag state for custom controls.
-    #[doc(hidden)]
-    pub mod interaction;
-}
+pub(crate) mod interaction;
 
 mod button;
 mod canvas;
@@ -309,11 +305,8 @@ pub use patterns::{
 };
 pub(crate) use progress::ProgressBuilder;
 pub use progress::progress;
+pub(crate) use radio_group::RadioGroupBuilder;
 pub use radio_group::radio_group;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use radio_group::RadioGroupBuilder;
-}
 pub use scroll::scroll;
 pub(crate) use segmented::SegmentedBuilder;
 pub use segmented::segmented;

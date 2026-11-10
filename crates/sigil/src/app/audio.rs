@@ -18,6 +18,17 @@ pub struct Player {
     device: std::rc::Rc<std::cell::RefCell<Option<device::Device>>>,
 }
 
+impl core::fmt::Debug for Player {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Player")
+            .field("playing", &self.playing)
+            .field("progress", &self.progress)
+            .field("volume", &self.volume)
+            .field("duration", &self.duration)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Player {
     /// Creates a player.
     #[must_use]

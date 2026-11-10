@@ -6,6 +6,14 @@ pub struct AccessKitBridge<F: FnMut(TreeUpdate)> {
     action_rx: crossbeam_channel::Receiver<ActionRequest>,
 }
 
+impl<F: FnMut(TreeUpdate)> core::fmt::Debug for AccessKitBridge<F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("AccessKitBridge")
+            .field("action_rx", &self.action_rx)
+            .finish_non_exhaustive()
+    }
+}
+
 impl<F: FnMut(TreeUpdate)> AccessKitBridge<F> {
     pub const fn new(
         action_rx: crossbeam_channel::Receiver<ActionRequest>,

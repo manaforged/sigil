@@ -107,6 +107,7 @@ impl<F: Fn() -> String + 'static> From<F> for TextContent {
 }
 
 /// Builder of a text node.
+#[derive(Debug)]
 pub struct TextBuilder {
     node: NodeBuilder,
     hooks: NodeHooks,
@@ -218,19 +219,16 @@ impl TextBuilder {
         cx.add(self)
     }
 
-    kittest_pub! {
-        /// Sets the runs.
-        #[must_use]
-        #[doc(hidden)]
-        pub fn runs(self, runs: Vec<crate::style::TextRun>) -> Self {
-            if runs.is_empty() {
-                return self;
-            }
-            let runs = crate::style::TextRuns(runs.into());
-            self.mutate(move |node| {
-                node.attach(runs);
-            })
+    /// Sets the runs.
+    #[must_use]
+    pub(crate) fn runs(self, runs: Vec<crate::style::TextRun>) -> Self {
+        if runs.is_empty() {
+            return self;
         }
+        let runs = crate::style::TextRuns(runs.into());
+        self.mutate(move |node| {
+            node.attach(runs);
+        })
     }
 
     /// Sets the mutate.

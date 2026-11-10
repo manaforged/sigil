@@ -58,6 +58,19 @@ pub struct DropdownBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+impl core::fmt::Debug for DropdownBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("DropdownBuilder")
+            .field("selected", &self.selected)
+            .field("options", &self.options)
+            .field("label", &self.label)
+            .field("disabled", &self.disabled)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A select box.
 #[must_use]
 pub fn dropdown(selected: Signal<usize>, options: Vec<String>) -> DropdownBuilder {

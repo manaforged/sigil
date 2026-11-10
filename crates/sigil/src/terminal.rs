@@ -37,10 +37,6 @@ kittest_pub! {
 #[cfg(feature = "kittest")]
 #[doc(hidden)]
 pub use glyphs::glyphs;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use graphics::{base64, detect};
-}
 pub use graphics::{Mux, Protocol};
 #[cfg(feature = "kittest")]
 #[doc(hidden)]

@@ -11,6 +11,7 @@ mod gpu;
 #[cfg(any(test, feature = "inspect", feature = "kittest"))]
 pub use gpu::{CaptureExtent, FORMAT, capture_texture, read_texture};
 
+#[derive(Debug)]
 pub enum ImageRenderer<'a> {
     #[cfg(any(test, feature = "inspect", feature = "kittest"))]
     Gpu(&'a mut WgpuRenderer),

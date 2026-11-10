@@ -3,6 +3,7 @@ use crate::style::space;
 
 /// Row density of a table.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum Density {
     /// The grid density.
     Grid,

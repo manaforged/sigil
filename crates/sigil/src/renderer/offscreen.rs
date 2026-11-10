@@ -13,7 +13,7 @@ use crate::renderer::scene_command::walk::WalkCtx;
 use crate::renderer::scene_command::walk::walk_command_scene;
 use crate::renderer::split_encoder::SplitEncoder;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct OffscreenTarget<'a> {
     pub device: &'a wgpu::Device,
     pub queue: &'a wgpu::Queue,

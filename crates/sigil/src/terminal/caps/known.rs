@@ -2,6 +2,7 @@ use crate::terminal::graphics::Mux;
 
 /// The desktop notification protocol a terminal speaks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Notify {
     /// The osc9 notify.
     Osc9,

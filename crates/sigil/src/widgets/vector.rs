@@ -25,6 +25,7 @@ type Recorded = RefCell<Option<(Rect, u64, DrawPath)>>;
 const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 
 /// Builder of a vector path.
+#[derive(Debug)]
 pub struct PathNode {
     width: u32,
     height: u32,

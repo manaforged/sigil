@@ -72,6 +72,20 @@ pub struct WinitShell {
     web_ime: Option<web_ime::WebIme>,
 }
 
+impl core::fmt::Debug for WinitShell {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("WinitShell")
+            .field("event_window", &self.event_window)
+            .field("redraw_target", &self.redraw_target)
+            .field("pointer_position", &self.pointer_position)
+            .field("pointer_buttons", &self.pointer_buttons)
+            .field("next_handle", &self.next_handle)
+            .field("exit_requested", &self.exit_requested)
+            .field("force_paint", &self.force_paint)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Drop for WinitShell {
     fn drop(&mut self) {
         self.alive.store(false, Ordering::Release);

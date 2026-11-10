@@ -32,7 +32,7 @@ pub(super) struct SliderRange {
     pub(super) max: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(super) struct SliderRuntime {
     pub(super) value: Signal<f32>,
     pub(super) range: SliderRange,
@@ -51,6 +51,18 @@ pub struct SliderBuilder {
     marks: Vec<String>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
+}
+
+impl core::fmt::Debug for SliderBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SliderBuilder")
+            .field("runtime", &self.runtime)
+            .field("label", &self.label)
+            .field("marks", &self.marks)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A value slider.

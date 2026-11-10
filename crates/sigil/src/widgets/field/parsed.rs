@@ -27,6 +27,16 @@ pub(crate) struct ParsedField<P: FieldParser> {
     theme: ActiveTheme,
 }
 
+impl<P: FieldParser> core::fmt::Debug for ParsedField<P> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ParsedField")
+            .field("inner", &self.inner)
+            .field("buffer", &self.buffer)
+            .field("invalid", &self.invalid)
+            .finish_non_exhaustive()
+    }
+}
+
 impl<P: FieldParser> ParsedField<P> {
     pub(crate) fn new(value: Signal<P::Value>, parser: P) -> Self {
         let theme = ActiveTheme::capture();

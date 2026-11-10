@@ -5,6 +5,7 @@ use crate::style::{MaskImage, Style, StyleAtom};
 mod sealed {
     use crate::style::Style;
 
+    #[derive(Debug)]
     pub struct StyleSlot<'a>(pub(crate) &'a mut Style);
 
     pub trait PaintTarget: Sized {

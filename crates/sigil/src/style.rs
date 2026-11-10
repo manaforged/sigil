@@ -66,8 +66,11 @@ pub use atom::{
 };
 kittest_pub! {
     #[doc(hidden)]
-    pub use atom::{BgGradient, BorderStyle, GradientShape, GradientStopKey, FilterAtom, MaskAtom, MillisU16, PaintAtom, PaintStyle, RenderStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, StyleAtom, TransitionId};
+    pub use atom::{BgGradient, GradientStopKey, PaintAtom, RenderStyle, StyleAtom, TransitionId};
 }
+#[cfg(test)]
+pub(crate) use atom::GradientShape;
+pub(crate) use atom::MillisU16;
 pub(crate) use binding::ReactiveStateSlot;
 #[cfg(not(feature = "kittest"))]
 pub(crate) use binding::{ReactiveStyleAtoms, StyleBinding};
@@ -113,8 +116,9 @@ pub use resolve::unsupported_style_warning_count_for;
 pub use text_scale::TextRole;
 kittest_pub! {
     #[doc(hidden)]
-    pub use resolve::{render_style_for, text_style_for};
+    pub use resolve::render_style_for;
 }
+pub(crate) use resolve::text_style_for;
 pub use size::ControlSize;
 pub(crate) use state::StyleVariant;
 kittest_pub! {
@@ -135,10 +139,10 @@ kittest_pub! {
 }
 pub use text_style::TextStyle;
 pub(crate) use text_style::is_typography_atom;
-pub(crate) use text_style::{TextFace, TextRuns};
+pub(crate) use text_style::{TextFace, TextRun, TextRuns};
 kittest_pub! {
     #[doc(hidden)]
-    pub use text_style::{TextLineHeight, TextRun};
+    pub use text_style::TextLineHeight;
 }
 pub use theme::{Theme, ThemeValue};
 pub use token::Token;

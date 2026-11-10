@@ -94,6 +94,7 @@ impl EventRouter {
     kittest_pub! {
         #[cfg(any(test, feature = "kittest", feature = "desktop"))]
         #[must_use]
+        #[doc(hidden)]
         pub fn focus_wants_ime(&self, cx: &Cx) -> bool {
             self.focus()
                 .and_then(|id| cx.get(id))
@@ -105,6 +106,7 @@ impl EventRouter {
     kittest_pub! {
         #[cfg(any(test, feature = "kittest", feature = "desktop"))]
         #[must_use]
+        #[doc(hidden)]
         pub fn ime_caret_rect(&self, cx: &Cx, layout: &LayoutEngine) -> Option<Rect> {
             let focused = self.focus()?;
             let node = cx.get(focused)?;

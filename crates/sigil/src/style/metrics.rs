@@ -18,6 +18,7 @@ pub const fn space(steps: u8) -> f32 {
 
 /// Corner radius from the theme: 2, 4, 6, 8, and 9999 px. 0 on a character grid.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Radius {
     /// The none radius.
     None,
@@ -89,7 +90,7 @@ impl Metrics {
 
     /// Returns the padding of a control of this size.
     #[must_use]
-    pub fn padding(self, size: ControlSize) -> f32 {
+    pub fn control_padding(self, size: ControlSize) -> f32 {
         self.cell.unwrap_or(match size {
             ControlSize::Compact => space(1) + 2.0,
             ControlSize::Default => space(2) + 2.0,
@@ -99,7 +100,7 @@ impl Metrics {
 
     /// Returns the gap of a control of this size.
     #[must_use]
-    pub fn gap(self, size: ControlSize) -> f32 {
+    pub fn control_gap(self, size: ControlSize) -> f32 {
         self.cell.unwrap_or(match size {
             ControlSize::Compact => space(1),
             ControlSize::Default => space(2),

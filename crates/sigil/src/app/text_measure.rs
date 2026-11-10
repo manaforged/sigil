@@ -10,6 +10,7 @@ use crate::text::OwnedTextEngine;
 use super::cell_text::floor_boundary;
 
 /// `TextMeasure` implementation backed by the thread text engine.
+#[derive(Debug)]
 pub struct DefaultTextMeasure {
     inner: TextEngineMeasure,
     engine: Rc<OwnedTextEngine>,

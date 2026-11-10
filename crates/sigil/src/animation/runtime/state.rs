@@ -4,7 +4,7 @@ use crate::reactive::{Runtime, Signal, batch};
 
 use crate::animation::runtime::{AnimationConfig, MotionPrefs};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct AnimatorId(SourceId);
 
 pub(crate) struct AnimatorSource {

@@ -39,6 +39,7 @@ pub enum Disclosure {
 
 /// Text tone of a list row.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RowTone {
     /// The normal row tone.
     #[default]
@@ -66,6 +67,7 @@ impl RowTone {
 }
 
 /// One fixed-width column of a list row.
+#[derive(Debug)]
 pub struct ListColumn {
     /// The text.
     pub text: TextContent,
@@ -133,6 +135,26 @@ pub struct ListRowSlots {
     pub tone: RowTone,
     /// The activate, if any.
     pub activate: Option<Rc<dyn Fn()>>,
+}
+
+impl core::fmt::Debug for ListRowSlots {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ListRowSlots")
+            .field("depth", &self.depth)
+            .field("disclosure", &self.disclosure)
+            .field("marker", &self.marker)
+            .field("marker_tone", &self.marker_tone)
+            .field("status", &self.status)
+            .field("status_tone", &self.status_tone)
+            .field("badge", &self.badge)
+            .field("detail", &self.detail)
+            .field("columns", &self.columns)
+            .field("shrink", &self.shrink)
+            .field("title_width", &self.title_width)
+            .field("indent", &self.indent)
+            .field("tone", &self.tone)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Builds one list row from its slots.

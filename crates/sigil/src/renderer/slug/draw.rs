@@ -23,6 +23,7 @@ use crate::renderer::slug::{
 };
 use crate::renderer::split_encoder::SplitEncoder;
 
+#[derive(Debug)]
 pub struct DrawParams<'a> {
     pub device: &'a wgpu::Device,
     pub queue: &'a wgpu::Queue,
@@ -87,6 +88,14 @@ pub struct SlugTextPipeline {
     cache: GlyphCache,
     quad_vb: wgpu::Buffer,
     atlas: GlyphAtlas,
+}
+
+impl core::fmt::Debug for SlugTextPipeline {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SlugTextPipeline")
+            .field("format", &self.format)
+            .finish_non_exhaustive()
+    }
 }
 
 impl SlugTextPipeline {

@@ -19,6 +19,7 @@ type CellFn<Row> = Rc<dyn Fn(&Row) -> Box<dyn IntoNode>>;
 
 /// Column width.
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum ColWidth {
     /// The fixed col width.
     Fixed(f32),
@@ -28,6 +29,7 @@ pub enum ColWidth {
 
 /// Column alignment.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum ColAlign {
     /// The start col align.
     #[default]
@@ -47,6 +49,19 @@ pub struct TableColumn<Row> {
     min_width: f32,
     align: ColAlign,
     numeric: bool,
+}
+
+impl<Row> core::fmt::Debug for TableColumn<Row> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TableColumn")
+            .field("id", &self.id)
+            .field("title", &self.title)
+            .field("width", &self.width)
+            .field("min_width", &self.min_width)
+            .field("align", &self.align)
+            .field("numeric", &self.numeric)
+            .finish_non_exhaustive()
+    }
 }
 
 impl<Row> Clone for TableColumn<Row> {

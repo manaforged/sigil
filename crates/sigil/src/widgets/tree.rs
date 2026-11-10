@@ -21,7 +21,7 @@ pub(crate) use flatten::TreeRow;
 const ROW_ESTIMATE: f32 = space(6);
 
 /// One node of a `tree`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TreeNode<K: Clone + Eq + Hash + 'static> {
     /// The id.
     pub id: K,
@@ -109,6 +109,18 @@ pub struct TreeBuilder<K: Clone + Eq + Hash + 'static> {
     label: Option<TextContent>,
     indent: Option<f32>,
     layout_overrides: LayoutOverrides,
+}
+
+impl<K: Clone + Eq + Hash + 'static> core::fmt::Debug for TreeBuilder<K> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TreeBuilder")
+            .field("expanded", &self.expanded)
+            .field("selected", &self.selected)
+            .field("label", &self.label)
+            .field("indent", &self.indent)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A tree view for explorers, outlines, and settings.

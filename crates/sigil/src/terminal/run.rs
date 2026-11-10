@@ -42,6 +42,12 @@ pub struct Hooks<'a> {
     pub region_rows: Option<Box<dyn FnMut() -> u16 + 'a>>,
 }
 
+impl core::fmt::Debug for Hooks<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Hooks").finish_non_exhaustive()
+    }
+}
+
 pub(crate) fn run<N: IntoNode>(config: &AppConfig, tree: impl Fn() -> N + 'static) -> AppResult {
     let hooks = &mut config.terminal_hooks.take();
     #[cfg(feature = "inspect")]

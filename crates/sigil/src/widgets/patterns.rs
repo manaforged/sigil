@@ -115,6 +115,7 @@ static ROW_RULE: &[StyleAtom] = &[
 static OVERLAY_TEXT: &[StyleAtom] = &[Token::OnSurface.text()];
 
 /// Builder of a key hint overlay.
+#[derive(Debug)]
 pub struct HintOverlayBuilder {
     entries: Vec<(String, String)>,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,

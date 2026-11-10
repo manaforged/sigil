@@ -53,6 +53,7 @@ impl From<f32> for LengthPercentageAuto {
 
 /// The length of a size, padding, margin, gap, or inset.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[non_exhaustive]
 pub enum Dimension {
     /// The px dimension.
     Px(f32),
@@ -167,6 +168,7 @@ impl<T: Copy> Edges<T> {
 
 /// Display mode.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub enum Display {
     /// The block display.
     #[default]
@@ -195,6 +197,7 @@ pub enum Overflow {
 
 /// Positioning mode.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum Position {
     /// The relative position.
     #[default]
@@ -300,6 +303,7 @@ pub enum BoxSizing {
 
 /// Size of a grid track.
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum TrackSize {
     /// The px track size.
     Px(f32),

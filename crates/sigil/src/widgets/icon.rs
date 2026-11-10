@@ -13,7 +13,7 @@ mod svg;
 
 static ICON_GLYPH_COLOR: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Glyph {
     Text(TextContent),
     #[cfg(feature = "scene")]
@@ -21,6 +21,7 @@ enum Glyph {
 }
 
 /// Builder of an icon.
+#[derive(Debug)]
 pub struct IconBuilder {
     glyph: Glyph,
     tone: Tone,
@@ -35,7 +36,7 @@ pub struct IconBuilder {
 }
 
 /// What `icon` accepts: a bundled `Icon` or any text glyph.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct IconSource(Glyph);
 
 impl IntoIconSource for IconSource {

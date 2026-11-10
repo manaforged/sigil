@@ -32,6 +32,16 @@ pub struct SidebarBuilder {
     style_accumulator: Style,
 }
 
+impl core::fmt::Debug for SidebarBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SidebarBuilder")
+            .field("resizable", &self.resizable)
+            .field("layout_overrides", &self.layout_overrides)
+            .field("style_accumulator", &self.style_accumulator)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A side column.
 #[must_use]
 pub fn sidebar(child: impl IntoNode + 'static) -> SidebarBuilder {

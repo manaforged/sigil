@@ -38,6 +38,20 @@ pub struct CheckboxBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+impl core::fmt::Debug for CheckboxBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CheckboxBuilder")
+            .field("checked", &self.checked)
+            .field("partial", &self.partial)
+            .field("label", &self.label)
+            .field("disabled", &self.disabled)
+            .field("tone", &self.tone)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
 static EMPTY_BASE: &[StyleAtom] = &[];
 static PRIMARY_CHECKED: &[StyleAtom] = &[Token::Accent.bg(), Token::Accent.border()];
 static PRIMARY_CHECKED_HOVER: &[StyleAtom] =
@@ -182,7 +196,7 @@ builder_impls!([] CheckboxBuilder: paint(style_accumulator), widget, states(styl
 fn checkbox_layout(has_label: bool) -> LayoutStyle {
     let metrics = Metrics::current();
     let root_size = metrics.control_height(ControlSize::Default);
-    let gap = metrics.gap(ControlSize::Default);
+    let gap = metrics.control_gap(ControlSize::Default);
     let row = control_row(LayoutStyle::flex_row())
         .height(root_size)
         .gap(Space::px(gap))

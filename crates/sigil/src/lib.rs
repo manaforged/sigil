@@ -119,23 +119,6 @@ pub use crate::app::exit::request_exit;
 pub use crate::error::{AppResult, Error, ErrorKind};
 pub use crate::kernel::{Cx, Live, Node, NodeId, Surface, TopLayer, announce};
 pub use crate::view::View;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use crate::kernel::NodeType;
-}
-kittest_pub! {
-    #[doc(hidden)]
-    pub use crate::kernel::{AccessibleName, FocusScopeKind, ImageCrop, NodeExtensions};
-}
-kittest_pub! {
-    #[doc(hidden)]
-    pub use crate::layout::{CaretGeometry, TextMeasure};
-}
-#[cfg(feature = "scene")]
-kittest_pub! {
-    #[doc(hidden)]
-    pub use crate::text::{HitPosition, TextAffinity};
-}
 
 /// Run the app component on the host that `config` selects.
 #[cfg(any(feature = "desktop", feature = "terminal"))]

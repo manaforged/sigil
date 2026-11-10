@@ -19,6 +19,7 @@ static FILL: &[StyleAtom] = &[Radius::Md.atom(), Token::Accent.bg()];
 static EMPTY: &[StyleAtom] = &[];
 
 /// Builder of a progress bar.
+#[derive(Debug)]
 pub struct ProgressBuilder {
     value: Signal<f32>,
     max: f32,
@@ -129,7 +130,7 @@ fn captioned_row(caption: TextContent, bar: NodeBuilder) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .gap(Space::px(metrics.gap(ControlSize::Default)))
+                .gap(Space::px(metrics.control_gap(ControlSize::Default)))
                 .align_items(AlignItems::Center),
         )
         .child(text(caption).nowrap())

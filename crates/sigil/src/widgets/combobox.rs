@@ -16,7 +16,7 @@ const MAX_VISIBLE: usize = 8;
 const FIELD_HEIGHT: f32 = space(8);
 
 /// State of a combobox.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Combobox {
     options: Signal<Vec<String>>,
     query: Signal<String>,

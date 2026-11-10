@@ -26,6 +26,7 @@ const OPAQUE: Rgba8 = Rgba8 {
     reason = "SceneCommand already holds DrawPath inline, so boxing it here saves no space and adds an allocation"
 )]
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum Clip {
     /// A rectangle, applied with the scissor.
     Rect(Rect),

@@ -59,7 +59,7 @@ fn forced_graphics(env: &impl Fn(&str) -> Option<String>) -> Option<Forced> {
 }
 
 /// Detects an image protocol from environment variables that `env` reads.
-pub fn detect(env: impl Fn(&str) -> Option<String>) -> Option<Protocol> {
+pub(crate) fn detect(env: impl Fn(&str) -> Option<String>) -> Option<Protocol> {
     match forced_graphics(&env) {
         Some(Forced::Off) => return None,
         Some(Forced::On(protocol)) => return Some(protocol),

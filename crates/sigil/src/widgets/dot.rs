@@ -9,6 +9,7 @@ use super::layout_ext::LayoutOverrides;
 use super::shared::caller_style;
 
 /// Builder of a status dot.
+#[derive(Debug)]
 pub struct DotBuilder {
     tone: Tone,
     size: ControlSize,

@@ -13,7 +13,7 @@ use super::super::listbox::{ListModel, listbox};
 use super::super::popup::{self, ItemSlots, item_row};
 use super::builder::MenuItem;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(super) enum Row {
     Item(MenuItem),
     Separator,

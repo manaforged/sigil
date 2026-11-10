@@ -11,7 +11,7 @@ use super::binding_animate::AttachedColorAnimator;
     not(feature = "scene"),
     allow(dead_code, reason = "the renderer is its caller")
 )]
-pub fn linear_channel_to_srgb(v: f32) -> u8 {
+pub(crate) fn linear_channel_to_srgb(v: f32) -> u8 {
     byte(crate::style::srgb::encode(v) * 255.0)
 }
 

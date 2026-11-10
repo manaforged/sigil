@@ -20,7 +20,7 @@ First public release.
 | `Node::tag`, `TextStyle::layered_over_binding`, `FrameInfo::delta` | crate-private |
 | `sigil::kernel::*`, `sigil::layout::*` | prelude (`text`, `HostMode`, `TextBuilder`, `ImageBuilder`, `ObjectFit`, `TextCursor`, `Dimension`, `Position`, `Overflow`, `TrackSize`) or crate root (`Cx`, `NodeId`, `Node`, `NodeType`, `NodeExtensions`, `AccessibleName`, `TopLayer`, `Surface`, `ImageCrop`, `ImageRaster`, `Live`, `FocusScopeKind`, `announce`) |
 | `sigil::animation_runtime::{Animator, AnimatorStatus, Playback, clock, reduced_motion}` | `sigil::animation::*` |
-| `sigil::text::{HitPosition, TextAffinity}`, `TextMeasure`, `CaretGeometry`, `app::DefaultTextMeasure`, `profile::{note_input, FRAME_BUDGET_NS}`, `widgets::MIN_COL_WIDTH`, `DrawRect::border_radius`, `DrawRect::border` | public only under `kittest`, `#[doc(hidden)]`; the crate-root paths are `sigil::TextMeasure`, `sigil::CaretGeometry`, `sigil::HitPosition`, and `sigil::TextAffinity` |
+| `sigil::text::{HitPosition, TextAffinity}`, `TextMeasure`, `CaretGeometry`, `app::DefaultTextMeasure`, `profile::{note_input, FRAME_BUDGET_NS}`, `widgets::MIN_COL_WIDTH`, `DrawRect::border_radius`, `DrawRect::border` | public only under `kittest`, `#[doc(hidden)]`, at `sigil::layout::{TextMeasure, CaretGeometry}` and `sigil::text::{HitPosition, TextAffinity}` |
 | `sigil::text::{WebFont, WebFontScript, add_fallback_font, load_font_url, set_web_fallbacks, web_fallbacks}` | `sigil::app::*` |
 | `sigil::a11y::snapshot(&host.accessibility_tree())` | `host.accessibility_text()` |
 | `sigil::a11y`, `sigil::kernel`, `sigil::layout`, `sigil::text`, other items in them | public only under `kittest`, `#[doc(hidden)]` |
@@ -103,7 +103,7 @@ First public release.
 | `app::TextTuning`, `set_text_tuning`, `text_tuning` | `AppConfig::text_enhance`, `text_snap`, `text_raster`, `text_dilation`, `text_sharpen`, `text_gamma` |
 | `app::DefaultFonts`, `set_default_fonts` | `AppConfig::font_sans`, `font_sans_weight`, `font_mono`, `font_icon`, `font_display`, `font_fallback` |
 | `animation_runtime::MotionPrefs::reduced()`, `MotionPrefs::set` | `animation::reduced_motion()`, `AppConfig::reduced_motion` |
-| `sigil::animation_runtime::{MotionPrefs, active_count, linear_channel_to_srgb, presets, running_clocks, tick}` (feature `kittest`) | `sigil::animation::*`, under `kittest`, `#[doc(hidden)]`. The `sigil::animation_runtime` module is removed |
+| `sigil::animation_runtime::{MotionPrefs, active_count, presets, running_clocks, tick}` (feature `kittest`) | `sigil::animation::*`, under `kittest`, `#[doc(hidden)]`. The `sigil::animation_runtime` module is removed |
 | `style::StyledTextEngine` (feature `kittest`) | removed; call `OwnedTextEngine::layout_paragraph_styled`, no trait import |
 | `layout::TextEngineMeasure<OwnedTextEngine>` (feature `kittest`) | `layout::TextEngineMeasure` |
 | `AsyncRuntime::drain` (feature `kittest`) | `AsyncRuntime::pump` |
@@ -160,7 +160,7 @@ First public release.
 | `animation::{Animator, Spring, SpringPreset, Tween}` | crate-private; `Animator` and `SpringPreset` stay public only under `kittest` |
 | `animation::CubicBezier` | removed with `Easing::Bezier` |
 | `animation::{Keyframe, Keyframes, AnimationDirection, AnimationFill, Playback, AnimatorStatus}`, `terminal::CellGrid`, `style::ThemeBuilder`, `widgets::FocusCaret`, `TextFieldBuilder::focus_caret`, `Widget::presence_spring`, `Widget::ime_caret` | removed; no caller used them |
-| `Paint::{background_gradient, transform, transition, duration}`, `LayoutStyle::{align_content, box_sizing, flex_direction}`, `SceneBuilder::{draw_gradient, draw_pattern, draw_sprite, push_layer, draw_decoration, draw_image, draw_shadow, with_composite_layer}`, `DrawRect::border_radius`, `Theme::{with_locale, with_strings, with_*_scale}`, `Date::{parse_in, render_in}`, `app::{set_ambiguous, set_cell_width}`, `style::{render_style_for, text_style_for}` | public only under `kittest` |
+| `Paint::{background_gradient, transform, transition, duration}`, `LayoutStyle::{align_content, box_sizing, flex_direction}`, `SceneBuilder::{draw_gradient, draw_pattern, draw_sprite, push_layer, draw_decoration, draw_image, draw_shadow, with_composite_layer}`, `DrawRect::border_radius`, `Theme::{with_locale, with_strings, with_*_scale}`, `app::{set_ambiguous, set_cell_width}`, `style::render_style_for` | public only under `kittest` |
 | `style::scale`, `style::{Locale, Strings, StyleAtom, StateStyle, StyleState, StyleVariant, StyleEngine, RenderStyle, Transform2D, TransitionId, MillisU16, BgGradient}` and the other style value types | public only under `kittest` or crate-private; `Token::scale` and `Tone::scale_role` still work without naming `ScaleRole` |
 | `scene::{DrawGradient, DrawImage, DrawPattern, DrawSprite, DrawDecoration, LayerEffect, LayerScope, LinearGradient, GradientStop, CornerRadii, StrokeAlign, StrokeStyle}` and the other command payloads | public only under `kittest` or crate-private; `SceneCommand` fields keep these types |
 | `AccessibleName`, `FocusScopeKind`, `NodeExtensions`, `ImageCrop`, `icons::{IconBaker, BakedIcon}` (now `icons::bake`), `events::FileDropEvent`, `reactive::DrawPhase` | public only under `kittest`; `.label("text")` and `.file_drop(\|event\| ...)` work without the names |
@@ -169,7 +169,7 @@ First public release.
 | `geometry::Scale`, `Cx::scale() -> Scale`, `Cx::set_scale(Scale)` | `Cx::scale() -> f32`, `Cx::set_scale(f32)`. `Scale` is public only under `kittest` |
 | `widgets::ColumnLayout`, `TableState::column_layout` | `TableState::hide_column`, `show_column`, `visible_columns`, `column_width`; the layout is crate-private |
 | `Shadow::kind`, `DrawRect::stroke` fields | public only under `kittest` |
-| `reactive::{Runtime, next_interval_deadline, debug}`, `style::unknown_class_warning_count`, `scene::{paint_backdrop, shape_glyph_run, Stroke}`, `terminal::{map_key, map_mouse, cell_point}`, `widgets::interaction`, `A11yProps`, `Cx::new_node`, `clipboard::NoopClipboard`, `DrawRect::stroke`, `Shadow::with_kind`, `TextBuilder::runs` | public only under `kittest` |
+| `reactive::{Runtime, next_interval_deadline, debug}`, `style::unknown_class_warning_count`, `scene::{paint_backdrop, shape_glyph_run, Stroke}`, `terminal::{map_key, map_mouse, cell_point}`, `A11yProps`, `Cx::new_node`, `clipboard::NoopClipboard`, `DrawRect::stroke`, `Shadow::with_kind` | public only under `kittest` |
 | `style::{variant, Variant, is_typography_atom}`, `Theme::from_palette`, `terminal::{install_clipboard, blocks_window, png_window, sextants_window, detect_mux}`, `widgets::{listbox, ListModel, language_for_path, text_runs, ToastEntry}`, `app::{cell_text_lines, ellipsize_cells, ellipsize_cells_start, fit_cells}`, `tasks::panic_message`, `style::font_family_hint` | no public path; `Caps` reports the multiplexer and `ToastQueue` owns its entries |
 | `widgets::to_hex(color)` | `Rgba8::to_hex(self)` |
 | `Node::a11y.text_cursor` | `Node::text_cursor()`; the `a11y` field is public only under `kittest` |
@@ -217,6 +217,10 @@ First public release.
 | `Host::route(event)` returning `()` | returns `bool`: whether a key press was consumed |
 | `esc_exits(true)`: Escape exited before the UI saw it | exits only when nothing consumed the press |
 | terminal `quit_on_ctrl_c(true)`: Ctrl+C exited before routing | copies a selection or reaches a focused `terminal()` first |
+| `Metrics::padding(size)`, `Metrics::gap(size)` | `Metrics::control_padding(size)`, `Metrics::control_gap(size)` |
+| `Theme::padding(size)`, `Theme::gap(size)` | `Theme::control_padding(size)`, `Theme::control_gap(size)` |
+| exhaustive `match` on `Easing`, `HostMode`, `ObjectFit`, `Dimension`, `Display`, `Position`, `TrackSize`, `SceneCommand`, `Clip`, `Elevation`, `Radius`, `ControlSize`, `ClipShape`, `ColorAtom`, `MaskImage`, `FontFamily`, `WebFontScript`, `ChangeKind`, `Side`, `RowTone`, `SparkMark`, `SparkFill`, `ColWidth`, `ColAlign`, `Density`, `SubmitKey`, `ScrollAnchor`, `SelectionMode`, or terminal `ColorDepth`, `Keyboard`, `Borders`, `Cursor`, `Notify`, `MouseTracking`, `Activity`, `Underline` | add a `_` arm; all are `#[non_exhaustive]` |
+| under feature `kittest`: crate-root `NodeType`, `AccessibleName`, `FocusScopeKind`, `ImageCrop`, `NodeExtensions`, `CaretGeometry`, `TextMeasure`, `HitPosition`, `TextAffinity` (use `sigil::kernel`, `sigil::layout`, `sigil::text`); `animation::{KeyframesId, linear_channel_to_srgb}`, `profile::Span`, `scene::DrawPath`, `style::{BorderStyle, GradientShape, FilterAtom, MaskAtom, MillisU16, PaintStyle, SpaceAtom, SpaceStyle, Backface, StopSlot, TextRun, text_style_for}`, `terminal::{base64, detect}`, `widgets::interaction`, `widgets::RadioGroupBuilder`, `TextBuilder::runs`, `Date::parse_in`, `Date::render_in` | crate-private |
 
 ### Changed
 

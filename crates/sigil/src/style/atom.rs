@@ -23,17 +23,15 @@ mod space;
 pub use background::{Background, Gradient};
 pub use clip::ClipShape;
 pub use color::{BgGradient, ColorAtom, GradientAxis, GradientStopKey, Rgba8};
-pub use filter::FilterAtom;
 pub(crate) use filter::{
-    Amount, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units, hue_units,
-    shadow_color,
+    Amount, FilterAtom, FilterPart, FilterStyle, ShadowSpec, TextShadows, aligned, blur_units,
+    hue_units, shadow_color,
 };
-pub use gradient::{
-    BorderStyle, Conic, GradientShape, PaintAtom, PaintStyle, Radial, RadialExtent, StopSlot,
-};
-pub use mask::{MaskAtom, MaskImage, MaskSize};
-pub(crate) use mask::{MaskKind, MaskPart, MaskStyle};
-pub use space::{Backface, SpaceAtom, SpaceStyle};
+pub(crate) use gradient::{BorderStyle, GradientShape, PaintStyle, StopSlot};
+pub use gradient::{Conic, PaintAtom, Radial, RadialExtent};
+pub(crate) use mask::{MaskAtom, MaskKind, MaskPart, MaskStyle};
+pub use mask::{MaskImage, MaskSize};
+pub(crate) use space::{Backface, SpaceAtom, SpaceStyle};
 
 /// Identifies a transition preset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -51,6 +49,7 @@ pub struct MillisU16(
 
 /// Selects a shadow depth from the theme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Elevation {
     /// The sm elevation.
     Sm,

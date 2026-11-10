@@ -21,6 +21,7 @@ authors = ["Thomas Gardiner"]
 [workspace.lints.rust]
 unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "deny"
+missing_debug_implementations = "deny"
 unreachable_pub = "warn"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
 rust_2018_idioms = { level = "warn", priority = -1 }

@@ -4,6 +4,12 @@ pub struct WindowHandle {
     inner: Box<dyn DisplayAndWindow>,
 }
 
+impl core::fmt::Debug for WindowHandle {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("WindowHandle").finish_non_exhaustive()
+    }
+}
+
 impl WindowHandle {
     pub(crate) fn into_inner(self) -> Box<dyn DisplayAndWindow> {
         self.inner

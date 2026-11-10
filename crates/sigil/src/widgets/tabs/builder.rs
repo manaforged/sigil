@@ -46,6 +46,23 @@ pub struct TabsBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+impl core::fmt::Debug for TabsBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TabsBuilder")
+            .field("active", &self.active)
+            .field("labels", &self.labels)
+            .field("disabled", &self.disabled)
+            .field("aria_label", &self.aria_label)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("reorderable", &self.reorderable)
+            .field("order", &self.order)
+            .field("closeable", &self.closeable)
+            .field("list_justify", &self.list_justify)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Creates a tabs widget.
 #[must_use]
 pub fn tabs() -> TabsBuilder {

@@ -105,6 +105,19 @@ pub struct ChartBuilder {
     style_accumulator: Style,
 }
 
+impl core::fmt::Debug for ChartBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ChartBuilder")
+            .field("labels", &self.labels)
+            .field("mark", &self.mark)
+            .field("stack", &self.stack)
+            .field("crosshair", &self.crosshair)
+            .field("tooltip", &self.tooltip)
+            .field("whole", &self.whole)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A bar, line, area, scatter, pie, or candle chart.
 #[must_use]
 pub fn chart(values: impl Reactive<Vec<f32>>) -> ChartBuilder {

@@ -84,6 +84,7 @@ impl MenuItem {
 }
 
 /// Builder of a popup menu.
+#[derive(Debug)]
 pub struct MenuBuilder {
     open: Signal<bool>,
     host: Option<Owner>,

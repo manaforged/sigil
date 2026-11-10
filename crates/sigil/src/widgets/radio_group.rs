@@ -15,6 +15,7 @@ use super::shared::{caller_style, control_surface, disabled_a11y, disabled_now};
 use crate::widgets::interaction::InteractionState;
 
 /// Builder of a radio group.
+#[derive(Debug)]
 pub struct RadioGroupBuilder {
     selected: Signal<String>,
     options: Vec<(String, String)>,

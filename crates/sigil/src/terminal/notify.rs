@@ -29,6 +29,7 @@ pub fn progress(value: Option<u8>) -> Result<(), crate::Error> {
 
 /// What a program reports to a host that lists agents: waiting, running, or waiting on the user.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Activity {
     /// Waiting for input.
     Idle,

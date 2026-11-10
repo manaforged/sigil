@@ -28,6 +28,15 @@ pub struct A2uiBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+impl core::fmt::Debug for A2uiBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("A2uiBuilder")
+            .field("source", &self.source)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
 /// An A2UI v0.9 surface from JSON: one message, an array of messages, or `{"messages": [..]}`.
 #[must_use]
 pub fn a2ui(json: impl Reactive<String>) -> A2uiBuilder {

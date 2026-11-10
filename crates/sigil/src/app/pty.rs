@@ -63,6 +63,17 @@ pub struct Session {
     killer: Option<Box<dyn portable_pty::ChildKiller + Send + Sync>>,
 }
 
+impl core::fmt::Debug for Session {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Session")
+            .field("lines", &self.lines)
+            .field("title", &self.title)
+            .field("bell", &self.bell)
+            .field("exited", &self.exited)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Drop for Session {
     fn drop(&mut self) {
         if let Some(killer) = self.killer.as_mut()

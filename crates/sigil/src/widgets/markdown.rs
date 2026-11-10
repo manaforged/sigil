@@ -86,6 +86,7 @@ fn frame() -> NodeBuilder {
 }
 
 /// Builder of a markdown editor.
+#[derive(Debug)]
 pub struct MarkdownEditBuilder {
     source: Signal<String>,
     disabled: Option<Signal<bool>>,

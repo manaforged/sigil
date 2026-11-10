@@ -26,6 +26,7 @@ mod sealed {
         clippy::large_enum_variant,
         reason = "an edit is built and consumed within one setter call"
     )]
+    #[derive(Debug)]
     pub enum Edit {
         Layout(LayoutEdit),
         Autofocus,
@@ -36,7 +37,7 @@ mod sealed {
         clippy::large_enum_variant,
         reason = "an edit is built and consumed within one setter call"
     )]
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub enum LayoutEdit {
         Merge(LayoutStyle),
         Width(f32),

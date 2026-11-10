@@ -37,6 +37,25 @@ pub struct ButtonBuilder {
     shortcut: Option<String>,
 }
 
+impl core::fmt::Debug for ButtonBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ButtonBuilder")
+            .field("label", &self.label)
+            .field("tone", &self.tone)
+            .field("fill", &self.fill)
+            .field("height", &self.height)
+            .field("padding_x", &self.padding_x)
+            .field("disabled", &self.disabled)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .field("accessible", &self.accessible)
+            .field("pending", &self.pending)
+            .field("square", &self.square)
+            .field("shortcut", &self.shortcut)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A push button.
 #[must_use]
 pub fn button(label: impl Into<TextContent>) -> ButtonBuilder {
@@ -62,7 +81,7 @@ impl ButtonBuilder {
             fill: None,
             width: ButtonWidth::Hug,
             height: metrics.control_height(ControlSize::Default),
-            padding_x: metrics.padding(ControlSize::Default),
+            padding_x: metrics.control_padding(ControlSize::Default),
             disabled: None,
             activate: None,
             style_accumulator: Style::new(),
@@ -210,7 +229,7 @@ impl ButtonBuilder {
             size
         };
         self.height = metrics.control_height(size);
-        self.padding_x = metrics.padding(size);
+        self.padding_x = metrics.control_padding(size);
         self
     }
 

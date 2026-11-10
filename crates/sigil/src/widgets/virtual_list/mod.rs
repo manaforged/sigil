@@ -112,6 +112,7 @@ enum ListSizing {
 
 /// Where a virtual list stays scrolled.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ScrollAnchor {
     /// The top scroll anchor.
     Top,

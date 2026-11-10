@@ -24,6 +24,20 @@ pub struct StatBuilder {
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
+impl core::fmt::Debug for StatBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("StatBuilder")
+            .field("label", &self.label)
+            .field("value", &self.value)
+            .field("delta", &self.delta)
+            .field("caption", &self.caption)
+            .field("range", &self.range)
+            .field("tone", &self.tone)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A KPI tile in card chrome: a label, a large value, and an optional toned change line, caption, and sparkline trend.
 pub fn stat(label: impl Into<TextContent>, value: impl Into<TextContent>) -> StatBuilder {
     StatBuilder {

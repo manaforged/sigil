@@ -54,10 +54,8 @@ pub(crate) use glyph::{RunInk, shape_run};
 pub use gradient::{Gradient, GradientKind};
 #[cfg(any(feature = "scene", feature = "terminal"))]
 pub(crate) use payloads::MITER_LIMIT;
-pub(crate) use payloads::{CellBorder, CellRect};
-pub use payloads::{
-    DrawDecoration, DrawGradient, DrawImage, DrawPath, DrawPattern, DrawRect, DrawSprite,
-};
+pub(crate) use payloads::{CellBorder, CellRect, DrawPath};
+pub use payloads::{DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite};
 pub(crate) use payloads::{PathCmd, PathStroke, outline_key, rounded_outline};
 #[cfg(all(
     feature = "scene",
@@ -97,6 +95,7 @@ impl CommandScene {
 
 /// One draw or state command in a `CommandScene`.
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum SceneCommand {
     /// Clips the commands up to the matching `PopClip`.
     PushClip(Clip),

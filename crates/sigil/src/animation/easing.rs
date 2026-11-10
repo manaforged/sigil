@@ -6,6 +6,7 @@ use std::num::NonZeroU16;
 
 /// Tween easing curve.
 #[derive(Clone, Copy, Debug, Default)]
+#[non_exhaustive]
 pub enum Easing {
     /// The linear easing.
     #[default]

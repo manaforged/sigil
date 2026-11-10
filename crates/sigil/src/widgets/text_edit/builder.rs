@@ -19,6 +19,7 @@ use crate::widgets::shared::caller_style;
 
 /// The key that runs `TextEditBuilder::submit`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SubmitKey {
     /// The ctrl enter submit key.
     #[default]
@@ -44,6 +45,25 @@ pub struct TextEditBuilder {
     state: Option<TextEditState>,
     pub(super) style_accumulator: Style,
     layout_overrides: LayoutOverrides,
+}
+
+impl core::fmt::Debug for TextEditBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TextEditBuilder")
+            .field("value", &self.value)
+            .field("placeholder", &self.placeholder)
+            .field("disabled", &self.disabled)
+            .field("submit_key", &self.submit_key)
+            .field("caret_visible", &self.caret_visible)
+            .field("caret_position", &self.caret_position)
+            .field("caret_rect", &self.caret_rect)
+            .field("content_padding", &self.content_padding)
+            .field("chrome", &self.chrome)
+            .field("state", &self.state)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A multi-line text editor.

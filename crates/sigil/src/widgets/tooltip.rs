@@ -35,6 +35,19 @@ pub struct TooltipBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+impl core::fmt::Debug for TooltipBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TooltipBuilder")
+            .field("label", &self.label)
+            .field("shortcut", &self.shortcut)
+            .field("clamp_top", &self.clamp_top)
+            .field("delay_ms", &self.delay_ms)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A hover tooltip.
 #[must_use]
 pub fn tooltip(label: impl Into<String>) -> TooltipBuilder {
@@ -253,7 +266,7 @@ fn build_bubble(
         .layout(
             LayoutStyle::flex_column()
                 .max_width(BUBBLE_MAX_WIDTH)
-                .padding_x(Space::px(metrics.padding(ControlSize::Compact)))
+                .padding_x(Space::px(metrics.control_padding(ControlSize::Compact)))
                 .padding_y(Space::px(metrics.overlay_padding()))
                 .gap(Space::px(metrics.overlay_padding()))
                 .align_items(AlignItems::Start)

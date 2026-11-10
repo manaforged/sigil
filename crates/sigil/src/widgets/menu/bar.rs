@@ -30,12 +30,14 @@ static BAR_SURFACE: &[StyleAtom] = &[
 static TRIGGER_REST: &[StyleAtom] = &[Radius::Md.atom()];
 static TRIGGER_OPEN: &[StyleAtom] = &[Radius::Md.atom(), Token::SurfacePressed.bg()];
 
+#[derive(Debug)]
 struct MenuSlot {
     label: String,
     rows: Vec<Row>,
 }
 
 /// Builder of a menu bar.
+#[derive(Debug)]
 pub struct MenuBarBuilder {
     slots: Vec<MenuSlot>,
     fill: bool,

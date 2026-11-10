@@ -16,6 +16,16 @@ pub struct SignalWriter<T: Send + 'static> {
     signal: SendableSignal<T>,
 }
 
+impl<T: Send + 'static> core::fmt::Debug for SignalWriter<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SignalWriter")
+            .field("dispatcher", &self.dispatcher)
+            .field("owner", &self.owner)
+            .field("signal", &self.signal)
+            .finish()
+    }
+}
+
 impl<T: Send + 'static> SignalWriter<T> {
     pub(crate) fn new(dispatcher: Dispatcher, owner: Owner, signal: Signal<T>) -> Self {
         Self {

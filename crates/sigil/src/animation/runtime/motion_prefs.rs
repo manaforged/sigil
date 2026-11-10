@@ -10,6 +10,7 @@ pub fn reduced_motion() -> bool {
     MotionPrefs::reduced()
 }
 
+#[derive(Debug)]
 pub struct MotionPrefs;
 
 impl MotionPrefs {

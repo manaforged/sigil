@@ -15,6 +15,7 @@ use crate::widgets::{Edit, Sealed, StateTarget, Widget};
 use smallvec::SmallVec;
 
 /// A hex color input with a swatch; layout and `map_node` change the row, and style, state, and focus setters change the text field.
+#[derive(Debug)]
 pub struct ColorFieldBuilder {
     value: Signal<Rgba8>,
     field: ParsedField<HexParser>,

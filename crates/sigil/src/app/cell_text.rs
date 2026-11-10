@@ -17,7 +17,7 @@ pub(crate) use wrap::cell_text_lines;
 use wrap::{hard_break_at, ranges};
 
 /// Selects how the terminal host counts cell width: Unicode East Asian width, or fixed widths for joiners, non-joiners, and keycaps.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum CellWidth {
     /// The unicode cell width.
     #[default]

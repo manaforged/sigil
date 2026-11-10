@@ -36,6 +36,16 @@ pub struct WgpuRenderer {
     device_generation: u64,
 }
 
+impl core::fmt::Debug for WgpuRenderer {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("WgpuRenderer")
+            .field("transparent", &self.transparent)
+            .field("last_frame_stats", &self.last_frame_stats)
+            .field("device_generation", &self.device_generation)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Default for WgpuRenderer {
     fn default() -> Self {
         Self::new()

@@ -30,6 +30,16 @@ pub struct CardBuilder {
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
 }
 
+impl core::fmt::Debug for CardBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CardBuilder")
+            .field("node", &self.node)
+            .field("selected", &self.selected)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A bordered card.
 pub fn card(child: impl IntoNode + 'static) -> CardBuilder {
     CardBuilder {

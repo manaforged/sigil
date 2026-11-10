@@ -41,6 +41,26 @@ pub struct TextFieldBuilder {
     focus_target: FocusSlot,
 }
 
+impl core::fmt::Debug for TextFieldBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TextFieldBuilder")
+            .field("value", &self.value)
+            .field("placeholder", &self.placeholder)
+            .field("disabled", &self.disabled)
+            .field("invalid", &self.invalid)
+            .field("caret_visible", &self.caret_visible)
+            .field("scroll_offset", &self.scroll_offset)
+            .field("focus_trigger", &self.focus_trigger)
+            .field("autofocus", &self.autofocus)
+            .field("password", &self.password)
+            .field("reveal", &self.reveal)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .field("clearable", &self.clearable)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A single-line text input.
 #[must_use]
 pub fn text_field(value: Signal<String>) -> TextFieldBuilder {

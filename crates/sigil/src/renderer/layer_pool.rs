@@ -7,6 +7,7 @@ use crate::{Error, ErrorKind};
 const DIM_ALIGN: u32 = 16;
 const BUDGET_SCREENS: u64 = 2;
 
+#[derive(Debug)]
 pub struct LayerHandle {
     pub view: wgpu::TextureView,
     pub width: u32,
@@ -20,6 +21,7 @@ impl LayerHandle {
     }
 }
 
+#[derive(Debug)]
 pub struct LayerPool {
     free: Vec<LayerHandle>,
     budget: Option<u64>,

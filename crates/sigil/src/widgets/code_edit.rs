@@ -41,6 +41,7 @@ type GutterMarks = Signal<Vec<Option<ChangeKind>>>;
 
 /// Line change mark in the `code_edit` gutter.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ChangeKind {
     /// The added change kind.
     Added,
@@ -110,6 +111,22 @@ pub struct CodeEditBuilder {
     disabled: Option<Signal<bool>>,
     row_h: Option<f32>,
     layout_overrides: crate::widgets::layout_ext::LayoutOverrides,
+}
+
+impl core::fmt::Debug for CodeEditBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CodeEditBuilder")
+            .field("lines", &self.lines)
+            .field("caret", &self.caret)
+            .field("highlights", &self.highlights)
+            .field("selection", &self.selection)
+            .field("gutter", &self.gutter)
+            .field("diagnostics", &self.diagnostics)
+            .field("disabled", &self.disabled)
+            .field("row_h", &self.row_h)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A code editor with built-in `text_edit` editing.

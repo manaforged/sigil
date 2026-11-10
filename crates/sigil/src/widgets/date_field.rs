@@ -23,14 +23,11 @@ impl Date {
         Self::parse_in(input, &Locale::default())
     }
 
-    kittest_pub! {
     /// Parses a date in the order of `locale`.
     #[must_use]
-    #[doc(hidden)]
-    pub fn parse_in(input: &str, locale: &Locale) -> Option<Self> {
+    fn parse_in(input: &str, locale: &Locale) -> Option<Self> {
         let (year, month, day) = locale.parse_date(input)?;
         Self::new(year, month, day)
-    }
     }
 
     /// Creates a date.
@@ -50,13 +47,10 @@ impl Date {
         self.render_in(&Locale::default())
     }
 
-    kittest_pub! {
     /// Formats this date in the order of `locale`.
     #[must_use]
-    #[doc(hidden)]
-    pub fn render_in(self, locale: &Locale) -> String {
+    fn render_in(self, locale: &Locale) -> String {
         locale.format_date(self.year, self.month, self.day)
-    }
     }
 }
 
@@ -89,6 +83,7 @@ impl FieldParser for DateParser {
 }
 
 /// Builder of a date input.
+#[derive(Debug)]
 pub struct DateFieldBuilder {
     field: ParsedField<DateParser>,
 }
@@ -109,6 +104,7 @@ impl DateFieldBuilder {
     }
 
     /// Returns the text field.
+    #[must_use]
     pub fn text_field(self) -> TextFieldBuilder {
         self.field.text_field()
     }

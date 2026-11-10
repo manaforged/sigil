@@ -37,6 +37,19 @@ pub struct SplitterBuilder {
     style_accumulator: Style,
 }
 
+impl core::fmt::Debug for SplitterBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SplitterBuilder")
+            .field("orientation", &self.orientation)
+            .field("sizes_bind", &self.sizes_bind)
+            .field("proportional", &self.proportional)
+            .field("snap_threshold", &self.snap_threshold)
+            .field("layout_overrides", &self.layout_overrides)
+            .field("style_accumulator", &self.style_accumulator)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Resizable panes.
 #[must_use]
 pub fn splitter(orientation: Orientation) -> SplitterBuilder {
@@ -220,6 +233,14 @@ impl From<SplitterBuilder> for NodeBuilder {
 pub struct PaneBuilder {
     splitter: SplitterBuilder,
     entry: PaneEntry,
+}
+
+impl core::fmt::Debug for PaneBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("PaneBuilder")
+            .field("splitter", &self.splitter)
+            .finish_non_exhaustive()
+    }
 }
 
 impl PaneBuilder {

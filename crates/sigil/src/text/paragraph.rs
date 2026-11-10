@@ -230,6 +230,15 @@ pub struct Paragraph {
     inner: std::sync::Arc<ParagraphInner>,
 }
 
+impl core::fmt::Debug for Paragraph {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Paragraph")
+            .field("font_size", &self.inner.font_size)
+            .field("line_height", &self.inner.line_height)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Paragraph {
     pub(crate) fn new(
         lines: Vec<LayoutLine>,

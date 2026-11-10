@@ -9,6 +9,7 @@ const MAX_ANIMATION_FRAME_SECS: f32 = 0.1;
 
 /// State of the current frame that `Host::frame` passes to the paint hook, with the frame's `FrameDelta` for `Host::emit_since`.
 #[non_exhaustive]
+#[derive(Debug)]
 pub struct FrameInfo {
     /// Whether dirty.
     pub dirty: bool,
@@ -21,6 +22,7 @@ pub struct FrameInfo {
 }
 
 /// Result of `Host::frame`: exit request, number of intervals fired, whether animations still run, and the layout result.
+#[derive(Debug)]
 pub struct FrameOutput {
     /// Whether exit.
     pub exit: bool,
@@ -50,6 +52,12 @@ pub struct FrameHooks<'a> {
     pub after_layout: Option<FrameLayoutHook<'a>>,
     /// The paint, if any.
     pub paint: Option<FramePaintHook<'a>>,
+}
+
+impl core::fmt::Debug for FrameHooks<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("FrameHooks").finish_non_exhaustive()
+    }
 }
 
 impl Host {

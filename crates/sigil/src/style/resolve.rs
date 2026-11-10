@@ -59,11 +59,9 @@ pub fn render_style_for(
 }
 }
 
-kittest_pub! {
 /// Resolves the text style of a node on top of a base text style.
 #[must_use]
-#[doc(hidden)]
-pub fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextStyle {
+pub(crate) fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextStyle {
     let mut style = base.clone();
     let Some(binding) = node.get_extension::<StyleBinding>() else {
         return style;
@@ -84,7 +82,6 @@ pub fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextS
         StyleEngine::overlay_text(overlay, &mut style);
     }
     style
-}
 }
 
 fn apply_atoms(

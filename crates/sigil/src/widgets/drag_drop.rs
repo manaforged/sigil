@@ -26,6 +26,15 @@ pub struct DragState<T: 'static> {
     armed: Armed<T>,
 }
 
+impl<T: 'static> core::fmt::Debug for DragState<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("DragState")
+            .field("position", &self.position)
+            .field("payload", &self.payload)
+            .finish_non_exhaustive()
+    }
+}
+
 struct DropRegistry<T: 'static> {
     targets: Vec<DropTarget<T>>,
     next_id: usize,

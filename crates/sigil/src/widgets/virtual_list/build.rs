@@ -263,3 +263,19 @@ fn shrink_bound(root: NodeBuilder, axes: BuildAxes, shrinks: bool) -> NodeBuilde
 }
 
 builder_impls!([T: 'static, R: RowRender<T>] VirtualListBuilder<T, R>: node(pub(crate)));
+
+impl<T: 'static, R: RowRender<T>> core::fmt::Debug for VirtualListBuilder<T, R> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("VirtualListBuilder")
+            .field("row_height", &self.row_height)
+            .field("viewport_height", &self.viewport_height)
+            .field("overscan", &self.overscan)
+            .field("scroll_y", &self.scroll_y)
+            .field("selection_mode", &self.selection_mode)
+            .field("keyboard_enabled", &self.keyboard_enabled)
+            .field("pin_bottom", &self.pin_bottom)
+            .field("layout_overrides", &self.layout_overrides)
+            .field("style_accumulator", &self.style_accumulator)
+            .finish_non_exhaustive()
+    }
+}

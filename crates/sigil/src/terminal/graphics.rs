@@ -10,9 +10,9 @@ mod detect;
 mod encode;
 mod sixel;
 
-pub(crate) use detect::detect_mux;
-pub use detect::{Mux, Protocol, detect};
-pub use encode::base64;
+pub use detect::{Mux, Protocol};
+pub(crate) use detect::{detect, detect_mux};
+pub(crate) use encode::base64;
 #[cfg(test)]
 pub(crate) use encode::blocks_window;
 #[cfg(any(test, feature = "kittest"))]

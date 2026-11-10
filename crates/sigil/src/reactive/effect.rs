@@ -16,6 +16,7 @@ pub fn effect<F: FnMut() + 'static>(f: F) {
 
 kittest_pub! {
     #[track_caller]
+    #[doc(hidden)]
     pub fn effect_named<F: FnMut() + 'static>(name: &'static str, f: F) {
         effect_at(name, Location::caller(), f);
     }

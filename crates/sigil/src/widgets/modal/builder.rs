@@ -28,6 +28,7 @@ static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(MODAL_TRANSITION)];
 
 /// Edge of a sheet.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum Side {
     /// The left side.
     Left,
@@ -50,6 +51,22 @@ pub struct ModalBuilder {
     close_button: CloseControl,
     side: Option<Side>,
     layout_overrides: LayoutOverrides,
+}
+
+impl core::fmt::Debug for ModalBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ModalBuilder")
+            .field("show", &self.show)
+            .field("title", &self.title)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("trap", &self.trap)
+            .field("escape_closes", &self.escape_closes)
+            .field("dismiss_on_backdrop", &self.dismiss_on_backdrop)
+            .field("close_button", &self.close_button)
+            .field("side", &self.side)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A modal dialog.

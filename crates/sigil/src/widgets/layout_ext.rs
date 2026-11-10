@@ -24,7 +24,7 @@ thread_local! {
     });
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct NodeHooks {
     id: Option<u64>,
 }
@@ -117,7 +117,7 @@ fn release(id: u64) {
     });
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct LayoutOverrides {
     edits: Vec<LayoutEdit>,
     hooks: NodeHooks,

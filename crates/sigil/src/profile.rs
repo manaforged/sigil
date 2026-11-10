@@ -23,10 +23,7 @@ pub(crate) use chrome::site_name;
 pub use key::{BackendKind, BackendStatus, Cause, Counter, FallbackCause, Phase};
 pub(crate) use key::{Hotspot, SiteKind};
 pub(crate) use site::site;
-kittest_pub! {
-    #[doc(hidden)]
-    pub use span::Span;
-}
+use span::Span;
 kittest_pub! {
     #[doc(hidden)]
     pub use store::Frame;

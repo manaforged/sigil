@@ -133,4 +133,5 @@ mod pack_profile_tests;
 
 #[cfg(doctest)]
 #[doc = include_str!("../../../docs/guide/signing.md")]
+#[derive(Debug)]
 pub struct SigningGuide;

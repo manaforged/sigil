@@ -93,6 +93,15 @@ pub struct DiffBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+impl core::fmt::Debug for DiffBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("DiffBuilder")
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A rendered unified diff of text or a parsed `Patch`.
 #[must_use]
 pub fn diff(patch: impl DiffSource + 'static) -> DiffBuilder {

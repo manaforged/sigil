@@ -72,6 +72,7 @@ impl<T: NumericKind> FieldParser for NumberParser<T> {
 }
 
 /// Builder of a numeric input.
+#[derive(Debug)]
 pub struct NumberFieldBuilder<T: NumericKind> {
     field: ParsedField<NumberParser<T>>,
 }
@@ -92,6 +93,7 @@ impl<T: NumericKind> NumberFieldBuilder<T> {
     }
 
     /// Returns the text field.
+    #[must_use]
     pub fn text_field(self) -> TextFieldBuilder {
         self.field.text_field()
     }

@@ -38,6 +38,7 @@ pub(crate) const fn ask_cell() -> Option<[u16; 2]> {
 
 /// How many colors a terminal shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ColorDepth {
     /// The truecolor color depth.
     Truecolor,
@@ -60,6 +61,7 @@ pub enum Backdrop {
 
 /// The keyboard protocol a terminal speaks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Keyboard {
     /// The legacy keyboard.
     Legacy,
@@ -78,6 +80,7 @@ pub enum ClipRoute {
 
 /// The characters the terminal host draws borders with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Borders {
     /// The rounded borders.
     Rounded,
@@ -98,6 +101,7 @@ pub enum Fills {
 
 /// How the terminal host shows the text cursor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Cursor {
     /// The bar cursor.
     Bar,

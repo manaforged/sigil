@@ -54,6 +54,17 @@ pub struct TableState<Row: 'static> {
     row_eq: Option<RowEq<Row>>,
 }
 
+impl<Row: 'static> core::fmt::Debug for TableState<Row> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TableState")
+            .field("sort", &self.sort)
+            .field("quick_filter", &self.quick_filter)
+            .field("selection", &self.selection)
+            .field("select_anchor", &self.select_anchor)
+            .finish_non_exhaustive()
+    }
+}
+
 impl<Row: 'static> Clone for TableState<Row> {
     fn clone(&self) -> Self {
         Self {

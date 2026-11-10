@@ -22,6 +22,18 @@ pub struct PanelBuilder {
     layout_overrides: LayoutOverrides,
 }
 
+impl core::fmt::Debug for PanelBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("PanelBuilder")
+            .field("title", &self.title)
+            .field("padding", &self.padding)
+            .field("elevation", &self.elevation)
+            .field("style_accumulator", &self.style_accumulator)
+            .field("layout_overrides", &self.layout_overrides)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A titled panel.
 #[must_use]
 pub fn panel() -> PanelBuilder {

@@ -30,6 +30,7 @@ impl Ink {
 
 /// The underline style of a cell.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Underline {
     /// The none underline.
     #[default]

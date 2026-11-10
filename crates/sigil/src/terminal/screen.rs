@@ -36,6 +36,19 @@ pub struct Screen {
     projection: Projection,
 }
 
+impl core::fmt::Debug for Screen {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Screen")
+            .field("fresh", &self.fresh)
+            .field("dirty", &self.dirty)
+            .field("exited", &self.exited)
+            .field("dt", &self.dt)
+            .field("caps", &self.caps)
+            .field("live_rows", &self.live_rows)
+            .finish_non_exhaustive()
+    }
+}
+
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 enum Projected {
     #[default]

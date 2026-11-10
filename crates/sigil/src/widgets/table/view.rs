@@ -52,6 +52,20 @@ pub struct TableBuilder<Row: 'static> {
     layout_overrides: LayoutOverrides,
 }
 
+impl<Row: 'static> core::fmt::Debug for TableBuilder<Row> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TableBuilder")
+            .field("state", &self.state)
+            .field("row_height", &self.row_height)
+            .field("header_height", &self.header_height)
+            .field("viewport_height", &self.viewport_height)
+            .field("select", &self.select)
+            .field("density", &self.density)
+            .field("striped", &self.striped)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A sortable, filterable table.
 #[must_use]
 pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {

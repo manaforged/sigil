@@ -65,6 +65,14 @@ pub struct SwitchBuilder<K: 'static> {
     keep_alive: bool,
 }
 
+impl<K: 'static> core::fmt::Debug for SwitchBuilder<K> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SwitchBuilder")
+            .field("keep_alive", &self.keep_alive)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Mounts the view of the case whose key equals `key`, or `otherwise` when no case matches.
 pub fn switch<K: Clone + PartialEq + 'static>(key: impl Reactive<K>) -> SwitchBuilder<K> {
     SwitchBuilder {

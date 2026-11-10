@@ -30,6 +30,16 @@ pub struct NodeBuilder {
     pub(super) wraps: Option<Box<dyn ErasedComponent>>,
 }
 
+impl core::fmt::Debug for NodeBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("NodeBuilder")
+            .field("a11y", &self.a11y)
+            .field("kind", &self.kind)
+            .field("style", &self.style)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A box that holds children.
 #[must_use]
 pub fn container() -> NodeBuilder {

@@ -38,6 +38,17 @@ pub struct LayoutEngine {
     republished: bool,
 }
 
+impl core::fmt::Debug for LayoutEngine {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("LayoutEngine")
+            .field("generation", &self.generation)
+            .field("cached_key", &self.cached_key)
+            .field("last_reactive_sig", &self.last_reactive_sig)
+            .field("republished", &self.republished)
+            .finish_non_exhaustive()
+    }
+}
+
 impl LayoutEngine {
     #[must_use]
     pub fn with_text_measure(measurer: Box<dyn TextMeasure>) -> Self {

@@ -33,6 +33,19 @@ pub struct ToggleBuilder {
     style: Style,
 }
 
+impl core::fmt::Debug for ToggleBuilder {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ToggleBuilder")
+            .field("on", &self.on)
+            .field("label", &self.label)
+            .field("accessible", &self.accessible)
+            .field("disabled", &self.disabled)
+            .field("layout_overrides", &self.layout_overrides)
+            .field("style", &self.style)
+            .finish_non_exhaustive()
+    }
+}
+
 builder_impls!([] ToggleBuilder: paint(style), widget, states(style), node);
 
 static EMPTY_BASE: &[StyleAtom] = &[];
@@ -175,7 +188,7 @@ fn toggle_layout(has_label: bool) -> LayoutStyle {
     let layout = control_row(LayoutStyle::flex_row())
         .height(height)
         .shrink(0.0)
-        .gap(Space::px(metrics.gap(ControlSize::Default)))
+        .gap(Space::px(metrics.control_gap(ControlSize::Default)))
         .align_items(AlignItems::Center);
     if has_label || CellForm::new(false, true).pick() {
         layout

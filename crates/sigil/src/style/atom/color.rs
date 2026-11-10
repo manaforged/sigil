@@ -46,6 +46,7 @@ impl std::str::FromStr for Rgba8 {
 
 /// A literal color, a theme token, or a custom token name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ColorAtom {
     /// The rgba8 color atom.
     Rgba8(Rgba8),

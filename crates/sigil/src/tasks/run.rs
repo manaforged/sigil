@@ -23,6 +23,16 @@ pub struct Task<T: 'static, E: 'static> {
     current: Signal<TaskRun>,
 }
 
+impl<T: 'static, E: 'static> core::fmt::Debug for Task<T, E> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Task")
+            .field("status", &self.status)
+            .field("start", &self.start)
+            .field("current", &self.current)
+            .finish()
+    }
+}
+
 impl<T: 'static, E: 'static> Clone for Task<T, E> {
     fn clone(&self) -> Self {
         *self

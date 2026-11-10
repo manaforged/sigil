@@ -280,8 +280,8 @@ fn toggle_and_checkbox_share_styled_interaction_path() {
     let checkbox_src = include_str!("../../src/widgets/checkbox.rs");
     let toggle_src = include_str!("../../src/widgets/toggle.rs");
 
-    assert!(interaction_src.contains("pub fn style_state"));
-    assert!(interaction_src.contains("pub fn release_pointer"));
+    assert!(interaction_src.contains("fn style_state"));
+    assert!(interaction_src.contains("fn release_pointer"));
     assert!(press_src.contains("interaction.release_pointer"));
     assert!(press_src.contains("interaction.activate_key"));
     assert!(shared_src.contains("binary_style_state"));

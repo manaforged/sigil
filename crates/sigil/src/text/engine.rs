@@ -41,6 +41,15 @@ pub struct OwnedTextEngine {
     face_tables: RefCell<AHashMap<FaceKey, FaceTable>>,
 }
 
+impl core::fmt::Debug for OwnedTextEngine {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("OwnedTextEngine")
+            .field("font_gen", &self.font_gen)
+            .field("font_epoch", &self.font_epoch)
+            .finish_non_exhaustive()
+    }
+}
+
 type FaceKey = (u32, SmallVec<[(u64, u16, u32); 8]>);
 
 const FACE_TABLES_CAP: usize = 1_024;

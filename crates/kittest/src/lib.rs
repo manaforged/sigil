@@ -77,8 +77,10 @@ pub fn real_text_measure() -> Box<dyn TextMeasure> {
 
 #[cfg(doctest)]
 #[doc = include_str!("../../../docs/guide/automation.md")]
+#[derive(Debug)]
 pub struct AutomationGuide;
 
 #[cfg(doctest)]
 #[doc = include_str!("../../../docs/guide/testing.md")]
+#[derive(Debug)]
 pub struct TestingGuide;
