@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::sync::OnceLock;
 
 use smallvec::SmallVec;
 
@@ -320,7 +319,6 @@ const fn color_fallback(kind: ColorAtomKind, color: Color, inherited_text: Color
 }
 
 pub(crate) fn prepare(cx: &Cx, id: NodeId) {
-    static DEFAULT_THEME: OnceLock<Theme> = OnceLock::new();
     let Some(node) = cx.get(id) else {
         return;
     };
@@ -332,7 +330,7 @@ pub(crate) fn prepare(cx: &Cx, id: NodeId) {
     }
     let theme = std::iter::successors(Some(id), |&at| cx.parent(at))
         .find_map(|ancestor| cx.get(ancestor)?.get_extension::<Theme>())
-        .unwrap_or_else(|| DEFAULT_THEME.get_or_init(Theme::default));
+        .unwrap_or_else(crate::style::theme::fallback_theme);
     let tone = node
         .get_extension::<ToneContext>()
         .copied()

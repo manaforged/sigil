@@ -79,8 +79,8 @@ impl Host {
     fn pixels() -> Self {
         #[cfg(feature = "scene")]
         let (geometry, measure): (Rc<dyn TextMeasure>, Box<dyn TextMeasure>) = (
-            Rc::new(crate::app::DefaultTextMeasure::new()),
-            Box::new(crate::app::DefaultTextMeasure::new()),
+            Rc::new(crate::layout::text_adapter::TextEngineMeasure::default()),
+            Box::new(crate::layout::text_adapter::TextEngineMeasure::default()),
         );
         #[cfg(not(feature = "scene"))]
         let (geometry, measure): (Rc<dyn TextMeasure>, Box<dyn TextMeasure>) = (

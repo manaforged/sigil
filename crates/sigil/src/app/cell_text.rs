@@ -350,7 +350,7 @@ fn cells_to_px(cells: usize, px: f32) -> f32 {
     cells * px
 }
 
-pub(super) fn floor_boundary(text: &str, byte: usize) -> usize {
+pub(crate) fn floor_boundary(text: &str, byte: usize) -> usize {
     let mut byte = byte.min(text.len());
     while byte > 0 && !text.is_char_boundary(byte) {
         byte -= 1;

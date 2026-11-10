@@ -31,7 +31,7 @@ impl ActiveTheme {
     pub(crate) fn with<R>(self, read: impl FnOnce(&Theme) -> R) -> R {
         match self.source {
             Some(theme) => theme.with(read),
-            None => read(fallback()),
+            None => read(fallback_theme()),
         }
     }
 
@@ -56,7 +56,7 @@ impl ActiveTheme {
     }
 }
 
-fn fallback() -> &'static Theme {
+pub(crate) fn fallback_theme<'a>() -> &'a Theme {
     static DEFAULT: OnceLock<Theme> = OnceLock::new();
     DEFAULT.get_or_init(Theme::default)
 }

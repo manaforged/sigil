@@ -1,12 +1,14 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use crate::geometry::{Dim, LogicalSize, Size};
+use crate::app::floor_boundary;
+use crate::geometry::{Dim, LogicalSize, Point, Rect, Size};
+use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::TextContent;
 use crate::style::TextStyle;
 use crate::text::OwnedTextEngine;
 
-use crate::layout::TextMeasure;
+use crate::layout::{CaretGeometry, TextMeasure};
 
 #[derive(Debug)]
 pub struct TextEngineMeasure {
@@ -17,6 +19,12 @@ impl TextEngineMeasure {
     #[must_use]
     pub const fn new(engine: Rc<OwnedTextEngine>) -> Self {
         Self { engine }
+    }
+}
+
+impl Default for TextEngineMeasure {
+    fn default() -> Self {
+        Self::new(OwnedTextEngine::thread())
     }
 }
 
@@ -50,6 +58,55 @@ impl TextMeasure for TextEngineMeasure {
 
     fn font_generation(&self) -> u64 {
         self.engine.font_generation()
+    }
+
+    fn hit(&self, text: &str, style: &TextStyle, width: Option<f32>, point: Point) -> HitPosition {
+        self.engine
+            .layout_paragraph_styled(text, width, style)
+            .map_or(
+                HitPosition {
+                    byte_index: 0,
+                    affinity: TextAffinity::Downstream,
+                },
+                |para| para.hit_test(point.x, point.y),
+            )
+    }
+
+    fn caret(
+        &self,
+        text: &str,
+        style: &TextStyle,
+        width: Option<f32>,
+        mut position: HitPosition,
+    ) -> CaretGeometry {
+        position.byte_index = floor_boundary(text, position.byte_index);
+        self.engine
+            .layout_paragraph_styled(text, width, style)
+            .map_or_else(
+                |_| CaretGeometry::default(),
+                |para| {
+                    let rect = para.caret_rect(position, 1.0);
+                    CaretGeometry {
+                        x: rect.origin.x,
+                        top: rect.origin.y,
+                        height: rect.height,
+                    }
+                },
+            )
+    }
+
+    fn selection_rects(
+        &self,
+        text: &str,
+        style: &TextStyle,
+        width: Option<f32>,
+        (mut anchor, mut focus): (HitPosition, HitPosition),
+    ) -> Vec<Rect> {
+        anchor.byte_index = floor_boundary(text, anchor.byte_index);
+        focus.byte_index = floor_boundary(text, focus.byte_index);
+        self.engine
+            .layout_paragraph_styled(text, width, style)
+            .map_or_else(|_| Vec::new(), |para| para.selection_rects(anchor, focus))
     }
 }
 

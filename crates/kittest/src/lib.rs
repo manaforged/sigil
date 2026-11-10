@@ -72,7 +72,7 @@ pub fn stub_text_measure() -> Box<dyn TextMeasure> {
 
 #[must_use]
 pub fn real_text_measure() -> Box<dyn TextMeasure> {
-    Box::new(sigil::app::DefaultTextMeasure::new())
+    Box::new(sigil::layout::TextEngineMeasure::default())
 }
 
 #[cfg(doctest)]

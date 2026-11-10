@@ -7,7 +7,7 @@
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
-use sigil::app::DefaultTextMeasure;
+use sigil::layout::TextEngineMeasure;
 
 use sigil::prelude::*;
 

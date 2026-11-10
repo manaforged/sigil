@@ -16,7 +16,7 @@ fn hint_overlay_default() {
             .child(overlay);
         on_black(surface, 232.0, 96.0)
     })
-    .measure(|| Box::new(DefaultTextMeasure::new()))
+    .measure(|| Box::new(TextEngineMeasure::default()))
     .mode(InteractionMode::Default)
     .size([232, 96])
     .hit((1.0, 1.0))
@@ -93,7 +93,7 @@ fn pattern_kv_grid() {
             ]));
         on_black(grid, 292.0, 108.0)
     })
-    .measure(|| Box::new(DefaultTextMeasure::new()))
+    .measure(|| Box::new(TextEngineMeasure::default()))
     .mode(InteractionMode::Default)
     .size([292, 108])
     .hit((146.0, 54.0))

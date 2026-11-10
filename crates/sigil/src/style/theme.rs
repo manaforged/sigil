@@ -22,6 +22,7 @@ mod console;
 mod mix;
 mod table;
 
+pub(crate) use ambient::fallback_theme;
 pub(crate) use table::TokenTable;
 
 /// One theme token value.

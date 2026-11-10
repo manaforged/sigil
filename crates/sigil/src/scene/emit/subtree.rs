@@ -33,7 +33,7 @@ struct SpanKey {
 impl SpanKey {
     fn of(inherited: &Inherited<'_>, clip: Option<Rect>) -> Self {
         Self {
-            theme: inherited.theme_stamp ^ emit_cache::theme_epoch().rotate_left(37),
+            theme: inherited.theme_stamp ^ emit_cache::theme_stamp(),
             text_color: inherited.text_color,
             text_style: Rc::clone(&inherited.text_style),
             clip: clip.map(rect_bits),
@@ -42,7 +42,7 @@ impl SpanKey {
     }
 
     fn matches(&self, inherited: &Inherited<'_>, clip: Option<Rect>) -> bool {
-        self.theme == inherited.theme_stamp ^ emit_cache::theme_epoch().rotate_left(37)
+        self.theme == inherited.theme_stamp ^ emit_cache::theme_stamp()
             && self.text_color == inherited.text_color
             && self.clip == clip.map(rect_bits)
             && self.fill == fill_key(inherited)

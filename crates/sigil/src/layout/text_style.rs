@@ -1,7 +1,5 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use std::sync::OnceLock;
-
 use crate::kernel::{Cx, Node, NodeId};
 use crate::style::locale::Direction;
 use crate::style::{StyleBinding, StyleEngine, TextStyle, Theme};
@@ -112,7 +110,6 @@ pub(crate) fn inherited_text_style(cx: &Cx, id: NodeId) -> TextStyle {
 }
 
 pub(crate) fn theme_for(node: &Node) -> &Theme {
-    static DEFAULT_THEME: OnceLock<Theme> = OnceLock::new();
     node.get_extension::<Theme>()
-        .unwrap_or_else(|| DEFAULT_THEME.get_or_init(Theme::default))
+        .unwrap_or_else(crate::style::theme::fallback_theme)
 }

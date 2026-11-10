@@ -114,7 +114,7 @@ fn emoji_text_line() {
             .child(text("OK \u{2705} go \u{1F680}").text_color(Token::OnSurface));
         on_black(panel, 312.0, 72.0)
     })
-    .measure(|| Box::new(DefaultTextMeasure::new()))
+    .measure(|| Box::new(TextEngineMeasure::default()))
     .mode(InteractionMode::Default)
     .size([312, 72])
     .hit((1.0, 1.0))

@@ -103,7 +103,7 @@ fn run<'t>(
 ) -> CommandScene {
     let clip = clip.map(|rect| rect.expand(VIEW_OVERSCAN));
     let mut scene = SceneBuilder::new();
-    let theme = default_inherited_theme();
+    let theme = crate::style::theme::fallback_theme();
     let inherited = Inherited {
         theme,
         theme_stamp: std::ptr::from_ref(theme) as u64,
@@ -325,12 +325,6 @@ fn has_laid_child(cx: &Cx, node: &Node) -> bool {
             child.get_extension::<LayoutResult>().is_some() || has_laid_child(cx, child)
         })
     })
-}
-
-fn default_inherited_theme<'theme>() -> &'theme Theme {
-    use std::sync::OnceLock;
-    static DEFAULT: OnceLock<Theme> = OnceLock::new();
-    DEFAULT.get_or_init(Theme::default)
 }
 
 fn is_display_none(node: &Node) -> bool {
