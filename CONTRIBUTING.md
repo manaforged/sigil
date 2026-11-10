@@ -23,6 +23,8 @@ Run the same gate that CI runs before you push:
 scripts/gate.sh
 ```
 
+CI runs each gate job on its own runner. `scripts/gate.sh --list` names the jobs, and `scripts/gate.sh test` runs one.
+
 The gate needs `node`, `cargo-hack`, `cargo-deny`, `cargo-fuzz`, `mdbook`, and `wasm-bindgen-test-runner`. It names the install command for a missing tool. It installs the MSRV and nightly toolchains through `rustup`.
 
 `node tools/profile.mjs report TRACE` summarizes a `SIGIL_PROFILE` trace, and `crates/sigil/perf_budgets.toml` holds the budgets the perf gate test reads.
