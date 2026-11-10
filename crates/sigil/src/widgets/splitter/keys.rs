@@ -6,7 +6,7 @@ use crate::style::theme::ambient::theme_label;
 use crate::widgets::interaction::{ValueStep, step_keys};
 
 use super::drag::SplitterState;
-use crate::widgets::orientation::Orientation;
+use crate::layout::Orientation;
 
 pub(in crate::widgets) const KEY_STEP: f32 = 16.0;
 

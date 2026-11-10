@@ -5,6 +5,7 @@ use crate::kernel::Action;
 
 use crate::events::PointerEvent;
 use crate::kernel::{NodeBuilder, Role, TextContent, container};
+use crate::layout::Orientation;
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle, Length, cols, rows};
 use crate::reactive::{Reactive, Signal};
@@ -12,7 +13,6 @@ use crate::style::Style;
 use crate::style::strings::StringKey;
 use crate::widgets::Layout;
 use crate::widgets::interaction::InteractionState;
-use crate::widgets::orientation::Orientation;
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::shared::{accessible_name_or, caller_style, control, disabled_now};

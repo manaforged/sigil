@@ -11,9 +11,9 @@ use crate::widgets::Layout;
 
 use super::super::drag::axis_drag;
 use super::super::layout_ext::LayoutOverrides;
-use super::super::orientation::Orientation;
 use super::super::shared::caller_style;
 use super::super::splitter::{HANDLE_PX, KEY_STEP, cached_width_atom, resize_keys, to_i16};
+use crate::layout::Orientation;
 
 const SIDEBAR_DEFAULT: f32 = space(55);
 

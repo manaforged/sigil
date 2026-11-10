@@ -203,7 +203,6 @@ mod mermaid;
 mod modal;
 mod notice;
 mod number_field;
-mod orientation;
 pub(crate) mod overlay;
 mod panel;
 pub(crate) mod patterns;
@@ -243,7 +242,6 @@ mod virtual_list;
 mod widget;
 
 pub use button::{ButtonBuilder, button, icon_button};
-pub(crate) use canvas::CanvasPaint;
 pub use canvas::canvas;
 pub use chart::{ChartBuilder, chart};
 pub(crate) use checkbox::CheckboxBuilder;
@@ -251,8 +249,8 @@ pub use checkbox::checkbox;
 pub use chip::chip;
 pub(crate) use code_edit::CodeEditBuilder;
 pub use code_edit::{Change, Diagnostic, Severity, code_edit};
+pub(crate) use color_field::ColorFieldBuilder;
 pub use color_field::color_field;
-pub(crate) use color_field::{ColorFieldBuilder, parse_hex as parse_color_hex};
 #[cfg(all(feature = "scene", feature = "kittest"))]
 #[doc(hidden)]
 pub use svg_picture::{SvgMode, svg_scene};
@@ -263,6 +261,7 @@ kittest_pub! {
     #[doc(hidden)]
     pub use command_menu::CommandMenuBuilder;
 }
+pub use crate::layout::Orientation;
 pub use composition::{kv_row, status_bar};
 pub(crate) use date_field::DateFieldBuilder;
 pub use date_field::{Date, date_field};
@@ -296,7 +295,6 @@ pub(crate) use mermaid::figure as mermaid_figure;
 pub use mermaid::mermaid;
 pub use modal::{ModalBuilder, Side, modal, sheet};
 pub use number_field::number_field;
-pub use orientation::Orientation;
 pub use overlay::heatmap;
 pub(crate) use panel::PanelBuilder;
 pub use panel::panel;
@@ -353,3 +351,34 @@ kittest_pub! {
     pub use widget::Layout;
 }
 pub(crate) use widget::{Edit, LayoutEdit, Sealed, StateTarget};
+
+crate::kernel::into_node_builder!(
+    ButtonBuilder,
+    ChartBuilder,
+    CheckboxBuilder,
+    CodeEditBuilder,
+    ColorFieldBuilder,
+    CommandMenuBuilder,
+    DateFieldBuilder,
+    DiffBuilder,
+    DotBuilder,
+    DropdownBuilder,
+    GaugeBuilder,
+    IconBuilder,
+    MarkdownEditBuilder,
+    MenuBarBuilder,
+    MenuBuilder,
+    ModalBuilder,
+    PanelBuilder,
+    PathNode,
+    ProgressBuilder,
+    RadioGroupBuilder,
+    SegmentedBuilder,
+    SliderBuilder,
+    SparklineBuilder,
+    TabsBuilder,
+    TextEditBuilder,
+    TextFieldBuilder,
+    ToggleBuilder,
+    TooltipBuilder,
+);

@@ -1,6 +1,7 @@
 #[cfg(any(test, feature = "kittest", feature = "desktop"))]
 pub(crate) mod backdrop;
 pub(crate) mod builder;
+pub(crate) mod canvas;
 pub(crate) mod command;
 pub(crate) mod corner_radii;
 #[cfg(any(

@@ -3,8 +3,8 @@ use std::cell::{Cell, RefCell};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 
+use crate::layout::Orientation;
 use crate::widgets::drag::axis_drag;
-use crate::widgets::orientation::Orientation;
 
 #[derive(Clone, Copy)]
 pub(super) struct SplitterState {

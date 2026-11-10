@@ -1,7 +1,7 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder};
+use crate::layout::Orientation;
 use crate::layout::{LayoutStyle, Length};
 use crate::style::{PaintTarget, StyleSlot};
-use crate::widgets::orientation::Orientation;
 use crate::widgets::{Edit, LayoutEdit, Sealed, Widget};
 
 use super::builder::{PaneEntry, SplitterBuilder};

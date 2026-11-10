@@ -13,7 +13,6 @@ use crate::widgets::{Layout, Widget};
 
 use super::super::drag::axis_drag;
 use super::super::interaction::InteractionState;
-use super::super::orientation::Orientation;
 use super::super::patterns::row_states;
 use super::chrome::{ContextKind, TableChrome};
 use super::columns::{ColumnAlign, TableColumn};
@@ -21,6 +20,7 @@ use super::hscroll::HScroll;
 use super::select;
 use super::sort_mark::sort_mark;
 use super::state::TableState;
+use crate::layout::Orientation;
 
 const RESIZE_HANDLE: f32 = space(2);
 const RING_INSET: f32 = -space(1);

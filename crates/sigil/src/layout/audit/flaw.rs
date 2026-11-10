@@ -2,7 +2,7 @@ use core::fmt;
 
 use crate::geometry::Rect;
 use crate::kernel::NodeId;
-use crate::widgets::Orientation;
+use crate::layout::Orientation;
 
 /// The rule that an `Issue` breaks.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

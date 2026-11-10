@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use crate::kernel::NodeBuilder;
+use crate::layout::Orientation;
 use crate::widgets::interaction::{DragEnd, axis_of, pointer_drag};
-use crate::widgets::orientation::Orientation;
 
 /// Drag along one axis.
 pub fn axis_drag<S>(
