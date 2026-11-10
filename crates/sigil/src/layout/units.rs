@@ -105,19 +105,22 @@ fn row() -> f32 {
     })
 }
 
+fn col() -> f32 {
+    cell().unwrap_or_else(|| {
+        let style = TextStyle::default();
+        advance(&style).unwrap_or(style.font_size * 0.5)
+    })
+}
+
 #[allow(
     clippy::cast_precision_loss,
     reason = "the sample length is a small constant"
 )]
-fn col() -> f32 {
-    cell().unwrap_or_else(|| {
-        let style = TextStyle::default();
-        let end = downstream(ADVANCE_SAMPLE.len());
-        with_text_geometry(|geometry| geometry.caret(ADVANCE_SAMPLE, &style, None, end).x)
-            .map(|width| width / ADVANCE_SAMPLE.len() as f32)
-            .filter(|advance| *advance > 0.0)
-            .unwrap_or(style.font_size * 0.5)
-    })
+fn advance(style: &TextStyle) -> Option<f32> {
+    let end = downstream(ADVANCE_SAMPLE.len());
+    with_text_geometry(|geometry| geometry.caret(ADVANCE_SAMPLE, style, None, end).x)
+        .map(|width| width / ADVANCE_SAMPLE.len() as f32)
+        .filter(|advance| *advance > 0.0)
 }
 
 #[cfg(feature = "pty")]
@@ -126,12 +129,7 @@ pub(crate) fn mono_cell() -> (f32, f32) {
         font_family: "mono".to_string(),
         ..TextStyle::default()
     };
-    let end = downstream(ADVANCE_SAMPLE.len());
-    let width = with_text_geometry(|geometry| geometry.caret(ADVANCE_SAMPLE, &style, None, end).x)
-        .map(|width| width / ADVANCE_SAMPLE.len() as f32)
-        .filter(|advance| *advance > 0.0)
-        .unwrap_or_else(col);
-    (width, row())
+    (advance(&style).unwrap_or_else(col), row())
 }
 
 const fn downstream(byte_index: usize) -> HitPosition {

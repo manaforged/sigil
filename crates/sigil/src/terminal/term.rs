@@ -24,7 +24,9 @@ use crate::terminal::signals;
 mod above;
 mod calibrate;
 mod frame;
+mod hook;
 pub(crate) use frame::paint_frame;
+pub(crate) use hook::HookGuard;
 
 pub use above::print_above;
 pub use calibrate::calibrate;
@@ -67,7 +69,7 @@ impl Term {
     pub(crate) fn enter(config: &crate::AppConfig) -> io::Result<Self> {
         let inline = config.inline;
         MODIFY_KEYS_WANTED.store(
-            config.other_keys == crate::app::config::OtherKeys::Modified,
+            config.terminal.other_keys == crate::app::config::OtherKeys::Modified,
             Ordering::Relaxed,
         );
         TITLE.with(|slot| *slot.borrow_mut() = Some(config.title.clone()));
@@ -366,36 +368,6 @@ struct EnterGuard;
 impl Drop for EnterGuard {
     fn drop(&mut self) {
         restore();
-    }
-}
-
-type PanicHook = Box<dyn Fn(&std::panic::PanicHookInfo<'_>) + Send + Sync + 'static>;
-
-pub(crate) struct HookGuard {
-    previous: Option<PanicHook>,
-}
-
-impl HookGuard {
-    pub(crate) fn install() -> Self {
-        let previous: std::sync::Arc<PanicHook> = std::sync::Arc::new(std::panic::take_hook());
-        let chained = std::sync::Arc::clone(&previous);
-        std::panic::set_hook(Box::new(move |info| {
-            if owns_terminal() {
-                restore();
-            }
-            chained(info);
-        }));
-        Self {
-            previous: Some(Box::new(move |info| previous(info))),
-        }
-    }
-}
-
-impl Drop for HookGuard {
-    fn drop(&mut self) {
-        if let Some(previous) = self.previous.take() {
-            std::panic::set_hook(previous);
-        }
     }
 }
 

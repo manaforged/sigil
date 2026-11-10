@@ -5,6 +5,10 @@ use crate::layout::{AlignItems, JustifyContent};
 
 use super::glyph;
 
+mod names;
+
+use names::{ALIGN, AXES, FIELD_KINDS, FITS, IMAGE_SIZES, JUSTIFY, LOOKS, TEXT_STYLES, pick};
+
 const MAX_CHILDREN: usize = 256;
 const MAX_OPTIONS: usize = 64;
 const MAX_TABS: usize = 16;
@@ -158,68 +162,6 @@ pub(super) enum Kind {
 pub(super) struct Component {
     pub(super) kind: Kind,
     pub(super) weight: Option<f32>,
-}
-
-const TEXT_STYLES: &[(&str, TextStyle)] = &[
-    ("h1", TextStyle::H1),
-    ("h2", TextStyle::H2),
-    ("h3", TextStyle::H3),
-    ("h4", TextStyle::H4),
-    ("h5", TextStyle::H5),
-    ("body", TextStyle::Body),
-    ("caption", TextStyle::Caption),
-];
-const IMAGE_SIZES: &[(&str, ImageSize)] = &[
-    ("icon", ImageSize::Icon),
-    ("avatar", ImageSize::Avatar),
-    ("smallFeature", ImageSize::Small),
-    ("mediumFeature", ImageSize::Medium),
-    ("largeFeature", ImageSize::Large),
-    ("header", ImageSize::Header),
-];
-const FITS: &[(&str, ObjectFit)] = &[
-    ("contain", ObjectFit::Contain),
-    ("scaleDown", ObjectFit::Contain),
-    ("none", ObjectFit::Contain),
-    ("cover", ObjectFit::Cover),
-    ("fill", ObjectFit::Fill),
-];
-const LOOKS: &[(&str, ButtonLook)] = &[
-    ("default", ButtonLook::Default),
-    ("primary", ButtonLook::Primary),
-    ("borderless", ButtonLook::Borderless),
-];
-const FIELD_KINDS: &[(&str, FieldKind)] = &[
-    ("shortText", FieldKind::Short),
-    ("longText", FieldKind::Long),
-    ("number", FieldKind::Number),
-    ("obscured", FieldKind::Obscured),
-];
-const AXES: &[(&str, Axis)] = &[
-    ("horizontal", Axis::Horizontal),
-    ("vertical", Axis::Vertical),
-];
-const JUSTIFY: &[(&str, JustifyContent)] = &[
-    ("start", JustifyContent::Start),
-    ("center", JustifyContent::Center),
-    ("end", JustifyContent::End),
-    ("spaceBetween", JustifyContent::SpaceBetween),
-    ("spaceAround", JustifyContent::SpaceAround),
-    ("spaceEvenly", JustifyContent::SpaceEvenly),
-    ("stretch", JustifyContent::Stretch),
-];
-const ALIGN: &[(&str, AlignItems)] = &[
-    ("start", AlignItems::Start),
-    ("center", AlignItems::Center),
-    ("end", AlignItems::End),
-    ("stretch", AlignItems::Stretch),
-];
-
-fn pick<T: Copy>(value: Option<&Value>, table: &[(&str, T)], default: T) -> T {
-    value
-        .and_then(Value::as_str)
-        .and_then(|name| table.iter().find(|(known, _)| *known == name))
-        .map_or(default, |(_, picked)| *picked)
 }
 
 impl Dynamic {

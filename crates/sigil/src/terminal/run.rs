@@ -1,7 +1,6 @@
 use crate::reactive::Owner;
 use std::time::{Duration, Instant};
 
-use crate::app::PanicPolicy;
 use crate::events::Event;
 use crate::kernel::IntoNode;
 use crate::reactive::Runtime;
@@ -17,7 +16,12 @@ use crate::terminal::signals::SignalGuard;
 pub use crate::terminal::term::calibrate;
 #[cfg(test)]
 use crate::terminal::term::paint_frame;
-use crate::terminal::term::{HookGuard, Term, restore};
+use crate::terminal::term::{HookGuard, Term};
+
+mod turn;
+
+use turn::Turn;
+pub(super) use turn::{isolated, recover};
 
 pub(crate) const CELL: f32 = crate::Host::CELL;
 
@@ -39,7 +43,7 @@ pub struct Hooks<'a> {
 }
 
 pub(crate) fn run<N: IntoNode>(config: &AppConfig, tree: impl Fn() -> N + 'static) -> AppResult {
-    let hooks = &mut config.terminal_hooks.take();
+    let hooks = &mut config.terminal.hooks.take();
     #[cfg(feature = "inspect")]
     let inspect = crate::app::inspect::install();
     #[cfg(feature = "inspect")]
@@ -279,7 +283,7 @@ fn remeasure(term: &mut Term, screen: &mut Screen) {
 
 fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Caps) -> Screen {
     let mut screen = Screen::with_caps(cols, rows, caps);
-    screen.set_access(config.terminal_access);
+    screen.set_access(config.terminal.access);
     screen.speak_above(config.inline);
     screen
 }
@@ -321,97 +325,12 @@ pub(super) fn turn_wait(
     (wait, true)
 }
 
-struct Turn<'a> {
-    last: &'a mut Instant,
-    screen: &'a mut Screen,
-    host: &'a mut Host,
-    term: &'a mut Term,
-}
-
-impl<'a> Turn<'a> {
-    const fn new(
-        last: &'a mut Instant,
-        screen: &'a mut Screen,
-        host: &'a mut Host,
-        term: &'a mut Term,
-    ) -> Self {
-        Self {
-            last,
-            screen,
-            host,
-            term,
-        }
-    }
-
-    fn take(
-        &mut self,
-        config: &AppConfig,
-        incoming: Vec<Event>,
-        (cols, rows): (u16, u16),
-        hooks: &mut Hooks<'_>,
-    ) -> AppResult<bool> {
-        let size = match hooks.region_rows.as_mut() {
-            Some(hook) if config.inline => (cols, hook().clamp(1, rows.max(1))),
-            _ => (cols, rows),
-        };
-        self.screen.set_dt(tick(self.last));
-        profile::begin_frame(profile::BackendStatus::TERMINAL);
-        let (screen, host) = (&mut *self.screen, &mut *self.host);
-        let frame = isolated(config.panic_policy, || {
-            screen.frame(host, incoming, size).map(|_| ())
-        })?;
-        if frame.is_none() {
-            recover(self.term)?;
-        }
-        if let Some(after) = hooks.after_frame.as_mut() {
-            after(self.host, self.screen);
-        }
-        for message in self.screen.take_above() {
-            if let Err(err) = crate::terminal::print_above(&message) {
-                tracing::warn!(target: "sigil::terminal", error = %err, "announcement write failed");
-            }
-        }
-        {
-            let _phase = profile::span(crate::profile::Phase::TuiPresent);
-            self.term.paint(self.screen).map_err(Error::io)?;
-        }
-        profile::tick_frame();
-        Ok(self.screen.exited())
-    }
-}
-
-/// Runs one frame under `policy`; `None` means the frame panicked and was isolated.
-pub(super) fn isolated<T>(
-    policy: PanicPolicy,
-    frame: impl FnOnce() -> Result<T, Error>,
-) -> Result<Option<T>, Error> {
-    match policy {
-        PanicPolicy::Abort => frame().map(Some),
-        PanicPolicy::Isolate => std::panic::catch_unwind(std::panic::AssertUnwindSafe(frame))
-            .map_or_else(
-                |payload| {
-                    let detail = crate::tasks::panic_message(&*payload);
-                    eprintln!("sigil-terminal: frame isolated after panic: {detail}");
-                    Runtime::recover_from_panic();
-                    Ok(None)
-                },
-                |result| result.map(Some),
-            ),
-    }
-}
-
-/// Re-applies the terminal modes the panic hook restored during an isolated frame.
-pub(super) fn recover(term: &mut Term) -> AppResult<()> {
-    restore();
-    term.reenter().map_err(Error::io)
-}
-
 #[cfg(test)]
 #[path = "run_tests.rs"]
 mod tests;
 
 fn enter(config: &AppConfig) -> AppResult<Term> {
-    if let Some(tracking) = config.mouse_tracking {
+    if let Some(tracking) = config.terminal.mouse_tracking {
         crate::terminal::set_mouse_tracking(tracking).map_err(Error::io)?;
     }
     let term = Term::enter(config).map_err(Error::io)?;

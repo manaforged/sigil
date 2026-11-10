@@ -7,6 +7,12 @@ use crate::widgets::vector::{PathNode, path};
 use super::flow::{Graph, GridRect, NodeShape, arrange};
 use super::flow_parse::parse;
 
+mod lanes;
+mod shapes;
+
+use lanes::route;
+use shapes::{dots, shapes};
+
 pub(super) const CELL_W: f32 = 7.0;
 pub(super) const CELL_H: f32 = space(4);
 const CORNER: f32 = 8.0;
@@ -180,44 +186,6 @@ pub(super) fn layer(node: PathNode, size: (f32, f32)) -> PathNode {
     )
 }
 
-fn shapes(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathNode {
-    let mut node = canvas(size);
-    for (entry, area) in graph.nodes.iter().zip(areas) {
-        if !entry.dummy && entry.shape != NodeShape::Terminal {
-            node = shape(node, entry.shape, *area);
-        }
-    }
-    node.fill(Token::Surface)
-        .stroke(Token::Border, f32::from(BORDER_WIDTH))
-}
-
-fn dots(graph: &Graph, areas: &[Area], size: (f32, f32)) -> PathNode {
-    let mut node = canvas(size);
-    for (entry, area) in graph.nodes.iter().zip(areas) {
-        if entry.shape == NodeShape::Terminal {
-            let end = entry.label.first().is_some_and(|glyph| glyph == "◉");
-            node = ellipse(node, area.cx(), area.cy(), DOT, DOT);
-            if end {
-                node = ellipse(node, area.cx(), area.cy(), DOT * 0.55, DOT * 0.55);
-            }
-        }
-    }
-    node.fill(Token::OnSurface)
-}
-
-fn shape(node: PathNode, shape: NodeShape, area: Area) -> PathNode {
-    match shape {
-        NodeShape::Round => rounded(node, area, CORNER * 1.5),
-        NodeShape::Stadium | NodeShape::Terminal => rounded(node, area, area.h / 2.0),
-        NodeShape::Circle => ellipse(node, area.cx(), area.cy(), area.w / 2.0, area.h / 2.0),
-        NodeShape::Diamond | NodeShape::Hexagon => hexagon(node, area),
-        NodeShape::Cylinder => cylinder(node, area),
-        NodeShape::Subroutine => subroutine(node, area),
-        NodeShape::Flag => flag(node, area),
-        NodeShape::Box => rounded(node, area, CORNER / 2.0),
-    }
-}
-
 pub(super) fn rounded(node: PathNode, area: Area, radius: f32) -> PathNode {
     let r = radius.min(area.w / 2.0).min(area.h / 2.0);
     let (x0, y0, x1, y1) = (area.x, area.y, area.right(), area.bottom());
@@ -230,69 +198,6 @@ pub(super) fn rounded(node: PathNode, area: Area, radius: f32) -> PathNode {
         .quad_to(x0, y1, x0, y1 - r)
         .line_to(x0, y0 + r)
         .quad_to(x0, y0, x0 + r, y0)
-        .close()
-}
-
-fn ellipse(node: PathNode, cx: f32, cy: f32, rx: f32, ry: f32) -> PathNode {
-    let (kx, ky) = (rx * CIRCLE_K, ry * CIRCLE_K);
-    node.move_to(cx + rx, cy)
-        .cubic_to(cx + rx, cy + ky, cx + kx, cy + ry, cx, cy + ry)
-        .cubic_to(cx - kx, cy + ry, cx - rx, cy + ky, cx - rx, cy)
-        .cubic_to(cx - rx, cy - ky, cx - kx, cy - ry, cx, cy - ry)
-        .cubic_to(cx + kx, cy - ry, cx + rx, cy - ky, cx + rx, cy)
-        .close()
-}
-
-fn hexagon(node: PathNode, area: Area) -> PathNode {
-    let inset = (area.h / 2.0).min(area.w / 4.0);
-    node.move_to(area.x + inset, area.y)
-        .line_to(area.right() - inset, area.y)
-        .line_to(area.right(), area.cy())
-        .line_to(area.right() - inset, area.bottom())
-        .line_to(area.x + inset, area.bottom())
-        .line_to(area.x, area.cy())
-        .close()
-}
-
-fn cylinder(node: PathNode, area: Area) -> PathNode {
-    let lip = (area.h / 6.0).min(6.0);
-    let (x0, x1, top, bottom) = (area.x, area.right(), area.y + lip, area.bottom() - lip);
-    let k = CIRCLE_K * area.w / 2.0;
-    let belly = 2.0f32.mul_add(lip, top);
-    node.move_to(x0, top)
-        .cubic_to(x0, top - lip, area.cx() - k, area.y, area.cx(), area.y)
-        .cubic_to(area.cx() + k, area.y, x1, top - lip, x1, top)
-        .line_to(x1, bottom)
-        .cubic_to(
-            x1,
-            bottom + lip,
-            area.cx() + k,
-            area.bottom(),
-            area.cx(),
-            area.bottom(),
-        )
-        .cubic_to(area.cx() - k, area.bottom(), x0, bottom + lip, x0, bottom)
-        .close()
-        .move_to(x0, top)
-        .cubic_to(x0, top + lip, area.cx() - k, belly, area.cx(), belly)
-        .cubic_to(area.cx() + k, belly, x1, top + lip, x1, top)
-}
-
-fn subroutine(node: PathNode, area: Area) -> PathNode {
-    let side = CELL_W;
-    rounded(node, area, CORNER / 2.0)
-        .move_to(area.x + side, area.y)
-        .line_to(area.x + side, area.bottom())
-        .move_to(area.right() - side, area.y)
-        .line_to(area.right() - side, area.bottom())
-}
-
-fn flag(node: PathNode, area: Area) -> PathNode {
-    node.move_to(area.x, area.y)
-        .line_to(area.right(), area.y)
-        .line_to(area.right(), area.bottom())
-        .line_to(area.x, area.bottom())
-        .line_to(area.x + CELL_W, area.cy())
         .close()
 }
 
@@ -346,72 +251,6 @@ fn edges(graph: &Graph, areas: &[Area], size: (f32, f32)) -> Edges {
         }
     }
     (lines, dashes, heads, labels)
-}
-
-fn shared(a0: f32, a1: f32, b0: f32, b1: f32) -> Option<f32> {
-    let (lo, hi) = (a0.max(b0), a1.min(b1));
-    let need = if a1 - a0 < 1.0 || b1 - b0 < 1.0 {
-        0.0
-    } else {
-        OVERLAP
-    };
-    (hi - lo >= need).then(|| f32::midpoint(lo, hi))
-}
-
-fn route(vertical: bool, from: Area, to: Area, areas: &[Area]) -> Vec<Point> {
-    if vertical {
-        if to.cy() < from.cy() {
-            return lane_right(from, to, areas);
-        }
-        let (start, end) = ((from.cx(), from.bottom()), (to.cx(), to.y));
-        if let Some(x) = shared(from.x, from.right(), to.x, to.right()) {
-            return vec![(x, start.1), (x, end.1)];
-        }
-        let mid = f32::midpoint(start.1, end.1);
-        vec![start, (start.0, mid), (end.0, mid), end]
-    } else {
-        if to.cx() < from.cx() {
-            return lane_below(from, to, areas);
-        }
-        let (start, end) = ((from.right(), from.cy()), (to.x, to.cy()));
-        if let Some(y) = shared(from.y, from.bottom(), to.y, to.bottom()) {
-            return vec![(start.0, y), (end.0, y)];
-        }
-        let mid = f32::midpoint(start.0, end.0);
-        vec![start, (mid, start.1), (mid, end.1), end]
-    }
-}
-
-fn lane_right(from: Area, to: Area, areas: &[Area]) -> Vec<Point> {
-    let (top, bottom) = (to.y, from.bottom());
-    let lane = areas
-        .iter()
-        .filter(|area| area.bottom() >= top && area.y <= bottom)
-        .map(|area| area.right())
-        .fold(from.right().max(to.right()), f32::max)
-        + LANE;
-    vec![
-        (from.right(), from.cy()),
-        (lane, from.cy()),
-        (lane, to.cy()),
-        (to.right(), to.cy()),
-    ]
-}
-
-fn lane_below(from: Area, to: Area, areas: &[Area]) -> Vec<Point> {
-    let (left, right) = (to.x, from.right());
-    let lane = areas
-        .iter()
-        .filter(|area| area.right() >= left && area.x <= right)
-        .map(|area| area.bottom())
-        .fold(from.bottom().max(to.bottom()), f32::max)
-        + LANE;
-    vec![
-        (from.cx(), from.bottom()),
-        (from.cx(), lane),
-        (to.cx(), lane),
-        (to.cx(), to.bottom()),
-    ]
 }
 
 fn distinct(points: &[Point]) -> Vec<Point> {

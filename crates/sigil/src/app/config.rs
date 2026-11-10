@@ -41,19 +41,18 @@ const HOST_MODE: crate::kernel::HostMode = crate::kernel::HostMode::Pixel;
 #[cfg(all(feature = "terminal", not(feature = "desktop")))]
 const HOST_MODE: crate::kernel::HostMode = crate::kernel::HostMode::Cell;
 
-#[cfg(feature = "terminal")]
-fn suspend_key() -> crate::events::Shortcut {
-    crate::events::Shortcut::ctrl(crate::events::LogicalKey::character("z"))
-}
-
 mod defaults;
 mod hooks;
+#[cfg(feature = "terminal")]
+mod terminal;
 mod text;
 
 #[cfg(feature = "terminal")]
 pub(crate) use hooks::TerminalHooks;
 #[cfg(feature = "desktop")]
 pub(crate) use hooks::{CloseHook, ExitHook};
+#[cfg(feature = "terminal")]
+pub(crate) use terminal::TerminalOptions;
 
 #[doc = include_str!("../../docs/app-config.md")]
 #[derive(Debug, Clone)]
@@ -97,15 +96,7 @@ pub struct AppConfig {
     #[cfg(feature = "scene")]
     pub(crate) text_tuning: Option<crate::renderer::slug::TextTuning>,
     #[cfg(feature = "terminal")]
-    pub(crate) terminal_hooks: TerminalHooks,
-    #[cfg(feature = "terminal")]
-    pub(crate) terminal_access: crate::terminal::Access,
-    #[cfg(feature = "terminal")]
-    pub(crate) mouse_tracking: Option<crate::terminal::MouseTracking>,
-    #[cfg(feature = "terminal")]
-    pub(crate) other_keys: OtherKeys,
-    #[cfg(feature = "terminal")]
-    pub(crate) suspend: Option<crate::events::Shortcut>,
+    pub(crate) terminal: TerminalOptions,
     #[cfg(feature = "desktop")]
     #[cfg_attr(
         not(target_arch = "wasm32"),
@@ -224,7 +215,7 @@ impl AppConfig {
     #[cfg(feature = "terminal")]
     #[must_use]
     pub fn terminal_hooks(mut self, hooks: crate::terminal::Hooks<'static>) -> Self {
-        self.terminal_hooks = TerminalHooks(std::rc::Rc::new(std::cell::RefCell::new(Some(hooks))));
+        self.terminal.hooks = TerminalHooks(std::rc::Rc::new(std::cell::RefCell::new(Some(hooks))));
         self
     }
 
@@ -232,7 +223,7 @@ impl AppConfig {
     #[cfg(feature = "terminal")]
     #[must_use]
     pub const fn terminal_access(mut self, access: crate::terminal::Access) -> Self {
-        self.terminal_access = access;
+        self.terminal.access = access;
         self
     }
 
@@ -240,7 +231,7 @@ impl AppConfig {
     #[cfg(feature = "terminal")]
     #[must_use]
     pub const fn mouse_tracking(mut self, tracking: crate::terminal::MouseTracking) -> Self {
-        self.mouse_tracking = Some(tracking);
+        self.terminal.mouse_tracking = Some(tracking);
         self
     }
 
@@ -248,7 +239,7 @@ impl AppConfig {
     #[cfg(feature = "terminal")]
     #[must_use]
     pub const fn modify_other_keys(mut self, yes: bool) -> Self {
-        self.other_keys = if yes {
+        self.terminal.other_keys = if yes {
             OtherKeys::Modified
         } else {
             OtherKeys::Plain
@@ -260,7 +251,7 @@ impl AppConfig {
     #[cfg(feature = "terminal")]
     #[must_use]
     pub fn suspend_on(mut self, shortcut: impl Into<Option<crate::events::Shortcut>>) -> Self {
-        self.suspend = shortcut.into();
+        self.terminal.suspend = shortcut.into();
         self
     }
 

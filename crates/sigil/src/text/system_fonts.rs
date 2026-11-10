@@ -1,9 +1,11 @@
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "desktop", not(target_arch = "wasm32")))]
 use std::sync::OnceLock;
 
+#[cfg(feature = "desktop")]
 use crate::text::font_family::FontFaces;
 use crate::text::shaper::{Font, Script};
 
+#[cfg(feature = "desktop")]
 #[derive(Clone)]
 pub(crate) struct SystemFonts {
     pub(crate) sans: Option<FontFaces>,
@@ -11,7 +13,7 @@ pub(crate) struct SystemFonts {
     pub(crate) serif: Option<FontFaces>,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "desktop", not(target_arch = "wasm32")))]
 pub(crate) fn load() -> SystemFonts {
     static SYSTEM_FONTS: OnceLock<SystemFonts> = OnceLock::new();
     SYSTEM_FONTS.get_or_init(native::load).clone()
@@ -32,7 +34,7 @@ pub(crate) fn script_fallbacks(script: Script) -> Vec<Font> {
         .clone()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(feature = "desktop", target_arch = "wasm32"))]
 pub(crate) const fn load() -> SystemFonts {
     SystemFonts {
         sans: None,

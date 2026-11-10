@@ -16,8 +16,8 @@ mod site;
 mod span;
 mod store;
 
-pub(crate) use attr::budget_ns;
-pub(crate) use chrome::site_name;
+#[cfg(any(feature = "desktop", feature = "terminal"))]
+pub(crate) use self::{attr::budget_ns, chrome::site_name, store::with_frames};
 pub use key::{BackendKind, BackendStatus, Cause, Counter, FallbackCause, Phase};
 pub(crate) use key::{Hotspot, SiteKind};
 pub(crate) use site::site;
@@ -131,8 +131,6 @@ pub(crate) fn dump_if_enabled() {
         eprintln!("sigil-profile: dump failed: {err}");
     }
 }
-
-pub(crate) use store::with_frames;
 
 /// Returns the recorded frames.
 #[must_use]

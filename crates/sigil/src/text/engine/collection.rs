@@ -54,6 +54,7 @@ impl FontCollection {
         }
     }
 
+    #[cfg(feature = "desktop")]
     fn from_system() -> Self {
         let system = crate::text::system_fonts::load();
         Self {

@@ -1,6 +1,8 @@
 use winit::window::Window;
 
+#[cfg(target_os = "macos")]
 const CONTROLS_LEFT: f64 = 16.0;
+#[cfg(target_os = "macos")]
 const CONTROLS_GAP: f64 = 20.0;
 
 /// Centres the macOS window controls in an inset title bar `bar` points tall.
@@ -63,4 +65,4 @@ pub(super) fn centre_controls(window: &Window, bar: f32) {
 
 /// Leaves the window controls where the platform puts them.
 #[cfg(not(target_os = "macos"))]
-pub(super) fn centre_controls(_window: &Window, _bar: f32) {}
+pub(super) const fn centre_controls(_window: &Window, _bar: f32) {}

@@ -114,6 +114,7 @@ impl SceneState {
         })
     }
 
+    #[cfg(feature = "scene")]
     pub(crate) fn clip_end(commands: &[SceneCommand], start: usize) -> usize {
         matching_end(commands, start, |command| match command {
             SceneCommand::PushClip(_) => Some(true),

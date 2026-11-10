@@ -1,5 +1,4 @@
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::Space;
 use crate::reactive::{Signal, derived};
 
 use super::state::TableState;
@@ -23,7 +22,7 @@ pub(super) fn sort_mark<Row: 'static>(
     sortable: bool,
 ) -> NodeBuilder {
     use crate::icons::builtin::{ARROW_DOWN_SVG, ARROW_UP_SVG, CHEVRONS_UP_DOWN_SVG};
-    use crate::layout::LayoutStyle;
+    use crate::layout::{LayoutStyle, Space};
     use crate::widgets::Widget;
     use crate::widgets::icon_svg;
     let mark = state.sort_state(column, sortable);

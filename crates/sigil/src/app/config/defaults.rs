@@ -1,10 +1,6 @@
 use super::*;
 
 impl AppConfig {
-    #[allow(
-        clippy::too_many_lines,
-        reason = "one struct literal with a cfg line per feature-gated field"
-    )]
     pub(super) fn defaults() -> Self {
         Self {
             #[cfg(any(test, feature = "desktop", feature = "terminal"))]
@@ -46,15 +42,7 @@ impl AppConfig {
             #[cfg(feature = "scene")]
             text_tuning: None,
             #[cfg(feature = "terminal")]
-            terminal_hooks: TerminalHooks::default(),
-            #[cfg(feature = "terminal")]
-            terminal_access: crate::terminal::Access::default(),
-            #[cfg(feature = "terminal")]
-            mouse_tracking: None,
-            #[cfg(feature = "terminal")]
-            other_keys: OtherKeys::Plain,
-            #[cfg(feature = "terminal")]
-            suspend: Some(suspend_key()),
+            terminal: TerminalOptions::default(),
             #[cfg(feature = "desktop")]
             canvas: None,
         }

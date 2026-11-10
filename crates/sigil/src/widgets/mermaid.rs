@@ -91,24 +91,24 @@ impl View {
                 if fresh {
                     self.last.replace(Some(bounded.clone()));
                 }
-                return self.frame(drawn, &bounded, !fresh);
+                return frame(self, drawn, &bounded, !fresh);
             }
         }
         text_figure(source)
     }
+}
 
-    #[cfg(feature = "scene")]
-    fn frame(&self, drawn: Drawn, source: &str, stale: bool) -> NodeBuilder {
-        self.chrome.wrap(drawn, source, stale)
-    }
+#[cfg(feature = "scene")]
+fn frame(view: &View, drawn: Drawn, source: &str, stale: bool) -> NodeBuilder {
+    view.chrome.wrap(drawn, source, stale)
+}
 
-    #[cfg(not(feature = "scene"))]
-    fn frame(&self, drawn: Drawn, source: &str, _stale: bool) -> NodeBuilder {
-        scrolled(drawn.node, drawn.width)
-            .role(Role::Figure)
-            .label(diagram_name(source))
-            .description(source.trim_end().to_string())
-    }
+#[cfg(not(feature = "scene"))]
+fn frame(_: &View, drawn: Drawn, source: &str, _stale: bool) -> NodeBuilder {
+    scrolled(drawn.node, drawn.width)
+        .role(Role::Figure)
+        .label(diagram_name(source))
+        .description(source.trim_end().to_string())
 }
 
 fn svg(source: &str) -> Option<Drawn> {

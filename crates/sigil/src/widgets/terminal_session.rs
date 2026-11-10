@@ -106,10 +106,20 @@ fn line(lines: Signal<Vec<Row>>, at: usize) -> NodeBuilder {
         })
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
+)]
 fn cells(span: f32, cell: f32) -> u16 {
     (span / cell.max(1.0)).floor().clamp(1.0, 999.0) as u16
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
+)]
 fn cell_at(x: f32, y: f32) -> (u16, u16) {
     let (width, height) = mono_cell();
     let cell = |at: f32, size: f32| (at.max(0.0) / size.max(1.0)).floor().min(998.0) as u16;
@@ -128,6 +138,10 @@ fn wheel(node: NodeBuilder, session: &Rc<Session>) -> NodeBuilder {
     })
 }
 
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "the value is already whole and a float cast saturates"
+)]
 fn whole_rows(event: &ScrollEvent, left: &Cell<f32>) -> i32 {
     let delta = match event.delta {
         ScrollDelta::Lines(point) => point.y,
