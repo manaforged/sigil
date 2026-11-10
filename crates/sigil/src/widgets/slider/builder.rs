@@ -8,14 +8,14 @@ use crate::kernel::{NodeBuilder, Role, TextContent, container};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutStyle, Length, cols, rows};
 use crate::reactive::{Reactive, Signal};
+use crate::style::Style;
 use crate::style::strings::StringKey;
-use crate::style::{Style, StyleOverlay};
 use crate::widgets::Layout;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::orientation::Orientation;
 
 use super::super::layout_ext::LayoutOverrides;
-use super::super::shared::{accessible_name_or, control_root, control_surface, disabled_now};
+use super::super::shared::{accessible_name_or, caller_style, control, disabled_now};
 use super::handlers::{attach_key_handlers, attach_pointer_drag};
 use super::track::{slider_thumb, track};
 
@@ -157,16 +157,12 @@ impl SliderBuilder {
         let runtime = self.runtime;
         let on_change: ValueChange = self.on_change.take().unwrap_or_else(|| Rc::new(|_| {}));
         let style = std::mem::take(&mut self.style_accumulator);
-        let mut node = control_root(runtime.disabled, style, |interaction, overlay| {
-            let root = slider_root(&self, interaction, overlay);
-            let keyed = attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change));
-            interaction.install(attach_pointer_drag(
-                keyed,
-                interaction,
-                runtime,
-                Rc::clone(&on_change),
-            ))
-        });
+        let mut root = control(slider_node(&self), runtime.disabled).active();
+        let interaction = root.interaction();
+        let root = slider_parts(root, runtime, interaction);
+        let keyed = attach_key_handlers(root, interaction, runtime, Rc::clone(&on_change));
+        let dragged = attach_pointer_drag(keyed, interaction, runtime, Rc::clone(&on_change));
+        let mut node = caller_style(dragged, style);
         if let Some(caption) = self.label {
             node = super::caption::with_caption(node, caption, runtime.orientation, runtime.length);
         }
@@ -229,23 +225,25 @@ impl SliderRuntime {
     }
 }
 
-fn slider_root(
-    builder: &SliderBuilder,
-    interaction: InteractionState,
-    overlay: StyleOverlay,
-) -> NodeBuilder {
+fn slider_node(builder: &SliderBuilder) -> NodeBuilder {
     let runtime = builder.runtime;
     let layout = slider_layout(runtime.orientation, runtime.length, builder.label.is_some());
     let label = builder.label.clone().map(TextContent::Static);
-    let root = container()
+    container()
         .role(Role::Slider)
         .label(accessible_name_or(label.as_ref(), StringKey::Slider))
         .action(Action::Increment)
         .action(Action::Decrement)
         .value(runtime.value, runtime.range.min, runtime.range.max)
         .value_step(runtime.step)
-        .layout(layout);
-    let root = control_surface(root, interaction, runtime.disabled, overlay);
+        .layout(layout)
+}
+
+fn slider_parts(
+    root: NodeBuilder,
+    runtime: SliderRuntime,
+    interaction: InteractionState,
+) -> NodeBuilder {
     let thumb = slider_thumb(interaction, runtime.disabled, runtime.glass);
     match runtime.orientation {
         Orientation::Horizontal => root

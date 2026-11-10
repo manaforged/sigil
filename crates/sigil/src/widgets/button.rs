@@ -7,13 +7,8 @@ use crate::reactive::Signal;
 use crate::style::{ControlSize, Metrics, Radius, Style, Tone};
 use crate::widgets::{Layout, Widget};
 
-use crate::widgets::interaction::InteractionState;
-
 use super::layout_ext::LayoutOverrides;
-use super::shared::{
-    Activate, RELEASE_ENTER_SPACE, accessible_name, control_root, noop_activate, or_disabled,
-    press, reactive_style_state,
-};
+use super::shared::{Activate, accessible_name, caller_style, noop_activate};
 
 /// Builder of a button.
 pub struct ButtonBuilder {
@@ -235,37 +230,21 @@ impl ButtonBuilder {
     }
 
     fn root(mut self) -> NodeBuilder {
-        let look_disabled = self.disabled;
-        self.disabled = or_disabled(self.disabled, self.pending);
         if self.square {
             self.width = ButtonWidth::Fixed(self.height);
             self.padding_x = 0.0;
         } else if self.layout_overrides.fills_width() {
             self.width = ButtonWidth::Fill;
         }
-        let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
+        let activate = self.activate.take().unwrap_or_else(noop_activate);
         let style = std::mem::take(&mut self.style_accumulator);
-        control_root(self.disabled, style, |interaction, overlay| {
-            self.base_node(interaction, &activate, overlay, look_disabled)
-        })
-    }
-
-    fn base_node(
-        &self,
-        interaction: InteractionState,
-        activate: &Activate,
-        user_overlay: crate::style::StyleOverlay,
-        look_disabled: Option<Signal<bool>>,
-    ) -> NodeBuilder {
         let variant = self.resolved_fill().variant();
-        let disabled = self.disabled;
         let name = self
             .accessible
             .clone()
             .unwrap_or_else(|| accessible_name(&self.label));
         let node = container()
             .role(Role::Button)
-            .mutate(move |node| node.a11y.disabled = disabled)
             .label(name)
             .layout(button_layout(self.width, self.height, self.padding_x))
             .class(Radius::Lg.atom());
@@ -274,17 +253,16 @@ impl ButtonBuilder {
             .class(variant.base())
             .class(BUTTON_TRANSITION_ATOMS)
             .tone_scope(self.resolved_tone())
-            .stateful_style(variant, user_overlay, move || {
-                reactive_style_state(interaction.disabled(look_disabled), look_disabled)
-            })
-            .seal_style();
-        let node = press(node, interaction, disabled, activate, RELEASE_ENTER_SPACE);
+            .variant(variant)
+            .disabled_by(self.disabled)
+            .busy_by(self.pending)
+            .activate_with(activate);
         let node = match self.pending {
             Some(pending) => node.child(self.pending_content(pending)),
             None if self.square => node.child(self.square_content()),
             None => self.label_content(node),
         };
-        interaction.install(node)
+        caller_style(node, style)
     }
 }
 
